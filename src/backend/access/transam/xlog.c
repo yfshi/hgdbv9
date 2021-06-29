@@ -725,6 +725,16 @@ typedef struct XLogCtlData
 	bool		SharedHotStandbyActive;
 
 	/*
+	 * InstallXLogFileSegmentActive indicates whether the checkpointer should
+	 * arrange for future segments by recycling and/or PreallocXlogFiles().
+	 * Protected by ControlFileLock.  Only the startup process changes it.  If
+	 * true, anyone can use InstallXLogFileSegment().  If false, the startup
+	 * process owns the exclusive right to install segments, by reading from
+	 * the archive and possibly replacing existing files.
+	 */
+	bool		InstallXLogFileSegmentActive;
+
+	/*
 	 * SharedPromoteIsTriggered indicates if a standby promotion has been
 	 * triggered.  Protected by info_lck.
 	 */
@@ -997,6 +1007,7 @@ static int	XLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 						 int reqLen, XLogRecPtr targetRecPtr, char *readBuf);
 static bool WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 										bool fetching_ckpt, XLogRecPtr tliRecPtr);
+static void XLogShutdownWalRcv(void);
 static int	emode_for_corrupt_record(int emode, XLogRecPtr RecPtr);
 static void XLogFileClose(void);
 static void PreallocXlogFiles(XLogRecPtr endptr);
@@ -3949,8 +3960,8 @@ XLogFileCopy(XLogSegNo destsegno, TimeLineID srcTLI, XLogSegNo srcsegno,
  * is false.)
  *
  * Returns true if the file was installed successfully.  false indicates that
- * max_segno limit was exceeded, or an error occurred while renaming the
- * file into place.
+ * max_segno limit was exceeded, the startup process has disabled this
+ * function for now, or an error occurred while renaming the file into place.
  */
 static bool
 InstallXLogFileSegment(XLogSegNo *segno, char *tmppath,
@@ -3962,6 +3973,11 @@ InstallXLogFileSegment(XLogSegNo *segno, char *tmppath,
 	XLogFilePath(path, ThisTimeLineID, *segno, wal_segment_size);
 
 	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
+	if (!XLogCtl->InstallXLogFileSegmentActive)
+	{
+		LWLockRelease(ControlFileLock);
+		return false;
+	}
 
 	if (!find_free)
 	{
@@ -4066,6 +4082,7 @@ XLogFileRead(XLogSegNo segno, int emode, TimeLineID tli,
 	 */
 	if (source == XLOG_FROM_ARCHIVE)
 	{
+		Assert(!XLogCtl->InstallXLogFileSegmentActive);
 		KeepFileRestoredFromArchive(path, xlogfname);
 
 		/*
@@ -4266,6 +4283,9 @@ PreallocXlogFiles(XLogRecPtr endptr)
 	bool		added;
 	char		path[MAXPGPATH];
 	uint64		offset;
+
+	if (!XLogCtl->InstallXLogFileSegmentActive)
+		return;					/* unlocked check says no */
 
 	XLByteToPrevSeg(endptr, _logSegNo, wal_segment_size);
 	offset = XLogSegmentOffset(endptr - 1, wal_segment_size);
@@ -4548,6 +4568,7 @@ RemoveXlogFile(const char *segname, XLogSegNo recycleSegNo,
 	 */
 	if (wal_recycle &&
 		*endlogSegNo <= recycleSegNo &&
+		XLogCtl->InstallXLogFileSegmentActive &&	/* callee rechecks this */
 		lstat(path, &statbuf) == 0 && S_ISREG(statbuf.st_mode) &&
 		InstallXLogFileSegment(endlogSegNo, path,
 							   true, recycleSegNo))
@@ -4561,7 +4582,7 @@ RemoveXlogFile(const char *segname, XLogSegNo recycleSegNo,
 	}
 	else
 	{
-		/* No need for any more future segments... */
+		/* No need for any more future segments, or recycling failed ... */
 		int			rc;
 
 		ereport(DEBUG2,
@@ -5690,6 +5711,7 @@ XLOGShmemInit(void)
 	XLogCtl->XLogCacheBlck = XLOGbuffers - 1;
 	XLogCtl->SharedRecoveryState = RECOVERY_STATE_CRASH;
 	XLogCtl->SharedHotStandbyActive = false;
+	XLogCtl->InstallXLogFileSegmentActive = false;
 	XLogCtl->SharedPromoteIsTriggered = false;
 	XLogCtl->WalWriterSleeping = false;
 
@@ -5716,6 +5738,11 @@ BootStrapXLOG(void)
 	uint64		sysidentifier;
 	struct timeval tv;
 	pg_crc32c	crc;
+
+	/* allow ordinary WAL segment creation, like StartupXLOG() would */
+	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
+	XLogCtl->InstallXLogFileSegmentActive = true;
+	LWLockRelease(ControlFileLock);
 
 	/*
 	 * Select a hopefully-unique system identifier code for this installation.
@@ -8129,7 +8156,7 @@ StartupXLOG(void)
 	 * over these records and subsequent ones if it's still alive when we
 	 * start writing WAL.
 	 */
-	ShutdownWalRcv();
+	XLogShutdownWalRcv();
 
 	/*
 	 * Reset unlogged relations to the contents of their INIT fork. This is
@@ -8154,7 +8181,7 @@ StartupXLOG(void)
 	 * recovery, e.g., timeline history file) from archive or pg_wal.
 	 *
 	 * Note that standby mode must be turned off after killing WAL receiver,
-	 * i.e., calling ShutdownWalRcv().
+	 * i.e., calling XLogShutdownWalRcv().
 	 */
 	Assert(!WalRcvStreaming());
 	StandbyMode = false;
@@ -8224,6 +8251,14 @@ StartupXLOG(void)
 	 */
 	oldestActiveXID = PrescanPreparedTransactions(NULL, NULL);
 	oldestActiveXID = PrescanFdwXacts(oldestActiveXID);
+
+	/*
+	 * Allow ordinary WAL segment creation before any exitArchiveRecovery(),
+	 * which sometimes creates a segment, and after the last ReadRecord().
+	 */
+	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
+	XLogCtl->InstallXLogFileSegmentActive = true;
+	LWLockRelease(ControlFileLock);
 
 	/*
 	 * Consider whether we need to assign a new timeline ID.
@@ -13207,7 +13242,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 */
 					if (StandbyMode && CheckForStandbyTrigger())
 					{
-						ShutdownWalRcv();
+						XLogShutdownWalRcv();
 						return false;
 					}
 
@@ -13255,7 +13290,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 * WAL that we restore from archive.
 					 */
 					if (WalRcvStreaming())
-						ShutdownWalRcv();
+						XLogShutdownWalRcv();
 
 					/*
 					 * Before we sleep, re-scan for possible new timelines if
@@ -13385,7 +13420,7 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 					 */
 					if (pendingWalRcvRestart && !startWalReceiver)
 					{
-						ShutdownWalRcv();
+						XLogShutdownWalRcv();
 
 						/*
 						 * Re-scan for possible new timelines if we were
@@ -13435,6 +13470,9 @@ WaitForWALToBecomeAvailable(XLogRecPtr RecPtr, bool randAccess,
 									 tli, curFileTLI);
 						}
 						curFileTLI = tli;
+						LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
+						XLogCtl->InstallXLogFileSegmentActive = true;
+						LWLockRelease(ControlFileLock);
 						RequestXLogStreaming(tli, ptr, PrimaryConnInfo,
 											 PrimarySlotName,
 											 wal_receiver_create_temp_slot);
@@ -13603,6 +13641,17 @@ StartupRequestWalReceiverRestart(void)
 
 		pendingWalRcvRestart = true;
 	}
+}
+
+/* Thin wrapper around ShutdownWalRcv(). */
+static void
+XLogShutdownWalRcv(void)
+{
+	ShutdownWalRcv();
+
+	LWLockAcquire(ControlFileLock, LW_EXCLUSIVE);
+	XLogCtl->InstallXLogFileSegmentActive = false;
+	LWLockRelease(ControlFileLock);
 }
 
 /*
