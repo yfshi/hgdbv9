@@ -19650,6 +19650,9 @@ fi
 
 
 
+# For IvorySQL-2.0, set -DIvorySQL by default. This can be overriden with -UIvorySQL if the user sets it.
+CFLAGS="-DIvorySQL $CFLAGS"
+
 # Begin output steps
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: using compiler=$cc_string" >&5

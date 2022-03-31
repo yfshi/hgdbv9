@@ -24,6 +24,7 @@
 #include "help.h"
 #include "input.h"
 #include "mainloop.h"
+#include "oracle_fe_utils/ora_string_utils.h"	/* SQL PARSER */
 #include "settings.h"
 
 /*
@@ -299,6 +300,10 @@ main(int argc, char *argv[])
 		PQfinish(pset.db);
 		exit(EXIT_BADCONN);
 	}
+
+	/* BEGIN - SQL PARSER */
+	getDbCompatibleMode(pset.db);
+	/* END - SQL PARSER */
 
 	psql_setup_cancel_handler();
 

@@ -548,7 +548,9 @@ sub recoverycheck
 sub standard_initdb
 {
 	return (
-		system('initdb', '-N') == 0 and system(
+		#BEGIN - SQL PARSER
+		system('initdb', '-N', '-m', 'pg') == 0 and system(
+		#END - SQL PARSER
 			"$topdir/$Config/pg_regress/pg_regress", '--config-auth',
 			$ENV{PGDATA}) == 0);
 }

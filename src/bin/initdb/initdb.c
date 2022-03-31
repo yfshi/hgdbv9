@@ -74,6 +74,9 @@
 #include "getopt_long.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
+/* BEGIN - SQL PARSER */
+#include "utils/ora_compatible.h"
+/* END - SQL PARSER */
 
 
 /* Ideally this would be in a .h file, but it hardly seems worth the trouble */
@@ -162,6 +165,9 @@ static char *features_file;
 static char *system_constraints_file;
 static char *system_functions_file;
 static char *system_views_file;
+/* BEGIN - SQL PARSER */
+static char *ora_sys_schema_file;
+/* END - SQL PARSER */
 static bool success = false;
 static bool made_new_pgdata = false;
 static bool found_existing_pgdata = false;
@@ -179,6 +185,13 @@ static int	n_buffers = 50;
 static const char *dynamic_shared_memory_type = NULL;
 static const char *default_timezone = NULL;
 
+/* BEGIN - SQL PARSER */
+static const char *ora_options = "-c session_preload_libraries=liboracle_parser ";
+
+static char  *dbmode = "oracle";
+static char  *ora_conf_file;
+static int	database_mode = DB_ORACLE;
+/* END - SQL PARSER */
 /*
  * Warning messages for authentication methods
  */
@@ -257,12 +270,18 @@ static void setup_auth(FILE *cmdfd);
 static void get_su_pwd(void);
 static void setup_depend(FILE *cmdfd);
 static void setup_run_file(FILE *cmdfd, const char *filename);
+/* BEGIN - SQL PARSER */
+static void setup_ora_sys_schema(FILE *cmdfd);
+/* END - SQL PARSER */
 static void setup_description(FILE *cmdfd);
 static void setup_collation(FILE *cmdfd);
 static void setup_privileges(FILE *cmdfd);
 static void set_info_version(void);
 static void setup_schema(FILE *cmdfd);
 static void load_plpgsql(FILE *cmdfd);
+/* BEGIN - SQL PARSER */
+static void load_plisql(FILE *cmdfd);
+/* END - SQL PARSER */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -1060,7 +1079,20 @@ setup_config(void)
 
 	/* postgresql.conf */
 
-	conflines = readfile(conf_file);
+	/* BEGIN - SQL PARSER */
+	if (database_mode == DB_PG)
+	{
+	/* END - SQL PARSER */
+		/* postgresql conf file */
+		conflines = readfile(conf_file);
+	/* BEGIN - SQL PARSER */
+	}
+	else
+	{
+		/* oracle compatibility conf file */
+		conflines = readfile(ora_conf_file);
+	}
+	/* END - SQL PARSER */
 
 	snprintf(repltok, sizeof(repltok), "max_connections = %d", n_connections);
 	conflines = replace_token(conflines, "#max_connections = 100", repltok);
@@ -1406,9 +1438,20 @@ bootstrap_template1(void)
 	unsetenv("PGCLIENTENCODING");
 
 	snprintf(cmd, sizeof(cmd),
+#ifdef IvorySQL
+			 /* BEGIN - SQL PARSER */
 			 "\"%s\" --boot -x1 -X %u %s %s %s %s",
+#else
+			 "\"%s\" --boot -x1 -X %u %s %s %s",
+			 /* END - SQL PARSER */
+#endif
 			 backend_exec,
 			 wal_segment_size_mb * (1024 * 1024),
+#ifdef IvorySQL
+			 /* BEGIN - SQL PARSER */
+			 pg_strcasecmp(dbmode, "pg") ? "-y oracle" : "-y pg",
+			 /* END - SQL PARSER */
+#endif
 			 data_checksums ? "-k" : "",
 			 boot_options, extra_options,
 			 debug ? "-d 5" : "");
@@ -1629,6 +1672,28 @@ setup_run_file(FILE *cmdfd, const char *filename)
 
 	free(lines);
 }
+
+/* BEGIN - SQL PARSER */
+/* load oracle compatible objects */
+static void
+setup_ora_sys_schema(FILE *cmdfd)
+{
+	char	  **line;
+	char	  **ora_sys_schema_setup;
+
+	ora_sys_schema_setup = readfile(ora_sys_schema_file);
+
+	for (line = ora_sys_schema_setup; *line != NULL; line++)
+	{
+		PG_CMD_PUTS(*line);
+		free(*line);
+	}
+
+	PG_CMD_PUTS("\n\n");
+
+	free(ora_sys_schema_setup);
+}
+/* END - SQL PARSER */
 
 /*
  * fill in extra description data
@@ -1892,6 +1957,15 @@ load_plpgsql(FILE *cmdfd)
 {
 	PG_CMD_PUTS("CREATE EXTENSION plpgsql;\n\n");
 }
+
+/* BEGIN - SQL PARSER */
+/* load plsq language */
+static void
+load_plisql(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION plisql;\n\n");
+}
+/* END - SQL PARSER */
 
 /*
  * clean everything up in template1
@@ -2265,6 +2339,9 @@ usage(const char *progname)
 	printf(_("  -W, --pwprompt            prompt for a password for the new superuser\n"));
 	printf(_("  -X, --waldir=WALDIR       location for the write-ahead log directory\n"));
 	printf(_("      --wal-segsize=SIZE    size of WAL segments, in megabytes\n"));
+	/* BEGIN - SQL PARSER */
+	printf(_("  -m, --dbmode=MODE         set database mode, default is oracle\n"));
+	/* END - SQL PARSER */
 	printf(_("\nLess commonly used options:\n"));
 	printf(_("  -d, --debug               generate lots of debugging output\n"));
 	printf(_("      --discard-caches      set debug_discard_caches=1\n"));
@@ -2503,7 +2580,13 @@ setup_locale_encoding(void)
 void
 setup_data_file_paths(void)
 {
-	set_input(&bki_file, "postgres.bki");
+	/* BEGIN - SQL PARSER */
+	if (DB_PG == database_mode)
+		set_input(&bki_file, "postgres.bki");
+	else
+		set_input(&bki_file, "postgres_oracle.bki");
+	/* END - SQL PARSER */
+
 	set_input(&hba_file, "pg_hba.conf.sample");
 	set_input(&ident_file, "pg_ident.conf.sample");
 	set_input(&conf_file, "postgresql.conf.sample");
@@ -2513,7 +2596,13 @@ setup_data_file_paths(void)
 	set_input(&system_constraints_file, "system_constraints.sql");
 	set_input(&system_functions_file, "system_functions.sql");
 	set_input(&system_views_file, "system_views.sql");
-
+	/* BEGIN - SQL PARSER */
+	if (database_mode == DB_ORACLE)
+	{
+		set_input(&ora_sys_schema_file, "ora_sys_schema.sql");
+		set_input(&ora_conf_file, "postgresql_oracle.conf.sample");
+	}
+	/* END - SQL PARSER */
 	if (show_setting || debug)
 	{
 		fprintf(stderr,
@@ -2541,6 +2630,13 @@ setup_data_file_paths(void)
 	check_input(system_constraints_file);
 	check_input(system_functions_file);
 	check_input(system_views_file);
+	/* BEGIN - SQL PARSER */
+	if (database_mode == DB_ORACLE)
+	{
+		check_input(ora_sys_schema_file);
+		check_input(ora_conf_file);
+	}
+	/* END - SQL PARSER */
 }
 
 
@@ -2866,10 +2962,20 @@ initialize_data_directory(void)
 	fputs(_("performing post-bootstrap initialization ... "), stdout);
 	fflush(stdout);
 
-	snprintf(cmd, sizeof(cmd),
-			 "\"%s\" %s %s template1 >%s",
-			 backend_exec, backend_options, extra_options,
-			 DEVNULL);
+	/* BEGIN - SQL PARSER */
+	if (strcmp(dbmode, "pg") == 0)
+	/* END - SQL PARSER */
+		snprintf(cmd, sizeof(cmd),
+				 "\"%s\" %s %s template1 >%s",
+				 backend_exec, backend_options, extra_options,
+				 DEVNULL);
+	/* BEGIN - SQL PARSER */
+	else
+		snprintf(cmd, sizeof(cmd),
+				 "\"%s\" %s %s %s template1 >%s",
+				 backend_exec, backend_options, extra_options, ora_options,
+				 DEVNULL);
+	/* END - SQL PARSER */
 
 	PG_CMD_OPEN;
 
@@ -2899,6 +3005,15 @@ initialize_data_directory(void)
 	setup_schema(cmdfd);
 
 	load_plpgsql(cmdfd);
+
+/* BEGIN - SQL PARSER */
+  /* load oracle compatible objects and plisql language */
+	if (database_mode == DB_ORACLE)
+	{
+		setup_ora_sys_schema(cmdfd);
+		load_plisql(cmdfd);
+	}
+/* END - SQL PARSER */
 
 	vacuum_db(cmdfd);
 
@@ -2947,6 +3062,9 @@ main(int argc, char *argv[])
 		{"wal-segsize", required_argument, NULL, 12},
 		{"data-checksums", no_argument, NULL, 'k'},
 		{"allow-group-access", no_argument, NULL, 'g'},
+	/* BEGIN - SQL PARSER */
+		{"dbmode", required_argument, NULL, 'm'},
+	/* END - SQL PARSER */
 		{"discard-caches", no_argument, NULL, 14},
 		{NULL, 0, NULL, 0}
 	};
@@ -2989,7 +3107,9 @@ main(int argc, char *argv[])
 
 	/* process command-line options */
 
-	while ((c = getopt_long(argc, argv, "A:dD:E:gkL:nNsST:U:WX:", long_options, &option_index)) != -1)
+	/* BEGIN - SQL PARSER */
+	while ((c = getopt_long(argc, argv, "A:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1)
+	/* END - SQL PARSER */
 	{
 		switch (c)
 		{
@@ -3028,6 +3148,21 @@ main(int argc, char *argv[])
 				debug = true;
 				printf(_("Running in debug mode.\n"));
 				break;
+			/* BEGIN - SQL PARSER */
+			case 'm':
+				dbmode = pg_strdup(optarg);
+
+				if (pg_strcasecmp(dbmode, "pg") == 0 || pg_strcasecmp(dbmode, "0") == 0)
+					database_mode = DB_PG;
+				else if (pg_strcasecmp(dbmode, "oracle") == 0 || pg_strcasecmp(dbmode, "1") == 0)
+					database_mode = DB_ORACLE;
+				else
+				{
+					fprintf(stderr, _("unrecognized database mode.\n"));
+					exit(1);
+				}
+			break;
+			/* END - SQL PARSER */
 			case 'n':
 				noclean = true;
 				printf(_("Running in no-clean mode.  Mistakes will not be cleaned up.\n"));

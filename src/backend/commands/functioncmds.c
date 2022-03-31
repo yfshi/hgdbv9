@@ -72,6 +72,9 @@
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+/* BEGIN - SQL PARSER */
+#include "utils/ora_compatible.h"
+/* END - SQL PARSER */
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
@@ -2119,7 +2122,17 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic)
 	if (language_item)
 		language = strVal(language_item->arg);
 	else
-		language = "plpgsql";
+	/* BEGIN - SQL PARSER */
+	{
+		/* anonymous block's language default value is plsql
+		 * in oracle compatibility mode
+		 */
+		if (DB_ORACLE == compatible_db)
+			language = "plisql";
+		else
+	/* END - SQL PARSER */
+			language = "plpgsql";
+	}
 
 	/* Look up the language and validate permissions */
 	languageTuple = SearchSysCache1(LANGNAME, PointerGetDatum(language));

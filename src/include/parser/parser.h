@@ -53,13 +53,23 @@ typedef enum
 }			BackslashQuoteType;
 
 /* GUC variables in scan.l (every one of these is a bad idea :-() */
-extern int	backslash_quote;
-extern bool escape_string_warning;
+/* BEGIN - SQL PARSER */
+extern int	PGDLLIMPORT backslash_quote;
+extern bool PGDLLIMPORT escape_string_warning;
+/* END - SQL PARSER */
 extern PGDLLIMPORT bool standard_conforming_strings;
 
+/* BEGIN - SQL PARSER */
+/* Hook for plugins to get control in raw_parser() */
+typedef List *(*raw_parser_hook_type) (const char *str, RawParseMode mode);
+extern PGDLLIMPORT raw_parser_hook_type raw_parser;
+extern PGDLLIMPORT raw_parser_hook_type ora_raw_parser;
+/* END - SQL PARSER */
 
 /* Primary entry point for the raw parsing functions */
-extern List *raw_parser(const char *str, RawParseMode mode);
+/* BEGIN - SQL PARSER */
+extern List *standard_raw_parser(const char *str, RawParseMode mode);
+/* END - SQL PARSER */
 
 /* Utility functions exported by gram.y (perhaps these should be elsewhere) */
 extern List *SystemFuncName(char *name);

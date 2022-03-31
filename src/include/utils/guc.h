@@ -282,6 +282,12 @@ extern int	tcp_user_timeout;
 extern bool trace_sort;
 #endif
 
+/* BEGIN - SQL PARSER */
+extern int	database_mode;
+extern PGDLLIMPORT int	compatible_db;
+/* END - SQL PARSER */
+
+
 /*
  * Functions exported by guc.c
  */

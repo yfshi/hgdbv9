@@ -76,6 +76,7 @@
 #include <sys/param.h>
 #include <netdb.h>
 #include <limits.h>
+#include "parser/parser.h"
 
 #ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
@@ -4533,18 +4534,42 @@ BackendInitialize(Port *port)
 		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
 
 		if (strstr(service, PostPortNumberStr) != NULL)
+		{
 			port->connmode = 'p';
+			SetConfigOption("compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
+			raw_parser = standard_raw_parser;
+		}
 		else if (strstr(service, OraPortNumberStr) != NULL)
+		{
 			port->connmode = 'o';
+			SetConfigOption("compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+			if (NULL == ora_raw_parser)
+				ereport(ERROR,
+						(errmsg("Invalid Oracle compatibility mode syntax library.")));
+			else
+				raw_parser = ora_raw_parser;
+		}
 		else
 			port->connmode = 'u';
 	}
 	else
 	{
 		if (localport == PostPortNumber)
+		{
 			port->connmode = 'p';
+			SetConfigOption("compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
+			raw_parser = standard_raw_parser;
+		}
 		else if (localport == OraPortNumber)
+		{
 			port->connmode = 'o';
+			SetConfigOption("compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+			if (NULL == ora_raw_parser)
+				ereport(ERROR,
+						(errmsg("Invalid Oracle compatibility mode syntax library.")));
+			else
+				raw_parser = ora_raw_parser;
+		}
 		else
 			port->connmode = 'u';
 	}
