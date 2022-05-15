@@ -65,7 +65,13 @@ extern char *regexp_fixed_prefix(text *text_re, bool case_insensitive,
 								 Oid collation, bool *exact);
 
 /* ruleutils.c */
+#ifndef IvorySQL
+/* BEGIN - SQL PARSER */
 extern bool quote_all_identifiers;
+#else
+extern PGDLLIMPORT bool quote_all_identifiers;
+/* END - SQL PARSER */
+#endif
 extern const char *quote_identifier(const char *ident);
 extern char *quote_qualified_identifier(const char *qualifier,
 										const char *ident);

@@ -19,6 +19,7 @@ SUBDIRS = \
 	backend \
 	backend/utils/mb/conversion_procs \
 	backend/snowball \
+	backend/oracle_parser \
 	include \
 	interfaces \
 	backend/replication/libpqwalreceiver \
@@ -29,7 +30,11 @@ SUBDIRS = \
 	makefiles \
 	test/regress \
 	test/isolation \
-	test/perl
+	test/perl \
+	oracle_fe_utils \
+	oracle_test/regress \
+	oracle_test/isolation \
+	oracle_test/perl
 
 ifeq ($(with_llvm), yes)
 SUBDIRS += backend/jit/llvm
@@ -61,16 +66,27 @@ uninstall-local:
 
 distprep:
 	$(MAKE) -C test/isolation $@
+#BEGIN - SQL PARSER
+	$(MAKE) -C oracle_test/isolation $@
+#END - SQL PARSER
 
 clean:
 	$(MAKE) -C test $@
 	$(MAKE) -C tutorial NO_PGXS=1 $@
 	$(MAKE) -C test/isolation $@
+#BEGIN - SQL PARSER
+	$(MAKE) -C oracle_test $@
+	$(MAKE) -C oracle_test/isolation $@
+#END - SQL PARSER
 
 distclean maintainer-clean:
 	$(MAKE) -C test $@
 	$(MAKE) -C tutorial NO_PGXS=1 $@
 	$(MAKE) -C test/isolation $@
+#BEGIN - SQL PARSER
+	$(MAKE) -C oracle_test $@
+	$(MAKE) -C oracle_test/isolation $@
+#END - SQL PARSER
 	rm -f Makefile.port Makefile.global
 
 

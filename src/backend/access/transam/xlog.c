@@ -80,8 +80,14 @@
 #include "utils/pg_rusage.h"
 #include "utils/snapmgr.h"
 #include "utils/timestamp.h"
+/* BEGIN - SQL PARSER */
+#include "utils/ora_compatible.h"
+/* END - SQL PARSER */
 
 extern uint32 bootstrap_data_checksum_version;
+/* BEGIN - SQL PARSER */
+extern int	  bootstrap_database_mode;
+/* END - SQL PARSER */
 
 /* Unsupported old recovery command file names (relative to $PGDATA) */
 #define RECOVERY_COMMAND_FILE	"recovery.conf"
@@ -4972,6 +4978,13 @@ ReadControlFile(void)
 	/* Make the initdb settings visible as GUC variables, too */
 	SetConfigOption("data_checksums", DataChecksumsEnabled() ? "yes" : "no",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
+	/* BEGIN - SQL PARSER */
+	/* set guc parameters' value about database compatible mode  */
+	SetConfigOption("database_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
+					PGC_INTERNAL, PGC_S_OVERRIDE);
+	SetConfigOption("compatible_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
+					PGC_USERSET, PGC_S_OVERRIDE);
+	/* END - SQL PARSER */
 }
 
 /*
@@ -5419,6 +5432,10 @@ BootStrapXLOG(void)
 	ControlFile->checkPoint = checkPoint.redo;
 	ControlFile->checkPointCopy = checkPoint;
 
+	/* BEGIN - SQL PARSER */
+	/* save database compatible level value */
+	ControlFile->dbmode = bootstrap_database_mode;
+	/* END - SQL PARSER */
 	/* some additional ControlFile fields are set in WriteControlFile() */
 	WriteControlFile();
 

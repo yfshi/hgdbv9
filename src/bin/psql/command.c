@@ -34,6 +34,9 @@
 #include "fe_utils/cancel.h"
 #include "fe_utils/print.h"
 #include "fe_utils/string_utils.h"
+/* Begin - SQL PARSER */
+#include "oracle_fe_utils/ora_string_utils.h"
+/* END - SQL PARSER */
 #include "help.h"
 #include "input.h"
 #include "large_obj.h"
@@ -715,6 +718,9 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 
 		show_verbose = strchr(cmd, '+') ? true : false;
 		show_system = strchr(cmd, 'S') ? true : false;
+		/* BEGIN - SQL PARSER */
+		getDbCompatibleMode(pset.db);
+		/* END - SQL PARSER */
 
 		switch (cmd[1])
 		{
@@ -2067,6 +2073,9 @@ exec_command_password(PsqlScanState scan_state, bool active_branch)
 			{
 				PGresult   *res;
 
+				/* BEGIN - SQL PARSER */
+				getDbCompatibleMode(pset.db);
+				/* END - SQL PARSER */
 				printfPQExpBuffer(&buf, "ALTER USER %s PASSWORD ",
 								  fmtId(user));
 				appendStringLiteralConn(&buf, encrypted_password, pset.db);
@@ -5209,6 +5218,9 @@ get_create_object_cmd(EditableObjectType obj_type, Oid oid,
 							result = false;
 							break;
 					}
+					/* BEGIN - SQL PARSER */
+					getDbCompatibleMode(pset.db);
+					/* END - SQL PARSER */
 					appendPQExpBuffer(buf, "%s.", fmtId(nspname));
 					appendPQExpBufferStr(buf, fmtId(relname));
 
