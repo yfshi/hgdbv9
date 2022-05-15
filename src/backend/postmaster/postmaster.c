@@ -198,12 +198,15 @@ BackgroundWorker *MyBgworkerEntry = NULL;
 
 /* The socket number we are listening for connections on */
 int			PostPortNumber;
+int			OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
+
 
 /* The directory names for Unix socket(s) */
 char	   *Unix_socket_directories;
 
 /* The TCP listen address(es) */
 char	   *ListenAddresses;
+char	   *OraListenAddresses;	/* ReqID:LISTEN-MULTI-PORT */
 
 /*
  * ReservedBackends is the number of backends reserved for superuser use.
@@ -219,6 +222,7 @@ int			ReservedBackends;
 /* The socket(s) we're listening to. */
 #define MAXLISTEN	64
 static pgsocket ListenSocket[MAXLISTEN];
+
 
 /*
  * These globals control the behavior of the postmaster in case some
@@ -702,7 +706,7 @@ PostmasterMain(int argc, char *argv[])
 	 * tcop/postgres.c (the option sets should not conflict) and with the
 	 * common help() function in main/main.c.
 	 */
-	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:nOPp:r:S:sTt:W:-:")) != -1)
+	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:nOo:Pp:r:S:sTt:W:-:")) != -1)	/* ReqID:LISTEN-MULTI-PORT */
 	{
 		switch (opt)
 		{
@@ -780,6 +784,12 @@ PostmasterMain(int argc, char *argv[])
 			case 'O':
 				SetConfigOption("allow_system_table_mods", "true", PGC_POSTMASTER, PGC_S_ARGV);
 				break;
+
+			/* Begin - ReqID:LISTEN-MULTI-PORT */
+			case 'o':
+				SetConfigOption("ivorysql.port", optarg, PGC_POSTMASTER, PGC_S_ARGV);
+				break;
+			/* End - ReqID:LISTEN-MULTI-PORT */
 
 			case 'P':
 				SetConfigOption("ignore_system_indexes", "true", PGC_POSTMASTER, PGC_S_ARGV);
@@ -1192,11 +1202,72 @@ PostmasterMain(int argc, char *argv[])
 
 		if (!success && elemlist != NIL)
 			ereport(FATAL,
-					(errmsg("could not create any TCP/IP sockets")));
+					(errmsg("could not create any PostgreSQL TCP/IP sockets")));
 
 		list_free(elemlist);
 		pfree(rawstring);
 	}
+
+	/* Begin - ReqID:LISTEN-MULTI-PORT */
+	if (OraListenAddresses)
+	{
+		char	   *rawstring;
+		List	   *elemlist;
+		ListCell   *l;
+		int 		success = 0;
+
+		/* Need a modifiable copy of ListenAddresses */
+		rawstring = pstrdup(OraListenAddresses);
+
+		/* Parse string into list of hostnames */
+		if (!SplitGUCList(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"listen_addresses")));
+		}
+
+		foreach(l, elemlist)
+		{
+			char	   *curhost = (char *) lfirst(l);
+
+			if (strcmp(curhost, "*") == 0)
+				status = StreamServerPort(AF_UNSPEC, NULL,
+										  (unsigned short) OraPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN);
+			else
+				status = StreamServerPort(AF_UNSPEC, curhost,
+										  (unsigned short) OraPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN);
+
+			if (status == STATUS_OK)
+			{
+				success++;
+				/* record the first successful host addr in lockfile */
+				if (!listen_addr_saved)
+				{
+					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
+					listen_addr_saved = true;
+				}
+			}
+			else
+				ereport(WARNING,
+						(errmsg("could not create listen socket for \"%s\"",
+								curhost)));
+		}
+
+		if (!success && elemlist != NIL)
+			ereport(FATAL,
+					(errmsg("could not create any Oracle TCP/IP sockets")));
+
+		list_free(elemlist);
+		pfree(rawstring);
+	}
+	/* End - ReqID:LISTEN-MULTI-PORT */
 
 #ifdef USE_BONJOUR
 	/* Register for Bonjour only if we opened TCP socket(s) */
@@ -1280,9 +1351,39 @@ PostmasterMain(int argc, char *argv[])
 								socketdir)));
 		}
 
+		/* Begin - ReqID:LISTEN-MULTI-PORT */
 		if (!success && elemlist != NIL)
 			ereport(FATAL,
-					(errmsg("could not create any Unix-domain sockets")));
+					(errmsg("could not create any PostgreSQL Unix-domain sockets")));
+
+		/* Oracle unix domain socket */
+		success = 0;
+		foreach(l, elemlist)
+		{
+			char	   *socketdir = (char *) lfirst(l);
+
+			status = StreamServerPort(AF_UNIX, NULL,
+									  (unsigned short) OraPortNumber,
+									  socketdir,
+									  ListenSocket, MAXLISTEN);
+
+			if (status == STATUS_OK)
+			{
+				success++;
+				/* record the first successful Unix socket in lockfile */
+				if (success == 1)
+					AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
+			}
+			else
+				ereport(WARNING,
+						(errmsg("could not create Oracle Unix-domain socket in directory \"%s\"",
+								socketdir)));
+		}
+
+		if (!success && elemlist != NIL)
+			ereport(FATAL,
+					(errmsg("could not create any Oracle Unix-domain sockets")));
+		/* End - ReqID:LISTEN-MULTI-PORT */
 
 		list_free_deep(elemlist);
 		pfree(rawstring);
@@ -4337,8 +4438,10 @@ BackendInitialize(Port *port)
 {
 	int			status;
 	int			ret;
+	int			localport;				/* ReqID:LISTEN-MULTI-PORT */
 	char		remote_host[NI_MAXHOST];
 	char		remote_port[NI_MAXSERV];
+	char		service[NI_MAXHOST];	/* ReqID:LISTEN-MULTI-PORT */
 	StringInfoData ps_data;
 
 	/* Save port etc. for ps status */
@@ -4406,6 +4509,47 @@ BackendInitialize(Port *port)
 	port->remote_host = strdup(remote_host);
 	port->remote_port = strdup(remote_port);
 
+	/* Begin - ReqID:LISTEN-MULTI-PORT */
+	/*
+	 * Get the local(server) port number to determine whether the current 
+	 * connection is in oracle mode or postgres mode.
+	 */
+	service[0] = '\0';
+	if ((ret = pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
+								  NULL, 0,
+								  service, sizeof(service),
+								  NI_NUMERICSERV)) != 0)
+		ereport(WARNING,
+				(errmsg_internal("pg_getnameinfo_all() failed: %s",
+								 gai_strerror(ret))));
+
+	localport = atoi(service);
+	if (localport == 0)
+	{
+		char	PostPortNumberStr[32];
+		char	OraPortNumberStr[32];
+		
+		snprintf(PostPortNumberStr, sizeof(PostPortNumberStr), "%d", PostPortNumber);
+		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
+
+		if (strstr(service, PostPortNumberStr) != NULL)
+			port->connmode = 'p';
+		else if (strstr(service, OraPortNumberStr) != NULL)
+			port->connmode = 'o';
+		else
+			port->connmode = 'u';
+	}
+	else
+	{
+		if (localport == PostPortNumber)
+			port->connmode = 'p';
+		else if (localport == OraPortNumber)
+			port->connmode = 'o';
+		else
+			port->connmode = 'u';
+	}
+	/* End - ReqID:LISTEN-MULTI-PORT */
+		
 	/* And now we can issue the Log_connections message, if wanted */
 	if (Log_connections)
 	{
@@ -4419,6 +4563,7 @@ BackendInitialize(Port *port)
 					(errmsg("connection received: host=%s",
 							remote_host)));
 	}
+
 
 	/*
 	 * If we did a reverse lookup to name, we might as well save the results

@@ -3540,6 +3540,18 @@ static struct config_int ConfigureNamesInt[] =
 		check_client_connection_check_interval, NULL, NULL
 	},
 
+	/* Begin - ReqID:LISTEN-MULTI-PORT */
+	{
+		{"ivorysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
+			gettext_noop("Sets the Oracle TCP port the server listens on."),
+			NULL
+		},
+		&OraPortNumber,
+		1521, 1, 65535,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:LISTEN-MULTI-PORT */
+
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -4587,6 +4599,19 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		check_backtrace_functions, assign_backtrace_functions, NULL
 	},
+
+	/* Begin - ReqID:LISTEN-MULTI-PORT */
+	{
+		{"ivorysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
+			gettext_noop("Sets oracle host name or IP address(es) to listen to."),
+			NULL,
+			GUC_LIST_INPUT
+		},
+		&OraListenAddresses,
+		"localhost",
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:LISTEN-MULTI-PORT */
 
 	/* End-of-list marker */
 	{
