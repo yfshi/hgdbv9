@@ -4,4 +4,3 @@ REM all the logic for this now belongs in vcregress.pl. This file really
 REM only exists so you don't have to type "perl vcregress.pl"
 REM Resist any temptation to add any logic here.
 @perl vcregress_ora.pl %*
-@perl vcregress_ora_pg.pl %*

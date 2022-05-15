@@ -61,13 +61,7 @@
 					# comma-separated list of addresses;
 					# defaults to 'localhost'; use '*' for all
 					# (change requires restart)
-#ivorysql.listen_addresses = 'localhost'		# what IP address(es) of Oracle mode to listen on;
-					# comma-separated list of addresses;
-					# defaults to 'localhost'; use '*' for all
-					# (change requires restart)
 #port = 5432				# (change requires restart)
-#ivorysql.port = 1521		# (change requires restart)
-
 #max_connections = 100			# (change requires restart)
 #superuser_reserved_connections = 3	# (change requires restart)
 #unix_socket_directories = '/tmp'	# comma-separated list of directories
@@ -804,3 +798,5 @@
 #------------------------------------------------------------------------------
 #COMPATIBLE LEVEL
 #------------------------------------------------------------------------------
+
+include_if_exists 'ivorysql.conf'

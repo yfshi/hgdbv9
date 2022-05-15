@@ -62,11 +62,12 @@ extern PGDLLIMPORT bool standard_conforming_strings;
 /* BEGIN - SQL PARSER */
 /* Hook for plugins to get control in raw_parser() */
 typedef List *(*raw_parser_hook_type) (const char *str, RawParseMode mode);
-extern PGDLLIMPORT raw_parser_hook_type raw_parser;
+extern PGDLLIMPORT raw_parser_hook_type sql_raw_parser;
 extern PGDLLIMPORT raw_parser_hook_type ora_raw_parser;
 /* END - SQL PARSER */
 
 /* Primary entry point for the raw parsing functions */
+extern List *raw_parser(const char *str, RawParseMode mode);
 /* BEGIN - SQL PARSER */
 extern List *standard_raw_parser(const char *str, RawParseMode mode);
 /* END - SQL PARSER */
