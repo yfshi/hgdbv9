@@ -8794,6 +8794,12 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 						errmsg("parameter \"%s\" cannot be changed", DB_MODE_PARMATER)));
 			}
+
+			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
+				 && DB_PG == database_mode) 
+					ereport(ERROR,
+						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+						errmsg("parameter \"%s\" cannot be changed in native PG mode.", stmt->name)));
 			/* END - SQL PARSER */
 
 			(void) set_config_option(stmt->name,
@@ -8801,6 +8807,17 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
 									 PGC_S_SESSION,
 									 action, true, 0, false);
+
+			/* BEGIN - SQL PARSER */
+			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
+				 && DB_ORACLE == database_mode)
+			{
+				if (0 == pg_strcasecmp(ExtractSetVariableArgs(stmt), "oracle"))
+					sql_raw_parser = ora_raw_parser;
+				else if (0 == pg_strcasecmp(ExtractSetVariableArgs(stmt), "pg"))
+					sql_raw_parser = standard_raw_parser;
+			}
+			/* END - SQL PARSER */
 			break;
 		case VAR_SET_MULTI:
 
@@ -8887,6 +8904,11 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
 									 PGC_S_SESSION,
 									 action, true, 0, false);
+			/* BEGIN - SQL PARSER */
+			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
+				 && DB_ORACLE == database_mode)
+				sql_raw_parser = standard_raw_parser;
+			/* END - SQL PARSER */
 			break;
 		case VAR_RESET_ALL:
 			ResetAllOptions();

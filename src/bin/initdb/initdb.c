@@ -881,6 +881,25 @@ set_null_conf(void)
 		exit(1);
 	}
 	free(path);
+
+	/* BEGIN - SQL PARSER */
+	if (database_mode == DB_ORACLE)
+	{
+		path = psprintf("%s/ivorysql.conf", pg_data);
+		conf_file = fopen(path, PG_BINARY_W);
+		if (conf_file == NULL)
+		{
+			pg_log_error("could not open file \"%s\" for writing: %m", path);
+			exit(1);
+		}
+		if (fclose(conf_file))
+		{
+			pg_log_error("could not write file \"%s\": %m", path);
+			exit(1);
+		}
+		free(path);
+	}
+	/* END - SQL PARSER */
 }
 
 /*
@@ -1078,21 +1097,7 @@ setup_config(void)
 	fflush(stdout);
 
 	/* postgresql.conf */
-
-	/* BEGIN - SQL PARSER */
-	if (database_mode == DB_PG)
-	{
-	/* END - SQL PARSER */
-		/* postgresql conf file */
-		conflines = readfile(conf_file);
-	/* BEGIN - SQL PARSER */
-	}
-	else
-	{
-		/* oracle compatibility conf file */
-		conflines = readfile(ora_conf_file);
-	}
-	/* END - SQL PARSER */
+	conflines = readfile(conf_file);
 
 	snprintf(repltok, sizeof(repltok), "max_connections = %d", n_connections);
 	conflines = replace_token(conflines, "#max_connections = 100", repltok);
@@ -1249,6 +1254,23 @@ setup_config(void)
 		pg_log_error("could not change permissions of \"%s\": %m", path);
 		exit(1);
 	}
+
+	/* BEGIN - SQL PARSER */
+	if (database_mode == DB_ORACLE)
+	{
+		/* oracle compatibility conf file */
+		conflines = readfile(ora_conf_file);
+
+		snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
+
+		writefile(path, conflines);
+		if (chmod(path, pg_file_create_mode) != 0)
+		{
+			pg_log_error("could not change permissions of \"%s\": %m", path);
+			exit(1);
+		}
+	}
+	/* END - SQL PARSER */
 
 	/*
 	 * create the automatic configuration file to store the configuration
@@ -2600,7 +2622,7 @@ setup_data_file_paths(void)
 	if (database_mode == DB_ORACLE)
 	{
 		set_input(&ora_sys_schema_file, "ora_sys_schema.sql");
-		set_input(&ora_conf_file, "postgresql_oracle.conf.sample");
+		set_input(&ora_conf_file, "ivorysql.conf.sample");
 	}
 	/* END - SQL PARSER */
 	if (show_setting || debug)
