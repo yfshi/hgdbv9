@@ -201,6 +201,7 @@ sub GenerateFiles
 	my $extraver = $self->{options}->{extraver};
 	$extraver = '' unless defined $extraver;
 	my $port = $self->{options}->{"--with-pgport"} || 5432;
+	my $oraport = $self->{options}->{"--with-oraport"} || 1521;
 
 	# Every symbol in pg_config.h.in must be accounted for here.  Set
 	# to undef if the symbol should not be defined.
@@ -220,6 +221,8 @@ sub GenerateFiles
 		CONFIGURE_ARGS             => '"' . $self->GetFakeConfigure() . '"',
 		DEF_PGPORT                 => $port,
 		DEF_PGPORT_STR             => qq{"$port"},
+		DEF_ORAPORT                 => $oraport,
+		DEF_ORAPORT_STR             => qq{"$oraport"},
 		ENABLE_GSS                 => $self->{options}->{gss} ? 1 : undef,
 		ENABLE_NLS                 => $self->{options}->{nls} ? 1 : undef,
 		ENABLE_THREAD_SAFETY       => 1,
