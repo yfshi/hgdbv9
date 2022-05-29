@@ -282,6 +282,12 @@ extern int	tcp_user_timeout;
 extern bool trace_sort;
 #endif
 
+/* BEGIN - case sensitive indentify */
+extern PGDLLIMPORT int identifier_case_switch;
+extern PGDLLIMPORT bool identifier_case_from_pg_dump;
+extern PGDLLIMPORT bool enable_case_switch;
+/* END - case sensitive indentify */
+
 /* BEGIN - SQL PARSER */
 extern int	database_mode;
 extern PGDLLIMPORT int	compatible_db;

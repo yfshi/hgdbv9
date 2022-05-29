@@ -2377,7 +2377,7 @@ regression_main(int argc, char *argv[],
 		/* initdb */
 		header(_("initializing database system"));
 		snprintf(buf, sizeof(buf),
-				 "\"%s%sinitdb\" -D \"%s/data\" -m oracle --no-clean --no-sync%s%s > \"%s/log/initdb.log\" 2>&1",
+				 "\"%s%sinitdb\" -D \"%s/data\" --no-clean --no-sync%s%s -m oracle -c normal > \"%s/log/initdb.log\" 2>&1",
 				 bindir ? bindir : "",
 				 bindir ? "/" : "",
 				 temp_instance,

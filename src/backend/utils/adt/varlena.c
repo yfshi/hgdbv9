@@ -33,8 +33,10 @@
 #include "regex/regex.h"
 #include "utils/builtins.h"
 #include "utils/bytea.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* SQL PARSER */
 #include "utils/pg_locale.h"
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
@@ -3762,6 +3764,7 @@ SplitIdentifierString(char *rawstring, char separator,
 	{
 		char	   *curname;
 		char	   *endp;
+		bool		need_case_switch = false;	/* BUG0000057 */
 
 		if (*nextp == '"')
 		{
@@ -3780,6 +3783,7 @@ SplitIdentifierString(char *rawstring, char separator,
 			}
 			/* endp now points at the terminating quote */
 			nextp = endp + 1;
+			need_case_switch = true;	/* BUG0000057 */
 		}
 		else
 		{
@@ -3828,6 +3832,21 @@ SplitIdentifierString(char *rawstring, char separator,
 
 		/* Now safe to overwrite separator with a null */
 		*endp = '\0';
+
+		/* BEGIN - case sensitive indentify */
+		/* transform the case for the identifier that is
+		 * quoted by double quotes.
+		 */
+		if (compatible_db == DB_ORACLE && enable_case_switch
+			 && identifier_case_switch == INTERCHANGE && need_case_switch)
+		{
+			char	   *new_name;
+
+			new_name = identifier_case_transform(curname, strlen(curname));
+			strncpy(curname, new_name, strlen(new_name));
+			pfree(new_name);
+		}
+		/* END - case sensitive indentify */
 
 		/* Truncate name if it's overlength */
 		truncate_identifier(curname, strlen(curname), false);
@@ -4010,6 +4029,7 @@ SplitGUCList(char *rawstring, char separator,
 	{
 		char	   *curname;
 		char	   *endp;
+		bool		need_case_switch = false;	/* BUG0000057 */
 
 		if (*nextp == '"')
 		{
@@ -4028,6 +4048,7 @@ SplitGUCList(char *rawstring, char separator,
 			}
 			/* endp now points at the terminating quote */
 			nextp = endp + 1;
+			need_case_switch = true;	/* BUG0000057 */
 		}
 		else
 		{
@@ -4058,6 +4079,21 @@ SplitGUCList(char *rawstring, char separator,
 
 		/* Now safe to overwrite separator with a null */
 		*endp = '\0';
+
+		/* BEGIN - case sensitive indentify */
+		/* transform the case for the identifier that is
+		 * quoted by double quotes.
+		 */
+		if (compatible_db == DB_ORACLE && enable_case_switch
+			 && identifier_case_switch == INTERCHANGE && need_case_switch)
+		{
+			char	   *new_name;
+
+			new_name = identifier_case_transform(curname, strlen(curname));
+			strncpy(curname, new_name, strlen(new_name));
+			pfree(new_name);
+		}
+		/* END - case sensitive indentify */
 
 		/*
 		 * Finished isolating current name --- add it to list

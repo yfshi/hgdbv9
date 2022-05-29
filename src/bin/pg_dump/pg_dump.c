@@ -767,6 +767,8 @@ main(int argc, char **argv)
 	/* END - SQL PARSER */
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
+	ExecuteSqlStatement(fout, "set identifier_case_switch = normal;");	/* case sensitive indentify */
+
 	/*
 	 * Disable security label support if server version < v9.1.x (prevents
 	 * access to nonexistent pg_seclabel catalog)

@@ -598,6 +598,11 @@ set_frozenxids(bool minmxid_only)
 
 	conn_template1 = connectToServer(&new_cluster, "template1");
 
+	/* BEGIN - case sensitive indentify */
+	PQclear(executeQueryOrDie(conn_template1,
+							  "set identifier_case_switch = normal;"));
+	/* BEGIN - case sensitive indentify */
+
 	if (!minmxid_only)
 		/* set pg_database.datfrozenxid */
 		PQclear(executeQueryOrDie(conn_template1,

@@ -5435,6 +5435,9 @@ BootStrapXLOG(void)
 	/* BEGIN - SQL PARSER */
 	/* save database compatible level value */
 	ControlFile->dbmode = bootstrap_database_mode;
+	/* BEGIN - case sensitive indentify */
+	ControlFile->yh_casemode = identifier_case_switch;
+	/* END - case sensitive indentify */
 	/* END - SQL PARSER */
 	/* some additional ControlFile fields are set in WriteControlFile() */
 	WriteControlFile();
@@ -6352,6 +6355,130 @@ GetCurrentChunkReplayStartTime(void)
 
 	return xtime;
 }
+
+
+/* BEGIN - case sensitive indentify
+ * Read database compatibility mode from pg_control file
+ *
+ */
+int GetDatabaseStyleFromControl(char* path)
+{
+	int			fd;
+	int			len;
+	char		pathname[1024];
+	char		*configdir;
+	ControlFileData confile;
+
+	if (path)
+		configdir = make_absolute_path(path);
+	else
+		configdir = make_absolute_path(getenv("PGDATA"));
+
+	sprintf(pathname,"%s/%s",configdir,XLOG_CONTROL_FILE);
+
+	fd = open(pathname, O_RDONLY | PG_BINARY, 0);
+
+	if (fd < 0)
+	{
+		fprintf(stderr, _("could not open file \"%s\" for reading: %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+
+	len = read(fd, &confile, sizeof(ControlFileData));
+	if (len < 0)
+	{
+		fprintf(stderr, _("could not read file \"%s\": %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+	close(fd);
+
+	return confile.dbmode;
+}
+
+
+/*
+ * Read case conversion mode from pg_control file
+ *
+ */
+int GetCaseSwitchModeFromControl(char* path)
+{
+	int			fd;
+	int			len;
+	char		pathname[1024];
+	char		*configdir;
+	ControlFileData confile;
+
+	if (path)
+		configdir = make_absolute_path(path);
+	else
+		configdir = make_absolute_path(getenv("PGDATA"));
+
+	sprintf(pathname,"%s/%s",configdir,XLOG_CONTROL_FILE);
+
+	fd = open(pathname, O_RDONLY | PG_BINARY, 0);
+
+	if (fd < 0)
+	{
+		fprintf(stderr, _("could not open file \"%s\" for reading: %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+
+	len = read(fd, &confile, sizeof(ControlFileData));
+	if (len < 0)
+	{
+		fprintf(stderr, _("could not read file \"%s\": %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+	close(fd);
+
+	return confile.yh_casemode;
+}
+
+/*
+ * Get the database compatibility mode, and set up in the system
+ *
+ **/
+void SetCaseGucOption(char* path)
+{
+	int dbstyle;
+
+	dbstyle = GetDatabaseStyleFromControl(path);
+
+	//the pg mode does not need to set
+	if (DB_ORACLE == dbstyle)
+	{
+		int casemode;
+
+		casemode = GetCaseSwitchModeFromControl(path);
+		if (casemode == NORMAL)
+		{
+			SetConfigOption("identifier_case_switch", "normal",
+				PGC_USERSET, PGC_S_OVERRIDE);
+		}
+		else if (casemode == INTERCHANGE)
+		{
+			SetConfigOption("identifier_case_switch", "interchange",
+				PGC_USERSET, PGC_S_OVERRIDE);
+		}
+		else if (casemode == LOWERCASE)
+		{
+			SetConfigOption("identifier_case_switch", "lowercase",
+				PGC_USERSET, PGC_S_OVERRIDE);
+		}
+		else
+			ereport(FATAL,
+					(errmsg("Incorrect case conversion mode value \"%d\"", casemode)));
+	}
+}
+/* END - case sensitive indentify */
 
 /*
  * Returns time of receipt of current chunk of XLOG data, as well as

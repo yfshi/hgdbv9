@@ -31,5 +31,14 @@ typedef enum DBParser
 	ORA_PARSER
 }DBParser;
 
+/* BEGIN - case sensitive indentify */
+typedef enum CaseSwitchMode
+{
+	NORMAL = 0,
+	INTERCHANGE,
+	LOWERCASE
+}CaseSwitchMode;
+/* END - case sensitive indentify */
+
 #endif							/* ORA_COMPATIBLE_H */
 

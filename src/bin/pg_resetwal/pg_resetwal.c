@@ -447,9 +447,15 @@ main(int argc, char *argv[])
 
 	/* BEGIN - SQL PARSER */
 	if (pg_strcasecmp(dbmode, "oracle") == 0 || pg_strcasecmp(dbmode, "1") == 0)
+	{
 		ControlFile.dbmode = DB_ORACLE;
+		ControlFile.yh_casemode = INTERCHANGE;	/* case sensitive indentify - reset case conversion mode */
+	}
 	else
+	{
 		ControlFile.dbmode = DB_PG;
+		ControlFile.yh_casemode = NORMAL;	/* case sensitive indentify - reset case conversion mode */
+	}
 	/* END - SQL PARSER */
 	/*
 	 * If we're not going to proceed with the reset, print the current control
@@ -839,6 +845,10 @@ PrintControlValues(bool guessed)
 	printf(_("Database mode:                        %u\n"),
 		   ControlFile.dbmode);
 	/* END - SQL PARSER */
+	/* BEGIN - case sensitive indentify */
+	printf(_("case conversion mode:                 %u\n"),
+		ControlFile.yh_casemode);
+	/* END - case sensitive indentify */
 }
 
 

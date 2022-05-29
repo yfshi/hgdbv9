@@ -179,6 +179,10 @@ static bool output_failed = false;
 static int	output_errno = 0;
 static char *pgdata_native;
 
+/* BEGIN - case sensitive indentify */
+static char  *switchmode = "interchange";
+static int   caseswitchmode = INTERCHANGE;
+/* END - case sensitive indentify */
 /* defaults */
 static int	n_connections = 10;
 static int	n_buffers = 50;
@@ -1462,12 +1466,15 @@ bootstrap_template1(void)
 	snprintf(cmd, sizeof(cmd),
 #ifdef IvorySQL
 			 /* BEGIN - SQL PARSER */
-			 "\"%s\" --boot -x1 -X %u %s %s %s %s",
+			 "\"%s\" --boot -x1 -c identifier_case_switch=%d -X %u %s %s %s %s",
 #else
 			 "\"%s\" --boot -x1 -X %u %s %s %s",
 			 /* END - SQL PARSER */
 #endif
 			 backend_exec,
+#ifdef IvorySQL
+			 caseswitchmode,	/* case sensitive indentify: add guc "identifier_case_switch" */
+#endif
 			 wal_segment_size_mb * (1024 * 1024),
 #ifdef IvorySQL
 			 /* BEGIN - SQL PARSER */
@@ -1704,6 +1711,10 @@ setup_ora_sys_schema(FILE *cmdfd)
 	char	  **ora_sys_schema_setup;
 
 	ora_sys_schema_setup = readfile(ora_sys_schema_file);
+
+	/* BEGIN - case sensitive indentify */
+	PG_CMD_PUTS("set identifier_case_switch = normal;\n");
+	/* END - case sensitive indentify */
 
 	for (line = ora_sys_schema_setup; *line != NULL; line++)
 	{
@@ -3086,6 +3097,7 @@ main(int argc, char *argv[])
 		{"allow-group-access", no_argument, NULL, 'g'},
 	/* BEGIN - SQL PARSER */
 		{"dbmode", required_argument, NULL, 'm'},
+		{"case-conversion-mode", required_argument, NULL, 'c'},	/* case sensitive indentify */
 	/* END - SQL PARSER */
 		{"discard-caches", no_argument, NULL, 14},
 		{NULL, 0, NULL, 0}
@@ -3130,7 +3142,8 @@ main(int argc, char *argv[])
 	/* process command-line options */
 
 	/* BEGIN - SQL PARSER */
-	while ((c = getopt_long(argc, argv, "A:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1)
+	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
+	while ((c = getopt_long(argc, argv, "A:c:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1)
 	/* END - SQL PARSER */
 	{
 		switch (c)
@@ -3166,6 +3179,29 @@ main(int argc, char *argv[])
 			case 'U':
 				username = pg_strdup(optarg);
 				break;
+			/* BEGIN - case sensitive indentify */
+			case 'c':
+				switchmode = pg_strdup(optarg);
+
+				if(0 == strcmp(switchmode,"normal")||0 == strcmp(switchmode,"0"))
+				{
+					caseswitchmode = NORMAL;	//Case conversion is prohibited.
+				}
+				else if (0 == strcmp(switchmode,"interchange")||0 == strcmp(switchmode,"1"))
+				{
+					caseswitchmode = INTERCHANGE;//Uppercase and lowercase characters convert to each other.
+				}
+				else if (0 == strcmp(switchmode,"lowercase")||0 == strcmp(switchmode,"2"))
+				{
+					caseswitchmode = LOWERCASE;//The characters are all converted to lowercase.
+				}
+				else
+				{
+					printf(_("UnKnow case conversion mode, use the default interchange.\n"));
+				}
+
+				break;
+			/* END - case sensitive indentify */
 			case 'd':
 				debug = true;
 				printf(_("Running in debug mode.\n"));
@@ -3352,6 +3388,17 @@ main(int argc, char *argv[])
 		pg_log_error("superuser name \"%s\" is disallowed; role names cannot begin with \"pg_\"", username);
 		exit(1);
 	}
+
+	/* BEGIN - case sensitive indentify */
+	/* Oracle compatibility username transfor upper to lower */
+	if (database_mode == DB_ORACLE && username != NULL
+		&& is_all_upper(username, strlen(username)))
+	{
+		char *lowerusername = username;
+		username = down_character(username, strlen(username));
+		free(lowerusername);
+	}
+	/* END - case sensitive indentify */
 
 	printf(_("The files belonging to this database system will be owned "
 			 "by user \"%s\".\n"

@@ -3095,6 +3095,8 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 	else
 		ahprintf(AH, "SET row_security = off;\n");
 
+	ahprintf(AH, "SET identifier_case_switch = normal;\n");	/* case sensitive indentify */
+
 	ahprintf(AH, "\n");
 }
 

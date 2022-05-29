@@ -108,6 +108,7 @@
 #include "libpq/pqsignal.h"
 #include "pg_getopt.h"
 #include "pgstat.h"
+//#include "port.h"					/* SQL PARSER */
 #include "port/pg_bswap.h"
 #include "postmaster/autovacuum.h"
 #include "postmaster/bgworker_internals.h"
@@ -898,6 +899,9 @@ PostmasterMain(int argc, char *argv[])
 	 */
 	if (!SelectConfigFiles(userDoption, progname))
 		ExitPostmaster(2);
+
+	/* set database_style here */
+	SetCaseGucOption(userDoption);
 
 	if (output_config_variable != NULL)
 	{
@@ -2281,9 +2285,35 @@ retry1:
 			valptr = buf + valoffset;
 
 			if (strcmp(nameptr, "database") == 0)
-				port->database_name = pstrdup(valptr);
+			{
+				/* BEGIN - case sensitive indentify */
+				/* Oracle compatibility tranfor upper to lower */
+				char *database_name = pstrdup(valptr);
+				if (DB_ORACLE == compatible_db && database_name != NULL
+					&& is_all_upper(database_name, strlen(database_name)))
+				{
+					port->database_name = down_character(database_name, strlen(database_name));
+					pfree(database_name);
+				}
+				else
+					port->database_name = database_name;
+				/* END - case sensitive indentify */
+			}
 			else if (strcmp(nameptr, "user") == 0)
-				port->user_name = pstrdup(valptr);
+			{
+				/* BEGIN - case sensitive indentify */
+				/* Oracle compatibility tranfor upper to lower */
+				char *user_name = pstrdup(valptr);
+				if (DB_ORACLE == compatible_db && user_name != NULL
+					&& is_all_upper(user_name, strlen(user_name)))
+				{
+					port->user_name = down_character(user_name, strlen(user_name));
+					pfree(user_name);
+				}
+				else
+					port->user_name = user_name;
+				/* END - case sensitive indentify */
+			}
 			else if (strcmp(nameptr, "options") == 0)
 				port->cmdline_options = pstrdup(valptr);
 			else if (strcmp(nameptr, "replication") == 0)
