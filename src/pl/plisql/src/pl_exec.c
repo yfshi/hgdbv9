@@ -44,6 +44,7 @@
 #include "tcop/utility.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+#include "utils/ora_compatible.h"	/* case sensitive indentify */
 #include "utils/datum.h"
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"

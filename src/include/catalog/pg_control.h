@@ -231,6 +231,7 @@ typedef struct ControlFileData
 	/* BEGIN - SQL PARSER */
 	/* database compatible mode */
 	int8		dbmode;
+	int8		yh_casemode; /* case conversion mode 0 normal,1 interchange, 2 lowercase */
 	/* END - SQL PARSER */
 
 	/* CRC of all above ... MUST BE LAST! */

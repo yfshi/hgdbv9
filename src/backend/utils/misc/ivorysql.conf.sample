@@ -9,3 +9,4 @@
 #ivorysql.port = 1521		# (change requires restart)
 
 shared_preload_libraries = 'liboracle_parser'		# (change requires restart)
+identifier_case_switch = interchange   				#set the case conversion mode.  range [normal,interchange,lowercase]
