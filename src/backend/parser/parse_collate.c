@@ -660,6 +660,10 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 								 */
 								(void) assign_collations_walker((Node *) when->expr,
 																&loccontext);
+								/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+								(void) assign_collations_walker((Node *) when->orig_expr,
+																&loccontext);
+								/* End - ReqID:SRS-GKC-DATATYPE_001 */
 								(void) assign_collations_walker((Node *) when->result,
 																&loccontext);
 							}

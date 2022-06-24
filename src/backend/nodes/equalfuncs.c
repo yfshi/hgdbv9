@@ -568,6 +568,9 @@ _equalCaseExpr(const CaseExpr *a, const CaseExpr *b)
 	COMPARE_NODE_FIELD(args);
 	COMPARE_NODE_FIELD(defresult);
 	COMPARE_LOCATION_FIELD(location);
+	/* Begin - BUGID:0000543 */
+	COMPARE_SCALAR_FIELD(is_decode);
+	/* End - BUGID:0000543 */
 
 	return true;
 }

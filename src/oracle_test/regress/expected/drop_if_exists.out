@@ -162,9 +162,11 @@ DROP LANGUAGE IF EXISTS test_language_exists;
 NOTICE:  language "test_language_exists" does not exist, skipping
 -- cast
 DROP CAST (text AS text);
-ERROR:  cast from type text to type text does not exist
+ERROR:  cannot drop cast from text to text because extension ivorysql_ora requires it
+HINT:  You can drop extension ivorysql_ora instead.
 DROP CAST IF EXISTS (text AS text);
-NOTICE:  cast from type text to type text does not exist, skipping
+ERROR:  cannot drop cast from text to text because extension ivorysql_ora requires it
+HINT:  You can drop extension ivorysql_ora instead.
 -- trigger
 DROP TRIGGER test_trigger_exists ON test_exists;
 ERROR:  trigger "test_trigger_exists" for table "test_exists" does not exist

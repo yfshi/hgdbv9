@@ -243,7 +243,7 @@ create trigger tg_hub_a after insert or update or delete
 -- ************************************************************
 -- * Support function to add/remove slots of Hub
 -- ************************************************************
-create function tg_hub_adjustslots(hname bpchar,
+create function tg_hub_adjustslots(hname char,
                                    oldnslots integer,
                                    newnslots integer)
 returns integer as '
@@ -263,10 +263,10 @@ begin
 end
 ' language plpgsql;
 -- Test comments
-COMMENT ON FUNCTION tg_hub_adjustslots_wrong(bpchar, integer, integer) IS 'function with args';
-ERROR:  function tg_hub_adjustslots_wrong(character, integer, integer) does not exist
-COMMENT ON FUNCTION tg_hub_adjustslots(bpchar, integer, integer) IS 'function with args';
-COMMENT ON FUNCTION tg_hub_adjustslots(bpchar, integer, integer) IS NULL;
+COMMENT ON FUNCTION tg_hub_adjustslots_wrong(char, integer, integer) IS 'function with args';
+ERROR:  function tg_hub_adjustslots_wrong(char, integer, integer) does not exist
+COMMENT ON FUNCTION tg_hub_adjustslots(char, integer, integer) IS 'function with args';
+COMMENT ON FUNCTION tg_hub_adjustslots(char, integer, integer) IS NULL;
 -- ************************************************************
 -- * BEFORE INSERT or UPDATE on HSlot
 -- *	- prevent from manual manipulation
@@ -585,7 +585,7 @@ create trigger tg_backlink_a after insert or update or delete
 -- * Support function to set the opponents backlink field
 -- * if it does not already point to the requested slot
 -- ************************************************************
-create function tg_backlink_set(myname bpchar, blname bpchar)
+create function tg_backlink_set(myname char, blname char)
 returns integer as '
 declare
     mytype	char(2);
@@ -639,7 +639,7 @@ end;
 -- * Support function to clear out the backlink field if
 -- * it still points to specific slot
 -- ************************************************************
-create function tg_backlink_unset(bpchar, bpchar)
+create function tg_backlink_unset(char, char)
 returns integer as '
 declare
     myname	alias for $1;
@@ -731,7 +731,7 @@ create trigger tg_slotlink_a after insert or update or delete
 -- * Support function to set the opponents slotlink field
 -- * if it does not already point to the requested slot
 -- ************************************************************
-create function tg_slotlink_set(bpchar, bpchar)
+create function tg_slotlink_set(char, char)
 returns integer as '
 declare
     myname	alias for $1;
@@ -815,7 +815,7 @@ end;
 -- * Support function to clear out the slotlink field if
 -- * it still points to specific slot
 -- ************************************************************
-create function tg_slotlink_unset(bpchar, bpchar)
+create function tg_slotlink_unset(char, char)
 returns integer as '
 declare
     myname	alias for $1;
@@ -879,7 +879,7 @@ end;
 -- ************************************************************
 -- * Describe the backside of a patchfield slot
 -- ************************************************************
-create function pslot_backlink_view(bpchar)
+create function pslot_backlink_view(char)
 returns text as '
 <<outer>>
 declare
@@ -922,7 +922,7 @@ end;
 -- ************************************************************
 -- * Describe the front of a patchfield slot
 -- ************************************************************
-create function pslot_slotlink_view(bpchar)
+create function pslot_slotlink_view(char)
 returns text as '
 declare
     psrec	record;
@@ -956,7 +956,7 @@ end;
 -- ************************************************************
 -- * Describe the front of a wall connector slot
 -- ************************************************************
-create function wslot_slotlink_view(bpchar)
+create function wslot_slotlink_view(char)
 returns text as '
 declare
     rec		record;
@@ -1518,19 +1518,19 @@ ERROR:  duplicate key value violates unique constraint "pfield_name"
 DETAIL:  Key (name)=(PF1_1) already exists.
 update PSlot set backlink = 'WS.not.there' where slotname = 'PS.base.a1';
 ERROR:  WS.not.there         does not exist
-CONTEXT:  PL/pgSQL function tg_backlink_set(character,character) line 30 at RAISE
+CONTEXT:  PL/pgSQL function tg_backlink_set(char,char) line 30 at RAISE
 PL/pgSQL function tg_backlink_a() line 17 at assignment
 update PSlot set backlink = 'XX.illegal' where slotname = 'PS.base.a1';
 ERROR:  illegal backlink beginning with XX
-CONTEXT:  PL/pgSQL function tg_backlink_set(character,character) line 47 at RAISE
+CONTEXT:  PL/pgSQL function tg_backlink_set(char,char) line 47 at RAISE
 PL/pgSQL function tg_backlink_a() line 17 at assignment
 update PSlot set slotlink = 'PS.not.there' where slotname = 'PS.base.a1';
 ERROR:  PS.not.there         does not exist
-CONTEXT:  PL/pgSQL function tg_slotlink_set(character,character) line 30 at RAISE
+CONTEXT:  PL/pgSQL function tg_slotlink_set(char,char) line 30 at RAISE
 PL/pgSQL function tg_slotlink_a() line 17 at assignment
 update PSlot set slotlink = 'XX.illegal' where slotname = 'PS.base.a1';
 ERROR:  illegal slotlink beginning with XX
-CONTEXT:  PL/pgSQL function tg_slotlink_set(character,character) line 77 at RAISE
+CONTEXT:  PL/pgSQL function tg_slotlink_set(char,char) line 77 at RAISE
 PL/pgSQL function tg_slotlink_a() line 17 at assignment
 insert into HSlot values ('HS', 'base.hub1', 1, '');
 ERROR:  duplicate key value violates unique constraint "hslot_name"
@@ -3706,7 +3706,7 @@ end;
 $$ language plpgsql;
 select compos();
 ERROR:  returned record type does not match expected record type
-DETAIL:  Returned type unknown does not match expected type character varying in column 2.
+DETAIL:  Returned type unknown does not match expected type varchar2(4000) in column 2.
 CONTEXT:  PL/pgSQL function compos() while casting return value to function's return type
 -- ... but this does
 create or replace function compos() returns compostype as $$
@@ -4398,50 +4398,46 @@ end$$ language plpgsql;
 select cast_invoker(20150717);
  cast_invoker 
 --------------
- 07-17-2015
+ 2015-07-17
 (1 row)
 
 select cast_invoker(20150718);  -- second call crashed in pre-release 9.5
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
 begin;
 select cast_invoker(20150717);
  cast_invoker 
 --------------
- 07-17-2015
+ 2015-07-17
 (1 row)
 
 select cast_invoker(20150718);
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
 savepoint s1;
 select cast_invoker(20150718);
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
-select cast_invoker(-1); -- fails
-ERROR:  invalid input syntax for type date: "-1"
-CONTEXT:  SQL function "sql_to_date" statement 1
-PL/pgSQL function cast_invoker(integer) while casting return value to function's return type
 rollback to savepoint s1;
 select cast_invoker(20150719);
  cast_invoker 
 --------------
- 07-19-2015
+ 2015-07-19
 (1 row)
 
 select cast_invoker(20150720);
  cast_invoker 
 --------------
- 07-20-2015
+ 2015-07-20
 (1 row)
 
 commit;

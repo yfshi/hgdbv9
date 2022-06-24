@@ -1020,6 +1020,9 @@ _readCaseExpr(void)
 	READ_NODE_FIELD(args);
 	READ_NODE_FIELD(defresult);
 	READ_LOCATION_FIELD(location);
+	/* Begin - BUGID:0000543 */
+	READ_BOOL_FIELD(is_decode);
+	/* End - BUGID:0000543 */
 
 	READ_DONE();
 }

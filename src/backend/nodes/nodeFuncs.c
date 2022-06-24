@@ -2112,6 +2112,10 @@ expression_tree_walker(Node *node,
 
 					if (walker(when->expr, context))
 						return true;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (walker(when->orig_expr, context))
+						return true;
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 					if (walker(when->result, context))
 						return true;
 				}
@@ -2938,6 +2942,7 @@ expression_tree_mutator(Node *node,
 
 				FLATCOPY(newnode, casewhen, CaseWhen);
 				MUTATE(newnode->expr, casewhen->expr, Expr *);
+				MUTATE(newnode->orig_expr, casewhen->orig_expr, Expr *);	/* ReqID:SRS-GKC-DATATYPE_001 */
 				MUTATE(newnode->result, casewhen->result, Expr *);
 				return (Node *) newnode;
 			}
@@ -3574,6 +3579,10 @@ raw_expression_tree_walker(Node *node,
 
 					if (walker(when->expr, context))
 						return true;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (walker(when->orig_expr, context))
+						return true;
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 					if (walker(when->result, context))
 						return true;
 				}

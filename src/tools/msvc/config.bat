@@ -2,10 +2,12 @@
 
 if "%1" equ "win32" (
 	set up_x64=
+	set openssl_x64=
 	goto doit
 )
 if "%1" equ "x64" (
 	set up_x64=_x64
+	set openssl_x64=-x64
 	goto doit
 )
 goto help
@@ -50,7 +52,7 @@ if "%2" equ "" goto help
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\zlib;'.$ENV{PATH};
 >>buildenv.pl	echo #$ENV{CONFIG} = "Debug";
 >>buildenv.pl	echo $ENV{DOCROOT} = '%2\deps\docbook';
->>buildenv.pl	echo $ENV{PERL5LIB} = $ENV{PERL5LIB}.';%2\deps\IPC-Run-0.94';
+>>buildenv.pl	echo $ENV{PERL5LIB} = $ENV{PERL5LIB}.';%2\deps\IPC-Run-0.94\lib';
 
 >instal.bat		echo @echo off
 >>instal.bat	echo rem install script for %1
@@ -62,8 +64,8 @@ if "%2" equ "" goto help
 >>instal.bat	echo copy %2\deps\lib%up_x64%\libxml2\bin\libxml2.dll %%1\bin
 >>instal.bat	echo copy %2\deps\lib%up_x64%\libxslt\lib\libxslt.dll %%1\bin
 >>instal.bat	echo copy %2\deps\lib%up_x64%\zlib\zlib1.dll %%1\bin
->>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\libeay32.dll %%1\bin
->>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\ssleay32.dll %%1\bin
+>>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\libcrypto-3%openssl_x64%.dll %%1\bin
+>>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\libssl-3%openssl_x64%.dll %%1\bin
 >>instal.bat	echo cd %%~dp0 
 >>instal.bat	echo :exit
 >>instal.bat	echo exit /b %%errorlevel%%

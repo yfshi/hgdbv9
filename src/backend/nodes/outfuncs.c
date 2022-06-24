@@ -1485,6 +1485,9 @@ _outCaseExpr(StringInfo str, const CaseExpr *node)
 	WRITE_NODE_FIELD(args);
 	WRITE_NODE_FIELD(defresult);
 	WRITE_LOCATION_FIELD(location);
+	/* Begin - BUGID:0000543 */
+	WRITE_BOOL_FIELD(is_decode);
+	/* End - BUGID:0000543 */
 }
 
 static void

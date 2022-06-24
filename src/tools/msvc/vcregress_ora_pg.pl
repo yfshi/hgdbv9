@@ -510,6 +510,7 @@ sub contribcheck
 		next if ($module =~ /_plperl$/   && !defined($config->{perl}));
 		next if ($module =~ /_plpython$/ && !defined($config->{python}));
 		next if ($module eq "sepgsql");
+		next if ($module eq "ivorysql_ora");
 
 		subdircheck($module);
 		my $status = $? >> 8;
@@ -604,6 +605,10 @@ sub upgradecheck
 
 	$ENV{PGHOST} = 'localhost';
 	$ENV{PGPORT} ||= 50432;
+
+	my $pg_port = "$ENV{PGPORT}";
+	my $ora_port = $pg_port + 1;
+
 	my $tmp_root = "$topdir/src/bin/pg_upgrade/tmp_check";
 	rmtree($tmp_root);
 	mkdir $tmp_root || die $!;
@@ -628,7 +633,7 @@ sub upgradecheck
 	print "\nRunning initdb on old cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nStarting old cluster\n\n";
-	my @args = ('pg_ctl', 'start', '-l', "$logdir/postmaster1.log");
+	my @args = ('pg_ctl', 'start', '-l', "$logdir/postmaster1.log", '-o', "-p $pg_port -o $ora_port");
 	system(@args) == 0 or exit 1;
 
 	print "\nCreating databases with names covering most ASCII bytes\n\n";
@@ -650,10 +655,10 @@ sub upgradecheck
 	print "\nSetting up new cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nRunning pg_upgrade\n\n";
-	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir);
+	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-q', $ora_port, '-Q', $ora_port, '--using-ora-pg');
 	system(@args) == 0 or exit 1;
 	print "\nStarting new cluster\n\n";
-	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", 'start');
+	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -o $ora_port", 'start');
 	system(@args) == 0 or exit 1;
 	print "\nDumping new cluster\n\n";
 	@args = ('pg_dumpall', '-f', "$tmp_root/dump2.sql");

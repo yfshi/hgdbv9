@@ -510,6 +510,8 @@ sub contribcheck
 		next if ($module =~ /_plperl$/   && !defined($config->{perl}));
 		next if ($module =~ /_plpython$/ && !defined($config->{python}));
 		next if ($module eq "sepgsql");
+		# Native PostgreSQL does not perform the test of ivorysql_ora.
+		next if ($module eq "ivorysql_ora");
 
 		subdircheck($module);
 		my $status = $? >> 8;

@@ -3096,6 +3096,9 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 		ahprintf(AH, "SET row_security = off;\n");
 
 	ahprintf(AH, "SET identifier_case_switch = normal;\n");	/* case sensitive indentify */
+	/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+	ahprintf(AH, "SET enable_emptystring_to_NULL = off;\n");
+	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
 	ahprintf(AH, "\n");
 }

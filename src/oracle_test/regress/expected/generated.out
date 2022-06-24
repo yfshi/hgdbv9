@@ -367,7 +367,7 @@ SELECT * FROM gtest3a ORDER BY a;
  a | a+a
  b | b+b
  c | c+c
-   | 
+   | +
 (4 rows)
 
 UPDATE gtest3a SET a = 'bb' WHERE a = 'b';
@@ -377,7 +377,7 @@ SELECT * FROM gtest3a ORDER BY a;
  a  | a+a
  bb | bb+bb
  c  | c+c
-    | 
+    | +
 (4 rows)
 
 -- COPY
@@ -682,13 +682,13 @@ INSERT INTO gtest_parent (f1, f2) VALUES ('2016-07-15', 1);
 SELECT * FROM gtest_parent;
      f1     | f2 | f3 
 ------------+----+----
- 07-15-2016 |  1 |  2
+ 2016-07-15 |  1 |  2
 (1 row)
 
 SELECT * FROM gtest_child;
      f1     | f2 | f3 
 ------------+----+----
- 07-15-2016 |  1 |  2
+ 2016-07-15 |  1 |  2
 (1 row)
 
 DROP TABLE gtest_parent;

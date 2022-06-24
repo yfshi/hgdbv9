@@ -21,5 +21,10 @@
 { oid => '2200', oid_symbol => 'PG_PUBLIC_NAMESPACE',
   descr => 'standard public schema',
   nspname => 'public', nspacl => '_null_' },
+# Begin - ReqID:SRS-GKC-DATATYPE_001
+{ oid => '9900', oid_symbol => 'PG_SYS_NAMESPACE',
+  descr => 'Similar Oracle sys schema',
+  nspname => 'sys', nspacl => '_null_' },
+# End - ReqID:SRS-GKC-DATATYPE_001
 
 ]

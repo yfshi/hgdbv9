@@ -245,6 +245,9 @@ extern bool log_statement_stats;
 extern bool log_btree_build_stats;
 
 extern PGDLLIMPORT bool check_function_bodies;
+/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
+/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 extern bool session_auth_is_superuser;
 
 extern bool log_duration;
@@ -293,6 +296,19 @@ extern int	database_mode;
 extern PGDLLIMPORT int	compatible_db;
 /* END - SQL PARSER */
 
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+extern PGDLLIMPORT char	*nls_length_semantics;
+extern PGDLLIMPORT char *nls_date_format;
+extern PGDLLIMPORT char *nls_timestamp_format;
+extern PGDLLIMPORT char *nls_timestamp_tz_format;
+extern PGDLLIMPORT int	datetime_ignore_nls_mask;
+
+#define ORADATE_MASK			0x01
+#define ORATIMESTAMP_MASK		0x02
+#define ORATIMESTAMPTZ_MASK		0x04
+#define ORATIMESTAMPLTZ_MASK	0x08
+#define DATETIME_IGNORE_NLS(i, m) (((i) & (m)) != 0) 
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /*
  * Functions exported by guc.c
@@ -452,5 +468,6 @@ extern void assign_search_path(const char *newval, void *extra);
 /* in access/transam/xlog.c */
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
+
 
 #endif							/* GUC_H */

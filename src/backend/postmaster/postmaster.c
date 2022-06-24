@@ -136,6 +136,9 @@
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
+/* BEGIN - case sensitive indentify */
+#include "parser/scansup.h"
+/* End - case sensitive indentify */
 
 #ifdef EXEC_BACKEND
 #include "storage/spin.h"
@@ -2289,11 +2292,50 @@ retry1:
 				/* BEGIN - case sensitive indentify */
 				/* Oracle compatibility tranfor upper to lower */
 				char *database_name = pstrdup(valptr);
-				if (DB_ORACLE == compatible_db && database_name != NULL
-					&& is_all_upper(database_name, strlen(database_name)))
+
+				if (DB_ORACLE == compatible_db && database_name != NULL)
 				{
-					port->database_name = down_character(database_name, strlen(database_name));
-					pfree(database_name);
+					if (identifier_case_switch == LOWERCASE &&
+						is_all_upper(database_name, strlen(database_name)))
+					{
+						port->database_name = down_character(database_name, strlen(database_name));
+						pfree(database_name);
+					}
+					else if (identifier_case_switch == INTERCHANGE)
+					{
+						if (database_name[0] == '"')
+						{
+							/* delete the double quote */
+							char  *casename = identifier_case_transform(database_name, strlen(database_name));
+							const char *cp;
+							int   len;
+							char  *result;
+
+							result = (char *) palloc(strlen(database_name) + 1);
+							len = 0;
+							for (cp = casename; *cp != '\0'; cp++)
+							{
+								if (!(*cp == '"'))
+								{
+									result[len++] = *cp;
+								}
+							}
+							result[len] = '\0';
+
+							port->database_name = result;
+							pfree(database_name);
+							pfree(casename);
+						}
+						else if (is_all_upper(database_name, strlen(database_name)))
+						{
+							port->database_name = down_character(database_name, strlen(database_name));
+							pfree(database_name);
+						}
+						else
+							port->database_name = database_name;
+					}
+					else
+						port->database_name = database_name;
 				}
 				else
 					port->database_name = database_name;
@@ -2304,11 +2346,50 @@ retry1:
 				/* BEGIN - case sensitive indentify */
 				/* Oracle compatibility tranfor upper to lower */
 				char *user_name = pstrdup(valptr);
-				if (DB_ORACLE == compatible_db && user_name != NULL
-					&& is_all_upper(user_name, strlen(user_name)))
+
+				if (DB_ORACLE == compatible_db && user_name != NULL)
 				{
-					port->user_name = down_character(user_name, strlen(user_name));
-					pfree(user_name);
+					if (identifier_case_switch == LOWERCASE &&
+						is_all_upper(user_name, strlen(user_name)))
+					{
+						port->user_name = down_character(user_name, strlen(user_name));
+						pfree(user_name);
+					}
+					else if (identifier_case_switch == INTERCHANGE)
+					{
+						if (user_name[0] == '"')
+						{
+							/* delete the double quote */
+							char  *casename = identifier_case_transform(user_name, strlen(user_name));
+							const char *cp;
+							int	  len;
+							char  *result;
+
+							result = (char *) palloc(strlen(user_name) + 1);
+							len = 0;
+							for (cp = casename; *cp != '\0'; cp++)
+							{
+								if (!(*cp == '"'))
+								{
+									result[len++] = *cp;
+								}
+							}
+							result[len] = '\0';
+
+							port->user_name = result;
+							pfree(user_name);
+							pfree(casename);
+						}
+						else if (is_all_upper(user_name, strlen(user_name)))
+						{
+							port->user_name = down_character(user_name, strlen(user_name));
+							pfree(user_name);
+						}
+						else
+							port->user_name = user_name;
+					}
+					else
+						port->user_name = user_name;
 				}
 				else
 					port->user_name = user_name;

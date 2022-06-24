@@ -28,6 +28,9 @@
 #include "settings.h"
 #include "variables.h"
 
+
+#define ORA_SCHEMA "sys"	/* ReqID:SRS-GKC-DATATYPE_001 */
+
 static const char *map_typename_pattern(const char *pattern);
 static bool describeOneTableDetails(const char *schemaname,
 									const char *relationname,
@@ -118,8 +121,9 @@ describeAggregates(const char *pattern, bool verbose, bool showSystem)
 						  gettext_noop("Description"));
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "p.proname", NULL,
@@ -677,8 +681,9 @@ describeFunctions(const char *functypes, const char *func_pattern,
 	}
 
 	if (!showSystem && !func_pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);
 
 	appendPQExpBufferStr(&buf, "ORDER BY 1, 2, 4;");
 
@@ -801,8 +806,9 @@ describeTypes(const char *pattern, bool verbose, bool showSystem)
 	}
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	/* Match name pattern against either internal or external name */
 	processSQLNamePattern(pset.db, &buf, map_typename_pattern(pattern),
@@ -956,8 +962,9 @@ describeOperators(const char *oper_pattern,
 	}
 
 	if (!showSystem && !oper_pattern)
-		appendPQExpBufferStr(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, oper_pattern,
 						  !showSystem && !oper_pattern, true,
@@ -1221,7 +1228,7 @@ permissionsList(const char *pattern)
 	 */
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "c.relname", NULL,
-						  "n.nspname !~ '^pg_' AND pg_catalog.pg_table_is_visible(c.oid)");
+						  "n.nspname !~ '^pg_' AND n.nspname <> 'sys' AND pg_catalog.pg_table_is_visible(c.oid)");	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	appendPQExpBufferStr(&buf, "ORDER BY 1, 2;");
 
@@ -1369,8 +1376,9 @@ objectDescription(const char *pattern, bool showSystem)
 					  gettext_noop("table constraint"));
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, !showSystem && !pattern,
 						  false, "n.nspname", "pgc.conname", NULL,
@@ -1391,8 +1399,9 @@ objectDescription(const char *pattern, bool showSystem)
 					  gettext_noop("domain constraint"));
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, !showSystem && !pattern,
 						  false, "n.nspname", "pgc.conname", NULL,
@@ -1419,8 +1428,9 @@ objectDescription(const char *pattern, bool showSystem)
 						  gettext_noop("operator class"));
 
 		if (!showSystem && !pattern)
-			appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-								 "      AND n.nspname <> 'information_schema'\n");
+			appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+								 "      AND n.nspname <> 'information_schema'\n"
+								 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 		processSQLNamePattern(pset.db, &buf, pattern, true, false,
 							  "n.nspname", "o.opcname", NULL,
@@ -1448,8 +1458,9 @@ objectDescription(const char *pattern, bool showSystem)
 						  gettext_noop("operator family"));
 
 		if (!showSystem && !pattern)
-			appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-								 "      AND n.nspname <> 'information_schema'\n");
+			appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+								 "      AND n.nspname <> 'information_schema'\n"
+								 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 		processSQLNamePattern(pset.db, &buf, pattern, true, false,
 							  "n.nspname", "opf.opfname", NULL,
@@ -1470,8 +1481,9 @@ objectDescription(const char *pattern, bool showSystem)
 					  gettext_noop("rule"));
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "r.rulename", NULL,
@@ -1490,8 +1502,9 @@ objectDescription(const char *pattern, bool showSystem)
 					  gettext_noop("trigger"));
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, !showSystem && !pattern, false,
 						  "n.nspname", "t.tgname", NULL,
@@ -1546,8 +1559,9 @@ describeTableDetails(const char *pattern, bool verbose, bool showSystem)
 					  "     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "WHERE n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, !showSystem && !pattern, false,
 						  "n.nspname", "c.relname", NULL,
@@ -4172,9 +4186,10 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 	appendPQExpBufferStr(&buf, ")\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
 							 "      AND n.nspname !~ '^pg_toast'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "c.relname", NULL,
@@ -4389,7 +4404,8 @@ listPartitionedTables(const char *reltypes, const char *pattern, bool verbose)
 	if (!pattern)
 		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
 							 "      AND n.nspname !~ '^pg_toast'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> 'sys'\n");	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "c.relname", NULL,
@@ -4558,8 +4574,9 @@ listDomains(const char *pattern, bool verbose, bool showSystem)
 	appendPQExpBufferStr(&buf, "WHERE t.typtype = 'd'\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "t.typname", NULL,
@@ -4632,8 +4649,9 @@ listConversions(const char *pattern, bool verbose, bool showSystem)
 	appendPQExpBufferStr(&buf, "WHERE true\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "  AND n.nspname <> 'pg_catalog'\n"
-							 "  AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "  AND n.nspname <> 'pg_catalog'\n"
+							 "  AND n.nspname <> 'information_schema'\n"
+							 "  AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern, true, false,
 						  "n.nspname", "c.conname", NULL,
@@ -4999,8 +5017,9 @@ listCollations(const char *pattern, bool verbose, bool showSystem)
 						 "WHERE n.oid = c.collnamespace\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
-							 "      AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf, "      AND n.nspname <> 'pg_catalog'\n"
+							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	/*
 	 * Hide collations that aren't usable in the current database's encoding.
@@ -5065,8 +5084,9 @@ listSchemas(const char *pattern, bool verbose, bool showSystem)
 						 "\nFROM pg_catalog.pg_namespace n\n");
 
 	if (!showSystem && !pattern)
-		appendPQExpBufferStr(&buf,
-							 "WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'\n");
+		appendPQExpBuffer(&buf,
+							 "WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	processSQLNamePattern(pset.db, &buf, pattern,
 						  !showSystem && !pattern, false,

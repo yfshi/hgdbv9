@@ -237,6 +237,9 @@ static bool check_recovery_target_lsn(char **newval, void **extra, GucSource sou
 static void assign_recovery_target_lsn(const char *newval, void *extra);
 static bool check_primary_slot_name(char **newval, void **extra, GucSource source);
 static bool check_default_with_oids(bool *newval, void **extra, GucSource source);
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+static bool check_nls_length_semantics(char **newval, void **extra, GucSource source);
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /* Private functions in guc-file.l that need to be called from guc.c */
 static ConfigVariable *ProcessConfigFileInternal(GucContext context,
@@ -511,6 +514,7 @@ const struct config_enum_entry ssl_protocol_versions_info[] = {
 	{NULL, 0, false}
 };
 
+
 StaticAssertDecl(lengthof(ssl_protocol_versions_info) == (PG_TLS1_3_VERSION + 2),
 				 "array length mismatch");
 
@@ -603,6 +607,10 @@ char	   *event_source;
 bool		row_security;
 bool		check_function_bodies = true;
 
+/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+bool			enable_emptystring_to_NULL = false;
+/* End - ReqID:EMPTY_STIRNG_TO_NULL */
+
 /*
  * This GUC exists solely for backward compatibility, check its definition for
  * details.
@@ -637,6 +645,14 @@ char	   *external_pid_file;
 char	   *pgstat_temp_directory;
 
 char	   *application_name;
+
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+char	   *nls_length_semantics = NULL;
+char	   *nls_date_format = "";
+char	   *nls_timestamp_format = "";
+char	   *nls_timestamp_tz_format = "";
+int			datetime_ignore_nls_mask = 0;
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 int			tcp_keepalives_idle;
 int			tcp_keepalives_interval;
@@ -2178,6 +2194,18 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 	/* END - case sensitive indentify */
 
+	/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+	{
+		{"enable_emptystring_to_NULL", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("whether convert empty string to NULL."),
+			NULL
+		},
+		&enable_emptystring_to_NULL,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
+
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, false, NULL, NULL, NULL
@@ -3620,6 +3648,18 @@ static struct config_int ConfigureNamesInt[] =
 	},
 	/* End - ReqID:LISTEN-MULTI-PORT */
 
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	{
+		{"datetime_ignore_nls_mask", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Sets the datetime type input is not controlled by the NLS parameter."),
+			NULL
+		},
+		&datetime_ignore_nls_mask,
+		0, 0, 15,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -4680,6 +4720,49 @@ static struct config_string ConfigureNamesString[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:LISTEN-MULTI-PORT */
+
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	{
+		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for charater data type."),
+			gettext_noop("Valid values are CHAR, BYTE."),
+			GUC_IS_NAME
+		},
+		&nls_length_semantics,
+		"byte",
+		check_nls_length_semantics, NULL, NULL
+	},
+	
+	{
+		{"nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for date type."),
+			NULL
+		},
+		&nls_date_format,
+		"YYYY-MM-DD",
+		NULL, NULL, NULL
+	},
+	
+	{
+		{"nls_timestamp_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for timestamp type."),
+			NULL
+		},
+		&nls_timestamp_format,
+		"YYYY-MM-DD HH24:MI:SS.FF6",
+		NULL, NULL, NULL
+	},
+	
+	{
+		{"nls_timestamp_tz_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for timestamp with time zone type."),
+			NULL
+		},
+		&nls_timestamp_tz_format,
+		"YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM",
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 	/* End-of-list marker */
 	{
@@ -12302,6 +12385,19 @@ check_cluster_name(char **newval, void **extra, GucSource source)
 
 	return true;
 }
+
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+static bool
+check_nls_length_semantics(char **newval, void **extra, GucSource source)
+{
+
+	if (newval == NULL
+ 		 || (newval != NULL && pg_strcasecmp(*newval, "CHAR")  && pg_strcasecmp(*newval, "BYTE")))
+		return false;
+
+	return true;
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 static const char *
 show_unix_socket_permissions(void)

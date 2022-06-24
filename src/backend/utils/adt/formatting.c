@@ -92,9 +92,11 @@
 #include "utils/datetime.h"
 #include "utils/float.h"
 #include "utils/formatting.h"
+#include "utils/guc.h"		/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/int8.h"
 #include "utils/memutils.h"
 #include "utils/numeric.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/pg_locale.h"
 
 /* ----------
@@ -494,17 +496,6 @@ typedef struct
  * Datetime to char conversion
  * ----------
  */
-typedef struct TmToChar
-{
-	struct pg_tm tm;			/* classic 'tm' struct */
-	fsec_t		fsec;			/* fractional seconds */
-	const char *tzn;			/* timezone */
-} TmToChar;
-
-#define tmtcTm(_X)	(&(_X)->tm)
-#define tmtcTzn(_X) ((_X)->tzn)
-#define tmtcFsec(_X)	((_X)->fsec)
-
 #define ZERO_tm(_X) \
 do {	\
 	(_X)->tm_sec  = (_X)->tm_year = (_X)->tm_min = (_X)->tm_wday = \
@@ -630,6 +621,12 @@ typedef enum
 	DCH_FF4,
 	DCH_FF5,
 	DCH_FF6,
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	DCH_FF7,
+	DCH_FF8,
+	DCH_FF9,
+	DCH_FF,
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	DCH_FX,						/* global suffix */
 	DCH_HH24,
 	DCH_HH12,
@@ -686,6 +683,12 @@ typedef enum
 	DCH_ff4,
 	DCH_ff5,
 	DCH_ff6,
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	DCH_ff7,
+	DCH_ff8,
+	DCH_ff9,
+	DCH_ff,
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	DCH_fx,
 	DCH_hh24,
 	DCH_hh12,
@@ -793,6 +796,12 @@ static const KeyWord DCH_keywords[] = {
 	{"FF4", 3, DCH_FF4, false, FROM_CHAR_DATE_NONE},
 	{"FF5", 3, DCH_FF5, false, FROM_CHAR_DATE_NONE},
 	{"FF6", 3, DCH_FF6, false, FROM_CHAR_DATE_NONE},
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	{"FF7", 3, DCH_FF7, false, FROM_CHAR_DATE_NONE},
+	{"FF8", 3, DCH_FF8, false, FROM_CHAR_DATE_NONE},
+	{"FF9", 3, DCH_FF9, false, FROM_CHAR_DATE_NONE},
+	{"FF", 2, DCH_FF, false, FROM_CHAR_DATE_NONE},
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	{"FX", 2, DCH_FX, false, FROM_CHAR_DATE_NONE},
 	{"HH24", 4, DCH_HH24, true, FROM_CHAR_DATE_NONE},	/* H */
 	{"HH12", 4, DCH_HH12, true, FROM_CHAR_DATE_NONE},
@@ -849,6 +858,12 @@ static const KeyWord DCH_keywords[] = {
 	{"ff4", 3, DCH_FF4, false, FROM_CHAR_DATE_NONE},
 	{"ff5", 3, DCH_FF5, false, FROM_CHAR_DATE_NONE},
 	{"ff6", 3, DCH_FF6, false, FROM_CHAR_DATE_NONE},
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	{"ff7", 3, DCH_FF7, false, FROM_CHAR_DATE_NONE},
+	{"ff8", 3, DCH_FF8, false, FROM_CHAR_DATE_NONE},
+	{"ff9", 3, DCH_FF9, false, FROM_CHAR_DATE_NONE},
+	{"ff", 2, DCH_FF, false, FROM_CHAR_DATE_NONE},
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	{"fx", 2, DCH_FX, false, FROM_CHAR_DATE_NONE},
 	{"hh24", 4, DCH_HH24, true, FROM_CHAR_DATE_NONE},	/* h */
 	{"hh12", 4, DCH_HH12, true, FROM_CHAR_DATE_NONE},
@@ -1048,6 +1063,7 @@ static void dump_node(FormatNode *node, int max);
 static const char *get_th(char *num, int type);
 static char *str_numth(char *dest, char *num, int type);
 static int	adjust_partial_year_to_2020(int year);
+static int	ora_adjust_partial_year(int year, int id);	/* ReqID:SRS-GKC-DATATYPE_001 */
 static int	strspace_len(const char *str);
 static void from_char_set_mode(TmFromChar *tmfc, const FromCharDateMode mode,
 							   bool *have_error);
@@ -1077,6 +1093,11 @@ static void NUM_numpart_to_char(NUMProc *Np, int id);
 static char *NUM_processor(FormatNode *node, NUMDesc *Num, char *inout,
 						   char *number, int input_len, int to_char_out_pre_spaces,
 						   int sign, bool is_to_char, Oid collid);
+/* Begin - BUG:451 */
+static char *ora_NUM_processor(FormatNode *node, NUMDesc *Num, char *inout,
+		   char *number, int from_char_input_len, int to_char_out_pre_spaces,
+			  int sign, bool is_to_char, Oid collid);
+/* End - BUG:451 */
 static DCHCacheEntry *DCH_cache_getnew(const char *str, bool std);
 static DCHCacheEntry *DCH_cache_search(const char *str, bool std);
 static DCHCacheEntry *DCH_cache_fetch(const char *str, bool std);
@@ -1095,6 +1116,7 @@ static const KeyWord *
 index_seq_search(const char *str, const KeyWord *kw, const int *index)
 {
 	int			poz;
+	KeyWord *temk = NULL;
 
 	if (!KeyWord_INDEX_FILTER(*str))
 		return NULL;
@@ -1106,13 +1128,37 @@ index_seq_search(const char *str, const KeyWord *kw, const int *index)
 		do
 		{
 			if (strncmp(str, k->name, k->len) == 0)
-				return k;
+			{
+				/* Begin - BUG:402 */
+				if(temk == NULL || temk->len <= k->len)
+					return k;
+				else
+					return temk;
+			}
+
+			/* 
+			 *	Record the match success option when case-insensitive, 
+			 *	preferably matching the second letter with the source data
+			 */	
+			if (pg_strncasecmp(str, k->name, k->len) == 0)
+			{
+				if(temk == NULL || temk->len < k->len || *(str + 1) >= 'a' )
+					temk = (KeyWord *)k;
+			}
+
 			k++;
 			if (!k->name)
-				return NULL;
+				break;
+			/* End - BUG:402 */
 		} while (*str == *k->name);
 	}
-	return NULL;
+
+	/* Begin - BUG:402 */
+	if (temk != NULL)
+		return temk;
+	else
+		return NULL;
+	/* End - BUG:402 */
 }
 
 static const KeySuffix *
@@ -1447,7 +1493,16 @@ parse_format(FormatNode *node, const char *str, const KeyWord *kw,
 				else if (isspace((unsigned char) *str))
 					n->type = NODE_TYPE_SPACE;
 				else
-					n->type = NODE_TYPE_CHAR;
+				{
+					/* Begin - BUG:402 */
+					if (ORA_PARSER == compatible_db && !is_separator_char(str))
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								 errmsg("date format not recognized")));
+					/* End - BUG:402 */
+					else
+						n->type = NODE_TYPE_CHAR;
+				}
 
 				memcpy(n->character, str, chlen);
 				n->character[chlen] = '\0';
@@ -2250,6 +2305,42 @@ adjust_partial_year_to_2020(int year)
 		return year;
 }
 
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/*
+ * Adjust all dates toward the current century
+ */
+static int
+ora_adjust_partial_year(int year, int id)
+{
+	struct pg_tm tt;
+	int		curr_year;
+
+	GetCurrentDateTime(&tt);
+
+	curr_year = tt.tm_year;
+	switch (id)
+	{
+		case DCH_Y:
+		case DCH_I:
+			year += curr_year / 10 * 10;
+			break;
+		case DCH_YY:
+		case DCH_IY:
+			if (year <= 99)
+				year += curr_year / 100 * 100;
+			break;
+		case DCH_YYY:
+		case DCH_IYY:
+			year += curr_year / 1000 * 1000;
+			break;
+		default:
+			break;
+	}
+
+	return year;
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 
 static int
 strspace_len(const char *str)
@@ -2357,7 +2448,8 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	Assert(len <= DCH_MAX_ITEM_SIZ);
 	used = (int) strlcpy(copy, *src, len + 1);
 
-	if (S_FM(node->suffix) || is_next_separator(node))
+	if ((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) && 
+		(S_FM(node->suffix) || is_next_separator(node)))	/* BUG:0000561 */
 	{
 		/*
 		 * This node is in Fill Mode, or the next node is known to be a
@@ -2377,7 +2469,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 		 */
 		char	   *last;
 
-		if (used < len)
+		if (used < len && ORA_PARSER != compatible_db)	/* BUG:0000561 */
 			RETURN_ERROR(ereport(ERROR,
 								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 								  errmsg("source string too short for \"%s\" "
@@ -2393,7 +2485,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 		result = strtol(copy, &last, 10);
 		used = last - copy;
 
-		if (used > 0 && used < len)
+		if (used > 0 && used < len && ORA_PARSER != compatible_db)	/* BUG:0000561 */
 			RETURN_ERROR(ereport(ERROR,
 								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
 								  errmsg("invalid value \"%s\" for \"%s\"",
@@ -2757,8 +2849,26 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				break;
 			case DCH_FF6:
 			case DCH_US:		/* microsecond */
+			case DCH_FF:	/* ReqID:SRS-GKC-DATATYPE_001 */
 				DCH_to_char_fsec("%06d", in->fsec);
 				break;
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			case DCH_FF7:
+				DCH_to_char_fsec("%06d", in->fsec);
+				sprintf(s, "%s", "0");
+				s += 1;
+				break;
+			case DCH_FF8:
+				DCH_to_char_fsec("%06d", in->fsec);
+				sprintf(s, "%s", "00");
+				s += 2;
+				break;
+			case DCH_FF9:
+				DCH_to_char_fsec("%06d", in->fsec);
+				sprintf(s, "%s", "000");
+				s += 3;
+				break;
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 #undef DCH_to_char_fsec
 			case DCH_SSSS:
 				sprintf(s, "%d", tm->tm_hour * SECS_PER_HOUR +
@@ -3446,21 +3556,57 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				out->clock = CLOCK_12_HOUR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->hh < 0 || out->hh > 12)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+							  errmsg("The hour value must be between 1 and 12.")));
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_HH24:
 				from_char_parse_int_len(&out->hh, &s, 2, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->hh < 0 || out->hh > 23)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+							  errmsg("The hour value must be between 0 and 23.")));
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_MI:
 				from_char_parse_int(&out->mi, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->mi < 0 || out->mi > 59)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+							  errmsg("The minute value must be between 0 and 59.")));
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_SS:
 				from_char_parse_int(&out->ss, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->ss < 0 || out->ss > 59)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+							  errmsg("The second must be between 0 and 59.")));
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_MS:		/* millisecond */
 				len = from_char_parse_int_len(&out->ms, &s, 3, n, have_error);
@@ -3480,13 +3626,41 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			case DCH_FF4:
 			case DCH_FF5:
 			case DCH_FF6:
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			case DCH_FF7:
+			case DCH_FF8:
+			case DCH_FF9:
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				out->ff = n->key->id - DCH_FF1 + 1;
 				/* fall through */
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			case DCH_FF:
+				if (n->key->id == DCH_FF)
+					out->ff = 6;	/* FF default precision */
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			case DCH_US:		/* microsecond */
 				len = from_char_parse_int_len(&out->us, &s,
 											  n->key->id == DCH_US ? 6 :
 											  out->ff, n, have_error);
 				CHECK_ERROR;
+
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				/*
+				 * Compatible oracle, if the number of fractional seconds is greater than 
+				 * the lenght of format picture item 'FFx' should error out.
+				 *	eg: select to_timestamp('1990-1-1 11:11:11.1235', 'yyyy-mm-dd hh24:mi:ss.ff3') from dual;
+				 *	errmsg: ORA-01830: date format picture ends before converting entire input string.
+				 */
+				if (ORA_PARSER == compatible_db &&
+					n->key->id != DCH_US &&
+					n->key->id != DCH_FF &&
+					out->ff < len)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+						  errmsg("date format picture ends before converting entire input string.")));
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 				out->us *= len == 1 ? 100000 :
 					len == 2 ? 10000 :
@@ -3494,6 +3668,35 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 					len == 4 ? 100 :
 					len == 5 ? 10 : 1;
 
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db &&
+					n->key->id != DCH_US &&
+					len > 6)
+				{
+					/*
+					 * More than 1 second after rounding(eg:999999999) what action should we take ?
+					 * Perhaps we should use truncation instead of rounding in all cases! 
+					 */
+					int	fsec = out->us;
+					
+					switch(len)
+					{
+						case 7:
+							out->us = fsec / 10;
+							break;
+						case 8:
+							out->us = fsec / 100;
+							break;
+						case 9:
+							out->us = fsec / 1000;
+							break;
+						default:
+							ereport(ERROR,
+									(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+								  errmsg("Fractional seconds overflow, fractional seconds supports up to 9 digits.")));
+					}
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				SKIP_THth(s, n->suffix);
 				break;
 			case DCH_SSSS:
@@ -3590,6 +3793,17 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				from_char_parse_int(&out->mm, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->mm < 1 || out->mm > 12)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+							  errmsg("The value of month is invalid.")));
+					}
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_DAY:
 			case DCH_Day:
@@ -3629,6 +3843,19 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				from_char_parse_int(&out->dd, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
+				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+				if (ORA_PARSER == compatible_db)
+				{
+					/* Check for valid day of month */
+					if (out->year != 0 && out->mm != 0)
+					{
+						if (out->dd > day_tab[isleap(out->year)][out->mm - 1])
+							ereport(ERROR,
+									(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+								  errmsg("The value of day must be between 1 and the last day of the month.")));
+					}
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_D:
 				from_char_parse_int(&out->d, &s, n, have_error);
@@ -3702,7 +3929,20 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
 				if (len < 4)
-					out->year = adjust_partial_year_to_2020(out->year);
+				{
+					if (ORA_PARSER != compatible_db)
+						out->year = adjust_partial_year_to_2020(out->year);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						if (len > 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("The numeric value does not match the length of the format item.")));
+						out->year = ora_adjust_partial_year(out->year, n->key->id);
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				}
 				out->yysz = 3;
 				SKIP_THth(s, n->suffix);
 				break;
@@ -3711,7 +3951,20 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
 				if (len < 4)
-					out->year = adjust_partial_year_to_2020(out->year);
+				{
+					if (ORA_PARSER != compatible_db)
+						out->year = adjust_partial_year_to_2020(out->year);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						if (len > 2)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("The numeric value does not match the length of the format item.")));
+						out->year = ora_adjust_partial_year(out->year, n->key->id);
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				}
 				out->yysz = 2;
 				SKIP_THth(s, n->suffix);
 				break;
@@ -3720,7 +3973,20 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
 				if (len < 4)
-					out->year = adjust_partial_year_to_2020(out->year);
+				{
+					if (ORA_PARSER != compatible_db)
+						out->year = adjust_partial_year_to_2020(out->year);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						if (len > 1)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("The numeric value does not match the length of the format item.")));
+						out->year = ora_adjust_partial_year(out->year, n->key->id);
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				}
 				out->yysz = 1;
 				SKIP_THth(s, n->suffix);
 				break;
@@ -3778,6 +4044,18 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 								  errmsg("trailing characters remain in input string "
 										 "after datetime format"))));
 	}
+
+	/* Begin - BUGID:0000028 */
+	if(ORA_PARSER == compatible_db)
+	{
+		while(*s != '\0' && *s == ' ')
+			s++;
+		if(n->type == NODE_TYPE_END && *s != '\0')
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+				errmsg("datetime format picture ends before converting entire input string")));
+	}
+	/* End - BUGID:0000028 */
 
 on_error:
 	return;
@@ -3842,6 +4120,12 @@ DCH_datetime_type(FormatNode *node, bool *have_error)
 			case DCH_FF4:
 			case DCH_FF5:
 			case DCH_FF6:
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			case DCH_FF7:
+			case DCH_FF8:
+			case DCH_FF9:
+			case DCH_FF:
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			case DCH_SSSS:
 				flags |= DCH_TIMED;
 				break;
@@ -4017,8 +4301,10 @@ DCH_cache_fetch(const char *str, bool std)
  * Format a date/time or interval into a string according to fmt.
  * We parse fmt into a list of FormatNodes.  This is then passed to DCH_to_char
  * for formatting.
+ * 
+ * ReqID:SRS-GKC-DATATYPE_001: export for used in ivorysql_ora. 
  */
-static text *
+text *
 datetime_to_char_body(TmToChar *tmtc, text *fmt, bool is_interval, Oid collid)
 {
 	FormatNode *format;
@@ -4100,7 +4386,12 @@ timestamp_to_char(PG_FUNCTION_ARGS)
 	if (VARSIZE_ANY_EXHDR(fmt) <= 0 || TIMESTAMP_NOT_FINITE(dt))
 		PG_RETURN_NULL();
 
-	ZERO_tmtc(&tmtc);
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (ORA_PARSER == compatible_db)
+		ORA_ZERO_tmtc(&tmtc);
+	else
+		ZERO_tmtc(&tmtc);
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	tm = tmtcTm(&tmtc);
 
 	if (timestamp2tm(dt, NULL, tm, &tmtcFsec(&tmtc), NULL, NULL) != 0)
@@ -4129,10 +4420,24 @@ timestamptz_to_char(PG_FUNCTION_ARGS)
 	struct pg_tm *tm;
 	int			thisdate;
 
-	if (VARSIZE_ANY_EXHDR(fmt) <= 0 || TIMESTAMP_NOT_FINITE(dt))
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (VARSIZE_ANY_EXHDR(fmt) <= 0)
 		PG_RETURN_NULL();
 
-	ZERO_tmtc(&tmtc);
+	if (TIMESTAMP_NOT_FINITE(dt))
+	{
+		if (ORA_PARSER == compatible_db)
+			elog(ERROR, "the infinite value isn't supported by \"to_char\"");
+		else
+			PG_RETURN_NULL();
+	}
+
+	if (ORA_PARSER == compatible_db)
+		ORA_ZERO_tmtc(&tmtc);
+	else
+		ZERO_tmtc(&tmtc);
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 	tm = tmtcTm(&tmtc);
 
 	if (timestamp2tm(dt, &tz, tm, &tmtcFsec(&tmtc), &tmtcTzn(&tmtc), NULL) != 0)
@@ -4167,7 +4472,13 @@ interval_to_char(PG_FUNCTION_ARGS)
 	if (VARSIZE_ANY_EXHDR(fmt) <= 0)
 		PG_RETURN_NULL();
 
-	ZERO_tmtc(&tmtc);
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (ORA_PARSER == compatible_db)
+		ORA_ZERO_tmtc(&tmtc);
+	else
+		ZERO_tmtc(&tmtc);
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 	tm = tmtcTm(&tmtc);
 
 	if (interval2tm(*it, tm, &tmtcFsec(&tmtc)) != 0)
@@ -4782,6 +5093,440 @@ on_error:
 	pfree(date_str);
 }
 
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+static void
+final_datetime_check(TmFromChar *out)
+{
+	/*
+	 * Final check for valid day of month 
+	 * now that we know for sure the month and year.
+	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when 
+	 * analyze datetime format 'DD', we don`t known 
+	 * the value of 'YYYY', so we don`t know that the 
+	 * year is there a leap year ? so check again 
+	 */
+	if (out->year != 0 && out->mm != 0)
+	{
+		if (out->dd > day_tab[isleap(out->year)][out->mm - 1])
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The value of day must be between 1 and the last day of the month.")));
+	}
+
+	if (out->hh == 24 && (out->mi > 0 || out->ss > 0))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+			  errmsg("The value of datetime is invalid.")));
+
+	if (ORA_PARSER == compatible_db)
+	{
+		int year = out->year;
+
+		if (out->bc)
+			year = (-1) * year;
+
+		if (year == 0 || year > 9999 || year <= -4713)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The year value must be between -4713 and +9999, and can not be 0"))); 
+		}
+	}
+}
+
+static void
+final_datetime_check_for_conv_func(struct pg_tm *out)
+{
+	/*
+	 * Final check for valid day of month 
+	 * now that we know for sure the month and year.
+	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when 
+	 * analyze datetime format 'DD', we don`t known 
+	 * the value of 'YYYY', so we don`t know that the 
+	 * year is there a leap year ? so check again 
+	 */
+	if (out->tm_year != 0 && out->tm_mon != 0)
+	{
+		if (out->tm_mday > day_tab[isleap(out->tm_year)][out->tm_mon - 1])
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The value of day must be between 1 and the last day of the month.")));
+	}
+
+	if (out->tm_hour == 24 && (out->tm_min > 0 || out->tm_sec > 0))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+			  errmsg("The value of datetime is invalid.")));
+
+	if (ORA_PARSER == compatible_db)
+	{
+		int year = out->tm_year;
+
+		if (year == 0 || year > 9999 || year <= -4713)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The year value must be between -4713 and +9999, and can not be 0"))); 
+		}
+	}
+}
+
+/*
+ * ora_do_to_timestamp
+ * 	Oracle-compatible datetime datatype input and conversion functions copied from do_to_timestamp.	
+ */
+void
+ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
+				struct pg_tm *tm, fsec_t *fsec, int *fprec,
+				uint32 *flags, bool *have_error, bool is_conv_func)	/* ReqID:SRS-GKC-DATATYPE_001 */
+{
+	FormatNode *format = NULL;
+	TmFromChar	tmfc;
+	int			fmt_len;
+	char	   *date_str;
+	int			fmask;
+	bool		incache = false;
+	struct		pg_tm cur_tm;	/* ReqID:SRS-GKC-DATATYPE_001 */
+
+	Assert(tm != NULL);
+	Assert(fsec != NULL);
+
+	date_str = text_to_cstring(date_txt);
+
+	ZERO_tmfc(&tmfc);
+	ORA_ZERO_tm(tm);	/* ReqID:SRS-GKC-DATATYPE_001 */
+	*fsec = 0;
+	if (fprec)
+		*fprec = 0;
+	if (flags)
+		*flags = 0;
+	fmask = 0;					/* bit mask for ValidateDate() */
+
+	fmt_len = VARSIZE_ANY_EXHDR(fmt);
+
+	if (fmt_len)
+	{
+		char	   *fmt_str;
+
+		fmt_str = text_to_cstring(fmt);
+
+		if (fmt_len > DCH_CACHE_SIZE)
+		{
+			/*
+			 * Allocate new memory if format picture is bigger than static
+			 * cache and do not use cache (call parser always)
+			 */
+			format = (FormatNode *) palloc((fmt_len + 1) * sizeof(FormatNode));
+
+			parse_format(format, fmt_str, DCH_keywords, DCH_suff, DCH_index,
+						 DCH_FLAG | (std ? STD_FLAG : 0), NULL);
+		}
+		else
+		{
+			/*
+			 * Use cache buffers
+			 */
+			DCHCacheEntry *ent = DCH_cache_fetch(fmt_str, std);
+
+			incache = true;
+			format = ent->format;
+		}
+
+#ifdef DEBUG_TO_FROM_CHAR
+		/* dump_node(format, fmt_len); */
+		/* dump_index(DCH_keywords, DCH_index); */
+#endif
+
+		DCH_from_char(format, date_str, &tmfc, collid, std, have_error);
+		CHECK_ERROR;
+
+		/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+		if (!is_conv_func)
+			final_datetime_check(&tmfc);
+		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+		pfree(fmt_str);
+
+		if (flags)
+			*flags = DCH_datetime_type(format, have_error);
+
+		if (!incache)
+		{
+			pfree(format);
+			format = NULL;
+		}
+
+		CHECK_ERROR;
+	}
+
+	DEBUG_TMFC(&tmfc);
+
+	/*
+	 * Convert to_date/to_timestamp input fields to standard 'tm'
+	 */
+	if (tmfc.ssss)
+	{
+		int			x = tmfc.ssss;
+
+		tm->tm_hour = x / SECS_PER_HOUR;
+		x %= SECS_PER_HOUR;
+		tm->tm_min = x / SECS_PER_MINUTE;
+		x %= SECS_PER_MINUTE;
+		tm->tm_sec = x;
+	}
+
+	if (tmfc.ss)
+		tm->tm_sec = tmfc.ss;
+	if (tmfc.mi)
+		tm->tm_min = tmfc.mi;
+	if (tmfc.hh)
+		tm->tm_hour = tmfc.hh;
+
+	if (tmfc.clock == CLOCK_12_HOUR)
+	{
+		if (tm->tm_hour < 1 || tm->tm_hour > HOURS_PER_DAY / 2)
+		{
+			RETURN_ERROR(ereport(ERROR,
+								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("hour \"%d\" is invalid for the 12-hour clock",
+										 tm->tm_hour),
+								  errhint("Use the 24-hour clock, or give an hour between 1 and 12."))));
+		}
+
+		if (tmfc.pm && tm->tm_hour < HOURS_PER_DAY / 2)
+			tm->tm_hour += HOURS_PER_DAY / 2;
+		else if (!tmfc.pm && tm->tm_hour == HOURS_PER_DAY / 2)
+			tm->tm_hour = 0;
+	}
+
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (ORA_PARSER == compatible_db)
+		GetCurrentDateTime(&cur_tm);
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	if (tmfc.year)
+	{
+		/*
+		 * If CC and YY (or Y) are provided, use YY as 2 low-order digits for
+		 * the year in the given century.  Keep in mind that the 21st century
+		 * AD runs from 2001-2100, not 2000-2099; 6th century BC runs from
+		 * 600BC to 501BC.
+		 */
+		if (tmfc.cc && tmfc.yysz <= 2)
+		{
+			if (tmfc.bc)
+				tmfc.cc = -tmfc.cc;
+			tm->tm_year = tmfc.year % 100;
+			if (tm->tm_year)
+			{
+				if (tmfc.cc >= 0)
+					tm->tm_year += (tmfc.cc - 1) * 100;
+				else
+					tm->tm_year = (tmfc.cc + 1) * 100 - tm->tm_year + 1;
+			}
+			else
+			{
+				/* find century year for dates ending in "00" */
+				tm->tm_year = tmfc.cc * 100 + ((tmfc.cc >= 0) ? 0 : 1);
+			}
+		}
+		else
+		{
+			/* If a 4-digit year is provided, we use that and ignore CC. */
+			tm->tm_year = tmfc.year;
+			if (tmfc.bc)
+				tm->tm_year = -tm->tm_year;
+			/* correct for our representation of BC years */
+			if (tm->tm_year < 0)
+				tm->tm_year++;
+		}
+		fmask |= DTK_M(YEAR);
+	}
+	else if (tmfc.cc)
+	{
+		/* use first year of century */
+		if (tmfc.bc)
+			tmfc.cc = -tmfc.cc;
+		if (tmfc.cc >= 0)
+			/* +1 because 21st century started in 2001 */
+			tm->tm_year = (tmfc.cc - 1) * 100 + 1;
+		else
+			/* +1 because year == 599 is 600 BC */
+			tm->tm_year = tmfc.cc * 100 + 1;
+		fmask |= DTK_M(YEAR);
+	}
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	/* Oracle year field defaults to the year value of sysdate */
+	else
+	{
+		Assert(!tmfc.cc && !tmfc.year);
+		if (ORA_PARSER == compatible_db)
+			tm->tm_year = cur_tm.tm_year;
+	}
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	if (tmfc.j)
+	{
+		j2date(tmfc.j, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+		fmask |= DTK_DATE_M;
+	}
+
+	if (tmfc.ww)
+	{
+		if (tmfc.mode == FROM_CHAR_DATE_ISOWEEK)
+		{
+			/*
+			 * If tmfc.d is not set, then the date is left at the beginning of
+			 * the ISO week (Monday).
+			 */
+			if (tmfc.d)
+				isoweekdate2date(tmfc.ww, tmfc.d, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+			else
+				isoweek2date(tmfc.ww, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+			fmask |= DTK_DATE_M;
+		}
+		else
+			tmfc.ddd = (tmfc.ww - 1) * 7 + 1;
+	}
+
+	if (tmfc.w)
+		tmfc.dd = (tmfc.w - 1) * 7 + 1;
+	if (tmfc.dd)
+	{
+		tm->tm_mday = tmfc.dd;
+		fmask |= DTK_M(DAY);
+	}
+	if (tmfc.mm)
+	{
+		tm->tm_mon = tmfc.mm;
+		fmask |= DTK_M(MONTH);
+	}
+
+	if (tmfc.ddd && (tm->tm_mon <= 1 || tm->tm_mday <= 1))
+	{
+		/*
+		 * The month and day field have not been set, so we use the
+		 * day-of-year field to populate them.  Depending on the date mode,
+		 * this field may be interpreted as a Gregorian day-of-year, or an ISO
+		 * week date day-of-year.
+		 */
+
+		if (!tm->tm_year && !tmfc.bc)
+		{
+			RETURN_ERROR(ereport(ERROR,
+								 (errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("cannot calculate day of year without year information"))));
+		}
+
+		if (tmfc.mode == FROM_CHAR_DATE_ISOWEEK)
+		{
+			int			j0;		/* zeroth day of the ISO year, in Julian */
+
+			j0 = isoweek2j(tm->tm_year, 1) - 1;
+
+			j2date(j0 + tmfc.ddd, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+			fmask |= DTK_DATE_M;
+		}
+		else
+		{
+			const int  *y;
+			int			i;
+
+			static const int ysum[2][13] = {
+				{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
+			{0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}};
+
+			y = ysum[isleap(tm->tm_year)];
+
+			for (i = 1; i <= MONTHS_PER_YEAR; i++)
+			{
+				if (tmfc.ddd <= y[i])
+					break;
+			}
+			if (tm->tm_mon <= 1)
+				tm->tm_mon = i;
+
+			if (tm->tm_mday <= 1)
+				tm->tm_mday = tmfc.ddd - y[i - 1];
+
+			fmask |= DTK_M(MONTH) | DTK_M(DAY);
+		}
+	}
+
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	/* Oracle year field defaults to the year value of sysdate */
+	if (ORA_PARSER == compatible_db)
+	{
+		if (!tm->tm_mon)
+			tm->tm_mon = cur_tm.tm_mon;
+	}
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	if (tmfc.ms)
+		*fsec += tmfc.ms * 1000;
+	if (tmfc.us)
+		*fsec += tmfc.us;
+	if (fprec)
+		*fprec = tmfc.ff;		/* fractional precision, if specified */
+
+	/* Range-check date fields according to bit mask computed above */
+	if (fmask != 0)
+	{
+		/* We already dealt with AD/BC, so pass isjulian = true */
+		int			dterr = ValidateDate(fmask, true, false, false, tm);
+
+		if (dterr != 0)
+		{
+			/*
+			 * Force the error to be DTERR_FIELD_OVERFLOW even if ValidateDate
+			 * said DTERR_MD_FIELD_OVERFLOW, because we don't want to print an
+			 * irrelevant hint about datestyle.
+			 */
+			RETURN_ERROR(DateTimeParseError(DTERR_FIELD_OVERFLOW, date_str, "timestamp"));
+		}
+	}
+
+	/* Range-check time fields too */
+	if (tm->tm_hour < 0 || tm->tm_hour >= HOURS_PER_DAY ||
+		tm->tm_min < 0 || tm->tm_min >= MINS_PER_HOUR ||
+		tm->tm_sec < 0 || tm->tm_sec >= SECS_PER_MINUTE ||
+		*fsec < INT64CONST(0) || *fsec >= USECS_PER_SEC)
+	{
+		RETURN_ERROR(DateTimeParseError(DTERR_FIELD_OVERFLOW, date_str, "timestamp"));
+	}
+
+	/* Save parsed time-zone into tm->tm_zone if it was specified */
+	if (tmfc.tzsign)
+	{
+		char	   *tz;
+
+		if (tmfc.tzh < 0 || tmfc.tzh > MAX_TZDISP_HOUR ||
+			tmfc.tzm < 0 || tmfc.tzm >= MINS_PER_HOUR)
+		{
+			RETURN_ERROR(DateTimeParseError(DTERR_TZDISP_OVERFLOW, date_str, "timestamp"));
+		}
+
+		tz = psprintf("%c%02d:%02d",
+					  tmfc.tzsign > 0 ? '+' : '-', tmfc.tzh, tmfc.tzm);
+
+		tm->tm_zone = tz;
+	}
+
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (is_conv_func)
+		final_datetime_check_for_conv_func(tm);
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	DEBUG_TM(tm);
+
+on_error:
+
+	if (format && !incache)
+		pfree(format);
+
+	pfree(date_str);
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /**********************************************************************
  *	the NUMBER version part
@@ -5572,6 +6317,672 @@ NUM_eat_non_data_chars(NUMProc *Np, int n, int input_len)
 		Np->inout_p += pg_mblen(Np->inout_p);
 	}
 }
+
+/* Begin - BUG:451 */
+static char *
+ora_NUM_processor(FormatNode *node, NUMDesc *Num, char *inout,
+		   char *number, int from_char_input_len, int to_char_out_pre_spaces,
+			  int sign, bool is_to_char, Oid collid)
+{
+	FormatNode *n, *ntem;
+	NUMProc		_Np,
+			   *Np = &_Np;
+	char *input_tem;
+	bool isrigth;
+
+	MemSet(Np, 0, sizeof(NUMProc));
+
+	Np->Num = Num;
+	Np->is_to_char = is_to_char;
+	Np->number = number;
+	Np->inout = inout;
+	Np->last_relevant = NULL;
+	Np->read_post = 0;
+	Np->read_pre = 0;
+	Np->read_dec = false;
+
+	if (Np->Num->zero_start)
+		--Np->Num->zero_start;
+
+	if (IS_EEEE(Np->Num))
+	{
+		if (!Np->is_to_char)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("\"EEEE\" not supported for input")));
+		return strcpy(inout, number);
+	}
+
+	/*
+	 * Roman correction
+	 */
+	if (IS_ROMAN(Np->Num))
+	{
+		if (!Np->is_to_char)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("\"RN\" not supported for input")));
+
+		Np->Num->lsign = Np->Num->pre_lsign_num = Np->Num->post =
+			Np->Num->pre = Np->out_pre_spaces = Np->sign = 0;
+
+		if (IS_FILLMODE(Np->Num))
+		{
+			Np->Num->flag = 0;
+			Np->Num->flag |= NUM_F_FILLMODE;
+		}
+		else
+			Np->Num->flag = 0;
+		Np->Num->flag |= NUM_F_ROMAN;
+	}
+
+	/*
+	 * Sign
+	 */
+	if (is_to_char)
+	{
+		Np->sign = sign;
+
+		/* MI/PL/SG - write sign itself and not in number */
+		if (IS_PLUS(Np->Num) || IS_MINUS(Np->Num))
+		{
+			if (IS_PLUS(Np->Num) && IS_MINUS(Np->Num) == false)
+				Np->sign_wrote = false; /* need sign */
+			else
+				Np->sign_wrote = true;	/* needn't sign */
+		}
+		else
+		{
+			if (Np->sign != '-')
+			{
+				if (IS_BRACKET(Np->Num) && IS_FILLMODE(Np->Num))
+					Np->Num->flag &= ~NUM_F_BRACKET;
+				if (IS_MINUS(Np->Num))
+					Np->Num->flag &= ~NUM_F_MINUS;
+			}
+			else if (Np->sign != '+' && IS_PLUS(Np->Num))
+				Np->Num->flag &= ~NUM_F_PLUS;
+
+			if (Np->sign == '+' && IS_FILLMODE(Np->Num) && IS_LSIGN(Np->Num) == false)
+				Np->sign_wrote = true;	/* needn't sign */
+			else
+				Np->sign_wrote = false; /* need sign */
+
+			if (Np->Num->lsign == NUM_LSIGN_PRE && Np->Num->pre == Np->Num->pre_lsign_num)
+				Np->Num->lsign = NUM_LSIGN_POST;
+		}
+	}
+	else
+		Np->sign = false;
+
+	/*
+	 * Count
+	 */
+	Np->num_count = Np->Num->post + Np->Num->pre - 1;
+
+	if (is_to_char)
+	{
+		Np->out_pre_spaces = to_char_out_pre_spaces;
+
+		if (IS_FILLMODE(Np->Num) && IS_DECIMAL(Np->Num))
+		{
+			Np->last_relevant = get_last_relevant_decnum(Np->number);
+
+			/*
+			 * If any '0' specifiers are present, make sure we don't strip
+			 * those digits.
+			 */
+			if (Np->last_relevant && Np->Num->zero_end > Np->out_pre_spaces)
+			{
+				char	   *last_zero;
+
+				last_zero = Np->number + (Np->Num->zero_end - Np->out_pre_spaces);
+				if (Np->last_relevant < last_zero)
+					Np->last_relevant = last_zero;
+			}
+		}
+
+		if (Np->sign_wrote == false && Np->out_pre_spaces == 0)
+			++Np->num_count;
+	}
+	else
+	{
+		Np->out_pre_spaces = 0;
+		*Np->number = ' ';		/* sign space */
+		*(Np->number + 1) = '\0';
+	}
+
+	Np->num_in = 0;
+	Np->num_curr = 0;
+
+#ifdef DEBUG_TO_FROM_CHAR
+	elog(DEBUG_elog_output,
+		 "\n\tSIGN: '%c'\n\tNUM: '%s'\n\tPRE: %d\n\tPOST: %d\n\tNUM_COUNT: %d\n\tNUM_PRE: %d\n\tSIGN_WROTE: %s\n\tZERO: %s\n\tZERO_START: %d\n\tZERO_END: %d\n\tLAST_RELEVANT: %s\n\tBRACKET: %s\n\tPLUS: %s\n\tMINUS: %s\n\tFILLMODE: %s\n\tROMAN: %s\n\tEEEE: %s",
+		 Np->sign,
+		 Np->number,
+		 Np->Num->pre,
+		 Np->Num->post,
+		 Np->num_count,
+		 Np->out_pre_spaces,
+		 Np->sign_wrote ? "Yes" : "No",
+		 IS_ZERO(Np->Num) ? "Yes" : "No",
+		 Np->Num->zero_start,
+		 Np->Num->zero_end,
+		 Np->last_relevant ? Np->last_relevant : "<not set>",
+		 IS_BRACKET(Np->Num) ? "Yes" : "No",
+		 IS_PLUS(Np->Num) ? "Yes" : "No",
+		 IS_MINUS(Np->Num) ? "Yes" : "No",
+		 IS_FILLMODE(Np->Num) ? "Yes" : "No",
+		 IS_ROMAN(Np->Num) ? "Yes" : "No",
+		 IS_EEEE(Np->Num) ? "Yes" : "No"
+		);
+#endif
+
+	/*
+	 * Locale
+	 */
+	NUM_prepare_locale(Np);
+
+	/*
+	 * Processor direct cycle
+	 */
+	if (Np->is_to_char)
+		Np->number_p = Np->number;
+	else
+		Np->number_p = Np->number + 1;	/* first char is space for sign */
+	/**
+	 *Reverse matching, if the match does not match, an error is reported
+	 */
+	ntem = node;
+	input_tem = Np->inout + from_char_input_len;
+	/** isrigth  if  marking to the right of the decimal point */
+	isrigth = true;
+
+	for (; ntem->type != NODE_TYPE_END; ntem++)
+		;
+
+	do
+	{
+		ntem--;
+		input_tem--;
+		if (ntem->type != NODE_TYPE_ACTION)
+		{
+			ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+		}
+		switch (ntem->key->id)
+		{
+			/**
+			 * The type is 9 case, 
+			 * and the special case is when the number of 9 in the fractional part of the type is ignored
+			 */
+			case NUM_9:
+				if (!isdigit((unsigned char) *input_tem))
+				{
+					if (*input_tem == '.' && isrigth == true)
+					{
+						while ((ntem - 1)->key->id == NUM_9 && (ntem - 1) != node)
+						{
+							ntem--;
+						}
+						if ((ntem - 1)->key->id != NUM_9)
+						{
+							input_tem++;
+							break;	
+						}
+								
+					}
+						
+					if ((*input_tem == '-' || *input_tem == '+') && input_tem == Np->inout)
+						break;
+							
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("invalid number")));
+				}
+				break;
+
+			case NUM_DEC:
+			case NUM_D:
+				if (*input_tem != '.' || isrigth == false)
+				{
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("invalid number format model")));
+				}
+				isrigth = false;
+				break;
+
+			/**
+			 *G  Can only appear in integer parts,
+			 * can't put it at the head or the tail
+			 */
+			case NUM_G:
+				if (*input_tem != ',')
+				{
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("invalid number format model")));
+				}
+				if (isrigth == true)
+					isrigth = false;
+					
+				if (ntem == node || (ntem+1)->type == NODE_TYPE_END)
+				{
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("invalid number format model")));
+				}
+				break;
+
+			case NUM_PR:
+				if ( (ntem+1)->type != NODE_TYPE_END)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+				if (isdigit((unsigned char) *input_tem))
+					input_tem++;
+				else if (*input_tem != '>')
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+				break;
+
+			case NUM_MI:
+				if (*input_tem != '-' && *input_tem != '+' && *input_tem != ' ')
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+				}
+				if ((ntem+1)->type != NODE_TYPE_END)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("invalid number format model")));
+				}
+				break;
+
+			case NUM_FM:
+				if (ntem != node)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("invalid number format model")));
+				}
+				input_tem++;
+				break;
+
+				/**
+				 *S  Can only appear at the head or the tail
+				 * matching '+' or '-'
+				 */		
+			case NUM_S:
+				if (*input_tem != '-' && *input_tem != '+')
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+					
+				if (ntem != node && (ntem+1)->type != NODE_TYPE_END)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								errmsg("invalid number format model")));
+				break;
+		}
+	}while(ntem != node && input_tem > Np->inout);
+
+	/**
+	 * Error if there are more data types than Numbers
+	 */
+	if (ntem == node && input_tem > Np->inout)
+	{
+		if ( isdigit((unsigned char) *(input_tem - 1)) || *(input_tem - 1) == '.' || *(input_tem - 1) == ',' )
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					errmsg("invalid number format model")));
+	}
+	
+	n = ntem;
+
+	for (Np->inout_p = Np->inout; n->type != NODE_TYPE_END; n++)
+	{
+		if (!Np->is_to_char)
+		{
+			/*
+			 * Check non-string inout end
+			 */
+			if (Np->inout_p >= Np->inout + from_char_input_len)
+				break;
+		}
+
+		/*
+		 * Format pictures actions
+		 */
+		if (n->type == NODE_TYPE_ACTION)
+		{
+			/*
+			 * Create/reading digit/zero/blank/sing
+			 *
+			 * 'NUM_S' note: The locale sign is anchored to number and we
+			 * read/write it when we work with first or last number
+			 * (NUM_0/NUM_9). This is reason why NUM_S missing in follow
+			 * switch().
+			 */
+			switch (n->key->id)
+			{
+				case NUM_9:
+				case NUM_0:
+				case NUM_DEC:
+				case NUM_D:
+					if (Np->is_to_char)
+					{
+						NUM_numpart_to_char(Np, n->key->id);
+						continue;		/* for() */
+					}
+					else
+					{
+						NUM_numpart_from_char(Np, n->key->id, from_char_input_len);
+						break;	/* switch() case: */
+					}
+
+				case NUM_COMMA:
+					if (Np->is_to_char)
+					{
+						if (!Np->num_in)
+						{
+							if (IS_FILLMODE(Np->Num))
+								continue;
+							else
+								*Np->inout_p = ' ';
+						}
+						else
+							*Np->inout_p = ',';
+					}
+					else
+					{
+						if (!Np->num_in)
+						{
+							if (IS_FILLMODE(Np->Num))
+								continue;
+						}
+					}
+					break;
+
+				case NUM_G:
+					if (Np->is_to_char)
+					{
+						if (!Np->num_in)
+						{
+							if (IS_FILLMODE(Np->Num))
+								continue;
+							else
+							{
+								int			x = strlen(Np->L_thousands_sep);
+
+								memset(Np->inout_p, ' ', x);
+								Np->inout_p += x - 1;
+							}
+						}
+						else
+						{
+							strcpy(Np->inout_p, Np->L_thousands_sep);
+							Np->inout_p += strlen(Np->inout_p) - 1;
+						}
+					}
+					else
+					{
+						if (!Np->num_in)
+						{
+							if (IS_FILLMODE(Np->Num))
+								continue;
+						}
+						Np->inout_p += strlen(Np->L_thousands_sep) - 1;
+					}
+					break;
+
+				case NUM_L:
+					if (Np->is_to_char)
+					{
+						strcpy(Np->inout_p, Np->L_currency_symbol);
+						Np->inout_p += strlen(Np->inout_p) - 1;
+					}
+					else
+						Np->inout_p += strlen(Np->L_currency_symbol) - 1;
+					break;
+
+				case NUM_RN:
+					if (IS_FILLMODE(Np->Num))
+					{
+						strcpy(Np->inout_p, Np->number_p);
+						Np->inout_p += strlen(Np->inout_p) - 1;
+					}
+					else
+					{
+						sprintf(Np->inout_p, "%15s", Np->number_p);
+						Np->inout_p += strlen(Np->inout_p) - 1;
+					}
+					break;
+
+				case NUM_rn:
+					if (IS_FILLMODE(Np->Num))
+					{
+						strcpy(Np->inout_p, asc_tolower_z(Np->number_p));
+						Np->inout_p += strlen(Np->inout_p) - 1;
+					}
+					else
+					{
+						sprintf(Np->inout_p, "%15s", asc_tolower_z(Np->number_p));
+						Np->inout_p += strlen(Np->inout_p) - 1;
+					}
+					break;
+
+				case NUM_th:
+					if (IS_ROMAN(Np->Num) || *Np->number == '#' ||
+						Np->sign == '-' || IS_DECIMAL(Np->Num))
+						continue;
+
+					if (Np->is_to_char)
+						strcpy(Np->inout_p, get_th(Np->number, TH_LOWER));
+					Np->inout_p += 1;
+					break;
+
+				case NUM_TH:
+					if (IS_ROMAN(Np->Num) || *Np->number == '#' ||
+						Np->sign == '-' || IS_DECIMAL(Np->Num))
+						continue;
+
+					if (Np->is_to_char)
+						strcpy(Np->inout_p, get_th(Np->number, TH_UPPER));
+					Np->inout_p += 1;
+					break;
+
+				case NUM_MI:
+					if (Np->is_to_char)
+					{
+						if (Np->sign == '-')
+							*Np->inout_p = '-';
+						else if (IS_FILLMODE(Np->Num))
+							continue;
+						else
+							*Np->inout_p = ' ';
+					}
+					else
+					{
+						if (*Np->inout_p == '-')
+							*Np->number = '-';
+					}
+					break;
+
+				case NUM_PL:
+					if (Np->is_to_char)
+					{
+						if (Np->sign == '+')
+							*Np->inout_p = '+';
+						else if (IS_FILLMODE(Np->Num))
+							continue;
+						else
+							*Np->inout_p = ' ';
+					}
+					else
+					{
+						if (*Np->inout_p == '+')
+							*Np->number = '+';
+					}
+					break;
+
+				case NUM_SG:
+					if (Np->is_to_char)
+						*Np->inout_p = Np->sign;
+
+					else
+					{
+						if (*Np->inout_p == '-')
+							*Np->number = '-';
+						else if (*Np->inout_p == '+')
+							*Np->number = '+';
+					}
+					break;
+
+
+				default:
+					continue;
+					break;
+			}
+		}
+		else
+		{
+			/*
+			 * Remove to output char from input in TO_CHAR
+			 */
+			if (Np->is_to_char)
+			{
+				strcpy(Np->inout_p, n->character);
+				Np->inout_p += strlen(Np->inout_p);
+			}
+		}
+		Np->inout_p++;
+	}
+
+	if (Np->is_to_char)
+	{
+		*Np->inout_p = '\0';
+		return Np->inout;
+	}
+	else
+	{
+		if (*(Np->number_p - 1) == '.')
+			*(Np->number_p - 1) = '\0';
+		else
+			*Np->number_p = '\0';
+
+		/*
+		 * Correction - precision of dec. number
+		 */
+		Np->Num->post = Np->read_post;
+
+#ifdef DEBUG_TO_FROM_CHAR
+		elog(DEBUG_elog_output, "TO_NUMBER (number): '%s'", Np->number);
+#endif
+		return Np->number;
+	}
+}
+
+Numeric ora_to_number_internal(text *value, text *fmt)
+{
+	NUMDesc		Num;
+	FormatNode *format;
+	char	   *numstr;
+	bool		shouldFree;
+	int			len = 0;
+	Datum		result;
+	int			scale = 0,
+				precision = 0;
+	char 		*tem = NULL;
+	bool 		isleft = true;	
+
+	if(fmt)
+	{
+		len = VARSIZE(fmt) - VARHDRSZ;
+		if (len <= 0 || len >= INT_MAX / NUM_MAX_ITEM_SIZ)
+			return NULL;
+		
+		format = NUM_cache(len, &Num, fmt, &shouldFree);
+		numstr = (char *) palloc((len * NUM_MAX_ITEM_SIZ) + 1);
+
+		ora_NUM_processor(format, &Num, VARDATA(value), numstr,
+			VARSIZE(value) - VARHDRSZ, 0, 0, false, 0);
+
+		scale = Num.post;
+		precision = Max(0, Num.pre) + scale;
+
+		if (shouldFree)
+			pfree(format);
+	}
+	else
+	{
+		numstr = text_to_cstring(value);
+		tem = numstr;
+		precision = 0;
+		scale = 0;
+		while(*tem == ' ')
+		{
+		/* Remove leading space */
+			tem++;
+		}
+		if(*tem == '-' || *tem == '+')
+		{
+			precision++;
+			tem++;
+		}
+		for (; *tem != '\0'; tem++)
+		{
+			if (isleft)
+			{
+				if (isdigit((unsigned char) *tem))
+					precision++;
+				else if (*tem == '.')
+					isleft = false;
+				else
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid number format model")));
+			}
+			else
+			{
+				if (isdigit((unsigned char) *tem))
+					scale++;
+				else
+				{
+					while(*tem == ' ')
+						tem++;
+					
+					if(*tem == '\0')
+						break;
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 	errmsg("invalid number format model")));
+				}
+				
+			}	
+		}
+		precision += scale;
+		if (precision == 0)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("invalid number format model")));
+	}
+
+	result = DirectFunctionCall3(numeric_in,
+								 CStringGetDatum(numstr),
+								 ObjectIdGetDatum(InvalidOid),
+					  Int32GetDatum(((precision << 16) | scale) + VARHDRSZ));
+	pfree(numstr);
+
+	return DatumGetNumeric(result);	
+}
+/* End - BUG:451 */
 
 static char *
 NUM_processor(FormatNode *node, NUMDesc *Num, char *inout,

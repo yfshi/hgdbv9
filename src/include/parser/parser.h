@@ -75,5 +75,9 @@ extern List *standard_raw_parser(const char *str, RawParseMode mode);
 /* Utility functions exported by gram.y (perhaps these should be elsewhere) */
 extern List *SystemFuncName(char *name);
 extern TypeName *SystemTypeName(char *name);
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+extern List *OracleSystemFuncName(char *name);
+extern TypeName *OracleSystemTypeName(char *name);
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 #endif							/* PARSER_H */

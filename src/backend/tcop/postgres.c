@@ -75,8 +75,10 @@
 #include "tcop/pquery.h"
 #include "tcop/tcopprot.h"
 #include "tcop/utility.h"
+#include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/ps_status.h"
 #include "utils/snapmgr.h"
 #include "utils/timeout.h"
@@ -1782,14 +1784,29 @@ exec_bind_message(StringInfo input_message)
 				 * as to maintain the convention that StringInfos have a
 				 * trailing null.  This is grotty but is a big win when
 				 * dealing with very large parameter strings.
+				 *
+				 * BUG:803 should consider enable_emptystring_to_NULL
 				 */
-				pbuf.data = unconstify(char *, pvalue);
-				pbuf.maxlen = plength + 1;
-				pbuf.len = plength;
-				pbuf.cursor = 0;
+				/* Begin - Bug#803 */
+				if (compatible_db == ORA_PARSER &&
+					enable_emptystring_to_NULL &&
+					plength == 0)
+				{
+					pbuf.data = NULL;		/* keep compiler quiet */
+					csave = 0;
+					isNull = true;
+					plength = -1;
+				}
+				else
+				{
+					pbuf.data = unconstify(char *, pvalue);
+					pbuf.maxlen = plength + 1;
+					pbuf.len = plength;
+					pbuf.cursor = 0;
 
-				csave = pbuf.data[plength];
-				pbuf.data[plength] = '\0';
+					csave = pbuf.data[plength];
+					pbuf.data[plength] = '\0';
+				}
 			}
 			else
 			{

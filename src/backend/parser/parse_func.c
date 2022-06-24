@@ -31,7 +31,9 @@
 #include "parser/parse_target.h"
 #include "parser/parse_type.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/syscache.h"
 
 
@@ -1009,7 +1011,8 @@ func_select_candidate(int nargs,
 {
 	FuncCandidateList current_candidate,
 				first_candidate,
-				last_candidate;
+				last_candidate,
+				candidate;		/* ReqID:SRS-GKC-DATATYPE_001 */
 	Oid		   *current_typeids;
 	Oid			current_type;
 	int			i;
@@ -1065,6 +1068,7 @@ func_select_candidate(int nargs,
 	 */
 	ncandidates = 0;
 	nbestMatch = 0;
+	first_candidate = NULL;		/* ReqID:SRS-GKC-DATATYPE_001 */
 	last_candidate = NULL;
 	for (current_candidate = candidates;
 		 current_candidate != NULL;
@@ -1136,6 +1140,7 @@ func_select_candidate(int nargs,
 			nbestMatch = nmatch;
 			candidates = current_candidate;
 			last_candidate = current_candidate;
+			first_candidate = last_candidate;		/* ReqID:SRS-GKC-DATATYPE_001 */
 			ncandidates = 1;
 		}
 		else if (nmatch == nbestMatch)
@@ -1159,7 +1164,42 @@ func_select_candidate(int nargs,
 	 * and must fail.
 	 */
 	if (nunknowns == 0)
-		return NULL;			/* failed to select a best candidate */
+	{
+		/*
+		 * Begin - ReqID:SRS-GKC-DATATYPE_001
+		 *
+		 * There are more than one candidates, then check those namespace.
+		 * If they are not in the same namespace, then return the one in
+		 * the frontest namespace.
+		 */
+		if (PG_PARSER == compatible_db)
+			return NULL;			/* failed to select a best candidate */
+		else
+		{
+			int times;
+			
+			candidate = first_candidate;
+			times = 1;
+			for (current_candidate = first_candidate;
+				 current_candidate != NULL;
+				 current_candidate = current_candidate->next)
+			{
+				if (current_candidate->pathpos == candidate->pathpos)
+					times++;
+				else if (current_candidate->pathpos < candidate->pathpos)
+				{
+					candidate = current_candidate;
+					times = 1;
+				}
+			}
+	
+			if (times == 1)
+				return candidate;
+			else
+				return NULL;
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+		}
+	}
 
 	/*
 	 * The next step examines each unknown argument position to see if we can
@@ -1343,6 +1383,10 @@ func_select_candidate(int nargs,
 					if (++ncandidates > 1)
 						break;	/* not unique, give up */
 					last_candidate = current_candidate;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (first_candidate == NULL)
+						first_candidate = last_candidate;
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				}
 			}
 			if (ncandidates == 1)
@@ -1351,6 +1395,26 @@ func_select_candidate(int nargs,
 				last_candidate->next = NULL;
 				return last_candidate;
 			}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			else if (ncandidates > 1)
+			{
+				if (PG_PARSER == compatible_db)
+					return NULL;			/* failed to select a best candidate */
+				else
+				{
+					candidate = first_candidate;
+					for (current_candidate = first_candidate;
+						 current_candidate != NULL;
+						 current_candidate = current_candidate->next)
+					{
+						if (current_candidate->pathpos < candidate->pathpos)
+							candidate = current_candidate;
+					}
+				
+					return candidate;
+				}
+			}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		}
 	}
 
