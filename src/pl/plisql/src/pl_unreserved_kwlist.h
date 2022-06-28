@@ -29,15 +29,27 @@
 
 /* name, value */
 PG_KEYWORD("absolute", K_ABSOLUTE)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("accessible", K_ACCESSIBLE)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("alias", K_ALIAS)
 PG_KEYWORD("and", K_AND)
 PG_KEYWORD("array", K_ARRAY)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("as", K_AS)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("assert", K_ASSERT)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("authid", K_AUTHID)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("backward", K_BACKWARD)
 PG_KEYWORD("call", K_CALL)
 PG_KEYWORD("chain", K_CHAIN)
 PG_KEYWORD("close", K_CLOSE)
 PG_KEYWORD("collate", K_COLLATE)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("collation", K_COLLATION)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("column", K_COLUMN)
 PG_KEYWORD("column_name", K_COLUMN_NAME)
 PG_KEYWORD("commit", K_COMMIT)
@@ -46,11 +58,20 @@ PG_KEYWORD("constraint", K_CONSTRAINT)
 PG_KEYWORD("constraint_name", K_CONSTRAINT_NAME)
 PG_KEYWORD("continue", K_CONTINUE)
 PG_KEYWORD("current", K_CURRENT)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("current_user", K_CURRENT_USER)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("cursor", K_CURSOR)
 PG_KEYWORD("datatype", K_DATATYPE)
 PG_KEYWORD("debug", K_DEBUG)
 PG_KEYWORD("default", K_DEFAULT)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("definer", K_DEFINER)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("detail", K_DETAIL)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("deterministic", K_DETERMINISTIC)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("diagnostics", K_DIAGNOSTICS)
 PG_KEYWORD("do", K_DO)
 PG_KEYWORD("dump", K_DUMP)
@@ -76,20 +97,35 @@ PG_KEYWORD("message_text", K_MESSAGE_TEXT)
 PG_KEYWORD("move", K_MOVE)
 PG_KEYWORD("next", K_NEXT)
 PG_KEYWORD("no", K_NO)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("nocopy", K_NOCOPY)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("notice", K_NOTICE)
 PG_KEYWORD("open", K_OPEN)
 PG_KEYWORD("option", K_OPTION)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("out", K_OUT)
+PG_KEYWORD("package", K_PACKAGE)
+PG_KEYWORD("parallel_enable", K_PARALLEL_ENABLE)
+/* End - SRS-PLSQL-SUBPROC*/
 PG_KEYWORD("perform", K_PERFORM)
 PG_KEYWORD("pg_context", K_PG_CONTEXT)
 PG_KEYWORD("pg_datatype_name", K_PG_DATATYPE_NAME)
 PG_KEYWORD("pg_exception_context", K_PG_EXCEPTION_CONTEXT)
 PG_KEYWORD("pg_exception_detail", K_PG_EXCEPTION_DETAIL)
 PG_KEYWORD("pg_exception_hint", K_PG_EXCEPTION_HINT)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("pipelined", K_PIPELINED)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("print_strict_params", K_PRINT_STRICT_PARAMS)
 PG_KEYWORD("prior", K_PRIOR)
 PG_KEYWORD("query", K_QUERY)
 PG_KEYWORD("raise", K_RAISE)
 PG_KEYWORD("relative", K_RELATIVE)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("relies_on", K_RELIES_ON)
+PG_KEYWORD("result_cache", K_RESULT_CACHE)
+/* End - SRS-PLSQL-SUBPROC*/
 PG_KEYWORD("return", K_RETURN)
 PG_KEYWORD("returned_sqlstate", K_RETURNED_SQLSTATE)
 PG_KEYWORD("reverse", K_REVERSE)
@@ -104,8 +140,14 @@ PG_KEYWORD("sqlstate", K_SQLSTATE)
 PG_KEYWORD("stacked", K_STACKED)
 PG_KEYWORD("table", K_TABLE)
 PG_KEYWORD("table_name", K_TABLE_NAME)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("trigger", K_TRIGGER)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("type", K_TYPE)
 PG_KEYWORD("use_column", K_USE_COLUMN)
 PG_KEYWORD("use_variable", K_USE_VARIABLE)
+/* Begin - SRS-PLSQL-SUBPROC*/
+PG_KEYWORD("using_nls_comp", K_USING_NLS_COMP)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("variable_conflict", K_VARIABLE_CONFLICT)
 PG_KEYWORD("warning", K_WARNING)

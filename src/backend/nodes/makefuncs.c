@@ -530,6 +530,10 @@ makeFuncExpr(Oid funcid, Oid rettype, List *args,
 	funcexpr->funccollid = funccollid;
 	funcexpr->inputcollid = inputcollid;
 	funcexpr->args = args;
+	/* Begin - SRS-PLSQL-SUBPROC */
+	funcexpr->function_from = FUNC_FROM_PG_PROC;
+	funcexpr->parent_func = NULL;
+	/* End - SRS-PLSQL-SUBPROC */
 	funcexpr->location = -1;
 
 	return funcexpr;

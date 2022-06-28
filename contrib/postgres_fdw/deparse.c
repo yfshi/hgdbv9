@@ -57,6 +57,7 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 #include "commands/tablecmds.h"
+#include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
 /*
  * Global context for foreign_expr_walker's search of an expression tree.
@@ -465,6 +466,11 @@ foreign_expr_walker(Node *node,
 		case T_FuncExpr:
 			{
 				FuncExpr   *fe = (FuncExpr *) node;
+
+				/* Begin - SRS-PLSQL-SUBPROC*/
+				if (!FUNC_EXPR_FROM_PG_PROC(fe->function_from))
+					return false;
+				/* End - SRS-PLSQL-SUBPROC*/
 
 				/*
 				 * If function used by the expression is not shippable, it
@@ -2796,7 +2802,12 @@ deparseFuncExpr(FuncExpr *node, deparse_expr_cxt *context)
 	/*
 	 * Normal function: display as proname(args).
 	 */
-	appendFunctionName(node->funcid, context);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (FUNC_EXPR_FROM_PG_PROC(node->function_from))
+		appendFunctionName(node->funcid, context);
+	else
+		appendStringInfo(buf, "%s", get_internal_function_name(node));
+	/* End - SRS-PLSQL-SUBPROC */
 	appendStringInfoChar(buf, '(');
 
 	/* ... and all the arguments */

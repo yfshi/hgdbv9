@@ -54,6 +54,7 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/ora_compatible.h"
+#include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
 
 /* Hook for plugins to get control at end of parse analysis */
@@ -3050,6 +3051,15 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 
 	fexpr = castNode(FuncExpr, node);
 
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (!FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+	{
+		stmt->funcexpr = fexpr;
+		stmt->outargs = get_internal_function_outargs(fexpr);
+		goto SKIP_PG_PROC_CHECK;
+	}
+	/* End - SRS-PLSQL-SUBPROC */
+
 	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
 	if (!HeapTupleIsValid(proctup))
 		elog(ERROR, "cache lookup failed for function %u", fexpr->funcid);
@@ -3125,6 +3135,11 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 	stmt->outargs = outargs;
 
 	ReleaseSysCache(proctup);
+	/* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - SRS-PLSQL-SUBPROC */
+SKIP_PG_PROC_CHECK:
+/* Begin - SRS-PLSQL-SUBPROC */
 
 	/* represent the command as a utility Query */
 	result = makeNode(Query);

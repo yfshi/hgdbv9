@@ -37,6 +37,7 @@
 #include "parser/parse_type.h"
 #include "parser/scansup.h"
 #include "plisql.h"
+#include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC*/
 #include "storage/proc.h"
 #include "tcop/cmdtag.h"
 #include "tcop/pquery.h"
@@ -479,6 +480,9 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	ErrorContextCallback plerrcontext;
 	int			i;
 	int			rc;
+	/* Begin - SRS-PLSQL-SUBPROC */
+	char	function_from = plisql_function_from(fcinfo);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * Setup the execution state
@@ -501,6 +505,11 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	 */
 	estate.err_text = gettext_noop("during initialization of execution state");
 	copy_plisql_datums(&estate, func);
+
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (function_from == FUNC_FROM_SUBPROCFUNC)
+		plisql_init_subprocfunc_globalvar(&estate, fcinfo);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * Store the actual call argument values into the appropriate variables
@@ -598,7 +607,11 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	/*
 	 * Set the magic variable FOUND to false
 	 */
-	exec_set_found(&estate, false);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	/* subproc func, its found come from its parents */
+	if (function_from != FUNC_FROM_SUBPROCFUNC)
+		exec_set_found(&estate, false);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * Let the instrumentation plugin peek at this function
@@ -618,6 +631,11 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 				(errcode(ERRCODE_S_R_E_FUNCTION_EXECUTED_NO_RETURN_STATEMENT),
 				 errmsg("control reached end of function without RETURN")));
 	}
+
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (function_from == FUNC_FROM_SUBPROCFUNC)
+		plisql_assign_out_subprocfunc_globalvar(&estate, fcinfo);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * We got a return value - process it
@@ -2278,19 +2296,26 @@ make_callstmt_target(PLiSQL_execstate *estate, PLiSQL_expr *expr)
 
 	funcexpr = stmt->funcexpr;
 
-	func_tuple = SearchSysCache1(PROCOID,
-								 ObjectIdGetDatum(funcexpr->funcid));
-	if (!HeapTupleIsValid(func_tuple))
-		elog(ERROR, "cache lookup failed for function %u",
-			 funcexpr->funcid);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+	{
+		func_tuple = SearchSysCache1(PROCOID,
+									 ObjectIdGetDatum(funcexpr->funcid));
+		if (!HeapTupleIsValid(func_tuple))
+			elog(ERROR, "cache lookup failed for function %u",
+				 funcexpr->funcid);
 
-	/*
-	 * Get the argument names and modes, so that we can deliver on-point error
-	 * messages when something is wrong.
-	 */
-	numargs = get_func_arg_info(func_tuple, &argtypes, &argnames, &argmodes);
+		/*
+		 * Get the argument names and modes, so that we can deliver on-point error
+		 * messages when something is wrong.
+		 */
+		numargs = get_func_arg_info(func_tuple, &argtypes, &argnames, &argmodes);
 
-	ReleaseSysCache(func_tuple);
+		ReleaseSysCache(func_tuple);
+	}
+	else
+		numargs = get_subprocfunc_arg_info(funcexpr, &argtypes, &argnames, &argmodes);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * Begin constructing row Datum; keep it in fn_cxt so it's adequately
@@ -5560,6 +5585,110 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 	}
 }
 
+
+/* Begin - SRS-PLSQL-SUBPROC */
+/*
+ * plisql_assign_in_global_var is similar to
+ * exec_assign_value, we assign subproc global var
+ * from its parents'var
+ */
+void
+plisql_assign_in_global_var(PLiSQL_execstate *estate,
+														PLiSQL_execstate *parestate,
+														int dno)
+{
+	Oid typeid;
+	int32 typetypmod;
+	Datum value;
+	bool isnull;
+
+	Assert(dno < estate->ndatums);
+	Assert(dno < parestate->ndatums);
+
+	/* the dtype must be consistent */
+	Assert(parestate->datums[dno]->dtype == estate->datums[dno]->dtype);
+
+	/* get origin value */
+	exec_eval_datum(parestate, parestate->datums[dno],
+					&typeid, &typetypmod,
+					&value, &isnull);
+
+	/*
+	 * If it's a read/write expanded datum, convert reference to read-only.
+	 * (There's little point in trying to optimize read/write parameters,
+	 * given the cases in which this function is used.)
+	 */
+	if (parestate->datums[dno]->dtype  == PLISQL_DTYPE_VAR)
+		value = MakeExpandedObjectReadOnly(value,
+											isnull,
+											((PLiSQL_var *) parestate->datums[dno])->datatype->typlen);
+	else if (parestate->datums[dno]->dtype == PLISQL_DTYPE_REC)
+		value = MakeExpandedObjectReadOnly(value,
+											isnull,
+											-1);
+
+	exec_assign_value(estate, estate->datums[dno],
+					value, isnull, typeid, typetypmod);
+}
+
+/*
+ * assign value from estate to parestate
+ */
+void
+plisql_assign_out_global_var(PLiSQL_execstate *estate,
+											PLiSQL_execstate *parestate,
+											int dno, int spi_level)
+{
+	Oid typeid;
+	int32 typetypmod;
+	Datum value;
+	bool isnull;
+	MemoryContext oldctx;
+
+	Assert(dno < estate->ndatums);
+	Assert(dno < parestate->ndatums);
+
+	/* the dtype must be consistent */
+	Assert(parestate->datums[dno]->dtype == estate->datums[dno]->dtype);
+
+	/* get origin value */
+	exec_eval_datum(estate, estate->datums[dno],
+					&typeid, &typetypmod,
+					&value, &isnull);
+	/*
+	 * If it's a read/write expanded datum, convert reference to read-only.
+	 * (There's little point in trying to optimize read/write parameters,
+	 * given the cases in which this function is used.)
+	 */
+	if (estate->datums[dno]->dtype  == PLISQL_DTYPE_VAR)
+		value = MakeExpandedObjectReadOnly(value,
+											isnull,
+											((PLiSQL_var *) estate->datums[dno])->datatype->typlen);
+	else if (estate->datums[dno]->dtype == PLISQL_DTYPE_REC)
+		value = MakeExpandedObjectReadOnly(value,
+											isnull,
+											-1);
+
+	oldctx = MemoryContextSwitchTo(SPI_get_proccxt(spi_level));
+
+	PG_TRY();
+	{
+		exec_assign_value(parestate, parestate->datums[dno], value, isnull, typeid, typetypmod);
+	}
+	PG_CATCH();
+	{
+		MemoryContextSwitchTo(oldctx);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+	MemoryContextSwitchTo(oldctx);
+
+	return;
+}
+
+/* End - SRS-PLSQL-SUBPROC */
+
+
 /* ----------
  * exec_eval_integer		Evaluate an expression, coerce result to int4
  *
@@ -8145,6 +8274,11 @@ exec_check_rw_parameter(PLiSQL_expr *expr)
 	if (IsA(expr->expr_simple_expr, FuncExpr))
 	{
 		FuncExpr   *fexpr = (FuncExpr *) expr->expr_simple_expr;
+
+		/* Begin - SRS-PLSQL-SUBPROC */
+		if (!FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+			return;
+		/* End - SRS-PLSQL-SUBPROC */
 
 		funcid = fexpr->funcid;
 		fargs = fexpr->args;

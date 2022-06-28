@@ -1896,8 +1896,11 @@ find_expr_references_walker(Node *node,
 	{
 		FuncExpr   *funcexpr = (FuncExpr *) node;
 
-		add_object_address(OCLASS_PROC, funcexpr->funcid, 0,
+		/* Begin - SRS-PLSQL-SUBPROC */
+		if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			add_object_address(OCLASS_PROC, funcexpr->funcid, 0,
 						   context->addrs);
+		/* End - SRS-PLSQL-SUBPROC */
 		/* fall through to examine arguments */
 	}
 	else if (IsA(node, OpExpr))

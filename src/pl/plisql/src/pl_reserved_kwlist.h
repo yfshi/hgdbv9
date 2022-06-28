@@ -38,6 +38,9 @@ PG_KEYWORD("execute", K_EXECUTE)
 PG_KEYWORD("for", K_FOR)
 PG_KEYWORD("foreach", K_FOREACH)
 PG_KEYWORD("from", K_FROM)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("function", K_FUNCTION)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("if", K_IF)
 PG_KEYWORD("in", K_IN)
 PG_KEYWORD("into", K_INTO)
@@ -45,6 +48,9 @@ PG_KEYWORD("loop", K_LOOP)
 PG_KEYWORD("not", K_NOT)
 PG_KEYWORD("null", K_NULL)
 PG_KEYWORD("or", K_OR)
+/* Begin - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("procedure", K_PROCEDURE)
+/* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("strict", K_STRICT)
 PG_KEYWORD("then", K_THEN)
 PG_KEYWORD("to", K_TO)

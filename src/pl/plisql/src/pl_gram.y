@@ -27,6 +27,10 @@
 
 #include "plisql.h"
 
+/* Begin - SRS-PLSQL-SUBPROC */
+#include "pl_subproc_function.h"
+/* End - SRS-PLSQL-SUBPROC */
+
 #include "utils/ora_compatible.h"	/* case sensitive indentify */
 
 /* Location tracking support --- simpler than bison's default */
@@ -167,6 +171,13 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 		PLiSQL_diag_item		*diagitem;
 		PLiSQL_stmt_fetch		*fetch;
 		PLiSQL_case_when		*casewhen;
+		/* Begin - SRS-PLSQL-SUBPROC */
+		PLiSQL_function_argitem *func_argitem;
+		PLiSQL_subproc_function *subproc_func;
+		PLiSQL_subprocfunc_proper *func_proper;
+		AccessProperItem *access_proper_item;
+		AccessProperItemType access_proper_kind;
+		/* End - SRS-PLSQL-SUBPROC */
 }
 
 %type <declhdr> decl_sect
@@ -223,6 +234,24 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 
 %type <keyword>	unreserved_keyword
 
+/* Begin - SRS-PLSQL-SUBPROC */
+%type <keyword> unit_name_keyword
+%type <str> ora_function_name unit_name authid_user extral_unit_name
+%type <list> func_arg_list func_args procedure_properties_list accessor_list
+%type <list> function_result_cache_relies data_source procedure_properties
+%type <list> function_properite_list function_properties
+%type <func_argitem> func_arg_item
+%type <subproc_func>function_heading procedure_heading
+%type <func_proper> function_properite_item invoker_rights_clause
+%type <func_proper> procedure_properite_item accessible_by_clause default_collation_clause
+%type <access_proper_item> accessor
+%type <access_proper_kind> unit_kind
+%type <keyword> ora_function_is_as
+%type <ival> arg_mode
+%type <expr> arg_decl_defval
+%type <boolean> function_arg_nocopy
+/* End - SRS-PLSQL-SUBPROC */
+
 
 /*
  * Basic non-keyword token types.  These are hard-wired into the core lexer.
@@ -252,11 +281,20 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
  * in the "unreserved_keyword" production below.
  */
 %token <keyword>	K_ABSOLUTE
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_ACCESSIBLE
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_ALIAS
 %token <keyword>	K_ALL
 %token <keyword>	K_AND
 %token <keyword>	K_ARRAY
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_AS
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_ASSERT
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_AUTHID
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_BACKWARD
 %token <keyword>	K_BEGIN
 %token <keyword>	K_BY
@@ -265,6 +303,9 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <keyword>	K_CHAIN
 %token <keyword>	K_CLOSE
 %token <keyword>	K_COLLATE
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_COLLATION
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_COLUMN
 %token <keyword>	K_COLUMN_NAME
 %token <keyword>	K_COMMIT
@@ -273,12 +314,21 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <keyword>	K_CONSTRAINT_NAME
 %token <keyword>	K_CONTINUE
 %token <keyword>	K_CURRENT
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_CURRENT_USER
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_CURSOR
 %token <keyword>	K_DATATYPE
 %token <keyword>	K_DEBUG
 %token <keyword>	K_DECLARE
 %token <keyword>	K_DEFAULT
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_DEFINER
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_DETAIL
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_DETERMINISTIC
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_DIAGNOSTICS
 %token <keyword>	K_DO
 %token <keyword>	K_DUMP
@@ -296,6 +346,9 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <keyword>	K_FOREACH
 %token <keyword>	K_FORWARD
 %token <keyword>	K_FROM
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_FUNCTION
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_GET
 %token <keyword>	K_HINT
 %token <keyword>	K_IF
@@ -313,23 +366,41 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <keyword>	K_MOVE
 %token <keyword>	K_NEXT
 %token <keyword>	K_NO
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_NOCOPY
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_NOT
 %token <keyword>	K_NOTICE
 %token <keyword>	K_NULL
 %token <keyword>	K_OPEN
 %token <keyword>	K_OPTION
 %token <keyword>	K_OR
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_OUT
+%token <keyword>	K_PACKAGE
+%token <keyword>	K_PARALLEL_ENABLE
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_PERFORM
 %token <keyword>	K_PG_CONTEXT
 %token <keyword>	K_PG_DATATYPE_NAME
 %token <keyword>	K_PG_EXCEPTION_CONTEXT
 %token <keyword>	K_PG_EXCEPTION_DETAIL
 %token <keyword>	K_PG_EXCEPTION_HINT
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_PIPELINED
+/* End - SRS-PLSQL-SUBPROC*/
 %token <keyword>	K_PRINT_STRICT_PARAMS
 %token <keyword>	K_PRIOR
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_PROCEDURE
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_QUERY
 %token <keyword>	K_RAISE
 %token <keyword>	K_RELATIVE
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_RELIES_ON
+%token <keyword>	K_RESULT_CACHE
+/* End - SRS-PLSQL-SUBPROC*/
 %token <keyword>	K_RETURN
 %token <keyword>	K_RETURNED_SQLSTATE
 %token <keyword>	K_REVERSE
@@ -347,10 +418,16 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <keyword>	K_TABLE_NAME
 %token <keyword>	K_THEN
 %token <keyword>	K_TO
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword>	K_TRIGGER
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_TYPE
 %token <keyword>	K_USE_COLUMN
 %token <keyword>	K_USE_VARIABLE
 %token <keyword>	K_USING
+/* Begin - SRS-PLSQL-SUBPROC*/
+%token <keyword>	K_USING_NLS_COMP
+/* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_VARIABLE_CONFLICT
 %token <keyword>	K_WARNING
 %token <keyword>	K_WHEN
@@ -583,6 +660,97 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 							new->cursor_explicit_argrow = $5->dno;
 						new->cursor_options = CURSOR_OPT_FAST_PLAN | $2;
 					}
+				/* Begin - SRS-PLSQL-SUBPROC */
+				/* function or procedure declare or define */
+				| function_heading function_properties ';'
+					{
+						/* check does it duplicate declare */
+						if ($1->has_declare)
+							yyerror("duplicate declaration");
+						$1->has_declare = true;
+						/* check function properties */
+						plisql_check_subprocfunc_properties($1, $2, true);
+						if ($2 != NIL)
+							list_free($2);
+					}
+				| function_heading function_properties ora_function_is_as
+					{
+						int found_varno = plisql_curr_compile->found_varno;
+
+						plisql_check_subprocfunc_properties($1,$2, false);
+						if ($2 != NIL)
+							list_free($2);
+
+						$1->lastoutsubprocfno = plisql_nsubprocFuncs;
+						plisql_push_subproc_func();
+						$1->global_cur = plisql_ns_top();
+						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
+						plisql_start_subproc_func();
+						plisql_curr_compile = $1->function;
+						$1->lastassignvardno = plisql_nDatums;
+						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
+						plisql_add_initdatums(NULL);
+					}
+				pl_block ';'
+					{
+						StringInfoData ds;
+
+						plisql_set_subprocfunc_action($1, (PLiSQL_stmt_block *) $5);
+						plisql_ns_pop();
+						plisql_finish_datums($1->function);
+						plisql_finish_subproc_func($1->function);
+						plisql_pop_subproc_func();
+						initStringInfo(&ds);
+						plisql_append_source_text(&ds, @5 + 2, @6);
+						$1->src = ds.data;
+						$1->lastoutvardno = plisql_nDatums;
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+					}
+				| procedure_heading procedure_properties ';'
+					{
+						/* check does it duplicate declare */
+						if ($1->has_declare)
+							yyerror("duplicate declaration");
+						plisql_check_subprocfunc_properties($1,$2, false);
+						if ($2 != NIL)
+							list_free($2);
+						$1->has_declare = true;
+						$1->properties = $2;
+					}
+				| procedure_heading procedure_properties ora_function_is_as
+					{
+						int found_varno = plisql_curr_compile->found_varno;
+
+						plisql_check_subprocfunc_properties($1,$2, false);
+						if ($2 != NIL)
+							list_free($2);
+
+						$1->lastoutsubprocfno = plisql_nsubprocFuncs;
+						plisql_push_subproc_func();
+						$1->global_cur = plisql_ns_top();
+						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
+						plisql_start_subproc_func();
+						plisql_curr_compile = $1->function;
+						$1->lastassignvardno = plisql_nDatums;
+						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
+						plisql_add_initdatums(NULL);
+					}
+				pl_block ';'
+					{
+						StringInfoData ds;
+
+						plisql_set_subprocfunc_action($1, (PLiSQL_stmt_block *) $5);
+						plisql_ns_pop();
+						plisql_finish_datums($1->function);
+						plisql_finish_subproc_func($1->function);
+						plisql_pop_subproc_func();
+						initStringInfo(&ds);
+						plisql_append_source_text(&ds, @5 + 2, @6);
+						$1->src = ds.data;
+						$1->lastoutvardno = plisql_nDatums;
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+					}
+				/* End - SRS-PLSQL-SUBPROC */
 				;
 
 opt_scrollable :
@@ -829,6 +997,330 @@ decl_defval		: ';'
 decl_defkey		: assign_operator
 				| K_DEFAULT
 				;
+
+/* Begin - SRS-PLSQL-SUBPROC */
+function_heading	:	K_FUNCTION ora_function_name func_args K_RETURN decl_datatype
+						{
+							PLiSQL_subproc_function *subprocfunc;
+
+							subprocfunc = plisql_build_subproc_function($2, $3, $5);
+
+							$$ = subprocfunc;
+						}
+						;
+
+function_properties :	function_properite_list { $$ = $1; }
+					|	{ $$ = NIL; }
+					;
+
+function_properite_list: function_properite_item
+						{
+							$$ = list_make1($1);
+						}
+						|function_properite_list function_properite_item
+						{
+							$$ = lappend($1, $2);
+						}
+						;
+
+function_properite_item : K_DETERMINISTIC
+							{
+								PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+								proper->proper_type = FUNC_PROPER_DETERMINISTIC;
+
+								$$ = proper;
+							}
+						| K_RESULT_CACHE function_result_cache_relies
+							{
+								PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+								/* anonymous blocks doesn't support result cache */
+								if ((cur_compile_func_level != 0 &&
+									plisql_saved_compile[0]->fn_oid == InvalidOid) ||
+									(cur_compile_func_level == 0 && plisql_curr_compile->fn_oid == InvalidOid))
+									yyerror("RESULT_CACHE is disallowed on subprograms in anonymous blocks");
+
+								proper->proper_type = FUNC_PROPER_RESULT_CACHE;
+								proper->value = $2;
+
+								$$ = proper;
+							}
+						| K_PARALLEL_ENABLE
+							{
+								PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+								proper->proper_type = FUNC_PROPER_PARALLEL_ENABLE;
+
+								$$ = proper;
+							}
+						| K_PIPELINED
+							{
+								PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+								proper->proper_type = FUNC_PROPER_PIPELINED;
+
+								$$ = proper;
+							}
+						;
+
+function_result_cache_relies : K_RELIES_ON '(' data_source ')'
+								{
+									$$ = $3;
+								}
+							| { $$ = NIL; }
+							;
+
+data_source	:	ora_function_name
+					{
+						$$ = list_make1(makeString($1));
+					}
+				|data_source ',' ora_function_name
+					{
+						$$ = lappend($1, makeString($3));
+					}
+				;
+
+procedure_heading	: K_PROCEDURE ora_function_name func_args
+						{
+							PLiSQL_subproc_function *subprocfunc;
+
+							subprocfunc = plisql_build_subproc_function($2, $3, NULL);
+
+							$$ = subprocfunc;
+						}
+						;
+
+procedure_properties: procedure_properties_list	{ $$ = $1; }
+					| { $$ = NIL; }
+				;
+
+procedure_properties_list: procedure_properite_item { $$ = list_make1($1); }
+					| procedure_properties_list procedure_properite_item
+						{
+							$$ = lappend($1, $2);
+						}
+				;
+
+procedure_properite_item: accessible_by_clause	{ $$ = $1;}
+					|default_collation_clause		{ $$ = $1;}
+					|invoker_rights_clause			{ $$ = $1;}
+					;
+
+accessible_by_clause: K_ACCESSIBLE K_BY '(' accessor_list ')'
+						{
+							PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+							yyerror("Only schema-level programs allow ACCESSIBLE BY");
+							proper->proper_type = PROC_PROPER_ACCESSIBLE_BY;
+							proper->value = (void *) $4;
+
+							$$ = proper;
+						}
+					;
+
+accessor_list: accessor	{ $$ = list_make1($1); }
+				|accessor_list ',' accessor { $$ = lappend($1, $3); }
+				;
+
+accessor: unit_kind unit_name unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = $1;
+					acproper->schema_name = $2;
+					acproper->unit_name = $3;
+
+					$$ = acproper;
+				}
+			|unit_name unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = access_proper_unknow;
+					acproper->schema_name = $1;
+					acproper->unit_name = $2;
+
+					$$ = acproper;
+				}
+			|unit_kind unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = $1;
+					acproper->schema_name = NULL;
+					acproper->unit_name = $2;
+
+					$$ = acproper;
+				}
+			| unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = access_proper_unknow;
+					acproper->schema_name = NULL;
+					acproper->unit_name = $1;
+
+					$$ = acproper;
+				}
+			|unit_kind extral_unit_name extral_unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = $1;
+					acproper->schema_name = $2;
+					acproper->unit_name = $3;
+
+					$$ = acproper;
+				}
+			|unit_kind extral_unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = $1;
+					acproper->schema_name = NULL;
+					acproper->unit_name = $2;
+
+					$$ = acproper;
+				}
+			|extral_unit_name
+				{
+					AccessProperItem *acproper = (AccessProperItem *) palloc0(sizeof(AccessProperItem));
+
+					acproper->proper_type = access_proper_unknow;
+					acproper->schema_name = NULL;
+					acproper->unit_name = $1;
+
+					$$ = acproper;
+				}
+			;
+
+unit_name:  T_WORD
+				{
+					$$ = $1.ident;
+
+				}
+			| unit_name_keyword
+				{
+					$$ = pstrdup($1);
+				}
+		;
+
+unit_kind: K_FUNCTION	{ $$ = access_proper_function; }
+			|K_PROCEDURE { $$ = access_proper_procedure; }
+			|K_PACKAGE	{ $$ = access_proper_package; }
+			|K_TRIGGER	{ $$ = access_proper_trigger; }
+			|K_TYPE		{ $$ = access_proper_type; }
+		;
+
+extral_unit_name:
+			K_PACKAGE { $$ = pstrdup($1);}
+			|K_TRIGGER { $$ = pstrdup($1);}
+			|K_TYPE { $$ = pstrdup($1);}
+		;
+
+default_collation_clause: K_DEFAULT K_COLLATION K_USING_NLS_COMP
+					{
+						PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+						proper->proper_type = PROC_PROPER_DEFAULT_COLLATION;
+						proper->value = (void *) pstrdup($3);
+
+						$$ = proper;
+					}
+				;
+
+invoker_rights_clause: K_AUTHID authid_user
+					{
+						PLiSQL_subprocfunc_proper *proper = palloc0(sizeof(PLiSQL_subprocfunc_proper));
+
+						yyerror("Only schema-level programs allow AUTHID");
+
+						proper->proper_type = PROC_PROPER_INVOKER_RIGHT;
+						proper->value = (void *) $2;
+
+						$$ = proper;
+					}
+				;
+
+authid_user: K_CURRENT_USER	{ $$ = pstrdup($1); }
+				|K_DEFINER		{ $$ = pstrdup($1); }
+			;
+
+
+ora_function_name	: T_WORD
+					{
+						$$ = $1.ident;
+
+					}
+				| unreserved_keyword
+					{
+						$$ = pstrdup($1);
+					}
+				;
+function_arg_nocopy:
+					K_NOCOPY	{ $$ = true; }
+					| { $$ = false; }
+				;
+
+ora_function_is_as:
+					K_IS		{ $$ = $1; }
+					|K_AS		{ $$ = $1; }
+				;
+func_args:
+					'(' func_arg_list ')' { $$ = $2; }
+					|'(' ')'	{ $$ = NIL; }
+					| { $$ = NIL; }
+					;
+func_arg_list:
+					func_arg_item
+						{
+							$$ = list_make1($1);
+						}
+					| func_arg_list ',' func_arg_item
+						{
+							$$ = lappend($1, $3);
+						}
+					;
+func_arg_item:
+					ora_function_name arg_mode function_arg_nocopy decl_datatype arg_decl_defval
+						{
+							PLiSQL_function_argitem *new = NULL;
+
+							if ($2 != ARGMODE_IN && $5 != NULL)
+								yyerror("OUT and IN OUT formal parameters may not have default expressions");
+
+							if ($3 && $2 == ARGMODE_IN)
+								yyerror("only out mode argument allow to have nocopy proper");
+
+							new = (PLiSQL_function_argitem *) palloc0(sizeof(PLiSQL_function_argitem));
+							new->argname = $1;
+							new->type = $4;
+							new->argmode = $2;
+							new->defexpr = $5;
+							new->nocopy = $3;
+							$$ = new;
+						}
+					;
+arg_mode:
+					K_IN	{ $$ = ARGMODE_IN; }
+					|K_IN K_OUT	{ $$ = ARGMODE_INOUT; }
+					|K_OUT	{ $$ = ARGMODE_OUT; }
+					|	{ $$ = ARGMODE_IN; }
+					;
+
+arg_decl_defval:	decl_defkey
+						{
+							int token;
+
+							$$ =  read_sql_expression2(',',	')', ", or )", &token);
+							plisql_push_back_token(token);
+						}
+					| { $$ = NULL; }
+				;
+
+/* End - SRS-PLSQL-SUBPROC */
+
 
 /*
  * Ada-based PL/iSQL uses := for assignment and variable defaults, while
@@ -2498,15 +2990,27 @@ any_identifier	: T_WORD
 
 unreserved_keyword	:
 				K_ABSOLUTE
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_ACCESSIBLE
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_ALIAS
 				| K_AND
 				| K_ARRAY
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_AS
+				/* End - SRS-PLSQL-SUBPROC*/
 				| K_ASSERT
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_AUTHID
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_BACKWARD
 				| K_CALL
 				| K_CHAIN
 				| K_CLOSE
 				| K_COLLATE
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_COLLATION
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_COLUMN
 				| K_COLUMN_NAME
 				| K_COMMIT
@@ -2515,11 +3019,20 @@ unreserved_keyword	:
 				| K_CONSTRAINT_NAME
 				| K_CONTINUE
 				| K_CURRENT
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_CURRENT_USER
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_CURSOR
 				| K_DATATYPE
 				| K_DEBUG
 				| K_DEFAULT
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_DEFINER
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_DETAIL
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_DETERMINISTIC
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_DIAGNOSTICS
 				| K_DO
 				| K_DUMP
@@ -2544,20 +3057,35 @@ unreserved_keyword	:
 				| K_MOVE
 				| K_NEXT
 				| K_NO
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_NOCOPY
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_NOTICE
 				| K_OPEN
 				| K_OPTION
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_OUT
+				| K_PACKAGE
+				| K_PARALLEL_ENABLE
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_PERFORM
 				| K_PG_CONTEXT
 				| K_PG_DATATYPE_NAME
 				| K_PG_EXCEPTION_CONTEXT
 				| K_PG_EXCEPTION_DETAIL
 				| K_PG_EXCEPTION_HINT
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_PIPELINED
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_PRINT_STRICT_PARAMS
 				| K_PRIOR
 				| K_QUERY
 				| K_RAISE
 				| K_RELATIVE
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_RELIES_ON
+				| K_RESULT_CACHE
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_RETURN
 				| K_RETURNED_SQLSTATE
 				| K_REVERSE
@@ -2572,12 +3100,123 @@ unreserved_keyword	:
 				| K_STACKED
 				| K_TABLE
 				| K_TABLE_NAME
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_TRIGGER
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_TYPE
 				| K_USE_COLUMN
 				| K_USE_VARIABLE
+				/* Begin - SRS-PLSQL-SUBPROC */
+				| K_USING_NLS_COMP
+				/* End - SRS-PLSQL-SUBPROC */
 				| K_VARIABLE_CONFLICT
 				| K_WARNING
 				;
+
+/* Begin - SRS-PLSQL-SUBPROC */
+/*
+ * This is to solve the shift/reduce conflict of the access by which
+ * accept package/trigger/type package/trigger/type as unit_kind or unit_name
+ * which removes the three keywords K_PACAGE, K_TYPE, K_TRIGGER on the basis
+ * of the unreserved_keyword
+ */
+unit_name_keyword:
+				K_ABSOLUTE
+				| K_ACCESSIBLE
+				| K_ALIAS
+				| K_AND
+				| K_ARRAY
+				| K_AS
+				| K_ASSERT
+				| K_AUTHID
+				| K_BACKWARD
+				| K_CALL
+				| K_CHAIN
+				| K_CLOSE
+				| K_COLLATE
+				| K_COLLATION
+				| K_COLUMN
+				| K_COLUMN_NAME
+				| K_COMMIT
+				| K_CONSTANT
+				| K_CONSTRAINT
+				| K_CONSTRAINT_NAME
+				| K_CONTINUE
+				| K_CURRENT
+				| K_CURRENT_USER
+				| K_CURSOR
+				| K_DATATYPE
+				| K_DEBUG
+				| K_DEFAULT
+				| K_DEFINER
+				| K_DETAIL
+				| K_DETERMINISTIC
+				| K_DIAGNOSTICS
+				| K_DO
+				| K_DUMP
+				| K_ELSIF
+				| K_ERRCODE
+				| K_ERROR
+				| K_EXCEPTION
+				| K_EXIT
+				| K_FETCH
+				| K_FIRST
+				| K_FORWARD
+				| K_GET
+				| K_HINT
+				| K_IMPORT
+				| K_INFO
+				| K_INSERT
+				| K_IS
+				| K_LAST
+				| K_LOG
+				| K_MESSAGE
+				| K_MESSAGE_TEXT
+				| K_MOVE
+				| K_NEXT
+				| K_NO
+				| K_NOCOPY
+				| K_NOTICE
+				| K_OPEN
+				| K_OPTION
+				| K_OUT
+				| K_PARALLEL_ENABLE
+				| K_PERFORM
+				| K_PG_CONTEXT
+				| K_PG_DATATYPE_NAME
+				| K_PG_EXCEPTION_CONTEXT
+				| K_PG_EXCEPTION_DETAIL
+				| K_PG_EXCEPTION_HINT
+				| K_PIPELINED
+				| K_PRINT_STRICT_PARAMS
+				| K_PRIOR
+				| K_QUERY
+				| K_RAISE
+				| K_RELATIVE
+				| K_RELIES_ON
+				| K_RESULT_CACHE
+				| K_RETURN
+				| K_RETURNED_SQLSTATE
+				| K_REVERSE
+				| K_ROLLBACK
+				| K_ROW_COUNT
+				| K_ROWTYPE
+				| K_SCHEMA
+				| K_SCHEMA_NAME
+				| K_SCROLL
+				| K_SLICE
+				| K_SQLSTATE
+				| K_STACKED
+				| K_TABLE
+				| K_TABLE_NAME
+				| K_USE_COLUMN
+				| K_USE_VARIABLE
+				| K_USING_NLS_COMP
+				| K_VARIABLE_CONFLICT
+				| K_WARNING
+				;
+/* End - SRS-PLSQL-SUBPROC */
+
 
 %%
 
@@ -2913,6 +3552,12 @@ read_datatype(int tok)
 		/* Possible followers for datatype in a cursor_arg list */
 		if ((tok == ',' || tok == ')') && parenlevel == 0)
 			break;
+		/* Begin - SRS-PLSQL-SUBPROC */
+		if ((tok == K_AS || tok == K_IS || tok == K_RESULT_CACHE ||
+			tok == K_PARALLEL_ENABLE || tok == K_DETERMINISTIC ||
+			tok == K_PIPELINED) && parenlevel == 0)
+			break;
+		/* End - SRS-PLSQL-SUBPROC */
 		if (tok == '(')
 			parenlevel++;
 		else if (tok == ')')

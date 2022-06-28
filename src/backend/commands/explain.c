@@ -40,6 +40,7 @@
 #include "utils/typcache.h"
 #include "utils/xml.h"
 #include "utils/ora_compatible.h"
+#include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
 
 /* Hook for plugins to get control in ExplainOneQuery() */
@@ -3781,10 +3782,17 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
 						FuncExpr   *funcexpr = (FuncExpr *) rtfunc->funcexpr;
 						Oid			funcid = funcexpr->funcid;
 
-						objectname = get_func_name(funcid);
-						if (es->verbose)
-							namespace =
-								get_namespace_name(get_func_namespace(funcid));
+						/* Begin - SRS-PLSQL-SUBPROC */
+						if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+						{
+							objectname = get_func_name(funcid);
+							if (es->verbose)
+								namespace =
+									get_namespace_name(get_func_namespace(funcid));
+						}
+						else
+							objectname = get_internal_function_name(funcexpr);
+						/* End - SRS-PLSQL-SUBPROC */
 					}
 				}
 				objecttag = "Function Name";

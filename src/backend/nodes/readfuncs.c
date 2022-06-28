@@ -139,6 +139,14 @@
 	local_node->fldname = -1	/* set field to "unknown" */
 #endif
 
+/* Begin - SRS-PLSQL-SUBPROC */
+#define READ_VOID_FIELD(fldname) \
+	token = pg_strtok(&length);		/* skip :fldname */ \
+	token = pg_strtok(&length);		/* get field value */ \
+	local_node->fldname = NULL		/* assign to null */
+/* End - SRS-PLSQL-SUBPROC */
+
+
 /* Read a Node field */
 #define READ_NODE_FIELD(fldname) \
 	token = pg_strtok(&length);		/* skip :fldname */ \
@@ -778,6 +786,10 @@ _readFuncExpr(void)
 	READ_OID_FIELD(funccollid);
 	READ_OID_FIELD(inputcollid);
 	READ_NODE_FIELD(args);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	READ_CHAR_FIELD(function_from);
+	READ_VOID_FIELD(parent_func);
+	/* End - SRS-PLSQL-SUBPROC */
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
