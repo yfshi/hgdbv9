@@ -59,10 +59,13 @@
 #include "nodes/nodeFuncs.h"
 #include "oracle_parser/ora_gramparse.h"
 #include "parser/parser.h"
+#include "parser/scansup.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "storage/lmgr.h"
 #include "utils/date.h"
 #include "utils/datetime.h"
+#include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/numeric.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/xml.h"
 
 
@@ -427,6 +430,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				TriggerTransitions TriggerReferencing
 				vacuum_relation_list opt_vacuum_relation_list
 				drop_option_list
+				numeric_opt_type_modifiers /* ReqID:SRS-GKC-DATATYPE_001 */
 
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
@@ -462,7 +466,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 %type <list>	extract_list overlay_list position_list
 %type <list>	substr_list trim_list
-%type <list>	opt_interval interval_second
+%type <list>	opt_interval opt_interval_type /* ReqID:SRS-GKC-DATATYPE_001 */
 %type <str>		unicode_normal_form
 
 %type <boolean> opt_instead
@@ -540,6 +544,9 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				CharacterWithLength CharacterWithoutLength
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
+				OracleCharacter /* ReqID:SRS-GKC-DATATYPE_001 */
+				Datetime /* ReqID:SRS-GKC-DATATYPE_001 */
+				LongTypename	/*BUGID:0000649*/	
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_timezone opt_no_inherit
@@ -640,8 +647,8 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
 
-	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT
-	BOOLEAN_P BOTH BREADTH BY
+	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BINARY_DOUBLE /* ReqID:SRS-GKC-DATATYPE_001 */
+	BINARY_FLOAT /* ReqID:SRS-GKC-DATATYPE_001 */ BIT BOOLEAN_P BOTH BREADTH BY BYTE_P /* ReqID:SRS-GKC-DATATYPE_001 */
 
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
@@ -652,7 +659,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
-	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
+	DATA_P DATABASE DATE_P /* ReqID:SRS-GKC-DATATYPE_001 */ DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DECODE /* ReqID:SRS-GKC-DATATYPE_001 */ DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP
@@ -686,7 +693,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
-	NULLS_P NUMERIC
+	NULLS_P NUMBER_P /* ReqID:SRS-GKC-DATATYPE_001 */ NUMERIC NVL NVL2 /* ReqID:SRS-GKC-DATATYPE_001 */
 
 	OBJECT_P OF OFF OFFSET OIDS OLD ON ONLY OPERATOR OPTION OPTIONS OR
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
@@ -715,9 +722,9 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
-	UNLISTEN UNLOGGED UNTIL UPDATE USER USING
+	UNLISTEN UNLOGGED UNTIL UPDATE USER USERENV/* BUG:0000830 */ USING
 
-	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARIADIC VARYING
+	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
 
 	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
@@ -728,6 +735,11 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	YEAR_P YES_P
 
 	ZONE
+
+/*Begin - BUGID:0000649*/
+%token <keyword> LONG_P RAW_P
+%token LONG_RAW
+/*End - BUGID:0000649*/
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -12816,19 +12828,71 @@ SimpleTypename:
 			| Numeric								{ $$ = $1; }
 			| Bit									{ $$ = $1; }
 			| Character								{ $$ = $1; }
-			| ConstDatetime							{ $$ = $1; }
-			| ConstInterval opt_interval
+			| OracleCharacter						{ $$ = $1; }	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| Datetime								{ $$ = $1; }	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| LongTypename 							{ $$ = $1; }	/* BUGID:0000649 */
+			| ConstInterval opt_interval_type	/* ReqID:SRS-GKC-DATATYPE_001 */
 				{
-					$$ = $1;
-					$$->typmods = $2;
-				}
-			| ConstInterval '(' Iconst ')'
-				{
-					$$ = $1;
-					$$->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
-											 makeIntConst($3, @3));
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						List *typmods = $2;
+						A_Const *n;
+					
+						if (typmods == NULL)
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("missing or invalid datetime field.")));
+					
+						//n = lfirst(typmods->elements[0]);
+						n = linitial(typmods);
+					
+						/*
+						 * Compatible oracle 
+						 * Only 'interval year to month' and 'interval day to second'  belong interval type and 
+						 * can be used. For example used in 'CREATE TABLE' statement.  All other interval form
+						 * like 'interval hour to second' can not be used in 'CREATE TABLE' statement .
+						 */
+						if (n->val.val.ival == (INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH)))
+						{
+							$$ = OracleSystemTypeName("yminterval");
+							$$->typmods = $2;
+							$$->location = @1;
+						}
+						else if (n->val.val.ival == (INTERVAL_MASK(DAY) | 
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE) |
+													 INTERVAL_MASK(SECOND)))
+						{
+							$$ = OracleSystemTypeName("dsinterval");
+							$$->typmods = $2;
+							$$->location = @1;	
+						}
+						else
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("unsupported interval type.")));	
+						}
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = $1;
+						$$->typmods = $2;
+					}
 				}
 		;
+
+/* Begin - BUGID:0000649 */
+LongTypename:
+		LONG_RAW
+			{
+				$$ = OracleSystemTypeName("long_raw");
+				$$->location = @1;
+			}
+		;
+/* End - BUGID:0000649 */
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
  * types such as CHAR() and BIT() to an unspecified length.
@@ -12858,7 +12922,13 @@ ConstTypename:
 GenericType:
 			type_function_name opt_type_modifiers
 				{
-					$$ = makeTypeName($1);
+					/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db &&
+						strcmp($1, "timestamptz") == 0)
+						$$ = makeTypeName("oratimestamptz");
+					else
+						$$ = makeTypeName($1);
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 					$$->typmods = $2;
 					$$->location = @1;
 				}
@@ -12873,6 +12943,34 @@ GenericType:
 opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
 					| /* EMPTY */					{ $$ = NIL; }
 		;
+
+/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/* support the precision of number is '*' */
+numeric_opt_type_modifiers: opt_type_modifiers				{ $$ = $1; }
+					| '(' '*' ',' expr_list ')'
+						{
+							$$ = NIL;
+						}
+					| '(' expr_list ',' '*' ')'
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									 errmsg("NUMERIC scale specifier is out of range"),
+									 parser_errposition(@4)));
+						}
+					| '(' '*' ',' '*' ')'
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									 errmsg("NUMERIC scale specifier is out of range"),
+									 parser_errposition(@4)));
+						}
+					| '(' '*' ')'
+						{
+							$$ = NIL;
+						}
+		;
+/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
 
 /*
  * SQL numeric data types
@@ -12912,19 +13010,37 @@ Numeric:	INT_P
 					$$ = SystemTypeName("float8");
 					$$->location = @1;
 				}
-			| DECIMAL_P opt_type_modifiers
+			| DECIMAL_P numeric_opt_type_modifiers
 				{
 					$$ = SystemTypeName("numeric");
 					$$->typmods = $2;
 					$$->location = @1;
 				}
-			| DEC opt_type_modifiers
+			| DEC numeric_opt_type_modifiers
 				{
 					$$ = SystemTypeName("numeric");
 					$$->typmods = $2;
 					$$->location = @1;
 				}
-			| NUMERIC opt_type_modifiers
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| NUMBER_P numeric_opt_type_modifiers
+				{
+					$$ = OracleSystemTypeName("number");
+					$$->typmods = $2;
+					$$->location = @1;
+				}
+			| BINARY_FLOAT
+				{
+					$$ = OracleSystemTypeName("binary_float");
+					$$->location = @1;
+				}
+			| BINARY_DOUBLE
+				{
+					$$ = OracleSystemTypeName("binary_double");
+					$$->location = @1;
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| NUMERIC numeric_opt_type_modifiers
 				{
 					$$ = SystemTypeName("numeric");
 					$$->typmods = $2;
@@ -13054,19 +13170,76 @@ ConstCharacter:  CharacterWithLength
 
 CharacterWithLength:  character '(' Iconst ')'
 				{
-					$$ = SystemTypeName($1);
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						if (strcmp($1, "bpchar"))
+						{
+							if (!strcmp(nls_length_semantics, "char"))
+								$1 = "oravarcharchar";
+							else
+								$1 = "oravarcharbyte";
+						}
+						else 
+						{
+							if (!strcmp(nls_length_semantics, "char"))
+								$1 = "oracharchar";
+							else
+								$1 = "oracharbyte";
+						}
+					
+						$$ = OracleSystemTypeName($1);
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = SystemTypeName($1);
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 				}
 		;
 
 CharacterWithoutLength:	 character
 				{
-					$$ = SystemTypeName($1);
-					/* char defaults to char(1), varchar to no limit */
-					if (strcmp($1, "bpchar") == 0)
-						$$->typmods = list_make1(makeIntConst(1, -1));
-					$$->location = @1;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						if (!strcmp($1, "bpchar"))
+						{
+							if (!strcmp(nls_length_semantics, "char"))
+								$1 = "oracharchar";
+							else
+								$1 = "oracharbyte";
+						}
+						else
+						{
+							if (!strcmp(nls_length_semantics, "char"))
+								$1 = "oravarcharchar";
+							else
+								$1 = "oravarcharbyte";
+						}
+						
+						$$ = OracleSystemTypeName($1);
+						
+						if ((strcmp($1, "oracharchar") == 0) || (strcmp($1, "oracharbyte") == 0))
+							$$->typmods = list_make1(makeIntConst(1, -1));
+						else
+							$$->typmods = list_make1(makeIntConst(4000, -1));
+						
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = SystemTypeName($1);
+						/* char defaults to char(1), varchar to no limit */
+						if (strcmp($1, "bpchar") == 0)
+							$$->typmods = list_make1(makeIntConst(1, -1));
+						$$->location = @1;
+					}
 				}
 		;
 
@@ -13076,6 +13249,8 @@ character:	CHARACTER opt_varying
 										{ $$ = $2 ? "varchar": "bpchar"; }
 			| VARCHAR
 										{ $$ = "varchar"; }
+			| VARCHAR2
+										{ $$ = "varchar"; }	/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NATIONAL CHARACTER opt_varying
 										{ $$ = $3 ? "varchar": "bpchar"; }
 			| NATIONAL CHAR_P opt_varying
@@ -13089,26 +13264,103 @@ opt_varying:
 			| /*EMPTY*/								{ $$ = false; }
 		;
 
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+OracleCharacter: character '(' Iconst CHAR_P ')'
+					{
+						if (strcmp($1, "bpchar"))
+							$1 = "oravarcharchar";
+						else 
+							$1 = "oracharchar";
+
+						$$ = OracleSystemTypeName($1);
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+				| character '(' Iconst BYTE_P ')'
+					{	
+						if (strcmp($1, "bpchar"))
+							$1 = "oravarcharbyte";
+						else
+							$1 = "oracharbyte";	
+
+						$$ = OracleSystemTypeName($1);
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+
+		;
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 /*
  * SQL date/time types
  */
-ConstDatetime:
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+Datetime:
 			TIMESTAMP '(' Iconst ')' opt_timezone
 				{
-					if ($5)
-						$$ = SystemTypeName("timestamptz");
+					if (ORA_PARSER == compatible_db)
+					{
+						if ($5)
+							$$ = OracleSystemTypeName("oratimestamptz");
+						else
+							$$ = OracleSystemTypeName("oratimestamp");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 					else
-						$$ = SystemTypeName("timestamp");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+					{
+						if ($5)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 				}
 			| TIMESTAMP opt_timezone
 				{
-					if ($2)
-						$$ = SystemTypeName("timestamptz");
+					if (ORA_PARSER == compatible_db)
+					{
+						if ($2)
+							$$ = OracleSystemTypeName("oratimestamptz");
+						else
+							$$ = OracleSystemTypeName("oratimestamp");
+						$$->typmods = list_make1(makeIntConst(6, -1));
+						$$->location = @1;	
+					}
 					else
-						$$ = SystemTypeName("timestamp");
+					{
+						if ($2)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->location = @1;
+					}
+				}
+			| TIMESTAMP WITH_LA LOCAL TIME ZONE
+				{
+					$$ = OracleSystemTypeName("oratimestampltz");
+					$$->typmods = list_make1(makeIntConst(6, -1));
+					$$->location = @1;	
+				}
+			| TIMESTAMP '(' Iconst ')' WITH_LA LOCAL TIME ZONE
+				{
+					$$ = OracleSystemTypeName("oratimestampltz");
+					$$->typmods = list_make1(makeIntConst($3, @3));
 					$$->location = @1;
+				}
+			| DATE_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = OracleSystemTypeName("oradate");
+						$$->location = @1;
+					}
+					else
+					{
+						$$ = SystemTypeName("date");
+						$$->location = @1;
+					}
 				}
 			| TIME '(' Iconst ')' opt_timezone
 				{
@@ -13125,6 +13377,36 @@ ConstDatetime:
 						$$ = SystemTypeName("timetz");
 					else
 						$$ = SystemTypeName("time");
+					$$->location = @1;
+				}
+		;
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+ConstDatetime:
+			TIMESTAMP
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = OracleSystemTypeName("oratimestamp");
+						$$->typmods = list_make1(makeIntConst(6, -1));
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				}
+			| DATE_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = OracleSystemTypeName("oradate");
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				}
+			| TIME
+				{
+					$$ = SystemTypeName("time");
 					$$->location = @1;
 				}
 		;
@@ -13145,74 +13427,729 @@ opt_timezone:
 
 opt_interval:
 			YEAR_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR), @1)); }
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR), @1),
+										makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR), @1)); 
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| YEAR_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+	 					ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| MONTH_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(MONTH), @1),
+										makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); 
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| MONTH_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(MONTH), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| DAY_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(DAY), @1)); }
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY), @1),
+										makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY), @1));
+					} 
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| HOUR_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR), @1)); }
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR), @1),
+										makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR), @1)); 
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}	
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| MINUTE_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE), @1)); }
-			| interval_second
-				{ $$ = $1; }
-			| YEAR_P TO MONTH_P
 				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
-												 INTERVAL_MASK(MONTH), @1));
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE), @1),
+										makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE), @1));
+					} 
 				}
-			| DAY_P TO HOUR_P
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| MINUTE_P '(' Iconst ')'
 				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR), @1));
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}		
 				}
-			| DAY_P TO MINUTE_P
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| SECOND_P
 				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE), @1));
-				}
-			| DAY_P TO interval_second
-				{
-					$$ = $3;
-					linitial($$) = makeIntConst(INTERVAL_MASK(DAY) |
-												INTERVAL_MASK(HOUR) |
-												INTERVAL_MASK(MINUTE) |
-												INTERVAL_MASK(SECOND), @1);
-				}
-			| HOUR_P TO MINUTE_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE), @1));
-				}
-			| HOUR_P TO interval_second
-				{
-					$$ = $3;
-					linitial($$) = makeIntConst(INTERVAL_MASK(HOUR) |
-												INTERVAL_MASK(MINUTE) |
-												INTERVAL_MASK(SECOND), @1);
-				}
-			| MINUTE_P TO interval_second
-				{
-					$$ = $3;
-					linitial($$) = makeIntConst(INTERVAL_MASK(MINUTE) |
-												INTERVAL_MASK(SECOND), @1);
-				}
-			| /*EMPTY*/
-				{ $$ = NIL; }
-		;
-
-interval_second:
-			SECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @1));
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(SECOND), @1),
+										makeIntConst(6, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @1));
+					}
 				}
 			| SECOND_P '(' Iconst ')'
 				{
 					$$ = list_make2(makeIntConst(INTERVAL_MASK(SECOND), @1),
 									makeIntConst($3, @3));
 				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| SECOND_P '(' Iconst ',' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst($5, @5));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| YEAR_P TO MONTH_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) |
+													 INTERVAL_MASK(MONTH), @1), 
+													 makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
+													 INTERVAL_MASK(MONTH), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| YEAR_P '(' Iconst ')' TO MONTH_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P TO HOUR_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1), 
+													 makeIntConst(2, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{					
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P '(' Iconst ')' TO HOUR_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1), 
+													 makeIntConst($3, @3));
+					}
+					else
+					{					
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P TO MINUTE_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst(2, -1));	
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P '(' Iconst ')' TO MINUTE_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst($3, @3));	
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}	
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P TO SECOND_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst(6, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P '(' Iconst ')' TO SECOND_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst(6, -1));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P TO SECOND_P '(' Iconst ')'
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst($5, @5));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($5, @5));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst($8, @8));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P TO MINUTE_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst(2, -1));	
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P '(' Iconst ')' TO MINUTE_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst($3, @3));	
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P TO SECOND_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst(6, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P '(' Iconst ')' TO SECOND_P
+				{
+					if (ORA_PARSER == compatible_db)
+				{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst(6, -1));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P TO SECOND_P '(' Iconst ')'
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst($5, @5));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1), 
+										makeIntConst($5, @5));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| HOUR_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst($8, @8));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| MINUTE_P TO SECOND_P
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst(6, -1));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| MINUTE_P '(' Iconst ')' TO SECOND_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst(6, -1));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			| MINUTE_P TO SECOND_P '(' Iconst ')'
+				{
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst($5, @5));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($5, @5));
+					}
+				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| MINUTE_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst($8, @8));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		;
+
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+opt_interval_type:
+			YEAR_P TO MONTH_P
+				{
+					
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) |
+													 INTERVAL_MASK(MONTH), @1), 
+													 makeIntConst(2, -1));
+					}
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
+													 INTERVAL_MASK(MONTH), @1));
+					}
+				}
+			| YEAR_P '(' Iconst ')' TO MONTH_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH), @1),
+										makeIntConst($3, @3));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			| DAY_P TO HOUR_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1), 
+													 makeIntConst(2, -1));
+					}
+					else
+					{					
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1));
+					}
+				}
+			| DAY_P '(' Iconst ')' TO HOUR_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR), @1), 
+													 makeIntConst($3, @3));
+					}
+					else
+					{					
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			| DAY_P TO MINUTE_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst(2, -1));	
+					}
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1));
+					}
+				}
+			| DAY_P '(' Iconst ')' TO MINUTE_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													 INTERVAL_MASK(HOUR) |
+													 INTERVAL_MASK(MINUTE), @1), 
+													 makeIntConst($3, @3));	
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}	
+				}
+			| DAY_P TO SECOND_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst(6, -1));
+					}
+					else
+					{
+						$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+					}
+				}
+			| DAY_P '(' Iconst ')' TO SECOND_P
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst(6, -1));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			| DAY_P TO SECOND_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) | 
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst(2, -1), 
+										makeIntConst($5, @5));
+					}
+					else
+					{
+						$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($5, @5));
+					}
+				}
+			| DAY_P '(' Iconst ')' TO SECOND_P '(' Iconst ')'
+				{
+					if (ORA_PARSER == compatible_db)
+					{
+						$$ = list_make3(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1),
+										makeIntConst($3, @3), 
+										makeIntConst($8, @8));
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("This is used for compatible oracle and Postgresql not support.")));
+					}
+				}
+			| /* empty */
+				{ $$ = NIL; }
+		;
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 
 /*****************************************************************************
@@ -13256,10 +14193,18 @@ a_expr:		c_expr									{ $$ = $1; }
 				}
 			| a_expr AT TIME ZONE a_expr			%prec AT
 				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("timezone"),
-											   list_make2($5, $1),
-											   COERCE_SQL_SYNTAX,
-											   @2);
+					/* Begin - BUGID:0000986 */
+					if (compatible_db == ORA_PARSER)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("timezone"),
+												   list_make2($5, $1),
+												   COERCE_SQL_SYNTAX,
+												   @2);
+					else
+					/* End - BUGID:0000986 */
+						$$ = (Node *) makeFuncCall(SystemFuncName("timezone"),
+												   list_make2($5, $1),
+												   COERCE_SQL_SYNTAX,
+												   @2);
 				}
 		/*
 		 * These operators must be called out explicitly in order to make use
@@ -14032,7 +14977,12 @@ func_expr_common_subexpr:
 				}
 			| CURRENT_DATE
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_date"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_DATE, -1, @1);
 				}
 			| CURRENT_TIME
 				{
@@ -14044,11 +14994,21 @@ func_expr_common_subexpr:
 				}
 			| CURRENT_TIMESTAMP
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_timestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP, -1, @1);
 				}
 			| CURRENT_TIMESTAMP '(' Iconst ')'
 				{
-					$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP_N, $3, @1);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("current_timestamp"), list_make1(makeIntConst($3, @3)), COERCE_EXPLICIT_CALL, @1);
+					else
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+						$$ = makeSQLValueFunction(SVFOP_CURRENT_TIMESTAMP_N, $3, @1);
 				}
 			| LOCALTIME
 				{
@@ -14060,11 +15020,21 @@ func_expr_common_subexpr:
 				}
 			| LOCALTIMESTAMP
 				{
-					$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP, -1, @1);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("localtimestamp"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+						$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP, -1, @1);
 				}
 			| LOCALTIMESTAMP '(' Iconst ')'
 				{
-					$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP_N, $3, @1);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("localtimestamp"), list_make1(makeIntConst($3, @3)), COERCE_EXPLICIT_CALL, @1);
+					else
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+						$$ = makeSQLValueFunction(SVFOP_LOCALTIMESTAMP_N, $3, @1);
 				}
 			| CURRENT_ROLE
 				{
@@ -14187,31 +15157,39 @@ func_expr_common_subexpr:
 					/* various trim expressions are defined in SQL
 					 * - thomas 1997-07-19
 					 */
-					$$ = (Node *) makeFuncCall(SystemFuncName("btrim"),
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					$$ = (Node *) makeFuncCall(OracleSystemFuncName("trim"),
 											   $4,
 											   COERCE_SQL_SYNTAX,
 											   @1);
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				}
 			| TRIM '(' LEADING trim_list ')'
 				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("ltrim"),
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					$$ = (Node *) makeFuncCall(OracleSystemFuncName("ltrim"),
 											   $4,
 											   COERCE_SQL_SYNTAX,
 											   @1);
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				}
 			| TRIM '(' TRAILING trim_list ')'
 				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("rtrim"),
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					$$ = (Node *) makeFuncCall(OracleSystemFuncName("rtrim"),
 											   $4,
 											   COERCE_SQL_SYNTAX,
 											   @1);
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				}
 			| TRIM '(' trim_list ')'
 				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("btrim"),
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					$$ = (Node *) makeFuncCall(OracleSystemFuncName("trim"),
 											   $3,
 											   COERCE_SQL_SYNTAX,
 											   @1);
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				}
 			| NULLIF '(' a_expr ',' a_expr ')'
 				{
@@ -14304,6 +15282,32 @@ func_expr_common_subexpr:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - BUGID:0000830 */
+			| USERENV '(' Sconst ')'
+				{
+					if (strcmp(downcase_identifier($3, strlen($3), true, true), "client_info") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_client_info"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "entryid") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_entryid"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "terminal") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_terminal"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "isdba") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_isdba"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "lang") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_lang"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "language") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_language"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "sessionid") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_sessionid"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else if (strcmp(downcase_identifier($3, strlen($3), true, true), "sid") == 0)
+						$$ = (Node *) makeFuncCall(OracleSystemFuncName("get_sid"), NIL, COERCE_EXPLICIT_CALL, @1);
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("invalid USERENV parameter.")));
+				}
+			/* End - BUGID:0000830 */
+
 		;
 
 /*
@@ -14916,8 +15920,137 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 					c->args = $3;
 					c->defresult = (Expr *) $4;
 					c->location = @1;
+					/* Begin - BUGID:0000543 */
+					c->is_decode = false;
+					/* End - BUGID:0000543 */
 					$$ = (Node *)c;
 				}
+			/* Begin - ReqID:SRS-GKC-BUILTIN_FUNCTIONS-001 */
+			| DECODE '(' expr_list ')'
+				{
+					/* Begin - BUGID:0000543 */
+					List *pars_list = $3;
+					int len1 = list_length(pars_list);
+					
+					/* if len < 3, return binary string function with the same name decode */
+					if(len1 < 3)
+					{
+						FuncCall *n =NULL;
+						List *func_name =NIL;
+			
+						func_name = list_make1(makeString(pstrdup($1)));
+						n = makeFuncCall(func_name, pars_list, COERCE_EXPLICIT_CALL, @1);
+						$$ = (Node *) n;
+					}
+					else
+					{
+						CaseExpr *c = makeNode(CaseExpr);
+						int len2 = (len1 - 1)/2;
+						int i = 0;
+						List *w_expr = NIL;
+						ListCell *cell = NULL;
+						ResTarget *res = NULL;
+						
+						c->casetype = InvalidOid; /* not analyzed yet */
+						c->arg = (Expr *) lfirst(list_head(pars_list));
+			
+						cell = lnext(pars_list, list_head(pars_list));
+						for (; i < len2; i++)
+						{
+							CaseWhen *w = makeNode(CaseWhen);
+			
+							w->expr = (Expr *) lfirst(cell);
+							w->orig_expr = copyObject(w->expr);
+							cell = lnext(pars_list, cell);
+							w->result = (Expr *) lfirst(cell);
+							cell = lnext(pars_list, cell);
+							w->location = @3;
+							w_expr = lappend(w_expr, w);
+						}
+						c->args = w_expr;
+			
+						if (len1 % 2 == 0)
+							c->defresult = (Expr *) lfirst(cell);
+						else
+							c->defresult = NULL;
+						c->location = @1;
+						c->is_decode = true;
+			
+						res = makeNode(ResTarget);
+						res->name = pstrdup($1);
+						res->indirection = NIL;
+						res->val = (Node *) c;
+						res->location = @1;
+						$$ = (Node *) res;
+					}
+					/* End - BUGID:0000543 */
+				}
+			| NVL  '(' a_expr ',' a_expr ')'
+				{
+					ResTarget *res = makeNode(ResTarget);
+					List *a_expr = NIL;
+					List *expr_list = NIL;
+					CoalesceExpr *n = NULL;
+			
+					res->name = pstrdup($1);
+					res->indirection = NIL;
+			
+					a_expr = list_make1($3);
+					expr_list = lappend(a_expr,$5);
+					n = makeNode(CoalesceExpr);
+					n->args = expr_list;
+					n->location = @1;
+					res->val = (Node *) n;
+					res->location = @1;
+			
+					$$ = (Node *) res;
+				}
+			| NVL2 '(' a_expr ',' a_expr ',' a_expr ')'
+				{
+					List *args = NIL;
+					NullTest *n_expr = NULL;
+					CaseExpr *c = NULL;
+					CaseWhen *w = NULL;
+			
+					ResTarget *res = makeNode(ResTarget);
+					res->name = pstrdup($1);
+					res->indirection = NIL;
+			
+					if($3->type == T_A_Const)
+					{
+						if(((A_Const *) $3)->val.type != T_Null)
+						{
+							res->val = $5;
+							res->location = @5;
+						}
+						else
+						{
+							res->val = $7;
+							res->location = @7;
+						}
+					}
+					else
+					{
+						n_expr = makeNode(NullTest);
+						n_expr->arg = (Expr *) $3;
+						n_expr->nulltesttype = IS_NULL;
+						n_expr->location = @3;
+			
+						c = makeNode(CaseExpr);
+						w = makeNode(CaseWhen);
+						w->expr = (Expr *) n_expr;
+						w->result = (Expr *) $7;
+						args = lappend(args, w);
+						c->args = args;
+						c->defresult = (Expr *) $5;
+			
+						res->val = (Node *) c;
+						res->location = @1;
+					}
+					$$ = (Node *) res;
+				}
+			/* End - ReqID:SRS-GKC-BUILTIN_FUNCTIONS-001 */
+
 		;
 
 when_clause_list:
@@ -15036,11 +16169,20 @@ target_el:	a_expr AS ColLabel
 				}
 			| a_expr
 				{
-					$$ = makeNode(ResTarget);
-					$$->name = NULL;
-					$$->indirection = NIL;
-					$$->val = (Node *)$1;
-					$$->location = @1;
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if(nodeTag($1) == T_ResTarget)
+					{
+						$$ = (ResTarget *) $1;
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						$$ = makeNode(ResTarget);
+						$$->name = NULL;
+						$$->indirection = NIL;
+						$$->val = (Node *)$1;
+						$$->location = @1;
+					}
 				}
 			| '*'
 				{
@@ -15207,20 +16349,72 @@ AexprConst: Iconst
 				}
 			| ConstTypename Sconst
 				{
-					$$ = makeStringConstCast($2, @2, $1);
+					/* ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+						$$ = makeStringConstCast($2, -2, $1);
+					else
+						$$ = makeStringConstCast($2, @2, $1);
 				}
 			| ConstInterval Sconst opt_interval
 				{
-					TypeName *t = $1;
-					t->typmods = $3;
-					$$ = makeStringConstCast($2, @2, t);
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						TypeName *t;
+						List *typmods = $3;
+						A_Const *n;
+
+						if (typmods == NULL)
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("missing or invalid datetime field.")));
+
+						//n = lfirst(typmods->head);
+						n = linitial(typmods);
+						if (n->val.val.ival == INTERVAL_MASK(YEAR) ||
+							n->val.val.ival == INTERVAL_MASK(MONTH) ||
+							n->val.val.ival == (INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH)))
+						{
+							t = OracleSystemTypeName("yminterval");
+							t->typmods = $3;
+							t->location = @1;
+
+							$$ = makeStringConstCast($2, @2, t);
+						}
+						else
+						{
+							t = OracleSystemTypeName("dsinterval");
+							t->typmods = $3;
+							t->location = @1;
+
+							$$ = makeStringConstCast($2, @2, t);	
+						}
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						TypeName *t = $1;
+						t->typmods = $3;
+						$$ = makeStringConstCast($2, @2, t);
+					}
 				}
 			| ConstInterval '(' Iconst ')' Sconst
 				{
-					TypeName *t = $1;
-					t->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
+					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+					if (ORA_PARSER == compatible_db)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("missing or invalid datetime field.")));
+					}
+					/* End - ReqID:SRS-GKC-DATATYPE_001 */
+					else
+					{
+						TypeName *t = $1;
+						t->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
 											makeIntConst($3, @3));
-					$$ = makeStringConstCast($5, @5, t);
+						$$ = makeStringConstCast($5, @5, t);
+					}
 				}
 			| TRUE_P
 				{
@@ -15609,6 +16803,7 @@ unreserved_keyword:
 			| LOCK_P
 			| LOCKED
 			| LOGGED
+			| LONG_P	/*BUGID:0000649*/
 			| MAPPING
 			| MATCH
 			| MATERIALIZED
@@ -15668,6 +16863,7 @@ unreserved_keyword:
 			| PUBLICATION
 			| QUOTE
 			| RANGE
+			| RAW_P		/*BUGID:0000649*/
 			| READ
 			| REASSIGN
 			| RECHECK
@@ -15788,13 +16984,18 @@ unreserved_keyword:
 col_name_keyword:
 			  BETWEEN
 			| BIGINT
+			| BINARY_DOUBLE	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| BINARY_FLOAT	/* ReqID:SRS-GKC-DATATYPE_001 */
 			| BIT
 			| BOOLEAN_P
+			| BYTE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| CHAR_P
 			| CHARACTER
 			| COALESCE
+			| DATE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| DEC
 			| DECIMAL_P
+			| DECODE		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| EXISTS
 			| EXTRACT
 			| FLOAT_P
@@ -15810,7 +17011,10 @@ col_name_keyword:
 			| NONE
 			| NORMALIZE
 			| NULLIF
+			| NUMBER_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NUMERIC
+			| NVL			/* ReqID:SRS-GKC-DATATYPE_001 */
+			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OUT_P
 			| OVERLAY
 			| POSITION
@@ -15824,8 +17028,10 @@ col_name_keyword:
 			| TIMESTAMP
 			| TREAT
 			| TRIM
+			| USERENV	/* BUG:0000830 */
 			| VALUES
 			| VARCHAR
+			| VARCHAR2		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| XMLATTRIBUTES
 			| XMLCONCAT
 			| XMLELEMENT
@@ -16003,11 +17209,14 @@ bare_label_keyword:
 			| BETWEEN
 			| BIGINT
 			| BINARY
+			| BINARY_DOUBLE	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| BINARY_FLOAT	/* ReqID:SRS-GKC-DATATYPE_001 */
 			| BIT
 			| BOOLEAN_P
 			| BOTH
 			| BREADTH
 			| BY
+			| BYTE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| CACHE
 			| CALL
 			| CALLED
@@ -16059,10 +17268,12 @@ bare_label_keyword:
 			| CYCLE
 			| DATA_P
 			| DATABASE
+			| DATE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| DEALLOCATE
 			| DEC
 			| DECIMAL_P
 			| DECLARE
+			| DECODE		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| DEFAULT
 			| DEFAULTS
 			| DEFERRABLE
@@ -16176,6 +17387,7 @@ bare_label_keyword:
 			| LOCK_P
 			| LOCKED
 			| LOGGED
+			| LONG_P	/*BUGID:0000649*/
 			| MAPPING
 			| MATCH
 			| MATERIALIZED
@@ -16206,7 +17418,10 @@ bare_label_keyword:
 			| NULL_P
 			| NULLIF
 			| NULLS_P
+			| NUMBER_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NUMERIC
+			| NVL			/* ReqID:SRS-GKC-DATATYPE_001 */
+			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OBJECT_P
 			| OF
 			| OFF
@@ -16249,6 +17464,7 @@ bare_label_keyword:
 			| PUBLICATION
 			| QUOTE
 			| RANGE
+			| RAW_P		/*BUGID:0000649*/
 			| READ
 			| REAL
 			| REASSIGN
@@ -16356,6 +17572,7 @@ bare_label_keyword:
 			| UNTIL
 			| UPDATE
 			| USER
+			| USERENV	/* BUG:0000830 */
 			| USING
 			| VACUUM
 			| VALID
@@ -16364,6 +17581,7 @@ bare_label_keyword:
 			| VALUE_P
 			| VALUES
 			| VARCHAR
+			| VARCHAR2		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| VARIADIC
 			| VERBOSE
 			| VERSION_P
@@ -16847,6 +18065,14 @@ SystemFuncName(char *name)
 	return list_make2(makeString("pg_catalog"), makeString(name));
 }
 
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+List *
+OracleSystemFuncName(char *name)
+{
+	return list_make2(makeString("sys"), makeString(name));
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 /* SystemTypeName()
  * Build a properly-qualified reference to a built-in type.
  *
@@ -16859,6 +18085,19 @@ SystemTypeName(char *name)
 	return makeTypeNameFromNameList(list_make2(makeString("pg_catalog"),
 											   makeString(name)));
 }
+
+/* OracleSystemTypeName()
+ *  Build a properly-qualified reference to a built-in type with oracle schema.
+ *
+ */
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+TypeName *
+OracleSystemTypeName(char *name)
+{
+	return makeTypeNameFromNameList(list_make2(makeString("sys"),
+											   makeString(name)));
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /* doNegate()
  * Handle negation of a numeric constant.

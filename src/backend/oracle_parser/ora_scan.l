@@ -600,6 +600,14 @@ other			.
 											   yyextra->literallen,
 											   false);
 							yylval->str = litbufdup(yyscanner);
+							/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+							if (strcmp(yylval->str, "") == 0 &&
+								ORA_PARSER == compatible_db &&
+								enable_emptystring_to_NULL)
+							{
+								return NULL_P;
+							}
+							/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 							return SCONST;
 						case xus:
 							yylval->str = litbufdup(yyscanner);

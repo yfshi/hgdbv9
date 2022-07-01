@@ -301,10 +301,7 @@ ERROR:  SQL function with unquoted function body cannot have polymorphic argumen
 CREATE FUNCTION functest_S_xx(x date) RETURNS boolean
     LANGUAGE SQL
     RETURN x > 1;
-ERROR:  operator does not exist: date > integer
-LINE 3:     RETURN x > 1;
-                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  failed to find conversion function from integer to date
 -- tricky parsing
 CREATE FUNCTION functest_S_15(x int) RETURNS boolean
 LANGUAGE SQL
@@ -347,7 +344,7 @@ SELECT pg_get_functiondef('functest_S_1'::regproc);
  CREATE OR REPLACE FUNCTION temp_func_test.functest_s_1(a text, b date)+
   RETURNS boolean                                                      +
   LANGUAGE sql                                                         +
- RETURN ((a = 'abcd'::text) AND (b > '01-01-2001'::date))              +
+ RETURN ((a = 'abcd'::text) AND (b > '2001-01-01'::date))              +
  
 (1 row)
 
@@ -390,7 +387,7 @@ SELECT pg_get_functiondef('functest_S_10'::regproc);
   RETURNS boolean                                                       +
   LANGUAGE sql                                                          +
  BEGIN ATOMIC                                                           +
-  SELECT ((a = 'abcd'::text) AND (b > '01-01-2001'::date));             +
+  SELECT ((a = 'abcd'::text) AND (b > '2001-01-01'::date));             +
  END                                                                    +
  
 (1 row)

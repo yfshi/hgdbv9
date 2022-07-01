@@ -286,6 +286,7 @@ static void load_plpgsql(FILE *cmdfd);
 /* BEGIN - SQL PARSER */
 static void load_plisql(FILE *cmdfd);
 /* END - SQL PARSER */
+static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -1466,9 +1467,9 @@ bootstrap_template1(void)
 	snprintf(cmd, sizeof(cmd),
 #ifdef IvorySQL
 			 /* BEGIN - SQL PARSER */
-			 "\"%s\" --boot -x1 -c identifier_case_switch=%d -X %u %s %s %s %s",
+			 "\"%s\" --boot -x1 -c identifier_case_switch=%d -X %u %s %s %s %s %s",
 #else
-			 "\"%s\" --boot -x1 -X %u %s %s %s",
+			 "\"%s\" --boot -x1 -X %u %s %s %s %s",
 			 /* END - SQL PARSER */
 #endif
 			 backend_exec,
@@ -1999,6 +2000,20 @@ load_plisql(FILE *cmdfd)
 	PG_CMD_PUTS("CREATE EXTENSION plisql;\n\n");
 }
 /* END - SQL PARSER */
+
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/*
+ * load PL/pgSQL server-side language
+ */
+static void
+load_ivorysql_ora(FILE *cmdfd)
+{
+	/* switch to oracle parser and load extenison */
+	PG_CMD_PUTS("set compatible_mode to oracle;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION ivorysql_ora;\n\n");
+	PG_CMD_PUTS("reset compatible_mode;\n\n");
+}
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /*
  * clean everything up in template1
@@ -3043,8 +3058,9 @@ initialize_data_directory(void)
   /* load oracle compatible objects and plisql language */
 	if (database_mode == DB_ORACLE)
 	{
-		setup_ora_sys_schema(cmdfd);
 		load_plisql(cmdfd);
+		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
+		setup_ora_sys_schema(cmdfd);
 	}
 /* END - SQL PARSER */
 

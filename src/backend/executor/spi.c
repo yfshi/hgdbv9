@@ -30,6 +30,7 @@
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
@@ -1129,6 +1130,7 @@ SPI_getvalue(HeapTuple tuple, TupleDesc tupdesc, int fnumber)
 	Oid			typoid,
 				foutoid;
 	bool		typisvarlena;
+	char		*value;		/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	SPI_result = 0;
 
@@ -1150,7 +1152,24 @@ SPI_getvalue(HeapTuple tuple, TupleDesc tupdesc, int fnumber)
 
 	getTypeOutputInfo(typoid, &foutoid, &typisvarlena);
 
-	return OidOutputFunctionCall(foutoid, val);
+	/*
+	 * Begin - ReqID:SRS-GKC-DATATYPE_001
+	 * Compatible oracle , pass typmod to output function
+	 */
+	if (fnumber > 0 &&
+		ORA_PARSER == compatible_db &&
+		(typoid == YMINTERVALOID ||
+		 typoid == DSINTERVALOID))
+	{
+		value = OidOutputFunctionCallWithTypmod(foutoid, val, TupleDescAttr(tupdesc, fnumber - 1)->atttypmod);
+	}
+	else
+	{
+		value = OidOutputFunctionCall(foutoid, val);
+	}
+
+	return value;
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 }
 
 Datum

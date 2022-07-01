@@ -12,8 +12,9 @@ INSERT INTO VARCHAR_TBL (f1) VALUES ('3');
 INSERT INTO VARCHAR_TBL (f1) VALUES ('');
 -- try varchar's of greater than 1 length
 INSERT INTO VARCHAR_TBL (f1) VALUES ('cd');
-ERROR:  value too long for type character varying(1)
+ERROR:  value too long for type varchar2(1 byte)
 INSERT INTO VARCHAR_TBL (f1) VALUES ('c     ');
+ERROR:  value too long for type varchar2(1 byte)
 SELECT * FROM VARCHAR_TBL;
  f1 
 ----
@@ -23,8 +24,7 @@ SELECT * FROM VARCHAR_TBL;
  2
  3
  
- c
-(7 rows)
+(6 rows)
 
 SELECT c.*
    FROM VARCHAR_TBL c
@@ -36,8 +36,7 @@ SELECT c.*
  2
  3
  
- c
-(6 rows)
+(5 rows)
 
 SELECT c.*
    FROM VARCHAR_TBL c
@@ -52,8 +51,12 @@ SELECT c.*
    WHERE c.f1 < 'a';
  f1 
 ----
+ A
+ 1
+ 2
+ 3
  
-(1 row)
+(5 rows)
 
 SELECT c.*
    FROM VARCHAR_TBL c
@@ -61,20 +64,19 @@ SELECT c.*
  f1 
 ----
  a
+ A
+ 1
+ 2
+ 3
  
-(2 rows)
+(6 rows)
 
 SELECT c.*
    FROM VARCHAR_TBL c
    WHERE c.f1 > 'a';
  f1 
 ----
- A
- 1
- 2
- 3
- c
-(5 rows)
+(0 rows)
 
 SELECT c.*
    FROM VARCHAR_TBL c
@@ -82,12 +84,7 @@ SELECT c.*
  f1 
 ----
  a
- A
- 1
- 2
- 3
- c
-(6 rows)
+(1 row)
 
 DROP TABLE VARCHAR_TBL;
 --
@@ -98,14 +95,14 @@ INSERT INTO VARCHAR_TBL (f1) VALUES ('a');
 INSERT INTO VARCHAR_TBL (f1) VALUES ('ab');
 INSERT INTO VARCHAR_TBL (f1) VALUES ('abcd');
 INSERT INTO VARCHAR_TBL (f1) VALUES ('abcde');
-ERROR:  value too long for type character varying(4)
+ERROR:  value too long for type varchar2(4 byte)
 INSERT INTO VARCHAR_TBL (f1) VALUES ('abcd    ');
+ERROR:  value too long for type varchar2(4 byte)
 SELECT * FROM VARCHAR_TBL;
   f1  
 ------
  a
  ab
  abcd
- abcd
-(4 rows)
+(3 rows)
 

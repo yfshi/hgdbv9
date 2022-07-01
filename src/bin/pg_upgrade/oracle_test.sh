@@ -153,12 +153,27 @@ do
 	export PGPORT
 done
 
+ORAPORT=`expr $PGPORT + 1`
+i=0
+while psql -X postgres </dev/null 2>/dev/null
+do
+	i=`expr $i + 1`
+	if [ $i -eq 16 ]
+	then
+		echo port $ORAPORT apparently in use
+		exit 1
+	fi
+	ORAPORT=`expr $ORAPORT + 1`
+	export ORAPORT
+done
+
+
 # buildfarm may try to override port via EXTRA_REGRESS_OPTS ...
-EXTRA_REGRESS_OPTS="$EXTRA_REGRESS_OPTS --port=$PGPORT"
+EXTRA_REGRESS_OPTS="$EXTRA_REGRESS_OPTS --port=$ORAPORT"
 export EXTRA_REGRESS_OPTS
 
 standard_initdb "$oldbindir"/initdb
-"$oldbindir"/pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS" -w
+"$oldbindir"/pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
 
 # Create databases with names covering the ASCII bytes other than NUL, BEL,
 # LF, or CR.  BEL would ring the terminal bell in the course of this test, and
@@ -174,7 +189,7 @@ createdb "regression$dbname2" || createdb_status=$?
 createdb "regression$dbname3" || createdb_status=$?
 
 # Extra options to apply to the dump.  This may be changed later.
-extra_dump_options=""
+extra_dump_options=" --port=$PGPORT"
 
 if "$MAKE" -C "$oldsrc" oracle-installcheck-parallel; then
 	oldpgversion=`psql -X -A -t -d regression -c "SHOW server_version_num"`
@@ -192,7 +207,7 @@ if "$MAKE" -C "$oldsrc" oracle-installcheck-parallel; then
 		# Note that this changes the dumps from the old and new
 		# instances if involving an old cluster of v11 or older.
 		if [ $oldpgversion -lt 120000 ]; then
-			extra_dump_options="--extra-float-digits=0"
+			extra_dump_options="--port=$PGPORT --extra-float-digits=0"
 		fi
 	fi
 
@@ -237,7 +252,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT"
+pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.
@@ -257,7 +272,7 @@ case $testhost in
 		fi ;;
 esac
 
-pg_ctl start -l "$logdir/postmaster2.log" -o "$POSTMASTER_OPTS" -w
+pg_ctl start -l "$logdir/postmaster2.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
 
 pg_dumpall $extra_dump_options --no-sync \
 	-f "$temp_root"/dump2.sql || pg_dumpall2_status=$?

@@ -59,8 +59,10 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/backend_status.h"
+#include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/partcache.h"
 #include "utils/rls.h"
 #include "utils/ruleutils.h"
@@ -2193,7 +2195,22 @@ ExecBuildSlotValueDescription(Oid reloid,
 
 				getTypeOutputInfo(att->atttypid,
 								  &foutoid, &typisvarlena);
-				val = OidOutputFunctionCall(foutoid, slot->tts_values[i]);
+
+				/*
+				 * Begin - ReqID:SRS-GKC-DATATYPE_001
+				 * Compatible oracle , pass typmod to output function
+				 */
+				if (ORA_PARSER == compatible_db &&
+					(att->atttypid == YMINTERVALOID ||
+					 att->atttypid == DSINTERVALOID))
+				{
+					val = OidOutputFunctionCallWithTypmod(foutoid, slot->tts_values[i], att->atttypmod);
+				}
+				else
+				{
+					val = OidOutputFunctionCall(foutoid, slot->tts_values[i]);
+				}
+				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			}
 
 			if (write_comma)

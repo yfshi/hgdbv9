@@ -10280,7 +10280,21 @@ get_const_expr(Const *constval, deparse_context *context, int showtype)
 	getTypeOutputInfo(constval->consttype,
 					  &typoutput, &typIsVarlena);
 
-	extval = OidOutputFunctionCall(typoutput, constval->constvalue);
+	/*
+	 * Begin - ReqID:SRS-GKC-DATATYPE_001
+	 * Compatible oracle , pass typmod to output function
+	 */
+	if (ORA_PARSER == compatible_db &&
+		(constval->consttype == YMINTERVALOID ||
+		constval->consttype == DSINTERVALOID))
+	{
+		extval = OidOutputFunctionCallWithTypmod(typoutput, constval->constvalue, constval->consttypmod);
+	}
+	else
+	{
+		extval = OidOutputFunctionCall(typoutput, constval->constvalue);
+	}
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 	switch (constval->consttype)
 	{

@@ -25,10 +25,13 @@
 #include "parser/parse_oper.h"
 #include "parser/parse_type.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "utils/regproc.h"		/* ReqID:SRS-GKC-DATATYPE_001 */
 
 
 /*
@@ -63,6 +66,11 @@ typedef struct OprCacheEntry
 
 	Oid			opr_oid;		/* OID of the resolved operator */
 } OprCacheEntry;
+
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/* Hook to compatible-oracle datatype precedence */
+oracle_datatype_precedence_hook_type oracle_datatype_precedence_hook = NULL;
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 
 static Oid	binary_oper_exact(List *opname, Oid arg1, Oid arg2);
@@ -291,6 +299,32 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 	result = OpernameGetOprid(opname, arg1, arg2);
 	if (OidIsValid(result))
 		return result;
+
+	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+	if (oracle_datatype_precedence_hook && ORA_PARSER == compatible_db)
+	{	
+		bool	rewrite_args = false;
+		char	*schemaname;
+		char	*opername;
+		Oid		result_arg1;
+		Oid		result_arg2;
+
+		/* Get operator name */
+		DeconstructQualifiedName(opname, &schemaname, &opername);
+
+		rewrite_args = (*oracle_datatype_precedence_hook) (arg1, arg2, opername, &result_arg1, &result_arg2);
+
+		if (rewrite_args)
+		{
+			arg1 = result_arg1;
+			arg2 = result_arg2; 
+			
+			result = OpernameGetOprid(opname, arg1, arg2);
+			if (OidIsValid(result))
+				return result;
+		}
+	}
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 	if (was_unknown)
 	{

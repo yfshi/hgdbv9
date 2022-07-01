@@ -25,7 +25,9 @@
 #include "nodes/pathnodes.h"
 #include "nodes/print.h"
 #include "parser/parsetree.h"
+#include "utils/guc.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 
 /*
@@ -376,7 +378,22 @@ print_expr(const Node *expr, const List *rtable)
 		getTypeOutputInfo(c->consttype,
 						  &typoutput, &typIsVarlena);
 
-		outputstr = OidOutputFunctionCall(typoutput, c->constvalue);
+		/*
+		 * Begin - ReqID:SRS-GKC-DATATYPE_001
+		 * Compatible oracle , pass typmod to output function
+		 */
+		if (ORA_PARSER == compatible_db &&
+			(c->consttype == YMINTERVALOID ||
+			 c->consttype == DSINTERVALOID))
+		{
+			outputstr = OidOutputFunctionCallWithTypmod(typoutput, c->constvalue, c->consttypmod);
+		}
+		else
+		{
+			outputstr = OidOutputFunctionCall(typoutput, c->constvalue);
+		}
+		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
 		printf("%s", outputstr);
 		pfree(outputstr);
 	}

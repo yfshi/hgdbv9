@@ -453,4 +453,4 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
-NOTICE:  <NULL>
+NOTICE:  v_cnt = 

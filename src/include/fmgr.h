@@ -694,6 +694,10 @@ extern Datum OidReceiveFunctionCall(Oid functionId, fmStringInfo buf,
 									Oid typioparam, int32 typmod);
 extern bytea *SendFunctionCall(FmgrInfo *flinfo, Datum val);
 extern bytea *OidSendFunctionCall(Oid functionId, Datum val);
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+extern char *OutputFunctionCallWithTypmod(FmgrInfo *flinfo, Datum val, Datum typmod);
+extern char *OidOutputFunctionCallWithTypmod(Oid functionId, Datum val, Datum typmod);
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 
 /*

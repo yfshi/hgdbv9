@@ -126,6 +126,7 @@ main(int argc, char *argv[])
 	/* BEGIN - SQL PARSER */
 	char  *dbmode = "oracle";
 	/* END - SQL PARSER */
+	bool		is_named = false;	/* BUG:0000037 */
 
 	pg_logging_init(argv[0]);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_resetwal"));
@@ -321,6 +322,7 @@ main(int argc, char *argv[])
 
 			/* BEGIN - SQL PARSER */
 			case 'g':
+				is_named = true;	/* BUG:0000037 */
 				dbmode = pg_strdup(optarg);
 				break;
 			/* END - SQL PARSER */
@@ -446,16 +448,21 @@ main(int argc, char *argv[])
 	FindEndOfXLOG();
 
 	/* BEGIN - SQL PARSER */
-	if (pg_strcasecmp(dbmode, "oracle") == 0 || pg_strcasecmp(dbmode, "1") == 0)
+	/* Begin - BUG:0000037 */
+	if (is_named)
 	{
-		ControlFile.dbmode = DB_ORACLE;
-		ControlFile.yh_casemode = INTERCHANGE;	/* case sensitive indentify - reset case conversion mode */
+		if (pg_strcasecmp(dbmode, "oracle") == 0 || pg_strcasecmp(dbmode, "1") == 0)
+		{
+			ControlFile.dbmode = DB_ORACLE;
+			ControlFile.yh_casemode = INTERCHANGE;	/* case sensitive indentify - reset case conversion mode */
+		}
+		else
+		{
+			ControlFile.dbmode = DB_PG;
+			ControlFile.yh_casemode = NORMAL;	/* case sensitive indentify - reset case conversion mode */
+		}
 	}
-	else
-	{
-		ControlFile.dbmode = DB_PG;
-		ControlFile.yh_casemode = NORMAL;	/* case sensitive indentify - reset case conversion mode */
-	}
+	/* End - BUG:0000037 */
 	/* END - SQL PARSER */
 	/*
 	 * If we're not going to proceed with the reset, print the current control
@@ -842,7 +849,7 @@ PrintControlValues(bool guessed)
 	printf(_("Data page checksum version:           %u\n"),
 		   ControlFile.data_checksum_version);
 	/* BEGIN - SQL PARSER */
-	printf(_("Database mode:                        %u\n"),
+	printf(_("database mode:                        %u\n"),
 		   ControlFile.dbmode);
 	/* END - SQL PARSER */
 	/* BEGIN - case sensitive indentify */

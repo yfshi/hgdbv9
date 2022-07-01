@@ -166,6 +166,9 @@ extern bool type_is_multirange(Oid typid);
 extern void get_type_category_preferred(Oid typid,
 										char *typcategory,
 										bool *typispreferred);
+/* Begin - BUGID:0000536 */
+extern Oid get_preferred_type(Oid typid);
+/* End - BUGID:0000536 */
 extern Oid	get_typ_typrelid(Oid typid);
 extern Oid	get_element_type(Oid typid);
 extern Oid	get_array_type(Oid typid);

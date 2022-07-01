@@ -1036,12 +1036,15 @@ SELECT * FROM shoe_ready WHERE total_avail >= 2 ORDER BY 1;
                                         'Al Bundy',
                                         'epoch'
                                     );
+ERROR:  invalid value "epoc" for "YYYY"
+LINE 7:                                         'epoch'
+                                                ^
+DETAIL:  Value must be an integer.
 UPDATE shoelace_data SET sl_avail = 6 WHERE  sl_name = 'sl7';
 SELECT * FROM shoelace_log;
-  sl_name   | sl_avail | log_who  |         log_when         
-------------+----------+----------+--------------------------
- sl7        |        6 | Al Bundy | Thu Jan 01 00:00:00 1970
-(1 row)
+ sl_name | sl_avail | log_who | log_when 
+---------+----------+---------+----------
+(0 rows)
 
     CREATE RULE shoelace_ins AS ON INSERT TO shoelace
         DO INSTEAD
@@ -1108,13 +1111,9 @@ SELECT * FROM shoelace ORDER BY sl_name;
 (8 rows)
 
 SELECT * FROM shoelace_log ORDER BY sl_name;
-  sl_name   | sl_avail | log_who  |         log_when         
-------------+----------+----------+--------------------------
- sl3        |       10 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl6        |       20 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl7        |        6 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl8        |       21 | Al Bundy | Thu Jan 01 00:00:00 1970
-(4 rows)
+ sl_name | sl_avail | log_who | log_when 
+---------+----------+---------+----------
+(0 rows)
 
     CREATE VIEW shoelace_obsolete AS
 	SELECT * FROM shoelace WHERE NOT EXISTS
@@ -1298,7 +1297,7 @@ key_dependent_view| SELECT view_base_table.key,
 key_dependent_view_no_cols| SELECT
    FROM view_base_table
   GROUP BY view_base_table.key
- HAVING (length((view_base_table.data)::text) > 0);
+ HAVING (length(view_base_table.data) > 0);
 mvtest_tv| SELECT mvtest_t.type,
     sum(mvtest_t.amt) AS totamt
    FROM mvtest_t
@@ -2678,14 +2677,14 @@ pg_settings|pg_settings_u|CREATE RULE pg_settings_u AS
    WHERE (new.name = old.name) DO  SELECT set_config(old.name, new.setting, false) AS set_config;
 rtest_emp|rtest_emp_del|CREATE RULE rtest_emp_del AS
     ON DELETE TO public.rtest_emp DO  INSERT INTO rtest_emplog (ename, who, action, newsal, oldsal)
-  VALUES (old.ename, CURRENT_USER, 'fired'::bpchar, '$0.00'::money, old.salary);
+  VALUES (old.ename, CURRENT_USER, 'fired'::oracharbyte, '$0.00'::money, old.salary);
 rtest_emp|rtest_emp_ins|CREATE RULE rtest_emp_ins AS
     ON INSERT TO public.rtest_emp DO  INSERT INTO rtest_emplog (ename, who, action, newsal, oldsal)
-  VALUES (new.ename, CURRENT_USER, 'hired'::bpchar, new.salary, '$0.00'::money);
+  VALUES (new.ename, CURRENT_USER, 'hired'::oracharbyte, new.salary, '$0.00'::money);
 rtest_emp|rtest_emp_upd|CREATE RULE rtest_emp_upd AS
     ON UPDATE TO public.rtest_emp
    WHERE (new.salary <> old.salary) DO  INSERT INTO rtest_emplog (ename, who, action, newsal, oldsal)
-  VALUES (new.ename, CURRENT_USER, 'honored'::bpchar, new.salary, old.salary);
+  VALUES (new.ename, CURRENT_USER, 'honored'::oracharbyte, new.salary, old.salary);
 rtest_nothn1|rtest_nothn_r1|CREATE RULE rtest_nothn_r1 AS
     ON INSERT TO public.rtest_nothn1
    WHERE ((new.a >= 10) AND (new.a < 20)) DO INSTEAD NOTHING;
@@ -2763,10 +2762,6 @@ shoelace|shoelace_ins|CREATE RULE shoelace_ins AS
 shoelace|shoelace_upd|CREATE RULE shoelace_upd AS
     ON UPDATE TO public.shoelace DO INSTEAD  UPDATE shoelace_data SET sl_name = new.sl_name, sl_avail = new.sl_avail, sl_color = new.sl_color, sl_len = new.sl_len, sl_unit = new.sl_unit
   WHERE (shoelace_data.sl_name = old.sl_name);
-shoelace_data|log_shoelace|CREATE RULE log_shoelace AS
-    ON UPDATE TO public.shoelace_data
-   WHERE (new.sl_avail <> old.sl_avail) DO  INSERT INTO shoelace_log (sl_name, sl_avail, log_who, log_when)
-  VALUES (new.sl_name, new.sl_avail, 'Al Bundy'::name, 'Thu Jan 01 00:00:00 1970'::timestamp without time zone);
 shoelace_ok|shoelace_ok_ins|CREATE RULE shoelace_ok_ins AS
     ON INSERT TO public.shoelace_ok DO INSTEAD  UPDATE shoelace SET sl_avail = (shoelace.sl_avail + new.ok_quant)
   WHERE (shoelace.sl_name = new.ok_name);
@@ -3227,7 +3222,7 @@ Rules:
     rr AS
     ON UPDATE TO rule_t1 DO INSTEAD  UPDATE rule_dest trgt SET (f2[1], f1, tag) = ( SELECT new.f2,
             new.f1,
-            'updated'::character varying AS "varchar")
+            'updated'::varchar2(4000) AS oravarcharbyte)
   WHERE trgt.f1 = new.f1
   RETURNING new.f1,
     new.f2
@@ -3367,7 +3362,7 @@ SELECT definition FROM pg_rules WHERE tablename = 'hats' ORDER BY rulename;
  CREATE RULE hat_nosert AS                                                                  +
      ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)        +
    VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name COLLATE "C" bpchar_pattern_ops)+
-   WHERE (hat_color = 'green'::bpchar) DO NOTHING                                           +
+   WHERE (hat_color = 'green'::oracharbyte) DO NOTHING                                      +
    RETURNING hat_data.hat_name,                                                             +
      hat_data.hat_color;
 (1 row)
@@ -3392,7 +3387,7 @@ SELECT tablename, rulename, definition FROM pg_rules
  hats      | hat_nosert | CREATE RULE hat_nosert AS                                                                  +
            |            |     ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)        +
            |            |   VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name COLLATE "C" bpchar_pattern_ops)+
-           |            |   WHERE (hat_color = 'green'::bpchar) DO NOTHING                                           +
+           |            |   WHERE (hat_color = 'green'::oracharbyte) DO NOTHING                                      +
            |            |   RETURNING hat_data.hat_name,                                                             +
            |            |     hat_data.hat_color;
 (1 row)
@@ -3442,7 +3437,7 @@ SELECT definition FROM pg_rules WHERE tablename = 'hats' ORDER BY rulename;
  CREATE RULE hat_upsert AS                                                                                                              +
      ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)                                                    +
    VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name) DO UPDATE SET hat_name = hat_data.hat_name, hat_color = excluded.hat_color+
-   WHERE ((excluded.hat_color <> 'forbidden'::bpchar) AND (hat_data.* <> excluded.*))                                                   +
+   WHERE ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                                              +
    RETURNING hat_data.hat_name,                                                                                                         +
      hat_data.hat_color;
 (1 row)
@@ -3490,19 +3485,19 @@ SELECT tablename, rulename, definition FROM pg_rules
  hats      | hat_upsert | CREATE RULE hat_upsert AS                                                                                                              +
            |            |     ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)                                                    +
            |            |   VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name) DO UPDATE SET hat_name = hat_data.hat_name, hat_color = excluded.hat_color+
-           |            |   WHERE ((excluded.hat_color <> 'forbidden'::bpchar) AND (hat_data.* <> excluded.*))                                                   +
+           |            |   WHERE ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                                              +
            |            |   RETURNING hat_data.hat_name,                                                                                                         +
            |            |     hat_data.hat_color;
 (1 row)
 
 -- ensure explain works for on insert conflict rules
 explain (costs off) INSERT INTO hats VALUES ('h8', 'forbidden') RETURNING *;
-                                           QUERY PLAN                                            
--------------------------------------------------------------------------------------------------
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
  Insert on hat_data
    Conflict Resolution: UPDATE
    Conflict Arbiter Indexes: hat_data_unique_idx
-   Conflict Filter: ((excluded.hat_color <> 'forbidden'::bpchar) AND (hat_data.* <> excluded.*))
+   Conflict Filter: ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
    ->  Result
 (5 rows)
 
@@ -3530,12 +3525,12 @@ WITH data(hat_name, hat_color) AS MATERIALIZED (
 INSERT INTO hats
     SELECT * FROM data
 RETURNING *;
-                                           QUERY PLAN                                            
--------------------------------------------------------------------------------------------------
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
  Insert on hat_data
    Conflict Resolution: UPDATE
    Conflict Arbiter Indexes: hat_data_unique_idx
-   Conflict Filter: ((excluded.hat_color <> 'forbidden'::bpchar) AND (hat_data.* <> excluded.*))
+   Conflict Filter: ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
    CTE data
      ->  Values Scan on "*VALUES*"
    ->  CTE Scan on data

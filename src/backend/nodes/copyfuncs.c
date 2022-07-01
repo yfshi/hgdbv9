@@ -1935,6 +1935,9 @@ _copyCaseExpr(const CaseExpr *from)
 	COPY_NODE_FIELD(args);
 	COPY_NODE_FIELD(defresult);
 	COPY_LOCATION_FIELD(location);
+	/* Begin - BUGID:0000543 */
+	COPY_SCALAR_FIELD(is_decode);
+	/* End - BUGID:0000543 */
 
 	return newnode;
 }

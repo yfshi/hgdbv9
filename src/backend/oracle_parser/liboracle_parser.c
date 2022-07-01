@@ -264,6 +264,11 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 		case USCONST:
 			cur_token_length = strlen(yyextra->core_yy_extra.scanbuf + *llocp);
 			break;
+		/*Begin - BUGID:0000649*/
+		case LONG_P:
+			cur_token_length = 4;
+			break;
+		/*End - BUGID:0000649*/
 		default:
 			return cur_token;
 	}
@@ -333,10 +338,23 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			{
 				case TIME:
 				case ORDINALITY:
+				case LOCAL:		/* ReqID:SRS-GKC-DATATYPE_001 */
 					cur_token = WITH_LA;
 					break;
 			}
 			break;
+
+		/*Begin - BUGID:0000649*/
+		case LONG_P:
+			switch (next_token)
+				{
+				case RAW_P:
+					yyextra->have_lookahead = false;	/* eat RAW_P token */
+					cur_token = LONG_RAW;
+					break;
+				}
+			break;
+		/* End - BUGID:0000649 */
 
 		case UIDENT:
 		case USCONST:
