@@ -86,9 +86,11 @@ my $frontend_extraincludes = {
 	'psql'   => ['src/backend']
 };
 my $frontend_extrasource = {
+	# Begin - ReqID:SRS-PSQL-PARSER
 	# BEGIN - SQL PARSER
-	'psql' => ['src/bin/psql/psqlscanslash.l', 'src/oracle_fe_utils/ora_string_utils.c', 'src/backend/oracle_parser/ora_keywords.c'],
+	'psql' => ['src/bin/psql/psqlscanslash.l', 'src/bin/psql/ora_psqlscanslash.l', 'src/oracle_fe_utils/ora_string_utils.c', 'src/oracle_fe_utils/ora_psqlscan.l', 'src/backend/oracle_parser/ora_keywords.c'],
 	# END - SQL PARSER
+	# End - ReqID:SRS-PSQL-PARSER
 	'pgbench' =>
 	  [ 'src/bin/pgbench/exprscan.l', 'src/bin/pgbench/exprparse.y' ]
 };
@@ -167,10 +169,12 @@ sub mkvcbuild
 	  parallel_slot.c print.c psqlscan.l psqlscan.c query_utils.c simple_list.c
 	  string_utils.c recovery_gen.c);
 
+	# Begin - ReqID:SRS-PSQL-PARSER
 	# BEGIN - SQL PARSER
 	our @orafeutilsfiles = qw(
-	  ora_string_utils.c);
+	  ora_string_utils.c ora_psqlscan.l ora_psqlscan.c);
 	# END - SQL PARSER
+	# End - ReqID:SRS-PSQL-PARSER
 
 	$libpgport = $solution->AddProject('libpgport', 'lib', 'misc');
 	$libpgport->AddDefine('FRONTEND');

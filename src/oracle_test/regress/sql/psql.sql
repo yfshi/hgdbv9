@@ -1241,3 +1241,12 @@ drop role regress_partitioning_role;
 \dfa bit* small*
 \do - pg_catalog.int4
 \do && anyarray *
+
+/* Begin - ReqID:SRS-PSQL-PARSER */
+--test parser switch in psql
+show compatible_mode;
+set compatible_mode = 'pg';
+\parser
+reset compatible_mode;
+show compatible_mode;
+/* End - ReqID:SRS-PSQL-PARSER */

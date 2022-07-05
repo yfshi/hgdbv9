@@ -25,6 +25,7 @@
 #include "input.h"
 #include "mainloop.h"
 #include "oracle_fe_utils/ora_string_utils.h"	/* SQL PARSER */
+#include "oracle_fe_utils/ora_psqlscan.h"	/* ReqID:SRS-PSQL-PARSER */
 #include "settings.h"
 
 /*
@@ -383,11 +384,22 @@ main(int argc, char *argv[])
 
 				if (pset.echo == PSQL_ECHO_ALL)
 					puts(cell->val);
-
-				scan_state = psql_scan_create(&psqlscan_callbacks);
-				psql_scan_setup(scan_state,
-								cell->val, strlen(cell->val),
-								pset.encoding, standard_strings());
+				/* Begin - ReqID:SRS-PSQL-PARSER */
+				if (db_mode == DB_PG)
+				{
+					scan_state = psql_scan_create(&psqlscan_callbacks);
+					psql_scan_setup(scan_state,
+									cell->val, strlen(cell->val),
+									pset.encoding, standard_strings());
+				}
+				else if (db_mode == DB_ORACLE)
+				{
+					scan_state = ora_psql_scan_create(&Ora_psqlscan_callbacks);
+					ora_psql_scan_setup(scan_state,
+									cell->val, strlen(cell->val),
+									pset.encoding, standard_strings());
+				}
+				/* End - ReqID:SRS-PSQL-PARSER */
 				cond_stack = conditional_stack_create();
 				psql_scan_set_passthrough(scan_state, (void *) cond_stack);
 
@@ -396,8 +408,12 @@ main(int argc, char *argv[])
 												NULL,
 												NULL) != PSQL_CMD_ERROR
 					? EXIT_SUCCESS : EXIT_FAILURE;
-
-				psql_scan_destroy(scan_state);
+				/* Begin - ReqID:SRS-PSQL-PARSER */
+				if (db_mode == DB_PG)
+					psql_scan_destroy(scan_state);
+				else if(db_mode == DB_ORACLE)
+					ora_psql_scan_destroy(scan_state);
+				/* End - ReqID:SRS-PSQL-PARSER */
 				conditional_stack_destroy(cond_stack);
 			}
 			else if (cell->action == ACT_FILE)

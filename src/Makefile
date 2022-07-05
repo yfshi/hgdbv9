@@ -24,6 +24,7 @@ SUBDIRS = \
 	interfaces \
 	backend/replication/libpqwalreceiver \
 	backend/replication/pgoutput \
+	oracle_fe_utils \
 	fe_utils \
 	bin \
 	pl \
@@ -31,11 +32,11 @@ SUBDIRS = \
 	test/regress \
 	test/isolation \
 	test/perl \
-	oracle_fe_utils \
 	oracle_test/regress \
 	oracle_test/isolation \
 	oracle_test/modules \
 	oracle_test/perl
+# ReqID:SRS-PSQL-PARSER
 
 ifeq ($(with_llvm), yes)
 SUBDIRS += backend/jit/llvm

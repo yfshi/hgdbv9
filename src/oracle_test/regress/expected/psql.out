@@ -5179,3 +5179,22 @@ List of access methods
  pg_catalog | &&   | anyarray      | anyarray       | boolean     | overlaps
 (1 row)
 
+/* Begin - ReqID:SRS-PSQL-PARSER */
+--test parser switch in psql
+show compatible_mode;
+ compatible_mode 
+-----------------
+ oracle
+(1 row)
+
+set compatible_mode = 'pg';
+\parser
+PG parser.
+reset compatible_mode;
+show compatible_mode;
+ compatible_mode 
+-----------------
+ oracle
+(1 row)
+
+/* End - ReqID:SRS-PSQL-PARSER */
