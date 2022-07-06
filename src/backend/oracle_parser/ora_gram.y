@@ -1495,6 +1495,14 @@ VariableSetStmt:
 					n->is_local = false;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+			| ALTER SESSION SET set_rest
+				{
+					VariableSetStmt *n = $4;
+					n->is_local = false;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| SET LOCAL set_rest
 				{
 					VariableSetStmt *n = $3;

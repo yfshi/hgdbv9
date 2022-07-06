@@ -2505,7 +2505,8 @@ getBaseTypeAndTypmod(Oid typid, int32 *typmod)
 			break;
 		}
 
-		Assert(*typmod == -1);
+		if (typid != LONGOID && typid != RAWOID)	/* BUG:0000003 */
+			Assert(*typmod == -1);
 		typid = typTup->typbasetype;
 		*typmod = typTup->typtypmod;
 
