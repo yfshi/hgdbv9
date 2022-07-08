@@ -551,7 +551,7 @@ sub standard_initdb
 {
 	return (
 		#BEGIN - SQL PARSER
-		system('initdb', '-N', '-m', 'pg') == 0 and system(
+		system('initdb', '-N', '-m', 'pg', '-c', 'normal') == 0 and system(
 		#END - SQL PARSER
 			"$topdir/$Config/pg_regress/pg_regress", '--config-auth',
 			$ENV{PGDATA}) == 0);
