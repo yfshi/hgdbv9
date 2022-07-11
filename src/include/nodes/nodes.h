@@ -35,6 +35,7 @@ typedef enum NodeTag
 	T_ProjectionInfo,
 	T_JunkFilter,
 	T_OnConflictSetState,
+	T_MergeActionState,
 	T_ResultRelInfo,
 	T_EState,
 	T_TupleTableSlot,
@@ -280,6 +281,7 @@ typedef enum NodeTag
 	T_RollupData,
 	T_GroupingSetData,
 	T_StatisticExtInfo,
+	T_MergeAction,
 
 	/*
 	 * TAGS FOR MEMORY NODES (memnodes.h)
@@ -320,6 +322,7 @@ typedef enum NodeTag
 	T_InsertStmt,
 	T_DeleteStmt,
 	T_UpdateStmt,
+	T_MergeStmt,
 	T_SelectStmt,
 	T_ReturnStmt,
 	T_PLAssignStmt,
@@ -483,6 +486,7 @@ typedef enum NodeTag
 	T_CTESearchClause,
 	T_CTECycleClause,
 	T_CommonTableExpr,
+	T_MergeWhenClause,
 	T_RoleSpec,
 	T_TriggerTransition,
 	T_PartitionElem,
@@ -685,7 +689,8 @@ typedef enum CmdType
 	CMD_SELECT,					/* select stmt */
 	CMD_UPDATE,					/* update stmt */
 	CMD_INSERT,					/* insert stmt */
-	CMD_DELETE,
+	CMD_DELETE,					/* delete stmt */
+	CMD_MERGE,					/* merge stmt */
 	CMD_UTILITY,				/* cmds like create, destroy, copy, vacuum,
 								 * etc. */
 	CMD_NOTHING					/* dummy command for instead nothing rules
