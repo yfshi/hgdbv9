@@ -6,9 +6,10 @@
  * and interpreting backend output.
  *
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
- * src/oracle_fe_utils/string_utils.c
+ * src/oracle_fe_utils/ora_string_utils.c
  *
  * add the file for requirement "SQL PARSER"
  *
@@ -163,4 +164,3 @@ getDbCompatibleMode(PGconn *conn)
 		PQclear(res);
 }
 /* END - SQL PARSER */
-
