@@ -2389,6 +2389,7 @@ usage(const char *progname)
 	printf(_("      --wal-segsize=SIZE    size of WAL segments, in megabytes\n"));
 	/* BEGIN - SQL PARSER */
 	printf(_("  -m, --dbmode=MODE         set database mode, default is oracle\n"));
+	printf(_("  -c, --case-conversion-mode=MODE   set case conversion mode, default is interchange\n"));
 	/* END - SQL PARSER */
 	printf(_("\nLess commonly used options:\n"));
 	printf(_("  -d, --debug               generate lots of debugging output\n"));
