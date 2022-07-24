@@ -171,6 +171,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	ListCell   *elements;
 	Oid			namespaceid;
 	Oid			existing_relid;
+	int			ora_identity_cnt = 0;	/* ReqID:SRS-SQL-IDENTCOL */
 	ParseCallbackState pcbstate;
 
 	/* Set up pstate */
@@ -285,6 +286,22 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		}
 	}
 
+	/* Begin - ReqID:SRS-SQL-IDENTCOL */
+	/*
+	 * Count the number of compatible identity columns when create table.
+	 */
+	foreach(elements, cxt.columns)
+	{
+		ColumnDef          *element = lfirst(elements);
+		if(element->identity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL ||
+				element->identity == ATTRIBUTE_ORA_IDENTITY_ALWAYS ||
+					element->identity == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
+			ora_identity_cnt++;
+	}
+	if(ora_identity_cnt > 1)
+		elog(ERROR, "table can have only one identity column");
+	/* End - ReqID:SRS-SQL-IDENTCOL */
+
 	/*
 	 * Transfer anything we already have in cxt.alist into save_alist, to keep
 	 * it separate from the output of transformIndexConstraints.  (This may
@@ -359,7 +376,7 @@ static void
 generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 						 Oid seqtypid, List *seqoptions,
 						 bool for_identity, bool col_exists,
-						 char **snamespace_p, char **sname_p)
+						 char **snamespace_p, char **sname_p, char seq_type)	/* ReqID:SRS-SQL-IDENTCOL */
 {
 	ListCell   *option;
 	DefElem    *nameEl = NULL;
@@ -448,6 +465,10 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 	seqstmt->for_identity = for_identity;
 	seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
 	seqstmt->options = seqoptions;
+	/* Begin - ReqID:SRS-SQL-IDENTCOL */
+	if (seq_type)
+		seqstmt->seq_type = seq_type;
+	/* End - ReqID:SRS-SQL-IDENTCOL */
 
 	/*
 	 * If a sequence data type was specified, add it to the options.  Prepend
@@ -590,7 +611,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		generateSerialExtraStmts(cxt, column,
 								 column->typeName->typeOid, NIL,
 								 false, false,
-								 &snamespace, &sname);
+								 &snamespace, &sname, 0);	/* ReqID:SRS-SQL-IDENTCOL */
 
 		/*
 		 * Create appropriate constraints for SERIAL.  We do this in full,
@@ -695,6 +716,18 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 
 					ctype = typenameType(cxt->pstate, column->typeName, NULL);
 					typeOid = ((Form_pg_type) GETSTRUCT(ctype))->oid;
+
+					/* Begin - ReqID:SRS-SQL-IDENTCOL */
+					/* Convert compatible identity smallint/int type column to bigint type */
+					if ((constraint->generated_when == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL
+							|| constraint->generated_when == ATTRIBUTE_ORA_IDENTITY_ALWAYS
+								|| constraint->generated_when == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
+									&& (typeOid == INT4OID || typeOid == INT2OID))
+					{
+						column->typeName = makeTypeName("int8");
+						typeOid = INT8OID;
+					}
+					/* End - ReqID:SRS-SQL-IDENTCOL */
 					ReleaseSysCache(ctype);
 
 					if (saw_identity)
@@ -708,7 +741,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 					generateSerialExtraStmts(cxt, column,
 											 typeOid, constraint->options,
 											 true, false,
-											 NULL, NULL);
+											 NULL, NULL, constraint->generated_when);	/* ReqID:SRS-SQL-IDENTCOL */
 
 					column->identity = constraint->generated_when;
 					saw_identity = true;
@@ -721,7 +754,13 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 										column->colname, cxt->relation->relname),
 								 parser_errposition(cxt->pstate,
 													constraint->location)));
-					column->is_not_null = true;
+					/* Begin - ReqID:SRS-SQL-IDENTCOL */
+					/* Allow DEFAULT ON NULL to insert NULL values */
+					if (column->identity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL)
+						column->is_not_null = false;
+					else
+						column->is_not_null = true;
+					/* End - ReqID:SRS-SQL-IDENTCOL */
 					saw_nullable = true;
 					break;
 				}
@@ -1075,7 +1114,7 @@ transformTableLikeClause(CreateStmtContext *cxt, TableLikeClause *table_like_cla
 			generateSerialExtraStmts(cxt, def,
 									 InvalidOid, seq_options,
 									 true, false,
-									 NULL, NULL);
+									 NULL, NULL, 0);	/* ReqID:SRS-SQL-IDENTCOL */
 			def->identity = attribute->attidentity;
 		}
 
@@ -3459,7 +3498,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					generateSerialExtraStmts(&cxt, newdef,
 											 get_atttype(relid, attnum),
 											 def->options, true, true,
-											 NULL, NULL);
+											 NULL, NULL, 0);	/* ReqID:SRS-SQL-IDENTCOL */
 
 					newcmds = lappend(newcmds, cmd);
 					break;
