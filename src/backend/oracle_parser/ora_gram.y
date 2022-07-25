@@ -205,6 +205,9 @@ static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *deferrable, bool *initdeferred, bool *not_valid,
 			   bool *no_inherit, ora_core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
+/* Begin - ReqID:SRS-SQL-PROC */
+static void determineLanguage(List *options);
+/* End - ReqID:SRS-SQL-PROC */
 
 %}
 
@@ -744,6 +747,27 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	YEAR_P YES_P
 
 	ZONE
+
+/* Begin - ReqID:SRS-SQL-PROC */
+%type <list>	ora_func_name opt_ora_func_args_with_defaults ora_createfunc_opt_list
+				ora_function_source_clause_list opt_ora_function_source_clause_list 
+				accessor implementation_type implementation_package opt_procedure_args_with_defaults
+				opt_ora_procedure_source_clause_list ora_procedure_source_clause_list
+				opt_ora_createfunc_opt_list compiler_parameters_clause compiler_parameters_list
+%type <defelt>	ora_createfunc_opt_item ora_function_source_clause_item ora_invoker_rights_clause
+				ora_accessible_by_clause ora_default_collation_clause ora_result_cache_clause
+				ora_sql_macro_clause ora_pipelined_clause ora_parallel_enable_clause
+				ora_procedure_source_clause_item
+%type <ival>	opt_unit_kind
+%type <boolean> opt_ora_editioned ora_editioned
+%type <node>	ivy_routine_body accessor_item sql_macro_options implementation_package_type
+				ora_streaming_type opt_parallel_enable_partiton_clause
+				ora_parallel_enable_partiton_by_elem ora_parallel_enable_partiton_type
+				opt_streaming_clause compiler_parameter_item
+%token <keyword> EDITIONABLE NONEDITIONABLE IVYSQL NOCOPY SHARING METADATA AUTHID ACCESSIBLE
+				 PACKAGE DETERMINISTIC RESULT_CACHE RELIES_ON USING_NLS_COMP SQL_MACRO SCALAR
+				 PIPELINED POLYMORPHIC PARALLEL_ENABLE HASH_P COMPILE DEBUG_P REUSE SETTINGS
+/* End - ReqID:SRS-SQL-PROC */
 
 /*Begin - BUGID:0000649*/
 %token <keyword> LONG_P RAW_P
@@ -7610,7 +7634,7 @@ opt_nulls_order: NULLS_LA FIRST_P			{ $$ = SORTBY_NULLS_FIRST; }
  *****************************************************************************/
 
 CreateFunctionStmt:
-			CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
+			CREATE opt_or_replace FUNCTION ora_func_name func_args_with_defaults
 			RETURNS func_return opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
@@ -7623,7 +7647,51 @@ CreateFunctionStmt:
 					n->sql_body = $9;
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
+			/* Begin - ReqID:SRS-SQL-PROC */
+			| CREATE opt_or_replace FUNCTION ora_func_name opt_ora_func_args_with_defaults
+			  RETURN func_return opt_ora_sharing_clause opt_ora_function_source_clause_list ora_createfunc_opt_list
+				{
+					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
+					n->is_procedure = false;
+					n->replace = $2;
+					n->funcname = $4;
+					n->parameters = $5;
+					n->returnType = $7;
+
+					if ($9)
+						n->options = list_concat($10, $9);
+					else
+						n->options = $10;
+
+					n->sql_body = NULL;
+					
+					determineLanguage(n->options);
+					
+					$$ = (Node *)n;
+				}
+			| CREATE opt_or_replace ora_editioned FUNCTION ora_func_name opt_ora_func_args_with_defaults
+			  RETURN func_return opt_ora_sharing_clause opt_ora_function_source_clause_list ora_createfunc_opt_list
+				{
+					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
+					n->is_procedure = false;
+					n->replace = $2;
+					n->funcname = $5;
+					n->parameters = $6;
+					n->returnType = $8;
+
+					if ($10)
+						n->options = list_concat($11, $10);
+					else
+						n->options = $11;
+
+					n->sql_body = NULL;
+
+					determineLanguage(n->options);
+					
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PROC */
+			| CREATE opt_or_replace FUNCTION ora_func_name func_args_with_defaults
 			  RETURNS TABLE '(' table_func_column_list ')' opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
@@ -7637,8 +7705,8 @@ CreateFunctionStmt:
 					n->sql_body = $12;
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
-			  opt_createfunc_opt_list opt_routine_body
+			| CREATE opt_or_replace FUNCTION ora_func_name func_args_with_defaults
+			  opt_createfunc_opt_list ivy_routine_body	/* ReqID:SRS-SQL-PROC */
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
@@ -7650,20 +7718,349 @@ CreateFunctionStmt:
 					n->sql_body = $7;
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
-			  opt_createfunc_opt_list opt_routine_body
+			/* Begin - ReqID:SRS-SQL-PROC */
+			| CREATE opt_or_replace opt_ora_editioned PROCEDURE ora_func_name opt_procedure_args_with_defaults
+			  opt_ora_sharing_clause opt_ora_procedure_source_clause_list opt_ora_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = true;
 					n->replace = $2;
-					n->funcname = $4;
-					n->parameters = $5;
+					n->funcname = $5;
+					n->parameters = $6;
 					n->returnType = NULL;
-					n->options = $6;
-					n->sql_body = $7;
+
+					if ($8&&$9)
+						n->options = list_concat($9, $8);
+					else
+						n->options = $9;
+
+					n->sql_body = $10;
+
+					if ($10 == NULL)
+						determineLanguage(n->options);
+
 					$$ = (Node *)n;
 				}
+			/* End - ReqID:SRS-SQL-PROC */
 		;
+
+/* Begin - ReqID:SRS-SQL-PROC */
+ora_editioned:
+			EDITIONABLE			{ $$ = true; }
+			| NONEDITIONABLE	{ $$ = false; }
+		;
+
+opt_ora_editioned:
+			EDITIONABLE			{ $$ = true; }		
+			| NONEDITIONABLE	{ $$ = false; }
+			| /*EMPTY*/			{ $$ = true; }
+		;
+
+opt_ora_sharing_clause:
+			SHARING '=' METADATA
+			| SHARING '=' NONE
+			| /*EMPTY*/
+		;
+
+opt_ora_procedure_source_clause_list:
+			ora_procedure_source_clause_list
+			| /* EMPTY */		{ $$ = NIL; }
+	;
+
+ora_procedure_source_clause_list:
+			ora_procedure_source_clause_item										{ $$ = list_make1($1); }
+			| ora_procedure_source_clause_list ora_procedure_source_clause_item 	{ $$ = lappend($1, $2); }											
+	;
+
+ora_procedure_source_clause_item:
+			ora_invoker_rights_clause
+				{
+					$$ = $1;
+				}
+			| ora_accessible_by_clause
+				{
+					$$ = $1;
+				}
+			| ora_default_collation_clause
+				{
+					$$ = $1;
+				}
+		;
+
+opt_ora_function_source_clause_list:
+			ora_function_source_clause_list
+			| /* EMPTY */		{ $$ = NIL; }
+	;
+
+ora_function_source_clause_list:
+			ora_function_source_clause_item										{ $$ = list_make1($1); }
+			| ora_function_source_clause_list ora_function_source_clause_item 	{ $$ = lappend($1, $2); }											
+	;
+
+ora_function_source_clause_item:
+			ora_invoker_rights_clause
+				{
+					$$ = $1;
+				}
+			| ora_accessible_by_clause
+				{
+					$$ = $1;
+				}
+			| ora_default_collation_clause
+				{
+					$$ = $1;
+				}
+			/* deterministic_clause */
+			| DETERMINISTIC
+				{
+					$$ = makeDefElem("deterministic", (Node *)makeString("immutable"), @1);
+				}
+			| ora_result_cache_clause
+				{
+					$$ = $1;
+				}
+			/* aggregate_clause */
+			| AGGREGATE USING any_name
+				{
+					$$ = makeDefElem("aggregate", (Node *)$3, @1);
+				}
+			| ora_sql_macro_clause
+				{
+					$$ = $1;
+				}
+			| ora_pipelined_clause
+				{
+					$$ = $1;
+				}
+			| ora_parallel_enable_clause
+				{
+					$$ = $1;
+				}
+		;
+
+ora_invoker_rights_clause:
+		AUTHID DEFINER
+			{  
+				$$ = makeDefElem("authid", (Node *)makeInteger(true), @1);
+			}
+		| AUTHID CURRENT_USER
+			{  
+				$$ = makeDefElem("authid", (Node *)makeInteger(false), @1);	
+			}
+	;
+
+ora_accessible_by_clause:
+		ACCESSIBLE BY '(' accessor ')'
+			{  
+				AccessibleByClause *n = makeNode(AccessibleByClause);
+				n->accessors = $4;
+				$$ = makeDefElem("accessible", (Node *)n, @1);
+			}
+	;
+
+accessor:
+		accessor_item
+			{
+				$$ = list_make1($1);
+			}
+		| accessor ',' accessor_item
+			{
+				$$ = lappend($1, $3);
+			}
+	;
+
+accessor_item:
+		opt_unit_kind any_name
+			{
+				AccessorItem *n = makeNode(AccessorItem);
+				n->unitkind = $1;
+				n->unitname = $2;
+				$$ = (Node *) n;
+			}
+		| any_name
+			{
+				AccessorItem *n = makeNode(AccessorItem);
+				n->unitkind = ACCESSOR_UNKNOW;
+				n->unitname = $1;
+				$$ = (Node *) n;
+			}
+	;
+
+opt_unit_kind:
+		FUNCTION		{ $$ = ACCESSOR_FUNCTION; }
+		| PROCEDURE		{ $$ = ACCESSOR_PROCEDURE; }
+		| PACKAGE		{ $$ = ACCESSOR_PACKAGE; }
+		| TRIGGER		{ $$ = ACCESSOR_TRIGGER; }
+		| TYPE_P		{ $$ = ACCESSOR_TYPE; }
+	;
+
+ora_default_collation_clause:
+		DEFAULT COLLATION USING_NLS_COMP
+			{
+				/*
+				 * Only syntax compatibility, currently we don't care about 
+				 * the value of DefElem so just pass NULL, note that it may
+				 * change in the future.
+				 */
+				$$ = makeDefElem("collation", NULL, @1);
+			}
+	;
+
+ora_result_cache_clause:
+		RESULT_CACHE
+			{
+				$$ = makeDefElem("result_cache", NULL, @1);
+			}
+		| RESULT_CACHE RELIES_ON '(' ')'
+			{
+				$$ = makeDefElem("result_cache", NULL, @1);
+			}
+		/*
+		 * Oracle documentation: Each data_source is the name of either
+		 * a database table or view;therefore we use the qualified_name
+		 * nonterminal to represent the data_source in this clause.
+		 */
+		| RESULT_CACHE RELIES_ON '(' qualified_name_list ')'
+			{
+				$$ = makeDefElem("result_cache", (Node *)$4, @1);
+			}
+	;
+
+ora_sql_macro_clause:
+		SQL_MACRO
+			{
+				/* If SCALAR or TABLE is not specified, TABLE is the default */
+				$$ = makeDefElem("sql_macro", (Node *)makeString("table"), @1);
+			}
+		| SQL_MACRO sql_macro_options
+			{
+				$$ = makeDefElem("sql_macro", (Node *)$2, @1);
+			}
+	;
+
+sql_macro_options:
+		'(' TABLE ')'
+			{
+				$$ = (Node *) makeString(pstrdup($2));
+			}
+		| '(' SCALAR ')'
+			{
+				$$ = (Node *) makeString(pstrdup($2));
+			}
+		| '(' TYPE_P EQUALS_GREATER TABLE ')'
+			{
+				$$ = (Node *) makeString(pstrdup($4));
+			}
+		| '(' TYPE_P EQUALS_GREATER SCALAR ')'
+			{
+				$$ = (Node *) makeString(pstrdup($4));
+			}
+	;
+
+ora_pipelined_clause:
+		PIPELINED
+			{
+				/* should return something default, currently using NULL */
+				$$ = makeDefElem("pipelined", NULL, @1);
+			}
+		| PIPELINED implementation_type
+			{
+				$$ = makeDefElem("pipelined", (Node *)$2, @1);
+			}
+		| PIPELINED implementation_package
+			{
+				$$ = makeDefElem("pipelined", (Node *)$2, @1);
+			}
+	;
+
+implementation_type:
+		USING any_name
+			{
+				$$ = $2;
+			}
+	;
+implementation_package:
+		implementation_package_type POLYMORPHIC
+			{
+				$$ = NIL;
+			}
+		/* reuse implementation_type temporary */
+		| implementation_package_type POLYMORPHIC implementation_type
+			{
+				$$ = $3;
+			}
+	;
+
+implementation_package_type:
+		ROW					{ $$ = (Node *) makeString(pstrdup($1)); }
+		| TABLE				{ $$ = (Node *) makeString(pstrdup($1)); }
+	;
+
+ora_parallel_enable_clause: PARALLEL_ENABLE opt_parallel_enable_partiton_clause
+		{
+			$$ = makeDefElem("parallel_enable", (Node *)makeString("safe"), @1);
+		}
+	;
+
+/*
+ * opt_parallel_enable_partiton_clause is only syntactically compatible, 
+ * the actions part code has no meaning, just a placeholder.  
+ * It's ok even without action code.
+ */
+opt_parallel_enable_partiton_clause:
+		'(' PARTITION ColId BY ora_parallel_enable_partiton_by_elem ')'
+			{
+				$$ = $5;
+			}
+		| /*EMPTY*/		{ $$ = (Node *) NULL; }
+	;
+
+ora_parallel_enable_partiton_by_elem:
+		ANY
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+		| VALUE_P '(' ColId ')'
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+		| ora_parallel_enable_partiton_type '(' columnList ')' opt_streaming_clause
+			{
+				$$ = $1;
+			}
+	;
+
+opt_streaming_clause: ora_streaming_type a_expr BY '(' columnList ')'
+			{
+				$$ = $1;
+			}
+		| /*EMPTY*/	
+			{
+				$$ = (Node *) makeString(pstrdup("dummy"));
+			}
+	;
+ora_parallel_enable_partiton_type:
+		HASH_P
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+		| RANGE
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+	;
+ora_streaming_type:
+		ORDER
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+		| CLUSTER
+			{
+				$$ = (Node *) makeString(pstrdup($1));
+			}
+	;
+
+/* End - ReqID:SRS-SQL-PROC */
 
 opt_or_replace:
 			OR REPLACE								{ $$ = true; }
@@ -7732,6 +8129,30 @@ func_args_with_defaults:
 		| '(' ')'									{ $$ = NIL; }
 		;
 
+/* Begin - ReqID:SRS-SQL-PROC */
+/*
+ * Oracle cannot create a function without parameters with a pair 
+ * of parentheses, otherwise a compile error will be issued.
+ */
+opt_ora_func_args_with_defaults:
+		'(' func_args_with_defaults_list ')'		{ $$ = $2; }
+		| /*EMPTY*/									{ $$ = NIL; }
+		;
+
+/*
+ * In order to avoid reduce/reduce conflict, we are compatible with Oracle
+ * based on the original CREATE PROCEUDRE grammar rules of PG. The purpose
+ * of adding this nonterminal is to try not to destroy the syntax of PG. 
+ * Although we can switch to the gram.y of native PG, try our best to Stick
+ * to this principle.
+ */
+opt_procedure_args_with_defaults:
+		'(' func_args_with_defaults_list ')'		{ $$ = $2; }
+		| '(' ')'									{ $$ = NIL; }
+		| /*EMPTY*/									{ $$ = NIL; }
+		;
+/* End - ReqID:SRS-SQL-PROC */
+
 func_args_with_defaults_list:
 		func_arg_with_default						{ $$ = list_make1($1); }
 		| func_args_with_defaults_list ',' func_arg_with_default
@@ -7799,8 +8220,10 @@ func_arg:
 /* INOUT is SQL99 standard, IN OUT is for Oracle compatibility */
 arg_class:	IN_P								{ $$ = FUNC_PARAM_IN; }
 			| OUT_P								{ $$ = FUNC_PARAM_OUT; }
+			| OUT_P NOCOPY						{ $$ = FUNC_PARAM_OUT; }	/* ReqID:SRS-SQL-PROC */
 			| INOUT								{ $$ = FUNC_PARAM_INOUT; }
 			| IN_P OUT_P						{ $$ = FUNC_PARAM_INOUT; }
+			| IN_P OUT_P NOCOPY					{ $$ = FUNC_PARAM_INOUT; }	/* ReqID:SRS-SQL-PROC */
 			| VARIADIC							{ $$ = FUNC_PARAM_VARIADIC; }
 		;
 
@@ -7954,6 +8377,19 @@ createfunc_opt_list:
 			| createfunc_opt_list createfunc_opt_item { $$ = lappend($1, $2); }
 	;
 
+/* Begin - ReqID:SRS-SQL-PROC */
+opt_ora_createfunc_opt_list:
+			ora_createfunc_opt_list
+			| /*EMPTY*/ { $$ = NIL; }
+	;
+
+ora_createfunc_opt_list:
+			/* Must be at least one to prevent conflict */
+			ora_createfunc_opt_item						{ $$ = list_make1($1); }
+			| ora_createfunc_opt_list ora_createfunc_opt_item { $$ = lappend($1, $2); }
+	;
+/* End - ReqID:SRS-SQL-PROC */
+
 /*
  * Options common to both CREATE FUNCTION and ALTER FUNCTION
  */
@@ -8051,6 +8487,41 @@ createfunc_opt_item:
 					$$ = $1;
 				}
 		;
+/* Begin - ReqID:SRS-SQL-PROC */
+ora_createfunc_opt_item:
+			ora_func_is_or_as func_as
+				{
+					$$ = makeDefElem("as", (Node *)$2, @1);
+				}
+			| LANGUAGE NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("language", (Node *)makeString($2), @1);
+				}
+			| TRANSFORM transform_type_list
+				{
+					$$ = makeDefElem("transform", (Node *)$2, @1);
+				}
+			| WINDOW
+				{
+					$$ = makeDefElem("window", (Node *)makeInteger(true), @1);
+				}
+			| common_func_opt_item
+				{
+					$$ = $1;
+				}
+		;
+
+ora_func_is_or_as:
+			IS
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_FUNC);
+				}
+			| AS
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_FUNC);
+				}
+		;
+/* End - ReqID:SRS-SQL-PROC */
 
 func_as:	Sconst						{ $$ = list_make1(makeString($1)); }
 			| Sconst ',' Sconst
@@ -8087,6 +8558,31 @@ opt_routine_body:
 					$$ = NULL;
 				}
 		;
+
+/* Begin - ReqID:SRS-SQL-PROC */
+ivy_routine_body:
+			IVYSQL RETURN a_expr
+				{
+					ReturnStmt *r = makeNode(ReturnStmt);
+					r->returnval = (Node *) $3;
+					$$ = (Node *) r;
+				}
+			| BEGIN_P ATOMIC routine_body_stmt_list END_P
+				{
+					/*
+					 * A compound statement is stored as a single-item list
+					 * containing the list of statements as its member.  That
+					 * way, the parse analysis code can tell apart an empty
+					 * body from no body at all.
+					 */
+					$$ = (Node *) list_make1($3);
+				}
+			| /*EMPTY*/
+				{
+					$$ = NULL;
+				}
+		;
+/* End - ReqID:SRS-SQL-PROC */
 
 routine_body_stmt_list:
 			routine_body_stmt_list routine_body_stmt ';'
@@ -8173,7 +8669,91 @@ AlterFunctionStmt:
 					n->actions = $4;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-PROC */
+			| ALTER FUNCTION function_with_argtypes ora_editioned
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+
+					stmt->funcname = $3->objname;
+					stmt->is_compile = false;
+					stmt->editable = $4;
+					stmt->parameters = NIL;
+					stmt->is_procedure = false;
+
+					$$ = (Node *) stmt;
+				}
+			| ALTER FUNCTION function_with_argtypes COMPILE debug_options compiler_parameters_clause compiler_parameters_options
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+
+					stmt->funcname = $3->objname;
+					stmt->is_compile = true;
+					stmt->parameters = $6;
+					stmt->is_procedure = false;
+
+					$$ = (Node *) stmt;
+				}
+			| ALTER PROCEDURE function_with_argtypes ora_editioned
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+
+					stmt->funcname = $3->objname;
+					stmt->is_compile = false;
+					stmt->editable = $4;
+					stmt->parameters = NIL;
+					stmt->is_procedure = true;
+
+					$$ = (Node *) stmt;
+				}
+			| ALTER PROCEDURE function_with_argtypes COMPILE debug_options compiler_parameters_clause compiler_parameters_options
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+
+					stmt->funcname = $3->objname;
+					stmt->is_compile = true;
+					stmt->parameters = $6;
+					stmt->is_procedure = true;
+
+					$$ = (Node *) stmt;
+				}
+			/* End - ReqID:SRS-SQL-PROC */
 		;
+
+/* Begin - ReqID:SRS-SQL-PROC */
+compiler_parameters_options:
+			REUSE SETTINGS
+			| /*EMPTY*/
+			;
+
+debug_options:
+			DEBUG_P
+			| /*EMPTY*/
+			;
+compiler_parameters_clause:
+			compiler_parameters_list	{ $$ = $1; }
+			| /*EMPTY*/					{ $$ = NIL; }
+			;
+
+compiler_parameters_list:
+			compiler_parameter_item
+				{
+					$$ = list_make1($1);
+				}
+			| compiler_parameters_list compiler_parameter_item
+				{
+					$$ = lappend($1, $2);
+				}
+			;
+
+compiler_parameter_item:
+			IDENT '=' IDENT
+				{
+					$$ = (Node *) makeDefElem($1, (Node *) makeString($3), @1);
+				}
+			;
+/* End - ReqID:SRS-SQL-PROC */
+
+
 
 alterfunc_opt_list:
 			/* At least one option must be specified */
@@ -16518,6 +17098,34 @@ func_name:	type_function_name
 					}
 		;
 
+/* Begin - ReqID:SRS-SQL-PROC */
+/*
+ * func_name is expected to be followed by a '('. Otherwise there is 
+ * a reduce/reduce conflict using func_name directly.In other words, 
+ * func_name does not apply to functions without parentheses. If you
+ * want to have no parentheses, you need to write new rules yourself, 
+ * which is what native PG does.
+ */
+ora_func_name:	type_function_name
+					{ $$ = list_make1(makeString($1)); }
+					
+			| IDENT indirection
+					{
+						$$ = check_func_name(lcons(makeString($1), $2),
+											 yyscanner);
+					}
+			| unreserved_keyword indirection
+					{
+						$$ = check_func_name(lcons(makeString(pstrdup($1)), $2),
+											 yyscanner);
+					}
+			| col_name_keyword indirection
+					{
+						$$ = check_func_name(lcons(makeString(pstrdup($1)), $2),
+											 yyscanner);
+					}
+		;
+/* End - ReqID:SRS-SQL-PROC */
 
 /*
  * Constants
@@ -16903,6 +17511,7 @@ unreserved_keyword:
 			  ABORT_P
 			| ABSOLUTE_P
 			| ACCESS
+			| ACCESSIBLE	/* ReqID:SRS-SQL-PROC */
 			| ACTION
 			| ADD_P
 			| ADMIN
@@ -16918,6 +17527,7 @@ unreserved_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| AUTHID	/* ReqID:SRS-SQL-PROC */
 			| BACKWARD
 			| BEFORE
 			| BEGIN_P
@@ -16940,6 +17550,7 @@ unreserved_keyword:
 			| COMMENTS
 			| COMMIT
 			| COMMITTED
+			| COMPILE /* ReqID:SRS-SQL-PROC */
 			| COMPRESSION
 			| CONFIGURATION
 			| CONFLICT
@@ -16959,6 +17570,7 @@ unreserved_keyword:
 			| DATABASE
 			| DAY_P
 			| DEALLOCATE
+			| DEBUG_P /* ReqID:SRS-SQL-PROC */
 			| DECLARE
 			| DEFAULTS
 			| DEFERRED
@@ -16969,6 +17581,7 @@ unreserved_keyword:
 			| DEPENDS
 			| DEPTH
 			| DETACH
+			| DETERMINISTIC /* ReqID:SRS-SQL-PROC */
 			| DICTIONARY
 			| DISABLE_P
 			| DISCARD
@@ -16977,6 +17590,7 @@ unreserved_keyword:
 			| DOUBLE_P
 			| DROP
 			| EACH
+			| EDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| ENABLE_P
 			| ENCODING
 			| ENCRYPTED
@@ -17005,6 +17619,7 @@ unreserved_keyword:
 			| GRANTED
 			| GROUPS
 			| HANDLER
+			| HASH_P	/* ReqID:SRS-SQL-PROC */
 			| HEADER_P
 			| HOLD
 			| HOUR_P
@@ -17028,6 +17643,7 @@ unreserved_keyword:
 			| INSTEAD
 			| INVOKER
 			| ISOLATION
+			| IVYSQL /* ReqID:SRS-SQL-PROC */
 			| KEY
 			| LABEL
 			| LANGUAGE
@@ -17049,6 +17665,7 @@ unreserved_keyword:
 			| MATERIALIZED
 			| MAXVALUE
 			| MERGE
+			| METADATA /* ReqID:SRS-SQL-PROC */
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
@@ -17068,6 +17685,7 @@ unreserved_keyword:
 			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
+			| NONEDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| NOORDER		/* ReqID:SRS-SQL-IDENTCOL */
 			| NORMALIZED
 			| NOTHING
@@ -17088,14 +17706,18 @@ unreserved_keyword:
 			| OVERRIDING
 			| OWNED
 			| OWNER
+			| PACKAGE	/* ReqID:SRS-SQL-PROC */
 			| PARALLEL
+			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARSER
 			| PARTIAL
 			| PARTITION
 			| PASSING
 			| PASSWORD
+			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PLANS
 			| POLICY
+			| POLYMORPHIC /* ReqID:SRS-SQL-PROC */
 			| PRECEDING
 			| PREPARE
 			| PREPARED
@@ -17120,6 +17742,7 @@ unreserved_keyword:
 			| REINDEX
 			| RELATIVE_P
 			| RELEASE
+			| RELIES_ON	/* ReqID:SRS-SQL-PROC */
 			| RENAME
 			| REPEATABLE
 			| REPLACE
@@ -17127,8 +17750,10 @@ unreserved_keyword:
 			| RESET
 			| RESTART
 			| RESTRICT
+			| RESULT_CACHE	/* ReqID:SRS-SQL-PROC */
 			| RETURN
 			| RETURNS
+			| REUSE /* ReqID:SRS-SQL-PROC */
 			| REVOKE
 			| ROLE
 			| ROLLBACK
@@ -17138,6 +17763,7 @@ unreserved_keyword:
 			| ROWS
 			| RULE
 			| SAVEPOINT
+			| SCALAR	/* ReqID:SRS-SQL-PROC */
 			| SCHEMA
 			| SCHEMAS
 			| SCROLL
@@ -17151,12 +17777,15 @@ unreserved_keyword:
 			| SESSION
 			| SET
 			| SETS
+			| SETTINGS /* ReqID:SRS-SQL-PROC */
 			| SHARE
+			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
 			| SIMPLE
 			| SKIP
 			| SNAPSHOT
 			| SQL_P
+			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE
 			| STANDALONE_P
 			| START
@@ -17195,6 +17824,7 @@ unreserved_keyword:
 			| UNLOGGED
 			| UNTIL
 			| UPDATE
+			| USING_NLS_COMP	/* ReqID:SRS-SQL-PROC */
 			| VACUUM
 			| VALID
 			| VALIDATE
@@ -17382,6 +18012,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| NOCOPY /* ReqID:SRS-SQL-PROC */
 			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOT
 			| NULL_P
@@ -17427,6 +18058,7 @@ bare_label_keyword:
 			  ABORT_P
 			| ABSOLUTE_P
 			| ACCESS
+			| ACCESSIBLE	/* ReqID:SRS-SQL-PROC */
 			| ACTION
 			| ADD_P
 			| ADMIN
@@ -17449,6 +18081,7 @@ bare_label_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| AUTHID	/* ReqID:SRS-SQL-PROC */
 			| AUTHORIZATION
 			| BACKWARD
 			| BEFORE
@@ -17488,6 +18121,7 @@ bare_label_keyword:
 			| COMMENTS
 			| COMMIT
 			| COMMITTED
+			| COMPILE /* ReqID:SRS-SQL-PROC */
 			| COMPRESSION
 			| CONCURRENTLY
 			| CONFIGURATION
@@ -17517,6 +18151,7 @@ bare_label_keyword:
 			| DATABASE
 			| DATE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| DEALLOCATE
+			| DEBUG_P /* ReqID:SRS-SQL-PROC */
 			| DEC
 			| DECIMAL_P
 			| DECLARE
@@ -17533,6 +18168,7 @@ bare_label_keyword:
 			| DEPTH
 			| DESC
 			| DETACH
+			| DETERMINISTIC /* ReqID:SRS-SQL-PROC */
 			| DICTIONARY
 			| DISABLE_P
 			| DISCARD
@@ -17543,6 +18179,7 @@ bare_label_keyword:
 			| DOUBLE_P
 			| DROP
 			| EACH
+			| EDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| ELSE
 			| ENABLE_P
 			| ENCODING
@@ -17581,6 +18218,7 @@ bare_label_keyword:
 			| GROUPING
 			| GROUPS
 			| HANDLER
+			| HASH_P	/* ReqID:SRS-SQL-PROC */
 			| HEADER_P
 			| HOLD
 			| IDENTITY_P
@@ -17612,6 +18250,7 @@ bare_label_keyword:
 			| INVOKER
 			| IS
 			| ISOLATION
+			| IVYSQL /* ReqID:SRS-SQL-PROC */
 			| JOIN
 			| KEY
 			| LABEL
@@ -17641,6 +18280,7 @@ bare_label_keyword:
 			| MATERIALIZED
 			| MAXVALUE
 			| MERGE /* ReqID:SRS-SQL-MERGE */
+			| METADATA /* ReqID:SRS-SQL-PROC */
 			| METHOD
 			| MINVALUE
 			| MODE
@@ -17659,10 +18299,12 @@ bare_label_keyword:
 			| NFKD
 			| NO
 			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOCOPY 		/* ReqID:SRS-SQL-PROC */
 			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NONE
+			| NONEDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| NORMALIZE
 			| NORMALIZED
 			| NOT
@@ -17694,15 +18336,19 @@ bare_label_keyword:
 			| OVERRIDING
 			| OWNED
 			| OWNER
+			| PACKAGE	/* ReqID:SRS-SQL-PROC */
 			| PARALLEL
+			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARSER
 			| PARTIAL
 			| PARTITION
 			| PASSING
 			| PASSWORD
+			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PLACING
 			| PLANS
 			| POLICY
+			| POLYMORPHIC /* ReqID:SRS-SQL-PROC */
 			| POSITION
 			| PRECEDING
 			| PREPARE
@@ -17731,6 +18377,7 @@ bare_label_keyword:
 			| REINDEX
 			| RELATIVE_P
 			| RELEASE
+			| RELIES_ON	/* ReqID:SRS-SQL-PROC */
 			| RENAME
 			| REPEATABLE
 			| REPLACE
@@ -17738,8 +18385,10 @@ bare_label_keyword:
 			| RESET
 			| RESTART
 			| RESTRICT
+			| RESULT_CACHE	/* ReqID:SRS-SQL-PROC */
 			| RETURN
 			| RETURNS
+			| REUSE /* ReqID:SRS-SQL-PROC */
 			| REVOKE
 			| RIGHT
 			| ROLE
@@ -17751,6 +18400,7 @@ bare_label_keyword:
 			| ROWS
 			| RULE
 			| SAVEPOINT
+			| SCALAR	/* ReqID:SRS-SQL-PROC */
 			| SCHEMA
 			| SCHEMAS
 			| SCROLL
@@ -17766,7 +18416,9 @@ bare_label_keyword:
 			| SET
 			| SETOF
 			| SETS
+			| SETTINGS /* ReqID:SRS-SQL-PROC */
 			| SHARE
+			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
 			| SIMILAR
 			| SIMPLE
@@ -17775,6 +18427,7 @@ bare_label_keyword:
 			| SNAPSHOT
 			| SOME
 			| SQL_P
+			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE
 			| STANDALONE_P
 			| START
@@ -17828,6 +18481,7 @@ bare_label_keyword:
 			| USER
 			| USERENV	/* BUG:0000830 */
 			| USING
+			| USING_NLS_COMP	/* ReqID:SRS-SQL-PROC */
 			| VACUUM
 			| VALID
 			| VALIDATE
@@ -18746,6 +19400,33 @@ makeRecursiveViewSelect(char *relname, List *aliases, Node *query)
 
 	return (Node *) s;
 }
+
+/* Begin - ReqID:SRS-SQL-PROC */
+/* Oracle doesn't have a language clause, IvorySQL set it to the plisql language by default */
+static void determineLanguage(List *options)
+{
+	ListCell   *option;
+	DefElem    *language_item = NULL;
+
+	foreach(option, options)
+	{
+		DefElem    *defel = (DefElem *) lfirst(option);			
+		
+		if (strcmp(defel->defname, "language") == 0)
+		{								
+			language_item = defel;							
+			break;
+		}
+	}
+					
+
+	if (language_item == NULL)
+	{
+		options = lappend(options,  makeDefElem("language", (Node *)makeString("plisql"), -1));
+	}
+
+}
+/* End - ReqID:SRS-SQL-PROC */
 
 /* ora_parser_init()
  * Initialize to parse one query string

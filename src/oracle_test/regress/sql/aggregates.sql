@@ -823,6 +823,7 @@ begin
 	return null;
 end
 $$ language plpgsql;
+/
 
 create function avg_finalfn(state avg_state) returns int4 as
 $$
@@ -834,6 +835,7 @@ begin
 	end if;
 end
 $$ language plpgsql;
+/
 
 create function sum_finalfn(state avg_state) returns int4 as
 $$
@@ -845,6 +847,7 @@ begin
 	end if;
 end
 $$ language plpgsql;
+/
 
 create aggregate my_avg(int4)
 (
@@ -951,6 +954,7 @@ begin
 	return null;
 end
 $$ language plpgsql;
+/
 
 create function halfsum_finalfn(state int4) returns int4 as
 $$
@@ -962,6 +966,7 @@ begin
 	end if;
 end
 $$ language plpgsql;
+/
 
 create aggregate my_sum(int4)
 (
@@ -997,6 +1002,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END$$;
+/
 
 CREATE AGGREGATE balk(int4)
 (
@@ -1025,6 +1031,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END$$;
+/
 
 CREATE AGGREGATE balk(int4)
 (

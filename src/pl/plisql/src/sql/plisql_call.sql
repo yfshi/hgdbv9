@@ -9,6 +9,7 @@ BEGIN
     NULL;
 END;
 $$;
+/
 
 CALL test_proc1();
 
@@ -21,6 +22,7 @@ BEGIN
     RETURN 5;
 END;
 $$;
+/
 
 
 CREATE TABLE test1 (a int);
@@ -32,6 +34,7 @@ BEGIN
     INSERT INTO test1 VALUES (x);
 END;
 $$;
+/
 
 CALL test_proc3(55);
 
@@ -49,6 +52,7 @@ BEGIN
     CALL test_proc3($1);
 END;
 $$;
+/
 
 CALL test_proc4(66);
 
@@ -68,6 +72,7 @@ BEGIN
     a := a || '+' || a;
 END;
 $$;
+/
 
 CALL test_proc5('abc');
 
@@ -80,6 +85,7 @@ BEGIN
     c := c * a;
 END;
 $$;
+/
 
 CALL test_proc6(2, 3, 4);
 
@@ -140,6 +146,7 @@ IF x > 1 THEN
 END IF;
 END;
 $$;
+/
 
 CALL test_proc7(100, -1, -1);
 
@@ -154,6 +161,7 @@ BEGIN
   COMMIT;
 END;
 $$;
+/
 
 CREATE PROCEDURE test_proc7cc(_x int)
 LANGUAGE plisql
@@ -164,6 +172,7 @@ BEGIN
   RAISE NOTICE '_x: %,_a: %, _b: %', _x, _a, _b;
 END
 $$;
+/
 
 CALL test_proc7cc(10);
 
@@ -179,6 +188,7 @@ BEGIN
   b := b + 10;
 END;
 $$;
+/
 
 CALL test_proc8a(10, 20);
 CALL test_proc8a(b => 20, a => 10);
@@ -205,6 +215,7 @@ BEGIN
   c := c * -10;
 END;
 $$;
+/
 
 DO $$
 DECLARE _a int; _b int; _c int;
@@ -228,6 +239,7 @@ BEGIN
   c := c * -10;
 END;
 $$;
+/
 
 DO $$
 DECLARE _a int; _b int; _c int;
@@ -273,6 +285,7 @@ BEGIN
   b := a * 2;
 END;
 $$;
+/
 
 DO $$
 DECLARE _a int; _b int;
@@ -291,6 +304,7 @@ BEGIN
   b := a - c;
 END;
 $$;
+/
 
 DO $$
 DECLARE _a int; _b int; _c int;
@@ -335,6 +349,7 @@ BEGIN
   a := b[1] + b[2];
 END;
 $$;
+/
 
 DO $$
 DECLARE _a int; _b int; _c int;
@@ -360,6 +375,7 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+/
 
 CREATE TRIGGER t1 BEFORE INSERT ON test1 EXECUTE PROCEDURE triggerfunc1();
 
@@ -385,6 +401,7 @@ BEGIN
   v_Text := 'v_cnt = ' || v_cnt;
 END
 $$ LANGUAGE plisql;
+/
 
 DO $$
 DECLARE

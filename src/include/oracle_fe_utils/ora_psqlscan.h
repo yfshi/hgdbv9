@@ -87,5 +87,8 @@ extern void ora_psql_scan_reselect_sql_lexer(PsqlScanState state);
 
 extern bool ora_psql_scan_in_quote(PsqlScanState state);
 
+/* Begin - ReqID:SRS-SQL-PROC */
+extern bool is_oracle_slash(PsqlScanState state, const char *line);
+/* End - ReqID:SRS-SQL-PROC */
 
 #endif							/* PSQLSCAN_H */

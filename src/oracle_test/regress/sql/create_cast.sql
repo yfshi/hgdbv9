@@ -9,10 +9,12 @@ CREATE FUNCTION casttesttype_in(cstring)
    RETURNS casttesttype
    AS 'textin'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 CREATE FUNCTION casttesttype_out(casttesttype)
    RETURNS cstring
    AS 'textout'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 
 CREATE TYPE casttesttype (
    internallength = variable,
@@ -24,6 +26,7 @@ CREATE TYPE casttesttype (
 -- a dummy function to test with
 CREATE FUNCTION casttestfunc(casttesttype) RETURNS int4 LANGUAGE SQL AS
 $$ SELECT 1; $$;
+/
 
 SELECT casttestfunc('foo'::text); -- fails, as there's no cast
 
@@ -49,6 +52,7 @@ DROP CAST (int4 AS casttesttype);
 
 CREATE FUNCTION int4_casttesttype(int4) RETURNS casttesttype LANGUAGE SQL AS
 $$ SELECT ('foo'::text || $1::text)::casttesttype; $$;
+/
 
 CREATE CAST (int4 AS casttesttype) WITH FUNCTION int4_casttesttype(int4) AS IMPLICIT;
 SELECT 1234::int4::casttesttype; -- Should work now

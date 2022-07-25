@@ -85,6 +85,7 @@ CREATE OR REPLACE FUNCTION create_extension_with_temp_schema()
     RAISE NOTICE 'query %', query;
     EXECUTE query;
   END; $$ LANGUAGE plpgsql;
+/
 BEGIN;
 SELECT create_extension_with_temp_schema();
 PREPARE TRANSACTION 'twophase_extension';

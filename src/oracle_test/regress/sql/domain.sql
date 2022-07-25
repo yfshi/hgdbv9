@@ -534,6 +534,7 @@ declare v pos_int;
 begin
     return p1;
 end$$ language plisql;
+/
 
 select doubledecrement(3); -- fail because of implicit null assignment
 
@@ -542,6 +543,7 @@ declare v pos_int := 0;
 begin
     return p1;
 end$$ language plisql;
+/
 
 select doubledecrement(3); -- fail at initialization assignment
 
@@ -551,6 +553,7 @@ begin
     v := p1 - 1;
     return v - 1;
 end$$ language plisql;
+/
 
 select doubledecrement(null); -- fail before call
 select doubledecrement(0); -- fail before call
@@ -625,6 +628,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 
 select array_elem_check(121.00);
 select array_elem_check(1.23456);
@@ -638,6 +642,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 
 select array_elem_check(121.00);
 select array_elem_check(1.23456);
@@ -651,6 +656,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 
 select array_elem_check(121.00);
 select array_elem_check(1.23456);
@@ -681,6 +687,7 @@ begin
   x[2] := $1;
   return x[2];
 end$$ language plisql;
+/
 
 select array_elem_check(3);
 select array_elem_check(-1);
@@ -700,6 +707,7 @@ begin
   return d;
 end
 $$ language plisql immutable;
+/
 
 select dom_check(0);
 
@@ -720,6 +728,7 @@ begin
   return d;
 end
 $$ language plisql immutable;
+/
 
 select dom_check(0);
 
@@ -743,6 +752,7 @@ drop domain di;
 create function sql_is_distinct_from(anyelement, anyelement)
 returns boolean language sql
 as 'select $1 is distinct from $2 limit 1';
+/
 
 create domain inotnull int
   check (sql_is_distinct_from(value, null));

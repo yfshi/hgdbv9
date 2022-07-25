@@ -1299,6 +1299,7 @@ begin
   return new;
 end;
 $$ LANGUAGE plpgsql;
+/
 
 CREATE TRIGGER y_trig BEFORE INSERT ON y FOR EACH ROW
     EXECUTE PROCEDURE y_trigger();
@@ -1340,6 +1341,7 @@ begin
   return null;
 end;
 $$ LANGUAGE plpgsql;
+/
 
 CREATE TRIGGER y_trig AFTER INSERT ON y FOR EACH STATEMENT
     EXECUTE PROCEDURE y_trigger();

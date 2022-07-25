@@ -32,6 +32,7 @@ begin
     end loop;
 end;
 $$;
+/
 
 -- To produce valid JSON output, replace numbers with "0" or "0.0" not "N"
 create function explain_filter_to_json(text) returns jsonb
@@ -50,6 +51,7 @@ begin
     return data::jsonb;
 end;
 $$;
+/
 
 -- Simple cases
 

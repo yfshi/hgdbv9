@@ -1096,6 +1096,7 @@ where b;
 --
 create function f_immutable_int4(i integer) returns integer as
 $$ begin return i; end; $$ language plpgsql immutable;
+/
 
 -- check optimization of function scan with join
 explain (costs off)
@@ -1152,9 +1153,11 @@ drop function f_immutable_int4(int);
 
 create function mki8(bigint, bigint) returns int8_tbl as
 $$select row($1,$2)::int8_tbl$$ language sql;
+/
 
 create function mki4(int) returns int4_tbl as
 $$select row($1)::int4_tbl$$ language sql;
+/
 
 explain (verbose, costs off)
 select * from mki8(1,2);

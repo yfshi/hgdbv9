@@ -1512,6 +1512,7 @@ begin
 end;
 $$
 language plpgsql;
+/
 create view tt14v as select t.* from tt14f() t;
 select pg_get_viewdef('tt14v', true);
          pg_get_viewdef         

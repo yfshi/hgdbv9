@@ -283,6 +283,7 @@ select * from xacttest;
 
 create or replace function max_xacttest() returns smallint language sql as
 'select max(a) from xacttest' stable;
+/
 
 begin;
 update xacttest set a = max_xacttest() + 10 where a > 0;
@@ -292,6 +293,7 @@ rollback;
 -- But a volatile function can see the partial results of the calling query
 create or replace function max_xacttest() returns smallint language sql as
 'select max(a) from xacttest' volatile;
+/
 
 begin;
 update xacttest set a = max_xacttest() + 10 where a > 0;
@@ -301,6 +303,7 @@ rollback;
 -- Now the same test with plpgsql (since it depends on SPI which is different)
 create or replace function max_xacttest() returns smallint language plpgsql as
 'begin return max(a) from xacttest; end' stable;
+/
 
 begin;
 update xacttest set a = max_xacttest() + 10 where a > 0;
@@ -309,6 +312,7 @@ rollback;
 
 create or replace function max_xacttest() returns smallint language plpgsql as
 'begin return max(a) from xacttest; end' volatile;
+/
 
 begin;
 update xacttest set a = max_xacttest() + 10 where a > 0;
@@ -343,6 +347,7 @@ begin
 exception
   when division_by_zero then return 0;
 end$$ language plpgsql volatile;
+/
 
 create table revalidate_bug (c float8 unique);
 insert into revalidate_bug values (1);
@@ -392,6 +397,7 @@ abort;
 -- that was created in an outer subtransaction
 CREATE FUNCTION invert(x float8) RETURNS float8 LANGUAGE plpgsql AS
 $$ begin return 1/x; end $$;
+/
 
 CREATE FUNCTION create_temp_tab() RETURNS text
 LANGUAGE plpgsql AS $$
@@ -402,6 +408,7 @@ BEGIN
   INSERT INTO new_table SELECT invert(0.0);
   RETURN 'foo';
 END $$;
+/
 
 BEGIN;
 DECLARE ok CURSOR FOR SELECT * FROM int8_tbl;

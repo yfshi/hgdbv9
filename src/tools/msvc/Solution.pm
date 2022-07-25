@@ -50,6 +50,22 @@ sub _new
 	  unless grep { $_ == $options->{wal_blocksize} }
 	  (1, 2, 4, 8, 16, 32, 64);
 
+# Begin - ReqID:SRS-SQL-PROC
+	$options->{max_funarg} = 100
+	  unless $options->{max_funarg};    # undef or 0 means default
+	 # The minimum value is 8 (GIN indexes use 8-argument support functions)
+	if ($options->{max_funarg} < 8)
+	{
+		die "Bad max_funarg $options->{max_funarg}";
+	}
+	if (   ($options->{blocksize} < 8 && $options->{max_funarg} > 100)
+		|| ($options->{blocksize} == 8 && $options->{max_funarg} > 600)
+		|| ($options->{blocksize} == 16 && $options->{max_funarg} > 1200)
+		|| ($options->{blocksize} == 32 && $options->{max_funarg} > 2400))
+	{
+		die "Bad max_funarg $options->{max_funarg}";
+	}
+# End - ReqID:SRS-SQL-PROC
 	return $self;
 }
 
@@ -456,6 +472,9 @@ sub GenerateFiles
 		INT64_MODIFIER                           => qq{"ll"},
 		LOCALE_T_IN_XLOCALE                      => undef,
 		MAXIMUM_ALIGNOF                          => 8,
+		# Begin - ReqID:SRS-SQL-PROC
+		MAXIMUM_FUNARG							 => $self->{options}->{max_funarg},
+		# End - ReqID:SRS-SQL-PROC
 		MEMSET_LOOP_LIMIT                        => 1024,
 		OPENSSL_API_COMPAT                       => $openssl_api_compat,
 		PACKAGE_BUGREPORT                        => qq{"$package_bugreport"},
