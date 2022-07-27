@@ -21,6 +21,9 @@
 #include "fmgr.h"
 #include "miscadmin.h"
 #include "parser/parse_oper.h"
+/* Begin - ReqID:SRS-SQL-INSERT */
+#include "parser/parse_target.h"
+/* End - ReqID:SRS-SQL-INSERT */
 
 #include "include/guc.h"
 #include "include/ivorysql_ora.h"
@@ -30,6 +33,10 @@ PG_MODULE_MAGIC;
 
 /* Saved hook value in case of unload */
 static oracle_datatype_precedence_hook_type pre_oracle_datatype_precedence_hook = NULL;
+
+/* Begin - ReqID:SRS-SQL-INSERT */
+static OraGetAttrnoHooktype pre_ora_get_attrno_hook = NULL;
+/* End - ReqID:SRS-SQL-INSERT */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -53,6 +60,11 @@ _PG_init(void)
 	/* Install Hooks */
 	pre_oracle_datatype_precedence_hook = oracle_datatype_precedence_hook;
 	oracle_datatype_precedence_hook = pg_compatible_oracle_precedence;
+
+	/* Begin - ReqID:SRS-SQL-INSERT */
+	pre_ora_get_attrno_hook = OraGetAttrnoHook;
+	OraGetAttrnoHook = IvyOraGetAttrno;
+	/* End - ReqID:SRS-SQL-INSERT */
 }
 
 /*
@@ -67,4 +79,8 @@ _PG_fini(void)
 {
 	/* Uninstall Hooks */
 	oracle_datatype_precedence_hook = pre_oracle_datatype_precedence_hook;
+
+	/* Begin - ReqID:SRS-SQL-INSERT */
+	OraGetAttrnoHook = pre_ora_get_attrno_hook;
+	/* Begin - ReqID:SRS-SQL-INSERT */
 }

@@ -31,6 +31,13 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/typcache.h"
+#include "utils/guc.h"
+
+/* Begin - ReqID:SRS-SQL-INSERT */
+#include "utils/ora_compatible.h"
+
+OraGetAttrnoHooktype OraGetAttrnoHook = NULL;
+/* End - ReqID:SRS-SQL-INSERT */
 
 static void markTargetListOrigin(ParseState *pstate, TargetEntry *tle,
 								 Var *var, int levelsup);
@@ -1057,6 +1064,14 @@ checkInsertTargets(ParseState *pstate, List *cols, List **attrnos)
 
 			/* Lookup column name, ereport on failure */
 			attrno = attnameAttNum(pstate->p_target_relation, name, false);
+
+			/* Begin - ReqID:SRS-SQL-INSERT */
+			if (insert_enable_alias && attrno == InvalidAttrNumber)
+			{
+				if (OraGetAttrnoHook && compatible_db == DB_ORACLE)
+					attrno = (* OraGetAttrnoHook)(pstate, col);
+			}
+			/* End - ReqID:SRS-SQL-INSERT */
 			if (attrno == InvalidAttrNumber)
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_COLUMN),

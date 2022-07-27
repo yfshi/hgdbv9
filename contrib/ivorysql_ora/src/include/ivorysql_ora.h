@@ -15,9 +15,20 @@
  *
  *--------------------------------------------------------------------
  */
+#ifndef IVORYSQL_ORA_H_
+#define IVORYSQL_ORA_H_
+
+#include "postgres.h"
+
+#include "parser/parse_node.h"
+
+
 
 /* Hooks */
 extern bool pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_arg1, Oid *result_arg2);
 
+/* Begin - ReqID:SRS-SQL-INSERT */
+extern int IvyOraGetAttrno(ParseState *pstate, ResTarget  *col);
+/* End - ReqID:SRS-SQL-INSERT */
 
-
+#endif	/* IVORYSQL_ORA_H_ */
