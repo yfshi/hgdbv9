@@ -101,7 +101,7 @@ static void init_sequence(Oid relid, SeqTable *p_elm, Relation *p_rel);
 static Form_pg_sequence_data read_seq_tuple(Relation rel,
 											Buffer *buf, HeapTuple seqdatatuple);
 static void init_params(ParseState *pstate, List *options, bool for_identity,
-						bool isInit,
+						bool isInit, char seq_type,	/* ReqID:SRS-SQL-IDENTCOL */
 						Form_pg_sequence seqform,
 						Form_pg_sequence_data seqdataform,
 						bool *need_seq_rewrite,
@@ -158,7 +158,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	}
 
 	/* Check and set all option values */
-	init_params(pstate, seq->options, seq->for_identity, true,
+	init_params(pstate, seq->options, seq->for_identity, true, seq->seq_type,	/* ReqID:SRS-SQL-IDENTCOL */
 				&seqform, &seqdataform,
 				&need_seq_rewrite, &owned_by);
 
@@ -470,7 +470,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 	UnlockReleaseBuffer(buf);
 
 	/* Check and set new values */
-	init_params(pstate, stmt->options, stmt->for_identity, false,
+	init_params(pstate, stmt->options, stmt->for_identity, false, 0,	/* ReqID:SRS-SQL-IDENTCOL */
 				seqform, newdataform,
 				&need_seq_rewrite, &owned_by);
 
@@ -1233,7 +1233,7 @@ read_seq_tuple(Relation rel, Buffer *buf, HeapTuple seqdatatuple)
  */
 static void
 init_params(ParseState *pstate, List *options, bool for_identity,
-			bool isInit,
+			bool isInit, char seq_type,	/* ReqID:SRS-SQL-IDENTCOL */
 			Form_pg_sequence seqform,
 			Form_pg_sequence_data seqdataform,
 			bool *need_seq_rewrite,
@@ -1250,6 +1250,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	ListCell   *option;
 	bool		reset_max_value = false;
 	bool		reset_min_value = false;
+	int			ordercnt = 0;	/* ReqID:SRS-SQL-IDENTCOL */
 
 	*need_seq_rewrite = false;
 	*owned_by = NIL;
@@ -1359,6 +1360,19 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 					 errmsg("invalid sequence option SEQUENCE NAME"),
 					 parser_errposition(pstate, defel->location)));
 		}
+		/* Begin - ReqID:SRS-SQL-IDENTCOL */
+		else if(strcmp(defel->defname, "order") == 0 || strcmp(defel->defname, "noorder") == 0)
+		{
+			ordercnt++;
+			if(ordercnt > 1)
+			{
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("dumplicate or conflicting ORDER/NOORDER specifications"),
+					 parser_errposition(pstate, defel->location)));
+			}
+		}
+		/* End - ReqID:SRS-SQL-IDENTCOL */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -1375,15 +1389,35 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	if (as_type != NULL)
 	{
 		Oid			newtypid = typenameTypeId(pstate, defGetTypeName(as_type));
-
-		if (newtypid != INT2OID &&
-			newtypid != INT4OID &&
-			newtypid != INT8OID)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 for_identity
-					 ? errmsg("identity column type must be smallint, integer, or bigint")
-					 : errmsg("sequence type must be smallint, integer, or bigint")));
+		/* Begin - ReqID:SRS-SQL-IDENTCOL */
+		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || !seq_type)
+		{
+			if (newtypid != INT2OID &&
+				newtypid != INT4OID &&
+				newtypid != INT8OID)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 for_identity
+						 ? errmsg("identity column type must be smallint, integer, or bigint")
+						 : errmsg("sequence type must be smallint, integer, or bigint")));
+		}
+		else if(seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
+						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
+		{
+			if (newtypid != INT2OID &&
+				newtypid != INT4OID &&
+				newtypid != INT8OID &&
+				newtypid != FLOAT4OID	&&
+				newtypid != FLOAT8OID	&&
+				newtypid != NUMBEROID	&&
+				newtypid != NUMERICOID)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 for_identity
+						 ? errmsg("identity column type must be a numeric type")
+						 : errmsg("sequence type must be a numeric type")));
+		}
+		/* End - ReqID:SRS-SQL-IDENTCOL */
 
 		if (!isInit)
 		{

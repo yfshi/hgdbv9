@@ -7646,6 +7646,10 @@ ATExecDropIdentity(Relation rel, const char *colName, bool missing_ok, LOCKMODE 
 		}
 	}
 
+	/* Begin - ReqID:SRS-SQL-IDENTCOL */
+	if(attTup->attidentity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL)
+		attTup->attnotnull = false;
+	/* End - ReqID:SRS-SQL-IDENTCOL */
 	attTup->attidentity = '\0';
 	CatalogTupleUpdate(attrelation, &tuple->t_self, tuple);
 

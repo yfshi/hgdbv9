@@ -617,6 +617,8 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <list>		hash_partbound
 %type <defelt>		hash_partbound_elem
 
+%type <node>	identity_clause identity_options drop_identity	/* ReqID:SRS-SQL-IDENTCOL */
+
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -688,9 +690,10 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
-	MAPPING MATCH MATERIALIZED MAXVALUE METHOD MINUTE_P MINVALUE MODE MONTH_P MOVE
+	MAPPING MATCH MATERIALIZED MAXVALUE METHOD MINUTE_P MINVALUE MODE MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
 
-	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
+	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
+	NOMAXVALUE NOMINVALUE NONE NOORDER /* ReqID:SRS-SQL-IDENTCOL */
 	NORMALIZE NORMALIZED
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
 	NULLS_P NUMBER_P /* ReqID:SRS-GKC-DATATYPE_001 */ NUMERIC NVL NVL2 /* ReqID:SRS-GKC-DATATYPE_001 */
@@ -2201,6 +2204,17 @@ alter_table_cmd:
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			/* ALTER TABLE <name> ADD ( <coldef> ) */
+			| ADD_P '(' columnDef ')'
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_AddColumn;
+					n->def = $3;
+					n->missing_ok = false;
+					$$ = (Node *)n;	
+				}
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 			/* ALTER TABLE <name> ADD IF NOT EXISTS <coldef> */
 			| ADD_P IF_P NOT EXISTS columnDef
 				{
@@ -2375,6 +2389,13 @@ alter_table_cmd:
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			/* ALTER TABLE <name> MODIFY <colname> [datatype] [ DEFAULT [ ON NULL ] expr | identity_clause | DROP IDENTITY ] ) */
+			| MODIFY identity_clause
+				{
+					$$ = $2;
+				}
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 			/* ALTER TABLE <name> DROP [COLUMN] IF EXISTS <colname> [RESTRICT|CASCADE] */
 			| DROP opt_column IF_P EXISTS ColId opt_drop_behavior
 				{
@@ -2837,6 +2858,42 @@ alter_identity_column_option:
 					$$ = makeDefElem("generated", (Node *) makeInteger($3), @1);
 				}
 		;
+
+/* Begin - ReqID:SRS-SQL-IDENTCOL */
+identity_clause:
+			'(' identity_options ')'		{ $$ = $2; }
+			| identity_options				{ $$ = $1; }
+			| '(' drop_identity ')'			{ $$ = $2; }
+			| drop_identity					{ $$ = $1; }
+		;
+
+identity_options:
+			ColId GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					if ($3 == ATTRIBUTE_IDENTITY_ALWAYS)
+						$3 = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
+					else if ($3 == ATTRIBUTE_IDENTITY_BY_DEFAULT)
+						$3 = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
+					n->def = (Node *)lcons(makeDefElem("generated", (Node *) makeInteger($3), @1), $6);
+
+					n->subtype = AT_SetIdentity;
+					n->name = $1;
+
+					$$ = (Node *)n;
+				}
+
+drop_identity:
+			ColId DROP IDENTITY_P
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DropIdentity;
+					n->name = $1;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+		;
+/* End - ReqID:SRS-SQL-IDENTCOL */
 
 PartitionBoundSpec:
 			/* a HASH partition */
@@ -3657,9 +3714,26 @@ ColConstraintElem:
 				}
 			| GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
 				{
+					char *str = NULL;	/* ReqID:SRS-SQL-IDENTCOL */
 					Constraint *n = makeNode(Constraint);
+					/* Begin - ReqID:SRS-SQL-IDENTCOL */
+					if($5)
+					{
+						str = scanner_querytext(@5, @5+1, yyscanner);
+					}
+					/* End - ReqID:SRS-SQL-IDENTCOL */
 					n->contype = CONSTR_IDENTITY;
 					n->generated_when = $2;
+					/* Begin - ReqID:SRS-SQL-IDENTCOL */
+					if( $5 != NULL && strncmp(str,"(",1) != 0 && n->generated_when  == ATTRIBUTE_IDENTITY_ALWAYS)
+						n->generated_when = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
+					else if ($5 != NULL && strncmp(str,"(",1) != 0 && n->generated_when  == ATTRIBUTE_IDENTITY_BY_DEFAULT)
+						n->generated_when = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
+					else if ($5 == NULL && n->generated_when  == ATTRIBUTE_IDENTITY_ALWAYS)
+						n->generated_when = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
+					else if ($5 == NULL && n->generated_when  == ATTRIBUTE_IDENTITY_BY_DEFAULT)
+						n->generated_when = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
+					/* End - ReqID:SRS-SQL-IDENTCOL */
 					n->options = $5;
 					n->location = @1;
 					$$ = (Node *)n;
@@ -3707,6 +3781,7 @@ ColConstraintElem:
 generated_when:
 			ALWAYS			{ $$ = ATTRIBUTE_IDENTITY_ALWAYS; }
 			| BY DEFAULT	{ $$ = ATTRIBUTE_IDENTITY_BY_DEFAULT; }
+			| BY DEFAULT ON NULL_P	{ $$ = ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL; }	/* ReqID:SRS-SQL-IDENTCOL */
 		;
 
 /*
@@ -4400,6 +4475,7 @@ OptSeqOptList: SeqOptList							{ $$ = $1; }
 		;
 
 OptParenthesizedSeqOptList: '(' SeqOptList ')'		{ $$ = $2; }
+			| SeqOptList							{ $$ = $1; }		/* ReqID:SRS-SQL-IDENTCOL */
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
 
@@ -4415,6 +4491,12 @@ SeqOptElem: AS SimpleTypename
 				{
 					$$ = makeDefElem("cache", (Node *)$2, @1);
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			| NOCACHE
+				{
+					$$ = makeDefElem("cache", (Node *)makeInteger(0), @1);
+				}
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| CYCLE
 				{
 					$$ = makeDefElem("cycle", (Node *)makeInteger(true), @1);
@@ -4423,6 +4505,12 @@ SeqOptElem: AS SimpleTypename
 				{
 					$$ = makeDefElem("cycle", (Node *)makeInteger(false), @1);
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			| NOCYCLE
+				{
+					$$ = makeDefElem("cycle", (Node *)makeInteger(false), @1);
+				}
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| INCREMENT opt_by NumericOnly
 				{
 					$$ = makeDefElem("increment", (Node *)$3, @1);
@@ -4439,6 +4527,16 @@ SeqOptElem: AS SimpleTypename
 				{
 					$$ = makeDefElem("maxvalue", NULL, @1);
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			| NOMAXVALUE
+				{
+					$$ = makeDefElem("maxvalue", NULL, @1);
+				}
+			| NOMINVALUE
+				{
+					$$ = makeDefElem("minvalue", NULL, @1);
+				}
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| NO MINVALUE
 				{
 					$$ = makeDefElem("minvalue", NULL, @1);
@@ -4464,6 +4562,10 @@ SeqOptElem: AS SimpleTypename
 				{
 					$$ = makeDefElem("restart", (Node *)$3, @1);
 				}
+			/* Begin - ReqID:SRS-SQL-IDENTCOL */
+			| ORDER { $$ = makeDefElem("order", NULL, @1); }
+			| NOORDER { $$ = makeDefElem("noorder", NULL, @1); }
+			/* End - ReqID:SRS-SQL-IDENTCOL */
 		;
 
 opt_by:		BY
@@ -16820,6 +16922,7 @@ unreserved_keyword:
 			| MINUTE_P
 			| MINVALUE
 			| MODE
+			| MODIFY
 			| MONTH_P
 			| MOVE
 			| NAME_P
@@ -16831,6 +16934,10 @@ unreserved_keyword:
 			| NFKC
 			| NFKD
 			| NO
+			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
+			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
+			| NOORDER		/* ReqID:SRS-SQL-IDENTCOL */
 			| NORMALIZED
 			| NOTHING
 			| NOTIFY
@@ -17144,6 +17251,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOT
 			| NULL_P
 			| OFFSET
@@ -17403,6 +17511,7 @@ bare_label_keyword:
 			| METHOD
 			| MINVALUE
 			| MODE
+			| MODIFY		/* ReqID:SRS-SQL-IDENTCOL */
 			| MOVE
 			| NAME_P
 			| NAMES
@@ -17416,6 +17525,10 @@ bare_label_keyword:
 			| NFKC
 			| NFKD
 			| NO
+			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
+			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NONE
 			| NORMALIZE
 			| NORMALIZED
