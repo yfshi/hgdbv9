@@ -55,4 +55,9 @@ extern TupleDesc expandRecordVariable(ParseState *pstate, Var *var,
 extern char *FigureColname(Node *node);
 extern char *FigureIndexColname(Node *node);
 
+/* Begin - ReqID:SRS-SQL-INSERT */
+typedef int (* OraGetAttrnoHooktype)(ParseState *pstate, ResTarget  *col);
+extern PGDLLIMPORT OraGetAttrnoHooktype OraGetAttrnoHook;
+/* End - ReqID:SRS-SQL-INSERT */
+
 #endif							/* PARSE_TARGET_H */

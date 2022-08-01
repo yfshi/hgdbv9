@@ -611,6 +611,10 @@ bool		check_function_bodies = true;
 bool			enable_emptystring_to_NULL = false;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
+/* Begin - ReqID:SRS-SQL-INSERT */
+bool		insert_enable_alias = false;
+/* End - ReqID:SRS-SQL-INSERT */
+
 /*
  * This GUC exists solely for backward compatibility, check its definition for
  * details.
@@ -2205,6 +2209,18 @@ static struct config_bool ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
+
+	/* Begin - ReqID:SRS-SQL-INSERT */
+	{
+		{"insert_enable_alias", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether to enable INSERT alias-qualified columns."),
+			NULL
+		},
+		&insert_enable_alias,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-INSERT */
 
 	/* End-of-list marker */
 	{
