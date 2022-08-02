@@ -25,6 +25,11 @@
 #include "parser/parse_target.h"
 /* End - ReqID:SRS-SQL-INSERT */
 
+/* Begin - ReqID:SRS-SQL-MERGE */
+#include "access/heapam.h"
+#include "parser/parse_merge.h"
+/* End - ReqID:SRS-SQL-MERGE */
+
 #include "include/guc.h"
 #include "include/ivorysql_ora.h"
 
@@ -37,6 +42,11 @@ static oracle_datatype_precedence_hook_type pre_oracle_datatype_precedence_hook 
 /* Begin - ReqID:SRS-SQL-INSERT */
 static OraGetAttrnoHooktype pre_ora_get_attrno_hook = NULL;
 /* End - ReqID:SRS-SQL-INSERT */
+
+/* Begin - ReqID:SRS-SQL-MERGE */
+static exec_merge_matched_hook_type pre_exec_merge_matched_hook = NULL;
+static transform_merge_stmt_hook_type pre_transform_merge_stmt_hook = NULL;
+/* End - ReqID:SRS-SQL-MERGE */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -65,6 +75,15 @@ _PG_init(void)
 	pre_ora_get_attrno_hook = OraGetAttrnoHook;
 	OraGetAttrnoHook = IvyOraGetAttrno;
 	/* End - ReqID:SRS-SQL-INSERT */
+
+	/* Begin - ReqID:SRS-SQL-MERGE */
+	ora_exec_merge_matched_hook = IvyExecMergeMatched;
+	ora_transform_merge_stmt_hook = IvytransformMergeStmt;
+	pre_exec_merge_matched_hook = pg_exec_merge_matched_hook;
+	pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
+	pre_transform_merge_stmt_hook = pg_transform_merge_stmt_hook;
+	pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
+	/* End - ReqID:SRS-SQL-MERGE */
 }
 
 /*
@@ -83,4 +102,9 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-SQL-INSERT */
 	OraGetAttrnoHook = pre_ora_get_attrno_hook;
 	/* Begin - ReqID:SRS-SQL-INSERT */
+
+	/* Begin - ReqID:SRS-SQL-MERGE */
+	pg_exec_merge_matched_hook = pre_exec_merge_matched_hook;
+	pg_transform_merge_stmt_hook = pre_transform_merge_stmt_hook;
+	/* End - ReqID:SRS-SQL-MERGE */
 }

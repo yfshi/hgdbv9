@@ -1544,6 +1544,9 @@ typedef struct MergeWhenClause
 	List	   *targetList;		/* INSERT/UPDATE targetlist */
 	/* the following members are only used in INSERT actions */
 	List	   *values;			/* VALUES to INSERT, or NULL */
+	/* Begin - ReqID:SRS-SQL-MERGE */
+	struct MergeWhenClause *update_delete; /* ora_merge delete clause */
+	/* End - ReqID:SRS-SQL-MERGE */
 } MergeWhenClause;
 
 /*

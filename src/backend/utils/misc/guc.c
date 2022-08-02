@@ -112,6 +112,13 @@
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
 
+/* Begin - ReqID:SRS-SQL-MERGE */
+#include "executor/nodeModifyTable.h"
+#include "parser/parse_node.h"
+#include "access/heapam.h"
+#include "parser/parse_merge.h"
+/* End - ReqID:SRS-SQL-MERGE */
+
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
 #endif
@@ -8974,9 +8981,21 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 								 errhint("You must load liboracle_parser to use oracle parser.")));
 
 					sql_raw_parser = ora_raw_parser;
+
+					/* Begin - ReqID:SRS-SQL-MERGE */
+					pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
+					pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
+					/* End - ReqID:SRS-SQL-MERGE */
 				}
 				else if (0 == pg_strcasecmp(ExtractSetVariableArgs(stmt), "pg"))
+				{
 					sql_raw_parser = standard_raw_parser;
+
+					/* Begin - ReqID:SRS-SQL-MERGE */
+					pg_transform_merge_stmt_hook = transformMergeStmt;
+					pg_exec_merge_matched_hook = ExecMergeMatched;
+					/* Begin - ReqID:SRS-SQL-MERGE */
+				}
 			}
 			/* END - SQL PARSER */
 			break;
@@ -9068,7 +9087,14 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			/* BEGIN - SQL PARSER */
 			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
 				 && DB_ORACLE == database_mode)
+			{
 				sql_raw_parser = standard_raw_parser;
+
+				/* Begin - ReqID:SRS-SQL-MERGE */
+				pg_transform_merge_stmt_hook = transformMergeStmt;
+				pg_exec_merge_matched_hook = ExecMergeMatched;
+				/* Begin - ReqID:SRS-SQL-MERGE */
+			}
 			/* END - SQL PARSER */
 			break;
 		case VAR_RESET_ALL:

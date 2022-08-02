@@ -144,6 +144,9 @@
 #include "storage/spin.h"
 #endif
 
+#include "executor/nodeModifyTable.h"
+#include "access/heapam.h"
+#include "parser/parse_merge.h"
 
 /*
  * Possible types of a backend. Beyond being the possible bkend_type values in
@@ -4655,6 +4658,11 @@ BackendInitialize(Port *port)
 			port->connmode = 'p';
 			SetConfigOption("compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
 			sql_raw_parser = standard_raw_parser;
+
+			/* Begin - ReqID:SRS-SQL-MERGE */
+			pg_exec_merge_matched_hook = ExecMergeMatched;
+			pg_transform_merge_stmt_hook = transformMergeStmt;
+			/* End - ReqID:SRS-SQL-MERGE */
 		}
 		else if (strstr(service, OraPortNumberStr) != NULL)
 		{
@@ -4664,7 +4672,14 @@ BackendInitialize(Port *port)
 				ereport(ERROR,
 						(errmsg("Invalid Oracle compatibility mode syntax library.")));
 			else
+			{
 				sql_raw_parser = ora_raw_parser;
+
+				/* Begin - ReqID:SRS-SQL-MERGE */
+				pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
+				pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
+				/* End - ReqID:SRS-SQL-MERGE */
+			}
 		}
 		else
 			port->connmode = 'u';
@@ -4676,6 +4691,11 @@ BackendInitialize(Port *port)
 			port->connmode = 'p';
 			SetConfigOption("compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
 			sql_raw_parser = standard_raw_parser;
+
+			/* End - ReqID:SRS-SQL-MERGE */
+			pg_exec_merge_matched_hook = ExecMergeMatched;
+			pg_transform_merge_stmt_hook = transformMergeStmt;
+			/* End - ReqID:SRS-SQL-MERGE */
 		}
 		else if (localport == OraPortNumber)
 		{
@@ -4685,7 +4705,14 @@ BackendInitialize(Port *port)
 				ereport(ERROR,
 						(errmsg("Invalid Oracle compatibility mode syntax library.")));
 			else
+			{
 				sql_raw_parser = ora_raw_parser;
+
+				/* End - ReqID:SRS-SQL-MERGE */
+				pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
+				pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
+				/* End - ReqID:SRS-SQL-MERGE */
+			}
 		}
 		else
 			port->connmode = 'u';

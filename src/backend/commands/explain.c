@@ -39,6 +39,7 @@
 #include "utils/tuplesort.h"
 #include "utils/typcache.h"
 #include "utils/xml.h"
+#include "utils/ora_compatible.h"
 
 
 /* Hook for plugins to get control in ExplainOneQuery() */
@@ -79,8 +80,8 @@ static void show_scan_qual(List *qual, const char *qlabel,
 						   PlanState *planstate, List *ancestors,
 						   ExplainState *es);
 static void show_upper_qual(List *qual, const char *qlabel,
-							PlanState *planstate, List *ancestors,
-							ExplainState *es);
+						   PlanState *planstate,
+						   List *ancestors, ExplainState *es);
 static void show_sort_keys(SortState *sortstate, List *ancestors,
 						   ExplainState *es);
 static void show_incremental_sort_keys(IncrementalSortState *incrsortstate,
@@ -115,7 +116,7 @@ static void show_hashagg_info(AggState *hashstate, ExplainState *es);
 static void show_tidbitmap_info(BitmapHeapScanState *planstate,
 								ExplainState *es);
 static void show_instrumentation_count(const char *qlabel, int which,
-									   PlanState *planstate, ExplainState *es);
+								PlanState *planstate, ExplainState *es);
 static void show_foreignscan_info(ForeignScanState *fsstate, ExplainState *es);
 static void show_eval_params(Bitmapset *bms_params, ExplainState *es);
 static const char *explain_get_index_name(Oid indexId);
@@ -4021,12 +4022,23 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 			update_path = mtstate->mt_merge_updated;
 			delete_path = mtstate->mt_merge_deleted;
 			skipped_path = total - insert_path - update_path - delete_path;
-			Assert(skipped_path >= 0);
 
-			ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
-			ExplainPropertyFloat("Tuples Updated", NULL, update_path, 0, es);
-			ExplainPropertyFloat("Tuples Deleted", NULL, delete_path, 0, es);
-			ExplainPropertyFloat("Tuples Skipped", NULL, skipped_path, 0, es);
+			/* Begin - ReqID:SRS-SQL-MERGE */
+			if (compatible_db == DB_ORACLE)
+			{
+				ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
+				ExplainPropertyFloat("Tuples Updated", NULL, update_path, 0, es);
+				ExplainPropertyFloat("Tuples Deleted", NULL, delete_path, 0, es);
+			}/* End - ReqID:SRS-SQL-MERGE */
+			else
+			{
+				Assert(skipped_path >= 0);
+
+				ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
+				ExplainPropertyFloat("Tuples Updated", NULL, update_path, 0, es);
+				ExplainPropertyFloat("Tuples Deleted", NULL, delete_path, 0, es);
+				ExplainPropertyFloat("Tuples Skipped", NULL, skipped_path, 0, es);
+			}
 		}
 	}
 

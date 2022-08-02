@@ -263,6 +263,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
+	MergeWhenClause		*mergewhen;	/* ReqID:SRS-SQL-MERGE */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -290,7 +291,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
-		ListenStmt LoadStmt LockStmt NotifyStmt ExplainableStmt PreparableStmt
+		ListenStmt LoadStmt LockStmt MergeStmt NotifyStmt ExplainableStmt PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
 		RuleActionStmt RuleActionStmtOrEmpty RuleStmt
@@ -416,6 +417,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				any_operator expr_list attrs
 				distinct_clause opt_distinct_clause
 				target_list opt_target_list insert_column_list set_target_list
+				merge_values_clause
 				set_clause_list set_clause
 				def_list operator_def_list indirection opt_indirection
 				reloption_list TriggerFuncArgs opclass_item_list opclass_drop_list
@@ -491,6 +493,9 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <istmt>	insert_rest
 %type <infer>	opt_conf_expr
 %type <onconflict> opt_on_conflict
+%type <mergewhen>	merge_insert merge_update merge_delete /* ReqID:SRS-SQL-MERGE */
+%type <node>	merge_when_clause merge_error_clause /* ReqID:SRS-SQL-MERGE */
+%type <list>	merge_when_list /* ReqID:SRS-SQL-MERGE */
 
 %type <vsetstmt> generic_set set_rest set_rest_more generic_reset reset_rest
 				 SetResetClause FunctionSetResetClause
@@ -690,7 +695,8 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
-	MAPPING MATCH MATERIALIZED MAXVALUE METHOD MINUTE_P MINVALUE MODE MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE /* ReqID:SRS-SQL-MERGE */
+	METHOD MINUTE_P MINVALUE MODE MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
 	NOMAXVALUE NOMINVALUE NONE NOORDER /* ReqID:SRS-SQL-IDENTCOL */
@@ -1017,6 +1023,7 @@ stmt:
 			| RefreshMatViewStmt
 			| LoadStmt
 			| LockStmt
+			| MergeStmt /* ReqID:SRS-SQL-MERGE */
 			| NotifyStmt
 			| PrepareStmt
 			| ReassignOwnedStmt
@@ -10951,6 +10958,7 @@ ExplainableStmt:
 			| InsertStmt
 			| UpdateStmt
 			| DeleteStmt
+			| MergeStmt /* ReqID:SRS-SQL-MERGE */
 			| DeclareCursorStmt
 			| CreateAsStmt
 			| CreateMatViewStmt
@@ -10983,7 +10991,8 @@ PreparableStmt:
 			SelectStmt
 			| InsertStmt
 			| UpdateStmt
-			| DeleteStmt					/* by default all are $$=$1 */
+			| DeleteStmt
+			| MergeStmt	/* ReqID:SRS-SQL-MERGE */	/* by default all are $$=$1 */
 		;
 
 /*****************************************************************************
@@ -11367,6 +11376,126 @@ set_target_list:
 			| set_target_list ',' set_target		{ $$ = lappend($1,$3); }
 		;
 
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *				COMPATIBLE ORACLE MERGE COMMAND
+ *
+ *****************************************************************************/
+
+MergeStmt:
+			opt_with_clause MERGE INTO relation_expr_opt_alias
+			USING table_ref
+			ON a_expr
+			merge_when_list merge_error_clause
+				{
+					MergeStmt *m = makeNode(MergeStmt);
+
+					m->withClause = $1;
+					m->relation = $4;
+					m->sourceRelation = $6;
+					m->joinCondition = $8;
+					m->mergeWhenClauses = $9;
+
+					$$ = (Node *)m;
+				}
+		;
+
+merge_when_list:
+			merge_when_clause						{ $$ = list_make1($1); }
+			| merge_when_list merge_when_clause		{ $$ = lappend($1,$2); }
+		;
+
+merge_when_clause:
+			WHEN MATCHED THEN merge_update
+				{
+					$4->matched = true;
+					$4->commandType = CMD_UPDATE;
+
+					$$ = (Node *) $4;
+				}
+			| WHEN NOT MATCHED THEN merge_insert where_clause
+				{
+					$5->matched = false;
+					$5->commandType = CMD_INSERT;
+					$5->condition = $6;
+
+					$$ = (Node *) $5;
+				}
+		;
+
+merge_delete:
+				{
+					$$ = NULL;
+				}
+			| DELETE_P where_clause
+				{
+					$$ = NULL;
+					if ($2)
+					{
+						MergeWhenClause *n = makeNode(MergeWhenClause);
+
+						n->matched = true;
+						n->commandType = CMD_DELETE;
+						n->condition = $2;
+
+						$$ = n;
+					}
+					else
+						ereport(ERROR,(errcode(ERRCODE_SYNTAX_ERROR),
+							errmsg("missing WHERE keyword"),parser_errposition(@2)));
+				}
+		;
+
+merge_update:
+			UPDATE SET set_clause_list where_clause merge_delete
+				{
+					MergeWhenClause *n = makeNode(MergeWhenClause);
+
+					n->targetList = $3;
+					n->condition = $4;
+					n->update_delete = $5;
+
+					$$ = n;
+				}
+		;
+
+merge_insert:
+			INSERT merge_values_clause
+				{
+					MergeWhenClause *n = makeNode(MergeWhenClause);
+
+					n->values = $2;
+					$$ = n;
+				}
+			| INSERT '(' insert_column_list ')' merge_values_clause
+				{
+					MergeWhenClause *n = makeNode(MergeWhenClause);
+
+					n->targetList = $3;
+					n->values = $5;
+					$$ = n;
+				}
+			| INSERT DEFAULT VALUES
+				{
+					MergeWhenClause *n = makeNode(MergeWhenClause);
+
+					n->targetList = NIL;
+					n->values = NIL;
+					$$ = n;
+				}
+		;
+
+merge_values_clause:
+			VALUES '(' expr_list ')'
+				{
+					$$ = $3;
+				}
+		;
+
+merge_error_clause:	{ $$ = NULL; }
+		;
 
 /*****************************************************************************
  *
@@ -16916,8 +17045,10 @@ unreserved_keyword:
 			| LONG_P	/*BUGID:0000649*/
 			| MAPPING
 			| MATCH
+			| MATCHED /* ReqID:SRS-SQL-MERGE */
 			| MATERIALIZED
 			| MAXVALUE
+			| MERGE
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
@@ -17506,8 +17637,10 @@ bare_label_keyword:
 			| LONG_P	/*BUGID:0000649*/
 			| MAPPING
 			| MATCH
+			| MATCHED /* ReqID:SRS-SQL-MERGE */
 			| MATERIALIZED
 			| MAXVALUE
+			| MERGE /* ReqID:SRS-SQL-MERGE */
 			| METHOD
 			| MINVALUE
 			| MODE
