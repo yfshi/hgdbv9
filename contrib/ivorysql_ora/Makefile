@@ -23,7 +23,8 @@ OBJS = \
 	src/builtin_functions/datetime_datatype_functions.o \
 	src/builtin_functions/numeric_datatype_functions.o \
 	src/builtin_functions/misc_functions.o	\
-	src/insert/insert_alias.o
+	src/insert/insert_alias.o \
+	src/merge/ora_merge.o
 
 EXTENSION = ivorysql_ora
 
@@ -44,7 +45,8 @@ REGRESS = \
 	ora_character_datatype_functions \
 	ora_datetime_datatype_functions \
 	ora_misc_functions \
-	ora_insert_alias
+	ora_insert_alias \
+	ora_merge
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

@@ -19,9 +19,8 @@
 #define IVORYSQL_ORA_H_
 
 #include "postgres.h"
-
 #include "parser/parse_node.h"
-
+#include "executor/nodeModifyTable.h"
 
 
 /* Hooks */
@@ -30,5 +29,11 @@ extern bool pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, 
 /* Begin - ReqID:SRS-SQL-INSERT */
 extern int IvyOraGetAttrno(ParseState *pstate, ResTarget  *col);
 /* End - ReqID:SRS-SQL-INSERT */
+
+/* Begin - ReqID:SRS-SQL-MERGE */
+extern bool IvyExecMergeMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
+									ItemPointer tupleid, bool canSetTag);
+extern Query* IvytransformMergeStmt(ParseState *pstate, MergeStmt *stmt);
+/* End - ReqID:SRS-SQL-MERGE */
 
 #endif	/* IVORYSQL_ORA_H_ */

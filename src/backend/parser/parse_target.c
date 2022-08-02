@@ -1066,9 +1066,9 @@ checkInsertTargets(ParseState *pstate, List *cols, List **attrnos)
 			attrno = attnameAttNum(pstate->p_target_relation, name, false);
 
 			/* Begin - ReqID:SRS-SQL-INSERT */
-			if (insert_enable_alias && attrno == InvalidAttrNumber)
+			if (attrno == InvalidAttrNumber && compatible_db == DB_ORACLE)
 			{
-				if (OraGetAttrnoHook && compatible_db == DB_ORACLE)
+				if (OraGetAttrnoHook && insert_enable_alias)
 					attrno = (* OraGetAttrnoHook)(pstate, col);
 			}
 			/* End - ReqID:SRS-SQL-INSERT */
