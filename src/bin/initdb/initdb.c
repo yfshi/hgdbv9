@@ -1465,23 +1465,15 @@ bootstrap_template1(void)
 	unsetenv("PGCLIENTENCODING");
 
 	snprintf(cmd, sizeof(cmd),
-#ifdef IvorySQL
 			 /* BEGIN - SQL PARSER */
 			 "\"%s\" --boot -x1 -c identifier_case_switch=%d -X %u %s %s %s %s %s",
-#else
-			 "\"%s\" --boot -x1 -X %u %s %s %s %s",
 			 /* END - SQL PARSER */
-#endif
 			 backend_exec,
-#ifdef IvorySQL
 			 caseswitchmode,	/* case sensitive indentify: add guc "identifier_case_switch" */
-#endif
 			 wal_segment_size_mb * (1024 * 1024),
-#ifdef IvorySQL
 			 /* BEGIN - SQL PARSER */
 			 pg_strcasecmp(dbmode, "pg") ? "-y oracle" : "-y pg",
 			 /* END - SQL PARSER */
-#endif
 			 data_checksums ? "-k" : "",
 			 boot_options, extra_options,
 			 debug ? "-d 5" : "");

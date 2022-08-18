@@ -5436,7 +5436,7 @@ BootStrapXLOG(void)
 	/* save database compatible level value */
 	ControlFile->dbmode = bootstrap_database_mode;
 	/* BEGIN - case sensitive indentify */
-	ControlFile->yh_casemode = identifier_case_switch;
+	ControlFile->casemode = identifier_case_switch;
 	/* END - case sensitive indentify */
 	/* END - SQL PARSER */
 	/* some additional ControlFile fields are set in WriteControlFile() */
@@ -6439,7 +6439,7 @@ int GetCaseSwitchModeFromControl(char* path)
 	}
 	close(fd);
 
-	return confile.yh_casemode;
+	return confile.casemode;
 }
 
 /*

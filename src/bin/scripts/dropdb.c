@@ -130,8 +130,7 @@ main(int argc, char *argv[])
 		if (!yesno_prompt("Are you sure?"))
 			exit(0);
 	}
-
-#ifndef IvorySQL
+#if 0
 	/* Begin - SQL PARSER */
 	initPQExpBuffer(&sql);
 
@@ -155,7 +154,6 @@ main(int argc, char *argv[])
 
 	conn = connectMaintenanceDatabase(&cparams, progname, echo);
 
-#ifdef IvorySQL
 	/* Begin - SQL PARSER */
 	getDbCompatibleMode(conn);
 
@@ -166,7 +164,6 @@ main(int argc, char *argv[])
 					  fmtId(dbname),
 					  force ? " WITH (FORCE)" : "");
 	/* END - SQL PARSER */
-#endif
 
 	if (echo)
 		printf("%s\n", sql.data);

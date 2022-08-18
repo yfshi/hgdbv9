@@ -134,7 +134,6 @@ main(int argc, char *argv[])
 			exit(0);
 	}
 
-#ifdef IvorySQL
 	/* BEGIN - SQL PARSER */
 	cparams.dbname = NULL;		/* this program lacks any dbname option... */
 	cparams.pghost = host;
@@ -147,13 +146,11 @@ main(int argc, char *argv[])
 
 	getDbCompatibleMode(conn);
 	/* END - SQL PARSER */
-#endif
 
 	initPQExpBuffer(&sql);
 	appendPQExpBuffer(&sql, "DROP ROLE %s%s;",
 					  (if_exists ? "IF EXISTS " : ""), fmtId(dropuser));
-
-#ifndef IvorySQL
+#if 0
 	/* BEGIN - SQL PARSER */
 	cparams.dbname = NULL;		/* this program lacks any dbname option... */
 	cparams.pghost = host;
@@ -165,7 +162,6 @@ main(int argc, char *argv[])
 	conn = connectMaintenanceDatabase(&cparams, progname, echo);
 	/* END - SQL PARSER */
 #endif
-
 	if (echo)
 		printf("%s\n", sql.data);
 	result = PQexec(conn, sql.data);
