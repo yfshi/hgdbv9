@@ -365,6 +365,14 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			else
 				buf = pstrdup("number");
 			break;
+		/* Begin - BUG#0000048 */
+		case BINARY_FLOATOID:
+			buf = pstrdup("binary_float");
+			break;
+		case BINARY_DOUBLEOID:
+			buf = pstrdup("binary_double");
+			break;
+		/* End - BUG#0000048 */
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	}
 

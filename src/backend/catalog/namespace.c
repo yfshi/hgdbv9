@@ -3857,7 +3857,7 @@ recomputeNamespacePath(void)
 	rawname = pstrdup(namespace_search_path);
 
 	/* Parse string into list of identifiers */
-	if (!SplitIdentifierString(rawname, ',', &namelist))
+	if (!SplitIdentifierStringForSearchPath(rawname, ',', &namelist))	/* BUG#0000049 */
 	{
 		/* syntax error in name list */
 		/* this should not happen if GUC checked check_search_path */
