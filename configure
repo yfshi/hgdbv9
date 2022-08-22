@@ -19709,8 +19709,6 @@ fi
 
 
 
-# For IvorySQL-2.0, set -DIvorySQL by default. This can be overriden with -UIvorySQL if the user sets it.
-CFLAGS="-DIvorySQL $CFLAGS"
 
 # Begin output steps
 

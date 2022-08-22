@@ -335,7 +335,7 @@ main(int argc, char *argv[])
 	/* END - SQL PARSER */
 	/* BEGIN - case sensitive indentify */
 	printf(_("case conversion mode:                 %u\n"),
-		ControlFile->yh_casemode);
+		ControlFile->casemode);
 	/* END - case sensitive indentify */
 	return 0;
 }
