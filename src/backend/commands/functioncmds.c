@@ -2230,6 +2230,16 @@ ExecuteCallStmt(CallStmt *stmt, ParamListInfo params, bool atomic, DestReceiver 
 	Assert(fexpr);
 	Assert(IsA(fexpr, FuncExpr));
 
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (!FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+	{
+		callcontext = makeNode(CallContext);
+		callcontext->atomic = atomic;
+
+		goto SKIP_PG_PROC_CHECK;
+	}
+	/* End - SRS-PLSQL-SUBPROC */
+
 	aclresult = pg_proc_aclcheck(fexpr->funcid, GetUserId(), ACL_EXECUTE);
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_PROCEDURE, get_func_name(fexpr->funcid));
@@ -2262,6 +2272,10 @@ ExecuteCallStmt(CallStmt *stmt, ParamListInfo params, bool atomic, DestReceiver 
 
 	ReleaseSysCache(tp);
 
+/* Begin - SRS-PLSQL-SUBPROC */
+SKIP_PG_PROC_CHECK:
+/* End - SRS-PLSQL-SUBPROC */
+
 	/* safety check; see ExecInitFunc() */
 	nargs = list_length(fexpr->args);
 	if (nargs > FUNC_MAX_ARGS)
@@ -2272,9 +2286,18 @@ ExecuteCallStmt(CallStmt *stmt, ParamListInfo params, bool atomic, DestReceiver 
 							   FUNC_MAX_ARGS,
 							   FUNC_MAX_ARGS)));
 
-	/* Initialize function call structure */
-	InvokeFunctionExecuteHook(fexpr->funcid);
-	fmgr_info(fexpr->funcid, &flinfo);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (!FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+	{
+		 fmgr_subproc_info_cxt(fexpr->funcid, &flinfo, CurrentMemoryContext);
+	}
+	else
+	{
+		/* Initialize function call structure */
+		InvokeFunctionExecuteHook(fexpr->funcid);
+		fmgr_info(fexpr->funcid, &flinfo);
+	}
+	/* End - SRS-PLSQL-SUBPROC */
 	fmgr_info_set_expr((Node *) fexpr, &flinfo);
 	InitFunctionCallInfoData(*fcinfo, &flinfo, nargs, fexpr->inputcollid,
 							 (Node *) callcontext, NULL);
@@ -2395,13 +2418,20 @@ CallStmtResultDesc(CallStmt *stmt)
 
 	fexpr = stmt->funcexpr;
 
-	tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
-	if (!HeapTupleIsValid(tuple))
-		elog(ERROR, "cache lookup failed for procedure %u", fexpr->funcid);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+	{
+		tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for procedure %u", fexpr->funcid);
 
-	tupdesc = build_function_result_tupdesc_t(tuple);
+		tupdesc = build_function_result_tupdesc_t(tuple);
 
-	ReleaseSysCache(tuple);
+		ReleaseSysCache(tuple);
+	}
+	else
+		tupdesc = build_internal_function_result_tupdesc_t(fexpr);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	return tupdesc;
 }

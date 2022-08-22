@@ -116,9 +116,13 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	bool		retset;
 	int			nvargs;
 	Oid			vatype;
-	FuncDetailCode fdresult;
+	FuncDetailCode fdresult = FUNCDETAIL_NOTFOUND; /* SRS-PLSQL-SUBPROC*/
 	char		aggkind = 0;
 	ParseCallbackState pcbstate;
+	/* Begin - SRS-PLSQL-SUBPROC */
+	char function_from = FUNC_FROM_PG_PROC;
+	void *pfunc = NULL;
+	/* End - SRS-PLSQL-SUBPROC */
 
 	/*
 	 * If there's an aggregate filter, transform it using transformWhereClause
@@ -265,12 +269,26 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 
 	setup_parser_errposition_callback(&pcbstate, pstate, location);
 
-	fdresult = func_get_detail(funcname, fargs, argnames, nargs,
+	/* Begin - SRS-PLSQL-SUBPROC */
+	if (pstate->p_subprocfunc_hook != NULL)
+	{
+		fdresult = pstate->p_subprocfunc_hook(pstate, funcname, &fargs, argnames, nargs,
+											actual_arg_types,
+											!func_variadic, true, proc_call,
+											&funcid, &rettype, &retset,
+											&nvargs, &vatype,
+											&declared_arg_types, &argdefaults, &pfunc);
+		if (fdresult != FUNCDETAIL_NOTFOUND)
+			function_from = FUNC_FROM_SUBPROCFUNC;
+	}
+	if (fdresult == FUNCDETAIL_NOTFOUND)
+		fdresult = func_get_detail(funcname, fargs, argnames, nargs,
 							   actual_arg_types,
 							   !func_variadic, true, proc_call,
 							   &funcid, &rettype, &retset,
 							   &nvargs, &vatype,
 							   &declared_arg_types, &argdefaults);
+	/* End - SRS-PLSQL-SUBPROC */
 
 	cancel_parser_errposition_callback(&pcbstate);
 
@@ -757,6 +775,10 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		/* funccollid and inputcollid will be set by parse_collate.c */
 		funcexpr->args = fargs;
 		funcexpr->location = location;
+		/* Begin - SRS-PLSQL-SUBPROC */
+		funcexpr->parent_func = pfunc;
+		funcexpr->function_from = function_from;
+		/* End - SRS-PLSQL-SUBPROC */
 
 		retval = (Node *) funcexpr;
 	}

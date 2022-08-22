@@ -100,6 +100,12 @@ static void outChar(StringInfo str, char c);
 #define WRITE_LOCATION_FIELD(fldname) \
 	appendStringInfo(str, " :" CppAsString(fldname) " %d", node->fldname)
 
+/* Begin - SRS-PLSQL-SUBPROC */
+#define WRITE_VOID_FIELD(fldname) \
+	appendStringInfo(str, " :" CppAsString(fldname) " %d", 0)
+/* End - SRS-PLSQL-SUBPROC */
+
+
 /* Write a Node field */
 #define WRITE_NODE_FIELD(fldname) \
 	(appendStringInfoString(str, " :" CppAsString(fldname) " "), \
@@ -1248,6 +1254,10 @@ _outFuncExpr(StringInfo str, const FuncExpr *node)
 	WRITE_OID_FIELD(funccollid);
 	WRITE_OID_FIELD(inputcollid);
 	WRITE_NODE_FIELD(args);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	WRITE_CHAR_FIELD(function_from);
+	WRITE_VOID_FIELD(parent_func);
+	/* End - SRS-PLSQL-SUBPROC */
 	WRITE_LOCATION_FIELD(location);
 }
 

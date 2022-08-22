@@ -1210,7 +1210,12 @@ chooseScalarFunctionAlias(Node *funcexpr, char *funcname,
 	 */
 	if (funcexpr && IsA(funcexpr, FuncExpr))
 	{
-		pname = get_func_result_name(((FuncExpr *) funcexpr)->funcid);
+		/* Begin - SRS-PLSQL-SUBPROC */
+		if (FUNC_EXPR_FROM_PG_PROC(((FuncExpr *) funcexpr)->function_from))
+			pname = get_func_result_name(((FuncExpr *) funcexpr)->funcid);
+		else
+			pname = get_internal_function_result_name((FuncExpr *) funcexpr);
+		/* End - SRS-PLSQL-SUBPROC */
 		if (pname)
 			return pname;
 	}

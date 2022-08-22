@@ -17,6 +17,7 @@
 #include "postgres.h"
 
 #include "plisql.h"
+#include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC */
 #include "utils/memutils.h"
 
 /* ----------
@@ -45,6 +46,15 @@ plisql_ns_init(void)
 {
 	ns_top = NULL;
 }
+
+/* Begin - SRS-PLSQL-SUBPROC */
+void
+plisql_set_ns(PLiSQL_nsitem *cur)
+{
+	ns_top = cur;
+}
+/* End - SRS-PLSQL-SUBPROC */
+
 
 
 /* ----------
@@ -101,6 +111,9 @@ plisql_ns_additem(PLiSQL_nsitem_type itemtype, int itemno, const char *name)
 	nse = palloc(offsetof(PLiSQL_nsitem, name) + strlen(name) + 1);
 	nse->itemtype = itemtype;
 	nse->itemno = itemno;
+	/* Begin - SRS-PLSQL-SUBPROC */
+	nse->subprocfunc = NIL;
+	/* End - SRS-PLSQL-SUBPROC */
 	nse->prev = ns_top;
 	strcpy(nse->name, name);
 	ns_top = nse;
@@ -723,7 +736,8 @@ free_expr(PLiSQL_expr *expr)
 }
 
 void
-plisql_free_function_memory(PLiSQL_function *func)
+plisql_free_function_memory(PLiSQL_function *func,
+								int start_datum, int start_subprocfunc) /* SRS-PLSQL-SUBPROC */
 {
 	int			i;
 
@@ -731,7 +745,7 @@ plisql_free_function_memory(PLiSQL_function *func)
 	Assert(func->use_count == 0);
 
 	/* Release plans associated with variable declarations */
-	for (i = 0; i < func->ndatums; i++)
+	for (i = start_datum; i < func->ndatums; i++) /* SRS-PLSQL-SUBPROC */
 	{
 		PLiSQL_datum *d = func->datums[i];
 
@@ -768,12 +782,64 @@ plisql_free_function_memory(PLiSQL_function *func)
 		free_block(func->action);
 	func->action = NULL;
 
+	/* Begin - SRS-PLSQL-SUBPROC*/
+	/* release subproc function */
+	for (i = start_subprocfunc; i < func->nsubprocfuncs; i++)
+	{
+		ListCell *lc;
+		PLiSQL_subproc_function *subprocfunc = func->subprocfuncs[i];
+
+		foreach(lc, subprocfunc->arg)
+		{
+			PLiSQL_function_argitem *argitem = (PLiSQL_function_argitem *) lfirst(lc);
+
+			free_expr(argitem->defexpr);
+		}
+		if (!subprocfunc->has_poly_argument)
+		{
+			/*
+			 * if no action, the lastoutvardno and lastoutinlinefno is invalid
+			 * we must not free its context
+			 */
+			if (subprocfunc->function->action != NULL)
+				plisql_free_function_memory(subprocfunc->function, subprocfunc->lastoutvardno,
+								subprocfunc->lastoutsubprocfno);
+		}
+		else
+		{
+			/* free inline function from  hashtable */
+			HASH_SEQ_STATUS status;
+			plisql_HashEnt *entry;
+
+			Assert(subprocfunc->poly_tab != NULL);
+
+			/*
+			 * if no action, the lastoutvardno and lastoutinlinefno is invalid
+			 * we must not free its context
+			 */
+			if (subprocfunc->function->action != NULL)
+			{
+				hash_seq_init(&status, subprocfunc->poly_tab);
+
+				while ((entry = (plisql_HashEnt *) hash_seq_search(&status)) != NULL)
+				{
+					hash_search(subprocfunc->poly_tab, (void *)(&(entry->key)), HASH_REMOVE, NULL);
+					plisql_free_function_memory(entry->function, subprocfunc->lastoutvardno, subprocfunc->lastoutsubprocfno);
+				}
+			}
+			hash_destroy(subprocfunc->poly_tab);
+		}
+	}
+	func->nsubprocfuncs = 0;
+	/* End - SRS-PLSQL-SUBPROC */
+
 	/*
 	 * And finally, release all memory except the PLiSQL_function struct
 	 * itself (which has to be kept around because there may be multiple
 	 * fn_extra pointers to it).
 	 */
-	if (func->fn_cxt)
+	if (func->fn_cxt &&
+		start_datum == 0 && start_subprocfunc == 0) /* SRS-PLSQL-SUBPROC */
 		MemoryContextDelete(func->fn_cxt);
 	func->fn_cxt = NULL;
 }

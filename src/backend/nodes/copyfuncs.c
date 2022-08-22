@@ -1630,6 +1630,10 @@ _copyFuncExpr(const FuncExpr *from)
 	COPY_SCALAR_FIELD(funccollid);
 	COPY_SCALAR_FIELD(inputcollid);
 	COPY_NODE_FIELD(args);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	COPY_SCALAR_FIELD(function_from);
+	COPY_SCALAR_FIELD(parent_func);
+	/* End - SRS-PLSQL-SUBPROC */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;

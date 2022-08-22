@@ -11870,6 +11870,11 @@ ATColumnChangeRequiresRewrite(Node *expr, AttrNumber varattno)
 		{
 			FuncExpr   *f = (FuncExpr *) expr;
 
+			/* Begin - SRS-PLSQL-SUBPROC */
+			if (!FUNC_EXPR_FROM_PG_PROC(f->function_from))
+				return true;
+			/* End - SRS-PLSQL-SUBPROC */
+
 			switch (f->funcid)
 			{
 				case F_TIMESTAMPTZ_TIMESTAMP:

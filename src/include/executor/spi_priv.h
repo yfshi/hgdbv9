@@ -46,6 +46,9 @@ typedef struct
 	uint64		outer_processed;
 	SPITupleTable *outer_tuptable;
 	int			outer_result;
+	/* Begin - SRS-PLSQL-SUBPROC */
+	void		*current_func;	/* remember current invoke func */
+	/* End - SRS-PLSQL-SUBPROC */
 } _SPI_connection;
 
 /*

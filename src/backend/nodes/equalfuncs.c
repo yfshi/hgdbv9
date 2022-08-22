@@ -298,6 +298,10 @@ _equalFuncExpr(const FuncExpr *a, const FuncExpr *b)
 	COMPARE_SCALAR_FIELD(funccollid);
 	COMPARE_SCALAR_FIELD(inputcollid);
 	COMPARE_NODE_FIELD(args);
+	/* Begin - SRS-PLSQL-SUBPROC */
+	COMPARE_SCALAR_FIELD(function_from);
+	COMPARE_SCALAR_FIELD(parent_func);
+	/* End - SRS-PLSQL-SUBPROC */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
