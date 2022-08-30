@@ -76,6 +76,7 @@ begin
     extract(epoch from clock_timestamp() - start_time);
 end
 $$ language plpgsql;
+/
 
 -- test effects of TRUNCATE on n_live_tup/n_dead_tup counters
 CREATE TABLE trunc_stats_test(id serial);

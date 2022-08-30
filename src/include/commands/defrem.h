@@ -52,6 +52,9 @@ extern Oid	ResolveOpClass(List *opclass, Oid attrType,
 extern ObjectAddress CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt);
 extern void RemoveFunctionById(Oid funcOid);
 extern ObjectAddress AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt);
+/* Begin - ReqID:SRS-SQL-PROC */
+extern ObjectAddress CompileFunction(CompileFunctionStmt *stmt);
+/* End - ReqID:SRS-SQL-PROC */
 extern ObjectAddress CreateCast(CreateCastStmt *stmt);
 extern ObjectAddress CreateTransform(CreateTransformStmt *stmt);
 extern void IsThereFunctionInNamespace(const char *proname, int pronargs,

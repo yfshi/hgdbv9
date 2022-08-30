@@ -40,7 +40,13 @@
  * Changing this does not require an initdb, but it does require a full
  * backend recompile (including any user-defined C functions).
  */
+/* Begin - ReqID:SRS-SQL-PROC */
+#ifdef MAXIMUM_FUNARG
+#define FUNC_MAX_ARGS	MAXIMUM_FUNARG
+#else
 #define FUNC_MAX_ARGS		100
+#endif
+/* End - ReqID:SRS-SQL-PROC */
 
 /*
  * Maximum number of columns in an index.  There is little point in making

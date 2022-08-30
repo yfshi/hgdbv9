@@ -4934,6 +4934,22 @@ _copyDropSubscriptionStmt(const DropSubscriptionStmt *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SQL-PROC */
+static CompileFunctionStmt *
+_copyCompileFunctionStmt(const CompileFunctionStmt *from)
+{
+	CompileFunctionStmt	*newnode = makeNode(CompileFunctionStmt);
+
+	COPY_NODE_FIELD(funcname);
+	COPY_SCALAR_FIELD(is_compile);
+	COPY_SCALAR_FIELD(editable);
+	COPY_NODE_FIELD(parameters);
+	COPY_SCALAR_FIELD(is_procedure);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-PROC */
+
 /* ****************************************************************
  *					extensible.h copy functions
  * ****************************************************************
@@ -5513,6 +5529,11 @@ copyObjectImpl(const void *from)
 		case T_AlterFunctionStmt:
 			retval = _copyAlterFunctionStmt(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_CompileFunctionStmt:
+			retval = _copyCompileFunctionStmt(from);
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_DoStmt:
 			retval = _copyDoStmt(from);
 			break;

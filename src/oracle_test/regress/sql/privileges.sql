@@ -50,6 +50,7 @@ GRANT regress_priv_group2 TO regress_priv_user4 WITH ADMIN OPTION;
 CREATE FUNCTION leak(integer,integer) RETURNS boolean
   AS 'int4lt'
   LANGUAGE internal IMMUTABLE STRICT;  -- but deliberately not LEAKPROOF
+/
 ALTER FUNCTION leak(integer,integer) OWNER TO regress_priv_user1;
 
 -- test owner privileges
@@ -208,6 +209,7 @@ SET SESSION AUTHORIZATION regress_priv_user2;
 CREATE FUNCTION leak2(integer,integer) RETURNS boolean
   AS $$begin raise notice 'leak % %', $1, $2; return $1 > $2; end$$
   LANGUAGE plpgsql immutable;
+/
 CREATE OPERATOR >>> (procedure = leak2, leftarg = integer, rightarg = integer,
                      restrict = scalargtsel);
 
@@ -580,9 +582,12 @@ GRANT USAGE ON LANGUAGE c TO PUBLIC; -- fail
 SET SESSION AUTHORIZATION regress_priv_user1;
 GRANT USAGE ON LANGUAGE sql TO regress_priv_user2; -- fail
 CREATE FUNCTION priv_testfunc1(int) RETURNS int AS 'select 2 * $1;' LANGUAGE sql;
+/
 CREATE FUNCTION priv_testfunc2(int) RETURNS int AS 'select 3 * $1;' LANGUAGE sql;
+/
 CREATE AGGREGATE priv_testagg1(int) (sfunc = int4pl, stype = int4);
 CREATE PROCEDURE priv_testproc1(int) AS 'select $1;' LANGUAGE sql;
+/
 
 REVOKE ALL ON FUNCTION priv_testfunc1(int), priv_testfunc2(int), priv_testagg1(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION priv_testfunc1(int), priv_testfunc2(int), priv_testagg1(int) TO regress_priv_user2;
@@ -600,11 +605,13 @@ GRANT ALL PRIVILEGES ON PROCEDURE priv_testproc1(int) TO regress_priv_user4;
 CREATE FUNCTION priv_testfunc4(boolean) RETURNS text
   AS 'select col1 from atest2 where col2 = $1;'
   LANGUAGE sql SECURITY DEFINER;
+/
 GRANT EXECUTE ON FUNCTION priv_testfunc4(boolean) TO regress_priv_user3;
 
 SET SESSION AUTHORIZATION regress_priv_user2;
 SELECT priv_testfunc1(5), priv_testfunc2(5); -- ok
 CREATE FUNCTION priv_testfunc3(int) RETURNS int AS 'select 2 * $1;' LANGUAGE sql; -- fail
+/
 SELECT priv_testagg1(x) FROM (VALUES (1), (2), (3)) _(x); -- ok
 CALL priv_testproc1(6); -- ok
 
@@ -665,12 +672,15 @@ CREATE DOMAIN priv_testdomain2a AS priv_testdomain1;
 
 CREATE DOMAIN priv_testdomain3a AS int;
 CREATE FUNCTION castfunc(int) RETURNS priv_testdomain3a AS $$ SELECT $1::priv_testdomain3a $$ LANGUAGE SQL;
+/
 CREATE CAST (priv_testdomain1 AS priv_testdomain3a) WITH FUNCTION castfunc(int);
 DROP FUNCTION castfunc(int) CASCADE;
 DROP DOMAIN priv_testdomain3a;
 
 CREATE FUNCTION priv_testfunc5a(a priv_testdomain1) RETURNS int LANGUAGE SQL AS $$ SELECT $1 $$;
+/
 CREATE FUNCTION priv_testfunc6a(b int) RETURNS priv_testdomain1 LANGUAGE SQL AS $$ SELECT $1::priv_testdomain1 $$;
+/
 
 CREATE OPERATOR !+! (PROCEDURE = int4pl, LEFTARG = priv_testdomain1, RIGHTARG = priv_testdomain1);
 
@@ -702,10 +712,13 @@ CREATE DOMAIN priv_testdomain2b AS priv_testdomain1;
 
 CREATE DOMAIN priv_testdomain3b AS int;
 CREATE FUNCTION castfunc(int) RETURNS priv_testdomain3b AS $$ SELECT $1::priv_testdomain3b $$ LANGUAGE SQL;
+/
 CREATE CAST (priv_testdomain1 AS priv_testdomain3b) WITH FUNCTION castfunc(int);
 
 CREATE FUNCTION priv_testfunc5b(a priv_testdomain1) RETURNS int LANGUAGE SQL AS $$ SELECT $1 $$;
+/
 CREATE FUNCTION priv_testfunc6b(b int) RETURNS priv_testdomain1 LANGUAGE SQL AS $$ SELECT $1::priv_testdomain1 $$;
+/
 
 CREATE OPERATOR !! (PROCEDURE = priv_testfunc5b, RIGHTARG = priv_testdomain1);
 
@@ -909,8 +922,10 @@ CREATE ROLE regress_sro_user;
 SET SESSION AUTHORIZATION regress_sro_user;
 CREATE FUNCTION unwanted_grant() RETURNS void LANGUAGE sql AS
 	'GRANT regress_priv_group2 TO regress_sro_user';
+/
 CREATE FUNCTION mv_action() RETURNS bool LANGUAGE sql AS
 	'DECLARE c CURSOR WITH HOLD FOR SELECT unwanted_grant(); SELECT true';
+/
 -- REFRESH of this MV will queue a GRANT at end of transaction
 CREATE MATERIALIZED VIEW sro_mv AS SELECT mv_action() WITH NO DATA;
 REFRESH MATERIALIZED VIEW sro_mv;
@@ -922,11 +937,13 @@ SET SESSION AUTHORIZATION regress_sro_user;
 CREATE TABLE sro_trojan_table ();
 CREATE FUNCTION sro_trojan() RETURNS trigger LANGUAGE plpgsql AS
 	'BEGIN PERFORM unwanted_grant(); RETURN NULL; END';
+/
 CREATE CONSTRAINT TRIGGER t AFTER INSERT ON sro_trojan_table
     INITIALLY DEFERRED FOR EACH ROW EXECUTE PROCEDURE sro_trojan();
 -- Now, REFRESH will issue such an INSERT, queueing the GRANT
 CREATE OR REPLACE FUNCTION mv_action() RETURNS bool LANGUAGE sql AS
 	'INSERT INTO sro_trojan_table DEFAULT VALUES; SELECT true';
+/
 REFRESH MATERIALIZED VIEW sro_mv;
 \c -
 REFRESH MATERIALIZED VIEW sro_mv;
@@ -941,6 +958,7 @@ DROP ROLE regress_sro_user;
 SET SESSION AUTHORIZATION regress_priv_user4;
 CREATE FUNCTION dogrant_ok() RETURNS void LANGUAGE sql SECURITY DEFINER AS
 	'GRANT regress_priv_group2 TO regress_priv_user5';
+/
 GRANT regress_priv_group2 TO regress_priv_user5; -- ok: had ADMIN OPTION
 SET ROLE regress_priv_group2;
 GRANT regress_priv_group2 TO regress_priv_user5; -- fails: SET ROLE suspended privilege
@@ -955,6 +973,7 @@ SET SESSION AUTHORIZATION regress_priv_group2;
 GRANT regress_priv_group2 TO regress_priv_user5; -- ok: a role can self-admin
 CREATE FUNCTION dogrant_fails() RETURNS void LANGUAGE sql SECURITY DEFINER AS
 	'GRANT regress_priv_group2 TO regress_priv_user5';
+/
 SELECT dogrant_fails();			-- fails: no self-admin in SECURITY DEFINER
 DROP FUNCTION dogrant_fails();
 
@@ -1203,8 +1222,10 @@ SELECT has_schema_privilege('regress_priv_user2', 'testns5', 'CREATE'); -- no
 SET ROLE regress_priv_user1;
 
 CREATE FUNCTION testns.foo() RETURNS int AS 'select 1' LANGUAGE sql;
+/
 CREATE AGGREGATE testns.agg1(int) (sfunc = int4pl, stype = int4);
 CREATE PROCEDURE testns.bar() AS 'select 1' LANGUAGE sql;
+/
 
 SELECT has_function_privilege('regress_priv_user2', 'testns.foo()', 'EXECUTE'); -- no
 SELECT has_function_privilege('regress_priv_user2', 'testns.agg1(int)', 'EXECUTE'); -- no
@@ -1214,10 +1235,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA testns GRANT EXECUTE ON ROUTINES to public;
 
 DROP FUNCTION testns.foo();
 CREATE FUNCTION testns.foo() RETURNS int AS 'select 1' LANGUAGE sql;
+/
 DROP AGGREGATE testns.agg1(int);
 CREATE AGGREGATE testns.agg1(int) (sfunc = int4pl, stype = int4);
 DROP PROCEDURE testns.bar();
 CREATE PROCEDURE testns.bar() AS 'select 1' LANGUAGE sql;
+/
 
 SELECT has_function_privilege('regress_priv_user2', 'testns.foo()', 'EXECUTE'); -- yes
 SELECT has_function_privilege('regress_priv_user2', 'testns.agg1(int)', 'EXECUTE'); -- yes
@@ -1279,8 +1302,10 @@ SELECT has_table_privilege('regress_priv_user1', 'testns.t1', 'SELECT'); -- fals
 SELECT has_table_privilege('regress_priv_user1', 'testns.t2', 'SELECT'); -- false
 
 CREATE FUNCTION testns.priv_testfunc(int) RETURNS int AS 'select 3 * $1;' LANGUAGE sql;
+/
 CREATE AGGREGATE testns.priv_testagg(int) (sfunc = int4pl, stype = int4);
 CREATE PROCEDURE testns.priv_testproc(int) AS 'select 3' LANGUAGE sql;
+/
 
 SELECT has_function_privilege('regress_priv_user1', 'testns.priv_testfunc(int)', 'EXECUTE'); -- true by default
 SELECT has_function_privilege('regress_priv_user1', 'testns.priv_testagg(int)', 'EXECUTE'); -- true by default

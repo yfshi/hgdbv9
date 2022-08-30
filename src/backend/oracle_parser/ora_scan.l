@@ -434,7 +434,11 @@ other			.
 
 <xc>{
 {xcstart}		{
-					(yyextra->xcdepth)++;
+					/* Begin - ReqID:SRS-SQL-PROC */
+					/* Simply don't consider nesting for compatibility with Oracle's comments */
+					//(yyextra->xcdepth)++;
+					/* End - ReqID:SRS-SQL-PROC */
+
 					/* Put back any characters past slash-star; see above */
 					yyless(2);
 				}

@@ -53,6 +53,7 @@ CREATE FOREIGN DATA WRAPPER foo VALIDATOR postgresql_fdw_validator;
 
 -- HANDLER related checks
 CREATE FUNCTION invalid_fdw_handler() RETURNS int LANGUAGE SQL AS 'SELECT 1;';
+/
 CREATE FOREIGN DATA WRAPPER test_fdw HANDLER invalid_fdw_handler;  -- ERROR
 CREATE FOREIGN DATA WRAPPER test_fdw HANDLER test_fdw_handler HANDLER invalid_fdw_handler;  -- ERROR
 CREATE FOREIGN DATA WRAPPER test_fdw HANDLER test_fdw_handler;
@@ -574,6 +575,7 @@ CREATE FUNCTION dummy_trigger() RETURNS TRIGGER AS $$
     RETURN NULL;
   END
 $$ language plpgsql;
+/
 
 CREATE TRIGGER trigtest_before_stmt BEFORE INSERT OR UPDATE OR DELETE
 ON foreign_schema.foreign_table_1

@@ -132,12 +132,14 @@ begin
 	return $1;
 end;
 $$ language plpgsql stable;
+/
 
 create function return_text_input(text) returns text as $$
 begin
 	return $1;
 end;
 $$ language plpgsql stable;
+/
 
 select return_int_input(1) in (10, 9, 2, 8, 3, 7, 4, 6, 5, 1);
 select return_int_input(1) in (10, 9, 2, 8, 3, 7, 4, 6, 5, null);
@@ -157,10 +159,13 @@ begin;
 create type myint;
 create function myintin(cstring) returns myint strict immutable language
   internal as 'int4in';
+/
 create function myintout(myint) returns cstring strict immutable language
   internal as 'int4out';
+/
 create function myinthash(myint) returns integer strict immutable language
   internal as 'hashint4';
+/
 
 create type myint (input = myintin, output = myintout, like = int4);
 
@@ -176,6 +181,7 @@ begin
   end if;
 end;
 $$ language plpgsql immutable;
+/
 
 create operator = (
   leftarg    = myint,

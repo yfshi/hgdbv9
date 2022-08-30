@@ -435,6 +435,9 @@ typedef enum NodeTag
 	T_AlterCollationStmt,
 	T_CallStmt,
 	T_AlterStatsStmt,
+	T_AccessorItem,			/* ReqID:SRS-SQL-PROC */
+	T_AccessibleByClause,	/* ReqID:SRS-SQL-PROC */
+	T_CompileFunctionStmt,	/* ReqID:SRS-SQL-PROC */
 
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)

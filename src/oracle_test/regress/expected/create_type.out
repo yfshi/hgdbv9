@@ -44,21 +44,25 @@ CREATE FUNCTION int42_in(cstring)
    RETURNS int42
    AS 'int4in'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 NOTICE:  return type int42 is only a shell
 CREATE FUNCTION int42_out(int42)
    RETURNS cstring
    AS 'int4out'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 NOTICE:  argument type int42 is only a shell
 CREATE FUNCTION text_w_default_in(cstring)
    RETURNS text_w_default
    AS 'textin'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 NOTICE:  return type text_w_default is only a shell
 CREATE FUNCTION text_w_default_out(text_w_default)
    RETURNS cstring
    AS 'textout'
    LANGUAGE internal STRICT IMMUTABLE;
+/
 NOTICE:  argument type text_w_default is only a shell
 CREATE TYPE int42 (
    internallength = 4,
@@ -132,6 +136,7 @@ CREATE TYPE default_test_row AS (f1 text_w_default, f2 int42);
 CREATE FUNCTION get_default_test() RETURNS SETOF default_test_row AS '
   SELECT * FROM default_test;
 ' LANGUAGE SQL;
+/
 SELECT * FROM get_default_test();
   f1   | f2 
 -------+----
@@ -157,9 +162,11 @@ DROP TABLE default_test;
 CREATE TYPE base_type;
 CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin'
     LANGUAGE internal IMMUTABLE STRICT;
+/
 NOTICE:  return type base_type is only a shell
 CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout'
     LANGUAGE internal IMMUTABLE STRICT;
+/
 NOTICE:  argument type base_type is only a shell
 CREATE TYPE base_type(INPUT = base_fn_in, OUTPUT = base_fn_out);
 DROP FUNCTION base_fn_in(cstring); -- error
@@ -231,15 +238,19 @@ select format_type('bpchar'::regtype, -1);
 CREATE TYPE myvarchar;
 CREATE FUNCTION myvarcharin(cstring, oid, integer) RETURNS myvarchar
 LANGUAGE internal IMMUTABLE PARALLEL SAFE STRICT AS 'varcharin';
+/
 NOTICE:  return type myvarchar is only a shell
 CREATE FUNCTION myvarcharout(myvarchar) RETURNS cstring
 LANGUAGE internal IMMUTABLE PARALLEL SAFE STRICT AS 'varcharout';
+/
 NOTICE:  argument type myvarchar is only a shell
 CREATE FUNCTION myvarcharsend(myvarchar) RETURNS bytea
 LANGUAGE internal STABLE PARALLEL SAFE STRICT AS 'varcharsend';
+/
 NOTICE:  argument type myvarchar is only a shell
 CREATE FUNCTION myvarcharrecv(internal, oid, integer) RETURNS myvarchar
 LANGUAGE internal STABLE PARALLEL SAFE STRICT AS 'varcharrecv';
+/
 NOTICE:  return type myvarchar is only a shell
 -- fail, it's still a shell:
 ALTER TYPE myvarchar SET (storage = extended);

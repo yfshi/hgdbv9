@@ -167,6 +167,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_AlterTypeStmt:
 		case T_AlterUserMappingStmt:
 		case T_CommentStmt:
+		case T_CompileFunctionStmt:	/* ReqID:SRS-SQL-PROC */
 		case T_CompositeTypeStmt:
 		case T_CreateAmStmt:
 		case T_CreateCastStmt:
@@ -1645,6 +1646,12 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterFunction(pstate, (AlterFunctionStmt *) parsetree);
 				break;
 
+			/* Begin - ReqID:SRS-SQL-PROC */
+			case T_CompileFunctionStmt:
+				address = CompileFunction((CompileFunctionStmt *) parsetree);
+				break;
+			/* End - ReqID:SRS-SQL-PROC */
+
 			case T_RuleStmt:	/* CREATE RULE */
 				address = DefineRule((RuleStmt *) parsetree, queryString);
 				break;
@@ -2698,6 +2705,15 @@ CreateCommandTag(Node *parsetree)
 			}
 			break;
 
+/* Begin - ReqID:SRS-SQL-PROC */
+		case T_CompileFunctionStmt:
+			if (((CompileFunctionStmt *) parsetree)->is_procedure)
+				tag = CMDTAG_ALTER_PROCEDURE;
+			else
+				tag = CMDTAG_ALTER_FUNCTION;
+			break;
+/* End - ReqID:SRS-SQL-PROC */
+
 		case T_GrantStmt:
 			{
 				GrantStmt  *stmt = (GrantStmt *) parsetree;
@@ -3429,6 +3445,12 @@ GetCommandLogLevel(Node *parsetree)
 		case T_AlterFunctionStmt:
 			lev = LOGSTMT_DDL;
 			break;
+
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_CompileFunctionStmt:
+			lev = LOGSTMT_DDL;
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 
 		case T_IndexStmt:
 			lev = LOGSTMT_DDL;

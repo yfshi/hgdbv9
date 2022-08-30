@@ -76,6 +76,7 @@ select count(*) > 0 from
 CREATE FUNCTION my_int_eq(int, int) RETURNS bool
   LANGUAGE internal STRICT IMMUTABLE PARALLEL SAFE
   AS $$int4eq$$;
+/
 
 -- By default, planner does not think that's selective
 EXPLAIN (COSTS OFF)
@@ -94,6 +95,7 @@ CREATE FUNCTION my_gen_series(int, int) RETURNS SETOF integer
   LANGUAGE internal STRICT IMMUTABLE PARALLEL SAFE
   AS $$generate_series_int4$$
   SUPPORT test_support_func;
+/
 
 EXPLAIN (COSTS OFF)
 SELECT * FROM tenk1 a JOIN my_gen_series(1,1000) g ON a.unique1 = g;

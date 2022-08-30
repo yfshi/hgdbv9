@@ -398,7 +398,13 @@ other			.
 
 <xc>{
 {xcstart}		{
-					cur_state->xcdepth++;
+					/* Begin - ReqID:SRS-SQL-PROC */
+					/*
+					 * Simply don't consider nesting for compatibility with Oracle's comments.
+					 */
+					//cur_state->xcdepth++;
+					/* End - ReqID:SRS-SQL-PROC */
+
 					/* Put back any characters past slash-star; see above */
 					yyless(2);
 					ECHO;
@@ -646,9 +652,26 @@ other			.
 					ECHO;
 				}
 
+"/"				{
+					/* Begin - ReqID:SRS-SQL-PROC */
+					if (is_oracle_slash(cur_state, cur_state->scanline))
+					{
+						/* Terminate lexing temporarily */
+						cur_state->cancel_semicolon_terminator = false;
+						cur_state->start_state = YY_START;
+						cur_state->identifier_count = 0;
+						cur_state->begin_depth = 0;
+						return LEXRES_SEMI;
+					}
+					ECHO;
+					/* End - ReqID:SRS-SQL-PROC */
+				}
+
 ";"				{
 					ECHO;
-					if (cur_state->paren_depth == 0 && cur_state->begin_depth == 0)
+					if (cur_state->paren_depth == 0 && 
+						cur_state->begin_depth == 0 && 
+						!cur_state->cancel_semicolon_terminator) /* ReqID:SRS-SQL-PROC */
 					{
 						/* Terminate lexing temporarily */
 						cur_state->start_state = YY_START;
@@ -896,7 +919,15 @@ other			.
 							cur_state->identifiers[cur_state->identifier_count] = pg_tolower((unsigned char) yytext[0]);
 					}
 
-					cur_state->identifier_count++;
+					/* Begin - ReqID:SRS-SQL-PROC */
+					/*
+					 * Simply discard EDITIONABLE and NONEDITIONABLE that occur in 
+					 * the first 4 identifiers at the beginning of the command.
+					 */
+					if (pg_strcasecmp(yytext, "editionable") != 0 &&
+						pg_strcasecmp(yytext, "noneditionable") != 0)
+					/* End - ReqID:SRS-SQL-PROC */
+						cur_state->identifier_count++;
 
 					if (cur_state->identifiers[0] == 'c' &&
 						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' ||
@@ -904,6 +935,17 @@ other			.
 						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p'))) &&
 						cur_state->paren_depth == 0)
 					{
+						/* Begin - ReqID:SRS-SQL-PROC */
+						/*
+						 * In Oracle mode we do not rely on begin_depth to cancel the semicolon terminator, 
+						 * because Oracle's DECLARE clause has no DECLARE keyword declaration, so a semicolon
+						 * will be encountered before begin_depth++; another reason is that the slash (/) will
+						 * force the query be sent to the server, the begin_depth is not 0 in the next query
+						 * scan phase, so the semicolon erroneously loses its ability to terminate.
+						 */
+						cur_state->cancel_semicolon_terminator = true;
+						/* End - ReqID:SRS-SQL-PROC */
+						
 						if (pg_strcasecmp(yytext, "begin") == 0)
 							cur_state->begin_depth++;
 						else if (pg_strcasecmp(yytext, "case") == 0)
@@ -1232,6 +1274,7 @@ ora_psql_scan_reset(PsqlScanState state)
 	state->dolqstart = NULL;
 	state->identifier_count = 0;
 	state->begin_depth = 0;
+	state->cancel_semicolon_terminator = false; /* ReqID:SRS-SQL-PROC */
 }
 
 /*
@@ -1538,4 +1581,51 @@ ora_psqlscan_test_variable(PsqlScanState state, const char *txt, int len)
 		ora_psqlscan_emit(state, "FALSE", 5);
 	}
 }
+
+/* Begin - ReqID:SRS-SQL-PROC */
+bool
+is_oracle_slash(PsqlScanState state, const char *line)
+{
+	bool result = false;
+
+	switch (state->start_state)
+	{
+		case INITIAL:
+		case xqs:	/* we treat these like INITIAL */
+			{
+				int len, i;
+				bool has_slash = false;
+
+				len = strlen(line);
+				for (i = 0; i < len; i++)
+				{
+					/* allowed special char */
+					if (line[i] == '\t' ||
+						line[i] == '\n' ||
+						line[i] == '\r' ||
+						line[i] == ' ')
+						continue;
+
+					if (line[i] == '/')
+					{
+						if (has_slash)
+							break;
+						has_slash = true;
+						continue;
+					}
+					/* others */
+					break;
+				}
+
+				if (i == len && has_slash)
+					result = true;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-PROC */
 /* End - ReqID:SRS-PSQL-PARSER */

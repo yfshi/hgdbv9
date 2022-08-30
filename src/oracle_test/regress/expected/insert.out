@@ -416,6 +416,7 @@ create or replace function part_hashint4_noop(value int4, seed int8)
 returns int8 as $$
 select value + seed;
 $$ language sql immutable;
+/
 create operator class part_test_int4_ops
 for type int4
 using hash as
@@ -425,6 +426,7 @@ create or replace function part_hashtext_length(value text, seed int8)
 RETURNS int8 AS $$
 select length(coalesce(value, ''))::int8
 $$ language sql immutable;
+/
 create operator class part_test_text_ops
 for type text
 using hash as
@@ -560,6 +562,7 @@ begin
 end;
 $$
 language plpgsql;
+/
 create trigger mlparted11_trig before insert ON mlparted11
   for each row execute procedure mlparted11_trig_fn();
 -- check that the correct row is shown when constraint check_b fails after
@@ -615,6 +618,7 @@ insert into mlparted values (1, 45, 'a');
 ERROR:  new row for relation "mlparted5a" violates check constraint "check_b"
 DETAIL:  Failing row contains (1, 45, a).
 create function mlparted5abrtrig_func() returns trigger as $$ begin new.c = 'b'; return new; end; $$ language plpgsql;
+/
 create trigger mlparted5abrtrig before insert on mlparted5a for each row execute procedure mlparted5abrtrig_func();
 insert into mlparted5 (a, b, c) values (1, 40, 'a');
 ERROR:  new row for relation "mlparted5a" violates partition constraint
@@ -812,6 +816,7 @@ drop table mcrparted;
 create table brtrigpartcon (a int, b text) partition by list (a);
 create table brtrigpartcon1 partition of brtrigpartcon for values in (1);
 create or replace function brtrigpartcon1trigf() returns trigger as $$begin new.a := 2; return new; end$$ language plpgsql;
+/
 create trigger brtrigpartcon1trig before insert on brtrigpartcon1 for each row execute procedure brtrigpartcon1trigf();
 insert into brtrigpartcon values (1, 'hi there');
 ERROR:  new row for relation "brtrigpartcon1" violates partition constraint
@@ -845,6 +850,7 @@ create table donothingbrtrig_test1 (b text, a int);
 create table donothingbrtrig_test2 (c text, b text, a int);
 alter table donothingbrtrig_test2 drop column c;
 create or replace function donothingbrtrig_func() returns trigger as $$begin raise notice 'b: %', new.b; return NULL; end$$ language plpgsql;
+/
 create trigger donothingbrtrig1 before insert on donothingbrtrig_test1 for each row execute procedure donothingbrtrig_func();
 create trigger donothingbrtrig2 before insert on donothingbrtrig_test2 for each row execute procedure donothingbrtrig_func();
 alter table donothingbrtrig_test attach partition donothingbrtrig_test1 for values in (1);

@@ -223,6 +223,7 @@ BEGIN
 RETURN $1::text || 'omg';
 END
 $$ LANGUAGE plpgsql;
+/
 SELECT echo_me('red'::rainbow);
 --
 -- Concrete function should override generic one
@@ -232,6 +233,7 @@ BEGIN
 RETURN $1::text || 'wtf';
 END
 $$ LANGUAGE plpgsql;
+/
 SELECT echo_me('red'::rainbow);
 --
 -- If we drop the original generic one, we don't have to qualify the type

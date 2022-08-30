@@ -30,6 +30,7 @@ begin
     end loop;
 end;
 $$;
+/
 -- To produce valid JSON output, replace numbers with "0" or "0.0" not "N"
 create function explain_filter_to_json(text) returns jsonb
 language plpgsql as
@@ -47,6 +48,7 @@ begin
     return data::jsonb;
 end;
 $$;
+/
 -- Simple cases
 select explain_filter('explain select * from int8_tbl i8');
                      explain_filter                      

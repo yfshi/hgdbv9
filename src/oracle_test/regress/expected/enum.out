@@ -502,6 +502,7 @@ BEGIN
 RETURN $1::text || 'omg';
 END
 $$ LANGUAGE plpgsql;
+/
 SELECT echo_me('red'::rainbow);
  echo_me 
 ---------
@@ -516,6 +517,7 @@ BEGIN
 RETURN $1::text || 'wtf';
 END
 $$ LANGUAGE plpgsql;
+/
 SELECT echo_me('red'::rainbow);
  echo_me 
 ---------

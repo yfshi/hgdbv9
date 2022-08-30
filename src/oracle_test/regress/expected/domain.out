@@ -843,6 +843,7 @@ declare v pos_int;
 begin
     return p1;
 end$$ language plisql;
+/
 select doubledecrement(3); -- fail because of implicit null assignment
 ERROR:  domain pos_int does not allow null values
 CONTEXT:  PL/iSQL function doubledecrement(pos_int) line 3 during statement block local variable initialization
@@ -851,6 +852,7 @@ declare v pos_int := 0;
 begin
     return p1;
 end$$ language plisql;
+/
 select doubledecrement(3); -- fail at initialization assignment
 ERROR:  value for domain pos_int violates check constraint "pos_int_check"
 CONTEXT:  PL/iSQL function doubledecrement(pos_int) line 3 during statement block local variable initialization
@@ -860,6 +862,7 @@ begin
     v := p1 - 1;
     return v - 1;
 end$$ language plisql;
+/
 select doubledecrement(null); -- fail before call
 ERROR:  domain pos_int does not allow null values
 select doubledecrement(0); -- fail before call
@@ -940,6 +943,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 select array_elem_check(121.00);
 ERROR:  numeric field overflow
 DETAIL:  A field with precision 4, scale 2 must round to an absolute value less than 10^2.
@@ -958,6 +962,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 select array_elem_check(121.00);
 ERROR:  numeric field overflow
 DETAIL:  A field with precision 4, scale 2 must round to an absolute value less than 10^2.
@@ -976,6 +981,7 @@ begin
   x[1] := $1;
   return x[1];
 end$$ language plisql;
+/
 select array_elem_check(121.00);
 ERROR:  numeric field overflow
 DETAIL:  A field with precision 4, scale 2 must round to an absolute value less than 10^2.
@@ -1019,6 +1025,7 @@ begin
   x[2] := $1;
   return x[2];
 end$$ language plisql;
+/
 select array_elem_check(3);
  array_elem_check 
 ------------------
@@ -1040,6 +1047,7 @@ begin
   return d;
 end
 $$ language plisql immutable;
+/
 select dom_check(0);
  dom_check 
 -----------
@@ -1065,6 +1073,7 @@ begin
   return d;
 end
 $$ language plisql immutable;
+/
 select dom_check(0);
  dom_check 
 -----------
@@ -1091,6 +1100,7 @@ drop domain di;
 create function sql_is_distinct_from(anyelement, anyelement)
 returns boolean language sql
 as 'select $1 is distinct from $2 limit 1';
+/
 create domain inotnull int
   check (sql_is_distinct_from(value, null));
 select 1::inotnull;

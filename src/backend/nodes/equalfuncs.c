@@ -1479,6 +1479,20 @@ _equalAlterFunctionStmt(const AlterFunctionStmt *a, const AlterFunctionStmt *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-PROC */
+static bool
+_equalCompileFunctionStmt(const CompileFunctionStmt *a, const CompileFunctionStmt *b)
+{
+	COMPARE_NODE_FIELD(funcname);
+	COMPARE_SCALAR_FIELD(is_compile);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_NODE_FIELD(parameters);
+	COMPARE_SCALAR_FIELD(is_procedure);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-PROC */
+
 static bool
 _equalDoStmt(const DoStmt *a, const DoStmt *b)
 {
@@ -3495,6 +3509,11 @@ equal(const void *a, const void *b)
 		case T_AlterFunctionStmt:
 			retval = _equalAlterFunctionStmt(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_CompileFunctionStmt:
+			retval = _equalCompileFunctionStmt(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_DoStmt:
 			retval = _equalDoStmt(a, b);
 			break;
