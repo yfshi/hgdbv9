@@ -270,16 +270,13 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
-%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
-
+%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 /*
  * Other tokens recognized by plisql's lexer interface layer (pl_scanner.c).
  */
 %token <word>		T_WORD		/* unrecognized simple identifier */
 %token <cword>		T_CWORD		/* unrecognized composite identifier */
 %token <wdatum>		T_DATUM		/* a VAR, ROW, REC, or RECFIELD variable */
-%token				LESS_LESS
-%token				GREATER_GREATER
 
 /*
  * Keyword tokens.  Some of these are reserved and some are not;
