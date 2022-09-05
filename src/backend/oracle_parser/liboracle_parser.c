@@ -472,15 +472,42 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 	{
 		int beginpos = yyextra->body_start;		
 		int blocklevel = yyextra->body_level;
-		bool found_begin = false;		
+		bool found_begin = false;
+		/* Begin - SRS-PLSQL-SUBPROC */
+		bool found_foreign_begin = false;
+		int subproc_define_level = 0;
+		/* End - SRS-PLSQL-SUBPROC */
 		
 		if (blocklevel > 0)
+		{
 			found_begin = true;
+			/* Begin - SRS-PLSQL-SUBPROC */
+			found_foreign_begin = true;
+			/* End - SRS-PLSQL-SUBPROC */
+		}
 
 		while (cur_token != 0)
 		{
 			if (beginpos < 0)
 				beginpos = *llocp;
+
+			/* Begin - SRS-PLSQL-SUBPROC */
+			if (cur_token == FUNCTION || cur_token == PROCEDURE)
+			{
+				while(true)
+				{
+					cur_token = internal_yylex(yyscanner, llocp, &aux1);
+
+					if (cur_token == IS || cur_token == AS)
+					{
+						subproc_define_level++;
+						break;
+					}
+					if (cur_token == ';' || cur_token == 0)
+						break;
+				}
+			}
+			/* End - SRS-PLSQL-SUBPROC */
 
 			while (cur_token == BEGIN_P)
 			{
@@ -489,6 +516,10 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				{
 					blocklevel++;
 					found_begin = true;
+					/* Begin - SRS-PLSQL-SUBPROC */
+					if (subproc_define_level == 0)
+						found_foreign_begin = true;
+					/* End - SRS-PLSQL-SUBPROC */
 				}
 			}
 
@@ -512,25 +543,31 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 							blocklevel--;
 							break;
 						}
-						//else if (cur_token != LOOP_P && cur_token != IF_P)
-						else if (cur_token != IF_P)
+						else if (cur_token != LOOP_P && cur_token != IF_P) /* SRS-PLSQL-SUBPROC */
 						{
 							blocklevel--;
 
 						}
 					}
-				}
-
-				if (blocklevel == 0)
-				{
-					break;
+					/* Begin - SRS-PLSQL-SUBPROC */
+					/* only find end, we can finish */
+					if (blocklevel == 0)
+					{
+						if (found_foreign_begin && subproc_define_level == 0)
+							break;
+						else if (subproc_define_level > 0)
+							subproc_define_level--;
+					}
+					/* End - SRS-PLSQL-SUBPROC */
 				}
 			}
 
 			cur_token = internal_yylex(yyscanner, llocp, &aux1);
 		}
 			
-		if ((cur_token == ';' && blocklevel == 0) || (cur_token == 0 && blocklevel > 0))
+		if ((cur_token == ';' && blocklevel == 0 &&
+			subproc_define_level == 0) || /* SRS-PLSQL-SUBPROC */
+			(cur_token == 0 && blocklevel > 0))
 		{
 			aux1.lval.str = ";";
 			ora_push_back_token(yyscanner, ';', aux1.lval.core_yystype, aux1.lloc, 1);
