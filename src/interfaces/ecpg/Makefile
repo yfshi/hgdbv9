@@ -29,6 +29,7 @@ clean distclean maintainer-clean:
 	$(MAKE) -C oracle_test clean
 #END - SQL PARSER
 
+checktcp: | temp-install
 check checktcp installcheck:
 	$(MAKE) -C test $@
 

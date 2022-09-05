@@ -33,7 +33,8 @@ PostgresNode - class representing PostgreSQL server instance
   my ($stdout, $stderr, $timed_out);
   my $cmdret = $node->psql('postgres', 'SELECT pg_sleep(600)',
 	  stdout => \$stdout, stderr => \$stderr,
-	  timeout => 180, timed_out => \$timed_out,
+	  timeout => $TestLib::timeout_default,
+	  timed_out => \$timed_out,
 	  extra_params => ['--single-transaction'],
 	  on_error_die => 1)
   print "Sleep timed out" if $timed_out;
@@ -148,6 +149,17 @@ of finding port numbers, registering instances for cleanup, etc.
 sub new
 {
 	my ($class, $name, $pghost, $pgport) = @_;
+
+	# Use release 15+ semantics when the arguments look like (node_name,
+	# %params).  We can't use $class to decide, because get_new_node() passes
+	# a v14- argument list regardless of the class.  $class might be an
+	# out-of-core subclass.  $class->isa('PostgresNode') returns true even for
+	# descendants of PostgreSQL::Test::Cluster, so it doesn't help.
+	return $class->get_new_node(@_[ 1 .. $#_ ])
+	  if !$pghost
+	  or !$pgport
+	  or $pghost =~ /^[a-zA-Z0-9_]$/;
+
 	my $testname = basename($0);
 	$testname =~ s/\.[^.]+$//;
 	my $self = {
@@ -852,9 +864,7 @@ sub kill9
 	local %ENV = $self->_get_env();
 
 	print "### Killing node \"$name\" using signal 9\n";
-	# kill(9, ...) fails under msys Perl 5.8.8, so fall back on pg_ctl.
-	kill(9, $self->{_pid})
-	  or TestLib::system_or_bail('pg_ctl', 'kill', 'KILL', $self->{_pid});
+	kill(9, $self->{_pid});
 	$self->{_pid} = undef;
 	return;
 }
@@ -1022,7 +1032,7 @@ primary_conninfo='$root_connstr'
 sub enable_restoring
 {
 	my ($self, $root_node, $standby) = @_;
-	my $path = TestLib::perl2host($root_node->archive_dir);
+	my $path = $root_node->archive_dir;
 	my $name = $self->name;
 
 	print "### Enabling WAL restore for node \"$name\"\n";
@@ -1090,7 +1100,7 @@ sub set_standby_mode
 sub enable_archiving
 {
 	my ($self) = @_;
-	my $path   = TestLib::perl2host($self->archive_dir);
+	my $path   = $self->archive_dir;
 	my $name   = $self->name;
 
 	print "### Enabling WAL archiving for node \"$name\"\n";
@@ -1658,7 +1668,8 @@ e.g.
 	my ($stdout, $stderr, $timed_out);
 	my $cmdret = $node->psql('postgres', 'SELECT pg_sleep(600)',
 		stdout => \$stdout, stderr => \$stderr,
-		timeout => 180, timed_out => \$timed_out,
+		timeout => $TestLib::timeout_default,
+		timed_out => \$timed_out,
 		extra_params => ['--single-transaction'])
 
 will set $cmdret to undef and $timed_out to a true value.
@@ -1778,19 +1789,13 @@ sub psql
 		}
 	};
 
-	# Note: on Windows, IPC::Run seems to convert \r\n to \n in program output
-	# if we're using native Perl, but not if we're using MSys Perl.  So do it
-	# by hand in the latter case, here and elsewhere.
-
 	if (defined $$stdout)
 	{
-		$$stdout =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
 		chomp $$stdout;
 	}
 
 	if (defined $$stderr)
 	{
-		$$stderr =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
 		chomp $$stderr;
 	}
 
@@ -1838,7 +1843,8 @@ scalar reference.  This allows the caller to act on other parts of the system
 while idling this backend.
 
 The specified timer object is attached to the harness, as well.  It's caller's
-responsibility to select the timeout length, and to restart the timer after
+responsibility to set the timeout length (usually
+$TestLib::timeout_default), and to restart the timer after
 each command if the timeout is per-command.
 
 psql is invoked in tuples-only unaligned mode with reading of B<.psqlrc>
@@ -1926,9 +1932,10 @@ The process's stdin is sourced from the $stdin scalar reference,
 and its stdout and stderr go to the $stdout scalar reference.
 ptys are used so that psql thinks it's being called interactively.
 
-The specified timer object is attached to the harness, as well.
-It's caller's responsibility to select the timeout length, and to
-restart the timer after each command if the timeout is per-command.
+The specified timer object is attached to the harness, as well.  It's caller's
+responsibility to set the timeout length (usually
+$TestLib::timeout_default), and to restart the timer after
+each command if the timeout is per-command.
 
 psql is invoked in tuples-only unaligned mode with reading of B<.psqlrc>
 disabled.  That may be overridden by passing extra psql parameters.
@@ -2241,7 +2248,7 @@ sub connect_fails
 Run B<$query> repeatedly, until it returns the B<$expected> result
 ('t', or SQL boolean true, by default).
 Continues polling if B<psql> returns an error result.
-Times out after 180 seconds.
+Times out after $TestLib::timeout_default seconds.
 Returns 1 if successful, 0 if timed out.
 
 =cut
@@ -2259,7 +2266,7 @@ sub poll_query_until
 		'-d',                             $self->connstr($dbname)
 	];
 	my ($stdout, $stderr);
-	my $max_attempts = 180 * 10;
+	my $max_attempts = 10 * $TestLib::timeout_default;
 	my $attempts     = 0;
 
 	while ($attempts < $max_attempts)
@@ -2267,9 +2274,7 @@ sub poll_query_until
 		my $result = IPC::Run::run $cmd, '<', \$query,
 		  '>', \$stdout, '2>', \$stderr;
 
-		$stdout =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
 		chomp($stdout);
-		$stderr =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
 		chomp($stderr);
 
 		if ($stdout eq $expected && $stderr eq '')
@@ -2283,8 +2288,8 @@ sub poll_query_until
 		$attempts++;
 	}
 
-	# The query result didn't change in 180 seconds. Give up. Print the
-	# output from the last attempt, hopefully that's useful for debugging.
+	# Give up. Print the output from the last attempt, hopefully that's useful
+	# for debugging.
 	diag qq(poll_query_until timed out executing this query:
 $query
 expecting this output:
@@ -2573,6 +2578,41 @@ sub wait_for_slot_catchup
 
 =pod
 
+=item $node->wait_for_log(regexp, offset)
+
+Waits for the contents of the server log file, starting at the given offset, to
+match the supplied regular expression.  Checks the entire log if no offset is
+given.  Times out after $TestLib::timeout_default seconds.
+
+If successful, returns the length of the entire log file, in bytes.
+
+=cut
+
+sub wait_for_log
+{
+	my ($self, $regexp, $offset) = @_;
+	$offset = 0 unless defined $offset;
+
+	my $max_attempts = 10 * $TestLib::timeout_default;
+	my $attempts     = 0;
+
+	while ($attempts < $max_attempts)
+	{
+		my $log = TestLib::slurp_file($self->logfile, $offset);
+
+		return $offset+length($log) if ($log =~ m/$regexp/);
+
+		# Wait 0.1 second before retrying.
+		usleep(100_000);
+
+		$attempts++;
+	}
+
+	croak "timed out waiting for match: $regexp";
+}
+
+=pod
+
 =item $node->query_hash($dbname, $query, @columns)
 
 Execute $query on $dbname, replacing any appearance of the string __COLUMNS__
@@ -2723,9 +2763,6 @@ sub pg_recvlogical_upto
 		}
 	};
 
-	$stdout =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
-	$stderr =~ s/\r\n/\n/g if $Config{osname} eq 'msys';
-
 	if (wantarray)
 	{
 		return ($ret, $stdout, $stderr, $timeout);
@@ -2737,6 +2774,37 @@ sub pg_recvlogical_upto
 		  if $ret;
 		return $stdout;
 	}
+}
+
+=pod
+
+=item $node->corrupt_page_checksum(self, file, page_offset)
+
+Intentionally corrupt the checksum field of one page in a file.
+The server must be stopped for this to work reliably.
+
+The file name should be specified relative to the cluster datadir.
+page_offset had better be a multiple of the cluster's block size.
+
+=cut
+
+sub corrupt_page_checksum
+{
+	my ($self, $file, $page_offset) = @_;
+	my $pgdata = $self->data_dir;
+	my $pageheader;
+
+	open my $fh, '+<', "$pgdata/$file" or die "open($file) failed: $!";
+	binmode $fh;
+	sysseek($fh, $page_offset, 0) or die "sysseek failed: $!";
+	sysread($fh, $pageheader, 24) or die "sysread failed: $!";
+	# This inverts the pd_checksum field (only); see struct PageHeaderData
+	$pageheader ^= "\0\0\0\0\0\0\0\0\xff\xff";
+	sysseek($fh, $page_offset, 0) or die "sysseek failed: $!";
+	syswrite($fh, $pageheader) or die "syswrite failed: $!";
+	close $fh;
+
+	return;
 }
 
 =pod

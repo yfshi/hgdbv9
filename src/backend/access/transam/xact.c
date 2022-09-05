@@ -1335,6 +1335,7 @@ RecordTransactionCommit(void)
 		 * This makes checkpoint's determination of which xacts are delayChkpt
 		 * a bit fuzzy, but it doesn't matter.
 		 */
+		Assert(!MyProc->delayChkpt);
 		START_CRIT_SECTION();
 		MyProc->delayChkpt = true;
 
@@ -3390,6 +3391,9 @@ AbortCurrentTransaction(void)
  *	could issue more commands and possibly cause a failure after the statement
  *	completes).  Subtransactions are verboten too.
  *
+ *	We must also set XACT_FLAGS_NEEDIMMEDIATECOMMIT in MyXactFlags, to ensure
+ *	that postgres.c follows through by committing after the statement is done.
+ *
  *	isTopLevel: passed down from ProcessUtility to determine whether we are
  *	inside a function.  (We will always fail if this is false, but it's
  *	convenient to centralize the check here instead of making callers do it.)
@@ -3431,7 +3435,9 @@ PreventInTransactionBlock(bool isTopLevel, const char *stmtType)
 	if (CurrentTransactionState->blockState != TBLOCK_DEFAULT &&
 		CurrentTransactionState->blockState != TBLOCK_STARTED)
 		elog(FATAL, "cannot prevent transaction chain");
-	/* all okay */
+
+	/* All okay.  Set the flag to make sure the right thing happens later. */
+	MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;
 }
 
 /*
@@ -3527,6 +3533,13 @@ IsInTransactionBlock(bool isTopLevel)
 	if (CurrentTransactionState->blockState != TBLOCK_DEFAULT &&
 		CurrentTransactionState->blockState != TBLOCK_STARTED)
 		return true;
+
+	/*
+	 * If we tell the caller we're not in a transaction block, then inform
+	 * postgres.c that it had better commit when the statement is done.
+	 * Otherwise our report could be a lie.
+	 */
+	MyXactFlags |= XACT_FLAGS_NEEDIMMEDIATECOMMIT;
 
 	return false;
 }
@@ -5305,8 +5318,9 @@ SerializeTransactionState(Size maxsize, char *start_address)
 	{
 		if (FullTransactionIdIsValid(s->fullTransactionId))
 			workspace[i++] = XidFromFullTransactionId(s->fullTransactionId);
-		memcpy(&workspace[i], s->childXids,
-			   s->nChildXids * sizeof(TransactionId));
+		if (s->nChildXids > 0)
+			memcpy(&workspace[i], s->childXids,
+				   s->nChildXids * sizeof(TransactionId));
 		i += s->nChildXids;
 	}
 	Assert(i == nxids);
