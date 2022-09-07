@@ -1,24 +1,24 @@
 --
 -- Test INSERT alias.col in Oracle mode
 --
-set compatible_mode to oracle;
-show compatible_mode;
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
 
 CREATE TABLE alitb1 (a1 int, a2 int);
 
 INSERT INTO alitb1(a1, a2) VALUES(1, 100);
 INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 
-show insert_enable_alias;
-set insert_enable_alias to on;
-show insert_enable_alias;
+show ivorysql.insert_enable_alias;
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
 
 INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 
 SELECT * FROM alitb1 ORDER BY a1;
 
-reset insert_enable_alias;
-show insert_enable_alias;
+reset ivorysql.insert_enable_alias;
+show ivorysql.insert_enable_alias;
 
 -- cleanup
 DROP TABLE alitb1;
@@ -31,9 +31,9 @@ INSERT INTO alitb2(a1, a2.b1) VALUES(200, 2);
 INSERT INTO alitb2(a1, a2.b2) VALUES(300, 3);
 INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 
-show insert_enable_alias;
-set insert_enable_alias to on;
-show insert_enable_alias;
+show ivorysql.insert_enable_alias;
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
 
 INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 INSERT INTO alitb2 AS al(al.a1, a2.b1) VALUES(500, 5);
@@ -45,28 +45,28 @@ SELECT * FROM alitb2 ORDER BY a1;
 --cleanup
 DROP TABLE alitb2;
 DROP TYPE dtp;
-reset insert_enable_alias;
+reset ivorysql.insert_enable_alias;
 
 --
 -- Test INSERT alias.col in pg mode
 --
-set compatible_mode to pg;
-show compatible_mode;
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
 
 CREATE TABLE alitb1 (a1 int, a2 int);
 
 INSERT INTO alitb1(a1, a2) VALUES(1, 100);
 INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 
-show insert_enable_alias;
-set insert_enable_alias to on;
-show insert_enable_alias;
+show ivorysql.insert_enable_alias;
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
 
 INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 
 SELECT * FROM alitb1 ORDER BY a1;
 
-reset insert_enable_alias;
+reset ivorysql.insert_enable_alias;
 
 -- cleanup
 DROP TABLE alitb1;
@@ -79,9 +79,9 @@ INSERT INTO alitb2(a1, a2.b1) VALUES(200, 2);
 INSERT INTO alitb2(a1, a2.b2) VALUES(300, 3);
 INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 
-show insert_enable_alias;
-set insert_enable_alias to on;
-show insert_enable_alias;
+show ivorysql.insert_enable_alias;
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
 
 INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 INSERT INTO alitb2 AS al(al.a1, a2.b1) VALUES(500, 5);
@@ -93,5 +93,5 @@ SELECT * FROM alitb2 ORDER BY a1;
 --cleanup
 DROP TABLE alitb2;
 DROP TYPE dtp;
-reset insert_enable_alias;
-reset compatible_mode;
+reset ivorysql.insert_enable_alias;
+reset ivorysql.compatible_mode;

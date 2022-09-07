@@ -1244,9 +1244,9 @@ drop role regress_partitioning_role;
 
 /* Begin - ReqID:SRS-PSQL-PARSER */
 --test parser switch in psql
-show compatible_mode;
-set compatible_mode = 'pg';
+show ivorysql.compatible_mode;
+set ivorysql.compatible_mode = 'pg';
 \parser
-reset compatible_mode;
-show compatible_mode;
+reset ivorysql.compatible_mode;
+show ivorysql.compatible_mode;
 /* End - ReqID:SRS-PSQL-PARSER */

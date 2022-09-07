@@ -291,11 +291,6 @@ extern PGDLLIMPORT bool identifier_case_from_pg_dump;
 extern PGDLLIMPORT bool enable_case_switch;
 /* END - case sensitive indentify */
 
-/* BEGIN - SQL PARSER */
-extern int	database_mode;
-extern PGDLLIMPORT int	compatible_db;
-/* END - SQL PARSER */
-
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 extern PGDLLIMPORT char	*nls_length_semantics;
 extern PGDLLIMPORT char *nls_date_format;

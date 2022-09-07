@@ -41,6 +41,8 @@
 #include "utils/xml.h"
 #include "utils/ora_compatible.h"
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
+
 
 
 /* Hook for plugins to get control in ExplainOneQuery() */

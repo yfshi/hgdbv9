@@ -34,6 +34,7 @@
 #include "utils/builtins.h"
 #include "utils/bytea.h"
 #include "utils/guc.h"
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* SQL PARSER */

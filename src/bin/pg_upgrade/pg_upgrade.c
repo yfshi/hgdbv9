@@ -613,7 +613,7 @@ set_frozenxids(bool minmxid_only)
 
 	/* BEGIN - case sensitive indentify */
 	PQclear(executeQueryOrDie(conn_template1,
-							  "set identifier_case_switch = normal;"));
+							  "set ivorysql.identifier_case_switch = normal;"));	/* ReqID:SRS-MISC-GUC */
 	/* BEGIN - case sensitive indentify */
 
 	if (!minmxid_only)

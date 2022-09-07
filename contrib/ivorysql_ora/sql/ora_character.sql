@@ -1,9 +1,9 @@
 -- 'nls_length_semantics' parameter
-SET nls_length_semantics to char;
-SET nls_length_semantics to byte;
+SET ivorysql.nls_length_semantics to char;
+SET ivorysql.nls_length_semantics to byte;
 
 -- Only values of 'char' and 'byte' is valid
-SET nls_length_semantics to other;
+SET ivorysql.nls_length_semantics to other;
 
 -- invalid range
 CREATE TABLE TEST_ORACHAR(a char(32768 byte));

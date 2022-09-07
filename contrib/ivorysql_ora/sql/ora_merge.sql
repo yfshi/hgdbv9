@@ -380,10 +380,10 @@ ROLLBACK;
 --
 -- Test alias.column in INSERT clause
 --
-show insert_enable_alias;
+show ivorysql.insert_enable_alias;
 -- enable insert alias
-set insert_enable_alias to on;
-show insert_enable_alias;
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
 
 BEGIN;
 
@@ -430,6 +430,6 @@ SELECT * FROM member_staging ORDER BY member_id;
 
 ROLLBACK;
 
-reset insert_enable_alias;
+reset ivorysql.insert_enable_alias;
 drop table members;
 drop table member_staging;

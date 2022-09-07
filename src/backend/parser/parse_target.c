@@ -32,6 +32,7 @@
 #include "utils/rel.h"
 #include "utils/typcache.h"
 #include "utils/guc.h"
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 
 /* Begin - ReqID:SRS-SQL-INSERT */
 #include "utils/ora_compatible.h"

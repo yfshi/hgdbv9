@@ -5181,18 +5181,18 @@ List of access methods
 
 /* Begin - ReqID:SRS-PSQL-PARSER */
 --test parser switch in psql
-show compatible_mode;
- compatible_mode 
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
 -----------------
  pg
 (1 row)
 
-set compatible_mode = 'pg';
+set ivorysql.compatible_mode = 'pg';
 \parser
 PG parser.
-reset compatible_mode;
-show compatible_mode;
- compatible_mode 
+reset ivorysql.compatible_mode;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
 -----------------
  pg
 (1 row)

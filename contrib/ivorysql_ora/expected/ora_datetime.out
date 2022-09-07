@@ -3,7 +3,7 @@
 --
 --build tables and test 'nls_date_format' parameter, don't do the validity check.
 CREATE TABLE TEST_DATE(a date);
-SET NLS_DATE_FORMAT='YYYY-MM-DD';
+SET ivorysql.NLS_DATE_FORMAT='YYYY-MM-DD';
 INSERT INTO TEST_DATE VALUES('1990-1-19');
 INSERT INTO TEST_DATE VALUES('1990-1-19 11:11:11');		-- hour/minute/second is zero 
 ERROR:  datetime format picture ends before converting entire input string
@@ -16,7 +16,7 @@ SELECT * FROM TEST_DATE;
 (1 row)
 
 DELETE FROM TEST_DATE;
-set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+set ivorysql.nls_date_format='YYYY-MM-DD HH24:MI:SS';
 INSERT INTO TEST_DATE VALUES('1990-2-19');				-- hour/minute/second is zero 	
 INSERT INTO TEST_DATE VALUES('1990-2-19 11:11:11');
 SELECT * FROM TEST_DATE;
@@ -53,7 +53,7 @@ SELECT DATE'1990-1-1 11:11:11';			-- hour/minute/second is zero
 ERROR:  trailing characters remain in input string after datetime format
 -- Comparison operator
 DELETE FROM TEST_DATE;
-set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+set ivorysql.nls_date_format='YYYY-MM-DD HH24:MI:SS';
 INSERT INTO TEST_DATE VALUES('2016-11-24');
 INSERT INTO TEST_DATE VALUES('2016-11-24 11:00:00');
 INSERT INTO TEST_DATE VALUES('2016-11-24 11:11:11');
@@ -279,7 +279,7 @@ CREATE INDEX TEST_DATE_BRIN ON TEST_DATE USING BRIN (A);
 -- The default precision of fractional second is 6.
 -- Build tables and test 'NLS_TIMESTAMP_FORMAT' parameter, don't do the validity check.
 CREATE TABLE TEST_TIMESTAMP(a TIMESTAMP);
-SET NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
+SET ivorysql.NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 -- effective number of fractional seconds is 6,the part of excess is 0
 INSERT INTO TEST_TIMESTAMP VALUES('1990-1-19 11:11:11.123456789');
 INSERT INTO TEST_TIMESTAMP VALUES('1990-2-19');		-- hour、minute、second、fractional second is zero.
@@ -319,7 +319,7 @@ SELECT TIMESTAMP'1990-1-1 11:11:11';
 
 -- Comparison operator
 DELETE FROM TEST_TIMESTAMP;
-SET NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
+SET ivorysql.NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 INSERT INTO TEST_TIMESTAMP VALUES('2016-11-24 11:00:00');
 INSERT INTO TEST_TIMESTAMP VALUES('2016-11-24 11:00:00.123456789');
 INSERT INTO TEST_TIMESTAMP VALUES('2016-11-24 11:11:11');
@@ -549,7 +549,7 @@ CREATE INDEX TEST_TIMESTAMP_BRIN ON TEST_TIMESTAMP USING BRIN (A);
 -- The default precision of fractional second is 6.
 -- Build tables and test 'NLS_TIMESTAMP_TZ_FORMAT' parameter, don't do the validity check.
 CREATE TABLE TEST_TIMESTAMPTZ(a TIMESTAMP WITH TIME ZONE);
-SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
+SET ivorysql.NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 -- effective number of fractional seconds is 6,the part of excess is 0
 INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-1-19 11:11:11.123456789');
 INSERT INTO TEST_TIMESTAMPTZ VALUES('1990-2-19');		-- hour、minute、second、fractional second is zero.
@@ -587,7 +587,7 @@ SELECT TIMESTAMP'1990-1-1 11:11:11 +04:30';
 
 -- Comparison operator
 DELETE FROM TEST_TIMESTAMPTZ;
-SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
+SET ivorysql.NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
 INSERT INTO TEST_TIMESTAMPTZ VALUES('2016-11-24 11:00:00');
 INSERT INTO TEST_TIMESTAMPTZ VALUES('2016-11-24 11:00:00.123456789');
 INSERT INTO TEST_TIMESTAMPTZ VALUES('2016-11-24 11:11:11');
@@ -819,9 +819,9 @@ DROP TABLE TEST_TIMESTAMPTZ;
 -- Datetime/Interval Arithmetic
 --
 -- set datetime style
-SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';
-SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';
-SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';	-- now, can not support specify time zone format!
+SET ivorysql.NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';
+SET ivorysql.NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';
+SET ivorysql.NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';	-- now, can not support specify time zone format!
 -- oradate - oradate
 SELECT date'2016-11-26' - date'2015-10-26';
  ?column? 
@@ -1229,7 +1229,7 @@ SELECT 123.456 * interval'365 11:11:11' day(3) to second;
 (1 row)
 
 -- The operator "<=" supports a comparison between the "number" type and the "varchar2" type.
-SET NLS_DATE_FORMAT = 'YYYY-MM-DD';
+SET ivorysql.NLS_DATE_FORMAT = 'YYYY-MM-DD';
 select 25::number <= to_char('1990-01-01'::oradate, 'yyyy');
  ?column? 
 ----------

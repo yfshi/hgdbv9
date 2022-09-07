@@ -45,6 +45,7 @@
 /* Begin - SQL PARSER */
 #include "oracle_parser/ora_parser_hook.h"
 #include "utils/guc.h"
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
 #include "utils/timestamp.h"

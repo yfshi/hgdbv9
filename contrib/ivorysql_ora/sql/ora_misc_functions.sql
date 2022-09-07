@@ -1,9 +1,9 @@
 /*
  * DECODE
  */
-SET nls_date_format = 'DD-MON-YY';
-SET nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
-SET nls_timestamp_tz_format = 'DD-MON-YY HH24:MI:SS.US TZ';
+SET ivorysql.nls_date_format = 'DD-MON-YY';
+SET ivorysql.nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
+SET ivorysql.nls_timestamp_tz_format = 'DD-MON-YY HH24:MI:SS.US TZ';
 set default_text_search_config = 'pg_catalog.simple';
 
 -- error
@@ -96,9 +96,9 @@ select decode(a, 1, 2018, b, 3) from t_decode;
 select decode(a, 1, 2018, 2, 3, 4) from t_decode;
 drop table t_decode;
 
-set nls_date_format = 'pg';
-set nls_timestamp_format = 'pg';
-set nls_timestamp_tz_format = 'pg';
+set ivorysql.nls_date_format = 'pg';
+set ivorysql.nls_timestamp_format = 'pg';
+set ivorysql.nls_timestamp_tz_format = 'pg';
 
 --
 --NVL
@@ -2341,7 +2341,7 @@ drop table t_bug589;
 
 drop table t_bug0000331;
 
-reset nls_date_format;
-reset nls_timestamp_format;
-reset nls_timestamp_tz_format;
+reset ivorysql.nls_date_format;
+reset ivorysql.nls_timestamp_format;
+reset ivorysql.nls_timestamp_tz_format;
 reset default_text_search_config;

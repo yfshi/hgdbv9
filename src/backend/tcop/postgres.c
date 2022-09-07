@@ -76,6 +76,7 @@
 #include "tcop/tcopprot.h"
 #include "tcop/utility.h"
 #include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -4061,6 +4062,13 @@ PostgresMain(int argc, char *argv[],
 		 * Create lockfile for data directory.
 		 */
 		CreateDataDirLockFile(false);
+
+		/* Begin - ReqID:SRS-MISC-GUC */
+		/*
+		 * process any libraries that should be preloaded at postmaster start
+		 */
+		process_shared_preload_libraries();
+		/* End - ReqID:SRS-MISC-GUC */
 
 		/* read control file (error checking and contains config ) */
 		LocalProcessControlFile(false);

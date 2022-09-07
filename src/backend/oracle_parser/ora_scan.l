@@ -44,6 +44,7 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* END - case sensitive indentify */
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 }
 
 %{

@@ -62,6 +62,7 @@
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
+#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/hsearch.h"
 #include "utils/lsyscache.h"
 /* Begin - SQL PARSER */
