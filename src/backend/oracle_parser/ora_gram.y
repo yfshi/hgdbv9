@@ -775,6 +775,11 @@ static void determineLanguage(List *options);
 %token LONG_RAW
 /*End - BUGID:0000649*/
 
+/* Begin - SRS-PLSQL-SUBPROC */
+%token <keyword> LOOP_P
+/* End - SRS-PLSQL-SUBPROC */
+
+
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
  * list and so can never be entered directly.  The filter in parser.c
@@ -17725,6 +17730,7 @@ unreserved_keyword:
 			| LOCKED
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
+			| LOOP_P /* SRS-PLSQL-SUBPROC */
 			| MAPPING
 			| MATCH
 			| MATCHED /* ReqID:SRS-SQL-MERGE */
@@ -18340,6 +18346,7 @@ bare_label_keyword:
 			| LOCKED
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
+			| LOOP_P /* SRS-PLSQL-SUBPROC */
 			| MAPPING
 			| MATCH
 			| MATCHED /* ReqID:SRS-SQL-MERGE */
