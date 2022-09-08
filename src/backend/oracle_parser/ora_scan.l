@@ -368,6 +368,10 @@ less_equals		"<="
 greater_equals	">="
 less_greater	"<>"
 not_equals		"!="
+/* Begin - ReqID:SRS-SQL-PROC */
+less_less       "<<"
+greater_greater ">>"
+/* End - ReqID:SRS-SQL-PROC */
 
 /*
  * "self" is the set of chars that should be returned as single-character
@@ -899,6 +903,18 @@ other			.
 					return NOT_EQUALS;
 				}
 
+	/* Begin - ReqID:SRS-SQL-PROC */
+{less_less}		{
+					SET_YYLLOC();
+					return LESS_LESS;
+				}
+
+{greater_greater}	{
+						SET_YYLLOC();
+						return GREATER_GREATER;
+					}
+	/* Begin - ReqID:SRS-SQL-PROC */
+
 {self}			{
 					SET_YYLLOC();
 					return yytext[0];
@@ -996,6 +1012,12 @@ other			.
 								return NOT_EQUALS;
 							if (yytext[0] == '!' && yytext[1] == '=')
 								return NOT_EQUALS;
+							/* Begin - ReqID:SRS-SQL-PROC */
+							if (yytext[0] == '<' && yytext[1] == '<')
+								return LESS_LESS;
+							if (yytext[0] == '>' && yytext[1] == '>')
+								return GREATER_GREATER;
+							/* End - ReqID:SRS-SQL-PROC */
 						}
 					}
 

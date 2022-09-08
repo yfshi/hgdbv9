@@ -328,14 +328,18 @@ internal_yylex(TokenAuxData *auxdata)
 		yytext = core_yy.scanbuf + auxdata->lloc;
 		auxdata->leng = strlen(yytext);
 
-		/* Check for << >> and #, which the core considers operators */
+		/* Check for #, which the core considers operators */
 		if (token == Op)
 		{
+/* Begin - ReqID:SRS-SQL-PROC */
+#if 0
 			if (strcmp(auxdata->lval.str, "<<") == 0)
 				token = LESS_LESS;
 			else if (strcmp(auxdata->lval.str, ">>") == 0)
 				token = GREATER_GREATER;
-			else if (strcmp(auxdata->lval.str, "#") == 0)
+#endif
+/* End - ReqID:SRS-SQL-PROC */
+			if (strcmp(auxdata->lval.str, "#") == 0)
 				token = '#';
 		}
 
