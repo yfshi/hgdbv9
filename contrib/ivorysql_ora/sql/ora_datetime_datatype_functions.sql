@@ -1,7 +1,7 @@
 /*
  * to_date
  */
-SET ivorysql.NLS_DATE_FORMAT = 'MM-DD-YYYY HH24:MI:SS';
+SET NLS_DATE_FORMAT = 'MM-DD-YYYY HH24:MI:SS';
 SELECT to_date('12-18-2011') FROM DUAL;
 SELECT to_date('2011-12-18') FROM DUAL;	--ERROR
 
@@ -16,7 +16,7 @@ SELECT to_date(
 /*
  * to_timestamp
  */
-SET ivorysql.NLS_TIMESTAMP_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9';
+SET NLS_TIMESTAMP_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9';
 SELECT to_timestamp('10-9-2016 14:10:10.123000') FROM DUAL;
 SELECT to_timestamp('2016-10-9 14:10:10.123000') FROM DUAL;
 
@@ -30,7 +30,7 @@ SELECT to_timestamp(
 /*
  * to_timestamp_tz
  */
-SET ivorysql.NLS_TIMESTAMP_TZ_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9 TZH:TZM';
+SET NLS_TIMESTAMP_TZ_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9 TZH:TZM';
 SELECT to_timestamp_tz('10-9-2016 14:10:10.123000') FROM DUAL;
 SELECT to_timestamp_tz('2016-10-9 14:10:10.123000') FROM DUAL;
 
@@ -50,7 +50,7 @@ SELECT to_timestamp_tz('10-9-2016 14:10:10.123000 -13:00', 'DD-MM-YYYY HH24:MI:S
  * to_char
  */
 -- to_char function for date data type 
-SET ivorysql.NLS_DATE_FORMAT = 'MM-DD-YYYY HH24:MI:SS';
+SET NLS_DATE_FORMAT = 'MM-DD-YYYY HH24:MI:SS';
 CREATE TABLE to_char_tbl(a date);
 INSERT INTO to_char_tbl VALUES('11-22-1990 11:11:11');
 SELECT to_char(a) FROM to_char_tbl;
@@ -66,7 +66,7 @@ SELECT to_char(
 DROP TABLE to_char_tbl;
 
 -- to_char function for timestamp data type
-SET ivorysql.NLS_TIMESTAMP_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9';
+SET NLS_TIMESTAMP_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9';
 CREATE TABLE to_char_tbl(a timestamp);
 INSERT INTO to_char_tbl VALUES('11-22-1990 11:11:11.123456');
 SELECT to_char(a) FROM to_char_tbl;
@@ -82,7 +82,7 @@ SELECT to_char(
 DROP TABLE to_char_tbl;
 
 -- to_char function for timestamp with time zone data type
-SET ivorysql.NLS_TIMESTAMP_TZ_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9 TZH:TZM';
+SET NLS_TIMESTAMP_TZ_FORMAT = 'MM-DD-YYYY HH24:MI:SS.FF9 TZH:TZM';
 CREATE TABLE to_char_tbl(a timestamp with time zone);
 INSERT INTO to_char_tbl VALUES(timestamp'1990-11-22 11:11:11.123456 +06:30');
 SELECT to_char(a) FROM to_char_tbl;
@@ -99,9 +99,9 @@ DROP TABLE to_char_tbl;
 
 -- oracle sys date func
 --bug#0000857
-SET ivorysql.nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
+SET nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
 
-set ivorysql.NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';
+set NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';
 --sys_setract_utc 
 CREATE table datetest (aa timestamp);
 

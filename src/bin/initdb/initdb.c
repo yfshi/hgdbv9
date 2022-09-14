@@ -1251,6 +1251,16 @@ setup_config(void)
 								  "log_file_mode = 0640");
 	}
 
+	/*
+	 * In this mode we don't need ivorysql configuration file
+	 */
+	if (database_mode == DB_PG)
+	{
+		conflines = replace_token(conflines,
+							  "include_if_exists = 'ivorysql.conf'",
+							  "#include_if_exists = 'ivorysql.conf'");
+	}
+
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
 	writefile(path, conflines);
@@ -2005,7 +2015,7 @@ load_ivorysql_ora(FILE *cmdfd)
 	/* switch to oracle parser and load extenison */
 	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");	/* ReqID:SRS-MISC-GUC */
 	PG_CMD_PUTS("CREATE EXTENSION ivorysql_ora;\n\n");
-	PG_CMD_PUTS("reset ivorysql.compatible_mode;\n\n");	/* BUG#0000054 */
+	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");	/* BUG#0000054 */
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 

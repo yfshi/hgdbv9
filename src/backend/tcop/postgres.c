@@ -209,6 +209,7 @@ static void drop_unnamed_stmt(void);
 static void log_disconnections(int code, Datum arg);
 static void enable_statement_timeout(void);
 static void disable_statement_timeout(void);
+static void InitIvorysql(void);				/* ReqID:SRS-MISC-GUC */
 
 
 /* ----------------------------------------------------------------
@@ -4118,6 +4119,13 @@ PostgresMain(int argc, char *argv[],
 		PostmasterContext = NULL;
 	}
 
+	/* Begin - ReqID:SRS-MISC-GUC */
+	/*
+	 * Initialize backend ivorysql parser
+	 */
+	InitIvorysql();
+	/* End - ReqID:SRS-MISC-GUC */
+
 	SetProcessingMode(NormalProcessing);
 
 	/*
@@ -4981,3 +4989,27 @@ disable_statement_timeout(void)
 	if (get_timeout_active(STATEMENT_TIMEOUT))
 		disable_timeout(STATEMENT_TIMEOUT, false);
 }
+
+/* Begin - ReqID:SRS-MISC-GUC */
+/*
+ * Initialize backend ivorysql parser
+ */
+static void
+InitIvorysql(void)
+{
+	if (MyProcPort)
+	{
+		if (MyProcPort->connmode == 'p')
+		{
+			SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);  /* ReqID:SRS-MISC-GUC */
+		}
+		else if (MyProcPort->connmode == 'o')
+		{
+			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);      /* ReqID:SRS-MISC-GUC */
+			if (NULL == ora_raw_parser)
+				ereport(ERROR,
+					(errmsg("Invalid Oracle compatibility mode syntax library.")));
+		}
+	}
+}
+/* End - ReqID:SRS-MISC-GUC */

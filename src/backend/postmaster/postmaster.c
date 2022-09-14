@@ -4657,15 +4657,10 @@ BackendInitialize(Port *port)
 		if (strstr(service, PostPortNumberStr) != NULL)
 		{
 			port->connmode = 'p';
-			SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
 		}
 		else if (strstr(service, OraPortNumberStr) != NULL)
 		{
 			port->connmode = 'o';
-			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
-			if (NULL == ora_raw_parser)
-				ereport(ERROR,
-						(errmsg("Invalid Oracle compatibility mode syntax library.")));
 		}
 		else
 			port->connmode = 'u';
@@ -4675,15 +4670,10 @@ BackendInitialize(Port *port)
 		if (localport == PostPortNumber)
 		{
 			port->connmode = 'p';
-			SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
 		}
 		else if (localport == OraPortNumber)
 		{
 			port->connmode = 'o';
-			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE); /* ReqID:SRS-MISC-GUC */
-			if (NULL == ora_raw_parser)
-				ereport(ERROR,
-						(errmsg("Invalid Oracle compatibility mode syntax library.")));
 		}
 		else
 			port->connmode = 'u';

@@ -4983,8 +4983,6 @@ ReadControlFile(void)
 	/* set guc parameters' value about database compatible mode  */
 	SetConfigOption("ivorysql.database_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
-	SetConfigOption("ivorysql.compatible_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
-					PGC_USERSET, PGC_S_OVERRIDE);
 	/* END - SQL PARSER */
 	/* End - ReqID:SRS-MISC-GUC */
 }

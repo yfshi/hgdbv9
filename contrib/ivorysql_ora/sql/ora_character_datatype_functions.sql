@@ -31,8 +31,8 @@ DROP TABLE TEST_ORAVARCHAR;
  * ||
  */
 --test bug#792
-SET ivorysql.nls_date_format = 'DD-MON-YY';
-SET ivorysql.nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
+SET nls_date_format = 'DD-MON-YY';
+SET nls_timestamp_format = 'DD-MON-YY HH24:MI:SS.US';
 create table test_concat(id number,id2 integer,id3 timestamp,id4 date);
 
 --insert a row

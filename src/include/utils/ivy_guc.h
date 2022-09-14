@@ -15,12 +15,7 @@
  *
  *-------------------------------------------------------------------------
  */
-#include "utils/guc_tables.h"
 /* BEGIN - SQL PARSER */
 extern int	database_mode;
 extern PGDLLIMPORT int	compatible_db;
 /* END - SQL PARSER */
-
-extern void build_ivy_guc_variables(int *num_vars);
-extern void add_ivy_guc_var(struct config_generic **guc_vars, int *num_vars);
-

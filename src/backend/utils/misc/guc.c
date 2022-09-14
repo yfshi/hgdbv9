@@ -119,6 +119,12 @@
 #include "parser/parse_merge.h"
 /* End - ReqID:SRS-SQL-MERGE */
 
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_VAR_DEFINE
+#include "ivy_guc.c"
+#undef IVY_GUC_VAR_DEFINE
+/* End - ReqID:SRS-MISC-GUC */
+
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
 #endif
@@ -244,11 +250,21 @@ static bool check_recovery_target_lsn(char **newval, void **extra, GucSource sou
 static void assign_recovery_target_lsn(const char *newval, void *extra);
 static bool check_primary_slot_name(char **newval, void **extra, GucSource source);
 static bool check_default_with_oids(bool *newval, void **extra, GucSource source);
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_FUNC_DECLARE
+#include "ivy_guc.c"
+#undef IVY_GUC_FUNC_DECLARE
+/* End - ReqID:SRS-MISC-GUC */
 
 /* Private functions in guc-file.l that need to be called from guc.c */
 static ConfigVariable *ProcessConfigFileInternal(GucContext context,
 												 bool applySettings, int elevel);
 
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_VAR_STRUCT
+#include "ivy_guc.c"
+#undef IVY_GUC_VAR_STRUCT
+/* End - ReqID:SRS-MISC-GUC */
 
 /*
  * Options for enum values defined in this module.
@@ -2121,7 +2137,11 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_BOOL_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_BOOL_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, false, NULL, NULL, NULL
@@ -3551,7 +3571,11 @@ static struct config_int ConfigureNamesInt[] =
 		0, 0, INT_MAX,
 		check_client_connection_check_interval, NULL, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_INT_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_INT_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -3820,7 +3844,11 @@ static struct config_real ConfigureNamesReal[] =
 		0.0, 0.0, 1.0,
 		NULL, NULL, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_REAL_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_REAL_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0.0, 0.0, 0.0, NULL, NULL, NULL
@@ -4599,7 +4627,11 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		check_backtrace_functions, assign_backtrace_functions, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_STRING_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_STRING_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, NULL, NULL, NULL, NULL
@@ -4965,7 +4997,11 @@ static struct config_enum ConfigureNamesEnum[] =
 		RECOVERY_INIT_SYNC_METHOD_FSYNC, recovery_init_sync_method_options,
 		NULL, NULL, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_ENUM_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_ENUM_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL
@@ -5305,13 +5341,6 @@ build_guc_variables(void)
 		num_vars++;
 	}
 
-	/* Begin - ReqID:SRS-MISC-GUC */
-	/*
-	 * load ivysql guc configure
-	 */
-	build_ivy_guc_variables(&num_vars);
-	/* End - ReqID:SRS-MISC-GUC */
-
 	/*
 	 * Create table with 20% slack
 	 */
@@ -5336,13 +5365,6 @@ build_guc_variables(void)
 
 	for (i = 0; ConfigureNamesEnum[i].gen.name; i++)
 		guc_vars[num_vars++] = &ConfigureNamesEnum[i].gen;
-
-	/* Begin - ReqID:SRS-MISC-GUC */
-	/*
-	 * add ivorysql guc value
-	 */
-	add_ivy_guc_var(guc_vars, &num_vars);
-	/* End - ReqID:SRS-MISC-GUC */
 
 	if (guc_variables)
 		free(guc_variables);
@@ -7027,36 +7049,6 @@ config_enum_lookup_by_name(struct config_enum *record, const char *value,
 		if (pg_strcasecmp(value, entry->name) == 0)
 		{
 			*retval = entry->val;
-			/* Begin - BUG#0000053 */
-			if(0 == pg_strcasecmp(record->gen.name,"ivorysql.compatible_mode")
-				&& DB_ORACLE == database_mode
-				&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
-			{
-				if (0 == pg_strcasecmp(entry->name, "oracle"))
-				{
-					if (ora_raw_parser == NULL)
-						ereport(ERROR,
-							(errcode(ERRCODE_SYSTEM_ERROR),
-							errmsg("liboracle_parser not found!"),
-							errhint("You must load liboracle_parser to use oracle parser.")));
-					sql_raw_parser = ora_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
-					pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
-					/* End - ReqID:SRS-SQL-MERGE */
-				}
-				else if (0 == pg_strcasecmp(entry->name, "pg"))
-				{
-					sql_raw_parser = standard_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = transformMergeStmt;
-					pg_exec_merge_matched_hook = ExecMergeMatched;
-					/* Begin - ReqID:SRS-SQL-MERGE */
-				}
-			}
-			/* End - BUG#0000053 */
 			return true;
 		}
 	}
@@ -8755,33 +8747,6 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			if (stmt->is_local)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
 
-			/* BEGIN - SQL PARSER */
-			/* Internal level guc parameter can't be updated in session */
-			if (pg_strcasecmp(stmt->name, DB_MODE_PARMATER) == 0)
-			{
-				const char *currentDbstyle = GetConfigOptionResetString(DB_MODE_PARMATER);
-				char *setDbmode = ExtractSetVariableArgs(stmt);
-
-				if (pg_strcasecmp(currentDbstyle, setDbmode) == 0)
-				{
-					ereport(NOTICE,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed", DB_MODE_PARMATER)));
-					return;
-				}
-				else
-					ereport(ERROR,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed", DB_MODE_PARMATER)));
-			}
-
-			if (0 == pg_strcasecmp(stmt->name, "ivorysql.compatible_mode")	/* ReqID:SRS-MISC-GUC */
-				 && DB_PG == database_mode) 
-					ereport(ERROR,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed in native PG mode.", stmt->name)));
-			/* END - SQL PARSER */
-
 			(void) set_config_option(stmt->name,
 									 ExtractSetVariableArgs(stmt),
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
@@ -8873,29 +8838,6 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
 									 PGC_S_SESSION,
 									 action, true, 0, false);
-			/* Begin - BUG#0000054 */
-			if (0 == pg_strcasecmp(stmt->name, "ivorysql.compatible_mode"))
-			{
-				if((!MyProcPort && DB_ORACLE == database_mode) || ( MyProcPort && MyProcPort->connmode == 'p'))
-				{
-					sql_raw_parser = standard_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = transformMergeStmt;
-					pg_exec_merge_matched_hook = ExecMergeMatched;
-					/* Begin - ReqID:SRS-SQL-MERGE */
-				}
-				else if((!MyProcPort && DB_PG == database_mode) || ( MyProcPort && MyProcPort->connmode == 'o'))
-				{
-					sql_raw_parser = ora_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
-					pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
-					/* End - ReqID:SRS-SQL-MERGE */
-				}
-			}
-			/* End - BUG#0000054 */
 			break;
 		case VAR_RESET_ALL:
 			ResetAllOptions();
@@ -12626,5 +12568,10 @@ check_default_with_oids(bool *newval, void **extra, GucSource source)
 
 	return true;
 }
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_FUNC_DEFINE
+#include "ivy_guc.c"
+#undef IVY_GUC_FUNC_DEFINE
+/* End - ReqID:SRS-MISC-GUC */
 
 #include "guc-file.c"

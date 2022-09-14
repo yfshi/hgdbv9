@@ -15,114 +15,8 @@
  *
  *-------------------------------------------------------------------------
  */
-#include "postgres.h"
-	
-#include <ctype.h>
-#include <float.h>
-#include <math.h>
-#include <limits.h>
-#ifdef HAVE_POLL_H
-#include <poll.h>
-#endif
-#ifndef WIN32
-#include <sys/mman.h>
-#endif
-#include <sys/stat.h>
-#ifdef HAVE_SYSLOG
-#include <syslog.h>
-#endif
-#include <unistd.h>
-
-#include "access/commit_ts.h"
-#include "access/gin.h"
-#include "access/rmgr.h"
-#include "access/tableam.h"
-#include "access/toast_compression.h"
-#include "access/transam.h"
-#include "access/twophase.h"
-#include "access/xact.h"
-#include "access/xlog_internal.h"
-#include "catalog/namespace.h"
-#include "catalog/pg_authid.h"
-#include "catalog/storage.h"
-#include "commands/async.h"
-#include "commands/prepare.h"
-#include "commands/trigger.h"
-#include "commands/user.h"
-#include "commands/vacuum.h"
-#include "commands/variable.h"
-#include "common/string.h"
-#include "funcapi.h"
-#include "jit/jit.h"
-#include "libpq/auth.h"
-#include "libpq/libpq.h"
-#include "libpq/pqformat.h"
-#include "miscadmin.h"
-#include "optimizer/cost.h"
-#include "optimizer/geqo.h"
-#include "optimizer/optimizer.h"
-#include "optimizer/paths.h"
-#include "optimizer/planmain.h"
-#include "parser/parse_expr.h"
-#include "parser/parse_type.h"
-#include "parser/parser.h"
-#include "parser/scansup.h"
-#include "pgstat.h"
-#include "postmaster/autovacuum.h"
-#include "postmaster/bgworker_internals.h"
-#include "postmaster/bgwriter.h"
-#include "postmaster/postmaster.h"
-#include "postmaster/syslogger.h"
-#include "postmaster/walwriter.h"
-#include "replication/logicallauncher.h"
-#include "replication/reorderbuffer.h"
-#include "replication/slot.h"
-#include "replication/syncrep.h"
-#include "replication/walreceiver.h"
-#include "replication/walsender.h"
-#include "storage/bufmgr.h"
-#include "storage/dsm_impl.h"
-#include "storage/fd.h"
-#include "storage/large_object.h"
-#include "storage/pg_shmem.h"
-#include "storage/predicate.h"
-#include "storage/proc.h"
-#include "storage/standby.h"
-#include "tcop/tcopprot.h"
-#include "tsearch/ts_cache.h"
-#include "utils/acl.h"
-#include "utils/backend_status.h"
-#include "utils/builtins.h"
-#include "utils/bytea.h"
-#include "utils/float.h"
-#include "utils/guc_tables.h"
-#include "utils/memutils.h"
-#include "utils/pg_locale.h"
-#include "utils/pg_lsn.h"
-#include "utils/plancache.h"
-#include "utils/portal.h"
-#include "utils/ps_status.h"
-#include "utils/queryjumble.h"
-#include "utils/rls.h"
-#include "utils/snapmgr.h"
-#include "utils/tzparser.h"
-#include "utils/inval.h"
-#include "utils/varlena.h"
-#include "utils/xml.h"
-#include "utils/ora_compatible.h"
-
-/* BEGIN - SQL PARSER */
-#include "utils/ora_compatible.h"
-/* END - SQL PARSER */
-/* Begin - ReqID:SRS-SQL-MERGE */
-#include "executor/nodeModifyTable.h"
-#include "parser/parse_node.h"
-#include "access/heapam.h"
-#include "parser/parse_merge.h"
-/* End - ReqID:SRS-SQL-MERGE */
-#include "utils/ivy_guc.h"
-
-
+#ifdef IVY_GUC_VAR_DEFINE
+#define ISLOADIVORYSQL_ORA pg_transform_merge_stmt_hook
 /* BEGIN - case sensitive indentify */
 int				identifier_case_switch = INTERCHANGE;
 bool  			identifier_case_from_pg_dump = false;
@@ -145,11 +39,13 @@ bool			enable_emptystring_to_NULL = false;
 bool		insert_enable_alias = false;
 /* End - ReqID:SRS-SQL-INSERT */
 
+/* BEGIN - SQL PARSER */
+int	database_mode = DB_PG;
+int	compatible_db = PG_PARSER;
+/* END - SQL PARSER */
+#endif
 
-/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-static bool check_nls_length_semantics(char **newval, void **extra, GucSource source);
-/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
+#ifdef IVY_GUC_VAR_STRUCT
 /* BEGIN - SQL PARSER */
 /* The comments shown as blow define the
  * value range of guc parameters "database_mode"
@@ -181,15 +77,22 @@ static const struct config_enum_entry case_conversion_mode[] = {
 	{NULL, 0, false}
 };
 /* END - case sensitive indentify */
+#endif
 
-/* BEGIN - SQL PARSER */
-int	database_mode = DB_PG;
-int	compatible_db = PG_PARSER;
-/* END - SQL PARSER */
+#ifdef IVY_GUC_FUNC_DECLARE
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+static bool check_nls_length_semantics(char **newval, void **extra, GucSource source);
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
+static bool check_compatible_mode(int *newval, void **extra, GucSource source);
+static bool check_database_mode(int *newval, void **extra, GucSource source);
+void assign_compatible_mode(int newval, void *extra);
+#endif
 
-
+#if 0
 static struct config_bool Ivy_ConfigureNamesBool[] =
 {
+#endif
+#ifdef IVY_GUC_BOOL_PARAMS
 	/* BEGIN - case sensitive indentify */
 	{
 		/* Not for general use --- used by pg_dump */
@@ -237,15 +140,20 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-INSERT */
-
+#endif
+#if 0
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, false, NULL, NULL, NULL
 	}
 };
+#endif
 
+#if 0
 static struct config_int Ivy_ConfigureNamesInt[] =
 {
+#endif
+#ifdef IVY_GUC_INT_PARAMS
 	/* Begin - ReqID:LISTEN-MULTI-PORT */
 	{
 		{"ivorysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
@@ -269,15 +177,20 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
+#endif
+#if 0
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
 	}
 };
+#endif
 
+#if 0
 static struct config_string Ivy_ConfigureNamesString[] =
 {
+#endif
+#ifdef IVY_GUC_STRING_PARAMS
 	/* Begin - ReqID:LISTEN-MULTI-PORT */
 	{
 		{"ivorysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
@@ -293,7 +206,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	{
-		{"ivorysql.nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for charater data type."),
 			gettext_noop("Valid values are CHAR, BYTE."),
 			GUC_IS_NAME
@@ -304,7 +217,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	},
 
 	{
-		{"ivorysql.nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		{"nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for date type."),
 			NULL
 		},
@@ -314,7 +227,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	},
 
 	{
-		{"ivorysql.nls_timestamp_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		{"nls_timestamp_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for timestamp type."),
 			NULL
 		},
@@ -324,7 +237,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 	},
 
 	{
-		{"ivorysql.nls_timestamp_tz_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+		{"nls_timestamp_tz_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for timestamp with time zone type."),
 			NULL
 		},
@@ -332,22 +245,36 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		"YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM",
 		NULL, NULL, NULL
 	},
+#endif
+#if 0
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, NULL, NULL, NULL, NULL
 	}
 };
+#endif
 
+#if 0
 static struct config_real Ivy_ConfigureNamesReal[] =
 {
+#endif
+#ifdef IVY_GUC_REAL_PARAMS
+	/* Add real guc param at here */
+
+#endif
+#if 0
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0.0, 0.0, 0.0, NULL, NULL, NULL
 	}
 };
+#endif
 
+#if 0
 static struct config_enum Ivy_ConfigureNamesEnum[] =
 {
+#endif
+#ifdef IVY_GUC_ENUM_PARAMS
 	/* BEGIN - SQL PARSER */
 	{
 		{"ivorysql.database_mode", PGC_INTERNAL, PRESET_OPTIONS,
@@ -357,7 +284,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		},
 		&database_mode,
 		DB_PG, db_mode_options,
-		NULL, NULL, NULL
+		check_database_mode, NULL, NULL
 	},
 
 	{
@@ -368,7 +295,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		},
 		&compatible_db,
 		PG_PARSER, db_parser_options,
-		NULL, NULL, NULL
+		check_compatible_mode, assign_compatible_mode, NULL
 	},
 	/* END - SQL PARSER */
 
@@ -384,13 +311,16 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		NULL,NULL,NULL
 	},
 	/* END - case sensitive indentify */
-
+#endif
+#if 0
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL
 	}
 };
+#endif
 
+#ifdef IVY_GUC_FUNC_DEFINE
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 static bool
 check_nls_length_semantics(char **newval, void **extra, GucSource source)
@@ -403,84 +333,75 @@ check_nls_length_semantics(char **newval, void **extra, GucSource source)
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
-void
-build_ivy_guc_variables(int *num_vars)
+static bool
+check_compatible_mode(int *newval, void **extra, GucSource source)
 {
-	int			i;
-	for (i = 0; Ivy_ConfigureNamesBool[i].gen.name; i++)
+	int		newmode = *newval;
+
+	if (DB_PG == database_mode && newmode == DB_ORACLE)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.compatible_mode cannot be changed in native PG mode.")));
+
+	if(DB_ORACLE == database_mode
+		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		struct config_bool *conf = &Ivy_ConfigureNamesBool[i];
-
-		/* Rather than requiring vartype to be filled in by hand, do this: */
-		conf->gen.vartype = PGC_BOOL;
-		(*num_vars)++;
+		if (newmode == DB_ORACLE)
+		{
+			if (ora_raw_parser == NULL)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("liboracle_parser not found!"),
+					errhint("You must load liboracle_parser to use oracle parser.")));
+			if (!ISLOADIVORYSQL_ORA)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("IVORYSQL_ORA library not found!"),
+					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
+		}
 	}
+	return true;
+}
 
-	for (i = 0; Ivy_ConfigureNamesInt[i].gen.name; i++)
-	{
-		struct config_int *conf = &Ivy_ConfigureNamesInt[i];
+static bool
+check_database_mode(int *newval, void **extra, GucSource source)
+{
+	int		newmode = *newval;
 
-		conf->gen.vartype = PGC_INT;
-		(*num_vars)++;
-	}
+	if (DB_PG == database_mode && DB_ORACLE == newmode)
+			ereport(NOTICE,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.database_mode cannot be changed")));
 
-	for (i = 0; Ivy_ConfigureNamesReal[i].gen.name; i++)
-	{
-		struct config_real *conf = &Ivy_ConfigureNamesReal[i];
-
-		conf->gen.vartype = PGC_REAL;
-		(*num_vars)++;
-	}
-
-	for (i = 0; Ivy_ConfigureNamesString[i].gen.name; i++)
-	{
-		struct config_string *conf = &Ivy_ConfigureNamesString[i];
-
-		conf->gen.vartype = PGC_STRING;
-		(*num_vars)++;
-	}
-
-	for (i = 0; Ivy_ConfigureNamesEnum[i].gen.name; i++)
-	{
-		struct config_enum *conf = &Ivy_ConfigureNamesEnum[i];
-
-		conf->gen.vartype = PGC_ENUM;
-		(*num_vars)++;
-	}
+	return true;
 }
 
 void
-add_ivy_guc_var(struct config_generic **guc_vars, int *num_vars)
+assign_compatible_mode(int newval, void *extra)
 {
-	int	i;
-	for (i = 0; Ivy_ConfigureNamesBool[i].gen.name; i++)
+	if(DB_ORACLE == database_mode
+		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		guc_vars[*num_vars] = &Ivy_ConfigureNamesBool[i].gen;
-		(*num_vars)++;
-	}
+		if (newval == DB_ORACLE)
+		{
+			sql_raw_parser = ora_raw_parser;
 
-	for (i = 0; Ivy_ConfigureNamesInt[i].gen.name; i++)
-	{
-		guc_vars[*num_vars] = &Ivy_ConfigureNamesInt[i].gen;
-		(*num_vars)++;
-	}
+			/* Begin - ReqID:SRS-SQL-MERGE */
+			pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
+			pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
+			/* End - ReqID:SRS-SQL-MERGE */
+			assign_search_path(NULL, NULL);
+		}
+		else if (newval == DB_PG)
+		{
+			sql_raw_parser = standard_raw_parser;
 
-	for (i = 0; Ivy_ConfigureNamesReal[i].gen.name; i++)
-	{
-		guc_vars[*num_vars] = &Ivy_ConfigureNamesReal[i].gen;
-		(*num_vars)++;
-	}
-
-	for (i = 0; Ivy_ConfigureNamesString[i].gen.name; i++)
-	{
-		guc_vars[*num_vars] = &Ivy_ConfigureNamesString[i].gen;
-		(*num_vars)++;
-	}
-
-	for (i = 0; Ivy_ConfigureNamesEnum[i].gen.name; i++)
-	{
-		guc_vars[*num_vars] = &Ivy_ConfigureNamesEnum[i].gen;
-		(*num_vars)++;
+			/* Begin - ReqID:SRS-SQL-MERGE */
+			pg_transform_merge_stmt_hook = transformMergeStmt;
+			pg_exec_merge_matched_hook = ExecMergeMatched;
+			/* End - ReqID:SRS-SQL-MERGE */
+			assign_search_path(NULL, NULL);
+		}
 	}
 }
-
+#endif
