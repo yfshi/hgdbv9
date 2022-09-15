@@ -818,6 +818,13 @@ heapDelete4Merge(Relation relation, ItemPointer tid,
 	HeapTuple	old_key_tuple = NULL;	/* replica identity of the tuple */
 	bool		old_key_copied = false;
 
+	/* Begin - BUGID:041 */
+	if (!ItemPointerIsValid(tid))
+		ereport(ERROR,
+				(errcode(ERRCODE_NO_DATA),
+				 errmsg("specified row no longer exists")));
+	/* End - BUGID:041 */
+
 	Assert(ItemPointerIsValid(tid));
 
 	/*
