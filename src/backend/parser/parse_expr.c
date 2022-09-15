@@ -35,7 +35,6 @@
 #include "utils/builtins.h"
 #include "utils/date.h"
 #include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
-#include "utils/ivy_guc.h"	/* ReqID:SRS-MISC-GUC */
 #include "utils/lsyscache.h"
 #include "utils/timestamp.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */

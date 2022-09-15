@@ -111,7 +111,6 @@
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
-#include "utils/ivy_guc.h"	/* ReqID:SRS-MISC-GUC */
 /* Begin - ReqID:SRS-SQL-MERGE */
 #include "executor/nodeModifyTable.h"
 #include "parser/parse_node.h"

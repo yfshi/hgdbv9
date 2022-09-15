@@ -35,7 +35,6 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 
 
 /*

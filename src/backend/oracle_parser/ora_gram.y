@@ -64,7 +64,6 @@
 #include "utils/date.h"
 #include "utils/datetime.h"
 #include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/numeric.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/xml.h"

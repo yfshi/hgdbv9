@@ -245,9 +245,6 @@ extern bool log_statement_stats;
 extern bool log_btree_build_stats;
 
 extern PGDLLIMPORT bool check_function_bodies;
-/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
-extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
-/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 extern bool session_auth_is_superuser;
 
 extern bool log_duration;
@@ -285,11 +282,21 @@ extern int	tcp_user_timeout;
 extern bool trace_sort;
 #endif
 
+/* The following are the guc variables of ivorysql */
 /* BEGIN - case sensitive indentify */
 extern PGDLLIMPORT int identifier_case_switch;
 extern PGDLLIMPORT bool identifier_case_from_pg_dump;
 extern PGDLLIMPORT bool enable_case_switch;
 /* END - case sensitive indentify */
+
+/* BEGIN - SQL PARSER */
+extern int      database_mode;
+extern PGDLLIMPORT int  compatible_db;
+/* END - SQL PARSER */
+
+/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
+extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
+/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 extern PGDLLIMPORT char	*nls_length_semantics;
@@ -301,7 +308,6 @@ extern PGDLLIMPORT int	datetime_ignore_nls_mask;
 /* Begin - ReqID:SRS-SQL-INSERT */
 extern PGDLLIMPORT bool insert_enable_alias;
 /* End - ReqID:SRS-SQL-INSERT */
-
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

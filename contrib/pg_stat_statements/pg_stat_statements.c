@@ -71,7 +71,6 @@
 /* BEGIN - SQL PARSER */
 #include "utils/guc.h"
 /* END - SQL PARSER */
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/queryjumble.h"
 #include "utils/memutils.h"
 #include "utils/timestamp.h"

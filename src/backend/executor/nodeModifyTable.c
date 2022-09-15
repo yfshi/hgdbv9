@@ -53,7 +53,6 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/ora_compatible.h"
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 
 
 typedef struct MTTargetRelLookup

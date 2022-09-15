@@ -128,7 +128,6 @@
 #include "utils/builtins.h"
 #include "utils/datetime.h"
 #include "utils/guc.h"				/* SQL PARSER */
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* SQL PARSER */
 #include "utils/pidfile.h"

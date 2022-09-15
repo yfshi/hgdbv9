@@ -93,7 +93,6 @@
 #include "utils/float.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"		/* ReqID:SRS-GKC-DATATYPE_001 */
-#include "utils/ivy_guc.h"		/* ReqID:SRS-MISC-GUC */
 #include "utils/int8.h"
 #include "utils/memutils.h"
 #include "utils/numeric.h"
