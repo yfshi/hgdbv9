@@ -43,6 +43,7 @@
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 
 
+
 /* Hook for plugins to get control in ExplainOneQuery() */
 ExplainOneQuery_hook_type ExplainOneQuery_hook = NULL;
 

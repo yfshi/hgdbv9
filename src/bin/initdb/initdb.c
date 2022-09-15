@@ -1251,6 +1251,16 @@ setup_config(void)
 								  "log_file_mode = 0640");
 	}
 
+	/*
+	 * In this mode we don't need ivorysql configuration file
+	 */
+	if (database_mode == DB_PG)
+	{
+		conflines = replace_token(conflines,
+							  "include_if_exists = 'ivorysql.conf'",
+							  "#include_if_exists = 'ivorysql.conf'");
+	}
+
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
 	writefile(path, conflines);
@@ -1466,7 +1476,7 @@ bootstrap_template1(void)
 
 	snprintf(cmd, sizeof(cmd),
 			 /* BEGIN - SQL PARSER */
-			 "\"%s\" --boot -x1 -c identifier_case_switch=%d -X %u %s %s %s %s %s",
+			 "\"%s\" --boot -x1 -c ivorysql.identifier_case_switch=%d -X %u %s %s %s %s %s",
 			 /* END - SQL PARSER */
 			 backend_exec,
 			 caseswitchmode,	/* case sensitive indentify: add guc "identifier_case_switch" */
@@ -1705,9 +1715,11 @@ setup_ora_sys_schema(FILE *cmdfd)
 
 	ora_sys_schema_setup = readfile(ora_sys_schema_file);
 
+	/* Begin - ReqID:SRS-MISC-GUC */
 	/* BEGIN - case sensitive indentify */
-	PG_CMD_PUTS("set identifier_case_switch = normal;\n");
+	PG_CMD_PUTS("set ivorysql.identifier_case_switch = normal;\n");
 	/* END - case sensitive indentify */
+	/* End - ReqID:SRS-MISC-GUC */
 
 	for (line = ora_sys_schema_setup; *line != NULL; line++)
 	{
@@ -2001,9 +2013,9 @@ static void
 load_ivorysql_ora(FILE *cmdfd)
 {
 	/* switch to oracle parser and load extenison */
-	PG_CMD_PUTS("set compatible_mode to oracle;\n\n");
+	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");	/* ReqID:SRS-MISC-GUC */
 	PG_CMD_PUTS("CREATE EXTENSION ivorysql_ora;\n\n");
-	PG_CMD_PUTS("reset compatible_mode;\n\n");
+	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");	/* BUG#0000054 */
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
@@ -3023,6 +3035,11 @@ initialize_data_directory(void)
 	setup_auth(cmdfd);
 
 	setup_run_file(cmdfd, system_constraints_file);
+
+	/* Begin - BUG#0000053 */
+	if (database_mode == DB_ORACLE)
+		PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
+	/* End - BUG#0000053 */
 
 	setup_run_file(cmdfd, system_functions_file);
 

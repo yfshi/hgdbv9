@@ -112,13 +112,18 @@
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
-
 /* Begin - ReqID:SRS-SQL-MERGE */
 #include "executor/nodeModifyTable.h"
 #include "parser/parse_node.h"
 #include "access/heapam.h"
 #include "parser/parse_merge.h"
 /* End - ReqID:SRS-SQL-MERGE */
+
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_VAR_DEFINE
+#include "ivy_guc.c"
+#undef IVY_GUC_VAR_DEFINE
+/* End - ReqID:SRS-MISC-GUC */
 
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
@@ -245,14 +250,21 @@ static bool check_recovery_target_lsn(char **newval, void **extra, GucSource sou
 static void assign_recovery_target_lsn(const char *newval, void *extra);
 static bool check_primary_slot_name(char **newval, void **extra, GucSource source);
 static bool check_default_with_oids(bool *newval, void **extra, GucSource source);
-/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-static bool check_nls_length_semantics(char **newval, void **extra, GucSource source);
-/* End - ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_FUNC_DECLARE
+#include "ivy_guc.c"
+#undef IVY_GUC_FUNC_DECLARE
+/* End - ReqID:SRS-MISC-GUC */
 
 /* Private functions in guc-file.l that need to be called from guc.c */
 static ConfigVariable *ProcessConfigFileInternal(GucContext context,
 												 bool applySettings, int elevel);
 
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_VAR_STRUCT
+#include "ivy_guc.c"
+#undef IVY_GUC_VAR_STRUCT
+/* End - ReqID:SRS-MISC-GUC */
 
 /*
  * Options for enum values defined in this module.
@@ -556,37 +568,6 @@ static struct config_enum_entry default_toast_compression_options[] = {
 	{NULL, 0, false}
 };
 
-/* BEGIN - SQL PARSER */
-/* The comments shown as blow define the
- * value range of guc parameters "database_mode"
- * and "compatible_db".
- */
-static const struct config_enum_entry db_mode_options[] = {
-	{"pg", DB_PG, false},
-	{"oracle", DB_ORACLE, false},
-	{"0", DB_PG, false},
-	{"1", DB_ORACLE, false},
-	{NULL, 0, false}
-};
-
-static const struct config_enum_entry db_parser_options[] = {
-	{"pg", PG_PARSER, false},
-	{"oracle", ORA_PARSER, false},
-	{NULL, 0, false}
-/* END - SQL PARSER */
-};
-
-/* BEGIN - case sensitive indentify */
-static const struct config_enum_entry case_conversion_mode[] = {
-	{"normal", NORMAL, false},
-	{"interchange", INTERCHANGE, false},
-	{"lowercase", LOWERCASE, false},
-	{"0", NORMAL, false},
-	{"1", INTERCHANGE, false},
-	{"2", LOWERCASE, false},
-	{NULL, 0, false}
-};
-/* END - case sensitive indentify */
 /*
  * Options for enum values stored in other modules
  */
@@ -616,13 +597,6 @@ char	   *event_source;
 bool		row_security;
 bool		check_function_bodies = true;
 
-/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
-bool			enable_emptystring_to_NULL = false;
-/* End - ReqID:EMPTY_STIRNG_TO_NULL */
-
-/* Begin - ReqID:SRS-SQL-INSERT */
-bool		insert_enable_alias = false;
-/* End - ReqID:SRS-SQL-INSERT */
 
 /*
  * This GUC exists solely for backward compatibility, check its definition for
@@ -659,14 +633,6 @@ char	   *pgstat_temp_directory;
 
 char	   *application_name;
 
-/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-char	   *nls_length_semantics = NULL;
-char	   *nls_date_format = "";
-char	   *nls_timestamp_format = "";
-char	   *nls_timestamp_tz_format = "";
-int			datetime_ignore_nls_mask = 0;
-/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
 int			tcp_keepalives_idle;
 int			tcp_keepalives_interval;
 int			tcp_keepalives_count;
@@ -686,11 +652,7 @@ int			ssl_renegotiation_limit;
  */
 int			huge_pages;
 int			huge_page_size;
-/* BEGIN - case sensitive indentify */
-int				identifier_case_switch = INTERCHANGE;
-bool  			identifier_case_from_pg_dump = false;
-bool			enable_case_switch = true;
-/* END - case sensitive indentify */
+
 
 /*
  * These variables are all dummies that don't do anything, except in some
@@ -730,11 +692,6 @@ static char *recovery_target_lsn_string;
 
 /* should be static, but commands/variable.c needs to get at this */
 char	   *role_string;
-
-/* BEGIN - SQL PARSER */
-int	database_mode = DB_PG;
-int	compatible_db = PG_PARSER;
-/* END - SQL PARSER */
 
 /*
  * Displayable names for context types (enum GucContext)
@@ -2192,56 +2149,11 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
-
-	/* BEGIN - case sensitive indentify */
-	{
-		/* Not for general use --- used by pg_dump */
-		{"identifier_case_from_pg_dump", PGC_USERSET, UNGROUPED,
-			gettext_noop("Shows whether the identifer with quote is from pg dump."),
-			NULL,
-			GUC_REPORT | GUC_NO_SHOW_ALL | GUC_NO_RESET_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&identifier_case_from_pg_dump,
-		false,
-		NULL, NULL, NULL
-	},
-
-	{
-		{"enable_case_switch", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&enable_case_switch,
-		true,
-		NULL, NULL, NULL
-	},
-	/* END - case sensitive indentify */
-
-	/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
-	{
-		{"enable_emptystring_to_NULL", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("whether convert empty string to NULL."),
-			NULL
-		},
-		&enable_emptystring_to_NULL,
-		false,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
-
-	/* Begin - ReqID:SRS-SQL-INSERT */
-	{
-		{"insert_enable_alias", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Whether to enable INSERT alias-qualified columns."),
-			NULL
-		},
-		&insert_enable_alias,
-		false,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-SQL-INSERT */
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_BOOL_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_BOOL_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, false, NULL, NULL, NULL
@@ -3671,31 +3583,11 @@ static struct config_int ConfigureNamesInt[] =
 		0, 0, INT_MAX,
 		check_client_connection_check_interval, NULL, NULL
 	},
-
-	/* Begin - ReqID:LISTEN-MULTI-PORT */
-	{
-		{"ivorysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the Oracle TCP port the server listens on."),
-			NULL
-		},
-		&OraPortNumber,
-		1521, 1, 65535,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:LISTEN-MULTI-PORT */
-
-	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	{
-		{"datetime_ignore_nls_mask", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Sets the datetime type input is not controlled by the NLS parameter."),
-			NULL
-		},
-		&datetime_ignore_nls_mask,
-		0, 0, 15,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_INT_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_INT_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -3964,7 +3856,11 @@ static struct config_real ConfigureNamesReal[] =
 		0.0, 0.0, 1.0,
 		NULL, NULL, NULL
 	},
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_REAL_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_REAL_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0.0, 0.0, 0.0, NULL, NULL, NULL
@@ -4743,63 +4639,11 @@ static struct config_string ConfigureNamesString[] =
 		"",
 		check_backtrace_functions, assign_backtrace_functions, NULL
 	},
-
-	/* Begin - ReqID:LISTEN-MULTI-PORT */
-	{
-		{"ivorysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets oracle host name or IP address(es) to listen to."),
-			NULL,
-			GUC_LIST_INPUT
-		},
-		&OraListenAddresses,
-		"localhost",
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:LISTEN-MULTI-PORT */
-
-	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	{
-		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Compatible Oracle NLS parameter for charater data type."),
-			gettext_noop("Valid values are CHAR, BYTE."),
-			GUC_IS_NAME
-		},
-		&nls_length_semantics,
-		"byte",
-		check_nls_length_semantics, NULL, NULL
-	},
-	
-	{
-		{"nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Compatible Oracle NLS parameter for date type."),
-			NULL
-		},
-		&nls_date_format,
-		"YYYY-MM-DD",
-		NULL, NULL, NULL
-	},
-	
-	{
-		{"nls_timestamp_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Compatible Oracle NLS parameter for timestamp type."),
-			NULL
-		},
-		&nls_timestamp_format,
-		"YYYY-MM-DD HH24:MI:SS.FF6",
-		NULL, NULL, NULL
-	},
-	
-	{
-		{"nls_timestamp_tz_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Compatible Oracle NLS parameter for timestamp with time zone type."),
-			NULL
-		},
-		&nls_timestamp_tz_format,
-		"YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM",
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_STRING_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_STRING_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, NULL, NULL, NULL, NULL
@@ -5165,44 +5009,11 @@ static struct config_enum ConfigureNamesEnum[] =
 		RECOVERY_INIT_SYNC_METHOD_FSYNC, recovery_init_sync_method_options,
 		NULL, NULL, NULL
 	},
-
-	/* BEGIN - SQL PARSER */
-	{
-		{"database_mode", PGC_INTERNAL, PRESET_OPTIONS,
-			gettext_noop("Set database mode"),
-			NULL,
-			GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&database_mode,
-		DB_PG, db_mode_options,
-		NULL, NULL, NULL
-	},
-	
-	{
-		{"compatible_mode", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("Set default sql parser compatibility mode"),
-			NULL,
-			GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&compatible_db,
-		PG_PARSER, db_parser_options,
-		NULL, NULL, NULL
-	},
-	/* END - SQL PARSER */
-
-	/* BEGIN - case sensitive indentify */
-	{
-		{"identifier_case_switch", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Set character case conversion mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&identifier_case_switch,
-		INTERCHANGE,case_conversion_mode,
-		NULL,NULL,NULL
-	},
-	/* END - case sensitive indentify */
-
+	/* Begin - ReqID:SRS-MISC-GUC */
+	#define IVY_GUC_ENUM_PARAMS
+	#include "ivy_guc.c"
+	#undef IVY_GUC_ENUM_PARAMS
+	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, NULL, NULL, NULL, NULL
@@ -8948,69 +8759,11 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			if (stmt->is_local)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
 
-			/* BEGIN - SQL PARSER */
-			/* Internal level guc parameter can't be updated in session */
-			if (pg_strcasecmp(stmt->name, DB_MODE_PARMATER) == 0)
-			{
-				const char *currentDbstyle = GetConfigOptionResetString(DB_MODE_PARMATER);
-				char *setDbmode = ExtractSetVariableArgs(stmt);
-
-				if (pg_strcasecmp(currentDbstyle, setDbmode) == 0)
-				{
-					ereport(NOTICE,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed", DB_MODE_PARMATER)));
-					return;
-				}
-				else
-					ereport(ERROR,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed", DB_MODE_PARMATER)));
-			}
-
-			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
-				 && DB_PG == database_mode) 
-					ereport(ERROR,
-						(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-						errmsg("parameter \"%s\" cannot be changed in native PG mode.", stmt->name)));
-			/* END - SQL PARSER */
-
 			(void) set_config_option(stmt->name,
 									 ExtractSetVariableArgs(stmt),
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
 									 PGC_S_SESSION,
 									 action, true, 0, false);
-
-			/* BEGIN - SQL PARSER */
-			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
-				 && DB_ORACLE == database_mode)
-			{
-				if (0 == pg_strcasecmp(ExtractSetVariableArgs(stmt), "oracle"))
-				{
-					if (ora_raw_parser == NULL)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYSTEM_ERROR),
-								 errmsg("liboracle_parser not found!"),
-								 errhint("You must load liboracle_parser to use oracle parser.")));
-
-					sql_raw_parser = ora_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
-					pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
-					/* End - ReqID:SRS-SQL-MERGE */
-				}
-				else if (0 == pg_strcasecmp(ExtractSetVariableArgs(stmt), "pg"))
-				{
-					sql_raw_parser = standard_raw_parser;
-
-					/* Begin - ReqID:SRS-SQL-MERGE */
-					pg_transform_merge_stmt_hook = transformMergeStmt;
-					pg_exec_merge_matched_hook = ExecMergeMatched;
-					/* Begin - ReqID:SRS-SQL-MERGE */
-				}
-			}
-			/* END - SQL PARSER */
 			break;
 		case VAR_SET_MULTI:
 
@@ -9097,18 +8850,6 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
 									 PGC_S_SESSION,
 									 action, true, 0, false);
-			/* BEGIN - SQL PARSER */
-			if (0 == pg_strcasecmp(stmt->name, "compatible_mode")
-				 && DB_ORACLE == database_mode)
-			{
-				sql_raw_parser = standard_raw_parser;
-
-				/* Begin - ReqID:SRS-SQL-MERGE */
-				pg_transform_merge_stmt_hook = transformMergeStmt;
-				pg_exec_merge_matched_hook = ExecMergeMatched;
-				/* Begin - ReqID:SRS-SQL-MERGE */
-			}
-			/* END - SQL PARSER */
 			break;
 		case VAR_RESET_ALL:
 			ResetAllOptions();
@@ -12459,19 +12200,6 @@ check_cluster_name(char **newval, void **extra, GucSource source)
 	return true;
 }
 
-/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-static bool
-check_nls_length_semantics(char **newval, void **extra, GucSource source)
-{
-
-	if (newval == NULL
- 		 || (newval != NULL && pg_strcasecmp(*newval, "CHAR")  && pg_strcasecmp(*newval, "BYTE")))
-		return false;
-
-	return true;
-}
-/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
 static const char *
 show_unix_socket_permissions(void)
 {
@@ -12862,5 +12590,10 @@ check_default_with_oids(bool *newval, void **extra, GucSource source)
 
 	return true;
 }
+/* Begin - ReqID:SRS-MISC-GUC */
+#define IVY_GUC_FUNC_DEFINE
+#include "ivy_guc.c"
+#undef IVY_GUC_FUNC_DEFINE
+/* End - ReqID:SRS-MISC-GUC */
 
 #include "guc-file.c"

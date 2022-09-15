@@ -148,7 +148,7 @@ getDbCompatibleMode(PGconn *conn)
 
 	char *db_style = NULL;
 
-	res = PQexec(conn, "show compatible_mode;");
+	res = PQexec(conn, "show ivorysql.compatible_mode;");	/* ReqID:SRS-MISC-GUC */
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		db_mode = DB_PG;

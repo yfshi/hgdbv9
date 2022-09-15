@@ -4982,13 +4982,13 @@ ReadControlFile(void)
 	/* Make the initdb settings visible as GUC variables, too */
 	SetConfigOption("data_checksums", DataChecksumsEnabled() ? "yes" : "no",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
+	/* Begin - ReqID:SRS-MISC-GUC */
 	/* BEGIN - SQL PARSER */
 	/* set guc parameters' value about database compatible mode  */
-	SetConfigOption("database_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
+	SetConfigOption("ivorysql.database_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
-	SetConfigOption("compatible_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
-					PGC_USERSET, PGC_S_OVERRIDE);
 	/* END - SQL PARSER */
+	/* End - ReqID:SRS-MISC-GUC */
 }
 
 /*
@@ -6464,18 +6464,18 @@ void SetCaseGucOption(char* path)
 		casemode = GetCaseSwitchModeFromControl(path);
 		if (casemode == NORMAL)
 		{
-			SetConfigOption("identifier_case_switch", "normal",
-				PGC_USERSET, PGC_S_OVERRIDE);
+			SetConfigOption("ivorysql.identifier_case_switch", "normal",
+				PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
 		}
 		else if (casemode == INTERCHANGE)
 		{
-			SetConfigOption("identifier_case_switch", "interchange",
-				PGC_USERSET, PGC_S_OVERRIDE);
+			SetConfigOption("ivorysql.identifier_case_switch", "interchange",
+				PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
 		}
 		else if (casemode == LOWERCASE)
 		{
-			SetConfigOption("identifier_case_switch", "lowercase",
-				PGC_USERSET, PGC_S_OVERRIDE);
+			SetConfigOption("ivorysql.identifier_case_switch", "lowercase",
+				PGC_USERSET, PGC_S_OVERRIDE);	/* ReqID:SRS-MISC-GUC */
 		}
 		else
 			ereport(FATAL,

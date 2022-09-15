@@ -1,10 +1,10 @@
 --
 -- Test INSERT alias.col in Oracle mode
 --
-set compatible_mode to oracle;
-show compatible_mode;
- compatible_mode 
------------------
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
  oracle
 (1 row)
 
@@ -14,16 +14,16 @@ INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 ERROR:  column "al" of relation "alitb1" does not exist
 LINE 1: INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
                                  ^
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  off
 (1 row)
 
-set insert_enable_alias to on;
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  on
 (1 row)
 
@@ -35,10 +35,10 @@ SELECT * FROM alitb1 ORDER BY a1;
   2 | 200
 (2 rows)
 
-reset insert_enable_alias;
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+reset ivorysql.insert_enable_alias;
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  off
 (1 row)
 
@@ -53,16 +53,16 @@ INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 ERROR:  column "al" of relation "alitb2" does not exist
 LINE 1: INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
                                  ^
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  off
 (1 row)
 
-set insert_enable_alias to on;
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  on
 (1 row)
 
@@ -87,14 +87,14 @@ SELECT * FROM alitb2 ORDER BY a1;
 --cleanup
 DROP TABLE alitb2;
 DROP TYPE dtp;
-reset insert_enable_alias;
+reset ivorysql.insert_enable_alias;
 --
 -- Test INSERT alias.col in pg mode
 --
-set compatible_mode to pg;
-show compatible_mode;
- compatible_mode 
------------------
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
  pg
 (1 row)
 
@@ -104,16 +104,16 @@ INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
 ERROR:  column "al" of relation "alitb1" does not exist
 LINE 1: INSERT INTO alitb1 AS al(al.a1, al.a2) VALUES(2, 200);
                                  ^
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  off
 (1 row)
 
-set insert_enable_alias to on;
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  on
 (1 row)
 
@@ -127,7 +127,7 @@ SELECT * FROM alitb1 ORDER BY a1;
   1 | 100
 (1 row)
 
-reset insert_enable_alias;
+reset ivorysql.insert_enable_alias;
 -- cleanup
 DROP TABLE alitb1;
 CREATE TYPE dtp AS (b1 int, b2 int);
@@ -139,16 +139,16 @@ INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
 ERROR:  column "al" of relation "alitb2" does not exist
 LINE 1: INSERT INTO alitb2 AS al(al.a1, al.a2) VALUES(400, (4,4));
                                  ^
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  off
 (1 row)
 
-set insert_enable_alias to on;
-show insert_enable_alias;
- insert_enable_alias 
----------------------
+set ivorysql.insert_enable_alias to on;
+show ivorysql.insert_enable_alias;
+ ivorysql.insert_enable_alias 
+------------------------------
  on
 (1 row)
 
@@ -179,5 +179,5 @@ SELECT * FROM alitb2 ORDER BY a1;
 --cleanup
 DROP TABLE alitb2;
 DROP TYPE dtp;
-reset insert_enable_alias;
-reset compatible_mode;
+reset ivorysql.insert_enable_alias;
+reset ivorysql.compatible_mode;
