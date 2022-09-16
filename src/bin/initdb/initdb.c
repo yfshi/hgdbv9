@@ -1251,8 +1251,9 @@ setup_config(void)
 								  "log_file_mode = 0640");
 	}
 
+	/* Begin - BUG#0000065 */
 	/*
-	 * In this mode we don't need ivorysql configuration file
+	 * In pg mode we don't need ivorysql configuration file
 	 */
 	if (database_mode == DB_PG)
 	{
@@ -1260,6 +1261,7 @@ setup_config(void)
 							  "include_if_exists = 'ivorysql.conf'",
 							  "#include_if_exists = 'ivorysql.conf'");
 	}
+	/* End - BUG#0000065 */
 
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
