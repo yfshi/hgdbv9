@@ -100,6 +100,9 @@ typedef struct CachedPlanSource
 	const char *query_string;	/* source text of query */
 	CommandTag	commandTag;		/* 'nuff said */
 	Oid		   *param_types;	/* array of parameter type OIDs, or NULL */
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char 	   *param_modes;	/* array of parameter type modes, or NULL */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 	int			num_params;		/* length of param_types array */
 	ParserSetupHook parserSetup;	/* alternative parameter spec method */
 	void	   *parserSetupArg;
@@ -198,6 +201,9 @@ extern void CompleteCachedPlan(CachedPlanSource *plansource,
 							   List *querytree_list,
 							   MemoryContext querytree_context,
 							   Oid *param_types,
+							   /* Begin - ReqID:SRS-SQL-FUNCOUT */
+							   char *param_modes,
+							   /* End - ReqID:SRS-SQL-FUNCOUT */
 							   int num_params,
 							   ParserSetupHook parserSetup,
 							   void *parserSetupArg,

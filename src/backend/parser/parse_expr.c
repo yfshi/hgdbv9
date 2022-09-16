@@ -50,6 +50,9 @@ bool		Transform_null_equals = false;
 
 static Node *transformExprRecurse(ParseState *pstate, Node *expr);
 static Node *transformParamRef(ParseState *pstate, ParamRef *pref);
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static Node *transformOraParamRef(ParseState *pstate, OraParamRef *pref);
+/* End - ReqID:SRS-SQL-ANONYOUT */
 static Node *transformAExprOp(ParseState *pstate, A_Expr *a);
 static Node *transformAExprOpAny(ParseState *pstate, A_Expr *a);
 static Node *transformAExprOpAll(ParseState *pstate, A_Expr *a);
@@ -157,6 +160,12 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 		case T_ParamRef:
 			result = transformParamRef(pstate, (ParamRef *) expr);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		case T_OraParamRef:
+			result = transformOraParamRef(pstate, (OraParamRef *)expr);
+			break;
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 
 		case T_A_Const:
 			{
@@ -935,6 +944,32 @@ transformParamRef(ParseState *pstate, ParamRef *pref)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static Node *
+transformOraParamRef(ParseState *pstate, OraParamRef *pref)
+{
+	Node	   *result;
+
+	/*
+	* The core parser knows nothing about Params.  If a hook is supplied,
+	* call it.  If not, or if the hook returns NULL, throw a generic error.
+	*/
+	if (pstate->p_paramref_hook != NULL)
+		result = (*pstate->p_paramref_hook) (pstate, (ParamRef *)pref);
+	else
+		result = NULL;
+
+	if (result == NULL)
+		ereport(ERROR,
+		(errcode(ERRCODE_UNDEFINED_PARAMETER),
+		errmsg("there is no parameter %s", pref->name),
+		parser_errposition(pstate, pref->location)));
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 
 /* Test whether an a_expr is a plain NULL constant or not */
 static bool

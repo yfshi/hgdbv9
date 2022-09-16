@@ -658,7 +658,7 @@ sub CopyIncludeFiles
 	CopyFiles(
 		'Libpq headers',
 		$target . '/include/',
-		'src/interfaces/libpq/', 'libpq-fe.h', 'libpq-events.h');
+		'src/interfaces/libpq/', 'libpq-fe.h', 'libpq-ivy.h', 'ivy_sema.h', 'libpq-events.h');
 	CopyFiles(
 		'Libpq internal headers',
 		$target . '/include/internal/',

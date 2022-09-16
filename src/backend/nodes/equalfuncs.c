@@ -1500,6 +1500,9 @@ static bool
 _equalDoStmt(const DoStmt *a, const DoStmt *b)
 {
 	COMPARE_NODE_FIELD(args);
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	COMPARE_NODE_FIELD(paramsmode);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	return true;
 }
@@ -3185,6 +3188,17 @@ _equalValue(const Value *a, const Value *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static bool
+_equalOraParamRef(const OraParamRef *a, const OraParamRef *b)
+{
+	COMPARE_SCALAR_FIELD(number);
+	COMPARE_LOCATION_FIELD(location);
+	COMPARE_STRING_FIELD(name);
+	return true;
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 /*
  * equal
  *	  returns whether two nodes are equal
@@ -3952,6 +3966,11 @@ equal(const void *a, const void *b)
 		case T_PartitionCmd:
 			retval = _equalPartitionCmd(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		case T_OraParamRef:
+			retval = _equalOraParamRef(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 
 		default:
 			elog(ERROR, "unrecognized node type: %d",

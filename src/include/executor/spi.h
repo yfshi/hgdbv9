@@ -218,5 +218,8 @@ extern void *SPI_get_func(int level);
 extern MemoryContext SPI_get_proccxt(int level);
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+extern MemoryContext Ora_spi_saved_memorycontext(void);
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 #endif							/* SPI_H */

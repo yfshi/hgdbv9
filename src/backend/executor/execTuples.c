@@ -68,6 +68,9 @@
 #include "utils/expandeddatum.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "executor/spi.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 static TupleDesc ExecTypeFromTLInternal(List *targetList,
 										bool skipjunk);
@@ -1969,18 +1972,54 @@ ExecTypeFromTLInternal(List *targetList, bool skipjunk)
 	foreach(l, targetList)
 	{
 		TargetEntry *tle = lfirst(l);
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		Oid			typoid;
+		int32		typmod;
+		Oid			collationoid;
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 
 		if (skipjunk && tle->resjunk)
 			continue;
+
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		typoid = exprType((Node *) tle->expr);
+		typmod = exprTypmod((Node *) tle->expr);
+		collationoid = exprCollation((Node *) tle->expr);
+
+		/*
+		 * If call a function which has out parameters in SQL, not in PLSQL, 
+		 * the function return type should be changed to record
+		 */
+		if (nodeTag(tle->expr) == T_FuncExpr && SPI_get_connected() < 0)
+		{
+			FuncExpr *func = (FuncExpr *) tle->expr;
+			Oid		resulttype;
+			int32	chtypmod;
+			Oid		chcollationoid;
+
+			if (FUNC_EXPR_FROM_PG_PROC(func->function_from) &&
+				func_should_change_return_type(func->funcid, &resulttype, &chtypmod, &chcollationoid))
+			{
+				typoid = resulttype;
+				typmod = chtypmod;
+				collationoid = chcollationoid;
+				func->funcresulttype = resulttype;
+				func->funccollid = chcollationoid;
+			}
+		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
+
 		TupleDescInitEntry(typeInfo,
 						   cur_resno,
 						   tle->resname,
-						   exprType((Node *) tle->expr),
-						   exprTypmod((Node *) tle->expr),
+						   /* Begin - ReqID:SRS-SQL-FUNCOUT */
+						   typoid,
+						   typmod,
+						   /* End - ReqID:SRS-SQL-FUNCOUT */
 						   0);
 		TupleDescInitEntryCollation(typeInfo,
 									cur_resno,
-									exprCollation((Node *) tle->expr));
+									collationoid/* ReqID:SRS-SQL-FUNCOUT */);
 		cur_resno++;
 	}
 

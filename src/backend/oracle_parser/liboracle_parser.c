@@ -40,6 +40,9 @@
 #include "parser/scansup.h"
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 PG_MODULE_MAGIC;
 
@@ -215,6 +218,10 @@ oracle_raw_parser(const char *str, RawParseMode mode)
 
 	if (yyresult)				/* error */
 		return NIL;
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	calculate_oraparamnumbers(yyextra.parsetree);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	return yyextra.parsetree;
 }

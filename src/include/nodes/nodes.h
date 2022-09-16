@@ -203,6 +203,7 @@ typedef enum NodeTag
 	T_FromExpr,
 	T_OnConflictExpr,
 	T_IntoClause,
+	T_NonDefValNode,	/* ReqID:SRS-SQL-FUNCOUT */
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)
@@ -447,6 +448,7 @@ typedef enum NodeTag
 	T_A_Expr,
 	T_ColumnRef,
 	T_ParamRef,
+	T_OraParamRef,/* ReqID:SRS-SQL-ANONYOUT */
 	T_A_Const,
 	T_FuncCall,
 	T_A_Star,

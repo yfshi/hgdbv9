@@ -34,6 +34,10 @@
 #include "utils/memutils.h"
 #include "utils/selfuncs.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 
 /*
@@ -285,6 +289,22 @@ array_in(PG_FUNCTION_ARGS)
 						 errmsg("malformed array literal: \"%s\"", string),
 						 errdetail("Missing array dimension value.")));
 		}
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		else if (strncmp(q, "..", 2) == 0)
+		{
+			/* [m..n] format */
+			*q = '\0';
+			lBound[ndim] = atoi(p);
+			p = q + 2;
+			for (q = p; isdigit((unsigned char)*q) || (*q == '-') || (*q == '+'); q++)
+				/* skip */;
+			if (q == p)			/* no digits? */
+				ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				errmsg("malformed array literal: \"%s\"", string),
+				errdetail("Missing array dimension value.")));
+		}
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 		else
 		{
 			/* [n] format */
@@ -1685,7 +1705,7 @@ array_dims(PG_FUNCTION_ARGS)
 			   *lb;
 
 	/*
-	 * 33 since we assume 15 digits per number + ':' +'[]'
+	 * 33 since we assume 15 digits per number + '..' +'[]'
 	 *
 	 * +1 for trailing null
 	 */
@@ -1701,7 +1721,12 @@ array_dims(PG_FUNCTION_ARGS)
 	p = buf;
 	for (i = 0; i < AARR_NDIM(v); i++)
 	{
-		sprintf(p, "[%d:%d]", lb[i], dimv[i] + lb[i] - 1);
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		if (ORA_PARSER == compatible_db)
+			sprintf(p, "[%d..%d]", lb[i], dimv[i] + lb[i] - 1);
+		else
+		/* End - ReqID:SRS-SQL-ANONYOUT */
+			sprintf(p, "[%d:%d]", lb[i], dimv[i] + lb[i] - 1);
 		p += strlen(p);
 	}
 

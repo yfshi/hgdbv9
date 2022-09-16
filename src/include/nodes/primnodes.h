@@ -1598,4 +1598,8 @@ typedef struct OnConflictExpr
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
 } OnConflictExpr;
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+typedef Expr NonDefValNode;
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
 #endif							/* PRIMNODES_H */

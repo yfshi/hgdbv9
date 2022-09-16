@@ -24,6 +24,9 @@
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "catalog/pg_proc.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 static void paramlist_parser_setup(ParseState *pstate, void *arg);
@@ -45,6 +48,9 @@ makeParamList(int numParams)
 {
 	ParamListInfo retval;
 	Size		size;
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	int			i;
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	size = offsetof(ParamListInfoData, params) +
 		numParams * sizeof(ParamExternData);
@@ -58,6 +64,19 @@ makeParamList(int numParams)
 	retval->parserSetupArg = (void *) retval;
 	retval->paramValuesStr = NULL;
 	retval->numParams = numParams;
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	retval->outparamSepup = NULL;
+
+	/* set all the params mode to IN */
+	for (i = 0; i < numParams; i++)
+		retval->params[i].pmode = PROARGMODE_IN;
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	retval->outctext = NULL;
+	retval->haveout = false;
+	retval->paramnames = NULL;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	return retval;
 }
@@ -83,6 +102,16 @@ copyParamList(ParamListInfo from)
 		return NULL;
 
 	retval = makeParamList(from->numParams);
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	retval->outparamSepup = from->outparamSepup; /* handle OUT parameters */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	retval->outctext = from->outctext;
+	retval->haveout = from->haveout;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	retval->paramnames = from->paramnames;
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 	for (int i = 0; i < from->numParams; i++)
 	{

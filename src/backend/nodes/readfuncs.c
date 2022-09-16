@@ -2758,6 +2758,16 @@ _readPartitionRangeDatum(void)
 	READ_DONE();
 }
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+static NonDefValNode *
+_readNonDefValNode(void)
+{
+	READ_LOCALS_NO_FIELDS(NonDefValNode);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
 /*
  * parseNodeString
  *
@@ -3033,6 +3043,10 @@ parseNodeString(void)
 		return_value = _readPartitionBoundSpec();
 	else if (MATCH("PARTITIONRANGEDATUM", 19))
 		return_value = _readPartitionRangeDatum();
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	else if (MATCH("NONDEFVALNODE", 13))
+		return_value = _readNonDefValNode();
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

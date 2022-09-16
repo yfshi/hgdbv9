@@ -270,6 +270,10 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
 %token <str>	BFCONST	BDCONST /* BUG:Z093 */
 %token <ival>	ICONST PARAM
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+%token <str>	ORAPARAM
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 /*
@@ -2629,6 +2633,10 @@ stmt_dynexecute : K_EXECUTE
 						new->strict = false;
 						new->target = NULL;
 						new->params = NIL;
+						/* Begin - ReqID:SRS-SQL-ANONYOUT */
+						new->haveout = false;
+						new->out = NULL;
+						/* End - ReqID:SRS-SQL-ANONYOUT */
 
 						/*
 						 * We loop to allow the INTO and USING clauses to
@@ -3993,12 +4001,35 @@ make_return_stmt(int location)
 	}
 	else if (plisql_curr_compile->out_param_varno >= 0)
 	{
-		if (yylex() != ';')
-			ereport(ERROR,
-					(errcode(ERRCODE_DATATYPE_MISMATCH),
-					 errmsg("RETURN cannot have a parameter in function with OUT parameters"),
-					 parser_errposition(yylloc)));
-		new->retvarno = plisql_curr_compile->out_param_varno;
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		int		tok = yylex();
+
+		if (tok != ';')
+		{
+			if (plisql_curr_compile->fn_prokind == PROKIND_PROCEDURE)
+				ereport(ERROR,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("RETURN cannot have a parameter in procedure"),
+								 parser_errposition(yylloc)));
+
+			/* treat the return variable as expression */
+			plisql_push_back_token(tok);
+			new->expr = read_sql_expression(';', ";");
+			new->retvarno = plisql_curr_compile->fn_ret_vardno;
+		}
+		else
+		{
+			if (plisql_curr_compile->fn_prokind == PROKIND_FUNCTION &&
+				plisql_curr_compile->fn_ret_vardno != -1 &&
+				plisql_curr_compile->datums != NULL &&
+				((PLiSQL_var *)plisql_curr_compile->datums[plisql_curr_compile->fn_ret_vardno])->datatype->typoid != VOIDOID)
+				ereport(ERROR,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("RETURN cannot have a parameter in function with OUT parameters"),
+								 parser_errposition(yylloc)));
+			new->retvarno = plisql_curr_compile->out_param_varno;
+		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 	}
 	else
 	{

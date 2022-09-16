@@ -159,6 +159,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 					   query_list,
 					   NULL,
 					   argtypes,
+					   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 					   nargs,
 					   NULL,
 					   NULL,

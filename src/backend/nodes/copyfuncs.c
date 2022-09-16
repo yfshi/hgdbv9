@@ -3803,6 +3803,9 @@ _copyDoStmt(const DoStmt *from)
 	DoStmt	   *newnode = makeNode(DoStmt);
 
 	COPY_NODE_FIELD(args);
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	COPY_NODE_FIELD(paramsmode);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	return newnode;
 }
@@ -5026,6 +5029,18 @@ _copyForeignKeyCacheInfo(const ForeignKeyCacheInfo *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static OraParamRef *
+_copyOraParamRef(const OraParamRef *from)
+{
+	OraParamRef   *newnode = makeNode(OraParamRef);
+
+	COPY_SCALAR_FIELD(number);
+	COPY_LOCATION_FIELD(location);
+	COPY_STRING_FIELD(name);
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
@@ -5967,6 +5982,12 @@ copyObjectImpl(const void *from)
 		case T_ForeignKeyCacheInfo:
 			retval = _copyForeignKeyCacheInfo(from);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		case T_OraParamRef:
+			retval = _copyOraParamRef(from);
+			break;
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));

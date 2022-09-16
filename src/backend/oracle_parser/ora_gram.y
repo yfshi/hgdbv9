@@ -67,6 +67,9 @@
 #include "utils/numeric.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/xml.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*
@@ -630,6 +633,14 @@ static void determineLanguage(List *options);
 %type <list>	identity_clause identity_options drop_identity	/* Bug#m0000070 */
 %type <boolean>	opt_with opt_by	/* BUG#Z030 */
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+%type <node> param_mode_item
+%type <list> params_mode_list
+/* End - ReqID:SRS-SQL-ANONYOUT */
+/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+%type <str>  opt_param_name
+%type <node> param_mode
+/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -646,6 +657,11 @@ static void determineLanguage(List *options);
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
 %token <str>	BFCONST	BDCONST /* BUG:Z093 */
 %token <ival>	ICONST PARAM
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+%token <str>	ORAPARAM
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 
@@ -9028,6 +9044,17 @@ DoStmt: DO dostmt_opt_list
 					$$ = (Node *)n;
 				}
 		/* End - ReqID:SRS-SQL-PROC */
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		/* executes anonymous */
+		| DO dostmt_opt_list USING params_mode_list
+				{
+					DoStmt *n = makeNode(DoStmt);
+					n->args = $2;
+					n->paramsmode = $4;
+					determineLanguage(n->args);
+					$$ = (Node *)n;
+				}
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 		;
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -9070,6 +9097,32 @@ dostmt_opt_item:
 					$$ = makeDefElem("language", (Node *)makeString($2), @1);
 				}
 		;
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+params_mode_list:
+			param_mode_item 					{ $$ = list_make1($1); }
+			| params_mode_list ',' param_mode_item	{ $$ = lappend($1, $3); }
+		;
+
+param_mode_item: opt_param_name param_mode
+				{
+					DefElem *def = makeDefElem($1, $2, @1);
+
+					$$ = (Node *) def;
+				}
+		;
+
+opt_param_name:	ORAPARAM		{ $$ = $1; }
+				|/* EMPTY */	{ $$ = NULL; }
+		;
+
+param_mode:
+				IN_P                    { $$ = (Node *) makeString((char *) $1); }
+				| OUT_P                 { $$ = (Node *) makeString((char *) $1); }
+				| INOUT                 { $$ = (Node *) makeString((char *) $1); }
+				| IN_P OUT_P    		{ $$ = (Node *) makeString("inout"); }
+		;
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 /*****************************************************************************
  *
@@ -15729,6 +15782,24 @@ c_expr:		columnref								{ $$ = $1; }
 					else
 						$$ = (Node *) p;
 				}
+			/* Begin - ReqID:SRS-SQL-ANONYOUT */
+			| ORAPARAM opt_indirection
+				{
+					OraParamRef *p = makeNode(OraParamRef);
+					p->number = 0;
+					p->location = @1;					
+					p->name = $1;
+					if ($2)
+					{
+						A_Indirection *n = makeNode(A_Indirection);
+						n->arg = (Node *) p;
+						n->indirection = check_indirection($2, yyscanner);
+						$$ = (Node *) n;
+					}
+					else
+						$$ = (Node *) p;
+				}
+			/* End - ReqID:SRS-SQL-ANONYOUT */
 			| '(' a_expr ')' opt_indirection
 				{
 					if ($4)
@@ -17174,7 +17245,7 @@ indirection_el:
 					ai->uidx = $2;
 					$$ = (Node *) ai;
 				}
-			| '[' opt_slice_bound ':' opt_slice_bound ']'
+			| '[' opt_slice_bound DOT_DOT opt_slice_bound ']'
 				{
 					A_Indices *ai = makeNode(A_Indices);
 					ai->is_slice = true;
@@ -17711,6 +17782,15 @@ PLAssignStmt: plassign_target opt_indirection plassign_equals PLpgSQL_Expr
 
 plassign_target: ColId							{ $$ = $1; }
 			| PARAM								{ $$ = psprintf("$%d", $1); }
+			/* Begin - ReqID:SRS-SQL-ANONYOUT */
+			| ORAPARAM
+				{
+					if (get_bindbyname())
+						$$ = psprintf("%s", $1);
+					else
+						$$ = psprintf("$%d", calculate_oraparamnumber($1));
+				}
+			/* End - ReqID:SRS-SQL-ANONYOUT */
 		;
 
 plassign_equals: COLON_EQUALS
@@ -19132,7 +19212,12 @@ extractArgTypes(List *parameters)
 	{
 		FunctionParameter *p = (FunctionParameter *) lfirst(i);
 
-		if (p->mode != FUNC_PARAM_OUT && p->mode != FUNC_PARAM_TABLE)
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		/* set the parameter Oid mask for OUT mode */
+		if (p->mode == FUNC_PARAM_OUT)
+			SetModeOut(p->argType->typeOid);
+		if (p->mode != FUNC_PARAM_TABLE)
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 			result = lappend(result, p->argType);
 	}
 	return result;

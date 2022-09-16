@@ -59,6 +59,9 @@ static uint64 DoPortalRunFetch(Portal portal,
 							   DestReceiver *dest);
 static void DoPortalRewind(Portal portal);
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static TupleDesc CreateTupleDescFromParams(ParamListInfo params);
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 /*
  * CreateQueryDesc
@@ -583,6 +586,18 @@ PortalStart(Portal portal, ParamListInfo params,
 			case PORTAL_MULTI_QUERY:
 				/* Need do nothing now */
 				portal->tupDesc = NULL;
+				/* Begin - ReqID:SRS-SQL-ANONYOUT */
+				/* DoStmt has out parameters, we should have output tupdesc */
+				if (portal->stmts!= NIL)
+				{
+					Node *node = linitial(portal->stmts);
+
+					if (nodeTag(node) == T_RawStmt &&
+						nodeTag(((RawStmt *)node)->stmt) == T_DoStmt)
+						portal->tupDesc = CreateTupleDescFromParams(params);
+				}
+				/* End - ReqID:SRS-SQL-ANONYOUT */
+
 				break;
 		}
 	}
@@ -1194,6 +1209,28 @@ PortalRunMulti(Portal portal,
 {
 	bool		active_snapshot_set = false;
 	ListCell   *stmtlist_item;
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	bool		anonymous_has_outparamter = false;
+
+	/* If anonymous block has out parameters, should not change receiver */
+	if (portal->stmts != NIL &&
+	   list_length(portal->stmts) == 1)
+	{
+		Node *node = (Node *) linitial(portal->stmts);
+
+		if (nodeTag(node) == T_PlannedStmt &&
+			((PlannedStmt*)node)->utilityStmt != NULL &&
+			nodeTag(((PlannedStmt*)node)->utilityStmt) == T_DoStmt &&
+			portal->portalParams != NULL &&
+			portal->portalParams->haveout)
+			anonymous_has_outparamter = true;
+		else if (nodeTag(node) == T_RawStmt &&
+			nodeTag(((RawStmt *)node)->stmt) == T_DoStmt &&
+			portal->portalParams != NULL &&
+			portal->portalParams->haveout)
+			anonymous_has_outparamter = true;
+	}
+   /* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * If the destination is DestRemoteExecute, change to DestNone.  The
@@ -1205,9 +1242,15 @@ PortalRunMulti(Portal portal,
 	 * but the results will be discarded unless you use "simple Query"
 	 * protocol.
 	 */
-	if (dest->mydest == DestRemoteExecute)
+	if (dest->mydest == DestRemoteExecute
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		&& !anonymous_has_outparamter)
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 		dest = None_Receiver;
-	if (altdest->mydest == DestRemoteExecute)
+	if (altdest->mydest == DestRemoteExecute
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		&& !anonymous_has_outparamter)
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 		altdest = None_Receiver;
 
 	/*
@@ -1810,3 +1853,52 @@ EnsurePortalSnapshotExists(void)
 	/* PushActiveSnapshotWithLevel might have copied the snapshot */
 	portal->portalSnapshot = GetActiveSnapshot();
 }
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+/*
+ * build tupledesc from params for the DoUsing stmt
+ */
+static TupleDesc
+CreateTupleDescFromParams(ParamListInfo params)
+{
+	int natts = 0;
+	TupleDesc desc = NULL;
+
+	if (params == NULL || !params->haveout)
+		return NULL;
+	else
+	{
+		int i;
+		int j;
+
+		for (i = 0; i < params->numParams; i++)
+		{
+			if (params->params[i].pflags & PARAM_FLAG_OUT)
+				natts++;
+		}
+		if (natts == 0)
+			return NULL;
+
+		desc = CreateTemplateTupleDesc(natts);
+		for (i = 0, j = 0; i < natts; i++, j++)
+		{
+			for (; j < params->numParams; j++)
+			{
+				char buf[23];
+
+				if (params->params[j].pflags & PARAM_FLAG_OUT)
+				{
+					snprintf(buf, 23, "$%d", j + 1);
+					TupleDescInitEntry(desc, i + 1,
+									buf,
+									params->params[j].ptype,
+									-1,
+									0);
+					break;
+				}
+			}
+		}
+		return desc;
+	}
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */

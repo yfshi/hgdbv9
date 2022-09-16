@@ -289,6 +289,8 @@ sub mkvcbuild
 	$libpq->AddLibrary('ws2_32.lib');
 	$libpq->AddLibrary('wldap32.lib') if ($solution->{options}->{ldap});
 	$libpq->UseDef('src/interfaces/libpq/libpqdll.def');
+	$libpq->ReplaceFile('src/interfaces/libpq/ivy_sema.c',
+		'src/interfaces/libpq/win32_ivysema.c');
 	$libpq->AddReference($libpgcommon, $libpgport);
 
 	# The OBJS scraper doesn't know about ifdefs, so remove appropriate files

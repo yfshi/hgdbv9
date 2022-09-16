@@ -3528,6 +3528,18 @@ _outParamRef(StringInfo str, const ParamRef *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static void
+_outOraParamRef(StringInfo str, const OraParamRef *node)
+{
+	WRITE_NODE_TYPE("ORAPARAMREF");
+
+	WRITE_INT_FIELD(number);
+	WRITE_LOCATION_FIELD(location);
+	WRITE_STRING_FIELD(name);
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 /*
  * Node types found in raw parse trees (supported for debug purposes)
  */
@@ -3876,6 +3888,14 @@ _outPartitionRangeDatum(StringInfo str, const PartitionRangeDatum *node)
 	WRITE_NODE_FIELD(value);
 	WRITE_LOCATION_FIELD(location);
 }
+
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+static void
+_outNonDefValNode(StringInfo str, const NonDefValNode *node)
+{
+	WRITE_NODE_TYPE("NONDEFVALNODE");
+}
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 /*
  * outNode -
@@ -4501,6 +4521,11 @@ outNode(StringInfo str, const void *obj)
 			case T_ParamRef:
 				_outParamRef(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-ANONYOUT */
+			case T_OraParamRef:
+				_outOraParamRef(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-ANONYOUT */
 			case T_RawStmt:
 				_outRawStmt(str, obj);
 				break;
@@ -4587,6 +4612,11 @@ outNode(StringInfo str, const void *obj)
 			case T_PartitionRangeDatum:
 				_outPartitionRangeDatum(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			case T_NonDefValNode:
+				_outNonDefValNode(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 
 			default:
 

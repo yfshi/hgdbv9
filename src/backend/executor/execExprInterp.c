@@ -77,6 +77,15 @@
 #include "utils/typcache.h"
 #include "utils/xml.h"
 #include "utils/numeric.h"	/* ReqID:SRS-SQL-IDENTCOL */
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "commands/proclang.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "catalog/pg_proc.h"
+#include "utils/syscache.h"
+#include "parser/parse_param.h"
+#include "executor/spi.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-SQL-XML */
 #include "utils/guc.h"
@@ -501,6 +510,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		&&CASE_EEOP_AGG_PLAIN_TRANS_BYREF,
 		&&CASE_EEOP_AGG_ORDERED_TRANS_DATUM,
 		&&CASE_EEOP_AGG_ORDERED_TRANS_TUPLE,
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		&&CASE_EEOP_OUT_PARAM_CALLBACK,
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1800,6 +1812,14 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 
 			EEO_NEXT();
 		}
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		EEO_CASE(EEOP_OUT_PARAM_CALLBACK)
+		{
+			/* process OUT paramerters value */
+			op->d.out_params.outparam_func(state, op);
+			EEO_NEXT();
+		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 
 		EEO_CASE(EEOP_LAST)
 		{

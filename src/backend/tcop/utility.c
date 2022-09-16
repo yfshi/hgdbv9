@@ -710,7 +710,11 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 
 		case T_DoStmt:
-			ExecuteDoStmt((DoStmt *) parsetree, isAtomicContext);
+			ExecuteDoStmt((DoStmt *) parsetree, isAtomicContext,
+						/* Begin - ReqID:SRS-SQL-ANONYOUT */
+						params,
+						dest);
+						/* End - ReqID:SRS-SQL-ANONYOUT */
 			break;
 
 		case T_CreateTableSpaceStmt:

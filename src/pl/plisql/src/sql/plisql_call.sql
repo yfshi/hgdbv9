@@ -229,7 +229,7 @@ END
 $$;
 
 
-CREATE PROCEDURE test_proc8c(INOUT a int, INOUT b int, INOUT c int DEFAULT 11)
+CREATE PROCEDURE test_proc8c(INOUT a int, INOUT b int, INOUT c int)
 LANGUAGE plisql
 AS $$
 BEGIN
@@ -395,7 +395,7 @@ DROP TABLE test1;
 
 -- more checks for named-parameter handling
 
-CREATE PROCEDURE p1(v_cnt int, v_Text inout text = NULL)
+CREATE PROCEDURE p1(v_cnt int, v_Text inout text)
 AS $$
 BEGIN
   v_Text := 'v_cnt = ' || v_cnt;

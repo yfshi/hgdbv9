@@ -249,6 +249,9 @@ struct ParseState
 	uint16	    merge_on_attr_size;
 	uint8 	   *merge_on_attrno;
 	/* End - Bug#Z167 */
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	bool 		p_isVarParamState;
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 };
 
 /*

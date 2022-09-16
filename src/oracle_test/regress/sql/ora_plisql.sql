@@ -26,11 +26,12 @@ select ora_func() from dual;
 
 -- NOCOPY.
 CREATE OR REPLACE FUNCTION test_nocopy(a IN int, b OUT NOCOPY int, c IN OUT NOCOPY int) 
-RETURN record 
+RETURN int 
 IS
 BEGIN 
    b := a;
-   c := a; 
+   c := a;
+   return 1;
 END;
 /
 
@@ -1040,7 +1041,7 @@ select pg_get_functiondef('test_f'::regproc);
 reset ivorysql.convert_plisql_int_to_number;
 
 -- OUT parameters of function
-create or replace function test_f2(id integer, OUT z integer, OUT y int) return record is
+create or replace function test_f2(id integer, OUT z integer, OUT y int) return int is
  var1 integer;
 begin
   raise notice '%', id;
@@ -1051,7 +1052,7 @@ begin
   z := id;
   raise notice '%', z;
   y := id;
-  return ;
+  return id;
 end;
 /
 
@@ -1060,8 +1061,9 @@ alter function test_f2(id integer, OUT z integer, OUT y int) int is number;
 DECLARE
  a int;
  b int;
+ c int;
 BEGIN
-  select * into a, b from test_f2(3.14);
+  c := test_f2(3.14, a, b);
   raise notice '%', a;
 END;
 /

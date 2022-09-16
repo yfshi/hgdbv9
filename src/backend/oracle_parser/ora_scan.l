@@ -44,6 +44,10 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* END - case sensitive indentify */
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "executor/spi.h" 
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
 }
 
 %{
@@ -420,6 +424,13 @@ binary_double 	(({integer}|{decimal}|{real})[Dd])
 /* End - BUG:Z093 */
 
 param			\${integer}
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+ora_ident_start		[A-Za-z]
+ora_ident_cont		[A-Za-z_0-9#]
+ora_identifier		{ora_ident_start}{ora_ident_cont}*
+ora_param       :({integer}|{ora_identifier})
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 other			.
 
@@ -1153,6 +1164,12 @@ other			.
 					SET_YYLLOC();
 					yylval->ival = atol(yytext + 1);
 					return PARAM;
+				}
+
+{ora_param}     {
+					SET_YYLLOC();
+					yylval->str = pstrdup(yytext);
+					return ORAPARAM;
 				}
 
 {integer}		{
