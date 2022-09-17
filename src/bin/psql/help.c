@@ -272,7 +272,7 @@ slashUsage(unsigned short int pager)
 	fprintf(output, _("  \\sf[+]  FUNCNAME       show a function's definition\n"));
 	fprintf(output, _("  \\sv[+]  VIEWNAME       show a view's definition\n"));
 	fprintf(output, _("  \\z      [PATTERN]      same as \\dp\n"));
-	fprintf(output, _("  \\parser                synchronize psql with the backend parser or display the psql parser\n"));
+	fprintf(output, _("  \\parser                synchronize psql with the backend parser or display the psql parser\n")); /* BUG#0000064 */
 	fprintf(output, "\n");
 
 	fprintf(output, _("Formatting\n"));
