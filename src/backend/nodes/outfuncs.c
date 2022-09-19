@@ -2905,6 +2905,17 @@ _outFuncCall(StringInfo str, const FuncCall *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
+/* Begin - ReqID:SRS-SQL-PROC */
+static void
+_outColumnRefOrFuncCall(StringInfo str, const ColumnRefOrFuncCall*node)
+{
+	WRITE_NODE_TYPE("COLUMNREFORFUNCCALL");
+
+	WRITE_NODE_FIELD(cref);
+	WRITE_NODE_FIELD(func);
+}
+/* End - ReqID:SRS-SQL-PROC */
+
 static void
 _outDefElem(StringInfo str, const DefElem *node)
 {
@@ -4541,6 +4552,11 @@ outNode(StringInfo str, const void *obj)
 			case T_FuncCall:
 				_outFuncCall(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-PROC */
+			case T_ColumnRefOrFuncCall:
+				_outColumnRefOrFuncCall(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-PROC */
 			case T_DefElem:
 				_outDefElem(str, obj);
 				break;
