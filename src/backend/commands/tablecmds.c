@@ -7692,11 +7692,14 @@ ATExecDropIdentity(Relation rel, const char *colName, bool missing_ok, LOCKMODE 
 			return InvalidObjectAddress;
 		}
 	}
-
+	/* Begin - BUG#022 */
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
-	if(attTup->attidentity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL)
+	if(attTup->attidentity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL ||
+		attTup->attidentity == ATTRIBUTE_ORA_IDENTITY_ALWAYS ||
+		attTup->attidentity == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
 		attTup->attnotnull = false;
 	/* End - ReqID:SRS-SQL-IDENTCOL */
+	/* End - BUG#022 */
 	attTup->attidentity = '\0';
 	CatalogTupleUpdate(attrelation, &tuple->t_self, tuple);
 
