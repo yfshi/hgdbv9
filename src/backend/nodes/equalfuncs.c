@@ -2464,6 +2464,19 @@ _equalFuncCall(const FuncCall *a, const FuncCall *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-PROC */
+static bool
+_equalColumnRefOrFuncCall(const ColumnRefOrFuncCall *a, const ColumnRefOrFuncCall *b)
+{
+	COMPARE_SCALAR_FIELD(type);
+
+	if (_equalColumnRef(a->cref, b->cref) && _equalFuncCall(a->func, b->func))
+		return true;
+	else
+		return false;
+}
+/* End - ReqID:SRS-SQL-PROC */
+
 static bool
 _equalAStar(const A_Star *a, const A_Star *b)
 {
@@ -3788,6 +3801,11 @@ equal(const void *a, const void *b)
 		case T_FuncCall:
 			retval = _equalFuncCall(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_ColumnRefOrFuncCall:
+			retval = _equalColumnRefOrFuncCall(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_A_Star:
 			retval = _equalAStar(a, b);
 			break;

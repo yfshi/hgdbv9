@@ -4210,14 +4210,22 @@ transformPartitionRangeBounds(ParseState *pstate, List *blist,
 		Node	   *expr = lfirst(lc);
 		PartitionRangeDatum *prd = NULL;
 
+		/* Begin - ReqID:SRS-SQL-PROC */
 		/*
 		 * Infinite range bounds -- "minvalue" and "maxvalue" -- get passed in
-		 * as ColumnRefs.
+		 * as ColumnRefs or ColumnRefOrFuncCalls.
 		 */
-		if (IsA(expr, ColumnRef))
+		if (IsA(expr, ColumnRef) ||
+			IsA(expr, ColumnRefOrFuncCall))
 		{
-			ColumnRef  *cref = (ColumnRef *) expr;
+			ColumnRef  *cref = NULL;
 			char	   *cname = NULL;
+
+			if (IsA(expr, ColumnRef))
+				cref = (ColumnRef *) expr;
+			else
+				cref = ((ColumnRefOrFuncCall *) expr)->cref;
+			/* End - ReqID:SRS-SQL-PROC */
 
 			/*
 			 * There should be a single field named either "minvalue" or

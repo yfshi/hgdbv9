@@ -3786,6 +3786,13 @@ typedef struct CompileFunctionStmt
 	List		*parameters;
 	bool		is_procedure;		/* a procedure or a function */
 } CompileFunctionStmt;
+
+typedef struct ColumnRefOrFuncCall
+{
+	NodeTag		type;
+	ColumnRef	*cref;
+	FuncCall	*func;
+} ColumnRefOrFuncCall;
 /* End - ReqID:SRS-SQL-PROC */
 
 #endif							/* PARSENODES_H */

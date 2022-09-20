@@ -2814,6 +2814,19 @@ _copyFuncCall(const FuncCall *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SQL-PROC */
+static ColumnRefOrFuncCall *
+_copyColumnRefOrFuncCall(const ColumnRefOrFuncCall *from)
+{
+	ColumnRefOrFuncCall  *newnode = makeNode(ColumnRefOrFuncCall);
+
+	newnode->cref = _copyColumnRef(from->cref);
+	newnode->func = _copyFuncCall(from->func);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-PROC */
+
 static A_Star *
 _copyAStar(const A_Star *from)
 {
@@ -5796,6 +5809,11 @@ copyObjectImpl(const void *from)
 		case T_FuncCall:
 			retval = _copyFuncCall(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_ColumnRefOrFuncCall:
+			retval = _copyColumnRefOrFuncCall(from);
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_A_Star:
 			retval = _copyAStar(from);
 			break;

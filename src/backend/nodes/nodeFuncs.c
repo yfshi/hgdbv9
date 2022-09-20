@@ -1526,6 +1526,14 @@ exprLocation(const Node *expr)
 								  exprLocation((Node *) fc->args));
 			}
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_ColumnRefOrFuncCall:
+			{
+				const ColumnRef *c = ((const ColumnRefOrFuncCall *) expr)->cref;
+				loc = c->location;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_A_ArrayExpr:
 			/* the location points at ARRAY or [, which must be leftmost */
 			loc = ((const A_ArrayExpr *) expr)->location;
@@ -3845,6 +3853,23 @@ raw_expression_tree_walker(Node *node,
 				/* function name is deemed uninteresting */
 			}
 			break;
+		/* Begin - ReqID:SRS-SQL-PROC */
+		case T_ColumnRefOrFuncCall:
+			{
+				FuncCall   *fcall = ((ColumnRefOrFuncCall *) node)->func;
+
+				if (walker(fcall->args, context))
+					return true;
+				if (walker(fcall->agg_order, context))
+					return true;
+				if (walker(fcall->agg_filter, context))
+					return true;
+				if (walker(fcall->over, context))
+					return true;
+				/* function name is deemed uninteresting */
+			}
+			break;
+		/* End - ReqID:SRS-SQL-PROC */
 		case T_NamedArgExpr:
 			return walker(((NamedArgExpr *) node)->arg, context);
 		case T_A_Indices:
