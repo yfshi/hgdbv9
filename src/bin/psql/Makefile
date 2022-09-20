@@ -37,6 +37,7 @@ OBJS = \
 	mainloop.o \
 	ora_psqlscanslash.o \
 	prompt.o \
+	ora_prompt.o\
 	psqlscanslash.o \
 	sql_help.o \
 	startup.o \
@@ -44,6 +45,7 @@ OBJS = \
 	tab-complete.o \
 	variables.o
 # ReqID:SRS-PSQL-PARSER
+# ReqID:SRS-SQL-ESCAPECHAR
 
 all: psql
 
