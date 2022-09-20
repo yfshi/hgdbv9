@@ -19,6 +19,7 @@
 #include "oracle_fe_utils/ora_string_utils.h"
 #include "oracle_fe_utils/ora_psqlscan.h"
 #include "fe_utils/psqlscan_int.h"
+#include "ora_prompt.h"		/* ReqID:SRS-SQL-ESCAPECHAR */
 /* End - ReqID:SRS-PSQL-PARSER */
 
 /* callback functions for our flex lexer */
@@ -178,21 +179,39 @@ MainLoop(FILE *source)
 		{
 			/* May need to reset prompt, eg after \r command */
 			if (query_buf->len == 0)
-				prompt_status = PROMPT_READY;
+			{
+				/* Begin - ReqID:SRS-SQL-ESCAPECHAR */
+				if(db_mode == DB_ORACLE)
+					prompt_status = ORAPROMPT_READY;
+				else
+					prompt_status = PROMPT_READY;
+				/* End - ReqID:SRS-SQL-ESCAPECHAR */
+			}
 			/* If query buffer came from \e, redisplay it with a prompt */
 			if (need_redisplay)
 			{
 				if (query_buf->len > 0)
 				{
-					fputs(get_prompt(PROMPT_READY, cond_stack), stdout);
+					/* Begin - ReqID:SRS-SQL-ESCAPECHAR */
+					if(db_mode == DB_ORACLE)
+						fputs(ora_get_prompt(ORAPROMPT_READY, cond_stack), stdout);
+					else
+						fputs(get_prompt(PROMPT_READY, cond_stack), stdout);
+					/* End - ReqID:SRS-SQL-ESCAPECHAR */
 					fputs(query_buf->data, stdout);
 					fflush(stdout);
 				}
 				need_redisplay = false;
 			}
+			/* Begin - ReqID:SRS-SQL-ESCAPECHAR */
 			/* Now we can fetch a line */
-			line = gets_interactive(get_prompt(prompt_status, cond_stack),
+			if(db_mode == DB_ORACLE)
+				line = gets_interactive(ora_get_prompt(prompt_status, cond_stack),
 									query_buf);
+			else
+				line = gets_interactive(get_prompt(prompt_status, cond_stack),
+									query_buf);
+			/* End - ReqID:SRS-SQL-ESCAPECHAR */
 		}
 		else
 		{

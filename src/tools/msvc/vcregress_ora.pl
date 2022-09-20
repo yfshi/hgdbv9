@@ -134,8 +134,8 @@ sub installcheck_internal
 		"--schedule=${schedule}_schedule",
 		"--max-concurrent-tests=20",
 		"--make-testtablespace-dir",
-		"--encoding=SQL_ASCII",
-		"--no-locale");
+		"--encoding=utf-8",
+		"--no-locale");	# ReqID:SRS-SQL-ESCAPECHAR
 	push(@args, $maxconn) if $maxconn;
 	push(@args, @EXTRA_REGRESS_OPTS);
 	system(@args);
@@ -162,6 +162,7 @@ sub check
 
 	InstallTemp();
 	chdir "${topdir}/src/oracle_test/regress";
+	# Begin - ReqID:SRS-SQL-ESCAPECHAR
 	my @args = (
 		"../../../$Config/ora_regress/ora_regress",
 		"--dlpath=.",
@@ -169,9 +170,10 @@ sub check
 		"--schedule=${schedule}_schedule",
 		"--max-concurrent-tests=20",
 		"--make-testtablespace-dir",
-		"--encoding=SQL_ASCII",
+		"--encoding=utf-8",
 		"--no-locale",
 		"--temp-instance=./tmp_check");
+	# End - ReqID:SRS-SQL-ESCAPECHAR
 	push(@args, $maxconn)     if $maxconn;
 	push(@args, $temp_config) if $temp_config;
 	system(@args);
@@ -548,9 +550,11 @@ sub recoverycheck
 sub standard_initdb
 {
 	return (
+		# Begin - ReqID:SRS-SQL-ESCAPECHAR
 		#BEGIN - SQL PARSER
-		system('initdb', '-N', '-m', 'oracle', '-c', 'normal') == 0 and system(
+		system('initdb', '-N', '-m', 'oracle', '-c', 'normal', '-E', 'utf-8') == 0 and system(
 		#END - SQL PARSER
+		# End - ReqID:SRS-SQL-ESCAPECHAR
 			"$topdir/$Config/ora_regress/ora_regress", '--config-auth',
 			$ENV{PGDATA}) == 0);
 }
