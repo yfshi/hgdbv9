@@ -3751,26 +3751,15 @@ ColConstraintElem:
 				}
 			| GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
 				{
-					char *str = NULL;	/* ReqID:SRS-SQL-IDENTCOL */
 					Constraint *n = makeNode(Constraint);
-					/* Begin - ReqID:SRS-SQL-IDENTCOL */
-					if($5)
-					{
-						str = scanner_querytext(@5, @5+1, yyscanner);
-					}
-					/* End - ReqID:SRS-SQL-IDENTCOL */
 					n->contype = CONSTR_IDENTITY;
 					n->generated_when = $2;
-					/* Begin - ReqID:SRS-SQL-IDENTCOL */
-					if( $5 != NULL && strncmp(str,"(",1) != 0 && n->generated_when  == ATTRIBUTE_IDENTITY_ALWAYS)
+					/* Begin - BUG#Z023 */
+					if (n->generated_when == ATTRIBUTE_IDENTITY_ALWAYS)
 						n->generated_when = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
-					else if ($5 != NULL && strncmp(str,"(",1) != 0 && n->generated_when  == ATTRIBUTE_IDENTITY_BY_DEFAULT)
+					else if (n->generated_when == ATTRIBUTE_IDENTITY_BY_DEFAULT)
 						n->generated_when = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
-					else if ($5 == NULL && n->generated_when  == ATTRIBUTE_IDENTITY_ALWAYS)
-						n->generated_when = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
-					else if ($5 == NULL && n->generated_when  == ATTRIBUTE_IDENTITY_BY_DEFAULT)
-						n->generated_when = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
-					/* End - ReqID:SRS-SQL-IDENTCOL */
+					/* End - BUG#Z023 */
 					n->options = $5;
 					n->location = @1;
 					$$ = (Node *)n;
@@ -4531,7 +4520,7 @@ SeqOptElem: AS SimpleTypename
 			/* Begin - ReqID:SRS-SQL-IDENTCOL */
 			| NOCACHE
 				{
-					$$ = makeDefElem("cache", (Node *)makeInteger(0), @1);
+					$$ = makeDefElem("cache", (Node *)makeInteger(1), @1);	/* BUG#Z025 */
 				}
 			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| CYCLE
@@ -4607,7 +4596,7 @@ SeqOptElem: AS SimpleTypename
 
 opt_by:		BY
 			| /* EMPTY */
-	  ;
+		;
 
 NumericOnly:
 			FCONST								{ $$ = makeFloat($1); }
