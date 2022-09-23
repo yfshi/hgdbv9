@@ -7,8 +7,7 @@ CREATE UNLOGGED SEQUENCE sequence_testx;
 CREATE SEQUENCE sequence_testx INCREMENT BY 0;
 CREATE SEQUENCE sequence_testx INCREMENT BY -1 MINVALUE 20;
 CREATE SEQUENCE sequence_testx INCREMENT BY 1 MAXVALUE -20;
-CREATE SEQUENCE sequence_testx INCREMENT BY -1 START 10;
-CREATE SEQUENCE sequence_testx INCREMENT BY 1 START -10;
+CREATE SEQUENCE sequence_testx INCREMENT BY 1 START WITH -10;
 CREATE SEQUENCE sequence_testx CACHE 0;
 
 -- OWNED BY errors
@@ -25,11 +24,11 @@ CREATE SEQUENCE sequence_test6 AS smallint;
 CREATE SEQUENCE sequence_test7 AS bigint;
 CREATE SEQUENCE sequence_test8 AS integer MAXVALUE 100000;
 CREATE SEQUENCE sequence_test9 AS integer INCREMENT BY -1;
-CREATE SEQUENCE sequence_test10 AS integer MINVALUE -100000 START 1;
+CREATE SEQUENCE sequence_test10 AS integer MINVALUE -100000 START WITH 1;
 CREATE SEQUENCE sequence_test11 AS smallint;
-CREATE SEQUENCE sequence_test12 AS smallint INCREMENT -1;
+CREATE SEQUENCE sequence_test12 AS smallint INCREMENT BY -1;
 CREATE SEQUENCE sequence_test13 AS smallint MINVALUE -32768;
-CREATE SEQUENCE sequence_test14 AS smallint MAXVALUE 32767 INCREMENT -1;
+CREATE SEQUENCE sequence_test14 AS smallint MAXVALUE 32767 INCREMENT BY -1;
 CREATE SEQUENCE sequence_testx AS text;
 CREATE SEQUENCE sequence_testx AS nosuchtype;
 
@@ -186,7 +185,6 @@ ALTER SEQUENCE sequence_test2 RESTART;
 SELECT nextval('sequence_test2');
 
 ALTER SEQUENCE sequence_test2 RESTART WITH 0;  -- error
-ALTER SEQUENCE sequence_test4 RESTART WITH 40;  -- error
 
 -- test CYCLE and NO CYCLE
 ALTER SEQUENCE sequence_test2 RESTART WITH 24
@@ -198,7 +196,7 @@ SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');  -- cycled
 
 ALTER SEQUENCE sequence_test2 RESTART WITH 24
-  NO CYCLE;
+  NOCYCLE;
 SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');
@@ -214,7 +212,7 @@ SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');  -- cycled
 
 ALTER SEQUENCE sequence_test2 RESTART WITH -24
-  NO CYCLE;
+  NOCYCLE;
 SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');
 SELECT nextval('sequence_test2');

@@ -626,6 +626,7 @@ static void determineLanguage(List *options);
 %type <defelt>		hash_partbound_elem
 
 %type <node>	identity_clause identity_options drop_identity	/* ReqID:SRS-SQL-IDENTCOL */
+%type <boolean>	opt_with opt_by	/* BUG#Z030 */
 
 
 /*
@@ -1111,11 +1112,12 @@ CreateRoleStmt:
 				}
 		;
 
-
-opt_with:	WITH
-			| WITH_LA
-			| /*EMPTY*/
+/* Begin - BUG#Z030 */
+opt_with:	WITH		{ $$ = true; }
+			| WITH_LA	{ $$ = true; }
+			| /*EMPTY*/	{ $$= false; }
 		;
+/* End - BUG#Z030 */
 
 /*
  * Options for CREATE ROLE and ALTER ROLE (also used by CREATE/ALTER USER
@@ -4527,10 +4529,6 @@ SeqOptElem: AS SimpleTypename
 				{
 					$$ = makeDefElem("cycle", (Node *)makeInteger(true), @1);
 				}
-			| NO CYCLE
-				{
-					$$ = makeDefElem("cycle", (Node *)makeInteger(false), @1);
-				}
 			/* Begin - ReqID:SRS-SQL-IDENTCOL */
 			| NOCYCLE
 				{
@@ -4539,6 +4537,10 @@ SeqOptElem: AS SimpleTypename
 			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| INCREMENT opt_by NumericOnly
 				{
+					/* Begin - BUG#Z030 */
+					if (!$2 && compatible_db == ORA_PARSER)
+						elog(ERROR, "missing BY keyword");
+					/* End - BUG#Z030 */
 					$$ = makeDefElem("increment", (Node *)$3, @1);
 				}
 			| MAXVALUE NumericOnly
@@ -4548,10 +4550,6 @@ SeqOptElem: AS SimpleTypename
 			| MINVALUE NumericOnly
 				{
 					$$ = makeDefElem("minvalue", (Node *)$2, @1);
-				}
-			| NO MAXVALUE
-				{
-					$$ = makeDefElem("maxvalue", NULL, @1);
 				}
 			/* Begin - ReqID:SRS-SQL-IDENTCOL */
 			| NOMAXVALUE
@@ -4563,10 +4561,6 @@ SeqOptElem: AS SimpleTypename
 					$$ = makeDefElem("minvalue", NULL, @1);
 				}
 			/* End - ReqID:SRS-SQL-IDENTCOL */
-			| NO MINVALUE
-				{
-					$$ = makeDefElem("minvalue", NULL, @1);
-				}
 			| OWNED BY any_name
 				{
 					$$ = makeDefElem("owned_by", (Node *)$3, @1);
@@ -4578,6 +4572,10 @@ SeqOptElem: AS SimpleTypename
 				}
 			| START opt_with NumericOnly
 				{
+					/* Begin - BUG#Z030 */
+					if (!$2 && compatible_db == ORA_PARSER)
+						elog(ERROR, "missing WITH keyword");
+					/* End - BUG#Z030 */
 					$$ = makeDefElem("start", (Node *)$3, @1);
 				}
 			| RESTART
@@ -4594,9 +4592,12 @@ SeqOptElem: AS SimpleTypename
 			/* End - ReqID:SRS-SQL-IDENTCOL */
 		;
 
-opt_by:		BY
-			| /* EMPTY */
+/* Begin - BUG#Z030 */
+opt_by:		BY				{ $$ = true; }
+			| /* EMPTY */	{ $$ = false; }
 		;
+/* Begin - BUG#Z030 */
+
 
 NumericOnly:
 			FCONST								{ $$ = makeFloat($1); }
