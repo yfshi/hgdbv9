@@ -197,8 +197,10 @@ plisql_finish_subproc_func(PLiSQL_function *function)
 void
 plisql_push_subproc_func(void)
 {
-	if (cur_compile_func_level >= FUNC_MAX_NEST_LEVEL - 1)
-		elog(ERROR, "function or procedure nested more than :%d", FUNC_MAX_NEST_LEVEL);
+	/* Begin - BUG#Z084 089 */
+	if (cur_compile_func_level > FUNC_MAX_NEST_LEVEL - 1)
+		elog(ERROR, "function or procedure nested level more than: %d", FUNC_MAX_NEST_LEVEL);
+	/* End - BUG#Z084 089 */
 
 	plisql_saved_compile[cur_compile_func_level] = plisql_curr_compile;
 	plisql_saved_error_funcname[cur_compile_func_level] = plisql_error_funcname;
@@ -707,7 +709,8 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 
 		if (append)
 		{
-			if (proper->proper_type == FUNC_PROPER_RESULT_CACHE && (!isdeclare))
+			if (proper->proper_type == FUNC_PROPER_RESULT_CACHE &&
+				(!isdeclare) && subprocfunc->has_declare) /* BUG#Z084 089 */
 				elog(ERROR, "RESULT_CACHE must be specified on \"%s\" declaration and definition",
 							subprocfunc->func_name);
 
