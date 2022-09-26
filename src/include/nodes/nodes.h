@@ -441,6 +441,11 @@ typedef enum NodeTag
 	T_AccessorItem,			/* ReqID:SRS-SQL-PROC */
 	T_AccessibleByClause,	/* ReqID:SRS-SQL-PROC */
 	T_CompileFunctionStmt,	/* ReqID:SRS-SQL-PROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	T_CreatePackageStmt,
+	T_CreatePackageBodyStmt,
+	T_AlterPackageStmt,
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)

@@ -38,6 +38,9 @@
 #include "parser/scansup.h"
 #include "plisql.h"
 #include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC*/
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "pl_package.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 #include "storage/proc.h"
 #include "tcop/cmdtag.h"
 #include "tcop/pquery.h"
@@ -521,8 +524,18 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	estate.err_text = gettext_noop("during initialization of execution state");
 	copy_plisql_datums(&estate, func);
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* The variables in the package are directly from func */
+	if (func->item != NULL)
+	{
+		for (i = 0; i < estate.ndatums; i++)
+			estate.datums[i] = func->datums[i];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* Begin - SRS-PLSQL-SUBPROC */
-	if (function_from == FUNC_FROM_SUBPROCFUNC)
+	if (function_from == FUNC_FROM_SUBPROCFUNC &&
+		func->item == NULL) /* ReqID:SRS-SQL-PACKAGE */
 		plisql_init_subprocfunc_globalvar(&estate, fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */
 
@@ -571,7 +584,8 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 								/* take ownership of R/W object */
 								assign_simple_var(&estate, var,
 												  TransferExpandedObject(var->value,
-																		 estate.datum_context),
+													plisql_get_relevantContext(var->pkgoid,
+														estate.datum_context)), /* ReqID:SRS-SQL-PACKAGE */
 												  false,
 												  true);
 							}
@@ -584,8 +598,9 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 								/* flat array, so force to expanded form */
 								assign_simple_var(&estate, var,
 												  expand_array(var->value,
-															   estate.datum_context,
-															   NULL),
+														plisql_get_relevantContext(var->pkgoid,
+														estate.datum_context),
+															   NULL), /* ReqID:SRS-SQL-PACKAGE */
 												  false,
 												  true);
 							}
@@ -638,7 +653,8 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	 */
 	/* Begin - SRS-PLSQL-SUBPROC */
 	/* subproc func, its found come from its parents */
-	if (function_from != FUNC_FROM_SUBPROCFUNC)
+	if (function_from != FUNC_FROM_SUBPROCFUNC &&
+		function_from != FUNC_FROM_PACKAGE) /* ReqID:SRS-SQL-PACKAGE */
 		exec_set_found(&estate, false);
 	/* End - SRS-PLSQL-SUBPROC */
 
@@ -662,7 +678,8 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	}
 
 	/* Begin - SRS-PLSQL-SUBPROC */
-	if (function_from == FUNC_FROM_SUBPROCFUNC)
+	if (function_from == FUNC_FROM_SUBPROCFUNC &&
+		func->item == NULL) /* ReqID:SRS-SQL-PACKAGE */
 		plisql_assign_out_subprocfunc_globalvar(&estate, fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */
 
@@ -733,9 +750,17 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 					 * However, if we have a R/W expanded datum, we can just
 					 * transfer its ownership out to the upper context.
 					 */
-					estate.retval = SPI_datumTransfer(estate.retval,
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					if (estate.retpkgvar)
+						estate.retval = package_datumTransfer(estate.retval,
+													  false,
+													  -1,
+													  estate.retisnull);
+					else
+						estate.retval = SPI_datumTransfer(estate.retval,
 													  false,
 													  -1);
+					/* End - ReqID:SRS-SQL-PACKAGE */
 				}
 				else
 				{
@@ -773,9 +798,17 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 							 * generic rowtype, so we don't really need to be
 							 * restrictive.  Pass back the generated result as-is.
 							 */
-							estate.retval = SPI_datumTransfer(estate.retval,
+							/* Begin - ReqID:SRS-SQL-PACKAGE */
+							if (estate.retpkgvar)
+								estate.retval = package_datumTransfer(estate.retval,
+															  false,
+															  -1,
+															  estate.retisnull);
+							else
+								estate.retval = SPI_datumTransfer(estate.retval,
 															  false,
 															  -1);
+							/* End - ReqID:SRS-SQL-PACKAGE */
 							break;
 						default:
 							/* shouldn't get here if retistuple is true ... */
@@ -810,9 +843,19 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 			 * upper executor context.
 			 */
 			if (!fcinfo->isnull && !func->fn_retbyval)
-				estate.retval = SPI_datumTransfer(estate.retval,
+			{
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (estate.retpkgvar)
+					estate.retval = package_datumTransfer(estate.retval,
+												  false,
+												  func->fn_rettyplen,
+												  estate.retisnull);
+				else
+					estate.retval = SPI_datumTransfer(estate.retval,
 												  false,
 												  func->fn_rettyplen);
+				/* End - ReqID:SRS-SQL-PACKAGE */
+			}
 		}
 	}
 	else
@@ -962,9 +1005,17 @@ coerce_function_result_tuple(PLiSQL_execstate *estate, TupleDesc tupdesc)
 			 * However, if we have a R/W expanded datum, we can just transfer
 			 * its ownership out to the upper executor context.
 			 */
-			estate->retval = SPI_datumTransfer(estate->retval,
-											   false,
-											   -1);
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if (estate->retpkgvar)
+				estate->retval = package_datumTransfer(estate->retval,
+											  false,
+											  -1,
+											  estate->retisnull);
+			else
+				estate->retval = SPI_datumTransfer(estate->retval,
+											  false,
+											  -1);
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 	}
 	else
@@ -1425,6 +1476,15 @@ copy_plisql_datums(PLiSQL_execstate *estate,
 				outdatum = indatum;
 				break;
 
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case PLISQL_DTYPE_PACKAGE_DATUM:
+				/*
+				 * package is a reference, so we don't copy it
+				 */
+				outdatum = indatum;
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
+
 			default:
 				elog(ERROR, "unrecognized dtype: %d", indatum->dtype);
 				outdatum = NULL;	/* keep compiler quiet */
@@ -1811,6 +1871,12 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 					}
 				}
 				break;
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case PLISQL_DTYPE_PACKAGE_DATUM:
+				/* package'var doesn't need init */
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -2490,7 +2556,10 @@ exec_stmt_getdiag(PLiSQL_execstate *estate, PLiSQL_stmt_getdiag *stmt)
 	foreach(lc, stmt->diag_items)
 	{
 		PLiSQL_diag_item *diag_item = (PLiSQL_diag_item *) lfirst(lc);
-		PLiSQL_datum *var = estate->datums[diag_item->target];
+		PLiSQL_datum *var;
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		var = plisql_get_datum(estate, estate->datums[diag_item->target]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		switch (diag_item->kind)
 		{
@@ -2628,7 +2697,9 @@ exec_stmt_case(PLiSQL_execstate *estate, PLiSQL_stmt_case *stmt)
 		t_val = exec_eval_expr(estate, stmt->t_expr,
 							   &isnull, &t_typoid, &t_typmod);
 
-		t_var = (PLiSQL_var *) estate->datums[stmt->t_varno];
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		t_var = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->t_varno]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/*
 		 * When expected datatype is different from real, change it. Note that
@@ -2640,10 +2711,30 @@ exec_stmt_case(PLiSQL_execstate *estate, PLiSQL_stmt_case *stmt)
 		 */
 		if (t_var->datatype->typoid != t_typoid ||
 			t_var->datatype->atttypmod != t_typmod)
+		{
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			MemoryContext oldctx = NULL;
+			/*
+			 * package'var doesn't use plisql_copy_datum
+			 * so we should swith its function memorycontext
+			 * maybe save origin datatype, but no place
+			 * to store it and when to recover
+			 * we must not free its origin datatype, maybe its
+			 * is referenced by other place like use define type
+			 */
+			if (OidIsValid(t_var->pkgoid))
+			{
+				oldctx = MemoryContextSwitchTo(plisql_get_relevantContext(t_var->pkgoid,
+												CurrentMemoryContext));
+			}
 			t_var->datatype = plisql_build_datatype(t_typoid,
 													 t_typmod,
 													 estate->func->fn_input_collation,
 													 NULL);
+			if (oldctx != NULL)
+				MemoryContextSwitchTo(oldctx);
+			/* End - ReqID:SRS-SQL-PACKAGE */
+		}
 
 		/* now we can assign to the variable */
 		exec_assign_value(estate,
@@ -2765,7 +2856,9 @@ exec_stmt_fori(PLiSQL_execstate *estate, PLiSQL_stmt_fori *stmt)
 	bool		found = false;
 	int			rc = PLISQL_RC_OK;
 
-	var = (PLiSQL_var *) (estate->datums[stmt->var->dno]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	var = (PLiSQL_var *)  plisql_get_datum(estate, estate->datums[stmt->var->dno]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Get the value of the lower bound
@@ -2939,7 +3032,9 @@ exec_stmt_forc(PLiSQL_execstate *estate, PLiSQL_stmt_forc *stmt)
 	 * that it's not in use currently.
 	 * ----------
 	 */
-	curvar = (PLiSQL_var *) (estate->datums[stmt->curvar]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	curvar = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->curvar]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (!curvar->isnull)
 	{
 		MemoryContext oldcontext;
@@ -2984,8 +3079,15 @@ exec_stmt_forc(PLiSQL_execstate *estate, PLiSQL_stmt_forc *stmt)
 		set_args.sqlstmt = stmt->argquery;
 		set_args.into = true;
 		/* XXX historically this has not been STRICT */
-		set_args.target = (PLiSQL_variable *)
-			(estate->datums[curvar->cursor_explicit_argrow]);
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (OidIsValid(curvar->pkgoid))
+			set_args.target = (PLiSQL_variable *)
+				get_package_datum_bydno(estate, curvar->pkgoid,
+						curvar->cursor_explicit_argrow);
+		else
+			set_args.target = (PLiSQL_variable *)
+				(estate->datums[curvar->cursor_explicit_argrow]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		if (exec_stmt_execsql(estate, &set_args) != PLISQL_RC_OK)
 			elog(ERROR, "open cursor failed during argument processing");
@@ -3118,7 +3220,9 @@ exec_stmt_foreach_a(PLiSQL_execstate *estate, PLiSQL_stmt_foreach_a *stmt)
 						stmt->slice, ARR_NDIM(arr))));
 
 	/* Set up the loop variable and see if it is of an array type */
-	loop_var = estate->datums[stmt->varno];
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	loop_var = plisql_get_datum(estate, estate->datums[stmt->varno]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (loop_var->dtype == PLISQL_DTYPE_REC ||
 		loop_var->dtype == PLISQL_DTYPE_ROW)
 	{
@@ -3263,6 +3367,9 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 	estate->retval = (Datum) 0;
 	estate->retisnull = true;
 	estate->rettype = InvalidOid;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	estate->retpkgvar = false;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Special case path when the RETURN expression is a simple variable
@@ -3278,7 +3385,15 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 	 */
 	if (stmt->retvarno >= 0)
 	{
-		PLiSQL_datum *retvar = estate->datums[stmt->retvarno];
+		PLiSQL_datum *retvar;
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		/*
+		 * maybe a package var
+		 */
+		retvar = plisql_get_datum(estate, estate->datums[stmt->retvarno]);
+		estate->retpkgvar = (OidIsValid(retvar->pkgoid));
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		if (estate->func &&
@@ -3368,6 +3483,24 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 									&estate->retisnull);
 				}
 				break;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * there maybe return a package.var.id, so should handle
+			 * special
+			 */
+			case PLISQL_DTYPE_RECFIELD:
+				{
+					int32		rettypmod;
+
+					exec_eval_datum(estate,
+									retvar,
+									&estate->rettype,
+									&rettypmod,
+									&estate->retval,
+									&estate->retisnull);
+				}
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", retvar->dtype);
@@ -3453,7 +3586,10 @@ exec_stmt_return_next(PLiSQL_execstate *estate,
 	 */
 	if (stmt->retvarno >= 0)
 	{
-		PLiSQL_datum *retvar = estate->datums[stmt->retvarno];
+		PLiSQL_datum *retvar;
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		retvar = plisql_get_datum(estate, estate->datums[stmt->retvarno]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		switch (retvar->dtype)
 		{
@@ -3537,6 +3673,12 @@ exec_stmt_return_next(PLiSQL_execstate *estate,
 					MemoryContextSwitchTo(oldcontext);
 				}
 				break;
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case PLISQL_DTYPE_PACKAGE_DATUM:
+				elog(ERROR, "doesn't support");
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", retvar->dtype);
@@ -4095,6 +4237,9 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	estate->retval = (Datum) 0;
 	estate->retisnull = true;
 	estate->rettype = InvalidOid;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	estate->retpkgvar = false;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	estate->fn_rettype = func->fn_rettype;
 	estate->retistuple = func->fn_retistuple;
@@ -4463,7 +4608,9 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 					 errmsg("INTO used with a command that cannot return data")));
 
 		/* Fetch target's datum entry */
-		target = (PLiSQL_variable *) estate->datums[stmt->target->dno];
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		target = (PLiSQL_variable *) plisql_get_datum(estate, estate->datums[stmt->target->dno]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/*
 		 * If SELECT ... INTO specified STRICT, and the query didn't find
@@ -4662,7 +4809,10 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 					 errmsg("INTO used with a command that cannot return data")));
 
 		/* Fetch target's datum entry */
-		target = (PLiSQL_variable *) estate->datums[stmt->target->dno];
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		target = (PLiSQL_variable *) plisql_get_datum(estate,
+								estate->datums[stmt->target->dno]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/*
 		 * If SELECT ... INTO specified STRICT, and the query didn't find
@@ -4786,7 +4936,9 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 	 * that it's not in use currently.
 	 * ----------
 	 */
-	curvar = (PLiSQL_var *) (estate->datums[stmt->curvar]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	curvar = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->curvar]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (!curvar->isnull)
 	{
 		MemoryContext oldcontext;
@@ -4881,8 +5033,15 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 			set_args.sqlstmt = stmt->argquery;
 			set_args.into = true;
 			/* XXX historically this has not been STRICT */
-			set_args.target = (PLiSQL_variable *)
-				(estate->datums[curvar->cursor_explicit_argrow]);
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if (OidIsValid(curvar->pkgoid))
+				set_args.target = (PLiSQL_variable *) get_package_datum_bydno(estate,
+											curvar->pkgoid,
+											curvar->cursor_explicit_argrow);
+			else
+				set_args.target = (PLiSQL_variable *)
+					(estate->datums[curvar->cursor_explicit_argrow]);
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			if (exec_stmt_execsql(estate, &set_args) != PLISQL_RC_OK)
 				elog(ERROR, "open cursor failed during argument processing");
@@ -4921,6 +5080,14 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 	if (curname == NULL)
 		assign_text_var(estate, curvar, portal->name);
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/*
+	 * pakcag global cursor var should holdable
+	 */
+	if (is_package_global_var(curvar))
+		portal->cursorOptions = portal->cursorOptions | CURSOR_OPT_HOLD;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* If we had any transient data, clean it up */
 	exec_eval_cleanup(estate);
 	if (stmt_mcontext)
@@ -4950,7 +5117,9 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 	 * Get the portal of the cursor by name
 	 * ----------
 	 */
-	curvar = (PLiSQL_var *) (estate->datums[stmt->curvar]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	curvar = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->curvar]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (curvar->isnull)
 		ereport(ERROR,
 				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
@@ -4999,7 +5168,10 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 		 * Set the target appropriately.
 		 * ----------
 		 */
-		target = (PLiSQL_variable *) estate->datums[stmt->target->dno];
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		target = (PLiSQL_variable *) plisql_get_datum(estate,
+							estate->datums[stmt->target->dno]);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		if (n == 0)
 			exec_move_row(estate, target, NULL, tuptab->tupdesc);
 		else
@@ -5038,7 +5210,10 @@ exec_stmt_close(PLiSQL_execstate *estate, PLiSQL_stmt_close *stmt)
 	 * Get the portal of the cursor by name
 	 * ----------
 	 */
-	curvar = (PLiSQL_var *) (estate->datums[stmt->curvar]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	curvar = (PLiSQL_var *) plisql_get_datum(estate,
+						estate->datums[stmt->curvar]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (curvar->isnull)
 		ereport(ERROR,
 				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
@@ -5270,17 +5445,33 @@ exec_assign_value(PLiSQL_execstate *estate,
 					if (var->datatype->typisarray &&
 						!VARATT_IS_EXTERNAL_EXPANDED_RW(DatumGetPointer(newvalue)))
 					{
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						MemoryContext mc;
+
+						mc = plisql_get_relevantContext(var->pkgoid, estate->datum_context);
+						/* End - ReqID:SRS-SQL-PACKAGE */
+
 						/* array and not already R/W, so apply expand_array */
 						newvalue = expand_array(newvalue,
-												estate->datum_context,
+												mc,/* ReqID:SRS-SQL-PACKAGE */
 												NULL);
 					}
 					else
 					{
 						/* else transfer value if R/W, else just datumCopy */
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						MemoryContext oldcxt = NULL;
+
+						if (OidIsValid(var->pkgoid))
+							oldcxt = MemoryContextSwitchTo(plisql_get_relevantContext(var->pkgoid, CurrentMemoryContext));
+						/* End - ReqID:SRS-SQL-PACKAGE */
 						newvalue = datumTransfer(newvalue,
 												 false,
 												 var->datatype->typlen);
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						if (oldcxt != NULL)
+							MemoryContextSwitchTo(oldcxt);
+						/* End - ReqID:SRS-SQL-PACKAGE */
 					}
 				}
 
@@ -5371,7 +5562,14 @@ exec_assign_value(PLiSQL_execstate *estate,
 				PLiSQL_rec *rec;
 				ExpandedRecordHeader *erh;
 
-				rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (OidIsValid(recfield->pkgoid))
+					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
+												recfield->pkgoid,
+												recfield->recparentno);
+				else
+					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* End - ReqID:SRS-SQL-PACKAGE */
 				erh = rec->erh;
 
 				/*
@@ -5423,6 +5621,19 @@ exec_assign_value(PLiSQL_execstate *estate,
 										  value, isNull, !estate->atomic);
 				break;
 			}
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				target = plisql_get_datum(estate, target);
+
+				exec_assign_value(estate,
+				  target,
+				  value, isNull,
+				  valtype, valtypmod);
+				break;
+			}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", target->dtype);
@@ -5545,7 +5756,14 @@ exec_eval_datum(PLiSQL_execstate *estate,
 				PLiSQL_rec *rec;
 				ExpandedRecordHeader *erh;
 
-				rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (OidIsValid(recfield->pkgoid))
+					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
+												recfield->pkgoid,
+												recfield->recparentno);
+				else
+					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* End - ReqID:SRS-SQL-PACKAGE */
 				erh = rec->erh;
 
 				/*
@@ -5585,6 +5803,20 @@ exec_eval_datum(PLiSQL_execstate *estate,
 												   isnull);
 				break;
 			}
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				datum = plisql_get_datum(estate, datum);
+				exec_eval_datum(estate,
+					datum,
+					typeid,
+					typetypmod,
+					value,
+					isnull);
+				break;
+			}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -5636,7 +5868,14 @@ plisql_exec_get_datum_type(PLiSQL_execstate *estate,
 				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
 				PLiSQL_rec *rec;
 
-				rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (OidIsValid(recfield->pkgoid))
+					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
+										recfield->pkgoid,
+										recfield->recparentno);
+				else
+					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* End - ReqID:SRS-SQL-PACKAGE */
 
 				/*
 				 * If record variable is NULL, instantiate it if it has a
@@ -5665,6 +5904,15 @@ plisql_exec_get_datum_type(PLiSQL_execstate *estate,
 				typeid = recfield->finfo.ftypeid;
 				break;
 			}
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				datum = plisql_get_datum(estate, datum);
+				plisql_exec_get_datum_type(estate, datum);
+				break;
+			}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -5727,7 +5975,14 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
 				PLiSQL_rec *rec;
 
-				rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (OidIsValid(recfield->pkgoid))
+					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
+										recfield->pkgoid,
+										recfield->recparentno);
+				else
+					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				/* End - ReqID:SRS-SQL-PACKAGE */
 
 				/*
 				 * If record variable is NULL, instantiate it if it has a
@@ -5758,6 +6013,16 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 				*collation = recfield->finfo.fcollation;
 				break;
 			}
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				datum = plisql_get_datum(estate, datum);
+				plisql_exec_get_datum_type_info(estate,
+								 datum,
+								 typeId, typMod, collation);
+				break;
+			}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -5790,6 +6055,9 @@ plisql_assign_in_global_var(PLiSQL_execstate *estate,
 
 	/* the dtype must be consistent */
 	Assert(parestate->datums[dno]->dtype == estate->datums[dno]->dtype);
+
+	Assert(parestate->datums[dno]->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
+	Assert(!OidIsValid(parestate->datums[dno]->pkgoid));
 
 	/* get origin value */
 	exec_eval_datum(parestate, parestate->datums[dno],
@@ -5833,6 +6101,8 @@ plisql_assign_out_global_var(PLiSQL_execstate *estate,
 
 	/* the dtype must be consistent */
 	Assert(parestate->datums[dno]->dtype == estate->datums[dno]->dtype);
+	Assert(parestate->datums[dno]->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
+	Assert(!OidIsValid(parestate->datums[dno]->pkgoid));
 
 	/* get origin value */
 	exec_eval_datum(estate, estate->datums[dno],
@@ -6108,7 +6378,10 @@ exec_for_query(PLiSQL_execstate *estate, PLiSQL_stmt_forq *stmt,
 	uint64		n;
 
 	/* Fetch loop variable's datum entry */
-	var = (PLiSQL_variable *) estate->datums[stmt->var->dno];
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	var = (PLiSQL_variable *) plisql_get_datum(estate,
+						estate->datums[stmt->var->dno]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Make sure the portal doesn't get closed by the user statements we
@@ -6567,6 +6840,9 @@ plisql_param_fetch(ParamListInfo params,
 	PLiSQL_datum *datum;
 	bool		ok = true;
 	int32		prmtypmod;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	PLiSQL_package *package = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* paramid's are 1-based, but dnos are 0-based */
 	dno = paramid - 1;
@@ -6589,6 +6865,17 @@ plisql_param_fetch(ParamListInfo params,
 	 */
 	if (!bms_is_member(dno, expr->paramnos))
 		ok = false;
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* may be come from a package var */
+	if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+	{
+		PLiSQL_pkg_datum *pkgdatum = (PLiSQL_pkg_datum *) datum;
+
+		datum = plisql_get_datum(estate, datum);
+		package = (PLiSQL_package *) pkgdatum->item->source;
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * If the access is speculative, we prefer to return no data rather than
@@ -6616,7 +6903,13 @@ plisql_param_fetch(ParamListInfo params,
 					PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
 					PLiSQL_rec *rec;
 
-					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					/* maybe come from a package */
+					if (package != NULL)
+						rec = (PLiSQL_rec *) (package->source.datums[recfield->recparentno]);
+					else
+						rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+					/* End - ReqID:SRS-SQL-PACKAGE */
 
 					/*
 					 * If record variable is NULL, don't risk anything.
@@ -6714,7 +7007,10 @@ plisql_param_compile(ParamListInfo params, Param *param,
 	Assert(dno >= 0 && dno < estate->ndatums);
 
 	/* now we can access the target datum */
-	datum = estate->datums[dno];
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	datum = plisql_get_datum(estate, estate->datums[dno]);
+	dno = datum->dno;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	scratch.opcode = EEOP_PARAM_CALLBACK;
 	scratch.resvalue = resv;
@@ -6760,6 +7056,10 @@ plisql_param_compile(ParamListInfo params, Param *param,
 	scratch.d.cparam.paramarg = NULL;
 	scratch.d.cparam.paramid = param->paramid;
 	scratch.d.cparam.paramtype = param->paramtype;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	scratch.d.cparam.pkgoid = datum->pkgoid;
+	scratch.d.cparam.paramid = dno + 1;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	ExprEvalPushStep(state, &scratch);
 }
 
@@ -6777,14 +7077,26 @@ plisql_param_eval_var(ExprState *state, ExprEvalStep *op,
 	PLiSQL_execstate *estate;
 	int			dno = op->d.cparam.paramid - 1;
 	PLiSQL_var *var;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid = op->d.cparam.pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch back the hook data */
 	params = econtext->ecxt_param_list_info;
 	estate = (PLiSQL_execstate *) params->paramFetchArg;
-	Assert(dno >= 0 && dno < estate->ndatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(pkgoid))
+	{
+		var = (PLiSQL_var *) get_package_datum_bydno(estate, pkgoid, dno);
+	}
+	else
+	{
+		Assert(dno >= 0 && dno < estate->ndatums);
 
-	/* now we can access the target datum */
-	var = (PLiSQL_var *) estate->datums[dno];
+		/* now we can access the target datum */
+		var = (PLiSQL_var *) estate->datums[dno];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	Assert(var->dtype == PLISQL_DTYPE_VAR);
 
 	/* inlined version of exec_eval_datum() */
@@ -6809,14 +7121,26 @@ plisql_param_eval_var_ro(ExprState *state, ExprEvalStep *op,
 	PLiSQL_execstate *estate;
 	int			dno = op->d.cparam.paramid - 1;
 	PLiSQL_var *var;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid = op->d.cparam.pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch back the hook data */
 	params = econtext->ecxt_param_list_info;
 	estate = (PLiSQL_execstate *) params->paramFetchArg;
-	Assert(dno >= 0 && dno < estate->ndatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(pkgoid))
+	{
+		var = (PLiSQL_var *) get_package_datum_bydno(estate, pkgoid, dno);
+	}
+	else
+	{
+		Assert(dno >= 0 && dno < estate->ndatums);
 
-	/* now we can access the target datum */
-	var = (PLiSQL_var *) estate->datums[dno];
+		/* now we can access the target datum */
+		var = (PLiSQL_var *) estate->datums[dno];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	Assert(var->dtype == PLISQL_DTYPE_VAR);
 
 	/*
@@ -6848,18 +7172,38 @@ plisql_param_eval_recfield(ExprState *state, ExprEvalStep *op,
 	PLiSQL_recfield *recfield;
 	PLiSQL_rec *rec;
 	ExpandedRecordHeader *erh;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid = op->d.cparam.pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch back the hook data */
 	params = econtext->ecxt_param_list_info;
 	estate = (PLiSQL_execstate *) params->paramFetchArg;
-	Assert(dno >= 0 && dno < estate->ndatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(pkgoid))
+	{
+		recfield = (PLiSQL_recfield *) get_package_datum_bydno(estate,
+														pkgoid, dno);
+	}
+	else
+	{
+		Assert(dno >= 0 && dno < estate->ndatums);
 
-	/* now we can access the target datum */
-	recfield = (PLiSQL_recfield *) estate->datums[dno];
+		/* now we can access the target datum */
+		recfield = (PLiSQL_recfield *) estate->datums[dno];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	Assert(recfield->dtype == PLISQL_DTYPE_RECFIELD);
 
 	/* inline the relevant part of exec_eval_datum */
-	rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(recfield->pkgoid))
+		rec = (PLiSQL_rec *) get_package_datum_bydno(estate, pkgoid,
+										recfield->recparentno);
+	else
+		rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	erh = rec->erh;
 
 	/*
@@ -6920,14 +7264,26 @@ plisql_param_eval_generic(ExprState *state, ExprEvalStep *op,
 	PLiSQL_datum *datum;
 	Oid			datumtype;
 	int32		datumtypmod;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid = op->d.cparam.pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch back the hook data */
 	params = econtext->ecxt_param_list_info;
 	estate = (PLiSQL_execstate *) params->paramFetchArg;
-	Assert(dno >= 0 && dno < estate->ndatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(pkgoid))
+	{
+		datum = get_package_datum_bydno(estate, pkgoid, dno);
+	}
+	else
+	{
+		Assert(dno >= 0 && dno < estate->ndatums);
 
-	/* now we can access the target datum */
-	datum = estate->datums[dno];
+		/* now we can access the target datum */
+		datum = estate->datums[dno];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch datum's value */
 	exec_eval_datum(estate, datum,
@@ -6960,14 +7316,26 @@ plisql_param_eval_generic_ro(ExprState *state, ExprEvalStep *op,
 	PLiSQL_datum *datum;
 	Oid			datumtype;
 	int32		datumtypmod;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid = op->d.cparam.pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch back the hook data */
 	params = econtext->ecxt_param_list_info;
 	estate = (PLiSQL_execstate *) params->paramFetchArg;
-	Assert(dno >= 0 && dno < estate->ndatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (OidIsValid(pkgoid))
+	{
+		datum = get_package_datum_bydno(estate, pkgoid, dno);
+	}
+	else
+	{
+		Assert(dno >= 0 && dno < estate->ndatums);
 
-	/* now we can access the target datum */
-	datum = estate->datums[dno];
+		/* now we can access the target datum */
+		datum = estate->datums[dno];
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* fetch datum's value */
 	exec_eval_datum(estate, datum,
@@ -7223,6 +7591,9 @@ make_expanded_record_for_rec(PLiSQL_execstate *estate,
 {
 	ExpandedRecordHeader *newerh;
 	MemoryContext mcontext = get_eval_mcontext(estate);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	mcontext = plisql_get_relevantContext(rec->pkgoid, mcontext);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	if (rec->rectypeid != RECORDOID)
 	{
@@ -7871,7 +8242,10 @@ exec_move_row_from_datum(PLiSQL_execstate *estate,
 			if (rec->rectypeid == RECORDOID || rec->rectypeid == tupType)
 			{
 				ExpandedRecordHeader *newerh;
-				MemoryContext mcontext = get_eval_mcontext(estate);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				MemoryContext mcontext = plisql_get_relevantContext(rec->pkgoid,
+											get_eval_mcontext(estate));
+				/* End - ReqID:SRS-SQL-PACKAGE */
 
 				newerh = make_expanded_record_from_typeid(tupType, tupTypmod,
 														  mcontext);
@@ -7910,6 +8284,10 @@ exec_move_row_from_datum(PLiSQL_execstate *estate,
 static void
 instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 {
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	MemoryContext mc;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	Assert(rec->erh == NULL);	/* else caller error */
 
 	/* If declared type is RECORD, we can't instantiate */
@@ -7923,8 +8301,11 @@ instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 	revalidate_rectypeid(rec);
 
 	/* OK, do it */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	mc = plisql_get_relevantContext(rec->pkgoid, estate->datum_context);
 	rec->erh = make_expanded_record_from_typeid(rec->rectypeid, -1,
-												estate->datum_context);
+												mc);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 }
 
 /* ----------
@@ -8755,7 +9136,13 @@ assign_simple_var(PLiSQL_execstate *estate, PLiSQL_var *var,
 		 * the detoasted datum to the function's main context, which is a
 		 * pain, but there's little choice.
 		 */
-		oldcxt = MemoryContextSwitchTo(get_eval_mcontext(estate));
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (OidIsValid(var->pkgoid))
+			oldcxt = MemoryContextSwitchTo(plisql_get_relevantContext(var->pkgoid,
+					get_eval_mcontext(estate)));
+		else
+			oldcxt = MemoryContextSwitchTo(get_eval_mcontext(estate));
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		detoasted = PointerGetDatum(detoast_external_attr((struct varlena *) DatumGetPointer(newvalue)));
 		MemoryContextSwitchTo(oldcxt);
 		/* Now's a good time to not leak the input value if it's freeable */
@@ -8796,7 +9183,23 @@ assign_simple_var(PLiSQL_execstate *estate, PLiSQL_var *var,
 static void
 assign_text_var(PLiSQL_execstate *estate, PLiSQL_var *var, const char *str)
 {
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	MemoryContext ctx = NULL;
+
+	if (OidIsValid(var->pkgoid))
+	{
+		ctx = MemoryContextSwitchTo(plisql_get_relevantContext(var->pkgoid,
+											CurrentMemoryContext));
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	assign_simple_var(estate, var, CStringGetTextDatum(str), false, true);
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (ctx)
+		MemoryContextSwitchTo(ctx);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 }
 
 /*
@@ -8806,10 +9209,18 @@ static void
 assign_record_var(PLiSQL_execstate *estate, PLiSQL_rec *rec,
 				  ExpandedRecordHeader *erh)
 {
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	MemoryContext ctx = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	Assert(rec->dtype == PLISQL_DTYPE_REC);
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	ctx = plisql_get_relevantContext(rec->pkgoid, estate->datum_context);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* Transfer new record object into datum_context */
-	TransferExpandedRecord(erh, estate->datum_context);
+	TransferExpandedRecord(erh, ctx); /* ReqID:SRS-SQL-PACKAGE */
 
 	/* Free the old value ... */
 	if (rec->erh)

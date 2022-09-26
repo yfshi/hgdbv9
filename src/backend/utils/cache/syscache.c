@@ -73,6 +73,10 @@
 #include "catalog/pg_ts_template.h"
 #include "catalog/pg_type.h"
 #include "catalog/pg_user_mapping.h"
+/* Begin - SRS-SQL-PACKAGE */
+#include "catalog/pg_package.h"
+#include "catalog/pg_package_body.h"
+/* End - SRS-SQL-PACKAGE */
 #include "lib/qunique.h"
 #include "utils/catcache.h"
 #include "utils/rel.h"
@@ -584,6 +588,53 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		32
 	},
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* package cache informations */
+	{PackageBodyRelationId,		/* PKGBODYOID */
+		PackageBodyObjectIndexId,
+		1,
+		{
+			Anum_pg_package_body_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	{PackageBodyRelationId,		/* PKGBODYPKGOID */
+		PackageBodyPkgOidIndex,
+		1,
+		{
+			Anum_pg_package_body_pkgoid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	{PackageRelationId,		/* PKGNAMEARGSNSP */
+		PackageNameArgsNspIndexId,
+		2,
+		{
+			Anum_pg_package_pkgname,
+			Anum_pg_package_pkgnamespace,
+			0,
+			0
+		},
+		8
+	},
+	{PackageRelationId,		/* PKGOID */
+		PackageObjectIndexId,
+		1,
+		{
+			Anum_pg_package_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	{ProcedureRelationId,		/* PROCNAMEARGSNSP */
 		ProcedureNameArgsNspIndexId,
 		3,

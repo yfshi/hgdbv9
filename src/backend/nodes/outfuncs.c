@@ -1258,6 +1258,10 @@ _outFuncExpr(StringInfo str, const FuncExpr *node)
 	WRITE_CHAR_FIELD(function_from);
 	WRITE_VOID_FIELD(parent_func);
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	WRITE_STRING_FIELD(function_name);
+	WRITE_BOOL_FIELD(ref_pkgtype);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -3889,6 +3893,7 @@ _outPartitionRangeDatum(StringInfo str, const PartitionRangeDatum *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
+
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 static void
 _outNonDefValNode(StringInfo str, const NonDefValNode *node)
@@ -3896,6 +3901,17 @@ _outNonDefValNode(StringInfo str, const NonDefValNode *node)
 	WRITE_NODE_TYPE("NONDEFVALNODE");
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static void
+_outAccessorItem(StringInfo str, const AccessorItem *node)
+{
+	WRITE_NODE_TYPE("ACCESSORITEM");
+
+	WRITE_NODE_FIELD(unitname);
+	WRITE_ENUM_FIELD(unitkind, AccessorItemUnitKind);
+}
+/* End - ReqID:SRS-SQL-PACKAGE */
 
 /*
  * outNode -
@@ -4617,6 +4633,12 @@ outNode(StringInfo str, const void *obj)
 				_outNonDefValNode(str, obj);
 				break;
 			/* End - ReqID:SRS-SQL-FUNCOUT */
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case T_AccessorItem:
+				_outAccessorItem(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			default:
 

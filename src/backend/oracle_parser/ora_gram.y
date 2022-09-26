@@ -272,6 +272,9 @@ static void determineLanguage(List *options);
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
 	MergeWhenClause		*mergewhen;	/* ReqID:SRS-SQL-MERGE */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	package_alter_flag	alter_flag;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -678,7 +681,8 @@ static void determineLanguage(List *options);
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
 
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BINARY_DOUBLE /* ReqID:SRS-GKC-DATATYPE_001 */
-	BINARY_FLOAT /* ReqID:SRS-GKC-DATATYPE_001 */ BIT BOOLEAN_P BOTH BREADTH BY BYTE_P /* ReqID:SRS-GKC-DATATYPE_001 */
+	BINARY_FLOAT /* ReqID:SRS-GKC-DATATYPE_001 */ BIT BODY /* ReqID:SRS-SQL-PACKAGE */
+	BOOLEAN_P BOTH BREADTH BY BYTE_P /* ReqID:SRS-GKC-DATATYPE_001 */
 
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
@@ -729,7 +733,7 @@ static void determineLanguage(List *options);
 
 	OBJECT_P OF OFF OFFSET OIDS OLD ON ONLY OPERATOR OPTION OPTIONS OR
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
-	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER
+	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER PACKAGES /* ReqID:SRS-SQL-PACKAGE */
 
 	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PGEXTRACT PLACING PLANS POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
@@ -744,7 +748,8 @@ static void determineLanguage(List *options);
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHOW
-	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SQL_P STABLE STANDALONE_P
+	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
+	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
@@ -799,6 +804,7 @@ static void determineLanguage(List *options);
 %token <keyword> LOOP_P
 /* End - SRS-PLSQL-SUBPROC */
 
+
 /* Begin - BUG:Z092 */
 %token <keyword> BINARY_FLOAT_NAN BINARY_FLOAT_INFINITY
 	BINARY_DOUBLE_NAN BINARY_DOUBLE_INFINITY
@@ -812,6 +818,18 @@ static void determineLanguage(List *options);
 %token <keyword> NVARCHAR2
 /* End - BUG:M0000068 */
 
+
+/* Begin - ReqID:SRS-SQL-PACKAGE  */
+%type <node> CreatePackageStmt CreatePackageBodyStmt AlterPackageStmt
+%type <node> package_proper_item
+%type <list> package_proper package_proper_list package_names package_names_list
+%type <str> package_src
+%type <objtype> package_type
+%type <boolean> package_is_or_as package_body_is_or_as
+%type <alter_flag> package_compile_options special_options
+/* End - ReqID:SRS-SQL-PACKAGE  */
+
+
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
  * list and so can never be entered directly.  The filter in parser.c
@@ -822,7 +840,7 @@ static void determineLanguage(List *options);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA
+%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -1108,6 +1126,11 @@ stmt:
 			| VariableSetStmt
 			| VariableShowStmt
 			| ViewStmt
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| CreatePackageStmt
+			| CreatePackageBodyStmt
+			| AlterPackageStmt
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
@@ -1981,6 +2004,14 @@ DiscardStmt:
 					n->target = DISCARD_PLANS;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| DISCARD PACKAGE
+				{
+					DiscardStmt *n = makeNode(DiscardStmt);
+					n->target = DISCARD_PACKAGES;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| DISCARD SEQUENCES
 				{
 					DiscardStmt *n = makeNode(DiscardStmt);
@@ -4932,6 +4963,17 @@ AlterExtensionContentsStmt:
 					n->object = (Node *) $6;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| ALTER EXTENSION name add_drop PACKAGE package_names
+				{
+					AlterExtensionContentsStmt *n = makeNode(AlterExtensionContentsStmt);
+					n->extname = $3;
+					n->action = $4;
+					n->objtype = OBJECT_PACKAGE;
+					n->object = (Node *) $6;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| ALTER EXTENSION name add_drop OPERATOR operator_with_argtypes
 				{
 					AlterExtensionContentsStmt *n = makeNode(AlterExtensionContentsStmt);
@@ -6432,6 +6474,28 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->concurrent = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE  */
+			| DROP package_type IF_P EXISTS package_names_list opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = $2;
+					n->missing_ok = true;
+					n->objects = $5;
+					n->behavior = $6;
+					n->concurrent = false;
+					$$ = (Node *)n;
+				}
+			| DROP package_type package_names_list opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					n->removeType = $2;
+					n->missing_ok = false;
+					n->objects = $3;
+					n->behavior = $4;
+					n->concurrent = false;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE  */
 			| DROP object_type_name_on_any_name name ON any_name opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
@@ -6670,6 +6734,16 @@ CommentStmt:
 					n->comment = $6;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE  */
+			| COMMENT ON PACKAGE package_names IS comment_text
+				{
+					CommentStmt *n = makeNode(CommentStmt);
+					n->objtype = OBJECT_PACKAGE;
+					n->object = (Node *) $4;
+					n->comment = $6;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE  */
 			| COMMENT ON OPERATOR operator_with_argtypes IS comment_text
 				{
 					CommentStmt *n = makeNode(CommentStmt);
@@ -7225,6 +7299,16 @@ privilege_target:
 					n->objs = $2;
 					$$ = n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| PACKAGE package_names_list
+				{
+					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					n->targtype = ACL_TARGET_OBJECT;
+					n->objtype = OBJECT_PACKAGE;
+					n->objs = $2;
+					$$ = n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| PROCEDURE function_with_argtypes_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
@@ -7321,6 +7405,16 @@ privilege_target:
 					n->objs = $5;
 					$$ = n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| ALL PACKAGES IN_P SCHEMA name_list
+				{
+					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
+					n->objtype = OBJECT_PACKAGE;
+					n->objs = $5;
+					$$ = n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| ALL PROCEDURES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
@@ -7497,6 +7591,9 @@ defacl_privilege_target:
 			| SEQUENCES		{ $$ = OBJECT_SEQUENCE; }
 			| TYPES_P		{ $$ = OBJECT_TYPE; }
 			| SCHEMAS		{ $$ = OBJECT_SCHEMA; }
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| PACKAGES		{ $$ = OBJECT_PACKAGE; }
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		;
 
 
@@ -9004,6 +9101,145 @@ operator_with_argtypes:
 				}
 		;
 
+/* Begin - ReqID:SRS-SQL-PACKAGE  */
+/*****************************************************************************
+ *
+ *		some package stmt
+ *
+ *****************************************************************************/
+CreatePackageStmt:
+			CREATE opt_or_replace opt_ora_editioned PACKAGE package_names
+			opt_ora_sharing_clause package_proper package_is_or_as package_src
+				{
+					CreatePackageStmt *n = makeNode(CreatePackageStmt);
+
+					n->replace = $2;
+					n->editable = $3;
+					n->pkgname = $5;
+					n->propers = $7;
+					n->pkgsrc = $9;
+					$$ = (Node *) n;
+				}
+			;
+
+package_names_list:
+			package_names
+				{
+					$$ = list_make1($1);
+				}
+			| package_names_list ',' package_names
+				{
+					$$ = lappend($1, $3);
+				}
+		;
+
+package_names: ora_func_name { $$ = $1; }
+		;
+
+package_proper:
+			package_proper_list { $$ = $1; }
+			| { $$ = NIL; }
+			;
+
+package_proper_list:
+			package_proper_item
+				{
+					$$ = list_make1($1);
+				}
+			| package_proper_list package_proper_item
+				{
+					$$ = lappend($1, $2);
+				}
+			;
+
+package_proper_item:
+			ora_invoker_rights_clause
+				{
+					$$ = (Node *) $1;
+				}
+			|ora_accessible_by_clause
+				{
+					$$ = (Node *) $1;
+				}
+			|ora_default_collation_clause
+				{
+					$$ = (Node *) $1;
+				}
+			;
+
+package_type:	PACKAGE	{ $$ = OBJECT_PACKAGE; }
+				|PACKAGE_BODY BODY { $$ = OBJECT_PACKAGE_BODY; }
+				;
+
+
+package_is_or_as:
+				IS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGE); }
+				|AS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGE); }
+				;
+
+package_src:	Sconst	{ $$ = $1; }
+		;
+
+CreatePackageBodyStmt:
+			CREATE opt_or_replace opt_ora_editioned PACKAGE_BODY BODY package_names
+			opt_ora_sharing_clause package_body_is_or_as package_src
+				{
+					CreatePackageBodyStmt *n = makeNode(CreatePackageBodyStmt);
+
+					n->replace = $2;
+					n->editable = $3;
+					n->pkgname = $6;
+					n->bodysrc = $9;
+					$$ = (Node *)n;
+				}
+			;
+
+package_body_is_or_as:
+				IS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY); }
+				|AS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY); }
+				;
+
+AlterPackageStmt:
+			ALTER PACKAGE package_names ora_editioned
+				{
+					AlterPackageStmt *stmt = makeNode(AlterPackageStmt);
+
+					stmt->pkgname = $3;
+					stmt->alter_flag = alter_editable_flag;
+					stmt->editable = $4;
+
+					$$ = (Node *) stmt;
+				}
+			| ALTER PACKAGE package_names COMPILE package_compile_options
+			compiler_parameters_clause compiler_parameters_options
+				{
+					AlterPackageStmt *stmt = makeNode(AlterPackageStmt);
+
+					stmt->pkgname = $3;
+					stmt->alter_flag = $5;
+					stmt->parameters = $6;
+
+					$$ = (Node *) stmt;
+				}
+			;
+
+package_compile_options:
+					debug_options special_options
+					{
+						$$ = $2;
+					}
+				;
+
+special_options:
+			PACKAGE	{ $$ = alter_compile_package; }
+			|BODY	{ $$ = alter_compile_body; }
+			|SPECIFICATION	{ $$ = alter_compile_specification; }
+			| { $$ = alter_compile_package; }
+			;
+
+/* End - ReqID:SRS-SQL-PACKAGE  */
+
+
 /*****************************************************************************
  *
  *		DO <anonymous code block> [ LANGUAGE language ]
@@ -9355,6 +9591,17 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE  */
+			| ALTER PACKAGE package_names RENAME TO name
+				{
+					RenameStmt *n = makeNode(RenameStmt);
+					n->renameType = OBJECT_PACKAGE;
+					n->object = (Node *) $3;
+					n->newname = $6;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE  */
 			| ALTER CONVERSION_P any_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
@@ -9998,6 +10245,17 @@ AlterObjectSchemaStmt:
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| ALTER PACKAGE package_names SET SCHEMA name
+				{
+					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					n->objectType = OBJECT_PACKAGE;
+					n->object = (Node *) $3;
+					n->newschema = $6;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| ALTER FUNCTION function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
@@ -10273,6 +10531,16 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			| ALTER PACKAGE package_names OWNER TO RoleSpec
+				{
+					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
+					n->objectType = OBJECT_PACKAGE;
+					n->object = (Node *) $3;
+					n->newowner = $6;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 			| ALTER CONVERSION_P any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
@@ -17888,6 +18156,7 @@ unreserved_keyword:
 			| BACKWARD
 			| BEFORE
 			| BEGIN_P
+			| BODY		/* ReqID:SRS-SQL-PACKAGE */
 			| BREADTH
 			| BY
 			| CACHE
@@ -18065,6 +18334,7 @@ unreserved_keyword:
 			| OWNED
 			| OWNER
 			| PACKAGE	/* ReqID:SRS-SQL-PROC */
+			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARSER
@@ -18142,6 +18412,7 @@ unreserved_keyword:
 			| SIMPLE
 			| SKIP
 			| SNAPSHOT
+			| SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 			| SQL_P
 			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE
@@ -18462,6 +18733,7 @@ bare_label_keyword:
 			| BINARY_FLOAT_INFINITY		/* BUG:Z092 */
 			| BINARY_FLOAT_NAN			/* BUG:Z092 */
 			| BIT
+			| BODY			/* ReqID:SRS-SQL-PACKAGE */
 			| BOOLEAN_P
 			| BOTH
 			| BREADTH
@@ -18710,6 +18982,7 @@ bare_label_keyword:
 			| OWNED
 			| OWNER
 			| PACKAGE	/* ReqID:SRS-SQL-PROC */
+			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARSER
@@ -18800,6 +19073,7 @@ bare_label_keyword:
 			| SMALLINT
 			| SNAPSHOT
 			| SOME
+			| SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 			| SQL_P
 			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE

@@ -61,37 +61,45 @@ foreach my $oid (@sortedoids)
 			$min = $prev_oid + 1;
 			$max = $oid - 1;
 
-			if ($min == $MinTypeObjectId || $min == $MaxTypeObjectId)
-			{
-				$min = $min + 1;
-			}
-
-			if ($max == $MinTypeObjectId || $max == $MaxTypeObjectId)
-			{
-				$max = $max - 1;
-			}
-
-			if ($min > $MaxTypeObjectId || $max < $MinTypeObjectId)
+			#/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if ($max < $MinTypeObjectId || $min > $MaxTypeObjectId)
 			{
 				printf "%d - %d\n", $min, $max;
 			}
-			elsif ($min > $MinTypeObjectId && $max < $MaxTypeObjectId)
+			elsif ($min < $MinTypeObjectId)
 			{
-				next;
+				if ($MinTypeObjectId - 1 > $min)
+				{
+					printf "%d - %d\n", $min, $MinTypeObjectId - 1;
+				}
+				else
+				{
+					printf "%d\n", $min;
+				}
+				if ($max > $MaxTypeObjectId)
+				{
+					if ($max > $MaxTypeObjectId + 1)
+					{
+						printf "%d - %d\n", $MaxTypeObjectId + 1, $max;
+					}
+					else
+					{
+						printf "%d\n", $max;
+					}
+				}
 			}
-			elsif ($min < $MinTypeObjectId && $max > $MaxTypeObjectId)
+			elsif ($max > $MaxTypeObjectId)
 			{
-				printf "%d - %d\n", $min, 8999;
-				printf "%d - %d\n", 9101, $max;
+				if ($max > $MaxTypeObjectId + 1)
+				{
+					printf "%d - %d\n", $MaxTypeObjectId + 1, $max;
+				}
+				else
+				{
+					printf "%d\n", $max;
+				}
 			}
-			elsif (($min < $MinTypeObjectId) && ($MinTypeObjectId < $max < $MaxTypeObjectId))
-			{
-				printf "%d - %d\n", $min, 8999;
-			}
-			elsif (($MinTypeObjectId < $min < $MaxTypeObjectId) && ($max > $MaxTypeObjectId))
-			{
-				printf "%d - %d\n", 9101, $max;
-			}
+			#/* End - ReqID:SRS-SQL-PACKAGE */
 			# END - SQL PARSER
 			#printf "%d - %d\n", $prev_oid + 1, $oid - 1;
 		}
@@ -100,7 +108,7 @@ foreach my $oid (@sortedoids)
 			# BEGIN - SQL PARSER
 			$min = $prev_oid + 1;
 
-			if ($MinTypeObjectId <= $min <= $MaxTypeObjectId)
+			if (($MinTypeObjectId <= $min) && ($min <= $MaxTypeObjectId))
 			{
 				next;
 			}
@@ -119,7 +127,7 @@ do
 {
 	$suggestion = int(8000 + rand(2000));
 # BEGIN - SQL PARSER
-} while (grep(/^$suggestion$/, @{$oids}) || ($MinTypeObjectId <= $suggestion <= $MaxTypeObjectId));
+} while (grep(/^$suggestion$/, @{$oids}) || (($MinTypeObjectId <= $suggestion) && ($suggestion <= $MaxTypeObjectId)));
 # END - SQL PARSER
 
 my $navailable = 0;

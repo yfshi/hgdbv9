@@ -55,6 +55,9 @@ static DumpableObject **extinfoindex;
 static DumpableObject **pubinfoindex;
 static int	numTables;
 static int	numTypes;
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static int	numPkgs;
+/* End - ReqID:SRS-SQL-PACKAGE */
 static int	numFuncs;
 static int	numOperators;
 static int	numCollations;
@@ -131,6 +134,11 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	pg_log_info("reading schemas");
 	nspinfo = getNamespaces(fout, &numNamespaces);
 	nspinfoindex = buildIndexArray(nspinfo, numNamespaces, sizeof(NamespaceInfo));
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	pg_log_info("reading user-defined packages");
+	getPackages(fout, &numPkgs);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * getTables should be done as soon as possible, so as to minimize the

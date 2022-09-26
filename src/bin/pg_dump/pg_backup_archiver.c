@@ -3441,6 +3441,7 @@ _getObjectDescription(PQExpBuffer buf, TocEntry *te)
 	 */
 	if (strcmp(type, "AGGREGATE") == 0 ||
 		strcmp(type, "FUNCTION") == 0 ||
+		strcmp(type, "PACKAGE") == 0 || /* ReqID:SRS-SQL-PACKAGE */
 		strcmp(type, "OPERATOR") == 0 ||
 		strcmp(type, "OPERATOR CLASS") == 0 ||
 		strcmp(type, "OPERATOR FAMILY") == 0 ||
@@ -3576,6 +3577,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			strcmp(te->desc, "DATABASE") == 0 ||
 			strcmp(te->desc, "DOMAIN") == 0 ||
 			strcmp(te->desc, "FUNCTION") == 0 ||
+			strcmp(te->desc, "PACKAGE") == 0 || /* ReqID:SRS-SQL-PACKAGE */
 			strcmp(te->desc, "OPERATOR") == 0 ||
 			strcmp(te->desc, "OPERATOR CLASS") == 0 ||
 			strcmp(te->desc, "OPERATOR FAMILY") == 0 ||

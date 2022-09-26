@@ -30,6 +30,9 @@
 #include "parser/parse_relation.h"
 #include "parser/parse_target.h"
 #include "parser/parse_type.h"
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "parser/parse_package.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 #include "utils/builtins.h"
 #include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
@@ -38,6 +41,9 @@
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_param.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "commands/packagecmds.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 
 
 /* Possible error codes from LookupFuncNameInternal */
@@ -126,6 +132,9 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	char function_from = FUNC_FROM_PG_PROC;
 	void *pfunc = NULL;
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid pkgoid = InvalidOid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * If there's an aggregate filter, transform it using transformWhereClause
@@ -310,7 +319,39 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 											&declared_arg_types, &argdefaults, &pfunc);
 		if (fdresult != FUNCDETAIL_NOTFOUND)
 			function_from = FUNC_FROM_SUBPROCFUNC;
+		else if (list_length(funcname) == 1)
+		{
+			/* lookup standard package func */
+			List *new_funcname = lcons(makeString("standard"), copyObject(funcname));
+
+			fdresult = LookupPkgFunc(pstate, new_funcname, &fargs, argnames, nargs,
+											actual_arg_types,
+											!func_variadic, true, proc_call,
+											&funcid, &rettype, &retset,
+											&nvargs, &vatype,
+											&declared_arg_types, &argdefaults,
+											&pfunc, &pkgoid,
+											true);
+			list_free(new_funcname);
+			if (fdresult != FUNCDETAIL_NOTFOUND)
+				function_from = FUNC_FROM_PACKAGE;
+		}
 	}
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (fdresult == FUNCDETAIL_NOTFOUND)
+	{
+		fdresult = LookupPkgFunc(pstate, funcname, &fargs, argnames, nargs,
+											actual_arg_types,
+											!func_variadic, true, proc_call,
+											&funcid, &rettype, &retset,
+											&nvargs, &vatype,
+											&declared_arg_types, &argdefaults,
+											&pfunc, &pkgoid,
+											false);
+		if (fdresult != FUNCDETAIL_NOTFOUND)
+			function_from = FUNC_FROM_PACKAGE;
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	if (fdresult == FUNCDETAIL_NOTFOUND)
 		fdresult = func_get_detail(funcname, fargs, argnames, nargs,
 							   actual_arg_types,
@@ -823,6 +864,43 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		funcexpr->parent_func = pfunc;
 		funcexpr->function_from = function_from;
 		/* End - SRS-PLSQL-SUBPROC */
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (function_from == FUNC_FROM_PACKAGE)
+		{
+			if (list_length(funcname) == 2)
+			{
+				/* add pkg namespace */
+				List *pkg_funcname = (List *) copyObject(funcname);
+				char *pkgschema = get_namespace_name(get_package_namespace(pkgoid));
+
+				pkg_funcname = lcons(makeString(pkgschema), pkg_funcname);
+				funcexpr->function_name = nodeToString(pkg_funcname);
+				pfree(pkg_funcname);
+			}
+			else
+				funcexpr->function_name = nodeToString(funcname);
+		}
+		else if (function_from == FUNC_FROM_PG_PROC)
+		{
+			char **p_argtypeNames = NULL;
+			char *rettypeName = NULL;
+			HeapTuple procTup;
+
+			procTup = SearchSysCache1(PROCOID,
+							   ObjectIdGetDatum(funcid));
+			if (!HeapTupleIsValid(procTup))	/* should not happen */
+				elog(ERROR, "cache lookup failed for function %u", funcid);
+
+			get_func_typename_info(procTup, &p_argtypeNames, &rettypeName);
+			if (p_argtypeNames != NULL || rettypeName != NULL)
+				funcexpr->ref_pkgtype = true;
+			ReleaseSysCache(procTup);
+			if (p_argtypeNames)
+				pfree(p_argtypeNames);
+			if (rettypeName)
+				pfree(rettypeName);
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		retval = (Node *) funcexpr;
 	}
@@ -1778,14 +1856,22 @@ func_get_detail(List *funcname,
 				 best_candidate->oid);
 		pform = (Form_pg_proc) GETSTRUCT(ftup);
 
+		*rettype = pform->prorettype;
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		/* return a package.xxx */
+		if (ORA_PARSER == compatible_db)
+		{
+			*rettype = get_func_real_rettype(ftup);
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
+
 		/* Begin - BUG:M0000068 */
 		if (pform->prointisnumber &&
-			(pform->prorettype == INT2OID ||
-			 pform->prorettype == INT4OID))
+			(*rettype == INT2OID ||
+			 *rettype == INT4OID))
 			*rettype = NUMBEROID;
-		else
-			*rettype = pform->prorettype;	
 		/* End - BUG:M0000068 */
+
 		*retset = pform->proretset;
 		*vatype = pform->provariadic;
 		/* fetch default args if caller wants 'em */

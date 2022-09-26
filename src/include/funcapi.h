@@ -20,6 +20,10 @@
 #include "access/tupdesc.h"
 #include "executor/executor.h"
 #include "executor/tuptable.h"
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "utils/packagecache.h"
+#include "parser/parse_node.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 #include "fmgr.h"
 
 /*-------------------------------------------------------------------------
@@ -170,6 +174,37 @@ typedef struct
 	List* (*get_internal_func_outargs) (FuncExpr *fexpr);
 	char *(*get_inernal_func_result_name) (FuncExpr *fexpr);
 	void (*compile_inline_internal)(char *proc_source);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	void (*package_validator) (Oid objectId, bool is_body);
+	PackageCacheItem*  (*package_handle) (Oid objectId, bool is_body);
+	void* (*package_parse) (ParseState *pstate,
+							PackageCacheItem *item,
+							List *names,
+							int name_start,
+							package_parse_flags flag,
+							Oid *basetypeid, /* return value */
+							int *entry_type, /* return value */
+							List **fargs, /* return value */
+							List *fargnames,
+							int nargs,
+							Oid *argtypes,
+							bool expand_variadic,
+							bool expand_defaults,
+							Oid *funcid,	/* return value */
+							Oid *rettype,	/* return value */
+							bool *retset,	/* return value */
+							int *nvargs,	/* return value */
+							Oid *vatype,	/* return value */
+							Oid **true_typeids, /* return value */
+							List **argdefaults, /* return value */
+							void **pfunc,		/* return value */
+							bool missing_ok);
+	void (*package_free) (PackageCacheItem *item);
+	void (*package_free_list) (List *pkglist);
+	Oid (*get_top_function_id) (void *function, bool *is_package);
+	void (*get_subprocs_from_package) (Oid pkgoid, TupleDesc tupdesc,
+									Tuplestorestate *tupstore);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	bool isload;
 } PLiSQL_funcs_call;
 
@@ -208,7 +243,9 @@ extern TupleDesc build_function_result_tupdesc_d(char prokind,
 												 Datum proallargtypes,
 												 Datum proargmodes,
 												 Datum proargnames,
-												 bool intisnumber /* BUG:M0000068 */);
+												 bool intisnumber, /* BUG:M0000068 */
+												 Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+/* End - ReqID:SRS-SQL-PACKAGE */
 extern TupleDesc build_function_result_tupdesc_t(HeapTuple procTuple);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 extern TupleDesc build_plisql_function_result_tupdesc_d(char prokind,
@@ -216,7 +253,8 @@ extern TupleDesc build_plisql_function_result_tupdesc_d(char prokind,
 								Datum proargmodes,
 								Datum proargnames,
 								Oid prorettype,
-								bool intisnumber /* BUG:M0000068 */);
+								bool intisnumber, /* BUG:M0000068 */
+								Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -236,10 +274,18 @@ extern char *get_internal_function_result_name(FuncExpr *fexpr);
 
 /* End - SRS-PLSQL-SUBPROC */
 
+
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 extern bool	func_should_change_return_type(Oid functionId, Oid *rettype,
 								int32 *typmod, Oid *collationoid);
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+extern void get_func_typename_info(HeapTuple procTup,
+					char ***p_argtypeNames,
+					char **rettypeName);
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 
 /*----------

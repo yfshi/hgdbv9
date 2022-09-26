@@ -434,6 +434,23 @@ static const SchemaQuery Query_for_list_of_procedures[] = {
 	}
 };
 
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static const SchemaQuery Query_for_list_of_packages[] = {
+	{
+		.min_server_version = 140000,
+		.catname = "pg_catalog.pg_package p",
+		.viscondition = "pg_catalog.pg_package_is_visible(p.oid)",
+		.namespace = "p.pkgnamespace",
+		.result = "pg_catalog.quote_ident(p.pkgname)",
+	},
+	{
+		/* not supported in older versions */
+		.catname = NULL,
+	}
+};
+/* End - ReqID:SRS-SQL-PACKAGE */
+
+
 static const SchemaQuery Query_for_list_of_routines = {
 	.catname = "pg_catalog.pg_proc p",
 	.viscondition = "pg_catalog.pg_function_is_visible(p.oid)",
@@ -1095,6 +1112,9 @@ static const pgsql_thing_t words_after_create[] = {
 	{"DEFAULT PRIVILEGES", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_DROP},
 	{"DICTIONARY", Query_for_list_of_ts_dictionaries, NULL, NULL, THING_NO_SHOW},
 	{"DOMAIN", NULL, NULL, &Query_for_list_of_domains},
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	{"EDITIONABLE", NULL, NULL, NULL, THING_NO_DROP | THING_NO_ALTER},
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	{"EVENT TRIGGER", NULL, NULL, NULL},
 	{"EXTENSION", Query_for_list_of_extensions},
 	{"FOREIGN DATA WRAPPER", NULL, NULL, NULL},
@@ -1105,10 +1125,16 @@ static const pgsql_thing_t words_after_create[] = {
 	{"LANGUAGE", Query_for_list_of_languages},
 	{"LARGE OBJECT", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_DROP},
 	{"MATERIALIZED VIEW", NULL, NULL, &Query_for_list_of_matviews},
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	{"NONEDITIONABLE", NULL, NULL, NULL, THING_NO_DROP | THING_NO_ALTER},
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	{"OPERATOR", NULL, NULL, NULL}, /* Querying for this is probably not such
 									 * a good idea. */
 	{"OR REPLACE", NULL, NULL, NULL, THING_NO_DROP | THING_NO_ALTER},
 	{"OWNED", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_ALTER},	/* for DROP OWNED BY ... */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	{"PACKAGE", NULL, NULL, NULL},
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	{"PARSER", Query_for_list_of_ts_parsers, NULL, NULL, THING_NO_SHOW},
 	{"POLICY", NULL, NULL, NULL},
 	{"PROCEDURE", NULL, NULL, Query_for_list_of_procedures},
@@ -1551,7 +1577,7 @@ psql_completion(const char *text, int start, int end)
 		"\\a",
 		"\\connect", "\\conninfo", "\\C", "\\cd", "\\copy",
 		"\\copyright", "\\crosstabview",
-		"\\d", "\\da", "\\dA", "\\dAc", "\\dAf", "\\dAo", "\\dAp",
+		"\\d", "\\da", "\\dA", "\\dAc", "\\dAf", "\\dk" /* ReqID:SRS-SQL-PACKAGE */, "\\dAo", "\\dAp",
 		"\\db", "\\dc", "\\dC", "\\dd", "\\ddp", "\\dD",
 		"\\des", "\\det", "\\deu", "\\dew", "\\dE", "\\df",
 		"\\dF", "\\dFd", "\\dFp", "\\dFt", "\\dg", "\\di", "\\dl", "\\dL",
@@ -1637,7 +1663,7 @@ psql_completion(const char *text, int start, int end)
 	/* complete with something you can create or replace */
 	else if (TailMatches("CREATE", "OR", "REPLACE"))
 		COMPLETE_WITH("FUNCTION", "PROCEDURE", "LANGUAGE", "RULE", "VIEW",
-					  "AGGREGATE", "TRANSFORM", "TRIGGER");
+					  "AGGREGATE", "TRANSFORM", "TRIGGER", "PACKAGE" /* ReqID:SRS-SQL-PACKAGE */);
 
 /* DROP, but not DROP embedded in other commands */
 	/* complete with something you can drop */
@@ -2393,7 +2419,8 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH("ACCESS METHOD", "CAST", "COLLATION", "CONVERSION",
 					  "DATABASE", "EVENT TRIGGER", "EXTENSION",
 					  "FOREIGN DATA WRAPPER", "FOREIGN TABLE", "SERVER",
-					  "INDEX", "LANGUAGE", "POLICY", "PUBLICATION", "RULE",
+					  "INDEX", "LANGUAGE", "PACKAGE",/* ReqID:SRS-SQL-PACKAGE */
+					  "POLICY", "PUBLICATION", "RULE",
 					  "SCHEMA", "SEQUENCE", "STATISTICS", "SUBSCRIPTION",
 					  "TABLE", "TYPE", "VIEW", "MATERIALIZED VIEW",
 					  "COLUMN", "AGGREGATE", "FUNCTION",
@@ -3144,7 +3171,7 @@ psql_completion(const char *text, int start, int end)
 
 /* DISCARD */
 	else if (Matches("DISCARD"))
-		COMPLETE_WITH("ALL", "PLANS", "SEQUENCES", "TEMP");
+		COMPLETE_WITH("ALL", "PACKAGES", /* ReqID:SRS-SQL-PACKAGE */ "PLANS", "SEQUENCES", "TEMP");
 
 /* DO */
 	else if (Matches("DO"))
@@ -3153,7 +3180,7 @@ psql_completion(const char *text, int start, int end)
 /* DROP */
 	/* Complete DROP object with CASCADE / RESTRICT */
 	else if (Matches("DROP",
-					 "COLLATION|CONVERSION|DOMAIN|EXTENSION|LANGUAGE|PUBLICATION|SCHEMA|SEQUENCE|SERVER|SUBSCRIPTION|STATISTICS|TABLE|TYPE|VIEW",
+					 "COLLATION|CONVERSION|DOMAIN|EXTENSION|LANGUAGE|PACKAGE|PUBLICATION|SCHEMA|SEQUENCE|SERVER|SUBSCRIPTION|STATISTICS|TABLE|TYPE|VIEW",/*ReqID:SRS-SQL-PACKAGE */
 					 MatchAny) ||
 			 Matches("DROP", "ACCESS", "METHOD", MatchAny) ||
 			 (Matches("DROP", "AGGREGATE|FUNCTION|PROCEDURE|ROUTINE", MatchAny, MatchAny) &&
@@ -3413,10 +3440,11 @@ psql_completion(const char *text, int start, int end)
 		 * objects supported.
 		 */
 		if (HeadMatches("ALTER", "DEFAULT", "PRIVILEGES"))
-			COMPLETE_WITH("TABLES", "SEQUENCES", "FUNCTIONS", "PROCEDURES", "ROUTINES", "TYPES", "SCHEMAS");
+			COMPLETE_WITH("TABLES", "SEQUENCES", "FUNCTIONS", "PACKAGES", "PROCEDURES", "ROUTINES", "TYPES", "SCHEMAS"); /* ReqID:SRS-SQL-PACKAGE */
 		else
 			COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_grantables,
 									   " UNION SELECT 'ALL FUNCTIONS IN SCHEMA'"
+									   " UNION SELECT 'ALL PACKAGES IN SCHEMA'"
 									   " UNION SELECT 'ALL PROCEDURES IN SCHEMA'"
 									   " UNION SELECT 'ALL ROUTINES IN SCHEMA'"
 									   " UNION SELECT 'ALL SEQUENCES IN SCHEMA'"
@@ -3438,6 +3466,7 @@ psql_completion(const char *text, int start, int end)
 	}
 	else if (TailMatches("GRANT|REVOKE", MatchAny, "ON", "ALL"))
 		COMPLETE_WITH("FUNCTIONS IN SCHEMA",
+					  "PACKAGES IN SCHEMA",
 					  "PROCEDURES IN SCHEMA",
 					  "ROUTINES IN SCHEMA",
 					  "SEQUENCES IN SCHEMA",
@@ -3461,6 +3490,10 @@ psql_completion(const char *text, int start, int end)
 			COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_functions, NULL);
 		else if (TailMatches("LANGUAGE"))
 			COMPLETE_WITH_QUERY(Query_for_list_of_languages);
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		else if (TailMatches("PACKAGE"))
+			COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_packages, NULL);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		else if (TailMatches("PROCEDURE"))
 			COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_procedures, NULL);
 		else if (TailMatches("ROUTINE"))

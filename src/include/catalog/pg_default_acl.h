@@ -68,6 +68,10 @@ DECLARE_UNIQUE_INDEX_PKEY(pg_default_acl_oid_index, 828, on pg_default_acl using
 #define DEFACLOBJ_FUNCTION		'f' /* function */
 #define DEFACLOBJ_TYPE			'T' /* type */
 #define DEFACLOBJ_NAMESPACE		'n' /* namespace */
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#define DEFACLOBJ_PACKAGE		'P' /* pakcage */
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 #endif							/* EXPOSE_TO_CLIENT_CODE */
 

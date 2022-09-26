@@ -34,6 +34,12 @@
 #include "utils/ora_compatible.h"
 #include "executor/spi.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+#include "commands/packagecmds.h"
+#include "parser/parse_package.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 
 
 typedef struct polymorphic_actuals
@@ -45,7 +51,8 @@ typedef struct polymorphic_actuals
 } polymorphic_actuals;
 
 /* Begin - SRS-PLSQL-SUBPROC */
-PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL, NULL, false};
+PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL,
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 /* End - SRS-PLSQL-SUBPROC */
 
 
@@ -356,7 +363,9 @@ internal_get_result_type(Oid funcid,
 		elog(ERROR, "cache lookup failed for function %u", funcid);
 	procform = (Form_pg_proc) GETSTRUCT(tp);
 
-	rettype = procform->prorettype;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	rettype = get_func_real_rettype(tp);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Check for OUT parameters defining a RECORD result */
 	tupdesc = build_function_result_tupdesc_t(tp);
@@ -392,7 +401,7 @@ internal_get_result_type(Oid funcid,
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		/* If we change the return type of a function, we change the return type of the expr */
-		if (!type_is_rowtype(rettype) && SPI_get_connected() <= 0)
+		if (!type_is_rowtype(rettype) && SPI_get_connected() < 0)
 		{
 			FuncExpr *func = (FuncExpr *) call_expr;
 
@@ -1382,6 +1391,11 @@ get_func_arg_info(HeapTuple procTup,
 			   numargs * sizeof(char));
 	}
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* maybe argtype from a package */
+	repl_func_real_argtype(procTup, *p_argtypes, numargs);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	return numargs;
 }
 
@@ -1637,9 +1651,13 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 	Datum		proargmodes;
 	Datum		proargnames;
 	bool		isnull;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Datum		proargtypenames;
+	Oid			rettype = get_func_real_rettype(procTuple);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Return NULL if the function isn't declared to return RECORD */
-	if (procform->prorettype != RECORDOID &&
+	if (rettype != RECORDOID && /* ReqID:SRS-SQL-PACKAGE */
 		LANG_PLISQL_OID != procform->prolang)
 		return NULL;
 
@@ -1663,6 +1681,19 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 	if (isnull)
 		proargnames = PointerGetDatum(NULL);	/* just to be sure */
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* maybe argtype from a package */
+	if (ORA_PARSER == compatible_db)
+	{
+		proargtypenames = SysCacheGetAttr(PROCOID, procTuple,
+									Anum_pg_proc_protypenames,
+									&isnull);
+		if (isnull)
+			proargtypenames = PointerGetDatum(NULL);
+	}
+	else
+		proargtypenames = PointerGetDatum(NULL);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	if (compatible_db == ORA_PARSER &&
@@ -1672,15 +1703,17 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 											   proallargtypes,
 											   proargmodes,
 											   proargnames,
-											   procform->prorettype,
-											   procform->prointisnumber);
+											   rettype, /* ReqID:SRS-SQL-PACKAGE */
+											   procform->prointisnumber,
+											   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 	else
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 		return build_function_result_tupdesc_d(procform->prokind,
 											   proallargtypes,
 											   proargmodes,
 											   proargnames,
-											   procform->prointisnumber);
+											   procform->prointisnumber,
+											   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 }
 
 
@@ -1691,8 +1724,9 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 TupleDesc
 build_internal_function_result_tupdesc_t(FuncExpr *fexpr)
 {
-	if (!plisql_internal_funcs.isload)
-		elog(ERROR, "internal funcs have not been loaded");
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_internel_funcs_init();
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	return plisql_internal_funcs.get_internal_func_result_tupdesc(fexpr);
 }
@@ -1703,8 +1737,25 @@ build_internal_function_result_tupdesc_t(FuncExpr *fexpr)
 char*
 get_internal_function_name(FuncExpr *fexpr)
 {
-	if (!plisql_internal_funcs.isload)
-		elog(ERROR, "internal funcs have not been loaded");
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_internel_funcs_init();
+
+	if (fexpr->function_from == FUNC_FROM_PACKAGE &&
+		fexpr->function_name != NULL)
+	{
+		char *function_name;
+		List *namelist = stringToNode(fexpr->function_name);
+
+		function_name = NameListToQuotedString(namelist);
+
+		pfree(namelist);
+
+		return function_name;
+	}
+
+	if (FUNC_EXPR_FROM_PACKAGE(fexpr->function_from))
+		set_pkginfo_from_funcexpr(fexpr);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	return plisql_internal_funcs.get_internal_func_name(fexpr);
 }
@@ -1718,8 +1769,13 @@ get_internal_function_result_type(FuncExpr *fexpr,
 						 Oid *resultTypeId,
 						 TupleDesc *resultTupleDesc)
 {
-	if (!plisql_internal_funcs.isload)
-				elog(ERROR, "internal funcs have not been loaded");
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_internel_funcs_init();
+
+	if (FUNC_EXPR_FROM_PACKAGE(fexpr->function_from))
+		set_pkginfo_from_funcexpr(fexpr);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	return plisql_internal_funcs.get_internal_func_result_type(fexpr,
 												NULL,
 												resultTypeId,
@@ -1742,8 +1798,10 @@ external_get_type_func_class(Oid typid, Oid *base_typeid)
 List *
 get_internal_function_outargs(FuncExpr *fexpr)
 {
-	if (!plisql_internal_funcs.isload)
-				elog(ERROR, "internal funcs have not been loaded");
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_internel_funcs_init();
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	return plisql_internal_funcs.get_internal_func_outargs(fexpr);
 }
 
@@ -1753,12 +1811,67 @@ get_internal_function_outargs(FuncExpr *fexpr)
 char *
 get_internal_function_result_name(FuncExpr *fexpr)
 {
-	if (!plisql_internal_funcs.isload)
-				elog(ERROR, "internal funcs have not been loaded");
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_internel_funcs_init();
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	return plisql_internal_funcs.get_inernal_func_result_name(fexpr);
 }
 
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+/*
+ * like get_func_typename_info
+ * we get function args typename and return typename
+ */
+void
+get_func_typename_info(HeapTuple procTup,
+						char ***p_argtypeNames,
+						char **rettypeName)
+
+{
+	Datum		protypenames;
+	Datum		prorettypename;
+	bool		isNull;
+	Datum	   *elems;
+	int			nelems;
+	int			i;
+
+	/* Get argument type names, if available */
+	if (p_argtypeNames != NULL)
+	{
+		protypenames = SysCacheGetAttr(PROCOID, procTup,
+									Anum_pg_proc_protypenames,
+									&isNull);
+		if (isNull)
+			*p_argtypeNames = NULL;
+		else
+		{
+			deconstruct_array(DatumGetArrayTypeP(protypenames),
+							TEXTOID, -1, false, 'i',
+							&elems, NULL, &nelems);
+			*p_argtypeNames = (char **) palloc(sizeof(char *) * nelems);
+			for (i = 0; i < nelems; i++)
+				(*p_argtypeNames)[i] = TextDatumGetCString(elems[i]);
+		}
+	}
+
+	/* Get function return typename, if available */
+	if (rettypeName != NULL)
+	{
+		prorettypename = SysCacheGetAttr(PROCOID, procTup,
+									Anum_pg_proc_rettypename,
+									&isNull);
+		if (isNull)
+			*rettypeName = NULL;
+		else
+			*rettypeName = TextDatumGetCString(prorettypename);
+	}
+
+}
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 
 /*
@@ -1777,7 +1890,8 @@ build_function_result_tupdesc_d(char prokind,
 								Datum proallargtypes,
 								Datum proargmodes,
 								Datum proargnames,
-								bool intisnumber /* BUG:M0000068 */)
+								bool intisnumber, /* BUG:M0000068 */
+								Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -1790,6 +1904,9 @@ build_function_result_tupdesc_d(char prokind,
 	int			numoutargs;
 	int			nargnames;
 	int			i;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	char		**argtypenames = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Can't have output args if columns are null */
 	if (proallargtypes == PointerGetDatum(NULL) ||
@@ -1839,6 +1956,22 @@ build_function_result_tupdesc_d(char prokind,
 		Assert(nargnames == numargs);
 	}
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (ORA_PARSER == compatible_db &&
+		proargtypenames != PointerGetDatum(NULL))
+	{
+		Datum	   *elems;
+		int			nelems;
+
+		deconstruct_array(DatumGetArrayTypeP(proargtypenames),
+								TEXTOID, -1, false, 'i',
+								&elems, NULL, &nelems);
+		argtypenames = (char **) palloc(sizeof(char *) * nelems);
+		for (i = 0; i < nelems; i++)
+			argtypenames[i] = TextDatumGetCString(elems[i]);
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* zero elements probably shouldn't happen, but handle it gracefully */
 	if (numargs <= 0)
 		return NULL;
@@ -1857,7 +1990,26 @@ build_function_result_tupdesc_d(char prokind,
 		Assert(argmodes[i] == PROARGMODE_OUT ||
 			   argmodes[i] == PROARGMODE_INOUT ||
 			   argmodes[i] == PROARGMODE_TABLE);
+
 		outargtypes[numoutargs] = argtypes[i];
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (argtypenames != NULL && strcmp(argtypenames[i], "") != 0)
+		{
+			TypeName	*tname;
+			PkgType *pkgtype;
+
+			tname = (TypeName *) stringToNode(argtypenames[i]);
+
+			pkgtype = LookupPkgTypeByTypename(tname->names, false);
+			if (pkgtype != NULL)
+			{
+				outargtypes[numoutargs] = pkgtype->basetypid;
+				pfree(pkgtype);
+			}
+			pfree(tname);
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
+
 		if (argnames)
 			pname = TextDatumGetCString(argnames[i]);
 		else
@@ -1909,7 +2061,8 @@ build_plisql_function_result_tupdesc_d(char prokind,
 								Datum proargmodes,
 								Datum proargnames,
 								Oid prorettype,
-								bool intisnumber /* BUG:M0000068 */)
+								bool intisnumber, /* BUG:M0000068 */
+								Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -1923,6 +2076,9 @@ build_plisql_function_result_tupdesc_d(char prokind,
 	int 		nargnames;
 	int 		i = 0;
 	int 		j = 0;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	char		**argtypenames = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Can't have output args if columns are null, plisql function call return null */
 	if (proallargtypes == PointerGetDatum(NULL) ||
@@ -1971,6 +2127,22 @@ build_plisql_function_result_tupdesc_d(char prokind,
 		Assert(nargnames == numargs);
 	}
 
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (ORA_PARSER == compatible_db &&
+		proargtypenames != PointerGetDatum(NULL))
+	{
+		Datum	   *elems;
+		int			nelems;
+
+		deconstruct_array(DatumGetArrayTypeP(proargtypenames),
+								TEXTOID, -1, false, 'i',
+								&elems, NULL, &nelems);
+		argtypenames = (char **) palloc(sizeof(char *) * nelems);
+		for (i = 0; i < nelems; i++)
+			argtypenames[i] = TextDatumGetCString(elems[i]);
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* zero elements probably shouldn't happen, but handle it gracefully */
 	if (numargs <= 0)
 		return NULL;
@@ -1990,6 +2162,24 @@ build_plisql_function_result_tupdesc_d(char prokind,
 			   argmodes[i] == PROARGMODE_INOUT ||
 			   argmodes[i] == PROARGMODE_TABLE);
 		outargtypes[numoutargs] = argtypes[i];
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (argtypenames != NULL && strcmp(argtypenames[i], "") != 0)
+		{
+			TypeName	*tname;
+			PkgType *pkgtype;
+
+			tname = (TypeName *) stringToNode(argtypenames[i]);
+
+			pkgtype = LookupPkgTypeByTypename(tname->names, false);
+			if (pkgtype != NULL)
+			{
+				outargtypes[numoutargs] = pkgtype->basetypid;
+				pfree(pkgtype);
+			}
+			pfree(tname);
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/*
 		 * If the guc pararmeter out_parameter_column_position is set to true,
@@ -2343,6 +2533,9 @@ func_should_change_return_type(Oid functionId, Oid *rettype, int32 *typmod, Oid 
 	int			i;
 	int			outnargs = 0;
 	int			outdno = -1;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			rettypeoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* First fetch the function's pg_proc row */
 	procTuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(functionId));
@@ -2350,7 +2543,10 @@ func_should_change_return_type(Oid functionId, Oid *rettype, int32 *typmod, Oid 
 		elog(ERROR, "cache lookup failed for function %u", functionId);
 
 	procStruct = (Form_pg_proc) GETSTRUCT(procTuple);
-	if (procStruct->prorettype == RECORDOID ||
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	rettypeoid = get_func_real_rettype(procTuple);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+	if (rettypeoid == RECORDOID || /* ReqID:SRS-SQL-PACKAGE */
 		LANG_PLISQL_OID != procStruct->prolang)
 	{
 		ReleaseSysCache(procTuple);
@@ -2415,14 +2611,17 @@ func_should_change_return_type(Oid functionId, Oid *rettype, int32 *typmod, Oid 
 	}
 
 	/* more than one out-parameters or one out-parameter and has a return type, change to record */
-	if (outnargs >= 2 || (outnargs == 1 && procStruct->prorettype != VOIDOID))
+	if (outnargs >= 2 ||
+		(outnargs == 1 &&
+		rettypeoid != VOIDOID)) /* ReqID:SRS-SQL-PACKAGE */
 	{
 		result = true;
 		*rettype = RECORDOID;
 		*typmod = -1;
 		*collationoid = 0;
 	}
-	else if (outnargs == 1 && procStruct->prorettype == VOIDOID)
+	else if (outnargs == 1 &&
+		rettypeoid == VOIDOID) /* ReqID:SRS-SQL-PACKAGE */
 	{
 		/* one out-parameter, change to out-parameter type */
 		HeapTuple	typeTuple;

@@ -1622,6 +1622,10 @@ _copyFuncExpr(const FuncExpr *from)
 	COPY_SCALAR_FIELD(function_from);
 	COPY_SCALAR_FIELD(parent_func);
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	COPY_STRING_FIELD(function_name);
+	COPY_SCALAR_FIELD(ref_pkgtype);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -4957,6 +4961,72 @@ _copyCompileFunctionStmt(const CompileFunctionStmt *from)
 }
 /* End - ReqID:SRS-SQL-PROC */
 
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static CreatePackageStmt *
+_copyCreatePackageStmt(const CreatePackageStmt *from)
+{
+	CreatePackageStmt *newnode = makeNode(CreatePackageStmt);
+
+	COPY_SCALAR_FIELD(replace);
+	COPY_NODE_FIELD(pkgname);
+	COPY_NODE_FIELD(propers);
+	COPY_SCALAR_FIELD(editable);
+	COPY_STRING_FIELD(pkgsrc);
+
+	return newnode;
+}
+
+static CreatePackageBodyStmt *
+_copyCreatePackageBodyStmt(const CreatePackageBodyStmt *from)
+{
+	CreatePackageBodyStmt	*newnode = makeNode(CreatePackageBodyStmt);
+
+	COPY_SCALAR_FIELD(replace);
+	COPY_NODE_FIELD(pkgname);
+	COPY_SCALAR_FIELD(editable);
+	COPY_STRING_FIELD(bodysrc);
+
+	return newnode;
+}
+
+static AlterPackageStmt *
+_copyAlterPackageStmt(const AlterPackageStmt *from)
+{
+	AlterPackageStmt	*newnode = makeNode(AlterPackageStmt);
+
+	COPY_NODE_FIELD(pkgname);
+	COPY_SCALAR_FIELD(alter_flag);
+	COPY_SCALAR_FIELD(editable);
+	COPY_NODE_FIELD(parameters);
+
+	return newnode;
+}
+
+static AccessibleByClause *
+_copyAccessibleByClause(const AccessibleByClause *from)
+{
+	AccessibleByClause	*newnode = makeNode(AccessibleByClause);
+
+	COPY_NODE_FIELD(accessors);
+
+	return newnode;
+}
+
+static AccessorItem *
+_copyAccessorItem(const AccessorItem *from)
+{
+	AccessorItem	*newnode = makeNode(AccessorItem);
+
+	COPY_NODE_FIELD(unitname);
+	COPY_SCALAR_FIELD(unitkind);
+
+	return newnode;
+}
+
+
+/* End - ReqID:SRS-SQL-PACKAGE */
+
+
 /* ****************************************************************
  *					extensible.h copy functions
  * ****************************************************************
@@ -5553,6 +5623,23 @@ copyObjectImpl(const void *from)
 			retval = _copyCompileFunctionStmt(from);
 			break;
 		/* End - ReqID:SRS-SQL-PROC */
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case T_CreatePackageStmt:
+			retval = _copyCreatePackageStmt(from);
+			break;
+		case T_CreatePackageBodyStmt:
+			retval = _copyCreatePackageBodyStmt(from);
+			break;
+		case T_AlterPackageStmt:
+			retval = _copyAlterPackageStmt(from);
+			break;
+		case T_AccessibleByClause:
+			retval = _copyAccessibleByClause(from);
+			break;
+		case T_AccessorItem:
+			retval = _copyAccessorItem(from);
+			break;
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		case T_DoStmt:
 			retval = _copyDoStmt(from);
 			break;

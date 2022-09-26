@@ -790,6 +790,10 @@ _readFuncExpr(void)
 	READ_CHAR_FIELD(function_from);
 	READ_VOID_FIELD(parent_func);
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	READ_STRING_FIELD(function_name);
+	READ_BOOL_FIELD(ref_pkgtype);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
@@ -2758,6 +2762,7 @@ _readPartitionRangeDatum(void)
 	READ_DONE();
 }
 
+
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 static NonDefValNode *
 _readNonDefValNode(void)
@@ -2767,6 +2772,38 @@ _readNonDefValNode(void)
 	READ_DONE();
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static AccessorItem *
+_readAccessorItem(void)
+{
+	READ_LOCALS(AccessorItem);
+
+	READ_NODE_FIELD(unitname);
+	READ_ENUM_FIELD(unitkind, AccessorItemUnitKind);
+
+	READ_DONE();
+}
+
+static TypeName *
+_readTypeName(void)
+{
+	READ_LOCALS(TypeName);
+
+	READ_NODE_FIELD(names);
+	READ_OID_FIELD(typeOid);
+	READ_BOOL_FIELD(setof);
+	READ_BOOL_FIELD(pct_type);
+	READ_NODE_FIELD(typmods);
+	READ_INT_FIELD(typemod);
+	READ_NODE_FIELD(arrayBounds);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 /*
  * parseNodeString
@@ -3047,6 +3084,12 @@ parseNodeString(void)
 	else if (MATCH("NONDEFVALNODE", 13))
 		return_value = _readNonDefValNode();
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	else if (MATCH("ACCESSORITEM", 12))
+		return_value = _readAccessorItem();
+	else if (MATCH("TYPENAME", 8))
+		return_value = _readTypeName();
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

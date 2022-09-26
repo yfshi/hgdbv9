@@ -302,6 +302,10 @@ _equalFuncExpr(const FuncExpr *a, const FuncExpr *b)
 	COMPARE_SCALAR_FIELD(function_from);
 	COMPARE_SCALAR_FIELD(parent_func);
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	COMPARE_STRING_FIELD(function_name);
+	COMPARE_SCALAR_FIELD(ref_pkgtype);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -1495,6 +1499,62 @@ _equalCompileFunctionStmt(const CompileFunctionStmt *a, const CompileFunctionStm
 	return true;
 }
 /* End - ReqID:SRS-SQL-PROC */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static bool
+_equalCreatePackageStmt(const CreatePackageStmt *a, const CreatePackageStmt *b)
+{
+	COMPARE_SCALAR_FIELD(replace);
+	COMPARE_NODE_FIELD(pkgname);
+	COMPARE_NODE_FIELD(propers);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_STRING_FIELD(pkgsrc);
+
+	return true;
+}
+
+static bool
+_equalCreatePackageBodyStmt(const CreatePackageBodyStmt *a, const CreatePackageBodyStmt *b)
+{
+	COMPARE_SCALAR_FIELD(replace);
+	COMPARE_NODE_FIELD(pkgname);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_STRING_FIELD(bodysrc);
+
+	return true;
+}
+
+static bool
+_equalAlterPackageStmt(const AlterPackageStmt *a, const AlterPackageStmt *b)
+{
+	COMPARE_NODE_FIELD(pkgname);
+	COMPARE_SCALAR_FIELD(alter_flag);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_NODE_FIELD(parameters);
+
+	return true;
+}
+
+static bool
+_equalAccessibleByClause(const AccessibleByClause *a,
+						const AccessibleByClause *b)
+{
+	COMPARE_NODE_FIELD(accessors);
+
+	return true;
+}
+
+static bool
+_equalAccessorItem(const AccessorItem *a, const AccessorItem *b)
+{
+	COMPARE_NODE_FIELD(unitname);
+	COMPARE_SCALAR_FIELD(unitkind);
+
+	return true;
+}
+
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 static bool
 _equalDoStmt(const DoStmt *a, const DoStmt *b)
@@ -3544,6 +3604,23 @@ equal(const void *a, const void *b)
 			retval = _equalCompileFunctionStmt(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-PROC */
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case T_CreatePackageStmt:
+			retval = _equalCreatePackageStmt(a, b);
+			break;
+		case T_CreatePackageBodyStmt:
+			retval = _equalCreatePackageBodyStmt(a, b);
+			break;
+		case T_AlterPackageStmt:
+			retval = _equalAlterPackageStmt(a, b);
+			break;
+		case T_AccessibleByClause:
+			retval = _equalAccessibleByClause(a, b);
+			break;
+		case T_AccessorItem:
+			retval = _equalAccessorItem(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		case T_DoStmt:
 			retval = _equalDoStmt(a, b);
 			break;
