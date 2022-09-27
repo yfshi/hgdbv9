@@ -2713,9 +2713,9 @@ CreateCommandTag(Node *parsetree)
 
 /* Begin - ReqID:SRS-SQL-PROC */
 		case T_CompileFunctionStmt:
-			if (((CompileFunctionStmt *) parsetree)->is_procedure)
+			if (((CompileFunctionStmt *) parsetree)->objtype == OBJECT_PROCEDURE)
 				tag = CMDTAG_ALTER_PROCEDURE;
-			else
+			else if (((CompileFunctionStmt *) parsetree)->objtype == OBJECT_FUNCTION)
 				tag = CMDTAG_ALTER_FUNCTION;
 			break;
 /* End - ReqID:SRS-SQL-PROC */

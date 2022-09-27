@@ -299,7 +299,7 @@ extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-extern PGDLLIMPORT char	*nls_length_semantics;
+extern PGDLLIMPORT int	nls_length_semantics;	/* BUG#Z091 */
 extern PGDLLIMPORT char *nls_date_format;
 extern PGDLLIMPORT char *nls_timestamp_format;
 extern PGDLLIMPORT char *nls_timestamp_tz_format;

@@ -1484,11 +1484,13 @@ _equalAlterFunctionStmt(const AlterFunctionStmt *a, const AlterFunctionStmt *b)
 static bool
 _equalCompileFunctionStmt(const CompileFunctionStmt *a, const CompileFunctionStmt *b)
 {
-	COMPARE_NODE_FIELD(funcname);
+	/* Begin - BUG#Z106 */
+	COMPARE_SCALAR_FIELD(objtype);
+	COMPARE_NODE_FIELD(func);
+	/* End - BUG#Z106 */
 	COMPARE_SCALAR_FIELD(is_compile);
 	COMPARE_SCALAR_FIELD(editable);
 	COMPARE_NODE_FIELD(parameters);
-	COMPARE_SCALAR_FIELD(is_procedure);
 
 	return true;
 }

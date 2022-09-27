@@ -46,7 +46,8 @@ REGRESS = \
 	ora_datetime_datatype_functions \
 	ora_misc_functions \
 	ora_insert_alias \
-	ora_merge
+	ora_merge \
+	datatype_and_func_bugs
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

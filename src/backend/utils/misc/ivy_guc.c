@@ -24,7 +24,7 @@ bool			enable_case_switch = true;
 /* END - case sensitive indentify */
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-char	   *nls_length_semantics = NULL;
+int			nls_length_semantics = NLS_LENGTH_BYTE;	/* BUG#Z091 */
 char	   *nls_date_format = "";
 char	   *nls_timestamp_format = "";
 char	   *nls_timestamp_tz_format = "";
@@ -77,11 +77,19 @@ static const struct config_enum_entry case_conversion_mode[] = {
 	{NULL, 0, false}
 };
 /* END - case sensitive indentify */
+
+/* Begin - BUG#Z091 */
+static const struct config_enum_entry nls_length_options[] = {
+	{"byte", NLS_LENGTH_BYTE, false},
+	{"char", NLS_LENGTH_CHAR, false},
+	{NULL, 0, false}
+};
+/* End - BUG#Z091 */
 #endif
 
 #ifdef IVY_GUC_FUNC_DECLARE
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-static bool check_nls_length_semantics(char **newval, void **extra, GucSource source);
+static bool check_nls_length_semantics(int *newval, void **extra, GucSource source);	/* BUG#Z091 */
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 static bool check_compatible_mode(int *newval, void **extra, GucSource source);
 static bool check_database_mode(int *newval, void **extra, GucSource source);
@@ -206,17 +214,6 @@ static struct config_string Ivy_ConfigureNamesString[] =
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	{
-		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Compatible Oracle NLS parameter for charater data type."),
-			gettext_noop("Valid values are CHAR, BYTE."),
-			GUC_IS_NAME
-		},
-		&nls_length_semantics,
-		"byte",
-		check_nls_length_semantics, NULL, NULL
-	},
-
-	{
 		{"nls_date_format", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle NLS parameter for date type."),
 			NULL
@@ -311,6 +308,18 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		NULL,NULL,NULL
 	},
 	/* END - case sensitive indentify */
+
+	/* Begin - BUG#Z091 */
+	{
+		{"nls_length_semantics", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Set the length semantics of the character datatype."),
+			NULL
+		},
+		&nls_length_semantics,
+		NLS_LENGTH_BYTE, nls_length_options,
+		check_nls_length_semantics, NULL, NULL
+	},
+	/* End - BUG#Z091 */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -322,15 +331,24 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 
 #ifdef IVY_GUC_FUNC_DEFINE
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - BUG#Z091 */
+/*
+ * When the user initializes a PG-native cluster (-m pg), 
+ * this GUC variable is meaningless, any attempt to use 
+ * this GUC variable should throw a reasonable warning ,
+ * perhaps a warning message is enough, since the error 
+ * termination transaction, which is probably not what you want.
+ */
 static bool
-check_nls_length_semantics(char **newval, void **extra, GucSource source)
+check_nls_length_semantics(int *newval, void **extra, GucSource source)
 {
-	if (newval == NULL
-			|| (newval != NULL && pg_strcasecmp(*newval, "CHAR")  && pg_strcasecmp(*newval, "BYTE")))
-		return false;
-
+	if (IsUnderPostmaster && DB_PG == database_mode)
+		ereport(WARNING,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Do not use this GUC variable in the current cluster (PG).")));
 	return true;
 }
+/* End - BUG#Z091 */
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 static bool

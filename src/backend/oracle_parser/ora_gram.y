@@ -8128,9 +8128,11 @@ func_args_with_defaults:
 /*
  * Oracle cannot create a function without parameters with a pair 
  * of parentheses, otherwise a compile error will be issued.
+ * BUG#Z104: IvorySQL create functions without parameters allow parentheses.
  */
 opt_ora_func_args_with_defaults:
 		'(' func_args_with_defaults_list ')'		{ $$ = $2; }
+		| '(' ')'									{ $$ = NIL; }	/* BUG#Z104 */
 		| /*EMPTY*/									{ $$ = NIL; }
 		;
 
@@ -8669,11 +8671,13 @@ AlterFunctionStmt:
 				{
 					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
 
-					stmt->funcname = $3->objname;
+					/* Begin - BUG#Z106 */
+					stmt->func = $3;
+					stmt->objtype = OBJECT_FUNCTION;
+					/* End - BUG#Z106 */
 					stmt->is_compile = false;
 					stmt->editable = $4;
 					stmt->parameters = NIL;
-					stmt->is_procedure = false;
 
 					$$ = (Node *) stmt;
 				}
@@ -8681,10 +8685,12 @@ AlterFunctionStmt:
 				{
 					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
 
-					stmt->funcname = $3->objname;
+					/* Begin - BUG#Z106 */
+					stmt->func = $3;
+					stmt->objtype = OBJECT_FUNCTION;
+					/* End - BUG#Z106 */
 					stmt->is_compile = true;
 					stmt->parameters = $6;
-					stmt->is_procedure = false;
 
 					$$ = (Node *) stmt;
 				}
@@ -8692,11 +8698,13 @@ AlterFunctionStmt:
 				{
 					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
 
-					stmt->funcname = $3->objname;
+					/* Begin - BUG#Z106 */
+					stmt->func = $3;
+					stmt->objtype = OBJECT_PROCEDURE;
+					/* End - BUG#Z106 */
 					stmt->is_compile = false;
 					stmt->editable = $4;
 					stmt->parameters = NIL;
-					stmt->is_procedure = true;
 
 					$$ = (Node *) stmt;
 				}
@@ -8704,10 +8712,12 @@ AlterFunctionStmt:
 				{
 					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
 
-					stmt->funcname = $3->objname;
+					/* Begin - BUG#Z106 */
+					stmt->func = $3;
+					stmt->objtype = OBJECT_PROCEDURE;
+					/* End - BUG#Z106 */
 					stmt->is_compile = true;
 					stmt->parameters = $6;
-					stmt->is_procedure = true;
 
 					$$ = (Node *) stmt;
 				}
@@ -14039,14 +14049,14 @@ CharacterWithLength:  character '(' Iconst ')'
 					{
 						if (strcmp($1, "bpchar"))
 						{
-							if (!strcmp(nls_length_semantics, "char"))
+							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oravarcharchar";
 							else
 								$1 = "oravarcharbyte";
 						}
 						else 
 						{
-							if (!strcmp(nls_length_semantics, "char"))
+							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oracharchar";
 							else
 								$1 = "oracharbyte";
@@ -14073,14 +14083,14 @@ CharacterWithoutLength:	 character
 					{
 						if (!strcmp($1, "bpchar"))
 						{
-							if (!strcmp(nls_length_semantics, "char"))
+							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oracharchar";
 							else
 								$1 = "oracharbyte";
 						}
 						else
 						{
-							if (!strcmp(nls_length_semantics, "char"))
+							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oravarcharchar";
 							else
 								$1 = "oravarcharbyte";
