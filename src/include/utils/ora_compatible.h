@@ -40,5 +40,13 @@ typedef enum CaseSwitchMode
 }CaseSwitchMode;
 /* END - case sensitive indentify */
 
+/* Begin - BUG#Z091 */
+typedef enum
+{
+	NLS_LENGTH_BYTE,
+	NLS_LENGTH_CHAR
+} NlsLengthSemantics;
+/* End - BUG#Z091 */
+
 #endif							/* ORA_COMPATIBLE_H */
 

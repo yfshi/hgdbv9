@@ -1183,7 +1183,7 @@ dsinterval_in(PG_FUNCTION_ARGS)
 	struct pg_tm tt,
 			   *tm = &tt;
 	int			dtype;
-	int			nf;
+	int			nf = 0;	/* BUG#Z040 */
 	int			range;
 	int			dterr;
 	char	   *field[MAXDATEFIELDS];
@@ -1243,7 +1243,7 @@ dsinterval_in(PG_FUNCTION_ARGS)
 	 * interval'1 +1:1:1' is error in oracle db. (istz == 1 && ftype[0] != DTK_TZ)
 	 * Only leading field can specify '-' or '+'
 	 */
-	 if (nf > 1)
+	 if (nf > 1 && dterr == 0)	/* BUG#Z040 */
 	 {
 		 int	i;
 		 int	istz = 0;

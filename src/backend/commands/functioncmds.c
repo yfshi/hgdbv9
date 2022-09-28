@@ -1415,14 +1415,14 @@ CompileFunction(CompileFunctionStmt *stmt)
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
 
-	funcOid = LookupFuncOnlyByName(stmt->funcname, false, stmt->is_procedure);
+	funcOid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);	/* BUG#Z106 */
 
 	tup = SearchSysCacheCopy1(PROCOID, ObjectIdGetDatum(funcOid));
 	if (!HeapTupleIsValid(tup)) /* should not happen */
 	{
-		if (stmt->is_procedure)
+		if (stmt->objtype == OBJECT_PROCEDURE) /* BUG#Z106 */
 			elog(ERROR, "cache lookup failed for procedure %u", funcOid);
-		else
+		else if (stmt->objtype == OBJECT_FUNCTION) /* BUG#Z106 */
 			elog(ERROR, "cache lookup failed for function %u", funcOid);
 	}
 	procForm = (Form_pg_proc) GETSTRUCT(tup);
@@ -1437,7 +1437,7 @@ CompileFunction(CompileFunctionStmt *stmt)
 
 	/*
 	 * alter editable|noneditionable, we only support grammer
-	 * we only compile plsql function
+	 * we only compile plisql function
 	 */
 	if (!stmt->is_compile || strcmp(NameStr(langForm->lanname), "plisql"))
 	{

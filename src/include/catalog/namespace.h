@@ -104,9 +104,6 @@ extern FuncCandidateList FuncnameGetCandidates(List *names,
 											   bool include_out_arguments,
 											   bool missing_ok);
 
-/* Begin - ReqID:SRS-SQL-PROC */
-extern FuncCandidateList FuncnameGetCandidatesOnlyByName(List *names, bool noError);
-/* End - ReqID:SRS-SQL-PROC */
 
 extern bool FunctionIsVisible(Oid funcid);
 
