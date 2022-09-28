@@ -17569,19 +17569,19 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	if (minv)
 		appendPQExpBuffer(query, "    MINVALUE %s\n", minv);
-	else if (!is_ora_identity)	/* ReqID:SRS-SQL-IDENTCOL */
+	else if (!is_ora_identity && db_mode == DB_PG)	/* ReqID:SRS-SQL-IDENTCOL */
 		appendPQExpBufferStr(query, "    NO MINVALUE\n");
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
-	else
+	else if (db_mode == DB_ORACLE)
 		appendPQExpBufferStr(query, "    NOMINVALUE\n");
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 
 	if (maxv)
 		appendPQExpBuffer(query, "    MAXVALUE %s\n", maxv);
-	else if (!is_ora_identity)	/* ReqID:SRS-SQL-IDENTCOL */
+	else if (!is_ora_identity && db_mode == DB_PG)	/* ReqID:SRS-SQL-IDENTCOL */
 		appendPQExpBufferStr(query, "    NO MAXVALUE\n");
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
-	else
+	else if (db_mode == DB_ORACLE)
 		appendPQExpBufferStr(query, "    NOMAXVALUE\n");
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 

@@ -46,6 +46,10 @@
 #include "utils/resowner.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
+/* Begin - BUG#Z026 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG#Z026 */
 
 
 /*
@@ -658,6 +662,11 @@ nextval_internal(Oid relid, bool check_permissions)
 	last = next = result = seq->last_value;
 	fetch = cache;
 	log = seq->log_cnt;
+
+	/* Begin - BUG#Z026 */
+	if(result > maxv && compatible_db == ORA_PARSER)
+		elog(ERROR, "sequence %s.nextval exceeds MAXVALUE and cannot be instantiated",get_rel_name(relid));
+	/* End - BUG#Z026 */
 
 	if (!seq->is_called)
 	{
@@ -1570,7 +1579,17 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	/* START WITH */
 	if (start_value != NULL)
 	{
-		seqform->seqstart = defGetInt64(start_value);
+		/* Begin - BUG#Z024 */
+		if (compatible_db == ORA_PARSER)
+		{
+			seqform->seqstart = defGetNumeric(start_value);
+			seqdataform->log_cnt = 0;
+			seqdataform->last_value = seqform->seqstart;
+			seqdataform->is_called = false;
+		}
+		else
+		/* End - BUG#Z024 */
+			seqform->seqstart = defGetInt64(start_value);
 	}
 	else if (isInit)
 	{
@@ -1593,7 +1612,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("START value (%s) cannot be less than MINVALUE (%s)",
 						bufs, bufm)));
 	}
-	if (seqform->seqstart > seqform->seqmax)
+	if (seqform->seqstart > seqform->seqmax && compatible_db == PG_PARSER)	/* BUG#Z026 */
 	{
 		char		bufs[100],
 					bufm[100];
@@ -1635,7 +1654,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("RESTART value (%s) cannot be less than MINVALUE (%s)",
 						bufs, bufm)));
 	}
-	if (seqdataform->last_value > seqform->seqmax)
+	if (seqdataform->last_value > seqform->seqmax && compatible_db == PG_PARSER)	/* BUG#Z026 */
 	{
 		char		bufs[100],
 					bufm[100];
