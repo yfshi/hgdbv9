@@ -49,7 +49,8 @@ REGRESS = \
 	ora_insert_alias \
 	ora_merge \
 	datatype_and_func_bugs \
-	ora_sysview
+	ora_sysview \
+	ora_like_operator
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
