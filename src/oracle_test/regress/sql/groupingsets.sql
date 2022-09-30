@@ -2,6 +2,7 @@
 -- grouping sets
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 -- test data sources
 
 create temp view gstest1(a,b,v)
@@ -557,3 +558,4 @@ group by rollup(a, b), rollup(a, c)
 order by a, b, c;
 
 -- end
+reset ivorysql.enable_emptystring_to_null;

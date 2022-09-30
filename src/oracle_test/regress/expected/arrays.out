@@ -1,6 +1,7 @@
 --
 -- ARRAYS
 --
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE arrtest (
 	a 			int2[],
 	b 			int4[][][],
@@ -2425,3 +2426,4 @@ SELECT trim_array(ARRAY[1, 2, 3], -1); -- fail
 ERROR:  number of elements to trim must be between 0 and 3
 SELECT trim_array(ARRAY[1, 2, 3], 10); -- fail
 ERROR:  number of elements to trim must be between 0 and 3
+reset ivorysql.enable_emptystring_to_null;

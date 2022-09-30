@@ -1,6 +1,7 @@
 --
 -- INT2
 --
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE INT2_TBL(f1 int2);
 INSERT INTO INT2_TBL(f1) VALUES ('0   ');
 INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
@@ -306,3 +307,4 @@ FROM (VALUES (-2.5::numeric),
   2.5 |          3
 (7 rows)
 
+reset ivorysql.enable_emptystring_to_null;

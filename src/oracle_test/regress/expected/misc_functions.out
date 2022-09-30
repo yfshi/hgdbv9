@@ -1,6 +1,7 @@
 --
 -- num_nulls()
 --
+set ivorysql.enable_emptystring_to_null to false;
 SELECT num_nonnulls(NULL);
  num_nonnulls 
 --------------
@@ -276,3 +277,4 @@ SELECT * FROM tenk1 a JOIN my_gen_series(1,10) g ON a.unique1 = g;
          Index Cond: (unique1 = g.g)
 (4 rows)
 
+reset ivorysql.enable_emptystring_to_null;

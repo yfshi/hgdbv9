@@ -74,7 +74,7 @@ if (sqlca.sqlcode < 0) exit (1);}
 #line 31 "char_array.pgc"
 
 
-  { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "create table strdbase ( strval varchar ( 10 ) )", ECPGt_EOIT, ECPGt_EORT);
+  { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "set IVORYSQL . enable_emptystring_to_null to false", ECPGt_EOIT, ECPGt_EORT);
 #line 33 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
@@ -82,77 +82,86 @@ if (sqlca.sqlwarn[0] == 'W') warn ( );
 
 if (sqlca.sqlcode < 0) exit (1);}
 #line 33 "char_array.pgc"
+ /* BUG#Z031 */
+  { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "create table strdbase ( strval varchar ( 10 ) )", ECPGt_EOIT, ECPGt_EORT);
+#line 34 "char_array.pgc"
+
+if (sqlca.sqlwarn[0] == 'W') warn ( );
+#line 34 "char_array.pgc"
+
+if (sqlca.sqlcode < 0) exit (1);}
+#line 34 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( '' )", ECPGt_EOIT, ECPGt_EORT);
-#line 34 "char_array.pgc"
+#line 35 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 34 "char_array.pgc"
+#line 35 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 34 "char_array.pgc"
+#line 35 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( 'AB' )", ECPGt_EOIT, ECPGt_EORT);
-#line 35 "char_array.pgc"
+#line 36 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 35 "char_array.pgc"
+#line 36 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 35 "char_array.pgc"
+#line 36 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( 'ABCD' )", ECPGt_EOIT, ECPGt_EORT);
-#line 36 "char_array.pgc"
+#line 37 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 36 "char_array.pgc"
+#line 37 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 36 "char_array.pgc"
+#line 37 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( 'ABCDE' )", ECPGt_EOIT, ECPGt_EORT);
-#line 37 "char_array.pgc"
+#line 38 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 37 "char_array.pgc"
+#line 38 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 37 "char_array.pgc"
+#line 38 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( 'ABCDEF' )", ECPGt_EOIT, ECPGt_EORT);
-#line 38 "char_array.pgc"
+#line 39 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 38 "char_array.pgc"
+#line 39 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 38 "char_array.pgc"
+#line 39 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "insert into strdbase values ( 'ABCDEFGHIJ' )", ECPGt_EOIT, ECPGt_EORT);
-#line 39 "char_array.pgc"
+#line 40 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 39 "char_array.pgc"
+#line 40 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 39 "char_array.pgc"
+#line 40 "char_array.pgc"
 
 
   /* declare C cursor for select strval , strval from strdbase */
-#line 41 "char_array.pgc"
+#line 42 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "declare C cursor for select strval , strval from strdbase", ECPGt_EOIT, ECPGt_EORT);
-#line 42 "char_array.pgc"
+#line 43 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 42 "char_array.pgc"
+#line 43 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 42 "char_array.pgc"
+#line 43 "char_array.pgc"
 
 
   /* exec sql whenever not found  break ; */
-#line 44 "char_array.pgc"
+#line 45 "char_array.pgc"
 
 
   printf("Full Str.  :  Short  Ind.\n");
@@ -164,59 +173,68 @@ if (sqlca.sqlcode < 0) exit (1);}
 	ECPGt_short,&(bigstr_ind),(long)1,(long)1,sizeof(short), 
 	ECPGt_char,(shortstr),(long)5,(long)1,(5)*sizeof(char), 
 	ECPGt_short,&(shstr_ind),(long)1,(long)1,sizeof(short), ECPGt_EORT);
-#line 50 "char_array.pgc"
+#line 51 "char_array.pgc"
 
 if (sqlca.sqlcode == ECPG_NOT_FOUND) break;
-#line 50 "char_array.pgc"
+#line 51 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 50 "char_array.pgc"
+#line 51 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 50 "char_array.pgc"
+#line 51 "char_array.pgc"
 
     printf("\"%s\": \"%s\"  %d\n", bigstr, shortstr, shstr_ind);
   }
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "close C", ECPGt_EOIT, ECPGt_EORT);
-#line 54 "char_array.pgc"
+#line 55 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 54 "char_array.pgc"
+#line 55 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 54 "char_array.pgc"
+#line 55 "char_array.pgc"
 
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "drop table strdbase", ECPGt_EOIT, ECPGt_EORT);
-#line 55 "char_array.pgc"
+#line 56 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 55 "char_array.pgc"
+#line 56 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 55 "char_array.pgc"
+#line 56 "char_array.pgc"
 
 
   printf("\nGOOD-BYE!!\n\n");
 
-  { ECPGtrans(__LINE__, NULL, "commit work");
-#line 59 "char_array.pgc"
+  { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "reset ivorysql . enable_emptystring_to_null", ECPGt_EOIT, ECPGt_EORT);
+#line 60 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 59 "char_array.pgc"
+#line 60 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 59 "char_array.pgc"
+#line 60 "char_array.pgc"
+	/* BUG#Z031 */
+  { ECPGtrans(__LINE__, NULL, "commit work");
+#line 61 "char_array.pgc"
+
+if (sqlca.sqlwarn[0] == 'W') warn ( );
+#line 61 "char_array.pgc"
+
+if (sqlca.sqlcode < 0) exit (1);}
+#line 61 "char_array.pgc"
 
 
   { ECPGdisconnect(__LINE__, "ALL");
-#line 61 "char_array.pgc"
+#line 63 "char_array.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') warn ( );
-#line 61 "char_array.pgc"
+#line 63 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}
-#line 61 "char_array.pgc"
+#line 63 "char_array.pgc"
 
 
   return 0;

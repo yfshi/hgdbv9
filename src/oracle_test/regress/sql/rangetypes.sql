@@ -1,5 +1,6 @@
 -- Tests for range data types.
 
+set ivorysql.enable_emptystring_to_null to false;
 create type textrange as range (subtype=text, collation="C");
 
 --
@@ -633,3 +634,4 @@ create function inoutparam_fail(inout i anyelement, out r anyrange)
 create function table_fail(i anyelement) returns table(i anyelement, r anyrange)
   as $$ select $1, '[1,10]' $$ language sql;
 /
+reset ivorysql.enable_emptystring_to_null;

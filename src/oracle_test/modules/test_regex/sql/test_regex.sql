@@ -5,6 +5,7 @@
 -- Most commented lines below are copied from reg.test.  Each
 -- test case is followed by an equivalent test using test_regex().
 
+set ivorysql.enable_emptystring_to_null to false;
 create extension test_regex;
 
 set standard_conforming_strings = on;
@@ -1742,3 +1743,4 @@ select * from test_regex(repeat('x*y*z*', 200), 'x', 'N');
 --     regexp {(\Y)+} foo
 -- } 1
 select * from test_regex('(\Y)+', 'foo', 'LNP');
+reset ivorysql.enable_emptystring_to_null;

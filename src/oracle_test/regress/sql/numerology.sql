@@ -3,6 +3,7 @@
 -- Test various combinations of numeric types and functions.
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 --
 -- Test implicit type conversions
 -- This fails for Postgres v6.1 (and earlier?)
@@ -96,3 +97,4 @@ DROP TABLE TEMP_INT4;
 DROP TABLE TEMP_FLOAT;
 
 DROP TABLE TEMP_GROUP;
+reset ivorysql.enable_emptystring_to_null;

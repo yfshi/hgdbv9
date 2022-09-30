@@ -2,6 +2,7 @@
 -- Test foreign-data wrapper and server management.
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 -- Clean up in case a prior regression run failed
 
 -- Suppress NOTICE messages when roles don't exist
@@ -862,3 +863,4 @@ DROP ROLE regress_foreign_data_user;
 SELECT fdwname, fdwhandler, fdwvalidator, fdwoptions FROM pg_foreign_data_wrapper;
 SELECT srvname, srvoptions FROM pg_foreign_server;
 SELECT * FROM pg_user_mapping;
+reset ivorysql.enable_emptystring_to_null;

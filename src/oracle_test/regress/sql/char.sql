@@ -4,7 +4,7 @@
 
 -- fixed-length by value
 -- internally passed by value if <= 4 bytes in storage
-
+set ivorysql.enable_emptystring_to_null to false;
 SELECT char 'c' = char 'c' AS true;
 
 --
@@ -73,3 +73,4 @@ INSERT INTO CHAR_TBL (f1) VALUES ('abcde');
 INSERT INTO CHAR_TBL (f1) VALUES ('abcd    ');
 
 SELECT * FROM CHAR_TBL;
+reset ivorysql.enable_emptystring_to_null;
