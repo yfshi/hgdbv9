@@ -196,3 +196,19 @@ ERROR:  missing BY keyword
 create table other_stx2(userid number generated always as identity start  2,uname varchar2(20));
 ERROR:  missing WITH keyword
 --End - BUG#Z030
+--Begin - BUG#Z028
+create table other_start_max1(userid number generated always as identity start with 9999999999999999999999999999,uname varchar2(20));
+WARNING:  Start value is out of range for data type bigint
+create table other_max1(userid number generated always as identity  maxvalue 9999999999999999999999999999,uname varchar2(20));
+WARNING:  Maxvalue is out of range for data type bigint
+DROP TABLE other_start_max1;
+DROP TABLE other_max1;
+--End - BUG#Z028
+--Begin - BUG#Z029
+create table other_max2(userid number(8) generated always as identity  start with 99999999 increment by 2,uname varchar2(20));
+insert into other_max2 (uname) values ('xiaodong');
+insert into other_max2 (uname) values ('xiaodong');    --error
+ERROR:  new row for relation "other_max2" violates check constraint "other_max2_userid_check"
+DETAIL:  Failing row contains (100000001, xiaodong).
+DROP TABLE other_max2;
+--End - BUG#Z029
