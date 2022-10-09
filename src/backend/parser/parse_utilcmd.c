@@ -67,6 +67,7 @@
 #include "utils/ruleutils.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include <math.h>      /* BUG#Z029 */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -714,6 +715,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 				{
 					Type		ctype;
 					Oid			typeOid;
+					int32		typmod;		/* BUG#Z029 */
 
 					if (cxt->ofType)
 						ereport(ERROR,
@@ -724,7 +726,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("identity columns are not supported on partitions")));
 
-					ctype = typenameType(cxt->pstate, column->typeName, NULL);
+					ctype = typenameType(cxt->pstate, column->typeName, &typmod);		/* BUG#Z029 */
 					typeOid = ((Form_pg_type) GETSTRUCT(ctype))->oid;
 
 					/* Begin - ReqID:SRS-SQL-IDENTCOL */
@@ -771,6 +773,35 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 					else
 						column->is_not_null = true;
 					/* End - ReqID:SRS-SQL-IDENTCOL */
+
+					/* Being - BUG#Z029 */
+					/*
+					 *	Add check constraint to identity column of type number
+					 */
+					if (typeOid == NUMBEROID && typmod != -1)
+					{
+						int		precision;
+						A_Const	   *m;
+						ColumnRef  *c;
+						Constraint *n;
+
+						precision = (typmod >> 16) & 0xfff;
+						m = makeNode(A_Const);
+						m->val.type = T_Integer;
+						m->val.val.ival = pow(10, precision);
+						m->location = -1;
+
+						c = makeNode(ColumnRef);
+						c->fields = list_make1(makeString(column->colname));
+						c->location = 0;
+
+						n = makeNode(Constraint);
+						n->contype = CONSTR_CHECK;
+						n->raw_expr = (Node *) makeSimpleA_Expr(AEXPR_OP, "<", (Node *)c, (Node *)m, -1);
+
+						cxt->ckconstraints = lappend(cxt->ckconstraints, n);
+					}
+					/* End - BUG#Z029 */
 					saw_nullable = true;
 					break;
 				}
