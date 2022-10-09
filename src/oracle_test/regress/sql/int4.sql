@@ -2,6 +2,7 @@
 -- INT4
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE INT4_TBL(f1 int4);
 
 INSERT INTO INT4_TBL(f1) VALUES ('   0  ');
@@ -176,3 +177,4 @@ FROM (VALUES (0::int4, 0::int4),
 
 SELECT lcm((-2147483648)::int4, 1::int4); -- overflow
 SELECT lcm(2147483647::int4, 2147483646::int4); -- overflow
+reset ivorysql.enable_emptystring_to_null;

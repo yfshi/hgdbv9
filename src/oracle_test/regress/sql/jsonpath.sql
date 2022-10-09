@@ -1,3 +1,4 @@
+set ivorysql.enable_emptystring_to_null to false;
 --jsonpath io
 
 select ''::jsonpath;
@@ -179,3 +180,4 @@ select '1..e'::jsonpath;
 select '1..e3'::jsonpath;
 select '(1.).e'::jsonpath;
 select '(1.).e3'::jsonpath;
+reset ivorysql.enable_emptystring_to_null;

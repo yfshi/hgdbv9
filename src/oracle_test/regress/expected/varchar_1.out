@@ -1,6 +1,7 @@
 --
 -- VARCHAR
 --
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE VARCHAR_TBL(f1 varchar(1));
 INSERT INTO VARCHAR_TBL (f1) VALUES ('a');
 INSERT INTO VARCHAR_TBL (f1) VALUES ('A');
@@ -106,3 +107,4 @@ SELECT * FROM VARCHAR_TBL;
  abcd
 (3 rows)
 
+reset ivorysql.enable_emptystring_to_null;

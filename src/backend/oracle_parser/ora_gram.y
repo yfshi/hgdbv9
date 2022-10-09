@@ -1715,6 +1715,10 @@ var_value:	opt_boolean_or_string
 				{ $$ = makeStringConst($1, @1); }
 			| NumericOnly
 				{ $$ = makeAConst($1, @1); }
+			/* Begin - BUG#Z031 */
+			| NULL_P
+				{ $$ = makeStringConst("", @1); }
+			/* End - BUG#Z031 */
 		;
 
 iso_level:	READ UNCOMMITTED						{ $$ = "read uncommitted"; }

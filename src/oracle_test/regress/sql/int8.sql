@@ -2,6 +2,7 @@
 -- INT8
 -- Test int8 64-bit integers.
 --
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE INT8_TBL(q1 int8, q2 int8);
 
 INSERT INTO INT8_TBL VALUES('  123   ','  456');
@@ -250,3 +251,4 @@ FROM (VALUES (0::int8, 0::int8),
 
 SELECT lcm((-9223372036854775808)::int8, 1::int8); -- overflow
 SELECT lcm(9223372036854775807::int8, 9223372036854775806::int8); -- overflow
+reset ivorysql.enable_emptystring_to_null;

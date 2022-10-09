@@ -1,3 +1,4 @@
+set ivorysql.enable_emptystring_to_null to false;
 -- Strings.
 SELECT '""'::jsonb;				-- OK.
 SELECT $$''$$::jsonb;			-- ERROR, single quotes are not allowed
@@ -1482,3 +1483,4 @@ select '12345.0000000000000000000000000000000000000000000005'::jsonb::float8;
 select '12345.0000000000000000000000000000000000000000000005'::jsonb::int2;
 select '12345.0000000000000000000000000000000000000000000005'::jsonb::int4;
 select '12345.0000000000000000000000000000000000000000000005'::jsonb::int8;
+reset ivorysql.enable_emptystring_to_null;

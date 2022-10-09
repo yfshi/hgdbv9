@@ -2,6 +2,7 @@
 -- INT2
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE INT2_TBL(f1 int2);
 
 INSERT INTO INT2_TBL(f1) VALUES ('0   ');
@@ -112,3 +113,4 @@ FROM (VALUES (-2.5::numeric),
              (0.5::numeric),
              (1.5::numeric),
              (2.5::numeric)) t(x);
+reset ivorysql.enable_emptystring_to_null;

@@ -1,6 +1,7 @@
 --
 -- Test for facilities of security label
 --
+set ivorysql.enable_emptystring_to_null to false;
 CREATE EXTENSION dummy_seclabel;
 
 -- initial setups
@@ -115,3 +116,4 @@ DROP PUBLICATION dummy_pub;
 
 DROP ROLE regress_dummy_seclabel_user1;
 DROP ROLE regress_dummy_seclabel_user2;
+reset ivorysql.enable_emptystring_to_null;

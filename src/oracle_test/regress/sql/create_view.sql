@@ -4,6 +4,7 @@
 --	(this also tests the query rewrite system)
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 CREATE VIEW street AS
    SELECT r.name, r.thepath, c.cname AS cname
    FROM ONLY road r, real_city c
@@ -689,3 +690,4 @@ select pg_get_viewdef('tt26v', true);
 -- clean up all the random objects we made above
 DROP SCHEMA temp_view_test CASCADE;
 DROP SCHEMA testviewschm2 CASCADE;
+reset ivorysql.enable_emptystring_to_null;

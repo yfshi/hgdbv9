@@ -2,6 +2,7 @@
 -- ARRAYS
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 CREATE TABLE arrtest (
 	a 			int2[],
 	b 			int4[][][],
@@ -739,3 +740,4 @@ FROM
 
 SELECT trim_array(ARRAY[1, 2, 3], -1); -- fail
 SELECT trim_array(ARRAY[1, 2, 3], 10); -- fail
+reset ivorysql.enable_emptystring_to_null;

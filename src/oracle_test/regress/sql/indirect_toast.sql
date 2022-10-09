@@ -2,6 +2,7 @@
 -- Tests for external toast datums
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 -- Other compression algorithms may cause the compressed data to be stored
 -- inline.  pglz guarantees that the data is externalized, so stick to it.
 SET default_toast_compression = 'pglz';
@@ -70,3 +71,4 @@ DROP TABLE indtoasttest;
 DROP FUNCTION update_using_indirect();
 
 RESET default_toast_compression;
+reset ivorysql.enable_emptystring_to_null;

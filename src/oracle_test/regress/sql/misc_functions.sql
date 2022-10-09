@@ -2,6 +2,7 @@
 -- num_nulls()
 --
 
+set ivorysql.enable_emptystring_to_null to false;
 SELECT num_nonnulls(NULL);
 SELECT num_nonnulls('1');
 SELECT num_nonnulls(NULL::text);
@@ -102,3 +103,4 @@ SELECT * FROM tenk1 a JOIN my_gen_series(1,1000) g ON a.unique1 = g;
 
 EXPLAIN (COSTS OFF)
 SELECT * FROM tenk1 a JOIN my_gen_series(1,10) g ON a.unique1 = g;
+reset ivorysql.enable_emptystring_to_null;
