@@ -142,3 +142,10 @@ test: ora_plisql
 # # ----------
 test: qsyntax
 # End - ReqID:SRS-SQL-ESCAPECHAR
+
+# Begin - BUG#Z031
+# ----------
+# compatible oracle emptystring_to_null feature
+# ----------
+test: emptystring_to_null
+# End - BUG#Z031
