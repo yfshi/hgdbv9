@@ -414,6 +414,10 @@ decimalfail		{digit}+\.\.
 real			({integer}|{decimal})[Ee][-+]?{digit}+
 realfail1		({integer}|{decimal})[Ee]
 realfail2		({integer}|{decimal})[Ee][-+]
+/* Begin - BUG:Z093 */
+binary_float 	(({integer}|{decimal}|{real})[Ff])
+binary_double 	(({integer}|{decimal}|{real})[Dd])
+/* End - BUG:Z093 */
 
 param			\${integer}
 
@@ -1187,6 +1191,19 @@ other			.
 					return process_integer_literal(yytext, yylval);
 				}
 
+	/* Begin - BUG:Z093 */
+{binary_float}	{
+					SET_YYLLOC();
+					yylval->str = pnstrdup(yytext, yyleng - 1);
+					return BFCONST;
+				}
+
+{binary_double}	{
+					SET_YYLLOC();
+					yylval->str = pnstrdup(yytext, yyleng - 1);
+					return BDCONST;
+				}
+	/* End - BUG:Z093 */
 
 {identifier}	{
 					int			kwnum;
