@@ -1229,6 +1229,19 @@ dsinterval_in(PG_FUNCTION_ARGS)
 					break;
 			}
 		}
+		/* Begin - BUG:z95, describe: "interval '2 6: 23' day to minute"
+		 * and "interval '2 6:16: 23' day to second" should be support
+		 */
+		else if (*strold == ':' && *(strold + 1) == ' ')
+		{
+			*strsrc++ = *strold++;
+			while (*strold == ' ')
+				strold++;
+
+			if (*strold == '\0')
+				break;
+		}
+		/* End - BUG:z95 */
 		*strsrc++ = *strold++;
 	}
 	*strsrc = *strold;

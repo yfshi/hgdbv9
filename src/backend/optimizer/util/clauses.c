@@ -3101,12 +3101,17 @@ eval_whenexpr1:
 								continue;
 							else if (IsA(caseexpr->arg, CoerceViaIO))
 							{
-								Node *n = (Node *)((CoerceViaIO *) caseexpr->arg)->arg;
+								/* Begin - ReqID:SRS-SQL-SYSFUNC: there deal with decode null value, when the value from
+								 * column.
+								 */
+
+								/*Node *n = (Node *)((CoerceViaIO *) caseexpr->arg)->arg;
 
 								if (IsA(n, Const) && ((Const *) n)->constisnull)
 									continue;
-								else
-									goto eval_whenexpr2;
+								else*/
+								/* End - ReqID:SRS-SQL-SYSFUNC:*/
+								goto eval_whenexpr2;
 							}
 							else
 							{
