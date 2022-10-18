@@ -315,3 +315,264 @@ SELECT FROM_TZ(TIMESTAMP '2000-03-28 08:00:00', '3:00') FROM DUAL;
 --sessiontimezone
 set timezone = 'Asia/Hong_Kong';
 select sessiontimezone() from dual; /* BUG:0000427 */
+
+
+alter session set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+alter session set nls_timestamp_format = 'YYYY-MM-DD HH24:MI:SS.ff';
+/*
+ * round
+ */
+select round(cast('2012-12-12' as date), 'CC') from dual;
+select round(cast('2051-12-12' as date), 'SCC') from dual;
+select round(cast('2050-12-12' as date), 'SYYYY') from dual;
+select round(cast('2050-06-12' as date), 'IYYY') from dual;
+select round(cast('2020-01-1' as date), 'Q') from dual;
+select round(cast('2020-02-15' as date), 'MONTH') from dual;
+select round(cast('2020-02-29' as date), 'WW') from dual;
+select round(cast('2020-03-15' as date), 'IW') from dual;
+select round(cast('2020-02-28' as date), 'W') from dual;
+select round(cast('2020-03-15' as date), 'DDD') from dual;
+select round(cast('2020-06-18' as date), 'DAY') from dual;
+select round(cast('2012-12-12' as sys.oradate), 'CC') from dual;
+select round(cast('2051-12-12' as sys.oradate), 'SCC') from dual;
+select round(cast('2050-12-12' as sys.oradate), 'SYYYY') from dual;
+select round(cast('2050-06-12' as sys.oradate), 'IYYY') from dual;
+select round(cast('2020-01-1' as sys.oradate), 'Q') from dual;
+select round(cast('2020-02-15' as sys.oradate), 'MONTH') from dual;
+select round(cast('2020-02-29' as sys.oradate), 'WW') from dual;
+select round(cast('2020-03-15' as sys.oradate), 'IW') from dual;
+select round(cast('2020-02-28' as sys.oradate), 'W') from dual;
+select round(cast('2020-03-15' as sys.oradate), 'DDD') from dual;
+select round(cast('2012-12-12 12:00:00' as sys.oratimestamp), 'CC') from dual;
+select round(cast('2050-12-12 12:00:00' as sys.oratimestamp), 'SCC') from dual;
+select round(cast('2050-06-12 19:20:21' as sys.oratimestamp), 'SYYYY') from dual;
+select round(cast('2050-06-12 16:40:55' as sys.oratimestamp), 'IYYY') from dual;
+select round(cast('2020-02-16 19:16:12' as sys.oratimestamp), 'Q') from dual;
+select round(cast('2020-09-27 18:30:21' as sys.oratimestamp), 'MONTH') from dual;
+select round(cast('2020-03-15 12:12:19' as sys.oratimestamp), 'WW') from dual;
+select round(cast('2020-02-28 10:00:01' as sys.oratimestamp), 'IW') from dual;
+select round(cast('2020-06-18 13:12:18' as sys.oratimestamp), 'DDD') from dual;
+select round(cast('2020-02-29 14:40:20' as sys.oratimestamp), 'DAY') from dual;
+select round(cast('2020-02-29 11:40:20' as sys.oratimestamp), 'HH') from dual;
+select round(cast('2020-02-29 14:40:20' as sys.oratimestamp), 'MI') from dual;
+select round(cast('2020-02-29 14:40:20' as sys.oratimestamp)) from dual;
+select round(to_timestamp_tz('2012-12-12 12:00:00 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM')) from dual;
+select round(to_timestamp_tz('2012-12-12 12:00:00 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'CC') from dual;
+select round(to_timestamp_tz('2050-12-12 12:00:00 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'SCC') from dual;
+select round(to_timestamp_tz('2051-12-12 12:00:00 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'SCC') from dual;
+select round(to_timestamp_tz('2050-06-12 19:20:21 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'SYYYY') from dual;
+select round(to_timestamp_tz('2050-06-12 16:40:55 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'IYYY') from dual;
+select round(to_timestamp_tz('2020-02-16 19:16:12 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'Q') from dual;
+select round(to_timestamp_tz('2020-09-27 18:30:21 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'MONTH') from dual;
+select round(to_timestamp_tz('2020-03-15 12:12:19 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'WW') from dual;
+select round(to_timestamp_tz('2020-02-28 10:00:01 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'IW') from dual;
+select round(to_timestamp_tz('2020-02-23 12:12:14 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'W') from dual;
+select round(to_timestamp_tz('2020-06-18 13:12:18 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'DDD') from dual;
+select round(to_timestamp_tz('2020-02-29 14:40:20 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'DAY') from dual;
+select round(to_timestamp_tz('2020-02-29 11:40:20 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'HH') from dual;
+select round(to_timestamp_tz('2020-06-18 14:40:20 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'MI') from dual;
+
+/*
+ * trunc
+ */
+select trunc(cast('2050-12-12' as pg_catalog.date), 'SCC') from dual;
+select trunc(cast('2050-06-12' as pg_catalog.date), 'SYYYY') from dual;
+select trunc(cast('2020-02-28' as pg_catalog.date), 'IYYY') from dual;
+select trunc(cast('2020-02-28' as pg_catalog.date), 'Q') from dual;
+select trunc(cast('2020-09-27' as pg_catalog.date), 'MONTH') from dual;
+select trunc(cast('2020-03-15' as pg_catalog.date), 'WW') from dual;
+select trunc(cast('2020-02-28' as pg_catalog.date), 'IW') from dual;
+select trunc(cast('2020-02-23' as pg_catalog.date), 'W') from dual;
+select trunc(cast('2020-06-18' as pg_catalog.date), 'DDD') from dual;
+select trunc(cast('2020-02-29' as pg_catalog.date), 'DAY') from dual;
+select trunc(cast('2050-12-12' as sys.oradate), 'SCC') from dual;
+select trunc(cast('2050-06-12' as sys.oradate), 'SYYYY') from dual;
+select trunc(cast('2020-02-28' as sys.oradate), 'IYYY') from dual;
+select trunc(cast('2020-02-28' as sys.oradate), 'Q') from dual;
+select trunc(cast('2020-09-27' as sys.oradate), 'MONTH') from dual;
+select trunc(cast('2020-03-15' as sys.oradate), 'WW') from dual;
+select trunc(cast('2020-02-28' as sys.oradate), 'IW') from dual;
+select trunc(cast('2020-02-23' as sys.oradate), 'W') from dual;
+select trunc(cast('2020-06-18' as sys.oradate), 'DDD') from dual;
+select trunc(cast('2020-02-29' as sys.oradate), 'DAY') from dual;
+select trunc(cast( '2051-12-12 12:00:00'as oratimestamp), 'SCC') from dual;
+select trunc(cast( '2050-06-12 19:20:21'as oratimestamp), 'SYYYY') from dual;
+select trunc(cast( '2020-02-28 16:40:55'as oratimestamp), 'IYYY') from dual;
+select trunc(cast( '2020-07-28 19:16:12'as oratimestamp), 'Q') from dual;
+select trunc(cast( '2020-09-27 18:30:21'as oratimestamp), 'MONTH') from dual;
+select trunc(cast( '2020-03-15 12:12:19'as oratimestamp), 'WW') from dual;
+select trunc(cast( '2020-02-28 10:00:01'as oratimestamp), 'IW') from dual;
+select trunc(cast( '2020-02-23 12:12:14'as oratimestamp), 'W') from dual;
+select trunc(cast( '2020-06-18 13:12:18'as oratimestamp), 'DDD') from dual;
+select trunc(cast( '2020-02-29 14:40:20'as oratimestamp), 'DAY') from dual;
+select trunc(cast( '2020-02-29 11:40:20'as oratimestamp), 'HH') from dual;
+select trunc(cast( '2020-02-29 18:40:20'as oratimestamp), 'MI') from dual;
+select trunc(to_timestamp_tz('2051-12-12 12:00:00 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'SCC') from dual;
+select trunc(to_timestamp_tz('2050-06-12 19:20:21 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'SYYYY') from dual;
+select trunc(to_timestamp_tz('2020-02-28 16:40:55 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'IYYY') from dual;
+select trunc(to_timestamp_tz('2020-02-28 19:16:12 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'Q') from dual;
+select trunc(to_timestamp_tz('2020-09-27 18:30:21 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'MONTH') from dual;
+select trunc(to_timestamp_tz('2020-03-15 12:12:19 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'WW') from dual;
+select trunc(to_timestamp_tz('2020-02-28 10:00:01 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'IW') from dual;
+select trunc(to_timestamp_tz('2020-02-23 12:12:14 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'W') from dual;
+select trunc(to_timestamp_tz('2020-06-18 13:12:18 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'DDD') from dual;
+select trunc(to_timestamp_tz('2020-02-29 14:40:20 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'DAY') from dual;
+select trunc(to_timestamp_tz('2020-02-29 11:40:20 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'HH') from dual;
+select trunc(to_timestamp_tz('2020-02-29 14:40:50 + 08', 'YYYY-MM-DD HH24:MI:SS TZH:TZM'), 'MI') from dual;
+
+/*
+ * to_date
+ */
+select to_date('50-11-28 17:04:55','RR-MM-dd hh24:mi:ss') from dual;
+select to_date('50-11-28 17:04:55','YY-MM-dd hh24:mi:ss') from dual;
+select to_date('50-11-28','rr-MM-dd ') from dual;
+select to_date('50-11-28 ','YY-MM-dd hh24:mi:ss') from dual;
+select to_date('50-11-28 ','RR-MM-dd hh24:mi:ss') from dual;
+select to_date('50-11-28 ','RR-MM-dd ') from dual;
+select to_date(2454336, 'J') from dual;
+select to_date(2454336, 'j') from dual;
+select to_date('20-11-28','YY-MM-dd hh24:mi:ss') from dual;
+select to_date('20-11-28 10:14:22','YY-MM-dd hh24:mi:ss') from dual;
+select to_date('2022-11-28 17:04:55','RRRR-MM-dd hh24:mi:ss') from dual;
+select to_date('20-11-28 17:04:55','RRRR-MM-dd hh24:mi:ss') from dual;
+select to_date('50-11-28 17:04:55','RRRR-MM-dd hh24:mi:ss') from dual;
+alter session set NLS_DATE_FORMAT='YYYY/MM/DD HH24:MI:SS';
+select to_date('2019/11/22') from dual;
+select to_date('2019/11/27 10:14:22') from dual;
+select to_date('2019/11/22', 'yyyy-mm-dd') from dual;
+reset NLS_DATE_FORMAT;
+--select to_date('120','rr') from dual; --expect:0120-current month-01 00:00:00
+--select to_date('120','RR') from dual;	--expect:0120-current month-01 00:00:00
+--select to_date('2020','RR') from dual; --expect:2020-current month-01 00:00:00
+select to_date(NULL) from dual;
+select to_date(NULL,NULL) from dual;
+alter session set NLS_DATE_FORMAT='SYYYY-MM-DD HH24:MI:SS';
+select to_date('07--4712-23 14:31:23', 'MM-SYYYY-DD HH24:MI:SS') from dual;
+select to_date('07-2019-23 14:31:23', 'MM-SYYYY-DD HH24:MI:SS') from dual;
+select to_date('9999-07-23 14:31:23', 'SYYYY-MM-DD HH24:MI:SS') from dual;
+select to_date('-4712-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+--select to_date('-1-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+select to_date('+2021-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+select to_date('07--2019-23', 'MM-SYYYY-DD') from dual;
+--select to_date('-2019', 'SYYYY') from dual; --expect:-2019-current month-01 00:00:00
+--select to_date('2019', 'syyyy') from dual; --expect:2019-current month-01 00:00:00
+select to_date('2019/11/27 10:14:22') from dual;
+--select to_date('120','rr') from dual;	--expect:120-current month-01 00:00:00
+--select to_date('120','RR') from dual;	--expect:120-current month-01 00:00:00
+--select to_date('2020','RR') from dual;	--expect:2020-current month-01 00:00:00
+select to_date(NULL) from dual;
+select to_date(NULL,NULL) from dual;
+select to_date('07--4712-23 14:31:23', 'MM-SYYYY-DD HH24:MI:SS') from dual;
+--test SYYYY date type
+select to_date('07--4712-23 14:31:23', 'MM-SYYYY-DD HH24:MI:SS') from dual;
+select to_date('07-2019-23 14:31:23', 'MM-SYYYY-DD HH24:MI:SS') from dual;
+select to_date('9999-07-23 14:31:23', 'SYYYY-MM-DD HH24:MI:SS') from dual;
+select to_date('-4712-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+--select to_date('-1-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+select to_date('+2021-07-23 14:31:23', 'syyyy-mm-dd hh24:mi:ss') from dual;
+select to_date('07--2019-23', 'MM-SYYYY-DD') from dual;
+--select to_date('-2019', 'SYYYY') from dual;	--expect:-2019-current month-01 00:00:00
+--select to_date('2019', 'syyyy') from dual;	--expect:2019-current month-01 00:00:00
+select to_date(20111211, 'YYYYMMDD') from dual;
+
+create table test1(d date);
+insert into test1 values (to_date('2009-12-2', 'syyyy-mm-dd'));
+insert into test1 values (to_date('-1452-12-2', 'syyyy-mm-dd'));
+select to_char(d, 'bcyyyy-mm-dd') from test1;
+select * from test1;
+drop table test1;
+
+
+/*
+ * bug:z58
+ */
+alter session set NLS_DATE_FORMAT='DD-MON-RR HH24:MI:SS';
+--select sysdate() from dual;
+
+/*
+ * bug:z59
+ */
+alter session set NLS_DATE_FORMAT='DD-MON-RR HH24:MI:SS';
+--select current_date from dual;
+
+
+/*
+ * bug:z64
+ */
+alter session set NLS_DATE_FORMAT='DD-MON-RR HH24:MI:SS';
+select last_day('30AUG22') from dual;
+select last_day('2022-08-23') from dual; --err
+
+/*
+ * bug:z82
+ */
+select to_date('-2022-09-21','syyyy-mm-dd') from dual;
+select to_timestamp('-20220314121313222','syyyy/mm/dd hh:mi:ss:ff') from dual;
+select to_timestamp_tz('-2022-08-22 10:13:18. 1516 -08:00','SYYYY/MM/DD HH:MI:SS:ff TZH:TZM') from dual;
+
+
+/*
+ * bug:z99
+ */
+alter session set NLS_TIMESTAMP_FORMAT='YY-MM-DD HH24.MI.SS.FF';
+create table ts_tb(a timestamp);
+insert into ts_tb values('2022-08-19 11.11.11');   --succ
+insert into ts_tb values('122-08-19 11.11.11');     --err
+insert into ts_tb values('23-08-19 11.11.11');     --succ
+insert into ts_tb values('7-08-19 11.11.11');     --succ
+insert into ts_tb values('-08-19 11.11.11');	--err
+insert into ts_tb values('22022-08-19 11.11.11');  --err
+select * from ts_tb;
+select to_char(a, 'YYYY-MM-DD') from ts_tb;
+alter session set NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24.MI.SS';
+select * from ts_tb;
+drop table ts_tb;
+
+alter session set NLS_DATE_FORMAT='YY-MM-DD HH24.MI.SS';
+create table ts_tb(a date);
+insert into ts_tb values('2022-08-19 11.11.11');   --succ
+insert into ts_tb values('122-08-19 11.11.11');    --succ
+insert into ts_tb values('23-08-19 11.11.11');     --succ
+insert into ts_tb values('4-08-19 11.11.11');     --succ
+insert into ts_tb values('-08-19 11.11.11');	--err
+insert into ts_tb values('22022-08-19 11.11.11');  --err
+select * from ts_tb;
+select to_char(a, 'YYYY-MM-DD') from ts_tb;
+alter session set NLS_DATE_FORMAT='YYYY-MM-DD HH24.MI.SS';
+select * from ts_tb;
+drop table ts_tb;
+
+reset nls_date_format;
+reset nls_timestamp_format;
+
+/*
+ * bug:z94
+ */
+create table inytom_tb(ytom_clo interval year to month);
+insert into inytom_tb values(interval '1-   11   ' year to month);
+select * from inytom_tb;
+drop table inytom_tb;
+
+/*
+ * bug:z95
+ */
+create table indtos_tb(dtos_clo interval day to second);
+insert into indtos_tb values(interval '2 6: 23' day to minute);
+insert into indtos_tb values(interval '2 6:16: 23' day to second);
+select * from indtos_tb;
+drop table indtos_tb;
+
+/*
+ * bug:z95
+ */
+alter session set NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH.MI.SS.FF AM';
+create table ts_tb(a timestamp);
+insert into ts_tb values('2022-08-19 12.37.05');
+insert into ts_tb values('2022-08-19 12.00.00');
+insert into ts_tb values('2022-08-19 12.59.00');
+insert into ts_tb values('2022-08-19 11.59.59');
+select * from ts_tb;
+drop table ts_tb;
+
+reset nls_timestamp_format;
+

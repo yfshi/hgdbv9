@@ -272,12 +272,14 @@ LANGUAGE C
 STABLE;
 
 /* Begin - BUG:0000891 */
-CREATE FUNCTION sys.regexp_count(text, text, int default 1, text default 'g')
+/* Begin - ReqID:SRS-SQL-SYSFUNC: modify text to varchar2, int to number */
+CREATE FUNCTION sys.regexp_count(varchar2, varchar2, number default 1, varchar2 default 'g')
 RETURNS int
 AS 'MODULE_PATHNAME','ora_regexp_count'
 LANGUAGE C
 STABLE;
 /* End - BUG:0000891 */
+/* End - ReqID:SRS-SQL-SYSFUNC */
 /* End - SRS-CKC-Oracle-SupportOra_Regexp_245 */
 
 /* SR */
@@ -301,12 +303,14 @@ AS 'MODULE_PATHNAME','ora_replace'
 LANGUAGE C
 IMMUTABLE;
 
-CREATE FUNCTION sys.instrb(varchar, text, number default 1, number default 1)
+/* Begin - ReqID:SRS-SQL-SYSFUNC: modify text and varchar to varchar2 */
+CREATE FUNCTION sys.instrb(varchar2, varchar2, number default 1, number default 1)
 RETURNS int
 AS 'MODULE_PATHNAME','ora_instrb'
 LANGUAGE C
 STRICT
 IMMUTABLE;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 /* Begin - BUG#997 */
 --lpad
@@ -883,5 +887,149 @@ BEGIN
 END;     
 $$ LANGUAGE plpgsql STRICT SET client_min_messages to error;
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC: using numeric because float point number 
+ * and big number, them can't recognized by number type
+ */
+CREATE OR REPLACE FUNCTION sys.length(numeric)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.number)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.binary_double)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.oradate)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.oradate)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.oratimestamp)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(sys.oratimestamptz)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+
+--lengthb
+CREATE OR REPLACE FUNCTION sys.lengthb(integer)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.lengthb(numeric)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.lengthb(sys.number)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.lengthb(sys.oradate)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.lengthb(sys.oratimestamp)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.lengthb(sys.oratimestamptz)
+RETURNS integer
+AS 'select sys.lengthb($1::sys.oravarcharchar)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION sys.lengthb(text)
+RETURNS integer
+AS 'MODULE_PATHNAME','oravarcharoctetlen'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+
+--round
+CREATE OR REPLACE FUNCTION sys.round(text)
+RETURNS sys.number
+AS 'select pg_catalog.round($1::pg_catalog.numeric)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.round(text, integer)
+RETURNS sys.number
+AS 'select pg_catalog.round($1::pg_catalog.numeric, $2)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION sys.round(double precision, integer)
+RETURNS numeric
+AS $$SELECT pg_catalog.round($1::numeric,$2);$$
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+--trunc
+CREATE OR REPLACE FUNCTION sys.trunc(text)
+RETURNS sys.number
+AS 'select pg_catalog.trunc($1::pg_catalog.numeric)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.trunc(text, integer)
+RETURNS sys.number
+AS 'select pg_catalog.trunc($1::pg_catalog.numeric, $2)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.trunc(double precision, integer)
+RETURNS sys.number
+AS 'select pg_catalog.trunc($1::pg_catalog.numeric, $2)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+--to_date
+CREATE OR REPLACE FUNCTION sys.to_date(bigint)
+RETURNS sys.oradate
+AS 'select sys.to_date($1::text)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.to_date(bigint, text)
+RETURNS sys.oradate
+AS 'select sys.to_date($1::text, $2)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+--to_char
+CREATE OR REPLACE FUNCTION sys.to_char(number)
+RETURNS sys.oravarcharchar
+AS 'select sys.to_char($1::text)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+--to_number
+CREATE OR REPLACE FUNCTION sys.to_number(number)
+RETURNS sys.number
+AS 'select sys.to_number($1::text)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.to_number(number, number)
+RETURNS sys.number
+AS 'select sys.to_number($1::text, $2::text)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 

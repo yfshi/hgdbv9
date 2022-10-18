@@ -1044,6 +1044,19 @@ yminterval_in(PG_FUNCTION_ARGS)
 					break;
 			}
 		}
+		/* Begin - BUG:z94, describe: "interval '1-   11   ' year to month" 
+		 * should be success 
+		 */
+		else if (*strold == '-' && *(strold + 1) == ' ')
+		{
+			*strsrc++ = *strold++;
+			while (*(strold) == ' ')
+				strold++;
+
+			if (*strold == '\0')
+				break;
+		}
+		/* End - BUG:z94 */
 		*strsrc++ = *strold++;
 	}
 	*strsrc = *strold;

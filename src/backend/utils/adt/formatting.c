@@ -98,6 +98,7 @@
 #include "utils/numeric.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/pg_locale.h"
+#include <time.h>		/* ReqID:SRS-SQL-SYSFUNC */
 
 /* ----------
  * Convenience macros for error handling
@@ -236,6 +237,10 @@ static const char *const days_short[] = {
  *	years up one.  For interval years, we just return the year.
  */
 #define ADJUST_YEAR(year, is_interval)	((is_interval) ? (year) : ((year) <= 0 ? -((year) - 1) : (year)))
+/* Begin - BUG:z82 */
+#define ORAADJUST_YEAR(year, is_interval)	((is_interval) ? (year) : ((year) <= 0 ? ((year) - 1) : (year)))
+/* End - BUG:z82 */
+
 
 #define A_D_STR		"A.D."
 #define a_d_STR		"a.d."
@@ -651,9 +656,12 @@ typedef enum
 	DCH_PM,
 	DCH_Q,
 	DCH_RM,
+	DCH_RRRR,	/* ReqID:SRS-SQL-SYSFUNC */
+	DCH_RR,		/* BUG:z59 */
 	DCH_SSSSS,
 	DCH_SSSS,
 	DCH_SS,
+	DCH_SYYYY,	/* BUG:z82 */
 	DCH_TZH,
 	DCH_TZM,
 	DCH_TZ,
@@ -710,9 +718,16 @@ typedef enum
 	DCH_pm,
 	DCH_q,
 	DCH_rm,
+	DCH_rrrr,	/* ReqID:SRS-SQL-SYSFUNC */
+	DCH_rr,		/* BUG:z59 */
 	DCH_sssss,
 	DCH_ssss,
 	DCH_ss,
+	DCH_syyyy,	/* BUG:z82 */
+	/* Begin -BUG:z60 */
+	DCH_tzh,
+	DCH_tzm,
+	/* End - BUG:z60 */
 	DCH_tz,
 	DCH_us,
 	DCH_ww,
@@ -826,9 +841,12 @@ static const KeyWord DCH_keywords[] = {
 	{"PM", 2, DCH_PM, false, FROM_CHAR_DATE_NONE},
 	{"Q", 1, DCH_Q, true, FROM_CHAR_DATE_NONE}, /* Q */
 	{"RM", 2, DCH_RM, false, FROM_CHAR_DATE_GREGORIAN}, /* R */
+	{"RRRR",4, DCH_RRRR, true, FROM_CHAR_DATE_GREGORIAN}, /* ReqID:SRS-SQL-SYSFUNC */
+	{"RR", 2, DCH_RR, true, FROM_CHAR_DATE_GREGORIAN}, /* BUG:z59 */
 	{"SSSSS", 5, DCH_SSSS, true, FROM_CHAR_DATE_NONE},	/* S */
 	{"SSSS", 4, DCH_SSSS, true, FROM_CHAR_DATE_NONE},
 	{"SS", 2, DCH_SS, true, FROM_CHAR_DATE_NONE},
+	{"SYYYY", 5, DCH_SYYYY, true, FROM_CHAR_DATE_GREGORIAN},	/* BUG:z82 */
 	{"TZH", 3, DCH_TZH, false, FROM_CHAR_DATE_NONE},	/* T */
 	{"TZM", 3, DCH_TZM, true, FROM_CHAR_DATE_NONE},
 	{"TZ", 2, DCH_TZ, false, FROM_CHAR_DATE_NONE},
@@ -885,9 +903,14 @@ static const KeyWord DCH_keywords[] = {
 	{"pm", 2, DCH_pm, false, FROM_CHAR_DATE_NONE},
 	{"q", 1, DCH_Q, true, FROM_CHAR_DATE_NONE}, /* q */
 	{"rm", 2, DCH_rm, false, FROM_CHAR_DATE_GREGORIAN}, /* r */
+	{"rrrr",4, DCH_RRRR, true, FROM_CHAR_DATE_GREGORIAN}, /* ReqID:SRS-SQL-SYSFUNC */
+	{"rr", 2, DCH_RR, true, FROM_CHAR_DATE_GREGORIAN}, /* BUG:z59 */
 	{"sssss", 5, DCH_SSSS, true, FROM_CHAR_DATE_NONE},	/* s */
 	{"ssss", 4, DCH_SSSS, true, FROM_CHAR_DATE_NONE},
 	{"ss", 2, DCH_SS, true, FROM_CHAR_DATE_NONE},
+	{"syyyy", 5, DCH_SYYYY, true, FROM_CHAR_DATE_GREGORIAN},	/* BUG:z82 */
+	{"tzh", 3, DCH_tzh, false, FROM_CHAR_DATE_NONE},	/* BUG:z60 */
+	{"tzm", 3, DCH_tzm, true, FROM_CHAR_DATE_NONE},		/* BUG:z60 */
 	{"tz", 2, DCH_tz, false, FROM_CHAR_DATE_NONE},	/* t */
 	{"us", 2, DCH_US, true, FROM_CHAR_DATE_NONE},	/* u */
 	{"ww", 2, DCH_WW, true, FROM_CHAR_DATE_GREGORIAN},	/* w */
@@ -956,6 +979,7 @@ static const KeyWord NUM_keywords[] = {
  * KeyWords index for DATE-TIME version
  * ----------
  */
+/* Begin - ReqID:SRS-SQL-SYSFUNC: change DCH_tz to DCH_tzh. */
 static const int DCH_index[KeyWord_INDEX_SIZE] = {
 /*
 0	1	2	3	4	5	6	7	8	9
@@ -970,12 +994,12 @@ static const int DCH_index[KeyWord_INDEX_SIZE] = {
 	DCH_P_M, DCH_Q, DCH_RM, DCH_SSSSS, DCH_TZH, DCH_US, -1, DCH_WW, -1, DCH_Y_YYY,
 	-1, -1, -1, -1, -1, -1, -1, DCH_a_d, DCH_b_c, DCH_cc,
 	DCH_day, -1, DCH_ff1, -1, DCH_hh24, DCH_iddd, DCH_j, -1, -1, DCH_mi,
-	-1, -1, DCH_p_m, DCH_q, DCH_rm, DCH_sssss, DCH_tz, DCH_us, -1, DCH_ww,
+	-1, -1, DCH_p_m, DCH_q, DCH_rm, DCH_sssss, DCH_tzh, DCH_us, -1, DCH_ww,
 	-1, DCH_y_yyy, -1, -1, -1, -1
 
 	/*---- chars over 126 are skipped ----*/
 };
-
+/* Begin - ReqID:SRS-SQL-SYSFUNC. */
 /* ----------
  * KeyWords index for NUMBER version
  * ----------
@@ -1104,6 +1128,9 @@ static DCHCacheEntry *DCH_cache_fetch(const char *str, bool std);
 static NUMCacheEntry *NUM_cache_getnew(const char *str);
 static NUMCacheEntry *NUM_cache_search(const char *str);
 static NUMCacheEntry *NUM_cache_fetch(const char *str);
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static int adjust_partial_year_to_2020RR(int year);
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 
 /* ----------
@@ -2305,6 +2332,47 @@ adjust_partial_year_to_2020(int year)
 		return year;
 }
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC: support format rrrr/rr and RRRR/RR. */
+static int
+adjust_partial_year_to_2020RR(int year)
+{
+	time_t		timep;
+	int32		curyear;
+	char		year1[4 + 1];
+	struct tm  *p;
+	int			sufnum,prenum;
+
+	memset(year1, 0x00, sizeof(year1));
+	time(&timep);
+	p = gmtime(&timep);
+	curyear = 1900 + p->tm_year;
+
+	/*last two digits of year*/
+	sufnum = curyear % 100;
+
+	/*first two digits of year*/
+	prenum = curyear / 100;
+
+	/*first two digits of the specified year*/
+	if(year >= 100)
+		sprintf(year1, "%04d", year);
+	else
+	{
+		if( ((sufnum >= 0 && sufnum <= 49) && (year >= 0 && year <=49))||\
+			((sufnum >= 50 && sufnum <= 99) && (year >= 50 && year <=99)))
+		{
+			sprintf(year1, "%d%02d", prenum, year);
+		}
+		else
+		{
+			sprintf(year1, "%d%02d", prenum - 1, year);
+		}
+	}
+	return atoi(year1);
+}
+/* End - ReqID:SRS-SQL-SYSFUNC */
+
+
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 /*
  * Adjust all dates toward the current century
@@ -2439,7 +2507,10 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	char		copy[DCH_MAX_ITEM_SIZ + 1];
 	const char *init = *src;
 	int			used;
-
+	/* Begin - BUG:z99:*/
+	bool		yyflag = false;
+	/* End - BUG:z99 */
+	
 	/*
 	 * Skip any whitespace before parsing the integer.
 	 */
@@ -2448,8 +2519,18 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	Assert(len <= DCH_MAX_ITEM_SIZ);
 	used = (int) strlcpy(copy, *src, len + 1);
 
-	if ((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) && 
-		(S_FM(node->suffix) || is_next_separator(node)))	/* BUG:0000561 */
+	/* Begin - BUG:z99: deal with year's format is yy, shoud get all year, 
+	 * should not only take two digits in length.
+	 */
+	if (node && node->key && node->key->name && ORA_PARSER == compatible_db)
+	{
+		if (!pg_strcasecmp(node->key->name, "yy"))
+			yyflag = true;
+	}
+	/* End - BUG:z99 */
+	
+	if (((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) && 
+		(S_FM(node->suffix) || is_next_separator(node)))  || yyflag)	/* BUG:0000561 */ /* BUG:z99 */
 	{
 		/*
 		 * This node is in Fill Mode, or the next node is known to be a
@@ -2899,6 +2980,7 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				}
 				break;
 			case DCH_TZH:
+			case DCH_tzh:	/* BUG:z60 */
 				INVALID_FOR_INTERVAL;
 				sprintf(s, "%c%02d",
 						(tm->tm_gmtoff >= 0) ? '+' : '-',
@@ -2906,6 +2988,7 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				s += strlen(s);
 				break;
 			case DCH_TZM:
+			case DCH_tzm:	/* BUG:z60 */
 				INVALID_FOR_INTERVAL;
 				sprintf(s, "%02d",
 						(abs((int) tm->tm_gmtoff) % SECS_PER_HOUR) / SECS_PER_MINUTE);
@@ -3260,10 +3343,11 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				break;
 			case DCH_YYYY:
 			case DCH_IYYY:
+			case DCH_RRRR:	/* ReqID:SRS-SQL-SYSFUNC */
 				sprintf(s, "%0*d",
 						S_FM(n->suffix) ? 0 :
 						(ADJUST_YEAR(tm->tm_year, is_interval) >= 0) ? 4 : 5,
-						(n->key->id == DCH_YYYY ?
+						((n->key->id == DCH_YYYY || n->key->id == DCH_RRRR) ?		/* ReqID:SRS-SQL-SYSFUNC */
 						 ADJUST_YEAR(tm->tm_year, is_interval) :
 						 ADJUST_YEAR(date2isoyear(tm->tm_year,
 												  tm->tm_mon,
@@ -3273,6 +3357,17 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 					str_numth(s, s, S_TH_TYPE(n->suffix));
 				s += strlen(s);
 				break;
+			/* Begin - BUG:z82 */
+			case DCH_SYYYY:
+				sprintf(s, "%0*d",
+						S_FM(n->suffix) ? 0 :
+						(ORAADJUST_YEAR(tm->tm_year, is_interval) >= 0) ? 4 : 5,
+						ORAADJUST_YEAR(tm->tm_year, is_interval));
+				if (S_THth(n->suffix))
+					str_numth(s, s, S_TH_TYPE(n->suffix));
+				s += strlen(s);
+				break;
+			/* End - BUG:z82 */
 			case DCH_YYY:
 			case DCH_IYY:
 				sprintf(s, "%0*d",
@@ -3290,10 +3385,11 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				break;
 			case DCH_YY:
 			case DCH_IY:
+			case DCH_RR:	/* BUG:z59 */	
 				sprintf(s, "%0*d",
 						S_FM(n->suffix) ? 0 :
 						(ADJUST_YEAR(tm->tm_year, is_interval) >= 0) ? 2 : 3,
-						(n->key->id == DCH_YY ?
+						((n->key->id == DCH_YY || n->key->id == DCH_RR)?	/* BUG:z59 */
 						 ADJUST_YEAR(tm->tm_year, is_interval) :
 						 ADJUST_YEAR(date2isoyear(tm->tm_year,
 												  tm->tm_mon,
@@ -3411,6 +3507,9 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 	int			len,
 				value;
 	bool		fx_mode = std;
+	/* Begin - BUG:z100 */
+	bool		pmamflg = false;
+	/* Eed - BUG:z100 */
 
 	/* number of extra skipped characters (more than given in format string) */
 	int			extra_skip = 0;
@@ -3537,6 +3636,9 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				from_char_set_int(&out->pm, value % 2, n, have_error);
 				CHECK_ERROR;
 				out->clock = CLOCK_12_HOUR;
+				/* Begin - BUG:z100 */
+				pmamflg = true;
+				/* End - BUG:z100 */
 				break;
 			case DCH_AM:
 			case DCH_PM:
@@ -3714,6 +3816,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				break;
 			case DCH_TZH:
+			case DCH_tzh:	/*BUG:z60*/
 
 				/*
 				 * Value of TZH might be negative.  And the issue is that we
@@ -3739,6 +3842,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				break;
 			case DCH_TZM:
+			case DCH_tzm:	/* BUG:z60 */
 				/* assign positive timezone sign if TZH was not seen before */
 				if (!out->tzsign)
 					out->tzsign = +1;
@@ -3924,6 +4028,23 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->yysz = 4;
 				SKIP_THth(s, n->suffix);
 				break;
+			/* Begin - BUG:z82 */
+			case DCH_SYYYY:
+				if (ORA_PARSER != compatible_db)
+					s += pg_mblen(s);
+				len = from_char_parse_int(&out->year, &s, n, have_error);
+				CHECK_ERROR;
+				if (ORA_PARSER == compatible_db)
+				{
+					if (out->year < -4712 || out->year > 9999 || out->year == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+								 errmsg("YEAR must be between -4713 and +9999, and not be 0")));
+				}
+				out->yysz = 4;
+				SKIP_THth(s, n->suffix);
+				break;
+			/* End - BUG:z82 */
 			case DCH_YYY:
 			case DCH_IYY:
 				len = from_char_parse_int(&out->year, &s, n, have_error);
@@ -3957,10 +4078,12 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					else
 					{
-						if (len > 2)
+						/* Begin - BUG:z99 */
+						/*if (len > 2)
 							ereport(ERROR,
 									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
-								  errmsg("The numeric value does not match the length of the format item.")));
+								  errmsg("The numeric value does not match the length of the format item.")));*/
+						/* End - BUG:z99 */
 						out->year = ora_adjust_partial_year(out->year, n->key->id);
 					}
 					/* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -3968,6 +4091,21 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->yysz = 2;
 				SKIP_THth(s, n->suffix);
 				break;
+			/* Begin - BUG:z59 */
+			case DCH_RR:
+				/* support format RR and BC year only can use SYYYY format. */
+				if (ORA_PARSER == compatible_db && *s == '-')
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+							 errmsg("negative YEAR must use SYYYY format")));
+				len = from_char_parse_int(&out->year, &s, n,have_error);
+				CHECK_ERROR;
+				if (len < 4)
+					out->year = adjust_partial_year_to_2020RR(out->year);
+				out->yysz = 2;
+				SKIP_THth(s, n->suffix);
+				break;
+			/* End - BUG:z59 */
 			case DCH_Y:
 			case DCH_I:
 				len = from_char_parse_int(&out->year, &s, n, have_error);
@@ -3990,6 +4128,16 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->yysz = 1;
 				SKIP_THth(s, n->suffix);
 				break;
+			/* Begin - ReqID:SRS-SQL-SYSFUNC:SRS-SQL-SYSFUNC: support RRRR. */
+			case DCH_RRRR:	
+				len = from_char_parse_int(&out->year, &s, n, have_error);
+				CHECK_ERROR;
+				if (len < 4)
+					out->year = adjust_partial_year_to_2020RR(out->year);
+				out->yysz = 4;
+				SKIP_THth(s, n->suffix);
+				break;
+			/* End - ReqID:SRS-SQL-SYSFUNC:SRS-SQL-SYSFUNC. */
 			case DCH_RM:
 			case DCH_rm:
 				from_char_seq_search(&value, &s, rm_months_lower,
@@ -4023,6 +4171,13 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			}
 		}
 	}
+
+	/* Begin - BUG:z100, describe: when the hour is 12,
+	 * it should be pm, otherwise it should be am.
+	 */
+	if (!pmamflg && out->clock == CLOCK_12_HOUR && out->hh == 12 && out->pm == 0)
+		out->pm = 1;
+	/* End - BUG:z100 */
 
 	/*
 	 * Standard parsing mode doesn't allow unmatched format patterns or
@@ -4140,6 +4295,10 @@ DCH_datetime_type(FormatNode *node, bool *have_error)
 				break;
 			case DCH_TZH:
 			case DCH_TZM:
+			/* Begin - BUG:z60 */
+			case DCH_tzh:
+			case DCH_tzm:
+			/* End - BUG:z60 */
 				flags |= DCH_ZONED;
 				break;
 			case DCH_A_D:
@@ -6900,7 +7059,7 @@ Numeric ora_to_number_internal(text *value, text *fmt)
 				precision = 0;
 	char 		*tem = NULL;
 	bool 		isleft = true;	
-
+	
 	if(fmt)
 	{
 		len = VARSIZE(fmt) - VARHDRSZ;
