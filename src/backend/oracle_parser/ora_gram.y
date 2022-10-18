@@ -168,6 +168,8 @@ static Node *makeStringConstCast(char *str, int location, TypeName *typename);
 static Node *makeIntConst(int val, int location);
 static Node *makeFloatConst(char *str, int location);
 static Node *makeBitStringConst(char *str, int location);
+static Node *makeBFloatConst(char *str, int location); /* BUG:Z093 */
+static Node *makeBDoubleConst(char *str, int location); /* BUG:Z093 */
 static Node *makeNullAConst(int location);
 static Node *makeAConst(Value *v, int location);
 static Node *makeBoolAConst(bool state, int location);
@@ -642,6 +644,7 @@ static void determineLanguage(List *options);
  * parse errors.  It is needed by PL/SQL.
  */
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
+%token <str>	BFCONST	BDCONST /* BUG:Z093 */
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
@@ -779,6 +782,15 @@ static void determineLanguage(List *options);
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword> LOOP_P
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - BUG:Z092 */
+%token <keyword> BINARY_FLOAT_NAN BINARY_FLOAT_INFINITY
+	BINARY_DOUBLE_NAN BINARY_DOUBLE_INFINITY
+/* End - BUG:Z092 */
+
+/* Begin - BUG:Z093 */
+%token <keyword> NAN_P INFINITE_P
+/* End - BUG:Z093 */
 
 
 /*
@@ -13823,7 +13835,7 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
 					| /* EMPTY */					{ $$ = NIL; }
 		;
 
-/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 /* support the precision of number is '*' */
 numeric_opt_type_modifiers: opt_type_modifiers				{ $$ = $1; }
 					| '(' '*' ',' expr_list ')'
@@ -13849,7 +13861,7 @@ numeric_opt_type_modifiers: opt_type_modifiers				{ $$ = $1; }
 							$$ = NIL;
 						}
 		;
-/*Begin - ReqID:SRS-GKC-DATATYPE_001 */
+/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /*
  * SQL numeric data types
@@ -15515,6 +15527,24 @@ a_expr:		c_expr									{ $$ = $1; }
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - BUG:Z093 */
+			| a_expr IS NAN_P
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", $1, makeStringConst("Nan", @3), @2); }
+			| a_expr IS NOT NAN_P
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, makeStringConst("Nan", @4), @2); }
+			| a_expr IS INFINITE_P
+				{
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_IN, "=", $1, 
+													(Node *) list_make2(makeStringConst("+inf", @3), 
+																		makeStringConst("-inf", @3)), @2);
+				}
+			| a_expr IS NOT INFINITE_P
+				{
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_IN, "<>", $1, 
+													(Node *) list_make2(makeStringConst("+inf", @4), 
+																		makeStringConst("-inf", @4)), @2);
+				}
+			/* End - BUG:Z093 */
 		;
 
 /*
@@ -17260,6 +17290,16 @@ AexprConst: Iconst
 					 */
 					$$ = makeBitStringConst($1, @1);
 				}
+			/* Begin - BUG:Z093 */
+			| BFCONST
+				{
+					$$ = makeBFloatConst($1, @1);
+				}
+			| BDCONST
+				{
+					$$ = makeBDoubleConst($1, @1);
+				}
+			/* End - BUG:Z093 */
 			| func_name Sconst
 				{
 					/* generic type 'literal' syntax */
@@ -17380,6 +17420,24 @@ AexprConst: Iconst
 				{
 					$$ = makeNullAConst(@1);
 				}
+			/* Begin - BUG:Z092 */
+			| BINARY_FLOAT_INFINITY
+				{
+					$$ = makeBFloatConst("Inf", @1);
+				}
+			| BINARY_FLOAT_NAN
+				{
+					$$ = makeBFloatConst("Nan", @1);
+				}
+			| BINARY_DOUBLE_INFINITY
+				{
+					$$ = makeBDoubleConst("Inf", @1);
+				}
+			| BINARY_DOUBLE_NAN
+				{
+					$$ = makeBDoubleConst("Nan", @1);
+				}
+			/* End - BUG:Z092 */
 		;
 
 Iconst:		ICONST									{ $$ = $1; };
@@ -18079,6 +18137,10 @@ reserved_keyword:
 			| AS
 			| ASC
 			| ASYMMETRIC
+			| BINARY_DOUBLE_INFINITY	/* BUG:Z092 */
+			| BINARY_DOUBLE_NAN			/* BUG:Z092 */
+			| BINARY_FLOAT_INFINITY		/* BUG:Z092 */
+			| BINARY_FLOAT_NAN			/* BUG:Z092 */
 			| BOTH
 			| CASE
 			| CAST
@@ -18110,6 +18172,7 @@ reserved_keyword:
 			| GROUP_P
 			| HAVING
 			| IN_P
+			| INFINITE_P	/* BUG:Z093 */
 			| INITIALLY
 			| INTERSECT
 			| INTO
@@ -18118,6 +18181,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| NAN_P	/* BUG:Z093 */
 			| NOCOPY /* ReqID:SRS-SQL-PROC */
 			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOT
@@ -18196,7 +18260,11 @@ bare_label_keyword:
 			| BIGINT
 			| BINARY
 			| BINARY_DOUBLE	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| BINARY_DOUBLE_INFINITY	/* BUG:Z092 */
+			| BINARY_DOUBLE_NAN			/* BUG:Z092 */
 			| BINARY_FLOAT	/* ReqID:SRS-GKC-DATATYPE_001 */
+			| BINARY_FLOAT_INFINITY		/* BUG:Z092 */
+			| BINARY_FLOAT_NAN			/* BUG:Z092 */
 			| BIT
 			| BOOLEAN_P
 			| BOTH
@@ -18340,6 +18408,7 @@ bare_label_keyword:
 			| INCREMENT
 			| INDEX
 			| INDEXES
+			| INFINITE_P	/* BUG:Z093 */
 			| INHERIT
 			| INHERITS
 			| INITIALLY
@@ -18395,6 +18464,7 @@ bare_label_keyword:
 			| MOVE
 			| NAME_P
 			| NAMES
+			| NAN_P	/* BUG:Z093 */
 			| NATIONAL
 			| NATURAL
 			| NCHAR
@@ -18769,6 +18839,32 @@ makeFloatConst(char *str, int location)
 
 	return (Node *)n;
 }
+
+/* Begin - BUG:Z093 */
+static Node *
+makeBFloatConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_BFloat;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+
+static Node *
+makeBDoubleConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_BDouble;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+/* End - BUG:Z093 */
 
 static Node *
 makeBitStringConst(char *str, int location)
