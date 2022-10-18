@@ -99,3 +99,89 @@ ORDER BY OBJECT_ID, POSITION;
  T21,21,22,IN,BOOLEAN,BOOLEAN
 (22 rows)
 
+-- create user u1 and grant it privilege to create schema
+CREATE USER U1;
+GRANT ALL ON DATABASE CONTRIB_REGRESSION TO U1;
+-- create user u2 and grant it privilege to create schema
+CREATE USER U2;
+GRANT ALL ON DATABASE CONTRIB_REGRESSION TO U2;
+-- create schema sv_s1 owned by u1
+\c - u1
+CREATE SCHEMA SV_S1;
+-- create schema sv_s2 owned by u2
+\c - u2
+CREATE SCHEMA SV_S2;
+-- create functions public.f1 and sv_s1.f1 owned by u1
+\c - u1
+CREATE OR REPLACE FUNCTION F1(I INT)
+RETURN INT IS BEGIN RETURN $1; END;
+/
+CREATE OR REPLACE FUNCTION SV_S1.F1(I INT)
+RETURN INT IS BEGIN RETURN $1; END;
+/
+-- create functions public.f2 and sv_s2.f2 owned by u2
+\c - u2
+CREATE OR REPLACE FUNCTION F2(I INT)
+RETURN INT IS BEGIN RETURN $1; END;
+/
+CREATE OR REPLACE FUNCTION SV_S2.F2(I INT)
+RETURN INT IS BEGIN RETURN $1; END;
+/
+-- select with u1
+\c - u1
+SET IVORYSQL.IDENTIFIER_CASE_SWITCH = INTERCHANGE;
+SHOW IVORYSQL.IDENTIFIER_CASE_SWITCH;
+ ivorysql.identifier_case_switch 
+---------------------------------
+ interchange
+(1 row)
+
+-- f1, sv_s1.f1, f2
+SELECT OID::REGPROC, OBJECT_NAME
+FROM ALL_PROCEDURES LEFT JOIN PG_PROC ON OID = OBJECT_ID
+WHERE OBJECT_NAME='F1' OR OBJECT_NAME='F2';
+   oid    | object_name 
+----------+-------------
+ f1       | F1
+ sv_s1.f1 | F1
+ f2       | F2
+(3 rows)
+
+-- grant schema's usage privilege to u1
+\c - u2
+GRANT USAGE ON SCHEMA SV_S2 TO U1;
+-- select with u1 again
+\c - u1
+SET IVORYSQL.IDENTIFIER_CASE_SWITCH = INTERCHANGE;
+SHOW IVORYSQL.IDENTIFIER_CASE_SWITCH;
+ ivorysql.identifier_case_switch 
+---------------------------------
+ interchange
+(1 row)
+
+-- f1, sv_s1.f1, f2, sv_s2.f2
+SELECT OID::REGPROC, OBJECT_NAME
+FROM ALL_PROCEDURES LEFT JOIN PG_PROC ON OID = OBJECT_ID
+WHERE OBJECT_NAME='F1' OR OBJECT_NAME='F2';
+   oid    | object_name 
+----------+-------------
+ f1       | F1
+ sv_s1.f1 | F1
+ f2       | F2
+ sv_s2.f2 | F2
+(4 rows)
+
+-- create a function with arguments defaulted
+CREATE OR REPLACE FUNCTION DEFV(I INT, J INT DEFAULT 10, K INT DEFAULT 0)
+RETURN INT IS BEGIN RETURN 123; END;
+/
+-- check arguments with default value
+SELECT POSITION, DEFAULTED FROM ALL_ARGUMENTS WHERE OBJECT_NAME = 'DEFV';
+ position | defaulted 
+----------+-----------
+ 0        | N
+ 1        | N
+ 2        | Y
+ 3        | Y
+(4 rows)
+
