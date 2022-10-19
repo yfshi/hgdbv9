@@ -1252,6 +1252,7 @@ build_column_default(Relation rel, int attrno)
 	int32		atttypmod = att_tup->atttypmod;
 	Node	   *expr = NULL;
 	Oid			exprtype;
+	Oid			nvetype;	/* BUG#Z029 */
 
 	if (att_tup->attidentity)
 	{
@@ -1259,6 +1260,16 @@ build_column_default(Relation rel, int attrno)
 
 		nve->seqid = getIdentitySequence(RelationGetRelid(rel), attrno, false);
 		nve->typeId = att_tup->atttypid;
+		/* Being - BUG#Z029 */
+		nvetype = exprType((Node*)nve);
+		if(atttype == NUMBEROID)
+			nve = (NextValueExpr *)coerce_to_target_type(NULL,	/* no UNKNOWN params here */
+								 (Node *)nve, nvetype,
+								 atttype, atttypmod,
+								 COERCION_ASSIGNMENT,
+								 COERCE_IMPLICIT_CAST,
+								 -1);
+		/* End - BUG#Z029 */
 
 		return (Node *) nve;
 	}
