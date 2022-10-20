@@ -31,9 +31,22 @@ OBJS = \
 
 EXTENSION = ivorysql_ora
 
-# mayber we no need shell scripts, do xxx.sql merge within Makefile.
-# reference babelfish Makefile 
+# Begin - ReqID:SRS-MISC-SQLMERGE
+# SQL(s) which need to be generated only if which is specified here.
 DATA = ivorysql_ora--1.0.sql
+
+all: gensql
+
+clean: cleansql
+
+# SQL(s) merge using perl
+gensql: gensql.pl
+	$(PERL) $< $(patsubst ivorysql_ora--%.sql, %, $(DATA))
+
+# Clean the generated SQL(s).
+cleansql:
+	rm -f $(DATA)
+# End - ReqID:SRS-MISC-SQLMERGE
 
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=1521
