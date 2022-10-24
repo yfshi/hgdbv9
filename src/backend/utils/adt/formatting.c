@@ -201,6 +201,7 @@ typedef struct
 	char		character[MAX_MULTIBYTE_CHAR_LEN + 1];	/* if type is CHAR */
 	uint8		suffix;			/* keyword prefix/suffix code, if any */
 	const KeyWord *key;			/* if type is ACTION */
+	bool		sep;			/* BUG:z98: . */
 } FormatNode;
 
 #define NODE_TYPE_END		1
@@ -1131,6 +1132,10 @@ static NUMCacheEntry *NUM_cache_fetch(const char *str);
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
 static int adjust_partial_year_to_2020RR(int year);
 /* End - ReqID:SRS-SQL-SYSFUNC */
+/* Begin - BUG:z97 and z98 */
+static bool ivy_getsep(const char *in);
+static int ivy_getnumlength(const char *in);
+/* End - BUG:z97 and z98 */
 
 
 /* ----------
@@ -2507,9 +2512,6 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	char		copy[DCH_MAX_ITEM_SIZ + 1];
 	const char *init = *src;
 	int			used;
-	/* Begin - BUG:z99:*/
-	bool		yyflag = false;
-	/* End - BUG:z99 */
 	
 	/*
 	 * Skip any whitespace before parsing the integer.
@@ -2519,18 +2521,8 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	Assert(len <= DCH_MAX_ITEM_SIZ);
 	used = (int) strlcpy(copy, *src, len + 1);
 
-	/* Begin - BUG:z99: deal with year's format is yy, shoud get all year, 
-	 * should not only take two digits in length.
-	 */
-	if (node && node->key && node->key->name && ORA_PARSER == compatible_db)
-	{
-		if (!pg_strcasecmp(node->key->name, "yy"))
-			yyflag = true;
-	}
-	/* End - BUG:z99 */
-	
 	if (((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) && 
-		(S_FM(node->suffix) || is_next_separator(node)))  || yyflag)	/* BUG:0000561 */ /* BUG:z99 */
+		(S_FM(node->suffix) || is_next_separator(node)))  || node->sep)	/* BUG:0000561 */ /*BUG:z97 and z99 */
 	{
 		/*
 		 * This node is in Fill Mode, or the next node is known to be a
@@ -3487,6 +3479,65 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 	*s = '\0';
 }
 
+/* Begin - BUG:z97: This counts on the entire string, 
+ * without spaces and separators, and returns true if 
+ * there are spaces and separators
+ */
+static bool ivy_getsep(const char *in)
+{
+	char		*s = pstrdup(in);
+	bool		res = false;
+	bool		sepflg = false;
+	bool		nsepflg = false;
+	bool		nsepflg1 = false;
+
+	while(*s != '\0')
+	{
+		if (isspace((unsigned char) *s) || is_separator_char(s))
+		{
+			if (nsepflg)
+				sepflg = true;
+		}
+		else
+		{
+			nsepflg = true;
+
+			if (sepflg)
+				nsepflg1 = true;
+		}
+
+		s++;
+	}
+
+	if (nsepflg1)
+		res = true;
+
+	return res;
+}
+/* End - BUG:z97 */
+
+/* Begin - BUG:z98: Calculate the number of consecutive numbers 
+ * to determine what truncation method is used for the string
+ */
+static int ivy_getnumlength(const char *in)
+{
+	char	*s = pstrdup(in);
+	int		numlen = 0;
+
+	while(*s != '\0')
+	{
+		if (*s >= '0' && *s <= '9')
+			numlen++;
+		else
+			break;
+
+		s++;
+	}
+
+	return numlen;
+}
+/* End - BUG:z98 */
+
 /*
  * Process the string 'in' as denoted by the array of FormatNodes 'node[]'.
  * The TmFromChar struct pointed to by 'out' is populated with the results.
@@ -3514,11 +3565,26 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 	/* number of extra skipped characters (more than given in format string) */
 	int			extra_skip = 0;
 
+	/* Begin - BUG:z97, z98, z101 and z102 */
+	bool		second = false;
+	bool		skipff = true;
+	bool		sep;
+	int			numlen = 0;
+	bool		fx_mode1 = false;
+
+	sep = ivy_getsep(in);
+	/* End - BUG:z97, z98, z101 and z102  */
+
 	/* cache localized days and months */
 	cache_locale_time();
 
 	for (n = node, s = in; n->type != NODE_TYPE_END && *s != '\0'; n++)
 	{
+		/* Begin - BUG:z98: . */
+		if (ORA_PARSER == compatible_db)
+			n->sep = false;
+		/* End - BUG:z98: . */
+
 		/*
 		 * Ignore spaces at the beginning of the string and before fields when
 		 * not in FX (fixed width) mode.
@@ -3624,6 +3690,13 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 		{
 			case DCH_FX:
 				fx_mode = true;
+				/* Begin - BUG:z97, fx. */
+				if (ORA_PARSER == compatible_db)
+				{
+					fx_mode1 = true;
+					std = true;
+				}
+				/* End - BUG:z97, fx. */
 				break;
 			case DCH_A_M:
 			case DCH_P_M:
@@ -3654,6 +3727,27 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_HH:
 			case DCH_HH12:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != 2)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int_len(&out->hh, &s, 2, n, have_error);
 				CHECK_ERROR;
 				out->clock = CLOCK_12_HOUR;
@@ -3669,6 +3763,27 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_HH24:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != 2)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int_len(&out->hh, &s, 2, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3683,6 +3798,28 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_MI:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int(&out->mi, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3697,6 +3834,28 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_SS:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int(&out->ss, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3709,6 +3868,9 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 							  errmsg("The second must be between 0 and 59.")));
 				}
 				/* End - ReqID:SRS-GKC-DATATYPE_001 */
+				/* Begin - BUG:z101 */
+				second = true;
+				/* End - BUG:z101 */
 				break;
 			case DCH_MS:		/* millisecond */
 				len = from_char_parse_int_len(&out->ms, &s, 3, n, have_error);
@@ -3741,6 +3903,18 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 					out->ff = 6;	/* FF default precision */
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			case DCH_US:		/* microsecond */
+				/* Begin - BUG:z101 */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (skipff)
+						continue;
+					if (*s == '+')
+						s++;
+
+					n->sep = true;	/* BUG:z102 */
+				}
+				/* End - BUG:z101 */
+
 				len = from_char_parse_int_len(&out->us, &s,
 											  n->key->id == DCH_US ? 6 :
 											  out->ff, n, have_error);
@@ -3784,13 +3958,13 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 					switch(len)
 					{
 						case 7:
-							out->us = fsec / 10;
+							out->us = rint(fsec / 10.0);	/* BUG:z102 */
 							break;
 						case 8:
-							out->us = fsec / 100;
+							out->us = rint(fsec / 100.0);	/* BUG:z102 */
 							break;
 						case 9:
-							out->us = fsec / 1000;
+							out->us = rint(fsec / 1000.0);	/* BUG:z102 */
 							break;
 						default:
 							ereport(ERROR,
@@ -3894,6 +4068,27 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				CHECK_ERROR;
 				break;
 			case DCH_MM:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int(&out->mm, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3934,6 +4129,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				out->d++;
 				break;
 			case DCH_DDD:
+				n->sep = true;	/* BUG:z97 */
 				from_char_parse_int(&out->ddd, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3944,6 +4140,27 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				SKIP_THth(s, n->suffix);
 				break;
 			case DCH_DD:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 4)
+					{
+						if (numlen == 3)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				from_char_parse_int(&out->dd, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -3962,6 +4179,11 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				/* End - ReqID:SRS-GKC-DATATYPE_001 */
 				break;
 			case DCH_D:
+				/* Begin - BUG:z97 */
+				if (ORA_PARSER == compatible_db)
+					n->sep = true;
+				/* End - BUG:z97 */
+
 				from_char_parse_int(&out->d, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
@@ -4023,7 +4245,29 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_YYYY:
 			case DCH_IYYY:
-				from_char_parse_int(&out->year, &s, n, have_error);
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 6)
+					{
+						if (numlen == 5)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				len = from_char_parse_int(&out->year, &s, n, have_error);
+				/* End - BUG:z98 */
 				CHECK_ERROR;
 				out->yysz = 4;
 				SKIP_THth(s, n->suffix);
@@ -4047,6 +4291,28 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 			/* End - BUG:z82 */
 			case DCH_YYY:
 			case DCH_IYY:
+				/* Begin - BUG:z98 */
+				if (ORA_PARSER == compatible_db)
+				{
+					numlen = ivy_getnumlength(s);
+					if (numlen < 5)
+					{
+						if (numlen == 4)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+
+						n->sep = true;
+					}
+
+					/* Begin - BUG:z97 */
+					if (fx_mode1 && numlen != n->key->len)
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+								  errmsg("Number value does not match the length of the format item.")));
+					/* End - BUG:z97 */
+				}
+				/* End - BUG:z98 */
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
 				if (len < 4)
@@ -4069,6 +4335,20 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				break;
 			case DCH_YY:
 			case DCH_IY:
+				/* Begin - BUG:z97 */
+				if (ORA_PARSER == compatible_db)
+				{
+					/* Begin - BUG:z99 */
+					if (n->key->id == DCH_YY)
+						n->sep = true;
+					/* End - BUG:z99 */
+					numlen = ivy_getnumlength(s);
+					if (fx_mode1 && numlen != n->key->len)
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_DATETIME_FORMAT),
+									errmsg("Number value does not match the length of the format item.")));
+				}
+				/* End - BUG:z97 */
 				len = from_char_parse_int(&out->year, &s, n, have_error);
 				CHECK_ERROR;
 				if (len < 4)
@@ -4154,11 +4434,45 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				SKIP_THth(s, n->suffix);
 				break;
 			case DCH_J:
+				/* Begin - BUG:z97 */
+				if (ORA_PARSER == compatible_db)
+					n->sep = true;
+				/* End - BUG:z97 */
 				from_char_parse_int(&out->j, &s, n, have_error);
 				CHECK_ERROR;
 				SKIP_THth(s, n->suffix);
 				break;
 		}
+
+		/* Begin - BUG:z101 */
+		if (ORA_PARSER == compatible_db && second)
+		{
+			char *tempstr = pstrdup(s);
+
+			while (*tempstr != '\0')
+			{
+				if (isspace((unsigned char) *tempstr))
+				{
+					tempstr++;
+					continue;
+				}
+
+				if ((*tempstr == '.') || (*tempstr == ':'))
+				{
+					skipff = false;
+					break;
+				}
+				else
+					break;
+
+				tempstr++;
+			}
+
+			if (!sep)
+				skipff = false;
+			second = false;	
+		}
+		/* Begin - BUG:z101 */
 
 		/* Ignore all spaces after fields */
 		if (!fx_mode)
@@ -5649,7 +5963,7 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 	if (tm->tm_hour < 0 || tm->tm_hour >= HOURS_PER_DAY ||
 		tm->tm_min < 0 || tm->tm_min >= MINS_PER_HOUR ||
 		tm->tm_sec < 0 || tm->tm_sec >= SECS_PER_MINUTE ||
-		*fsec < INT64CONST(0) || *fsec >= USECS_PER_SEC)
+		*fsec < INT64CONST(0) || *fsec > USECS_PER_SEC)		/* BUG:z102 change *fsec >= USECS_PER_SEC to *fsec > USECS_PER_SEC*/
 	{
 		RETURN_ERROR(DateTimeParseError(DTERR_FIELD_OVERFLOW, date_str, "timestamp"));
 	}
