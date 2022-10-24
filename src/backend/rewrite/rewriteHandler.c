@@ -928,14 +928,34 @@ rewriteTargetListIU(List *targetList,
 									   NameStr(att_tup->attname))));
 			}
 
+			/* Begin - Bug#m0000067 */
 			/* Begin - ReqID:SRS-SQL-IDENTCOL */
-			if (att_tup->attidentity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL && new_tle && IsA(new_tle->expr, Const))
+			if (att_tup->attidentity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL
+												&& new_tle
+												&& (IsA(new_tle->expr, Const)
+												|| IsA(new_tle->expr, FuncExpr)))
 			{
-				Const   *var = (Const *) new_tle->expr;
-				if (var->constisnull)
-					apply_default = true;
+				if (IsA(new_tle->expr, Const))
+				{
+					Const   *var = (Const *) new_tle->expr;
+					if (var->constisnull)
+						apply_default = true;
+				}
+				else if(IsA(new_tle->expr, FuncExpr))
+				{
+					Node	   *numvar;
+					FuncExpr   *fun = (FuncExpr *) new_tle->expr;
+					char	   *funname = get_func_name(fun->funcid);
+					if (pg_strcasecmp(funname, "number") == 0)
+					{
+						numvar = (Node *) linitial(fun->args);
+						if (IsA(numvar, Const) && ((Const *) numvar)->constisnull)
+							apply_default = true;
+					}
+				}
 			}
 			/* End - ReqID:SRS-SQL-IDENTCOL */
+			/* End - Bug#m0000067 */
 			/*
 			 * For an INSERT from a VALUES RTE, return the attribute numbers
 			 * of any VALUES columns that will no longer be used (due to the
@@ -1252,6 +1272,7 @@ build_column_default(Relation rel, int attrno)
 	int32		atttypmod = att_tup->atttypmod;
 	Node	   *expr = NULL;
 	Oid			exprtype;
+	Oid			nvetype;	/* BUG#Z029 */
 
 	if (att_tup->attidentity)
 	{
@@ -1259,6 +1280,16 @@ build_column_default(Relation rel, int attrno)
 
 		nve->seqid = getIdentitySequence(RelationGetRelid(rel), attrno, false);
 		nve->typeId = att_tup->atttypid;
+		/* Being - BUG#Z029 */
+		nvetype = exprType((Node*)nve);
+		if(atttype == NUMBEROID)
+			nve = (NextValueExpr *)coerce_to_target_type(NULL,	/* no UNKNOWN params here */
+								 (Node *)nve, nvetype,
+								 atttype, atttypmod,
+								 COERCION_ASSIGNMENT,
+								 COERCE_IMPLICIT_CAST,
+								 -1);
+		/* End - BUG#Z029 */
 
 		return (Node *) nve;
 	}
