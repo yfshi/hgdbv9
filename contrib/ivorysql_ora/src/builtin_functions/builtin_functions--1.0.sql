@@ -412,13 +412,6 @@ AS 'MODULE_PATHNAME','add_months'
 LANGUAGE C
 STRICT
 STABLE;
-
-CREATE FUNCTION sys.add_months(sys.oratimestamptz,sys.number)
-RETURNS sys.oradate
-AS 'MODULE_PATHNAME','add_months'
-LANGUAGE C
-STRICT
-STABLE;
 /* End - BUGID:0000414 */
 
 CREATE FUNCTION sys.round(sys.oradate,text)
@@ -1031,5 +1024,3 @@ RETURNS sys.number
 AS 'select sys.to_number($1::text, $2::text)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - ReqID:SRS-SQL-SYSFUNC */
-
-
