@@ -11634,4 +11634,10 @@
   proargtypes => '', prosrc => 'pg_get_connection_mode' },
 # End - ReqID:LISTEN-MULTI-PORT
 
+# Begin - BUG:Z139
+{ oid => '4643', descr => 'definition of a plisql function',
+  proname => 'ivy_get_plisql_functiondef', provolatile => 's', prorettype => 'text',
+  proargtypes => 'oid', prosrc => 'ivy_get_plisql_functiondef' },
+# End - BUG:Z139
+
 ]

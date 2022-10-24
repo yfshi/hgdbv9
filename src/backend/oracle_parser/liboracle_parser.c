@@ -681,8 +681,22 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			{
 				case TIME:
 				case ORDINALITY:
-				case LOCAL:		/* ReqID:SRS-GKC-DATATYPE_001 */
+					/* Begin - BUG:Z155 */
 					cur_token = WITH_LA;
+					break;
+				case LOCAL:		/* ReqID:SRS-GKC-DATATYPE_001 */
+					{
+						/*
+						 * Get third token, if it is TIME return WITH_LA
+						 * otherwise return WITH.
+						 */
+						next_token = ora_internal_yylex(yyscanner, llocp, &aux1);
+						push_back_token(yyscanner, next_token, &aux1);
+
+						if (next_token == TIME)
+							cur_token = WITH_LA;
+					}
+					/* End - BUG:Z155 */
 					break;
 			}
 			break;
