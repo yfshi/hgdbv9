@@ -1464,12 +1464,54 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	/* INCREMENT BY */
 	if (increment_by != NULL)
 	{
-		seqform->seqincrement = defGetInt64(increment_by);
-		if (seqform->seqincrement == 0)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("INCREMENT must not be zero")));
-		seqdataform->log_cnt = 0;
+		/* Begin - BUG#Z165 */
+		if (compatible_db == ORA_PARSER)
+		{
+			PG_TRY();
+			{
+				seqform->seqincrement = defGetInt64(increment_by);
+				if (seqform->seqincrement == 0)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							errmsg("INCREMENT must not be zero")));
+				seqdataform->log_cnt = 0;
+			}
+			PG_CATCH();
+			{
+				int		errcod;
+				char   *intval;
+
+				errcod = geterrcode();
+				if(errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
+				{
+					ereport(WARNING,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							errmsg("Increment value is out of range for data type bigint")));
+					intval = strVal(increment_by->arg);
+					if(*intval == '-')
+						seqform->seqincrement = PG_INT64_MIN;
+					else
+						seqform->seqincrement = PG_INT64_MAX;
+					seqdataform->log_cnt = 0;
+				}
+				else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION || errcod == ERRCODE_INVALID_PARAMETER_VALUE)
+				{
+					PG_RE_THROW();
+				}
+				FlushErrorState();
+			}
+			PG_END_TRY();
+		}
+		else
+		{
+			seqform->seqincrement = defGetInt64(increment_by);
+			if (seqform->seqincrement == 0)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						errmsg("INCREMENT must not be zero")));
+			seqdataform->log_cnt = 0;
+		}
+		/* End - BUG#Z165 */
 	}
 	else if (isInit)
 	{
@@ -1491,31 +1533,48 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	/* MAXVALUE (null arg means NO MAXVALUE) */
 	if (max_value != NULL && max_value->arg)
 	{
-		/* Begin - BUG#Z028 */
-		PG_TRY();
+		/* Begin - BUG#Z165 */
+		if (compatible_db == ORA_PARSER)
+		{
+			/* Begin - BUG#Z028 */
+			PG_TRY();
+			{
+				seqform->seqmax = defGetInt64(max_value);
+				seqdataform->log_cnt = 0;
+			}
+			PG_CATCH();
+			{
+				int		errcod;
+				char   *intval;
+
+				errcod = geterrcode();
+				if(errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
+				{
+					ereport(WARNING,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							errmsg("Maxvalue is out of range for data type bigint")));
+					intval = strVal(max_value->arg);
+					if(*intval == '-')
+						seqform->seqmax = PG_INT64_MIN;
+					else
+						seqform->seqmax = PG_INT64_MAX;
+					seqdataform->log_cnt = 0;
+				}
+				else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION)
+				{
+					PG_RE_THROW();
+				}
+				FlushErrorState();
+			}
+			PG_END_TRY();
+			/* End - BUG#Z028 */
+		}
+		else
 		{
 			seqform->seqmax = defGetInt64(max_value);
 			seqdataform->log_cnt = 0;
 		}
-		PG_CATCH();
-		{
-			int		errcod;
-			errcod = geterrcode();
-			if(errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
-			{
-				ereport(WARNING,
-						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-						errmsg("Maxvalue is out of range for data type bigint")));
-				seqform->seqmax = PG_INT64_MAX;
-			}
-			else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION)
-			{
-				PG_RE_THROW();
-			}
-			FlushErrorState();
-		}
-		PG_END_TRY();
-		/* End - BUG#Z028 */
+		/* End - BUG#Z165 */
 	}
 	else if (isInit || max_value != NULL || reset_max_value)
 	{
@@ -1551,8 +1610,46 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	/* MINVALUE (null arg means NO MINVALUE) */
 	if (min_value != NULL && min_value->arg)
 	{
-		seqform->seqmin = defGetInt64(min_value);
-		seqdataform->log_cnt = 0;
+		/* Begin - BUG#Z165 */
+		if (compatible_db == ORA_PARSER)
+		{
+			PG_TRY();
+			{
+				seqform->seqmin = defGetInt64(min_value);
+				seqdataform->log_cnt = 0;
+			}
+			PG_CATCH();
+			{
+				int		errcod;
+				char   *intval;
+
+				errcod = geterrcode();
+				if (errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
+				{
+					ereport(WARNING,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							errmsg("Minvalue is out of range for data type bigint")));
+					intval = strVal(max_value->arg);
+					if (*intval == '-')
+						seqform->seqmin = PG_INT64_MIN;
+					else
+						seqform->seqmin = PG_INT64_MAX;
+					seqdataform->log_cnt = 0;
+				}
+				else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION)
+				{
+					PG_RE_THROW();
+				}
+				FlushErrorState();
+			}
+			PG_END_TRY();
+		}
+		else
+		{
+			seqform->seqmin = defGetInt64(min_value);
+			seqdataform->log_cnt = 0;
+		}
+		/* End - BUG#Z165 */
 	}
 	else if (isInit || min_value != NULL || reset_min_value)
 	{
@@ -1616,13 +1713,24 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			PG_CATCH();
 			{
 				int		errcod;
+				char   *intval;	/* BUG#Z165 */
+
 				errcod = geterrcode();
 				if(errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
 				{
 					ereport(WARNING,
 							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
 							errmsg("Start value is out of range for data type bigint")));
-					seqform->seqstart = PG_INT64_MAX;
+					/* Begin - BUG#Z165 */
+					intval = strVal(start_value->arg);
+					if(*intval == '-')
+						seqform->seqstart = PG_INT64_MIN;
+					else
+						seqform->seqstart = PG_INT64_MAX;
+					seqdataform->log_cnt = 0;
+					seqdataform->last_value = seqform->seqstart;
+					seqdataform->is_called = false;
+					/* End - BUG#Z165 */
 				}
 				else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION)
 				{
@@ -1716,18 +1824,76 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	/* CACHE */
 	if (cache_value != NULL)
 	{
-		seqform->seqcache = defGetInt64(cache_value);
-		if (seqform->seqcache <= 0)
+		/* Begin - BUG#Z165 */
+		if (compatible_db == ORA_PARSER)
 		{
-			char		buf[100];
+			PG_TRY();
+			{
+				seqform->seqcache = defGetInt64(cache_value);
+				if (seqform->seqcache <= 0)
+				{
+					char		buf[100];
 
-			snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("CACHE (%s) must be greater than zero",
-							buf)));
+					snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							errmsg("CACHE (%s) must be greater than zero",
+									buf)));
+				}
+				seqdataform->log_cnt = 0;
+			}
+			PG_CATCH();
+			{
+				int		errcod;
+				char   *intval;
+
+				errcod = geterrcode();
+				if (errcod == ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE)
+				{
+					ereport(WARNING,
+							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+							errmsg("Cache value is out of range for data type bigint")));
+					intval = strVal(cache_value->arg);
+					if(*intval == '-')
+						seqform->seqcache = PG_INT64_MIN;
+					else
+						seqform->seqcache = PG_INT64_MAX;
+					if (seqform->seqcache <= 0)
+					{
+						char		buf[100];
+
+						snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								errmsg("CACHE (%s) must be greater than zero",
+										buf)));
+					}
+					seqdataform->log_cnt = 0;
+				}
+				else if (errcod == ERRCODE_INVALID_TEXT_REPRESENTATION || errcod == ERRCODE_INVALID_PARAMETER_VALUE)
+				{
+					PG_RE_THROW();
+				}
+				FlushErrorState();
+			}
+			PG_END_TRY();
 		}
-		seqdataform->log_cnt = 0;
+		else
+		{
+			seqform->seqcache = defGetInt64(cache_value);
+			if (seqform->seqcache <= 0)
+			{
+				char		buf[100];
+
+				snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						errmsg("CACHE (%s) must be greater than zero",
+								buf)));
+			}
+			seqdataform->log_cnt = 0;
+		}
+		/* End - BUG#Z165 */
 	}
 	else if (isInit)
 	{
