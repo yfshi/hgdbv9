@@ -915,7 +915,6 @@ EOF
 	$versions =~ s/\.sql//g;
 	chdir('contrib/ivorysql_ora');
 	system("perl gensql.pl $versions");
-	close($f);
 	chdir('../..');
 	# End - ReqID:SRS-MISC-SQLMERGE
 
