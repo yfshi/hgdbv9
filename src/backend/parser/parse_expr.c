@@ -97,6 +97,22 @@ static Node *make_nulltest_from_distinct(ParseState *pstate,
 static Node *transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall *cref_func);
 /* End - ReqID:SRS-SQL-PROC */
 
+/* Begin - Bug#Z167 */
+static inline void
+set_merge_on_attrno(ParseState *pstate, char *colname)
+{
+	AttrNumber	attno = InvalidAttrNumber;
+
+	if (colname && pstate->merge_on_attrno != NULL && pstate->p_expr_kind == EXPR_KIND_JOIN_ON)
+		attno = attnameAttNum(pstate->p_target_relation, colname, true);
+
+	if (attno > InvalidAttrNumber && attno <= pstate->merge_on_attr_size)
+	{
+		pstate->merge_on_attrno[attno - 1] = 1;
+	}
+}
+/* End - Bug#Z167 */
+
 /*
  * transformExpr -
  *	  Analyze and transform expressions. Type checking and type casting is
@@ -620,6 +636,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field1, String));
 				colname = strVal(field1);
+				/* Begin - Bug#Z167 */
+				set_merge_on_attrno(pstate, colname);
+				/* End - Bug#Z167 */
 
 				/* Try to identify as an unqualified column */
 				node = colNameToVar(pstate, colname, false, cref->location);
@@ -674,6 +693,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field2, String));
 				colname = strVal(field2);
+				/* Begin - Bug#Z167 */
+				set_merge_on_attrno(pstate, colname);
+				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
@@ -724,6 +746,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field3, String));
 				colname = strVal(field3);
+				/* Begin - Bug#Z167 */
+				set_merge_on_attrno(pstate, colname);
+				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
@@ -787,6 +812,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field4, String));
 				colname = strVal(field4);
+				/* Begin - Bug#Z167 */
+				set_merge_on_attrno(pstate, colname);
+				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,

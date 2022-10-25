@@ -245,6 +245,10 @@ struct ParseState
 	ParseSubprocFuncHook p_subprocfunc_hook;
 	/* End - SRS-PLSQL-SUBPROC */
 	void	   *p_ref_hook_state;	/* common passthrough link for above */
+	/* Begin - Bug#Z167 */
+	uint16	    merge_on_attr_size;
+	uint8 	   *merge_on_attrno;
+	/* End - Bug#Z167 */
 };
 
 /*
