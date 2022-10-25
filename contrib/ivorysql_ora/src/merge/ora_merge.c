@@ -36,6 +36,7 @@
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 #include "nodes/makefuncs.h"
+#include "nodes/execnodes.h"
 #include "rewrite/rewriteHandler.h"
 #include "storage/bufmgr.h"
 #include "storage/lmgr.h"
@@ -254,18 +255,18 @@ lmerge_matched:;
 
 			 case TM_SelfModified:
 
-				 /*
-				  * The SQL standard disallows this for MERGE.
-				  */
-				 if (TransactionIdIsCurrentTransactionId(context->tmfd.xmax))
-					 ereport(ERROR,
-							 (errcode(ERRCODE_CARDINALITY_VIOLATION),
-					 /* translator: %s is a SQL command name */
-							  errmsg("%s command cannot affect row a second time",
-									 "MERGE"),
-							  errhint("Ensure that not more than one source row matches any one target row.")));
-				 /* This shouldn't happen */
-				 elog(ERROR, "attempted to update or delete invisible tuple");
+				/*
+				 * The SQL standard disallows this for MERGE.
+				 */
+				if (TransactionIdIsCurrentTransactionId(context->tmfd.xmax))
+					ereport(ERROR,
+							(errcode(ERRCODE_CARDINALITY_VIOLATION),
+					/* translator: %s is a SQL command name */
+							 errmsg("%s command cannot affect row a second time",
+									"MERGE"),
+							 errhint("Ensure that not more than one source row matches any one target row.")));
+				/* This shouldn't happen */
+				elog(ERROR, "attempted to update or delete invisible tuple");
 				 break;
 
 			 case TM_Deleted:
@@ -580,8 +581,14 @@ IvytransformMergeStmt(ParseState *pstate, MergeStmt *stmt)
 	 * side, so add that to the namespace.
 	 */
 	addNSItemToQuery(pstate, pstate->p_target_nsitem, false, true, true);
-	joinExpr = transformExpr(pstate, stmt->joinCondition,
-							 EXPR_KIND_JOIN_ON);
+
+	/* Begin - Bug#Z167 */
+	pstate->merge_on_attr_size = list_length(pstate->p_target_nsitem->p_names->colnames);
+	pstate->merge_on_attrno = (uint8 *)palloc(pstate->merge_on_attr_size * sizeof(uint8));
+	memset(pstate->merge_on_attrno, 0, pstate->merge_on_attr_size * sizeof(uint8));
+	/* End - Bug#Z167 */
+
+	joinExpr = transformExpr(pstate, stmt->joinCondition, EXPR_KIND_JOIN_ON);
 
 	/*
 	 * Create the temporary query's jointree using the joinlist we built using
@@ -727,9 +734,8 @@ IvytransformMergeStmt(ParseState *pstate, MergeStmt *stmt)
 				break;
 			case CMD_UPDATE:
 				{
-					List 		*jcol;
 					ListCell    *l1;
-					ListCell    *l2;
+					char		*rname = NULL;
 
 					pstate->p_is_insert = false;
 					action->targetList =
@@ -737,21 +743,15 @@ IvytransformMergeStmt(ParseState *pstate, MergeStmt *stmt)
 					/*
 					 * Prevent the columns referenced in the ON clause can be updated.
 					 */
-					jcol = pull_var_clause(joinExpr, 0);
-					foreach(l1, jcol)
+					foreach(l1, action->targetList)
 					{
-						char 	*rname = NULL;
-						Var 	*va = (Var *) lfirst(l1);
-						rname = get_rte_attribute_name(pstate->p_target_nsitem->p_rte, va->varattno);
+						TargetEntry *tle = (TargetEntry *) lfirst(l1);
 
-						foreach(l2, action->targetList)
+						if (pstate->merge_on_attrno[tle->resno - 1] == 1)
 						{
-							TargetEntry *tle = (TargetEntry *) lfirst(l2);
-							if (va->varattno == tle->resno)
-							{
-								elog(ERROR, "Columns referenced in the ON Clause cannot be updated: %s.%s",
-									RelationGetRelationName(pstate->p_target_relation), rname);
-							}
+							rname = get_rte_attribute_name(pstate->p_target_nsitem->p_rte, tle->resno);
+							elog(ERROR, "Columns referenced in the ON Clause cannot be updated: %s.%s",
+								RelationGetRelationName(pstate->p_target_relation), rname);
 						}
 					}
 				}
