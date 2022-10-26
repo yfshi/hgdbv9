@@ -627,7 +627,7 @@ static void determineLanguage(List *options);
 %type <list>		hash_partbound
 %type <defelt>		hash_partbound_elem
 
-%type <node>	identity_clause identity_options drop_identity	/* ReqID:SRS-SQL-IDENTCOL */
+%type <list>	identity_clause identity_options drop_identity	/* Bug#m0000070 */
 %type <boolean>	opt_with opt_by	/* BUG#Z030 */
 
 
@@ -2187,6 +2187,7 @@ AlterTableStmt:
 alter_table_cmds:
 			alter_table_cmd							{ $$ = list_make1($1); }
 			| alter_table_cmds ',' alter_table_cmd	{ $$ = lappend($1, $3); }
+			| MODIFY identity_clause				{ $$ = $2; }	/* Bug#m0000070 */
 		;
 
 partition_cmd:
@@ -2444,13 +2445,6 @@ alter_table_cmd:
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-SQL-IDENTCOL */
-			/* ALTER TABLE <name> MODIFY <colname> [datatype] [ DEFAULT [ ON NULL ] expr | identity_clause | DROP IDENTITY ] ) */
-			| MODIFY identity_clause
-				{
-					$$ = $2;
-				}
-			/* End - ReqID:SRS-SQL-IDENTCOL */
 			/* ALTER TABLE <name> DROP [COLUMN] IF EXISTS <colname> [RESTRICT|CASCADE] */
 			| DROP opt_column IF_P EXISTS ColId opt_drop_behavior
 				{
@@ -2923,7 +2917,29 @@ identity_clause:
 		;
 
 identity_options:
-			ColId GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
+			/* Begin - Bug#m0000070 */
+			ColId Typename GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
+				{
+					AlterTableCmd *m = makeNode(AlterTableCmd);
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					ColumnDef *def = makeNode(ColumnDef);
+					m->subtype = AT_AlterColumnType;
+					m->name = $1;
+					m->def = (Node *) def;
+					def->typeName = $2;
+					def->location = @1;
+					if ($4 == ATTRIBUTE_IDENTITY_ALWAYS)
+						$4 = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
+					else if ($4 == ATTRIBUTE_IDENTITY_BY_DEFAULT)
+						$4 = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
+					n->def = (Node *)lcons(makeDefElem("generated", (Node *) makeInteger($4), @1), $7);
+
+					n->subtype = AT_SetIdentity;
+					n->name = $1;
+					$$ = list_make2(m, n);
+				}
+			/* End - Bug#m0000070 */
+			| ColId GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					if ($3 == ATTRIBUTE_IDENTITY_ALWAYS)
@@ -2935,8 +2951,9 @@ identity_options:
 					n->subtype = AT_SetIdentity;
 					n->name = $1;
 
-					$$ = (Node *)n;
+					$$ = list_make1(n);	/* Bug#m0000070 */
 				}
+		;
 
 drop_identity:
 			ColId DROP IDENTITY_P
@@ -2945,7 +2962,7 @@ drop_identity:
 					n->subtype = AT_DropIdentity;
 					n->name = $1;
 					n->missing_ok = false;
-					$$ = (Node *)n;
+					$$ = list_make1(n);	/* Bug#m0000070 */
 				}
 		;
 /* End - ReqID:SRS-SQL-IDENTCOL */
