@@ -382,7 +382,7 @@ DROP TABLE inht1, inhs1 CASCADE;
 
 
 -- Test non-inheritable indices [UNIQUE, EXCLUDE] constraints
-CREATE TABLE test_constraints (id int, val1 varchar, val2 int, UNIQUE(val1, val2));
+CREATE TABLE test_constraints (id int, val1 varchar(4000), val2 int, UNIQUE(val1, val2));
 CREATE TABLE test_constraints_inh () INHERITS (test_constraints);
 \d+ test_constraints
 ALTER TABLE ONLY test_constraints DROP CONSTRAINT test_constraints_val1_val2_key;
@@ -664,7 +664,7 @@ drop table inh_temp_parent cascade;
 -- implicit constraints generated from the partition bound information.
 --
 create table list_parted (
-	a	varchar
+	a	varchar(4000)
 ) partition by list (a);
 create table part_ab_cd partition of list_parted for values in ('ab', 'cd');
 create table part_ef_gh partition of list_parted for values in ('ef', 'gh');

@@ -1247,7 +1247,7 @@ LINE 1: ...e ALTER CONSTRAINT fktable_fk_fkey NOT DEFERRABLE INITIALLY ...
 -- changes in 8.0.
 CREATE TEMP TABLE users (
   id INT PRIMARY KEY,
-  name VARCHAR NOT NULL
+  name VARCHAR(4000) NOT NULL
 );
 INSERT INTO users VALUES (1, 'Jozko');
 INSERT INTO users VALUES (2, 'Ferko');

@@ -4463,9 +4463,19 @@ parse_datatype(const char *string, int location)
 	error_context_stack = syntax_errcontext.previous;
 
 	/* Okay, build a PLiSQL_type data structure for it */
-	return plisql_build_datatype(type_id, typmod,
-								  plisql_curr_compile->fn_input_collation,
-								  typeName);
+	/* Begin - BUG:M0000068 */
+	if ((plisql_curr_compile->fn_intisnumber ||
+		(strcmp(plisql_error_funcname, "inline_code_block") == 0 &&
+		 convert_plisql_anonymous_int_to_number)) &&
+		(type_id == INT2OID || type_id == INT4OID))
+		return plisql_build_datatype(NUMBEROID, NUMBER38TYPMOD,
+									  plisql_curr_compile->fn_input_collation,
+									  typeName);
+	else
+	/* End - BUG:M0000068 */
+		return plisql_build_datatype(type_id, typmod,
+									  plisql_curr_compile->fn_input_collation,
+									  typeName);
 }
 
 /*

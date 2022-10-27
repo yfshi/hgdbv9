@@ -27,6 +27,7 @@
 #include "catalog/pg_transform.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/proclang.h" /* BUG:M0000068 */
 #include "executor/functions.h"
 #include "funcapi.h"
 #include "mb/pg_wchar.h"
@@ -40,7 +41,9 @@
 #include "tcop/tcopprot.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"		/* BUG:M0000068 */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* BUG:M0000068 */
 #include "utils/regproc.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -94,7 +97,8 @@ ProcedureCreate(const char *procedureName,
 				Datum proconfig,
 				Oid prosupport,
 				float4 procost,
-				float4 prorows)
+				float4 prorows,
+				bool intisnumber /* BUG:M0000068 */)
 {
 	Oid			retval;
 	int			parameterCount;
@@ -350,6 +354,18 @@ ProcedureCreate(const char *procedureName,
 		values[Anum_pg_proc_proconfig - 1] = proconfig;
 	else
 		nulls[Anum_pg_proc_proconfig - 1] = true;
+	/* Begin - BUG:M0000068 */
+	if (ORA_PARSER == compatible_db &&
+		languageObjectId == get_language_oid("plisql", true))
+	{
+		if (intisnumber)
+			values[Anum_pg_proc_prointisnumber - 1] = BoolGetDatum(true);
+		else
+			values[Anum_pg_proc_prointisnumber - 1] = BoolGetDatum(false);
+	}
+	else
+		values[Anum_pg_proc_prointisnumber - 1] = BoolGetDatum(false);
+	/* End - BUG:M0000068 */
 	/* proacl will be determined later */
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
@@ -434,7 +450,8 @@ ProcedureCreate(const char *procedureName,
 			newdesc = build_function_result_tupdesc_d(prokind,
 													  allParameterTypes,
 													  parameterModes,
-													  parameterNames);
+													  parameterNames,
+													  intisnumber/* BUG:M0000068 */);
 			if (olddesc == NULL && newdesc == NULL)
 				 /* ok, both are runtime-defined RECORDs */ ;
 			else if (olddesc == NULL || newdesc == NULL ||

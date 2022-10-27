@@ -9,7 +9,7 @@ SET enable_partitionwise_join to true;
 --
 -- partitioned by a single column
 --
-CREATE TABLE prt1 (a int, b int, c varchar) PARTITION BY RANGE(a);
+CREATE TABLE prt1 (a int, b int, c varchar(4000)) PARTITION BY RANGE(a);
 CREATE TABLE prt1_p1 PARTITION OF prt1 FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt1_p3 PARTITION OF prt1 FOR VALUES FROM (500) TO (600);
 CREATE TABLE prt1_p2 PARTITION OF prt1 FOR VALUES FROM (250) TO (500);
@@ -19,7 +19,7 @@ CREATE INDEX iprt1_p2_a on prt1_p2(a);
 CREATE INDEX iprt1_p3_a on prt1_p3(a);
 ANALYZE prt1;
 
-CREATE TABLE prt2 (a int, b int, c varchar) PARTITION BY RANGE(b);
+CREATE TABLE prt2 (a int, b int, c varchar(4000)) PARTITION BY RANGE(b);
 CREATE TABLE prt2_p1 PARTITION OF prt2 FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt2_p2 PARTITION OF prt2 FOR VALUES FROM (250) TO (500);
 CREATE TABLE prt2_p3 PARTITION OF prt2 FOR VALUES FROM (500) TO (600);
@@ -327,7 +327,7 @@ SELECT avg(t1.a), avg(t2.b), t1.c, t2.c FROM plt1 t1 RIGHT JOIN plt2 t2 ON t1.c 
 --
 -- multiple levels of partitioning
 --
-CREATE TABLE prt1_l (a int, b int, c varchar) PARTITION BY RANGE(a);
+CREATE TABLE prt1_l (a int, b int, c varchar(4000)) PARTITION BY RANGE(a);
 CREATE TABLE prt1_l_p1 PARTITION OF prt1_l FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt1_l_p2 PARTITION OF prt1_l FOR VALUES FROM (250) TO (500) PARTITION BY LIST (c);
 CREATE TABLE prt1_l_p2_p1 PARTITION OF prt1_l_p2 FOR VALUES IN ('0000', '0001');
@@ -338,7 +338,7 @@ CREATE TABLE prt1_l_p3_p2 PARTITION OF prt1_l_p3 FOR VALUES FROM (13) TO (25);
 INSERT INTO prt1_l SELECT i, i % 25, to_char(i % 4, 'FM0000') FROM generate_series(0, 599, 2) i;
 ANALYZE prt1_l;
 
-CREATE TABLE prt2_l (a int, b int, c varchar) PARTITION BY RANGE(b);
+CREATE TABLE prt2_l (a int, b int, c varchar(4000)) PARTITION BY RANGE(b);
 CREATE TABLE prt2_l_p1 PARTITION OF prt2_l FOR VALUES FROM (0) TO (250);
 CREATE TABLE prt2_l_p2 PARTITION OF prt2_l FOR VALUES FROM (250) TO (500) PARTITION BY LIST (c);
 CREATE TABLE prt2_l_p2_p1 PARTITION OF prt2_l_p2 FOR VALUES IN ('0000', '0001');
@@ -397,7 +397,7 @@ WHERE EXISTS (
 --
 -- negative testcases
 --
-CREATE TABLE prt1_n (a int, b int, c varchar) PARTITION BY RANGE(c);
+CREATE TABLE prt1_n (a int, b int, c varchar(4000)) PARTITION BY RANGE(c);
 CREATE TABLE prt1_n_p1 PARTITION OF prt1_n FOR VALUES FROM ('0000') TO ('0250');
 CREATE TABLE prt1_n_p2 PARTITION OF prt1_n FOR VALUES FROM ('0250') TO ('0500');
 INSERT INTO prt1_n SELECT i, i, to_char(i, 'FM0000') FROM generate_series(0, 499, 2) i;
@@ -513,7 +513,7 @@ where not exists (select 1 from prtx2
 --
 
 -- Tests for range-partitioned tables
-CREATE TABLE prt1_adv (a int, b int, c varchar) PARTITION BY RANGE (a);
+CREATE TABLE prt1_adv (a int, b int, c varchar(4000)) PARTITION BY RANGE (a);
 CREATE TABLE prt1_adv_p1 PARTITION OF prt1_adv FOR VALUES FROM (100) TO (200);
 CREATE TABLE prt1_adv_p2 PARTITION OF prt1_adv FOR VALUES FROM (200) TO (300);
 CREATE TABLE prt1_adv_p3 PARTITION OF prt1_adv FOR VALUES FROM (300) TO (400);
@@ -521,7 +521,7 @@ CREATE INDEX prt1_adv_a_idx ON prt1_adv (a);
 INSERT INTO prt1_adv SELECT i, i % 25, to_char(i, 'FM0000') FROM generate_series(100, 399) i;
 ANALYZE prt1_adv;
 
-CREATE TABLE prt2_adv (a int, b int, c varchar) PARTITION BY RANGE (b);
+CREATE TABLE prt2_adv (a int, b int, c varchar(4000)) PARTITION BY RANGE (b);
 CREATE TABLE prt2_adv_p1 PARTITION OF prt2_adv FOR VALUES FROM (100) TO (150);
 CREATE TABLE prt2_adv_p2 PARTITION OF prt2_adv FOR VALUES FROM (200) TO (300);
 CREATE TABLE prt2_adv_p3 PARTITION OF prt2_adv FOR VALUES FROM (350) TO (500);
@@ -678,7 +678,7 @@ ANALYZE prt1_adv;
 DROP TABLE prt2_adv_p3;
 ANALYZE prt2_adv;
 
-CREATE TABLE prt3_adv (a int, b int, c varchar) PARTITION BY RANGE (a);
+CREATE TABLE prt3_adv (a int, b int, c varchar(4000)) PARTITION BY RANGE (a);
 CREATE TABLE prt3_adv_p1 PARTITION OF prt3_adv FOR VALUES FROM (200) TO (300);
 CREATE TABLE prt3_adv_p2 PARTITION OF prt3_adv FOR VALUES FROM (300) TO (400);
 CREATE INDEX prt3_adv_a_idx ON prt3_adv (a);
@@ -695,7 +695,7 @@ DROP TABLE prt2_adv;
 DROP TABLE prt3_adv;
 
 -- Test interaction of partitioned join with partition pruning
-CREATE TABLE prt1_adv (a int, b int, c varchar) PARTITION BY RANGE (a);
+CREATE TABLE prt1_adv (a int, b int, c varchar(4000)) PARTITION BY RANGE (a);
 CREATE TABLE prt1_adv_p1 PARTITION OF prt1_adv FOR VALUES FROM (100) TO (200);
 CREATE TABLE prt1_adv_p2 PARTITION OF prt1_adv FOR VALUES FROM (200) TO (300);
 CREATE TABLE prt1_adv_p3 PARTITION OF prt1_adv FOR VALUES FROM (300) TO (400);
@@ -703,7 +703,7 @@ CREATE INDEX prt1_adv_a_idx ON prt1_adv (a);
 INSERT INTO prt1_adv SELECT i, i % 25, to_char(i, 'FM0000') FROM generate_series(100, 399) i;
 ANALYZE prt1_adv;
 
-CREATE TABLE prt2_adv (a int, b int, c varchar) PARTITION BY RANGE (b);
+CREATE TABLE prt2_adv (a int, b int, c varchar(4000)) PARTITION BY RANGE (b);
 CREATE TABLE prt2_adv_p1 PARTITION OF prt2_adv FOR VALUES FROM (100) TO (200);
 CREATE TABLE prt2_adv_p2 PARTITION OF prt2_adv FOR VALUES FROM (200) TO (400);
 CREATE INDEX prt2_adv_b_idx ON prt2_adv (b);

@@ -184,7 +184,7 @@ if (sqlca.sqlcode < 0) sqlprint ( );}
 #line 35 "dynalloc.pgc"
 
 
-   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table test ( a serial , b numeric ( 12 , 3 ) , c varchar , d varchar ( 3 ) , e char ( 4 ) , f timestamptz , g boolean , h box , i inet )", ECPGt_EOIT, ECPGt_EORT);
+   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table test ( a serial , b numeric ( 12 , 3 ) , c varchar ( 4000 ) , d varchar ( 3 ) , e char ( 4 ) , f timestamptz , g boolean , h box , i inet )", ECPGt_EOIT, ECPGt_EORT);
 #line 37 "dynalloc.pgc"
 
 if (sqlca.sqlcode < 0) sqlprint ( );}

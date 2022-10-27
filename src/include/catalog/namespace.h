@@ -34,6 +34,7 @@ typedef struct _FuncCandidateList
 	int			nargs;			/* number of arg types returned */
 	int			nvargs;			/* number of args to become variadic array */
 	int			ndargs;			/* number of defaulted args */
+	bool		prointisnumber;	/* BUG:M0000068 */
 	int		   *argnumbers;		/* args' positional indexes, if named call */
 	Oid			args[FLEXIBLE_ARRAY_MEMBER];	/* arg types */
 }		   *FuncCandidateList;

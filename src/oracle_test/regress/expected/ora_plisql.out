@@ -1001,3 +1001,469 @@ DROP PROCEDURE bug139_proc();
 DROP FUNCTION bug139_func();
 DROP FUNCTION test_subproc_func(int);
 /* End - BUG:Z139 */
+/* Begin - BUG:M0000068 */
+-- specify prointisnumber with CREATE FUNCTION
+create or replace function test_prointisnumber(id integer) return integer
+int is number
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+       proname       | prointisnumber 
+---------------------+----------------
+ test_prointisnumber | t
+(1 row)
+
+-- specify prointisnumber depend on GUC ivorysql.convert_plisql_int_to_number
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_prointisnumber(id integer) return integer
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+       proname       | prointisnumber 
+---------------------+----------------
+ test_prointisnumber | f
+(1 row)
+
+set ivorysql.convert_plisql_int_to_number to on;
+create or replace function test_prointisnumber(id integer) return integer
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+       proname       | prointisnumber 
+---------------------+----------------
+ test_prointisnumber | t
+(1 row)
+
+-- test call
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_f(id integer) return integer is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+select test_f(1) from dual;		-- ok
+NOTICE:  1
+NOTICE:  1
+NOTICE:  1
+ test_f 
+--------
+      1
+(1 row)
+
+select test_f(3.14) from dual;	-- error
+ERROR:  function test_f(numeric) does not exist
+LINE 1: select test_f(3.14) from dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+alter function test_f(id integer) int is number;
+select test_f(1) from dual;		-- ok
+NOTICE:  1
+NOTICE:  1
+NOTICE:  1
+ test_f 
+--------
+ 1
+(1 row)
+
+select test_f(3.14) from dual;	-- ok
+NOTICE:  3.14
+NOTICE:  3.14
+NOTICE:  1
+ test_f 
+--------
+ 3.14
+(1 row)
+
+set ivorysql.convert_plisql_int_to_number to on;
+create or replace function test_f1(id smallint) return smallint is
+ var1 smallint;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+select test_f1(1) from dual;	-- ok
+NOTICE:  1
+NOTICE:  1
+NOTICE:  1
+ test_f1 
+---------
+ 1
+(1 row)
+
+select test_f1(3.14) from dual;	-- ok
+NOTICE:  3.14
+NOTICE:  3.14
+NOTICE:  1
+ test_f1 
+---------
+ 3.14
+(1 row)
+
+-- get definition display integer datatype still
+select pg_get_function_arguments('test_f'::regproc);
+ pg_get_function_arguments 
+---------------------------
+ id integer
+(1 row)
+
+select pg_get_function_identity_arguments('test_f'::regproc);
+ pg_get_function_identity_arguments 
+------------------------------------
+ id integer
+(1 row)
+
+select pg_get_function_result('test_f'::regproc);
+ pg_get_function_result 
+------------------------
+ integer
+(1 row)
+
+select pg_get_functiondef('test_f'::regproc);
+                  pg_get_functiondef                  
+------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.test_f(id integer)+
+  RETURN integer                                     +
+  AUTHID DEFINER                                     +
+  INT IS NUMBER                                      +
+ IS                                                  +
+ var1 integer;                                       +
+ begin                                               +
+   raise notice '%', id;                             +
+   var1 := id;                                       +
+   raise notice '%', var1;                           +
+   var1 := 1.1;                                      +
+   raise notice '%', var1;                           +
+   return id;                                        +
+ end;                                                +
+ 
+(1 row)
+
+reset ivorysql.convert_plisql_int_to_number;
+-- OUT parameters of function
+create or replace function test_f2(id integer, OUT z integer, OUT y int) return record is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  z := id;
+  raise notice '%', z;
+  y := id;
+  return ;
+end;
+/
+alter function test_f2(id integer, OUT z integer, OUT y int) int is number;
+DECLARE
+ a int;
+ b int;
+BEGIN
+  select * into a, b from test_f2(3.14);
+  raise notice '%', a;
+END;
+/
+NOTICE:  3.14
+NOTICE:  3.14
+NOTICE:  1
+NOTICE:  3.14
+NOTICE:  3
+-- TEST FOR PROCEDURES
+CREATE PROCEDURE test_p(IN a int, OUT b int)
+IS
+BEGIN
+  RAISE NOTICE 'a: %, b: %', a, b;
+  b := a * 2;
+END;
+/
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+NOTICE:  a: 3, b: <NULL>
+NOTICE:  b: 6
+-- error
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+ERROR:  procedure test_p(numeric, integer) does not exist
+LINE 1: call test_p(3.14, b)
+             ^
+HINT:  No procedure matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  call test_p(3.14, b)
+CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
+alter procedure test_p(IN a int, OUT b int) int is number;
+-- error, need convert int to number(38) within anonymous.
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+ERROR:  procedure parameter "b" is an output parameter but corresponding argument is not writable
+CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
+-- error, need convert int to number(38) within anonymous.
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+ERROR:  procedure parameter "b" is an output parameter but corresponding argument is not writable
+CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
+set ivorysql.convert_plisql_anonymous_int_to_number to on;
+alter procedure test_p(IN a int, OUT b int) int is number;	-- recompile, make chache invalid.
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+NOTICE:  a: 3, b: <NULL>
+NOTICE:  b: 6
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+NOTICE:  a: 3.14, b: <NULL>
+NOTICE:  b: 6
+-- default value parameters
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_f3(id integer, def integer default 3.14) return integer is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  raise notice '%', def;
+  return id;
+end;
+/
+select test_f3(1) from dual;	-- ok
+NOTICE:  1
+NOTICE:  1
+NOTICE:  1
+NOTICE:  3
+ test_f3 
+---------
+       1
+(1 row)
+
+select test_f3(3.14) from dual;	-- error
+ERROR:  function test_f3(numeric) does not exist
+LINE 1: select test_f3(3.14) from dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+alter function test_f3(id integer, def integer) int is number;
+select test_f3(1) from dual;	-- ok
+NOTICE:  1
+NOTICE:  1
+NOTICE:  1
+NOTICE:  3
+ test_f3 
+---------
+ 1
+(1 row)
+
+select test_f3(3.14) from dual;	-- ok
+NOTICE:  3.14
+NOTICE:  3.14
+NOTICE:  1
+NOTICE:  3
+ test_f3 
+---------
+ 3.14
+(1 row)
+
+-- nested subproc
+set ivorysql.convert_plisql_anonymous_int_to_number to on;
+DECLARE
+  FUNCTION square (original int)
+    RETURN int
+  AS
+    original_squared int;
+  BEGIN
+    original_squared := original * original;
+	raise notice '%', original_squared;
+    RETURN original;
+  END;
+BEGIN
+  raise notice '%', square(3.14);
+END;
+/
+NOTICE:  10
+NOTICE:  3.14
+reset ivorysql.convert_plisql_anonymous_int_to_number;
+create or replace function test_subproc_func(a in integer) return integer
+is
+  mds integer;
+  function square(original in integer) return integer;
+  function square(original in integer) return integer
+  is
+  declare
+       original_squared integer;
+  begin
+	   raise info 'subproc: %',original;
+       original_squared := original * original;
+	   raise info 'subporc: %',original_squared;
+       return original;
+   end;
+begin
+	raise info 'parent: %',square(a);
+	raise info 'parent: %',square(3.14);
+    return a;
+end;
+/
+select test_subproc_func(3) from dual;		-- error
+INFO:  subproc: 3
+INFO:  subporc: 9
+INFO:  parent: 3
+ERROR:  wrong number or types of arguments in call to "square"
+LINE 1: square(3.14)
+        ^
+QUERY:  square(3.14)
+CONTEXT:  PL/iSQL function test_subproc_func(integer) line 15 at RAISE
+select test_subproc_func(3.14) from dual;	-- error
+ERROR:  function test_subproc_func(numeric) does not exist
+LINE 1: select test_subproc_func(3.14) from dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+alter function test_subproc_func(a in integer) int is number;
+select test_subproc_func(3) from dual;		-- ok
+INFO:  subproc: 3
+INFO:  subporc: 9
+INFO:  parent: 3
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+ test_subproc_func 
+-------------------
+ 3
+(1 row)
+
+select test_subproc_func(3.14) from dual;	-- ok
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+ test_subproc_func 
+-------------------
+ 3.14
+(1 row)
+
+create or replace procedure test_subproc_proc(a integer)
+is
+  mds integer;
+  function square(original in integer) return integer;
+  function square(original in integer) return integer
+  is
+  declare
+       original_squared integer;
+  begin
+	   raise info 'subproc: %',original;
+       original_squared := original * original;
+	   raise info 'subporc: %',original_squared;
+       return original;
+   end;
+begin
+	raise info 'parent: %',square(a);
+	raise info 'parent: %',square(3.14);
+end;
+/
+call test_subproc_proc(3);		-- error
+INFO:  subproc: 3
+INFO:  subporc: 9
+INFO:  parent: 3
+ERROR:  wrong number or types of arguments in call to "square"
+LINE 1: square(3.14)
+        ^
+QUERY:  square(3.14)
+CONTEXT:  PL/iSQL function test_subproc_proc(integer) line 15 at RAISE
+call test_subproc_proc(3.14);	-- error
+ERROR:  procedure test_subproc_proc(numeric) does not exist
+LINE 1: call test_subproc_proc(3.14);
+             ^
+HINT:  No procedure matches the given name and argument types. You might need to add explicit type casts.
+alter procedure test_subproc_proc int is number;
+call test_subproc_proc(3);		-- ok
+INFO:  subproc: 3
+INFO:  subporc: 9
+INFO:  parent: 3
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+call test_subproc_proc(3.14);	-- ok
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+INFO:  subproc: 3.14
+INFO:  subporc: 10
+INFO:  parent: 3.14
+-- clean
+drop function test_prointisnumber(id integer);
+drop function test_f(id integer);
+drop function test_f1(id smallint);
+drop function test_f3(id integer, def integer);
+drop function test_f2(id integer, OUT z integer, OUT y int);
+drop procedure test_p(IN a int, OUT b int);
+drop function test_subproc_func(a in integer);
+drop procedure test_subproc_proc(a integer);
+/* End - BUG:M0000068 */

@@ -68,6 +68,10 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 #include <math.h>      /* BUG#Z029 */
+/* Begin - BUG:M0000062 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG:M0000062 */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -3473,6 +3477,31 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 								 errmsg("column \"%s\" of relation \"%s\" does not exist",
 										cmd->name, RelationGetRelationName(rel))));
 
+					/* Begin - BUG:M0000062 */
+					/*
+					 * You must specify the value of typmod for varchar2 and nvarchar2
+					 * when ALTER TABLE modify column type in oracle database, otherwise
+					 * an error will be thrown.
+					 */
+					if (ORA_PARSER == compatible_db &&
+						rel->rd_rel->relkind == RELKIND_RELATION &&
+						def->typeName)
+					{
+						int32	typmod;
+						Type	ctype = typenameType(NULL, def->typeName, &typmod);
+
+						if (typmod == -1)
+						{
+							Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
+
+							if (typtup->oid == ORAVARCHARCHAROID ||
+								typtup->oid == ORAVARCHARBYTEOID)
+								elog(ERROR, "missing left parenthesis");
+						}
+						ReleaseSysCache(ctype);
+					}
+					/* End - BUG:M0000062 */
+
 					if (attnum > 0 &&
 						TupleDescAttr(tupdesc, attnum - 1)->attidentity)
 					{
@@ -3814,11 +3843,29 @@ transformConstraintAttrs(CreateStmtContext *cxt, List *constraintList)
 static void
 transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 {
+	int32	typmod;	/* BUG:M0000068 */
+
 	/*
 	 * All we really need to do here is verify that the type is valid,
 	 * including any collation spec that might be present.
 	 */
-	Type		ctype = typenameType(cxt->pstate, column->typeName, NULL);
+	Type		ctype = typenameType(cxt->pstate, column->typeName, &typmod);	/* BUG:M0000068 */
+
+	/* Begin - BUG:M0000068 */
+	/*
+	 * You must specify the value of typmod when creating tables with
+	 * datatypes varchar2 and nvarchar2 in oracle database, otherwise
+	 * an error will be thrown.
+	 */
+	if (ORA_PARSER == compatible_db && typmod == -1)
+	{
+		Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
+
+		if (typtup->oid == ORAVARCHARCHAROID ||
+			typtup->oid == ORAVARCHARBYTEOID)
+			elog(ERROR, "missing left parenthesis");
+	}
+	/* End - BUG:M0000068 */
 
 	if (column->collClause)
 	{

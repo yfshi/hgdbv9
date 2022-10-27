@@ -2070,19 +2070,19 @@ commit;
 -- We disallow changing table's row type if it's used for storage
 create table at_tab1 (a int, b text);
 create table at_tab2 (x int, y at_tab1);
-alter table at_tab1 alter column b type varchar; -- fails
+alter table at_tab1 alter column b type varchar(4000); -- fails
 ERROR:  cannot alter table "at_tab1" because column "at_tab2.y" uses its row type
 drop table at_tab2;
 -- Use of row type in an expression is defended differently
 create table at_tab2 (x int, y text, check((x,y)::at_tab1 = (1,'42')::at_tab1));
-alter table at_tab1 alter column b type varchar; -- allowed, but ...
+alter table at_tab1 alter column b type varchar(4000); -- allowed, but ...
 insert into at_tab2 values(1,'42'); -- ... this will fail
 ERROR:  ROW() column has type text instead of type varchar2
 drop table at_tab1, at_tab2;
 -- Check it for a partitioned table, too
 create table at_tab1 (a int, b text) partition by list(a);
 create table at_tab2 (x int, y at_tab1);
-alter table at_tab1 alter column b type varchar; -- fails
+alter table at_tab1 alter column b type varchar(4000); -- fails
 ERROR:  cannot alter table "at_tab1" because column "at_tab2.y" uses its row type
 drop table at_tab1, at_tab2;
 -- Alter column type that's part of a partitioned index
@@ -3013,7 +3013,7 @@ ALTER TYPE test_type ADD ATTRIBUTE b text;
 
 ALTER TYPE test_type ADD ATTRIBUTE b text; -- fails
 ERROR:  column "b" of relation "test_type" already exists
-ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE varchar;
+ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE varchar(4000);
 \d test_type
             Composite type "public.test_type"
  Column |      Type      | Collation | Nullable | Default 
@@ -3059,7 +3059,7 @@ ALTER TYPE test_type RENAME ATTRIBUTE d TO dd;
 DROP TYPE test_type;
 CREATE TYPE test_type1 AS (a int, b text);
 CREATE TABLE test_tbl1 (x int, y test_type1);
-ALTER TYPE test_type1 ALTER ATTRIBUTE b TYPE varchar; -- fails
+ALTER TYPE test_type1 ALTER ATTRIBUTE b TYPE varchar(4000); -- fails
 ERROR:  cannot alter type "test_type1" because column "test_tbl1.y" uses it
 CREATE TYPE test_type2 AS (a int, b text);
 CREATE TABLE test_tbl2 OF test_type2;
@@ -3102,10 +3102,10 @@ ALTER TYPE test_type2 ADD ATTRIBUTE c text CASCADE;
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
-ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar; -- fails
+ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar(4000); -- fails
 ERROR:  cannot alter type "test_type2" because it is the type of a typed table
 HINT:  Use ALTER ... CASCADE to alter the typed tables too.
-ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar CASCADE;
+ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar(4000) CASCADE;
 \d test_type2
             Composite type "public.test_type2"
  Column |      Type      | Collation | Nullable | Default 

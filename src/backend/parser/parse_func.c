@@ -1510,6 +1510,29 @@ func_get_detail(List *funcname,
 										   expand_variadic, expand_defaults,
 										   include_out_arguments, false);
 
+	/* Begin - BUG:M0000068 */
+	/*
+	 * When the prointisnumber of pg_proc is true, the plisql function
+	 * convert INTEGER and SMALLINT to NUMBER at compile time, so we 
+	 * should do the same when executing.
+	 *
+	 * Another reason to do the conversion here is that the function of
+	 * integer args can directly accept a number type value.
+	 */
+	for (best_candidate = raw_candidates;
+		 best_candidate != NULL;
+		 best_candidate = best_candidate->next)
+	{
+		if (best_candidate->prointisnumber)
+		{
+			int	i = 0;
+			for (i = 0; i < best_candidate->nargs; i++)
+				if (best_candidate->args[i] == INT2OID ||
+					best_candidate->args[i] == INT4OID)
+					best_candidate->args[i] = NUMBEROID;
+		}
+	}
+	/* End - BUG:M0000068 */
 	/*
 	 * Quickly check if there is an exact match to the input datatypes (there
 	 * can be only one)
@@ -1710,7 +1733,15 @@ func_get_detail(List *funcname,
 			elog(ERROR, "cache lookup failed for function %u",
 				 best_candidate->oid);
 		pform = (Form_pg_proc) GETSTRUCT(ftup);
-		*rettype = pform->prorettype;
+
+		/* Begin - BUG:M0000068 */
+		if (pform->prointisnumber &&
+			(pform->prorettype == INT2OID ||
+			 pform->prorettype == INT4OID))
+			*rettype = NUMBEROID;
+		else
+			*rettype = pform->prorettype;	
+		/* End - BUG:M0000068 */
 		*retset = pform->proretset;
 		*vatype = pform->provariadic;
 		/* fetch default args if caller wants 'em */

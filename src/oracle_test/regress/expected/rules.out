@@ -3222,7 +3222,7 @@ Rules:
     rr AS
     ON UPDATE TO rule_t1 DO INSTEAD  UPDATE rule_dest trgt SET (f2[1], f1, tag) = ( SELECT new.f2,
             new.f1,
-            'updated'::varchar2(4000) AS oravarcharbyte)
+            'updated'::varchar2 AS oravarcharbyte)
   WHERE trgt.f1 = new.f1
   RETURNING new.f1,
     new.f2

@@ -68,7 +68,7 @@ if (sqlca.sqlcode < 0) exit (1);}
 
 
 	strcpy(msg, "create");
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table emp ( ename varchar , sal double precision , comm double precision )", ECPGt_EOIT, ECPGt_EORT);
+	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table emp ( ename varchar ( 4000 ) , sal double precision , comm double precision )", ECPGt_EOIT, ECPGt_EORT);
 #line 26 "whenever_do_continue.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}

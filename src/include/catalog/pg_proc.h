@@ -86,6 +86,11 @@ CATALOG(pg_proc,1255,ProcedureRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(81,Proce
 	/* OID of result type */
 	Oid			prorettype BKI_LOOKUP(pg_type);
 
+	/* Begin - BUG:M0000068 */
+	/* convert int to number(38)? */
+	bool		prointisnumber BKI_DEFAULT(f);
+	/* End - BUG:M0000068 */
+
 	/*
 	 * variable-length fields start here, but we allow direct access to
 	 * proargtypes
@@ -213,7 +218,8 @@ extern ObjectAddress ProcedureCreate(const char *procedureName,
 									 Datum proconfig,
 									 Oid prosupport,
 									 float4 procost,
-									 float4 prorows);
+									 float4 prorows,
+									 bool intisnumber /* BUG:M0000068 */);
 
 extern bool function_parse_error_transpose(const char *prosrc);
 

@@ -499,7 +499,7 @@ drop table trigtest;
 -- dump trigger data
 CREATE TABLE trigger_test (
         i int,
-        v varchar
+        v varchar(4000)
 );
 
 CREATE OR REPLACE FUNCTION trigger_data()  RETURNS trigger
