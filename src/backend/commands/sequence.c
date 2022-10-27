@@ -1407,8 +1407,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	{
 		Oid			newtypid = typenameTypeId(pstate, defGetTypeName(as_type));
 		/* Begin - ReqID:SRS-SQL-IDENTCOL */
-		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT ||
-			(!seq_type && newtypid != NUMBEROID && newtypid != FLOAT4OID && newtypid != FLOAT8OID && newtypid != NUMERICOID))	/* Bug#m0000070 */
+		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || compatible_db == PG_PARSER)	/* Bug#m0000070 */
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
@@ -1420,7 +1419,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						 : errmsg("sequence type must be smallint, integer, or bigint")));
 		}
 		else if(seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
-						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
+						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT || compatible_db == ORA_PARSER)	/* Bug#m0000070 */
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
