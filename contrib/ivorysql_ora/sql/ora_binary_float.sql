@@ -164,3 +164,10 @@ insert into binaryf_tb values (Binary_Float_Infinity);
 select * from binaryf_tb;
 drop table binaryf_tb;
 /* End - BUG:Z092 */
+
+/* Begin - BUG:Z188 */
+create table binaryf_tbtidb002145521(a binary_float, b binary_double);
+insert into binaryf_tbtidb002145521 values(-3.40282e39, -3.40282e666);
+insert into binaryf_tbtidb002145521 values(-3.40283e38, -3.40282e666);
+select * from binaryf_tbtidb002145521;
+/* End - BUG:Z188 */
