@@ -3277,6 +3277,13 @@ CREATE OPERATOR ||  (
 );
 /* End - Bug#793 */
 
+/* Begin - BUG#Z037 */
+CREATE FUNCTION sys.concat(sys.oravarcharchar, sys.oravarcharchar)
+RETURNS sys.oravarcharchar
+AS 'MODULE_PATHNAME','oravarcharcat'
+LANGUAGE C
+IMMUTABLE;
+/* End - BUG#Z037 */
 
 /***************************************************************
  *
