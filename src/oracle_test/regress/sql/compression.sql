@@ -62,14 +62,14 @@ DROP TABLE cmdata2;
 --test column type update varlena/non-varlena
 CREATE TABLE cmdata2 (f1 int);
 \d+ cmdata2
-ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar;
+ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar(4000);
 \d+ cmdata2
 ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE int USING f1::integer;
 \d+ cmdata2
 
 --changing column storage should not impact the compression method
 --but the data should not be compressed
-ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar;
+ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar(4000);
 ALTER TABLE cmdata2 ALTER COLUMN f1 SET COMPRESSION pglz;
 \d+ cmdata2
 ALTER TABLE cmdata2 ALTER COLUMN f1 SET STORAGE plain;

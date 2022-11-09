@@ -12166,6 +12166,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	char	   *prorows;
 	char	   *prosupport;
 	char	   *proparallel;
+	char	   *prointisnumber; /* BUG:M0000068 */
 	char	   *lanname;
 	int			nallargs;
 	char	  **allargtypes = NULL;
@@ -12193,6 +12194,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 						 "probin,\n"
 						 "provolatile,\n"
 						 "proisstrict,\n"
+						 "prointisnumber,\n" /* BUG:M0000068 */
 						 "prosecdef,\n"
 						 "lanname,\n");
 
@@ -12313,6 +12315,7 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	prokind = PQgetvalue(res, 0, PQfnumber(res, "prokind"));
 	provolatile = PQgetvalue(res, 0, PQfnumber(res, "provolatile"));
 	proisstrict = PQgetvalue(res, 0, PQfnumber(res, "proisstrict"));
+	prointisnumber = PQgetvalue(res, 0, PQfnumber(res, "prointisnumber")); /* BUG:M0000068 */
 	prosecdef = PQgetvalue(res, 0, PQfnumber(res, "prosecdef"));
 	proleakproof = PQgetvalue(res, 0, PQfnumber(res, "proleakproof"));
 	proconfig = PQgetvalue(res, 0, PQfnumber(res, "proconfig"));
@@ -12501,6 +12504,11 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 
 	if (proleakproof[0] == 't')
 		appendPQExpBufferStr(q, " LEAKPROOF");
+
+	/* Begin - BUG:M0000068 */
+	if (prointisnumber[0] == 't')
+		appendPQExpBufferStr(q, " INT IS NUMBER");
+	/* End - BUG:M0000068 */
 
 	/*
 	 * COST and ROWS are emitted only if present and not default, so as not to

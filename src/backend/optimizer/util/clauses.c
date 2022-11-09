@@ -50,8 +50,10 @@
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/fmgroids.h"
+#include "utils/guc.h"		/* BUG:M0000068 */
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* BUG:M0000068 */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 
@@ -4328,6 +4330,7 @@ recheck_cast_function_args(List *args, Oid result_type,
 	Oid			actual_arg_types[FUNC_MAX_ARGS];
 	Oid			declared_arg_types[FUNC_MAX_ARGS];
 	Oid			rettype;
+	Oid			declared_rettype;	/* BUG:M0000068 */
 	ListCell   *lc;
 
 	if (list_length(args) > FUNC_MAX_ARGS)
@@ -4339,11 +4342,27 @@ recheck_cast_function_args(List *args, Oid result_type,
 	}
 	Assert(nargs == pronargs);
 	memcpy(declared_arg_types, proargtypes, pronargs * sizeof(Oid));
+
+	/* Begin - BUG:M0000068 */
+	declared_rettype = funcform->prorettype;
+	if (ORA_PARSER == compatible_db && funcform->prointisnumber)
+	{
+		int	i= 0;
+		
+		for (i = 0; i < pronargs; i++)
+			if (declared_arg_types[i] == INT2OID || declared_arg_types[i] == INT4OID)
+				declared_arg_types[i] = NUMBEROID;
+
+		if (declared_rettype == INT2OID || declared_rettype == INT4OID)
+			declared_rettype = NUMBEROID;
+	}
+	/* End - BUG:M0000068 */
 	rettype = enforce_generic_type_consistency(actual_arg_types,
 											   declared_arg_types,
 											   nargs,
-											   funcform->prorettype,
+											   declared_rettype, /* BUG:M0000068 */
 											   false);
+
 	/* let's just check we got the same answer as the parser did ... */
 	if (rettype != result_type)
 		elog(ERROR, "function's resolved result type changed during planning");

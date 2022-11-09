@@ -20,7 +20,7 @@ SELECT * FROM get_all_persons();
 ALTER TABLE persons ADD COLUMN comment text;
 ALTER TABLE persons DROP COLUMN name;
 ALTER TABLE persons RENAME COLUMN id TO num;
-ALTER TABLE persons ALTER COLUMN name TYPE varchar;
+ALTER TABLE persons ALTER COLUMN name TYPE varchar(4000);
 CREATE TABLE stuff (id int);
 ALTER TABLE persons INHERIT stuff;
 

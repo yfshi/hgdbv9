@@ -1150,6 +1150,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 		newResult->nominalnargs = pronargs;
 		newResult->nargs = effective_nargs;
 		newResult->argnumbers = argnumbers;
+		newResult->prointisnumber = procform->prointisnumber;	/* BUG:M0000068 */
 		if (argnumbers)
 		{
 			/* Re-order the argument types into call's logical order */

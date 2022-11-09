@@ -23,7 +23,7 @@ int main(void)
 	exec sql connect to REGRESSDB1;
 
 	strcpy(msg, "create");
-	exec sql  create table emp(ename varchar,sal double precision, comm double precision);
+	exec sql  create table emp(ename varchar(4000),sal double precision, comm double precision);
 
 	strcpy(msg, "insert");
 	exec sql insert into emp values ('Ram',111100,21);

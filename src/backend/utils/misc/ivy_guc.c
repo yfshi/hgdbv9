@@ -39,6 +39,11 @@ bool			enable_emptystring_to_NULL = false;
 bool		insert_enable_alias = false;
 /* End - ReqID:SRS-SQL-INSERT */
 
+/* Begin - BUG:M0000068 */
+bool	convert_plisql_int_to_number = false;
+bool	convert_plisql_anonymous_int_to_number= false;
+/* End - BUG:M0000068 */
+
 /* BEGIN - SQL PARSER */
 int	database_mode = DB_PG;
 int	compatible_db = PG_PARSER;
@@ -148,6 +153,28 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-INSERT */
+
+	/* Begin - BUG:M0000068 */
+	{
+		{"ivorysql.convert_plisql_int_to_number", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether the created plisql function converts integer and smallint to number by default."),
+			NULL
+		},
+		&convert_plisql_int_to_number,
+		false,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"ivorysql.convert_plisql_anonymous_int_to_number", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether converts integer and smallint to number within plisql anonymous block."),
+			NULL
+		},
+		&convert_plisql_anonymous_int_to_number,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG:M0000068 */
 #endif
 #if 0
 	/* End-of-list marker */

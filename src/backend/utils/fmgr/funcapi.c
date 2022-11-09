@@ -1648,7 +1648,8 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 	return build_function_result_tupdesc_d(procform->prokind,
 										   proallargtypes,
 										   proargmodes,
-										   proargnames);
+										   proargnames,
+										   procform->prointisnumber);
 }
 
 
@@ -1744,7 +1745,8 @@ TupleDesc
 build_function_result_tupdesc_d(char prokind,
 								Datum proallargtypes,
 								Datum proargmodes,
-								Datum proargnames)
+								Datum proargnames,
+								bool intisnumber /* BUG:M0000068 */)
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -1776,6 +1778,14 @@ build_function_result_tupdesc_d(char prokind,
 		ARR_ELEMTYPE(arr) != OIDOID)
 		elog(ERROR, "proallargtypes is not a 1-D Oid array or it contains nulls");
 	argtypes = (Oid *) ARR_DATA_PTR(arr);
+
+	/* Begin - BUG:M0000068 */
+	for (i = 0; i < numargs; i++)
+		if (intisnumber &&
+			(argtypes[i] == INT2OID || argtypes[i] == INT4OID))
+			argtypes[i] = NUMBEROID;
+	/* End - BUG:M0000068 */
+
 	arr = DatumGetArrayTypeP(proargmodes);	/* ensure not toasted */
 	if (ARR_NDIM(arr) != 1 ||
 		ARR_DIMS(arr)[0] != numargs ||

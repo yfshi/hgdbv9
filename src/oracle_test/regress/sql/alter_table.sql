@@ -1428,17 +1428,17 @@ commit;
 -- We disallow changing table's row type if it's used for storage
 create table at_tab1 (a int, b text);
 create table at_tab2 (x int, y at_tab1);
-alter table at_tab1 alter column b type varchar; -- fails
+alter table at_tab1 alter column b type varchar(4000); -- fails
 drop table at_tab2;
 -- Use of row type in an expression is defended differently
 create table at_tab2 (x int, y text, check((x,y)::at_tab1 = (1,'42')::at_tab1));
-alter table at_tab1 alter column b type varchar; -- allowed, but ...
+alter table at_tab1 alter column b type varchar(4000); -- allowed, but ...
 insert into at_tab2 values(1,'42'); -- ... this will fail
 drop table at_tab1, at_tab2;
 -- Check it for a partitioned table, too
 create table at_tab1 (a int, b text) partition by list(a);
 create table at_tab2 (x int, y at_tab1);
-alter table at_tab1 alter column b type varchar; -- fails
+alter table at_tab1 alter column b type varchar(4000); -- fails
 drop table at_tab1, at_tab2;
 
 -- Alter column type that's part of a partitioned index
@@ -1943,7 +1943,7 @@ ALTER TYPE test_type ADD ATTRIBUTE b text;
 
 ALTER TYPE test_type ADD ATTRIBUTE b text; -- fails
 
-ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE varchar;
+ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE varchar(4000);
 \d test_type
 
 ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE integer;
@@ -1967,7 +1967,7 @@ DROP TYPE test_type;
 
 CREATE TYPE test_type1 AS (a int, b text);
 CREATE TABLE test_tbl1 (x int, y test_type1);
-ALTER TYPE test_type1 ALTER ATTRIBUTE b TYPE varchar; -- fails
+ALTER TYPE test_type1 ALTER ATTRIBUTE b TYPE varchar(4000); -- fails
 
 CREATE TYPE test_type2 AS (a int, b text);
 CREATE TABLE test_tbl2 OF test_type2;
@@ -1980,8 +1980,8 @@ ALTER TYPE test_type2 ADD ATTRIBUTE c text CASCADE;
 \d test_type2
 \d test_tbl2
 
-ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar; -- fails
-ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar CASCADE;
+ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar(4000); -- fails
+ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar(4000) CASCADE;
 \d test_type2
 \d test_tbl2
 

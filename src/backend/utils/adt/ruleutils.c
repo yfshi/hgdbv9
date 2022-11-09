@@ -3225,6 +3225,11 @@ ivy_get_plisql_functiondef(PG_FUNCTION_ARGS)
 	if (proc->prorows > 0 && proc->prorows != 1000)
 		appendStringInfo(&buf, " ROWS %g", proc->prorows);
 
+	/* Begin - BUG:M0000068 */
+	if (proc->prointisnumber)
+		appendStringInfoString(&buf, " INT IS NUMBER");
+	/* End - BUG:M0000068 */
+
 	if (proc->prosupport)
 	{
 		Oid			argtypes[1];

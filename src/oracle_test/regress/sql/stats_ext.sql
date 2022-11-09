@@ -906,7 +906,7 @@ CREATE TABLE mcv_lists (
     filler1 TEXT,
     filler2 NUMERIC,
     a INT,
-    b VARCHAR,
+    b VARCHAR(4000),
     filler3 DATE,
     c INT,
     d TEXT

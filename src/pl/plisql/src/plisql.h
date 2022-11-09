@@ -988,6 +988,7 @@ typedef struct PLiSQL_function
 	bool		fn_retisdomain;
 	bool		fn_retset;
 	bool		fn_readonly;
+	bool		fn_intisnumber;	/* BUG:M0000068 */
 	char		fn_prokind;
 
 	int			fn_nargs;
@@ -1208,6 +1209,16 @@ extern bool plisql_check_asserts;
 #define PLISQL_XCHECK_TOOMANYROWS				(1 << 2)
 #define PLISQL_XCHECK_STRICTMULTIASSIGNMENT	(1 << 3)
 #define PLISQL_XCHECK_ALL						((int) ~0)
+
+/* Begin - BUG:M0000068 */
+/*
+ * The typmod of number(38,0), when convert integer
+ * and smallint to number using this typmod.
+ *
+ * NUMBER38TYPMOD is ((38 << 16) | 0) + VARHDRSZ.
+ */
+#define NUMBER38TYPMOD 2490372
+/* End - BUG:M0000068 */
 
 extern int	plisql_extra_warnings;
 extern int	plisql_extra_errors;

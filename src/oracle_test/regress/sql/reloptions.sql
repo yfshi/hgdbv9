@@ -79,7 +79,7 @@ SELECT pg_relation_size('reloptions_test') = 0;
 -- Test toast.* options
 DROP TABLE reloptions_test;
 
-CREATE TABLE reloptions_test (s VARCHAR)
+CREATE TABLE reloptions_test (s VARCHAR(4000))
 	WITH (toast.autovacuum_vacuum_cost_delay = 23);
 SELECT reltoastrelid as toast_oid
 	FROM pg_class WHERE oid = 'reloptions_test'::regclass \gset
@@ -97,7 +97,7 @@ CREATE TABLE reloptions_test2 (i int) WITH (toast.not_existing_option = 42);
 -- Mix TOAST & heap
 DROP TABLE reloptions_test;
 
-CREATE TABLE reloptions_test (s VARCHAR) WITH
+CREATE TABLE reloptions_test (s VARCHAR(4000)) WITH
 	(toast.autovacuum_vacuum_cost_delay = 23,
 	autovacuum_vacuum_cost_delay = 24, fillfactor = 40);
 

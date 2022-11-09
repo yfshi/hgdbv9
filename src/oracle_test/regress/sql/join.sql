@@ -2058,12 +2058,12 @@ delete from xx1 using lateral (select * from int4_tbl where f1 = x1) ss;
 -- test LATERAL reference propagation down a multi-level inheritance hierarchy
 -- produced for a multi-level partitioned table hierarchy.
 --
-create table join_pt1 (a int, b int, c varchar) partition by range(a);
+create table join_pt1 (a int, b int, c varchar(4000)) partition by range(a);
 create table join_pt1p1 partition of join_pt1 for values from (0) to (100) partition by range(b);
 create table join_pt1p2 partition of join_pt1 for values from (100) to (200);
 create table join_pt1p1p1 partition of join_pt1p1 for values from (0) to (100);
 insert into join_pt1 values (1, 1, 'x'), (101, 101, 'y');
-create table join_ut1 (a int, b int, c varchar);
+create table join_ut1 (a int, b int, c varchar(4000));
 insert into join_ut1 values (101, 101, 'y'), (2, 2, 'z');
 explain (verbose, costs off)
 select t1.b, ss.phv from join_ut1 t1 left join lateral

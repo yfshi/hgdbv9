@@ -356,7 +356,7 @@ do_compile(FunctionCallInfo fcinfo,
 
 	function->nstatements = 0;
 	function->requires_procedure_resowner = false;
-
+	function->fn_intisnumber = procStruct->prointisnumber;	/* BUG:M0000068 */
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The
 	 * outermost namespace contains function parameters and other special
@@ -414,10 +414,24 @@ do_compile(FunctionCallInfo fcinfo,
 				snprintf(buf, sizeof(buf), "$%d", i + 1);
 
 				/* Create datatype info */
-				argdtype = plisql_build_datatype(argtypeid,
-												  -1,
-												  function->fn_input_collation,
-												  NULL);
+				/* Begin - BUG:M0000068 */
+				/*
+				 * All intger and smallint datatypes in function args list
+				 * will be convert to number when the function compiling if
+				 * prointisnumber is true.
+				 */
+				if (procStruct->prointisnumber &&
+					(argtypeid == INT2OID || argtypeid == INT4OID))
+					argdtype = plisql_build_datatype(NUMBEROID,
+													  NUMBER38TYPMOD, 
+													  function->fn_input_collation,
+													  NULL);
+				else
+				/* End - BUG:M0000068 */
+					argdtype = plisql_build_datatype(argtypeid,
+													  -1,
+													  function->fn_input_collation,
+													  NULL);
 
 				/* Disallow pseudotype argument */
 				/* (note we already replaced polymorphic types) */
@@ -523,6 +537,12 @@ do_compile(FunctionCallInfo fcinfo,
 				}
 			}
 
+			/* Begin - BUG:M0000068 */
+			if (procStruct->prointisnumber &&
+				(rettypeid == INT2OID || rettypeid == INT4OID))
+				rettypeid = NUMBEROID;
+			/* End - BUG:M0000068 */
+			
 			/*
 			 * Normal function has a defined returntype
 			 */

@@ -792,6 +792,9 @@ static void determineLanguage(List *options);
 %token <keyword> NAN_P INFINITE_P
 /* End - BUG:Z093 */
 
+/* Begin - BUG:M0000068 */
+%token <keyword> NVARCHAR2
+/* End - BUG:M0000068 */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -8495,6 +8498,22 @@ common_func_opt_item:
 				{
 					$$ = makeDefElem("parallel", (Node *)makeString($2), @1);
 				}
+			/* Begin - BUG:M0000068 */
+			/*
+			 * Side effect:
+			 *	We put this syntax here for simplicity, which causes the plpgsql
+			 *	function to specify this option as well, but we filter it through
+			 *	the plisql language when using this option, so this is acceptable.
+			 */
+			| INT_P IS NUMBER_P
+				{
+					$$ = makeDefElem("integerisnumber", (Node *)makeInteger(true), @1);
+				}
+			| INT_P IS NOT NUMBER_P
+				{
+					$$ = makeDefElem("integerisnumber", (Node *)makeInteger(false), @1);
+				}
+			/* End - BUG:M0000068 */
 		;
 
 createfunc_opt_item:
@@ -14082,7 +14101,17 @@ CharacterWithLength:  character '(' Iconst ')'
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					if (ORA_PARSER == compatible_db)
 					{
-						if (strcmp($1, "bpchar"))
+						/* Begin - BUG:M0000068 */
+						if (strcmp($1, "nvarchar2") == 0)
+						{
+							$1 = "oravarcharchar";
+						}
+						else if (strcmp($1, "nchar") == 0)
+						{
+							$1 = "oracharchar";
+						}
+						/* End - BUG:M0000068 */
+						else if (strcmp($1, "bpchar"))
 						{
 							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oravarcharchar";
@@ -14116,7 +14145,17 @@ CharacterWithoutLength:	 character
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 					if (ORA_PARSER == compatible_db)
 					{
-						if (!strcmp($1, "bpchar"))
+						/* Begin - BUG:M0000068 */
+						if (strcmp($1, "nvarchar2") == 0)
+						{
+							$1 = "oravarcharchar";
+						}
+						else if (strcmp($1, "nchar") == 0)
+						{
+							$1 = "oracharchar";
+						}
+						/* End - BUG:M0000068 */
+						else if (!strcmp($1, "bpchar"))
 						{
 							if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
 								$1 = "oracharchar";
@@ -14132,11 +14171,10 @@ CharacterWithoutLength:	 character
 						}
 						
 						$$ = OracleSystemTypeName($1);
-						
+
+						/* char defaults to char(1), varchar2 to no limit */
 						if ((strcmp($1, "oracharchar") == 0) || (strcmp($1, "oracharbyte") == 0))
 							$$->typmods = list_make1(makeIntConst(1, -1));
-						else
-							$$->typmods = list_make1(makeIntConst(4000, -1));
 						
 						$$->location = @1;
 					}
@@ -14165,7 +14203,25 @@ character:	CHARACTER opt_varying
 			| NATIONAL CHAR_P opt_varying
 										{ $$ = $3 ? "varchar": "bpchar"; }
 			| NCHAR opt_varying
-										{ $$ = $2 ? "varchar": "bpchar"; }
+				{
+					/* Begin - BUG:M0000068 */
+					if (ORA_PARSER == compatible_db)
+					{
+						if ($2)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error")));
+						
+						$$ = "nchar";
+					}
+					/* End - BUG:M0000068 */
+					else
+					{
+						$$ = $2 ? "varchar": "bpchar";
+					}
+				}
+			| NVARCHAR2
+										{ $$ = "nvarchar2"; }	/* BUG:M0000068 */
 		;
 
 opt_varying:
@@ -14176,6 +14232,11 @@ opt_varying:
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 OracleCharacter: character '(' Iconst CHAR_P ')'
 					{
+						/* Begin - BUG:M0000068 */
+						if (strcmp($1, "nchar") == 0 ||
+							strcmp($1, "nvarchar2") == 0)
+							elog(ERROR, "missing right parenthesis");
+						/* End - BUG:M0000068 */
 						if (strcmp($1, "bpchar"))
 							$1 = "oravarcharchar";
 						else 
@@ -14186,7 +14247,13 @@ OracleCharacter: character '(' Iconst CHAR_P ')'
 						$$->location = @1;
 					}
 				| character '(' Iconst BYTE_P ')'
-					{	
+					{
+						/* Begin - BUG:M0000068 */
+						if (strcmp($1, "nchar") == 0 ||
+							strcmp($1, "nvarchar2") == 0)
+							elog(ERROR, "missing right parenthesis");
+						/* End - BUG:M0000068 */
+
 						if (strcmp($1, "bpchar"))
 							$1 = "oravarcharbyte";
 						else
@@ -18071,6 +18138,7 @@ col_name_keyword:
 			| NULLIF
 			| NUMBER_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NUMERIC
+			| NVARCHAR2		/* BUG:M0000068 */
 			| NVL			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OUT_P
@@ -18511,6 +18579,7 @@ bare_label_keyword:
 			| NULLS_P
 			| NUMBER_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NUMERIC
+			| NVARCHAR2		/* BUG:M0000068 */
 			| NVL			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OBJECT_P

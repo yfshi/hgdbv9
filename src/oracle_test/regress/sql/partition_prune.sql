@@ -34,7 +34,7 @@ explain (costs off) select * from coll_pruning where a collate "C" = 'a' collate
 -- collation doesn't match the partitioning collation, no pruning occurs
 explain (costs off) select * from coll_pruning where a collate "POSIX" = 'a' collate "POSIX";
 
-create table rlp (a int, b varchar) partition by range (a);
+create table rlp (a int, b varchar(4000)) partition by range (a);
 create table rlp_default partition of rlp default partition by list (a);
 create table rlp_default_default partition of rlp_default default;
 create table rlp_default_10 partition of rlp_default for values in (10);
@@ -43,7 +43,7 @@ create table rlp_default_null partition of rlp_default for values in (null);
 create table rlp1 partition of rlp for values from (minvalue) to (1);
 create table rlp2 partition of rlp for values from (1) to (10);
 
-create table rlp3 (b varchar, a int) partition by list (b varchar_ops);
+create table rlp3 (b varchar(4000), a int) partition by list (b varchar_ops);
 create table rlp3_default partition of rlp3 default;
 create table rlp3abcd partition of rlp3 for values in ('ab', 'cd');
 create table rlp3efgh partition of rlp3 for values in ('ef', 'gh');
@@ -178,7 +178,7 @@ create table boolrangep_ff2 partition of boolrangep for values from ('false', 'f
 explain (costs off)  select * from boolrangep where not a and not b and c = 25;
 
 -- test scalar-to-array operators
-create table coercepart (a varchar) partition by list (a);
+create table coercepart (a varchar(4000)) partition by list (a);
 create table coercepart_ab partition of coercepart for values in ('ab');
 create table coercepart_bc partition of coercepart for values in ('bc');
 create table coercepart_cd partition of coercepart for values in ('cd');
@@ -1119,7 +1119,7 @@ drop table rangep;
 -- clauses for different partition keys
 --
 
-create table rp_prefix_test1 (a int, b varchar) partition by range(a, b);
+create table rp_prefix_test1 (a int, b varchar(4000)) partition by range(a, b);
 create table rp_prefix_test1_p1 partition of rp_prefix_test1 for values from (1, 'a') to (1, 'b');
 create table rp_prefix_test1_p2 partition of rp_prefix_test1 for values from (2, 'a') to (2, 'b');
 

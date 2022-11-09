@@ -4,7 +4,7 @@
 
 set ivorysql.enable_emptystring_to_null to false;
 CREATE TEMPORARY TABLE empsalary (
-    depname varchar,
+    depname varchar(4000),
     empno bigint,
     salary int,
     enroll_date date

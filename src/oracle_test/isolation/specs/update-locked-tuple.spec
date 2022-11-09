@@ -5,10 +5,10 @@ setup
 {
    DROP TABLE IF EXISTS users, orders;
    CREATE TABLE users (id INTEGER PRIMARY KEY,
-                       name varchar,
+                       name varchar(4000),
                        sometime timestamp);
    CREATE TABLE orders (id INTEGER PRIMARY KEY,
-                        name varchar,
+                        name varchar(4000),
                         user_id INTEGER REFERENCES users (id));
    INSERT INTO users (id, name) VALUES (1, 'olivier');
    INSERT INTO orders (id, name) VALUES (1, 'order of olivier (1)');

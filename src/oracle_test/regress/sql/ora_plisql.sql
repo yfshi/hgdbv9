@@ -943,3 +943,298 @@ DROP PROCEDURE bug139_proc();
 DROP FUNCTION bug139_func();
 DROP FUNCTION test_subproc_func(int);
 /* End - BUG:Z139 */
+
+/* Begin - BUG:M0000068 */
+-- specify prointisnumber with CREATE FUNCTION
+create or replace function test_prointisnumber(id integer) return integer
+int is number
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+
+-- specify prointisnumber depend on GUC ivorysql.convert_plisql_int_to_number
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_prointisnumber(id integer) return integer
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+
+set ivorysql.convert_plisql_int_to_number to on;
+create or replace function test_prointisnumber(id integer) return integer
+is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+
+select proname, prointisnumber from pg_proc where proname = 'test_prointisnumber';
+
+-- test call
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_f(id integer) return integer is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+
+select test_f(1) from dual;		-- ok
+select test_f(3.14) from dual;	-- error
+
+alter function test_f(id integer) int is number;
+select test_f(1) from dual;		-- ok
+select test_f(3.14) from dual;	-- ok
+
+set ivorysql.convert_plisql_int_to_number to on;
+create or replace function test_f1(id smallint) return smallint is
+ var1 smallint;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  return id;
+end;
+/
+
+select test_f1(1) from dual;	-- ok
+select test_f1(3.14) from dual;	-- ok
+
+-- get definition display integer datatype still
+select pg_get_function_arguments('test_f'::regproc);
+select pg_get_function_identity_arguments('test_f'::regproc);
+select pg_get_function_result('test_f'::regproc);
+select pg_get_functiondef('test_f'::regproc);
+reset ivorysql.convert_plisql_int_to_number;
+
+-- OUT parameters of function
+create or replace function test_f2(id integer, OUT z integer, OUT y int) return record is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  z := id;
+  raise notice '%', z;
+  y := id;
+  return ;
+end;
+/
+
+alter function test_f2(id integer, OUT z integer, OUT y int) int is number;
+
+DECLARE
+ a int;
+ b int;
+BEGIN
+  select * into a, b from test_f2(3.14);
+  raise notice '%', a;
+END;
+/
+
+-- TEST FOR PROCEDURES
+CREATE PROCEDURE test_p(IN a int, OUT b int)
+IS
+BEGIN
+  RAISE NOTICE 'a: %, b: %', a, b;
+  b := a * 2;
+END;
+/
+
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+-- error
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+alter procedure test_p(IN a int, OUT b int) int is number;
+
+-- error, need convert int to number(38) within anonymous.
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+-- error, need convert int to number(38) within anonymous.
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+set ivorysql.convert_plisql_anonymous_int_to_number to on;
+alter procedure test_p(IN a int, OUT b int) int is number;	-- recompile, make chache invalid.
+
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+-- ok
+DECLARE
+ b int;
+BEGIN
+  call test_p(3.14, b);
+  RAISE NOTICE 'b: %', b;
+END;
+/
+
+-- default value parameters
+set ivorysql.convert_plisql_int_to_number to off;
+create or replace function test_f3(id integer, def integer default 3.14) return integer is
+ var1 integer;
+begin
+  raise notice '%', id;
+  var1 := id;
+  raise notice '%', var1;
+  var1 := 1.1;
+  raise notice '%', var1;
+  raise notice '%', def;
+  return id;
+end;
+/
+
+select test_f3(1) from dual;	-- ok
+select test_f3(3.14) from dual;	-- error
+
+alter function test_f3(id integer, def integer) int is number;
+select test_f3(1) from dual;	-- ok
+select test_f3(3.14) from dual;	-- ok
+
+-- nested subproc
+set ivorysql.convert_plisql_anonymous_int_to_number to on;
+DECLARE
+  FUNCTION square (original int)
+    RETURN int
+  AS
+    original_squared int;
+  BEGIN
+    original_squared := original * original;
+	raise notice '%', original_squared;
+    RETURN original;
+  END;
+BEGIN
+  raise notice '%', square(3.14);
+END;
+/
+
+reset ivorysql.convert_plisql_anonymous_int_to_number;
+
+create or replace function test_subproc_func(a in integer) return integer
+is
+  mds integer;
+  function square(original in integer) return integer;
+  function square(original in integer) return integer
+  is
+  declare
+       original_squared integer;
+  begin
+	   raise info 'subproc: %',original;
+       original_squared := original * original;
+	   raise info 'subporc: %',original_squared;
+       return original;
+   end;
+begin
+	raise info 'parent: %',square(a);
+	raise info 'parent: %',square(3.14);
+    return a;
+end;
+/
+
+select test_subproc_func(3) from dual;		-- error
+select test_subproc_func(3.14) from dual;	-- error
+alter function test_subproc_func(a in integer) int is number;
+select test_subproc_func(3) from dual;		-- ok
+select test_subproc_func(3.14) from dual;	-- ok
+
+create or replace procedure test_subproc_proc(a integer)
+is
+  mds integer;
+  function square(original in integer) return integer;
+  function square(original in integer) return integer
+  is
+  declare
+       original_squared integer;
+  begin
+	   raise info 'subproc: %',original;
+       original_squared := original * original;
+	   raise info 'subporc: %',original_squared;
+       return original;
+   end;
+begin
+	raise info 'parent: %',square(a);
+	raise info 'parent: %',square(3.14);
+end;
+/
+
+call test_subproc_proc(3);		-- error
+call test_subproc_proc(3.14);	-- error
+alter procedure test_subproc_proc int is number;
+call test_subproc_proc(3);		-- ok
+call test_subproc_proc(3.14);	-- ok
+
+-- clean
+drop function test_prointisnumber(id integer);
+drop function test_f(id integer);
+drop function test_f1(id smallint);
+drop function test_f3(id integer, def integer);
+drop function test_f2(id integer, OUT z integer, OUT y int);
+drop procedure test_p(IN a int, OUT b int);
+drop function test_subproc_func(a in integer);
+drop procedure test_subproc_proc(a integer);
+/* End - BUG:M0000068 */

@@ -520,7 +520,8 @@ compute_common_attribute(ParseState *pstate,
 						 DefElem **cost_item,
 						 DefElem **rows_item,
 						 DefElem **support_item,
-						 DefElem **parallel_item)
+						 DefElem **parallel_item,
+						 DefElem **intisnumber_item) /* BUG:M0000068 */
 {
 	if (strcmp(defel->defname, "volatility") == 0 ||
 		(ORA_PARSER == compatible_db && strcmp(defel->defname, "deterministic") == 0)) /* ReqID:SRS-SQL-PROC */
@@ -599,6 +600,15 @@ compute_common_attribute(ParseState *pstate,
 
 		*parallel_item = defel;
 	}
+	/* Begin - BUG:M0000068 */
+	else if (ORA_PARSER == compatible_db && strcmp(defel->defname, "integerisnumber") == 0)
+	{
+		if (*intisnumber_item)
+			goto duplicate_error;
+
+		*intisnumber_item = defel;
+	}
+	/* End - BUG:M0000068 */
 	else
 		return false;
 
@@ -748,7 +758,8 @@ compute_function_attributes(ParseState *pstate,
 							float4 *procost,
 							float4 *prorows,
 							Oid *prosupport,
-							char *parallel_p)
+							char *parallel_p,
+							bool *intisnumber_p) /* BUG:M0000068 */
 {
 	ListCell   *option;
 	DefElem    *as_item = NULL;
@@ -772,6 +783,7 @@ compute_function_attributes(ParseState *pstate,
 	DefElem    *pipelined_item = NULL;
 	DefElem    *result_cache_item = NULL;
 	/* End - ReqID:SRS-SQL-PROC */
+	DefElem    *intisnumber_item = NULL;	/* BUG:M0000068 */
 
 	foreach(option, options)
 	{
@@ -873,7 +885,7 @@ compute_function_attributes(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			result_cache_item = defel;
 		}
-		/* Begin - ReqID:SRS-SQL-PROC */
+		/* End - ReqID:SRS-SQL-PROC */
 		else if (compute_common_attribute(pstate,
 										  is_procedure,
 										  defel,
@@ -885,7 +897,8 @@ compute_function_attributes(ParseState *pstate,
 										  &cost_item,
 										  &rows_item,
 										  &support_item,
-										  &parallel_item))
+										  &parallel_item,
+										  &intisnumber_item)) /* BUG:M0000068 */
 		{
 			/* recognized common option */
 			continue;
@@ -942,6 +955,10 @@ compute_function_attributes(ParseState *pstate,
 		*prosupport = interpret_func_support(support_item);
 	if (parallel_item)
 		*parallel_p = interpret_func_parallel(parallel_item);
+	/* Begin - BUG:M0000068 */
+	if (intisnumber_item)
+		*intisnumber_p = intVal(intisnumber_item->arg);
+	/* End - BUG:M0000068 */
 }
 
 
@@ -1143,7 +1160,8 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	bool		isWindowFunc,
 				isStrict,
 				security,
-				isLeakProof;
+				isLeakProof,
+				intisnumber;	/* BUG:M0000068 */
 	char		volatility;
 	ArrayType  *proconfig;
 	float4		procost;
@@ -1171,6 +1189,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	isStrict = false;
 	security = false;
 	isLeakProof = false;
+	intisnumber = convert_plisql_int_to_number;		/* BUG:M0000068 */
 	volatility = PROVOLATILE_VOLATILE;
 	proconfig = NULL;
 	procost = -1;				/* indicates not set */
@@ -1186,7 +1205,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 								&isWindowFunc, &volatility,
 								&isStrict, &security, &isLeakProof,
 								&proconfig, &procost, &prorows,
-								&prosupport, &parallel);
+								&prosupport, &parallel, &intisnumber /* BUG:M0000068 */);
 
 	if (!language)
 	{
@@ -1390,7 +1409,8 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						   PointerGetDatum(proconfig),
 						   prosupport,
 						   procost,
-						   prorows);
+						   prorows,
+						   intisnumber /* BUG:M0000068 */);
 }
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -1581,6 +1601,7 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 	DefElem    *rows_item = NULL;
 	DefElem    *support_item = NULL;
 	DefElem    *parallel_item = NULL;
+	DefElem    *intisnumber_item = NULL;	/* BUG:M0000068 */
 	ObjectAddress address;
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
@@ -1624,7 +1645,8 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 									 &cost_item,
 									 &rows_item,
 									 &support_item,
-									 &parallel_item) == false)
+									 &parallel_item,
+									 &intisnumber_item /* BUG:M0000068 */) == false)
 			elog(ERROR, "option \"%s\" not recognized", defel->defname);
 	}
 
@@ -1634,6 +1656,12 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 		procForm->proisstrict = intVal(strict_item->arg);
 	if (security_def_item)
 		procForm->prosecdef = intVal(security_def_item->arg);
+	/* Begin - BUG:M0000068 */
+	if (procForm->prolang == get_language_oid("plisql", true) &&
+		ORA_PARSER == compatible_db &&
+		intisnumber_item)
+		procForm->prointisnumber = intVal(intisnumber_item->arg);
+	/* End - BUG:M0000068 */
 	if (leakproof_item)
 	{
 		procForm->proleakproof = intVal(leakproof_item->arg);

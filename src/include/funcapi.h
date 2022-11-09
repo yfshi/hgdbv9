@@ -206,7 +206,8 @@ extern char *get_func_result_name(Oid functionId);
 extern TupleDesc build_function_result_tupdesc_d(char prokind,
 												 Datum proallargtypes,
 												 Datum proargmodes,
-												 Datum proargnames);
+												 Datum proargnames,
+												 bool intisnumber /* BUG:M0000068 */);
 extern TupleDesc build_function_result_tupdesc_t(HeapTuple procTuple);
 
 /* Begin - SRS-PLSQL-SUBPROC */

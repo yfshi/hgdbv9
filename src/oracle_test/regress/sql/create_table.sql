@@ -669,7 +669,7 @@ DROP TABLE temp_parted;
 -- check for partition bound overlap and other invalid specifications
 
 CREATE TABLE list_parted2 (
-	a varchar
+	a varchar(4000)
 ) PARTITION BY LIST (a);
 CREATE TABLE part_null_z PARTITION OF list_parted2 FOR VALUES IN (null, 'z');
 CREATE TABLE part_ab PARTITION OF list_parted2 FOR VALUES IN ('a', 'b');
@@ -733,7 +733,7 @@ CREATE TABLE fail_part PARTITION OF range_parted3 FOR VALUES FROM (1, minvalue) 
 
 -- check for partition bound overlap and other invalid specifications for the hash partition
 CREATE TABLE hash_parted2 (
-	a varchar
+	a varchar(4000)
 ) PARTITION BY HASH (a);
 CREATE TABLE h2part_1 PARTITION OF hash_parted2 FOR VALUES WITH (MODULUS 4, REMAINDER 2);
 CREATE TABLE h2part_2 PARTITION OF hash_parted2 FOR VALUES WITH (MODULUS 8, REMAINDER 0);

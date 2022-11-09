@@ -106,7 +106,7 @@ main ()
 if (sqlca.sqlcode < 0) sqlprint();}
 #line 13 "copystdout.pgc"
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table foo ( a int , b varchar )", ECPGt_EOIT, ECPGt_EORT);
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table foo ( a int , b varchar ( 4000 ) )", ECPGt_EOIT, ECPGt_EORT);
 #line 14 "copystdout.pgc"
 
 if (sqlca.sqlcode < 0) sqlprint();}
