@@ -48,5 +48,14 @@ typedef enum
 } NlsLengthSemantics;
 /* End - BUG#Z091 */
 
+/* Begin - ReqID:SRS-SQL-MERGE */
+typedef enum
+{
+	OMERGE_TUNING_OFF = 0,
+	OMERGE_TUNING_ON,
+	OMERGE_TUNING_FORCE
+} OraMergeTuning;
+/* End - ReqID:SRS-SQL-MERGE */
+
 #endif							/* ORA_COMPATIBLE_H */
 
