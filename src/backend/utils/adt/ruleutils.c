@@ -9486,6 +9486,11 @@ get_rule_expr(Node *node, deparse_context *context,
 						break;
 					case IS_DOCUMENT:
 						break;
+					/* Begin - ReqID:SRS-SQL-XML */
+					case IS_UPDATEXML:
+						appendStringInfoString(buf, "UPDATEXML(");
+						break;
+					/* End - ReqID:SRS-SQL-XML */
 				}
 				if (xexpr->op == IS_XMLPARSE || xexpr->op == IS_XMLSERIALIZE)
 				{
@@ -9535,6 +9540,7 @@ get_rule_expr(Node *node, deparse_context *context,
 						case IS_XMLFOREST:
 						case IS_XMLPI:
 						case IS_XMLSERIALIZE:
+						case IS_UPDATEXML:	/* ReqID:SRS-SQL-XML */
 							/* no extra decoration needed */
 							get_rule_expr((Node *) xexpr->args, context, true);
 							break;

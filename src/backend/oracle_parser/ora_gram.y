@@ -419,7 +419,7 @@ static void determineLanguage(List *options);
 				opt_include opt_c_include index_including_params
 				name_list role_list from_clause from_list opt_array_bounds
 				qualified_name_list any_name any_name_list type_name_list
-				any_operator expr_list attrs
+				any_operator expr_list xmlf_expr_list attrs
 				distinct_clause opt_distinct_clause
 				target_list opt_target_list insert_column_list set_target_list
 				merge_values_clause
@@ -680,7 +680,7 @@ static void determineLanguage(List *options);
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
-	EXTENSION EXTERNAL EXTRACT
+	EXTENSION EXTERNAL
 
 	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
@@ -715,7 +715,7 @@ static void determineLanguage(List *options);
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER
 
-	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PLACING PLANS POLICY
+	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PGEXTRACT PLACING PLANS POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLICATION
 
@@ -738,7 +738,7 @@ static void determineLanguage(List *options);
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
-	UNLISTEN UNLOGGED UNTIL UPDATE USER USERENV/* BUG:0000830 */ USING
+	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
@@ -16069,13 +16069,15 @@ func_expr_common_subexpr:
 				}
 			| CAST '(' a_expr AS Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
-			| EXTRACT '(' extract_list ')'
+			/* Begin - ReqID:SRS-SQL-XML */
+			| PGEXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
 											   $3,
 											   COERCE_SQL_SYNTAX,
 											   @1);
 				}
+			/* End - ReqID:SRS-SQL-XML */
 			| NORMALIZE '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("normalize"),
@@ -16289,6 +16291,12 @@ func_expr_common_subexpr:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-XML */
+			| UPDATEXML '(' xmlf_expr_list ')'
+				{
+					$$ = makeXmlExpr(IS_UPDATEXML, NULL, NIL, $3, @1);
+				}
+			/* End - ReqID:SRS-SQL-XML */
 			/* Begin - BUGID:0000830 */
 			| USERENV '(' Sconst ')'
 				{
@@ -16316,6 +16324,27 @@ func_expr_common_subexpr:
 			/* End - BUGID:0000830 */
 
 		;
+
+/* Begin - ReqID:SRS-SQL-XML */
+xmlf_expr_list:	a_expr
+				{
+					$$ = list_make1($1);
+				}
+			| xmlf_expr_list ',' a_expr
+				{
+					$$ = lappend($1, $3);
+				}
+			| IDENT EQUALS_GREATER a_expr
+				{
+					$$ = list_make1($3);
+				}
+			| xmlf_expr_list ',' IDENT EQUALS_GREATER a_expr
+				{
+					$$ = lappend($1, $5);
+				}
+		;
+/* End - ReqID:SRS-SQL-XML */
+
 
 /*
  * SQL/XML support
@@ -18122,7 +18151,6 @@ col_name_keyword:
 			| DECIMAL_P
 			| DECODE		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| EXISTS
-			| EXTRACT
 			| FLOAT_P
 			| GREATEST
 			| GROUPING
@@ -18143,6 +18171,7 @@ col_name_keyword:
 			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OUT_P
 			| OVERLAY
+			| PGEXTRACT		/* ReqID:SRS-SQL-XML */
 			| POSITION
 			| PRECISION
 			| REAL
@@ -18154,6 +18183,7 @@ col_name_keyword:
 			| TIMESTAMP
 			| TREAT
 			| TRIM
+			| UPDATEXML /* ReqID:SRS-SQL-XML */
 			| USERENV	/* BUG:0000830 */
 			| VALUES
 			| VARCHAR
@@ -18457,7 +18487,6 @@ bare_label_keyword:
 			| EXPRESSION
 			| EXTENSION
 			| EXTERNAL
-			| EXTRACT
 			| FALSE_P
 			| FAMILY
 			| FINALIZE
@@ -18608,6 +18637,7 @@ bare_label_keyword:
 			| PARTITION
 			| PASSING
 			| PASSWORD
+			| PGEXTRACT /* ReqID:SRS-SQL-XML */
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PLACING
 			| PLANS
@@ -18742,6 +18772,7 @@ bare_label_keyword:
 			| UNLOGGED
 			| UNTIL
 			| UPDATE
+			| UPDATEXML /* ReqID:SRS-SQL-XML */
 			| USER
 			| USERENV	/* BUG:0000830 */
 			| USING
