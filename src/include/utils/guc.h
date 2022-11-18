@@ -314,6 +314,10 @@ extern PGDLLIMPORT int	datetime_ignore_nls_mask;
 extern PGDLLIMPORT bool insert_enable_alias;
 /* End - ReqID:SRS-SQL-INSERT */
 
+/* Begin - ReqID:SRS-SQL-MERGE */
+extern PGDLLIMPORT int enable_ora_merge_tuning;
+/* End - ReqID:SRS-SQL-MERGE */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

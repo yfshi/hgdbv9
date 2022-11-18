@@ -44,6 +44,10 @@ bool	convert_plisql_int_to_number = false;
 bool	convert_plisql_anonymous_int_to_number= false;
 /* End - BUG:M0000068 */
 
+/* Begin - ReqID:SRS-SQL-MERGE */
+int		enable_ora_merge_tuning = OMERGE_TUNING_OFF;
+/* End - ReqID:SRS-SQL-MERGE */
+
 /* BEGIN - SQL PARSER */
 int	database_mode = DB_PG;
 int	compatible_db = PG_PARSER;
@@ -90,6 +94,16 @@ static const struct config_enum_entry nls_length_options[] = {
 	{NULL, 0, false}
 };
 /* End - BUG#Z091 */
+
+/* Begin - ReqID:SRS-SQL-MERGE */
+static const struct config_enum_entry ora_merge_tuning[] = {
+	{"off", OMERGE_TUNING_OFF, false},
+	{"on", OMERGE_TUNING_ON, false},
+	{"force", OMERGE_TUNING_FORCE, false},
+	{NULL, 0, false}
+};
+/* End - ReqID:SRS-SQL-MERGE */
+
 #endif
 
 #ifdef IVY_GUC_FUNC_DECLARE
@@ -347,6 +361,19 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		check_nls_length_semantics, NULL, NULL
 	},
 	/* End - BUG#Z091 */
+
+	/* Begin - ReqID:SRS-SQL-MERGE */
+	{
+		{"ivorysql.enable_ora_merge_tuning", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Enable the ora_merge tuning mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_ora_merge_tuning,
+		OMERGE_TUNING_OFF, ora_merge_tuning,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-MERGE */
 #endif
 #if 0
 	/* End-of-list marker */

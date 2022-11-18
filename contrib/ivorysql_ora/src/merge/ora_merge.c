@@ -64,6 +64,11 @@
 #include "optimizer/prep.h"
 #include "optimizer/optimizer.h"
 #include "access/heapam.h"
+#include "access/genam.h"
+#include "utils/guc.h"
+#include "catalog/pg_constraint.h"
+#include "utils/fmgroids.h"
+#include "utils/ora_compatible.h"
 
 #include "../include/ivorysql_ora.h"
 
@@ -75,6 +80,46 @@ static TM_Result heapDelete4Merge(Relation relation, ItemPointer tid,
 							TM_FailureData *tmfd, bool changingPart);
 static TM_Result heapTupleSatisfiesUpdate4Merge(HeapTuple htup, CommandId curcid,
 							Buffer buffer);
+
+/*
+ * ivy_check_rel_has_constraint
+ *	Check if constraints are created on the table
+ */
+static bool
+ivy_check_rel_has_constraint(Relation rel)
+{
+	Relation	pg_constraint;
+	HeapTuple	tuple;
+	SysScanDesc scan;
+	ScanKeyData skey[1];
+	bool		result = false;
+
+	pg_constraint = table_open(ConstraintRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey[0],
+				Anum_pg_constraint_conrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationGetRelid(rel)));
+	scan = systable_beginscan(pg_constraint, InvalidOid, true,
+							  NULL, 1, skey);
+	while (HeapTupleIsValid(tuple = systable_getnext(scan)))
+	{
+		Form_pg_constraint con = (Form_pg_constraint) GETSTRUCT(tuple);
+
+		if (con->contype == CONSTRAINT_CHECK || con->contype == CONSTRAINT_FOREIGN ||
+			con->contype == CONSTRAINT_PRIMARY || con->contype == CONSTRAINT_UNIQUE ||
+			con->contype == CONSTRAINT_EXCLUSION)
+		{
+			result = true;
+			break;
+		}
+	}
+
+	systable_endscan(scan);
+	table_close(pg_constraint, AccessShareLock);
+
+	return result;
+}
 
 /*
  * IvyExecMergeMatched:
@@ -169,70 +214,178 @@ lmerge_matched:;
 		 {
 			 case CMD_UPDATE:
 			 {
-				 MergeActionState *del;
-				 ListCell		  *ld = lnext(resultRelInfo->ri_matchedMergeAction, l);
+				MergeActionState *del;
+				ListCell		 *ld = lnext(resultRelInfo->ri_matchedMergeAction, l);
 
-				 /*
-				  * Project the output tuple, and use that to update the table.
-				  * We don't need to filter out junk attributes, because the
-				  * UPDATE action's targetlist doesn't have any.
-				  */
-				 newslot = ExecProject(relaction->mas_proj);
+				/*
+				 * Project the output tuple, and use that to update the table.
+				 * We don't need to filter out junk attributes, because the
+				 * UPDATE action's targetlist doesn't have any.
+				 */
+				newslot = ExecProject(relaction->mas_proj);
 
-				 context->relaction = relaction;
-				 context->GetUpdateNewTuple = mergeGetUpdateNewTuple;
-				 context->cpUpdateRetrySlot = NULL;
+				context->relaction = relaction;
+				context->GetUpdateNewTuple = mergeGetUpdateNewTuple;
+				context->cpUpdateRetrySlot = NULL;
 
-				 /* Fire row-level before update trigger */
-				 if (!ExecUpdatePrologue(context, resultRelInfo,
-										 tupleid, NULL, newslot))
-				 {
-					 result = TM_Ok;
-					 break;
-				 }
+				if (enable_ora_merge_tuning == OMERGE_TUNING_ON)
+				{
+					/* Check constraints and triggers on table */
+					if (!ivy_check_rel_has_constraint(resultRelInfo->ri_RelationDesc) &&
+						resultRelInfo->ri_TrigDesc == NULL)
+					{
+						if (ld != NULL)
+						{
+							del = (MergeActionState *) lfirst(ld);
+							if (del->mas_action->commandType == CMD_DELETE)
+							{
+								econtext->ecxt_scantuple = newslot;
+								if (ExecQual(del->mas_whenqual, econtext))
+								{
+									result = ExecDeleteAct(context, resultRelInfo, tupleid, false);
+									if (result == TM_Ok)
+									{
+										mtstate->mt_merge_updated += 1;
+										mtstate->mt_merge_deleted += 1;
+										if (canSetTag)
+											(estate->es_processed)++;
+									}
+									break;
+								}
+								else
+								{
+									ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+									result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
+															newslot, mtstate->canSetTag, &updateCxt);
+									if (result == TM_Ok)
+									{
+										mtstate->mt_merge_updated += 1;
+										if (canSetTag)
+											(estate->es_processed)++;
+									}
+									break;
+								}
+							}
+						}
 
-				 ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
-				 result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
-										 newslot, mtstate->canSetTag, &updateCxt);
-				 if (result == TM_Ok && updateCxt.updated)
-				 {
-					 /* Fire row-level after update trigger */
-					 ExecUpdateEpilogue(context, &updateCxt, resultRelInfo,
-										 tupleid, NULL, newslot, recheckIndexes);
-					 mtstate->mt_merge_updated += 1;
+						ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+						result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
+												newslot, mtstate->canSetTag, &updateCxt);
+						if (result == TM_Ok)
+						{
+							mtstate->mt_merge_updated += 1;
+							if (canSetTag)
+								(estate->es_processed)++;
+						}
+						break;
+					}
+				}
 
-					 if (canSetTag)
-						 (estate->es_processed)++;
-				 }
+				if (enable_ora_merge_tuning == OMERGE_TUNING_FORCE)
+				{
+					/*
+					 * OMERGE_TUNING_FORCE: In this mode, the application must
+					 * make sure the constraints are not violated on the
+					 * WHEN MATCHED THEN UPDATE ... DELETE ... clause
+					 */
+					if (ld != NULL)
+					{
+						del = (MergeActionState *) lfirst(ld);
+						if (del->mas_action->commandType == CMD_DELETE)
+						{
+							econtext->ecxt_scantuple = newslot;
+							if (ExecQual(del->mas_whenqual, econtext))
+							{
+								result = ExecDeleteAct(context, resultRelInfo, tupleid, false);
+								if (result == TM_Ok)
+								{
+									mtstate->mt_merge_updated += 1;
+									mtstate->mt_merge_deleted += 1;
+									if (canSetTag)
+										(estate->es_processed)++;
+								}
+								break;
+							}
+							else
+							{
+								ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+								result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
+														newslot, mtstate->canSetTag, &updateCxt);
+								if (result == TM_Ok)
+								{
+									mtstate->mt_merge_updated += 1;
+									if (canSetTag)
+										(estate->es_processed)++;
+								}
+								break;
+							}
+						}
+					}
 
-				 if (ld)
-				 {
-					 del = (MergeActionState *) lfirst(ld);
-					 if (del->mas_action->commandType == CMD_DELETE)
-					 {
-						 econtext->ecxt_scantuple = newslot;
-						 if (ExecQual(del->mas_whenqual, econtext))
-						 {
-							 /* Fire row-level before delete trigger */
-							 if (!ExecDeletePrologue(context, resultRelInfo, &newslot->tts_tid, NULL, NULL))
-							 {
-								 result = TM_Ok;
-								 break;
-							 }
-							 result = execDelete4Merge(context, resultRelInfo, &newslot->tts_tid, false);
-							 if (result == TM_Ok)
-							 {
-								 /* Fire row-level after delete trigger */
-								 ExecDeleteEpilogue(context, resultRelInfo, &newslot->tts_tid, NULL, false);
-								 mtstate->mt_merge_deleted += 1;
-							 }
-						 }
-						 else
-						 {
-							 econtext->ecxt_scantuple = resultRelInfo->ri_oldTupleSlot;
-						 }
-					 }
-				 }
+					ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+					result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
+											newslot, mtstate->canSetTag, &updateCxt);
+					if (result == TM_Ok)
+					{
+						mtstate->mt_merge_updated += 1;
+						if (canSetTag)
+							(estate->es_processed)++;
+					}
+					break;
+				}
+
+				/* Fire row-level before update trigger */
+				if (!ExecUpdatePrologue(context, resultRelInfo, tupleid, NULL, newslot))
+				{
+					result = TM_Ok;
+					break;
+				}
+
+				ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
+				result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
+										newslot, mtstate->canSetTag, &updateCxt);
+				if (result == TM_Ok && updateCxt.updated)
+				{
+					/* Fire row-level after update trigger */
+					ExecUpdateEpilogue(context, &updateCxt, resultRelInfo,
+										tupleid, NULL, newslot, recheckIndexes);
+					mtstate->mt_merge_updated += 1;
+					if (canSetTag)
+						(estate->es_processed)++;
+				}
+
+				if (ld != NULL)
+				{
+					/* Fire the FK reference constraints check early */
+					if (resultRelInfo->ri_TrigDesc && resultRelInfo->ri_TrigDesc->triggers->tgisinternal)
+						AfterTriggerEndQuery(estate);
+
+					del = (MergeActionState *) lfirst(ld);
+					if (del->mas_action->commandType == CMD_DELETE)
+					{
+						econtext->ecxt_scantuple = newslot;
+						if (ExecQual(del->mas_whenqual, econtext))
+						{
+							/* Fire row-level before delete trigger */
+							if (!ExecDeletePrologue(context, resultRelInfo, &newslot->tts_tid, NULL, NULL))
+							{
+								result = TM_Ok;
+								break;
+							}
+							result = execDelete4Merge(context, resultRelInfo, &newslot->tts_tid, false);
+							if (result == TM_Ok)
+							{
+								/* Fire row-level after delete trigger */
+								ExecDeleteEpilogue(context, resultRelInfo, &newslot->tts_tid, NULL, false);
+								mtstate->mt_merge_deleted += 1;
+							}
+						}
+						else
+						{
+							econtext->ecxt_scantuple = resultRelInfo->ri_oldTupleSlot;
+						}
+					}
+				}
 			 }
 				 break;
 

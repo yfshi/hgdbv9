@@ -1,8 +1,8 @@
 --
 -- Ivory_merge
 --
---SET compatible_mode = oracle;
-
+DROP TABLE IF EXISTS people_source;
+DROP TABLE IF EXISTS people_target;
 CREATE TABLE people_source (
   person_id  INTEGER NOT NULL PRIMARY KEY,
   first_name VARCHAR(20) NOT NULL,
@@ -514,3 +514,167 @@ select * from wq_target_TIMU048170046;
 DROP function merge_when_and_write_TIMU048170046;
 DROP table wq_target_TIMU048170046;
 DROP table wq_source_TIMU048170046;
+
+--
+-- Test ora_merge performance optimization
+--
+
+-- No constraints and FK reference on target table
+CREATE TABLE people_target (
+  person_id  INTEGER,
+  first_name VARCHAR(20),
+  last_name  VARCHAR(20),
+  title      VARCHAR(10)
+);
+
+CREATE TABLE people_source (
+  person_id  INTEGER NOT NULL PRIMARY KEY,
+  first_name VARCHAR(20) NOT NULL,
+  last_name  VARCHAR(20) NOT NULL,
+  title      VARCHAR(10) NOT NULL
+);
+
+INSERT INTO people_target VALUES (1, 'John', 'Smith', 'Mr');
+INSERT INTO people_target VALUES (2, 'alice', 'jones', 'Mrs');
+INSERT INTO people_target VALUES (3, 'tony', 'james', 'Mr');
+
+INSERT INTO people_source VALUES (2, 'Alice', 'Jones', 'Mrs.');
+INSERT INTO people_source VALUES (3, 'Jane', 'Doe', 'Miss');
+INSERT INTO people_source VALUES (4, 'Dave', 'Brown', 'Mr');
+
+SELECT * FROM people_target;
+SELECT * FROM people_source;
+
+show ivorysql.enable_ora_merge_tuning;
+
+-- test ivorysql.enable_ora_merge_tuning to ON
+
+set ivorysql.enable_ora_merge_tuning to on;
+show ivorysql.enable_ora_merge_tuning;
+
+-- This statement will go through the optimization logic
+BEGIN;
+
+MERGE INTO people_target pt
+USING people_source ps
+ON    (pt.person_id = ps.person_id)
+WHEN MATCHED THEN UPDATE
+  SET pt.first_name = ps.first_name,
+      pt.last_name = ps.last_name,
+      pt.title = ps.title
+  DELETE WHERE pt.title  = 'Mrs.';
+
+SELECT * FROM people_target;
+
+ROLLBACK;
+
+drop table people_target;
+drop table people_source;
+
+-- Create target table with constraints
+CREATE TABLE people_target (
+  person_id  INTEGER NOT NULL PRIMARY KEY,
+  first_name VARCHAR(20) NOT NULL,
+  last_name  VARCHAR(20),
+  title      VARCHAR(10)
+);
+CREATE TABLE people_source (
+  person_id  INTEGER NOT NULL PRIMARY KEY,
+  first_name VARCHAR(20) NOT NULL,
+  last_name  VARCHAR(20) NOT NULL,
+  title      VARCHAR(10) NOT NULL
+);
+
+INSERT INTO people_target VALUES (1, 'John', 'Smith', 'Mr');
+INSERT INTO people_target VALUES (2, 'alice', 'jones', 'Mrs');
+INSERT INTO people_target VALUES (3, 'tony', 'james', 'Mr');
+
+INSERT INTO people_source VALUES (2, 'Alice', 'Jones', 'Mrs.');
+INSERT INTO people_source VALUES (3, 'Jane', 'Doe', 'Mrs.');
+INSERT INTO people_source VALUES (4, 'Dave', 'Brown', 'Mr');
+
+
+SELECT * FROM people_target;
+SELECT * FROM people_source;
+
+-- Except a constraint violation error report
+
+MERGE INTO people_target pt
+USING people_source ps
+ON    (pt.person_id = ps.person_id)
+WHEN MATCHED THEN UPDATE
+  SET pt.first_name = NULL,
+	  pt.title = ps.title
+  DELETE WHERE pt.title  = 'Mrs.';
+
+-- Create target table with FK reference
+CREATE TABLE s1(
+    id  INT NOT NULL PRIMARY KEY,
+    sp  VARCHAR2(20)
+);
+CREATE TABLE t1(
+    id  INT,
+    sid INT,
+    tp  VARCHAR2(20),
+    FOREIGN KEY(sid) REFERENCES s1(id) ON DELETE CASCADE
+);
+
+INSERT INTO s1 VALUES(1, '#s1');
+INSERT INTO s1 VALUES(2, '#s2');
+INSERT INTO s1 VALUES(10, '#s10');
+
+INSERT INTO t1 VALUES(1, 1, '#t1');
+INSERT INTO t1 VALUES(3, 2, '#t3');
+
+select * from s1;
+select * from t1;
+
+-- Except a constraint violation error report
+MERGE INTO t1 t
+ USING s1 s ON(t.id = s.id)
+WHEN MATCHED THEN
+ UPDATE SET t.sid = s.id + 100
+ DELETE WHERE t.sid = 101;
+
+-- Test ivorysql.enable_ora_merge_tuning to FORCE
+-- In this mode, the optimization logic is forced, and constraints and
+-- FK reference on the table and whether there are triggers are not checked.
+
+SELECT * FROM people_target;
+SELECT * FROM people_source;
+
+set ivorysql.enable_ora_merge_tuning to force;
+show ivorysql.enable_ora_merge_tuning;
+
+-- This statement will execute normally without checking NOT NULL constraints
+BEGIN;
+
+MERGE INTO people_target pt
+USING people_source ps
+ON    (pt.person_id = ps.person_id)
+WHEN MATCHED THEN UPDATE
+  SET pt.first_name = NULL,
+	  pt.title = ps.title
+  DELETE WHERE pt.title  = 'Mrs.';
+
+SELECT * FROM people_target;
+
+ROLLBACK;
+
+-- This statement will execute normally without checking FK reference
+BEGIN;
+
+MERGE INTO t1 t
+ USING s1 s ON(t.id = s.id)
+WHEN MATCHED THEN
+ UPDATE SET t.sid = s.id + 100
+ DELETE WHERE t.sid = 101;
+
+SELECT * FROM t1;
+
+ROLLBACK;
+
+drop table people_target;
+drop table people_source;
+drop table t1;
+drop table s1;
