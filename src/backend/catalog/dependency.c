@@ -2343,6 +2343,10 @@ find_expr_references_walker(Node *node,
 						   context->addrs);
 		/* fall through to examine arguments */
 	}
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	else if (IsA(node, NonDefValNode))
+		return false;
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	return expression_tree_walker(node, find_expr_references_walker,
 								  (void *) context);

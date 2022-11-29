@@ -27,6 +27,9 @@
 #include "nodes/primnodes.h"
 #include "nodes/value.h"
 #include "partitioning/partdefs.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "nodes/params.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 
 typedef enum OverridingKind
@@ -261,6 +264,19 @@ typedef struct ParamRef
 	int			number;			/* the number of the parameter */
 	int			location;		/* token location, or -1 if unknown */
 } ParamRef;
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+/*
+ * OraParamRef - specifies a :a parameter reference
+ */
+typedef struct OraParamRef
+{
+	NodeTag		type;
+	int			number;			/* the number of the parameter */
+	int			location;		/* token location, or -1 if unknown */	
+	char        *name;          /* placeholder name */	
+} OraParamRef;
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 /*
  * A_Expr - infix, prefix, and postfix expressions
@@ -3056,6 +3072,9 @@ typedef struct DoStmt
 {
 	NodeTag		type;
 	List	   *args;			/* List of DefElem nodes */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	List		*paramsmode;	/* List of parameters mode */
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 } DoStmt;
 
 typedef struct InlineCodeBlock
@@ -3065,6 +3084,9 @@ typedef struct InlineCodeBlock
 	Oid			langOid;		/* OID of selected language */
 	bool		langIsTrusted;	/* trusted property of the language */
 	bool		atomic;			/* atomic execution context */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	ParamListInfo params;		/* USING expressions */
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 } InlineCodeBlock;
 
 /* ----------------------

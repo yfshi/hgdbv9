@@ -809,6 +809,10 @@ plisql_register_internal_func(void)
 	plisql_internal_funcs.get_internal_func_result_type = plisql_get_subprocfunc_result_type;
 	plisql_internal_funcs.get_internal_func_outargs = plisql_get_subprocfunc_outargs;
 	plisql_internal_funcs.get_inernal_func_result_name = plisql_get_subprocfunc_result_name;
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	plisql_internal_funcs.compile_inline_internal = plisql_compile_inline_internal;
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
+
 	plisql_internal_funcs.isload = true;
 }
 
@@ -1540,6 +1544,9 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 		function->fn_prokind = PROKIND_FUNCTION;
 
 	function->fn_nargs = list_length(args);
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	function->paramnames = NULL;
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 	/*
 	 * when parse a package function

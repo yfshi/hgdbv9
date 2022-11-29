@@ -56,6 +56,11 @@
 #include "utils/ora_compatible.h"	/* BUG:M0000068 */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "commands/proclang.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 typedef struct
 {
@@ -4119,6 +4124,12 @@ expand_function_arguments(List *args, bool include_out_arguments,
 	int			pronargs = funcform->pronargs;
 	bool		has_named_args = false;
 	ListCell   *lc;
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	if (ORA_PARSER == compatible_db &&
+		funcform->prolang == LANG_PLISQL_OID)
+		include_out_arguments = true;
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*
 	 * If we are asked to match to OUT arguments, then use the proallargtypes

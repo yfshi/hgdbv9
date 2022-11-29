@@ -35,6 +35,9 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 
 /*
@@ -486,6 +489,13 @@ AtEOXact_SPI(bool isCommit)
 				(errcode(ERRCODE_WARNING),
 				 errmsg("transaction left non-empty SPI stack"),
 				 errhint("Check for missing \"SPI_finish\" calls.")));
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */;
+	setdynamic_doparser(true);
+	setdynamic_parser(false);
+	setdynamic_haspgparam(false);
+	setdynamic_docheckvar(false);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 }
 
 /*
@@ -2311,6 +2321,7 @@ _SPI_prepare_plan(const char *src, SPIPlanPtr plan)
 						   stmt_list,
 						   NULL,
 						   plan->argtypes,
+						   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 						   plan->nargs,
 						   plan->parserSetup,
 						   plan->parserSetupArg,
@@ -2548,6 +2559,7 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 							   stmt_list,
 							   NULL,
 							   plan->argtypes,
+							   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 							   plan->nargs,
 							   plan->parserSetup,
 							   plan->parserSetupArg,
@@ -3454,3 +3466,12 @@ SPI_get_proccxt(int level)
 	return _SPI_stack[level].procCxt;
 }
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+/* return current spi saved memory context */
+MemoryContext
+Ora_spi_saved_memorycontext(void)
+{
+	return _SPI_current->savedcxt;
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */

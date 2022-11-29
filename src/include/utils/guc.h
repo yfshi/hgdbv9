@@ -318,12 +318,19 @@ extern PGDLLIMPORT bool insert_enable_alias;
 extern PGDLLIMPORT int enable_ora_merge_tuning;
 /* End - ReqID:SRS-SQL-MERGE */
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+extern PGDLLIMPORT bool	allow_out_parameter_const;
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
 #define ORATIMESTAMPLTZ_MASK	0x08
 #define DATETIME_IGNORE_NLS(i, m) (((i) & (m)) != 0) 
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+extern PGDLLIMPORT bool out_parameter_column_position;
+/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 /*
  * Functions exported by guc.c

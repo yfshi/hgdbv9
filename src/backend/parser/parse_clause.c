@@ -50,6 +50,12 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "catalog/pg_proc.h"
+#include "commands/proclang.h"
+#include "funcapi.h"
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 static int	extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,
@@ -97,6 +103,9 @@ static WindowClause *findWindowClause(List *wclist, const char *name);
 static Node *transformFrameOffset(ParseState *pstate, int frameOptions,
 								  Oid rangeopfamily, Oid rangeopcintype, Oid *inRangeFunc,
 								  Node *clause);
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+static void check_funcexpr_outparams(List *funcexprs);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*
@@ -668,6 +677,10 @@ transformRangeFunction(ParseState *pstate, RangeFunction *r)
 	 * there are any lateral cross-references in it.
 	 */
 	is_lateral = r->lateral || contain_vars_of_level((Node *) funcexprs, 0);
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	check_funcexpr_outparams(funcexprs);
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*
 	 * OK, build an RTE and nsitem for the function.
@@ -3759,3 +3772,78 @@ transformFrameOffset(ParseState *pstate, int frameOptions,
 
 	return node;
 }
+
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+/*
+ * CheckRangeFunc
+ * If the function has out parameters,
+ * can't call the function in SQL, such as 'from function(..)'
+ */
+static void
+check_funcexpr_outparams(List *funcexprs)
+{
+	if (list_length(funcexprs) > 0)
+	{
+		HeapTuple		procTup;
+		Form_pg_proc	procStruct;
+		char		   *proname = NULL;
+		FuncExpr *func = (FuncExpr *) linitial(funcexprs);
+
+		if (!IsA(func, FuncExpr))
+			return;
+
+		if (!FUNC_EXPR_FROM_PG_PROC(func->function_from))
+			return;
+
+		procTup = SearchSysCache1(PROCOID,
+									ObjectIdGetDatum(func->funcid));
+		if (!HeapTupleIsValid(procTup))
+			ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("cache lookup failed for function %u", func->funcid)));
+
+		procStruct = (Form_pg_proc) GETSTRUCT(procTup);
+
+		if (LANG_PLISQL_OID != procStruct->prolang)
+		{
+			ReleaseSysCache(procTup);
+			return;
+		}
+
+		if (!heap_attisnull(procTup, Anum_pg_proc_proargmodes, NULL) &&
+			!allow_out_parameter_const)
+		{
+			int			i;
+			ListCell 	*lc;
+			Oid 	   *argtypes;
+			char	  **argnames;
+			char	   *argmodes;
+
+			proname = pstrdup(NameStr(procStruct->proname));
+			get_func_arg_info(procTup, &argtypes, &argnames, &argmodes);
+
+			i = 0;
+			foreach(lc, func->args)
+			{
+				if (argmodes[i] == PROARGMODE_OUT ||
+					argmodes[i] == PROARGMODE_INOUT)
+				{
+					Node *arg = (Node *) lfirst(lc);
+
+					arg = ParseParamVariable(arg);
+					if (!IsA(arg, Param))
+					{
+						ReleaseSysCache(procTup);
+						ereport(ERROR,
+							(errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+									proname)));
+					}
+				}
+				i++;
+			}
+		}
+		ReleaseSysCache(procTup);
+	}
+}
+/* End - ReqID:SRS-SQL-FUNCOUT */

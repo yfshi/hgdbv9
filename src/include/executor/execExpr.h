@@ -41,6 +41,10 @@ typedef void (*ExecEvalSubroutine) (ExprState *state,
 typedef bool (*ExecEvalBoolSubroutine) (ExprState *state,
 										struct ExprEvalStep *op,
 										ExprContext *econtext);
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+typedef void (*ExecEvalOutParamSubroutine)(ExprState *state,
+										struct ExprEvalStep *op);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* ExprEvalSteps that cache a composite type's tupdesc need one of these */
 /* (it fits in-line in some step types, otherwise allocate out-of-line) */
@@ -258,6 +262,11 @@ typedef enum ExprEvalOp
 	EEOP_AGG_PLAIN_TRANS_BYREF,
 	EEOP_AGG_ORDERED_TRANS_DATUM,
 	EEOP_AGG_ORDERED_TRANS_TUPLE,
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	/* evaluate OUT parameters */
+	EEOP_OUT_PARAM_CALLBACK,
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
@@ -670,7 +679,19 @@ typedef struct ExprEvalStep
 			int			setno;
 			int			transno;
 			int			setoff;
-		}			agg_trans;
+		}		agg_trans;
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		/* for EEOP_OUT_PARAM_CALLBACK */
+		struct
+		{
+			int			*paramids;		/* the out parameter id number */
+			int			 nout;			/* out parameter number of the function */
+			Oid			 rettype;		/* function return type */
+			void		*pestate;		/* the parent of current PLiSQL_execstate */
+			ExecEvalOutParamSubroutine outparam_func;
+		}			out_params;
+
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 	}			d;
 } ExprEvalStep;
 

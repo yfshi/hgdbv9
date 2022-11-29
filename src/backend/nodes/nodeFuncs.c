@@ -250,6 +250,11 @@ exprType(const Node *expr)
 		case T_PlaceHolderVar:
 			type = exprType((Node *) ((const PlaceHolderVar *) expr)->phexpr);
 			break;
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		case T_NonDefValNode:
+			type = UNKNOWNOID;
+			break;
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			type = InvalidOid;	/* keep compiler quiet */
@@ -1513,6 +1518,11 @@ exprLocation(const Node *expr)
 		case T_ParamRef:
 			loc = ((const ParamRef *) expr)->location;
 			break;
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		case T_OraParamRef:
+			loc = ((const OraParamRef *) expr)->location;
+			break;
+		/* End - ReqID:SRS-SQL-ANONYOUT */
 		case T_A_Const:
 			loc = ((const A_Const *) expr)->location;
 			break;
@@ -3586,6 +3596,7 @@ raw_expression_tree_walker(Node *node,
 		case T_BitString:
 		case T_Null:
 		case T_ParamRef:
+		case T_OraParamRef:/*ReqID:SRS-SQL-LIBPQOUT */
 		case T_A_Const:
 		case T_A_Star:
 			/* primitive node types with no subnodes */

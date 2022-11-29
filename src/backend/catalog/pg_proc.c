@@ -47,6 +47,11 @@
 #include "utils/regproc.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "commands/proclang.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 typedef struct
@@ -289,6 +294,19 @@ ProcedureCreate(const char *procedureName,
 			}
 		}
 	}
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	/*
+	 * call plisql function which includes out parameters,
+	 */
+	if (compatible_db == DB_ORACLE &&
+		prokind == PROKIND_FUNCTION &&
+		LANG_PLISQL_OID == languageObjectId)
+	{
+		parameterTypes = buildoidvector(allParams, allParamCount);
+		parameterCount = allParamCount;
+	}
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*
 	 * All seems OK; prepare the data to be inserted into pg_proc.

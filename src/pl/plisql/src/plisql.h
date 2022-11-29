@@ -332,6 +332,12 @@ typedef struct PLiSQL_var
 	int			cursor_explicit_argrow;
 	int			cursor_options;
 
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char		info; /* Build the variable for the function argument,
+					   * record the argument mode which may be IN, OUT or IN OUT.
+					   * If build the variable in plsql block local, info is empty */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+
 	/* Fields below here can change at runtime */
 
 	Datum		value;
@@ -411,6 +417,12 @@ typedef struct PLiSQL_rec
 	Oid			rectypeid;		/* declared type of variable */
 	/* RECFIELDs for this record are chained together for easy access */
 	int			firstfield;		/* dno of first RECFIELD, or -1 if none */
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char		info; /* Build the variable for the function argument,
+					   * record the argument mode which may be IN, OUT or IN OUT.
+					   * If build the variable in plsql block local, info is NONE */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/* Fields below here can change at runtime */
 
@@ -513,6 +525,11 @@ typedef struct PLiSQL_stmt_block
 	int			n_initvars;		/* Length of initvarnos[] */
 	int		   *initvarnos;		/* dnos of variables declared in this block */
 	PLiSQL_exception_block *exceptions;
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	int       ora_param_stack_top_level;
+	int       ora_param_stack_cur_level;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 } PLiSQL_stmt_block;
 
 /*
@@ -921,6 +938,10 @@ typedef struct PLiSQL_stmt_dynexecute
 	bool		strict;			/* INTO STRICT flag */
 	PLiSQL_variable *target;	/* INTO target (record or row) */
 	List	   *params;			/* USING expressions */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	bool        haveout;        /* out , in out mode */
+	PLiSQL_row *out;			/* OUT target, if row */
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 } PLiSQL_stmt_dynexecute;
 
 /*
@@ -1026,6 +1047,15 @@ typedef struct PLiSQL_function
 	/* these fields change when the function is used */
 	struct PLiSQL_execstate *cur_estate;
 	unsigned long use_count;
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	int			fn_ret_vardno;			/* the variable dno builded for the function return value */
+	bool		fn_no_return;			/* the function return type is not VOIDOID, if the body has not a RETURN statment,
+										 * the CREATE FUNCTION executes successfully, but when the function is called,
+										 * an error is reported */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	char		**paramnames;	/* saved do + using parameter'name */
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -1251,14 +1281,14 @@ extern PLiSQL_plugin **plisql_plugin_ptr;
  */
 extern PLiSQL_function *plisql_compile(FunctionCallInfo fcinfo,
 										 bool forValidator);
-extern PLiSQL_function *plisql_compile_inline(char *proc_source);
+extern PLiSQL_function *plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-ANONYOUT */);
 extern void plisql_parser_setup(struct ParseState *pstate,
 								 PLiSQL_expr *expr);
-extern bool plisql_parse_word(char *word1, const char *yytxt, bool lookup,
+extern bool plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, const char *yytxt, bool lookup,
 							   PLwdatum *wdatum, PLword *word);
-extern bool plisql_parse_dblword(char *word1, char *word2,
+extern bool plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, char *word2,
 								  PLwdatum *wdatum, PLcword *cword);
-extern bool plisql_parse_tripword(char *word1, char *word2, char *word3,
+extern bool plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, char *word2, char *word3,
 								   PLwdatum *wdatum, PLcword *cword);
 extern PLiSQL_type *plisql_parse_wordtype(char *ident);
 extern PLiSQL_type *plisql_parse_cwordtype(List *idents);
@@ -1294,6 +1324,10 @@ extern void plisql_compile_error_callback(void *arg);
 extern void plisql_finish_datums(PLiSQL_function *function);
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+extern void plisql_compile_inline_internal(char *proc_source);
+extern void dynamic_build_func_vars(PLiSQL_function **function);
+/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 /*
  * Functions in pl_handler.c

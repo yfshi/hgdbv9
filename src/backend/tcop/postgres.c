@@ -82,6 +82,10 @@
 #include "utils/snapmgr.h"
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
 
 /* ----------------
  *		global variables
@@ -965,6 +969,11 @@ exec_simple_query(const char *query_string)
 	bool		was_logged = false;
 	bool		use_implicit_block;
 	char		msec_str[32];
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	/* anonymous block supports out parameters */
+	ParamListInfo	params = NULL;
+	Oid			*paramtypes = NULL;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Report query to various monitoring facilities.
@@ -1034,6 +1043,59 @@ exec_simple_query(const char *query_string)
 	 * transaction block.
 	 */
 	use_implicit_block = (list_length(parsetree_list) > 1);
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	/*
+	 * Anonymous block has out parameters,
+	 * allow to use out parameters,
+	 * and the out parameters datatype is integer.
+	 * this only used for regression test so far.
+	 */
+	if (list_length(parsetree_list) == 1)
+	{
+		Node *node = (Node *) linitial(parsetree_list);
+		ParamListInfo paramsinfo;
+
+		if (node->type == T_RawStmt &&
+			((RawStmt *) node)->stmt->type == T_DoStmt &&
+			((DoStmt *)(((RawStmt *) node)->stmt))->paramsmode != NIL)
+		{
+			DoStmt *dostmt = (DoStmt *)(((RawStmt *) node)->stmt);
+			int			i = 0;
+			int			nargs;
+
+			nargs = list_length(dostmt->paramsmode);
+
+			paramsinfo = (ParamListInfo) palloc(offsetof(ParamListInfoData, params) +
+												nargs * sizeof(ParamExternData));
+			paramtypes = (Oid *) palloc(nargs * sizeof(Oid));
+
+			paramsinfo->paramFetch = NULL;
+			paramsinfo->paramFetchArg = NULL;
+			paramsinfo->parserSetup = NULL;
+			paramsinfo->parserSetupArg = NULL;
+			paramsinfo->numParams = nargs;
+			paramsinfo->outctext = NULL;
+			paramsinfo->haveout = true;
+
+			/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+			paramsinfo->paramnames = NULL;
+			/* End - ReqID:SRS-SQL-LIBPQOUT */
+
+			for (i = 0; i < nargs; i++)
+			{
+				paramsinfo->params[i].pflags = PARAM_FLAG_OUT;
+				paramsinfo->params[i].isnull = true;
+				paramsinfo->params[i].value = (Datum) 0;
+				paramsinfo->params[i].ptype = 23;
+				paramsinfo->params[i].pmode = 'o';
+				paramtypes[i] = 23;
+			}
+
+			params = paramsinfo;
+		}
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Run through the raw parsetree(s) and process each one.
@@ -1129,11 +1191,15 @@ exec_simple_query(const char *query_string)
 		else
 			oldcontext = MemoryContextSwitchTo(MessageContext);
 
-		querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
-												NULL, 0, NULL);
+		if (params != NULL)
+			querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
+													paramtypes, params->numParams/*ReqID:SRS-SQL-ANONYOUT */, NULL);
+		else
+			querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
+													NULL, 0, NULL);
 
 		plantree_list = pg_plan_queries(querytree_list, query_string,
-										CURSOR_OPT_PARALLEL_OK, NULL);
+										CURSOR_OPT_PARALLEL_OK, params/*ReqID:SRS-SQL-ANONYOUT */);
 
 		/*
 		 * Done with the snapshot used for parsing/planning.
@@ -1174,7 +1240,7 @@ exec_simple_query(const char *query_string)
 		/*
 		 * Start the portal.  No parameters here.
 		 */
-		PortalStart(portal, NULL, 0, InvalidSnapshot);
+		PortalStart(portal, params/* ReqID:SRS-SQL-ANONYOUT */, 0, InvalidSnapshot);
 
 		/*
 		 * Select the appropriate output format: text unless we are doing a
@@ -1344,6 +1410,12 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	bool		is_named;
 	bool		save_log_statement_stats = log_statement_stats;
 	char		msec_str[32];
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char 	   *paramModes = palloc0(sizeof(char) * numParams);
+
+	/* get the masked oid from typeoid */
+	GetParamMode(paramTypes, numParams, paramModes);
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*
 	 * Report query to various monitoring facilities.
@@ -1405,7 +1477,36 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	 * Do basic parsing of the query or queries (this should be safe even if
 	 * we are in aborted transaction state!)
 	 */
-	parsetree_list = pg_parse_query(query_string);
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	if (compatible_db== ORA_PARSER)
+	{
+		/* parser :select * from f(:x,:y) */
+		int oraparam_top_level;
+		int oraparam_cur_level;
+
+		push_oraparam_stack();
+		get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+		forward_oraparam_stack();
+		setdynamic_parser(true);
+		PG_TRY();
+		{
+			parsetree_list = pg_parse_query(query_string);
+		}
+		PG_CATCH();
+		{
+			backward_oraparam_stack();
+			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+			setdynamic_parser(false);
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+		backward_oraparam_stack();
+		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+		setdynamic_parser(false);
+	}
+	else
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
+		parsetree_list = pg_parse_query(query_string);
 
 	/*
 	 * We only allow a single user statement in a prepared statement. This is
@@ -1515,6 +1616,9 @@ exec_parse_message(const char *query_string,	/* string to execute */
 					   querytree_list,
 					   unnamed_stmt_context,
 					   paramTypes,
+					   /* Begin - ReqID:SRS-SQL-FUNCOUT */
+					   paramModes,
+					   /* End - ReqID:SRS-SQL-FUNCOUT */
 					   numParams,
 					   NULL,
 					   NULL,
@@ -1608,6 +1712,9 @@ exec_bind_message(StringInfo input_message)
 	char		msec_str[32];
 	ParamsErrorCbData params_data;
 	ErrorContextCallback params_errcxt;
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	List		*dostmt_modes = NIL;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Get the fixed part of the message */
 	portal_name = pq_getmsgstring(input_message);
@@ -1742,6 +1849,18 @@ exec_bind_message(StringInfo input_message)
 		snapshot_set = true;
 	}
 
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	/* anonymous block out parameters */
+	if (psrc->raw_parse_tree != NULL &&
+		nodeTag(psrc->raw_parse_tree) == T_RawStmt &&
+		nodeTag((RawStmt *)(psrc->raw_parse_tree)->stmt) == T_DoStmt &&
+		((DoStmt *)(((RawStmt *) psrc->raw_parse_tree)->stmt))->paramsmode != NIL)
+	{
+		DoStmt *dostmt = (DoStmt *)((RawStmt *)(psrc->raw_parse_tree)->stmt);
+		dostmt_modes = dostmt->paramsmode;
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 	/*
 	 * Fetch parameters, if any, and store in the portal's memory context.
 	 */
@@ -1764,6 +1883,11 @@ exec_bind_message(StringInfo input_message)
 
 		params = makeParamList(numParams);
 
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		if (dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
+			elog(ERROR, "parameters modes doesn't match to params");
+		/* End - ReqID:SRS-SQL-ANONYOUT */
+
 		for (int paramno = 0; paramno < numParams; paramno++)
 		{
 			Oid			ptype = psrc->param_types[paramno];
@@ -1773,9 +1897,45 @@ exec_bind_message(StringInfo input_message)
 			StringInfoData pbuf;
 			char		csave;
 			int16		pformat;
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			char		pmode = psrc->param_modes[paramno];
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 
 			one_param_data.paramno = paramno;
 			one_param_data.paramval = NULL;
+
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			/* get out parameters from Dostmt' modes */
+			if (dostmt_modes != NIL)
+			{
+				DefElem *def = NULL;
+				Value *v= NULL;
+
+				def = (DefElem *) list_nth(dostmt_modes, paramno);
+				v = (Value *) def->arg;
+
+				Assert(v->type == T_String);
+
+				/* handle paramname */
+				if (def->defname != NULL)
+				{
+					if (params->paramnames == NULL)
+						params->paramnames = palloc0(sizeof(char *) * numParams);
+					params->paramnames[paramno] = pstrdup(def->defname);
+				}
+
+				if (pg_strcasecmp(v->val.str, "inout") == 0)
+				{
+					if (!params->haveout)
+						params->haveout = true;
+				}
+				else if (pg_strcasecmp(v->val.str, "out") == 0)
+				{
+					if (!params->haveout)
+						params->haveout = true;
+				}
+			}
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 
 			plength = pq_getmsgint(input_message, 4);
 			isNull = (plength == -1);
@@ -1827,6 +1987,20 @@ exec_bind_message(StringInfo input_message)
 				pformat = pformats[0];
 			else
 				pformat = 0;	/* default = text */
+
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			if (compatible_db == ORA_PARSER &&
+				pmode == 'o')
+			{
+				/* virtual type its value is awalys null */
+				params->params[paramno].value = (Datum) 0;
+				params->params[paramno].isnull = true;
+				params->params[paramno].pflags |= PARAM_FLAG_OUT;
+				params->params[paramno].ptype = ptype;
+				params->params[paramno].pmode = pmode;
+				continue;
+			}
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 
 			if (pformat == 0)	/* text mode */
 			{
@@ -1939,6 +2113,9 @@ exec_bind_message(StringInfo input_message)
 			 */
 			params->params[paramno].pflags = PARAM_FLAG_CONST;
 			params->params[paramno].ptype = ptype;
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			params->params[paramno].pmode = pmode;
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 		}
 
 		/* Pop the per-parameter error callback */
@@ -2139,8 +2316,19 @@ exec_execute_message(const char *portal_name, long max_rows)
 	 * context, because that may get deleted if portal contains VACUUM).
 	 */
 	receiver = CreateDestReceiver(dest);
+
+
 	if (dest == DestRemoteExecute)
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	{
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 		SetRemoteDestReceiverParams(receiver, portal);
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		/* If there are out parameters, should change it to send description */
+		if (portalParams != NULL && portalParams->haveout)
+			ChangeDestSendDescription(receiver);
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Ensure we are in a transaction command (this should normally be the

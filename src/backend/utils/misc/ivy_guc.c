@@ -52,6 +52,13 @@ int		enable_ora_merge_tuning = OMERGE_TUNING_OFF;
 int	database_mode = DB_PG;
 int	compatible_db = PG_PARSER;
 /* END - SQL PARSER */
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+bool		allow_out_parameter_const = false;
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+bool		out_parameter_column_position = false;
+/* End - ReqID:SRS-SQL-LIBPQOUT */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -189,6 +196,36 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG:M0000068 */
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	/*
+	 * if ivorysql.allow_out_parameter_const is false, out parameter must be a var.
+	 * if ivorysql.allow_out_parameter_const is true, out parameter can be a constant value
+	 */
+	{
+		{"ivorysql.allow_out_parameter_const", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("plisql function out parameter can be a constant value."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&allow_out_parameter_const,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	{
+		{"ivorysql.out_parameter_column_position", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("plisql function construct out parameter column by its position."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&out_parameter_column_position,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
+
 #endif
 #if 0
 	/* End-of-list marker */

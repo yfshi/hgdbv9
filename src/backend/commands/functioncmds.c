@@ -79,6 +79,12 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-ANONYOUT */
+/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+#include "access/printtup.h"
+/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
@@ -413,6 +419,16 @@ interpret_function_parameter_list(ParseState *pstate,
 						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
 						 errmsg("only input parameters can have default values")));
 
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			/* IN OUT formal parameters may not have default expressions */
+			if (fp->mode == FUNC_PARAM_INOUT &&
+				LANG_PLISQL_OID == languageOid &&
+				compatible_db == ORA_PARSER)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+				   errmsg("IN OUT formal parameters may not have default expressions")));
+			/* End - ReqID:SRS-SQL-FUNCOUT */
+
 			def = transformExpr(pstate, fp->defexpr,
 								EXPR_KIND_FUNCTION_DEFAULT);
 			def = coerce_to_specific_type(pstate, def, toid, "DEFAULT");
@@ -447,20 +463,37 @@ interpret_function_parameter_list(ParseState *pstate,
 		}
 		else
 		{
-			if (isinput && have_defaults)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
-						 errmsg("input parameters after one with a default value must also have defaults")));
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			if (compatible_db == PG_PARSER ||
+				(compatible_db == ORA_PARSER &&
+				LANG_PLISQL_OID != languageOid))
+			{
+			/* End - ReqID:SRS-SQL-FUNCOUT */
+				if (isinput && have_defaults)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+							 errmsg("input parameters after one with a default value must also have defaults")));
 
-			/*
-			 * For procedures, we also can't allow OUT parameters after one
-			 * with a default, because the same sort of confusion arises in a
-			 * CALL statement.
-			 */
-			if (objtype == OBJECT_PROCEDURE && have_defaults)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
-						 errmsg("procedure OUT parameters cannot appear after one with a default value")));
+				/*
+				 * For procedures, we also can't allow OUT parameters after one
+				 * with a default, because the same sort of confusion arises in a
+				 * CALL statement.
+				 */
+				if (objtype == OBJECT_PROCEDURE && have_defaults)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+							 errmsg("procedure OUT parameters cannot appear after one with a default value")));
+
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			}
+			else if (compatible_db == ORA_PARSER &&
+					LANG_PLISQL_OID == languageOid &&
+					have_defaults)
+			{
+				/* the parameters after default parameters always be NonDefValNode */
+				*parameterDefaults = lappend(*parameterDefaults, makeNode(NonDefValNode));
+			}
+			/* End - ReqID:SRS-SQL-FUNCOUT */			
 		}
 
 		i++;
@@ -1307,11 +1340,44 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 		/* explicit RETURNS clause */
 		compute_return_type(stmt->returnType, languageOid,
 							&prorettype, &returnsSet);
-		if (OidIsValid(requiredResultType) && prorettype != requiredResultType)
+		if (OidIsValid(requiredResultType) && prorettype != requiredResultType
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			&& !(compatible_db == ORA_PARSER && LANG_PLISQL_OID == languageOid))
+			/* End - ReqID:SRS-SQL-FUNCOUT */
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
 					 errmsg("function result type must be %s because of OUT parameters",
 							format_type_be(requiredResultType))));
+
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		/*
+		 * in plisql function, the function return datatype
+		 * has no relationship with out pararmeter datatype
+		 */
+		if (LANG_PLISQL_OID == languageOid)
+		{
+			/* have out parameter,  should't allow return setof */
+			if (returnsSet && parameterModes != NULL)
+			{
+				char *paramModes = NULL;
+				int numparams = ARR_DIMS(parameterModes)[0];
+				int i;
+
+				if (ARR_NDIM(parameterModes) != 1 ||
+					ARR_HASNULL(parameterModes) ||
+					ARR_ELEMTYPE(parameterModes) != CHAROID)
+					elog(ERROR, "parameterModes is not a 1-D char array");
+
+				paramModes = (char *) ARR_DATA_PTR(parameterModes);
+				for (i = 0; i < numparams; i++)
+				{
+					if (paramModes[i] != FUNC_PARAM_IN &&
+						paramModes[i] != FUNC_PARAM_VARIADIC)
+						elog(ERROR, "plisql function which has out parameter don't allow to return setof");
+				}
+			}
+		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 	}
 	else if (OidIsValid(requiredResultType))
 	{
@@ -2295,7 +2361,11 @@ IsThereFunctionInNamespace(const char *proname, int pronargs,
  * See at ExecuteCallStmt() about the atomic argument.
  */
 void
-ExecuteDoStmt(DoStmt *stmt, bool atomic)
+ExecuteDoStmt(DoStmt *stmt, bool atomic,
+			/* Begin - ReqID:SRS-SQL-ANONYOUT */
+			ParamListInfo params,
+			DestReceiver *dest)
+			/* End - ReqID:SRS-SQL-ANONYOUT */
 {
 	InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
 	ListCell   *arg;
@@ -2305,6 +2375,11 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic)
 	Oid			laninline;
 	HeapTuple	languageTuple;
 	Form_pg_language languageStruct;
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	Datum		result;
+	int         oraparam_top_level = -1;
+	int         oraparam_cur_level = -1;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Process options we got from gram.y */
 	foreach(arg, stmt->args)
@@ -2348,7 +2423,7 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic)
 		/* anonymous block's language default value is plsql
 		 * in oracle compatibility mode
 		 */
-		if (DB_ORACLE == compatible_db)
+		if (ORA_PARSER == compatible_db)
 			language = "plisql";
 		else
 	/* END - SQL PARSER */
@@ -2398,8 +2473,75 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic)
 
 	ReleaseSysCache(languageTuple);
 
-	/* execute the inline handler */
-	OidFunctionCall1(laninline, PointerGetDatum(codeblock));
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	codeblock->params = params;
+
+	/* to use check_variables_does_match to check variables match, push stack */
+	if (stmt->paramsmode != NIL)
+	{
+		push_oraparam_stack();
+		get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+	}
+
+	PG_TRY();
+	{
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+		/* execute the inline handler */
+		result = OidFunctionCall1(laninline, PointerGetDatum(codeblock));
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	}
+	PG_CATCH();
+	{
+		if (stmt->paramsmode != NIL)
+			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	if (stmt->paramsmode != NIL)
+		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+
+	/* Anonymous block has out parameters, its return value will be not NULL */
+	if (result != 0 && dest != NULL && stmt->paramsmode != NIL)
+	{
+		HeapTupleHeader td;
+		TupleDesc		tupdesc;
+		HeapTupleData	tmptup;
+		Tuplestorestate *tupstore;
+		TupleTableSlot *scanslot;
+
+		tupstore = tuplestore_begin_heap(false, false, work_mem);
+		td = DatumGetHeapTupleHeader(result);
+		tupdesc = lookup_rowtype_tupdesc_copy(HeapTupleHeaderGetTypeId(td),
+											  HeapTupleHeaderGetTypMod(td));
+
+		scanslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsMinimalTuple);
+
+		tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+		tmptup.t_data = td;
+
+		tuplestore_puttuple(tupstore, &tmptup);
+		tuplestore_gettupleslot(tupstore,
+								true,
+								false,
+								scanslot);
+
+		/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+		/*
+		 * if we have a paramname, should send result description
+		 */
+		if (params != NULL && params->paramnames != NULL)
+			SetRemoteDestReceiverSendDescr(dest, true);
+		/* End - ReqID:SRS-SQL-LIBPQOUT */
+
+		dest->rStartup(dest, (int) CMD_UTILITY, tupdesc);
+		dest->receiveSlot(scanslot, dest);
+		dest->rShutdown(dest);
+		ExecClearTuple(scanslot);
+		tuplestore_end(tupstore);
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 }
 
 /*

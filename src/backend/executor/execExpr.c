@@ -49,6 +49,15 @@
 #include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "commands/proclang.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "executor/spi.h"
+#include "utils/syscache.h"
+#include "catalog/pg_proc.h"
+#include "parser/parse_param.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 typedef struct LastAttnumInfo
@@ -83,6 +92,10 @@ static void ExecBuildAggTransCall(ExprState *state, AggState *aggstate,
 								  FunctionCallInfo fcinfo, AggStatePerTrans pertrans,
 								  int transno, int setno, int setoff, bool ishash,
 								  bool nullcheck);
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+static void ExecInitFuncOutParams(Expr *node, ExprState *state,
+					Datum *resvalue, bool *resnull);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*
@@ -1137,6 +1150,10 @@ ExecInitExprRec(Expr *node, ExprState *state,
 							 func->args, func->funcid, func->inputcollid,
 							 state);
 				ExprEvalPushStep(state, &scratch);
+
+				/* Begin - ReqID:SRS-SQL-FUNCOUT */
+				ExecInitFuncOutParams(node, state, resv, resnull);
+				/* End - ReqID:SRS-SQL-FUNCOUT */
 				break;
 			}
 
@@ -3982,3 +3999,161 @@ ExecBuildParamSetEqual(TupleDesc desc,
 
 	return state;
 }
+
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+/*
+ * ExecInitFuncOutParams
+ * Init function that has out parameters
+ */
+static void
+ExecInitFuncOutParams(Expr *node, ExprState *state,
+					Datum *resvalue, bool *resnull)
+{
+	if (compatible_db == ORA_PARSER)
+	{
+		FuncExpr	*funcexpr = (FuncExpr *) node;
+		Oid 		funcOid = funcexpr->funcid;
+		HeapTuple	func_tuple;
+		Oid 	   *argtypes;
+		char	  **argnames;
+		char	   *argmodes;
+		int 		i;
+		int 		num_out_args;
+		int 		num_all_args;
+		Oid 		rettype;
+		char	   *funcname;
+
+		func_tuple = SearchSysCache1(PROCOID,
+									 ObjectIdGetDatum(funcOid));
+		if (!HeapTupleIsValid(func_tuple))
+			return;
+		
+		if (((Form_pg_proc) GETSTRUCT(func_tuple))->prokind != PROKIND_FUNCTION ||
+			LANG_PLISQL_OID != ((Form_pg_proc) GETSTRUCT(func_tuple))->prolang)
+		{
+			ReleaseSysCache(func_tuple);
+			return;
+		}
+
+		/*
+		 * Get the argument names and modes, so that we can deliver on-point error
+		 * messages when something is wrong.
+		 */
+		num_all_args = get_func_arg_info(func_tuple, &argtypes, &argnames, &argmodes);
+		rettype = ((Form_pg_proc) GETSTRUCT(func_tuple))->prorettype;
+		funcname = NameStr(((Form_pg_proc) GETSTRUCT(func_tuple))->proname);
+
+		num_out_args = 0;
+		for (i = 0; i < num_all_args; i++)
+		{
+			if (argmodes &&
+				(argmodes[i] == PROARGMODE_INOUT ||
+				 argmodes[i] == PROARGMODE_OUT))
+				num_out_args++;
+		}
+
+		if (num_out_args > 0)
+		{
+			ListCell	 *lc;
+
+			if (SPI_get_connected() >= 0)
+			{
+				ExprEvalStep  scratch = {0};
+				ParamListInfo params = NULL;
+				int 		  nout = 0;
+				int 		 *paramids = NULL;
+
+				if (state->ext_params &&
+					state->ext_params->outparamSepup)
+					params = state->ext_params;
+				else if (state->parent &&
+					state->parent->state)
+					params = state->parent->state->es_param_list_info;
+
+				if (!params || !params->outparamSepup)
+				{
+					ReleaseSysCache(func_tuple);
+					if (!allow_out_parameter_const)
+						ereport(ERROR,
+							(errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+									funcname)));
+					return;
+				}
+
+				paramids = palloc0(sizeof(int) * num_out_args);
+				MemSet(paramids, -1, sizeof(int) * num_out_args);
+
+				i = 0;
+				foreach(lc, funcexpr->args)
+				{
+					Node *arg = (Node *) lfirst(lc);
+
+					if (argmodes[i] == PROARGMODE_OUT ||
+						argmodes[i] == PROARGMODE_INOUT)
+					{
+						arg = ParseParamVariable(arg);
+
+						if (!IsA(arg, Param))
+						{
+							if (!allow_out_parameter_const)
+								ereport(ERROR,
+										(errcode(ERRCODE_DATA_EXCEPTION),
+										errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+												funcname)));
+						}
+						else
+							paramids[nout++] = ((Param *)arg)->paramid - 1;
+					}
+
+					i++;
+				}
+
+				scratch.opcode = EEOP_OUT_PARAM_CALLBACK;
+				scratch.resvalue = resvalue;
+				scratch.resnull = resnull;
+
+				scratch.d.out_params.paramids = paramids;
+				scratch.d.out_params.nout = nout;
+				scratch.d.out_params.rettype = rettype;
+
+				scratch.d.out_params.pestate = params->paramFetchArg;
+				params->outparamSepup(&scratch);
+				ExprEvalPushStep(state, &scratch);
+			}
+			else
+			{
+				/*
+				 * Call a funciton in SQL, not in psql.
+				 * If guc allow_out_parameter_const is false,
+				 * the out parameter of the function must be variable.
+				 * If guc allow_out_parameter_const is true,
+				 * the out parameter of the function can be const
+				 */
+				i = 0;
+				foreach(lc, funcexpr->args)
+				{
+					Node *arg = (Node *) lfirst(lc);
+
+					if (argmodes[i] == PROARGMODE_OUT ||
+						argmodes[i] == PROARGMODE_INOUT)
+					{
+						arg = ParseParamVariable(arg);
+
+						if (!IsA(arg, Param) && !allow_out_parameter_const)
+							ereport(ERROR,
+									(errcode(ERRCODE_DATA_EXCEPTION),
+									errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+											funcname)));
+					}
+
+					i++;
+				}
+			}
+		}
+		ReleaseSysCache(func_tuple);
+	}
+
+	return;
+}
+/* End - ReqID:SRS-SQL-FUNCOUT */

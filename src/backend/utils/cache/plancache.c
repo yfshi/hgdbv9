@@ -339,6 +339,9 @@ CompleteCachedPlan(CachedPlanSource *plansource,
 				   List *querytree_list,
 				   MemoryContext querytree_context,
 				   Oid *param_types,
+				   /* Begin - ReqID:SRS-SQL-FUNCOUT */
+				   char *param_modes,
+				   /* End - ReqID:SRS-SQL-FUNCOUT */
 				   int num_params,
 				   ParserSetupHook parserSetup,
 				   void *parserSetupArg,
@@ -428,6 +431,14 @@ CompleteCachedPlan(CachedPlanSource *plansource,
 	plansource->cursor_options = cursor_options;
 	plansource->fixed_result = fixed_result;
 	plansource->resultDesc = PlanCacheComputeResultDesc(querytree_list);
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	if (num_params > 0 && param_modes)
+	{
+		plansource->param_modes = (char *) palloc0(num_params * sizeof(char));
+		memcpy(plansource->param_modes, param_modes, num_params * sizeof(char));
+	}
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	MemoryContextSwitchTo(oldcxt);
 

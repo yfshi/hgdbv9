@@ -87,12 +87,20 @@ struct ParseState;
 
 #define PARAM_FLAG_CONST	0x0001	/* parameter is constant */
 
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+/* out parameter flags */
+#define PARAM_FLAG_OUT		0x0002	/* parameter is out parameter */
+/* End - ReqID:SRS-SQL-ANONYOUT */
+
 typedef struct ParamExternData
 {
 	Datum		value;			/* parameter value */
 	bool		isnull;			/* is it NULL? */
 	uint16		pflags;			/* flag bits, see above */
 	Oid			ptype;			/* parameter's datatype, or 0 */
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char 		pmode;			/* parameter's mode, IN, OUT, or INOUT */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 } ParamExternData;
 
 typedef struct ParamListInfoData *ParamListInfo;
@@ -107,6 +115,10 @@ typedef void (*ParamCompileHook) (ParamListInfo params, struct Param *param,
 
 typedef void (*ParserSetupHook) (struct ParseState *pstate, void *arg);
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+typedef void (*OutParamSepupHook) (void *scratch);
+/* End - ReqID:SRS-SQL-FUNCOUT */
+
 typedef struct ParamListInfoData
 {
 	ParamFetchHook paramFetch;	/* parameter fetch hook */
@@ -117,6 +129,17 @@ typedef struct ParamListInfoData
 	void	   *parserSetupArg;
 	char	   *paramValuesStr; /* params as a single string for errors */
 	int			numParams;		/* nominal/maximum # of Params represented */
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	OutParamSepupHook	outparamSepup;	/* OUT parameters hook */
+	bool 		topLevelIsCall;	/* is top level call statement ? */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	MemoryContext	outctext;		/* save out parameter memorycontext */
+	bool		haveout;		/* parameters have out parameters */
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+	char		**paramnames;
+	/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 	/*
 	 * params[] may be of length zero if paramFetch is supplied; otherwise it

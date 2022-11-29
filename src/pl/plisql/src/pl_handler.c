@@ -30,10 +30,18 @@
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#include "parser/parse_param.h"
+#include "utils/datum.h"
+
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 static bool plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source);
 static void plisql_extra_warnings_assign_hook(const char *newvalue, void *extra);
 static void plisql_extra_errors_assign_hook(const char *newvalue, void *extra);
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static void set_blocks_oraparam_level(PLiSQL_stmt_block *block, int top, int cur);
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 PG_MODULE_MAGIC;
 
@@ -250,6 +258,10 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	char	function_from = plisql_function_from(fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	int         oraparam_top_level = -1;
+	int         oraparam_cur_level = -1;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	nonatomic = fcinfo->context &&
 		IsA(fcinfo->context, CallContext) &&
@@ -291,6 +303,12 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		(nonatomic && func->requires_procedure_resowner) ?
 		ResourceOwnerCreate(NULL, "PL/iSQL procedure resources") : NULL;
 
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	push_oraparam_stack();
+	get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+	set_blocks_oraparam_level(func->action, oraparam_top_level, oraparam_cur_level);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 	PG_TRY();
 	{
 		/*
@@ -314,6 +332,10 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	}
 	PG_FINALLY();
 	{
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+		/* End - ReqID:SRS-SQL-ANONYOUT */
+
 		/* Decrement use-count, restore cur_estate */
 		func->use_count--;
 		func->cur_estate = save_cur_estate;
@@ -326,6 +348,9 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		}
 	}
 	PG_END_TRY();
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Disconnect from SPI manager
@@ -347,7 +372,7 @@ PG_FUNCTION_INFO_V1(plisql_inline_handler);
 Datum
 plisql_inline_handler(PG_FUNCTION_ARGS)
 {
-	LOCAL_FCINFO(fake_fcinfo, 0);
+	LOCAL_FCINFO(fake_fcinfo, FUNC_MAX_ARGS);
 	InlineCodeBlock *codeblock = castNode(InlineCodeBlock, DatumGetPointer(PG_GETARG_DATUM(0)));
 	PLiSQL_function *func;
 	FmgrInfo	flinfo;
@@ -355,6 +380,11 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	ResourceOwner simple_eval_resowner;
 	Datum		retval;
 	int			rc;
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	bool		ora_forward = false;
+	int         oraparam_top_level = -1;
+	int         oraparam_cur_level = -1;
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Connect to SPI manager
@@ -362,13 +392,67 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	if ((rc = SPI_connect_ext(codeblock->atomic ? 0 : SPI_OPT_NONATOMIC)) != SPI_OK_CONNECT)
 		elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
 
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	if (codeblock->params != NULL)
+	{
+		bool check_var = getdynmaic_docheckvar();
+
+		 setdynamic_parser(true);
+		 setdynamic_doparser(true);
+		 setdynamic_haspgparam(false);
+		 setdynamic_parser(true);
+		 setdynamic_doparser(true);
+		 setdynamic_docheckvar(check_var);
+
+		 if (codeblock->params->paramnames != NULL)
+			set_bindbyname(true);
+	}
+
+	/*
+	 * Anonymous block has parameters, we should
+	 * forward_oraparam_stack, so that we can check if the variable match
+	 */
+	if (codeblock->params != NULL &&
+		SPI_get_connected() == 0)
+	{
+		forward_oraparam_stack();
+		ora_forward = true;
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 	/* Compile the anonymous code block */
-	func = plisql_compile_inline(codeblock->source_text);
+	func = plisql_compile_inline(codeblock->source_text, codeblock->params/* ReqID:SRS-SQL-ANONYOUT */);
 
 	/* Begin - SRS-PLSQL-SUBPROC */
 	/* rember current func in SPI */
 	SPI_remember_func(func);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	/* check bound variables */
+	if (getdynmaic_docheckvar() || ora_forward)
+	{
+		PG_TRY();
+		{
+			check_variables_does_match(codeblock->params == NULL ? 0 : codeblock->params->numParams);
+		}
+		PG_CATCH();
+		{
+			plisql_subxact_cb(SUBXACT_EVENT_ABORT_SUB,
+							GetCurrentSubTransactionId(),
+							0, NULL);
+			/* ... so we can free subsidiary storage */
+			plisql_free_function_memory(func, 0, 0);
+
+			if (ora_forward)
+				backward_oraparam_stack();
+
+			/* And propagate the error */
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Mark the function as busy, just pro forma */
 	func->use_count++;
@@ -378,7 +462,13 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	 * plisql_exec_function().  In particular note that this sets things up
 	 * with no arguments passed.
 	 */
-	MemSet(fake_fcinfo, 0, SizeForFunctionCallInfo(0));
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	if (codeblock->params)
+		MemSet(fake_fcinfo, 0, SizeForFunctionCallInfo(codeblock->params->numParams));
+	else
+		MemSet(fake_fcinfo, 0, SizeForFunctionCallInfo(0));
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 	MemSet(&flinfo, 0, sizeof(flinfo));
 	fake_fcinfo->flinfo = &flinfo;
 	flinfo.fn_oid = InvalidOid;
@@ -400,6 +490,23 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	simple_eval_resowner =
 		ResourceOwnerCreate(NULL, "PL/iSQL DO block simple expressions");
 
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	if (codeblock->params)
+	{
+		int		i;
+
+		fake_fcinfo->nargs = codeblock->params->numParams;
+		for (i = 0; i < codeblock->params->numParams; ++i)
+		{
+			fake_fcinfo->args[i].value = codeblock->params->params[i].value;
+			fake_fcinfo->args[i].isnull = codeblock->params->params[i].isnull;
+		}
+	}
+	push_oraparam_stack();		
+	get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+	set_blocks_oraparam_level(func->action, oraparam_top_level, oraparam_cur_level);
+	/* End - ReqID:SRS-SQL-ANONYOUT */
+
 	/* And run the function */
 	PG_TRY();
 	{
@@ -411,6 +518,13 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	}
 	PG_CATCH();
 	{
+		/* Begin - ReqID:SRS-SQL-ANONYOUT */
+		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+		if (ora_forward)
+			backward_oraparam_stack();
+		set_bindbyname(false);
+		/* End - ReqID:SRS-SQL-ANONYOUT */
+
 		/*
 		 * We need to clean up what would otherwise be long-lived resources
 		 * accumulated by the failed DO block, principally cached plans for
@@ -445,6 +559,42 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
+
+	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+	if (ora_forward)
+		backward_oraparam_stack();
+
+	set_bindbyname(false);
+
+	if (codeblock->params != NULL && codeblock->params->haveout)
+	{
+		int16		typLen;
+		bool		typByVal;
+		MemoryContext old;
+		int			i;
+
+		/* use datumCopy to passes variables,first swith to save memory context */
+		old = MemoryContextSwitchTo(Ora_spi_saved_memorycontext());
+		for (i = 0; i < fake_fcinfo->nargs; ++i)
+		{
+			if (!fake_fcinfo->args[i].isnull)
+			{
+				get_typlenbyval(codeblock->params->params[i].ptype, &typLen, &typByVal);
+				/* second, use datumCopy because fack_fcinfo memory will be freed by FreeExecutorState() */
+				codeblock->params->params[i].value = datumCopy(fake_fcinfo->args[i].value, typByVal, typLen);
+				codeblock->params->params[i].isnull = fake_fcinfo->args[i].isnull;
+			}
+			else
+			{
+				codeblock->params->params[i].value = (Datum) 0;
+				codeblock->params->params[i].isnull = fake_fcinfo->args[i].isnull;
+			}
+		}
+		/* return to old memory context */
+		MemoryContextSwitchTo(old);
+	}
+	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Clean up the private EState and resowner */
 	FreeExecutorState(simple_eval_estate);
@@ -587,3 +737,28 @@ plisql_validator(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+static void
+set_blocks_oraparam_level(PLiSQL_stmt_block *block, int top, int cur)
+{
+	ListCell   *s;
+
+	if (block == NULL || block->body == NIL)
+	{
+		return;
+	}
+	block->ora_param_stack_top_level = top;
+	block->ora_param_stack_cur_level = cur;
+
+	foreach(s, block->body)
+	{
+		PLiSQL_stmt *stmt = (PLiSQL_stmt *)lfirst(s);
+
+		if (stmt != NULL && (enum PLiSQL_stmt_type) stmt->cmd_type == PLISQL_STMT_BLOCK)
+		{
+			set_blocks_oraparam_level((PLiSQL_stmt_block *)stmt, top, cur);		
+		}	
+	}
+}
+/* End - ReqID:SRS-SQL-ANONYOUT */

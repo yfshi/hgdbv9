@@ -169,6 +169,7 @@ typedef struct
 						 TupleDesc *resultTupleDesc);
 	List* (*get_internal_func_outargs) (FuncExpr *fexpr);
 	char *(*get_inernal_func_result_name) (FuncExpr *fexpr);
+	void (*compile_inline_internal)(char *proc_source);
 	bool isload;
 } PLiSQL_funcs_call;
 
@@ -209,6 +210,14 @@ extern TupleDesc build_function_result_tupdesc_d(char prokind,
 												 Datum proargnames,
 												 bool intisnumber /* BUG:M0000068 */);
 extern TupleDesc build_function_result_tupdesc_t(HeapTuple procTuple);
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+extern TupleDesc build_plisql_function_result_tupdesc_d(char prokind,
+								Datum proallargtypes,
+								Datum proargmodes,
+								Datum proargnames,
+								Oid prorettype,
+								bool intisnumber /* BUG:M0000068 */);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - SRS-PLSQL-SUBPROC */
 extern bool resolve_polymorphic_tupdesc(TupleDesc tupdesc,
@@ -227,6 +236,10 @@ extern char *get_internal_function_result_name(FuncExpr *fexpr);
 
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+extern bool	func_should_change_return_type(Oid functionId, Oid *rettype,
+								int32 *typmod, Oid *collationoid);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*----------

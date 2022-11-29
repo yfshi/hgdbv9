@@ -60,6 +60,11 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "commands/proclang.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*
@@ -212,6 +217,9 @@ static bool MatchNamedCall(HeapTuple proctup, int nargs, List *argnames,
 						   bool include_out_arguments, int pronargs,
 						   int **argnumbers);
 
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+static Bitmapset  *get_nondefvalargnumbers(HeapTuple proctup, int pronargs);
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 /*
  * RangeVarGetRelidExtended
@@ -1024,6 +1032,12 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 				continue;		/* proc is not in search path */
 		}
 
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		if (DB_ORACLE == compatible_db &&
+			LANG_PLISQL_OID == procform->prolang)
+			include_out_arguments = true;
+		/* End - ReqID:SRS-SQL-FUNCOUT */
+
 		/*
 		 * If we are asked to match to OUT arguments, then use the
 		 * proallargtypes array (which includes those); otherwise use
@@ -1121,9 +1135,43 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			 */
 			if (pronargs > nargs && expand_defaults)
 			{
-				/* Ignore if not enough default expressions */
-				if (nargs + procform->pronargdefaults < pronargs)
-					continue;
+				/* Begin - ReqID:SRS-SQL-FUNCOUT */
+				if (compatible_db == PG_PARSER)
+				{
+				/* End - ReqID:SRS-SQL-FUNCOUT */
+					/* Ignore if not enough default expressions */
+					if (nargs + procform->pronargdefaults < pronargs)
+						continue;
+				/* Begin - ReqID:SRS-SQL-FUNCOUT */
+				}
+				else
+				{
+					Bitmapset  *nondefargnumbers;
+					bool is_have_nondefarg = false;
+					int pp;
+
+					nondefargnumbers = get_nondefvalargnumbers(proctup, pronargs);
+					if (nargs + procform->pronargdefaults < pronargs)
+						is_have_nondefarg = true;
+
+					/*
+					 * For parameters with default values that are not continuous 
+					 * and in the last case, it is necessary to check which parameter is unassigned
+					 */
+					for (pp = nargs; is_have_nondefarg != true && pp < pronargs; ++pp)
+					{
+						if (bms_is_member(pp, nondefargnumbers))
+							is_have_nondefarg = true;
+					}
+
+					if (is_have_nondefarg)
+					{
+						bms_free(nondefargnumbers);
+						continue;
+					}
+				}	
+				/* End - ReqID:SRS-SQL-FUNCOUT */
+
 				use_defaults = true;
 				any_special = true;
 			}
@@ -4723,3 +4771,50 @@ pg_is_other_temp_schema(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(isOtherTempNamespace(oid));
 }
+
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+/*
+ * get_nondefvalargnumbers
+ * Get unassigned default parameters, the result is saved in the Bitmap Set type, 
+ * the unassigned parameter corresponding position is set to 1
+ * e.g: create function fun(num1 int, num2 int = 10, num3 int, num4 int = 20)
+ * num3 the position is set to 1
+*/
+static Bitmapset *
+get_nondefvalargnumbers(HeapTuple proctup, int pronargs)
+{
+	Form_pg_proc procform = (Form_pg_proc)GETSTRUCT(proctup);
+	Bitmapset  *nondefargnumbers;
+	Datum		proargdefaults;
+	char	   *str;
+	List	   *defaults;
+	ListCell   *lc;
+	int			i;
+	bool        isnull;
+
+	proargdefaults = SysCacheGetAttr(PROCOID, proctup,
+									Anum_pg_proc_proargdefaults,
+									&isnull);
+	if (isnull)
+		return NULL;
+
+	str = TextDatumGetCString(proargdefaults);
+	defaults = (List *)stringToNode(str);
+	Assert(IsA(defaults, List));
+	pfree(str);
+
+	i = pronargs - procform->pronargdefaults;
+	nondefargnumbers = NULL;
+	foreach(lc, defaults)
+	{
+		Node *def = (Node*)lfirst(lc);
+		if (IsA(def, NonDefValNode))
+		{
+			nondefargnumbers = bms_add_member(nondefargnumbers, i);
+		}
+
+		i++;
+	}
+	return nondefargnumbers;
+}
+/* End - ReqID:SRS-SQL-FUNCOUT */

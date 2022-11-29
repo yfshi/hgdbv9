@@ -156,6 +156,10 @@ DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btre
 #define PROKIND_AGGREGATE 'a'
 #define PROKIND_WINDOW 'w'
 #define PROKIND_PROCEDURE 'p'
+/* Begin - ReqID:SRS-SQL-ANONYOUT */
+#define PROKIND_ANONYMOUS_BLOCK 'b'
+#define PROKIND_ANONYMOUS_BLOCK_ONLY_PARSE 'a'
+/* End - ReqID:SRS-SQL-ANONYOUT */
 
 /*
  * Symbolic values for provolatile column: these indicate whether the result
