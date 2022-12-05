@@ -92,7 +92,7 @@ void _PG_fini(void);
 static int	oracle_comp_location(const void *a, const void *b);
 
 static List * oracle_raw_parser(const char *str, RawParseMode mode);
-static Datum oracle_pg_get_keywords(PG_FUNCTION_ARGS);
+static Datum oracle_get_keywords(PG_FUNCTION_ARGS);
 static void oracle_fill_in_constant_lengths(void *jjstate, const char *query, int query_loc);
 static const char * oracle_quote_identifier(const char *ident);
 
@@ -108,7 +108,7 @@ _PG_init(void)
 	prev_quote_identifier 		  = quote_identifier_hook;
 
 	ora_raw_parser 			  	  = oracle_raw_parser;
-	get_keywords_hook 			  = oracle_pg_get_keywords;
+	get_keywords_hook 			  = oracle_get_keywords;
 	fill_in_constant_lengths_hook = oracle_fill_in_constant_lengths;
 	quote_identifier_hook		  = oracle_quote_identifier;
 }
@@ -1015,7 +1015,7 @@ invalid_pair:
 }
 
 static Datum
-oracle_pg_get_keywords(PG_FUNCTION_ARGS)
+oracle_get_keywords(PG_FUNCTION_ARGS)
 {
 	FuncCallContext *funcctx;
 
@@ -1027,13 +1027,21 @@ oracle_pg_get_keywords(PG_FUNCTION_ARGS)
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(3);
+		/* Begin - BUG:M0000073 */
+		tupdesc = CreateTemplateTupleDesc(5);
+		/* End - BUG:M0000073 */
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "word",
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "catcode",
 						   CHAROID, -1, 0);
-		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "catdesc",
+		/* Begin - BUG:M0000073 */
+		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "barelabel",
+						   BOOLOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 4, "catdesc",
 						   TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 5, "baredesc",
+						   TEXTOID, -1, 0);
+		/* End - BUG:M0000073 */
 
 		funcctx->attinmeta = TupleDescGetAttInMetadata(tupdesc);
 
@@ -1044,7 +1052,9 @@ oracle_pg_get_keywords(PG_FUNCTION_ARGS)
 
 	if (funcctx->call_cntr < OraScanKeywords.num_keywords)
 	{
-		char	   *values[3];
+		/* Begin - BUG:M0000073 */
+		char	   *values[5];
+		/* End - BUG:M0000073 */
 		HeapTuple	tuple;
 
 		/* cast-away-const is ugly but alternatives aren't much better */
@@ -1056,25 +1066,48 @@ oracle_pg_get_keywords(PG_FUNCTION_ARGS)
 		{
 			case UNRESERVED_KEYWORD:
 				values[1] = "U";
-				values[2] = _("unreserved");
+				/* Begin - BUG:M0000073 */
+				values[3] = _("unreserved");
+				/* End - BUG:M0000073 */
 				break;
 			case COL_NAME_KEYWORD:
 				values[1] = "C";
-				values[2] = _("unreserved (cannot be function or type name)");
+				/* Begin - BUG:M0000073 */
+				values[3] = _("unreserved (cannot be function or type name)");
+				/* End - BUG:M0000073 */
 				break;
 			case TYPE_FUNC_NAME_KEYWORD:
 				values[1] = "T";
-				values[2] = _("reserved (can be function or type name)");
+				/* Begin - BUG:M0000073 */
+				values[3] = _("reserved (can be function or type name)");
+				/* End - BUG:M0000073 */
 				break;
 			case RESERVED_KEYWORD:
 				values[1] = "R";
-				values[2] = _("reserved");
+				/* Begin - BUG:M0000073 */
+				values[3] = _("reserved");
+				/* End - BUG:M0000073 */
 				break;
 			default:			/* shouldn't be possible */
 				values[1] = NULL;
-				values[2] = NULL;
+				/* Begin - BUG:M0000073 */
+				values[3] = NULL;
+				/* End - BUG:M0000073 */
 				break;
 		}
+
+		/* Begin - BUG:M0000073 */
+		if (OraScanKeywordBareLabel[funcctx->call_cntr])
+		{
+			values[2] = "true";
+			values[4] = _("can be bare label");
+		}
+		else
+		{
+			values[2] = "false";
+			values[4] = _("requires AS");
+		}
+		/* End - BUG:M0000073 */
 
 		tuple = BuildTupleFromCStrings(funcctx->attinmeta, values);
 
