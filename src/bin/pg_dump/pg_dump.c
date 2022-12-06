@@ -17403,6 +17403,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	PQExpBuffer query = createPQExpBuffer();
 	PQExpBuffer delqry = createPQExpBuffer();
 	char	   *qseqname;
+	TableInfo  *owning_tab = NULL;
 
 	qseqname = pg_strdup(fmtId(tbinfo->dobj.name));
 
@@ -17519,7 +17520,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	if (tbinfo->is_identity_sequence)
 	{
-		TableInfo  *owning_tab = findTableByOid(tbinfo->owning_tab);
+		owning_tab = findTableByOid(tbinfo->owning_tab);
 
 		/* Begin - ReqID:SRS-SQL-IDENTCOL */
 		if (owning_tab->attidentity[tbinfo->owning_col - 1] == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL
@@ -17563,7 +17564,9 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	else
 	{
 		appendPQExpBuffer(query,
-						  "CREATE SEQUENCE %s\n",
+						  "CREATE %sSEQUENCE %s\n",
+						  tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED ?
+						  "UNLOGGED " : "",
 						  fmtQualifiedDumpable(tbinfo));
 
 		if (strcmp(seqtype, "bigint") != 0)
@@ -17598,7 +17601,15 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 					  cache, (cycled ? "\n    CYCLE" : ""));
 
 	if (tbinfo->is_identity_sequence)
+	{
 		appendPQExpBufferStr(query, "\n);\n");
+		if (tbinfo->relpersistence != owning_tab->relpersistence)
+			appendPQExpBuffer(query,
+							  "ALTER SEQUENCE %s SET %s;\n",
+							  fmtQualifiedDumpable(tbinfo),
+							  tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED ?
+							  "UNLOGGED" : "LOGGED");
+	}
 	else
 		appendPQExpBufferStr(query, ";\n");
 
