@@ -23,6 +23,7 @@
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
+#include "nodes/nodes.h"
 #include "optimizer/optimizer.h"
 #include "parser/parse_agg.h"
 #include "parser/parse_clause.h"

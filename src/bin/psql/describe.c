@@ -2017,8 +2017,12 @@ describeOneTableDetails(const char *schemaname,
 		}
 		PQclear(result);
 
-		printfPQExpBuffer(&title, _("Sequence \"%s.%s\""),
-						  schemaname, relationname);
+		if (tableinfo.relpersistence == 'u')
+			printfPQExpBuffer(&title, _("Unlogged sequence \"%s.%s\""),
+							  schemaname, relationname);
+		else
+			printfPQExpBuffer(&title, _("Sequence \"%s.%s\""),
+							  schemaname, relationname);
 
 		myopt.footers = footers;
 		myopt.topt.default_footer = false;
