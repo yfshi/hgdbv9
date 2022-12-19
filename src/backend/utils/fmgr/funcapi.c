@@ -52,7 +52,7 @@ typedef struct polymorphic_actuals
 
 /* Begin - SRS-PLSQL-SUBPROC */
 PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 /* End - SRS-PLSQL-SUBPROC */
 
 
@@ -1869,6 +1869,51 @@ get_func_typename_info(HeapTuple procTup,
 			*rettypeName = TextDatumGetCString(prorettypename);
 	}
 
+}
+
+/*
+ * get subproc prokind
+ */
+char
+get_subproc_kind(FuncExpr *fexpr)
+{
+	plisql_internel_funcs_init();
+
+	return plisql_internal_funcs.get_subproc_prokind(fexpr);
+}
+
+/*
+ * get subproc arginfo
+ */
+int
+get_subproc_arg_info(FuncExpr *fexpr,
+							Oid **p_argtypes,
+							char ***p_argnames,
+							char **p_argmodes)
+{
+	plisql_internel_funcs_init();
+
+	return plisql_internal_funcs.get_subproc_arg_info(fexpr,
+								p_argtypes,
+								p_argnames,
+								p_argmodes);
+}
+
+/*
+ * check subproc should chanage its return type
+ */
+bool
+subproc_should_change_return_type(FuncExpr *fexpr,
+								Oid *rettype,
+								int32 *typmod,
+								Oid *collationoid)
+{
+	plisql_internel_funcs_init();
+
+	return plisql_internal_funcs.subproc_should_change_return_type(fexpr,
+								rettype,
+								typmod,
+								collationoid);
 }
 /* End - ReqID:SRS-SQL-PACKAGE */
 

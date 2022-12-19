@@ -474,6 +474,13 @@ ParseParamVariable(Node *arg)
 		result = (Node *) ((CoerceViaIO *)arg)->arg;
 		return ParseParamVariable(result);
 	}
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	else if (IsA(arg, ArrayCoerceExpr))
+	{
+		result = (Node *) ((ArrayCoerceExpr *)arg)->arg;
+		return ParseParamVariable(result);
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	return result;
 }

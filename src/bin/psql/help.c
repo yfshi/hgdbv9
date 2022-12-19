@@ -249,6 +249,9 @@ slashUsage(unsigned short int pager)
 	fprintf(output, _("  \\dg[S+] [PATTERN]      list roles\n"));
 	fprintf(output, _("  \\di[S+] [PATTERN]      list indexes\n"));
 	fprintf(output, _("  \\dl                    list large objects, same as \\lo_list\n"));
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	fprintf(output, _("  \\dk[S+] [PATTERN]      list packages\n"));
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	fprintf(output, _("  \\dL[S+] [PATTERN]      list procedural languages\n"));
 	fprintf(output, _("  \\dm[S+] [PATTERN]      list materialized views\n"));
 	fprintf(output, _("  \\dn[S+] [PATTERN]      list schemas\n"));

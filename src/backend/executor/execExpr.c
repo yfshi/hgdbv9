@@ -4023,27 +4023,43 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 		Oid 		rettype;
 		char	   *funcname;
 
-		func_tuple = SearchSysCache1(PROCOID,
-									 ObjectIdGetDatum(funcOid));
-		if (!HeapTupleIsValid(func_tuple))
-			return;
-		
-		if (((Form_pg_proc) GETSTRUCT(func_tuple))->prokind != PROKIND_FUNCTION ||
-			LANG_PLISQL_OID != ((Form_pg_proc) GETSTRUCT(func_tuple))->prolang)
-		{
-			ReleaseSysCache(func_tuple);
-			return;
-		}
-
-		/*
-		 * Get the argument names and modes, so that we can deliver on-point error
-		 * messages when something is wrong.
-		 */
-		num_all_args = get_func_arg_info(func_tuple, &argtypes, &argnames, &argmodes);
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		rettype = get_func_real_rettype(func_tuple);
+		if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+		{
+			func_tuple = SearchSysCache1(PROCOID,
+										 ObjectIdGetDatum(funcOid));
+			if (!HeapTupleIsValid(func_tuple))
+				return;
+
+			if (((Form_pg_proc) GETSTRUCT(func_tuple))->prokind != PROKIND_FUNCTION ||
+				LANG_PLISQL_OID != ((Form_pg_proc) GETSTRUCT(func_tuple))->prolang)
+			{
+				ReleaseSysCache(func_tuple);
+				return;
+			}
+
+			/*
+			 * Get the argument names and modes, so that we can deliver on-point error
+			 * messages when something is wrong.
+			 */
+			num_all_args = get_func_arg_info(func_tuple, &argtypes,
+								&argnames, &argmodes);
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			rettype = get_func_real_rettype(func_tuple);
+			/* End - ReqID:SRS-SQL-PACKAGE */
+			funcname = NameStr(((Form_pg_proc) GETSTRUCT(func_tuple))->proname);
+		}
+		else
+		{
+			/* skip procedure */
+			if (get_subproc_kind(funcexpr) != PROKIND_FUNCTION)
+				return;
+			num_all_args = get_subproc_arg_info(funcexpr, &argtypes,
+										&argnames, &argmodes);
+			rettype = funcexpr->funcresulttype;
+			funcname = get_internal_function_name(funcexpr);
+		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
-		funcname = NameStr(((Form_pg_proc) GETSTRUCT(func_tuple))->proname);
 
 		num_out_args = 0;
 		for (i = 0; i < num_all_args; i++)
@@ -4074,7 +4090,10 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 
 				if (!params || !params->outparamSepup)
 				{
-					ReleaseSysCache(func_tuple);
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+						ReleaseSysCache(func_tuple);
+					/* End - ReqID:SRS-SQL-PACKAGE */
 					if (!allow_out_parameter_const)
 						ereport(ERROR,
 							(errcode(ERRCODE_DATA_EXCEPTION),
@@ -4153,7 +4172,10 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 				}
 			}
 		}
-		ReleaseSysCache(func_tuple);
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			ReleaseSysCache(func_tuple);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 	}
 
 	return;

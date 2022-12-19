@@ -906,13 +906,13 @@ end;
 /
 
 -- nested subproc of plisql
-create or replace function test_subproc_func(a in integer) returns integer as
+create or replace function test_subproc_func(a IN out integer) returns integer as
 $$
 declare
   mds integer;
   original integer;
-  function square(original in integer) return integer;
-  function square(original in integer) return integer
+  function square(original in out integer) return integer;
+  function square(original in out integer) return integer
   AS
   declare
        original_squared integer;

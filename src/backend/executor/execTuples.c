@@ -2006,6 +2006,20 @@ ExecTypeFromTLInternal(List *targetList, bool skipjunk)
 				func->funcresulttype = resulttype;
 				func->funccollid = chcollationoid;
 			}
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			else if (!FUNC_EXPR_FROM_PG_PROC(func->function_from) &&
+				subproc_should_change_return_type(func,
+										&resulttype,
+										&chtypmod,
+										&chcollationoid))
+			{
+				typoid = resulttype;
+				typmod = chtypmod;
+				collationoid = chcollationoid;
+				func->funcresulttype = resulttype;
+				func->funccollid = chcollationoid;
+			}
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 		/* End - ReqID:SRS-SQL-FUNCOUT */
 
