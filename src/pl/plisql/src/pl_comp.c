@@ -27,6 +27,9 @@
 #include "parser/parse_type.h"
 #include "plisql.h"
 #include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC */
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "pl_package.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
@@ -46,7 +49,7 @@
  */
 PLiSQL_stmt_block *plisql_parse_result;
 
-static int	datums_alloc;
+int	datums_alloc; /* ReqID:SRS-SQL-PACKAGE */
 int			plisql_nDatums;
 PLiSQL_datum **plisql_Datums;
 int	datums_last; /* SRS-PLSQL-SUBPROC */
@@ -104,12 +107,12 @@ static PLiSQL_type *build_datatype(HeapTuple typeTup, int32 typmod,
 static void compute_function_hashkey(FunctionCallInfo fcinfo,
 									 Form_pg_proc procStruct,
 									 PLiSQL_func_hashkey *hashkey,
-									 bool forValidator);
+									 bool forValidator,
+									 HeapTuple procTup); /* ReqID:SRS-SQL-PACKAGE */
 static PLiSQL_function *plisql_HashTableLookup(PLiSQL_func_hashkey *func_key);
 static void plisql_HashTableInsert(PLiSQL_function *function,
 									PLiSQL_func_hashkey *func_key);
 static void plisql_HashTableDelete(PLiSQL_function *function);
-static void delete_function(PLiSQL_function *func);
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -131,6 +134,9 @@ plisql_compile(FunctionCallInfo fcinfo, bool forValidator)
 	PLiSQL_func_hashkey hashkey;
 	bool		function_valid = false;
 	bool		hashkey_valid = false;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid rettypeoid = InvalidOid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Lookup the pg_proc tuple by Oid; we'll need it in any case
@@ -139,6 +145,10 @@ plisql_compile(FunctionCallInfo fcinfo, bool forValidator)
 	if (!HeapTupleIsValid(procTup))
 		elog(ERROR, "cache lookup failed for function %u", funcOid);
 	procStruct = (Form_pg_proc) GETSTRUCT(procTup);
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	rettypeoid = get_func_real_rettype(procTup);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * See if there's already a cache entry for the current FmgrInfo. If not,
@@ -150,7 +160,8 @@ recheck:
 	if (!function)
 	{
 		/* Compute hashkey using function signature and actual arg types */
-		compute_function_hashkey(fcinfo, procStruct, &hashkey, forValidator);
+		compute_function_hashkey(fcinfo, procStruct, &hashkey, forValidator,
+								procTup); /* ReqID:SRS-SQL-PACKAGE */
 		hashkey_valid = true;
 
 		/* And do the lookup */
@@ -161,7 +172,8 @@ recheck:
 	{
 		/* We have a compiled function, but is it still valid? */
 		if (function->fn_xmin == HeapTupleHeaderGetRawXmin(procTup->t_data) &&
-			ItemPointerEquals(&function->fn_tid, &procTup->t_self))
+			ItemPointerEquals(&function->fn_tid, &procTup->t_self) &&
+			(!OidIsValid(rettypeoid) || rettypeoid == function->fn_rettype)) /* ReqID:SRS-SQL-PACKAGE */
 			function_valid = true;
 		else
 		{
@@ -205,7 +217,7 @@ recheck:
 		 */
 		if (!hashkey_valid)
 			compute_function_hashkey(fcinfo, procStruct, &hashkey,
-									 forValidator);
+									 forValidator, procTup); /* ReqID:SRS-SQL-PACKAGE */
 
 		/*
 		 * Do the hard part.
@@ -279,10 +291,17 @@ do_compile(FunctionCallInfo fcinfo,
 	int		   *in_arg_varnos = NULL;
 	PLiSQL_variable **out_arg_variables;
 	MemoryContext func_cxt;
+
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	bool		is_plisql_function = false;
 	int			*all_arg_varnos = NULL;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	char		**argtypenames = NULL;
+	char		*rettypename = NULL;
+	PLiSQL_type	*rettype = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Setup the scanner input and error info.  We assume that this function
@@ -377,6 +396,11 @@ do_compile(FunctionCallInfo fcinfo,
 		is_plisql_function = true;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	function->namelabel = pstrdup(NameStr(procStruct->proname));
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
+
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The
 	 * outermost namespace contains function parameters and other special
@@ -390,6 +414,12 @@ do_compile(FunctionCallInfo fcinfo,
 	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_compile_packageitem = NULL;
+	plisql_saved_compile[cur_compile_func_level] = function;
+	Assert(plisql_curr_global_proper_level == 0);
+	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	switch (function->fn_is_trigger)
 	{
@@ -407,6 +437,11 @@ do_compile(FunctionCallInfo fcinfo,
 
 			numargs = get_func_arg_info(procTup,
 										&argtypes, &argnames, &argmodes);
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			get_func_typename_info(procTup,
+									&argtypenames, &rettypename);
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			plisql_resolve_polymorphic_argtypes(numargs, argtypes, argmodes,
 												 fcinfo->flinfo->fn_expr,
@@ -443,24 +478,46 @@ do_compile(FunctionCallInfo fcinfo,
 				snprintf(buf, sizeof(buf), "$%d", i + 1);
 
 				/* Create datatype info */
-				/* Begin - BUG:M0000068 */
-				/*
-				 * All intger and smallint datatypes in function args list
-				 * will be convert to number when the function compiling if
-				 * prointisnumber is true.
-				 */
-				if (procStruct->prointisnumber &&
-					(argtypeid == INT2OID || argtypeid == INT4OID))
-					argdtype = plisql_build_datatype(NUMBEROID,
-													  NUMBER38TYPMOD, 
-													  function->fn_input_collation,
-													  NULL);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				/* consider the argument type comes from a package */
+				if (argtypenames != NULL && strcmp(argtypenames[i], "") != 0)
+				{
+					TypeName	*tname;
+
+					tname = (TypeName *) stringToNode(argtypenames[i]);
+
+					if (tname->pct_type)
+						argdtype = plisql_parse_package_type(tname, parse_by_var_type, false);
+					else
+						argdtype = plisql_parse_package_type(tname, parse_by_pkg_type, false);
+					if (argdtype == NULL)
+					{
+						elog(ERROR, "doesn't recognise package type %s", TypeNameToString(tname));
+					}
+					pfree(tname);
+				}
+				/* End - ReqID:SRS-SQL-PACKAGE */
 				else
-				/* End - BUG:M0000068 */
-					argdtype = plisql_build_datatype(argtypeid,
-													  -1,
-													  function->fn_input_collation,
-													  NULL);
+				{
+					/* Begin - BUG:M0000068 */
+					/*
+					 * All intger and smallint datatypes in function args list
+					 * will be convert to number when the function compiling if
+					 * prointisnumber is true.
+					 */
+					if (procStruct->prointisnumber &&
+						(argtypeid == INT2OID || argtypeid == INT4OID))
+						argdtype = plisql_build_datatype(NUMBEROID,
+														  NUMBER38TYPMOD,
+														  function->fn_input_collation,
+														  NULL);
+					else
+					/* End - BUG:M0000068 */
+						argdtype = plisql_build_datatype(argtypeid,
+														  -1,
+														  function->fn_input_collation,
+														  NULL);
+				}
 
 				/* Disallow pseudotype argument */
 				/* (note we already replaced polymorphic types) */
@@ -539,6 +596,28 @@ do_compile(FunctionCallInfo fcinfo,
 									   argnames[i]);
 			}
 
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if (rettypename != NULL)
+			{
+				TypeName		*tname;
+
+				tname = (TypeName *) stringToNode(rettypename);
+				if (tname->pct_type)
+					rettype = plisql_parse_package_type(tname, parse_by_var_type, false);
+				else
+					rettype = plisql_parse_package_type(tname, parse_by_pkg_type, false);
+
+				if (rettype == NULL)
+				{
+					elog(ERROR, "doesn't recognise package type %s", TypeNameToString(tname));
+				}
+				pfree(tname);
+				rettypeid = rettype->typoid;
+			}
+			/* End - ReqID:SRS-SQL-PACKAGE */
+			else
+				rettypeid = procStruct->prorettype;
+
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			/*Build a '_retval_' varaible for the function return value */
 			if (num_out_args > 0 && is_plisql_function)
@@ -549,7 +628,7 @@ do_compile(FunctionCallInfo fcinfo,
 					PLiSQL_type *argdtype;
 					PLiSQL_variable *argvariable;
 					PLiSQL_nsitem_type argitemtype;
-					Oid 		argtypeid = procStruct->prorettype;
+					Oid 		argtypeid = rettypeid; /* ReqID:SRS-SQL-PACKAGE */
 
 					/* Is the function return type a PSEUDO type? */
 					if (IsPolymorphicType(argtypeid))
@@ -582,7 +661,11 @@ do_compile(FunctionCallInfo fcinfo,
 					 * The function return type will be convert to number when the function compiling if
 					 * prointisnumber is true.
 					 */
-					if (procStruct->prointisnumber &&
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					if (rettype != NULL)
+						argdtype = rettype;
+					/* End - ReqID:SRS-SQL-PACKAGE */
+					else if (procStruct->prointisnumber &&
 						(argtypeid == INT2OID || argtypeid == INT4OID))
 						argdtype = plisql_build_datatype(NUMBEROID,
 														  NUMBER38TYPMOD,
@@ -639,7 +722,6 @@ do_compile(FunctionCallInfo fcinfo,
 			 * work; if it doesn't we're in some context that fails to make
 			 * the info available.
 			 */
-			rettypeid = procStruct->prorettype;
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			/* If a function have out arguments, we change function return type to RECORDOID */
@@ -939,9 +1021,6 @@ do_compile(FunctionCallInfo fcinfo,
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 	function->action = plisql_parse_result;
 
-	plisql_scanner_finish();
-	pfree(proc_source);
-
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	if (num_out_args > 0 &&
 		is_plisql_function &&
@@ -982,9 +1061,19 @@ do_compile(FunctionCallInfo fcinfo,
 	plisql_finish_subproc_func(function);
 	/* End - SRS-PLSQL-SUBPROC */
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_check_subproc_define(function);
+
+	/*
+	 * after plisql_check_subproc_define for nice error message
+	 */
+	plisql_scanner_finish();
+	pfree(proc_source);
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	/* Debug dump for completed functions */
 	if (plisql_DumpExecTree)
-		plisql_dumptree(function);
+		plisql_dumptree(function, 0, 0); /* ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * add it to the hash table
@@ -1075,10 +1164,15 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 
 	function->nstatements = 0;
 	function->requires_procedure_resowner = false;
+
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	function->fn_ret_vardno = -1;
 	function->fn_no_return = false;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	function->namelabel = NULL;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
@@ -1088,6 +1182,11 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_compile_packageitem = NULL;
+	Assert(plisql_curr_global_proper_level == 0);
+	plisql_saved_compile[cur_compile_func_level] = function;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Set up as though in a function returning VOID */
 	function->fn_rettype = VOIDOID;
@@ -1201,8 +1300,6 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 	function->action = plisql_parse_result;
 
-	plisql_scanner_finish();
-
 	/*
 	 * If it returns VOID (always true at the moment), we allow control to
 	 * fall off the end without an explicit RETURN statement.
@@ -1218,6 +1315,15 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	/* Begin - SRS-PLSQL-SUBPROC */
 	plisql_finish_subproc_func(function);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_check_subproc_define(function);
+
+	/*
+	 * after plisql_check_subproc_define for nice error message
+	 */
+	plisql_scanner_finish();
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Pop the error context stack
@@ -1561,6 +1667,26 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 							name1, name2, name3,
 							&nnames);
 
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* maybe a package var */
+	if (nse == NULL)
+	{
+		char		*refname;
+
+		refname = NameListToString(cref->fields);
+
+		nse = plisql_ns_lookup(expr->ns, false,
+							refname, NULL, NULL,
+							&nnames);
+		pfree(refname);
+		if (nse != NULL)
+		{
+			Assert(nse->itemtype == PLISQL_NSTYPE_VAR);
+			return make_datum_param(expr, nse->itemno, cref->location);
+		}
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
 	if (nse == NULL)
 		return NULL;			/* name not known to plisql */
 
@@ -1708,6 +1834,9 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 					wdatum->datum = plisql_Datums[ns->itemno];
 					wdatum->ident = word1;
 					wdatum->quoted = (yytxt[0] == '"');
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					wdatum->nname_used = 1;
+					/* End - ReqID:SRS-SQL-PACKAGE */
 					wdatum->idents = NIL;
 					return true;
 				/* Begin - SRS-PLSQL-SUBPROC */
@@ -1721,7 +1850,105 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 						 ns->itemtype);
 			}
 		}
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		else if (!is_compile_standard_package())
+		{
+			/*
+			 * handle var come from standard.xxx
+			 * maybe a udt type construct func like udt_type(xx)
+			 * so we should parse package entry
+			 */
+			PkgEntry *entry;
+			size_t len = 8 + strlen(word1) + 2;
+			char *refname = (char *) palloc0(len);
+			List *idents =  list_make2(makeString("standard"),
+						makeString(word1));
+
+			snprintf(refname, len, "standard.%s", word1);
+
+			entry = plisql_parse_package_entry(refname, -1, idents, true, true);
+			pfree(refname);
+			if (entry != NULL)
+			{
+				switch (entry->type)
+				{
+					case PKG_VAR:
+						wdatum->datum = (PLiSQL_datum *) entry->value;
+						wdatum->ident = word1;
+						wdatum->quoted = false;
+						wdatum->idents = NIL;
+						wdatum->nname_used = 1;
+						/* add namespace */
+						if (plisql_ns_lookup(plisql_ns_top(), true,
+							word1, NULL, NULL,
+							NULL) == NULL)
+							add_parameter_name(PLISQL_NSTYPE_VAR, wdatum->datum->dno, word1);
+						return true;
+						break;
+					case PKG_TYPE:
+						break;
+					default:
+						break;
+				}
+				pfree(entry);
+			}
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 	}
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/*
+	 * there, make sure the local namespace has not found or
+	 * we lookup standard'package first than local, which will
+	 * result mistake.
+	 * for example: exit when not found which then found, we
+	 * mustn't use standard'found
+	 */
+	if (lookup &&
+		plisql_IdentifierLookup != IDENTIFIER_LOOKUP_DECLARE &&
+		!is_compile_standard_package() &&
+		plisql_ns_lookup(plisql_ns_top(), false,
+							   word1, NULL, NULL,
+							   NULL) == NULL)
+	{
+		PkgEntry *entry;
+		size_t len = 8 + strlen(word1) + 2;
+		char *refname = (char *) palloc0(len);
+		List *idents =  list_make2(makeString("standard"),
+					makeString(word1));
+
+		snprintf(refname, len, "standard.%s", word1);
+
+		entry = plisql_parse_package_entry(refname, -1, idents, true, true);
+		pfree(refname);
+		if (entry != NULL)
+		{
+			switch (entry->type)
+			{
+				case PKG_VAR:
+					wdatum->datum = (PLiSQL_datum *) entry->value;
+					wdatum->ident = word1;
+					wdatum->quoted = false;
+					wdatum->idents = NIL;
+					wdatum->nname_used = 1;
+					/* add namespace */
+					if (plisql_ns_lookup(plisql_ns_top(), true,
+						word1, NULL, NULL,
+						NULL) == NULL)
+						add_parameter_name(PLISQL_NSTYPE_VAR,
+										wdatum->datum->dno,
+										word1);
+					return true;
+					break;
+				case PKG_TYPE:
+					break;
+				default:
+					break;
+			}
+			pfree(entry);
+		}
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Nothing found - up to now it's a word without any special meaning for
@@ -1773,6 +2000,9 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 					wdatum->ident = NULL;
 					wdatum->quoted = false; /* not used */
 					wdatum->idents = idents;
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					wdatum->nname_used = nnames;
+					/* End - ReqID:SRS-SQL-PACKAGE */
 					return true;
 
 				case PLISQL_NSTYPE_REC:
@@ -1800,12 +2030,52 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 					wdatum->ident = NULL;
 					wdatum->quoted = false; /* not used */
 					wdatum->idents = idents;
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					wdatum->nname_used = nnames;
+					/* End - ReqID:SRS-SQL-PACKAGE */
 					return true;
 
 				default:
 					break;
 			}
 		}
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		else
+		{
+			/*
+			 * handle var come from package
+			 * maybe a udt type construct func like udt_type(xx)
+			 * so we should parse package entry
+			 */
+			PkgEntry *entry;
+			size_t len = strlen(word1) + strlen(word2) + 2;
+			char *refname = (char *) palloc0(len);
+
+			snprintf(refname, len, "%s.%s", word1, word2);
+
+			entry = plisql_parse_package_entry(refname, -1, idents, true, false);
+			pfree(refname);
+			if (entry != NULL)
+			{
+				switch (entry->type)
+				{
+					case PKG_VAR:
+						wdatum->datum = (PLiSQL_datum *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false;
+						wdatum->idents = idents;
+						wdatum->nname_used = 2;
+						return true;
+						break;
+					case PKG_TYPE:
+						break;
+					default:
+						break;
+				}
+				pfree(entry);
+			}
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 	}
 
 	/* Nothing found */
@@ -1878,6 +2148,9 @@ plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, 
 						wdatum->ident = NULL;
 						wdatum->quoted = false; /* not used */
 						wdatum->idents = idents;
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						wdatum->nname_used = nnames;
+						/* End - ReqID:SRS-SQL-PACKAGE */
 						return true;
 					}
 
@@ -1885,6 +2158,45 @@ plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, 
 					break;
 			}
 		}
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		else
+		{
+			/*
+			 * handle var come from package
+			 * it maybe is udt_type constructor func
+			 * so we should parse package entry
+			 */
+			PkgEntry *entry;
+			size_t len = strlen(word1) + strlen(word2) + strlen(word3) + 3;
+			char *refname = (char *) palloc0(len);
+
+			snprintf(refname, len, "%s.%s.%s", word1, word2, word3);
+			idents = list_make3(makeString(word1),
+								makeString(word2),
+								makeString(word3));
+			entry = plisql_parse_package_entry(refname, -1, idents, true, false);
+			pfree(refname);
+			if (entry != NULL)
+			{
+				switch (entry->type)
+				{
+					case PKG_VAR:
+						wdatum->datum = (PLiSQL_datum *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false; /* not used */
+						wdatum->idents = idents;
+						wdatum->nname_used = 3;
+						break;
+					case PKG_TYPE:
+						break;
+					default:
+						break;
+				}
+				pfree(entry);
+				return true;
+			}
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 	}
 
 	/* Nothing found */
@@ -1910,6 +2222,9 @@ plisql_parse_wordtype(char *ident)
 	PLiSQL_nsitem *nse;
 	TypeName   *typeName;
 	HeapTuple	typeTup;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	List		*idents;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Do a lookup in the current namespace stack
@@ -1926,11 +2241,29 @@ plisql_parse_wordtype(char *ident)
 				return ((PLiSQL_var *) (plisql_Datums[nse->itemno]))->datatype;
 
 				/* XXX perhaps allow REC/ROW here? */
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case PLISQL_NSTYPE_REC:
+				return ((PLiSQL_rec *) (plisql_Datums[nse->itemno]))->datatype;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 			default:
 				return NULL;
 		}
 	}
+
+	/* maybe type comes from standard package */
+	if (!is_compile_standard_package())
+	{
+		idents = list_make2(makeString("standard"), makeString(ident));
+		if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+				parse_by_var_type, true)) != NULL)
+		{
+			list_free(idents);
+			return dtype;
+		}
+		list_free(idents);
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Word wasn't found in the namespace stack. Try to find a data type with
@@ -2005,6 +2338,20 @@ plisql_parse_cwordtype(List *idents)
 			goto done;
 		}
 
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_REC)
+		{
+			dtype = ((PLiSQL_rec *) (plisql_Datums[nse->itemno]))->datatype;
+			goto done;
+		}
+		/* maybe type comes from package */
+		if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+				parse_by_var_type, false)) != NULL)
+		{
+			goto done;
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
+
 		/*
 		 * First word could also be a table name
 		 */
@@ -2016,6 +2363,14 @@ plisql_parse_cwordtype(List *idents)
 	else if (list_length(idents) == 3)
 	{
 		RangeVar   *relvar;
+
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+							parse_by_var_type, false)) != NULL)
+		{
+			goto done;
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		relvar = makeRangeVar(strVal(linitial(idents)),
 							  strVal(lsecond(idents)),
@@ -2094,6 +2449,34 @@ plisql_parse_wordrowtype(char *ident)
 {
 	Oid			classOid;
 	Oid			typOid;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	PLiSQL_type	*result;
+	TypeName	*typname;
+	bool		missing_ok = false;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	typname = typeStringToTypeName(ident);
+	if (list_length(typname->names) < 2 &&
+		!is_compile_standard_package())
+	{
+		/* may be a standard.type */
+		size_t len = 8 + strlen(ident) + 2;
+		char *refname = (char *) palloc0(len);
+
+		snprintf(refname, len, "standard.%s", ident);
+		pfree(typname);
+		typname = typeStringToTypeName(refname);
+		pfree(refname);
+		missing_ok = true;
+	}
+	result = plisql_parse_package_type(typname, parse_by_var_rowtype, missing_ok);
+	if (result != NULL)
+	{	pfree(typname);
+		return result;
+	}
+	pfree(typname);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Look up the relation.  Note that because relation rowtypes have the
@@ -2133,6 +2516,16 @@ plisql_parse_cwordrowtype(List *idents)
 	Oid			typOid;
 	RangeVar   *relvar;
 	MemoryContext oldCxt;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	PLiSQL_type	*result;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	result = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+							parse_by_var_rowtype, false);
+	if (result != NULL)
+		return result;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * As above, this is a relation lookup but could be a type lookup if we
@@ -2198,6 +2591,9 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 				var->value = 0;
 				var->isnull = true;
 				var->freeval = false;
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				var->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+				/* End - ReqID:SRS-SQL-PACKAGE */
 
 				plisql_adddatum((PLiSQL_datum *) var);
 				if (add2namespace)
@@ -2256,6 +2652,20 @@ plisql_build_record(const char *refname, int lineno,
 	plisql_adddatum((PLiSQL_datum *) rec);
 	if (add2namespace)
 		plisql_ns_additem(PLISQL_NSTYPE_REC, rec->dno, rec->refname);
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	rec->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+	/*
+	 * there, if we compile package, and build a rec like table%rowtype
+	 * but others function or package first reference it first filed and then
+	 * lookup it in package, but its doesn't find, because compile package
+	 * doesn't references it, should we add datum during exec?
+	 * this is not fine, so we add all recfiled in compile
+	 * maybe it can expand out of package
+	 */
+	if (OidIsValid(rec->pkgoid))
+		plisql_expand_rec_field(rec);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	return rec;
 }
@@ -2356,6 +2766,9 @@ plisql_build_recfield(PLiSQL_rec *rec, const char *fldname)
 	recfield->fieldname = pstrdup(fldname);
 	recfield->recparentno = rec->dno;
 	recfield->rectupledescid = INVALID_TUPLEDESC_IDENTIFIER;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	recfield->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	plisql_adddatum((PLiSQL_datum *) recfield);
 
@@ -2643,8 +3056,29 @@ plisql_finish_datums(PLiSQL_function *function)
 	Size		copiable_size = 0;
 	int			i;
 
-	function->ndatums = plisql_nDatums;
-	function->datums = palloc(sizeof(PLiSQL_datum *) * plisql_nDatums);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/*
+	 * maybe compile a package body which function->ndatums not null
+	 */
+	if (function->item != NULL)
+	{
+		Assert(function->ndatums <= plisql_nDatums);
+
+		if (function->ndatums == plisql_nDatums)
+			return;
+		if (function->ndatums != 0)
+			function->datums = repalloc(function->datums,
+									sizeof(PLiSQL_datum *) * plisql_nDatums);
+		else
+			function->datums = palloc(sizeof(PLiSQL_datum *) * plisql_nDatums);
+		function->ndatums = plisql_nDatums;
+	}
+	else
+	{
+		function->ndatums = plisql_nDatums;
+		function->datums = palloc(sizeof(PLiSQL_datum *) * plisql_nDatums);
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	for (i = 0; i < plisql_nDatums; i++)
 	{
 		function->datums[i] = plisql_Datums[i];
@@ -2743,7 +3177,8 @@ static void
 compute_function_hashkey(FunctionCallInfo fcinfo,
 						 Form_pg_proc procStruct,
 						 PLiSQL_func_hashkey *hashkey,
-						 bool forValidator)
+						 bool forValidator,
+						 HeapTuple procTup) /* ReqID:SRS-SQL-PACKAGE */
 {
 	/* Make sure any unused bytes of the struct are zero */
 	MemSet(hashkey, 0, sizeof(PLiSQL_func_hashkey));
@@ -2780,8 +3215,51 @@ compute_function_hashkey(FunctionCallInfo fcinfo,
 	if (procStruct->pronargs > 0)
 	{
 		/* get the argument types */
-		memcpy(hashkey->argtypes, procStruct->proargtypes.values,
-			   procStruct->pronargs * sizeof(Oid));
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		Datum protypenames;
+		bool	isNull;
+		Datum	   *elems;
+		int			nelems;
+		char **argtypenames = NULL;
+		int i;
+
+		protypenames = SysCacheGetAttr(PROCOID, procTup,
+									Anum_pg_proc_protypenames,
+									&isNull);
+		if (!isNull)
+		{
+			deconstruct_array(DatumGetArrayTypeP(protypenames),
+								TEXTOID, -1, false, 'i',
+								&elems, NULL, &nelems);
+			argtypenames = (char **) palloc(sizeof(char *) * nelems);
+			for (i = 0; i < nelems; i++)
+				argtypenames[i] = TextDatumGetCString(elems[i]);
+		}
+		if (argtypenames != NULL)
+		{
+			for (i = 0; i < procStruct->pronargs; i++)
+			{
+				hashkey->argtypes[i] = procStruct->proargtypes.values[i];
+				if (strcmp(argtypenames[i], "") != 0)
+				{
+					TypeName	*tname;
+					PkgType *pkgtype;
+
+					tname = (TypeName *) stringToNode(argtypenames[i]);
+
+					pkgtype = LookupPkgTypeByTypename(tname->names, false);
+					if (pkgtype == NULL)
+						elog(ERROR, "package doesn't exist");
+					hashkey->argtypes[i] = pkgtype->basetypid;
+					pfree(tname);
+					pfree(pkgtype);
+				}
+			}
+		}
+		else
+			memcpy(hashkey->argtypes, procStruct->proargtypes.values,
+				procStruct->pronargs * sizeof(Oid));
+		/* End - ReqID:SRS-SQL-PACKAGE */
 
 		/* resolve any polymorphic argument types */
 		plisql_resolve_polymorphic_argtypes(procStruct->pronargs,
@@ -2864,7 +3342,7 @@ plisql_resolve_polymorphic_argtypes(int numargs,
  * pointers to the same function cache.  Hence be careful not to do things
  * twice.
  */
-static void
+void
 delete_function(PLiSQL_function *func)
 {
 	/* remove function from hash table (might be done already) */
@@ -3027,6 +3505,11 @@ plisql_compile_inline_internal(char *proc_source)
 	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_compile_packageitem = NULL;
+	Assert(plisql_curr_global_proper_level == 0);
+	plisql_saved_compile[cur_compile_func_level] = function;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Set up as though in a function returning VOID */
 	function->fn_rettype = VOIDOID;
@@ -3064,8 +3547,6 @@ plisql_compile_inline_internal(char *proc_source)
 		elog(ERROR, "plisql parser returned %d", parse_rc);
 	function->action = plisql_parse_result;
 
-	plisql_scanner_finish();
-
 	/*
 	 * Complete the function's info
 	 */
@@ -3074,6 +3555,15 @@ plisql_compile_inline_internal(char *proc_source)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	plisql_finish_subproc_func(function);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	plisql_check_subproc_define(function);
+
+	/*
+	 * after plisql_check_subproc_define for nice error message
+	 */
+	plisql_scanner_finish();
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
 	 * Pop the error context stack

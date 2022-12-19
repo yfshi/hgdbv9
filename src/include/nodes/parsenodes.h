@@ -1895,7 +1895,11 @@ typedef enum ObjectType
 	OBJECT_TSTEMPLATE,
 	OBJECT_TYPE,
 	OBJECT_USER_MAPPING,
-	OBJECT_VIEW
+	OBJECT_VIEW,
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	OBJECT_PACKAGE,
+	OBJECT_PACKAGE_BODY
+	/* End - ReqID:SRS-SQL-PACKAGE */
 } ObjectType;
 
 /* ----------------------
@@ -3510,6 +3514,9 @@ typedef enum DiscardMode
 	DISCARD_ALL,
 	DISCARD_PLANS,
 	DISCARD_SEQUENCES,
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	DISCARD_PACKAGES,
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	DISCARD_TEMP
 } DiscardMode;
 
@@ -3818,5 +3825,51 @@ typedef struct ColumnRefOrFuncCall
 	FuncCall	*func;
 } ColumnRefOrFuncCall;
 /* End - ReqID:SRS-SQL-PROC */
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+/* ----------------------
+ *		Create Package Statement
+ * ----------------------
+ */
+typedef struct CreatePackageStmt
+{
+	NodeTag		type;
+	bool		replace;		/* T => replace if already exists */
+	List		*pkgname;
+	List		*propers;		/* invok rigth or access by or default collation */
+	bool		editable;		/* EDITIONABLE */
+	char		*pkgsrc;
+} CreatePackageStmt;
+
+
+typedef struct CreatePackageBodyStmt
+{
+	NodeTag		type;
+	bool		replace;
+	List		*pkgname;
+	bool		editable;
+	char		*bodysrc;
+} CreatePackageBodyStmt;
+
+typedef enum package_alter_flag
+{
+	alter_editable_flag = 0,
+	alter_compile_all,
+	alter_compile_body,
+	alter_compile_package,
+	alter_compile_specification,
+	alter_compile_parameter
+} package_alter_flag;
+
+typedef struct AlterPackageStmt
+{
+	NodeTag					type;
+	List					*pkgname;
+	package_alter_flag		alter_flag;
+	bool					editable;
+	List					*parameters;
+} AlterPackageStmt;
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 #endif							/* PARSENODES_H */

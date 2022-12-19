@@ -1758,7 +1758,7 @@ begin
 end;
 /
 
---only declare but no define and no use ok
+--only declare but no define error
 DECLARE
   var1 integer;
   function mds(id integer) return integer;
@@ -1767,14 +1767,6 @@ begin
 end;
 /
 
---no define but use failed
-DECLARE
-  var1 integer;
-  function mds(id integer) return integer;
-begin
-  var1 := mds(23);
-end;
-/
 
 --again
 DECLARE
@@ -1818,7 +1810,7 @@ begin
 end;
 /
 
---test ok
+--test failed
 create or replace function test(id integer) return integer
 AS
   function mds(id integer) return integer;
@@ -1827,10 +1819,6 @@ begin
 end;
 /
 
---ok
-SELECT test(23) FROM dual;
-
-DROP FUNCTION test(integer);
 
 DECLARE
   -- Declare proc1 (forward declaration):
@@ -3642,7 +3630,7 @@ create or replace function test.test_f(id integer) return integer is
        var3 integer;
      begin
         var3 := 4;
-	return 1;
+	    return 1;
      end;
      function test_f1(id integer) return integer is
        var4 integer;
@@ -3653,7 +3641,11 @@ create or replace function test.test_f(id integer) return integer is
          raise info 'welcome';
        end if;
        return var4;
-      end;
+     end;
+     procedure test_p2(id integer) IS
+     BEGIN
+         raise info 'test_p2';
+	 end;
    begin
       var3 := 1;
       raise info 'subproc level 1 test_f';

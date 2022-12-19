@@ -830,6 +830,7 @@ with_libraries
 with_libs
 enable_integer_datetimes
 enable_nls
+enable_cursor_unname
 with_pgport
 with_oraport
 enable_rpath
@@ -1523,6 +1524,7 @@ Optional Features:
                           obsolete option, no longer supported
   --enable-nls[=LANGUAGES]
                           enable Native Language Support
+  --enable-cursor-unname  enable explicit cursor uname
   --disable-rpath         do not embed shared library search path in
                           executables
   --disable-spinlocks     do not use spinlocks
@@ -3175,6 +3177,39 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_nls" >&5
 $as_echo "$enable_nls" >&6; }
+
+
+
+#
+# ReqID:SRS-SQL-PACKAGE
+# CURSOR_UNNAME
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether CURSOR_UNNAME is wanted" >&5
+$as_echo_n "checking whether CURSOR_UNNAME is wanted... " >&6; }
+
+
+# Check whether --enable-cursor-unname was given.
+if test "${enable_cursor_unname+set}" = set; then :
+  enableval=$enable_cursor_unname;
+  case $enableval in
+    yes)
+
+$as_echo "#define ENABLE_CURSOR_UNNAME 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-cursor-unname option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_cursor_unname=no
+
+fi
+
 
 
 
@@ -18853,7 +18888,7 @@ else
 $as_echo "#define USE_WIN32_SEMAPHORES 1" >>confdefs.h
 
   SEMA_IMPLEMENTATION="src/backend/port/win32_sema.c"
-  LIBPQ_SEMA_IMPLEMENTATION="src/interfaces/libpq/win32_ivyxsema.c"
+  LIBPQ_SEMA_IMPLEMENTATION="src/interfaces/libpq/win32_ivysema.c"
 fi
 
 
@@ -20606,7 +20641,7 @@ do
     "GNUmakefile") CONFIG_FILES="$CONFIG_FILES GNUmakefile" ;;
     "src/Makefile.global") CONFIG_FILES="$CONFIG_FILES src/Makefile.global" ;;
     "src/backend/port/pg_sema.c") CONFIG_LINKS="$CONFIG_LINKS src/backend/port/pg_sema.c:${SEMA_IMPLEMENTATION}" ;;
-	"src/interfaces/libpq/ivy_sema.c") CONFIG_LINKS="$CONFIG_LINKS src/interfaces/libpq/ivy_sema.c:${LIBPQ_SEMA_IMPLEMENTATION}" ;;
+    "src/interfaces/libpq/ivy_sema.c") CONFIG_LINKS="$CONFIG_LINKS src/interfaces/libpq/ivy_sema.c:${LIBPQ_SEMA_IMPLEMENTATION}" ;;
     "src/backend/port/pg_shmem.c") CONFIG_LINKS="$CONFIG_LINKS src/backend/port/pg_shmem.c:${SHMEM_IMPLEMENTATION}" ;;
     "src/include/pg_config_os.h") CONFIG_LINKS="$CONFIG_LINKS src/include/pg_config_os.h:src/include/port/${template}.h" ;;
     "src/Makefile.port") CONFIG_LINKS="$CONFIG_LINKS src/Makefile.port:src/makefiles/Makefile.${template}" ;;

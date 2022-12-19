@@ -27,6 +27,9 @@
 #include "tcop/utility.h"
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+#include "utils/packagecache.h"
+/* End - ReqID:SRS-SQL-PACKAGE */
 
 
 typedef struct
@@ -172,6 +175,12 @@ static List *set_returning_clause_references(PlannerInfo *root,
 											 Plan *topplan,
 											 Index resultRelation,
 											 int rtoffset);
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+static void record_plan_internel_function_dependency(PlannerInfo *root,
+											FuncExpr *funcexpr);
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 
 /*****************************************************************************
@@ -1797,8 +1806,14 @@ fix_expr_common(PlannerInfo *root, Node *node)
 	}
 	else if (IsA(node, FuncExpr))
 	{
-		record_plan_function_dependency(root,
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (FUNC_EXPR_FROM_PG_PROC(((FuncExpr *) node)->function_from))
+			record_plan_function_dependency(root,
 										((FuncExpr *) node)->funcid);
+		else
+			record_plan_internel_function_dependency(root,
+										(FuncExpr *) node);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 	}
 	else if (IsA(node, OpExpr))
 	{
@@ -3058,6 +3073,54 @@ set_returning_clause_references(PlannerInfo *root,
 
 	return rlist;
 }
+
+
+
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+/*
+ * record package or subproc function
+ * dependency
+ */
+static void
+record_plan_internel_function_dependency(PlannerInfo *root,
+											FuncExpr *funcexpr)
+{
+	bool record_package = false;
+	Oid func_id = InvalidOid;
+
+	Assert(funcexpr->function_from != FUNC_FROM_PG_PROC);
+
+	/*
+	 * there, we only support package or inline function
+	 * others, we ignore it
+	 */
+	if (funcexpr->function_from == FUNC_FROM_PACKAGE ||
+		funcexpr->function_from == FUNC_FROM_SUBPROCFUNC)
+	{
+		/* use top function to get some informations */
+		func_id = get_top_function_info(funcexpr,
+							&record_package);
+		if (OidIsValid(func_id))
+		{
+			if (record_package)
+			{
+				PlanInvalItem *inval_item = makeNode(PlanInvalItem);
+
+				inval_item->cacheId = PKGOID;
+				inval_item->hashValue = GetSysCacheHashValue1(PKGOID,
+												   ObjectIdGetDatum(func_id));
+
+				root->glob->invalItems = lappend(root->glob->invalItems, inval_item);
+			}
+			else
+			{
+				record_plan_function_dependency(root, func_id);
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-SQL-PACKAGE */
+
 
 
 /*****************************************************************************

@@ -963,6 +963,10 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_FOREIGN_SERVER:
 		case OBJECT_FOREIGN_TABLE:
 		case OBJECT_FUNCTION:
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_PACKAGE:
+		case OBJECT_PACKAGE_BODY:
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_INDEX:
 		case OBJECT_LANGUAGE:
 		case OBJECT_LARGEOBJECT:
@@ -1053,6 +1057,10 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_PUBLICATION_REL:
 		case OCLASS_SUBSCRIPTION:
 		case OCLASS_TRANSFORM:
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case OCLASS_PACKAGE:
+		case OCLASS_PACKAGE_BODY:
+		/* End - ReqID:SRS-SQL-PACKAGE */
 			return true;
 
 			/*
@@ -2094,6 +2102,12 @@ stringify_grant_objtype(ObjectType objtype)
 			return "FOREIGN SERVER";
 		case OBJECT_FUNCTION:
 			return "FUNCTION";
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_PACKAGE:
+			return "PACKAGE";
+		case OBJECT_PACKAGE_BODY:
+			return "PACKAGE BODY";
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_LANGUAGE:
 			return "LANGUAGE";
 		case OBJECT_LARGEOBJECT:
@@ -2176,6 +2190,12 @@ stringify_adefprivs_objtype(ObjectType objtype)
 			return "FOREIGN SERVERS";
 		case OBJECT_FUNCTION:
 			return "FUNCTIONS";
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_PACKAGE:
+			return "PACKAGE";
+		case OBJECT_PACKAGE_BODY:
+			return "PACKAGE BODY";
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_LANGUAGE:
 			return "LANGUAGES";
 		case OBJECT_LARGEOBJECT:

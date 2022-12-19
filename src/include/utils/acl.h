@@ -160,6 +160,7 @@ typedef struct ArrayType Acl;
 #define ACL_ALL_RIGHTS_FDW			(ACL_USAGE)
 #define ACL_ALL_RIGHTS_FOREIGN_SERVER (ACL_USAGE)
 #define ACL_ALL_RIGHTS_FUNCTION		(ACL_EXECUTE)
+#define ACL_ALL_RIGHTS_PACKAGE		(ACL_EXECUTE) /* ReqID:SRS-SQL-PACKAGE */
 #define ACL_ALL_RIGHTS_LANGUAGE		(ACL_USAGE)
 #define ACL_ALL_RIGHTS_LARGEOBJECT	(ACL_SELECT|ACL_UPDATE)
 #define ACL_ALL_RIGHTS_SCHEMA		(ACL_USAGE|ACL_CREATE)
@@ -245,6 +246,10 @@ extern AclMode pg_database_aclmask(Oid db_oid, Oid roleid,
 								   AclMode mask, AclMaskHow how);
 extern AclMode pg_proc_aclmask(Oid proc_oid, Oid roleid,
 							   AclMode mask, AclMaskHow how);
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+extern AclMode pg_package_aclmask(Oid pkg_oid, Oid roleid,
+								AclMode mask, AclMaskHow how);
+/* End - ReqID:SRS-SQL-PACKAGE */
 extern AclMode pg_language_aclmask(Oid lang_oid, Oid roleid,
 								   AclMode mask, AclMaskHow how);
 extern AclMode pg_largeobject_aclmask_snapshot(Oid lobj_oid, Oid roleid,
@@ -272,6 +277,9 @@ extern AclResult pg_class_aclcheck_ext(Oid table_oid, Oid roleid,
 									   AclMode mode, bool *is_missing);
 extern AclResult pg_database_aclcheck(Oid db_oid, Oid roleid, AclMode mode);
 extern AclResult pg_proc_aclcheck(Oid proc_oid, Oid roleid, AclMode mode);
+/* Begin - ReqID:SRS-SQL-PACKAGE */
+extern AclResult pg_package_aclcheck(Oid pkgoid, Oid roleid, AclMode mode);
+/* End - ReqID:SRS-SQL-PACKAGE */
 extern AclResult pg_language_aclcheck(Oid lang_oid, Oid roleid, AclMode mode);
 extern AclResult pg_largeobject_aclcheck_snapshot(Oid lang_oid, Oid roleid,
 												  AclMode mode, Snapshot snapshot);

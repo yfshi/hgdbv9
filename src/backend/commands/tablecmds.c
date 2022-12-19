@@ -12266,6 +12266,10 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_PUBLICATION_REL:
 			case OCLASS_SUBSCRIPTION:
 			case OCLASS_TRANSFORM:
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case OCLASS_PACKAGE:
+			case OCLASS_PACKAGE_BODY:
+			/* End - ReqID:SRS-SQL-PACKAGE */
 
 				/*
 				 * We don't expect any of these sorts of objects to depend on

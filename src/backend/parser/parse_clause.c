@@ -3836,7 +3836,7 @@ check_funcexpr_outparams(List *funcexprs)
 						ReleaseSysCache(procTup);
 						ereport(ERROR,
 							(errcode(ERRCODE_DATA_EXCEPTION),
-							errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+							errmsg("OUT or IN OUT arguments of the funtion %s must be variables ",
 									proname)));
 					}
 				}

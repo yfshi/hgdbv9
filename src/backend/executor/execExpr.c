@@ -4040,7 +4040,9 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 		 * messages when something is wrong.
 		 */
 		num_all_args = get_func_arg_info(func_tuple, &argtypes, &argnames, &argmodes);
-		rettype = ((Form_pg_proc) GETSTRUCT(func_tuple))->prorettype;
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		rettype = get_func_real_rettype(func_tuple);
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		funcname = NameStr(((Form_pg_proc) GETSTRUCT(func_tuple))->proname);
 
 		num_out_args = 0;
@@ -4076,7 +4078,7 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 					if (!allow_out_parameter_const)
 						ereport(ERROR,
 							(errcode(ERRCODE_DATA_EXCEPTION),
-							errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+							errmsg("OUT or IN OUT arguments of the funtion %s must be variables ",
 									funcname)));
 					return;
 				}
@@ -4099,7 +4101,7 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 							if (!allow_out_parameter_const)
 								ereport(ERROR,
 										(errcode(ERRCODE_DATA_EXCEPTION),
-										errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+										errmsg("OUT or IN OUT arguments of the funtion %s must be variables ",
 												funcname)));
 						}
 						else
@@ -4143,7 +4145,7 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 						if (!IsA(arg, Param) && !allow_out_parameter_const)
 							ereport(ERROR,
 									(errcode(ERRCODE_DATA_EXCEPTION),
-									errmsg("OUT or IN OUT arguments of the funtion %s musb be variables ",
+									errmsg("OUT or IN OUT arguments of the funtion %s must be variables ",
 											funcname)));
 					}
 

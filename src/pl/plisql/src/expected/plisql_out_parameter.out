@@ -434,7 +434,7 @@ begin
   raise notice 'ret=%',ret;
 end;
 /
-ERROR:  OUT or IN OUT arguments of the funtion test_return_out musb be variables 
+ERROR:  OUT or IN OUT arguments of the funtion test_return_out must be variables 
 CONTEXT:  PL/iSQL function inline_code_block line 5 at assignment
 declare
   id integer;
@@ -444,7 +444,7 @@ begin
   raise notice 'ret=%',ret;
 end;
 /
-ERROR:  OUT or IN OUT arguments of the funtion test_return_out musb be variables 
+ERROR:  OUT or IN OUT arguments of the funtion test_return_out must be variables 
 CONTEXT:  PL/iSQL function inline_code_block line 5 at assignment
 drop function test_return_out(integer,integer,varchar);
 --test IN OUT mode paramter
