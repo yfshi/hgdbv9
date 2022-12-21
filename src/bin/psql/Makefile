@@ -37,6 +37,7 @@ OBJS = \
 	mainloop.o \
 	ora_psqlscanslash.o \
 	prompt.o \
+	psqlplusparse.o \
 	ora_prompt.o\
 	psqlscanslash.o \
 	sql_help.o \
@@ -53,6 +54,9 @@ psql: $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 help.o: sql_help.h
+
+# ReqID:SRS-CMD-PSQL
+psqlplusparse.o: psqlplusscan.c
 
 # See notes in src/backend/parser/Makefile about the following two rules
 sql_help.c: sql_help.h
@@ -71,7 +75,8 @@ ora_psqlscanslash.c: FLEX_NO_BACKUP=yes
 ora_psqlscanslash.c: FLEX_FIX_WARNING=yes
 /* End - ReqID:SRS-PSQL-PARSER */
 
-distprep: ora_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c
+# ReqID:SRS-CMD-PSQL
+distprep: ora_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c psqlplusscan.c psqlplusparse.c
 
 install: all installdirs
 	$(INSTALL_PROGRAM) psql$(X) '$(DESTDIR)$(bindir)/psql$(X)'
@@ -89,8 +94,10 @@ clean distclean:
 
 # files removed here are supposed to be in the distribution tarball,
 # so do not clean them in the clean/distclean rules
+# ReqID:SRS-CMD-PSQL
 maintainer-clean: distclean
 	rm -f ora_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c #ReqID:SRS-PSQL-PARSER
+	rm -f psqlplusscan.c psqlplusparse.c
 
 check:
 	$(prove_check)
