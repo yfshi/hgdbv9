@@ -40,6 +40,11 @@
 #include "commands/packagecmds.h"
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#include "parser/parse_type.h"
+#include "access/table.h"
+#include "catalog/indexing.h"
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 
 typedef struct polymorphic_actuals
@@ -2051,6 +2056,24 @@ build_function_result_tupdesc_d(char prokind,
 				outargtypes[numoutargs] = pkgtype->basetypid;
 				pfree(pkgtype);
 			}
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			else
+			{
+				Type		typtup;
+
+				typtup = LookupOraTypeName(NULL, tname, NULL, false);
+				if (typtup)
+				{
+					if (!((Form_pg_type) GETSTRUCT(typtup))->typisdefined)
+					{
+						pfree(tname);
+						elog(ERROR, "package, relation or view does not exist");
+					}
+					outargtypes[numoutargs] = typeTypeId(typtup);
+					ReleaseSysCache(typtup);
+				}
+			}
+			/* End - ReqID:SRS-PLSQL-TYPE */
 			pfree(tname);
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
@@ -2231,6 +2254,25 @@ build_plisql_function_result_tupdesc_d(char prokind,
 				outargtypes[numoutargs] = pkgtype->basetypid;
 				pfree(pkgtype);
 			}
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			else
+			{
+				Type		typtup;
+
+				typtup = LookupOraTypeName(NULL, tname, NULL, false);
+				if (typtup)
+				{
+					if (!((Form_pg_type) GETSTRUCT(typtup))->typisdefined)
+					{
+						pfree(tname);
+						elog(ERROR, "package, relation or view does not exist");
+					}
+					outargtypes[numoutargs] = typeTypeId(typtup);
+					ReleaseSysCache(typtup);
+				}
+			}
+			/* End - ReqID:SRS-PLSQL-TYPE */
+
 			pfree(tname);
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
@@ -2730,3 +2772,74 @@ func_should_change_return_type(Oid functionId, Oid *rettype, int32 *typmod, Oid 
 	return result;
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * get_func_prostatus
+ *  get function prostatus from the pg_proc catatlog
+ */
+char
+get_func_prostatus(HeapTuple procTup)
+
+{
+	char		result;
+	bool		isNull;
+	Datum		prostaus_datum;
+
+	/* Get prostatus, if available */
+	prostaus_datum = SysCacheGetAttr(PROCOID, procTup, Anum_pg_proc_prostatus,
+							&isNull);
+
+	if (isNull)
+		result = PROSTATUS_NA;
+	else
+		result = DatumGetChar(prostaus_datum);
+
+	return result;
+}
+
+/*
+ * change the pg_proc prostatus
+ */
+void
+change_func_prostatus(Oid funcOid, char prostatus)
+{
+	bool		nulls[Natts_pg_proc];
+	Datum		values[Natts_pg_proc];
+	bool		replaces[Natts_pg_proc];
+	int 		i;
+	HeapTuple newtuple;
+	Relation	rel;
+	HeapTuple	oldprocTup;
+	char		ori_prostatus;
+
+	oldprocTup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcOid));
+	if (!HeapTupleIsValid(oldprocTup))
+		elog(ERROR, "cache lookup failed for function %u", funcOid);
+
+	ori_prostatus = get_func_prostatus(oldprocTup);
+	if (ori_prostatus == PROSTATUS_INVALID ||
+		ori_prostatus == PROSTATUS_NA)
+	{
+		ReleaseSysCache(oldprocTup);
+		return;
+	}
+	for (i = 0; i < Natts_pg_proc; ++i)
+	{
+		nulls[i] = true;
+		values[i] = (Datum) 0;
+		replaces[i] = false;
+	}
+
+	nulls[Anum_pg_proc_prostatus - 1] = false;
+	values[Anum_pg_proc_prostatus - 1] = CharGetDatum(prostatus);
+	replaces[Anum_pg_proc_prostatus - 1] = true;
+
+	rel = table_open(ProcedureRelationId, RowExclusiveLock);
+	newtuple = heap_modify_tuple(oldprocTup, RelationGetDescr(rel), values, nulls, replaces);
+	CatalogTupleUpdate(rel, &newtuple->t_self, newtuple);
+
+	ReleaseSysCache(oldprocTup);
+	table_close(rel, RowExclusiveLock);
+}
+/* End - ReqID:SRS-PLSQL-TYPE */

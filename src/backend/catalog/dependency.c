@@ -88,6 +88,11 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#include "commands/tablecmds.h"
+#include "funcapi.h"
+#include "lib/qunique.h"
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 
 /*
@@ -111,6 +116,9 @@ typedef struct
 #define DEPFLAG_REVERSE		0x0040	/* reverse internal/extension link */
 #define DEPFLAG_IS_PART		0x0080	/* has a partition dependency */
 #define DEPFLAG_SUBOBJECT	0x0100	/* subobject of another deletable object */
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#define DEPFLAG_TYPE		0x0200	/* reached via table type dependency */
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 
 /* expansible list of ObjectAddresses */
@@ -500,6 +508,11 @@ findDependentObjects(const ObjectAddress *object,
 	int			maxDependentObjects;
 	ObjectAddressStack mystack;
 	ObjectAddressExtra extra;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	ObjectFunOrPkg		*dependentFuncPkgOids;
+	int			numDependentFuncPkgOids;
+	int			maxDependentFuncPkgOids;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * If the target object is already being visited in an outer recursion
@@ -804,6 +817,12 @@ findDependentObjects(const ObjectAddress *object,
 				elog(ERROR, "incorrect use of PIN dependency with %s",
 					 getObjectDescription(object, false));
 				break;
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			case DEPENDENCY_TYPE:
+
+				break;
+			/* End - ReqID:SRS-PLSQL-TYPE */
+
 			default:
 				elog(ERROR, "unrecognized dependency type '%c' for %s",
 					 foundDep->deptype, getObjectDescription(object, false));
@@ -847,6 +866,14 @@ findDependentObjects(const ObjectAddress *object,
 	dependentObjects = (ObjectAddressAndFlags *)
 		palloc(maxDependentObjects * sizeof(ObjectAddressAndFlags));
 	numDependentObjects = 0;
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
+	dependentFuncPkgOids = (ObjectFunOrPkg *)
+		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+	numDependentFuncPkgOids = 0;
+	/* End - ReqID:SRS-PLSQL-TYPE */
+
 
 	ScanKeyInit(&key[0],
 				Anum_pg_depend_refclassid,
@@ -944,12 +971,103 @@ findDependentObjects(const ObjectAddress *object,
 								getObjectDescription(object, false))));
 				subflags = 0;	/* keep compiler quiet */
 				break;
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			case DEPENDENCY_TYPE:
+				subflags = DEPFLAG_TYPE;
+				break;
+			/* End - ReqID:SRS-PLSQL-TYPE */
 			default:
 				elog(ERROR, "unrecognized dependency type '%c' for %s",
 					 foundDep->deptype, getObjectDescription(object, false));
 				subflags = 0;	/* keep compiler quiet */
 				break;
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-TYPE */
+		if (foundDep->deptype == DEPENDENCY_TYPE &&
+			(getObjectClass(object) == OCLASS_CLASS ||
+			getObjectClass(object) == OCLASS_PACKAGE ||
+			getObjectClass(object) == OCLASS_PACKAGE_BODY))
+		{
+			if (foundDep->classid == 0)
+				continue;
+
+			switch (getObjectClass(&otherObject))
+			{
+				case OCLASS_PROC:
+
+					if (foundDep->deptype == DEPENDENCY_TYPE)
+					{
+						/* Add function Oid to the pending-oids list */
+						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+						{
+							/* enlarge array if needed */
+							maxDependentFuncPkgOids *= 2;
+							dependentFuncPkgOids = (ObjectFunOrPkg *)
+								repalloc(dependentFuncPkgOids,
+										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+						}
+
+						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
+						numDependentFuncPkgOids++;
+
+						/* delete the tuple */
+						CatalogTupleDelete(*depRel, &tup->t_self);
+					}
+					break;
+
+				case OCLASS_PACKAGE:
+
+					if (foundDep->deptype == DEPENDENCY_TYPE)
+					{
+						/* Add package Oid to the pending-oids list */
+						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+						{
+							/* enlarge array if needed */
+							maxDependentFuncPkgOids *= 2;
+							dependentFuncPkgOids = (ObjectFunOrPkg *)
+								repalloc(dependentFuncPkgOids,
+										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+						}
+
+						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
+						numDependentFuncPkgOids++;
+
+						/* delete the tuple */
+						CatalogTupleDelete(*depRel, &tup->t_self);
+					}
+					break;
+				case OCLASS_PACKAGE_BODY:
+
+					if (foundDep->deptype == DEPENDENCY_TYPE)
+					{
+						/* Add package body Oid to the pending-oids list */
+						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+						{
+							/* enlarge array if needed */
+							maxDependentFuncPkgOids *= 2;
+							dependentFuncPkgOids = (ObjectFunOrPkg *)
+								repalloc(dependentFuncPkgOids,
+										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+						}
+
+						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
+						numDependentFuncPkgOids++;
+
+						/* delete the tuple */
+						CatalogTupleDelete(*depRel, &tup->t_self);
+					}
+						break;
+				default:
+					break;
+			}
+
+			continue;
+		}
+		/* End - ReqID:SRS-PLSQL-TYPE */
 
 		/* And add it to the pending-objects list */
 		if (numDependentObjects >= maxDependentObjects)
@@ -1000,6 +1118,92 @@ findDependentObjects(const ObjectAddress *object,
 	}
 
 	pfree(dependentObjects);
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/* sort them, just in case OID counter wrapped from high to low */
+	if (numDependentFuncPkgOids > 1)
+	{
+		/* Sort and de-dup OID arrays, so we can use binary search. */
+		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
+				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
+										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+	}
+
+	/*
+	 * Now recurse to the dependent funciton which parameters datatype
+	 * or return datatype reference %TYPE or %ROWTYPE.
+	 */
+	for (int i = 0; i < numDependentFuncPkgOids; i++)
+	{
+		Oid objectId = dependentFuncPkgOids[i].objectId;
+
+		switch (dependentFuncPkgOids[i].flags)
+		{
+			case OCLASS_PROC:
+				{
+					/* invalidate function */
+					plisql_internel_funcs_init();
+					plisql_internal_funcs.function_free(objectId);
+
+					/* change the pg_proc prostatus to PROSTATUS_NA */
+					change_func_prostatus(objectId, PROSTATUS_NA);
+				}
+				break;
+			case OCLASS_PACKAGE:
+				{
+					/* invalidate package */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+
+					/* get package cache */
+					pkey = objectId;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+				}
+				break;
+			case OCLASS_PACKAGE_BODY:
+				{
+					/* invalidate package body */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+					HeapTuple pkgbodyTup;
+					Form_pg_package_body pkgbodyStruct;
+
+					/*
+					 * Lookup the pg_package_body tuple by Oid
+					 */
+					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
+					if (!HeapTupleIsValid(pkgbodyTup))
+						elog(ERROR, "cache lookup failed for package body %u", objectId);
+
+					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
+					pkey = pkgbodyStruct->pkgoid;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
+					ReleaseSysCache(pkgbodyTup);
+				}
+					break;
+
+			default:
+				break;
+		}
+	}
+
+	pfree(dependentFuncPkgOids);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * Finally, we can add the target object to targetObjects.  Be careful to
@@ -1138,6 +1342,13 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 					(errmsg_internal("drop auto-cascades to %s",
 									 objDesc)));
 		}
+		/* Begin - ReqID:SRS-PLSQL-TYPE */
+		else if (extra->flags & DEPFLAG_TYPE)
+		{
+			pfree(objDesc);
+			continue;
+		}
+		/* End - ReqID:SRS-PLSQL-TYPE */
 		else if (behavior == DROP_RESTRICT)
 		{
 			char	   *otherDesc = getObjectDescription(&extra->dependee,
@@ -2493,6 +2704,31 @@ object_address_comparator(const void *a, const void *b)
 		return 1;
 	return 0;
 }
+
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * qsort comparator for ObjectFunOrPkg items
+ */
+int
+object_funpkgoid_comparator(const void *a, const void *b)
+{
+	const ObjectFunOrPkg *obja = (const ObjectFunOrPkg *) a;
+	const ObjectFunOrPkg *objb = (const ObjectFunOrPkg *) b;
+
+	/*
+	 * Primary sort key is OID descending.  Most of the time, this will result
+	 * in putting newer objects before older ones, which is likely to be the
+	 * right order to delete in.
+	 */
+	if (obja->objectId > objb->objectId)
+		return -1;
+	if (obja->objectId < objb->objectId)
+		return 1;
+
+	return 0;
+}
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /*
  * Routines for handling an expansible array of ObjectAddress items.

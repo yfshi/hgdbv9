@@ -1989,3 +1989,153 @@ FigureColnameInternal(Node *node, char **name)
 
 	return strength;
 }
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * transformRowExpression()
+ *		Transforms a row variable into a list of expressions.
+ *
+ * This handles the case where row datatype is an arbitrary expression of composite
+ * type.
+ */
+List *
+transformRowExpression(ParseState *pstate, List *exprlist,
+					ParseExprKind exprKind, bool allowDefault)
+{
+	List	   *result = NIL;
+	ListCell   *lc;
+
+	if (list_length(exprlist) != 1)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("row has more expressions than target columns"),
+				 parser_errposition(pstate,
+										exprLocation(list_nth(exprlist,
+															0)))));
+
+	foreach(lc, exprlist)
+	{
+		Node	   *e = (Node *) lfirst(lc);
+
+		/*
+		 * Check for "something.*".  Depending on the complexity of the
+		 * "something", the star could appear as the last field in ColumnRef,
+		 * or as the last indirection item in A_Indirection.
+		 */
+		if (IsA(e, ColumnRef))
+		{
+			ColumnRef  *cref = (ColumnRef *) e;
+
+			if (IsA(llast(cref->fields), A_Star))
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("invalid user.table.column, table.column, or column specification"),
+						 parser_errposition(pstate,
+												exprLocation(list_nth(exprlist,
+																	0)))));
+
+		}
+		else if (IsA(e, A_Indirection))
+		{
+			A_Indirection *ind = (A_Indirection *) e;
+
+			if (IsA(llast(ind->indirection), A_Star))
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("unsupported syntax"),
+						 parser_errposition(pstate,
+												exprLocation(list_nth(exprlist,
+																	0)))));
+		}
+
+		if (IsA(e, SetToDefault))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("unsupported syntax"),
+					 parser_errposition(pstate,
+							   			exprLocation(list_nth(exprlist,
+													 		  0)))));
+		/* And transform that */
+		e = transformExpr(pstate, e, exprKind);
+
+		/* Expand the rowtype expression into individual fields */
+		result = list_concat(result,
+							 ExpandRowReference(pstate, e,
+												 false));
+	}
+
+	return result;
+}
+
+/*
+ * transformRowTargetList
+ * Turns a row which may be a single row variable, a array element,
+ * or a row.filed into a list of TargetEntry's.
+ * Similar to transformTargetList.
+ */
+List *
+transformRowTargetList(ParseState *pstate, List *targetlist,
+					ParseExprKind exprKind)
+{
+
+	ListCell   *lc;
+	List	   *p_target = NIL;
+
+	foreach(lc, targetlist)
+	{
+		Node	   *e = (Node *) lfirst(lc);
+
+		/*
+		 * Check for "something.*".
+		 */
+		if (IsA(e, ColumnRef))
+		{
+			ColumnRef  *cref = (ColumnRef *) e;
+
+			if (IsA(llast(cref->fields), A_Star))
+			{
+				/* It is something.*, throw an error. */
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("unsupported syntax"),
+						 parser_errposition(pstate,
+											cref->location)));
+			}
+		}
+		else if (IsA(e, A_Indirection))
+		{
+			A_Indirection *ind = (A_Indirection *) e;
+
+			if (IsA(llast(ind->indirection), A_Star))
+			{
+				/* It is something.*, throw an error. */
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("unsupported syntax")));
+			}
+		}
+
+		/*
+		 * Not "something.*", so transform as a single expression.  If it's a
+		 * SetToDefault node, throw an error.
+		 */
+		if (IsA(e, SetToDefault))
+			ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("unsupported syntax")));
+
+		e = transformExpr(pstate, e, exprKind);
+		p_target =  list_concat(p_target, ExpandRowReference(pstate, e, true));
+	}
+
+	/*
+	 * If any multiassign resjunk items were created, throw an error.
+	 */
+	if (pstate->p_multiassign_exprs)
+		ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+			 errmsg("unsupported syntax")));
+
+	return p_target;
+}
+/* End - ReqID:SRS-PLSQL-TYPE */

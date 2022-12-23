@@ -321,7 +321,7 @@ static void determineLanguage(List *options);
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
 
 %type <node>	select_no_parens select_with_parens select_clause
-				simple_select values_clause
+				simple_select values_clause values_clause_no_parens/* ReqID:SRS-PLSQL-TYPE */
 				PLpgSQL_Expr PLAssignStmt
 
 %type <node>	alter_column_default opclass_item opclass_drop alter_using
@@ -753,7 +753,7 @@ static void determineLanguage(List *options);
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
-	ROUTINE ROUTINES ROW ROWS RULE
+	ROUTINE ROUTINES ROW ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
 
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD SHARE SHOW					/* ReqID:SRS-SQL-SEQ */
@@ -8508,6 +8508,20 @@ func_type:	Typename								{ $$ = $1; }
 					$$->setof = true;
 					$$->location = @2;
 				}
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			| type_function_name attrs '%' ROWTYPE
+				{
+					$$ = makeTypeNameFromNameList(lcons(makeString($1), $2));
+					$$->row_type = true;
+					$$->location = @1;
+				}
+			| type_function_name '%' ROWTYPE
+				{
+					$$ = makeTypeNameFromNameList(list_make1(makeString($1)));
+					$$->row_type = true;
+					$$->location = @1;
+				}
+			/* End - ReqID:SRS-PLSQL-TYPE */
 		;
 
 func_arg_with_default:
@@ -12465,6 +12479,7 @@ UpdateStmt: opt_with_clause UPDATE relation_expr_opt_alias
 					n->whereClause = $7;
 					n->returningList = $8;
 					n->withClause = $1;
+
 					$$ = (Node *)n;
 				}
 		;
@@ -12863,6 +12878,9 @@ simple_select:
 					$$ = (Node *)n;
 				}
 			| values_clause							{ $$ = $1; }
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			| values_clause_no_parens				{ $$ = $1; }
+			/* End - ReqID:SRS-PLSQL-TYPE */
 			| TABLE relation_expr
 				{
 					/* same as SELECT * FROM relation_expr */
@@ -13436,16 +13454,33 @@ values_clause:
 				{
 					SelectStmt *n = makeNode(SelectStmt);
 					n->valuesLists = list_make1($3);
+					/* Begin - ReqID:SRS-PLSQL-TYPE */
+					n->valuesIsrow = false;
+					/* End - ReqID:SRS-PLSQL-TYPE */
 					$$ = (Node *) n;
 				}
 			| values_clause ',' '(' expr_list ')'
 				{
 					SelectStmt *n = (SelectStmt *) $1;
 					n->valuesLists = lappend(n->valuesLists, $4);
+					/* Begin - ReqID:SRS-PLSQL-TYPE */
+					n->valuesIsrow = false;
+					/* End - ReqID:SRS-PLSQL-TYPE */
 					$$ = (Node *) n;
 				}
 		;
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+values_clause_no_parens:
+			VALUES columnref
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1(list_make1($2));
+					n->valuesIsrow = true;
+					$$ = (Node *) n;
+				}
+		;
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /*****************************************************************************
  *
@@ -18529,6 +18564,7 @@ unreserved_keyword:
 			| ROUTINE
 			| ROUTINES
 			| ROWS
+			| ROWTYPE /* ReqID:SRS-PLSQL-TYPE */
 			| RULE
 			| SAVEPOINT
 			| SCALAR	/* ReqID:SRS-SQL-PROC */
@@ -18678,7 +18714,6 @@ col_name_keyword:
 			| TRIM
 			| UPDATEXML /* ReqID:SRS-SQL-XML */
 			| USERENV	/* BUG:0000830 */
-			| VALUES
 			| VARCHAR
 			| VARCHAR2		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| XMLATTRIBUTES
@@ -18817,6 +18852,7 @@ reserved_keyword:
 			| UNIQUE
 			| USER
 			| USING
+			| VALUES	/* ReqID:SRS-PLSQL-TYPE */
 			| VARIADIC
 			| WHEN
 			| WHERE
@@ -19194,6 +19230,7 @@ bare_label_keyword:
 			| ROUTINES
 			| ROW
 			| ROWS
+			| ROWTYPE /* ReqID:SRS-PLSQL-TYPE */
 			| RULE
 			| SAVEPOINT
 			| SCALAR	/* ReqID:SRS-SQL-PROC */

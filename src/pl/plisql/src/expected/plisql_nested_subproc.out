@@ -1150,8 +1150,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  RELIES_ON clause is disallowed on function declaration
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RELIES_ON clause is disallowed on function declaration
 --test ok
 create or replace function test_mds(id integer) returns integer as
 $$
@@ -1348,8 +1348,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -1370,8 +1370,8 @@ begin
     return id;
 end;$$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -1392,8 +1392,8 @@ begin
     return id;
 end;$$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -1414,8 +1414,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -1436,8 +1436,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -1458,8 +1458,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  RESULT_CACHE must be specified on "test_subproc" declaration and definition
 --test failed
 do $$
 declare
@@ -1500,8 +1500,8 @@ begin
     return id;
 end; $$ language plisql;
 /
-ERROR:  at most one declaration for 'RESULT_CACHE' is permitted
-CONTEXT:  compilation of PL/iSQL function "test_mds" near line 3
+WARNING:  there was an compilation error
+HINT:  at most one declaration for 'RESULT_CACHE' is permitted
 --test ok
 create or replace function test_mds(id integer) returns integer AS
 $$
@@ -2029,9 +2029,10 @@ begin
   return 23;
 end; $$ language plisql;
 /
-ERROR:  A subprogram body must be defined for the forward declaration of mds
+WARNING:  there was an compilation error
 LINE 5:   function mds(id integer) return integer;
                    ^
+HINT:  A subprogram body must be defined for the forward declaration of mds
 do $$
 DECLARE
   -- Declare proc1 (forward declaration):

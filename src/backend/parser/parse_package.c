@@ -162,6 +162,9 @@ parse_package_type(List *names, PackageCacheKey *pkey,
 	Oid basetypeid;
 	void *type;
 	PkgType *pkgtype;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	int32	basetypmod = -1;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	if (PackageCacheIsValid(pkey, false))
 		item = PackageCacheLookup(pkey);
@@ -171,7 +174,8 @@ parse_package_type(List *names, PackageCacheKey *pkey,
 	Assert(item != NULL);
 	plisql_internel_funcs_init();
 	type = plisql_internal_funcs.package_parse(NULL, item, names, typename_startloc,
-							 PACKAGE_PARSE_TYPE, &basetypeid, NULL,
+							 PACKAGE_PARSE_TYPE, &basetypeid,
+							 &basetypmod/* ReqID:SRS-PLSQL-TYPE */, NULL,
 							 NULL, NULL, 0, NULL, false, false,
 							 NULL, NULL, NULL, NULL, NULL, NULL,
 							 NULL, NULL,
@@ -184,6 +188,9 @@ parse_package_type(List *names, PackageCacheKey *pkey,
 	pkgtype->basetypid = basetypeid;
 	pkgtype->item = item;
 	pkgtype->value = type;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	pkgtype->basetypmod = basetypmod;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	return pkgtype;
  }
@@ -211,7 +218,8 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 	Assert(item != NULL);
 	plisql_internel_funcs_init();
 	var = plisql_internal_funcs.package_parse(NULL, item, names, varname_startloc,
-									 PACKAGE_PARSE_VAR, NULL, NULL,
+									 PACKAGE_PARSE_VAR, NULL,
+									 NULL/* ReqID:SRS-PLSQL-TYPE */, NULL,
 									 NULL, NULL, 0, NULL, false, false,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
@@ -248,7 +256,8 @@ parse_package_entry(List *names, PackageCacheKey *pkey,
 	Assert(item != NULL);
 	plisql_internel_funcs_init();
 	value = plisql_internal_funcs.package_parse(NULL, item, names, name_startloc,
-									 PACKAGE_PARSE_ENTRY, NULL, &entry_type,
+									 PACKAGE_PARSE_ENTRY, NULL,
+									 NULL/* ReqID:SRS-PLSQL-TYPE */, &entry_type,
 									 NULL, NULL, 0, NULL, false, false,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
@@ -311,6 +320,7 @@ parse_package_func(ParseState *pstate, PackageCacheKey *pkey,
 										varname_startloc,
 										flags,
 										NULL,
+										NULL,  /* ReqID:SRS-PLSQL-TYPE */
 										NULL,
 										fargs, /* return value */
 										fargnames,

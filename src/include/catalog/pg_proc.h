@@ -91,6 +91,11 @@ CATALOG(pg_proc,1255,ProcedureRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(81,Proce
 	bool		prointisnumber BKI_DEFAULT(f);
 	/* End - BUG:M0000068 */
 
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/* procedure status: N/A, VALID, INVALID, see PROSTATUS_ categories below */
+	char		prostatus	BKI_DEFAULT(v);
+	/* End - ReqID:SRS-PLSQL-TYPE */
+
 	/*
 	 * variable-length fields start here, but we allow direct access to
 	 * proargtypes
@@ -199,6 +204,23 @@ DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btre
 #define PROARGMODE_INOUT	'b'
 #define PROARGMODE_VARIADIC 'v'
 #define PROARGMODE_TABLE	't'
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * Symbolic values for prostatus column.
+ */
+#define PROSTATUS_NA		'n'	/* procedure status is INVALID,
+								 must call ALTER FUNCTION COMPILE statement to
+								 validate te procedure, otherwise failed to
+								 call the procedure
+								 */
+#define PROSTATUS_VALID		'v'	/* procedure can be called */
+#define PROSTATUS_INVALID	'i'	/* procedure status is INVALID,
+								 must call ALTER FUNCTION COMPILE statement to
+								 validate te procedure, otherwise failed to
+								 call the procedure
+								 */
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 #endif							/* EXPOSE_TO_CLIENT_CODE */
 

@@ -2907,6 +2907,9 @@ _copyTypeName(const TypeName *from)
 	COPY_SCALAR_FIELD(typeOid);
 	COPY_SCALAR_FIELD(setof);
 	COPY_SCALAR_FIELD(pct_type);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	COPY_SCALAR_FIELD(row_type);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	COPY_NODE_FIELD(typmods);
 	COPY_SCALAR_FIELD(typemod);
 	COPY_NODE_FIELD(arrayBounds);
@@ -3334,6 +3337,9 @@ _copySelectStmt(const SelectStmt *from)
 	COPY_NODE_FIELD(havingClause);
 	COPY_NODE_FIELD(windowClause);
 	COPY_NODE_FIELD(valuesLists);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	COPY_SCALAR_FIELD(valuesIsrow);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	COPY_NODE_FIELD(sortClause);
 	COPY_NODE_FIELD(limitOffset);
 	COPY_NODE_FIELD(limitCount);

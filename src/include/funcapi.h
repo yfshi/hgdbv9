@@ -183,6 +183,9 @@ typedef struct
 							int name_start,
 							package_parse_flags flag,
 							Oid *basetypeid, /* return value */
+							/* Begin - ReqID:SRS-PLSQL-TYPE */
+							int32 *basetypmod,
+							/* End - ReqID:SRS-PLSQL-TYPE */
 							int *entry_type, /* return value */
 							List **fargs, /* return value */
 							List *fargnames,
@@ -214,6 +217,9 @@ typedef struct
 								int32 *typmod,
 								Oid *collationoid);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	void (*function_free) (Oid funcOid);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	bool isload;
 } PLiSQL_funcs_call;
 
@@ -304,6 +310,10 @@ extern bool subproc_should_change_return_type(FuncExpr *fexpr,
 								Oid *collationoid);
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern char get_func_prostatus(HeapTuple procTup);
+extern void change_func_prostatus(Oid funcOid, char prostatus);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 
 /*----------

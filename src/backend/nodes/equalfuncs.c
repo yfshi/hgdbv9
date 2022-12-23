@@ -1091,6 +1091,9 @@ _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 	COMPARE_NODE_FIELD(havingClause);
 	COMPARE_NODE_FIELD(windowClause);
 	COMPARE_NODE_FIELD(valuesLists);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	COMPARE_SCALAR_FIELD(valuesIsrow);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	COMPARE_NODE_FIELD(sortClause);
 	COMPARE_NODE_FIELD(limitOffset);
 	COMPARE_NODE_FIELD(limitCount);
@@ -2610,6 +2613,9 @@ _equalTypeName(const TypeName *a, const TypeName *b)
 	COMPARE_SCALAR_FIELD(typeOid);
 	COMPARE_SCALAR_FIELD(setof);
 	COMPARE_SCALAR_FIELD(pct_type);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	COMPARE_SCALAR_FIELD(row_type);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	COMPARE_NODE_FIELD(typmods);
 	COMPARE_SCALAR_FIELD(typemod);
 	COMPARE_NODE_FIELD(arrayBounds);

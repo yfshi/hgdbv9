@@ -102,5 +102,9 @@ extern void RangeVarCallbackOwnsRelation(const RangeVar *relation,
 										 Oid relId, Oid oldRelId, void *arg);
 extern bool PartConstraintImpliedByRelConstraint(Relation scanrel,
 												 List *partConstraint);
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern void check_function_depend_on_relation(Oid relid);
+extern void check_function_depend_on_relation_column(Oid relid, AttrNumber attnum);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 #endif							/* TABLECMDS_H */

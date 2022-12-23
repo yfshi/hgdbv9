@@ -815,6 +815,15 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 													 $3, true);
 						var->isconst = $2;
 						var->notnull = $5;
+						/* Begin - ReqID:SRS-PLSQL-TYPE */
+						/*
+						 * IF decl_datatype is variable%TYPE,
+						 * and the variable has a NOT NULL constraint,
+						 * var inherits the NOT NULL constraint(unless the decl_datatype is a table.column%TYPE).
+						 */
+						if (!var->notnull && $3->notnull == true)
+							var->notnull = $3->notnull;
+						/* End - ReqID:SRS-PLSQL-TYPE */
 						var->default_val = $6;
 
 						/*

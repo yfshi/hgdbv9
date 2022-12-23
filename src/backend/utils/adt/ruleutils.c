@@ -86,6 +86,9 @@
 /* Begin - BUG#Z212 */
 #include "commands/proclang.h"
 /* End - BUG#Z212 */
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#include "parser/parse_package.h"
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /* ----------
  * Pretty formatting constants
@@ -518,6 +521,16 @@ Datum pg_get_functiondef_internal(PG_FUNCTION_ARGS); /* BUG:Z139 */
 
 #define only_marker(rte)  ((rte)->inh ? "" : "ONLY ")
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#define NUM_RETURN_COLUMNS		9
+static void pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate **tupstore,
+								TupleDesc tupdesc,
+								char *typename,
+								int position,
+								Oid funcOid,
+								Datum values[9],
+								bool nulls[9]);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /* ----------
  * pg_get_ruledef		- Do it all and return a text
@@ -12732,3 +12745,324 @@ get_range_partbound_string(List *bound_datums)
 
 	return buf->data;
 }
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * pg_get_function_arg_reference_typerowtype
+ * Get type informations of a function arguments or returned value
+ * which reference %TYPE or %ROWTYPE value.
+ */
+Datum
+pg_get_function_arg_reference_typerowtype(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+	Relation proc_rel;
+	SysScanDesc proc_sd;
+	HeapTuple proc_tuple;
+
+	/* check to see if caller supports us returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not allowed in this context")));
+
+	/* need to build tuplestore in query context */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	/*
+	 * build tupdesc for result tuples.
+	 */
+	tupdesc = CreateTemplateTupleDesc(NUM_RETURN_COLUMNS);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "oid",
+					   OIDOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",
+					   INT4OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "type_name",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 4, "type_subname",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "type_object_type",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 6, "data_length",
+					   INT4OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 7, "data_precision",
+					   INT4OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 8, "data_scale",
+					   INT4OID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 9, "pls_type",
+					   TEXTOID, -1, 0);
+
+	/*
+	 * We put all the tuples into a tuplestore in one scan of the hashtable.
+	 * This avoids any issue of the hashtable possibly changing between calls.
+	 */
+	tupstore =
+		tuplestore_begin_heap(rsinfo->allowedModes & SFRM_Materialize_Random,
+							  false, work_mem);
+
+	/* generate junk in short-term context */
+	MemoryContextSwitchTo(oldcontext);
+
+	proc_rel = table_open(ProcedureRelationId, AccessShareLock);
+
+	proc_sd = systable_beginscan(proc_rel, InvalidOid, false,
+							NULL, 0, NULL);
+
+	while ((proc_tuple = systable_getnext(proc_sd)) != NULL)
+	{
+		Form_pg_proc form_proc = (Form_pg_proc) GETSTRUCT(proc_tuple);
+		int		numargs = form_proc->pronargs;
+		char	**p_argtypeNames = NULL;
+		char 	*rettypename = NULL;
+		int		nth_arg;
+		Datum	values[NUM_RETURN_COLUMNS];
+		bool	nulls[NUM_RETURN_COLUMNS];
+
+		get_func_typename_info(proc_tuple, &p_argtypeNames, &rettypename);
+
+		if (p_argtypeNames == NULL && rettypename == NULL)
+			continue;
+
+		MemSet(nulls, 0, sizeof(nulls));
+
+		if (rettypename != NULL)
+			pg_get_function_arg_reference_typerowtype_internal(&tupstore, tupdesc,
+												rettypename, 0, 
+												form_proc->oid, values, nulls);
+
+		if (p_argtypeNames!= NULL)
+		{
+			for (nth_arg = 0; nth_arg < numargs; nth_arg++)
+			{
+				MemSet(nulls, 0, sizeof(nulls));
+				if (strcmp(p_argtypeNames[nth_arg], "") != 0)
+					pg_get_function_arg_reference_typerowtype_internal(&tupstore, tupdesc,
+														p_argtypeNames[nth_arg], nth_arg + 1, 
+														form_proc->oid, values, nulls);
+			}
+			pfree(p_argtypeNames);
+		}
+	}
+
+	systable_endscan(proc_sd);
+
+	/* clean up and return the tuplestore */
+	tuplestore_donestoring(tupstore);
+	table_close(proc_rel, NoLock);
+
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	return (Datum) 0;
+}
+
+static void
+pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate **tupstore,
+								TupleDesc tupdesc,
+								char *typename,
+								int position,
+								Oid funcOid,
+								Datum values[NUM_RETURN_COLUMNS],
+								bool nulls[NUM_RETURN_COLUMNS])
+{
+	TypeName 	*typeName;
+	char		*schema_name = NULL;
+	char		*relname = NULL;
+	char		relkind;
+	char		*type_name = NULL;
+	char		*type_subname = NULL;
+	char		*type_object_name = NULL;
+	Oid 		relid = InvalidOid;
+	int 		data_length;
+	int 		data_precision;
+	int 		data_scale;
+	bool		is_rowtype = false;
+	bool		is_valid_type = false;
+	Oid 		fieldTypeId;
+	int32		fieldTypMod;
+	Oid 		fieldCollation;
+
+	typeName = stringToNode(typename);
+	if (!typeName->pct_type && !typeName->row_type)
+	{
+		pfree(typeName);
+		return;
+	}
+
+	if (typeName->row_type)
+	{
+		RangeVar   *rel;
+
+		DeconstructQualifiedName(typeName->names, &schema_name, &relname);
+		rel = makeRangeVar(schema_name, relname, typeName->location);
+		relid = RangeVarGetRelid(rel, NoLock, false);
+		is_rowtype = true;
+	}
+	else if (typeName->pct_type)
+	{
+		PkgType 	*pkgtype;
+
+		pkgtype = LookupPkgTypeByTypename(typeName->names, false);
+		if (pkgtype != NULL)
+		{
+			if (type_is_rowtype(pkgtype->basetypid))
+			{
+				relid = typeidTypeRelid(pkgtype->basetypid);
+				relname = get_rel_name(relid);
+				is_rowtype = true;
+			}
+			else
+			{
+				fieldTypeId = pkgtype->basetypid;
+				fieldTypMod = pkgtype->basetypmod;
+				is_valid_type = true;
+			}
+			pfree(pkgtype);
+		}
+		else
+		{
+			/* Handle %TYPE reference to type of an existing field */
+			RangeVar   *rel = makeRangeVar(NULL, NULL, typeName->location);
+			char	   *field = NULL;
+			Oid 		relid;
+			AttrNumber	attnum;
+
+			/* deconstruct the name list */
+			switch (list_length(typeName->names))
+			{
+				case 1:
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("improper %%TYPE reference (too few dotted names): %s",
+									NameListToString(typeName->names)),
+							 parser_errposition(NULL, typeName->location)));
+					break;
+				case 2:
+					rel->relname = strVal(linitial(typeName->names));
+					field = strVal(lsecond(typeName->names));
+					break;
+				case 3:
+					rel->schemaname = strVal(linitial(typeName->names));
+					rel->relname = strVal(lsecond(typeName->names));
+					field = strVal(lthird(typeName->names));
+					break;
+				case 4:
+					rel->catalogname = strVal(linitial(typeName->names));
+					rel->schemaname = strVal(lsecond(typeName->names));
+					rel->relname = strVal(lthird(typeName->names));
+					field = strVal(lfourth(typeName->names));
+					break;
+				default:
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("improper %%TYPE reference (too many dotted names): %s",
+									NameListToString(typeName->names)),
+							 parser_errposition(NULL, typeName->location)));
+					break;
+			}
+
+			relid = RangeVarGetRelid(rel, NoLock, true);
+			attnum = get_attnum(relid, field);
+			if (attnum != InvalidAttrNumber)
+			{
+				get_atttypetypmodcoll(relid, attnum,
+									  &fieldTypeId, &fieldTypMod, &fieldCollation);
+
+				/* this construct should never have an array indicator */
+				Assert(typeName->arrayBounds == NIL);
+				is_valid_type = true;
+			}
+		}
+	}
+
+	if (is_rowtype)
+	{
+		type_name = relname;
+		relkind = get_rel_relkind(relid);
+		if (relkind == RELKIND_RELATION)
+			type_object_name = "table";
+		else if (relkind == RELKIND_VIEW || relkind == RELKIND_MATVIEW)
+			type_object_name = "view";
+
+		values[0] = ObjectIdGetDatum(funcOid);
+		values[1] = Int32GetDatum(position);
+		values[2] = CStringGetTextDatum(pstrdup(type_name));
+		if (type_subname != NULL)
+			values[3] = CStringGetTextDatum(pstrdup(type_subname));
+		else
+			nulls[3] = true;
+		if (type_object_name != NULL)
+		{
+			values[4] = CStringGetTextDatum(pstrdup(type_object_name));
+			values[8] = CStringGetTextDatum("rowtype");
+		}
+		else
+		{
+			nulls[4] = true;
+			values[8] = CStringGetTextDatum("_NULL_");
+		}
+		nulls[5] = true;
+		nulls[6] = true;
+		nulls[7] = true;
+	}
+	else if (is_valid_type)
+	{
+		values[0] = ObjectIdGetDatum(funcOid);
+		values[1] = Int32GetDatum(position);
+		values[2] = CStringGetTextDatum("_NULL_");
+		values[3] = CStringGetTextDatum("_NULL_");
+		values[4] = CStringGetTextDatum("_NULL_");
+
+		if (fieldTypeId == ORACHARCHAROID ||
+			fieldTypeId == ORACHARBYTEOID  ||
+			fieldTypeId == ORAVARCHARCHAROID  ||
+			fieldTypeId == ORAVARCHARBYTEOID ||
+			fieldTypeId == BPCHAROID ||
+			fieldTypeId == VARCHAROID)
+		{
+			data_length = fieldTypMod - VARHDRSZ;
+			values[5] = Int32GetDatum(data_length);
+			nulls[6] = true;
+			nulls[7] = true;
+			values[8] = CStringGetTextDatum(DatumGetCString(DirectFunctionCall1(regtypeout, fieldTypeId)));
+		}
+		else if (fieldTypeId == NUMERICOID ||
+				fieldTypeId == NUMBEROID)
+		{
+			/* precision (ie, max # of digits) is in upper bits of typmod */
+			data_precision = Int32GetDatum(((fieldTypMod - VARHDRSZ) >> 16) & 0xffff);
+			data_scale = Int32GetDatum((fieldTypMod - VARHDRSZ) & 0xffff);
+			nulls[5] = true;
+			values[6] = data_precision;
+			values[7] = data_scale;
+			values[8] = CStringGetTextDatum("number");
+		}
+		else
+		{
+			nulls[5] = true;
+			nulls[6] = true;
+			nulls[7] = true;
+			if (fieldTypeId == INT2OID ||
+				fieldTypeId == INT4OID ||
+				fieldTypeId == INT8OID)
+				values[8] = CStringGetTextDatum("number");
+			else
+				values[8] = CStringGetTextDatum(DatumGetCString(DirectFunctionCall1(regtypeout, fieldTypeId)));
+		}
+	}
+
+	tuplestore_putvalues(*tupstore, tupdesc, values, nulls);
+
+	pfree(typeName);
+}
+/* End - ReqID:SRS-PLSQL-TYPE */

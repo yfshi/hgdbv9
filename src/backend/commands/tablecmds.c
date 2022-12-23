@@ -100,6 +100,15 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "utils/packagecache.h"
+#include "funcapi.h"
+#include "catalog/pg_proc.h"
+#include "catalog/pg_package_body.h"
+#include "lib/qunique.h"
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /*
  * ON COMMIT action list
@@ -609,6 +618,9 @@ static void refuseDupeIndexAttach(Relation parentIdx, Relation partIdx,
 static List *GetParentedForeignKeyRefs(Relation partition);
 static void ATDetachCheckNoForeignKeyRefs(Relation partition);
 static char GetAttributeCompression(Oid atttypid, char *compression);
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+static void check_function_dependency_internal(Relation	depRel, SysScanDesc scan);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 
 /* ----------------------------------------------------------------
@@ -3536,6 +3548,15 @@ renameatt_internal(Oid myrelid,
 
 	relation_close(targetrelation, NoLock); /* close rel but keep lock */
 
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/*
+	 * Check if any functions(procedures, ora packages) depend on the relation and attnum.
+	 * If so, invalidate functions(procedures, ora packages), but not delete the dependency.
+	 * Otherwise, do nothing.
+	 */
+	check_function_depend_on_relation_column(myrelid, attnum);
+	/* End - ReqID:SRS-PLSQL-TYPE */
+
 	return attnum;
 }
 
@@ -3814,6 +3835,15 @@ RenameRelation(RenameStmt *stmt)
 	RenameRelationInternal(relid, stmt->newname, false, is_index_stmt);
 
 	ObjectAddressSet(address, RelationRelationId, relid);
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/*
+	 * Check if any functions(procedures, ora packages) depend on the relation.
+	 * If so, invalidate functions(procedures, ora packages),
+	 * otherwise, do nothing.
+	 */
+	check_function_depend_on_relation(relid);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	return address;
 }
@@ -11997,6 +12027,11 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	SysScanDesc scan;
 	HeapTuple	depTup;
 	ObjectAddress address;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	ObjectFunOrPkg		*dependentFuncPkgOids;
+	int			numDependentFuncPkgOids;
+	int			maxDependentFuncPkgOids;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * Clear all the missing values if we're rewriting the table, since this
@@ -12080,6 +12115,13 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	}
 	else
 		defaultexpr = NULL;
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
+	dependentFuncPkgOids = (ObjectFunOrPkg *)
+		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+	numDependentFuncPkgOids = 0;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * Find everything that depends on the column (constraints, indexes, etc),
@@ -12236,6 +12278,35 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				break;
 
 			case OCLASS_PROC:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add function Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
+					numDependentFuncPkgOids++;
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-TYPE */
+				{
+					/*
+					 * We don't expect any of these sorts of objects to depend on
+					 * a column.
+					 */
+					elog(ERROR, "unexpected object depending on column: %s",
+						 getObjectDescription(&foundObject, false));
+				}
+				break;
 			case OCLASS_TYPE:
 			case OCLASS_CAST:
 			case OCLASS_COLLATION:
@@ -12266,10 +12337,6 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_PUBLICATION_REL:
 			case OCLASS_SUBSCRIPTION:
 			case OCLASS_TRANSFORM:
-			/* Begin - ReqID:SRS-SQL-PACKAGE */
-			case OCLASS_PACKAGE:
-			case OCLASS_PACKAGE_BODY:
-			/* End - ReqID:SRS-SQL-PACKAGE */
 
 				/*
 				 * We don't expect any of these sorts of objects to depend on
@@ -12278,11 +12345,76 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				elog(ERROR, "unexpected object depending on column: %s",
 					 getObjectDescription(&foundObject, false));
 				break;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case OCLASS_PACKAGE_BODY:
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add package body Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
+					numDependentFuncPkgOids++;
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-TYPE */
+				{
+					/*
+					 * We don't expect any of these sorts of objects to depend on
+					 * a column.
+					 */
+					elog(ERROR, "unexpected object depending on column: %s",
+						 getObjectDescription(&foundObject, false));
+				}
+				break;
+
+			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case OCLASS_PACKAGE:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add package Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
+					numDependentFuncPkgOids++;
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-TYPE */
+				{
+					/*
+					 * We don't expect any of these sorts of objects to depend on
+					 * a column.
+					 */
+					elog(ERROR, "unexpected object depending on column: %s",
+						 getObjectDescription(&foundObject, false));
+				}
+				break;
 
 				/*
 				 * There's intentionally no default: case here; we want the
 				 * compiler to warn if a new OCLASS hasn't been handled above.
 				 */
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 	}
 
@@ -12340,6 +12472,92 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	systable_endscan(scan);
 
 	table_close(depRel, RowExclusiveLock);
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/* sort them, just in case OID counter wrapped from high to low */
+	if (numDependentFuncPkgOids > 1)
+	{
+		/* Sort and de-dup OID arrays, so we can use binary search. */
+		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
+				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
+										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+	}
+
+	/*
+	 * Now recurse to the dependent funciton which parameters datatype
+	 * or return datatype reference %TYPE or %ROWTYPE.
+	 */
+	for (int i = 0; i < numDependentFuncPkgOids; i++)
+	{
+		Oid objectId = dependentFuncPkgOids[i].objectId;
+
+		switch (dependentFuncPkgOids[i].flags)
+		{
+			case OCLASS_PROC:
+				{
+					/* invalidate function */
+					plisql_internel_funcs_init();
+					plisql_internal_funcs.function_free(objectId);
+
+					/* change the pg_proc prostatus to PROSTATUS_NA */
+					change_func_prostatus(objectId, PROSTATUS_NA);
+				}
+				break;
+			case OCLASS_PACKAGE:
+				{
+					/* invalidate package */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+
+					/* get package cache */
+					pkey = objectId;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+				}
+				break;
+			case OCLASS_PACKAGE_BODY:
+				{
+					/* invalidate package body */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+					HeapTuple pkgbodyTup;
+					Form_pg_package_body pkgbodyStruct;
+
+					/*
+					 * Lookup the pg_package_body tuple by Oid
+					 */
+					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
+					if (!HeapTupleIsValid(pkgbodyTup))
+						elog(ERROR, "cache lookup failed for package body %u", objectId);
+
+					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
+					pkey = pkgbodyStruct->pkgoid;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
+					ReleaseSysCache(pkgbodyTup);
+				}
+					break;
+
+			default:
+				break;
+		}
+	}
+
+	pfree(dependentFuncPkgOids);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * Here we go --- change the recorded column type and collation.  (Note
@@ -18784,3 +19002,283 @@ GetAttributeCompression(Oid atttypid, char *compression)
 
 	return cmethod;
 }
+
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * check_function_depend_on_relation
+ * Check if any functions(procedures, or packages) depend on the relation.
+ * If so, invalidate functions(procedures, ora packages).
+ */
+void
+check_function_depend_on_relation(Oid relid)
+{
+	Relation	depRel;
+	ScanKeyData key[2];
+	SysScanDesc scan;
+
+	if (ORA_PARSER != compatible_db)
+		return;
+
+	/*
+	 * Find the functions(procedures, ora packages) that depends on the relation,
+	 */
+	depRel = table_open(DependRelationId, RowExclusiveLock);
+
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_refclassid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+
+	scan = systable_beginscan(depRel, DependReferenceIndexId, true,
+							  NULL, 2, key);
+
+	check_function_dependency_internal(depRel, scan);
+
+	systable_endscan(scan);
+
+	table_close(depRel, RowExclusiveLock);
+}
+
+/*
+ * check_function_depend_on_relation_column
+ * Check if any functions(procedures, ora packages) depend on the relation and attnum.
+ * If so, invalidate functions(procedures, ora packages).
+ * If isdrop is TRUE, delete the dependency.
+ */
+void
+check_function_depend_on_relation_column(Oid relid, AttrNumber attnum)
+{
+	Relation	depRel;
+	ScanKeyData key[3];
+	SysScanDesc scan;
+
+
+	if (ORA_PARSER != compatible_db)
+		return;
+
+	/*
+	 * Find the functions(procedures, ora packages) that depends on the relation,
+	 */
+	depRel = table_open(DependRelationId, RowExclusiveLock);
+
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_refclassid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+	ScanKeyInit(&key[2],
+				Anum_pg_depend_refobjsubid,
+				BTEqualStrategyNumber, F_INT4EQ,
+				Int32GetDatum((int32) attnum));
+
+	scan = systable_beginscan(depRel, DependReferenceIndexId, true,
+							  NULL, 3, key);
+
+	check_function_dependency_internal(depRel, scan);
+
+	systable_endscan(scan);
+
+	table_close(depRel, RowExclusiveLock);
+}
+
+/*
+ * check_function_dependency_internal
+ * Common code to find the functions(procedures, ora packages)
+ * that depends on the relation or attnum.
+ */
+static void
+check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
+{
+	HeapTuple	depTup;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	ObjectFunOrPkg		*dependentFuncPkgOids;
+	int			numDependentFuncPkgOids;
+	int			maxDependentFuncPkgOids;
+
+	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
+	dependentFuncPkgOids = (ObjectFunOrPkg *)
+		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+	numDependentFuncPkgOids = 0;
+	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	while (HeapTupleIsValid(depTup = systable_getnext(scan)))
+	{
+		Form_pg_depend foundDep = (Form_pg_depend) GETSTRUCT(depTup);
+		ObjectAddress foundObject;
+
+		foundObject.classId = foundDep->classid;
+		foundObject.objectId = foundDep->objid;
+		foundObject.objectSubId = foundDep->objsubid;
+
+		if (foundObject.classId == 0)
+			continue;
+
+		switch (getObjectClass(&foundObject))
+		{
+			case OCLASS_PROC:
+
+				if (foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add function Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
+					numDependentFuncPkgOids++;
+
+					/* Delete the depend tuples */
+					CatalogTupleDelete(depRel, &depTup->t_self);
+				}
+				break;
+
+			case OCLASS_PACKAGE_BODY:
+
+				if (foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add package body Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
+					numDependentFuncPkgOids++;
+
+					/* Delete the depend tuples */
+					CatalogTupleDelete(depRel, &depTup->t_self);
+				}
+				break;
+			case OCLASS_PACKAGE:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add package Oid to the pending-oids list */
+					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
+					{
+						/* enlarge array if needed */
+						maxDependentFuncPkgOids *= 2;
+						dependentFuncPkgOids = (ObjectFunOrPkg *)
+							repalloc(dependentFuncPkgOids,
+									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
+					}
+
+					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
+					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
+					numDependentFuncPkgOids++;
+
+					/* Delete the depend tuples */
+					CatalogTupleDelete(depRel, &depTup->t_self);
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	/* sort them, just in case OID counter wrapped from high to low */
+	if (numDependentFuncPkgOids > 1)
+	{
+		/* Sort and de-dup OID arrays, so we can use binary search. */
+		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
+				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
+										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+	}
+
+	/*
+	 * Now recurse to the dependent funciton which parameters datatype
+	 * or return datatype reference %TYPE or %ROWTYPE.
+	 */
+	for (int i = 0; i < numDependentFuncPkgOids; i++)
+	{
+		Oid objectId = dependentFuncPkgOids[i].objectId;
+
+		switch (dependentFuncPkgOids[i].flags)
+		{
+			case OCLASS_PROC:
+				{
+					/* invalidate function */
+					plisql_internel_funcs_init();
+					plisql_internal_funcs.function_free(objectId);
+
+					/* change the pg_proc prostatus to PROSTATUS_NA */
+					change_func_prostatus(objectId, PROSTATUS_NA);
+				}
+				break;
+			case OCLASS_PACKAGE:
+				{
+					/* invalidate package */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+
+					/* get package cache */
+					pkey = objectId;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+				}
+				break;
+			case OCLASS_PACKAGE_BODY:
+				{
+					/* invalidate package body */
+					PackageCacheKey pkey;
+					PackageCacheItem *item;
+					HeapTuple pkgbodyTup;
+					Form_pg_package_body pkgbodyStruct;
+
+					/*
+					 * Lookup the pg_package_body tuple by Oid
+					 */
+					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
+					if (!HeapTupleIsValid(pkgbodyTup))
+						elog(ERROR, "cache lookup failed for package body %u", objectId);
+
+					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
+					pkey = pkgbodyStruct->pkgoid;
+
+					if (PackageCacheIsValid(&pkey, false))
+						item = PackageCacheLookup(&pkey);
+					else
+						item = PackageHandle(pkey, false);
+
+					if (item != NULL)
+						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
+					ReleaseSysCache(pkgbodyTup);
+				}
+					break;
+
+			default:
+				break;
+		}
+	}
+
+	pfree(dependentFuncPkgOids);
+	/* End - ReqID:SRS-PLSQL-TYPE */
+}
+/* End - ReqID:SRS-PLSQL-TYPE */

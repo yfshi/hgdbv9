@@ -37,7 +37,10 @@ typedef enum DependencyType
 	DEPENDENCY_PARTITION_SEC = 'S',
 	DEPENDENCY_EXTENSION = 'e',
 	DEPENDENCY_AUTO_EXTENSION = 'x',
-	DEPENDENCY_PIN = 'p'
+	DEPENDENCY_PIN = 'p',
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	DEPENDENCY_TYPE = 't'
+	/* End - ReqID:SRS-PLSQL-TYPE */
 } DependencyType;
 
 /*
@@ -151,6 +154,19 @@ typedef enum ObjectClass
 													 * concurrent lock mode */
 
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+/*
+ * Used to storage the functions or packages found in pg_depend.
+ * If funtions(package subprocedures) arguments or return datatype referenced %TYPE and %ROWTYPE,
+ * we record the dependencies between function(or package) and the relation.
+ */
+typedef struct
+{
+	Oid				objectId;		/* function, package and package body to be invalid --- MUST BE FIRST */
+	ObjectClass		flags;			/* flags used to distinguish function, package and package body */
+} ObjectFunOrPkg;
+/* End - ReqID:SRS-PLSQL-TYPE */
+
 /* in dependency.c */
 
 extern void AcquireDeletionLock(const ObjectAddress *object, int flags);
@@ -190,6 +206,9 @@ extern void record_object_address_dependencies(const ObjectAddress *depender,
 extern void sort_object_addresses(ObjectAddresses *addrs);
 
 extern void free_object_addresses(ObjectAddresses *addrs);
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern int object_funpkgoid_comparator(const void *a, const void *b);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /* in pg_depend.c */
 
