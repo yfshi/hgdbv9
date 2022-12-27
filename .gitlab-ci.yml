@@ -1,0 +1,12 @@
+stages:
+  - build
+build-job:
+  stage: build
+  script:
+    - ./configure prefix=/home/gitlab-runner/builds/XXrVpSyu/0/wangzhibin/build CFLAGS="-O0 -g" --enable-debug  --enable-cassert --enable-tap-tests --with-libxml
+    - make && make install
+    - make all-check-world 
+  only:
+    - main
+    - /^iteration\/*$/
+    - merge_requests
