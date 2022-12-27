@@ -132,8 +132,22 @@ do
 	export PGPORT
 done
 
+ORAPORT=`expr $PGPORT + 1`
+i=0
+while psql -X postgres </dev/null 2>/dev/null
+do
+	i=`expr $i + 1`
+	if [ $i -eq 16 ]
+	then
+		echo port $ORAPORT apparently in use
+		exit 1
+	fi
+	ORAPORT=`expr $ORAPORT + 1`
+	export ORAPORT
+done
+
 # buildfarm may try to override port via EXTRA_REGRESS_OPTS ...
-EXTRA_REGRESS_OPTS="$EXTRA_REGRESS_OPTS --port=$PGPORT"
+EXTRA_REGRESS_OPTS="$EXTRA_REGRESS_OPTS --port=$ORAPORT"
 export EXTRA_REGRESS_OPTS
 
 # enable echo so the user can see what is being executed
@@ -143,7 +157,7 @@ PGDATA=$BASE_PGDATA
 export PGDATA
 
 standard_initdb
-pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS" -w
+pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
 
 #test regression
 if [ ! -d results ] ; then
@@ -151,7 +165,7 @@ if [ ! -d results ] ; then
 fi
 cat regression.txt|while read line
 do
- ./$line >results/$line.out
+ ./$line $ORAPORT >results/$line.out
 done
 pg_ctl -m fast stop
 

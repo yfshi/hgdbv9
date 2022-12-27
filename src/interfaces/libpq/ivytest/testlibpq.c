@@ -169,14 +169,17 @@ init_statement()
 }
 
 int
-main()
+main(int argc, char **argv)
 {
 	int i;
 	/* Step1: making connection */
 	Ivyconn    *conn1;
 	Ivyconn    *conn3;
 
-	const char *conninfo="user=system dbname=postgres port=1521";
+	char conninfo[100]="user=system dbname=postgres port=";
+	const char *oraport = argv[1];
+
+	strcat(conninfo, oraport);
 
 	/* make a connection to the database */
 	conn1 = Ivyconnectdb(conninfo);
