@@ -128,7 +128,7 @@ WHERE OBJECT_NAME = 'FUNC_WITH_DEFAULT';
                | OUT    | 0        | N
  ARG1          | IN     | 1        | Y
  ARG2          | OUT    | 2        | N
- ARG3          | IN/OUT | 3        | Y
+ ARG3          | IN/OUT | 3        | N
  ARG4          | IN     | 4        | Y
 (5 rows)
 
