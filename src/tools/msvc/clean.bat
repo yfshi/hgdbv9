@@ -152,6 +152,10 @@ REM END - SQL PARSER
 
 if %DIST%==1 if exist src\fe_utils\psqlscan.c del /q src\fe_utils\psqlscan.c
 if %DIST%==1 if exist src\bin\psql\psqlscanslash.c del /q src\bin\psql\psqlscanslash.c
+REM Begin - ReqID:SRS-CMD-PSQL
+if %DIST%==1 if exist src\bin\psql\psqlplusscan.c del /q src\bin\psql\psqlplusscan.c
+if %DIST%==1 if exist src\bin\psql\psqlplusparse.c del /q src\bin\psql\psqlplusparse.c
+REM End - ReqID:SRS-CMD-PSQL
 if %DIST%==1 if exist src\bin\pgbench\exprscan.c del /q src\bin\pgbench\exprscan.c
 if %DIST%==1 if exist src\bin\pgbench\exprparse.c del /q src\bin\pgbench\exprparse.c
 
