@@ -171,23 +171,8 @@ begin
   return 2;
 end;
 /
-declare
-  id integer;
-  name1 varchar(256);
-  name2 varchar(256);
-  ret integer;
-begin
-  id := 24;
-  ret = 0;
-  name1 := 'this is not change';
-  name2 := 'this is should change';
-  ret = test_inchange(id,name1,name2);
-end;
-/
 ERROR:  expression "id" cannot be used as an assignment target
-CONTEXT:  PL/iSQL function test_inchange(integer,varchar2,varchar2) line 2 at assignment
-PL/iSQL function inline_code_block line 11 at assignment
-drop function test_inchange(integer,varchar,varchar);
+CONTEXT:  compilation of PL/iSQL function "test_inchange" near line 1
 --if IN OUT paramater has default value, should reports an error
 create or replace function test_return_inout(id integer,salary in out integer default 100,name out varchar) return varchar 
 as

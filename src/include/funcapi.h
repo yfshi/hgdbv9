@@ -204,6 +204,15 @@ typedef struct
 	Oid (*get_top_function_id) (void *function, bool *is_package);
 	void (*get_subprocs_from_package) (Oid pkgoid, TupleDesc tupdesc,
 									Tuplestorestate *tupstore);
+	int (*get_subproc_arg_info) (FuncExpr *fexpr,
+								Oid **p_argtypes,
+								char ***p_argnames,
+								char **p_argmodes);
+	char (*get_subproc_prokind) (FuncExpr *fexpr);
+	bool (*subproc_should_change_return_type) (FuncExpr *fexpr,
+								Oid *rettype,
+								int32 *typmod,
+								Oid *collationoid);
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	bool isload;
 } PLiSQL_funcs_call;
@@ -284,6 +293,15 @@ extern bool	func_should_change_return_type(Oid functionId, Oid *rettype,
 extern void get_func_typename_info(HeapTuple procTup,
 					char ***p_argtypeNames,
 					char **rettypeName);
+extern char get_subproc_kind(FuncExpr *fexpr);
+extern int get_subproc_arg_info(FuncExpr *fexpr,
+					Oid **p_argtypes,
+					char ***p_argnames,
+					char **p_argmodes);
+extern bool subproc_should_change_return_type(FuncExpr *fexpr,
+								Oid *rettype,
+								int32 *typmod,
+								Oid *collationoid);
 /* End - ReqID:SRS-SQL-PACKAGE */
 
 

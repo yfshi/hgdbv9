@@ -859,13 +859,13 @@ begin
 end;
 /
 -- nested subproc of plisql
-create or replace function test_subproc_func(a in integer) returns integer as
+create or replace function test_subproc_func(a IN out integer) returns integer as
 $$
 declare
   mds integer;
   original integer;
-  function square(original in integer) return integer;
-  function square(original in integer) return integer
+  function square(original in out integer) return integer;
+  function square(original in out integer) return integer
   AS
   declare
        original_squared integer;
@@ -910,33 +910,33 @@ SELECT pg_get_functiondef('bug139_proc'::regproc) from dual;
 (1 row)
 
 SELECT pg_get_functiondef('test_subproc_func'::regproc) from dual;
-                       pg_get_functiondef                       
-----------------------------------------------------------------
- CREATE OR REPLACE FUNCTION public.test_subproc_func(a integer)+
-  RETURN integer                                               +
-  AUTHID DEFINER                                               +
- IS                                                            +
-                                                               +
- declare                                                       +
-   mds integer;                                                +
-   original integer;                                           +
-   function square(original in integer) return integer;        +
-   function square(original in integer) return integer         +
-   AS                                                          +
-   declare                                                     +
-        original_squared integer;                              +
-   begin                                                       +
-        original_squared := original * original;               +
-        original := original_squared + 1;                      +
-        return original_squared;                               +
-    end;                                                       +
- begin                                                         +
-     mds := 10;                                                +
-     original := square(mds);                                  +
-     raise info '%',original;                                  +
-     a := original + 1;                                        +
-     return mds;                                               +
- end;                                                          +
+                          pg_get_functiondef                          
+----------------------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.test_subproc_func(INOUT a integer)+
+  RETURN integer                                                     +
+  AUTHID DEFINER                                                     +
+ IS                                                                  +
+                                                                     +
+ declare                                                             +
+   mds integer;                                                      +
+   original integer;                                                 +
+   function square(original in out integer) return integer;          +
+   function square(original in out integer) return integer           +
+   AS                                                                +
+   declare                                                           +
+        original_squared integer;                                    +
+   begin                                                             +
+        original_squared := original * original;                     +
+        original := original_squared + 1;                            +
+        return original_squared;                                     +
+    end;                                                             +
+ begin                                                               +
+     mds := 10;                                                      +
+     original := square(mds);                                        +
+     raise info '%',original;                                        +
+     a := original + 1;                                              +
+     return mds;                                                     +
+ end;                                                                +
  
 (1 row)
 
@@ -968,33 +968,33 @@ SELECT ivy_get_plisql_functiondef('bug139_proc'::regproc) from dual;
 (1 row)
 
 SELECT ivy_get_plisql_functiondef('test_subproc_func'::regproc) from dual;
-                   ivy_get_plisql_functiondef                   
-----------------------------------------------------------------
- CREATE OR REPLACE FUNCTION public.test_subproc_func(a integer)+
-  RETURN integer                                               +
-  AUTHID DEFINER                                               +
- IS                                                            +
-                                                               +
- declare                                                       +
-   mds integer;                                                +
-   original integer;                                           +
-   function square(original in integer) return integer;        +
-   function square(original in integer) return integer         +
-   AS                                                          +
-   declare                                                     +
-        original_squared integer;                              +
-   begin                                                       +
-        original_squared := original * original;               +
-        original := original_squared + 1;                      +
-        return original_squared;                               +
-    end;                                                       +
- begin                                                         +
-     mds := 10;                                                +
-     original := square(mds);                                  +
-     raise info '%',original;                                  +
-     a := original + 1;                                        +
-     return mds;                                               +
- end;                                                          +
+                      ivy_get_plisql_functiondef                      
+----------------------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.test_subproc_func(INOUT a integer)+
+  RETURN integer                                                     +
+  AUTHID DEFINER                                                     +
+ IS                                                                  +
+                                                                     +
+ declare                                                             +
+   mds integer;                                                      +
+   original integer;                                                 +
+   function square(original in out integer) return integer;          +
+   function square(original in out integer) return integer           +
+   AS                                                                +
+   declare                                                           +
+        original_squared integer;                                    +
+   begin                                                             +
+        original_squared := original * original;                     +
+        original := original_squared + 1;                            +
+        return original_squared;                                     +
+    end;                                                             +
+ begin                                                               +
+     mds := 10;                                                      +
+     original := square(mds);                                        +
+     raise info '%',original;                                        +
+     a := original + 1;                                              +
+     return mds;                                                     +
+ end;                                                                +
  
 (1 row)
 

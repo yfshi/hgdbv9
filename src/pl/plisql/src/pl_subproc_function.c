@@ -246,6 +246,9 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 	ListCell *cell;
 	PLiSQL_nsitem	*nse;
 	int				noutargs = 0;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	int				norigoutargs = 0;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	PLiSQL_variable	**outvar;
 	int				i;
 	int				nargs = 0;
@@ -293,7 +296,9 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 										 forValidator,
 										 plisql_error_funcname);
 
-	outvar = (PLiSQL_variable **) palloc(sizeof(PLiSQL_variable *) * nargs);
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	outvar = (PLiSQL_variable **) palloc(sizeof(PLiSQL_variable *) * (nargs + 1));
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	i = 0;
 	noutargs = 0;
 	nargdefaults = 0;
@@ -339,11 +344,35 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 		if (argvariable->dtype == PLISQL_DTYPE_VAR)
 		{
 			argitemtype = PLISQL_NSTYPE_VAR;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode,
+			 * IN mode variable is not allowned to assign value.
+			 */
+			if (argmode == PROARGMODE_IN ||
+				argmode == PROARGMODE_OUT ||
+				argmode == PROARGMODE_INOUT)
+				((PLiSQL_var *)argvariable)->info = argmode;
+			else
+				((PLiSQL_var *)argvariable)->info = PROARGMODE_IN;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 		else
 		{
 			Assert(argvariable->dtype == PLISQL_DTYPE_REC);
 			argitemtype = PLISQL_NSTYPE_REC;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode,
+			 * IN mode variable is not allowned to assign value.
+			 */
+			if (argmode == PROARGMODE_IN ||
+				argmode == PROARGMODE_OUT ||
+				argmode == PROARGMODE_INOUT)
+				((PLiSQL_rec *)argvariable)->info = argmode;
+			else
+				((PLiSQL_rec *)argvariable)->info = PROARGMODE_IN;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 		function->fn_argvarnos[i] = argvariable->dno;
 
@@ -379,14 +408,69 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 		i++;
 	}
 
-	/*
-	 * If there's just one OUT parameter, out_param_varno points
-	 * directly to it.  If there's more than one, build a row that
-	 * holds all of them.  Procedures return a row even for one OUT
-	 * parameter.
-	 */
-	if (noutargs > 1 ||
-		(noutargs == 1 && function->fn_prokind == PROKIND_PROCEDURE))
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	norigoutargs = noutargs;
+	/*Build a '_retval_' varaible for the function return value */
+	if (noutargs > 0)
+	{
+		if (subprocfunc->rettype != NULL &&
+			subprocfunc->rettype->typoid != VOIDOID)
+		{
+			char		buf[32];
+			PLiSQL_type *argdtype;
+			PLiSQL_variable *argvariable;
+			PLiSQL_nsitem_type argitemtype;
+			Oid 		argtypeid = subprocfunc->rettype->typoid;
+
+			/* Is the function return type a PSEUDO type? */
+			if (IsPolymorphicType(argtypeid))
+			{
+				if (forValidator)
+				{
+					if (argtypeid == ANYARRAYOID)
+						argtypeid = INT4ARRAYOID;
+					else if (argtypeid == ANYRANGEOID)
+						argtypeid = INT4RANGEOID;
+					else
+						argtypeid = INT4OID;
+				}
+				else
+				{
+					argtypeid = get_fn_expr_rettype(fcinfo->flinfo);
+					if (!OidIsValid(argtypeid))
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("could not determine actual return type "
+											"for polymorphic function \"%s\"",
+												plisql_error_funcname)));
+				}
+			}
+
+			snprintf(buf, sizeof(buf), "$%d", i + 1);
+
+			argdtype = plisql_build_datatype(argtypeid,
+											-1,
+											function->fn_input_collation,
+											NULL);
+			argvariable = plisql_build_variable("_RETVAL_",
+													 0, argdtype, false);
+			function->fn_ret_vardno = argvariable->dno;
+
+			if (argvariable->dtype == PLISQL_DTYPE_VAR)
+				argitemtype = PLISQL_NSTYPE_VAR;
+			else
+				argitemtype = PLISQL_NSTYPE_REC;
+
+			/* the new builded variable for function return value is after all function OUT args */
+			outvar[noutargs] = argvariable;
+			noutargs++;
+
+			add_parameter_name(argitemtype, argvariable->dno, buf);
+			add_parameter_name(argitemtype, argvariable->dno, "_RETVAL_");
+		}
+	}
+
+	if (noutargs > 0)
 	{
 		PLiSQL_row *row = build_row_from_vars(outvar,
 											   noutargs);
@@ -394,9 +478,7 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 		plisql_adddatum((PLiSQL_datum *) row);
 		function->out_param_varno = row->dno;
 	}
-	else if (noutargs == 1)
-		function->out_param_varno = outvar[0]->dno;
-
+	/* End - ReqID:SRS-SQL-PACKAGE */
 	pfree(outvar);
 
 no_argument:
@@ -411,10 +493,24 @@ no_argument:
 	 * work; if it doesn't we're in some context that fails to make
 	 * the info available.
 	 */
-	rettypeid = subprocfunc->rettype == NULL ? VOIDOID : subprocfunc->rettype->typoid;
-	origrettypeid = rettypeid;
-	if (IsPolymorphicType(rettypeid))
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/*
+	 * has out paramster procedure, change its rettypeid to
+	 * RECORDOID
+	 */
+	origrettypeid = subprocfunc->rettype == NULL ? VOIDOID : subprocfunc->rettype->typoid;
+	if (norigoutargs > 0)
+		rettypeid = RECORDOID;
+	else
+		rettypeid = origrettypeid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+	if (IsPolymorphicType(origrettypeid))
 	{
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (norigoutargs > 0)
+			elog(ERROR, "result type must not be PolymorphicType because "
+					"of OUT parameters");
+		/* End - ReqID:SRS-SQL-PACKAGE */
 		if (forValidator)
 		{
 			if (rettypeid == ANYARRAYOID ||
@@ -497,7 +593,7 @@ no_argument:
 	}
 
 	subprocfunc->nargdefaults = nargdefaults;
-	subprocfunc->noutargs = noutargs;
+	subprocfunc->noutargs = norigoutargs; /* ReqID:SRS-SQL-PACKAGE */
 
 	ReleaseSysCache(typeTup);
 
@@ -601,6 +697,13 @@ plisql_set_subprocfunc_action(PLiSQL_subproc_function *subprocfunc,
 	Assert(action != NULL && subprocfunc != NULL && subprocfunc->function->action == NULL);
 
 	subprocfunc->function->action = action;
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (subprocfunc->noutargs > 0 &&
+		subprocfunc->rettype != NULL &&
+		((PLiSQL_stmt *) llast(subprocfunc->function->action->body))->cmd_type != PLISQL_STMT_RETURN)
+		subprocfunc->function->fn_no_return = true;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* add return stmt */
 	/*
@@ -821,6 +924,9 @@ plisql_register_internal_func(void)
 	plisql_internal_funcs.get_top_function_id = plisql_top_functin_oid;
 	plisql_internal_funcs.package_free = plisql_free_package_function;
 	plisql_internal_funcs.get_subprocs_from_package = plisql_get_subprocs_from_package;
+	plisql_internal_funcs.get_subproc_arg_info = plisql_get_subproc_arg_info;
+	plisql_internal_funcs.get_subproc_prokind = plisql_get_subproc_prokind;
+	plisql_internal_funcs.subproc_should_change_return_type = plisql_subproc_should_change_return_type;
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	plisql_internal_funcs.isload = true;
@@ -1395,7 +1501,18 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 		if (subprocfunc->rettype != NULL)
 			*rettype = subprocfunc->rettype->typoid;
 		else
-			*rettype = VOIDOID;
+		{
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * procedure with out parameter, we replace rettype
+			 * use RECORDOID
+			 */
+			if (subprocfunc->noutargs != 0)
+				*rettype = RECORDOID;
+			else
+				*rettype = VOIDOID;
+			/* End - ReqID:SRS-SQL-PACKAGE */
+		}
 		*retset = subprocfunc->function->fn_retset;
 
 		if (best_candidate->argnumbers != NULL)
@@ -1549,6 +1666,9 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 	PLiSQL_function *function;
 	bool		has_poly_argument = false;
 	MemoryContext func_cxt = plisql_curr_compile->fn_cxt;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	int		noutargs = 0;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	funcs = (PLiSQL_subproc_function *) palloc0(sizeof(PLiSQL_subproc_function));
 	funcs->function = (PLiSQL_function *) palloc0(sizeof(PLiSQL_function));
@@ -1614,6 +1734,11 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 				funcs->nargdefaults++;
 			if (IsPolymorphicType(argitem->type->typoid))
 				has_poly_argument = true;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if (argitem->argmode == ARGMODE_OUT ||
+				argitem->argmode == ARGMODE_INOUT)
+				noutargs++;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 	}
 
@@ -1636,6 +1761,7 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 	funcs->function->fn_oid = plisql_curr_compile->fn_oid;
 	funcs->function->namelabel = pstrdup(funcname);
 	funcs->location = location;
+	funcs->noutargs = noutargs;
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	return funcs;
@@ -2491,11 +2617,17 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 	int			i;
 	int			j;
 	ListCell	*lc;
-	Oid			rettype = subprocfunc->function->fn_rettype;
+	Oid			rettype = (subprocfunc->rettype != NULL ? subprocfunc->rettype->typoid : VOIDOID);
 
 	/* function no out arguments */
-	if (numoutargs < 1 || (numoutargs == 1 && rettype == VOIDOID))
+	if (numoutargs < 1)
 		return NULL;
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* include rettype */
+	if (rettype != VOIDOID)
+		numoutargs++;
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	outargtypes = (Oid *) palloc0(numoutargs * sizeof(Oid));
 	outargnames = (char **) palloc0(numoutargs * sizeof(char *));
@@ -2508,9 +2640,28 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 		if (argitem->argmode != ARGMODE_IN)
 		{
 			outargtypes[i] = argitem->type->typoid;
-			outargnames[i++] = argitem->argname;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * If the guc pararmeter out_parameter_column_position is set to true,
+			 * make out parameter column name to special,
+			 * so we can distinguish it from the return value
+			 */
+			if (out_parameter_column_position)
+				outargnames[i] = psprintf("_column_%d", i + 1);
+			else
+				outargnames[i] = argitem->argname;
+			i++;
+			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 	}
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	if (rettype != VOIDOID)
+	{
+		outargtypes[i] = rettype;
+		outargnames[i++] = pstrdup("_RETVAL_");
+	}
+	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	Assert(i == numoutargs);
 
@@ -2935,8 +3086,9 @@ is_subprocfunc_argnum(PLiSQL_function *pfunc, int dno)
 	{
 		PLiSQL_subproc_function *subprocfunc = pfunc->subprocfuncs[i];
 
-		/* ignore no action function */
-		if (subprocfunc->function->action != NULL)
+		/* ignore no action function and its self */
+		if (subprocfunc->function->action != NULL &&
+			subprocfunc->function != pfunc) /* ReqID:SRS-SQL-PACKAGE */
 		{
 			int j;
 
