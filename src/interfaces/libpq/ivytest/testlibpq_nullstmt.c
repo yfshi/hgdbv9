@@ -20,7 +20,7 @@ exit_nicely(Ivyconn *conn)
 }
 
 int
-main()
+main(int argc, char **argv)
 {
 	int   nFields;
 	int   i,j;
@@ -39,8 +39,10 @@ main()
 	int param_lengths[4];
 	int param_formats[4];
 	char errmsg[256];
+	char conninfo[100]="user=system dbname=postgres port=";
+	const char *oraport = argv[1];
 
-	const char *conninfo="user=system dbname=postgres port=1521";
+	strcat(conninfo, oraport);
 
 	/* make a connection to the database */
 	conn = Ivyconnectdb(conninfo);

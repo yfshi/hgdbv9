@@ -172,11 +172,14 @@ exec_prepare(Ivyconn *conn, int byname, int update)
 }
 
 int
-main()
+main(int argc, char **argv)
 {
 	Ivyconn    *conn;
 	Ivyresult   *res;
-	const char *conninfo="user=system dbname=postgres port=1521";
+	char conninfo[100]="user=system dbname=postgres port=";
+	const char *oraport = argv[1];
+
+	strcat(conninfo, oraport);
 
 	/* make a connection to the database */
 	conn = Ivyconnectdb(conninfo);

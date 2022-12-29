@@ -85,7 +85,7 @@ init_statement()
 }
 
 int
-main()
+main(int argc, char **argv)
 {
 	char first_parameter[256];
 	char second_parameter[256];
@@ -95,7 +95,11 @@ main()
 	IvyPreparedStatement *stmt1;
 	IvyBindOutInfo bindinfos[3];
 
-	const char *conninfo="user=system dbname=postgres port=1521";
+	char conninfo[100]="user=system dbname=postgres port=";
+	const char *oraport = argv[1];
+
+	strcat(conninfo, oraport);
+
 	/* make a connection to the database */
 	conn1 = Ivyconnectdb(conninfo);
 
