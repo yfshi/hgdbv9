@@ -1209,5 +1209,89 @@ begin
 	execute immediate ''declare mds integer; begin mds := 1000; :x := mds + 100;end;'' using out id;
 end;');
 
+--Begin - BUG#Z195: function body is null
+CREATE OR REPLACE FUNCTION f_null(arg1 IN int default 10, arg2 OUT int, arg3 IN OUT NOCOPY int)
+RETURN int
+IS
+BEGIN
+  NULL;
+END;
+/
+
+DECLARE
+  v1 int;
+  v2 int;
+  v3 int;
+BEGIN
+  v1 := f_null(1, v2, v3);
+END;
+/
+
+DROP FUNCTION f_null;
+--End - BUG#Z195
+
+--Begin - BUG#Z200: \df  procedure_name failed
+CREATE PROCEDURE p200(arg1 int, arg2 IN OUT int, arg3 OUT int)
+IS
+BEGIN
+  arg3 := arg1+ arg2;
+END;
+/
+
+\df p200
+\df public.p200
+DROP PROCEDURE p200;
+--End - BUG#Z200
+
+--Begin - BUG#Z196: procedure with out paramater should supports overload
+CREATE PROCEDURE p_out(arg1 number)
+IS
+BEGIN
+  raise notice 'in first p_out, arg1 is %',arg1;
+END;
+/
+
+CREATE PROCEDURE p_out(arg1 number, arg2 OUT number)
+IS
+BEGIN
+  arg2 := 2;
+  raise notice 'in second p_out, arg1 is %, arg2 is %',arg1, arg2;
+END;
+/
+
+CREATE PROCEDURE p_out(arg1 number, arg2 OUT number, arg3 out number)
+IS
+BEGIN
+  arg2 := 3;
+  raise notice 'in third p_out, arg1 is %, arg2 is %',arg1, arg2;
+END;
+/
+
+--should raise error
+CREATE PROCEDURE p_out(arg1 OUT number, arg2 OUT number)
+IS
+BEGIN
+  arg1 := 1;
+  arg2 := 2;
+  raise notice 'in 4th p_out, arg1 is %, arg2 is %',arg1, arg2;
+END;
+/
+
+CALL p_out(1);
+DECLARE
+  v2 number;
+  v3 number;
+BEGIN
+  CALL p_out(1,v2);
+  raise notice 'v2 is %', v2;
+  CALL p_out(1, v2, v3);
+  raise notice 'v2 is %, v3 is %', v2, v3;
+END;
+/
+DROP PROCEDURE p_out(arg1 number);
+DROP PROCEDURE p_out(arg1 number, arg2 OUT number);
+DROP PROCEDURE p_out(arg1 number, arg2 OUT number, arg3 out number);
+--End - BUG#Z196
+
 --clean data
 drop table mds;

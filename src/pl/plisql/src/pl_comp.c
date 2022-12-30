@@ -1022,7 +1022,11 @@ do_compile(FunctionCallInfo fcinfo,
 	function->action = plisql_parse_result;
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	if (num_out_args > 0 &&
+	/* Begin - BUG#Z195: function body is NULL */
+	if (function->action->body == NIL)
+		function->fn_no_return = true;
+	/* End - BUG#Z195: function body is NULL */
+	else if (num_out_args > 0 &&
 		is_plisql_function &&
 		procStruct->prorettype != VOIDOID &&
 		((PLiSQL_stmt *) llast(function->action->body))->cmd_type != PLISQL_STMT_RETURN)
@@ -1053,7 +1057,9 @@ do_compile(FunctionCallInfo fcinfo,
 	else
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 		for (i = 0; i < function->fn_nargs; i++)
-			function->fn_argvarnos[i] = in_arg_varnos[i];		
+			/* Begin - BUG#Z196: procedure fn_argvarnos include out arguments */
+			function->fn_argvarnos[i] = all_arg_varnos[i];
+			/* End - BUG#Z196: procedure with out arguments supports overload */
 
 	plisql_finish_datums(function);
 

@@ -310,7 +310,6 @@ ProcedureCreate(const char *procedureName,
 	 * call plisql function which includes out parameters,
 	 */
 	if (compatible_db == DB_ORACLE &&
-		prokind == PROKIND_FUNCTION &&
 		LANG_PLISQL_OID == languageObjectId)
 	{
 		parameterTypes = buildoidvector(allParams, allParamCount);
