@@ -135,3 +135,85 @@ SELECT OID::REGPROC, OBJECT_NAME
 FROM ALL_PROCEDURES LEFT JOIN PG_PROC ON OID = OBJECT_ID
 WHERE OBJECT_NAME='F1' OR OBJECT_NAME='F2';
 -- End - BUG#Z169
+
+-- Begin - BUG#Z199
+CREATE OR REPLACE FUNCTION f_def0(arg1 int default 20, arg2 OUT int, arg3 IN OUT int)
+RETURN record
+IS
+  res int;
+BEGIN
+  arg2 := arg1 + 10;
+  arg3 := arg1/2;
+  res := arg1 + 10;
+END;
+/
+select object_name,argument_name,defaulted from all_arguments where object_name='F_DEF0';
+DROP FUNCTION f_def0(arg1 int, arg2 OUT int, arg3 IN OUT int);
+
+CREATE OR REPLACE PROCEDURE p_def0(arg1 int default 20, arg2 OUT int, arg3 IN OUT int)
+IS
+BEGIN
+  arg3 := arg1/2;
+END;
+/
+select object_name,argument_name,defaulted from all_arguments where object_name='P_DEF0';
+DROP PROCEDURE p_def0(arg1 int, arg2 OUT int, arg3 IN OUT int);
+
+CREATE OR REPLACE FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF1521';
+DROP FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+
+CREATE OR REPLACE PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF1521';
+DROP PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+
+CREATE OR REPLACE FUNCTION f_def1(arg1 IN int default 1, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF1';
+
+CREATE OR REPLACE FUNCTION f_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+RETURN record
+IS
+BEGIN
+  NULL;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF2';
+
+CREATE OR REPLACE PROCEDURE p_def1(arg1 OUT int, arg2 int default 1, arg3 int default 10)
+IS
+BEGIN
+  arg1 := arg2 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF1';
+
+CREATE OR REPLACE PROCEDURE p_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+IS
+BEGIN
+  NULL;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF2';
+
+DROP FUNCTION f_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP PROCEDURE p_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP FUNCTION f_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+DROP PROCEDURE p_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+-- End - BUG#Z199

@@ -57,7 +57,7 @@
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
 /* Begin - BUG#Z196 */
 #include "commands/proclang.h"
-/* Begin - BUG#Z196 */
+/* End - BUG#Z196 */
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
@@ -3131,7 +3131,7 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 		 */
 		if (!(ORA_PARSER == compatible_db &&
 			((Form_pg_proc) GETSTRUCT(proctup))->prolang == LANG_PLISQL_OID))
-		/* Begin - BUG#Z196: procedure with out arguments supports overload */
+		/* End - BUG#Z196: procedure with out arguments supports overload */
 			fexpr->args = inargs;
 	}
 

@@ -1023,7 +1023,10 @@ do_compile(FunctionCallInfo fcinfo,
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* Begin - BUG#Z195: function body is NULL */
-	if (function->action->body == NIL)
+	if (function->action->body == NIL &&
+		/* Begin - BUG#Z209 */
+		is_plisql_function)
+		/* End - BUG#Z209 */
 		function->fn_no_return = true;
 	/* End - BUG#Z195: function body is NULL */
 	else if (num_out_args > 0 &&
