@@ -3850,6 +3850,8 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	Datum		proargdefaults;
 	bool		isnull;
 	int			nth_default;
+	bool		has_nondefval = false;
+	ListCell   *lc;
 
 	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcid));
 	if (!HeapTupleIsValid(proctup))
@@ -3886,7 +3888,19 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	 * Calculate index into proargdefaults: proargdefaults corresponds to the
 	 * last N input arguments, where N = pronargdefaults.
 	 */
-	nth_default = nth_inputarg - 1 - (proc->pronargs - proc->pronargdefaults);
+	/* Begin - BUG#Z199 */
+	foreach (lc, argdefaults)
+		if (IsA(lfirst(lc), NonDefValNode))
+		{
+			has_nondefval = true;
+			break;
+		}
+
+	if (has_nondefval)
+		nth_default = nth_arg - 1 - (numargs - proc->pronargdefaults);
+	else
+		nth_default = nth_inputarg - 1 - (proc->pronargs - proc->pronargdefaults);
+	/* End - BUG#Z199 */
 
 	if (nth_default < 0 || nth_default >= list_length(argdefaults))
 	{
@@ -3894,6 +3908,14 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 	node = list_nth(argdefaults, nth_default);
+	/* Begin - BUG#Z199 */
+	if (IsA(node, NonDefValNode))
+	{
+		ReleaseSysCache(proctup);
+		PG_RETURN_NULL();
+	}
+	/* End - BUG#Z199 */
+
 	str = deparse_expression(node, NIL, false, false);
 
 	ReleaseSysCache(proctup);
