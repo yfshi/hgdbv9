@@ -1133,7 +1133,8 @@ static const pgsql_thing_t words_after_create[] = {
 	{"OR REPLACE", NULL, NULL, NULL, THING_NO_DROP | THING_NO_ALTER},
 	{"OWNED", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_ALTER},	/* for DROP OWNED BY ... */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	{"PACKAGE", NULL, NULL, NULL},
+	{"PACKAGE", NULL, NULL, Query_for_list_of_packages}, /* BUG#Z211*/
+	{"PACKAGE BODY", NULL, NULL, Query_for_list_of_packages, THING_NO_ALTER}, /* BUG#Z211*/
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	{"PARSER", Query_for_list_of_ts_parsers, NULL, NULL, THING_NO_SHOW},
 	{"POLICY", NULL, NULL, NULL},
@@ -1663,7 +1664,8 @@ psql_completion(const char *text, int start, int end)
 	/* complete with something you can create or replace */
 	else if (TailMatches("CREATE", "OR", "REPLACE"))
 		COMPLETE_WITH("FUNCTION", "PROCEDURE", "LANGUAGE", "RULE", "VIEW",
-					  "AGGREGATE", "TRANSFORM", "TRIGGER", "PACKAGE" /* ReqID:SRS-SQL-PACKAGE */);
+					  "AGGREGATE", "TRANSFORM", "TRIGGER", "PACKAGE", /* ReqID:SRS-SQL-PACKAGE */
+					  "PACKAGE BODY", "EDITIONABLE", "NONEDITIONABLE"); /* BUG#Z211 */
 
 /* DROP, but not DROP embedded in other commands */
 	/* complete with something you can drop */
@@ -1709,6 +1711,11 @@ psql_completion(const char *text, int start, int end)
 		else
 			COMPLETE_WITH_FUNCTION_ARG(prev2_wd);
 	}
+	/* Begin - BUG#Z211 */
+	/* ALTER PACKAGE name xxx */
+	else if (Matches("ALTER", "PACKAGE"))
+		COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_packages, NULL);
+	/* End - BUG#Z211*/
 
 	/* ALTER PUBLICATION <name> */
 	else if (Matches("ALTER", "PUBLICATION", MatchAny))
@@ -3180,7 +3187,7 @@ psql_completion(const char *text, int start, int end)
 /* DROP */
 	/* Complete DROP object with CASCADE / RESTRICT */
 	else if (Matches("DROP",
-					 "COLLATION|CONVERSION|DOMAIN|EXTENSION|LANGUAGE|PACKAGE|PUBLICATION|SCHEMA|SEQUENCE|SERVER|SUBSCRIPTION|STATISTICS|TABLE|TYPE|VIEW",/*ReqID:SRS-SQL-PACKAGE */
+					 "COLLATION|CONVERSION|DOMAIN|EXTENSION|LANGUAGE|PUBLICATION|SCHEMA|SEQUENCE|SERVER|SUBSCRIPTION|STATISTICS|TABLE|TYPE|VIEW",
 					 MatchAny) ||
 			 Matches("DROP", "ACCESS", "METHOD", MatchAny) ||
 			 (Matches("DROP", "AGGREGATE|FUNCTION|PROCEDURE|ROUTINE", MatchAny, MatchAny) &&
@@ -3225,6 +3232,15 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH("BY");
 	else if (Matches("DROP", "OWNED", "BY"))
 		COMPLETE_WITH_QUERY(Query_for_list_of_roles);
+
+	/* Begin - BUG#Z211 */
+	/* DROP PACKAGE */
+	else if (Matches("DROP", "PACKAGE"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_packages[0],
+								   "UNION SELECT 'BODY'");
+	else if (Matches("DROP", "PACKAGE", "BODY"))
+		COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_packages, NULL);
+	/* End - BUG#Z211*/
 
 	/* DROP TEXT SEARCH */
 	else if (Matches("DROP", "TEXT", "SEARCH"))
@@ -3456,6 +3472,7 @@ psql_completion(const char *text, int start, int end)
 									   " UNION SELECT 'FUNCTION'"
 									   " UNION SELECT 'LANGUAGE'"
 									   " UNION SELECT 'LARGE OBJECT'"
+									   " UNION SELECT 'PACKAGE'" /* BUG#Z211*/
 									   " UNION SELECT 'PROCEDURE'"
 									   " UNION SELECT 'ROUTINE'"
 									   " UNION SELECT 'SCHEMA'"
@@ -4138,6 +4155,10 @@ psql_completion(const char *text, int start, int end)
 
 	else if (TailMatchesCS("\\di*"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_indexes, NULL);
+	/* Begin - BUG#Z211 */
+	else if (TailMatchesCS("\\dk*"))
+		COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_packages, NULL);
+	/* End - BUG#Z211*/
 	else if (TailMatchesCS("\\dL*"))
 		COMPLETE_WITH_QUERY(Query_for_list_of_languages);
 	else if (TailMatchesCS("\\dn*"))

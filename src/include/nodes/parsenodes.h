@@ -3796,6 +3796,21 @@ typedef struct AccessibleByClause
 	List		*accessors;		/* List of AccessorItem nodes */
 } AccessibleByClause;
 
+/* Begin - BUG#Z206 Z208  */
+/*
+ * It is necessary to distinguish clauses with or
+ * without this clause in grammar,
+ * because the default values are inconsistent in different cases
+ */
+typedef enum editionable_flag
+{
+	FLAG_NOREFERENCED = -1,	/* grammer no reference */
+	FLAG_NOEDITIONABLE,		/* NOEDITIONABLE */
+	FLAG_EDITIONABLE			/* EDITIONABLE */
+} editionable_flag;
+/* End - BUG#Z206 Z208 */
+
+
 /*
  * support alter a function like
  * alter function func editable|noneditable or compile
@@ -3814,7 +3829,7 @@ typedef struct CompileFunctionStmt
 	ObjectWithArgs *func;		/* name and args of function */
 	/* End - BUG#Z106 */
 	bool		is_compile;		/* if false, it is change the editable|noneditable */
-	bool		editable;
+	editionable_flag		editable;	/* BUG#Z206 Z208 */
 	List		*parameters;
 } CompileFunctionStmt;
 
@@ -3837,7 +3852,9 @@ typedef struct CreatePackageStmt
 	bool		replace;		/* T => replace if already exists */
 	List		*pkgname;
 	List		*propers;		/* invok rigth or access by or default collation */
-	bool		editable;		/* EDITIONABLE */
+	/* Begin - BUG#Z206 Z208  */
+	editionable_flag	editable;		/* EDITIONABLE */
+	/* End - BUG#Z206 Z208 */
 	char		*pkgsrc;
 } CreatePackageStmt;
 
@@ -3847,7 +3864,7 @@ typedef struct CreatePackageBodyStmt
 	NodeTag		type;
 	bool		replace;
 	List		*pkgname;
-	bool		editable;
+	editionable_flag	editable; /* BUG#Z206 Z208 */
 	char		*bodysrc;
 } CreatePackageBodyStmt;
 
@@ -3866,7 +3883,7 @@ typedef struct AlterPackageStmt
 	NodeTag					type;
 	List					*pkgname;
 	package_alter_flag		alter_flag;
-	bool					editable;
+	editionable_flag		editable;	/* BUG#Z206 Z208 */
 	List					*parameters;
 } AlterPackageStmt;
 /* End - ReqID:SRS-SQL-PACKAGE */

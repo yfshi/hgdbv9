@@ -6351,3 +6351,64 @@ RESET ivorysql.allow_out_parameter_const;
 DROP FUNCTION test_event_trigger;
 DROP TABLE mds;
 DROP TABLE mdss;
+
+--BUG#Z206 Z208
+--create in sys
+CREATE OR REPLACE package sys.test_pkg IS
+  var1 integer;
+end;
+/
+
+--f--
+SELECT editable FROM pg_package WHERE pkgname='test_pkg';
+
+--create in public
+DROP package test_pkg;
+CREATE OR REPLACE package PUBLIC.test_pkg IS
+  var1 integer;
+end;
+/
+
+--t--
+SELECT editable FROM pg_package WHERE pkgname='test_pkg';
+
+DROP package PUBLIC.test_pkg;
+
+create or replace noneditionable package pkg1_tipcb004104830 is
+	function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body pkg1_tipcb004104830 is
+	function test_f(id integer) return integer is
+	begin
+		return id;
+	end;
+end;
+/
+
+DROP package pkg1_tipcb004104830;
+
+create or replace package pkg1_tipa001133141 IS
+	var1 integer;
+end;
+ /
+
+alter package pkg1_tipa001133141 compile PLSCOPE_SETTINGS='IDENTIFIERS:ALL';
+
+alter package pkg1_tipa001133141 compile PLSQL_CCFLAGS='debug:TRUE';
+
+--oracle maybe not support
+alter package pkg1_tipa001133141 compile PLSQL_CCFLAGS=12;
+
+SELECT editable FROM pg_package WHERE pkgname='pkg1_tipa001133141';
+
+ALTER package pkg1_tipa001133141 editionable;
+
+SELECT editable FROM pg_package WHERE pkgname='pkg1_tipa001133141';
+
+ALTER package pkg1_tipa001133141 noneditionable;
+
+SELECT editable FROM pg_package WHERE pkgname='pkg1_tipa001133141';
+
+DROP package pkg1_tipa001133141;

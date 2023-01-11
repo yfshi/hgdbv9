@@ -275,6 +275,9 @@ static void determineLanguage(List *options);
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	package_alter_flag	alter_flag;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#Z206 Z208  */
+	editionable_flag editionable;
+	/* End - BUG#Z206 Z208 */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -785,7 +788,6 @@ static void determineLanguage(List *options);
 				ora_procedure_source_clause_item
 %type <ival>	opt_unit_kind
 %type <str>		any_identifier
-%type <boolean> opt_ora_editioned ora_editioned
 %type <node>	ivy_routine_body accessor_item sql_macro_options implementation_package_type
 				ora_streaming_type opt_parallel_enable_partiton_clause
 				ora_parallel_enable_partiton_by_elem ora_parallel_enable_partiton_type
@@ -828,6 +830,11 @@ static void determineLanguage(List *options);
 %type <boolean> package_is_or_as package_body_is_or_as
 %type <alter_flag> package_compile_options special_options
 /* End - ReqID:SRS-SQL-PACKAGE  */
+
+/* Begin - BUG#Z206 Z208  */
+%type<editionable> opt_ora_editioned ora_editioned
+/* End - BUG#Z206 Z208 */
+
 
 
 /*
@@ -7891,16 +7898,19 @@ CreateFunctionStmt:
 		;
 
 /* Begin - ReqID:SRS-SQL-PROC */
+/* Begin - BUG#Z206 Z208  */
+/*
+ * change opt_ora_editioned to ival
+ */
 ora_editioned:
-			EDITIONABLE			{ $$ = true; }
-			| NONEDITIONABLE	{ $$ = false; }
-		;
+			EDITIONABLE 		{ $$ = FLAG_EDITIONABLE; }
+			| NONEDITIONABLE	{ $$ = FLAG_NOEDITIONABLE; }
 
 opt_ora_editioned:
-			EDITIONABLE			{ $$ = true; }		
-			| NONEDITIONABLE	{ $$ = false; }
-			| /*EMPTY*/			{ $$ = true; }
+			ora_editioned		{ $$ = $1; }
+			| /*EMPTY*/			{ $$ = FLAG_NOREFERENCED; }
 		;
+/* End - BUG#Z206 Z208 */
 
 opt_ora_sharing_clause:
 			SHARING '=' METADATA
@@ -8918,10 +8928,12 @@ compiler_parameters_list:
 			;
 
 compiler_parameter_item:
-			IDENT '=' IDENT
+			/* Begin - BUG#Z206 Z208  */
+			IDENT '=' def_arg
 				{
-					$$ = (Node *) makeDefElem($1, (Node *) makeString($3), @1);
+					$$ = (Node *) makeDefElem($1, $3, @1);
 				}
+			/* End - BUG#Z206 Z208 */
 			;
 /* End - ReqID:SRS-SQL-PROC */
 
