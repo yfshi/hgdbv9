@@ -61,7 +61,7 @@ static ObjectAddress CreatePackage_internal(const char *pkgname,
 										bool use_collation);
 static ObjectAddress CreatePackageBody_internal(const char *pkgname,
 										Oid namespaceid, const char *bodysrc,
-										bool replace, bool editable);
+										bool replace, editionable_flag editable); /* BUG#Z206 Z208 */
 static bool package_source_nochange(HeapTuple tuple, const char *src,
 									bool define_invok, const char *access_source,
 									bool use_collation);
@@ -315,7 +315,7 @@ CreatePackage_internal(const char *pkgname,
 static ObjectAddress
 CreatePackageBody_internal(const char *pkgname,
 									Oid namespaceid, const char *bodysrc,
-									bool replace, bool editable)
+									bool replace, editionable_flag editable) /* BUG#Z206 Z208 */
 {
 	Relation	rel;
 	HeapTuple	tup;
@@ -334,7 +334,10 @@ CreatePackageBody_internal(const char *pkgname,
 	Oid			bodyid;
 	Form_pg_package  pkgForm;
 	Form_pg_package_body pkgbodyForm;
-	char		pkg_editable;
+	/* Begin - BUG#Z206 Z208  */
+	bool		pkg_editable;
+	bool		body_editable;
+	/* End - BUG#Z206 Z208 */
 
 	/*
 	 * does package exist
@@ -353,8 +356,31 @@ CreatePackageBody_internal(const char *pkgname,
 	pkg_editable = pkgForm->editable;
 	ReleaseSysCache(pkgtup);
 
+	/* Begin - BUG#Z206 Z208  */
+	/*
+	 * decide editionable
+	 * the default come from package specification
+	 * others is editionable
+	 */
+	switch (editable)
+	{
+		case FLAG_NOEDITIONABLE:
+			body_editable = false;
+			break;
+		case FLAG_EDITIONABLE:
+			body_editable = true;
+			break;
+		case FLAG_NOREFERENCED:
+			body_editable = pkg_editable;
+			break;
+		default:
+			elog(ERROR, "invalid editionable %u", editable);
+			break;
+	}
+	/* End - BUG#Z206 Z208 */
+
 	/* body editable must match its package */
-	if (pkg_editable != editable)
+	if (pkg_editable != body_editable)
 		elog(ERROR, "The EDITIONABLE property of a TYPE or PACKAGE specification and its"
 					" body must match");
 
@@ -560,12 +586,41 @@ CreatePackage(CreatePackageStmt *stmt)
 	bool		use_collation = false;
 	char		*access_source = NULL;
 	Oid			ownerId;
+	/* Begin - BUG#Z206 Z208  */
+	bool		editable = true;
+	/* End - BUG#Z206 Z208 */
 
 	ownerId = GetUserId();
 
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->pkgname,
 													&pkgname);
+
+	/* Begin - BUG#Z206 Z208  */
+	/*
+	 * decide editionable
+	 * if create in sys schema ,the default is noneditionable
+	 * others is editionable
+	 */
+	switch (stmt->editable)
+	{
+		case FLAG_NOEDITIONABLE:
+			editable = false;
+			break;
+		case FLAG_EDITIONABLE:
+			editable = true;
+			break;
+		case FLAG_NOREFERENCED:
+			if (namespaceId == PG_SYS_NAMESPACE)
+				editable = false;
+			else
+				editable = true;
+			break;
+		default:
+			elog(ERROR, "invalid editionable %u", stmt->editable);
+			break;
+	}
+	/* End - BUG#Z206 Z208 */
 
 	/*
 	 * forbide some special name
@@ -619,7 +674,7 @@ CreatePackage(CreatePackageStmt *stmt)
 								stmt->pkgsrc,
 								stmt->replace,
 								define_invok,
-								stmt->editable,
+								editable, /* BUG#Z206 Z208 */
 								access_source,
 								use_collation);
 }
@@ -682,11 +737,29 @@ AlterPackage(AlterPackageStmt *stmt)
 				Datum		repl_val[Natts_pg_package];
 				bool		repl_null[Natts_pg_package];
 				bool		repl_repl[Natts_pg_package];
+				/* Begin - BUG#Z206 Z208  */
+				bool		editionable;
+				/* End - BUG#Z206 Z208 */
+
+				/* Begin - BUG#Z206 Z208  */
+				switch (stmt->editable)
+				{
+					case FLAG_EDITIONABLE:
+						editionable = true;
+						break;
+					case FLAG_NOEDITIONABLE:
+						editionable = false;
+						break;
+					default:
+						elog(ERROR, "invalid editionable flag %u", stmt->editable);
+						break;
+				}
+				/* End - BUG#Z206 Z208 */
 
 				/* update the tuple */
 				memset(repl_repl, false, sizeof(repl_repl));
 				repl_repl[Anum_pg_package_editable - 1] = true;
-				repl_val[Anum_pg_package_editable - 1] = CharGetDatum(stmt->editable);
+				repl_val[Anum_pg_package_editable - 1] = BoolGetDatum(editionable); /* BUG#Z206 Z208 */
 				repl_null[Anum_pg_package_editable - 1] = false;
 				tup = heap_modify_tuple(tup, RelationGetDescr(rel),
 								repl_val, repl_null, repl_repl);
