@@ -83,6 +83,10 @@ typedef struct UpdateContext
 } UpdateContext;
 /* End - ReqID:SRS-SQL-MERGE */
 
+extern void ExecInitStoredGenerated(ResultRelInfo *resultRelInfo,
+									EState *estate,
+									CmdType cmdtype);
+
 extern void ExecComputeStoredGenerated(ResultRelInfo *resultRelInfo,
 									   EState *estate, TupleTableSlot *slot,
 									   CmdType cmdtype);
