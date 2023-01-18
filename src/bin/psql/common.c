@@ -26,14 +26,19 @@
 #include "fe_utils/cancel.h"
 #include "fe_utils/mbprint.h"
 #include "fe_utils/string_utils.h"
+#include "mb/pg_wchar.h" /* ReqID:SRS-CMD-PSQL */
+#include "oracle_fe_utils/ora_string_utils.h" /* ReqID:SRS-CMD-PSQL */
 #include "portability/instr_time.h"
+#include "psqlplus.h"	/* ReqID:SRS-CMD-PSQL */
 #include "settings.h"
 
 static bool DescribeQuery(const char *query, double *elapsed_msec);
 static bool ExecQueryUsingCursor(const char *query, double *elapsed_msec);
 static bool command_no_begin(const char *query);
 static bool is_select_command(const char *query);
-
+/* Begin - ReqID:SRS-CMD-PSQL */
+static Ivyresult *psql_exec_pbe(const char *sql, HostVariable *hv, struct _variable **bindvar);
+/* End - ReqID:SRS-CMD-PSQL */
 
 /*
  * openQueryOutputFile --- attempt to open a query output file
@@ -1192,6 +1197,36 @@ PrintQueryStatus(PGresult *results)
 	SetVariable(pset.vars, "LASTOID", buf);
 }
 
+/* Begin - ReqID:SRS-CMD-PSQL */
+/*
+ * Like PrintQueryStatus(), except that the command 
+ * status message is specified by the caller and It
+ * is usually an Oracle-compatible message text.
+ */
+static void
+PrintQueryStatus2(PGresult *results, char *cmdstatus)
+{
+	char		buf[16];
+
+	if (!pset.quiet)
+	{
+		if (pset.popt.topt.format == PRINT_HTML)
+		{
+			fputs("<p>", pset.queryFout);
+			html_escaped_print(cmdstatus, pset.queryFout);
+			fputs("</p>\n", pset.queryFout);
+		}
+		else
+			fprintf(pset.queryFout, "%s\n", cmdstatus);
+	}
+
+	if (pset.logfile)
+		fprintf(pset.logfile, "%s\n", cmdstatus);
+
+	snprintf(buf, sizeof(buf), "%u", (unsigned int) PQoidValue(results));
+	SetVariable(pset.vars, "LASTOID", buf);
+}
+/* End - ReqID:SRS-CMD-PSQL */
 
 /*
  * PrintQueryResults: print out (or store or execute) query results as required
@@ -1201,7 +1236,7 @@ PrintQueryStatus(PGresult *results)
  * Returns true if the query executed successfully, false otherwise.
  */
 static bool
-PrintQueryResults(PGresult *results)
+PrintQueryResults(PGresult *results, bool quiet)
 {
 	bool		success;
 	const char *cmdstatus;
@@ -1212,6 +1247,28 @@ PrintQueryResults(PGresult *results)
 	switch (PQresultStatus(results))
 	{
 		case PGRES_TUPLES_OK:
+
+			/* Begin - ReqID:SRS-CMD-PSQL */
+			cmdstatus = PQcmdStatus(results);
+
+			/*
+			 * DO and CALL stmt with OUT parameters will generate result
+			 * tuples, we expect to suppress the output of result tuples.
+			 */
+			if (db_mode == DB_ORACLE && quiet && strncmp(cmdstatus, "DO", 2) == 0)
+			{
+				PrintQueryStatus2(results, "\nPL/iSQL procedure successfully completed.\n");
+				success = true;
+				break;
+			}
+			else if (db_mode == DB_ORACLE && quiet && strncmp(cmdstatus, "CALL", 4) == 0)
+			{
+				PrintQueryStatus2(results, "\nCall completed.\n");
+				success = true;
+				break;
+			}
+			/* End - ReqID:SRS-CMD-PSQL */
+
 			/* store or execute or print the data ... */
 			if (pset.gset_prefix)
 				success = StoreQueryTuple(results);
@@ -1221,8 +1278,8 @@ PrintQueryResults(PGresult *results)
 				success = PrintResultsInCrosstab(results);
 			else
 				success = PrintQueryTuples(results);
+
 			/* if it's INSERT/UPDATE/DELETE RETURNING, also print status */
-			cmdstatus = PQcmdStatus(results);
 			if (strncmp(cmdstatus, "INSERT", 6) == 0 ||
 				strncmp(cmdstatus, "UPDATE", 6) == 0 ||
 				strncmp(cmdstatus, "DELETE", 6) == 0)
@@ -1230,7 +1287,15 @@ PrintQueryResults(PGresult *results)
 			break;
 
 		case PGRES_COMMAND_OK:
-			PrintQueryStatus(results);
+			/* Begin - ReqID:SRS-CMD-PSQL */
+			cmdstatus = PQcmdStatus(results);
+			if (db_mode == DB_ORACLE && strncmp(cmdstatus, "DO", 2) == 0)
+				PrintQueryStatus2(results, "\nPL/iSQL procedure successfully completed.\n");
+			else if (db_mode == DB_ORACLE && strncmp(cmdstatus, "CALL", 4) == 0)
+				PrintQueryStatus2(results, "\nCall completed.\n");
+			else
+				PrintQueryStatus(results);
+			/* End - ReqID:SRS-CMD-PSQL */
 			success = true;
 			break;
 
@@ -1261,7 +1326,6 @@ PrintQueryResults(PGresult *results)
 
 	return success;
 }
-
 
 /*
  * SendQuery: send the query string to the backend
@@ -1404,7 +1468,7 @@ SendQuery(const char *query)
 
 		/* but printing results isn't: */
 		if (OK && results)
-			OK = PrintQueryResults(results);
+			OK = PrintQueryResults(results, false);	/* ReqID:SRS-CMD-PSQL */
 	}
 	else
 	{
@@ -1644,7 +1708,7 @@ DescribeQuery(const char *query, double *elapsed_msec)
 			}
 
 			if (OK && results)
-				OK = PrintQueryResults(results);
+				OK = PrintQueryResults(results, false);	/* ReqID:SRS-CMD-PSQL */
 
 			termPQExpBuffer(&buf);
 		}
@@ -2395,3 +2459,653 @@ recognized_connection_string(const char *connstr)
 {
 	return uri_prefix_length(connstr) != 0 || strchr(connstr, '=') != NULL;
 }
+
+/* Begin - ReqID:SRS-CMD-PSQL */
+
+/*
+ * Advance the given char pointer over white space and oracle-style comments.
+ */
+char *
+psqlplus_skip_space(char *query)
+{
+	bool	slashstar_start = false;
+
+	while (*query)
+	{
+		int			mblen = PQmblenBounded(query, pset.encoding);
+
+		/*
+		 * Note: we assume the encoding is a superset of ASCII, so that for
+		 * example "query[0] == '/'" is meaningful.  However, we do NOT assume
+		 * that the second and subsequent bytes of a multibyte character
+		 * couldn't look like ASCII characters; so it is critical to advance
+		 * by mblen, not 1, whenever we haven't exactly identified the
+		 * character we are skipping over.
+		 */
+		if (isspace((unsigned char) *query))
+			query += mblen;
+		else if (!slashstar_start && query[0] == '/' && query[1] == '*')
+		{
+			slashstar_start = true;
+			query += 2;
+		}
+		else if (slashstar_start && query[0] == '*' && query[1] == '/')
+		{
+			slashstar_start = false;
+			query += 2;
+		}
+		else if (!slashstar_start && query[0] == '-' && query[1] == '-')
+		{
+			query += 2;
+
+			/*
+			 * We have to skip to end of line since any slash-star inside the
+			 * -- comment does NOT start a slash-star comment.
+			 */
+			while (*query)
+			{
+				if (*query == '\n')
+				{
+					query++;
+					break;
+				}
+				query += PQmblenBounded(query, pset.encoding);
+			}
+		}
+		else if (slashstar_start)
+			query += mblen;
+		else
+			break;				/* found first token */
+	}
+
+	return query;
+}
+
+/*
+ * Get the host variable from the query, return the HostVariable
+ * array successfully, and return NULL if it fails; if the failure
+ * is caused by the execution of the get_parameter_descr() function,
+ * error is set to true.
+ */
+HostVariable *
+get_hostvariables(const char *sql, bool *error)
+{
+	PQExpBuffer query = createPQExpBuffer();
+	PGresult	*res;
+	HostVariable *host = NULL;
+	char		*newsql = NULL;
+	char		*ptr = NULL;
+	int			i = 0;
+
+	*error = false;
+	if (!sql)
+		return NULL;
+
+	/* double write quote */
+	newsql = pg_malloc0(strlen(sql) * 2);	/* enough */
+	ptr = newsql;
+	while (sql[i] != '\0')
+	{
+		if (sql[i] == '\'')
+			*ptr++ = sql[i];
+		*ptr++ = sql[i];
+		i++;
+	}
+	*ptr = '\0';
+
+	appendPQExpBuffer(query, "select * from get_parameter_descr('%s');", newsql);
+	res = PQexec(pset.db, query->data);
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		int	ntuples = PQntuples(res);
+		int	i_name;
+		int	i_position;
+
+		i_name = PQfnumber(res, "name");
+		i_position = PQfnumber(res, "position");
+
+		/* No placeholders do not need to use PBE */
+		if (ntuples == 1)
+			return NULL;
+
+		/* is an anonymous block and has placeholders */
+		if (ntuples > 1)
+		{
+			int	i;
+
+			host = pg_malloc0(sizeof(HostVariable));
+			host->hostvars = (HostVariableEntry *) pg_malloc((ntuples - 1) * sizeof(HostVariableEntry));
+			host->length = ntuples - 1;
+
+			if (pg_strcasecmp(PQgetvalue(res, 0, i_name), "true")== 0)
+				host->isdostmt = true;
+			else
+				host->isdostmt = false;
+
+			/* First tuple is not a placeholder info tuple, start with 1 */
+			for (i = 1; i < ntuples; i++)
+			{
+				host->hostvars[i-1].name = pg_strdup(PQgetvalue(res, i, i_name));
+				host->hostvars[i-1].position = atoi(PQgetvalue(res, i, i_position));
+			}
+		}
+	}
+	else
+	{
+		pg_log_info("%s", PQerrorMessage(pset.db));	
+		*error = true;
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	pg_free(newsql);
+
+	return host;
+}
+
+/*
+ * Like SendQuery, except that we send queries
+ * using the extended query protocol.
+ */
+bool
+SendQuery_PBE(const char *query, HostVariable *hv)
+{
+	PGresult   *results;
+	Ivyresult	*ivyresults = NULL;
+	PGTransactionStatusType transaction_status;
+	double		elapsed_msec = 0;
+	bool		OK = false;
+	int			i;
+	bool		on_error_rollback_savepoint = false;
+	static bool on_error_rollback_warning = false;
+
+	if (!hv)
+		return SendQuery(query); /* In theory, this shouldn't happen */
+
+	if (!pset.db)
+	{
+		pg_log_error("You are currently not connected to a database.");
+		goto sendquery_cleanup;
+	}
+
+	if (pset.singlestep)
+	{
+		char		buf[3];
+
+		fflush(stderr);
+		printf(_("***(Single step mode: verify command)*******************************************\n"
+				 "%s\n"
+				 "***(press return to proceed or enter x and return to cancel)********************\n"),
+			   query);
+		fflush(stdout);
+		if (fgets(buf, sizeof(buf), stdin) != NULL)
+			if (buf[0] == 'x')
+				goto sendquery_cleanup;
+		if (cancel_pressed)
+			goto sendquery_cleanup;
+	}
+	else if (pset.echo == PSQL_ECHO_QUERIES)
+	{
+		puts(query);
+		fflush(stdout);
+	}
+
+	if (pset.logfile)
+	{
+		fprintf(pset.logfile,
+				_("********* QUERY **********\n"
+				  "%s\n"
+				  "**************************\n\n"), query);
+		fflush(pset.logfile);
+	}
+
+	SetCancelConn(pset.db);
+
+	transaction_status = PQtransactionStatus(pset.db);
+
+	if (transaction_status == PQTRANS_IDLE &&
+		!pset.autocommit &&
+		!command_no_begin(query))
+	{
+		results = PQexec(pset.db, "BEGIN");
+		if (PQresultStatus(results) != PGRES_COMMAND_OK)
+		{
+			pg_log_info("%s", PQerrorMessage(pset.db));
+			ClearOrSaveResult(results);
+			ResetCancelConn();
+			goto sendquery_cleanup;
+		}
+		ClearOrSaveResult(results);
+		transaction_status = PQtransactionStatus(pset.db);
+	}
+
+	if (transaction_status == PQTRANS_INTRANS &&
+		pset.on_error_rollback != PSQL_ERROR_ROLLBACK_OFF &&
+		(pset.cur_cmd_interactive ||
+		 pset.on_error_rollback == PSQL_ERROR_ROLLBACK_ON))
+	{
+		if (on_error_rollback_warning == false && pset.sversion < 80000)
+		{
+			char		sverbuf[32];
+
+			pg_log_warning("The server (version %s) does not support savepoints for ON_ERROR_ROLLBACK.",
+						   formatPGVersionNumber(pset.sversion, false,
+												 sverbuf, sizeof(sverbuf)));
+			on_error_rollback_warning = true;
+		}
+		else
+		{
+			results = PQexec(pset.db, "SAVEPOINT pg_psql_temporary_savepoint");
+			if (PQresultStatus(results) != PGRES_COMMAND_OK)
+			{
+				pg_log_info("%s", PQerrorMessage(pset.db));
+				ClearOrSaveResult(results);
+				ResetCancelConn();
+				goto sendquery_cleanup;
+			}
+			ClearOrSaveResult(results);
+			on_error_rollback_savepoint = true;
+		}
+	}
+
+	if (pset.gdesc_flag)
+	{
+		/* Describe query's result columns, without executing it */
+		OK = DescribeQuery(query, &elapsed_msec);
+		ResetCancelConn();
+		results = NULL;			/* PQclear(NULL) does nothing */
+	}
+	else if (pset.fetch_count <= 0 || pset.gexec_flag ||
+			 pset.crosstab_flag || !is_select_command(query))
+	{
+		/* Default fetch-it-all-and-print mode */
+		struct _variable **bindvar;
+		char	*p = NULL;
+		bool	missing = false;
+		int		i;
+		instr_time	before,
+					after;
+
+		if (pset.timing)
+			INSTR_TIME_SET_CURRENT(before);
+
+		bindvar = (struct _variable **) pg_malloc0(sizeof(struct _variable *) * hv->length);
+
+		/*
+		 * If there are multiple host variables that have not be declared,
+		 * the order of detection in the Oracle error message is from the
+		 * back to the front.
+		 */
+		for (i = hv->length; i > 0; i--)
+		{
+			p = hv->hostvars[i - 1].name;
+			p++;	/* skip colon */
+			bindvar[i - 1] = BindVariableExist(pset.vars, p);
+
+			if (bindvar[i - 1] == NULL)
+			{
+				missing= true;
+				break;
+			}
+		}
+
+		if (missing)
+		{
+			pg_log_error("Bind variable \"%s\" not declared.", p);
+			ResetCancelConn();
+			results = NULL;			/* PQclear(NULL) does nothing */
+			OK = false;
+		}
+		else
+		{
+			/* exec using PBE */
+			ivyresults = psql_exec_pbe(query, hv, bindvar);
+
+			if (!ivyresults)
+			{
+				ResetCancelConn();
+				results = NULL;			/* PQclear(NULL) does nothing */
+				OK = false;
+			}
+			else
+			{
+				results = ivyresults->result;
+
+				/* these operations are included in the timing result: */
+				ResetCancelConn();
+				OK = ProcessResult(&results);
+
+				if (pset.timing)
+				{
+					INSTR_TIME_SET_CURRENT(after);
+					INSTR_TIME_SUBTRACT(after, before);
+					elapsed_msec = INSTR_TIME_GET_MILLISEC(after);
+				}
+
+				/* but printing results isn't: */
+				if (OK && results)
+					OK = PrintQueryResults(results, true);
+			}
+		}
+		pg_free(bindvar);
+	}
+	else
+	{
+		/* Fetch-in-segments mode */
+		OK = ExecQueryUsingCursor(query, &elapsed_msec);
+		ResetCancelConn();
+		results = NULL;			/* PQclear(NULL) does nothing */
+	}
+
+	if (!OK && pset.echo == PSQL_ECHO_ERRORS)
+		pg_log_info("STATEMENT:  %s", query);
+
+	/* If we made a temporary savepoint, possibly release/rollback */
+	if (on_error_rollback_savepoint)
+	{
+		const char *svptcmd = NULL;
+
+		transaction_status = PQtransactionStatus(pset.db);
+
+		switch (transaction_status)
+		{
+			case PQTRANS_INERROR:
+				/* We always rollback on an error */
+				svptcmd = "ROLLBACK TO pg_psql_temporary_savepoint";
+				break;
+
+			case PQTRANS_IDLE:
+				/* If they are no longer in a transaction, then do nothing */
+				break;
+
+			case PQTRANS_INTRANS:
+
+				/*
+				 * Do nothing if they are messing with savepoints themselves:
+				 * If the user did COMMIT AND CHAIN, RELEASE or ROLLBACK, our
+				 * savepoint is gone. If they issued a SAVEPOINT, releasing
+				 * ours would remove theirs.
+				 */
+				if (results &&
+					(strcmp(PQcmdStatus(results), "COMMIT") == 0 ||
+					 strcmp(PQcmdStatus(results), "SAVEPOINT") == 0 ||
+					 strcmp(PQcmdStatus(results), "RELEASE") == 0 ||
+					 strcmp(PQcmdStatus(results), "ROLLBACK") == 0))
+					svptcmd = NULL;
+				else
+					svptcmd = "RELEASE pg_psql_temporary_savepoint";
+				break;
+
+			case PQTRANS_ACTIVE:
+			case PQTRANS_UNKNOWN:
+			default:
+				OK = false;
+				/* PQTRANS_UNKNOWN is expected given a broken connection. */
+				if (transaction_status != PQTRANS_UNKNOWN || ConnectionUp())
+					pg_log_error("unexpected transaction status (%d)",
+								 transaction_status);
+				break;
+		}
+
+		if (svptcmd)
+		{
+			PGresult   *svptres;
+
+			svptres = PQexec(pset.db, svptcmd);
+			if (PQresultStatus(svptres) != PGRES_COMMAND_OK)
+			{
+				pg_log_info("%s", PQerrorMessage(pset.db));
+				ClearOrSaveResult(svptres);
+				OK = false;
+
+				PQclear(results);
+				ResetCancelConn();
+				goto sendquery_cleanup;
+			}
+			PQclear(svptres);
+		}
+	}
+
+	ClearOrSaveResult(results);
+	if (ivyresults)
+	{
+		free(ivyresults);
+		ivyresults = NULL;
+	}
+
+	/* Possible microtiming output */
+	if (pset.timing)
+		PrintTiming(elapsed_msec);
+
+	/* check for events that may occur during query execution */
+
+	if (pset.encoding != PQclientEncoding(pset.db) &&
+		PQclientEncoding(pset.db) >= 0)
+	{
+		/* track effects of SET CLIENT_ENCODING */
+		pset.encoding = PQclientEncoding(pset.db);
+		pset.popt.topt.encoding = pset.encoding;
+		SetVariable(pset.vars, "ENCODING",
+					pg_encoding_to_char(pset.encoding));
+	}
+
+	PrintNotifications();
+
+	/* perform cleanup that should occur after any attempted query */
+
+sendquery_cleanup:
+
+	/* reset \g's output-to-filename trigger */
+	if (pset.gfname)
+	{
+		free(pset.gfname);
+		pset.gfname = NULL;
+	}
+
+	/* restore print settings if \g changed them */
+	if (pset.gsavepopt)
+	{
+		restorePsetInfo(&pset.popt, pset.gsavepopt);
+		pset.gsavepopt = NULL;
+	}
+
+	/* reset \gset trigger */
+	if (pset.gset_prefix)
+	{
+		free(pset.gset_prefix);
+		pset.gset_prefix = NULL;
+	}
+
+	/* reset \gdesc trigger */
+	pset.gdesc_flag = false;
+
+	/* reset \gexec trigger */
+	pset.gexec_flag = false;
+
+	/* reset \crosstabview trigger */
+	pset.crosstab_flag = false;
+	for (i = 0; i < lengthof(pset.ctv_args); i++)
+	{
+		pg_free(pset.ctv_args[i]);
+		pset.ctv_args[i] = NULL;
+	}
+
+	return OK;
+}
+
+/*
+ * exec_anonymous_pbe
+ * 
+ * Execute query using the extended query protocol and update host variables.
+ */
+static Ivyresult *
+psql_exec_pbe(const char *sql, HostVariable *hv, struct _variable **bindvar)
+{
+	IvyPreparedStatement *stmthandle = NULL;
+	Ivyconn		*conn;
+	Ivyresult	*res;
+	IvyError	*errhp = NULL;
+	char		**var = NULL;
+	IvyBindInfo	**bindinfo = NULL;
+	int			*indp = NULL;
+	int			*var_sz = NULL;
+	int			i;
+
+	if (!sql || !hv || !bindvar)
+		return NULL;
+
+	conn = Ivyconnectdb2(pset.db);
+
+	/* this shouldn't happen */
+	if (Ivystatus(conn) == CONNECTION_BAD)
+	{
+		pg_log_error("database connection lost.");
+		pg_log_error("%s", IvyerrorMessage(conn));
+		Ivyfinish2(conn);
+		return NULL;
+	}
+
+	if (!IvyHandleAlloc(NULL, (void **) &stmthandle,IVY_HANDLE_STMT,4, NULL))
+	{
+		pg_log_error("IvyHandleAlloc alloc stmt handle failed");
+		Ivyfinish2(conn);
+		return NULL;
+	}
+
+	if (!IvyHandleAlloc(NULL, (void **) &errhp, IVY_HANDLE_ERROR, 4, NULL))
+	{
+		pg_log_error("IvyHandleAlloc alloc error handle failed");
+		IvyFreeHandle(stmthandle, IVY_HANDLE_STMT);
+		Ivyfinish2(conn);
+		return NULL;
+	}
+
+	/* PREPARE */
+	if (!IvyStmtPrepare(stmthandle, errhp, sql, strlen(sql), 0, 0))
+	{
+		pg_log_error("%s", errhp->error_msg);
+		IvyFreeHandle(stmthandle, IVY_HANDLE_STMT);
+		IvyFreeHandle(errhp, IVY_HANDLE_ERROR);
+		Ivyfinish2(conn);
+		return NULL;
+	}
+
+	var = (char **) pg_malloc0(hv->length * sizeof(char *));
+	bindinfo = (IvyBindInfo **) pg_malloc0(hv->length * sizeof(IvyBindInfo *));
+	indp = pg_malloc0(hv->length * sizeof(int));
+	var_sz = pg_malloc0(hv->length * sizeof(int));
+
+	for (i = 0; i < hv->length; i++)
+	{
+		switch (bindvar[i]->typoid)
+		{
+			case NUMBEROID:
+				var_sz[i] = 256;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case BINARY_FLOATOID:
+				var_sz[i] = 256;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case BINARY_DOUBLEOID:
+				var_sz[i] = 256;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case ORACHARCHAROID:
+				var_sz[i] = (bindvar[i]->typmod - VARHDRSZ) * pg_encoding_max_length(pset.encoding) + 1;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case ORACHARBYTEOID:
+				var_sz[i] = bindvar[i]->typmod - VARHDRSZ + 1;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case ORAVARCHARCHAROID:
+				var_sz[i] = (bindvar[i]->typmod - VARHDRSZ) * pg_encoding_max_length(pset.encoding) + 1;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			case ORAVARCHARBYTEOID:
+				var_sz[i] = bindvar[i]->typmod - VARHDRSZ + 1;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
+			/* TODO */
+			//case REFCURSOR:
+			//case BLOB:
+			//case CLOB:
+			//case NCLOB:
+			//case BFILE:
+			default:
+				{
+					pg_log_error("Unsupported bind variable types: %d", bindvar[i]->typoid);
+					IvyFreeHandle(stmthandle, IVY_HANDLE_STMT);
+					IvyFreeHandle(errhp, IVY_HANDLE_ERROR);
+					Ivyfinish2(conn);
+					return NULL;
+				}
+		}
+
+		if (bindvar[i]->value)
+			strcpy(var[i], bindvar[i]->value);
+
+		bindinfo[i] = NULL;
+		indp[i] = 0;
+	}
+
+	/* BIND */
+	for (i = 0; i < hv->length; i++)
+	{
+		IvyBindByPos(stmthandle,
+					&bindinfo[i],
+					errhp,
+					hv->hostvars[i].position,
+					var[i],
+					var_sz[i],
+					bindvar[i]->typoid | 0x60000000  /* inout */,
+					&indp[i],
+					NULL,
+					NULL,
+					256,
+					NULL,
+					0);
+	}
+
+	/* EXECUTE */
+	res = IvyStmtExecute2(conn, stmthandle, errhp, hv);
+
+	if (IvyresultStatus(res) != PGRES_TUPLES_OK &&
+		IvyresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		pg_log_error("%s", errhp->error_msg);
+		IvyFreeHandle(stmthandle, IVY_HANDLE_STMT);
+		IvyFreeHandle(errhp, IVY_HANDLE_ERROR);
+		Ivyclear(res);
+		Ivyfinish2(conn);
+		goto pbe_failure;
+	}
+
+	IvyFreeHandle(stmthandle, IVY_HANDLE_STMT);
+	IvyFreeHandle(errhp, IVY_HANDLE_ERROR);
+
+	/* update host variable */
+	for (i = 0; i < hv->length; i++)
+	{
+		char	*p = hv->hostvars[i].name;
+
+		if (var[i])
+			AssignBindVariable(pset.vars, ++p, var[i]);
+	}
+
+pbe_failure:
+	for (i = 0; i < hv->length; i++)
+	{
+		if (var[i])
+			pg_free(var[i]);
+	}
+	pg_free(var);
+	pg_free(bindinfo);
+	pg_free(indp);
+	pg_free(var_sz);
+
+	return res;
+}
+/* End - ReqID:SRS-CMD-PSQL */

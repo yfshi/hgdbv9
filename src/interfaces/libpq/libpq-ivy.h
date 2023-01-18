@@ -149,7 +149,26 @@ typedef enum IVY_HANDLE_TYPE
 	IVY_HANDLE_NO
 } ivy_handle_type;
 
+/* Begin - ReqID:SRS-CMD-PSQL */
+typedef struct HostVariableEntry
+{
+	char	*name;
+	int		position;
+} HostVariableEntry;
+
+typedef struct HostVariable
+{
+	HostVariableEntry *hostvars;
+	int		length;
+	bool	isdostmt;
+} HostVariable;
+/* End - ReqID:SRS-CMD-PSQL */
+
 extern Ivyconn *Ivyconnectdb(const char *conninfo);
+/* Begin - ReqID:SRS-CMD-PSQL */
+extern Ivyconn *Ivyconnectdb2(PGconn *conn);
+extern void Ivyfinish2(Ivyconn *conn);
+/* End - ReqID:SRS-CMD-PSQL */
 extern IvyPreparedStatement *IvyCreatePreparedStatement(const char *stmtName,
 													const char *query,
 													int nParams,
@@ -206,6 +225,13 @@ extern int IvyBindByName(IvyPreparedStatement *stmtHandle,
 extern Ivyresult *IvyStmtExecute(Ivyconn *tconn,
 									IvyPreparedStatement *stmtHandle,
 									IvyError *errhp);
+
+/* Begin - ReqID:SRS-CMD-PSQL */
+extern Ivyresult *IvyStmtExecute2(Ivyconn *tconn,
+					  				IvyPreparedStatement *stmtHandle,
+					  				IvyError *errhp,
+					  				HostVariable *host);
+/* End - ReqID:SRS-CMD-PSQL */
 
 extern int IvybindOutParameterByName(IvyPreparedStatement *stmtHandle,
 									IvyBindOutInfo **bindinfo,

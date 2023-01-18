@@ -155,6 +155,15 @@ typedef struct psqlplus_cmd_print
 	psqlplus_cmd_type	cmd_type;
 	print_list			*print_items;	/* if NULL print all bind variables */
 } psqlplus_cmd_print;
+
+/*
+ * EXECUTE command node
+ */
+typedef struct psqlplus_cmd_execute
+{
+	psqlplus_cmd_type	cmd_type;
+	char				*plisqlstmts;	/* plisql statements text */
+} psqlplus_cmd_execute;
 /* End - ReqID:SRS-CMD-PSQL */
 
 /*

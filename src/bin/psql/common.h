@@ -14,6 +14,7 @@
 #include "fe_utils/psqlscan.h"
 #include "oracle_fe_utils/ora_psqlscan.h"  /* ReqID:SRS-PSQL-PARSER */
 #include "libpq-fe.h"
+#include "libpq-ivy.h"	/* ReqID:SRS-CMD-PSQL */
 
 extern bool openQueryOutputFile(const char *fname, FILE **fout, bool *is_pipe);
 extern bool setQFout(const char *fname);
@@ -44,5 +45,10 @@ extern const char *session_username(void);
 extern void expand_tilde(char **filename);
 
 extern bool recognized_connection_string(const char *connstr);
+/* Begin - ReqID:SRS-CMD-PSQL */
+extern char *psqlplus_skip_space(char *query);
+extern HostVariable *get_hostvariables(const char *sql, bool *error);
+extern bool SendQuery_PBE(const char *query, HostVariable *hv);
+/* End - ReqID:SRS-CMD-PSQL */
 
 #endif							/* COMMON_H */

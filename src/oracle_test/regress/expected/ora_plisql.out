@@ -743,11 +743,13 @@ NOTICE:  10
 begin
 null;
 end;
+/
 <<
 main >>
 begin
 null;
 end;
+/
 <<
 main
 >>

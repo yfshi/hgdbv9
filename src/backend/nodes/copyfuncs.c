@@ -3810,6 +3810,7 @@ _copyDoStmt(const DoStmt *from)
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	COPY_NODE_FIELD(paramsmode);
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	COPY_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
 
 	return newnode;
 }

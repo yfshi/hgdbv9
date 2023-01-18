@@ -2067,7 +2067,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		Datum		txt = PG_GETARG_DATUM(0);
 		char		*sql = TextDatumGetCString(txt);
 		List		*parsetree;
-		int			nparams;
+		int			nparams = 0;
 		char		**paramnames = NULL;
 		MemoryContext	oldcxt;
 		int oraparam_top_level;
@@ -2094,55 +2094,105 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		PG_END_TRY();
 
 		if (list_length(parsetree) != 1)
+		{
+			/* Begin - BUG:M0000077 */
+			backward_oraparam_stack();
+			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+			setdynamic_parser(false);
+			/* End - BUG:M0000077 */
 			elog(ERROR, "we only support one parse tree");
+		}
 
 		if (nodeTag(linitial(parsetree)) == T_RawStmt &&
 			nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_DoStmt)
 		{
+			/* Begin - BUG:M0000077 */
+			DoStmt		*stmt = (DoStmt *)(((RawStmt *)linitial(parsetree))->stmt);
+			ListCell	*arg;
+			DefElem		*as_item = NULL;
+			DefElem		*language_item = NULL;
+			char		*language = NULL;
+			char		*source_text = NULL;
+
+			foreach(arg, stmt->args)
+			{
+				DefElem    *defel = (DefElem *) lfirst(arg);
+
+				if (strcmp(defel->defname, "as") == 0)
+				{
+					as_item = defel;
+				}
+				else if (strcmp(defel->defname, "language") == 0)
+				{
+					language_item = defel;
+				}
+			}
+
+			if (language_item)
+				language = strVal(language_item->arg);
+			if (as_item)
+				source_text = strVal(as_item->arg);
+			/* End - BUG:M0000077 */
+
 			dostmt = true;
 
-			PG_TRY();
+			/*
+			 * Currently, only Oracle-compatible anonymous blocks support placeholders
+			 * for OUT parameters. For anonymous blocks in other PL languages, we only
+			 * return a {true, 0} tuple instead of reporting an error,Because interfaces
+			 * of libpq may implicitly call this function, if an error is reported, the
+			 * transaction block state of the display transaction will be destroyed.
+			 */
+			/* Begin - BUG:M0000077 */
+			if (language &&
+				strcmp(language, "plisql") == 0 &&
+				stmt->paramsmode == NIL)
 			{
-				if (!plisql_internal_funcs.isload)
+				PG_TRY();
 				{
-					FmgrInfo	flinfo;
-					HeapTuple	languageTuple;
-					Form_pg_language languageStruct;
-					Oid 		laninline;
+					if (!plisql_internal_funcs.isload)
+					{
+						FmgrInfo	flinfo;
+						HeapTuple	languageTuple;
+						Form_pg_language languageStruct;
+						Oid 		laninline;
 
-					/* Look up the language and validate permissions */
-					languageTuple = SearchSysCache1(LANGOID, ObjectIdGetDatum(LANG_PLISQL_OID));
-					if (!HeapTupleIsValid(languageTuple))
-						ereport(ERROR,
-								(errcode(ERRCODE_UNDEFINED_OBJECT),
-								 errmsg("language plisql does not exist"),
-								 (extension_file_exists("plisql") ?
-								  errhint("Use CREATE EXTENSION to load the language into the database.") : 0)));
+						/* Look up the language and validate permissions */
+						languageTuple = SearchSysCache1(LANGOID, ObjectIdGetDatum(LANG_PLISQL_OID));
+						if (!HeapTupleIsValid(languageTuple))
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_OBJECT),
+									 errmsg("language plisql does not exist"),
+									 (extension_file_exists("plisql") ?
+									  errhint("Use CREATE EXTENSION to load the language into the database.") : 0)));
 
-					languageStruct = (Form_pg_language) GETSTRUCT(languageTuple);
+						languageStruct = (Form_pg_language) GETSTRUCT(languageTuple);
 
-					/* get the handler function's OID */
-					laninline = languageStruct->laninline;
-					if (!OidIsValid(laninline))
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("language \"%s\" does not support inline code execution",
-										NameStr(languageStruct->lanname))));
+						/* get the handler function's OID */
+						laninline = languageStruct->laninline;
+						if (!OidIsValid(laninline))
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("language \"%s\" does not support inline code execution",
+											NameStr(languageStruct->lanname))));
 
-					ReleaseSysCache(languageTuple);
-					fmgr_info(laninline, &flinfo);
+						ReleaseSysCache(languageTuple);
+						fmgr_info(laninline, &flinfo);
+					}
+					//plisql_internal_funcs.compile_inline_internal(sql);
+					plisql_internal_funcs.compile_inline_internal(source_text);
+					nparams = calculate_oraparamname(&paramnames);
 				}
-				plisql_internal_funcs.compile_inline_internal(sql);
-				nparams = calculate_oraparamname(&paramnames);
+				PG_CATCH();
+				{
+					backward_oraparam_stack();
+					pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+					setdynamic_parser(false);
+					PG_RE_THROW();
+				}
+				PG_END_TRY();
 			}
-			PG_CATCH();
-			{
-				backward_oraparam_stack();
-				pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-				setdynamic_parser(false);
-				PG_RE_THROW();
-			}
-			PG_END_TRY();
+			/* End - BUG:M0000077 */
 		}
 
 		backward_oraparam_stack();

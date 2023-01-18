@@ -195,6 +195,7 @@ main(int argc, char *argv[])
 
 	/* Default values for variables (that don't match the result of \unset) */
 	SetVariableBool(pset.vars, "AUTOCOMMIT");
+	SetVariable(pset.vars, "EXECUTE_RUN_PREPARE", "off");	/* ReqID:SRS-CMD-PSQL */
 	SetVariable(pset.vars, "PROMPT1", DEFAULT_PROMPT1);
 	SetVariable(pset.vars, "PROMPT2", DEFAULT_PROMPT2);
 	SetVariable(pset.vars, "PROMPT3", DEFAULT_PROMPT3);
@@ -1193,6 +1194,14 @@ hide_tableam_hook(const char *newval)
 	return ParseVariableBool(newval, "HIDE_TABLEAM", &pset.hide_tableam);
 }
 
+/* Begin - ReqID:SRS-CMD-PSQL */
+static bool
+execute_run_prepare_hook(const char *newval)
+{
+	return ParseVariableBool(newval, "EXECUTE_RUN_PREPARE", &pset.execute_run_prepare);
+}
+/* End - ReqID:SRS-CMD-PSQL */
+
 static void
 EstablishVariableSpace(void)
 {
@@ -1261,4 +1270,9 @@ EstablishVariableSpace(void)
 	SetVariableHooks(pset.vars, "HIDE_TABLEAM",
 					 bool_substitute_hook,
 					 hide_tableam_hook);
+/* Begin - ReqID:SRS-CMD-PSQL */
+	SetVariableHooks(pset.vars, "EXECUTE_RUN_PREPARE",
+					 bool_substitute_hook,
+					 execute_run_prepare_hook);
+/* End - ReqID:SRS-CMD-PSQL */
 }

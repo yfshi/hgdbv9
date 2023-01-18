@@ -643,6 +643,9 @@ static void determineLanguage(List *options);
 %type <node> param_mode_item
 %type <list> params_mode_list
 /* End - ReqID:SRS-SQL-ANONYOUT */
+/* Begin - ReqID:SRS-CMD-PSQL */
+%type <list> params_length_list
+/* End - ReqID:SRS-CMD-PSQL */
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 %type <str>  opt_param_name
 %type <node> param_mode
@@ -820,6 +823,9 @@ static void determineLanguage(List *options);
 %token <keyword> NVARCHAR2
 /* End - BUG:M0000068 */
 
+/* Begin - ReqID:SRS-CMD-PSQL */
+%token <keyword> PARAMSLENGTH
+/* End - ReqID:SRS-CMD-PSQL */
 
 /* Begin - ReqID:SRS-SQL-PACKAGE  */
 %type <node> CreatePackageStmt CreatePackageBodyStmt AlterPackageStmt
@@ -9325,10 +9331,23 @@ DoStmt: DO dostmt_opt_list
 					DoStmt *n = makeNode(DoStmt);
 					n->args = $2;
 					n->paramsmode = $4;
+					n->paramslen = NIL;	/* ReqID:SRS-CMD-PSQL */
 					determineLanguage(n->args);
 					$$ = (Node *)n;
 				}
 		/* End - ReqID:SRS-SQL-ANONYOUT */
+
+		/* Begin - ReqID:SRS-CMD-PSQL */
+		| DO dostmt_opt_list USING params_mode_list PARAMSLENGTH params_length_list
+				{
+					DoStmt *n = makeNode(DoStmt);
+					n->args = $2;
+					n->paramsmode = $4;
+					n->paramslen = $6;
+					determineLanguage(n->args);
+					$$ = (Node *)n;
+				}
+		/* End - ReqID:SRS-CMD-PSQL */
 		;
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -9397,6 +9416,19 @@ param_mode:
 				| IN_P OUT_P    		{ $$ = (Node *) makeString("inout"); }
 		;
 /* End - ReqID:SRS-SQL-ANONYOUT */
+
+/* Begin - ReqID:SRS-CMD-PSQL */
+params_length_list:
+			SignedIconst
+				{
+					$$ = list_make1(makeInteger($1));
+				}
+			| params_length_list ',' SignedIconst
+				{
+					$$ = lappend($1, makeInteger($3));
+				}
+		;
+/* End - ReqID:SRS-CMD-PSQL */
 
 /*****************************************************************************
  *
@@ -18381,6 +18413,7 @@ unreserved_keyword:
 			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
+			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
 			| PARSER
 			| PARTIAL
 			| PARTITION
@@ -19037,6 +19070,7 @@ bare_label_keyword:
 			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
+			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
 			| PARSER
 			| PARTIAL
 			| PARTITION

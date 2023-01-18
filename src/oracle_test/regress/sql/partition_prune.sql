@@ -2,6 +2,7 @@
 -- Test partitioning planner code
 --
 
+\set EXECUTE_RUN_PREPARE on
 -- Force generic plans to be used for all prepared statements in this file.
 set plan_cache_mode = force_generic_plan;
 

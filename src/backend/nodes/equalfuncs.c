@@ -1563,6 +1563,7 @@ _equalDoStmt(const DoStmt *a, const DoStmt *b)
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	COMPARE_NODE_FIELD(paramsmode);
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	COMPARE_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
 
 	return true;
 }
