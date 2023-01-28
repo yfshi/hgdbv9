@@ -1241,6 +1241,54 @@ END;
 \df p200
 \df public.p200
 DROP PROCEDURE p200;
+
+CREATE OR REPLACE FUNCTION f_test(arg1 INT default 10, arg2 OUT int, arg3 IN OUT NOCOPY int)
+RETURN INT
+IS
+BEGIN
+  NULL;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE p_test(arg1 INT, arg2 IN OUT INT, arg3 OUT INT)
+IS
+BEGIN
+  arg3 := arg1 + arg2;
+END;
+/
+
+\df p_test
+\df f_test
+\df public.p_test
+\df public.f_test
+
+set search_path=public,s1;
+CREATE SCHEMA s1;
+CREATE OR REPLACE FUNCTION s1.f_test(arg1 INT default 10, arg2 OUT int, arg3 IN OUT NOCOPY int)
+RETURN INT
+IS
+BEGIN
+  NULL;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE s1.p_test(arg1 INT, arg2 IN OUT INT, arg3 OUT INT)
+IS
+BEGIN
+  arg3 := arg1 + arg2;
+END;
+/
+
+\df s1.p_test
+\df s1.f_test
+\df p_test
+\df f_test
+
+reset search_path;
+DROP FUNCTION public.f_test;
+DROP PROCEDURE public.p_test;
+DROP FUNCTION s1.f_test;
+DROP PROCEDURE s1.p_test;
 --End - BUG#Z200
 
 --Begin - BUG#Z196: procedure with out paramater should supports overload
@@ -1292,6 +1340,97 @@ DROP PROCEDURE p_out(arg1 number);
 DROP PROCEDURE p_out(arg1 number, arg2 OUT number);
 DROP PROCEDURE p_out(arg1 number, arg2 OUT number, arg3 out number);
 --End - BUG#Z196
+
+--Begin - BUG#Z209: procedure body is NULL
+CREATE PROCEDURE p_nullby(arg1 IN OUT number)
+AS
+BEGIN
+  NULL;
+END;
+/
+
+CREATE PROCEDURE p_out(arg1 number, arg2 OUT number)
+IS
+BEGIN
+  NULL;
+END;
+/
+
+call p_nullby(1);
+
+declare
+  x number := 1;
+begin
+  call p_out(1,x);
+end;
+/
+DROP PROCEDURE p_nullby;
+DROP PROCEDURE p_out;
+
+--End - BUG#Z209: procedure body is NULL
+
+--Begin - BUG#Z212
+CREATE OR REPLACE FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+
+\df f_def1521
+\df p_def1521
+
+DROP FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+DROP PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+
+CREATE OR REPLACE FUNCTION f_def1(arg1 IN int default 1, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+
+CREATE OR REPLACE FUNCTION f_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+RETURN record
+IS
+BEGIN
+  NULL;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE p_def1(arg1 OUT int, arg2 int default 1, arg3 int default 10)
+IS
+BEGIN
+  arg1 := arg2 + arg3;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE p_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+IS
+BEGIN
+  NULL;
+END;
+/
+
+\df f_def1
+\df f_def2
+\df p_def1
+\df p_def2
+
+DROP FUNCTION f_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP PROCEDURE p_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP FUNCTION f_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+DROP PROCEDURE p_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+--End - BUG#Z212
 
 --clean data
 drop table mds;

@@ -83,6 +83,9 @@
 #include "utils/typcache.h"
 #include "utils/varlena.h"
 #include "utils/xml.h"
+/* Begin - BUG#Z212 */
+#include "commands/proclang.h"
+/* End - BUG#Z212 */
 
 /* ----------
  * Pretty formatting constants
@@ -3627,6 +3630,9 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	char		**argtypenames;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#Z212 */
+	int			argno;
+	/* End - BUG#Z212 */
 
 	numargs = get_func_arg_info(proctup,
 								&argtypes, &argnames, &argmodes);
@@ -3652,7 +3658,13 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 			argdefaults = castNode(List, stringToNode(str));
 			pfree(str);
 			nextargdefault = list_head(argdefaults);
-			/* nlackdefaults counts only *input* arguments lacking defaults */
+
+			/*
+			 * If compatible_db is not ORA_PARSER mode,
+			 * nlackdefaults counts only *input* arguments lacking defaults.
+			 * If compatible_db is ORA_PARSER mode, proc->pronargs counts all the arguments,
+			 * nlackdefaults counts all arguments before first arugment has default.
+			 */
 			nlackdefaults = proc->pronargs - list_length(argdefaults);
 		}
 	}
@@ -3675,6 +3687,10 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 
 	argsprinted = 0;
 	inputargno = 0;
+	/* Begin - BUG#Z212 */
+	argno = 0;
+	/* End - BUG#Z212 */
+
 	for (i = 0; i < numargs; i++)
 	{
 		Oid			argtype = argtypes[i];
@@ -3722,6 +3738,12 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 		if (isinput)
 			inputargno++;		/* this is a 1-based counter */
 
+		/* Begin - BUG#Z212 */
+		if (ORA_PARSER == compatible_db &&
+			LANG_PLISQL_OID == proc->prolang)
+			argno++;
+		/* End - BUG#Z212 */
+
 		if (print_table_args != (argmode == PROARGMODE_TABLE))
 			continue;
 
@@ -3754,7 +3776,32 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 		else
 			appendStringInfoString(buf, format_type_be(argtype));
 		/* End - ReqID:SRS-SQL-PACKAGE */
-		if (print_defaults && isinput && inputargno > nlackdefaults)
+
+		/* Begin - BUG#Z212 */
+		if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang)
+		{
+			/*
+			 * proc->pronargs counts all the arguments
+			 * if compatible_db is ORA_PARSER mode,
+			 * nlackdefaults counts all arguments before first arugment has default.
+			 */
+			if (print_defaults && argno > nlackdefaults)
+			{
+				Node	   *expr;
+
+				Assert(nextargdefault != NULL);
+				expr = (Node *) lfirst(nextargdefault);
+				nextargdefault = lnext(argdefaults, nextargdefault);
+
+				/* Begin - ReqID:SRS-SQL-FUNCOUT */
+				if (!IsA(expr, NonDefValNode))
+				/* End - ReqID:SRS-SQL-FUNCOUT */
+					appendStringInfo(buf, " DEFAULT %s",
+									 deparse_expression(expr, NIL, false, false));
+			}
+		}
+		/* End - BUG#Z212 */
+		else if (print_defaults && isinput && inputargno > nlackdefaults)
 		{
 			Node	   *expr;
 
@@ -3762,11 +3809,8 @@ print_function_arguments(StringInfo buf, HeapTuple proctup,
 			expr = (Node *) lfirst(nextargdefault);
 			nextargdefault = lnext(argdefaults, nextargdefault);
 
-			/* Begin - ReqID:SRS-SQL-FUNCOUT */
-			if (!IsA(expr, NonDefValNode))
-			/* End - ReqID:SRS-SQL-FUNCOUT */
-				appendStringInfo(buf, " DEFAULT %s",
-								 deparse_expression(expr, NIL, false, false));
+			appendStringInfo(buf, " DEFAULT %s",
+							 deparse_expression(expr, NIL, false, false));
 		}
 		argsprinted++;
 
@@ -3850,8 +3894,6 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	Datum		proargdefaults;
 	bool		isnull;
 	int			nth_default;
-	bool		has_nondefval = false;
-	ListCell   *lc;
 
 	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcid));
 	if (!HeapTupleIsValid(proctup))
@@ -3889,14 +3931,7 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	 * last N input arguments, where N = pronargdefaults.
 	 */
 	/* Begin - BUG#Z199 */
-	foreach (lc, argdefaults)
-		if (IsA(lfirst(lc), NonDefValNode))
-		{
-			has_nondefval = true;
-			break;
-		}
-
-	if (has_nondefval)
+	if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang)
 		nth_default = nth_arg - 1 - (numargs - proc->pronargdefaults);
 	else
 		nth_default = nth_inputarg - 1 - (proc->pronargs - proc->pronargdefaults);
@@ -3909,7 +3944,7 @@ pg_get_function_arg_default(PG_FUNCTION_ARGS)
 	}
 	node = list_nth(argdefaults, nth_default);
 	/* Begin - BUG#Z199 */
-	if (IsA(node, NonDefValNode))
+	if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == proc->prolang && IsA(node, NonDefValNode))
 	{
 		ReleaseSysCache(proctup);
 		PG_RETURN_NULL();

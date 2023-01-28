@@ -209,3 +209,138 @@ WHERE OBJECT_NAME='F1' OR OBJECT_NAME='F2';
 (4 rows)
 
 -- End - BUG#Z169
+-- Begin - BUG#Z199
+CREATE OR REPLACE FUNCTION f_def0(arg1 int default 20, arg2 OUT int, arg3 IN OUT int)
+RETURN record
+IS
+  res int;
+BEGIN
+  arg2 := arg1 + 10;
+  arg3 := arg1/2;
+  res := arg1 + 10;
+END;
+/
+select object_name,argument_name,defaulted from all_arguments where object_name='F_DEF0';
+ object_name | argument_name | defaulted 
+-------------+---------------+-----------
+ F_DEF0      |               | N
+ F_DEF0      | ARG1          | Y
+ F_DEF0      | ARG2          | N
+ F_DEF0      | ARG3          | N
+(4 rows)
+
+DROP FUNCTION f_def0(arg1 int, arg2 OUT int, arg3 IN OUT int);
+CREATE OR REPLACE PROCEDURE p_def0(arg1 int default 20, arg2 OUT int, arg3 IN OUT int)
+IS
+BEGIN
+  arg3 := arg1/2;
+END;
+/
+select object_name,argument_name,defaulted from all_arguments where object_name='P_DEF0';
+ object_name | argument_name | defaulted 
+-------------+---------------+-----------
+ P_DEF0      | ARG1          | Y
+ P_DEF0      | ARG2          | N
+ P_DEF0      | ARG3          | N
+(3 rows)
+
+DROP PROCEDURE p_def0(arg1 int, arg2 OUT int, arg3 IN OUT int);
+CREATE OR REPLACE FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF1521';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | F_DEF1521   |               | N
+ U1    | F_DEF1521   | ARG1          | N
+ U1    | F_DEF1521   | ARG2          | N
+ U1    | F_DEF1521   | ARG3          | Y
+(4 rows)
+
+DROP FUNCTION f_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+CREATE OR REPLACE PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int default 10)
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF1521';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | P_DEF1521   | ARG1          | N
+ U1    | P_DEF1521   | ARG2          | N
+ U1    | P_DEF1521   | ARG3          | Y
+(3 rows)
+
+DROP PROCEDURE p_def1521(arg1 IN int, arg2 OUT int, arg3 int);
+CREATE OR REPLACE FUNCTION f_def1(arg1 IN int default 1, arg2 OUT int, arg3 int default 10)
+RETURN record
+IS
+BEGIN
+  arg2 := arg1 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF1';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | F_DEF1      |               | N
+ U1    | F_DEF1      | ARG1          | Y
+ U1    | F_DEF1      | ARG2          | N
+ U1    | F_DEF1      | ARG3          | Y
+(4 rows)
+
+CREATE OR REPLACE FUNCTION f_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+RETURN record
+IS
+BEGIN
+  NULL;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='F_DEF2';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | F_DEF2      |               | N
+ U1    | F_DEF2      | ARG1          | N
+ U1    | F_DEF2      | ARG2          | Y
+ U1    | F_DEF2      | ARG3          | N
+ U1    | F_DEF2      | ARG4          | Y
+(5 rows)
+
+CREATE OR REPLACE PROCEDURE p_def1(arg1 OUT int, arg2 int default 1, arg3 int default 10)
+IS
+BEGIN
+  arg1 := arg2 + arg3;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF1';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | P_DEF1      | ARG1          | N
+ U1    | P_DEF1      | ARG2          | Y
+ U1    | P_DEF1      | ARG3          | Y
+(3 rows)
+
+CREATE OR REPLACE PROCEDURE p_def2(arg1 IN int, arg2 IN int default 1, arg3 IN int, arg4 int default 10)
+IS
+BEGIN
+  NULL;
+END;
+/
+select owner,object_name,argument_name,defaulted from all_arguments where object_name='P_DEF2';
+ owner | object_name | argument_name | defaulted 
+-------+-------------+---------------+-----------
+ U1    | P_DEF2      | ARG1          | N
+ U1    | P_DEF2      | ARG2          | Y
+ U1    | P_DEF2      | ARG3          | N
+ U1    | P_DEF2      | ARG4          | Y
+(4 rows)
+
+DROP FUNCTION f_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP PROCEDURE p_def1(arg1 IN int, arg2 OUT int, arg3 int);
+DROP FUNCTION f_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+DROP PROCEDURE p_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
+-- End - BUG#Z199
