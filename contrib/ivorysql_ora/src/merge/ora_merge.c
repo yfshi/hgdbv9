@@ -71,6 +71,7 @@
 #include "utils/ora_compatible.h"
 
 #include "../include/ivorysql_ora.h"
+#include "nodes/nodes.h"
 
 
 static TM_Result execDelete4Merge(ModifyTableContext *context, ResultRelInfo *resultRelInfo,

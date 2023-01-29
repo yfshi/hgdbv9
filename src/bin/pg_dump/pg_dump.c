@@ -38,6 +38,11 @@
 #include <termios.h>
 #endif
 
+/* Begin - ReqID:SRS-SQL-SEQ */
+#include "postgres.h"
+#include "catalog/pg_type.h"
+#include "commands/sequence.h"
+/* End - ReqID:SRS-SQL-SEQ */
 #include "access/attnum.h"
 #include "access/sysattr.h"
 #include "access/transam.h"
@@ -17671,6 +17676,12 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	PQExpBuffer delqry = createPQExpBuffer();
 	char	   *qseqname;
 	TableInfo  *owning_tab = NULL;
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	bool 		is_scale;
+	bool		is_extend;
+	bool		is_session;
+	int16		flags;
+	/* End - ReqID:SRS-SQL-SEQ */
 
 	qseqname = pg_strdup(fmtId(tbinfo->dobj.name));
 
@@ -17680,10 +17691,10 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 						  "SELECT format_type(seqtypid, NULL), "
 						  "seqstart, seqincrement, "
 						  "seqmax, seqmin, "
-						  "seqcache, seqcycle "
+						  "seqcache, seqcycle, flags "
 						  "FROM pg_catalog.pg_sequence "
 						  "WHERE seqrelid = '%u'::oid",
-						  tbinfo->dobj.catId.oid);
+						  tbinfo->dobj.catId.oid);	/* ReqID:SRS-SQL-SEQ */
 	}
 	else if (fout->remoteVersion >= 80400)
 	{
@@ -17696,16 +17707,16 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		appendPQExpBuffer(query,
 						  "SELECT 'bigint' AS sequence_type, "
 						  "start_value, increment_by, max_value, min_value, "
-						  "cache_value, is_cycled FROM %s",
-						  fmtQualifiedDumpable(tbinfo));
+						  "cache_value, is_cycled, flags FROM %s",
+						  fmtQualifiedDumpable(tbinfo));	/* ReqID:SRS-SQL-SEQ */
 	}
 	else
 	{
 		appendPQExpBuffer(query,
 						  "SELECT 'bigint' AS sequence_type, "
 						  "0 AS start_value, increment_by, max_value, min_value, "
-						  "cache_value, is_cycled FROM %s",
-						  fmtQualifiedDumpable(tbinfo));
+						  "cache_value, is_cycled, flags FROM %s",
+						  fmtQualifiedDumpable(tbinfo));	/* ReqID:SRS-SQL-SEQ */
 	}
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
@@ -17726,6 +17737,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	minv = PQgetvalue(res, 0, 4);
 	cache = PQgetvalue(res, 0, 5);
 	cycled = (strcmp(PQgetvalue(res, 0, 6), "t") == 0);
+	flags = atoi(PQgetvalue(res, 0, 7));
 
 	/* Calculate default limits for a sequence of this type */
 	is_ascending = (incby[0] != '-');
@@ -17863,10 +17875,30 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		appendPQExpBufferStr(query, "    NOMAXVALUE\n");
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 
-	appendPQExpBuffer(query,
-					  "    CACHE %s%s",
-					  cache, (cycled ? "\n    CYCLE" : ""));
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	if (strcmp(cache, "1") == 0 && db_mode == DB_ORACLE)
+		appendPQExpBuffer(query,
+						"    NOCACHE %s",
+						(cycled ? "\n    CYCLE" : ""));
+	else
+		appendPQExpBuffer(query,
+						"    CACHE %s%s",
+						cache, (cycled ? "\n    CYCLE" : ""));
+	/* End - ReqID:SRS-SQL-SEQ */
 
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	is_scale = (flags & SCALE_FLAG) == SCALE_FLAG ? true : false;
+	if(is_scale)
+		is_extend = (flags & EXTEND_FLAG) == EXTEND_FLAG ? true : false;
+	is_session = (flags & SESSION_FLAG) == SESSION_FLAG ? true : false;
+	if (is_scale && is_extend)
+		appendPQExpBuffer(query, " SCALE EXTEND");
+	else if (is_scale && !is_extend)
+		appendPQExpBuffer(query, " SCALE NOEXTEND");
+
+	if (is_session)
+		appendPQExpBuffer(query, " SESSION");
+	/* End - ReqID:SRS-SQL-SEQ */
 	if (tbinfo->is_identity_sequence)
 	{
 		appendPQExpBufferStr(query, "\n);\n");

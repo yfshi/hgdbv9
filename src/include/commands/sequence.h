@@ -45,6 +45,13 @@ typedef FormData_pg_sequence_data *Form_pg_sequence_data;
 /* XLOG stuff */
 #define XLOG_SEQ_LOG			0x00
 
+/* Begin - ReqID:SRS-SQL-SEQ */
+/* scale and session stuff */
+#define SCALE_FLAG				16
+#define EXTEND_FLAG				2048
+#define SESSION_FLAG			64
+/* End - ReqID:SRS-SQL-SEQ */
+
 typedef struct xl_seq_rec
 {
 	RelFileNode node;
@@ -66,5 +73,7 @@ extern void seq_redo(XLogReaderState *rptr);
 extern void seq_desc(StringInfo buf, XLogReaderState *rptr);
 extern const char *seq_identify(uint8 info);
 extern void seq_mask(char *pagedata, BlockNumber blkno);
+extern int64 get_sessionid(void);	/* ReqID:SRS-SQL-SEQ */
+
 
 #endif							/* SEQUENCE_H */

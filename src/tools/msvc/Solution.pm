@@ -520,6 +520,9 @@ sub GenerateFiles
 		#/* Begin - ReqID:SRS-SQL-PACKAGE */
 		ENABLE_CURSOR_UNNAME       => $self->{options}->{cursor_unname} ? 1 : undef,
 		#/* End - ReqID:SRS-SQL-PACKAGE */
+		#/* Begin - ReqID:SRS-SQL-SEQ */
+		USE_SCALEFIXED             => $self->{options}->{scalefixed} ? 1 : undef,
+		#/* End - ReqID:SRS-SQL-SEQ */
 		USE_LDAP                   => $self->{options}->{ldap} ? 1 : undef,
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
@@ -1275,6 +1278,9 @@ sub GetFakeConfigure
 	#/* Begin - ReqID:SRS-SQL-PACKAGE */
 	$cfg .= ' --enable-cursor-unname' if ($self->{options}->{cursor_unname});
 	#/* End - ReqID:SRS-SQL-PACKAGE */
+	#/* Begin - ReqID:SRS-SQL-SEQ */
+	$cfg .= ' --with-scalefixed'  if ($self->{options}->{scalefixed});
+	#/* End - ReqID:SRS-SQL-SEQ */
 	$cfg .= ' --enable-tap-tests' if ($self->{options}->{tap_tests});
 	$cfg .= ' --with-ldap'        if ($self->{options}->{ldap});
 	$cfg .= ' --without-zlib' unless ($self->{options}->{zlib});

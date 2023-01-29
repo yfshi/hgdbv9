@@ -403,6 +403,7 @@ typedef enum ProcessingMode
 
 extern ProcessingMode Mode;
 
+
 #define IsBootstrapProcessingMode() (Mode == BootstrapProcessing)
 #define IsInitProcessingMode()		(Mode == InitProcessing)
 #define IsNormalProcessingMode()	(Mode == NormalProcessing)

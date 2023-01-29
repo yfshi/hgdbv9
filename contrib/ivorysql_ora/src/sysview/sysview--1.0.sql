@@ -1,3 +1,12 @@
+/* Begin - ReqID:SRS-SQL-SEQ */
+GRANT USAGE ON SCHEMA sys TO PUBLIC;
+SET search_path TO sys;
+
+CREATE table dual (DUMMY pg_catalog.bpchar(1));
+insert into dual values('X');
+GRANT SELECT ON dual TO PUBLIC;
+/* End - ReqID:SRS-SQL-SEQ */
+
 /* 
  * function which converts all-uppercase text to all-lowercase text
  * and vice versa. 
@@ -1740,3 +1749,50 @@ ORDER BY
 
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
 GRANT SELECT ON SYS.USER_ARGUMENTS TO PUBLIC;
+
+/* Begin - ReqID:SRS-SQL-SEQ */
+/* For sequence VIEWS */
+CREATE OR REPLACE VIEW SYS.DBA_SEQUENCES AS
+SELECT
+	c.relowner::regrole AS sequence_owner,c.relname AS sequence_name,s.seqmin AS min_value,s.seqmax AS max_value,
+	s.seqincrement AS increment_by,s.seqcycle AS cycle_flag,null AS order_flag,s.seqcache AS cache_size,
+	CASE
+		WHEN has_sequence_privilege(c.oid, 'SELECT,USAGE'::text)
+			THEN pg_sequence_last_value(c.oid::regclass)
+		ELSE NULL::bigint
+	END AS last_number,
+	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
+	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
+	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
+
+
+CREATE OR REPLACE VIEW SYS.ALL_SEQUENCES AS
+SELECT
+	c.relowner::regrole AS sequence_owner,c.relname AS sequence_name,s.seqmin AS min_value,s.seqmax AS max_value,
+	s.seqincrement AS increment_by,s.seqcycle AS cycle_flag,null AS order_flag,s.seqcache AS cache_size,
+	CASE
+		WHEN has_sequence_privilege(c.oid, 'SELECT,USAGE'::text)
+			THEN pg_sequence_last_value(c.oid::regclass)
+		ELSE NULL::bigint
+	END AS last_number,
+	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
+	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
+	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
+
+
+CREATE OR REPLACE VIEW SYS.USER_SEQUENCES AS
+SELECT
+	c.relowner::regrole AS sequence_owner,c.relname AS sequence_name,s.seqmin AS min_value,s.seqmax AS max_value,
+	s.seqincrement AS increment_by,s.seqcycle AS cycle_flag,null AS order_flag,s.seqcache AS cache_size,
+	CASE
+		WHEN has_sequence_privilege(c.oid, 'SELECT,USAGE'::text)
+			THEN pg_sequence_last_value(c.oid::regclass)
+		ELSE NULL::bigint
+	END AS last_number,
+	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
+	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
+	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid and c.relowner::regrole = current_user::regrole;
+/* End - ReqID:SRS-SQL-SEQ */

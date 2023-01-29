@@ -688,6 +688,22 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 											  &levels_up);
 				if (nsitem == NULL)
 				{
+					/* Begin - ReqID:SRS-SQL-SEQ */
+					if(IsA(field2, String) && (!pg_strcasecmp(strVal(field2), "nextval") ||
+							!pg_strcasecmp(strVal(field2), "currval")))
+					{
+						FuncCall *seq_func = NULL;
+						A_Const *n = makeNode(A_Const);
+
+						n->val.type = T_String;
+						n->val.val.str = strVal(field1);
+						n->location = cref->location;
+
+						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
+							makeString(strVal(field2))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+						return transformFuncCall(pstate, seq_func);
+					}
+					/* End - ReqID:SRS-SQL-SEQ */
 					crerr = CRERR_NO_RTE;
 					break;
 				}
@@ -741,6 +757,22 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 											  &levels_up);
 				if (nsitem == NULL)
 				{
+					/* Begin - ReqID:SRS-SQL-SEQ */
+					if(IsA(field3, String) && (!pg_strcasecmp(strVal(field3), "nextval") ||
+							!pg_strcasecmp(strVal(field3), "currval")))
+					{
+						FuncCall *seq_func = NULL;
+						A_Const *n = makeNode(A_Const);
+
+						n->val.type = T_String;
+						n->val.val.str = strVal(field2);
+						n->location = cref->location;
+
+						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
+							makeString(strVal(field3))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+						return transformFuncCall(pstate, seq_func);
+					}
+					/* End - ReqID:SRS-SQL-SEQ */
 					crerr = CRERR_NO_RTE;
 					break;
 				}
@@ -797,6 +829,22 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				 */
 				if (strcmp(catname, get_database_name(MyDatabaseId)) != 0)
 				{
+					/* Begin - ReqID:SRS-SQL-SEQ */
+					if(IsA(field4, String) && (!pg_strcasecmp(strVal(field4), "nextval") ||
+							!pg_strcasecmp(strVal(field4), "currval")))
+					{
+						FuncCall *seq_func = NULL;
+						A_Const *n = makeNode(A_Const);
+
+						n->val.type = T_String;
+						n->val.val.str = strVal(field3);
+						n->location = cref->location;
+
+						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
+							makeString(strVal(field4))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+						return transformFuncCall(pstate, seq_func);
+					}
+					/* End - ReqID:SRS-SQL-SEQ */
 					crerr = CRERR_WRONG_DB;
 					break;
 				}

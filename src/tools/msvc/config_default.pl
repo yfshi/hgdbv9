@@ -14,6 +14,9 @@ our $config = {
 	#/* Begin - ReqID:SRS-SQL-PACKAGE */
 	cursor_unname =>0,		# --enable-cursor-unname
 	#/* End - ReqID:SRS-SQL-PACKAGE */
+	#/* Begin - ReqID:SRS-SQL-SEQ */
+	scalefixed =>1,        # --with-scalefixed
+	#/* End - ReqID:SRS-SQL-SEQ */
 	ldap      => 1,        # --with-ldap
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
