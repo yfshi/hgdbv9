@@ -1,5 +1,5 @@
 _RETVAL_       
-32767,-32768,0,0
+bindvar[0]=32767,bindvar[1]=-32768,bindvar[2]=0,bindvar[2]=0
 0,0,-1
                	
 name           statement      prepare_time   parameter_typesfrom_sql       generic_plans  custom_plans   

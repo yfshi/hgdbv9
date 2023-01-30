@@ -145,7 +145,8 @@ main(int argc, char **argv)
 		printf("%-15s", Ivyfname(res, i));
 
 	printf("\n");
-	printf("%hd,%hd,%hd,%hd\n",ntohs(bindvar[0]),ntohs(bindvar[1]),ntohs(bindvar[2]), bindvar[2]);
+	printf("bindvar[0]=%hd,bindvar[1]=%hd,bindvar[2]=%hd",ntohs(bindvar[0]),ntohs(bindvar[1]),ntohs(bindvar[2]));
+	printf(",bindvar[2]=%hd\n", bindvar[2]);
 	printf("%d,%d,%d\n",index[0],index[1],index[2]);
 	/* print out the instances */
 	for (i = 0; i < Ivyntuples(res); i++)

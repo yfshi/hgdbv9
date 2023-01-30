@@ -2243,8 +2243,13 @@ IvyassignOutParameters(const Ivyresult *tres, IvyBindOutInfo *outbind)
 				else
 				{
 					if (attrvalue->len <= 0)
-					{	if (serbind->indp != NULL)
+					{
+						if (serbind->indp != NULL)
 							*(serbind->indp) = -1;
+						/* Begin - BUG:M0000078 */
+						if (pg_strcasecmp(attrvalue->value, "") == 0)
+							memset(serbind->var, 0, sizeof((char *)serbind->var));
+						/* End - BUG:M0000078 */
 					}
 					else
 					{
