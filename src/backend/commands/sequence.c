@@ -99,6 +99,7 @@ typedef SeqTableData *SeqTable;
 static HTAB *seqhashtab = NULL; /* hash table for SeqTable items */
 /* Begin - ReqID:SRS-SQL-SEQ */
 int64	session_id = 0;
+int32	scale_value = 0;
 /* End - ReqID:SRS-SQL-SEQ */
 
 /*
@@ -752,24 +753,27 @@ nextval_internal(Oid relid, bool check_permissions)
 		{
 			int64	instanc_id;
 			int64	sessionid;
-			int64	scale_value;
 			char	str[MAXINT8LEN + 1];
 			int		len;
 
+			/* Check whether the scale value is cached */
 			if (!elm->scale_value)
 			{
-				instanc_id = GetSystemIdentifier();
-				instanc_id = instanc_id%100 + 100;
-				if (!session_id)
-					session_id = get_sessionid();
-				sessionid = session_id;
-				sessionid = sessionid%1000;
-				last_used_seq = elm;
-				#ifdef USE_SCALEFIXED
-				scale_value = 199999;
-				#else
-				scale_value = instanc_id * pow(10, 3) + sessionid;
-				#endif
+				if (!scale_value)
+				{
+					instanc_id = GetSystemIdentifier();
+					instanc_id = instanc_id%100 + 100;
+					if (!session_id)
+						session_id = get_sessionid();
+					sessionid = session_id;
+					sessionid = sessionid%1000;
+					last_used_seq = elm;
+					if (seq_scale_fixed)
+						scale_value = 199999;
+					else
+						scale_value = instanc_id * pow(10, 3) + sessionid;
+				}
+
 				if (isExtend)
 				{
 					if (elm->last >= 0)
@@ -1025,23 +1029,26 @@ nextval_internal(Oid relid, bool check_permissions)
 	{
 		int64	instanc_id;
 		int64	sessionid;
-		int64	scale_value;
 		char	str[MAXINT8LEN + 1];
 		int		len;
 
+		/* Check whether the scale value is cached */
 		if (!elm->scale_value)
 		{
-			instanc_id = GetSystemIdentifier();
-			instanc_id = instanc_id%100 + 100;
-			if (!session_id)
-				session_id = get_sessionid();
-			sessionid = session_id;
-			sessionid = sessionid%1000;
-			#ifdef USE_SCALEFIXED
-			scale_value = 199999;
-			#else
-			scale_value = instanc_id * pow(10, 3) + sessionid;
-			#endif
+			if (!scale_value)
+			{
+				instanc_id = GetSystemIdentifier();
+				instanc_id = instanc_id%100 + 100;
+				if (!session_id)
+					session_id = get_sessionid();
+				sessionid = session_id;
+				sessionid = sessionid%1000;
+				if (seq_scale_fixed)
+					scale_value = 199999;
+				else
+					scale_value = instanc_id * pow(10, 3) + sessionid;
+			}
+
 			if (isExtend)
 			{
 				if(result >= 0)
@@ -1150,20 +1157,25 @@ currval_oid(PG_FUNCTION_ARGS)
 	if (isScale)
 	{
 		int64	instanc_id;
-		int64	scale_value;
+		int64	sessionid;
 
+		/* Check whether the scale value is cached */
 		if (!elm->scale_value)
 		{
-			instanc_id = GetSystemIdentifier();
-			instanc_id = instanc_id%100 + 100;
-			if (!session_id)
-				session_id = get_sessionid();
-			#ifdef USE_SCALEFIXED
-			scale_value = 199999;
-			#else
-			int64	sessionid = session_id%1000;
-			scale_value = instanc_id * pow(10, 3) + sessionid;
-			#endif
+			if (!scale_value)
+			{
+				instanc_id = GetSystemIdentifier();
+				instanc_id = instanc_id%100 + 100;
+				sessionid = session_id%1000;
+				if (!session_id)
+					session_id = get_sessionid();
+
+				if (seq_scale_fixed)
+					scale_value = 199999;
+				else
+					scale_value = instanc_id * pow(10, 3) + sessionid;
+			}
+
 			if (isExtend)
 			{
 				if (result >= 0)

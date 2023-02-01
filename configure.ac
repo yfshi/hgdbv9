@@ -134,14 +134,6 @@ PGAC_ARG_BOOL(enable, integer-datetimes, yes, [obsolete option, no longer suppor
               [],
               [AC_MSG_ERROR([--disable-integer-datetimes is no longer supported])])
 
-#
-# ReqID:SRS-SQL-SEQ
-# with scale fixed
-#
-PGAC_ARG_BOOL(with, scalefixed, no, [build with scalefixed)],
-              [AC_DEFINE([USE_SCALEFIXED], 1,
-                         [Define to 1 to build with scale fixed. (--with-scalefixed)])])
-AC_SUBST(scalefixed)
 
 #
 # NLS

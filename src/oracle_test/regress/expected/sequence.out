@@ -1,6 +1,7 @@
 --
 -- CREATE SEQUENCE
 --
+SET ivorysql.enable_seq_scale_fixed = TRUE;
 -- various error cases
 CREATE SEQUENCE sequence_testx INCREMENT BY 0;
 ERROR:  INCREMENT must not be zero
@@ -1198,3 +1199,4 @@ select seq.nextval from dual;
 (1 row)
 
 DROP SEQUENCE seq;
+SET ivorysql.enable_seq_scale_fixed = FALSE;

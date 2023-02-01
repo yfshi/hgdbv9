@@ -1,7 +1,7 @@
 --
 -- CREATE SEQUENCE
 --
-
+SET ivorysql.enable_seq_scale_fixed = TRUE;
 -- various error cases
 CREATE SEQUENCE sequence_testx INCREMENT BY 0;
 CREATE SEQUENCE sequence_testx INCREMENT BY -1 MINVALUE 20;
@@ -572,3 +572,4 @@ select seq.nextval from dual;
 DISCARD sequences;
 select seq.nextval from dual;
 DROP SEQUENCE seq;
+SET ivorysql.enable_seq_scale_fixed = FALSE;

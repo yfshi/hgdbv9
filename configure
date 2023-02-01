@@ -772,7 +772,6 @@ default_ora_port
 default_port
 WANTED_LANGUAGES
 enable_nls
-scalefixed
 PORTNAME
 host_os
 host_vendor
@@ -830,7 +829,6 @@ with_includes
 with_libraries
 with_libs
 enable_integer_datetimes
-with_scalefixed
 enable_nls
 enable_cursor_unname
 with_pgport
@@ -1550,7 +1548,6 @@ Optional Packages:
   --with-includes=DIRS    look for additional header files in DIRS
   --with-libraries=DIRS   look for additional libraries in DIRS
   --with-libs=DIRS        alternative spelling of --with-libraries
-  --with-scalefixed       build with scalefixed)
   --with-pgport=PORTNUM   set default port number [5432]
   --with-oraport=PORTNUM  set default port number for oracle [1521]
   --with-blocksize=BLOCKSIZE
@@ -3137,36 +3134,6 @@ if test "${enable_integer_datetimes+set}" = set; then :
 
 else
   enable_integer_datetimes=yes
-
-fi
-
-
-
-#
-# with scale fixed
-#
-
-
-
-# Check whether --with-scalefixed was given.
-if test "${with_scalefixed+set}" = set; then :
-  withval=$with_scalefixed;
-  case $withval in
-    yes)
-
-$as_echo "#define USE_SCALEFIXED 1" >>confdefs.h
-
-      ;;
-    no)
-      :
-      ;;
-    *)
-      as_fn_error $? "no argument expected for --with-scalefixed option" "$LINENO" 5
-      ;;
-  esac
-
-else
-  with_scalefixed=no
 
 fi
 

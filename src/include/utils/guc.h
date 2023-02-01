@@ -322,6 +322,10 @@ extern PGDLLIMPORT int enable_ora_merge_tuning;
 extern PGDLLIMPORT bool	allow_out_parameter_const;
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+/* Begin - ReqID:SRS-SQL-SEQ */
+extern PGDLLIMPORT bool	seq_scale_fixed;
+/* End - ReqID:SRS-SQL-SEQ */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
