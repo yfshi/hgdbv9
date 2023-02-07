@@ -13,6 +13,7 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include <math.h>	/* ReqID:SRS-SQL-SEQ */
 
 #include "access/bufmask.h"
 #include "access/htup_details.h"
@@ -51,7 +52,10 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - BUG#Z026 */
-
+/* Begin - ReqID:SRS-SQL-SEQ */
+#include "catalog/pg_namespace_d.h"
+#include "common/fe_memutils.h"
+/* End - ReqID:SRS-SQL-SEQ */
 
 /*
  * We don't want to log each fetching of a value from a sequence,
@@ -87,11 +91,16 @@ typedef struct SeqTableData
 	/* if last != cached, we have not used up all the cached values */
 	int64		increment;		/* copy of sequence's increment field */
 	/* note that increment is zero until we first do nextval_internal() */
+	int64		scale_value;	/* for scale option */
 } SeqTableData;
 
 typedef SeqTableData *SeqTable;
 
 static HTAB *seqhashtab = NULL; /* hash table for SeqTable items */
+/* Begin - ReqID:SRS-SQL-SEQ */
+int64	session_id = 0;
+int32	scale_value = 0;
+/* End - ReqID:SRS-SQL-SEQ */
 
 /*
  * last_used_seq is updated by nextval() to point to the last used
@@ -111,9 +120,15 @@ static void init_params(ParseState *pstate, List *options, bool for_identity,
 						Form_pg_sequence seqform,
 						Form_pg_sequence_data seqdataform,
 						bool *need_seq_rewrite,
-						List **owned_by);
+						List **owned_by, SeqTable seqelm);	/* ReqID:SRS-SQL-SEQ */
 static void do_setval(Oid relid, int64 next, bool iscalled);
 static void process_owned_by(Relation seqrel, List *owned_by, bool for_identity);
+/* Begin - ReqID:SRS-SQL-SEQ */
+static bool seq_is_scale(int16 seq_flag);
+static bool seq_is_extend(int16 seq_flag);
+static bool seq_is_session(int16 seq_flag);
+/* End - ReqID:SRS-SQL-SEQ */
+
 
 
 /*
@@ -168,7 +183,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	/* Check and set all option values */
 	init_params(pstate, seq->options, seq->for_identity, true, seq->seq_type,	/* ReqID:SRS-SQL-IDENTCOL */
 				&seqform, &seqdataform,
-				&need_seq_rewrite, &owned_by);
+				&need_seq_rewrite, &owned_by, NULL);	/* ReqID:SRS-SQL-SEQ */
 
 	/*
 	 * Create relation (and fill value[] and null[] for the tuple)
@@ -252,6 +267,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	pgs_values[Anum_pg_sequence_seqmin - 1] = Int64GetDatumFast(seqform.seqmin);
 	pgs_values[Anum_pg_sequence_seqcache - 1] = Int64GetDatumFast(seqform.seqcache);
 	pgs_values[Anum_pg_sequence_seqcycle - 1] = BoolGetDatum(seqform.seqcycle);
+	pgs_values[Anum_pg_sequence_flags - 1] = Int16GetDatum(seqform.flags);	/* ReqID:SRS-SQL-SEQ */
 
 	tuple = heap_form_tuple(tupDesc, pgs_values, pgs_nulls);
 	CatalogTupleInsert(rel, tuple);
@@ -504,7 +520,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 	/* Check and set new values */
 	init_params(pstate, stmt->options, stmt->for_identity, false, 0,	/* ReqID:SRS-SQL-IDENTCOL */
 				seqform, newdataform,
-				&need_seq_rewrite, &owned_by);
+				&need_seq_rewrite, &owned_by, elm);	/* ReqID:SRS-SQL-SEQ */
 
 	/* Clear local cache so that we don't think we have cached numbers */
 	/* Note that we do not change the currval() state */
@@ -652,9 +668,62 @@ nextval_internal(Oid relid, bool check_permissions)
 				rescnt = 0;
 	bool		cycle;
 	bool		logit = false;
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	bool		isScale = false;
+	bool		isExtend = false;
+	bool		isSession = false;
+	int 		maxvalue_bits;
+	int			minvalue_bits;
+	char		maxstr[MAXINT8LEN + 1];
+
+	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(pgstuple))
+		elog(ERROR, "cache lookup failed for sequence %u", relid);
+	pgsform = (Form_pg_sequence) GETSTRUCT(pgstuple);
+	isScale = seq_is_scale(pgsform->flags);
+	isExtend = seq_is_extend(pgsform->flags);
+	isSession = seq_is_session(pgsform->flags);
+	maxvalue_bits = pg_lltoa((int64)Abs(pgsform->seqmax), maxstr);
+	minvalue_bits = pg_lltoa((int64)Abs(pgsform->seqmin), maxstr);
+	maxvalue_bits = minvalue_bits > maxvalue_bits ? minvalue_bits : maxvalue_bits;
 
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
+
+	if(isSession)
+	{
+		if (!elm->last_valid)
+		{
+			seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
+			elm->last = seq->last_value;
+			elm->last_valid = true;
+
+			relation_close(seqrel, NoLock);
+			ReleaseSysCache(pgstuple);
+			UnlockReleaseBuffer(buf);
+
+			return elm->last;
+		}
+
+		elm->increment = pgsform->seqincrement;
+		result = elm->last + elm->increment;
+		if(result > pgsform->seqmax && !pgsform->seqcycle)
+			elog(ERROR, "sequence %s.nextval exceeds MAXVALUE and cannot be instantiated",get_rel_name(relid));
+		else if(result < pgsform->seqmin && !pgsform->seqcycle)
+			elog(ERROR, "sequence %s.nextval goes below MINVALUE and cannot be instantiated",get_rel_name(relid));
+		else if(result > pgsform->seqmax && pgsform->seqcycle && pgsform->seqincrement > 0)
+			elm->last = pgsform->seqmin;
+		else if(result < pgsform->seqmin && pgsform->seqcycle && pgsform->seqincrement < 0)
+			elm->last = pgsform->seqmax;
+		else
+			elm->last += elm->increment;
+
+		relation_close(seqrel, NoLock);
+		ReleaseSysCache(pgstuple);
+
+		return elm->last;
+	}
+	/* End - ReqID:SRS-SQL-SEQ */
 
 	if (check_permissions &&
 		pg_class_aclcheck(elm->relid, GetUserId(),
@@ -681,14 +750,90 @@ nextval_internal(Oid relid, bool check_permissions)
 		Assert(elm->increment != 0);
 		elm->last += elm->increment;
 		relation_close(seqrel, NoLock);
+		/* Begin - ReqID:SRS-SQL-SEQ */
+		ReleaseSysCache(pgstuple);
+		if (isScale)
+		{
+			int64	instanc_id;
+			int64	sessionid;
+			char	str[MAXINT8LEN + 1];
+			int		len;
+
+			/* Check whether the scale value is cached */
+			if (!elm->scale_value)
+			{
+				if (!scale_value)
+				{
+					instanc_id = GetSystemIdentifier();
+					instanc_id = instanc_id%100 + 100;
+					if (!session_id)
+						session_id = get_sessionid();
+					sessionid = session_id;
+					sessionid = sessionid%1000;
+					last_used_seq = elm;
+					if (seq_scale_fixed)
+						scale_value = 199999;
+					else
+						scale_value = instanc_id * pow(10, 3) + sessionid;
+				}
+
+				if (isExtend)
+				{
+					if (elm->last >= 0)
+						elm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits));
+					else
+						elm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits));
+				}
+				else
+				{
+					if(elm->last >= 0)
+						elm->scale_value = scale_value * (int64)pow(10, maxvalue_bits - 6);
+					else
+						elm->scale_value = -(scale_value * (int64)pow(10, maxvalue_bits - 6));
+				}
+			}
+
+			if (isExtend)
+			{
+				if (elm->last > pgsform->seqmax && !pgsform->seqcycle)
+					elog(ERROR, "sequence %s.nextval exceeds MAXVALUE and cannot be instantiated",get_rel_name(relid));
+				else if(elm->last < pgsform->seqmin && !pgsform->seqcycle)
+					elog(ERROR, "sequence %s.nextval goes below MINVALUE and cannot be instantiated",get_rel_name(relid));
+				else if(elm->last > pgsform->seqmax && pgsform->seqcycle && pgsform->seqincrement > 0)
+					elm->last = pgsform->seqmin;
+				else if(elm->last < pgsform->seqmin && pgsform->seqcycle && pgsform->seqincrement < 0)
+					elm->last = pgsform->seqmax;
+
+				result = elm->scale_value + elm->last;
+				return result;
+			}
+			else
+			{
+				if (elm->last > pgsform->seqmax && !pgsform->seqcycle)
+					elog(ERROR, "sequence %s.nextval exceeds MAXVALUE and cannot be instantiated",get_rel_name(relid));
+				else if(elm->last < pgsform->seqmin && !pgsform->seqcycle)
+					elog(ERROR, "sequence %s.nextval goes below MINVALUE and cannot be instantiated",get_rel_name(relid));
+				else if(elm->last > pgsform->seqmax && pgsform->seqcycle && pgsform->seqincrement > 0)
+					elm->last = pgsform->seqmin;
+				else if(elm->last < pgsform->seqmin && pgsform->seqcycle && pgsform->seqincrement < 0)
+					elm->last = pgsform->seqmax;
+
+				len = pg_lltoa((int64)Abs(elm->last), str);
+				if (maxvalue_bits - len - 6 < 0)
+					ereport(ERROR,
+						(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+						errmsg("NEXTVAL cannot be instantiated for %s. Widen the sequence by %d digits or alter sequence with SCALE EXTEND",
+								RelationGetRelationName(seqrel), 6 + len - maxvalue_bits)));
+
+				result = elm->scale_value + elm->last;
+				return result;
+			}
+		}
+		/* End - ReqID:SRS-SQL-SEQ */
 		last_used_seq = elm;
 		return elm->last;
 	}
 
-	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
-	if (!HeapTupleIsValid(pgstuple))
-		elog(ERROR, "cache lookup failed for sequence %u", relid);
-	pgsform = (Form_pg_sequence) GETSTRUCT(pgstuple);
 	incby = pgsform->seqincrement;
 	maxv = pgsform->seqmax;
 	minv = pgsform->seqmin;
@@ -882,6 +1027,67 @@ nextval_internal(Oid relid, bool check_permissions)
 
 	relation_close(seqrel, NoLock);
 
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	if (isScale)
+	{
+		int64	instanc_id;
+		int64	sessionid;
+		char	str[MAXINT8LEN + 1];
+		int		len;
+
+		/* Check whether the scale value is cached */
+		if (!elm->scale_value)
+		{
+			if (!scale_value)
+			{
+				instanc_id = GetSystemIdentifier();
+				instanc_id = instanc_id%100 + 100;
+				if (!session_id)
+					session_id = get_sessionid();
+				sessionid = session_id;
+				sessionid = sessionid%1000;
+				if (seq_scale_fixed)
+					scale_value = 199999;
+				else
+					scale_value = instanc_id * pow(10, 3) + sessionid;
+			}
+
+			if (isExtend)
+			{
+				if(result >= 0)
+					elm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits));
+				else
+					elm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits));
+			}
+			else
+			{
+				if(result >= 0)
+					elm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits - 6));
+				else
+					elm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits - 6));
+			}
+		}
+		if (isExtend)
+		{
+			result = elm->scale_value + elm->last;
+			return result;
+		}
+		else
+		{
+			len = pg_lltoa((int64)Abs(result), str);
+			if (len > maxvalue_bits)
+				elog(ERROR, "result is bigger than maxvalue");
+			if (maxvalue_bits - len - 6 < 0)
+				ereport(ERROR,
+					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+					errmsg("NEXTVAL cannot be instantiated for %s. Widen the sequence by %d digits or alter sequence with SCALE EXTEND",
+							RelationGetRelationName(seqrel), 6 + len - maxvalue_bits)));
+
+			result = elm->scale_value + elm->last;
+			return result;
+		}
+	}
+	/* End - ReqID:SRS-SQL-SEQ */
 	return result;
 }
 
@@ -892,9 +1098,52 @@ currval_oid(PG_FUNCTION_ARGS)
 	int64		result;
 	SeqTable	elm;
 	Relation	seqrel;
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	HeapTuple	pgstuple;
+	Form_pg_sequence pgsform;
+	bool		isScale = false;
+	bool		isExtend = false;
+	bool		isSession = false;
+	int			maxvalue_bits;
+	int			minvalue_bits;
+	char		maxstr[MAXINT8LEN + 1];
+	Buffer		buf;
+	Form_pg_sequence_data	seq;
+	HeapTupleData	seqdatatuple;
+	/* End - ReqID:SRS-SQL-SEQ */
 
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
+
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(pgstuple))
+		elog(ERROR, "cache lookup failed for sequence %u", relid);
+	pgsform = (Form_pg_sequence) GETSTRUCT(pgstuple);
+	isSession = seq_is_session(pgsform->flags);
+	maxvalue_bits = pg_lltoa((int64)Abs(pgsform->seqmax), maxstr);
+	minvalue_bits = pg_lltoa((int64)Abs(pgsform->seqmin), maxstr);
+	maxvalue_bits = minvalue_bits > maxvalue_bits ? minvalue_bits : maxvalue_bits;
+	isScale = seq_is_scale(pgsform->flags);
+	isExtend = seq_is_extend(pgsform->flags);
+
+	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
+
+	if (isSession)
+	{
+		if (!elm->last_valid)
+			ereport(ERROR,
+					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+					errmsg("currval of sequence \"%s\" is not yet defined in this session",
+							RelationGetRelationName(seqrel))));
+		relation_close(seqrel, NoLock);
+		ReleaseSysCache(pgstuple);
+		UnlockReleaseBuffer(buf);
+
+		PG_RETURN_INT64(elm->last);
+	}
+	ReleaseSysCache(pgstuple);
+	/* End - ReqID:SRS-SQL-SEQ */
 
 	if (pg_class_aclcheck(elm->relid, GetUserId(),
 						  ACL_SELECT | ACL_USAGE) != ACLCHECK_OK)
@@ -912,7 +1161,61 @@ currval_oid(PG_FUNCTION_ARGS)
 	result = elm->last;
 
 	relation_close(seqrel, NoLock);
+	UnlockReleaseBuffer(buf);	/* ReqID:SRS-SQL-SEQ */
 
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	if (isScale && seq->is_called)
+	{
+		int64	instanc_id;
+		int64	sessionid;
+
+		/* Check whether the scale value is cached */
+		if (!elm->scale_value)
+		{
+			if (!scale_value)
+			{
+				instanc_id = GetSystemIdentifier();
+				instanc_id = instanc_id%100 + 100;
+				sessionid = session_id%1000;
+				if (!session_id)
+					session_id = get_sessionid();
+
+				if (seq_scale_fixed)
+					scale_value = 199999;
+				else
+					scale_value = instanc_id * pow(10, 3) + sessionid;
+			}
+
+			if (isExtend)
+			{
+				if (result >= 0)
+					elm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits));
+				else
+					elm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits));
+			}
+			else
+			{
+				if (result >= 0)
+					elm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits - 6));
+				else
+					elm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits - 6));
+			}
+		}
+		if (isExtend)
+		{
+			result = elm->scale_value + result;
+
+			PG_RETURN_INT64(result);
+		}
+		else
+		{
+			result = elm->scale_value + result;
+
+			PG_RETURN_INT64(result);
+		}
+	}
+
+	/* End - ReqID:SRS-SQL-SEQ */
 	PG_RETURN_INT64(result);
 }
 
@@ -1185,6 +1488,7 @@ init_sequence(Oid relid, SeqTable *p_elm, Relation *p_rel)
 		elm->lxid = InvalidLocalTransactionId;
 		elm->last_valid = false;
 		elm->last = elm->cached = 0;
+		elm->scale_value = 0;
 	}
 
 	/*
@@ -1296,7 +1600,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			Form_pg_sequence seqform,
 			Form_pg_sequence_data seqdataform,
 			bool *need_seq_rewrite,
-			List **owned_by)
+			List **owned_by, SeqTable seqelm)	/* ReqID:SRS-SQL-SEQ */
 {
 	DefElem    *as_type = NULL;
 	DefElem    *start_value = NULL;
@@ -1306,10 +1610,25 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	DefElem    *min_value = NULL;
 	DefElem    *cache_value = NULL;
 	DefElem    *is_cycled = NULL;
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	DefElem	   *scale = NULL;
+	DefElem	   *session = NULL;
+	/* End - ReqID:SRS-SQL-SEQ */
 	ListCell   *option;
 	bool		reset_max_value = false;
 	bool		reset_min_value = false;
 	int			ordercnt = 0;	/* ReqID:SRS-SQL-IDENTCOL */
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	int			keepcnt = 0;
+	int			shardcnt = 0;
+	bool		scale_flag = false;
+	bool		session_flag = false;
+	bool		global_flag = false;
+	bool		extend_flag = false;
+	bool		noscale_flag = false;
+	bool		no_cache_flag = false;
+	int64		old_maxvalue;
+	/* End - ReqID:SRS-SQL-SEQ */
 
 	*need_seq_rewrite = false;
 	*owned_by = NIL;
@@ -1356,6 +1675,12 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						 errmsg("conflicting or redundant options"),
 						 parser_errposition(pstate, defel->location)));
 			restart_value = defel;
+			/* Begin - ReqID:SRS-SQL-SEQ */
+			if(isInit && compatible_db == ORA_PARSER)
+				elog(ERROR, "CREATE SEQUENCE cannot have a RESTART clause");
+			if(!isInit && restart_value->arg != NULL && compatible_db == ORA_PARSER)
+				elog(ERROR, "SQL command not properly ended");
+			/* End - ReqID:SRS-SQL-SEQ */
 			*need_seq_rewrite = true;
 		}
 		else if (strcmp(defel->defname, "maxvalue") == 0)
@@ -1388,6 +1713,18 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			cache_value = defel;
 			*need_seq_rewrite = true;
 		}
+		/* Begin - ReqID:SRS-SQL-SEQ */
+		else if (strcmp(defel->defname, "nocache") == 0)
+		{
+			if (cache_value)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			no_cache_flag = true;
+			*need_seq_rewrite = true;
+		}
+		/* End - ReqID:SRS-SQL-SEQ */
 		else if (strcmp(defel->defname, "cycle") == 0)
 		{
 			if (is_cycled)
@@ -1432,6 +1769,90 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			}
 		}
 		/* End - ReqID:SRS-SQL-IDENTCOL */
+		/* Begin - ReqID:SRS-SQL-SEQ */
+		else if(strcmp(defel->defname, "scale_extend") == 0)
+		{
+			if (scale)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("duplicate or conflicting SCALE or EXTEND specifications"),
+						parser_errposition(pstate, defel->location)));
+			}
+			scale = defel;
+			scale_flag = true;
+			extend_flag = true;
+		}
+		else if(strcmp(defel->defname, "scale_noextend") == 0)
+		{
+			if (scale)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("duplicate or conflicting SCALE or EXTEND specifications"),
+						parser_errposition(pstate, defel->location)));
+			}
+			scale = defel;
+			scale_flag = true;
+			extend_flag = false;
+		}
+		else if(strcmp(defel->defname, "noscale") == 0)
+		{
+			if (scale)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("duplicate or conflicting SCALE or EXTEND specifications"),
+						parser_errposition(pstate, defel->location)));
+			}
+			noscale_flag = true;
+		}
+		else if(strcmp(defel->defname, "session") == 0)
+		{
+			if (session || global_flag)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("duplicate SESSION or GLOBAL specifications"),
+						parser_errposition(pstate, defel->location)));
+			}
+			session_flag = true;
+		}
+		else if(strcmp(defel->defname, "global") == 0)
+		{
+			if (session || session_flag)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("duplicate SESSION or GLOBAL specifications"),
+						parser_errposition(pstate, defel->location)));
+			}
+			global_flag = true;
+		}
+		else if(strcmp(defel->defname, "keep") == 0 || strcmp(defel->defname, "nokeep") == 0)
+		{
+			keepcnt++;
+			if(keepcnt > 1)
+			{
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("dumplicate or conflicting KEEP/NOKEEP specifications"),
+					 parser_errposition(pstate, defel->location)));
+			}
+		}
+		else if(strcmp(defel->defname, "shard_extend") == 0 || strcmp(defel->defname, "shard_noextend") == 0
+			|| strcmp(defel->defname, "noshard") == 0)
+		{
+			shardcnt++;
+			if(keepcnt > 1)
+			{
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("dumplicate or conflicting SHARD EXTEND/NOEXTEND specifications"),
+					 parser_errposition(pstate, defel->location)));
+			}
+		}
+		/* End - ReqID:SRS-SQL-SEQ */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -1582,6 +2003,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 		seqform->seqcycle = false;
 	}
 
+	old_maxvalue = seqform->seqmax;	/* ReqID:SRS-SQL-SEQ */
 	/* MAXVALUE (null arg means NO MAXVALUE) */
 	if (max_value != NULL && max_value->arg)
 	{
@@ -1681,7 +2103,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 					ereport(WARNING,
 							(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
 							errmsg("Minvalue is out of range for data type bigint")));
-					intval = strVal(max_value->arg);
+					intval = strVal(min_value->arg);	/* ReqID:SRS-SQL-SEQ */
 					if (*intval == '-')
 						seqform->seqmin = PG_INT64_MIN;
 					else
@@ -1818,7 +2240,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("START value (%s) cannot be less than MINVALUE (%s)",
 						bufs, bufm)));
 	}
-	if (seqform->seqstart > seqform->seqmax && compatible_db == PG_PARSER)	/* BUG#Z026 */
+	if (seqform->seqstart > seqform->seqmax && (compatible_db == PG_PARSER || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */
 	{
 		char		bufs[100],
 					bufm[100];
@@ -1831,13 +2253,143 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						bufs, bufm)));
 	}
 
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	if (isInit)
+		seqform->flags = 0;
+
+	if (scale_flag)
+	{
+		seqform->flags |= SCALE_FLAG;
+		if (extend_flag)
+		{
+			/* Change sequence maxvavalue/minvalue */
+			seqform->flags |= EXTEND_FLAG;
+			if(seqform->seqmax > PG_SCALE_MAX && seqform->seqincrement > 0)
+				seqform->seqmax = PG_SCALE_MAX;
+			else if(seqform->seqmin < PG_SCALE_MIN&& seqform->seqincrement < 0)
+				seqform->seqmin = PG_SCALE_MIN;
+		}
+		else if (!isInit && !extend_flag)
+		{
+			seqform->flags &= ~(EXTEND_FLAG);
+			if(seqform->seqmax == PG_SCALE_MAX && seqform->seqincrement > 0)
+				seqform->seqmax = PG_INT64_MAX;
+			else if(seqform->seqmin < PG_SCALE_MIN && seqform->seqincrement < 0)
+				seqform->seqmin = PG_SCALE_MIN;
+		}
+	}
+	else if (noscale_flag && isInit)
+	{
+		seqform->flags &= ~(SCALE_FLAG);
+	}
+	else if (noscale_flag && !isInit)
+	{
+		char		maxstr[MAXINT8LEN + 1];
+		int 		maxvalue_bits;
+
+		maxvalue_bits = pg_lltoa(old_maxvalue, maxstr);
+		if (seq_is_scale(seqform->flags))
+			seqform->flags &= ~(SCALE_FLAG);
+		if (seqdataform->is_called)
+		{
+			if (seq_is_extend(seqform->flags))
+			{
+				if (seqdataform->last_value >= 0 && !seqelm)
+					seqdataform->last_value = 199999 * (int64)pow(10, maxvalue_bits) + seqdataform->last_value;
+				else if (seqdataform->last_value >= 0 && seqelm && seqelm->last != seqelm->cached)
+					seqdataform->last_value = 199999 * (int64)pow(10, maxvalue_bits) + seqelm->last;
+				else if (seqdataform->last_value < 0 && !seqelm)
+					seqdataform->last_value = -199999 * (int64)pow(10, maxvalue_bits) + seqdataform->last_value;
+				else if (seqdataform->last_value < 0 && seqelm && seqelm->last != seqelm->cached)
+					seqdataform->last_value = -199999 * (int64)pow(10, maxvalue_bits) + seqelm->last;
+				seqdataform->is_called = true;
+				seqdataform->log_cnt = 0;
+			}
+			else
+			{
+				if (seqdataform->last_value >= 0 && !seqelm)
+					seqdataform->last_value = 199999 * (int64)pow(10, maxvalue_bits - 6) + seqdataform->last_value;
+				else if (seqdataform->last_value >= 0 && seqelm && seqelm->last != seqelm->cached)
+					seqdataform->last_value = 199999 * (int64)pow(10, maxvalue_bits - 6) + seqelm->last;
+				else if (seqdataform->last_value < 0 && !seqelm)
+					seqdataform->last_value = -199999 * (int64)pow(10, maxvalue_bits - 6) + seqdataform->last_value;
+				else if (seqdataform->last_value < 0 && seqelm && seqelm->last != seqelm->cached)
+					seqdataform->last_value = -199999 * (int64)pow(10, maxvalue_bits - 6) + seqelm->last;
+				seqdataform->is_called = true;
+				seqdataform->log_cnt = 0;
+			}
+		}
+	}
+
+	if (session_flag)
+	{
+		int64	instanc_id;
+		int64	sessionid;
+		int 		maxvalue_bits;
+		int			minvalue_bits;
+		char		maxstr[MAXINT8LEN + 1];
+
+		seqform->flags |= SESSION_FLAG;
+		if (!isInit && seq_is_scale(seqform->flags))
+		{
+			maxvalue_bits = pg_lltoa((int64)Abs(seqform->seqmax), maxstr);
+			minvalue_bits = pg_lltoa((int64)Abs(seqform->seqmin), maxstr);
+			maxvalue_bits = minvalue_bits > maxvalue_bits ? minvalue_bits : maxvalue_bits;
+			if (!seqelm->scale_value)
+			{
+				instanc_id = GetSystemIdentifier();
+				instanc_id = instanc_id%100 + 100;
+				if (!session_id)
+					session_id = get_sessionid();
+				sessionid = session_id;
+				sessionid = sessionid%1000;
+				last_used_seq = seqelm;
+				if (seq_scale_fixed)
+					scale_value = 199999;
+				else
+					scale_value = instanc_id * pow(10, 3) + sessionid;
+			}
+
+			if (seq_is_extend(seqform->flags))
+			{
+				if (seqelm->last >= 0)
+					seqelm->scale_value = (int64)(scale_value * (int64)pow(10, maxvalue_bits));
+				else
+					seqelm->scale_value = -(int64)(scale_value * (int64)pow(10, maxvalue_bits));
+			}
+			else
+			{
+				if(seqelm->last >= 0)
+					seqelm->scale_value = scale_value * (int64)pow(10, maxvalue_bits - 6);
+				else
+					seqelm->scale_value = -(scale_value * (int64)pow(10, maxvalue_bits - 6));
+			}
+			seqelm->last += seqelm->scale_value;
+		}
+	}
+	else if(global_flag)
+	{
+		if (seq_is_session(seqform->flags))
+			seqdataform->is_called = false;
+		seqform->flags &= ~(SESSION_FLAG);
+	}
+	/* End - ReqID:SRS-SQL-SEQ */
+
 	/* RESTART [WITH] */
 	if (restart_value != NULL)
 	{
 		if (restart_value->arg != NULL)
 			seqdataform->last_value = defGetInt64(restart_value);
-		else
+		/* Begin - ReqID:SRS-SQL-SEQ */
+		else if (!restart_value->arg && compatible_db == PG_PARSER)
 			seqdataform->last_value = seqform->seqstart;
+		else if (!restart_value->arg && compatible_db == ORA_PARSER && seqform->seqincrement > 0 && !start_value)
+			seqdataform->last_value = seqform->seqmin;
+		else if (!restart_value->arg && compatible_db == ORA_PARSER && seqform->seqincrement < 0 && !start_value)
+			seqdataform->last_value = seqform->seqmax;
+		else if (start_value && compatible_db == ORA_PARSER)
+			seqdataform->last_value = defGetInt64(start_value);
+		/* End - ReqID:SRS-SQL-SEQ */
 		seqdataform->is_called = false;
 		seqdataform->log_cnt = 0;
 	}
@@ -1882,15 +2434,14 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 			PG_TRY();
 			{
 				seqform->seqcache = defGetInt64(cache_value);
-				if (seqform->seqcache <= 0)
+				if (seqform->seqcache <= 1)	/* ReqID:SRS-SQL-SEQ */
 				{
 					char		buf[100];
 
 					snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							errmsg("CACHE (%s) must be greater than zero",
-									buf)));
+							errmsg("the number of values to CACHE must be greater than 1")));	/* ReqID:SRS-SQL-SEQ */
 				}
 				seqdataform->log_cnt = 0;
 			}
@@ -1955,6 +2506,10 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
 			seqform->seqcache = 20;
 		/* End - BUG#Z025*/
+		/* Begin - ReqID:SRS-SQL-SEQ */
+		else if (compatible_db == ORA_PARSER && !no_cache_flag)
+			seqform->seqcache = 20;
+		/* End - ReqID:SRS-SQL-SEQ */
 		else
 			seqform->seqcache = 1;
 	}
@@ -2285,3 +2840,52 @@ seq_mask(char *page, BlockNumber blkno)
 
 	mask_unused_space(page);
 }
+
+/* Begin - ReqID:SRS-SQL-SEQ */
+static bool
+seq_is_scale(int16 seq_flag)
+{
+	if ((seq_flag & SCALE_FLAG) == SCALE_FLAG)
+		return true;
+	return false;
+}
+
+static bool
+seq_is_extend(int16 seq_flag)
+{
+	if ((seq_flag & EXTEND_FLAG) == EXTEND_FLAG)
+		return true;
+	return false;
+}
+
+static bool
+seq_is_session(int16 seq_flag)
+{
+	if ((seq_flag & SESSION_FLAG) == SESSION_FLAG)
+		return true;
+	return false;
+}
+
+int64
+get_sessionid(void)
+{
+	Oid		session_seq_oid;
+	SeqTable	elm;
+	Relation	seqrel;
+	int64		result;
+
+	session_seq_oid = get_relname_relid("userenv_sessionid_sequence", PG_SYS_NAMESPACE);
+	init_sequence(session_seq_oid, &elm, &seqrel);
+	if (pg_class_aclcheck(elm->relid, GetUserId(),
+						  ACL_SELECT | ACL_USAGE) != ACLCHECK_OK)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied for sequence %s",
+						RelationGetRelationName(seqrel))));
+	relation_close(seqrel, NoLock);
+	if (!elm->last_valid)
+		PG_RETURN_INT64(nextval_internal(session_seq_oid, true));
+	result = elm->last;
+	PG_RETURN_INT64(result);
+}
+/* End - ReqID:SRS-SQL-SEQ */

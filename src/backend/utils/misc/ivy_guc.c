@@ -59,6 +59,10 @@ bool		allow_out_parameter_const = false;
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 bool		out_parameter_column_position = false;
 /* End - ReqID:SRS-SQL-LIBPQOUT */
+
+/* Begin - ReqID:SRS-SQL-SEQ */
+bool	seq_scale_fixed = false;
+/* End - ReqID:SRS-SQL-SEQ */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -225,7 +229,17 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
-
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	{
+		{"ivorysql.enable_seq_scale_fixed", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Sequence scale value switch."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&seq_scale_fixed,
+		false,
+		NULL, NULL, NULL
+	},
 #endif
 #if 0
 	/* End-of-list marker */

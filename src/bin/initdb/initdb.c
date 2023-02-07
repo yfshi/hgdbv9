@@ -165,9 +165,6 @@ static char *features_file;
 static char *system_constraints_file;
 static char *system_functions_file;
 static char *system_views_file;
-/* BEGIN - SQL PARSER */
-static char *ora_sys_schema_file;
-/* END - SQL PARSER */
 static bool success = false;
 static bool made_new_pgdata = false;
 static bool found_existing_pgdata = false;
@@ -274,9 +271,6 @@ static void setup_auth(FILE *cmdfd);
 static void get_su_pwd(void);
 static void setup_depend(FILE *cmdfd);
 static void setup_run_file(FILE *cmdfd, const char *filename);
-/* BEGIN - SQL PARSER */
-static void setup_ora_sys_schema(FILE *cmdfd);
-/* END - SQL PARSER */
 static void setup_description(FILE *cmdfd);
 static void setup_collation(FILE *cmdfd);
 static void setup_privileges(FILE *cmdfd);
@@ -1707,34 +1701,6 @@ setup_run_file(FILE *cmdfd, const char *filename)
 	free(lines);
 }
 
-/* BEGIN - SQL PARSER */
-/* load oracle compatible objects */
-static void
-setup_ora_sys_schema(FILE *cmdfd)
-{
-	char	  **line;
-	char	  **ora_sys_schema_setup;
-
-	ora_sys_schema_setup = readfile(ora_sys_schema_file);
-
-	/* Begin - ReqID:SRS-MISC-GUC */
-	/* BEGIN - case sensitive indentify */
-	PG_CMD_PUTS("set ivorysql.identifier_case_switch = normal;\n");
-	/* END - case sensitive indentify */
-	/* End - ReqID:SRS-MISC-GUC */
-
-	for (line = ora_sys_schema_setup; *line != NULL; line++)
-	{
-		PG_CMD_PUTS(*line);
-		free(*line);
-	}
-
-	PG_CMD_PUTS("\n\n");
-
-	free(ora_sys_schema_setup);
-}
-/* END - SQL PARSER */
-
 /*
  * fill in extra description data
  */
@@ -2654,7 +2620,6 @@ setup_data_file_paths(void)
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
-		set_input(&ora_sys_schema_file, "ora_sys_schema.sql");
 		set_input(&ora_conf_file, "ivorysql.conf.sample");
 	}
 	/* END - SQL PARSER */
@@ -2688,7 +2653,6 @@ setup_data_file_paths(void)
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
-		check_input(ora_sys_schema_file);
 		check_input(ora_conf_file);
 	}
 	/* END - SQL PARSER */
@@ -3072,7 +3036,6 @@ initialize_data_directory(void)
 	{
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
-		setup_ora_sys_schema(cmdfd);
 	}
 /* END - SQL PARSER */
 

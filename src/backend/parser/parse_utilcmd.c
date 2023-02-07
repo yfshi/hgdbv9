@@ -481,6 +481,13 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 	seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
 	seqstmt->sequence->relpersistence = cxt->relation->relpersistence;
 	seqstmt->options = seqoptions;
+	/* Begin - ReqID:SRS-SQL-SEQ */
+	if (compatible_db == ORA_PARSER)
+		seqstmt->options = lcons(makeDefElem("nocache",
+											 NULL,
+											 -1),
+								 seqstmt->options);
+	/* End - ReqID:SRS-SQL-SEQ */
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
 	if (seq_type)
 		seqstmt->seq_type = seq_type;

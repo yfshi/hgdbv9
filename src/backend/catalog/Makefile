@@ -133,9 +133,6 @@ install-data: bki-stamp installdirs
 	#END - SQL PARSER
 	$(INSTALL_DATA) $(srcdir)/system_views.sql '$(DESTDIR)$(datadir)/system_views.sql'
 	$(INSTALL_DATA) $(srcdir)/information_schema.sql '$(DESTDIR)$(datadir)/information_schema.sql'
-	# BEGIN - SQL PARSER
-	$(INSTALL_DATA) $(srcdir)/ora_sys_schema.sql '$(DESTDIR)$(datadir)/ora_sys_schema.sql'
-	# END - SQL PARSER
 	$(INSTALL_DATA) $(srcdir)/sql_features.txt '$(DESTDIR)$(datadir)/sql_features.txt'
 
 installdirs:

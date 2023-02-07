@@ -702,7 +702,7 @@ static void determineLanguage(List *options);
 	DOUBLE_P DROP
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
+	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION EXTEND	/* ReqID:SRS-SQL-SEQ */
 	EXTENSION EXTERNAL
 
 	FALSE_P FAMILY FETCH FILTER FINALIZE FIRST_P FLOAT_P FOLLOWING FOR
@@ -719,7 +719,7 @@ static void determineLanguage(List *options);
 
 	JOIN
 
-	KEY
+	KEEP KEY	/* ReqID:SRS-SQL-SEQ */
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
@@ -730,7 +730,7 @@ static void determineLanguage(List *options);
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
 	NOMAXVALUE NOMINVALUE NONE NOORDER /* ReqID:SRS-SQL-IDENTCOL */
-	NORMALIZE NORMALIZED
+	NOEXTEND NOKEEP NORMALIZE NORMALIZED NOSCALE NOSHARD	/* ReqID:SRS-SQL-SEQ */
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
 	NULLS_P NUMBER_P /* ReqID:SRS-GKC-DATATYPE_001 */ NUMERIC NVL NVL2 /* ReqID:SRS-GKC-DATATYPE_001 */
 
@@ -749,8 +749,8 @@ static void determineLanguage(List *options);
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS RULE
 
-	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
-	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHOW
+	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
+	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD SHARE SHOW					/* ReqID:SRS-SQL-SEQ */
 	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
@@ -4547,22 +4547,22 @@ RefreshMatViewStmt:
  *****************************************************************************/
 
 CreateSeqStmt:
-			CREATE OptTemp SEQUENCE qualified_name OptSeqOptList
+			CREATE OptTemp SEQUENCE qualified_name OptSharing OptSeqOptList	/* ReqID:SRS-SQL-SEQ */
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
 					$4->relpersistence = $2;
 					n->sequence = $4;
-					n->options = $5;
+					n->options = $6;	/* ReqID:SRS-SQL-SEQ */
 					n->ownerId = InvalidOid;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSeqOptList
+			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSharing OptSeqOptList	/* ReqID:SRS-SQL-SEQ */
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
 					$7->relpersistence = $2;
 					n->sequence = $7;
-					n->options = $8;
+					n->options = $9;	/* ReqID:SRS-SQL-SEQ */
 					n->ownerId = InvalidOid;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
@@ -4589,6 +4589,18 @@ AlterSeqStmt:
 
 		;
 
+/* Begin - ReqID:SRS-SQL-SEQ */
+OptSharing:
+			SHARING '=' sharing_mode
+			|
+		;
+
+sharing_mode:
+			 METADATA
+			| DATA_P
+			| NONE
+		;
+/* End - ReqID:SRS-SQL-SEQ */
 OptSeqOptList: SeqOptList							{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
@@ -4613,7 +4625,7 @@ SeqOptElem: AS SimpleTypename
 			/* Begin - ReqID:SRS-SQL-IDENTCOL */
 			| NOCACHE
 				{
-					$$ = makeDefElem("cache", (Node *)makeInteger(1), @1);	/* BUG#Z025 */
+					$$ = makeDefElem("nocache", NULL, @1);	/* BUG#Z025 */ /* ReqID:SRS-SQL-SEQ */
 				}
 			/* End - ReqID:SRS-SQL-IDENTCOL */
 			| CYCLE
@@ -4681,6 +4693,20 @@ SeqOptElem: AS SimpleTypename
 			| ORDER { $$ = makeDefElem("order", NULL, @1); }
 			| NOORDER { $$ = makeDefElem("noorder", NULL, @1); }
 			/* End - ReqID:SRS-SQL-IDENTCOL */
+			/* Begin - ReqID:SRS-SQL-SEQ */
+			| KEEP	{ $$ = makeDefElem("keep", NULL, @1); }
+			| NOKEEP	{ $$ = makeDefElem("nokeep", NULL, @1); }
+			| SESSION	{ $$ = makeDefElem("session", NULL, @1); }
+			| GLOBAL	{ $$ = makeDefElem("global", NULL, @1); }
+			| SCALE EXTEND	{ $$ = makeDefElem("scale_extend", NULL, @1); }
+			| SCALE NOEXTEND	{ $$ = makeDefElem("scale_noextend", NULL, @1); }
+			| SCALE	{ $$ = makeDefElem("scale_noextend", NULL, @1); }
+			| NOSCALE	{ $$ = makeDefElem("noscale", NULL, @1); }
+			| NOSHARD	{ $$ = makeDefElem("noshard", NULL, @1);}
+			| SHARD		{ $$ = makeDefElem("shard_noextend", NULL, @1); }
+			| SHARD EXTEND	{ $$ = makeDefElem("shard_extend", NULL, @1); }
+			| SHARD NOEXTEND	{ $$ = makeDefElem("shard_noextend", NULL, @1); }
+			/* End - ReqID:SRS-SQL-SEQ */
 		;
 
 /* Begin - BUG#Z030 */
@@ -18241,6 +18267,7 @@ unreserved_keyword:
 			| EXECUTE
 			| EXPLAIN
 			| EXPRESSION
+			| EXTEND	/* ReqID:SRS-SQL-SEQ */
 			| EXTENSION
 			| EXTERNAL
 			| FAMILY
@@ -18282,6 +18309,7 @@ unreserved_keyword:
 			| INVOKER
 			| ISOLATION
 			| IVYSQL /* ReqID:SRS-SQL-PROC */
+			| KEEP	/* ReqID:SRS-SQL-SEQ */
 			| KEY
 			| LABEL
 			| LANGUAGE
@@ -18322,11 +18350,15 @@ unreserved_keyword:
 			| NFKD
 			| NO
 			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOEXTEND		/* ReqID:SRS-SQL-SEQ */
+			| NOKEEP		/* ReqID:SRS-SQL-SEQ */
 			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NONEDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| NOORDER		/* ReqID:SRS-SQL-IDENTCOL */
 			| NORMALIZED
+			| NOSCALE		/* ReqID:SRS-SQL-SEQ */
+			| NOSHARD		/* ReqID:SRS-SQL-SEQ */
 			| NOTHING
 			| NOTIFY
 			| NOWAIT
@@ -18404,6 +18436,7 @@ unreserved_keyword:
 			| RULE
 			| SAVEPOINT
 			| SCALAR	/* ReqID:SRS-SQL-PROC */
+			| SCALE		/* ReqID:SRS-SQL-SEQ */
 			| SCHEMA
 			| SCHEMAS
 			| SCROLL
@@ -18418,6 +18451,7 @@ unreserved_keyword:
 			| SET
 			| SETS
 			| SETTINGS /* ReqID:SRS-SQL-PROC */
+			| SHARD		/* ReqID:SRS-SQL-SEQ */
 			| SHARE
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
@@ -18849,6 +18883,7 @@ bare_label_keyword:
 			| EXISTS
 			| EXPLAIN
 			| EXPRESSION
+			| EXTEND	/* ReqID:SRS-SQL-SEQ */
 			| EXTENSION
 			| EXTERNAL
 			| FALSE_P
@@ -18906,6 +18941,7 @@ bare_label_keyword:
 			| ISOLATION
 			| IVYSQL /* ReqID:SRS-SQL-PROC */
 			| JOIN
+			| KEEP	/* ReqID:SRS-SQL-SEQ */
 			| KEY
 			| LABEL
 			| LANGUAGE
@@ -18957,12 +18993,16 @@ bare_label_keyword:
 			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOCOPY 		/* ReqID:SRS-SQL-PROC */
 			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOEXTEND		/* ReqID:SRS-SQL-SEQ */
+			| NOKEEP		/* ReqID:SRS-SQL-SEQ */
 			| NOMAXVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NOMINVALUE	/* ReqID:SRS-SQL-IDENTCOL */
 			| NONE
 			| NONEDITIONABLE /* ReqID:SRS-SQL-PROC */
 			| NORMALIZE
 			| NORMALIZED
+			| NOSCALE		/* ReqID:SRS-SQL-SEQ */
+			| NOSHARD		/* ReqID:SRS-SQL-SEQ */
 			| NOT
 			| NOTHING
 			| NOTIFY
@@ -19060,6 +19100,7 @@ bare_label_keyword:
 			| RULE
 			| SAVEPOINT
 			| SCALAR	/* ReqID:SRS-SQL-PROC */
+			| SCALE		/* ReqID:SRS-SQL-SEQ */
 			| SCHEMA
 			| SCHEMAS
 			| SCROLL
@@ -19076,6 +19117,7 @@ bare_label_keyword:
 			| SETOF
 			| SETS
 			| SETTINGS /* ReqID:SRS-SQL-PROC */
+			| SHARD		/* ReqID:SRS-SQL-SEQ */
 			| SHARE
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
