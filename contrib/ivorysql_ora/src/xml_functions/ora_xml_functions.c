@@ -205,7 +205,7 @@ ivy_xml_xpath(xpath_ws *ws, text *xpath_expr_text, xmltype *data, char *namespac
 
 	PG_TRY();
 	{
-		ws->doc = xmlReadMemory((const char *)string, len, NULL, NULL, XML_PARSE_NOBLANKS);
+		ws->doc = xmlReadMemory((const char *)string, len, NULL, NULL, XML_PARSE_NOBLANKS); /* Bug#Z202 */
 		if (ws->doc != NULL)
 		{
 			ws->xpathctx = xmlXPathNewContext(ws->doc);
@@ -269,7 +269,7 @@ init_ws_doc(xpath_ws *ws, xmltype *data)
 
 	PG_TRY();
 	{
-		ws->doc = xmlReadMemory((const char *)string, len, NULL, NULL, XML_PARSE_NOBLANKS);
+		ws->doc = xmlReadMemory((const char *)string, len, NULL, NULL, XML_PARSE_NOBLANKS); /* Bug#Z202 */
 		if (ws->doc == NULL)
 			ereport(ERROR,(errcode(ERRCODE_INVALID_XML_DOCUMENT),
 					errmsg("could not parse XML document")));
@@ -641,7 +641,7 @@ ivy_xml_xmlnode2xmltype(xmlNodePtr cur)
 			nodefree = (cur_copy->type == XML_DOCUMENT_NODE) ?
 				(void (*) (xmlNodePtr)) xmlFreeDoc : xmlFreeNode;
 
-			bytes = xmlNodeDump(buf, NULL, cur_copy, 0, 1);
+			bytes = xmlNodeDump(buf, NULL, cur_copy, 0, 1); /* Bug#Z202 */
 			if (bytes == -1)
 				ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
 						errmsg("could not dump node")));
@@ -1031,19 +1031,23 @@ ivy_extractvalue(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+	/* Begin - Bug#Z203, Bug#Z214 */
+	if (res->nodesetval && res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE can only retrieve value of leaf node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
+	if (res->nodesetval && res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
+	/* End - Bug#Z203, Bug#Z214 */
 
 	ret = ivy_xml_xpathobjtostring(res);
 
@@ -1102,19 +1106,23 @@ ivy_extractvalue2(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+	/* Begin - Bug#Z203, Bug#Z214 */
+	if (res->nodesetval && res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE can only retrieve value of leaf node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
+	if (res->nodesetval && res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
+	/* End - Bug#Z203, Bug#Z214 */
 
 	ret = ivy_xml_xpathobjtostring(res);
 
@@ -1378,10 +1386,10 @@ ivy_appendchildxml(PG_FUNCTION_ARGS)
 
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	cleanup_ws(&ws);
-
 	if (new_node)
 		xmlFreeDoc(new_node);
+
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1450,10 +1458,10 @@ ivy_appendchildxml2(PG_FUNCTION_ARGS)
 
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	cleanup_ws(&ws);
-
 	if (new_node)
 		xmlFreeDoc(new_node);
+
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1501,8 +1509,8 @@ ivy_insertxmlbefore(PG_FUNCTION_ARGS)
 
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, NULL);
 
-	if (res->nodesetval && res->nodesetval->nodeNr == 1 &&
-		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+	if (res->nodesetval && res->nodesetval->nodeNr == 1 && /* Bug#Z205 */
+		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -1566,8 +1574,8 @@ ivy_insertxmlbefore2(PG_FUNCTION_ARGS)
 
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, cns);
 
-	if (res->nodesetval && res->nodesetval->nodeNr == 1 &&
-		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+	if (res->nodesetval && res->nodesetval->nodeNr == 1 && /* Bug#Z205 */
+		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -1707,7 +1715,6 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	text	   *xpath_expr_text = NULL;
 	text	   *n_name = NULL;
 	xmltype    *var = NULL;
-
 	xmltype    *ret = NULL;
 	char	   *cname = NULL;
 	char	   *cnodestr = NULL;
@@ -1755,9 +1762,14 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	}
 	else
 	{
+		/* Begin - Bug#Z204 */
 		if (strcmp(cname, (char *)((xmlNodePtr)new_node->children->name)) != 0)
+		{
+			xmlFreeDoc(new_node);
 			ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
 					errmsg("The document being inserted does not conform to specified child name")));
+		}
+		/* End - Bug#Z204 */
 	}
 
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, NULL);
@@ -1767,10 +1779,10 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
 	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
-	cleanup_ws(&ws);
-
 	if (new_node)
 		xmlFreeDoc(new_node);
+
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1792,12 +1804,13 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	char	   *cname = NULL;
 	char	   *cns = NULL;
 	char	   *cnodestr = NULL;
-	char	   *tmp = NULL;
 	int 		len;
 	xpath_ws	ws;
 	xmlDocPtr 	new_node = NULL;
 	xmlChar	   *nodestring = NULL;
 	xmlXPathObjectPtr res;
+
+	StringInfoData r;
 
 	if (fcinfo->args[0].isnull)
 		PG_RETURN_NULL();
@@ -1843,11 +1856,27 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		tmp = strstr(cname, ":");
-		tmp = strtok(tmp, ":");
-		if (strcmp(tmp, (char *)((xmlNodePtr)new_node->children->name)) != 0)
+		/* Begin - Bug#Z204, Bug#Z215 */
+		initStringInfo(&r);
+		appendStringInfoString(&r, "<");
+		appendStringInfoString(&r, cname);
+
+		if (strstr((char *)nodestring, r.data))
+		{
+			if (!strstr(cname, (char *)((xmlNodePtr)new_node->children->name)))
+			{
+				xmlFreeDoc(new_node);
+				ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
+						errmsg("The document being inserted does not conform to specified child name")));
+			}
+		}
+		else
+		{
+			xmlFreeDoc(new_node);
 			ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
 					errmsg("The document being inserted does not conform to specified child name")));
+		}
+		/* End - Bug#Z204, Bug#Z215 */
 	}
 
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, cns);
@@ -1857,10 +1886,10 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
 	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
-	cleanup_ws(&ws);
-
 	if (new_node)
 		xmlFreeDoc(new_node);
+
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
