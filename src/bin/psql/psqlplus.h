@@ -59,20 +59,31 @@ typedef struct PsqlScanKeyword
 #define MaxOraCharLen 2000
 #define MaxOraVarcharLen 32767
 
+#define BINDVARREF 3000
+
 /*
- * The type of yyscanner is opaque outside psqlplus.l.
+ * The scanner returns extra data about scanned tokens in this union type.
+ * Note that this is a subset of the fields used in YYSTYPE of the bison
+ * parsers built atop the scanner.
  */
-//#define yyscan_t  void *
-union YYSTYPE;
+typedef union psql_YYSTYPE
+{
+	int			ival;
+	char	   *str;
+	const char *keyword;
+} psql_YYSTYPE;
 
 /* callback functions for our flex lexer */
 static const Ora_psqlScanCallbacks psqlplus_callbacks = {
 	NULL,
 };
 
+union YYSTYPE;
 extern int	psqlplus_yyparse(yyscan_t yyscanner);
 extern int	psqlplus_yylex(union YYSTYPE *lvalp, yyscan_t yyscanner);
+extern int orapsql_yylex(psql_YYSTYPE *lvalp, yyscan_t yyscanner);
 extern void psqlplus_yyerror(yyscan_t yyscanner, const char *message);
+extern void orapsql_yyerror(yyscan_t yyscanner, const char *message);
 extern yyscan_t psqlplus_scanner_init(PsqlScanState state);
 extern void psqlplus_scanner_finish(yyscan_t yyscanner);
 #endif   /* PSQLPLUS_H */

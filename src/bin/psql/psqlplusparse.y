@@ -26,6 +26,7 @@
 
 static psqlplus_cmd_var *make_variable_node(void);
 static psqlplus_cmd_print *make_print_node(void);
+static psqlplus_cmd_execute *make_exec_node(void);
 static BindVarType *make_bindvartype(int32 oid, int32 typmod, const char *typname);
 static char *get_guc_settings(const char *gucname);
 static print_item *make_print_item(char *name, bool valid);
@@ -43,6 +44,7 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 
 %union
 {
+	psql_YYSTYPE		psql_yysype;
 	int					ival;
 	char				*str;
 	const char			*keyword;
@@ -51,18 +53,20 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 	print_list			*print_item_list;
 }
 
-%type <psqlplus_cmd> variable_stmt variable_spec print_stmt
+%type <psqlplus_cmd> variable_stmt variable_spec print_stmt exec_stmt
 %type <bindvartype> bind_vartype
 %type <print_item_list> print_items_list print_items
 %type <keyword> unreserved_keyword
+%type <keyword> variable_keyword exec_keyword
 %type <str> opt_varname bind_varname bind_varvalue
 %type <str> Sconst
 
-%token <keyword>	K_VARIABLE K_CHAR K_BYTE K_NCHAR K_VARCHAR2 K_NVARCHAR2
-	K_NUMBER K_BINARY_FLOAT K_BINARY_DOUBLE K_PRINT
+%token <keyword>	K_VAR K_VARIABLE K_CHAR K_BYTE K_NCHAR K_VARCHAR2 K_NVARCHAR2
+	K_NUMBER K_BINARY_FLOAT K_BINARY_DOUBLE K_PRINT K_EXECUTE K_EXEC
 %token <str>	IDENT FCONST LITERAL DQCONST SQCONST
 %token <ival>	ICONST
 %token <str>	SINGLE_QUOTE_NO_END DOUBLE_QUOTE_NO_END
+%token			TYPECAST
 
 %%
 
@@ -75,17 +79,21 @@ psqlplus_toplevel_stmt:
 			{
 				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
 			}
+		| exec_stmt opt_semi
+			{
+				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
+			}
 	;
 
 /*
  * Oracle SQL*PLUS VARIABLE statement.
  */
 variable_stmt:
-	K_VARIABLE variable_spec
+	variable_keyword variable_spec
 		{
 			$$ = $2;
 		}
-	| K_VARIABLE opt_varname truncate_char
+	| variable_keyword opt_varname truncate_char
 		{
 			/*
 			 * The weird behavior of oracle, when encountering these characters 
@@ -102,6 +110,11 @@ variable_stmt:
 			return 0;
 		}
 	;
+
+variable_keyword:
+			K_VARIABLE
+			| K_VAR
+		;
 
 variable_spec:
 		bind_varname
@@ -390,6 +403,34 @@ print_items:
 	;
 
 /*
+ * Oracle SQL*PLUS EXEC[UTE] statement.
+ */
+exec_stmt: exec_keyword
+		{
+			PsqlScanState state = psql_yyget_extra(yyscanner);
+
+			if (state->is_sqlplus_cmd)
+			{
+				psqlplus_cmd_execute *exec = make_exec_node();
+				int	offset = strlen(state->scanbuf);
+				exec->plisqlstmts = pg_strdup(state->scanline + offset);
+				state->psqlpluscmd = (psqlplus_cmd *) exec;
+				return 0;
+			}
+			else
+			{
+				return 1;
+			}
+		}
+	;
+
+exec_keyword:
+		K_EXECUTE
+		| K_EXEC
+	;
+
+
+/*
  * Single quotes and double quotes have different semantics 
  * in the PRINT command of SQL*PLUS ,  so the tokens of the 
  * quotes are separated separately.
@@ -409,10 +450,13 @@ unreserved_keyword:
 		| K_BINARY_FLOAT
 		| K_BYTE
 		| K_CHAR
+		| K_EXEC
+		| K_EXECUTE
 		| K_NCHAR
 		| K_NUMBER
 		| K_NVARCHAR2
 		| K_PRINT
+		| K_VAR
 		| K_VARCHAR2
 		| K_VARIABLE
 	;
@@ -441,6 +485,15 @@ make_print_node(void)
 	print->cmd_type = PSQLPLUS_CMD_PRINT;
 	print->print_items = NULL;
 	return print;
+}
+
+static psqlplus_cmd_execute *
+make_exec_node(void)
+{
+	psqlplus_cmd_execute *exec = pg_malloc0(sizeof(psqlplus_cmd_execute));
+	exec->cmd_type = PSQLPLUS_CMD_EXECUTE;
+	exec->plisqlstmts = NULL;
+	return exec;
 }
 
 static BindVarType *
@@ -537,6 +590,18 @@ merge_print_list(print_list *list1, print_list *list2)
 	}
 
 	return list1;
+}
+
+int
+psqlplus_yylex(YYSTYPE *lvalp, yyscan_t yyscanner)
+{
+	return orapsql_yylex(&(lvalp->psql_yysype), yyscanner);
+}
+
+void
+psqlplus_yyerror(yyscan_t yyscanner, const char *message)
+{
+	/* do nothing */
 }
 
 /* ... and the yylval macro, which flex will have its own definition for */

@@ -67,9 +67,12 @@ makeParamList(int numParams)
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	retval->outparamSepup = NULL;
 
-	/* set all the params mode to IN */
+	/* set all the params mode to IN and typmod is -1 */
 	for (i = 0; i < numParams; i++)
+	{
 		retval->params[i].pmode = PROARGMODE_IN;
+		retval->params[i].ptypmod = -1; /* ReqID:SRS-CMD-PSQL */
+	}
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */

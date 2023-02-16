@@ -1,3 +1,4 @@
+\set EXECUTE_RUN_PREPARE on
 CREATE TABLE xmltest (
     id int,
     data xml

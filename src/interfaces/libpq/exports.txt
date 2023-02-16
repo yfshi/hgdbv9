@@ -209,3 +209,6 @@ IvyFreeHandle              206
 IvyBindByPos               207
 IvyBindByName              208
 IvyStmtExecute             209
+Ivyconnectdb2              210
+Ivyfinish2	               211
+IvyStmtExecute2			   212

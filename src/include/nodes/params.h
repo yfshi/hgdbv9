@@ -101,6 +101,7 @@ typedef struct ParamExternData
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	char 		pmode;			/* parameter's mode, IN, OUT, or INOUT */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+	int32		ptypmod;		/* the typmod of parameter's datatype, or -1 for types that do not need typmod */ /* ReqID:SRS-CMD-PSQL */
 } ParamExternData;
 
 typedef struct ParamListInfoData *ParamListInfo;

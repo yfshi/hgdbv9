@@ -1089,6 +1089,7 @@ exec_simple_query(const char *query_string)
 				paramsinfo->params[i].value = (Datum) 0;
 				paramsinfo->params[i].ptype = 23;
 				paramsinfo->params[i].pmode = 'o';
+				paramsinfo->params[i].ptypmod = -1;	/* ReqID:SRS-CMD-PSQL */
 				paramtypes[i] = 23;
 			}
 
@@ -1715,6 +1716,7 @@ exec_bind_message(StringInfo input_message)
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	List		*dostmt_modes = NIL;
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	List		*dostmt_plength = NIL; /* ReqID:SRS-CMD-PSQL */
 
 	/* Get the fixed part of the message */
 	portal_name = pq_getmsgstring(input_message);
@@ -1858,6 +1860,11 @@ exec_bind_message(StringInfo input_message)
 	{
 		DoStmt *dostmt = (DoStmt *)((RawStmt *)(psrc->raw_parse_tree)->stmt);
 		dostmt_modes = dostmt->paramsmode;
+
+		/* Begin - ReqID:SRS-CMD-PSQL */
+		if (dostmt->paramslen)
+			dostmt_plength = dostmt->paramslen;
+		/* End - ReqID:SRS-CMD-PSQL */
 	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
@@ -1887,6 +1894,11 @@ exec_bind_message(StringInfo input_message)
 		if (dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
 			elog(ERROR, "parameters modes doesn't match to params");
 		/* End - ReqID:SRS-SQL-ANONYOUT */
+
+		/* Begin - ReqID:SRS-CMD-PSQL */
+		if (dostmt_plength != NIL && list_length(dostmt_plength) != numParams)
+			elog(ERROR, "the specified parameter length list does not match the number of parameters");
+		/* End - ReqID:SRS-CMD-PSQL */
 
 		for (int paramno = 0; paramno < numParams; paramno++)
 		{
@@ -2116,6 +2128,36 @@ exec_bind_message(StringInfo input_message)
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			params->params[paramno].pmode = pmode;
 			/* End - ReqID:SRS-SQL-FUNCOUT */
+
+			/* Begin - ReqID:SRS-CMD-PSQL */
+			if (dostmt_plength != NIL)
+			{
+				Value *v= NULL;
+
+				v = (Value *) list_nth(dostmt_plength, paramno);
+
+				Assert(v->type == T_Integer);
+
+				switch(ptype)
+				{
+					case ORACHARCHAROID:
+					case ORACHARBYTEOID:
+					case ORAVARCHARCHAROID:
+					case ORAVARCHARBYTEOID:
+						/*
+						 * Simple enough, hardcoded to avoid constructing an ArrayType
+						 * representing typmod and calling the typmodin function.
+						 */
+						params->params[paramno].ptypmod = intVal(v) + VARHDRSZ;
+						break;
+					default:
+						params->params[paramno].ptypmod = -1;
+						break;
+				}
+			}
+			else
+				params->params[paramno].ptypmod = -1;
+			/* End - ReqID:SRS-CMD-PSQL */
 		}
 
 		/* Pop the per-parameter error callback */

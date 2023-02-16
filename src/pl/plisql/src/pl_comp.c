@@ -1247,7 +1247,7 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 
 			/* Create datatype info */
 			argdtype = plisql_build_datatype(argtypeid,
-										-1,
+										param->ptypmod, /* ReqID:SRS-CMD-PSQL */
 										function->fn_input_collation,
 										NULL);
 

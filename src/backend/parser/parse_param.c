@@ -2496,6 +2496,16 @@ raw_calculate_oraparamnumbers_walker(Node *node,
 				return true;
 		}
 			break;
+		/* Begin - BUG:M0000077 */
+		case T_CallStmt:
+			{
+				CallStmt *callstmt = (CallStmt *)node;
+
+				if (walker(callstmt->funccall, context))
+					return true;
+			}
+			break;
+		/* End - BUG:M0000077 */
 
 		default:		
 			break;

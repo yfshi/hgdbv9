@@ -2055,7 +2055,16 @@ build_function_result_tupdesc_d(char prokind,
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
-		if (argnames)
+		/* Begin - ReqID:SRS-CMD-PSQL */
+		/*
+		 * If the guc pararmeter out_parameter_column_position is set to true,
+		 * make out parameter column name to special,
+		 * so we can distinguish it from the return value
+		 */
+		if (out_parameter_column_position)
+			pname = psprintf("_column_%d", i + 1);
+		else if (argnames)
+		/* End - ReqID:SRS-CMD-PSQL */
 			pname = TextDatumGetCString(argnames[i]);
 		else
 			pname = NULL;

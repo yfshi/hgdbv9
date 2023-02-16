@@ -3079,6 +3079,7 @@ typedef struct DoStmt
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	List		*paramsmode;	/* List of parameters mode */
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	List		*paramslen;		/* List of length for parameter datatypes */	/* ReqID:SRS-CMD-PSQL */
 } DoStmt;
 
 typedef struct InlineCodeBlock
