@@ -1043,7 +1043,7 @@ end;
 /
 NOTICE:  old value of :x is abc
 ERROR:  value too long for type char(3 byte)
-CONTEXT:  PL/pgSQL assignment ":x := 'abcd'"
+CONTEXT:  PL/iSQL assignment ":x := 'abcd'"
 PL/iSQL function inline_code_block line 3 at assignment
 print x
   X  
@@ -1064,7 +1064,7 @@ end;
 /
 NOTICE:  old value of :x is 数据库
 ERROR:  value too long for type char(3 char)
-CONTEXT:  PL/pgSQL assignment ":x := '瀚高集团'"
+CONTEXT:  PL/iSQL assignment ":x := '瀚高集团'"
 PL/iSQL function inline_code_block line 3 at assignment
 print x
    X    
@@ -1328,7 +1328,7 @@ print x
 
 exec :x := 'qwer'
 ERROR:  value too long for type char(3 byte)
-CONTEXT:  PL/pgSQL assignment ":x := 'qwer'"
+CONTEXT:  PL/iSQL assignment ":x := 'qwer'"
 PL/iSQL function inline_code_block line 1 at assignment
 print x
   X  
@@ -1344,7 +1344,7 @@ print x
 
 exec :x := '数据库1';
 ERROR:  value too long for type char(3 char)
-CONTEXT:  PL/pgSQL assignment ":x := '数据库1'"
+CONTEXT:  PL/iSQL assignment ":x := '数据库1'"
 PL/iSQL function inline_code_block line 1 at assignment
 print x
    X    
@@ -1360,7 +1360,7 @@ print x
 
 exec :x := 'qwer'
 ERROR:  value too long for type varchar2(3 byte)
-CONTEXT:  PL/pgSQL assignment ":x := 'qwer'"
+CONTEXT:  PL/iSQL assignment ":x := 'qwer'"
 PL/iSQL function inline_code_block line 1 at assignment
 print x
   X  
@@ -1376,7 +1376,7 @@ print x
 
 exec :x := '数据库1';
 ERROR:  value too long for type varchar2(3 char)
-CONTEXT:  PL/pgSQL assignment ":x := '数据库1'"
+CONTEXT:  PL/iSQL assignment ":x := '数据库1'"
 PL/iSQL function inline_code_block line 1 at assignment
 print x
    X    

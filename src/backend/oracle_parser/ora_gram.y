@@ -868,6 +868,13 @@ static void determineLanguage(List *options);
 %token		MODE_PLPGSQL_ASSIGN2
 %token		MODE_PLPGSQL_ASSIGN3
 
+/* Begin - BUG:M0000079 */
+%token		MODE_PLISQL_EXPR
+%token		MODE_PLISQL_ASSIGN1
+%token		MODE_PLISQL_ASSIGN2
+%token		MODE_PLISQL_ASSIGN3
+/* End - BUG:M0000079 */
+
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
@@ -972,6 +979,34 @@ parse_toplevel:
 				pg_yyget_extra(yyscanner)->parsetree =
 					list_make1(makeRawStmt((Node *) n, 0));
 			}
+			/* Begin - BUG:M0000079 */
+			| MODE_PLISQL_EXPR PLpgSQL_Expr
+			{
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt($2, 0));
+			}
+			| MODE_PLISQL_ASSIGN1 PLAssignStmt
+			{
+				PLAssignStmt *n = (PLAssignStmt *) $2;
+				n->nnames = 1;
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt((Node *) n, 0));
+			}
+			| MODE_PLISQL_ASSIGN2 PLAssignStmt
+			{
+				PLAssignStmt *n = (PLAssignStmt *) $2;
+				n->nnames = 2;
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt((Node *) n, 0));
+			}
+			| MODE_PLISQL_ASSIGN3 PLAssignStmt
+			{
+				PLAssignStmt *n = (PLAssignStmt *) $2;
+				n->nnames = 3;
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt((Node *) n, 0));
+			}
+			/* End - BUG:M0000079 */
 		;
 
 /*
@@ -8465,7 +8500,7 @@ func_arg_with_default:
 					$$ = $1;
 					$$->defexpr = $3;
 				}
-		| func_arg '=' a_expr
+		| func_arg plassign_equals a_expr /* BUG:Z227 */
 				{
 					$$ = $1;
 					$$->defexpr = $3;

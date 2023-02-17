@@ -1241,3 +1241,103 @@ drop procedure test_p(IN a int, OUT b int);
 drop function test_subproc_func(a in integer);
 drop procedure test_subproc_proc(a integer);
 /* End - BUG:M0000068 */
+
+/* Begin - BUG:Z227 */
+CREATE OR REPLACE FUNCTION f_def(arg1 int := 1)
+RETURN int
+IS
+BEGIN
+   RETURN arg1;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE p_def(arg1 int := 1)
+IS
+BEGIN
+   raise info 'default val: %x', arg1;
+END;
+/
+
+DROP FUNCTION f_def;
+DROP PROCEDURE p_def;
+/* End - BUG:Z227 */
+
+/* Begin - BUG:M0000079 */
+-- do stmt
+declare
+var char(3);
+begin
+var = '12345';
+end;
+/
+
+do
+$$
+declare
+var char(3);
+begin
+var = '12345';
+end;
+$$ language plpgsql;
+
+-- function
+create or replace function ora_fbug79(arg char(3)) return int is
+ var char(3);
+begin
+  raise notice '%', arg;
+  var := arg;
+  raise notice '%', var;
+  var := '12345';
+  return 0;
+end;
+/
+
+create or replace function pg_fbug79(arg char(3)) return int as
+$$
+declare
+ var char(3);
+begin
+  raise notice '%', arg;
+  var := arg;
+  raise notice '%', var;
+  var := '12345';
+  return 0;
+end;
+$$ language plpgsql;
+/
+
+select ora_fbug79('abc');
+select pg_fbug79('abc');
+
+-- procedure
+create or replace procedure ora_pbug79(arg char(3)) is
+ var char(3);
+begin
+  raise notice '%', arg;
+  var := arg;
+  raise notice '%', var;
+  var := '12345';
+end;
+/
+
+create or replace procedure pg_pbug79(arg char(3)) as
+$$
+declare
+ var char(3);
+begin
+  raise notice '%', arg;
+  var := arg;
+  raise notice '%', var;
+  var := '12345';
+end;
+$$ language plpgsql;
+/
+
+call ora_pbug79('abc');
+call pg_pbug79('abc');
+
+drop function ora_fbug79;
+drop function pg_fbug79;
+drop procedure ora_pbug79;
+drop procedure pg_pbug79;
+/* End - BUG:M0000079 */

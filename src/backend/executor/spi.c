@@ -3001,6 +3001,7 @@ _SPI_error_callback(void *arg)
 		switch (carg->mode)
 		{
 			case RAW_PARSE_PLPGSQL_EXPR:
+			case RAW_PARSE_PLISQL_EXPR:	/* BUG:M0000079 */
 				errcontext("SQL expression \"%s\"", query);
 				break;
 			case RAW_PARSE_PLPGSQL_ASSIGN1:
@@ -3008,6 +3009,13 @@ _SPI_error_callback(void *arg)
 			case RAW_PARSE_PLPGSQL_ASSIGN3:
 				errcontext("PL/pgSQL assignment \"%s\"", query);
 				break;
+			/* Begin - BUG:M0000079 */
+			case RAW_PARSE_PLISQL_ASSIGN1:
+			case RAW_PARSE_PLISQL_ASSIGN2:
+			case RAW_PARSE_PLISQL_ASSIGN3:
+				errcontext("PL/iSQL assignment \"%s\"", query);
+				break;
+			/* End - BUG:M0000079 */
 			default:
 				errcontext("SQL statement \"%s\"", query);
 				break;
