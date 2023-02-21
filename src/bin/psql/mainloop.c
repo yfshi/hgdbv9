@@ -735,6 +735,7 @@ psqlplus_next:
 						{
 							pg_free(pl->items);
 							pg_free(pl);
+							break;
 						}
 					}
 				}
