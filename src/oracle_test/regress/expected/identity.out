@@ -196,6 +196,7 @@ ERROR:  missing BY keyword
 create table other_stx2(userid number generated always as identity start  2,uname varchar2(20));
 ERROR:  missing WITH keyword
 --End - BUG#Z030
+set ivorysql.enable_internal_warning = true;
 --Begin - BUG#Z028
 create table other_start_max1(userid number generated always as identity start with 9999999999999999999999999999,uname varchar2(20));
 WARNING:  Start value is out of range for data type bigint
@@ -331,3 +332,4 @@ ERROR:  numeric field overflow
 DETAIL:  A field with precision 3, scale 0 must round to an absolute value less than 10^3.
 DROP TABLE id_t2;
 --End - BUG#M0000070
+SET ivorysql.enable_seq_scale_fixed = FALSE;

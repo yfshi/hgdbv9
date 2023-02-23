@@ -1784,7 +1784,7 @@ SELECT
 
 CREATE OR REPLACE VIEW SYS.USER_SEQUENCES AS
 SELECT
-	c.relowner::regrole AS sequence_owner,c.relname AS sequence_name,s.seqmin AS min_value,s.seqmax AS max_value,
+	c.relname AS sequence_name,s.seqmin AS min_value,s.seqmax AS max_value,
 	s.seqincrement AS increment_by,s.seqcycle AS cycle_flag,null AS order_flag,s.seqcache AS cache_size,
 	CASE
 		WHEN has_sequence_privilege(c.oid, 'SELECT,USAGE'::text)

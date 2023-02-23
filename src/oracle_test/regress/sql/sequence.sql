@@ -589,4 +589,22 @@ alter sequence test_conversion global;
 select test_conversion.currval from dual;
 select test_conversion.nextval from dual;
 DROP SEQUENCE test_conversion;
+
+-- Begin BUG#Z230
+set ivorysql.enable_internal_warning = true;
+CREATE SEQUENCE seq scale extend;
+create sequence seq_scale2 minvalue 1 maxvalue 9999999999999999 scale extend;
+DROP SEQUENCE seq;
+DROP SEQUENCE seq_scale2;
+set ivorysql.enable_internal_warning = false;
+CREATE SEQUENCE seq scale extend;
+create sequence seq_scale2 minvalue 1 maxvalue 9999999999999999 scale extend;
+DROP SEQUENCE seq;
+DROP SEQUENCE seq_scale2;
+-- End  BUG#Z230
+
+-- Begin BUG#Z250
+create sequence seq_restart3 increment by 1 start with 32 minvalue 10 maxvalue 50;
+alter sequence seq_restart3 start with 20;
+-- End  BUG#Z250
 SET ivorysql.enable_seq_scale_fixed = FALSE;
