@@ -892,7 +892,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						}
 						strcpy(&cp2[i], "'::pg_catalog.refcursor");
 						curname_def->query = pstrdup(buf);
-						curname_def->parseMode = RAW_PARSE_PLPGSQL_EXPR;
+						curname_def->parseMode = RAW_PARSE_PLISQL_EXPR; /* BUG:M0000079 */
 						new->default_val = curname_def;
 						pfree(name_data.data);
 }
@@ -1721,13 +1721,13 @@ stmt_assign		: T_DATUM
 						switch ($1.ident ? 1 : list_length($1.idents))
 						{
 							case 1:
-								pmode = RAW_PARSE_PLPGSQL_ASSIGN1;
+								pmode = RAW_PARSE_PLISQL_ASSIGN1; /* BUG:M0000079 */
 								break;
 							case 2:
-								pmode = RAW_PARSE_PLPGSQL_ASSIGN2;
+								pmode = RAW_PARSE_PLISQL_ASSIGN2; /* BUG:M0000079 */
 								break;
 							case 3:
-								pmode = RAW_PARSE_PLPGSQL_ASSIGN3;
+								pmode = RAW_PARSE_PLISQL_ASSIGN3; /* BUG:M0000079 */
 								break;
 							default:
 								elog(ERROR, "unexpected number of names");
@@ -2248,7 +2248,7 @@ for_control		: for_variable K_IN
 								 * Relabel first expression as an expression;
 								 * then we can check its syntax.
 								 */
-								expr1->parseMode = RAW_PARSE_PLPGSQL_EXPR;
+								expr1->parseMode = RAW_PARSE_PLISQL_EXPR; /* BUG:M0000079 */
 								check_sql_expr(expr1->query, expr1->parseMode,
 											   expr1loc);
 
@@ -2635,7 +2635,7 @@ stmt_raise		: K_RAISE
 
 									expr = read_sql_construct(',', ';', K_USING,
 															  ", or ; or USING",
-															  RAW_PARSE_PLPGSQL_EXPR,
+															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
 															  NULL, &tok);
 									new->params = lappend(new->params, expr);
@@ -2768,7 +2768,7 @@ stmt_dynexecute : K_EXECUTE
 
 						expr = read_sql_construct(K_INTO, K_USING, ';',
 												  "INTO or USING or ;",
-												  RAW_PARSE_PLPGSQL_EXPR,
+												  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 												  true, true, true,
 												  NULL, &endtoken);
 
@@ -2811,7 +2811,7 @@ stmt_dynexecute : K_EXECUTE
 								{
 									expr = read_sql_construct(',', ';', K_INTO,
 															  ", or ; or INTO",
-															  RAW_PARSE_PLPGSQL_EXPR,
+															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
 															  NULL, &endtoken);
 									new->params = lappend(new->params, expr);
@@ -3573,7 +3573,7 @@ static PLiSQL_expr *
 read_sql_expression(int until, const char *expected)
 {
 	return read_sql_construct(until, 0, 0, expected,
-							  RAW_PARSE_PLPGSQL_EXPR,
+							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 							  true, true, true, NULL, NULL);
 }
 
@@ -3583,7 +3583,7 @@ read_sql_expression2(int until, int until2, const char *expected,
 					 int *endtoken)
 {
 	return read_sql_construct(until, until2, 0, expected,
-							  RAW_PARSE_PLPGSQL_EXPR,
+							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 							  true, true, true, NULL, endtoken);
 }
 
@@ -4987,7 +4987,7 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 		 */
 		item = read_sql_construct(',', ')', 0,
 								  ",\" or \")",
-								  RAW_PARSE_PLPGSQL_EXPR,
+								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
 								  NULL, &endtoken);
@@ -5029,7 +5029,7 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 
 	expr = palloc0(sizeof(PLiSQL_expr));
 	expr->query			= pstrdup(ds.data);
-	expr->parseMode		= RAW_PARSE_PLPGSQL_EXPR;
+	expr->parseMode		= RAW_PARSE_PLISQL_EXPR; /* BUG:M0000079 */
 	expr->plan			= NULL;
 	expr->paramnos		= NULL;
 	expr->target_param	= -1;
@@ -5203,7 +5203,7 @@ make_case(int location, PLiSQL_expr *t_expr,
 			StringInfoData	ds;
 
 			/* We expect to have expressions not statements */
-			Assert(expr->parseMode == RAW_PARSE_PLPGSQL_EXPR);
+			Assert(expr->parseMode == RAW_PARSE_PLISQL_EXPR); /* BUG:M0000079 */
 
 			/* Do the string hacking */
 			initStringInfo(&ds);

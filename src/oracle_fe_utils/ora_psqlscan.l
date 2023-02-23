@@ -401,6 +401,7 @@ other			.
 
 {xcstart}		{
 					cur_state->xcdepth = 0;
+					cur_state->xcstate = true; /* Begin - ReqID:SRS-SQL-PROC */
 					BEGIN(xc);
 					/* Put back any characters past slash-star; see above */
 					yyless(2);
@@ -422,11 +423,14 @@ other			.
 				}
 
 {xcstop}		{
+					ECHO;
 					if (cur_state->xcdepth <= 0)
+					{
+						cur_state->xcstate = false; /* Begin - ReqID:SRS-SQL-PROC */
 						BEGIN(INITIAL);
+					}
 					else
 						cur_state->xcdepth--;
-					ECHO;
 				}
 
 {xcinside}		{
@@ -766,6 +770,7 @@ other			.
 						cur_state->anonymous_label_start = false;
 						cur_state->anonymous_label_ident = false;
 						cur_state->anonymous_label_end = false;
+						cur_state->xcstate = false;
 						cur_state->start_state = YY_START;
 						cur_state->token_count = 0;
 						cur_state->token_cursor_idx = 0;
@@ -791,6 +796,7 @@ other			.
 						cur_state->anonymous_label_start = false;
 						cur_state->anonymous_label_ident = false;
 						cur_state->anonymous_label_end = false;
+						cur_state->xcstate = false;
 						cur_state->token_cursor_idx = 0;
 						cur_state->token_count = 0;
 						/* End - ReqID:SRS-SQL-PROC */
@@ -1409,18 +1415,12 @@ ora_psql_scan_reset(PsqlScanState state)
 	state->anonymous_label_start = false;
 	state->anonymous_label_ident = false;
 	state->anonymous_label_end = false;
+	state->xcstate = false;
 	state->token_count = 0;
 	state->token_cursor_idx = 0;
 	/* End - ReqID:SRS-SQL-PROC */
 
 	/* Begin - ReqID:SRS-CMD-PSQL */
-	/* TODO:
-	 * need free if psqlpluscmd is not null ?
-	 * or copy it using state->psqlpluscmd if it not null
-	 * and we free it within psql_scan_finish, late free
-	 * the copy again.
-	 * we need make a function for free psqlpluscmd.
-	 */
 	state->psqlpluscmd = NULL;
 	state->literalbuf = NULL;
 	state->literallen= 0;
@@ -1644,7 +1644,7 @@ ora_psqlscan_emit(PsqlScanState state, const char *txt, int len)
 			break;
 	}
 
-	if (idx != len)
+	if (idx != len && !state->xcstate)
 	{
 		/*
 		 * the anonymous block start with <<label>>
