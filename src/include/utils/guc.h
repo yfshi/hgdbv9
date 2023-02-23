@@ -325,6 +325,8 @@ extern PGDLLIMPORT bool	allow_out_parameter_const;
 /* Begin - ReqID:SRS-SQL-SEQ */
 extern PGDLLIMPORT bool	seq_scale_fixed;
 /* End - ReqID:SRS-SQL-SEQ */
+extern PGDLLIMPORT bool internal_warning; /* BUG#Z230 */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

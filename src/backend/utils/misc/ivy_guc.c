@@ -63,6 +63,7 @@ bool		out_parameter_column_position = false;
 /* Begin - ReqID:SRS-SQL-SEQ */
 bool	seq_scale_fixed = false;
 /* End - ReqID:SRS-SQL-SEQ */
+bool	internal_warning = false;	/* BUG#Z230 */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -240,6 +241,19 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+	/* End - ReqID:SRS-SQL-SEQ */
+	/* Begin BUG#Z230 */
+	{
+		{"ivorysql.enable_internal_warning", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to print internal warning information."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&internal_warning,
+		false,
+		NULL, NULL, NULL
+	},
+	/* Begin BUG#Z230 */
 #endif
 #if 0
 	/* End-of-list marker */
