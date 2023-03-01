@@ -1766,6 +1766,10 @@ SELECT
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
 	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
 
+/* Begin BUG#Z228 */
+/* GRANT SELECT PRIVILEGE TO PUBLIC */
+GRANT SELECT ON SYS.DBA_SEQUENCES TO PUBLIC;
+/* End BUG#Z228 */
 
 CREATE OR REPLACE VIEW SYS.ALL_SEQUENCES AS
 SELECT
@@ -1781,6 +1785,10 @@ SELECT
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
 	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
 
+/* Begin BUG#Z228 */
+/* GRANT SELECT PRIVILEGE TO PUBLIC */
+GRANT SELECT ON SYS.ALL_SEQUENCES TO PUBLIC;
+/* End BUG#Z228 */
 
 CREATE OR REPLACE VIEW SYS.USER_SEQUENCES AS
 SELECT
@@ -1795,4 +1803,9 @@ SELECT
 	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
 	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid and pg_get_userbyid(c.relowner) = current_user;
+
+/* Begin BUG#Z228 */
+/* GRANT SELECT PRIVILEGE TO PUBLIC */
+GRANT SELECT ON SYS.USER_SEQUENCES TO PUBLIC;
+/* End BUG#Z228 */
 /* End - ReqID:SRS-SQL-SEQ */
