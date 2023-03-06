@@ -4122,9 +4122,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 		/*
 		 * For INSERT and UPDATE, prepare to evaluate any generated columns.
-		 * We must do this now, even if we never insert or update any rows,
-		 * because we have to fill resultRelInfo->ri_extraUpdatedCols for
-		 * possible use by the trigger machinery.
+		 * (This is probably not necessary any longer, but we'll refrain from
+		 * changing it in back branches, in case extension code expects it.)
 		 */
 		if (operation == CMD_INSERT || operation == CMD_UPDATE)
 			ExecInitStoredGenerated(resultRelInfo, estate, operation);
