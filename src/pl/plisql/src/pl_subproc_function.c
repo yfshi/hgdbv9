@@ -25,6 +25,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "pl_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #include "parser/parse_coerce.h"
 #include "parser/parse_target.h"
 #include "parser/parse_expr.h"
@@ -111,6 +114,14 @@ static subprocFuncCandidateList plisql_getFuncCandidateListFromFunname(char *fun
 																	PLiSQL_nsitem *nse, int nargs,
 																	List *fargname,
 																	bool proc_call);
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+static subprocFuncCandidateList plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
+																	List *fargs,
+																	int nargs,
+																	Oid *argtypes,
+																	subprocFuncCandidateList candidates);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 static int plisql_func_match_argtypes(int nargs, Oid *input_typeids,
 												subprocFuncCandidateList raw_candidates,
 												subprocFuncCandidateList *candidates);
@@ -471,11 +482,25 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 
 		/* Add to namespace under the $n name */
 		add_parameter_name(argitemtype, argvariable->dno, buf);
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (ISORACURSOROID(argdtype->typoid))
+		{
+			set_plisql_cursorvar_nsitem_typoid(argvariable, true);
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/* If there's a name for the argument, make an alias */
 		if (argnames && argnames[i][0] != '\0')
+		{
 			add_parameter_name(argitemtype, argvariable->dno,
 							   argnames[i]);
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			if (ISORACURSOROID(argdtype->typoid))
+			{
+				set_plisql_cursorvar_nsitem_typoid(argvariable, false);
+			}
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+		}
 
 		if (argitem->defexpr != NULL)
 		{
@@ -531,14 +556,19 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 											"for polymorphic function \"%s\"",
 												plisql_error_funcname)));
 				}
-			}
-
-			snprintf(buf, sizeof(buf), "$%d", i + 1);
-
-			argdtype = plisql_build_datatype(argtypeid,
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				argdtype = plisql_build_datatype(argtypeid,
 											-1,
 											function->fn_input_collation,
 											NULL);
+				/* End - ReqID:SRS-PLSQL-CURSOR */
+			}
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			else
+				argdtype = subprocfunc->rettype;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+
+			snprintf(buf, sizeof(buf), "$%d", i + 1);
 			argvariable = plisql_build_variable("_RETVAL_",
 													 0, argdtype, false);
 			function->fn_ret_vardno = argvariable->dno;
@@ -1429,6 +1459,12 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
 			continue;
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/* ignore dtype */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_TYPE)
+			continue;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		/* Begin - BUG#M0000139 */
 		/*
 		 * package no need init
@@ -1440,6 +1476,12 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (is_const_datum(estate, estate->datums[i]))
 			continue;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/* ignore sql_varno, because it is a global */
+		if (is_implicut_cursor_or_attribute(estate, i))
+			continue;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/* ignore row variable which is internal */
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_ROW)
@@ -1521,9 +1563,15 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 	for (i = 0; i < subprocfunc->lastoutvardno; i++) /* BUG#M0000168 */
 	{
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		/* ignore package datum*/
+		/* ignore package datum */
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
 			continue;
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/* ignore dtype */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_TYPE)
+			continue;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/* Begin - BUG#M0000139 */
 		/*
@@ -1546,6 +1594,12 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_RECFIELD)
 			continue;
 		/* End - BUG#M0000168 */
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/* ignore sql_varno, because it is a global */
+		if (is_implicut_cursor_or_attribute(estate, i))
+			continue;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		if (i < parestate->ndatums &&
 			parestate->func != NULL &&
@@ -1610,6 +1664,10 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 	subprocFuncCandidateList best_candidate = NULL;
 	subprocFuncCandidateList tmp_candidate;
 	int						nbest;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int i;
+	bool has_udt_type = false;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* initialize output arguments to silence compiler warnings */
 	*funcid = InvalidOid;
@@ -1625,6 +1683,23 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 
 	if (raw_candidates == NULL)
 		return FUNCDETAIL_NOTFOUND;
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * check udt type
+	 */
+	for (i = 0; i < nargs; i++)
+	{
+		if (argtypes[i] == ORAREFCURSOROID ||
+			argtypes[i] == SYS_REFCURSOROID)
+		{
+			has_udt_type = true;
+			break;
+		}
+	}
+	if (has_udt_type)
+		raw_candidates = plisql_func_select_candidate_forudttype(pfunc, *fargs, nargs, argtypes, raw_candidates);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * Quickly check if there is an exact match to the input datatypes (there
@@ -1878,6 +1953,20 @@ plisql_check_function_canreload(List *args,
 						}
 					}
 				}
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				else if (srcitem->type->ttype == PLISQL_TTYPE_UDT_REF_CURSOR &&
+					dstitem->type->ttype == PLISQL_TTYPE_UDT_REF_CURSOR)
+				{
+					PLiSQL_ref_cursor_type *ref1_type = (PLiSQL_ref_cursor_type *) srcitem->type;
+					PLiSQL_ref_cursor_type *ref2_type = (PLiSQL_ref_cursor_type *) dstitem->type;
+
+					/* only two strong ref cursor can reload */
+					if (ref1_type->rettype != NULL &&
+						ref2_type->rettype != NULL &&
+						ref1_type != ref2_type)
+						canreload = true;
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 			}
 			 /* End - ReqID:SRS-PLSQL-TYPE */
 
@@ -2012,6 +2101,10 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 	funcs->location = location;
 	funcs->noutargs = noutargs;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* sql var comes from its parent */
+	funcs->function->sql_varno = plisql_curr_compile->sql_varno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return funcs;
 }
@@ -2270,6 +2363,114 @@ plisql_getFuncCandidateListFromFunname(char *funcname, PLiSQL_function *pfunc,
 
 	return resultList;
 }
+
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * for udt type function reload
+ * collection type and record type and ref cursor can reload
+ */
+static subprocFuncCandidateList
+plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
+														List *fargs,
+														int nargs,
+														Oid *argtypes,
+														subprocFuncCandidateList candidates)
+{
+	subprocFuncCandidateList current_candidate = NULL;
+	subprocFuncCandidateList tmp_candidate;
+	subprocFuncCandidateList raw_candidate = NULL;
+	int i;
+
+	void **type;
+	type = (void **) palloc0(sizeof(void *) * nargs);
+	for (i = 0; i < nargs; i++)
+	{
+		if (argtypes[i] == ORAREFCURSOROID ||
+			argtypes[i] == SYS_REFCURSOROID)
+		{
+			Node *arg = list_nth(fargs, i);
+
+			if (IsA(arg, CoerceViaIO))
+				arg = (Node *) ((CoerceViaIO *) arg)->arg;
+			else if (nodeTag(arg) == T_FuncExpr)
+			{
+				FuncExpr *func = (FuncExpr *) arg;
+
+				if (list_length(func->args) == 1 &&
+					nodeTag(linitial(func->args)) == T_FuncExpr)
+					arg = (Node *) linitial(func->args);
+			}
+
+			if (IsA(arg, Param))
+			{
+				Param *pm = (Param *) arg;
+				type[i] = pm->type;
+			}
+		}
+	}
+
+	for (tmp_candidate = candidates; tmp_candidate != NULL; tmp_candidate = tmp_candidate->next)
+	{
+		PLiSQL_subproc_function *subprocfunc;
+		bool match = true;
+
+		Assert(tmp_candidate->fno >= 0 && tmp_candidate->fno < pfunc->nsubprocfuncs);
+		subprocfunc = pfunc->subprocfuncs[tmp_candidate->fno];
+
+		for (i = 0; i < nargs; i++)
+		{
+			if (type[i] != NULL)
+			{
+				PLiSQL_function_argitem *argitem;
+
+				if (tmp_candidate->argnumbers != NULL)
+					argitem = (PLiSQL_function_argitem *) list_nth(subprocfunc->arg,
+															tmp_candidate->argnumbers[i]);
+				else
+					argitem = (PLiSQL_function_argitem *) list_nth(subprocfunc->arg, i);
+
+				switch (argitem->type->ttype)
+				{
+					case PLISQL_TTYPE_UDT_REF_CURSOR:
+						{
+							PLiSQL_ref_cursor_type *ref1_type = (PLiSQL_ref_cursor_type *) argitem->type;
+
+							if (ref1_type->rettype != NULL &&
+								ref1_type != type[i])
+								match = false;
+						}
+						break;
+					default:
+						break;
+				}
+			}
+			if (!match)
+				break;
+		}
+		if (match)
+		{
+			if (raw_candidate == NULL)
+			{
+				raw_candidate = tmp_candidate;
+				current_candidate = tmp_candidate;
+			}
+			else
+			{
+				current_candidate->next = tmp_candidate;
+				current_candidate = tmp_candidate;
+			}
+		}
+	}
+	pfree(type);
+	if (current_candidate != NULL)
+		current_candidate->next = NULL;
+
+	return raw_candidate;
+}
+
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 
 /*
@@ -3206,6 +3407,11 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 
 	function = (PLiSQL_function *)
 			MemoryContextAllocZero(subprocfunc->function->fn_cxt, sizeof(PLiSQL_function));
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	function->sql_varno = subprocfunc->function->sql_varno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	plisql_curr_compile = function;
 
 	/* user origin function fn_cxt */
@@ -3505,4 +3711,61 @@ get_parent_func(FuncExpr *expr)
 
 }
 /* End - BUG#M000088 */
+
+
+/*
+ * get function last out global var'dno
+ */
+int
+get_plisql_function_lgv(PLiSQL_execstate *estate,
+											FunctionCallInfo fcinfo,
+											char function_from)
+{
+	int last_out_varno = -1;
+
+	if (estate->func->item != NULL)
+	{
+		PLiSQL_package *psource = (PLiSQL_package *) estate->func->item->source;
+
+		Assert(psource->last_globaldno < estate->func->ndatums);
+
+		last_out_varno = psource->last_globaldno;
+	}
+
+	if (function_from == FUNC_FROM_SUBPROCFUNC)
+	{
+		FuncExpr *funcexpr;
+		int fno;
+		PLiSQL_function *pfunc;
+		PLiSQL_subproc_function *subprocfunc;
+
+		funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+		Assert(funcexpr->function_from == FUNC_FROM_SUBPROCFUNC);
+
+		fno = (int) funcexpr->funcid;
+		pfunc = (PLiSQL_function *) funcexpr->parent_func;
+		Assert(fno >= 0 && fno < pfunc->nsubprocfuncs);
+
+		subprocfunc = pfunc->subprocfuncs[fno];
+
+		if (last_out_varno < subprocfunc->lastoutvardno - 1)
+			last_out_varno = subprocfunc->lastoutvardno - 1;
+	}
+
+	/* include function arguments */
+	if (estate->func->fn_nargs != 0)
+	{
+		int n = estate->func->fn_argvarnos[estate->func->fn_nargs -1];
+
+		if (last_out_varno < n)
+			last_out_varno = n;
+	}
+
+	/* include function->fn_ret_vardno */
+	if (last_out_varno < estate->func->fn_ret_vardno)
+		last_out_varno = estate->func->fn_ret_vardno;
+
+	return last_out_varno;
+}
+
 

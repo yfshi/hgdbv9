@@ -36,9 +36,15 @@
 #include "pg_config.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+
 /* Begin - BUG #M0000304 */
 #include "scan_reserved_kwlist.h"
 /* End - BUG #M0000304 */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 #include "utils/ora_compatible.h"	/* case sensitive indentify */
 
@@ -127,7 +133,8 @@ static	void			 check_labels(const char *start_label,
 									  const char *end_label,
 									  int end_location);
 static	PLiSQL_expr	*read_cursor_args(PLiSQL_var *cursor,
-										  int until);
+										  int until,
+										  int *outdno); /* ReqID:SRS-PLSQL-CURSOR */
 static	List			*read_raise_options(void);
 static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 
@@ -206,6 +213,16 @@ ScanReservedKeywordLookup(const char *text,
 		AccessProperItem *access_proper_item;
 		AccessProperItemType access_proper_kind;
 		/* End - SRS-PLSQL-SUBPROC */
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		struct
+		{
+			char *name;
+			int flags;
+			List*arglist;
+			int	argno;
+			bool oracursor;
+		}	cursor_heading_info;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 }
 
 %type <declhdr> decl_sect
@@ -214,7 +231,6 @@ ScanReservedKeywordLookup(const char *text,
 %type <expr>	decl_defval decl_cursor_query
 %type <dtype>	decl_datatype
 %type <oid>		decl_collate
-%type <datum>	decl_cursor_args
 %type <list>	decl_cursor_arglist
 %type <nsitem>	decl_aliasitem
 
@@ -223,7 +239,6 @@ ScanReservedKeywordLookup(const char *text,
 %type <expr>	opt_exitcond
 
 %type <var>		cursor_variable
-%type <datum>	decl_cursor_arg
 %type <forvariable>	for_variable
 %type <ival>	foreach_slice
 %type <stmt>	for_control
@@ -291,6 +306,13 @@ ScanReservedKeywordLookup(const char *text,
 %type <str> ora_first_opt_block_label
 %type <boolean> opt_ora_decl_start
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+%type <dtype> ora_rowtype opt_return_ora_rowtype
+%type <cursor_heading_info>  cursor_heading
+%type <func_argitem>	decl_cursor_arg
+%type <list>	decl_cursor_args
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 
 
@@ -444,6 +466,9 @@ ScanReservedKeywordLookup(const char *text,
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_QUERY
 %token <keyword>	K_RAISE
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+%token <keyword>	K_REF
+/* End - ReqID:SRS-PLSQL-CURSOR */
 %token <keyword>	K_RELATIVE
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_RELIES_ON
@@ -458,6 +483,9 @@ ScanReservedKeywordLookup(const char *text,
 %token <keyword>	K_SCHEMA
 %token <keyword>	K_SCHEMA_NAME
 %token <keyword>	K_SCROLL
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+%token <keyword>	K_SELECT
+/* End - ReqID:SRS-PLSQL-CURSOR */
 %token <keyword>	K_SLICE
 %token <keyword>	K_SQLSTATE
 %token <keyword>	K_STACKED
@@ -483,6 +511,13 @@ ScanReservedKeywordLookup(const char *text,
 %token <keyword>	K_WARNING
 %token <keyword>	K_WHEN
 %token <keyword>	K_WHILE
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+%nonassoc K_TYPE
+%left K_CURSOR
+%nonassoc K_ALIAS K_COLLATE K_CONSTANT K_DEFAULT K_NO K_SCROLL
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 %%
 
@@ -562,10 +597,13 @@ ora_outermost_pl_block: ora_decl_sect K_BEGIN proc_sect exception_sect K_END opt
 							cur_compile_func_level == 0 &&
 							plisql_saved_compile[cur_compile_func_level] == (&plisql_compile_packageitem->source)) /* BUG#M0000167 */
 						{
-							plisql_check_package_refcursor_var(-1);
+							plisql_check_package_refcursor_var(plisql_compile_packageitem->source.sql_varno); /* ReqID:SRS-PLSQL-CURSOR */
 							plisql_compile_packageitem->last_globaldno =
 										plisql_get_package_last_globaldno($4 == NULL ? -1 : $4->sqlstate_varno,
 																		$4 == NULL ? -1 : $4->sqlerrm_varno);
+							/* Begin - ReqID:SRS-PLSQL-CURSOR */
+							plisql_handle_package_explicit_cursor_retdesc(plisql_compile_packageitem->last_globaldno);
+							/* End - ReqID:SRS-PLSQL-CURSOR */
 						}
 						/* End - ReqID:SRS-SQL-PACKAGE */
 
@@ -624,9 +662,12 @@ ora_pl_package: ora_decl_sect K_END opt_label
 				plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
 				/* Remember variables declared in decl_stmts */
 				check_labels($1.label, $3, @3);
-				plisql_check_package_refcursor_var(-1);
+				plisql_check_package_refcursor_var(plisql_compile_packageitem->source.sql_varno); /* ReqID:SRS-PLSQL-CURSOR */
 				plisql_compile_packageitem->last_globaldno =
 										plisql_get_package_last_globaldno(-1, -1);
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				plisql_handle_package_explicit_cursor_retdesc(plisql_compile_packageitem->last_globaldno);
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				if (!plisql_compile_packageitem->finish_compile_special)
 					plisql_compile_packageitem->status =
 								plisql_set_package_compile_status();
@@ -870,22 +911,106 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_ns_additem($4->itemtype,
 										   $4->itemno, $1.name);
 					}
-				| decl_varname opt_scrollable K_CURSOR
-					{ plisql_ns_push($1.name, PLISQL_LABEL_OTHER); }
-				  decl_cursor_args decl_is_for decl_cursor_query
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				| K_TYPE decl_varname K_IS K_REF K_CURSOR opt_return_ora_rowtype ';'
+					{
+						plisql_build_udt_cursor_type($2.name, $6, $2.lineno, true);
+					}
+				| cursor_heading K_RETURN ora_rowtype ';'
 					{
 						PLiSQL_var *new;
+						PLiSQL_type *cursor_type;
+
+						/*
+						 * Check to make sure name isn't already declared
+						 * in the current block.
+						 */
+						if (plisql_ns_lookup(plisql_ns_top(), true,
+											  $1.name, NULL, NULL,
+											  NULL) != NULL)
+							yyerror("duplicate declaration");
+
+						/*
+						 * only support oracursor
+						 */
+						if (!$1.oracursor)
+							yyerror("pg cursor doesn't support declaration");
+
+						cursor_type = plisql_build_datatype(SYS_REFCURSOROID,
+															  -1,
+															  InvalidOid,
+															  NULL);
+						new = (PLiSQL_var *)
+							plisql_build_variable($1.name, plisql_location_to_lineno(@1),
+											   cursor_type,
+											   true);
+						new->cursor_explicit_rettype = $3;
+						new->arglist = $1.arglist;
+						new->is_explicit_cursor = true;
+						new->cursor_rettype_tupledesc = plisql_get_rowtype_tupledesc($3);
+				}
+				| cursor_heading opt_return_ora_rowtype
+					{
+						plisql_ns_push($1.name, PLISQL_LABEL_OTHER);
+
+						if ($1.arglist != NIL)
+							$1.argno = plisql_build_cursor_args($1.arglist,
+												plisql_location_to_lineno(@1));
+						else
+							$1.argno = -1;
+					}
+				  decl_is_for decl_cursor_query
+				 /* End - ReqID:SRS-PLSQL-CURSOR */
+					{
+						PLiSQL_var *new;
+						PLiSQL_nsitem *nsitem;
 
 						/* pop local namespace for cursor args */
 						plisql_ns_pop();
 
-						new = (PLiSQL_var *)
-							plisql_build_variable($1.name, $1.lineno,
-												   plisql_build_datatype(REFCURSOROID,
-																		  -1,
-																		  InvalidOid,
-																		  NULL),
+						nsitem = plisql_ns_lookup(plisql_ns_top(), true,
+											  $1.name, NULL, NULL,
+											  NULL);
+						if (nsitem == NULL)
+						{
+							PLiSQL_type *cursor_type;
+
+							if ($1.oracursor)
+								cursor_type = plisql_build_datatype(SYS_REFCURSOROID,
+															  -1,
+															  InvalidOid,
+															  NULL);
+							else
+								cursor_type = plisql_build_datatype(REFCURSOROID,
+													  -1,
+													  InvalidOid,
+													  NULL);
+							new = (PLiSQL_var *) plisql_build_variable($1.name,
+													plisql_location_to_lineno(@1),
+												   cursor_type,
 												   true);
+							new->arglist = $1.arglist;
+							new->cursor_explicit_rettype = $2;
+							new->is_explicit_cursor = true;
+						}
+						else if (nsitem->itemtype == PLISQL_NSTYPE_VAR && $1.oracursor)
+						{
+							int retno;
+
+							new = (PLiSQL_var *) plisql_Datums[nsitem->itemno];
+
+							if (!ISORACURSOROID(new->datatype->typoid))
+								yyerror("duplicate declaration");
+							if (new->cursor_explicit_expr != NULL)
+								yyerror("duplicate declaration");
+
+							retno = plisql_check_cursor_define(new, $2, $1.arglist);
+
+							if (retno != 0)
+								yyerror("duplicate declaration");
+						}
+						else
+							yyerror("duplicate declaration");
 
 #ifndef ENABLE_CURSOR_UNNAME
 {
@@ -895,6 +1020,9 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						char		*cp2;
 						StringInfoData  name_data;
 						int			i = 0;
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						int cursor_type_len = 0;
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 
 						curname_def = palloc0(sizeof(PLiSQL_expr));
 
@@ -905,12 +1033,20 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						 * If all cursors are opened, it will lead to an error in using the name.
 						 * Therefore, it is necessary to handle their names specially.
 						 * At present, we use KIND_oid_function_level_statements_refname differentiation
+						 * plisql_cursor_name_exclude_oid only for regression test
 						 */
-						appendStringInfo(&name_data, "%c_%u_%u_%u_%s",
+						if (plisql_cursor_name_exclude_oid)
+							appendStringInfo(&name_data, "%c_%u_%u_%s",
+										plisql_saved_compile[0]->item == NULL ? 'f' : 'p',
+										cur_compile_func_level,
+										new->lineno,
+										new->refname);
+						else
+							appendStringInfo(&name_data, "%c_%u_%u_%u_%s",
 										plisql_saved_compile[0]->item == NULL ? 'f' : 'p',
 										plisql_saved_compile[0]->fn_oid,
 										cur_compile_func_level,
-										plisql_curr_compile->nstatements,
+										new->lineno,
 										new->refname);
 						cp1 = name_data.data;
 						cp2 = buf;
@@ -921,25 +1057,40 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						if (strchr(cp1, '\\') != NULL)
 							cp2[i++] = ESCAPE_STRING_SYNTAX;
 						cp2[i++] = '\'';
-						while (*cp1 && i < NAMEDATALEN * 2 + 41)
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						/* save cursor_type_len */
+						if ($1.oracursor)
+							cursor_type_len = 44;
+						else
+							cursor_type_len = 41;
+						/* End - ReqID:SRS-PLSQL-CURSOR */
+						while (*cp1 && i < NAMEDATALEN * 2 + cursor_type_len)
 						{
 							if (SQL_STR_DOUBLE(*cp1, true))
 								cp2[i++] = *cp1;
+							if (i >= NAMEDATALEN * 2 + cursor_type_len)
+								break;
 							cp2[i++] = *cp1++;
 						}
-						strcpy(&cp2[i], "'::pg_catalog.refcursor");
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						if ($1.oracursor)
+							strcpy(&cp2[i], "'::sys.sys_refcursor");
+						else
+							strcpy(&cp2[i], "'::pg_catalog.refcursor");
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 						curname_def->query = pstrdup(buf);
 						curname_def->parseMode = RAW_PARSE_PLISQL_EXPR; /* BUG:M0000079 */
 						new->default_val = curname_def;
 						pfree(name_data.data);
 }
 #endif
-						new->cursor_explicit_expr = $7;
-						if ($5 == NULL)
-							new->cursor_explicit_argrow = -1;
-						else
-							new->cursor_explicit_argrow = $5->dno;
-						new->cursor_options = CURSOR_OPT_FAST_PLAN | $2;
+						new->cursor_explicit_expr = $5;
+						new->cursor_explicit_argrow = $1.argno; /* ReqID:SRS-PLSQL-CURSOR */
+						new->cursor_options = CURSOR_OPT_FAST_PLAN | $1.flags;
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						if ($2 && new->cursor_rettype_tupledesc == NULL)
+							new->cursor_rettype_tupledesc = plisql_get_rowtype_tupledesc($2);
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 					}
 				/* Begin - SRS-PLSQL-SUBPROC */
 				/* function or procedure declare or define */
@@ -1046,6 +1197,41 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 				/* End - SRS-PLSQL-SUBPROC */
 				;
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+cursor_heading: ora_function_name opt_scrollable K_CURSOR decl_cursor_args
+					{
+						$$.name = $1;
+						$$.flags = $2;
+						$$.arglist = $4;
+						$$.argno = -1;
+						$$.oracursor = false;
+					}
+				| K_CURSOR ora_function_name decl_cursor_args
+					{
+						$$.name = $2;
+						$$.flags = 0;
+						$$.arglist = $3;
+						$$.argno = -1;
+						$$.oracursor = true;
+					}
+			;
+
+ora_rowtype: decl_datatype
+				{
+					$$ = $1;
+				}
+	;
+
+opt_return_ora_rowtype : K_RETURN ora_rowtype
+					{
+						$$ = $2;
+					}
+				| /* EMPTY */ { $$ = NULL;}
+				;
+
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 opt_scrollable :
 					{
 						$$ = 0;
@@ -1072,32 +1258,7 @@ decl_cursor_args :
 					}
 				| '(' decl_cursor_arglist ')'
 					{
-						PLiSQL_row *new;
-						int i;
-						ListCell *l;
-
-						new = palloc0(sizeof(PLiSQL_row));
-						new->dtype = PLISQL_DTYPE_ROW;
-						new->refname = "(unnamed row)";
-						new->lineno = plisql_location_to_lineno(@1);
-						new->rowtupdesc = NULL;
-						new->nfields = list_length($2);
-						new->fieldnames = palloc(new->nfields * sizeof(char *));
-						new->varnos = palloc(new->nfields * sizeof(int));
-
-						i = 0;
-						foreach (l, $2)
-						{
-							PLiSQL_variable *arg = (PLiSQL_variable *) lfirst(l);
-							Assert(!arg->isconst);
-							new->fieldnames[i] = arg->refname;
-							new->varnos[i] = arg->dno;
-							i++;
-						}
-						list_free($2);
-
-						plisql_adddatum((PLiSQL_datum *) new);
-						$$ = (PLiSQL_datum *) new;
+						$$ = $2;
 					}
 				;
 
@@ -1111,11 +1272,9 @@ decl_cursor_arglist : decl_cursor_arg
 					}
 				;
 
-decl_cursor_arg : decl_varname decl_datatype
+decl_cursor_arg : func_arg_item /* ReqID:SRS-PLSQL-CURSOR */
 					{
-						$$ = (PLiSQL_datum *)
-							plisql_build_variable($1.name, $1.lineno,
-												   $2, true);
+						$$ = $1;
 					}
 				;
 
@@ -1550,7 +1709,8 @@ ora_function_name	: T_WORD
 					{
 						$$ = pstrdup($1);
 					}
-				;
+			;
+
 function_arg_nocopy:
 					K_NOCOPY	{ $$ = true; }
 					| { $$ = false; }
@@ -2153,6 +2313,58 @@ for_control		: for_variable K_IN
 						int			tok = yylex();
 						int			tokloc = yylloc;
 
+
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						/* for r1 in 'xx' */
+						if (tok == SCONST)
+						{
+							int tok1 = yylex();
+
+							if (tok1 == DOT_DOT)
+							{
+								plisql_push_back_token(tok1);
+								yylloc = tokloc;
+							}
+							else
+							{
+								plisql_push_back_token(tok1);
+								yylloc = tokloc;
+								plisql_push_back_token(tok);
+								tok = K_EXECUTE;
+							}
+						}
+						else if (tok == T_DATUM &&
+							plisql_yylval.wdatum.datum->dtype == PLISQL_DTYPE_VAR)
+						{
+							PLiSQL_var* var = (PLiSQL_var*)(plisql_yylval.wdatum.datum);
+							Oid typoid = var->datatype->typoid;
+							int tok1;
+							YYSTYPE lval;
+
+							lval = yylval;
+							tok1 = yylex();
+
+							if (tok1 == DOT_DOT)
+							{
+								plisql_push_back_token(tok1);
+								yylloc = tokloc;
+							}
+							else if (typoid == TEXTOID || typoid == VARCHAROID)
+							{
+								plisql_push_back_token(tok1);
+								yylloc = tokloc;
+								plisql_push_back_token(tok);
+								tok = K_EXECUTE;
+							}
+							else
+							{
+								plisql_push_back_token(tok1);
+								yylloc = tokloc;
+							}
+							yylval = lval;
+						}
+						/* End - ReqID:SRS-PLSQL-CURSOR */
+
 						if (tok == K_EXECUTE)
 						{
 							/* EXECUTE means it's a dynamic FOR loop */
@@ -2182,10 +2394,14 @@ for_control		: for_variable K_IN
 							}
 							else
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_DATATYPE_MISMATCH),
-										 errmsg("loop variable of loop over rows must be a record variable or list of scalar variables"),
-										 parser_errposition(@1)));
+								/* Begin - ReqID:SRS-PLSQL-CURSOR */
+								/* create loop's private RECORD variable */
+								new->var = (PLiSQL_variable *)  plisql_build_record($1.name,
+															$1.lineno,
+															NULL,
+															RECORDOID,
+															true);
+								/* End - ReqID:SRS-PLSQL-CURSOR */
 							}
 							new->query = expr;
 
@@ -2204,7 +2420,7 @@ for_control		: for_variable K_IN
 						}
 						else if (tok == T_DATUM &&
 								 yylval.wdatum.datum->dtype == PLISQL_DTYPE_VAR &&
-								 ((PLiSQL_var *) yylval.wdatum.datum)->datatype->typoid == REFCURSOROID)
+								 ISCURSOROID(((PLiSQL_var *) yylval.wdatum.datum)->datatype->typoid)) /* ReqID:SRS-PLSQL-CURSOR */
 						{
 							/* It's FOR var IN cursor */
 							PLiSQL_stmt_forc	*new;
@@ -2231,7 +2447,8 @@ for_control		: for_variable K_IN
 
 							/* collect cursor's parameters if any */
 							new->argquery = read_cursor_args(cursor,
-															 K_LOOP);
+															 K_LOOP,
+															 &new->outrowno);/* ReqID:SRS-PLSQL-CURSOR */
 
 							/* create loop's private RECORD variable */
 							new->var = (PLiSQL_variable *)
@@ -2376,10 +2593,14 @@ for_control		: for_variable K_IN
 								}
 								else
 								{
-									ereport(ERROR,
-											(errcode(ERRCODE_SYNTAX_ERROR),
-											 errmsg("loop variable of loop over rows must be a record variable or list of scalar variables"),
-											 parser_errposition(@1)));
+									/* Begin - ReqID:SRS-PLSQL-CURSOR */
+									/* create loop's private RECORD variable */
+									new->var = (PLiSQL_variable *)  plisql_build_record($1.name,
+															$1.lineno,
+															NULL,
+															RECORDOID,
+															true);
+									/* End - ReqID:SRS-PLSQL-CURSOR */
 								}
 
 								new->query = expr1;
@@ -2785,6 +3006,16 @@ stmt_execsql	: K_IMPORT
 					{
 						$$ = make_execsql_stmt(K_INSERT, @1);
 					}
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				| K_SELECT
+					{
+						/*
+						 * there use T_WORD for handle into stmt
+						 * see details for make_execsql_stmt
+						 */
+						$$ = make_execsql_stmt(T_WORD, @1);
+					}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				| T_WORD
 					{
 						int			tok;
@@ -2911,6 +3142,17 @@ stmt_open		: K_OPEN cursor_variable
 							cursorvar = $2;
 						/* End - ReqID:SRS-SQL-PACKAGE */
 
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						/*
+						 * explicit cursor has not query, raise error
+						 */
+						if (cursorvar->is_explicit_cursor &&
+							cursorvar->cursor_explicit_expr == NULL)
+							yyerror("the declaration of the type of this expression "
+										"is incomplete or malformed");
+						new->outrowno = -1;
+						/* End - ReqID:SRS-PLSQL-CURSOR */
+
 						if (cursorvar->cursor_explicit_expr == NULL) /* ReqID:SRS-SQL-PACKAGE */
 						{
 							/* be nice if we could use opt_scrollable here */
@@ -2937,6 +3179,18 @@ stmt_open		: K_OPEN cursor_variable
 								yyerror("syntax error, expected \"FOR\"");
 
 							tok = yylex();
+							/* Begin - ReqID:SRS-PLSQL-CURSOR */
+							/*
+							 * support for open var for queryvar,so we check
+							 * wether is select keyword
+							 */
+							if (tok != K_EXECUTE)
+							{
+								if (tok != K_SELECT)
+									tok = K_EXECUTE;
+								plisql_push_back_token(tok);
+							}
+							/* End - ReqID:SRS-PLSQL-CURSOR */
 							if (tok == K_EXECUTE)
 							{
 								int		endtoken;
@@ -2963,15 +3217,61 @@ stmt_open		: K_OPEN cursor_variable
 							}
 							else
 							{
+								int		endtoken; /* ReqID:SRS-PLSQL-CURSOR */
+
 								plisql_push_back_token(tok);
-								new->query = read_sql_stmt();
+								/* Begin - ReqID:SRS-PLSQL-CURSOR */
+								/*
+								 * maybe is select xxx from yy using
+								 */
+								new->query = read_sql_construct(';', K_USING, 0, ";",
+												RAW_PARSE_DEFAULT,
+												false, true, true,
+												NULL, &endtoken);
+								if (endtoken == K_USING)
+									endtoken = yylex();
+								if (endtoken != ';')
+									yyerror("syntax error, expected \";\"");
+								/* End - ReqID:SRS-PLSQL-CURSOR */
 							}
 						}
 						else
 						{
 							/* predefined cursor query, so read args */
-							new->argquery = read_cursor_args($2, ';');
+							new->argquery = read_cursor_args($2, ';',
+										&new->outrowno); /* ReqID:SRS-PLSQL-CURSOR */
 						}
+
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						/*
+						 * check return type match the query
+						 */
+						if (cursorvar->is_explicit_cursor &&
+							cursorvar->cursor_rettype_tupledesc != NULL)
+						{
+							if (cursorvar->cursor_resulttupdesc == NULL)
+							{
+								/* not pkg_datum */
+								Assert($2->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
+								cursorvar->cursor_resulttupdesc =
+									plisql_get_cursor_tupdesc_incompile(cursorvar->cursor_explicit_expr,
+																		cursorvar->cursor_options);
+							}
+							ora_test_tupdesc_match(cursorvar->cursor_rettype_tupledesc,
+										cursorvar->cursor_resulttupdesc, true);
+						}
+						else if (cursorvar->cursor_rettype_tupledesc != NULL &&
+								new->query != NULL)
+						{
+							TupleDesc query_tupdesc;
+
+							query_tupdesc = plisql_get_cursor_tupdesc_incompile(new->query,
+																		new->cursor_options);
+							ora_test_tupdesc_match(cursorvar->cursor_rettype_tupledesc,
+										query_tupdesc, true);
+							FreeTupleDesc(query_tupdesc);
+						}
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 
 						$$ = (PLiSQL_stmt *)new;
 					}
@@ -3109,14 +3409,14 @@ cursor_variable	: T_DATUM
 									(errcode(ERRCODE_DATATYPE_MISMATCH),
 									 errmsg("cursor variable must be a simple variable"),
 									 parser_errposition(@1)));
-							if (pkg_var->datatype->typoid != REFCURSOROID)
+							if (!ISCURSOROID(pkg_var->datatype->typoid )) /* ReqID:SRS-PLSQL-CURSOR */
 								ereport(ERROR,
 									(errcode(ERRCODE_DATATYPE_MISMATCH),
 									 errmsg("variable \"%s\" must be of type cursor or refcursor",
 											pkg_var->refname),
 									 parser_errposition(@1)));
 						}
-						else if (((PLiSQL_var *) $1.datum)->datatype->typoid != REFCURSOROID)
+						else if (!ISCURSOROID(((PLiSQL_var *) $1.datum)->datatype->typoid)) /* ReqID:SRS-PLSQL-CURSOR */
 							ereport(ERROR,
 									(errcode(ERRCODE_DATATYPE_MISMATCH),
 									 errmsg("variable \"%s\" must be of type cursor or refcursor",
@@ -3420,6 +3720,9 @@ unreserved_keyword	:
 				| K_PRIOR
 				| K_QUERY
 				| K_RAISE
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				| K_REF
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				| K_RELATIVE
 				/* Begin - SRS-PLSQL-SUBPROC */
 				| K_RELIES_ON
@@ -3434,6 +3737,7 @@ unreserved_keyword	:
 				| K_SCHEMA
 				| K_SCHEMA_NAME
 				| K_SCROLL
+				| K_SELECT /* ReqID:SRS-PLSQL-CURSOR */
 				| K_SLICE
 				| K_SQLSTATE
 				| K_STACKED
@@ -3531,6 +3835,9 @@ unit_name_keyword:
 				| K_PRIOR
 				| K_QUERY
 				| K_RAISE
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				| K_REF
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				| K_RELATIVE
 				| K_RELIES_ON
 				| K_RESULT_CACHE
@@ -3543,6 +3850,7 @@ unit_name_keyword:
 				| K_SCHEMA
 				| K_SCHEMA_NAME
 				| K_SCROLL
+				| K_SELECT /* ReqID:SRS-PLSQL-CURSOR */
 				| K_SLICE
 				| K_SQLSTATE
 				| K_STACKED
@@ -3690,12 +3998,17 @@ read_sql_construct(int until,
 	int					startlocation = -1;
 	int					parenlevel = 0;
 	PLiSQL_expr		*expr;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int					append_startlocation = -1;
+	bool				pre_token_isoracursor = false;
+	bool				pre_token_is_explicitcursor = false;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	initStringInfo(&ds);
 
 	/* special lookup mode for identifiers within the SQL text */
 	save_IdentifierLookup = plisql_IdentifierLookup;
-	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL; /* ReqID:SRS-PLSQL-CURSOR */
 
 	for (;;)
 	{
@@ -3738,7 +4051,50 @@ read_sql_construct(int until,
 								expected),
 						 parser_errposition(yylloc)));
 		}
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (append_startlocation < 0)
+			append_startlocation = startlocation;
+		if (tok == '%' && pre_token_isoracursor)
+		{
+			/* replace % to . */
+			plisql_append_source_text(&ds, append_startlocation, yylloc);
+			appendBinaryStringInfo(&ds, ".", 1);
+			append_startlocation = yylloc + 1;
+		}
+		else if (pre_token_is_explicitcursor)
+			elog(ERROR, "expression is of wrong type of");
+		if (tok == T_DATUM)
+		{
+			PLiSQL_datum *datum = yylval.wdatum.datum;
+
+			if (is_oracursor_datum(datum))
+			{
+				PLiSQL_var *cursor_var = NULL;
+
+				if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *) datum;
+
+					cursor_var = (PLiSQL_var *) pkg_datum->pkgvar;
+				}
+				else
+					cursor_var = (PLiSQL_var *) datum;
+				pre_token_is_explicitcursor = cursor_var->is_explicit_cursor;
+				pre_token_isoracursor = true;
+			}
+		}
+		else
+		{
+			pre_token_isoracursor = false;
+			pre_token_is_explicitcursor = false;
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 	}
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (pre_token_is_explicitcursor)
+		elog(ERROR, "expression is of wrong type");
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
 
@@ -3748,7 +4104,7 @@ read_sql_construct(int until,
 		*endtoken = tok;
 
 	/* give helpful complaint about empty input */
-	if (startlocation >= yylloc)
+	if (append_startlocation >= yylloc) /* ReqID:SRS-PLSQL-CURSOR */
 	{
 		if (isexpression)
 			yyerror("missing expression");
@@ -3756,7 +4112,7 @@ read_sql_construct(int until,
 			yyerror("missing SQL statement");
 	}
 
-	plisql_append_source_text(&ds, startlocation, yylloc);
+	plisql_append_source_text(&ds, append_startlocation, yylloc); /* ReqID:SRS-PLSQL-CURSOR */
 
 	/* trim any trailing whitespace, for neatness */
 	if (trim)
@@ -4317,6 +4673,7 @@ make_return_stmt(int location)
 		if (tok == T_DATUM && plisql_peek() == ';' &&
 			(yylval.wdatum.datum->dtype == PLISQL_DTYPE_VAR ||
 			yylval.wdatum.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM || /* ReqID:SRS-SQL-PACKAGE */
+			yylval.wdatum.datum->dtype == PLISQL_DTYPE_ATTRIBUTE || /* ReqID:SRS-PLSQL-CURSOR */
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_PROMISE ||
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_ROW ||
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_REC))
@@ -4381,6 +4738,7 @@ make_return_next_stmt(int location)
 		if (tok == T_DATUM && plisql_peek() == ';' &&
 			(yylval.wdatum.datum->dtype == PLISQL_DTYPE_VAR ||
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM || /* ReqID:SRS-SQL-PACKAGE */
+			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_ATTRIBUTE || /* ReqID:SRS-PLSQL-CURSOR */
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_PROMISE ||
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_ROW ||
 			 yylval.wdatum.datum->dtype == PLISQL_DTYPE_REC))
@@ -4518,6 +4876,16 @@ check_assignable(PLiSQL_datum *datum, int location)
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is a cursor attribute",
+								((PLiSQL_attribute *) datum)->fieldname),
+						 parser_errposition(location)));
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 			break;
@@ -4589,6 +4957,15 @@ check_packagedatum_assignable(PLiSQL_pkg_datum *pkg_datum, int location)
 			check_assignable(func->datums[((PLiSQL_recfield *) datum)->recparentno],
 							 location);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is a cursor attribute",
+								((PLiSQL_attribute *) datum)->fieldname),
+						 parser_errposition(location)));
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 			break;
@@ -4868,6 +5245,16 @@ parse_datatype(const char *string, int location)
 	syntax_errcontext.previous = error_context_stack;
 	error_context_stack = &syntax_errcontext;
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* lookup udt type */
+	result = plisql_parse_udt_rowtype(string, false);
+	if (result != NULL)
+	{
+		error_context_stack = syntax_errcontext.previous;
+		return result;
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* Let the main parser try to parse it under standard SQL rules */
 	typeName = typeStringToTypeName(string);
 
@@ -4951,7 +5338,7 @@ check_labels(const char *start_label, const char *end_label, int end_location)
  * parens).
  */
 static PLiSQL_expr *
-read_cursor_args(PLiSQL_var *cursor, int until)
+read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQL-CURSOR */
 {
 	PLiSQL_expr *expr;
 	PLiSQL_row *row;
@@ -4964,6 +5351,10 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 	PLiSQL_var	*real_cursor = NULL;
 	bool		is_packagevar = false;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int nouts = 0;
+	int *out_dnos = NULL;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	tok = yylex();
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -4975,6 +5366,9 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 	else
 		real_cursor = cursor;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	*outrowno = -1;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	if (real_cursor->cursor_explicit_argrow < 0)
 	{
 		/* No arguments expected */
@@ -4992,7 +5386,8 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 	}
 
 	/* Else better provide arguments */
-	if (tok != '(')
+	if (tok != '(' &&
+		(!check_all_args_has_default(real_cursor->arglist))) /* ReqID:SRS-PLSQL-CURSOR */
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("cursor \"%s\" has arguments",
@@ -5014,7 +5409,50 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 		row = (PLiSQL_row *) plisql_Datums[cursor->cursor_explicit_argrow];
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	argv = (char **) palloc0(row->nfields * sizeof(char *));
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	out_dnos = (int *) palloc0(row->nfields * sizeof(int));
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (tok != '(')
+	{
+		/* use default value */
+		for (argc = 0; argc < row->nfields; argc++)
+		{
+			argv[argc] = get_args_default_query(real_cursor->arglist, argc);
+			if (argv[argc] == NULL)
+				ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("not enough arguments for cursor \"%s\"",
+									cursor->refname),
+							 parser_errposition(yylloc)));
+		}
+		goto finish_args_query;
+	}
+	else
+	{
+		/* maybe cursor() */
+		int  tok1;
+
+		tok1 = plisql_peek();
+		if (tok1 == ')')
+		{
+			/* use default value */
+			for (argc = 0; argc < row->nfields; argc++)
+			{
+				argv[argc] = get_args_default_query(real_cursor->arglist, argc);
+				if (argv[argc] == NULL)
+					ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("not enough arguments for cursor \"%s\"",
+										cursor->refname),
+								 parser_errposition(yylloc)));
+			}
+			tok = yylex();
+			goto finish_args_query;
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	for (argc = 0; argc < row->nfields; argc++)
 	{
 		PLiSQL_expr *item;
@@ -5024,9 +5462,13 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 				tok2;
 		int		arglocation;
 
-		/* Check if it's a named parameter: "param := value" */
+		/*
+		 * Check if it's a named parameter: "param := value"
+		 * or "param => values" for ReqID:SRS-PLSQL-CURSOR
+		 */
 		plisql_peek2(&tok1, &tok2, &arglocation, NULL);
-		if (tok1 == IDENT && tok2 == COLON_EQUALS)
+		if (tok1 == IDENT &&
+			(tok2 == COLON_EQUALS || tok2 == EQUALS_GREATER)) /* ReqID:SRS-PLSQL-CURSOR */
 		{
 			char   *argname;
 			IdentifierLookup save_IdentifierLookup;
@@ -5052,18 +5494,21 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 						 parser_errposition(yylloc)));
 
 			/*
-			 * Eat the ":=". We already peeked, so the error should never
+			 * Eat the ":=" or "=>". We already peeked, so the error should never
 			 * happen.
 			 */
 			tok2 = yylex();
-			if (tok2 != COLON_EQUALS)
+			if (tok2 != COLON_EQUALS && tok2 != EQUALS_GREATER) /* ReqID:SRS-PLSQL-CURSOR */
 				yyerror("syntax error");
 
 			any_named = true;
 		}
 		else
+		{
+			if (any_named)
+				yyerror("a positional parameter association may not follow a named");
 			argpos = argc;
-
+		}
 		if (argv[argpos] != NULL)
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -5080,22 +5525,76 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 		 * translated into a form where the second parameter is commented
 		 * out.
 		 */
-		item = read_sql_construct(',', ')', 0,
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (ISORACURSOROID(real_cursor->datatype->typoid))
+		{
+			PLiSQL_function_argitem *argitem;
+
+			argitem = (PLiSQL_function_argitem *) list_nth(real_cursor->arglist, argc);
+
+			if (argitem->argmode != ARGMODE_IN)
+			{
+				int token;
+				IdentifierLookup save_IdentifierLookup;
+				PLiSQL_datum *datum;
+
+				save_IdentifierLookup = plisql_IdentifierLookup;
+				plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+				token = yylex();
+				if (token != T_DATUM)
+					yyerror("expression cannot be used as an assignment target");
+				datum = yylval.wdatum.datum;
+				check_assignable(datum, yylloc);
+				plisql_IdentifierLookup = save_IdentifierLookup;
+				plisql_push_back_token(token);
+				if (argitem->argmode == ARGMODE_OUT)
+					out_dnos[nouts++] = datum->dno;
+			}
+			item = read_sql_construct(',', ')', 0,
+								  ",\" or \")",
+								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
+								  true, true,
+								  false, /* do not trim */
+								  NULL, &endtoken);
+			/* out parameter assign its null */
+			if (argitem->argmode == ARGMODE_OUT)
+				argv[argpos] = pstrdup("NULL");
+			else
+				argv[argpos] = item->query;
+		}
+		else
+		{
+			item = read_sql_construct(',', ')', 0,
 								  ",\" or \")",
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
 								  false, /* do not trim */
 								  NULL, &endtoken);
 
-		argv[argpos] = item->query;
+			argv[argpos] = item->query;
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
-		if (endtoken == ')' && !(argc == row->nfields - 1))
-			ereport(ERROR,
-					(errcode(ERRCODE_SYNTAX_ERROR),
-					 errmsg("not enough arguments for cursor \"%s\"",
-							cursor->refname),
-					 parser_errposition(yylloc)));
-
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (endtoken == ')')
+		{
+			int argno;
+			for (argno = 0; argno < row->nfields; argno++)
+			{
+				if (argv[argno] == NULL)
+				{
+					argv[argno] = get_args_default_query(real_cursor->arglist, argno);
+					if (argv[argno] == NULL)
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("not enough arguments for cursor \"%s\"",
+									cursor->refname),
+							 parser_errposition(yylloc)));
+				}
+			}
+			break;
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		if (endtoken == ',' && (argc == row->nfields - 1))
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -5103,6 +5602,8 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 							cursor->refname),
 					 parser_errposition(yylloc)));
 	}
+
+finish_args_query:
 
 	/* Make positional argument list */
 	initStringInfo(&ds);
@@ -5132,9 +5633,21 @@ read_cursor_args(PLiSQL_var *cursor, int until)
 	pfree(ds.data);
 
 	/* Next we'd better find the until token */
-	tok = yylex();
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (tok == '(' || tok == ')')
+		tok = yylex();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	if (tok != until)
 		yyerror("syntax error");
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * make out dnos
+	 */
+	if (nouts > 0)
+		*outrowno = plisql_buld_rows_from_datums(out_dnos, nouts);
+	pfree(out_dnos);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return expr;
 }

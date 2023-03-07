@@ -14,6 +14,11 @@
 #include "settings.h"				/* ReqID:SRS-CMD-PSQL */
 #include "variables.h"
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+static void print_refcursor_bind_variable(char *name, char*value);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 /*
  * Check whether a variable's name is allowed.
  *
@@ -195,8 +200,32 @@ valid_bind_variable_value(const int typoid, const int typmod, const char *value)
 				}
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case SYS_REFCURSOROID:
+			{
+				/*
+				 * there, use textin not sysrefcursorin
+				 * for sysrefcursorout has Changed capitalization
+				 */
+				appendPQExpBufferStr(query, "select textin(");
+				appendStringLiteralConn(query, value, pset.db);
+				appendPQExpBufferStr(query, ") from dual;");
+				res = PQexec(pset.db, query->data);
+
+				if (PQresultStatus(res) == PGRES_TUPLES_OK &&
+					PQntuples(res) == 1 &&
+					!PQgetisnull(res, 0, 0))
+				{
+					val = pg_strdup(PQgetvalue(res, 0, 0));
+				}
+				else
+				{
+					pg_log_error("\"%s\" is not a valid REFCURSOR.", value);
+				}
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		/* TODO */
-		//case REFCURSOR:
 		//case BLOB:
 		//case CLOB:
 		//case NCLOB:
@@ -211,6 +240,47 @@ valid_bind_variable_value(const int typoid, const int typmod, const char *value)
 
 	return val;
 }
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * print refcursor bind variable
+ */
+static void
+print_refcursor_bind_variable(char *name, char*value)
+{
+	PQExpBufferData query_buf;
+	bool		success;
+	PGresult	*res;
+
+	if (value == NULL)
+	{
+		pg_log_error("\"%s\" is invalid cursor", name);
+		return;
+	}
+
+	initPQExpBuffer(&query_buf);
+
+	/* fetch and close */
+	printfPQExpBuffer(&query_buf, "fetch all in \"%s\"", value);
+	success = SendQuery(query_buf.data);
+	if (!success)
+	{
+		termPQExpBuffer(&query_buf);
+		return;
+	}
+	resetPQExpBuffer(&query_buf);
+	printfPQExpBuffer(&query_buf, "close \"%s\"", value);
+	/* internel no print */
+	res = PSQLexec(query_buf.data);
+	if (res != NULL)
+		PQclear(res);
+
+	termPQExpBuffer(&query_buf);
+
+	return;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 static void
 print_bind_variable_value(char *name, char *value)
@@ -785,6 +855,12 @@ SetBindVariable(VariableSpace space,
 	current->substitute_hook = NULL;
 	current->assign_hook = NULL;
 	current->next = previous->next;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (typoid == SYS_REFCURSOROID)
+		current->print_hook = print_refcursor_bind_variable;
+	else
+		current->print_hook = print_bind_variable_value;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	previous->next = current;
 
 	return true;
@@ -869,7 +945,13 @@ PrintBindVariables(VariableSpace space, print_list *bvlist)
 		{
 			if (ptr->varkind == PSQL_BIND_VAR)
 			{
-				print_bind_variable_value(ptr->name, ptr->value);
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/* use print_hook func */
+				if (ptr->print_hook != NULL)
+					ptr->print_hook(ptr->name, ptr->value);
+				else
+					print_bind_variable_value(ptr->name, ptr->value);
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 			}
 		}
 	}
@@ -898,7 +980,13 @@ PrintBindVariables(VariableSpace space, print_list *bvlist)
 				{
 					/* found bind variable entry */
 					found = true;
-					print_bind_variable_value(ptr->name, ptr->value);
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					/* use print_hook func */
+					if (ptr->print_hook != NULL)
+						ptr->print_hook(ptr->name, ptr->value);
+					else
+						print_bind_variable_value(ptr->name, ptr->value);
+					/* End - ReqID:SRS-PLSQL-CURSOR */
 					break;
 				}
 

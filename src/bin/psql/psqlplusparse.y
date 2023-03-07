@@ -74,7 +74,7 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 %type <str> Sconst
 
 %token <keyword>	K_VAR K_VARIABLE K_CHAR K_BYTE K_NCHAR K_VARCHAR2 K_NVARCHAR2
-	K_NUMBER K_BINARY_FLOAT K_BINARY_DOUBLE K_PRINT K_EXECUTE K_EXEC
+	K_NUMBER K_BINARY_FLOAT K_BINARY_DOUBLE K_PRINT K_EXECUTE K_EXEC K_REFCURSOR /* ReqID:SRS-PLSQL-CURSOR */
 %token <str>	IDENT FCONST LITERAL DQCONST SQCONST
 %token <ival>	ICONST
 %token <str>	SINGLE_QUOTE_NO_END DOUBLE_QUOTE_NO_END
@@ -457,6 +457,12 @@ bind_vartype:
 			{
 				$$ = make_bindvartype(BINARY_FLOATOID, -1, $1);
 			}
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		| K_REFCURSOR
+			{
+				$$ = make_bindvartype(SYS_REFCURSOROID, -1, $1);
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		| K_BINARY_DOUBLE
 			{
 				$$ = make_bindvartype(BINARY_DOUBLEOID, -1, $1);
@@ -652,6 +658,7 @@ opt_semi:
 unreserved_keyword:
 		K_BINARY_DOUBLE
 		| K_BINARY_FLOAT
+		| K_REFCURSOR	/* ReqID:SRS-PLSQL-CURSOR */
 		| K_BYTE
 		| K_CHAR
 		| K_EXEC

@@ -7283,6 +7283,14 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	tform = (Form_pg_type) GETSTRUCT(typeTuple);
 	typeOid = tform->oid;
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (ORA_PARSER == compatible_db &&
+		!enable_cursor_as_column_type &&
+		(typeOid == ORAREFCURSOROID ||
+		typeOid == SYS_REFCURSOROID))
+		elog(ERROR, "column cannot be a cursor type");
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	aclresult = pg_type_aclcheck(typeOid, GetUserId(), ACL_USAGE);
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error_type(aclresult, typeOid);
@@ -12940,6 +12948,14 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	targettype = tform->oid;
 	/* And the collation */
 	targetcollid = GetColumnDefCollation(NULL, def, targettype);
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (ORA_PARSER == compatible_db &&
+		!enable_cursor_as_column_type &&
+		(targettype == ORAREFCURSOROID ||
+		targettype == SYS_REFCURSOROID))
+		elog(ERROR, "column cannot be a cursor type");
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * If there is a default expression for the column, get it and ensure we

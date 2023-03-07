@@ -346,6 +346,15 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 	(OidIsValid((typeForm)->typelem) && \
 	 (typeForm)->typsubscript == F_ARRAY_SUBSCRIPT_HANDLER)
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/* ORACURSOROID */
+#define ISORACURSOROID(oid) (oid == ORAREFCURSOROID || oid == SYS_REFCURSOROID)
+
+/* CURSOROID */
+#define ISCURSOROID(oid) (oid == ORAREFCURSOROID || oid == SYS_REFCURSOROID || \
+	oid == REFCURSOROID)
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 /*
  * Backwards compatibility for ancient random spellings of pg_type OID macros.
  * Don't use these names in new code.

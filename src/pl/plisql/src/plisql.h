@@ -48,6 +48,9 @@ typedef enum PLiSQL_nsitem_type
 	PLISQL_NSTYPE_LABEL,		/* block label */
 	PLISQL_NSTYPE_VAR,			/* scalar variable */
 	PLISQL_NSTYPE_REC,			/* composite variable */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	PLISQL_NSTYPE_TYPE,	/* udt type */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	/* Begin - SRS-PLSQL-SUBPROC */
 	PLISQL_NSTYPE_SUBPROC_FUNC,	/* subproc function */
 	PLISQL_NSTYPE_SUBPROC_PROC	/* subproc proc */
@@ -77,6 +80,10 @@ typedef enum PLiSQL_datum_type
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PLISQL_DTYPE_PACKAGE_DATUM,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	PLISQL_DTYPE_TYPE,
+	PLISQL_DTYPE_ATTRIBUTE
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 } PLiSQL_datum_type;
 
 /*
@@ -105,6 +112,10 @@ typedef enum PLiSQL_type_type
 {
 	PLISQL_TTYPE_SCALAR,		/* scalar types and domains */
 	PLISQL_TTYPE_REC,			/* composite types, including RECORD */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	PLISQL_TTYPE_UDT_REF_CURSOR,/* UDT REF CURSOR */
+	PLISQL_TTYPE_EXPLICIT_CURSOR,	/* explicit cursor like cursor%rowtype */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	PLISQL_TTYPE_PSEUDO		/* pseudotypes */
 } PLiSQL_type_type;
 
@@ -353,6 +364,15 @@ typedef struct PLiSQL_var
 	int			cursor_explicit_argrow;
 	int			cursor_options;
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	PLiSQL_type *cursor_explicit_rettype;	/* explicit cursor return rowtype */
+	TupleDesc	cursor_rettype_tupledesc;	/* explicit cursor or ref cursor return type tupldedesc */
+	TupleDesc	cursor_resulttupdesc;		/* cursor query resulttupdesc */
+	List		*arglist;					/* explicit cursor arguments list */
+	int			firstattribute;					/* dno of first attribute dno, or -1 if none */
+	bool		is_explicit_cursor;			/* is a explicit cursor ? */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	char		info; /* Build the variable for the function argument,
 					   * record the argument mode which may be IN, OUT or IN OUT.
@@ -494,6 +514,9 @@ typedef struct PLiSQL_nsitem
 	/* Begin - SRS-PLSQL-SUBPROC */
 	List		*subprocfunc;
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	Oid			typoid;	/* for orarefcursor */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	char		name[FLEXIBLE_ARRAY_MEMBER];	/* nul-terminated string */
 } PLiSQL_nsitem;
 
@@ -772,6 +795,9 @@ typedef struct PLiSQL_stmt_forc
 	/* end of fields that must match PLiSQL_stmt_forq */
 	int			curvar;
 	PLiSQL_expr *argquery;		/* cursor arguments if any */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int			outrowno;		/* out parameter in arguements */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 } PLiSQL_stmt_forc;
 
 /*
@@ -819,6 +845,9 @@ typedef struct PLiSQL_stmt_open
 	PLiSQL_expr *query;
 	PLiSQL_expr *dynquery;
 	List	   *params;			/* USING expressions */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int 		outrowno;		/* out variable in argquery */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 } PLiSQL_stmt_open;
 
 /*
@@ -1042,6 +1071,9 @@ typedef struct PLiSQL_function
 	int			fn_argvarnos[FUNC_MAX_ARGS];
 	int			out_param_varno;
 	int			found_varno;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int			sql_varno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	int			new_varno;
 	int			old_varno;
 
@@ -1136,6 +1168,9 @@ typedef struct PLiSQL_execstate
 	ReturnSetInfo *rsi;
 
 	int			found_varno;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	int			sql_varno;		/* sql cursor var dno */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * The datums representing the function's local variables.  Some of these
@@ -1272,6 +1307,12 @@ extern int	plisql_variable_conflict;
 extern bool plisql_print_strict_params;
 
 extern bool plisql_check_asserts;
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern bool	plisql_close_unused_cursor;
+extern bool plisql_cursor_name_exclude_oid;
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /* extra compile-time and run-time checks */
 #define PLISQL_XCHECK_NONE						0
@@ -1421,7 +1462,8 @@ extern Oid	plisql_exec_get_datum_type(PLiSQL_execstate *estate,
 extern void plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 											 PLiSQL_datum *datum,
 											 Oid *typeId, int32 *typMod,
-											 Oid *collation);
+											 Oid *collation,
+											 void **type_address);/* ReqID:SRS-PLSQL-CURSOR */
 /* Begin - SRS-PLSQL-SUBPROC */
 extern void plisql_assign_in_global_var(PLiSQL_execstate *estate,
 														PLiSQL_execstate *parestate,
@@ -1431,6 +1473,18 @@ extern void plisql_assign_out_global_var(PLiSQL_execstate *estate,
 											int dno,
 											int spilevel);
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern void plisql_init_sql_cursor(void);
+extern bool cursor_is_open(PLiSQL_execstate *estate,
+							PLiSQL_var *cursor,
+							bool check_portal_exist);
+extern char* plisql_get_portal_name(PLiSQL_execstate *estate,
+								PLiSQL_var *cursor);
+extern TupleDesc plisql_get_cursor_tupdesc(PLiSQL_execstate * estate,
+									PLiSQL_expr * expr,
+									int cursor_options);
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 
 /*

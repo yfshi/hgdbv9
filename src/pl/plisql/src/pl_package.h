@@ -170,7 +170,8 @@ extern void *plisql_package_parse(ParseState *parsestate, PackageCacheItem *item
 									Oid **true_typeids, /* return value */
 									List **argdefaults, /* return value */
 									void **pfunc,		/* return value */
-									bool missing_ok);
+									bool missing_ok,
+									bool *is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
 extern void plisql_free_package_function(PackageCacheItem *item);
 extern void plisql_free_packagelist(List *pkglist);
 extern PkgEntry *plisql_parse_package_entry(const char *refname, int lineno,
@@ -190,8 +191,6 @@ extern PackageCacheItem *get_current_compile_package(PackageCacheKey key);
 extern Oid plisql_top_functin_oid(FuncExpr *funcexpr, bool *is_package); /* BUG#M000088 */
 extern void plisql_package_validator(Oid objectid, bool is_body);
 extern PackageCacheItem *plisql_package_handle(Oid objectid, bool is_body);
-extern bool plisql_cursor_is_open(PLiSQL_var *var);
-extern char *plisql_get_portal_from_var(PLiSQL_var *var);
 extern PLiSQL_datum *plisql_get_datum(PLiSQL_execstate *estste, PLiSQL_datum *pkgdatum);
 extern MemoryContext plisql_get_relevantContext(PLiSQL_variable *var, /* BUG#M0000167 */
 								MemoryContext orig);
@@ -225,5 +224,13 @@ extern void release_package_func_usecount(FunctionCallInfo fcinfo);
 /* Begin - BUG#M0000141 */
 extern char plisql_get_subproc_parallel_enable(FuncExpr *fexpr);
 /* End - BUG#M0000141 */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern void plisql_push_compile_global_proper(void);
+extern void plisql_pop_compile_global_proper(void);
+extern void plisql_check_package_explicit_cursor_define(PLiSQL_package *psource);
+extern void plisql_handle_package_explicit_cursor_retdesc(int globdno);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 #endif
 

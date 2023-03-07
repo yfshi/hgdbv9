@@ -222,6 +222,9 @@ _equalParam(const Param *a, const Param *b)
 	COMPARE_SCALAR_FIELD(paramtypmod);
 	COMPARE_SCALAR_FIELD(paramcollid);
 	COMPARE_LOCATION_FIELD(location);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	COMPARE_SCALAR_FIELD(type);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return true;
 }

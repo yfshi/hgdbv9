@@ -32,6 +32,11 @@
 #include "utils/datum.h"
 #include "utils/resowner_private.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "parser/parse_coerce.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 /*
  * CreateTemplateTupleDesc
@@ -817,6 +822,14 @@ BuildDescForRelation(List *schema)
 		attname = entry->colname;
 		typenameTypeIdAndMod(NULL, entry->typeName, &atttypid, &atttypmod);
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (ORA_PARSER == compatible_db &&
+			!enable_cursor_as_column_type &&
+			(atttypid == ORAREFCURSOROID ||
+			atttypid == SYS_REFCURSOROID))
+				elog(ERROR, "column \"%s\" cannot be a cursor type", attname);
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		aclresult = pg_type_aclcheck(atttypid, GetUserId(), ACL_USAGE);
 		if (aclresult != ACLCHECK_OK)
 			aclcheck_error_type(aclresult, atttypid);
@@ -916,3 +929,75 @@ BuildDescFromLists(List *names, List *types, List *typmods, List *collations)
 
 	return desc;
 }
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * like tupledesc_match function
+ * but we should consier dropped column
+ */
+bool
+ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_error)
+{
+	int		 i = 0;
+	int		 j = 0;
+	FormData_pg_attribute *dattr;
+	FormData_pg_attribute *sattr;
+
+	for (; i < targetdesc->natts; i++)
+	{
+		dattr = &targetdesc->attrs[i];
+		sattr = NULL;
+
+		if (dattr->attisdropped)
+			continue;
+		for (; j < valuedesc->natts; j++)
+		{
+			sattr = &valuedesc->attrs[j];
+			if (!sattr->attisdropped)
+			{
+				j++;
+				break;
+			}
+		}
+		if (j > valuedesc->natts || sattr == NULL)
+		{
+			if (raise_error)
+				ereport(ERROR,
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+					 errmsg("Return rowtype or query do not match")));
+			else
+				return false;
+		}
+
+		if (can_coerce_type(1, &sattr->atttypid, &dattr->atttypid, COERCION_ASSIGNMENT))
+			continue;			 /* no worries */
+
+		if (dattr->attlen != sattr->attlen ||
+			dattr->attalign != sattr->attalign)
+		{
+			if (raise_error)
+				ereport(ERROR,
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+					 errmsg("Return rowtype or query do not match")));
+			else
+				return false;
+		}
+	}
+	for (; j < valuedesc->natts; j++)
+	{
+		sattr = &valuedesc->attrs[j];
+		if (!sattr->attisdropped)
+		{
+			if (raise_error)
+				ereport(ERROR,
+					(errcode(ERRCODE_DATATYPE_MISMATCH),
+					 errmsg("Return rowtype or query do not match")));
+			else
+				return false;
+		}
+	}
+	return true;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+

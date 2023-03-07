@@ -88,6 +88,11 @@
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_param.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "parser/scansup.h"
+#include "utils/builtins.h"
+#include "funcapi.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 
 /* ----------------
@@ -2048,6 +2053,20 @@ exec_bind_message(StringInfo input_message)
 				else
 					pstring = pg_client_to_server(pbuf.data, plength);
 
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/*
+				 * there orarefcursor or sysrefcursor, we should consider
+				 * its case sensitive because we has change its sensitive
+				 * by its type inout func
+				 */
+				if (pstring != NULL &&
+					(ptype == SYS_REFCURSOROID ||
+					ptype == ORAREFCURSOROID) &&
+					enable_case_switch &&
+					identifier_case_switch == INTERCHANGE)
+					pstring = identifier_case_transform(pstring, strlen(pstring));
+				/* End - ReqID:SRS-PLSQL-CURSOR */
+
 				/* Now we can log the input string in case of error */
 				one_param_data.paramval = pstring;
 
@@ -2119,6 +2138,37 @@ exec_bind_message(StringInfo input_message)
 							(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
 							 errmsg("incorrect binary data format in bind parameter %d",
 									paramno + 1)));
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/*
+				 * there orarefcursor or sysrefcursor, we should consider
+				 * its case sensitive because we has change its sensitive
+				 * by ots type inout func
+				 */
+				if (!isNull &&
+					(ptype == SYS_REFCURSOROID ||
+					ptype == ORAREFCURSOROID) &&
+					enable_case_switch &&
+					identifier_case_switch == INTERCHANGE)
+				{
+					char *portalname;
+					Oid			typinput;
+					Oid			typioparam;
+
+					if (ptype == SYS_REFCURSOROID)
+					{
+						portalname = TextDatumGetCString(pval);
+					}
+					else
+					{
+						if (orarefcursor_funcs.loadstate != LOADED)
+							elog(ERROR, "orarefcursor function has not been loaded");
+						portalname = orarefcursor_funcs.DatumGetOraRefCursorPortal(pval);
+					}
+					portalname = identifier_case_transform(portalname, strlen(portalname));
+					getTypeInputInfo(ptype, &typinput, &typioparam);
+					pval = OidInputFunctionCall(typinput, portalname, typioparam, -1);
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 			}
 			else
 			{

@@ -1534,6 +1534,9 @@ _copyParam(const Param *from)
 	COPY_SCALAR_FIELD(paramtypmod);
 	COPY_SCALAR_FIELD(paramcollid);
 	COPY_LOCATION_FIELD(location);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	COPY_SCALAR_FIELD(type);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return newnode;
 }

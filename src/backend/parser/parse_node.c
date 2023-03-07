@@ -67,6 +67,9 @@ make_parsestate(ParseState *parentParseState)
 		/* Begin - SRS-PLSQL-SUBPROC */
 		pstate->p_subprocfunc_hook = parentParseState->p_subprocfunc_hook;
 		/* End - SRS-PLSQL-SUBPROC */
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		pstate->p_param_tupdesc_hook = parentParseState->p_param_tupdesc_hook;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		pstate->p_isVarParamState = parentParseState->p_isVarParamState;

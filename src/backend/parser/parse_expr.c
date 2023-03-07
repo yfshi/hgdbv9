@@ -478,6 +478,27 @@ transformIndirection(ParseState *pstate, A_Indirection *ind)
 
 			Assert(IsA(n, String));
 
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			/* maybe :x.attribute */
+			if (IsA(result, Param) &&
+				ISORACURSOROID(((Param *) result)->paramtype) &&
+				IsA(ind->arg, OraParamRef) &&
+				list_length(ind->indirection) == 1)
+			{
+				OraParamRef *oraref = (OraParamRef *) ind->arg;
+				char		pname[32];
+				ColumnRef *colref = makeNode(ColumnRef);
+
+				memset(pname, 0x00, 32);
+				snprintf(pname, sizeof(pname), "$%d", oraref->number);
+				colref->fields = list_make2(makeString(pname),
+											n);
+				newresult = transformColumnRef(pstate, colref);
+				if (newresult != NULL)
+					return newresult;
+			}
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+
 			/* process subscripts before this field selection */
 			if (subscripts)
 				result = (Node *) transformContainerSubscripts(pstate,
@@ -3328,7 +3349,7 @@ transformCurrentOfExpr(ParseState *pstate, CurrentOfExpr *cexpr)
 			Param	   *p = (Param *) node;
 
 			if (p->paramkind == PARAM_EXTERN &&
-				p->paramtype == REFCURSOROID)
+				ISCURSOROID(p->paramtype)) /* ReqID:SRS-PLSQL-CURSOR */
 			{
 				/* Matches, so convert CURRENT OF to a param reference */
 				cexpr->cursor_name = NULL;

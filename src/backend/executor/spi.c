@@ -3482,3 +3482,23 @@ Ora_spi_saved_memorycontext(void)
 	return _SPI_current->savedcxt;
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * decide wether is the first connect to
+ * plisql
+ */
+bool
+SPI_is_first_plisql(void)
+{
+	int i;
+
+	for (i = 0; i < _SPI_connected; i++)
+	{
+		if (_SPI_stack[i].current_func != NULL)
+			return false;
+	}
+	return true;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+

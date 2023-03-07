@@ -2747,7 +2747,7 @@ BEGIN
 end;
 /
 
---oracle failed,but we sucess
+--oracle failed
 DECLARE
 	type integer;
 begin

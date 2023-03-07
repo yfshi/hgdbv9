@@ -41,6 +41,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "pl_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #include "storage/proc.h"
 #include "tcop/cmdtag.h"
 #include "tcop/pquery.h"
@@ -114,6 +117,18 @@ static SimpleEcontextStackEntry *simple_econtext_stack = NULL;
  * same way described above for shared_simple_eval_estate.)
  */
 static ResourceOwner shared_simple_eval_resowner = NULL;
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * Oracle implicit cursor attribute is global for plsql
+ * so we use it with global var, when reference sql%xxx
+ * which convert to reference these global var
+ */
+static bool sql_cursor_init = false;  /* has init ? */
+static bool sql_found = false; /* found  */
+static int64 sql_rowcount = 0; /* rowcount */
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /*
  * Memory management within a plisql function generally works with three
@@ -436,6 +451,22 @@ static plisql_CastHashEntry *get_cast_hashentry(PLiSQL_execstate *estate,
 												 Oid dsttype, int32 dsttypmod);
 static void exec_init_tuple_store(PLiSQL_execstate *estate);
 static void exec_set_found(PLiSQL_execstate *estate, bool state);
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+static void exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate,
+									uint64 rowcount);
+static void exec_set_cursor_attribute(PLiSQL_execstate *estate,
+									PLiSQL_var *cursor);
+static void assign_simple_attribute(PLiSQL_execstate *estate,
+								PLiSQL_attribute *var, Datum newvalue,
+								bool isnull, bool freeable);
+static void assign_cursor_var(PLiSQL_execstate *estate,
+									PLiSQL_var *var,
+									Portal portal);
+static void exec_close_unused_open_cursor(PLiSQL_execstate *estate,
+									int last_global_varno);
+static ExpandedRecordHeader *make_expanded_record_from_rowtype(PLiSQL_type *rowtype, int32 typmod,
+															  MemoryContext parentcontext);
+/* End - ReqID:SRS-PLSQL-CURSOR */
 static void plisql_create_econtext(PLiSQL_execstate *estate);
 static void plisql_destroy_econtext(PLiSQL_execstate *estate);
 static void assign_simple_var(PLiSQL_execstate *estate, PLiSQL_var *var,
@@ -561,6 +592,22 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 				{
 					PLiSQL_var *var = (PLiSQL_var *) estate.datums[n];
 
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					/*
+					 * assign oracle cursor variable value
+					 */
+					if (ISORACURSOROID(var->datatype->typoid) &&
+						!var->is_explicit_cursor)
+					{
+						exec_check_assign_cursor_value(&estate,
+														var,
+														fcinfo->args[i].value,
+														fcinfo->args[i].isnull,
+														var->datatype->typoid,
+														-1,
+														true);
+					}
+					/* End - ReqID:SRS-PLSQL-CURSOR */
 					/* Begin - ReqID:SRS-SQL-FUNCOUT */
 					if (var->info != PROARGMODE_OUT)
 					{
@@ -676,7 +723,29 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	 * Now call the toplevel block of statements
 	 */
 	estate.err_text = NULL;
-	rc = exec_toplevel_block(&estate, func->action);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* close unused cursor */
+	if (plisql_close_unused_cursor)
+	{
+		MemoryContext old_ctx = CurrentMemoryContext;
+		int last_global_varno;
+
+		last_global_varno = get_plisql_function_lgv(&estate, fcinfo, function_from);
+		PG_TRY();
+		{
+			rc = exec_toplevel_block(&estate, func->action);
+		}
+		PG_FINALLY();
+		{
+			old_ctx = MemoryContextSwitchTo(old_ctx);
+			exec_close_unused_open_cursor(&estate, last_global_varno);
+			MemoryContextSwitchTo(old_ctx);
+		}
+		PG_END_TRY();
+	}
+	else
+		rc = exec_toplevel_block(&estate, func->action);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	if (rc != PLISQL_RC_RETURN)
 	{
 		estate.err_text = NULL;
@@ -1492,6 +1561,20 @@ copy_plisql_datums(PLiSQL_execstate *estate,
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
 
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_TYPE:
+				/* type are read-only at runtime, no need to copy */
+				outdatum = indatum;
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				outdatum = (PLiSQL_datum *) ws_next;
+				memcpy(outdatum, indatum, sizeof(PLiSQL_attribute));
+				ws_next += MAXALIGN(sizeof(PLiSQL_attribute));
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			default:
 				elog(ERROR, "unrecognized dtype: %d", indatum->dtype);
 				outdatum = NULL;	/* keep compiler quiet */
@@ -1838,7 +1921,17 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 											  true,
 											  UNKNOWNOID,
 											  -1);
-
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						if (var->datatype->typoid == ORAREFCURSOROID &&
+							var->datatype->ttype == PLISQL_TTYPE_UDT_REF_CURSOR &&
+							((PLiSQL_ref_cursor_type *) var->datatype)->rettype != NULL)
+						{
+							Datum newvalue =
+								orarefcursor_funcs.init_orarefcursor_value((void *) var->datatype,
+																							NULL);
+							assign_simple_var(estate, var, newvalue, false, true);
+						}
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 						/* parser should have rejected NOT NULL */
 						Assert(!var->notnull);
 					}
@@ -1884,6 +1977,13 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 				/* package'var doesn't need init */
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				assign_simple_attribute(estate, (PLiSQL_attribute *) datum,
+							(Datum) 0, true, false);
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -2311,6 +2411,9 @@ exec_stmt_perform(PLiSQL_execstate *estate, PLiSQL_stmt_perform *stmt)
 
 	(void) exec_run_select(estate, expr, 0, NULL);
 	exec_set_found(estate, (estate->eval_processed != 0));
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	exec_set_implicit_cursor_attribute(estate, estate->eval_processed);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	exec_eval_cleanup(estate);
 
 	return PLISQL_RC_OK;
@@ -3051,7 +3154,9 @@ exec_stmt_forc(PLiSQL_execstate *estate, PLiSQL_stmt_forc *stmt)
 		/* We only need stmt_mcontext to hold the cursor name string */
 		stmt_mcontext = get_stmt_mcontext(estate);
 		oldcontext = MemoryContextSwitchTo(stmt_mcontext);
-		curname = TextDatumGetCString(curvar->value);
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		curname = plisql_get_portal_name(estate, curvar);
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		MemoryContextSwitchTo(oldcontext);
 
 		if (SPI_cursor_find(curname) != NULL)
@@ -3135,6 +3240,20 @@ exec_stmt_forc(PLiSQL_execstate *estate, PLiSQL_stmt_forc *stmt)
 	 */
 	if (curname == NULL)
 		assign_text_var(estate, curvar, portal->name);
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * maybe hava out parameter in cursor argments
+	 */
+	if (stmt->outrowno != -1)
+	{
+		PLiSQL_variable *target;
+
+		target = (PLiSQL_variable *) estate->datums[stmt->outrowno];
+
+		exec_move_row(estate, target, NULL, NULL);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * Clean up before entering exec_for_query
@@ -3500,6 +3619,9 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 			 * there maybe return a package.var.id, so should handle
 			 * special
 			 */
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			case PLISQL_DTYPE_RECFIELD:
 				{
 					int32		rettypmod;
@@ -3641,6 +3763,44 @@ exec_stmt_return_next(PLiSQL_execstate *estate,
 										 &retval, &isNull);
 				}
 				break;
+
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				{
+					PLiSQL_attribute *attr_var = (PLiSQL_attribute *) retvar;
+					Datum		retval;
+					bool		isNull;
+					Oid			tmpoid;
+					int32		tmptypmod;
+					Form_pg_attribute attr = TupleDescAttr(tupdesc, 0);
+
+					if (natts != 1)
+						ereport(ERROR,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("wrong result type supplied in RETURN NEXT")));
+
+					exec_eval_datum(estate, retvar, &tmpoid, &tmptypmod,
+							&retval, &isNull);
+
+					/* let's be very paranoid about the cast step */
+					retval = MakeExpandedObjectReadOnly(retval,
+														isNull,
+														attr_var->datatype->typlen);
+
+					/* coerce type if needed */
+					retval = exec_cast_value(estate,
+											 retval,
+											 &isNull,
+											 attr_var->datatype->typoid,
+											 attr_var->datatype->atttypmod,
+											 attr->atttypid,
+											 attr->atttypmod);
+
+					tuplestore_putvalues(estate->tuple_store, tupdesc,
+										 &retval, &isNull);
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 
 			case PLISQL_DTYPE_REC:
 				{
@@ -3928,6 +4088,9 @@ exec_stmt_return_query(PLiSQL_execstate *estate,
 
 	estate->eval_processed = processed;
 	exec_set_found(estate, processed != 0);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	exec_set_implicit_cursor_attribute(estate, processed);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return PLISQL_RC_OK;
 }
@@ -4286,6 +4449,9 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	estate->rsi = rsi;
 
 	estate->found_varno = func->found_varno;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	estate->sql_varno = func->sql_varno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	estate->ndatums = func->ndatums;
 	estate->datums = NULL;
 	/* the datums array will be filled by copy_plisql_datums() */
@@ -4564,6 +4730,9 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		case SPI_OK_SELECT:
 			Assert(!stmt->mod_stmt);
 			exec_set_found(estate, (SPI_processed != 0));
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			break;
 
 		case SPI_OK_INSERT:
@@ -4574,6 +4743,9 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		case SPI_OK_DELETE_RETURNING:
 			Assert(stmt->mod_stmt);
 			exec_set_found(estate, (SPI_processed != 0));
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			break;
 
 		case SPI_OK_SELINTO:
@@ -4970,20 +5142,33 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	curvar = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->curvar]);
 	/* End - ReqID:SRS-SQL-PACKAGE */
-	if (!curvar->isnull)
+	if (cursor_is_open(estate, curvar, false)) /* SRS-PLSQL-CURSOR */
 	{
-		MemoryContext oldcontext;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		curname = plisql_get_portal_name(estate, curvar);
+		portal = SPI_cursor_find(curname);
 
-		/* We only need stmt_mcontext to hold the cursor name string */
-		stmt_mcontext = get_stmt_mcontext(estate);
-		oldcontext = MemoryContextSwitchTo(stmt_mcontext);
-		curname = TextDatumGetCString(curvar->value);
-		MemoryContextSwitchTo(oldcontext);
-
-		if (SPI_cursor_find(curname) != NULL)
-			ereport(ERROR,
+		if (portal != NULL)
+		{
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			/*
+			 * oracle refcursor variable need not close
+			 * before reopen
+			 */
+			if (ISORACURSOROID(curvar->datatype->typoid) &&
+				curvar->cursor_explicit_expr == NULL &&
+				portal->status != PORTAL_ACTIVE &&
+				!portal->portalPinned)
+			{
+				SPI_cursor_close(portal);
+				portal = NULL;
+			}
+			else
+				ereport(ERROR,
 					(errcode(ERRCODE_DUPLICATE_CURSOR),
 					 errmsg("cursor \"%s\" already in use", curname)));
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 	}
 
 	/* ----------
@@ -5036,7 +5221,7 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 		 * OK.
 		 */
 		if (curname == NULL)
-			assign_text_var(estate, curvar, portal->name);
+			assign_cursor_var(estate, curvar, portal); /* ReqID:SRS-PLSQL-CURSOR */
 
 		return PLISQL_RC_OK;
 	}
@@ -5115,15 +5300,35 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 	 * If cursor variable was NULL, store the generated portal name in it
 	 */
 	if (curname == NULL)
-		assign_text_var(estate, curvar, portal->name);
+		assign_cursor_var(estate, curvar, portal); /* ReqID:SRS-PLSQL-CURSOR */
 
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	/*
-	 * pakcag global cursor var should holdable
+	 * pakcag global cursor var or oracle cursor
+	 * should holdable
 	 */
-	if (is_package_global_var((PLiSQL_variable *) curvar)) /* BUG#M0000167 */
+	if (ISORACURSOROID(curvar->datatype->typoid) ||
+		is_package_global_var((PLiSQL_variable *) curvar))
 		portal->cursorOptions = portal->cursorOptions | CURSOR_OPT_HOLD;
-	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* maybe has out argments in cursor */
+	if (stmt->outrowno != -1)
+	{
+		PLiSQL_variable *target;
+
+		target = (PLiSQL_variable *) estate->datums[stmt->outrowno];
+
+		exec_move_row(estate, target, NULL, NULL);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* set cursor attribute */
+	if (ISORACURSOROID(curvar->datatype->typoid))
+	{
+		exec_set_cursor_attribute(estate, curvar);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* If we had any transient data, clean it up */
 	exec_eval_cleanup(estate);
@@ -5164,7 +5369,9 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 
 	/* Use eval_mcontext for short-lived string */
 	oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
-	curname = TextDatumGetCString(curvar->value);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	curname = plisql_get_portal_name(estate, curvar);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	MemoryContextSwitchTo(oldcontext);
 
 	portal = SPI_cursor_find(curname);
@@ -5209,10 +5416,14 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 		target = (PLiSQL_variable *) plisql_get_datum(estate,
 							estate->datums[stmt->target->dno]);
 		/* End - ReqID:SRS-SQL-PACKAGE */
-		if (n == 0)
-			exec_move_row(estate, target, NULL, tuptab->tupdesc);
-		else
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/*
+		 * no rows, we should handle like oracle and not assign
+		 * null
+		 */
+		if (n != 0)
 			exec_move_row(estate, target, tuptab->vals[0], tuptab->tupdesc);
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(tuptab);
@@ -5227,6 +5438,12 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 	/* Set the ROW_COUNT and the global FOUND variable appropriately. */
 	estate->eval_processed = n;
 	exec_set_found(estate, n != 0);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (ISORACURSOROID(curvar->datatype->typoid))
+	{
+		exec_set_cursor_attribute(estate, curvar);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return PLISQL_RC_OK;
 }
@@ -5251,14 +5468,18 @@ exec_stmt_close(PLiSQL_execstate *estate, PLiSQL_stmt_close *stmt)
 	curvar = (PLiSQL_var *) plisql_get_datum(estate,
 						estate->datums[stmt->curvar]);
 	/* End - ReqID:SRS-SQL-PACKAGE */
-	if (curvar->isnull)
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (!cursor_is_open(estate, curvar, false))
 		ereport(ERROR,
 				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
 				 errmsg("cursor variable \"%s\" is null", curvar->refname)));
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Use eval_mcontext for short-lived string */
 	oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
-	curname = TextDatumGetCString(curvar->value);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	curname = plisql_get_portal_name(estate, curvar);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	MemoryContextSwitchTo(oldcontext);
 
 	portal = SPI_cursor_find(curname);
@@ -5272,6 +5493,14 @@ exec_stmt_close(PLiSQL_execstate *estate, PLiSQL_stmt_close *stmt)
 	 * ----------
 	 */
 	SPI_cursor_close(portal);
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* set cursor attribute to get portal */
+	if (ISORACURSOROID(curvar->datatype->typoid))
+	{
+		exec_set_cursor_attribute(estate, curvar);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return PLISQL_RC_OK;
 }
@@ -5423,6 +5652,23 @@ exec_assign_value(PLiSQL_execstate *estate,
 				PLiSQL_var *var = (PLiSQL_var *) target;
 				Datum		newvalue;
 
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/*
+				 * assign oracle cursor variable value
+				 */
+				if (ISORACURSOROID(var->datatype->typoid) &&
+					!var->is_explicit_cursor)
+				{
+					exec_check_assign_cursor_value(estate,
+													var,
+													value,
+													isNull,
+													valtype,
+													valtypmod,
+													false);
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
+
 				newvalue = exec_cast_value(estate,
 										   value,
 										   &isNull,
@@ -5436,6 +5682,18 @@ exec_assign_value(PLiSQL_execstate *estate,
 							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
 							 errmsg("null value cannot be assigned to variable \"%s\" declared NOT NULL",
 									var->refname)));
+
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/* strong refcursor should change its type */
+				if (!isNull &&
+					var->datatype->typoid == ORAREFCURSOROID)
+				{
+					if (((PLiSQL_ref_cursor_type *) var->datatype)->rettype != NULL)
+						orarefcursor_funcs.OraRefcursorSetType(var->datatype, newvalue);
+					else
+						orarefcursor_funcs.OraRefcursorSetType(NULL, newvalue);
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 
 				/*
 				 * If type is by-reference, copy the new value (which is
@@ -5649,6 +5907,122 @@ exec_assign_value(PLiSQL_execstate *estate,
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			{
+				PLiSQL_attribute *attr = (PLiSQL_attribute *) target;
+				PLiSQL_var *cursor;
+				Datum		newvalue;
+				int attribute_flag;
+
+				newvalue = exec_cast_value(estate,
+										   value,
+										   &isNull,
+										   valtype,
+										   valtypmod,
+										   attr->datatype->typoid,
+										   attr->datatype->atttypmod);
+				/*
+				 * If type is by-reference, copy the new value (which is
+				 * probably in the eval_mcontext) into the procedure's main
+				 * memory context.  But if it's a read/write reference to an
+				 * expanded object, no physical copy needs to happen; at most
+				 * we need to reparent the object's memory context.
+				 *
+				 * If it's an array, we force the value to be stored in R/W
+				 * expanded form.  This wins if the function later does, say,
+				 * a lot of array subscripting operations on the variable, and
+				 * otherwise might lose.  We might need to use a different
+				 * heuristic, but it's too soon to tell.  Also, are there
+				 * cases where it'd be useful to force non-array values into
+				 * expanded form?
+				 */
+				if (!attr->datatype->typbyval && !isNull)
+				{
+					if (attr->datatype->typisarray &&
+						!VARATT_IS_EXTERNAL_EXPANDED_RW(DatumGetPointer(newvalue)))
+					{
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						MemoryContext mc;
+
+						mc = plisql_get_relevantContext((PLiSQL_variable *) attr, estate->datum_context);
+						/* End - ReqID:SRS-SQL-PACKAGE */
+
+						/* array and not already R/W, so apply expand_array */
+						newvalue = expand_array(newvalue,
+												mc,/* ReqID:SRS-SQL-PACKAGE */
+												NULL);
+					}
+					else
+					{
+						/* else transfer value if R/W, else just datumCopy */
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						MemoryContext oldcxt = NULL;
+
+						if (OidIsValid(attr->pkgoid))
+							oldcxt = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) attr,
+										CurrentMemoryContext));
+						/* End - ReqID:SRS-SQL-PACKAGE */
+						newvalue = datumTransfer(newvalue,
+												 false,
+												 attr->datatype->typlen);
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						if (oldcxt != NULL)
+							MemoryContextSwitchTo(oldcxt);
+						/* End - ReqID:SRS-SQL-PACKAGE */
+					}
+				}
+
+				if (is_package_global_var((PLiSQL_variable *)attr))
+					cursor = (PLiSQL_var *) get_package_datum_bydno(estate,
+												attr->pkgoid,
+												attr->attributeparentno);
+				else
+					cursor = (PLiSQL_var *) (estate->datums[attr->attributeparentno]);
+				attribute_flag = attr->dno - cursor->firstattribute;
+				if (is_sql_cursor(estate, cursor))
+				{
+					sql_cursor_init = true;
+					switch (attribute_flag)
+					{
+						case PLISQL_ATTRIBUTE_ISOPNE:
+							/* no need assign */
+							break;
+						case PLISQL_ATTRIBUTE_FOUND:
+							sql_found = DatumGetBool(newvalue);
+							break;
+						case PLISQL_ATTRIBUTE_NOTFOUND:
+							sql_found = !DatumGetBool(newvalue);
+							break;
+						case PLISQL_ATTRIBUTE_ROWCOUNT:
+							sql_rowcount = DatumGetInt64(newvalue);
+							break;
+						default:
+							ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("identifier  \'%s\' is not a legal cursor attribute",
+								attr->fieldname)));
+							break;
+					}
+				}
+				else
+				{
+					/*
+					 * Now free the old value, if any, and assign the new one. But
+					 * skip the assignment if old and new values are the same.
+					 * Note that for expanded objects, this test is necessary and
+					 * cannot reliably be made any earlier; we have to be looking
+					 * at the object's standard R/W pointer to be sure pointer
+					 * equality is meaningful.
+					 */
+					if (attr->value != newvalue || attr->isnull || isNull)
+						assign_simple_attribute(estate, attr, newvalue, isNull,
+										  (!attr->datatype->typbyval && !isNull));
+				}
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", target->dtype);
 	}
@@ -5832,6 +6206,112 @@ exec_eval_datum(PLiSQL_execstate *estate,
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			{
+				PLiSQL_attribute *attr = (PLiSQL_attribute *) datum;
+				PLiSQL_var *cursor;
+				int attribute_flag;
+
+				if (is_package_global_var((PLiSQL_variable *)attr))
+					cursor = (PLiSQL_var *) get_package_datum_bydno(estate,
+												attr->pkgoid,
+												attr->attributeparentno);
+				else
+					cursor = (PLiSQL_var *) (estate->datums[attr->attributeparentno]);
+				*typetypmod = attr->datatype->atttypmod;
+				*typeid = attr->datatype->typoid;
+				attribute_flag = attr->dno - cursor->firstattribute;
+				if (is_sql_cursor(estate, cursor))
+				{
+					switch (attribute_flag)
+					{
+						case PLISQL_ATTRIBUTE_ISOPNE:
+							/* implicit cursor isopen is always false */
+							*isnull = false;
+							*value = BoolGetDatum(false);
+							break;
+						case PLISQL_ATTRIBUTE_FOUND:
+							*isnull = (!sql_cursor_init);
+							*value = BoolGetDatum(sql_found);
+							break;
+						case PLISQL_ATTRIBUTE_NOTFOUND:
+							*isnull = (!sql_cursor_init);
+							*value = BoolGetDatum(!sql_found);
+							break;
+						case PLISQL_ATTRIBUTE_ROWCOUNT:
+							*isnull = (!sql_cursor_init);
+							*value = Int64GetDatum(sql_rowcount);
+							break;
+						default:
+							ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("identifier  \'%s\' is not a legal cursor attribute",
+								attr->fieldname)));
+							break;
+					}
+				}
+				else
+				{
+					switch (attribute_flag)
+					{
+						case PLISQL_ATTRIBUTE_ISOPNE:
+							*isnull = false;
+							if (attr->get_from_portal)
+							{
+								attr->value = BoolGetDatum(cursor_is_open(estate, cursor, true));
+								attr->get_from_portal = false;
+							}
+							*value = attr->value;
+							break;
+						case PLISQL_ATTRIBUTE_FOUND:
+							if (attr->get_from_portal)
+							{
+								attr->value = plisql_get_cursor_attribute(estate,
+														cursor,
+														PLISQL_ATTRIBUTE_FOUND,
+														&attr->isnull);
+								attr->get_from_portal = false;
+							}
+							*isnull = attr->isnull;
+							*value = attr->value;
+							break;
+						case PLISQL_ATTRIBUTE_NOTFOUND:
+							if (attr->get_from_portal)
+							{
+								attr->value = plisql_get_cursor_attribute(estate,
+														cursor,
+														PLISQL_ATTRIBUTE_NOTFOUND,
+														&attr->isnull);
+								attr->get_from_portal = false;
+							}
+							*isnull = attr->isnull;
+							*value = attr->value;
+							break;
+						case PLISQL_ATTRIBUTE_ROWCOUNT:
+							if (attr->get_from_portal)
+							{
+								attr->value = plisql_get_cursor_attribute(estate,
+														cursor,
+														PLISQL_ATTRIBUTE_ROWCOUNT,
+														&attr->isnull);
+								attr->get_from_portal = false;
+							}
+							*isnull = attr->isnull;
+							*value = attr->value;
+							break;
+						default:
+							ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("identifier  \'%s\' is not a legal cursor attribute",
+								attr->fieldname)));
+							break;
+					}
+				}
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 	}
@@ -5928,6 +6408,16 @@ plisql_exec_get_datum_type(PLiSQL_execstate *estate,
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			{
+				PLiSQL_attribute *attr = (PLiSQL_attribute *) datum;
+
+				typeid = attr->datatype->typoid;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 			typeid = InvalidOid;	/* keep compiler quiet */
@@ -5947,7 +6437,8 @@ plisql_exec_get_datum_type(PLiSQL_execstate *estate,
 void
 plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 								 PLiSQL_datum *datum,
-								 Oid *typeId, int32 *typMod, Oid *collation)
+								 Oid *typeId, int32 *typMod, Oid *collation,
+								 void **type_address) /* ReqID:SRS-PLSQL-CURSOR */
 {
 	switch (datum->dtype)
 	{
@@ -5959,6 +6450,15 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 				*typeId = var->datatype->typoid;
 				*typMod = var->datatype->atttypmod;
 				*collation = var->datatype->collation;
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				if (var->datatype->ttype == PLISQL_TTYPE_UDT_REF_CURSOR)
+				{
+					PLiSQL_ref_cursor_type *ref_type = (PLiSQL_ref_cursor_type *) var->datatype;
+
+					if (ref_type->rettype != NULL)
+						*type_address = var->datatype;
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				break;
 			}
 
@@ -6033,10 +6533,23 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 				datum = plisql_get_datum(estate, datum);
 				plisql_exec_get_datum_type_info(estate,
 								 datum,
-								 typeId, typMod, collation);
+								 typeId, typMod, collation,
+								 type_address); /* ReqID:SRS-PLSQL-CURSOR */
 				break;
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			{
+				PLiSQL_attribute *attr = (PLiSQL_attribute *) datum;
+
+				*typeId = attr->datatype->typoid;
+				*typMod = attr->datatype->atttypmod;
+				*collation = attr->datatype->collation;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
@@ -6063,6 +6576,10 @@ plisql_assign_in_global_var(PLiSQL_execstate *estate,
 	int32 typetypmod;
 	Datum value;
 	bool isnull;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	bool save_get_portal = false;
+	PLiSQL_attribute *attribute = NULL;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	Assert(dno < estate->ndatums);
 	Assert(dno < parestate->ndatums);
@@ -6073,9 +6590,38 @@ plisql_assign_in_global_var(PLiSQL_execstate *estate,
 	Assert(parestate->datums[dno]->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
 
 	/* get origin value */
-	exec_eval_datum(parestate, parestate->datums[dno],
-					&typeid, &typetypmod,
-					&value, &isnull);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * there, if attribute, we should
+	 * not get its value from portal
+	 */
+	if (parestate->datums[dno]->dtype == PLISQL_DTYPE_ATTRIBUTE)
+	{
+		attribute = (PLiSQL_attribute *) parestate->datums[dno];
+
+		save_get_portal = attribute->get_from_portal;
+	}
+	if (attribute != NULL &&
+		save_get_portal)
+	{
+		PG_TRY();
+		{
+			attribute->get_from_portal = false;
+			exec_eval_datum(parestate, parestate->datums[dno],
+							&typeid, &typetypmod,
+							&value, &isnull);
+		}
+		PG_FINALLY();
+		{
+			attribute->get_from_portal = save_get_portal;
+		}
+		PG_END_TRY();
+	}
+	else
+		exec_eval_datum(parestate, parestate->datums[dno],
+							&typeid, &typetypmod,
+							&value, &isnull);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * If it's a read/write expanded datum, convert reference to read-only.
@@ -6108,6 +6654,10 @@ plisql_assign_out_global_var(PLiSQL_execstate *estate,
 	Datum value;
 	bool isnull;
 	MemoryContext oldctx;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	bool save_get_portal = false;
+	PLiSQL_attribute *attribute = NULL;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	Assert(dno < estate->ndatums);
 	Assert(dno < parestate->ndatums);
@@ -6116,10 +6666,39 @@ plisql_assign_out_global_var(PLiSQL_execstate *estate,
 	Assert(parestate->datums[dno]->dtype == estate->datums[dno]->dtype);
 	Assert(parestate->datums[dno]->dtype != PLISQL_DTYPE_PACKAGE_DATUM);
 
-	/* get origin value */
-	exec_eval_datum(estate, estate->datums[dno],
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * there, if attribute, we should
+	 * not get its value from portal
+	 */
+	if (parestate->datums[dno]->dtype == PLISQL_DTYPE_ATTRIBUTE)
+	{
+		attribute = (PLiSQL_attribute *) estate->datums[dno];
+
+		save_get_portal = attribute->get_from_portal;
+	}
+	if (attribute != NULL &&
+		save_get_portal)
+	{
+		PG_TRY();
+		{
+			attribute->get_from_portal = false;
+			exec_eval_datum(estate, estate->datums[dno],
 					&typeid, &typetypmod,
 					&value, &isnull);
+		}
+		PG_FINALLY();
+		{
+			attribute->get_from_portal = save_get_portal;
+		}
+		PG_END_TRY();
+	}
+	else
+		exec_eval_datum(estate, estate->datums[dno],
+					&typeid, &typetypmod,
+					&value, &isnull);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/*
 	 * If it's a read/write expanded datum, convert reference to read-only.
 	 * (There's little point in trying to optimize read/write parameters,
@@ -6152,6 +6731,207 @@ plisql_assign_out_global_var(PLiSQL_execstate *estate,
 }
 
 /* End - SRS-PLSQL-SUBPROC */
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * assign sql_cursor_init to false, so that
+ * we can ignore last value
+ */
+void
+plisql_init_sql_cursor(void)
+{
+	sql_cursor_init = false;
+}
+
+
+/*
+ * cursor is open ?
+ */
+bool
+cursor_is_open(PLiSQL_execstate *estate, PLiSQL_var *cursor, bool check_portal_exist)
+{
+	bool isopen;
+	char *portalname = NULL;
+	MemoryContext stmt_mcontext;
+	MemoryContext oldcontext;
+
+	if (ISORACURSOROID(cursor->datatype->typoid))
+	{
+		if (cursor->datatype->typoid == SYS_REFCURSOROID)
+		{
+			isopen = !cursor->isnull;
+			if (isopen && check_portal_exist)
+			{
+				if (estate != NULL)
+				{
+					/* We only need stmt_mcontext to hold the cursor name string */
+					stmt_mcontext = get_stmt_mcontext(estate);
+					oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+					portalname = TextDatumGetCString(cursor->value);
+					MemoryContextSwitchTo(oldcontext);
+				}
+				else
+					portalname = TextDatumGetCString(cursor->value);
+			}
+		}
+		else
+		{
+			if (cursor->isnull)
+				isopen = !cursor->isnull;
+			else
+			{
+				if (orarefcursor_funcs.loadstate != LOADED)
+					elog(ERROR, "orarefcursor function has not been loaded");
+				isopen = !orarefcursor_funcs.OraRefcursorIsnull(cursor->value);
+				if (isopen && check_portal_exist)
+				{
+					if (estate != NULL)
+					{
+						/* We only need stmt_mcontext to hold the cursor name string */
+						stmt_mcontext = get_stmt_mcontext(estate);
+						oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+						portalname = orarefcursor_funcs.DatumGetOraRefCursorPortal(cursor->value);
+						MemoryContextSwitchTo(oldcontext);
+					}
+					else
+						portalname = orarefcursor_funcs.DatumGetOraRefCursorPortal(cursor->value);
+				}
+			}
+		}
+	}
+	else
+	{
+		isopen = !cursor->isnull;
+		if (isopen && check_portal_exist)
+		{
+			if (estate != NULL)
+			{
+				/* We only need stmt_mcontext to hold the cursor name string */
+				stmt_mcontext = get_stmt_mcontext(estate);
+				oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+				portalname = TextDatumGetCString(cursor->value);
+				MemoryContextSwitchTo(oldcontext);
+			}
+			else
+				portalname = TextDatumGetCString(cursor->value);
+		}
+	}
+	if (check_portal_exist &&
+		portalname != NULL)
+	{
+		if (SPI_cursor_find(portalname) != NULL)
+			isopen = true;
+		else
+			isopen = false;
+	}
+	if (portalname != NULL)
+		pfree(portalname);
+	return isopen;
+}
+
+
+
+/*
+ * get cursor'portal name
+ */
+char*
+plisql_get_portal_name(PLiSQL_execstate *estate,
+								PLiSQL_var *cursor)
+{
+	char *portalname = NULL;
+	MemoryContext stmt_mcontext;
+	MemoryContext oldcontext;
+
+	if (ISORACURSOROID(cursor->datatype->typoid))
+	{
+		if (cursor->datatype->typoid == SYS_REFCURSOROID)
+		{
+			if (!cursor->isnull)
+			{
+				if (estate != NULL)
+				{
+					/* We only need stmt_mcontext to hold the cursor name string */
+					stmt_mcontext = get_stmt_mcontext(estate);
+					oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+					portalname = TextDatumGetCString(cursor->value);
+					MemoryContextSwitchTo(oldcontext);
+				}
+				else
+					portalname = TextDatumGetCString(cursor->value);
+			}
+		}
+		else
+		{
+			if (!cursor->isnull)
+			{
+				if (orarefcursor_funcs.loadstate != LOADED)
+					elog(ERROR, "orarefcursor function has not been loaded");
+				if (estate != NULL)
+				{
+					/* We only need stmt_mcontext to hold the cursor name string */
+					stmt_mcontext = get_stmt_mcontext(estate);
+					oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+					portalname = orarefcursor_funcs.DatumGetOraRefCursorPortal(cursor->value);
+					MemoryContextSwitchTo(oldcontext);
+				}
+				else
+					portalname = orarefcursor_funcs.DatumGetOraRefCursorPortal(cursor->value);
+			}
+		}
+	}
+	else if (!cursor->isnull)
+	{
+		if (estate != NULL)
+		{
+			/* We only need stmt_mcontext to hold the cursor name string */
+			stmt_mcontext = get_stmt_mcontext(estate);
+			oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+			portalname = TextDatumGetCString(cursor->value);
+			MemoryContextSwitchTo(oldcontext);
+		}
+		else
+			portalname = TextDatumGetCString(cursor->value);
+	}
+
+	return portalname;
+}
+
+
+
+/*
+ * get tupldesc from a cursor
+ */
+TupleDesc
+plisql_get_cursor_tupdesc(PLiSQL_execstate * estate,
+									PLiSQL_expr * expr,
+									int cursor_options)
+{
+	SPIPlanPtr  plan;
+	CachedPlanSource	 *plansource;
+	TupleDesc	 result;
+
+	if (expr->plan == NULL)
+		exec_prepare_plan(estate, expr, cursor_options);
+	plan = expr->plan;
+
+	if (plan == NULL)
+		elog(ERROR, "cursor select stmt plan failed");
+
+	if (list_length(SPI_plan_get_plan_sources(plan)) != 1)
+		elog(ERROR, "cursor don't support mutil stmt");
+
+	plansource = (CachedPlanSource *) linitial(SPI_plan_get_plan_sources(plan));
+
+	if (plansource->resultDesc == NULL)
+		elog(ERROR, "cursor select stmt don't return any struct");
+
+	result = CreateTupleDescCopy(plansource->resultDesc);
+
+	return result;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 
 /* ----------
@@ -6897,6 +7677,9 @@ plisql_param_fetch(ParamListInfo params,
 	{
 		switch (datum->dtype)
 		{
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			case PLISQL_DTYPE_VAR:
 			case PLISQL_DTYPE_PROMISE:
 				/* always safe */
@@ -7396,6 +8179,9 @@ exec_move_row(PLiSQL_execstate *estate,
 	if (target->dtype == PLISQL_DTYPE_REC)
 	{
 		PLiSQL_rec *rec = (PLiSQL_rec *) target;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		bool is_rowtype_rec = is_plisql_rowtype_record(rec);
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/*
 		 * If we have no source tupdesc, just set the record variable to NULL.
@@ -7419,6 +8205,16 @@ exec_move_row(PLiSQL_execstate *estate,
 				expanded_record_set_tuple(newerh, NULL, false, false);
 				assign_record_var(estate, rec, newerh);
 			}
+			/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+			else if (is_rowtype_rec)
+			{
+				newerh = make_expanded_record_for_rec(estate, rec,
+													  NULL, rec->erh);
+				expanded_record_set_tuple(newerh, NULL, false, false);
+				assign_record_var(estate, rec, newerh);
+
+			}
+			/* End - ReqID:SRS-PLSQL-SUBPROC */
 			else
 			{
 				/* Just clear it to NULL */
@@ -7434,6 +8230,13 @@ exec_move_row(PLiSQL_execstate *estate,
 		 */
 		newerh = make_expanded_record_for_rec(estate, rec, tupdesc, NULL);
 
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		if (is_rowtype_rec)
+			ora_test_tupdesc_match(tupdesc,
+				expanded_record_get_tupdesc(newerh),
+				true);
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
 		/*
 		 * If the rowtypes match, or if we have no tuple anyway, we can
 		 * complete the assignment without field-by-field processing.
@@ -7445,8 +8248,9 @@ exec_move_row(PLiSQL_execstate *estate,
 		 * but is actually physically compatible with a named-composite-type
 		 * target, so it's worth spending extra cycles to check for that.
 		 */
-		if (rec->rectypeid == RECORDOID ||
-			rec->rectypeid == tupdesc->tdtypeid ||
+		if (((rec->rectypeid == RECORDOID ||
+			rec->rectypeid == tupdesc->tdtypeid) &&
+			!is_rowtype_rec)|| /* ReqID:SRS-PLSQL-CURSOR */
 			!HeapTupleIsValid(tup) ||
 			compatible_tupdescs(tupdesc, expanded_record_get_tupdesc(newerh)))
 		{
@@ -7628,6 +8432,18 @@ make_expanded_record_for_rec(PLiSQL_execstate *estate,
 			newerh = make_expanded_record_from_typeid(rec->rectypeid, -1,
 													  mcontext);
 	}
+	/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+	/*
+	 * cursor%rowtype, we build it as record, but its tupldesc
+	 * not change
+	 */
+	else if (rec->datatype != NULL &&
+		rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+	{
+		newerh = make_expanded_record_from_rowtype(rec->datatype, -1,
+													  mcontext);
+	}
+	/* End - ReqID:SRS-PLSQL-SUBPROC */
 	else
 	{
 		/*
@@ -7697,6 +8513,21 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 		else if (plisql_extra_warnings & PLISQL_XCHECK_STRICTMULTIASSIGNMENT)
 			strict_multiassignment_level = WARNING;
 	}
+
+	/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+	/*
+	 * cursor%rowtype should raise error, when mismatch
+	 */
+	if (strict_multiassignment_level == WARNING &&
+		target->dtype == PLISQL_DTYPE_REC)
+	{
+		PLiSQL_rec *rec = (PLiSQL_rec *) target;
+
+		if (rec->datatype != NULL &&
+			rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+			strict_multiassignment_level = ERROR;
+	}
+	/* End - ReqID:SRS-PLSQL-SUBPROC */
 
 	/* Handle RECORD-target case */
 	if (target->dtype == PLISQL_DTYPE_REC)
@@ -8363,6 +9194,19 @@ instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	Assert(rec->erh == NULL);	/* else caller error */
+
+	/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+	/* cursor%rowtype is a rec and its rectypeid is RECORDOID */
+	if (rec->datatype != NULL &&
+		rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+	{
+		mc = plisql_get_relevantContext((PLiSQL_variable *) rec,/* BUG#M0000167 */
+							estate->datum_context);
+		rec->erh = make_expanded_record_from_rowtype(rec->datatype, -1,
+												mc);
+		return;
+	}
+	/* End - ReqID:SRS-PLSQL-SUBPROC */
 
 	/* If declared type is RECORD, we can't instantiate */
 	if (rec->rectypeid == RECORDOID)
@@ -9040,6 +9884,446 @@ exec_set_found(PLiSQL_execstate *estate, bool state)
 	assign_simple_var(estate, var, BoolGetDatum(state), false, false);
 }
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/* ----------
+ * exec_set_implicit_cursor_attribute
+ * Set the implicit cursor attribute variable
+ * ----------
+ */
+static void
+exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount)
+{
+	PLiSQL_datum *attribute;
+	PLiSQL_var *cursor;
+	int first_attno;
+	int i;
+
+	cursor = (PLiSQL_var *) estate->datums[estate->sql_varno];
+	first_attno = cursor->firstattribute;
+
+	for (i = 0; i <= PLISQL_SUPPORT_ATTRIBUTE_NUM; i++)
+	{
+		attribute = estate->datums[first_attno + i];
+
+		switch (i)
+		{
+			case PLISQL_ATTRIBUTE_ISOPNE:
+				/* always false, we need not assign */
+				break;
+			case PLISQL_ATTRIBUTE_FOUND:
+				exec_assign_value(estate, attribute,
+							BoolGetDatum(rowcount != 0),
+							false, BOOLOID, -1);
+				break;
+			case PLISQL_ATTRIBUTE_NOTFOUND:
+				/* the same value as found */
+				break;
+			case PLISQL_ATTRIBUTE_ROWCOUNT:
+				exec_assign_value(estate, attribute,
+							Int64GetDatum(rowcount),
+							false, INT8OID, -1);
+				break;
+			default:
+				elog(ERROR, "invalid attribute");
+				break;
+		}
+	}
+}
+
+
+/*
+ * set cursor attribte from portal
+ */
+static void
+exec_set_cursor_attribute(PLiSQL_execstate *estate,
+									PLiSQL_var *cursor)
+{
+	PLiSQL_attribute *attribute;
+	int first_attno;
+	int i;
+	bool is_global_var = false;
+
+	if (is_package_global_var((PLiSQL_variable *)cursor))
+		is_global_var = true;
+
+	first_attno = cursor->firstattribute;
+
+	for (i = 0; i <= PLISQL_SUPPORT_ATTRIBUTE_NUM; i++)
+	{
+		if (is_global_var)
+			attribute = (PLiSQL_attribute *) get_package_datum_bydno(estate,
+											cursor->pkgoid,
+											first_attno + i);
+		else
+			attribute = (PLiSQL_attribute *)  estate->datums[first_attno + i];
+		Assert(attribute->dtype == PLISQL_DTYPE_ATTRIBUTE);
+
+		attribute->get_from_portal = true;
+	}
+}
+
+
+/*
+ * like assign_simple_var
+ * we assign PLiSQL_attribute
+ */
+static void
+assign_simple_attribute(PLiSQL_execstate *estate,
+								PLiSQL_attribute *var, Datum newvalue,
+								bool isnull, bool freeable)
+{
+	Assert(var->dtype == PLISQL_DTYPE_ATTRIBUTE);
+
+	/*
+	 * In non-atomic contexts, we do not want to store TOAST pointers in
+	 * variables, because such pointers might become stale after a commit.
+	 * Forcibly detoast in such cases.	We don't want to detoast (flatten)
+	 * expanded objects, however; those should be OK across a transaction
+	 * boundary since they're just memory-resident objects.  (Elsewhere in
+	 * this module, operations on expanded records likewise need to request
+	 * detoasting of record fields when !estate->atomic.  Expanded arrays are
+	 * not a problem since all array entries are always detoasted.)
+	 */
+	if (!estate->atomic && !isnull && var->datatype->typlen == -1 &&
+		VARATT_IS_EXTERNAL_NON_EXPANDED(DatumGetPointer(newvalue)))
+	{
+		MemoryContext oldcxt;
+		Datum		detoasted;
+
+		/*
+		 * Do the detoasting in the eval_mcontext to avoid long-term leakage
+		 * of whatever memory toast fetching might leak.  Then we have to copy
+		 * the detoasted datum to the function's main context, which is a
+		 * pain, but there's little choice.
+		 */
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		if (OidIsValid(var->pkgoid))
+			oldcxt = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+					get_eval_mcontext(estate)));
+		else
+			oldcxt = MemoryContextSwitchTo(get_eval_mcontext(estate));
+		/* End - ReqID:SRS-SQL-PACKAGE */
+		detoasted = PointerGetDatum(detoast_external_attr((struct varlena *) DatumGetPointer(newvalue)));
+		MemoryContextSwitchTo(oldcxt);
+		/* Now's a good time to not leak the input value if it's freeable */
+		if (freeable)
+			pfree(DatumGetPointer(newvalue));
+		/* Once we copy the value, it's definitely freeable */
+		newvalue = datumCopy(detoasted, false, -1);
+		freeable = true;
+		/* Can't clean up eval_mcontext here, but it'll happen before long */
+	}
+
+	/* Free the old value if needed */
+	if (var->freeval)
+	{
+		if (DatumIsReadWriteExpandedObject(var->value,
+										   var->isnull,
+										   var->datatype->typlen))
+			DeleteExpandedObject(var->value);
+		else
+			pfree(DatumGetPointer(var->value));
+	}
+	/* Assign new value to datum */
+	var->value = newvalue;
+	var->isnull = isnull;
+	var->freeval = freeable;
+}
+
+
+/*
+ * assign portal name to cursor var value
+ */
+static void
+assign_cursor_var(PLiSQL_execstate *estate,
+									PLiSQL_var *var,
+									Portal portal)
+{
+	MemoryContext ctx = NULL;
+
+	if (portal->tupDesc == NULL)
+		elog(ERROR, "cursor doesn't return tuple");
+
+	/* rettype should match the result tupdesc */
+	if (var->cursor_resulttupdesc != NULL)
+	{
+		ora_test_tupdesc_match(var->cursor_resulttupdesc, portal->tupDesc, true);
+	}
+
+	/* free old value */
+	if (var->freeval)
+	{
+		if (DatumIsReadWriteExpandedObject(var->value,
+										   var->isnull,
+										   var->datatype->typlen))
+			DeleteExpandedObject(var->value);
+		else
+			pfree(DatumGetPointer(var->value));
+		var->freeval = false;
+	}
+
+	if (is_package_global_var((PLiSQL_variable *) var)) /* BUG#M0000167 */
+	{
+		ctx = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,/* BUG#M0000167 */
+											CurrentMemoryContext));
+	}
+
+	if (ISORACURSOROID(var->datatype->typoid))
+	{
+		if (var->datatype->typoid == SYS_REFCURSOROID)
+		{
+			assign_simple_var(estate, var, CStringGetTextDatum(portal->name), false, true);
+		}
+		else
+		{
+			Datum newvalue = orarefcursor_funcs.init_orarefcursor_value((void *) var->datatype,
+																		portal->name);
+			assign_simple_var(estate, var, newvalue, false, true);
+		}
+	}
+	else
+		assign_simple_var(estate, var, CStringGetTextDatum(portal->name), false, true);
+	if (ctx)
+		MemoryContextSwitchTo(ctx);
+}
+
+
+/*
+ * close ununsed open cursor exclude
+ * where last_global_varno references
+ */
+static void
+exec_close_unused_open_cursor(PLiSQL_execstate *estate, int last_global_varno)
+{
+	List *used_portal = NIL;
+	int i;
+
+	Assert(last_global_varno < estate->ndatums);
+
+	/* collect global unsed portal */
+	for (i = 0; i <= last_global_varno; i++)
+	{
+		PLiSQL_datum *datum = estate->datums[i];
+
+		if (datum->dno == estate->sql_varno)
+			continue;
+
+		/* handle  package_datum */
+		if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+		{
+			PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *) datum;
+
+			datum = pkg_datum->pkgvar;
+		}
+
+		if (datum->dtype == PLISQL_DTYPE_VAR)
+		{
+			PLiSQL_var *var = (PLiSQL_var *) datum;
+
+			if (ISORACURSOROID(var->datatype->typoid))
+			{
+				char *curname;
+				Portal portal;
+
+				curname = plisql_get_portal_name(estate, var);
+				portal = SPI_cursor_find(curname);
+				if (portal != NULL)
+					used_portal = list_append_unique(used_portal, (void *) portal);
+				if (curname)
+					pfree(curname);
+			}
+		}
+	}
+
+	/* collect local package_datums */
+	for (i = last_global_varno + 1; i < estate->ndatums; i++)
+	{
+		PLiSQL_datum *datum = estate->datums[i];
+		PLiSQL_pkg_datum *pkg_datum;
+
+		/* handle  package_datum */
+		if (datum->dtype != PLISQL_DTYPE_PACKAGE_DATUM)
+			continue;
+
+		pkg_datum = (PLiSQL_pkg_datum *) datum;
+
+		datum = pkg_datum->pkgvar;
+
+		if (datum->dtype == PLISQL_DTYPE_VAR)
+		{
+			PLiSQL_var *var = (PLiSQL_var *) datum;
+
+			if (ISORACURSOROID(var->datatype->typoid))
+			{
+				char *curname;
+				Portal portal;
+
+				curname = plisql_get_portal_name(estate, var);
+				portal = SPI_cursor_find(curname);
+				if (portal != NULL)
+					used_portal = list_append_unique(used_portal, (void *) portal);
+				if (curname)
+					pfree(curname);
+			}
+		}
+	}
+
+	/* handle estate.retval */
+	if (ISORACURSOROID(estate->rettype) &&
+		!estate->retisnull)
+	{
+		MemoryContext stmt_mcontext;
+		MemoryContext oldcontext;
+		char *curname;
+		Portal portal;
+
+		/* We only need stmt_mcontext to hold the cursor name string */
+		stmt_mcontext = get_stmt_mcontext(estate);
+		oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+
+		if (estate->rettype == SYS_REFCURSOROID)
+		{
+			curname = TextDatumGetCString(estate->retval);
+		}
+		else
+		{
+			if (orarefcursor_funcs.loadstate != LOADED)
+				elog(ERROR, "orarefcursor function has not been loaded");
+			curname = orarefcursor_funcs.DatumGetOraRefCursorPortal(estate->retval);
+		}
+		MemoryContextSwitchTo(oldcontext);
+		portal = SPI_cursor_find(curname);
+		if (portal != NULL)
+			used_portal = list_append_unique(used_portal, (void *) portal);
+		if (curname)
+			pfree(curname);
+	}
+	/* now, close unused cursor */
+	for (i = last_global_varno + 1; i < estate->ndatums; i++)
+	{
+		PLiSQL_datum *datum = estate->datums[i];
+
+		if (datum->dno == estate->sql_varno)
+			continue;
+
+		if (datum->dtype == PLISQL_DTYPE_VAR)
+		{
+			PLiSQL_var *var = (PLiSQL_var *) datum;
+
+			if (ISORACURSOROID(var->datatype->typoid))
+			{
+				char *curname;
+				Portal portal;
+
+				curname = plisql_get_portal_name(estate, var);
+				portal = SPI_cursor_find(curname);
+				if (portal != NULL)
+				{
+					if (!list_member(used_portal, (void *)portal))
+						SPI_cursor_close(portal);
+				}
+				if (curname)
+					pfree(curname);
+			}
+		}
+	}
+	list_free(used_portal);
+
+	return;
+}
+
+
+
+/*
+ * Build an expanded record of the specified cursor%rowtype
+ */
+static ExpandedRecordHeader*
+make_expanded_record_from_rowtype(PLiSQL_type *rowtype, int32 typmod,
+												MemoryContext parentcontext)
+{
+	ExpandedRecordHeader *erh;
+	int 		flags = 0;
+	TupleDesc	tupdesc;
+	uint64		tupdesc_id;
+	MemoryContext objcxt;
+	char	   *chunk;
+
+	switch (rowtype->ttype)
+	{
+		case PLISQL_TTYPE_EXPLICIT_CURSOR:
+			{
+				PLiSQL_explicit_cursor_type *cursor_type = (PLiSQL_explicit_cursor_type *) rowtype;
+
+				Assert(cursor_type->retdesc != NULL);
+				tupdesc = cursor_type->retdesc;
+				tupdesc_id = CURSOR_ROWTYPE_TUPLDESC_IDENTIFIER;
+			}
+			break;
+		default:
+			elog(ERROR, "invalid ttype %u", rowtype->ttype);
+			break;
+	}
+
+	/*
+	 * Allocate private context for expanded object.  We use a regular-size
+	 * context, not a small one, to improve the odds that we can fit a tupdesc
+	 * into it without needing an extra malloc block.  (This code path doesn't
+	 * ever need to copy a tupdesc into the expanded record, but let's be
+	 * consistent with the other ways of making an expanded record.)
+	 */
+	objcxt = AllocSetContextCreate(parentcontext,
+								   "expanded record",
+								   ALLOCSET_DEFAULT_SIZES);
+
+	/*
+	 * Since we already know the number of fields in the tupdesc, we can
+	 * allocate the dvalues/dnulls arrays along with the record header.  This
+	 * is useless if we never need those arrays, but it costs almost nothing,
+	 * and it will save a palloc cycle if we do need them.
+	 */
+	erh = (ExpandedRecordHeader *)
+		MemoryContextAlloc(objcxt, MAXALIGN(sizeof(ExpandedRecordHeader))
+						   + tupdesc->natts * (sizeof(Datum) + sizeof(bool)));
+
+	/* Ensure all header fields are initialized to 0/null */
+	memset(erh, 0, sizeof(ExpandedRecordHeader));
+
+	EOH_init_header(&erh->hdr, GetExpandedObjectMethods(), objcxt);
+	erh->er_magic = ER_MAGIC;
+
+	/* Set up dvalues/dnulls, with no valid contents as yet */
+	chunk = (char *) erh + MAXALIGN(sizeof(ExpandedRecordHeader));
+	erh->dvalues = (Datum *) chunk;
+	erh->dnulls = (bool *) (chunk + tupdesc->natts * sizeof(Datum));
+	erh->nfields = tupdesc->natts;
+
+	/* Fill in composite-type identification info */
+	erh->er_decltypeid = rowtype->typoid;
+	erh->er_typeid = tupdesc->tdtypeid;
+	erh->er_typmod = tupdesc->tdtypmod;
+	erh->er_tupdesc_id = tupdesc_id;
+
+	erh->flags = flags;
+
+	/*
+	 * If it's not refcounted, just assume it will outlive the expanded
+	 * object.	(This can happen for shared record types, for instance.)
+	*/
+	erh->er_tupdesc = tupdesc;
+
+	/*
+	 * We don't set ER_FLAG_DVALUES_VALID or ER_FLAG_FVALUE_VALID, so the
+	 * record remains logically empty.
+	 */
+
+	return erh;
+}
+
+
+
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 /*
  * plisql_create_econtext --- create an eval_econtext for the current function
  *
@@ -9643,6 +10927,19 @@ plisql_out_param(ExprState *state, ExprEvalStep *op)
 		bool			isnull;
 
 		target = estate->datums[paramids[i]];
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		/*
+		 * not allow attribute as out parameter
+		 */
+		if (target->dtype == PLISQL_DTYPE_ATTRIBUTE)
+		{
+			PLiSQL_attribute *attr = (PLiSQL_attribute *) target;
+
+			elog(ERROR, "expression '%%%s' cannot be used as an assignment target",
+				attr->fieldname);
+		}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		valtype = tupdesc->attrs[j].atttypid;
 		valtypmod = tupdesc->attrs[j].atttypmod;

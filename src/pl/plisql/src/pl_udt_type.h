@@ -1,0 +1,128 @@
+/*-------------------------------------------------------------------------
+ *
+ * File:pl_udt_type.h
+ *
+ * Abstract:
+ *		Definitions for the PLISQL
+ *			  procedural language user define type
+ *
+ * ReqID:SRS-PLSQL-CURSOR
+ *
+ * Authored by dwdai@highgo.com,20230306.
+ *
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
+ *
+ * IDENTIFICATION
+ *	  src/pl/plisql/src/pl_udt_type.h
+ *
+ *-------------------------------------------------------------------------
+ */
+
+#ifndef PL_UDT_TYPE_H
+#define PL_UDT_TYPE_H
+#include "plisql.h"
+#include "access/tupdesc.h"
+#include "parser/parse_node.h"
+
+typedef struct PLiSQL_datum_udt_type
+{
+	/* PLiSQL_datum attribute */
+	PLiSQL_datum_type dtype;
+	int			dno;
+	Oid			pkgoid;
+	/* end PLiSQL_datum attribute */
+	PLiSQL_type		*udt_type;
+} PLiSQL_datum_udt_type;
+
+typedef struct PLiSQL_ref_cursor_type
+{
+	PLiSQL_type	type;		/* type base type */
+	int			lineno;		/* line num */
+	struct PLiSQL_type *rettype;	/* cursor type return type */
+	TupleDesc	rettype_tupdesc;	/* cursor type return type tupdesc */
+} PLiSQL_ref_cursor_type;
+
+
+typedef struct PLiSQL_explicit_cursor_type
+{
+	PLiSQL_type type;	/* type base type */
+	TupleDesc	retdesc;	/* result tupledesc  */
+} PLiSQL_explicit_cursor_type;
+
+/*
+ * used for cursor attribute like xxx%isoepn
+ */
+typedef struct PLiSQL_attribute
+{
+	PLiSQL_datum_type dtype;
+	int			dno;
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	Oid			pkgoid;
+	/* End - ReqID:SRS-SQL-PACKAGE */
+	char	   *fieldname;		/* name of field */
+	PLiSQL_type *datatype;
+	int			attributeparentno;	/* dno of parent cursor */
+	Datum  value;
+	bool    isnull;
+	bool    freeval;
+	bool    get_from_portal; /* should check portal */
+} PLiSQL_attribute;
+
+typedef enum PLiSQL_attribute_type
+{
+	PLISQL_ATTRIBUTE_ISOPNE = 0,
+	PLISQL_ATTRIBUTE_FOUND,
+	PLISQL_ATTRIBUTE_NOTFOUND,
+	PLISQL_ATTRIBUTE_ROWCOUNT
+} PLiSQL_attribute_type;
+
+#define PLISQL_SUPPORT_ATTRIBUTE_NUM 	PLISQL_ATTRIBUTE_ROWCOUNT
+
+extern int plisql_check_cursor_define(PLiSQL_var *var,
+							PLiSQL_type *rettype,
+							List *arglist);
+extern int plisql_build_cursor_args(List *arglist, int lineno);
+extern int plisql_buld_rows_from_datums(int *datum_dnos, int ndatums);
+extern bool check_all_args_has_default(List *arglist);
+extern char *get_args_default_query(List *arglist, int argno);
+extern void plisql_build_udt_cursor_type(const char *refname,
+										PLiSQL_type *rettype,
+										int lineno,
+										bool add2namespace);
+extern void plisql_register_orarefcursor_func(void);
+extern void plisql_build_cursor_attribute(PLiSQL_var *cursor);
+extern void plisql_build_package_local_cursor_attribute(PLiSQL_var *cursor,
+																		bool add2namespace,
+																		const char *refname,
+																		int lineno);
+extern bool is_sql_cursor(PLiSQL_execstate *estate, PLiSQL_var *var);
+extern bool is_oracursor_datum(PLiSQL_datum *datum);
+extern Datum plisql_get_cursor_attribute(PLiSQL_execstate *estate,
+										PLiSQL_var *cursor,
+										PLiSQL_attribute_type attr_type,
+										bool *isnull);
+extern bool is_implicut_cursor_or_attribute(PLiSQL_execstate *estate,
+										int dno);
+extern TupleDesc plisql_get_rowtype_tupledesc(PLiSQL_type *rowtype);
+
+extern void exec_check_assign_cursor_value(PLiSQL_execstate *estate,
+										PLiSQL_var *target,
+										Datum value, bool isNull,
+										Oid valtype, int32 valtypmod,
+										bool missok);
+extern PLiSQL_type *plisql_parse_udt_rowtype(const char *ident, bool byval);
+extern PLiSQL_type *plisql_return_ref_cursor_rowtype(PLiSQL_type *rowtype);
+extern PLiSQL_rec *plisql_build_record_for_cursorrowtype(const char *refname,
+										int lineno,
+										PLiSQL_type *dtype,
+										bool add2namespace);
+extern TupleDesc plisql_get_cursor_tupdesc_incompile(PLiSQL_expr *cursor_expr,
+													int cursor_options);
+extern PLiSQL_explicit_cursor_type *plisql_build_explicit_cursor_type(TupleDesc retdesc);
+extern bool is_plisql_rowtype_record(PLiSQL_rec *rec);
+extern void set_plisql_cursorvar_nsitem_typoid(PLiSQL_variable *variable,
+											bool set_retype);
+extern TupleDesc plisql_param_tupdesc_ref(ParseState *pstate, Param *param);
+#endif
+

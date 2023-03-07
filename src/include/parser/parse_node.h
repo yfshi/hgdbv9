@@ -113,6 +113,11 @@ typedef int (*ParseSubprocFuncHook) (ParseState *pstate, List *funcname,
 				void **pfunc);		/* return value */
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+typedef TupleDesc (*ParseParamTupleDescHook) (ParseState *pstate, Param *param);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 
 /*
  * State information used during parse analysis
@@ -245,6 +250,9 @@ struct ParseState
 	/* Begin - SRS-PLSQL-SUBPROC */
 	ParseSubprocFuncHook p_subprocfunc_hook;
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	ParseParamTupleDescHook p_param_tupdesc_hook;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	void	   *p_ref_hook_state;	/* common passthrough link for above */
 	/* Begin - Bug#Z167 */
 	uint16	    merge_on_attr_size;

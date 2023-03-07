@@ -32,6 +32,11 @@
  */
 typedef bool (*VariableAssignHook) (const char *newval);
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+typedef void (*VariablePrintHook) (char *name, char *value);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 /*
  * Variables can also be given "substitute hook" functions.  The substitute
  * hook can replace values (including NULL) with other values, allowing
@@ -89,6 +94,9 @@ struct _variable
 	/* End - ReqID:SRS-CMD-PSQL */
 	VariableSubstituteHook substitute_hook;
 	VariableAssignHook assign_hook;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	VariablePrintHook print_hook;	/* print hook only for PSQL_BIND_VAR, maybe null */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	struct _variable *next;
 };
 

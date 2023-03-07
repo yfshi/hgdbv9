@@ -27,6 +27,13 @@
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+#include "storage/proc.h"
+#include "common/hashfn.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /*
  * Estimate of the maximum number of open portals a user would have,
@@ -192,6 +199,16 @@ CreatePortal(const char *name, bool allowDup, bool dupSilent)
 							name)));
 		PortalDrop(portal, false);
 	}
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (ORA_PARSER == compatible_db)
+	{
+		int n_eles = hash_get_num_entries(PortalHashTable);
+
+		if (n_eles >= open_cursors)
+			elog(ERROR, "maximum open cursors exceeded");
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* make new portal structure */
 	portal = (Portal) MemoryContextAllocZero(TopPortalContext, sizeof *portal);
@@ -1213,6 +1230,159 @@ pg_cursor(PG_FUNCTION_ARGS)
 
 	return (Datum) 0;
 }
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/* Find all available cursors used in v$open_cursor view */
+Datum
+ora_open_cursors(PG_FUNCTION_ARGS)
+{
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc	tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+	HASH_SEQ_STATUS hash_seq;
+	PortalHashEnt *hentry;
+
+	/* check to see if caller supports us returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not allowed in this context")));
+
+	/* need to build tuplestore in query context */
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	/*
+	 * build tupdesc for result tuples. This must match the definition of the
+	 * open_cursors view in contrib/ivorysql_ora/src/sysview
+	 */
+	tupdesc = CreateTemplateTupleDesc(12, false);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "saddr",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "sid",
+					   NUMERICOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "user_name",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 4, "address",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 5, "hash_value",
+					   NUMERICOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 6, "sql_id",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 7, "sql_text",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 8, "last_sql_active_time",
+					   DATEOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 9, "sql_exec_id",
+					   NUMERICOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 10, "cursor_type",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 11, "child_address",
+					   TEXTOID, -1, 0);
+	TupleDescInitEntry(tupdesc, (AttrNumber) 12, "con_id",
+					   NUMERICOID, -1, 0);
+
+	/*
+	 * We put all the tuples into a tuplestore in one scan of the hashtable.
+	 * This avoids any issue of the hashtable possibly changing between calls.
+	 */
+	tupstore =
+		tuplestore_begin_heap(rsinfo->allowedModes & SFRM_Materialize_Random,
+							  false, work_mem);
+
+	/* generate junk in short-term context */
+	MemoryContextSwitchTo(oldcontext);
+
+	hash_seq_init(&hash_seq, PortalHashTable);
+	while ((hentry = hash_seq_search(&hash_seq)) != NULL)
+	{
+		Portal		portal = hentry->portal;
+		Datum		values[12];
+		bool		nulls[12];
+		uint64		address;
+		Datum		text_datum;
+		Name		name;
+
+		/* report only "visible" entries */
+		if (!portal->visible)
+			continue;
+
+		MemSet(nulls, 0, sizeof(nulls));
+
+		/* use MyProc as saddr */
+		address = (uint64) MyProc;
+		text_datum = DirectFunctionCall1(to_hex64,
+										Int64GetDatum(address));
+		values[0] = text_datum;
+
+		values[1] = DirectFunctionCall1(int4_numeric,
+										Int32GetDatum(MyBackendId));
+		/* no DirectFunctionCall0 use DirectFunctionCall1 */
+		name =	DatumGetName(DirectFunctionCall1(session_user,
+										Int32GetDatum(MyBackendId)));
+		values[2] = CStringGetTextDatum(NameStr(*name));
+		pfree(name);
+
+		/* use portal as address */
+		address = (uint64) portal;
+		text_datum = DirectFunctionCall1(to_hex64,
+										Int64GetDatum(address));
+		values[3] = text_datum;
+
+		/* use string_hash(portal->name and MyBackendId) as hash_value */
+		{
+			StringInfoData data;
+			uint32 uvalue;
+
+			initStringInfo(&data);
+			appendStringInfo(&data, "%s%d", portal->name, MyBackendId);
+			uvalue = string_hash((const void *) data.data,
+											data.len);
+			address = (uint64) uvalue;
+			values[4] = DirectFunctionCall1(int8_numeric,
+										Int64GetDatum(address));
+			pfree(data.data);
+		}
+		/* to_hex32(string_hash(portal->sourceText)) as sql_id */
+		values[5] = DirectFunctionCall1(to_hex32,
+										UInt32GetDatum(string_hash((const void *) portal->sourceText,
+											strlen(portal->sourceText))));
+		values[6] = CStringGetTextDatum(portal->sourceText);
+
+		/* last_sql_ascitve_time is always null */
+		nulls[7] = true;
+
+		/* createSubid as sql_exec_id */
+		values[8] = DirectFunctionCall1(int4_numeric,
+										UInt32GetDatum(portal->createSubid));
+		/* open as cursor_type */
+		values[9] = CStringGetTextDatum("open");
+		/* child_address is not support */
+		nulls[10] = true;
+		/* 0 as con_id */
+		values[11] = DirectFunctionCall1(int4_numeric,
+										Int32GetDatum(0));
+		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	}
+
+	/* clean up and return the tuplestore */
+	tuplestore_donestoring(tupstore);
+
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	return (Datum) 0;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 bool
 ThereAreNoReadyPortals(void)

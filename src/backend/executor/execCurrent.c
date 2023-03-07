@@ -274,7 +274,7 @@ fetch_cursor_param_value(ExprContext *econtext, int paramId)
 		if (OidIsValid(prm->ptype) && !prm->isnull)
 		{
 			/* safety check in case hook did something unexpected */
-			if (prm->ptype != REFCURSOROID)
+			if (!ISCURSOROID(prm->ptype)) /* ReqID:SRS-PLSQL-CURSOR */
 				ereport(ERROR,
 						(errcode(ERRCODE_DATATYPE_MISMATCH),
 						 errmsg("type of parameter %d (%s) does not match that when preparing the plan (%s)",

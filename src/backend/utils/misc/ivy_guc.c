@@ -95,6 +95,7 @@ bool	seq_scale_fixed = false;
 /* End - ReqID:SRS-SQL-SEQ */
 bool	internal_warning = false;	/* BUG#Z230 */
 
+
 /* Begin - BUG#M0000201: support question marks as binding variables */
 /* where the application is coming from */
 int	where_from = FROM_UNKNOWN;
@@ -128,12 +129,19 @@ int grant_usertype = PG_GRANTUSER;
 bool numerictonumber = false;
 /* End - BUG#z476 */
 
+
 /* Begin - SRS-MISC-COMPATDM-SQL, this GUC for compat DM SPACE_COMPARE_MODE,
  * if this is true,we  compare the blank padding in chracter type as same as oracle,
  * else, as same as DM(SPACE_COMPARE_MODE =0,BLANK_PAD_MODE=0) 
  */
 bool enable_blankspace_compare = true;
 /* End - SRS-MISC-COMPATDM-SQL */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+bool	check_strong_cursor_assign = true;
+int		open_cursors = 50;
+bool	enable_cursor_as_column_type = false;
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -496,6 +504,28 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000302 */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	{
+		{"ivorysql.check_strong_cursor_assign", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to check assignment between strong cursor types."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&check_strong_cursor_assign,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.enable_cursor_as_column_type", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to enable cursor as a column type."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_cursor_as_column_type,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -570,6 +600,17 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-ROWID */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	{
+		{"open_cursors", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("specifies the maximum number of open cursors a session can have at once."),
+			NULL
+		},
+		&open_cursors,
+		50, 0, 65535,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 #endif
 #if 0
 	/* End-of-list marker */

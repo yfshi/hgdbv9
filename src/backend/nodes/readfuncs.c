@@ -693,6 +693,9 @@ _readParam(void)
 	READ_INT_FIELD(paramtypmod);
 	READ_OID_FIELD(paramcollid);
 	READ_LOCATION_FIELD(location);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	READ_VOID_FIELD(type);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	READ_DONE();
 }

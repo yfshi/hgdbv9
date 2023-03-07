@@ -1,0 +1,90 @@
+SET ivorysql.enable_cursor_as_column_type = true;
+CREATE TABLE test_orarefcursor(id orarefcursor, name varchar2(256));
+CREATE TABLE test_sysrefcursor(id sys_refcursor, name varchar2(256));
+INSERT INTO test_orarefcursor VALUES('xiexie', 'test');
+INSERT INTO test_orarefcursor(name) VALUES('test null');
+INSERT INTO test_sysrefcursor VALUES('xiexie', 'test');
+INSERT INTO test_sysrefcursor(name) VALUES('test null');
+UPDATE test_orarefcursor SET id = 'mm';
+UPDATE test_sysrefcursor SET id = 'nn';
+DECLARE
+  var1 orarefcursor;
+  var2 sys_refcursor;
+BEGIN
+  INSERT INTO test_orarefcursor VALUES(var1, 'orarefcursor');
+  INSERT INTO test_orarefcursor VALUES(var2, 'sys_refcursor');
+  INSERT INTO test_sysrefcursor VALUES(var1, 'orarefcursor');
+  INSERT INTO test_sysrefcursor VALUES(var2, 'sys_refcursor');
+end;
+/
+CREATE OR REPLACE FUNCTION test_f(id orarefcursor) RETURN orarefcursor IS
+BEGIN
+  OPEN id for SELECT * FROM test_sysrefcursor;
+  RETURN id;
+end;
+/
+CREATE OR REPLACE FUNCTION test_f1(id sys_refcursor) RETURN sys_refcursor IS
+BEGIN
+    OPEN id FOR SELECT * FROM test_orarefcursor;
+	RETURN id;
+end;
+/
+DECLARE
+  var1 sys_refcursor;
+  var2 sys_refcursor;
+  var3 orarefcursor;
+  var4 orarefcursor;
+BEGIN
+  var1 := test_f(var2);
+  raise info '%,%', var1, var2;
+  var3 := test_f1(var4);
+  raise info '%,%',var3, var4;
+  var1 := test_f1(var2);
+  raise info '%,%', var1,var2;
+  var1 := test_f1(var3);
+  raise info '%,%', var1, var3;
+  var3 := test_f(var4);
+  raise info '%,%',var3,var4;
+  var4 := test_f(var1);
+  raise info '%,%', var1, var4;
+end;
+/
+INFO:  <unnamed portal 1>,<NULL>
+INFO:  <unnamed portal 2>,<NULL>
+INFO:  <unnamed portal 3>,<NULL>
+INFO:  <unnamed portal 2>,<unnamed portal 2>
+INFO:  <unnamed portal 4>,<NULL>
+INFO:  <unnamed portal 2>,<unnamed portal 2>
+SELECT * FROM test_orarefcursor ORDER BY name;
+ id |     name      
+----+---------------
+    | orarefcursor
+    | sys_refcursor
+ mm | test
+ mm | test null
+(4 rows)
+
+SELECT * FROM test_sysrefcursor ORDER BY name;
+ id |     name      
+----+---------------
+    | orarefcursor
+    | sys_refcursor
+ nn | test
+ nn | test null
+(4 rows)
+
+--clean data
+DROP FUNCTION test_f;
+DROP FUNCTION test_f1;
+DROP TABLE test_sysrefcursor;
+DROP TABLE test_orarefcursor;
+--ok
+create type test_type as (id integer,name sys_refcursor);
+alter type test_type add attribute name1 sys_refcursor;
+alter type test_type alter attribute id set data type sys_refcursor;
+drop type test_type;
+--test table
+create table test_refcursor(id integer,name sys_refcursor);
+--test add column
+alter table test_refcursor add column name1 sys_refcursor;
+drop table test_refcursor;

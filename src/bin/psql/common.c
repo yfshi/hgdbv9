@@ -3070,8 +3070,11 @@ psql_exec_pbe(const char *sql, HostVariable *hv, struct _variable **bindvar)
 				var_sz[i] = bindvar[i]->typmod - VARHDRSZ + 1;
 				var[i] = (char *) pg_malloc0(var_sz[i]);
 				break;
+			case SYS_REFCURSOROID:
+				var_sz[i] = MAX_PORTALNAME_LEN;
+				var[i] = (char *) pg_malloc0(var_sz[i]);
+				break;
 			/* TODO */
-			//case REFCURSOR:
 			//case BLOB:
 			//case CLOB:
 			//case NCLOB:

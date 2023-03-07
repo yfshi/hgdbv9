@@ -11748,7 +11748,6 @@
   provolatile => 'v',prorettype => 'void', proargtypes => 'oid',
   prosrc => 'plisql_validator', probin => '$libdir/plisql' },
 /* End - ReqID:SRS-SQL-FUNCOUT */
-/*END Oracle Compatibility Metadatas*/
 
 #/* Begin - ReqID:SRS-SQL-PACKAGE */
 { oid => '4645', descr => 'is package visible in search path?',
@@ -11779,4 +11778,18 @@
   proargnames => '{oid,position,type_name,type_subname,type_object_type,data_length,data_precision,data_scale,pls_type}',
   prosrc => 'pg_get_function_arg_reference_typerowtype' },
 # /* End - ReqID:SRS-PLSQL-TYPE */
+
+# /* Begin - ReqID:SRS-PLSQL-CURSOR */
+{ oid => '9116', descr => 'get the open cursors for this session like oracle',
+  proname => 'ora_open_cursors', prorows => '1000', proretset => 't',
+  provolatile => 's', proparallel => 'r', prorettype => 'record',
+  proargtypes => '', proallargtypes => '{text,numeric,text,text,numeric,text,text,date,numeric,text,text,numeric}',
+  proargmodes => '{o,o,o,o,o,o,o,o,o,o,o,o}',
+  proargnames => '{saddr,sid,user_name,address,hash_value,sql_id,sql_text,last_sql_active_time,sql_exec_id,cursor_type,child_address,con_id}',
+  prosrc => 'ora_open_cursors' },
+
+# /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/*END Oracle Compatibility Metadatas*/
+
 ]
