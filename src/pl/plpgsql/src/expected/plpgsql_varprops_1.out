@@ -17,8 +17,7 @@ declare x constant int := 42;
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant int;
 begin
@@ -32,8 +31,7 @@ declare x constant int;
 begin
   x := 42;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant int; y int;
 begin
@@ -49,8 +47,7 @@ begin
   for x, y in select 1, 2 loop  -- fail
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant int[];
 begin
@@ -64,8 +61,7 @@ declare x constant int[];
 begin
   x[1] := 42;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant int[]; y int;
 begin
@@ -81,8 +77,7 @@ begin
   for x[1], y in select 1, 2 loop  -- fail (currently, unsupported syntax)
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant var_record;
 begin
@@ -96,8 +91,7 @@ declare x constant var_record;
 begin
   x.f1 := 42;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x constant var_record; y int;
 begin
@@ -113,8 +107,7 @@ begin
   for x.f1, y in select 1, 2 loop  -- fail
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- initializer expressions
 do $$
 declare x int := sin(0);
@@ -127,8 +120,7 @@ declare x int := sin(0);
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x int := 1/0;  -- fail
 begin
@@ -142,8 +134,7 @@ declare x int := 1/0;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x bigint[] := array[1,3,5];
 begin
@@ -155,8 +146,7 @@ declare x bigint[] := array[1,3,5];
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x record := row(1,2,3);
 begin
@@ -168,8 +158,7 @@ declare x record := row(1,2,3);
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record := row(1,2);
 begin
@@ -181,8 +170,7 @@ declare x var_record := row(1,2);
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- NOT NULL
 do $$
 declare x int not null;  -- fail
@@ -197,8 +185,7 @@ declare x int not null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x int not null := 42;
 begin
@@ -214,8 +201,7 @@ begin
   raise notice 'x = %', x;
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x int not null := null;  -- fail
 begin
@@ -228,8 +214,7 @@ declare x int not null := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x record not null;  -- fail
 begin
@@ -243,8 +228,7 @@ declare x record not null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x record not null := row(42);
 begin
@@ -265,8 +249,7 @@ begin
   raise notice 'x = %', x;
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x record not null := null;  -- fail
 begin
@@ -279,8 +262,7 @@ declare x record not null := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record not null;  -- fail
 begin
@@ -294,8 +276,7 @@ declare x var_record not null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record not null := row(41,42);
 begin
@@ -316,8 +297,7 @@ begin
   raise notice 'x = %', x;
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record not null := null;  -- fail
 begin
@@ -330,8 +310,7 @@ declare x var_record not null := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- Check that variables are reinitialized on block re-entry.
 do $$
 begin
@@ -387,8 +366,7 @@ begin
     end;
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- Check enforcement of domain constraints during initialization
 do $$
 declare x int_nn;  -- fail
@@ -402,8 +380,7 @@ declare x int_nn;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x int_nn := null;  -- fail
 begin
@@ -416,8 +393,7 @@ declare x int_nn := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x int_nn := 42;
 begin
@@ -433,8 +409,7 @@ begin
   raise notice 'x = %', x;
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_nn;  -- fail
 begin
@@ -447,8 +422,7 @@ declare x var_record_nn;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_nn := null;  -- fail
 begin
@@ -461,8 +435,7 @@ declare x var_record_nn := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_nn := row(1,2);
 begin
@@ -480,8 +453,7 @@ begin
   x := row(null,null);  -- ok
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_colnn;  -- fail
 begin
@@ -494,8 +466,7 @@ declare x var_record_colnn;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_colnn := null;  -- fail
 begin
@@ -508,8 +479,7 @@ declare x var_record_colnn := null;  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_colnn := row(1,null);  -- fail
 begin
@@ -522,8 +492,7 @@ declare x var_record_colnn := row(1,null);  -- fail
 begin
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_colnn := row(1,2);
 begin
@@ -539,8 +508,7 @@ begin
   raise notice 'x = %', x;
   x := null;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare x var_record_colnn := row(1,2);
 begin
@@ -556,5 +524,4 @@ begin
   raise notice 'x = %', x;
   x := row(null,null);  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function

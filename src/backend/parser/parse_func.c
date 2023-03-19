@@ -44,6 +44,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - BUG:M0000079 */
+#include "commands/proclang.h"
+/* End - BUG:M0000079 */
 
 
 /* Possible error codes from LookupFuncNameInternal */
@@ -1855,6 +1858,14 @@ func_get_detail(List *funcname,
 			elog(ERROR, "cache lookup failed for function %u",
 				 best_candidate->oid);
 		pform = (Form_pg_proc) GETSTRUCT(ftup);
+
+		/* Begin - BUG:M0000079 */
+		if (PG_PARSER == compatible_db &&
+			pform->prolang == LANG_PLISQL_OID)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("when ivorysql.compatible_mode is pg, can't execute a plisql procedural-language function")));
+		/* End - BUG:M0000079 */
 
 		*rettype = pform->prorettype;
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
