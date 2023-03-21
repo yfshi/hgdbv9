@@ -1218,36 +1218,36 @@ drop function test_out(integer,varchar, integer);
 drop function test_out1(integer, varchar, integer, integer, integer, integer);
 --test get_parameter_descr function
 select * from get_parameter_descr('insert into t values(:x,:y)');
- name  | position 
--------+----------
- false |        0
- :x    |        1
- :y    |        2
+  name  | position | hint 
+--------+----------+------
+ INSERT |        0 | 
+ :x     |        1 | 
+ :y     |        2 | 
 (3 rows)
 
 select * from get_parameter_descr('delete from t where xxx = :xx');
- name  | position 
--------+----------
- false |        0
- :xx   |        1
+  name  | position | hint 
+--------+----------+------
+ DELETE |        0 | 
+ :xx    |        1 | 
 (2 rows)
 
 select * from get_parameter_descr('update t set t1 = :x and t2 = :y');
- name  | position 
--------+----------
- false |        0
- :x    |        1
- :y    |        2
+  name  | position | hint 
+--------+----------+------
+ UPDATE |        0 | 
+ :x     |        1 | 
+ :y     |        2 | 
 (3 rows)
 
 select * from get_parameter_descr('BEGIN
                           CALL RAISE_SALARY(:emp_number, :new_sal);
                           END;');
-    name     | position 
--------------+----------
- true        |        0
- :emp_number |        1
- :new_sal    |        2
+    name     | position | hint 
+-------------+----------+------
+ DO          |        0 | 
+ :emp_number |        1 | 
+ :new_sal    |        2 | 
 (3 rows)
 
 select * from get_parameter_descr('
@@ -1265,13 +1265,13 @@ begin
 	:4 := 23;
 	execute immediate ''declare mds integer; begin mds := 1000; :x := mds + 100;end;'' using out id;
 end;');
- name | position 
-------+----------
- true |        0
- :1   |        1
- :2   |        2
- :3   |        3
- :4   |        4
+ name | position | hint 
+------+----------+------
+ DO   |        0 | 
+ :1   |        1 | 
+ :2   |        2 | 
+ :3   |        3 | 
+ :4   |        4 | 
 (5 rows)
 
 --Begin - BUG#Z195: function body is null

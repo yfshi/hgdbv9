@@ -421,6 +421,7 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	int         oraparam_top_level = -1;
 	int         oraparam_cur_level = -1;
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	MemoryContext oldcontext = CurrentMemoryContext; /* ReqID:SRS-SQL-CALL */
 
 	/*
 	 * Connect to SPI manager
@@ -457,7 +458,7 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Compile the anonymous code block */
-	func = plisql_compile_inline(codeblock->source_text, codeblock->params/* ReqID:SRS-SQL-ANONYOUT */);
+	func = plisql_compile_inline(codeblock->source_text, codeblock->params/* ReqID:SRS-SQL-ANONYOUT */, codeblock->do_from_call /* ReqID:SRS-SQL-CALL */);
 
 	/* Begin - SRS-PLSQL-SUBPROC */
 	/* rember current func in SPI */
@@ -554,6 +555,25 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	}
 	PG_CATCH();
 	{
+		/* Begin - ReqID:SRS-SQL-CALL */
+		if (codeblock->do_from_call && oldcontext != ErrorContext)
+		{
+			ErrorData  *edata;
+
+			/* Save error info */
+			MemoryContextSwitchTo(oldcontext);
+			edata = CopyErrorData();
+			FlushErrorState();
+			
+			/* For CALL statements expect only primary error message */
+			if (edata->message)
+				elog(ERROR, "%s", edata->message);
+			else
+				ThrowErrorData(edata);
+			FreeErrorData(edata);
+		}
+		/* End - ReqID:SRS-SQL-CALL */
+		
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
 		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
 		if (ora_forward)

@@ -252,6 +252,7 @@ struct ParseState
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	bool 		p_isVarParamState;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+	bool		do_from_call;	/* ReqID:SRS-SQL-CALL */
 };
 
 /*

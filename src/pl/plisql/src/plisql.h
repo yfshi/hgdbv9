@@ -1086,6 +1086,7 @@ typedef struct PLiSQL_function
 										 * the CREATE FUNCTION executes successfully, but when the function is called,
 										 * an error is reported */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+	bool		do_from_call;	/* ReqID:SRS-SQL-CALL */
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	char		**paramnames;	/* saved do + using parameter'name */
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
@@ -1324,7 +1325,7 @@ extern PLiSQL_plugin **plisql_plugin_ptr;
  */
 extern PLiSQL_function *plisql_compile(FunctionCallInfo fcinfo,
 										 bool forValidator);
-extern PLiSQL_function *plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-ANONYOUT */);
+extern PLiSQL_function *plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-ANONYOUT */, bool fromcall /* ReqID:SRS-SQL-CALL */);
 extern void plisql_parser_setup(struct ParseState *pstate,
 								 PLiSQL_expr *expr);
 extern bool plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, const char *yytxt, bool lookup,

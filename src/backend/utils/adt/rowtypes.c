@@ -23,6 +23,7 @@
 #include "funcapi.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
+#include "tcop/utility.h"	/* ReqID:SRS-SQL-CALL */
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/guc.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -2057,8 +2058,16 @@ hash_record_extended(PG_FUNCTION_ARGS)
 Datum
 get_parameter_descr(PG_FUNCTION_ARGS)
 {
+	/* Begin - ReqID:SRS-SQL-CALL */
+	typedef struct
+	{
+		OraParamExtralData	*extral;
+		const char			*cmdtag;
+		char				*callintoexpr;
+	} outparam_fctx;
+	/* End - ReqID:SRS-SQL-CALL */
 	FuncCallContext *funcctx;
-	OraParamExtralData *extral;
+	outparam_fctx	*user_fctx;
 	bool			dostmt = false;
 
 	if (SRF_IS_FIRSTCALL())
@@ -2102,6 +2111,16 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 			/* End - BUG:M0000077 */
 			elog(ERROR, "we only support one parse tree");
 		}
+
+		/* Begin - ReqID:SRS-SQL-CALL */
+		/* allocate memory and initialize */
+		user_fctx = (outparam_fctx *) palloc(sizeof(outparam_fctx));
+		user_fctx->extral = NULL;
+		user_fctx->cmdtag = NULL;
+		user_fctx->callintoexpr = NULL;
+
+		user_fctx->cmdtag = CreateCommandName(linitial(parsetree));
+		/* End - ReqID:SRS-SQL-CALL */
 
 		if (nodeTag(linitial(parsetree)) == T_RawStmt &&
 			nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_DoStmt)
@@ -2194,6 +2213,14 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 			}
 			/* End - BUG:M0000077 */
 		}
+		/* Begin - ReqID:SRS-SQL-CALL */
+		else if (nodeTag(linitial(parsetree)) == T_RawStmt &&
+				nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_CallStmt)
+		{
+			CallStmt	*stmt = (CallStmt *)(((RawStmt *)linitial(parsetree))->stmt);
+			user_fctx->callintoexpr = stmt->callinto ? pstrdup(stmt->callinto) : NULL;
+		}
+		/* End - ReqID:SRS-SQL-CALL */
 
 		backward_oraparam_stack();
 		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
@@ -2206,53 +2233,62 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		 * build tupdesc for result tuples (matches out parameters in pg_proc
 		 * entry)
 		 */
-		tupdesc = CreateTemplateTupleDesc(2);
+		tupdesc = CreateTemplateTupleDesc(3);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
 					   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",
 					   INT4OID, -1, 0);
+		/* Begin - ReqID:SRS-SQL-CALL */
+		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "hint",
+					   TEXTOID, -1, 0);
+		/* End - ReqID:SRS-SQL-CALL */
 
 		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
-		extral = (OraParamExtralData *) palloc(sizeof(OraParamExtralData));
-		extral->next_params = 0;
-		extral->total_params = nparams;
-		extral->paramnames = paramnames;
+		/* Begin - ReqID:SRS-SQL-CALL */
+		user_fctx->extral = (OraParamExtralData *) palloc(sizeof(OraParamExtralData));
+		user_fctx->extral->next_params = 0;
+		user_fctx->extral->total_params = nparams;
+		user_fctx->extral->paramnames = paramnames;
+		/* End - ReqID:SRS-SQL-CALL */
 
 		MemoryContextSwitchTo(oldcxt);
-		funcctx->user_fctx  = (void *) extral;
+		funcctx->user_fctx  = (void *) user_fctx; /* ReqID:SRS-SQL-CALL */
 	}
 
 	funcctx = SRF_PERCALL_SETUP();
-	extral = (OraParamExtralData *) funcctx->user_fctx;
+	user_fctx = (outparam_fctx *) funcctx->user_fctx; /* ReqID:SRS-SQL-CALL */
 
-	if (extral->next_params <= extral->total_params)
+	if (user_fctx->extral->next_params <= user_fctx->extral->total_params)
 	{
 		Datum		result;
-		Datum		values[2];
-		bool		nulls[2];
+		Datum		values[3];
+		bool		nulls[3];
 		HeapTuple	tuple;
-
-		/* the first tuple is constructed by stmt */
-		if (extral->next_params == 0)
-		{
-			if (dostmt)
-				values[0] = CStringGetTextDatum("true");
-			else
-				values[0] = CStringGetTextDatum("false");
-
-			values[1] = Int32GetDatum(extral->next_params);
-		}
-		else
-		{
-			values[0] = CStringGetTextDatum(extral->paramnames[extral->next_params]);
-			values[1] = Int32GetDatum(extral->next_params);
-		}
 
 		MemSet(nulls, 0, sizeof(nulls));
 
+		/* the first tuple is constructed by stmt */
+		if (user_fctx->extral->next_params == 0)
+		{
+			values[0] = CStringGetTextDatum(user_fctx->cmdtag); /* ReqID:SRS-SQL-CALL */
+			values[1] = Int32GetDatum(user_fctx->extral->next_params);
+			/* Begin - ReqID:SRS-SQL-CALL */
+			if (user_fctx->callintoexpr)
+				values[2] = CStringGetTextDatum(user_fctx->callintoexpr);
+			else
+				nulls[2] = true;
+			/* End - ReqID:SRS-SQL-CALL */
+		}
+		else
+		{
+			values[0] = CStringGetTextDatum(user_fctx->extral->paramnames[user_fctx->extral->next_params]);
+			values[1] = Int32GetDatum(user_fctx->extral->next_params);
+			nulls[2] = true; /* ReqID:SRS-SQL-CALL */
+		}
+
 		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
 		result = HeapTupleGetDatum(tuple);
-		extral->next_params++;
+		user_fctx->extral->next_params++;
 
 		SRF_RETURN_NEXT(funcctx, result);
 	}

@@ -650,6 +650,9 @@ static void determineLanguage(List *options);
 %type <str>  opt_param_name
 %type <node> param_mode
 /* End - ReqID:SRS-SQL-LIBPQOUT */
+/* Begin - ReqID:SRS-SQL-CALL */
+%type <boolean>	opt_do_from_where
+/* End - ReqID:SRS-SQL-CALL */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -1195,6 +1198,23 @@ CallStmt:	CALL func_application
 					n->funccall = castNode(FuncCall, $2);
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-CALL */
+			| CALL func_application INTO ORAPARAM
+				{
+					CallStmt *n = makeNode(CallStmt);
+					OraParamRef *hostvar = makeNode(OraParamRef);
+					char	*callstr = NULL;
+					n->funccall = castNode(FuncCall, $2);
+					hostvar->number = 0;
+					hostvar->location = @4;
+					hostvar->name = $4;
+					n->hostvariable = hostvar;
+					callstr = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @2, @3 - @2);
+					n->callinto = psprintf("%s := %s;", $4, callstr);
+					pfree(callstr);
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-CALL */
 		;
 
 /*****************************************************************************
@@ -9373,12 +9393,13 @@ DoStmt: DO dostmt_opt_list
 		/* End - ReqID:SRS-SQL-ANONYOUT */
 
 		/* Begin - ReqID:SRS-CMD-PSQL */
-		| DO dostmt_opt_list USING params_mode_list PARAMSLENGTH params_length_list
+		| DO dostmt_opt_list USING params_mode_list PARAMSLENGTH params_length_list opt_do_from_where /* ReqID:SRS-SQL-CALL */
 				{
 					DoStmt *n = makeNode(DoStmt);
 					n->args = $2;
 					n->paramsmode = $4;
 					n->paramslen = $6;
+					n->do_from_call = $7; /* ReqID:SRS-SQL-CALL */
 					determineLanguage(n->args);
 					$$ = (Node *)n;
 				}
@@ -9464,6 +9485,13 @@ params_length_list:
 				}
 		;
 /* End - ReqID:SRS-CMD-PSQL */
+
+/* Begin - ReqID:SRS-SQL-CALL */
+opt_do_from_where:
+			GENERATED FROM CALL			{ $$ = true; }
+			| /*EMPTY*/					{ $$ = false; }
+		;
+/* End - ReqID:SRS-SQL-CALL */
 
 /*****************************************************************************
  *

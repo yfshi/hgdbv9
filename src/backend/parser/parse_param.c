@@ -93,6 +93,9 @@ static bool			IsDynDoStmt = true;
 static bool			HasPgParam = false;
 static bool			DoStmtCheckVar = false;
 static bool			IsBindByName = false;
+/* Begin - ReqID:SRS-SQL-CALL */
+static bool			IsDynCallStmt = false; /* ORA-06578: output parameter cannot be a duplicate bind */
+/* End - ReqID:SRS-SQL-CALL */
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
@@ -591,6 +594,7 @@ push_oraparam_stack(void)
 		IsDynDoStmt = true;
 		HasPgParam = false;
 		DoStmtCheckVar = false;
+		IsDynCallStmt = false; /* ReqID:SRS-SQL-CALL */
 		new->level = 1;
 	}
 	else
@@ -662,8 +666,16 @@ calculate_oraparamnumber(const char* name)
 		 for (i = 0; i < CurrentOraParamNode->param_count; ++i)
 		 {
 			 if (strcmp(CurrentOraParamNode->params[i].name, name) == 0)
-			 {			 
-				 return CurrentOraParamNode->params[i].number;
+			 {
+			 	/* Begin - ReqID:SRS-SQL-CALL */
+				/* ORA-06578: output parameter cannot be a duplicate bind */
+			 	if (IsDynCallStmt)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_PARAMETER),
+							 errmsg("output parameter cannot be a duplicate bind")));
+				else
+				/* End - ReqID:SRS-SQL-CALL */
+					return CurrentOraParamNode->params[i].number;
 			 }
 		 }
 	 }
@@ -699,6 +711,17 @@ calculate_oraparamnumbers(List	   *parsetree_list)
 	foreach(parsetree_item, parsetree_list)
 	{
 		Node	   *parsetree = (Node *)lfirst(parsetree_item);
+
+		/* Begin - ReqID:SRS-SQL-CALL */
+		if (nodeTag(parsetree) == T_RawStmt &&
+			nodeTag(((RawStmt *)parsetree)->stmt) == T_CallStmt &&
+			CurrentOraParamNode &&
+			CurrentOraParamNode->param_count == 0)
+			setdynamic_callparser(true);
+		else
+			/* In any case, it should't affect other statements in the list */
+			setdynamic_callparser(false);
+		/* End - ReqID:SRS-SQL-CALL */
 
 		if (calculate_oraparamnumbers_walker(parsetree, NULL) == true)
 			return true;
@@ -2503,6 +2526,10 @@ raw_calculate_oraparamnumbers_walker(Node *node,
 
 				if (walker(callstmt->funccall, context))
 					return true;
+				/* Begin - ReqID:SRS-SQL-CALL */
+				if (walker(callstmt->hostvariable, context))
+					return true;
+				/* End - ReqID:SRS-SQL-CALL */
 			}
 			break;
 		/* End - BUG:M0000077 */
@@ -2619,6 +2646,17 @@ get_bindbyname(void)
 	return IsBindByName;
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
+
+/* Begin - ReqID:SRS-SQL-CALL */
+/*
+ * set dynamic CallStmt parser status
+ */
+void
+setdynamic_callparser(bool value)
+{
+	IsDynCallStmt = value;
+}
+/* End - ReqID:SRS-SQL-CALL */
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 int

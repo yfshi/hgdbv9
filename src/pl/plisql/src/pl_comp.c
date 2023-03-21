@@ -1113,7 +1113,7 @@ do_compile(FunctionCallInfo fcinfo,
  * ----------
  */
 PLiSQL_function *
-plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-ANONYOUT */)
+plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-ANONYOUT */, bool fromcall /* ReqID:SRS-SQL-CALL */)
 {
 	char	   *func_name = "inline_code_block";
 	PLiSQL_function *function;
@@ -1182,6 +1182,7 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	function->namelabel = NULL;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	function->do_from_call = fromcall; /* ReqID:SRS-SQL-CALL */
 
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
@@ -1593,6 +1594,7 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 	 * plans when those types change ...
 	 */
 	estate = expr->func->cur_estate;
+	pstate->do_from_call = expr->func->do_from_call;	/* ReqID:SRS-SQL-CALL */
 
 	/*----------
 	 * The allowed syntaxes are:

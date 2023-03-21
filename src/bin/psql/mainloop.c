@@ -1064,6 +1064,11 @@ non_psqlplus_cmd:
 									pg_free(hv->hostvars[i].name);
 							}
 
+							/* Begin - ReqID:SRS-SQL-CALL */
+							if (hv->convertcall)
+								pg_free(hv->convertcall);
+							/* End - ReqID:SRS-SQL-CALL */
+							
 							if (hv->hostvars)
 								pg_free(hv->hostvars);
 							pg_free(hv);

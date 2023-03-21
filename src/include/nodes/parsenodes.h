@@ -3080,6 +3080,7 @@ typedef struct DoStmt
 	List		*paramsmode;	/* List of parameters mode */
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	List		*paramslen;		/* List of length for parameter datatypes */	/* ReqID:SRS-CMD-PSQL */
+	bool		do_from_call;	/* T if DoStmt is come from CallStmt */			/* ReqID:SRS-SQL-CALL */
 } DoStmt;
 
 typedef struct InlineCodeBlock
@@ -3089,6 +3090,7 @@ typedef struct InlineCodeBlock
 	Oid			langOid;		/* OID of selected language */
 	bool		langIsTrusted;	/* trusted property of the language */
 	bool		atomic;			/* atomic execution context */
+	bool		do_from_call;	/* ReqID:SRS-SQL-CALL */
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	ParamListInfo params;		/* USING expressions */
 	/* End - ReqID:SRS-SQL-ANONYOUT */
@@ -3109,6 +3111,10 @@ typedef struct CallStmt
 	FuncCall   *funccall;		/* from the parser */
 	FuncExpr   *funcexpr;		/* transformed call, with only input args */
 	List	   *outargs;		/* transformed output-argument expressions */
+	/* Begin - ReqID:SRS-SQL-CALL */
+	OraParamRef	*hostvariable;	/* only used for get_parameter_descr() */
+	char	   *callinto;		/* rewrite CALL INTO to a PL assign stmt */
+	/* End - ReqID:SRS-SQL-CALL */
 } CallStmt;
 
 typedef struct CallContext
