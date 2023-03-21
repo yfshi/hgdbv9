@@ -72,15 +72,13 @@ begin c := row(1,2); raise notice 'c = %', c; end$$ language plpgsql;
 NOTICE:  c = (1,2)
 do $$ declare c two_int8s;
 begin c := row(1,2); raise notice 'c = %', c; end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c two_int8s;
 begin for c in select 1,2 loop raise notice 'c = %', c; end loop; end$$ language plpgsql;
 NOTICE:  c = (1,2)
 do $$ declare c two_int8s;
 begin for c in select 1,2 loop raise notice 'c = %', c; end loop; end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c4 two_int4s; c8 two_int8s;
 begin
   c8 := row(1,2);
@@ -99,8 +97,7 @@ begin
   raise notice 'c4 = %', c4;
   raise notice 'c8 = %', c8;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c two_int8s; d nested_int8s;
 begin
   c := row(1,2);
@@ -132,8 +129,7 @@ begin
   raise notice '(d).c2.q2 = %', (d).c2.q2;  -- doesn't work without parens
   raise notice '(d.c2).q2 = %', (d.c2).q2;  -- doesn't work without parens
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- block-qualified naming
 do $$ <<b>> declare c two_int8s; d nested_int8s;
 begin
@@ -166,30 +162,26 @@ begin
   raise notice '(b.d).c2.q2 = %', (b.d).c2.q2;  -- doesn't work without parens
   raise notice '(b.d.c2).q2 = %', (b.d.c2).q2;  -- doesn't work without parens
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- error cases
 do $$ declare c two_int8s; begin c.x = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "c.x = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ declare c two_int8s; begin c.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c nested_int8s; begin c.x = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "c.x = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ declare c nested_int8s; begin c.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c nested_int8s; begin c.x.q1 = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "c.x.q1 = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ declare c nested_int8s; begin c.x.q1 = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c nested_int8s; begin c.c2.x = 1; end $$ language plpgsql;
 ERROR:  cannot assign to field "x" of column "c" because there is no such column in data type two_int8s
 LINE 1: c.c2.x = 1
@@ -197,36 +189,31 @@ LINE 1: c.c2.x = 1
 QUERY:  c.c2.x = 1
 CONTEXT:  PL/pgSQL function inline_code_block line 1 at assignment
 do $$ declare c nested_int8s; begin c.c2.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ declare c nested_int8s; begin d.c2.x = 1; end $$ language plpgsql;
 ERROR:  "d.c2.x" is not a known variable
 LINE 1: do $$ declare c nested_int8s; begin d.c2.x = 1; end $$ langu...
                                             ^
 do $$ declare c nested_int8s; begin d.c2.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ <<b>> declare c two_int8s; begin b.c.x = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "b.c.x = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ <<b>> declare c two_int8s; begin b.c.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ <<b>> declare c nested_int8s; begin b.c.x = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "b.c.x = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ <<b>> declare c nested_int8s; begin b.c.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ <<b>> declare c nested_int8s; begin b.c.x.q1 = 1; end $$ language plpgsql;
 ERROR:  record "c" has no field "x"
 CONTEXT:  PL/pgSQL assignment "b.c.x.q1 = 1"
 PL/pgSQL function inline_code_block line 1 at assignment
 do $$ <<b>> declare c nested_int8s; begin b.c.x.q1 = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ <<b>> declare c nested_int8s; begin b.c.c2.x = 1; end $$ language plpgsql;
 ERROR:  cannot assign to field "x" of column "b" because there is no such column in data type two_int8s
 LINE 1: b.c.c2.x = 1
@@ -234,15 +221,13 @@ LINE 1: b.c.c2.x = 1
 QUERY:  b.c.c2.x = 1
 CONTEXT:  PL/pgSQL function inline_code_block line 1 at assignment
 do $$ <<b>> declare c nested_int8s; begin b.c.c2.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$ <<b>> declare c nested_int8s; begin b.d.c2.x = 1; end $$ language plpgsql;
 ERROR:  "b.d.c2" is not a known variable
 LINE 1: do $$ <<b>> declare c nested_int8s; begin b.d.c2.x = 1; end ...
                                                   ^
 do $$ <<b>> declare c nested_int8s; begin b.d.c2.x = 1; end $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check passing composite result to another function
 create function getq1(two_int8s) returns int8 language plpgsql as $$
 declare r two_int8s; begin r := $1; return r.q1; end $$;
@@ -284,8 +269,7 @@ begin
   x := getq1(r2);
   raise notice 'x = %', x;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check assignments of composites
 do $$
 declare r1 two_int8s; r2 two_int8s; r3 record; r4 record;
@@ -372,8 +356,7 @@ begin
   r4.q2 := r4.q2 + 1;  -- r4's field names have changed
   raise notice 'r4 = %', r4;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- fields of named-type vars read as null if uninitialized
 do $$
 declare r1 two_int8s;
@@ -395,8 +378,7 @@ begin
   raise notice 'r1.q2 = %', r1.q2;
   raise notice 'r1 = %', r1;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare r1 two_int8s;
 begin
@@ -419,8 +401,7 @@ begin
   raise notice 'r1 = %', r1;
   raise notice 'r1.nosuchfield = %', r1.nosuchfield;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- records, not so much
 do $$
 declare r1 record;
@@ -443,8 +424,7 @@ begin
   raise notice 'r1.f2 = %', r1.f2;
   raise notice 'r1 = %', r1;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- but OK if you assign first
 do $$
 declare r1 record;
@@ -473,8 +453,7 @@ begin
   raise notice 'r1 = %', r1;
   raise notice 'r1.nosuchfield = %', r1.nosuchfield;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check repeated assignments to composite fields
 create table some_table (id int, data text);
 do $$
@@ -498,8 +477,7 @@ begin
   end loop;
   raise notice 'r = %', r;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check behavior of function declared to return "record"
 create function returnsrecord(int) returns record language plpgsql as
 $$ begin return row($1,$1+1); end $$;
@@ -641,8 +619,7 @@ begin
     raise notice 'r = %', r;
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check behavior when returning setof composite
 create function returnssetofholes() returns setof has_hole language plpgsql as
 $$
@@ -906,8 +883,7 @@ begin
   r.q1 := 42;
   r.q2 := 41;  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check whole-row assignment
 do $$
 declare r ordered_int8s;
@@ -927,8 +903,7 @@ begin
   r := row(1,2);
   r := row(2,1);  -- fail
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check assignment in for-loop
 do $$
 declare r ordered_int8s;
@@ -948,8 +923,7 @@ begin
     raise notice 'r = %', r;
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check behavior with toastable fields, too
 create type two_texts as (f1 text, f2 text);
 create domain ordered_texts as two_texts check((value).f1 <= (value).f2);
@@ -978,8 +952,7 @@ begin
     raise notice 'succeeded at "%"', d.f1;
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare r record; d ordered_texts;
 begin
@@ -1001,8 +974,7 @@ begin
     d := row(r.a, r.b);
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 do $$
 declare r record; d ordered_texts;
 begin
@@ -1028,8 +1000,7 @@ begin
     d.f2 := r.b;
   end loop;
 end$$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- check coercion of a record result to named-composite function output type
 create function compresult(int8) returns two_int8s language plpgsql as
 $$ declare r record; begin r := row($1,$1); return r; end $$;

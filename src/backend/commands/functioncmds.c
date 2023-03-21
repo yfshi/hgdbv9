@@ -2625,6 +2625,13 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
+			/* Begin - BUG:M0000079 */
+			if (PG_PARSER == compatible_db &&
+				!pg_strcasecmp(strVal(defel->arg), "plisql"))
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function")));
+			/* End - BUG:M0000079 */
 			language_item = defel;
 		}
 		else

@@ -36,10 +36,10 @@ foreach $a (@vcregress_pg){
 chdir($installdir) or die "can not change install dir!";
 rmtree("data");
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D ../data -m pg");
+system("initdb.exe -D $installdir/data -m pg");
 my $status1 = $? >> 8;
 exit $status1 if $status1;
-system("pg_ctl.exe -D ../data start");
+system("pg_ctl.exe -D $installdir/data start");
 my $status2 = $? >> 8;
 exit $status2 if $status2;
 chdir "$startdir";
@@ -54,7 +54,7 @@ foreach $a (@vcregress_pg_install){
 }
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change to bin dir!";
-system("pg_ctl.exe -D ../data stop");
+system("pg_ctl.exe -D $installdir/data stop");
 my $status4 = $? >> 8;
 exit $status4 if $status4;
 chdir($installdir) or die "can not change install dir!";
@@ -73,10 +73,10 @@ foreach $a (@vcregress_ora_pg){
 
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D ../data -m oracle");
+system("initdb.exe -D $installdir/data -m oracle");
 my $status6 = $? >> 8;
 exit $status6 if $status6;
-system("pg_ctl.exe -D ../data start");
+system("pg_ctl.exe -D $installdir/data start");
 my $status7 = $? >> 8;
 exit $status7 if $status7;
 chdir "$startdir";
@@ -92,7 +92,7 @@ foreach $a (@vcregress_ora_pg_install){
 }
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("pg_ctl.exe -D ../data stop");
+system("pg_ctl.exe -D $installdir/data stop");
 my $status9 = $? >> 8;
 exit $status9 if $status9;
 chdir($installdir) or die "can not change install dir!";
@@ -110,10 +110,10 @@ foreach $a (@vcregress_ora){
 
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D ../data -c normal");
+system("initdb.exe -D $installdir/data -c normal");
 my $status11 = $? >> 8;
 exit $status11 if $status11;
-system("pg_ctl.exe -D ../data start");
+system("pg_ctl.exe -D $installdir/data start");
 my $status12 = $? >> 8;
 exit $status12 if $status12;
 chdir "$startdir";
@@ -129,7 +129,7 @@ foreach $a (@vcregress_ora_install){
 }
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("pg_ctl.exe -D ../data stop");
+system("pg_ctl.exe -D $installdir/data stop");
 my $status14 = $? >> 8;
 exit $status14 if $status14;
 chdir($installdir) or die "can not change install dir!";

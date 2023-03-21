@@ -286,8 +286,7 @@ BEGIN
   RAISE NOTICE '_a: %, _b: %, _c: %', _a, _b, _c;
 END
 $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 DO $$
 DECLARE _a int; _b int; _c int;
 BEGIN
@@ -306,8 +305,7 @@ BEGIN
   RAISE NOTICE '_a: %, _b: %, _c: %', _a, _b, _c;
 END
 $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 -- OUT parameters
 CREATE PROCEDURE test_proc9(IN a int, OUT b int)
 LANGUAGE plpgsql
@@ -454,8 +452,7 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$ language plisql;
-ERROR:  language "plisql" does not exist
-HINT:  Use CREATE EXTENSION to load the language into the database.
+ERROR:  when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function
 DO $$
 DECLARE
   v_Text text;

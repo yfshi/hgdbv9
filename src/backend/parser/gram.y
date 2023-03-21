@@ -760,6 +760,12 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %token		MODE_PLPGSQL_ASSIGN1
 %token		MODE_PLPGSQL_ASSIGN2
 %token		MODE_PLPGSQL_ASSIGN3
+/* Begin - BUG:M0000079 */
+%token		MODE_PLISQL_EXPR
+%token		MODE_PLISQL_ASSIGN1
+%token		MODE_PLISQL_ASSIGN2
+%token		MODE_PLISQL_ASSIGN3
+/* End - BUG:M0000079 */
 
 
 /* Precedence: lowest to highest */
