@@ -827,9 +827,9 @@ INFO:  original=10
 INFO:  local var a = 23
 INFO:  global a = 21
 INFO:  100
-  a  | _RETVAL_ 
------+----------
- 101 |      101
+ _RETVAL_ |  a  
+----------+-----
+      101 | 101
 (1 row)
 
 drop function test_subproc_func(integer);

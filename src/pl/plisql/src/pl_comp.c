@@ -686,8 +686,20 @@ do_compile(FunctionCallInfo fcinfo,
 					else
 						argitemtype = PLISQL_NSTYPE_REC;
 
-					/* the new builded variable for function return value is after all function OUT args */
-					out_arg_variables[num_out_args] = argvariable;
+					if (result_first)
+					{
+						int		j;
+
+						/* the new builded variable for function return value is the first of out_arg_variables array. */
+						for (j = num_out_args; j > 0; j--)
+							out_arg_variables[j] = out_arg_variables[j - 1];
+						out_arg_variables[0] = argvariable;
+					}
+					else
+					{
+						/* the new builded variable for function return value is after all function OUT args */
+						out_arg_variables[num_out_args] = argvariable;
+					}
 					num_out_args++;
 
 					add_parameter_name(argitemtype, argvariable->dno, buf);

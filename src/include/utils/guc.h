@@ -320,6 +320,7 @@ extern PGDLLIMPORT int enable_ora_merge_tuning;
 
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 extern PGDLLIMPORT bool	allow_out_parameter_const;
+extern PGDLLIMPORT bool result_first;
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-SQL-SEQ */

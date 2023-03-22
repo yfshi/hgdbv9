@@ -9483,33 +9483,49 @@ plisql_out_param(ExprState *state, ExprEvalStep *op)
 	int 		  i;
 	HeapTupleData tmptup;
 	TupleDesc	  tupdesc = NULL;
+	int 		  j;
 
 	old = MemoryContextSwitchTo(estate->datum_context);
 
 	tupdesc = deconstruct_composite_datum(value, &tmptup);
+	j = 0;
+
+	if (op->d.out_params.rettype == VOIDOID)
+		*op->resvalue = (Datum) 0;
+	else if (result_first)
+	{
+		/* get the function real return value, the first column is the function real return value. */
+		func_retval = SPI_getbinval(&tmptup, tupdesc, 1, &isNull);
+		*op->resnull = isNull;
+		*op->resvalue = func_retval;
+		j = 1;
+	}
+	else
+	{
+		/* get the function real return value, the last column is the function real return value. */
+		func_retval = SPI_getbinval(&tmptup, tupdesc, tupdesc->natts, &isNull);
+		*op->resnull = isNull;
+		*op->resvalue = func_retval;
+	}
 
 	/* assign value for out parameters */
 	for (i = 0; i < nout; i++)
 	{
 		Oid 			valtype;
 		int32			valtypmod = -1;
-		PLiSQL_datum    *target;
-		bool		  	isnull;
+		PLiSQL_datum	*target;
+		bool			isnull;
 
 		target = estate->datums[paramids[i]];
 
-		valtype = tupdesc->attrs[i].atttypid;
-		valtypmod = tupdesc->attrs[i].atttypmod;
-		value = SPI_getbinval(&tmptup, tupdesc, i + 1, &isnull);
+		valtype = tupdesc->attrs[j].atttypid;
+		valtypmod = tupdesc->attrs[j].atttypmod;
+		value = SPI_getbinval(&tmptup, tupdesc, j + 1, &isnull);
 
 		exec_assign_value(estate, target, value, isnull,
 								valtype, valtypmod);
+		j++;
 	}
-
-	/* get the function real return value, the last column in */
-	func_retval = SPI_getbinval(&tmptup, tupdesc, tupdesc->natts, &isNull);
-	*op->resnull = isNull;
-	*op->resvalue = func_retval;
 
 	ReleaseTupleDesc(tupdesc);
 	MemoryContextSwitchTo(old);

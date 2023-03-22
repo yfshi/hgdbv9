@@ -2616,15 +2616,15 @@ end;
 /
 INFO:  (1,"first out name"),second out varchar,(2,"third out name")
 select * from test_return_record_out(NULL,NULL,NULL);
-          id          |        name        |         id1          | _RETVAL_ 
-----------------------+--------------------+----------------------+----------
- (1,"first out name") | second out varchar | (2,"third out name") |       23
+ _RETVAL_ |          id          |        name        |         id1          
+----------+----------------------+--------------------+----------------------
+       23 | (1,"first out name") | second out varchar | (2,"third out name")
 (1 row)
 
 select test_return_record_out(NULL,NULL,NULL) FROM dual;
                            test_return_record_out                            
 -----------------------------------------------------------------------------
- ("(1,""first out name"")","second out varchar","(2,""third out name"")",23)
+ (23,"(1,""first out name"")","second out varchar","(2,""third out name"")")
 (1 row)
 
 drop function test_return_record_out;
@@ -2651,15 +2651,15 @@ end;
 /
 INFO:  (1,"first out name"),second out varchar,(2,"third out name")
 select * from test_return_record_out(NULL,NULL,NULL);
-          id          |        name        |         id1          | _RETVAL_ 
-----------------------+--------------------+----------------------+----------
- (1,"first out name") | second out varchar | (2,"third out name") |       23
+ _RETVAL_ |          id          |        name        |         id1          
+----------+----------------------+--------------------+----------------------
+       23 | (1,"first out name") | second out varchar | (2,"third out name")
 (1 row)
 
 select test_return_record_out(NULL,NULL,NULL) FROM dual;
                            test_return_record_out                            
 -----------------------------------------------------------------------------
- ("(1,""first out name"")","second out varchar","(2,""third out name"")",23)
+ (23,"(1,""first out name"")","second out varchar","(2,""third out name"")")
 (1 row)
 
 create or replace function test_record_out(id out pkg.var1%type) return integer
@@ -2671,15 +2671,15 @@ begin
 end;
 /
 select * from test_record_out(NULL);
-          id          | _RETVAL_ 
-----------------------+----------
- (1,"first out name") |       24
+ _RETVAL_ |          id          
+----------+----------------------
+       24 | (1,"first out name")
 (1 row)
 
 select test_record_out(NULL) FROM dual;
         test_record_out        
 -------------------------------
- ("(1,""first out name"")",24)
+ (24,"(1,""first out name"")")
 (1 row)
 
 drop function test_return_record_out;
@@ -3027,15 +3027,15 @@ select pg_myfirst.f_getename(7384) from dual;
 (1 row)
 
 select * from pg_myfirst.f_out(23,NULL);
-  name  | _RETVAL_ 
---------+----------
- xiexie | welcome
+ _RETVAL_ |  name  
+----------+--------
+ welcome  | xiexie
 (1 row)
 
 select pg_myfirst.f_out(23,NULL) from dual;
       f_out       
 ------------------
- (xiexie,welcome)
+ (welcome,xiexie)
 (1 row)
 
 call pg_myfirst.f1_out(23,NULL);
@@ -3053,13 +3053,13 @@ call pg_myfirst.f1_out(23,NULL);
 select pg_myfirst.f2_out(23,NULL) FROM dual;
                    f2_out                   
 --------------------------------------------
- ("(1,""out name"")","(2,""return name"")")
+ ("(2,""return name"")","(1,""out name"")")
 (1 row)
 
 SELECT * FROM pg_myfirst.f2_out(23,NULL);
-      var2      |     _RETVAL_      
-----------------+-------------------
- (1,"out name") | (2,"return name")
+     _RETVAL_      |      var2      
+-------------------+----------------
+ (2,"return name") | (1,"out name")
 (1 row)
 
 -- drop data
@@ -6976,13 +6976,13 @@ end;
 SELECT test_pkg.test_f(NULL);
        test_f       
 --------------------
- ("welcome to ",23)
+ (23,"welcome to ")
 (1 row)
 
 SELECT test_pkg.test_f1(NULL, NULL);
                              test_f1                             
 -----------------------------------------------------------------
- ("(23,""init a value"")"," beijing","(1,""welcome to hunan"")")
+ ("(1,""welcome to hunan"")","(23,""init a value"")"," beijing")
 (1 row)
 
 SELECT test_pkg.test_f2(23);
@@ -6992,15 +6992,15 @@ SELECT test_pkg.test_f2(23);
 (1 row)
 
 SELECT * FROM test_pkg.test_f(NULL);
-     id      | _RETVAL_ 
--------------+----------
- welcome to  |       23
+ _RETVAL_ |     id      
+----------+-------------
+       23 | welcome to 
 (1 row)
 
 SELECT * FROM test_pkg.test_f1(NULL, NULL);
-         id          |   name   |        _RETVAL_        
----------------------+----------+------------------------
- (23,"init a value") |  beijing | (1,"welcome to hunan")
+        _RETVAL_        |         id          |   name   
+------------------------+---------------------+----------
+ (1,"welcome to hunan") | (23,"init a value") |  beijing
 (1 row)
 
 SELECT * FROM test_pkg.test_f2(23);
@@ -7070,13 +7070,13 @@ INFO:  init a value
 SELECT test_pkg.test_f(NULL);
        test_f       
 --------------------
- ("welcome to ",23)
+ (23,"welcome to ")
 (1 row)
 
 SELECT test_pkg.test_f1(NULL, NULL);
                              test_f1                             
 -----------------------------------------------------------------
- ("(23,""init a value"")"," beijing","(1,""welcome to hunan"")")
+ ("(1,""welcome to hunan"")","(23,""init a value"")"," beijing")
 (1 row)
 
 SELECT test_pkg.test_f2(23);
@@ -7086,15 +7086,15 @@ SELECT test_pkg.test_f2(23);
 (1 row)
 
 SELECT * FROM test_pkg.test_f(NULL);
-     id      | _RETVAL_ 
--------------+----------
- welcome to  |       23
+ _RETVAL_ |     id      
+----------+-------------
+       23 | welcome to 
 (1 row)
 
 SELECT * FROM test_pkg.test_f1(NULL, NULL);
-         id          |   name   |        _RETVAL_        
----------------------+----------+------------------------
- (23,"init a value") |  beijing | (1,"welcome to hunan")
+        _RETVAL_        |         id          |   name   
+------------------------+---------------------+----------
+ (1,"welcome to hunan") | (23,"init a value") |  beijing
 (1 row)
 
 SELECT * FROM test_pkg.test_f2(23);
