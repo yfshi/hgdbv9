@@ -1215,9 +1215,9 @@ INFO:  <NULL>
 INFO:  10
 INFO:  10
 INFO:  output
- _column_2 | _column_3 | _RETVAL_ 
------------+-----------+----------
- 10        | output    |      999
+ _RETVAL_ | _column_2 | _column_3 
+----------+-----------+-----------
+      999 | 10        | output
 (1 row)
 
 print x

@@ -54,6 +54,7 @@ int	compatible_db = PG_PARSER;
 /* END - SQL PARSER */
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 bool		allow_out_parameter_const = false;
+bool		result_first = false;
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
@@ -215,6 +216,24 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		},
 		&allow_out_parameter_const,
 		false,
+		NULL, NULL, NULL
+	},
+	/*
+	 * When a function has out parameters, and the return value is not VOID,
+	 * combile the out parameter values and the return value to a tuple.
+	 * If ivorysql.result_first is false, the first in tuple is out parameter values,
+	 * followed by function result.
+	 * If ivorysql.result_first is true, the first in tuple is the function result,
+	 * followed by out parameter values.
+	 */
+	{
+		{"ivorysql.result_first", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("the function result precedes or follows the out parameter values."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&result_first,
+		true,
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-FUNCOUT */

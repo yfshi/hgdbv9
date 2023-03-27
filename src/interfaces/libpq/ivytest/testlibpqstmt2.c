@@ -94,6 +94,7 @@ main(int argc, char **argv)
 	Ivyconn    *conn1;
 	IvyPreparedStatement *stmt1;
 	IvyBindOutInfo bindinfos[3];
+	Ivyresult  *res;
 
 	char conninfo[100]="user=system dbname=postgres port=";
 	const char *oraport = argv[1];
@@ -111,6 +112,16 @@ main(int argc, char **argv)
 		exit_nicely(conn1);
 	}
 	init_data(conn1);
+	/* set guc vorysql.result_first to false */
+	res = Ivyexec(conn1, "set ivorysql.result_first = false;");
+	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "set guc ivorysql.result_first failed\n");
+		Ivyclear(res);
+		exit_nicely(conn1);
+	}
+	Ivyclear(res);
+
 	stmt1 = init_statement();
 	/* init bindinfos */
 	/* first out parameter */
@@ -146,6 +157,16 @@ main(int argc, char **argv)
 	drop_data(conn1);
 	/* close the connection to the database and cleanup */
 	IvyFreePreparedStatement(stmt1);
+
+	/* reset guc vorysql.result_first */
+	res = Ivyexec(conn1, "reset ivorysql.result_first;");
+	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
+		Ivyclear(res);
+		exit_nicely(conn1);
+	}
+	Ivyclear(res);
 	Ivyfinish(conn1);
 	return 0;
 }

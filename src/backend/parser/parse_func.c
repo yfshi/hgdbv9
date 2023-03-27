@@ -201,7 +201,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		 */
 		if (leftCall)
 		{
-			fargs = list_delete_ptr(fargs, arg);
+			fargs = foreach_delete_current(fargs, l);
 			continue;
 		}
 

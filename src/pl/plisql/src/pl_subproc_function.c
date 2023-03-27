@@ -461,8 +461,20 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 			else
 				argitemtype = PLISQL_NSTYPE_REC;
 
-			/* the new builded variable for function return value is after all function OUT args */
-			outvar[noutargs] = argvariable;
+			if (result_first)
+			{
+				int 	j;
+
+				/* the new builded variable for function return value is the first of outvar array. */
+				for (j = noutargs; j > 0; j--)
+					outvar[j] = outvar[j - 1];
+				outvar[0] = argvariable;
+			}
+			else
+			{
+				/* the new builded variable for function return value is after all function OUT args */
+				outvar[noutargs] = argvariable;
+			}
 			noutargs++;
 
 			add_parameter_name(argitemtype, argvariable->dno, buf);
@@ -2623,12 +2635,6 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 	if (numoutargs < 1)
 		return NULL;
 
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	/* include rettype */
-	if (rettype != VOIDOID)
-		numoutargs++;
-	/* End - ReqID:SRS-SQL-PACKAGE */
-
 	outargtypes = (Oid *) palloc0(numoutargs * sizeof(Oid));
 	outargnames = (char **) palloc0(numoutargs * sizeof(char *));
 
@@ -2654,30 +2660,58 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
 	}
-
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (rettype != VOIDOID)
-	{
-		outargtypes[i] = rettype;
-		outargnames[i++] = pstrdup("_RETVAL_");
-	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	Assert(i == numoutargs);
 
-	desc = CreateTemplateTupleDesc(numoutargs);
+	if (rettype != VOIDOID)
+		desc = CreateTemplateTupleDesc(numoutargs + 1);
+	else
+		desc = CreateTemplateTupleDesc(numoutargs);
 
 	i = 0;
-	/* result value after out parameters value */
-	/* init out-parameters */
-	for (j = 0; j < numoutargs; j++)
+
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	if (result_first)
 	{
-		TupleDescInitEntry(desc, ++i,
-						outargnames[j],
-						outargtypes[j],
-						-1,
-						0);
+		/* put the result value before all the out parameters */
+		if (rettype != VOIDOID)
+			TupleDescInitEntry(desc, ++i,
+								"_RETVAL_",
+								rettype,
+								-1,
+								0);
+
+		for (j = 0; j < numoutargs; j++)
+		{
+			TupleDescInitEntry(desc, ++i,
+							outargnames[j],
+							outargtypes[j],
+							-1,
+							0);
+		}
 	}
+	else
+	{
+		/* result value after out parameters value */
+		/* init out-parameters */
+		for (j = 0; j < numoutargs; j++)
+		{
+			TupleDescInitEntry(desc, ++i,
+							outargnames[j],
+							outargtypes[j],
+							-1,
+							0);
+		}
+
+		if (rettype != VOIDOID)
+			TupleDescInitEntry(desc, ++i,
+								"_RETVAL_",
+								rettype,
+								-1,
+								0);
+	}
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	pfree(outargtypes);
 	pfree(outargnames);

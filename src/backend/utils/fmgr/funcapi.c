@@ -2277,31 +2277,62 @@ build_plisql_function_result_tupdesc_d(char prokind,
 
 	i = 0;
 
-	/* put the result value after all out parameters */
-	for (j = 0; j < numoutargs; j++)
+	if (result_first)
 	{
-		TupleDescInitEntry(desc, ++i,
-						outargnames[j],
-						outargtypes[j],
-						-1,
-						0); 	
-	}
+		/* put the result value before all the out parameters */
+		if (prorettype != VOIDOID)
+		{
+			Oid 	rettype = prorettype;
 
-	if (prorettype != VOIDOID)
-	{
-		Oid		rettype = prorettype;
+			/* Begin - BUG:M0000068 */
+			if (intisnumber &&
+				(rettype == INT2OID || rettype == INT4OID))
+				rettype = NUMBEROID;
+			/* End - BUG:M0000068 */
 
-		/* Begin - BUG:M0000068 */
-		if (intisnumber &&
-			(rettype == INT2OID || rettype == INT4OID))
-			rettype = NUMBEROID;
-		/* End - BUG:M0000068 */
-
-		TupleDescInitEntry(desc, ++i,
-							"_RETVAL_",
-							rettype,
+			TupleDescInitEntry(desc, ++i,
+								"_RETVAL_",
+								rettype,
+								-1,
+								0);
+		}
+		for (j = 0; j < numoutargs; j++)
+		{
+			TupleDescInitEntry(desc, ++i,
+							outargnames[j],
+							outargtypes[j],
 							-1,
 							0);
+		}
+	}
+	else
+	{
+		/* put the result value after all out parameters */
+		for (j = 0; j < numoutargs; j++)
+		{
+			TupleDescInitEntry(desc, ++i,
+							outargnames[j],
+							outargtypes[j],
+							-1,
+							0);
+		}
+
+		if (prorettype != VOIDOID)
+		{
+			Oid		rettype = prorettype;
+
+			/* Begin - BUG:M0000068 */
+			if (intisnumber &&
+				(rettype == INT2OID || rettype == INT4OID))
+				rettype = NUMBEROID;
+			/* End - BUG:M0000068 */
+
+			TupleDescInitEntry(desc, ++i,
+								"_RETVAL_",
+								rettype,
+								-1,
+								0);
+		}
 	}
 
 	pfree(outargtypes);

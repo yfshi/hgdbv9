@@ -1432,5 +1432,170 @@ DROP FUNCTION f_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
 DROP PROCEDURE p_def2(arg1 IN int, arg2 IN int, arg3 IN int, arg3 int);
 --End - BUG#Z212
 
+--test the new added guc paramater ivorysql.result_first
+set ivorysql.allow_out_parameter_const = true;
+set ivorysql.out_parameter_column_position = true;
+
+create or replace function test_return_out(id integer,salary out integer,name out varchar) return void
+as
+begin
+  salary := 20000 + id;
+  name := 'test a char out';
+end;
+/
+declare
+  id integer := 1;
+  ret varchar(256);
+  name varchar(20);
+  salary integer;
+begin
+  ret := test_return_out(id,salary,name);
+  raise notice 'salary=%, name=%',salary,name;
+  raise notice 'ret=%',ret;
+end;
+/
+drop function test_return_out;
+
+
+create or replace function test_out(id integer, name out varchar, salary out integer) return integer is
+begin
+  name := 'xiexie';
+  salary := id;
+  return 23;
+end;
+/
+select * from test_out(23, NULL, NULL);
+drop function test_out;
+
+create or replace procedure test_pout(id integer, name out varchar, salary out integer) is
+begin
+  name := 'xiexie';
+  salary := id;
+end;
+/
+call test_pout(23, NULL, NULL);
+drop procedure test_pout;
+
+create or replace function test_out1(id integer, name out varchar, id2 in out integer, salary out integer, id3 integer, id4 out integer)
+return integer
+is
+begin
+  name := 'xiexie';
+  salary := id;
+  id2 := id + 23;
+  id4 := id3 + 54;
+  return 23;
+end;
+/
+select * from test_out1(23, NULL, 24, NULL, 5, NULL);
+drop function test_out1;
+
+create or replace function test_subproc_func(a in out integer) returns integer AS
+$$
+declare
+  mds integer;
+  original integer;
+  out1 integer;
+  function square(original in out integer, v2 out integer) return integer;
+  function square(original in out integer, v2 out integer) return integer
+  AS
+  declare
+       original_squared integer;
+	   a integer;
+  BEGIN
+       a := 23;
+	   v2 := 100;
+       original_squared := original * original;
+       raise info 'mds=%', mds;
+       raise info 'original=%', original;
+	   raise info 'local var a = %',a;
+	   raise info 'global a = %', test_subproc_func.a;
+       original := original_squared + 1;
+       return original_squared;
+   end;
+begin
+    mds := 10;
+    original := 21;
+    original := square(mds, out1);
+    raise info 'ret = %. out1 = %', original, out1;
+    a := original + 1;
+    return mds;
+end; $$ language plisql;
+/
+select * from test_subproc_func(21);
+drop function test_subproc_func;
+
+--complex testcase
+create table mds1(id integer,name varchar(23));
+create table emp1(empno int,ename char(10),job char(20),mgr int,hiredate date,sal number,comm number,deptno int);
+
+create or replace package pg_myfirst
+is
+  procedure sp_emp_insert;
+  function f_getename(i_empno number) return varchar2;
+  function f_out(id integer, name out varchar) return varchar;
+  procedure f1_out(id integer, name out varchar);
+  function f2_out(name out varchar, id integer, var2 out mds1%rowtype) return mds1%rowtype;
+end pg_myfirst;
+/
+
+create or replace package body pg_myfirst
+is
+  procedure sp_emp_insert
+  is
+  begin
+    insert into emp1(empno,ename,job,mgr,hiredate,sal,comm,deptno)
+     values(7384,'WangYi','SALESMAN',7698,to_date('2011-07-29','yyyy-mm-dd'),1250.00,1400.00,30);
+  end;
+  function f_getename(i_empno number)
+  return varchar2
+  is
+    v_ename varchar2(200);
+  begin
+    select ename into v_ename from emp1 where empno=i_empno;
+    return v_ename;
+  end;
+  function f_out(id integer, name out varchar) return varchar is
+  begin
+     name := 'xiexie';
+     return 'welcome';
+  end;
+  procedure f1_out(id integer, name out varchar) is
+  begin
+    name := 'jsdfljsf';
+  end;
+  function f2_out(name out varchar, id integer, var2 out mds1%rowtype) return mds1%rowtype is
+    var1 mds1%rowtype;
+  begin
+    name := 'name1';
+    var2.id := 1;
+    var2.name := 'out name';
+    var1.id := 2;
+    var1.name := 'return name';
+    return var1;
+  end;
+end pg_myfirst;
+/
+
+declare
+  out_var varchar(256);
+  ret_var varchar(256);
+  ret_mds mds1%rowtype;
+  out_mds mds1%rowtype;
+  out_name varchar(20);
+begin
+  ret_var := pg_myfirst.f_out(23,out_var);
+  raise info 'ret_var=%, out_var=%', ret_var, out_var;
+  ret_mds := pg_myfirst.f2_out(out_name, 23, out_mds);
+  raise info 'ret_mds=%, out_mds=%, out_name=%', ret_mds,out_mds,out_name;
+end;
+/
+drop package pg_myfirst;
+drop table emp1;
+drop table mds1;
+
+reset ivorysql.allow_out_parameter_const;
+reset ivorysql.out_parameter_column_position;
+
 --clean data
 drop table mds;
