@@ -3240,8 +3240,9 @@
   oprname => '@>', oprleft => 'jsonb', oprright => 'jsonb', oprresult => 'bool',
   oprcom => '<@(jsonb,jsonb)', oprcode => 'jsonb_contains',
   oprrest => 'matchingsel', oprjoin => 'matchingjoinsel' },
+#BUG#M0000201: support question marks as binding variables
 { oid => '3247', descr => 'key exists',
-  oprname => '?', oprleft => 'jsonb', oprright => 'text', oprresult => 'bool',
+  oprname => '?@', oprleft => 'jsonb', oprright => 'text', oprresult => 'bool',
   oprcode => 'jsonb_exists', oprrest => 'matchingsel',
   oprjoin => 'matchingjoinsel' },
 { oid => '3248', descr => 'any key exists',

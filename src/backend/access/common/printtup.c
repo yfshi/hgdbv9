@@ -515,23 +515,6 @@ debugtup(TupleTableSlot *slot, DestReceiver *self)
 	return true;
 }
 
-/* Begin - ReqID:SRS-SQL-ANONYOUT */
-/*
- * ChangeDestSendDescription:
- * During PBE executing a anonymous block which includes some out parameters,
- * we should change it to send description
- */
-void
-ChangeDestSendDescription(DestReceiver *dest)
-{
-	DR_printtup *myState = (DR_printtup *) dest;
-
-	Assert(dest->mydest == DestRemoteExecute);
-
-	myState->sendDescrip = true;
-}
-/* End - ReqID:SRS-SQL-ANONYOUT */
-
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 /*
  * Set sendDescrip for a DestRemote (or DestRemoteExecute) receiver

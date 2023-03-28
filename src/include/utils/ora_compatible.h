@@ -57,5 +57,16 @@ typedef enum
 } OraMergeTuning;
 /* End - ReqID:SRS-SQL-MERGE */
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+typedef enum
+{
+	FROM_UNKNOWN,
+	FROM_JDBC,
+	FROM_C,
+	FROM_OCI,
+	FROM_LIBPQ
+} WhereFrom;
+/* End - BUG#M0000201: support question marks as binding variables */
+
 #endif							/* ORA_COMPATIBLE_H */
 

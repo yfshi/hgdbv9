@@ -280,15 +280,15 @@ SELECT jsonb_exists('{"a":null, "b":"qq"}', 'a');
 SELECT jsonb_exists('{"a":null, "b":"qq"}', 'b');
 SELECT jsonb_exists('{"a":null, "b":"qq"}', 'c');
 SELECT jsonb_exists('{"a":"null", "b":"qq"}', 'a');
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'a';
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'b';
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'c';
-SELECT jsonb '{"a":"null", "b":"qq"}' ? 'a';
+SELECT jsonb '{"a":null, "b":"qq"}' ?@ 'a'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT jsonb '{"a":null, "b":"qq"}' ?@ 'b'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT jsonb '{"a":null, "b":"qq"}' ?@ 'c'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT jsonb '{"a":"null", "b":"qq"}' ?@ 'a'; --/* BUG#M0000201: support question marks as binding variables */
 -- array exists - array elements should behave as keys
-SELECT count(*) from testjsonb  WHERE j->'array' ? 'bar';
+SELECT count(*) from testjsonb  WHERE j->'array' ?@ 'bar'; --/* BUG#M0000201: support question marks as binding variables */
 -- type sensitive array exists - should return no rows (since "exists" only
 -- matches strings that are either object keys or array elements)
-SELECT count(*) from testjsonb  WHERE j->'array' ? '5'::text;
+SELECT count(*) from testjsonb  WHERE j->'array' ?@ '5'::text; --/* BUG#M0000201: support question marks as binding variables */
 -- However, a raw scalar is *contained* within the array
 SELECT count(*) from testjsonb  WHERE j->'array' @> '5'::jsonb;
 
@@ -771,8 +771,8 @@ SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC"}';
 SELECT count(*) FROM testjsonb WHERE j @> '{"wait":"CC", "public":true}';
 SELECT count(*) FROM testjsonb WHERE j @> '{"age":25}';
 SELECT count(*) FROM testjsonb WHERE j @> '{"age":25.0}';
-SELECT count(*) FROM testjsonb WHERE j ? 'public';
-SELECT count(*) FROM testjsonb WHERE j ? 'bar';
+SELECT count(*) FROM testjsonb WHERE j ?@ 'public'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT count(*) FROM testjsonb WHERE j ?@ 'bar'; --/* BUG#M0000201: support question marks as binding variables */
 SELECT count(*) FROM testjsonb WHERE j ?| ARRAY['public','disabled'];
 SELECT count(*) FROM testjsonb WHERE j ?& ARRAY['public','disabled'];
 SELECT count(*) FROM testjsonb WHERE j @@ '$.wait == null';
@@ -806,8 +806,8 @@ SELECT count(*) FROM testjsonb WHERE j @> '{"array":["foo"]}';
 SELECT count(*) FROM testjsonb WHERE j @> '{"array":["bar"]}';
 -- exercise GIN_SEARCH_MODE_ALL
 SELECT count(*) FROM testjsonb WHERE j @> '{}';
-SELECT count(*) FROM testjsonb WHERE j ? 'public';
-SELECT count(*) FROM testjsonb WHERE j ? 'bar';
+SELECT count(*) FROM testjsonb WHERE j ?@ 'public'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT count(*) FROM testjsonb WHERE j ?@ 'bar'; --/* BUG#M0000201: support question marks as binding variables */
 SELECT count(*) FROM testjsonb WHERE j ?| ARRAY['public','disabled'];
 SELECT count(*) FROM testjsonb WHERE j ?& ARRAY['public','disabled'];
 
@@ -846,10 +846,10 @@ SELECT count(*) FROM testjsonb WHERE j @? '$.bar';
 
 -- array exists - array elements should behave as keys (for GIN index scans too)
 CREATE INDEX jidx_array ON testjsonb USING gin((j->'array'));
-SELECT count(*) from testjsonb  WHERE j->'array' ? 'bar';
+SELECT count(*) from testjsonb  WHERE j->'array' ?@ 'bar'; --/* BUG#M0000201: support question marks as binding variables */
 -- type sensitive array exists - should return no rows (since "exists" only
 -- matches strings that are either object keys or array elements)
-SELECT count(*) from testjsonb  WHERE j->'array' ? '5'::text;
+SELECT count(*) from testjsonb  WHERE j->'array' ?@ '5'::text; --/* BUG#M0000201: support question marks as binding variables */
 -- However, a raw scalar is *contained* within the array
 SELECT count(*) from testjsonb  WHERE j->'array' @> '5'::jsonb;
 
@@ -1019,12 +1019,12 @@ SELECT '[0,1,2,[3,4],{"5":"five"}]'::jsonb #> '{4}';
 SELECT '[0,1,2,[3,4],{"5":"five"}]'::jsonb #> '{4,5}';
 
 --nested exists
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'n';
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'a';
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'b';
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'c';
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'd';
-SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ? 'e';
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'n'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'a'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'b'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'c'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'd'; --/* BUG#M0000201: support question marks as binding variables */
+SELECT '{"n":null,"a":1,"b":[1,2],"c":{"1":2},"d":{"1":[2,3]}}'::jsonb ?@ 'e'; --/* BUG#M0000201: support question marks as binding variables */
 
 -- jsonb_strip_nulls
 

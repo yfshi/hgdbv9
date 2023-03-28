@@ -76,11 +76,11 @@ init_statement()
 	const char *stmt1 = "call plsql_function_out(:arg1, :arg2, :arg3, :arg4) into :hostvar";
 	Oid param_types[5];
 
-	param_types[0] = 23 | 0x20000000  /* in */;
-	param_types[1] = 9003 | 0x40000000  /* out */;
-	param_types[2] = 9003 | 0x40000000  /* out */;
-	param_types[3] = 23 | 0x40000000  /* out */;
-	param_types[4] = 9003 | 0x40000000  /* out */;
+	param_types[0] = 23 | 0x40000000  /* in */;
+	param_types[1] = 9003 | 0x80000000  /* out */;
+	param_types[2] = 9003 | 0x80000000  /* out */;
+	param_types[3] = 23 | 0x80000000  /* out */;
+	param_types[4] = 9003 | 0x80000000  /* out */;
 	prestmt1 = IvyCreatePreparedStatement(stmt1_name, stmt1, 5, param_types);
 	return prestmt1;
 }

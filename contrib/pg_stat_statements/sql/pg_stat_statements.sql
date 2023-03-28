@@ -38,8 +38,8 @@ SELECT :add + 1 + 1 AS "add" \gset
 -- set operator
 SELECT 1 AS i UNION SELECT 2 ORDER BY i;
 
--- ? operator
-select '{"a":1, "b":2}'::jsonb ? 'b';
+-- ?@ operator, to support question marks as binding variables, ivorysql change ? to ?@ 
+select '{"a":1, "b":2}'::jsonb ?@ 'b'; /*BUG#M0000201: support question marks as binding variables */
 
 -- cte
 WITH t(f) AS (

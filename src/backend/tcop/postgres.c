@@ -2380,18 +2380,8 @@ exec_execute_message(const char *portal_name, long max_rows)
 	 */
 	receiver = CreateDestReceiver(dest);
 
-
 	if (dest == DestRemoteExecute)
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	{
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 		SetRemoteDestReceiverParams(receiver, portal);
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		/* If there are out parameters, should change it to send description */
-		if (ORA_PARSER == compatible_db && portalParams != NULL && portalParams->haveout)
-			ChangeDestSendDescription(receiver);
-	}
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Ensure we are in a transaction command (this should normally be the

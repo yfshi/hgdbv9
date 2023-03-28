@@ -151,15 +151,15 @@ init_statement()
 
 
 	param_types[0] = 0; //let db to judge it.
-	param_types[1] = 25 | 0x40000000;  /* out */
-	param_types[2] = 25 | 0x40000000;  /* out */
-	param_types[3] = 23 | 0x40000000;  /* out */
+	param_types[1] = 25 | 0x80000000;  /* out */
+	param_types[2] = 25 | 0x80000000;  /* out */
+	param_types[3] = 23 | 0x80000000;  /* out */
 	prestmt1 = IvyCreatePreparedStatement(stmt1_name, stmt1, 4, param_types);
 
-	param_types3[0] = 23 | 0x60000000;  /* inout */
-	param_types3[1] = 23 | 0x60000000;  /* inout */
-	param_types3[2] = 25 | 0x60000000;  /* inout */
-	param_types3[3] = 23 | 0x60000000;  /* inout */
+	param_types3[0] = 23 | 0xC0000000;  /* inout */
+	param_types3[1] = 23 | 0xC0000000;  /* inout */
+	param_types3[2] = 25 | 0xC0000000;  /* inout */
+	param_types3[3] = 23 | 0xC0000000;  /* inout */
 
 	prestmt3 = IvyCreatePreparedStatement(stmt3_name, stmt3, 4, param_types3);
 

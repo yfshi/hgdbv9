@@ -545,8 +545,6 @@ GetParamMode(Oid *paramTypes, int numParams)
 			modes[i] = PROARGMODE_INOUT;
 		else if (IsModeOut(paramTypes[i]))
 			modes[i] = PROARGMODE_OUT;
-		else if (IsLeftCall(paramTypes[i]))
-			modes[i] = PROARGMODE_RESULT;
 		else
 			modes[i] = PROARGMODE_IN;
 	}
@@ -560,23 +558,33 @@ GetParamMode(Oid *paramTypes, int numParams)
  * If it is '{ ? = call func/proc}' form jdbc, set isLeftCall to true
  */
 void
-ParseVarParamState(void *arg, Node *param, bool *isLeftCall)
+ParseVarParamState(void *arg, Node *param,
+				bool *firstOutIsReturn, bool proc_call, int narg)
 {
 	int 		   index;
 	char 		   mode;
 	VarParamState *vps = (VarParamState *) arg;
-	char 		  *modes = *vps->paramModes;
+	char 		  *modes;
 
+	if (vps->paramModes == NULL)
+		return;
+
+	modes = *vps->paramModes;
 	if (!modes)
 		return;
 
 	index = ((Param *) param)->paramid - 1;
 	mode = modes[index];
-	if (mode == PROARGMODE_RESULT)
-		*isLeftCall = true;
+
+	if (where_from == FROM_JDBC &&
+		!proc_call &&
+		narg == 0 &&
+		firstOutIsReturn != NULL &&
+		mode == PROARGMODE_OUT)
+		*firstOutIsReturn = true;
 
 	/* If parameter type is UNKNOWNOID, set type oid to VOIDOID */
-	if (*isLeftCall &&
+	if (*firstOutIsReturn &&
 		(*vps->paramTypes)[index] == UNKNOWNOID)
 		(*vps->paramTypes)[index] = VOIDOID;
 }

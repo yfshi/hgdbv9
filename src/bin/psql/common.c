@@ -3102,7 +3102,7 @@ psql_exec_pbe(const char *sql, HostVariable *hv, struct _variable **bindvar)
 					hv->hostvars[i].position,
 					var[i],
 					var_sz[i],
-					bindvar[i]->typoid | 0x60000000  /* inout */,
+					bindvar[i]->typoid | 0xC0000000  /* inout */,
 					&indp[i],
 					NULL,
 					NULL,

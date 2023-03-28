@@ -655,6 +655,12 @@ static void determineLanguage(List *options);
 /* End - ReqID:SRS-SQL-CALL */
 %type <typnam> virtual_type	/* ReqID:SRS-SQL-VIRTUALCOL */
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+%type <node> jdbc_call_function
+%type <node> jdbc_call_function_parameter_el
+%type <list> jdbc_call_function_parameter_list
+/* End - BUG#M0000201: support question marks as binding variables */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -677,6 +683,9 @@ static void determineLanguage(List *options);
 
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
+/* Begin - BUG#M0000201: support question marks as binding variables */
+%token			QUESTION_MARK;
+/* End - BUG#M0000201: support question marks as binding variables */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -901,6 +910,10 @@ static void determineLanguage(List *options);
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 %nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
+/* Begin - BUG#M0000201: support question marks as binding variables */
+%nonassoc	QUESTION_MARK;
+/* End - BUG#M0000201: support question marks as binding variables */
+
 /*
  * To support target_el without AS, it used to be necessary to assign IDENT an
  * explicit precedence just less than Op.  While that's not really necessary
@@ -1193,6 +1206,9 @@ stmt:
 			| CreatePackageBodyStmt
 			| AlterPackageStmt
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - BUG#M0000201: support question marks as binding variables */
+			| jdbc_call_function
+			/* End - BUG#M0000201: support question marks as binding variables */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
@@ -16588,6 +16604,18 @@ c_expr:		columnref								{ $$ = $1; }
 				  g->location = @1;
 				  $$ = (Node *)g;
 			  }
+			/* Begin - BUG#M0000201: support question marks as binding variables */
+			| QUESTION_MARK
+				{
+					ParamRef *p = makeNode(ParamRef);
+
+					questionmarks_count++;
+					p->number = questionmarks_count;
+					p->location = @1;
+
+					$$ = (Node *) p;
+				}
+			/* End - BUG#M0000201: support question marks as binding variables */
 		;
 
 func_application: func_name '(' ')'
@@ -18613,12 +18641,72 @@ plassign_target: ColId							{ $$ = $1; }
 						$$ = psprintf("$%d", calculate_oraparamnumber($1));
 				}
 			/* End - ReqID:SRS-SQL-ANONYOUT */
+			/* Begin - BUG#M0000201: support question marks as binding variables */
+			| QUESTION_MARK
+				{
+					questionmarks_count++;
+					$$ = psprintf("$%d", questionmarks_count);
+
+				}
+			/* End - BUG#M0000201: support question marks as binding variables */
 		;
 
 plassign_equals: COLON_EQUALS
 			| '='
 		;
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+jdbc_call_function: QUESTION_MARK '=' CALL func_name '('  ')'
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					ResTarget	*target = makeNode(ResTarget);
+
+					target->val = (Node *) makeFuncCall($4, NIL,
+											 COERCE_EXPLICIT_CALL,
+											 @4);
+					target->location = @1;
+
+					n->targetList = list_make1(target);
+
+					$$ = (Node *) n;
+				}
+				| QUESTION_MARK '=' CALL func_name '(' jdbc_call_function_parameter_list ')'
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					ResTarget	*target = makeNode(ResTarget);
+
+					target->val = (Node *) makeFuncCall($4, $6,
+											 COERCE_EXPLICIT_CALL,
+											 @4);
+					n->targetList = list_make1(target);
+					target->location = @1;
+
+					$$ = (Node *) n;
+				}
+				;
+
+jdbc_call_function_parameter_list:	jdbc_call_function_parameter_el
+				{
+					$$ = list_make1($1);
+				}
+			| jdbc_call_function_parameter_list ',' jdbc_call_function_parameter_el
+				{
+					$$ = lappend($1, $3);
+				}
+		;
+jdbc_call_function_parameter_el:
+			QUESTION_MARK
+				{
+					ParamRef *p = makeNode(ParamRef);
+
+					questionmarks_count++;
+					p->number = questionmarks_count;
+					p->location = @1;
+
+					$$ = (Node *) p;
+				}
+		;
+/* End - BUG#M0000201: support question marks as binding variables */
 
 /*
  * Name classification hierarchy.
@@ -20703,4 +20791,7 @@ void
 ora_parser_init(ora_base_yy_extra_type *yyext)
 {
 	yyext->parsetree = NIL;		/* in case grammar forgets to set it */
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 }

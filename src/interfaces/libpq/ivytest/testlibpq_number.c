@@ -60,10 +60,10 @@ exec_prepare(Ivyconn *conn)
 	memset(bindvar1, 0x00, 256);
 	memset(bindvar2, 0x00, 256);
 
-	param_types[0] = 23 | 0x20000000  /* in */;
-	param_types[1] = 9020 | 0x40000000  /* out */;
-	param_types[2] = 9021 | 0x40000000  /* out */;
-	param_types[3] = 9020 | 0x20000000  /* in */;
+	param_types[0] = 23 | 0x40000000  /* in */;
+	param_types[1] = 9020 | 0x80000000  /* out */;
+	param_types[2] = 9021 | 0x80000000  /* out */;
+	param_types[3] = 9020 | 0x40000000  /* in */;
 	stmthandle = IvyCreatePreparedStatement(stmt_name, stmt, 4, param_types);
 	IvybindOutParameterByPos(stmthandle,
 							&bindinfo[0],

@@ -69,8 +69,8 @@ SELECT 1 AS i UNION SELECT 2 ORDER BY i;
  2
 (2 rows)
 
--- ? operator
-select '{"a":1, "b":2}'::jsonb ? 'b';
+-- ?@ operator, to support question marks as binding variables, ivorysql change ? to ?@ 
+select '{"a":1, "b":2}'::jsonb ?@ 'b'; /*BUG#M0000201: support question marks as binding variables */
  ?column? 
 ----------
  t
@@ -99,6 +99,12 @@ DEALLOCATE pgss_test;
 SELECT query, calls, rows FROM pg_stat_statements ORDER BY query COLLATE "C";
                                     query                                     | calls | rows 
 ------------------------------------------------------------------------------+-------+------
+ /*BUG#M0000201: support question marks as binding variables */              +|     1 |    2
+                                                                             +|       | 
+ WITH t(f) AS (                                                              +|       | 
+   VALUES ($1), ($2)                                                         +|       | 
+ )                                                                           +|       | 
+   SELECT f FROM t ORDER BY f                                                 |       | 
  PREPARE pgss_test (int) AS SELECT $1, $2 LIMIT $3                            |     1 |    1
  SELECT $1                                                                   +|     4 |    4
                                                                              +|       | 
@@ -111,11 +117,7 @@ SELECT query, calls, rows FROM pg_stat_statements ORDER BY query COLLATE "C";
  SELECT $1 || $2                                                              |     1 |    1
  SELECT pg_stat_statements_reset()                                            |     1 |    1
  SELECT query, calls, rows FROM pg_stat_statements ORDER BY query COLLATE "C" |     0 |    0
- WITH t(f) AS (                                                              +|     1 |    2
-   VALUES ($1), ($2)                                                         +|       | 
- )                                                                           +|       | 
-   SELECT f FROM t ORDER BY f                                                 |       | 
- select $1::jsonb ? $2                                                        |     1 |    1
+ select $1::jsonb ?@ $2                                                       |     1 |    1
 (12 rows)
 
 --

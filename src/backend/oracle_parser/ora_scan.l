@@ -1147,6 +1147,14 @@ other			.
 						}
 					}
 
+					/* Begin - BUG#M0000201: support question marks as binding variables */
+					if (nchars == 1 && yytext[0] == '?')
+					{
+						yylval->str = pstrdup(yytext);
+						return QUESTION_MARK;
+					}					
+					/* End - BUG#M0000201: support question marks as binding variables */
+
 					/*
 					 * Complain if operator is too long.  Unlike the case
 					 * for identifiers, we make this an error not a notice-

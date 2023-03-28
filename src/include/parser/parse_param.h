@@ -26,20 +26,20 @@ extern void check_variable_parameters(ParseState *pstate, Query *query);
 extern bool query_contains_extern_params(Query *query);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 /*
- * type oid (32bits), 3 highest bits; 1st is arg of '{? = call}',
- * second means OUT mode, third means IN modes. left 29 bits for
- * value of type.
+ * type oid (32bits), 2 highest bits; if the first bit is 1,
+ * it means OUT mode, if the second bit is 1, it means IN modes.
+ * the remaining 30 bits represent the type value.
  */
-#define IsLeftCall(typeoid) ((typeoid) & 0x80000000)
-#define IsModeOut(typeoid) ((typeoid) & 0x40000000)
-#define SetModeOut(typeoid) ((typeoid) |= 0x40000000)
-#define IsModeIn(typeoid) ((typeoid) & 0x20000000)
-#define SetModeIn(typeoid) ((typeoid) |= 0x20000000)
-#define UnSetModeOut(typeoid) ((typeoid) &= 0x1FFFFFFF)
+#define IsModeOut(typeoid) ((typeoid) & 0x80000000)
+#define SetModeOut(typeoid) ((typeoid) |= 0x80000000)
+#define IsModeIn(typeoid) ((typeoid) & 0x40000000)
+#define SetModeIn(typeoid) ((typeoid) |= 0x40000000)
+#define UnSetModeOut(typeoid) ((typeoid) &= 0x3FFFFFFF)
 
 extern Node *ParseParamVariable(Node *arg);
 extern char *GetParamMode(Oid *paramTypes, int numParams); /* BUG:M0000083 */
-extern void ParseVarParamState(void *arg, Node *param, bool *isLeftCall);
+extern void ParseVarParamState(void *arg, Node *param,
+							bool *firstOutIsReturn, bool proc_call, int narg);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 extern int push_oraparam_stack(void);

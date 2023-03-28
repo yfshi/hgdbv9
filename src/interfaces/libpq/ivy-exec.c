@@ -29,13 +29,13 @@
 #include "libpq-ivy.h"
 
 /*
- * type oid (32bits), 3 highest bits; 1st is arg of '{? = call}',
- * second means OUT mode, third means IN modes. left 29 bits for
- * value of type.
+ * type oid (32bits), the highest two bits are used; if the first bit is 1,
+ * it means OUT mode, if the second bit is 1, it means IN modes.
+ * the remaining 30 bits represent the type value.
  */
-#define SetModeOut(typeoid) ((typeoid) |= 0x40000000)
-#define SetModeIn(typeoid) ((typeoid) |= 0x20000000)
-#define UnSetModeOut(typeoid) ((typeoid) &= 0x1FFFFFFF)
+#define SetModeOut(typeoid) ((typeoid) |= 0x80000000)
+#define SetModeIn(typeoid) ((typeoid) |= 0x40000000)
+#define UnSetModeOut(typeoid) ((typeoid) &= 0x3FFFFFFF)
 
 static void	IvyassignOutParameters(const Ivyresult *res, IvyBindOutInfo *outbind);
 static void IvyreplaceParamTypeByOutParameter(IvyBindOutInfo *bindinfo, int nParams, Oid *paramTypes, const Ivyargmode *argmodes);

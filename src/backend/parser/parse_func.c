@@ -178,31 +178,31 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		Node	   *arg = lfirst(l);
 		Oid			argtype = exprType(arg);
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		bool 		leftCall = false;
+		bool		firstOutIsReturn = false;
 
 		/*
-		 * Oid is 32 bit, the 32nd-30nd bit is used for sepecial purpose.
-		 * 32nd bit indicates that it is '{? = call function/proc}' .
-		 * 31nd bit indicates that the function or procedure parameter mode is OUT.
-		 * 30nd bit indicates that the function or procedure parameter mode is IN.
-		 * 29nd-1nd bit used for the unction or procedure parameter type OID.
+		 * Oid is 32 bit, the 32nd-31nd bit is used for sepecial purpose.
+		 * 32nd bit indicates that the function or procedure parameter mode is OUT.
+		 * 31nd bit indicates that the function or procedure parameter mode is IN.
+		 * 30nd-1nd bit used for the function or procedure parameter type OID.
 		 */
 		if (ORA_PARSER == compatible_db &&
 			IsA(arg, Param) &&
 			pstate->p_ref_hook_state &&
 			pstate->p_isVarParamState)
 			ParseVarParamState(pstate->p_ref_hook_state, arg,
-							&leftCall);
+							&firstOutIsReturn, proc_call, nargs);
 
 		/*
 		 * If it is CALL by JDBC, we discard the first argument from the parameter list.
 		 * Because the first argument is the result.
 		 */
-		if (leftCall)
+		if (firstOutIsReturn)
 		{
 			fargs = foreach_delete_current(fargs, l);
 			continue;
 		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
 
 		if (argtype == VOIDOID && IsA(arg, Param) &&
 			!is_column && !agg_within_group)

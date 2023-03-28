@@ -341,6 +341,10 @@ extern int max_active_gtt;
 extern int vacuum_gtt_defer_check_age;
 /* End - ReqID:SRS-SQL-GTT */
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+extern PGDLLIMPORT int where_from;
+/* End - BUG#M0000201: support question marks as binding variables */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
