@@ -3123,3 +3123,107 @@ select decode(null, null, 2018, 2, 3) from test_decode; --expect:all
 (4 rows)
 
 drop table test_decode;
+/* Begin - BUG:M0000084 */
+SELECT SUBSTR('ABCDEFG',3,4) "Substring" FROM DUAL;
+ Substring 
+-----------
+ CDEF
+(1 row)
+
+SELECT SUBSTR('ABCDEFG',-5,4) "Substring" FROM DUAL;
+ Substring 
+-----------
+ CDEF
+(1 row)
+
+SELECT SUBSTRB('ABCDEFG',5,4.2) "Substring with bytes" FROM DUAL;
+ Substring with bytes 
+----------------------
+ EFG
+(1 row)
+
+SELECT SUBSTR((timestamp '2001-09-29 03:00:00' - timestamp '2001-07-27 12:00:00'), 2, 9) * 24 * 60 FROM DUAL;
+ ?column? 
+----------
+ 90720
+(1 row)
+
+SELECT INSTR('CORPORATE FLOOR','OR', 3, 2) "Instring" FROM DUAL;
+ Instring 
+----------
+       14
+(1 row)
+
+SELECT INSTR('CORPORATE FLOOR','OR', -3, 2) "Reversed Instring" FROM DUAL;
+ Reversed Instring 
+-------------------
+                 2
+(1 row)
+
+SELECT INSTRB('CORPORATE FLOOR','OR',5,2) "Instring in bytes" FROM DUAL;
+ Instring in bytes 
+-------------------
+                14
+(1 row)
+
+SELECT substr('abcdefabcdef',2,3);
+ substr 
+--------
+ bcd
+(1 row)
+
+SELECT substr('abcdefabcdef',-2,3);
+ substr 
+--------
+ ef
+(1 row)
+
+SELECT substr('abcdefabcdef',2);
+   substr    
+-------------
+ bcdefabcdef
+(1 row)
+
+SELECT substr('abcdefabcdef',-2);
+ substr 
+--------
+ ef
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc',1,1);
+ instr 
+-------
+     2
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc',1,2);
+ instr 
+-------
+     8
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc',4,1);
+ instr 
+-------
+     8
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc');
+ instr 
+-------
+     2
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc',3);
+ instr 
+-------
+     8
+(1 row)
+
+SELECT instr('abcdefabcdefabc','bc',1,5);
+ instr 
+-------
+     0
+(1 row)
+
+/* End - BUG:M0000084 */
