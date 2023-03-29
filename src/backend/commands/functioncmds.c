@@ -2675,6 +2675,7 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 	codeblock->langOid = languageStruct->oid;
 	codeblock->langIsTrusted = languageStruct->lanpltrusted;
 	codeblock->atomic = atomic;
+	codeblock->do_from_call = stmt->do_from_call;	/* ReqID:SRS-SQL-CALL */
 
 	if (languageStruct->lanpltrusted)
 	{

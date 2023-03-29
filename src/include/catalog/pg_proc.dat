@@ -11645,8 +11645,8 @@
   proname => 'get_parameter_descr', prorows => '8',
   proretset => 't', provolatile => 's', prorettype => 'record',
   proargtypes => 'text',
-  proallargtypes => '{text,text,int4}', proargmodes => '{i,o,o}',
-  proargnames => '{query,name,position}',
+  proallargtypes => '{text,text,int4,text}', proargmodes => '{i,o,o,o}',
+  proargnames => '{query,name,position,hint}',
   prosrc => 'get_parameter_descr' },
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 

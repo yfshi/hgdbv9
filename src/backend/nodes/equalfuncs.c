@@ -1269,6 +1269,10 @@ _equalCallStmt(const CallStmt *a, const CallStmt *b)
 	COMPARE_NODE_FIELD(funccall);
 	COMPARE_NODE_FIELD(funcexpr);
 	COMPARE_NODE_FIELD(outargs);
+	/* Begin - ReqID:SRS-SQL-CALL */
+	COMPARE_NODE_FIELD(hostvariable);
+	COMPARE_STRING_FIELD(callinto);
+	/* End - ReqID:SRS-SQL-CALL */
 
 	return true;
 }
@@ -1564,6 +1568,7 @@ _equalDoStmt(const DoStmt *a, const DoStmt *b)
 	COMPARE_NODE_FIELD(paramsmode);
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	COMPARE_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
+	COMPARE_SCALAR_FIELD(do_from_call);	/* ReqID:SRS-SQL-CALL */
 
 	return true;
 }

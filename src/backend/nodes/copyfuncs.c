@@ -3542,6 +3542,10 @@ _copyCallStmt(const CallStmt *from)
 	COPY_NODE_FIELD(funccall);
 	COPY_NODE_FIELD(funcexpr);
 	COPY_NODE_FIELD(outargs);
+	/* Begin - ReqID:SRS-SQL-CALL */
+	COPY_NODE_FIELD(hostvariable);
+	COPY_STRING_FIELD(callinto);
+	/* End - ReqID:SRS-SQL-CALL */
 
 	return newnode;
 }
@@ -3811,6 +3815,7 @@ _copyDoStmt(const DoStmt *from)
 	COPY_NODE_FIELD(paramsmode);
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	COPY_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
+	COPY_SCALAR_FIELD(do_from_call);	/* ReqID:SRS-SQL-CALL */
 
 	return newnode;
 }

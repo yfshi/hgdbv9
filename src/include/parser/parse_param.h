@@ -60,6 +60,7 @@ extern void setdynamic_doparser(bool value);
 extern void set_bindbyname(bool value);
 extern bool get_bindbyname(void);
 /* End - ReqID:SRS-SQL-ANONYOUT */
+extern void setdynamic_callparser(bool value); /* ReqID:SRS-SQL-CALL */
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 extern int calculate_oraparamname_position(Node *parsetree, char ***paramnames);
 extern int calculate_oraparamname(char ***paramnames);
