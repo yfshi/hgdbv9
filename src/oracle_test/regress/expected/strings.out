@@ -1417,15 +1417,22 @@ insert into toasttest values(repeat('1234567890',10000));
 SELECT substr(f1, -1, 5) from toasttest;
  substr 
 --------
- 123
- 123
- 123
- 123
+ 0
+ 0
+ 0
+ 0
 (4 rows)
 
 -- If the length is less than zero, an ERROR is thrown.
 SELECT substr(f1, 5, -1) from toasttest;
-ERROR:  negative substring length not allowed
+ substr 
+--------
+ 
+ 
+ 
+ 
+(4 rows)
+
 -- If no third argument (length) is provided, the length to the end of the
 -- string is assumed.
 SELECT substr(f1, 99995) from toasttest;

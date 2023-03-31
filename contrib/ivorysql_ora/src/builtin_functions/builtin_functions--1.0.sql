@@ -1024,3 +1024,60 @@ RETURNS sys.number
 AS 'select sys.to_number($1::text, $2::text)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - ReqID:SRS-SQL-SYSFUNC */
+
+/* Begin - BUG:M0000084 */
+CREATE FUNCTION sys.substr(str text, sta int, len int)
+RETURNS varchar
+AS 'MODULE_PATHNAME','oracle_substr3'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.substr(str text, sta int)
+RETURNS varchar
+AS 'MODULE_PATHNAME','oracle_substr2'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.substr(str varchar2, sta number, len number)
+RETURNS varchar
+AS $$
+  select sys.substr(str::text, sta::integer, len::integer);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.substr(str varchar2, sta number)
+RETURNS varchar
+AS $$
+ select sys.substr(str::text, sta::integer);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str text, patt text, sta int, nth int)
+RETURNS int
+AS 'MODULE_PATHNAME','oracle_instr4'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str text, patt text, sta int)
+RETURNS int
+AS 'MODULE_PATHNAME','oracle_instr3'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str text, patt text)
+RETURNS int
+AS 'MODULE_PATHNAME','oracle_instr2'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str varchar2, patt varchar2, sta number, nth number)
+RETURNS int
+AS $$
+  select sys.instr(str::text, patt::text, sta::integer, nth::integer);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str varchar2, patt varchar2, sta number)
+RETURNS int
+AS $$
+  select sys.instr(str::text, patt::text, sta::integer);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.instr(str varchar2, patt varchar2)
+RETURNS int
+AS $$
+  select sys.instr(str::text, patt::text);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+/* End - BUG:M0000084 */

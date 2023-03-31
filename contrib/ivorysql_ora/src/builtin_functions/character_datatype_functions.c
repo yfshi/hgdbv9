@@ -56,6 +56,13 @@ PG_FUNCTION_INFO_V1(ora_substrb_no_length);
 PG_FUNCTION_INFO_V1(ora_substrb);
 PG_FUNCTION_INFO_V1(ora_replace);
 PG_FUNCTION_INFO_V1(ora_instrb);
+/* Begin - BUG:M0000084 */
+PG_FUNCTION_INFO_V1(oracle_substr2);
+PG_FUNCTION_INFO_V1(oracle_substr3);
+PG_FUNCTION_INFO_V1(oracle_instr2);
+PG_FUNCTION_INFO_V1(oracle_instr3);
+PG_FUNCTION_INFO_V1(oracle_instr4);
+/* End - BUG:M0000084 */
 
 /* Begin - BUGID:0000467 */
 #define PG_STR_GET_TEXT(str_) \
@@ -83,6 +90,10 @@ static int	text_position_next(int start_pos, TextPositionState *state);
 static int text_instring(text *str, text *search_str, int32 position, int32 occurrence, bool isByte);
 static int	text_position_prev(int start_pos, TextPositionState *state);
 static void appendStringInfoText(StringInfo str, const text *t);
+/* Begin - BUG:M0000084 */
+static text *ora_substr(Datum str, int start, int len);
+static int ora_instr(text *txt, text *pattern, int start, int nth);
+/* End - BUG:M0000084 */
 
 /*
  * length/lengthb function for 'oracharchar' and 'oracharbyte' type.
@@ -1741,3 +1752,228 @@ text_position_prev(int start_pos, TextPositionState *state)
 	return pos;
 }
 
+/* Begin - BUG:M0000084 */
+/****************************************************************
+ * substr
+ *
+ * Syntax:
+ *   substr (char, position, [substring_length])
+ *
+ * Purpouse:
+ *   return a portion of char, beginning at character position,
+ *	 substring_length characters long, compatible with Oracle.
+ *
+ ****************************************************************/
+Datum
+oracle_substr3(PG_FUNCTION_ARGS)
+{
+	int32	len = PG_GETARG_INT32(2);
+	if (len < 0)
+		PG_RETURN_NULL();
+	PG_RETURN_TEXT_P(ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), len));
+}
+
+Datum
+oracle_substr2(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_TEXT_P(ora_substr(PG_GETARG_DATUM(0), PG_GETARG_INT32(1), -1));
+}
+
+/*
+ * len < 0 means "length is not specified".
+ */
+static text *
+ora_substr(Datum str, int start, int len)
+{
+	if (start == 0)
+		start = 1;	/* 0 is interpreted as 1 */
+	else if (start < 0)
+	{
+		text   *t;
+		int32	n;
+
+		t = DatumGetTextPP(str);
+		n = pg_mbstrlen_with_len(VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
+		start = n + start + 1;
+		if (start <= 0)
+			return cstring_to_text("");
+		str = PointerGetDatum(t);	/* save detoasted text */
+	}
+
+	if (len < 0)
+		return DatumGetTextP(DirectFunctionCall2(text_substr_no_len,
+			str, Int32GetDatum(start)));
+	else
+		return DatumGetTextP(DirectFunctionCall3(text_substr,
+			str, Int32GetDatum(start), Int32GetDatum(len)));
+}
+
+/****************************************************************
+ * instr
+ *
+ * Syntax:
+ *   instr (string VARCHAR, substring VARCHAR)
+ *   instr (string VARCHAR, substring VARCHAR, position INTEGER)
+ *   instr (string VARCHAR, substring VARCHAR, position INTEGER, occurrence INTEGER)
+ *
+ * Purpouse:
+ *   search string for substring, compatible with Oracle.
+ *
+ ****************************************************************/
+Datum
+oracle_instr2 (PG_FUNCTION_ARGS)
+{
+	text *arg1 = PG_GETARG_TEXT_PP(0);
+	text *arg2 = PG_GETARG_TEXT_PP(1);
+
+	PG_RETURN_INT32(ora_instr(arg1, arg2, 1, 1));
+}
+
+Datum
+oracle_instr3 (PG_FUNCTION_ARGS)
+{
+	text *arg1 = PG_GETARG_TEXT_PP(0);
+	text *arg2 = PG_GETARG_TEXT_PP(1);
+	int arg3 = PG_GETARG_INT32(2);
+
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, 1));
+}
+
+Datum
+oracle_instr4 (PG_FUNCTION_ARGS)
+{
+	text *arg1 = PG_GETARG_TEXT_PP(0);
+	text *arg2 = PG_GETARG_TEXT_PP(1);
+	int arg3 = PG_GETARG_INT32(2);
+	int arg4 = PG_GETARG_INT32(3);
+
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, arg4));
+}
+
+static int
+ora_mb_strlen(text *str, char **sizes, int **positions)
+{
+	int r_len;
+	int cur_size = 0;
+	int sz;
+	char *p;
+	int cur = 0;
+
+	p = VARDATA_ANY(str);
+	r_len = VARSIZE_ANY_EXHDR(str);
+
+	if (NULL != sizes)
+		*sizes = palloc(r_len * sizeof(char));
+	if (NULL != positions)
+		*positions = palloc(r_len * sizeof(int));
+
+	while (cur < r_len)
+	{
+		sz = pg_mblen(p);
+		if (sizes)
+			(*sizes)[cur_size] = sz;
+		if (positions)
+			(*positions)[cur_size] = cur;
+		cur += sz;
+		p += sz;
+		cur_size += 1;
+	}
+
+	return cur_size;
+}
+
+static int
+ora_instr_mb(text *txt, text *pattern, int start, int nth)
+{
+	int			c_len_txt, c_len_pat;
+	int			b_len_pat;
+	int		   *pos_txt;
+	const char *str_txt, *str_pat;
+	int			beg, end, i, dx;
+
+	str_txt = VARDATA_ANY(txt);
+	c_len_txt = ora_mb_strlen(txt, NULL, &pos_txt);
+	str_pat = VARDATA_ANY(pattern);
+	b_len_pat = VARSIZE_ANY_EXHDR(pattern);
+	c_len_pat = pg_mbstrlen_with_len(str_pat, b_len_pat);
+
+	if (start > 0)
+	{
+		dx = 1;
+		beg = start - 1;
+		end = c_len_txt - c_len_pat + 1;
+		if (beg >= end)
+			return 0;	/* out of range */
+	}
+	else
+	{
+		dx = -1;
+		beg = Min(c_len_txt + start, c_len_txt - c_len_pat);
+		end = -1;
+		if (beg <= end)
+			return 0;	/* out of range */
+	}
+
+	for (i = beg; i != end; i += dx)
+	{
+		if (memcmp(str_txt + pos_txt[i], str_pat, b_len_pat) == 0)
+		{
+			if (--nth == 0)
+				return i + 1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+ora_instr(text *txt, text *pattern, int start, int nth)
+{
+	int			len_txt, len_pat;
+	const char *str_txt, *str_pat;
+	int			beg, end, i, dx;
+
+	if (nth <= 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid parameter"), \
+			 errdetail("Four parameter isn't positive.")));
+
+	/* Forward for multibyte strings */
+	if (pg_database_encoding_max_length() > 1)
+		return ora_instr_mb(txt, pattern, start, nth);
+
+	str_txt = VARDATA_ANY(txt);
+	len_txt = VARSIZE_ANY_EXHDR(txt);
+	str_pat = VARDATA_ANY(pattern);
+	len_pat = VARSIZE_ANY_EXHDR(pattern);
+
+	if (start > 0)
+	{
+		dx = 1;
+		beg = start - 1;
+		end = len_txt - len_pat + 1;
+		if (beg >= end)
+			return 0;	/* out of range */
+	}
+	else
+	{
+		dx = -1;
+		beg = Min(len_txt + start, len_txt - len_pat);
+		end = -1;
+		if (beg <= end)
+			return 0;	/* out of range */
+	}
+
+	for (i = beg; i != end; i += dx)
+	{
+		if (memcmp(str_txt + i, str_pat, len_pat) == 0)
+		{
+			if (--nth == 0)
+				return i + 1;
+		}
+	}
+
+	return 0;
+}
+/* End - BUG:M0000084 */

@@ -204,6 +204,7 @@ CreateCachedPlan(RawStmt *raw_parse_tree,
 	MemoryContextSetIdentifier(source_context, plansource->query_string);
 	plansource->commandTag = commandTag;
 	plansource->param_types = NULL;
+	plansource->param_modes = NULL; /* BUG:M0000083 */
 	plansource->num_params = 0;
 	plansource->parserSetup = NULL;
 	plansource->parserSetupArg = NULL;
@@ -272,6 +273,7 @@ CreateOneShotCachedPlan(RawStmt *raw_parse_tree,
 	plansource->query_string = query_string;
 	plansource->commandTag = commandTag;
 	plansource->param_types = NULL;
+	plansource->param_modes = NULL; /* BUG:M0000083 */
 	plansource->num_params = 0;
 	plansource->parserSetup = NULL;
 	plansource->parserSetupArg = NULL;

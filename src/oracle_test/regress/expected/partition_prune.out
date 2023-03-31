@@ -1497,30 +1497,30 @@ explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'e' co
 ------------------------------------------------------------
  Append
    ->  Seq Scan on coll_pruning_multi1 coll_pruning_multi_1
-         Filter: (substr(a, 1) = 'e'::text COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
    ->  Seq Scan on coll_pruning_multi2 coll_pruning_multi_2
-         Filter: (substr(a, 1) = 'e'::text COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
    ->  Seq Scan on coll_pruning_multi3 coll_pruning_multi_3
-         Filter: (substr(a, 1) = 'e'::text COLLATE "C")
+         Filter: (substr(a, 1) = 'e'::varchar2 COLLATE "C")
 (7 rows)
 
 -- pruning, with a value provided for the leading key
 explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'a' collate "POSIX";
-                         QUERY PLAN                         
-------------------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Append
    ->  Seq Scan on coll_pruning_multi1 coll_pruning_multi_1
-         Filter: (substr(a, 1) = 'a'::text COLLATE "POSIX")
+         Filter: (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX")
    ->  Seq Scan on coll_pruning_multi2 coll_pruning_multi_2
-         Filter: (substr(a, 1) = 'a'::text COLLATE "POSIX")
+         Filter: (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX")
 (5 rows)
 
 -- pruning, with values provided for both keys
 explain (costs off) select * from coll_pruning_multi where substr(a, 1) = 'e' collate "C" and substr(a, 1) = 'a' collate "POSIX";
-                                            QUERY PLAN                                             
----------------------------------------------------------------------------------------------------
+                                                QUERY PLAN                                                 
+-----------------------------------------------------------------------------------------------------------
  Seq Scan on coll_pruning_multi2 coll_pruning_multi
-   Filter: ((substr(a, 1) = 'e'::text COLLATE "C") AND (substr(a, 1) = 'a'::text COLLATE "POSIX"))
+   Filter: ((substr(a, 1) = 'e'::varchar2 COLLATE "C") AND (substr(a, 1) = 'a'::varchar2 COLLATE "POSIX"))
 (2 rows)
 
 --

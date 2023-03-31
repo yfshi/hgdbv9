@@ -492,13 +492,27 @@ ParseParamVariable(Node *arg)
  * GetParamMode
  * get the parameter type mode from the type Oid' 32nd-30nd bit.
  */
-void
-GetParamMode(Oid *paramTypes, int numParams, char *modes)
+char *
+GetParamMode(Oid *paramTypes, int numParams)
 {
 	int		i;
+	char	*modes = NULL; /* BUG:M0000083 */
 
 	for (i = 0; i < numParams; i++)
 	{
+		/* Begin - BUG:M0000083 */
+		if ((paramTypes[i] & 0xE0000000) == 0 && modes == NULL)
+			continue;
+
+		if (modes == NULL)
+		{
+			modes = palloc0(sizeof(char) * numParams);
+
+			if (i > 0)
+				MemSet(modes, PROARGMODE_IN, i);
+		}
+		/* End - BUG:M0000083 */
+
 		if (IsModeIn(paramTypes[i]) && IsModeOut(paramTypes[i]))
 			modes[i] = PROARGMODE_INOUT;
 		else if (IsModeOut(paramTypes[i]))
@@ -506,6 +520,8 @@ GetParamMode(Oid *paramTypes, int numParams, char *modes)
 		else
 			modes[i] = PROARGMODE_IN;
 	}
+
+	return modes;
 }
 
 /*

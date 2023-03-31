@@ -39,6 +39,7 @@
 #include "access/parallel.h"
 #include "access/printtup.h"
 #include "access/xact.h"
+#include "catalog/pg_proc.h" /* BUG:M0000083 */
 #include "catalog/pg_type.h"
 #include "commands/async.h"
 #include "commands/prepare.h"
@@ -1420,10 +1421,13 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	bool		save_log_statement_stats = log_statement_stats;
 	char		msec_str[32];
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	char 	   *paramModes = palloc0(sizeof(char) * numParams);
+	/* Begin - BUG:M0000083 */
+	char 	   *paramModes = NULL;
+	int			oldNumParams = numParams;
 
 	/* get the masked oid from typeoid */
-	GetParamMode(paramTypes, numParams, paramModes);
+	paramModes = GetParamMode(paramTypes, numParams);
+	/* End - BUG:M0000083 */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*
@@ -1619,6 +1623,14 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	 */
 	if (unnamed_stmt_context)
 		MemoryContextSetParent(psrc->context, MessageContext);
+
+	/* Begin - BUG:M0000083 */
+	if (numParams > oldNumParams && paramModes != NULL)
+	{
+		paramModes = (char *) repalloc(paramModes, numParams * sizeof(char));
+		MemSet(paramModes + oldNumParams, PROARGMODE_IN, (numParams - oldNumParams) * sizeof(char));
+	}
+	/* Begin - BUG:M0000083 */
 
 	/* Finish filling in the CachedPlanSource */
 	CompleteCachedPlan(psrc,
@@ -1918,8 +1930,13 @@ exec_bind_message(StringInfo input_message)
 			char		csave;
 			int16		pformat;
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
-			char		pmode = psrc->param_modes[paramno];
+			char		pmode = PROARGMODE_IN; /* BUG:M0000083 */
 			/* End - ReqID:SRS-SQL-FUNCOUT */
+
+			/* Begin - BUG:M0000083 */
+			if (psrc->param_modes && psrc->param_modes[paramno])
+				pmode = psrc->param_modes[paramno];
+			/* End - BUG:M0000083 */
 
 			one_param_data.paramno = paramno;
 			one_param_data.paramval = NULL;
