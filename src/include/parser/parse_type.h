@@ -60,4 +60,12 @@ extern void parseTypeString(const char *str, Oid *typeid_p, int32 *typmod_p, boo
 /* true if typeid is composite, or domain over composite, but not RECORD */
 #define ISCOMPLEX(typeid) (typeOrDomainTypeRelid(typeid) != InvalidOid)
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern Type LookupOraTypeName(ParseState *pstate, const TypeName *typeName,
+			   int32 *typmod_p, bool missing_ok);
+extern Type LookupOraTypeNameExtended(ParseState *pstate,
+					   const TypeName *typeName, int32 *typmod_p,
+					   bool temp_ok, bool missing_ok);
+/* End - ReqID:SRS-PLSQL-TYPE */
+
 #endif							/* PARSE_TYPE_H */

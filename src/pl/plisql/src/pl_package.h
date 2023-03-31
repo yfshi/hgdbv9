@@ -98,6 +98,10 @@ typedef struct PLiSQL_compile_global_proper
 	char *plisql_error_funcname;
 	PLiSQL_function *plisql_curr_compile;
 	MemoryContext plisql_compile_tmp_cxt;
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	bool check_referenced_objects;
+	List *plisql_referenced_objects;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/* pl_subproc_function.h */
 	PLiSQL_subproc_function **plisql_subprocFuncs;
@@ -145,6 +149,9 @@ extern int plisql_curr_global_proper_level;
 extern void *plisql_package_parse(ParseState *parsestate, PackageCacheItem *item,
 									List *names, int name_start,
 									package_parse_flags flags, Oid *basetypeid,
+									/* Begin - ReqID:SRS-PLSQL-TYPE */
+									int32 *basetypmod,
+									/* End - ReqID:SRS-PLSQL-TYPE */
 									int *entry_type,
 									List **fargs, /* return value */
 									List *fargnames,

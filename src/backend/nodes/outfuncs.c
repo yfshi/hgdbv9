@@ -2859,6 +2859,9 @@ _outSelectStmt(StringInfo str, const SelectStmt *node)
 	WRITE_NODE_FIELD(havingClause);
 	WRITE_NODE_FIELD(windowClause);
 	WRITE_NODE_FIELD(valuesLists);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	WRITE_BOOL_FIELD(valuesIsrow);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	WRITE_NODE_FIELD(sortClause);
 	WRITE_NODE_FIELD(limitOffset);
 	WRITE_NODE_FIELD(limitCount);
@@ -3007,6 +3010,9 @@ _outTypeName(StringInfo str, const TypeName *node)
 	WRITE_OID_FIELD(typeOid);
 	WRITE_BOOL_FIELD(setof);
 	WRITE_BOOL_FIELD(pct_type);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	WRITE_BOOL_FIELD(row_type);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	WRITE_NODE_FIELD(typmods);
 	WRITE_INT_FIELD(typemod);
 	WRITE_NODE_FIELD(arrayBounds);

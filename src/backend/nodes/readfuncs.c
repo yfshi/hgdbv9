@@ -2794,6 +2794,9 @@ _readTypeName(void)
 	READ_OID_FIELD(typeOid);
 	READ_BOOL_FIELD(setof);
 	READ_BOOL_FIELD(pct_type);
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	READ_BOOL_FIELD(row_type);
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	READ_NODE_FIELD(typmods);
 	READ_INT_FIELD(typemod);
 	READ_NODE_FIELD(arrayBounds);

@@ -171,8 +171,8 @@ begin
   return 2;
 end;
 /
-ERROR:  expression "id" cannot be used as an assignment target
-CONTEXT:  compilation of PL/iSQL function "test_inchange" near line 1
+WARNING:  there was an compilation error
+HINT:  expression "id" cannot be used as an assignment target
 --if IN OUT paramater has default value, should reports an error
 create or replace function test_return_inout(id integer,salary in out integer default 100,name out varchar) return varchar 
 as
@@ -930,6 +930,7 @@ drop function test_binary_float(integer,binary_float,binary_float[],binary_float
 drop function test_binary_double(integer,binary_double,binary_double[],binary_double);
 -- the function returned datatype is table
 create table test(id integer,name varchar(23));
+drop function test;
 create or replace function test(id out integer) return test as
 declare
   var1 test%rowtype;

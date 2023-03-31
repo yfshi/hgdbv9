@@ -940,6 +940,9 @@ plisql_register_internal_func(void)
 	plisql_internal_funcs.get_subproc_prokind = plisql_get_subproc_prokind;
 	plisql_internal_funcs.subproc_should_change_return_type = plisql_subproc_should_change_return_type;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	plisql_internal_funcs.function_free = plisql_free_function;
+	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	plisql_internal_funcs.isload = true;
 }
@@ -1643,6 +1646,46 @@ plisql_check_function_canreload(List *args,
 			/* compare type oid */
 			if (srcitem->type->typoid != dstitem->type->typoid)
 				canreload = true;
+			/* Begin - ReqID:SRS-PLSQL-TYPE */
+			else
+			{
+				if ((srcitem->type->pctrowtypname == NULL && dstitem->type->pctrowtypname != NULL) ||
+					(srcitem->type->pctrowtypname != NULL && dstitem->type->pctrowtypname == NULL))
+					canreload = true;
+				else if (srcitem->type->pctrowtypname != NULL && dstitem->type->pctrowtypname != NULL)
+				{
+					TypeName *src_typname = srcitem->type->pctrowtypname;
+					TypeName *dst_typname = dstitem->type->pctrowtypname;
+
+					if ((src_typname->pct_type && !dst_typname->pct_type) ||
+						(!src_typname->pct_type && dst_typname->pct_type) ||
+						(src_typname->row_type && !dst_typname->row_type) ||
+						(!src_typname->row_type && dst_typname->row_type))
+						canreload = true;
+					else
+					{
+						ListCell *l1;
+						ListCell *l2;
+
+						if (list_length(src_typname->names) != list_length(dst_typname->names))
+							canreload = true;
+						forboth(l1, src_typname->names, l2, dst_typname->names)
+						{
+							char *src_name;
+							char *dst_name;
+
+							src_name = strVal((Value *)lfirst(l1));
+							dst_name = strVal((Value *)lfirst(l2));
+							if (pg_strcasecmp(src_name, dst_name))
+							{
+								canreload = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+			 /* End - ReqID:SRS-PLSQL-TYPE */
 
 			if (canreload)
 				break;

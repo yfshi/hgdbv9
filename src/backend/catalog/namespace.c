@@ -63,7 +63,6 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */ /* SQL PARSER */
-#include "utils/ora_compatible.h"	
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
@@ -72,6 +71,7 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+#include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
 
 
 /*
@@ -1346,6 +1346,25 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 						newResult->args[i] = pkgtype->basetypid;
 						pfree(pkgtype);
 					}
+					/* Begin - ReqID:SRS-PLSQL-TYPE */
+					else
+					{
+						Type		typtup;
+
+						typtup = LookupOraTypeName(NULL, tname, NULL, false);
+						if (typtup)
+						{
+							if (!((Form_pg_type) GETSTRUCT(typtup))->typisdefined)
+								ereport(NOTICE,
+										(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+										 errmsg("argument type %s is invalid",
+												TypeNameToString(tname))));
+
+							newResult->args[i] = typeTypeId(typtup);
+							ReleaseSysCache(typtup);
+						}
+					}
+					/* End - ReqID:SRS-PLSQL-TYPE */
 					pfree(tname);
 				}
 				/* End - ReqID:SRS-SQL-PACKAGE */
@@ -1376,6 +1395,26 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 							newResult->args[i] = pkgtype->basetypid;
 							pfree(pkgtype);
 						}
+						/* Begin - ReqID:SRS-PLSQL-TYPE */
+						else
+						{
+							Type		typtup;
+
+							typtup = LookupOraTypeName(NULL, tname, NULL, true);
+
+							if (typtup)
+							{
+								if (!((Form_pg_type) GETSTRUCT(typtup))->typisdefined)
+									ereport(NOTICE,
+											(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+											 errmsg("argument type %s is invalid",
+													TypeNameToString(tname))));
+
+								newResult->args[i] = typeTypeId(typtup);
+								ReleaseSysCache(typtup);
+							}
+						}
+						/* End - ReqID:SRS-PLSQL-TYPE */
 						pfree(tname);
 					}
 				}

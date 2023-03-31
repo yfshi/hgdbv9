@@ -60,4 +60,11 @@ typedef int (* OraGetAttrnoHooktype)(ParseState *pstate, ResTarget  *col);
 extern PGDLLIMPORT OraGetAttrnoHooktype OraGetAttrnoHook;
 /* End - ReqID:SRS-SQL-INSERT */
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+List *transformRowExpression(ParseState *pstate, List *exprlist,
+					ParseExprKind exprKind, bool allowDefault);
+List *transformRowTargetList(ParseState *pstate, List *targetlist,
+					ParseExprKind exprKind);
+/* End - ReqID:SRS-PLSQL-TYPE */
+
 #endif							/* PARSE_TARGET_H */

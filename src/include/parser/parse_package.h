@@ -32,11 +32,14 @@
 
 typedef struct PkgType
 {
-	Oid pkgoid;	 /* package oid */
-	Oid basetypid;  /* base of type id */
-	int pkgname_startloc; /* pkgname start location */
+	Oid pkgoid;	 		/* package oid */
+	Oid basetypid;  	/* base of type id */
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	int32 basetypmod;	/* base of type mode */
+	/* End - ReqID:SRS-PLSQL-TYPE */
+	int pkgname_startloc; 	/* pkgname start location */
 	PackageCacheItem *item; /* package cache item */
-	void *value;	 /* PLiSQL_type */
+	void *value;			 /* PLiSQL_type */
 } PkgType;
 
 typedef struct PkgVar

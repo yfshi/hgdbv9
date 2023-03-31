@@ -217,6 +217,11 @@ typedef struct PLiSQL_type
 	Oid			collation;		/* from pg_type, but can be overridden */
 	bool		typisarray;		/* is "true" array, or domain over one */
 	int32		atttypmod;		/* typmod (taken from someplace else) */
+	/* Begin - ReqID:SRS-PLSQL-TYPE */
+	bool		notnull;		/* the type is builded by variable%type,
+								 * isnull is notnull of the variable */
+	TypeName   *pctrowtypname;	/* type name only for the type specifies %TYPE or %ROWTYPE */
+	/* End - ReqID:SRS-PLSQL-TYPE */
 	/* Remaining fields are used only for named composite types (not RECORD) */
 	TypeName   *origtypname;	/* type name as written by user */
 	TypeCacheEntry *tcache;		/* typcache entry for composite type */
@@ -1316,6 +1321,12 @@ extern MemoryContext plisql_compile_tmp_cxt;
 
 extern PLiSQL_plugin **plisql_plugin_ptr;
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern bool check_referenced_objects;
+extern List *plisql_referenced_objects;	/*the list elements are ObjectAddress */
+/* End - ReqID:SRS-PLSQL-TYPE */
+
+
 /**********************************************************************
  * Function declarations
  **********************************************************************/
@@ -1378,6 +1389,9 @@ extern void dynamic_build_func_vars(PLiSQL_function **function);
 extern void delete_function(PLiSQL_function *func);
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-PLSQL-TYPE */
+extern void plisql_free_function(Oid funcOid);
+/* End - ReqID:SRS-PLSQL-TYPE */
 
 /*
  * Functions in pl_handler.c
