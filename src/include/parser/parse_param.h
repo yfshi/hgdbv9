@@ -35,7 +35,7 @@ extern bool query_contains_extern_params(Query *query);
 #define UnSetModeOut(typeoid) ((typeoid) &= 0x1FFFFFFF)
 
 extern Node *ParseParamVariable(Node *arg);
-extern void GetParamMode(Oid *paramTypes, int numParams, char *modes);
+extern char *GetParamMode(Oid *paramTypes, int numParams); /* BUG:M0000083 */
 extern void ParseVarParamState(void *arg, Node *param, bool *isOut,
 						bool *isIn, bool *isLeftCall);
 extern void SetVarParamState(void *arg, Param *param, int index);
