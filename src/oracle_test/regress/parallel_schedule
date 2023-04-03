@@ -154,3 +154,7 @@ test: emptystring_to_null
 #/* Begin - ReqID:SRS-SQL-PACKAGE */
 test: ora_package
 #/* End - ReqID:SRS-SQL-PACKAGE */
+
+#/* Begin - ReqID:SRS-SQL-GTT */
+test: ora_gtt
+#/* End - ReqID:SRS-SQL-GTT */

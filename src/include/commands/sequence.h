@@ -75,5 +75,4 @@ extern const char *seq_identify(uint8 info);
 extern void seq_mask(char *pagedata, BlockNumber blkno);
 extern int64 get_sessionid(void);	/* ReqID:SRS-SQL-SEQ */
 
-
 #endif							/* SEQUENCE_H */

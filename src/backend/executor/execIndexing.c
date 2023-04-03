@@ -116,6 +116,9 @@
 #include "storage/lmgr.h"
 #include "utils/snapmgr.h"
 
+#include "catalog/storage.h"
+#include "catalog/storage_gtt.h"
+
 /* waitMode argument to check_exclusion_or_unique_constraint() */
 typedef enum
 {
@@ -197,6 +200,10 @@ ExecOpenIndices(ResultRelInfo *resultRelInfo, bool speculative)
 		IndexInfo  *ii;
 
 		indexDesc = index_open(indexOid, RowExclusiveLock);
+		/* Begin - ReqID:SRS-SQL-GTT */
+		if (RELATION_IS_GLOBAL_TEMP(indexDesc) && indexDesc->rd_node.relNode == 0)
+			indexDesc->rd_node.relNode = indexOid;
+		/* End - ReqID:SRS-SQL-GTT */
 
 		/* extract index key information from the index's pg_index info */
 		ii = BuildIndexInfo(indexDesc);

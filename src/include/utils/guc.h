@@ -328,6 +328,10 @@ extern PGDLLIMPORT bool	seq_scale_fixed;
 /* End - ReqID:SRS-SQL-SEQ */
 extern PGDLLIMPORT bool internal_warning; /* BUG#Z230 */
 
+/* Begin - ReqID:SRS-SQL-GTT */
+extern int max_active_gtt;
+extern int vacuum_gtt_defer_check_age;
+/* End - ReqID:SRS-SQL-GTT */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

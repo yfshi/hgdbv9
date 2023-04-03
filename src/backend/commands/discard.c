@@ -25,6 +25,8 @@
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+#include "catalog/storage_gtt.h"	/* ReqID:SRS-SQL-GTT */
+
 static void DiscardAll(bool isTopLevel);
 
 /*
@@ -55,6 +57,10 @@ DiscardCommand(DiscardStmt *stmt, bool isTopLevel)
 
 		case DISCARD_TEMP:
 			ResetTempTableNamespace();
+
+			/* Begin - ReqID:SRS-SQL-GTT */
+			RemoveGlobalTempRelations();
+			/* End - ReqID:SRS-SQL-GTT */
 			break;
 
 		default:
@@ -87,4 +93,8 @@ DiscardAll(bool isTopLevel)
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	ResetPackageCaches();
 	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	RemoveGlobalTempRelations();
+	/* End - ReqID:SRS-SQL-GTT */
 }

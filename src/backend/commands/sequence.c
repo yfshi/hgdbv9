@@ -31,6 +31,8 @@
 #include "catalog/objectaccess.h"
 #include "catalog/pg_sequence.h"
 #include "catalog/pg_type.h"
+#include "catalog/storage.h"
+#include "catalog/storage_gtt.h"
 #include "catalog/storage_xlog.h"
 #include "commands/defrem.h"
 #include "commands/sequence.h"
@@ -130,7 +132,6 @@ static bool seq_is_session(int16 seq_flag);
 /* End - ReqID:SRS-SQL-SEQ */
 
 
-
 /*
  * DefineSequence
  *				Creates a new sequence relation
@@ -179,6 +180,13 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 			return InvalidObjectAddress;
 		}
 	}
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	if (seq->sequence->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+	{
+		seq->sequence->relpersistence = RELPERSISTENCE_PERMANENT;
+	}
+	/* End - ReqID:SRS-SQL-GTT */
 
 	/* Check and set all option values */
 	init_params(pstate, seq->options, seq->for_identity, true, seq->seq_type,	/* ReqID:SRS-SQL-IDENTCOL */
@@ -299,7 +307,7 @@ ResetSequence(Oid seq_relid)
 	Buffer		buf;
 	HeapTupleData seqdatatuple;
 	HeapTuple	tuple;
-	HeapTuple	pgstuple;
+	HeapTuple pgstuple;
 	Form_pg_sequence pgsform;
 	int64		startv;
 
@@ -498,6 +506,15 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 	}
 
 	init_sequence(relid, &elm, &seqrel);
+
+	if (RELATION_IS_GLOBAL_TEMP(seqrel))
+	{
+		if (is_other_backend_use_gtt(RelationGetRelid(seqrel)))
+			ereport(ERROR,
+				(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+				 errmsg("cannot alter global temporary sequence %s when other backend attached it.",
+						RelationGetRelationName(seqrel))));
+	}
 
 	rel = table_open(SequenceRelationId, RowExclusiveLock);
 	seqtuple = SearchSysCacheCopy1(SEQRELID,
@@ -734,7 +751,7 @@ nextval_internal(Oid relid, bool check_permissions)
 						RelationGetRelationName(seqrel))));
 
 	/* read-only transactions may only modify temp sequences */
-	if (!seqrel->rd_islocaltemp)
+	if (!RELATION_IS_TEMP_ON_CURRENT_SESSION(seqrel))
 		PreventCommandIfReadOnly("nextval()");
 
 	/*
@@ -1298,7 +1315,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	ReleaseSysCache(pgstuple);
 
 	/* read-only transactions may only modify temp sequences */
-	if (!seqrel->rd_islocaltemp)
+	if (!RELATION_IS_TEMP_ON_CURRENT_SESSION(seqrel))
 		PreventCommandIfReadOnly("setval()");
 
 	/*
@@ -2465,9 +2482,21 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 					char		buf[100];
 
 					snprintf(buf, sizeof(buf), INT64_FORMAT, seqform->seqcache);
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							errmsg("the number of values to CACHE must be greater than 1")));	/* ReqID:SRS-SQL-SEQ */
+
+					/* For create sequence command */
+					if (seq_type == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("the number of values to CACHE must be greater than 1")));
+
+					/* For generated identity */
+					if ((seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
+						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT) && !no_cache_flag) /* ReqID:SRS-SQL-GTT */
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("the number of values to CACHE must be greater than 1")));	/* ReqID:SRS-SQL-SEQ */
+					}
 				}
 				seqdataform->log_cnt = 0;
 			}
@@ -2529,8 +2558,8 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	{
 		/* Begin - BUG#Z025*/
 		/* Set default cache size */
-		if (seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
-						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
+		if ((seq_type == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL || seq_type == ATTRIBUTE_ORA_IDENTITY_ALWAYS
+						|| seq_type == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT) && !no_cache_flag) /* ReqID:SRS-SQL-GTT */
 			seqform->seqcache = 20;
 		/* End - BUG#Z025*/
 		/* Begin - ReqID:SRS-SQL-SEQ */

@@ -2623,6 +2623,10 @@ makeTableDataInfo(DumpOptions *dopt, TableInfo *tbinfo)
 		dopt->no_unlogged_table_data)
 		return;
 
+	/* Don't dump data in global temporary table/sequence */
+	if (tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+		return;
+
 	/* Check that the data is not explicitly excluded */
 	if (simple_oid_list_member(&tabledata_exclude_oids,
 							   tbinfo->dobj.catId.oid))
@@ -16234,6 +16238,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		char	   *ftoptions = NULL;
 		char	   *srvname = NULL;
 		char	   *foreign = "";
+		char	   *table_type = NULL;
 
 		switch (tbinfo->relkind)
 		{
@@ -16287,9 +16292,15 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			binary_upgrade_set_pg_class_oids(fout, q,
 											 tbinfo->dobj.catId.oid, false);
 
+		if (tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED)
+			table_type = "UNLOGGED ";
+		else if (tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+			table_type = "GLOBAL TEMPORARY ";
+		else
+			table_type = "";
+
 		appendPQExpBuffer(q, "CREATE %s%s %s",
-						  tbinfo->relpersistence == RELPERSISTENCE_UNLOGGED ?
-						  "UNLOGGED " : "",
+						  table_type,
 						  reltypename,
 						  qualrelname);
 
@@ -16665,13 +16676,22 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		}
 
 		/*
+		 * Transaction information for the global temporary table is not stored
+		 * in the pg_class.
+		 */
+		if (tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			Assert(tbinfo->frozenxid == 0);
+			Assert(tbinfo->minmxid == 0);
+		}
+		/*
 		 * In binary_upgrade mode, arrange to restore the old relfrozenxid and
 		 * relminmxid of all vacuumable relations.  (While vacuum.c processes
 		 * TOAST tables semi-independently, here we see them only as children
 		 * of other relations; so this "if" lacks RELKIND_TOASTVALUE, and the
 		 * child toast table is handled below.)
 		 */
-		if (dopt->binary_upgrade &&
+		else if (dopt->binary_upgrade &&
 			(tbinfo->relkind == RELKIND_RELATION ||
 			 tbinfo->relkind == RELKIND_MATVIEW))
 		{
@@ -17857,22 +17877,32 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	appendPQExpBuffer(query, "    INCREMENT BY %s\n", incby);
 
-	if (minv)
-		appendPQExpBuffer(query, "    MINVALUE %s\n", minv);
-	else if (!is_ora_identity && db_mode == DB_PG)	/* ReqID:SRS-SQL-IDENTCOL */
-		appendPQExpBufferStr(query, "    NO MINVALUE\n");
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
-	else if (db_mode == DB_ORACLE)
-		appendPQExpBufferStr(query, "    NOMINVALUE\n");
+	if (minv)
+	{
+		appendPQExpBuffer(query, "    MINVALUE %s\n", minv);
+	}
+	else
+	{
+		if (!is_ora_identity && db_mode == DB_PG)
+			appendPQExpBufferStr(query, "    NO MINVALUE\n");
+		else if (db_mode == DB_ORACLE)
+			appendPQExpBufferStr(query, "    NOMINVALUE\n");
+	}
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 
-	if (maxv)
-		appendPQExpBuffer(query, "    MAXVALUE %s\n", maxv);
-	else if (!is_ora_identity && db_mode == DB_PG)	/* ReqID:SRS-SQL-IDENTCOL */
-		appendPQExpBufferStr(query, "    NO MAXVALUE\n");
 	/* Begin - ReqID:SRS-SQL-IDENTCOL */
-	else if (db_mode == DB_ORACLE)
-		appendPQExpBufferStr(query, "    NOMAXVALUE\n");
+	if (maxv)
+	{
+		appendPQExpBuffer(query, "    MAXVALUE %s\n", maxv);
+	}
+	else
+	{
+		if (!is_ora_identity && db_mode == DB_PG)
+			appendPQExpBufferStr(query, "    NO MAXVALUE\n");
+		else if (db_mode == DB_ORACLE)
+			appendPQExpBufferStr(query, "    NOMAXVALUE\n");
+	}
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 
 	/* Begin - ReqID:SRS-SQL-SEQ */
