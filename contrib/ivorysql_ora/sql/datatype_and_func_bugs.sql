@@ -97,3 +97,40 @@ drop function s1.f_alter(arg1 OUT int);
 drop function s1.f_alter(arg1 text);
 drop function s1.f_alter(arg1 number, arg2 number, arg3 number);
 
+/* Begin - BUG:M0000085 */
+CREATE TABLE hashpart_numeric (
+    a NUMBER(6), 
+    b BINARY_FLOAT, 
+    c BINARY_DOUBLE
+) PARTITION BY HASH (a, b, c);
+CREATE TABLE P_ID_1 partition of hashpart_numeric for VALUES WITH (MODULUS 4,REMAINDER 0);
+
+CREATE TABLE hashpart_datetime (
+    a date, 
+    b timestamp, 
+    c timestamp with time zone,
+	d timestamp with local time zone
+) PARTITION BY HASH (a, b, c, d);
+CREATE TABLE P_ID_2 partition of hashpart_datetime for VALUES WITH (MODULUS 4,REMAINDER 0);
+
+CREATE TABLE hashpart_interval (
+    a interval year to month,
+	b interval day to second
+) PARTITION BY HASH (a, b);
+CREATE TABLE P_ID_3 partition of hashpart_interval for VALUES WITH (MODULUS 4,REMAINDER 0);
+
+CREATE TABLE hashpart_character (
+    a char(10 char),
+	b char(10 byte),
+	c varchar2(10 char),
+	d varchar2(10 byte)
+) PARTITION BY HASH (a, b, c, d);
+CREATE TABLE P_ID_4 partition of hashpart_character for VALUES WITH (MODULUS 4,REMAINDER 0);
+
+\d
+
+drop table hashpart_numeric;
+drop table hashpart_datetime;
+drop table hashpart_interval;
+drop table hashpart_character;
+/* End - BUG:M0000085 */

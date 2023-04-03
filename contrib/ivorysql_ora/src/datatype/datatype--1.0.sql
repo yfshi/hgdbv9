@@ -3892,10 +3892,21 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.oradate_hash_extended(sys.oradate, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','ora_datetime_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.oradate_ops
     DEFAULT FOR TYPE sys.oradate USING hash AS
 		OPERATOR        1       = (sys.oradate, sys.oradate),
-        FUNCTION        1       sys.oradate_hash(sys.oradate);		
+        FUNCTION        1       sys.oradate_hash(sys.oradate),
+        FUNCTION        2       sys.oradate_hash_extended(sys.oradate, bigint);	/* BUG:M0000085 */
 
 /*
  * Brin index support
@@ -4600,10 +4611,20 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.oratimestamp_hash_extended(sys.oratimestamp, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','ora_datetime_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.oratimestamp_ops
     DEFAULT FOR TYPE sys.oratimestamp USING hash AS
 		OPERATOR        1       = (sys.oratimestamp, sys.oratimestamp),
-        FUNCTION        1       sys.oratimestamp_hash(sys.oratimestamp);		
+        FUNCTION        1       sys.oratimestamp_hash(sys.oratimestamp),
+        FUNCTION        2       sys.oratimestamp_hash_extended(sys.oratimestamp, bigint);	/* BUG:M0000085 */		
 
 /*
  * Brin index support
@@ -5296,10 +5317,20 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.oratimestamptz_hash_extended(sys.oratimestamptz, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','ora_datetime_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.oratimestamptz_ops
     DEFAULT FOR TYPE sys.oratimestamptz USING hash AS
 		OPERATOR        1       = (sys.oratimestamptz, sys.oratimestamptz),
-        FUNCTION        1       sys.oratimestamptz_hash(sys.oratimestamptz);		
+        FUNCTION        1       sys.oratimestamptz_hash(sys.oratimestamptz),
+        FUNCTION        2       sys.oratimestamptz_hash_extended(sys.oratimestamptz, bigint);	/* BUG:M0000085 */
 
 /*
  * Brin index support
@@ -5986,10 +6017,20 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.oratimestampltz_hash_extended(sys.oratimestampltz, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','ora_datetime_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.oratimestampltz_ops
     DEFAULT FOR TYPE sys.oratimestampltz USING hash AS
 		OPERATOR        1       = (sys.oratimestampltz, sys.oratimestampltz),
-        FUNCTION        1       sys.oratimestampltz_hash(sys.oratimestampltz);		
+        FUNCTION        1       sys.oratimestampltz_hash(sys.oratimestampltz),
+        FUNCTION        2       sys.oratimestampltz_hash_extended(sys.oratimestampltz, bigint);	/* BUG:M0000085 */
 
 /*
  * Brin index support
@@ -6334,10 +6375,20 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.yminterval_hash_extended(sys.yminterval, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','yminterval_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.yminterval_ops
     DEFAULT FOR TYPE sys.yminterval USING hash AS
 		OPERATOR        1       = (sys.yminterval, sys.yminterval),
-        FUNCTION        1       sys.yminterval_hash(sys.yminterval);
+        FUNCTION        1       sys.yminterval_hash(sys.yminterval),
+        FUNCTION        2       sys.yminterval_hash_extended(sys.yminterval, bigint);
 
 --
 -- BRIN index support
@@ -6654,10 +6705,20 @@ LANGUAGE C
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.dsinterval_hash_extended(sys.dsinterval, bigint)
+RETURNS bigint
+AS 'MODULE_PATHNAME','dsinterval_hash_extended'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.dsinterval_ops
     DEFAULT FOR TYPE sys.dsinterval USING hash AS
 		OPERATOR        1       = (sys.dsinterval, sys.dsinterval),
-        FUNCTION        1       sys.dsinterval_hash(sys.dsinterval);
+        FUNCTION        1       sys.dsinterval_hash(sys.dsinterval),
+        FUNCTION        2       sys.dsinterval_hash_extended(sys.dsinterval, bigint);
 
 --
 -- BRIN index support
@@ -8136,10 +8197,20 @@ LANGUAGE internal
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.hash_number_extended(sys.number, bigint)
+RETURNS bigint
+AS 'hash_numeric_extended'
+LANGUAGE internal
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 CREATE OPERATOR CLASS sys.number_ops
     DEFAULT FOR TYPE sys.number USING hash AS
 		OPERATOR        1       = (sys.number, sys.number),
-        FUNCTION        1       sys.hash_number(sys.number);
+        FUNCTION        1       sys.hash_number(sys.number),
+        FUNCTION        2       sys.hash_number_extended(sys.number, bigint);	/* BUG:M0000085 */
 
 --
 -- BRIN index support
@@ -9562,6 +9633,22 @@ LANGUAGE internal
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG:M0000085 */
+CREATE FUNCTION sys.hash_extended_binary_float(sys.binary_float, bigint)
+RETURNS bigint
+AS 'hashfloat4extended'
+LANGUAGE internal
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.hash_extended_binary_double(sys.binary_double, bigint)
+RETURNS bigint
+AS 'hashfloat8extended'
+LANGUAGE internal
+STRICT
+IMMUTABLE;
+/* End - BUG:M0000085 */
+
 /* CREATE OPERATOR FAMILY */
 CREATE OPERATOR FAMILY sys.binary_ops USING hash;
 
@@ -9569,13 +9656,15 @@ CREATE OPERATOR FAMILY sys.binary_ops USING hash;
 CREATE OPERATOR CLASS sys.binary_float_ops
     DEFAULT FOR TYPE sys.binary_float USING hash FAMILY sys.binary_ops AS
 		OPERATOR        1       = (sys.binary_float, sys.binary_float),
-        FUNCTION        1       sys.hash_binary_float(sys.binary_float);
+        FUNCTION        1       sys.hash_binary_float(sys.binary_float),
+        FUNCTION        2       sys.hash_extended_binary_float(sys.binary_float, bigint);	/* BUG:M0000085 */
 
 /* CREATE OPERATOR CLASS for 'binary_double' */
 CREATE OPERATOR CLASS sys.binary_double_ops
     DEFAULT FOR TYPE sys.binary_double USING hash FAMILY sys.binary_ops AS
 		OPERATOR        1       = (sys.binary_double, sys.binary_double),
-        FUNCTION        1       sys.hash_binary_double(sys.binary_double);
+        FUNCTION        1       sys.hash_binary_double(sys.binary_double),
+        FUNCTION        2       sys.hash_extended_binary_double(sys.binary_double, bigint);	/* BUG:M0000085 */
 
 ALTER OPERATOR FAMILY sys.binary_ops USING hash ADD
 	-- Cross data type comparison

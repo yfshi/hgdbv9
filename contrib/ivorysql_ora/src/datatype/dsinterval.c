@@ -63,6 +63,7 @@ PG_FUNCTION_INFO_V1(dsinterval_div);
 
 PG_FUNCTION_INFO_V1(dsinterval_cmp);
 PG_FUNCTION_INFO_V1(dsinterval_hash);
+PG_FUNCTION_INFO_V1(dsinterval_hash_extended);	/* BUG:M0000085 */
 
 PG_FUNCTION_INFO_V1(dsinterval_larger);
 PG_FUNCTION_INFO_V1(dsinterval_smaller);
@@ -2207,6 +2208,17 @@ dsinterval_hash(PG_FUNCTION_ARGS)
 #endif
 }
 
+/* Begin - BUG:M0000085 */
+Datum
+dsinterval_hash_extended(PG_FUNCTION_ARGS)
+{
+	Interval   *interval = PG_GETARG_INTERVAL_P(0);
+	TimeOffset	span = dsinterval_cmp_value(interval);
+
+	return DirectFunctionCall2(hashint8extended, Int64GetDatumFast(span),
+							   PG_GETARG_DATUM(1));
+}
+/* End - BUG:M0000085 */
 
 /*****************************************************************************
  *	 AGGREGATE FUNCTION 

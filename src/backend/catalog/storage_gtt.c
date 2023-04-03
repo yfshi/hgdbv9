@@ -1668,7 +1668,7 @@ gtt_search_by_relid(Oid relid, bool missing_ok)
  *	support for DISCARD TEMP command remove all the global temp tables.
  */
 void
-RemoveGlobalTempRelations()
+RemoveGlobalTempRelations(void)
 {
 	HASH_SEQ_STATUS				status;
 	gtt_local_hash_entry		*entry;
