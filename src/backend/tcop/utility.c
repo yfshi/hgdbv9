@@ -75,6 +75,8 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
+#include "access/table.h"
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -1327,6 +1329,13 @@ ProcessUtilitySlow(ParseState *pstate,
 						EventTriggerAlterTableStart(parsetree);
 						EventTriggerAlterTableRelid(relid);
 
+						/* Begin - ReqID:SRS-SQL-GTT */
+						if (gtt_storage_attached(relid))
+						{
+							elog(ERROR, "attempt to access a transactional temp table already in use");
+						}
+						/* End - ReqID:SRS-SQL-GTT */
+
 						/* ... and do it */
 						AlterTable(atstmt, lockmode, &atcontext);
 
@@ -1468,6 +1477,7 @@ ProcessUtilitySlow(ParseState *pstate,
 					Oid			relid;
 					LOCKMODE	lockmode;
 					bool		is_alter_table;
+					bool		skip_build = false;
 
 					if (stmt->concurrent)
 						PreventInTransactionBlock(isTopLevel,
@@ -1545,6 +1555,12 @@ ProcessUtilitySlow(ParseState *pstate,
 
 					/* ... and do it */
 					EventTriggerAlterTableStart(parsetree);
+
+					/* Begin - ReqID:SRS-SQL-GTT */
+					if (get_rel_persistence(relid) == RELPERSISTENCE_GLOBAL_TEMP)
+						skip_build = true;
+					/* End - ReqID:SRS-SQL-GTT */
+
 					address =
 						DefineIndex(relid,	/* OID of heap relation */
 									stmt,
@@ -1554,7 +1570,7 @@ ProcessUtilitySlow(ParseState *pstate,
 									is_alter_table,
 									true,	/* check_rights */
 									true,	/* check_not_in_use */
-									false,	/* skip_build */
+									skip_build,	/* skip_build */
 									false); /* quiet */
 
 					/*

@@ -17,6 +17,22 @@
  */
 #ifdef IVY_GUC_VAR_DEFINE
 #define ISLOADIVORYSQL_ORA pg_transform_merge_stmt_hook
+
+/* Begin - ReqID:SRS-SQL-GTT */
+/*
+ * num = 0 means disable global temporary table feature.
+ * table schema are still saved in catalog.
+ *
+ * num > 0 means allows the database to manage multiple active tables at the same time.
+ */
+#define	MIN_NUM_ACTIVE_GTT			0
+#define	DEFAULT_NUM_ACTIVE_GTT			1000
+#define	MAX_NUM_ACTIVE_GTT			1000000
+
+int		max_active_gtt = MIN_NUM_ACTIVE_GTT;
+int		vacuum_gtt_defer_check_age = 0;
+/* End - ReqID:SRS-SQL-GTT */
+
 /* BEGIN - case sensitive indentify */
 int				identifier_case_switch = INTERCHANGE;
 bool  			identifier_case_from_pg_dump = false;
@@ -116,7 +132,6 @@ static const struct config_enum_entry ora_merge_tuning[] = {
 	{NULL, 0, false}
 };
 /* End - ReqID:SRS-SQL-MERGE */
-
 #endif
 
 #ifdef IVY_GUC_FUNC_DECLARE
@@ -310,6 +325,30 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	{
+		{"ivorysql.max_active_gtt", PGC_POSTMASTER, UNGROUPED,
+			gettext_noop("max active global temporary table."),
+			NULL
+		},
+		&max_active_gtt,
+		DEFAULT_NUM_ACTIVE_GTT, MIN_NUM_ACTIVE_GTT, MAX_NUM_ACTIVE_GTT,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-GTT */
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	{
+		{"ivorysql.vacuum_gtt_defer_check_age", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("The defer check age of GTT, used to check expired data after vacuum."),
+			NULL
+		},
+		&vacuum_gtt_defer_check_age,
+		10000, 0, 1000000,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-GTT */
 #endif
 #if 0
 	/* End-of-list marker */

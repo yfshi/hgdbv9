@@ -3548,6 +3548,10 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = $10;
 					n->options = $11;
 					n->oncommit = $12;
+					/* Begin - ReqID:SRS-SQL-GTT */
+					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $13;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
@@ -3567,6 +3571,10 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = $13;
 					n->options = $14;
 					n->oncommit = $15;
+					/* Begin - ReqID:SRS-SQL-GTT */
+					if (n->oncommit == ONCOMMIT_NOOP && $7->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $16;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
@@ -3587,6 +3595,10 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = $9;
 					n->options = $10;
 					n->oncommit = $11;
+					/* Begin - ReqID:SRS-SQL-GTT */
+					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $12;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
@@ -3607,6 +3619,10 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->accessMethod = $12;
 					n->options = $13;
 					n->oncommit = $14;
+					/* Begin - ReqID:SRS-SQL-GTT */
+					if (n->oncommit == ONCOMMIT_NOOP && $7->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $15;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
@@ -3670,17 +3686,11 @@ OptTemp:	TEMPORARY					{ $$ = RELPERSISTENCE_TEMP; }
 			| LOCAL TEMP				{ $$ = RELPERSISTENCE_TEMP; }
 			| GLOBAL TEMPORARY
 				{
-					ereport(WARNING,
-							(errmsg("GLOBAL is deprecated in temporary table creation"),
-							 parser_errposition(@1)));
-					$$ = RELPERSISTENCE_TEMP;
+					$$ = RELPERSISTENCE_GLOBAL_TEMP;	/* ReqID:SRS-SQL-GTT */
 				}
 			| GLOBAL TEMP
 				{
-					ereport(WARNING,
-							(errmsg("GLOBAL is deprecated in temporary table creation"),
-							 parser_errposition(@1)));
-					$$ = RELPERSISTENCE_TEMP;
+					$$ = RELPERSISTENCE_GLOBAL_TEMP;	/* ReqID:SRS-SQL-GTT */
 				}
 			| UNLOGGED					{ $$ = RELPERSISTENCE_UNLOGGED; }
 			| /*EMPTY*/					{ $$ = RELPERSISTENCE_PERMANENT; }
@@ -13073,19 +13083,13 @@ OptTempTableName:
 				}
 			| GLOBAL TEMPORARY opt_table qualified_name
 				{
-					ereport(WARNING,
-							(errmsg("GLOBAL is deprecated in temporary table creation"),
-							 parser_errposition(@1)));
 					$$ = $4;
-					$$->relpersistence = RELPERSISTENCE_TEMP;
+					$$->relpersistence = RELPERSISTENCE_GLOBAL_TEMP;	/* ReqID:SRS-SQL-GTT */
 				}
 			| GLOBAL TEMP opt_table qualified_name
 				{
-					ereport(WARNING,
-							(errmsg("GLOBAL is deprecated in temporary table creation"),
-							 parser_errposition(@1)));
 					$$ = $4;
-					$$->relpersistence = RELPERSISTENCE_TEMP;
+					$$->relpersistence = RELPERSISTENCE_GLOBAL_TEMP;	/* ReqID:SRS-SQL-GTT */
 				}
 			| UNLOGGED opt_table qualified_name
 				{

@@ -108,6 +108,7 @@
 #include "catalog/pg_operator.h"
 #include "catalog/pg_statistic.h"
 #include "catalog/pg_statistic_ext.h"
+#include "catalog/storage_gtt.h"
 #include "executor/nodeAgg.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -5129,12 +5130,26 @@ examine_variable(PlannerInfo *root, Node *node, int varRelid,
 						}
 						else if (index->indpred == NIL)
 						{
-							vardata->statsTuple =
-								SearchSysCache3(STATRELATTINH,
-												ObjectIdGetDatum(index->indexoid),
-												Int16GetDatum(pos + 1),
-												BoolGetDatum(false));
-							vardata->freefunc = ReleaseSysCache;
+							char rel_persistence = get_rel_persistence(index->indexoid);
+
+							if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+							{
+								/* For global temporary table, get statistic data from localhash */
+								vardata->statsTuple =
+									get_gtt_att_statistic(index->indexoid,
+														Int16GetDatum(pos + 1),
+														false);
+								vardata->freefunc = release_gtt_statistic_cache;
+							}
+							else
+							{
+								vardata->statsTuple =
+									SearchSysCache3(STATRELATTINH,
+													ObjectIdGetDatum(index->indexoid),
+													Int16GetDatum(pos + 1),
+													BoolGetDatum(false));
+								vardata->freefunc = ReleaseSysCache;
+							}
 
 							if (HeapTupleIsValid(vardata->statsTuple))
 							{
@@ -5394,15 +5409,28 @@ examine_simple_variable(PlannerInfo *root, Var *var,
 	}
 	else if (rte->rtekind == RTE_RELATION)
 	{
-		/*
-		 * Plain table or parent of an inheritance appendrel, so look up the
-		 * column in pg_statistic
-		 */
-		vardata->statsTuple = SearchSysCache3(STATRELATTINH,
-											  ObjectIdGetDatum(rte->relid),
-											  Int16GetDatum(var->varattno),
-											  BoolGetDatum(rte->inh));
-		vardata->freefunc = ReleaseSysCache;
+		char rel_persistence = get_rel_persistence(rte->relid);
+
+		if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			/* For global temporary table, get statistic data from localhash */
+			vardata->statsTuple = get_gtt_att_statistic(rte->relid,
+														var->varattno,
+														rte->inh);
+			vardata->freefunc = release_gtt_statistic_cache;
+		}
+		else
+		{
+			/*
+			 * Plain table or parent of an inheritance appendrel, so look up the
+			 * column in pg_statistic
+			 */
+			vardata->statsTuple = SearchSysCache3(STATRELATTINH,
+												  ObjectIdGetDatum(rte->relid),
+												  Int16GetDatum(var->varattno),
+												  BoolGetDatum(rte->inh));
+			vardata->freefunc = ReleaseSysCache;
+		}
 
 		if (HeapTupleIsValid(vardata->statsTuple))
 		{
@@ -6846,6 +6874,7 @@ btcostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 	{
 		/* Simple variable --- look to stats for the underlying table */
 		RangeTblEntry *rte = planner_rt_fetch(index->rel->relid, root);
+		char	rel_persistence = get_rel_persistence(rte->relid);
 
 		Assert(rte->rtekind == RTE_RELATION);
 		relid = rte->relid;
@@ -6863,6 +6892,14 @@ btcostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 				!vardata.freefunc)
 				elog(ERROR, "no function provided to release variable stats with");
 		}
+		else if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			/* For global temporary table, get statistic data from localhash */
+			vardata.statsTuple = get_gtt_att_statistic(relid,
+													colnum,
+													rte->inh);
+			vardata.freefunc = release_gtt_statistic_cache;
+		}
 		else
 		{
 			vardata.statsTuple = SearchSysCache3(STATRELATTINH,
@@ -6874,6 +6911,8 @@ btcostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 	}
 	else
 	{
+		char	rel_persistence = get_rel_persistence(index->indexoid);
+
 		/* Expression --- maybe there are stats for the index itself */
 		relid = index->indexoid;
 		colnum = 1;
@@ -6888,6 +6927,14 @@ btcostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 			if (HeapTupleIsValid(vardata.statsTuple) &&
 				!vardata.freefunc)
 				elog(ERROR, "no function provided to release variable stats with");
+		}
+		else if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			/* For global temporary table, get statistic data from localhash */
+			vardata.statsTuple = get_gtt_att_statistic(relid,
+													colnum,
+													false);
+			vardata.freefunc = release_gtt_statistic_cache;
 		}
 		else
 		{
@@ -7807,6 +7854,8 @@ brincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 		/* attempt to lookup stats in relation for this index column */
 		if (attnum != 0)
 		{
+			char	rel_persistence = get_rel_persistence(rte->relid);
+
 			/* Simple variable -- look to stats for the underlying table */
 			if (get_relation_stats_hook &&
 				(*get_relation_stats_hook) (root, rte, attnum, &vardata))
@@ -7818,6 +7867,15 @@ brincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 				if (HeapTupleIsValid(vardata.statsTuple) && !vardata.freefunc)
 					elog(ERROR,
 						 "no function provided to release variable stats with");
+			}
+			else if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+			{
+				/* For global temporary table, get statistic data from localhash */
+				vardata.statsTuple =
+					get_gtt_att_statistic(rte->relid,
+										attnum,
+										false);
+				vardata.freefunc = release_gtt_statistic_cache;
 			}
 			else
 			{
@@ -7831,6 +7889,8 @@ brincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 		}
 		else
 		{
+			char	rel_persistence = get_rel_persistence(index->indexoid);
+
 			/*
 			 * Looks like we've found an expression column in the index. Let's
 			 * see if there's any stats for it.
@@ -7849,6 +7909,15 @@ brincostestimate(PlannerInfo *root, IndexPath *path, double loop_count,
 				if (HeapTupleIsValid(vardata.statsTuple) &&
 					!vardata.freefunc)
 					elog(ERROR, "no function provided to release variable stats with");
+			}
+			else if (rel_persistence == RELPERSISTENCE_GLOBAL_TEMP)
+			{
+				/* For global temporary table, get statistic data from localhash */
+				vardata.statsTuple =
+					get_gtt_att_statistic(index->indexoid,
+										attnum,
+										false);
+				vardata.freefunc = release_gtt_statistic_cache;
 			}
 			else
 			{

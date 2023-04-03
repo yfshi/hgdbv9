@@ -27,6 +27,7 @@
 #include "access/xlog.h"
 #include "catalog/catalog.h"
 #include "catalog/heap.h"
+#include "catalog/storage_gtt.h"
 #include "catalog/pg_am.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_statistic_ext.h"
@@ -52,6 +53,8 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+
+#include "catalog/index.h"
 
 /* GUC parameter */
 int			constraint_exclusion = CONSTRAINT_EXCLUSION_PARTITION;
@@ -191,11 +194,15 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 			int			ncolumns,
 						nkeycolumns;
 			int			i;
-
 			/*
 			 * Extract info from the relation descriptor for the index.
 			 */
 			indexRelation = index_open(indexoid, lmode);
+			/* Begin - ReqID:SRS-SQL-GTT */
+			if (RELATION_IS_GLOBAL_TEMP(indexRelation) && indexRelation->rd_node.relNode == 0)
+				indexRelation->rd_node.relNode = indexoid;
+			/* End - ReqID:SRS-SQL-GTT */
+
 			index = indexRelation->rd_index;
 
 			/*
@@ -216,6 +223,14 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 			 * queries.
 			 */
 			if (indexRelation->rd_rel->relkind == RELKIND_PARTITIONED_INDEX)
+			{
+				index_close(indexRelation, NoLock);
+				continue;
+			}
+
+			/* Ignore empty index for global temporary table in current backend */
+			if (RELATION_IS_GLOBAL_TEMP(indexRelation) &&
+				!gtt_storage_attached(RelationGetRelid(indexRelation)))
 			{
 				index_close(indexRelation, NoLock);
 				continue;

@@ -38,6 +38,7 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "catalog/catalog.h"
+#include "catalog/storage_gtt.h"
 #include "commands/trigger.h"
 #include "executor/execPartition.h"
 #include "executor/executor.h"
@@ -54,6 +55,11 @@
 #include "utils/rel.h"
 #include "utils/ora_compatible.h"
 
+/* Begin - ReqID:SRS-SQL-GTT */
+#include "catalog/index.h"
+#include "access/genam.h"
+#include "catalog/storage.h"
+/* End - ReqID:SRS-SQL-GTT */
 
 typedef struct MTTargetRelLookup
 {
@@ -3441,6 +3447,15 @@ ExecModifyTable(PlanState *pstate)
 	context.mtstate = node;
 	context.epqstate = &node->mt_epqstate;
 	context.estate = estate;
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	if (RELATION_IS_GLOBAL_TEMP(resultRelInfo->ri_RelationDesc))
+	{
+		if (operation == CMD_INSERT ||
+			(operation == CMD_MERGE && resultRelInfo->ri_notMatchedMergeAction != NIL))
+			init_gtt_storage(operation, resultRelInfo);
+	}
+	/* End - ReqID:SRS-SQL-GTT */
 
 	/*
 	 * Fetch rows from subplan, and execute the required table modification

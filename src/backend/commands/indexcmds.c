@@ -66,6 +66,7 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
+#include "catalog/storage_gtt.h"	/* ReqID:SRS-SQL-GTT */
 
 /* non-export function prototypes */
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
@@ -586,7 +587,7 @@ DefineIndex(Oid relationId,
 	 * is more efficient.  Do this before any use of the concurrent option is
 	 * done.
 	 */
-	if (stmt->concurrent && get_rel_persistence(relationId) != RELPERSISTENCE_TEMP)
+	if (stmt->concurrent && !RelpersistenceTsTemp(get_rel_persistence(relationId)))
 		concurrent = true;
 	else
 		concurrent = false;
@@ -730,6 +731,14 @@ DefineIndex(Oid relationId,
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot create indexes on temporary tables of other sessions")));
+
+	/* Begin - ReqID:SRS-SQL-GTT */
+	if (RELATION_IS_GLOBAL_TEMP(rel) &&
+		is_other_backend_use_gtt(RelationGetRelid(rel)))
+	{
+		elog(ERROR, "attempt to create, alter or drop an index on temporary table already in use");
+	}
+	/* End - ReqID:SRS-SQL-GTT */
 
 	/*
 	 * Unless our caller vouches for having checked this already, insist that
@@ -2726,7 +2735,7 @@ ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
 	if (relkind == RELKIND_PARTITIONED_INDEX)
 		ReindexPartitions(indOid, params, isTopLevel);
 	else if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
-			 persistence != RELPERSISTENCE_TEMP)
+			 !RelpersistenceTsTemp(persistence))
 		ReindexRelationConcurrently(indOid, params);
 	else
 	{
@@ -2835,7 +2844,7 @@ ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
 	if (get_rel_relkind(heapOid) == RELKIND_PARTITIONED_TABLE)
 		ReindexPartitions(heapOid, params, isTopLevel);
 	else if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
-			 get_rel_persistence(heapOid) != RELPERSISTENCE_TEMP)
+			 !RelpersistenceTsTemp(get_rel_persistence(heapOid)))
 	{
 		result = ReindexRelationConcurrently(heapOid, params);
 
@@ -3250,7 +3259,7 @@ ReindexMultipleInternal(List *relids, ReindexParams *params)
 			   relkind != RELKIND_PARTITIONED_TABLE);
 
 		if ((params->options & REINDEXOPT_CONCURRENTLY) != 0 &&
-			relpersistence != RELPERSISTENCE_TEMP)
+			!RelpersistenceTsTemp(relpersistence))
 		{
 			ReindexParams newparams = *params;
 

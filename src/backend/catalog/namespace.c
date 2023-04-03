@@ -29,6 +29,7 @@
 #include "catalog/pg_collation.h"
 #include "catalog/pg_conversion.h"
 #include "catalog/pg_namespace.h"
+#include "catalog/storage_gtt.h"   /* ReqID:SRS-SQL-GTT */
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
@@ -673,6 +674,13 @@ RangeVarAdjustRelationPersistence(RangeVar *newRelation, Oid nspid)
 							(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
 							 errmsg("cannot create temporary relation in non-temporary schema")));
 			}
+			break;
+		case RELPERSISTENCE_GLOBAL_TEMP:
+			/* Do not allow create global temporary table in temporary schemas */
+			if (isAnyTempNamespace(nspid))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+						 errmsg("cannot create global temp table in temporary schemas")));
 			break;
 		case RELPERSISTENCE_PERMANENT:
 			if (isTempOrTempToastNamespace(nspid))
