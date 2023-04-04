@@ -491,10 +491,13 @@ AtEOXact_SPI(bool isCommit)
 				 errhint("Check for missing \"SPI_finish\" calls.")));
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */;
-	setdynamic_doparser(true);
-	setdynamic_parser(false);
-	setdynamic_haspgparam(false);
-	setdynamic_docheckvar(false);
+	if (ORA_PARSER == compatible_db)
+	{
+		setdynamic_doparser(true);
+		setdynamic_parser(false);
+		setdynamic_haspgparam(false);
+		setdynamic_docheckvar(false);
+	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 }
 

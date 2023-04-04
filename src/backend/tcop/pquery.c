@@ -26,6 +26,10 @@
 #include "tcop/utility.h"
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
+/* Begin - ReqID:SRS-SQL-FUNCOUT */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-FUNCOUT */
 
 
 /*
@@ -588,7 +592,7 @@ PortalStart(Portal portal, ParamListInfo params,
 				portal->tupDesc = NULL;
 				/* Begin - ReqID:SRS-SQL-ANONYOUT */
 				/* DoStmt has out parameters, we should have output tupdesc */
-				if (portal->stmts!= NIL)
+				if (ORA_PARSER == compatible_db && portal->stmts!= NIL)
 				{
 					Node *node = linitial(portal->stmts);
 
@@ -1213,7 +1217,8 @@ PortalRunMulti(Portal portal,
 	bool		anonymous_has_outparamter = false;
 
 	/* If anonymous block has out parameters, should not change receiver */
-	if (portal->stmts != NIL &&
+	if (ORA_PARSER == compatible_db &&
+		portal->stmts != NIL &&
 	   list_length(portal->stmts) == 1)
 	{
 		Node *node = (Node *) linitial(portal->stmts);

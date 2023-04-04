@@ -18,7 +18,10 @@
 extern void parse_fixed_parameters(ParseState *pstate,
 								   Oid *paramTypes, int numParams);
 extern void parse_variable_parameters(ParseState *pstate,
-									  Oid **paramTypes, int *numParams);
+									  Oid **paramTypes, int *numParams,
+									  /* Begin - ReqID:SRS-SQL-FUNCOUT */
+									  char **paramModes);
+									  /* End - ReqID:SRS-SQL-FUNCOUT */
 extern void check_variable_parameters(ParseState *pstate, Query *query);
 extern bool query_contains_extern_params(Query *query);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
@@ -36,9 +39,7 @@ extern bool query_contains_extern_params(Query *query);
 
 extern Node *ParseParamVariable(Node *arg);
 extern char *GetParamMode(Oid *paramTypes, int numParams); /* BUG:M0000083 */
-extern void ParseVarParamState(void *arg, Node *param, bool *isOut,
-						bool *isIn, bool *isLeftCall);
-extern void SetVarParamState(void *arg, Param *param, int index);
+extern void ParseVarParamState(void *arg, Node *param, bool *isLeftCall);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 extern int push_oraparam_stack(void);

@@ -34,6 +34,8 @@
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "catalog/pg_proc.h"
 #include "miscadmin.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 typedef struct FixedParamState
@@ -53,8 +55,11 @@ typedef struct VarParamState
 	Oid		  **paramTypes;		/* array of parameter type OIDs */
 	int		   *numParams;		/* number of array entries */
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	Oid 	   *paramTypeWithMask; /* array of parameter type OIDs with mask */
-	/* Emd - ReqID:SRS-SQL-FUNCOUT */
+	char 	   **paramModes;	/* array of parameter mode: PROARGMODE_IN,
+								 * PROARGMODE_OUT, PROARGMODE_INOUT, PROARGMODE_RESULT.
+								 * note that when it's PROARGMODE_RESULT,
+								 * only used to represent the funtion result by jdbc.*/
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 } VarParamState;
 
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
@@ -150,7 +155,10 @@ parse_fixed_parameters(ParseState *pstate,
  */
 void
 parse_variable_parameters(ParseState *pstate,
-						  Oid **paramTypes, int *numParams)
+						  Oid **paramTypes, int *numParams,
+						  /* Begin - ReqID:SRS-SQL-FUNCOUT */
+						  char **paramModes)
+						  /* End - ReqID:SRS-SQL-FUNCOUT */
 {
 	VarParamState *parstate = palloc(sizeof(VarParamState));
 
@@ -158,19 +166,22 @@ parse_variable_parameters(ParseState *pstate,
 	/*
 	 * get the real paramTypes(reset 32nd-30nd bit of 32 bit Oid)
 	 */
-	Oid 		  *paramTypeWithMask = NULL;
-	int 		   i;
-
-	if (*numParams > 0)
-		paramTypeWithMask = palloc0(sizeof(Oid) * (*numParams));
-
-	for (i = 0; i < *numParams; i++)
+	if (ORA_PARSER == compatible_db)
 	{
-		paramTypeWithMask[i] = (*paramTypes)[i];
-		UnSetModeOut((*paramTypes)[i]);
+		int 		   i;
+
+		for (i = 0; i < *numParams; i++)
+		{
+			UnSetModeOut((*paramTypes)[i]);
+		}
+		pstate->p_isVarParamState = true;
+		parstate->paramModes = paramModes;
 	}
-	parstate->paramTypeWithMask = paramTypeWithMask;
-	pstate->p_isVarParamState = true;
+	else
+	{
+		pstate->p_isVarParamState = false;
+		parstate->paramModes = NULL;
+	}
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	parstate->paramTypes = paramTypes;
@@ -244,6 +255,23 @@ variable_paramref_hook(ParseState *pstate, ParamRef *pref)
 		MemSet(*parstate->paramTypes + *parstate->numParams,
 			   0,
 			   (paramno - *parstate->numParams) * sizeof(Oid));
+
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		if (ORA_PARSER == compatible_db && parstate->paramModes != NULL)
+		{
+			/* Need to enlarge param mode array */
+			if (*parstate->paramModes)
+				*parstate->paramModes = (char *) repalloc(*parstate->paramModes,
+														 paramno * sizeof(char));
+			else
+				*parstate->paramModes = (char *) palloc(paramno * sizeof(char));
+			/* set the previously-unreferenced slots paramModes to INOUT*/
+			MemSet(*parstate->paramModes + *parstate->numParams,
+				   PROARGMODE_IN,
+				   (paramno - *parstate->numParams) * sizeof(char));
+		}
+		/* End - ReqID:SRS-SQL-FUNCOUT */
+
 		*parstate->numParams = paramno;
 	}
 
@@ -517,6 +545,8 @@ GetParamMode(Oid *paramTypes, int numParams)
 			modes[i] = PROARGMODE_INOUT;
 		else if (IsModeOut(paramTypes[i]))
 			modes[i] = PROARGMODE_OUT;
+		else if (IsLeftCall(paramTypes[i]))
+			modes[i] = PROARGMODE_RESULT;
 		else
 			modes[i] = PROARGMODE_IN;
 	}
@@ -526,51 +556,29 @@ GetParamMode(Oid *paramTypes, int numParams)
 
 /*
  * ParseVarParamState
- * Parse the params, check if the parameter mode is OUT or IN.
+ * Parse the params.
  * If it is '{ ? = call func/proc}' form jdbc, set isLeftCall to true
  */
 void
-ParseVarParamState(void *arg, Node *param, bool *isOut,
-						bool *isIn, bool *isLeftCall)
+ParseVarParamState(void *arg, Node *param, bool *isLeftCall)
 {
 	int 		   index;
-	Oid 		   type;
+	char 		   mode;
 	VarParamState *vps = (VarParamState *) arg;
-	Oid 		  *ptypes = vps->paramTypeWithMask;
+	char 		  *modes = *vps->paramModes;
 
-	if (!ptypes)
+	if (!modes)
 		return;
 
 	index = ((Param *) param)->paramid - 1;
-	type = ptypes[index];
-
-	*isOut = IsModeOut(type);
-	*isIn = IsModeIn(type);
-	*isLeftCall = IsLeftCall(type);
+	mode = modes[index];
+	if (mode == PROARGMODE_RESULT)
+		*isLeftCall = true;
 
 	/* If parameter type is UNKNOWNOID, set type oid to VOIDOID */
 	if (*isLeftCall &&
 		(*vps->paramTypes)[index] == UNKNOWNOID)
 		(*vps->paramTypes)[index] = VOIDOID;
-}
-
-/*
- * SetVarParamState
- * set mask for parameter OID
- */
-void
-SetVarParamState(void *arg, Param *param, int index)
-{
-	VarParamState *vps = (VarParamState *) arg;
-
-	/* set mask mode for parameter OID */
-	if (vps && vps->paramTypeWithMask)
-	{
-		if (IsModeIn(vps->paramTypeWithMask[index]))
-			SetModeIn(param->paramtype);
-		if (IsModeOut(vps->paramTypeWithMask[index]))
-			SetModeOut(param->paramtype);
-	}
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
 

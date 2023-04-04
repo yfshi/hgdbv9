@@ -27,8 +27,10 @@ extern PGDLLIMPORT post_parse_analyze_hook_type post_parse_analyze_hook;
 extern Query *parse_analyze(RawStmt *parseTree, const char *sourceText,
 							Oid *paramTypes, int numParams, QueryEnvironment *queryEnv);
 extern Query *parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
-									  Oid **paramTypes, int *numParams);
-
+									  Oid **paramTypes, int *numParams,
+									  /* Begin - ReqID:SRS-SQL-FUNCOUT */
+									  char **paramModes);
+									  /* End - ReqID:SRS-SQL-FUNCOUT */
 extern Query *parse_sub_analyze(Node *parseTree, ParseState *parentParseState,
 								CommonTableExpr *parentCTE,
 								bool locked_from_parent,
