@@ -1569,7 +1569,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 		 * in plisql function, the function return datatype
 		 * has no relationship with out pararmeter datatype
 		 */
-		if (LANG_PLISQL_OID == languageOid)
+		if (ORA_PARSER == compatible_db && LANG_PLISQL_OID == languageOid)
 		{
 			/* have out parameter,  should't allow return setof */
 			if (returnsSet && parameterModes != NULL)
@@ -2983,74 +2983,80 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 	ReleaseSysCache(languageTuple);
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	codeblock->params = params;
+	if (ORA_PARSER == compatible_db)
+	{
+		codeblock->params = params;
 
-	/* to use check_variables_does_match to check variables match, push stack */
-	if (stmt->paramsmode != NIL)
-	{
-		push_oraparam_stack();
-		get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
-	}
+		/* to use check_variables_does_match to check variables match, push stack */
+		if (stmt->paramsmode != NIL)
+		{
+			push_oraparam_stack();
+			get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+		}
 
-	PG_TRY();
-	{
-	/* End - ReqID:SRS-SQL-ANONYOUT */
-		/* execute the inline handler */
-		result = OidFunctionCall1(laninline, PointerGetDatum(codeblock));
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	}
-	PG_CATCH();
-	{
+		PG_TRY();
+		{
+			/* execute the inline handler */
+			result = OidFunctionCall1(laninline, PointerGetDatum(codeblock));
+		}
+		PG_CATCH();
+		{
+			if (stmt->paramsmode != NIL)
+				pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+
 		if (stmt->paramsmode != NIL)
 			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
 
-		PG_RE_THROW();
+		/* Anonymous block has out parameters, its return value will be not NULL */
+		if (result != 0 && dest != NULL && stmt->paramsmode != NIL)
+		{
+			HeapTupleHeader td;
+			TupleDesc		tupdesc;
+			HeapTupleData	tmptup;
+			Tuplestorestate *tupstore;
+			TupleTableSlot *scanslot;
+
+			tupstore = tuplestore_begin_heap(false, false, work_mem);
+			td = DatumGetHeapTupleHeader(result);
+			tupdesc = lookup_rowtype_tupdesc_copy(HeapTupleHeaderGetTypeId(td),
+												  HeapTupleHeaderGetTypMod(td));
+
+			scanslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsMinimalTuple);
+
+			tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+			tmptup.t_data = td;
+
+			tuplestore_puttuple(tupstore, &tmptup);
+			tuplestore_gettupleslot(tupstore,
+									true,
+									false,
+									scanslot);
+
+			/* Begin - ReqID:SRS-SQL-LIBPQOUT */
+			/*
+			 * if we have a paramname, should send result description
+			 */
+			if (params != NULL && params->paramnames != NULL)
+				SetRemoteDestReceiverSendDescr(dest, true);
+			/* End - ReqID:SRS-SQL-LIBPQOUT */
+
+			dest->rStartup(dest, (int) CMD_UTILITY, tupdesc);
+			dest->receiveSlot(scanslot, dest);
+			dest->rShutdown(dest);
+			ExecClearTuple(scanslot);
+			tuplestore_end(tupstore);
+		}
 	}
-	PG_END_TRY();
-
-	if (stmt->paramsmode != NIL)
-		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-
-	/* Anonymous block has out parameters, its return value will be not NULL */
-	if (result != 0 && dest != NULL && stmt->paramsmode != NIL)
-	{
-		HeapTupleHeader td;
-		TupleDesc		tupdesc;
-		HeapTupleData	tmptup;
-		Tuplestorestate *tupstore;
-		TupleTableSlot *scanslot;
-
-		tupstore = tuplestore_begin_heap(false, false, work_mem);
-		td = DatumGetHeapTupleHeader(result);
-		tupdesc = lookup_rowtype_tupdesc_copy(HeapTupleHeaderGetTypeId(td),
-											  HeapTupleHeaderGetTypMod(td));
-
-		scanslot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsMinimalTuple);
-
-		tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
-		tmptup.t_data = td;
-
-		tuplestore_puttuple(tupstore, &tmptup);
-		tuplestore_gettupleslot(tupstore,
-								true,
-								false,
-								scanslot);
-
-		/* Begin - ReqID:SRS-SQL-LIBPQOUT */
-		/*
-		 * if we have a paramname, should send result description
-		 */
-		if (params != NULL && params->paramnames != NULL)
-			SetRemoteDestReceiverSendDescr(dest, true);
-		/* End - ReqID:SRS-SQL-LIBPQOUT */
-
-		dest->rStartup(dest, (int) CMD_UTILITY, tupdesc);
-		dest->receiveSlot(scanslot, dest);
-		dest->rShutdown(dest);
-		ExecClearTuple(scanslot);
-		tuplestore_end(tupstore);
-	}
+	else
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+	{
+		/* execute the inline handler */
+		OidFunctionCall1(laninline, PointerGetDatum(codeblock));
+	}
 }
 
 /*

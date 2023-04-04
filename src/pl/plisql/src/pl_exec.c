@@ -4291,7 +4291,7 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	estate->paramLI->parserSetupArg = NULL; /* filled during use */
 	estate->paramLI->numParams = estate->ndatums;
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	estate->paramLI->outparamSepup = (OutParamSepupHook) plisql_out_param_setup;
+	estate->paramLI->outparamSetup = (OutParamSetupHook) plisql_out_param_setup;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	estate->paramLI->paramnames = NULL;
@@ -6941,7 +6941,7 @@ plisql_param_fetch(ParamListInfo params,
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* It is forbidden to convert parameter to constants if set OutparamAssign */
-	if (params->outparamSepup)
+	if (params->outparamSetup)
 		prm->pflags = 0;
 	else
 	{

@@ -290,7 +290,7 @@ array_in(PG_FUNCTION_ARGS)
 						 errdetail("Missing array dimension value.")));
 		}
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		else if (strncmp(q, "..", 2) == 0)
+		else if (ORA_PARSER == compatible_db && strncmp(q, "..", 2) == 0)
 		{
 			/* [m..n] format */
 			*q = '\0';

@@ -3054,6 +3054,9 @@ typedef enum FunctionParameterMode
 	FUNC_PARAM_INOUT = 'b',		/* both */
 	FUNC_PARAM_VARIADIC = 'v',	/* variadic (always input) */
 	FUNC_PARAM_TABLE = 't',		/* table function output column */
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	FUNC_PARAM_RESULT = 'r',	/* function result */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
 	/* this is not used in pg_proc: */
 	FUNC_PARAM_DEFAULT = 'd'	/* default; effectively same as IN */
 } FunctionParameterMode;

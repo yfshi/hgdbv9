@@ -4082,13 +4082,13 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 				int 		 *paramids = NULL;
 
 				if (state->ext_params &&
-					state->ext_params->outparamSepup)
+					state->ext_params->outparamSetup)
 					params = state->ext_params;
 				else if (state->parent &&
 					state->parent->state)
 					params = state->parent->state->es_param_list_info;
 
-				if (!params || !params->outparamSepup)
+				if (!params || !params->outparamSetup)
 				{
 					/* Begin - ReqID:SRS-SQL-PACKAGE */
 					if (FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
@@ -4139,7 +4139,7 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 				scratch.d.out_params.rettype = rettype;
 
 				scratch.d.out_params.pestate = params->paramFetchArg;
-				params->outparamSepup(&scratch);
+				params->outparamSetup(&scratch);
 				ExprEvalPushStep(state, &scratch);
 			}
 			else

@@ -65,7 +65,7 @@ makeParamList(int numParams)
 	retval->paramValuesStr = NULL;
 	retval->numParams = numParams;
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	retval->outparamSepup = NULL;
+	retval->outparamSetup = NULL;
 
 	/* set all the params mode to IN and typmod is -1 */
 	for (i = 0; i < numParams; i++)
@@ -106,7 +106,7 @@ copyParamList(ParamListInfo from)
 
 	retval = makeParamList(from->numParams);
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	retval->outparamSepup = from->outparamSepup; /* handle OUT parameters */
+	retval->outparamSetup = from->outparamSetup; /* handle OUT parameters */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	retval->outctext = from->outctext;

@@ -117,7 +117,7 @@ typedef void (*ParamCompileHook) (ParamListInfo params, struct Param *param,
 typedef void (*ParserSetupHook) (struct ParseState *pstate, void *arg);
 
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
-typedef void (*OutParamSepupHook) (void *scratch);
+typedef void (*OutParamSetupHook) (void *scratch);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 typedef struct ParamListInfoData
@@ -131,7 +131,7 @@ typedef struct ParamListInfoData
 	char	   *paramValuesStr; /* params as a single string for errors */
 	int			numParams;		/* nominal/maximum # of Params represented */
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	OutParamSepupHook	outparamSepup;	/* OUT parameters hook */
+	OutParamSetupHook	outparamSetup;	/* OUT parameters hook */
 	bool 		topLevelIsCall;	/* is top level call statement ? */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */

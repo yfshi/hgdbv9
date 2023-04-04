@@ -55,6 +55,7 @@
 #include "commands/proclang.h"
 #include "funcapi.h"
 #include "parser/parse_param.h"
+#include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 
@@ -679,7 +680,8 @@ transformRangeFunction(ParseState *pstate, RangeFunction *r)
 	is_lateral = r->lateral || contain_vars_of_level((Node *) funcexprs, 0);
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
-	check_funcexpr_outparams(funcexprs);
+	if (ORA_PARSER == compatible_db)
+		check_funcexpr_outparams(funcexprs);
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/*

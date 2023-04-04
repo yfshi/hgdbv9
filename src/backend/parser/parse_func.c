@@ -179,8 +179,6 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		Oid			argtype = exprType(arg);
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		bool 		leftCall = false;
-		bool 		argout = false;
-		bool 		argin  = true;
 
 		/*
 		 * Oid is 32 bit, the 32nd-30nd bit is used for sepecial purpose.
@@ -189,11 +187,12 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		 * 30nd bit indicates that the function or procedure parameter mode is IN.
 		 * 29nd-1nd bit used for the unction or procedure parameter type OID.
 		 */
-		if (IsA(arg, Param) &&
+		if (ORA_PARSER == compatible_db &&
+			IsA(arg, Param) &&
 			pstate->p_ref_hook_state &&
 			pstate->p_isVarParamState)
 			ParseVarParamState(pstate->p_ref_hook_state, arg,
-							&argout, &argin, &leftCall);
+							&leftCall);
 
 		/*
 		 * If it is CALL by JDBC, we discard the first argument from the parameter list.
@@ -2568,7 +2567,7 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 		TypeName   *t = lfirst_node(TypeName, args_item);
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		if (IsModeOut(t->typeOid))
+		if (ORA_PARSER == compatible_db && IsModeOut(t->typeOid))
 		{
 			argcount--;
 
@@ -2616,7 +2615,7 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* If not found, then search all arguments include OUT arguments */
-	if (objtype != OBJECT_AGGREGATE && !OidIsValid(oid))
+	if (ORA_PARSER == compatible_db && objtype != OBJECT_AGGREGATE && !OidIsValid(oid))
 	{
 		nargs = func->args_unspecified ? -1 : raw_argcount;
 		oid = LookupFuncNameInternal(func->args_unspecified ? objtype : OBJECT_ROUTINE,

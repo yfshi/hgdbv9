@@ -152,7 +152,10 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
  */
 Query *
 parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
-						Oid **paramTypes, int *numParams)
+						Oid **paramTypes, int *numParams,
+						/* Begin - ReqID:SRS-SQL-FUNCOUT */
+						char **paramModes)
+						/* End - ReqID:SRS-SQL-FUNCOUT */
 {
 	ParseState *pstate = make_parsestate(NULL);
 	Query	   *query;
@@ -162,7 +165,10 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 
 	pstate->p_sourcetext = sourceText;
 
-	parse_variable_parameters(pstate, paramTypes, numParams);
+	parse_variable_parameters(pstate, paramTypes, numParams,
+						/* Begin - ReqID:SRS-SQL-FUNCOUT */
+						paramModes);
+						/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	query = transformTopLevelStmt(pstate, parseTree);
 

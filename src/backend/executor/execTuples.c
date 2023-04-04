@@ -70,6 +70,8 @@
 #include "utils/typcache.h"
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "executor/spi.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 static TupleDesc ExecTypeFromTLInternal(List *targetList,
@@ -1990,7 +1992,7 @@ ExecTypeFromTLInternal(List *targetList, bool skipjunk)
 		 * If call a function which has out parameters in SQL, not in PLSQL, 
 		 * the function return type should be changed to record
 		 */
-		if (nodeTag(tle->expr) == T_FuncExpr && SPI_get_connected() < 0)
+		if (ORA_PARSER == compatible_db && nodeTag(tle->expr) == T_FuncExpr && SPI_get_connected() < 0)
 		{
 			FuncExpr *func = (FuncExpr *) tle->expr;
 			Oid		resulttype;

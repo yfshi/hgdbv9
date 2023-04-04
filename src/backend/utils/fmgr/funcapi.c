@@ -406,7 +406,7 @@ internal_get_result_type(Oid funcid,
 
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		/* If we change the return type of a function, we change the return type of the expr */
-		if (!type_is_rowtype(rettype) && SPI_get_connected() < 0)
+		if (ORA_PARSER == compatible_db && !type_is_rowtype(rettype) && SPI_get_connected() < 0)
 		{
 			FuncExpr *func = (FuncExpr *) call_expr;
 

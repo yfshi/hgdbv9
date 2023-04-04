@@ -1052,7 +1052,7 @@ exec_simple_query(const char *query_string)
 	 * and the out parameters datatype is integer.
 	 * this only used for regression test so far.
 	 */
-	if (list_length(parsetree_list) == 1)
+	if (ORA_PARSER == compatible_db && list_length(parsetree_list) == 1)
 	{
 		Node *node = (Node *) linitial(parsetree_list);
 		ParamListInfo paramsinfo;
@@ -1423,10 +1423,10 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	/* Begin - BUG:M0000083 */
 	char 	   *paramModes = NULL;
-	int			oldNumParams = numParams;
 
 	/* get the masked oid from typeoid */
-	paramModes = GetParamMode(paramTypes, numParams);
+	if (ORA_PARSER == compatible_db)
+		paramModes = GetParamMode(paramTypes, numParams);
 	/* End - BUG:M0000083 */
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
@@ -1581,7 +1581,10 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		query = parse_analyze_varparams(raw_parse_tree,
 										query_string,
 										&paramTypes,
-										&numParams);
+										&numParams,
+										/* Begin - ReqID:SRS-SQL-FUNCOUT */
+										&paramModes);
+										/* End - ReqID:SRS-SQL-FUNCOUT */
 
 		/*
 		 * Check all parameter types got determined.
@@ -1623,14 +1626,6 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	 */
 	if (unnamed_stmt_context)
 		MemoryContextSetParent(psrc->context, MessageContext);
-
-	/* Begin - BUG:M0000083 */
-	if (numParams > oldNumParams && paramModes != NULL)
-	{
-		paramModes = (char *) repalloc(paramModes, numParams * sizeof(char));
-		MemSet(paramModes + oldNumParams, PROARGMODE_IN, (numParams - oldNumParams) * sizeof(char));
-	}
-	/* Begin - BUG:M0000083 */
 
 	/* Finish filling in the CachedPlanSource */
 	CompleteCachedPlan(psrc,
@@ -1873,7 +1868,8 @@ exec_bind_message(StringInfo input_message)
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	/* anonymous block out parameters */
-	if (psrc->raw_parse_tree != NULL &&
+	if (ORA_PARSER == compatible_db &&
+		psrc->raw_parse_tree != NULL &&
 		nodeTag(psrc->raw_parse_tree) == T_RawStmt &&
 		nodeTag((RawStmt *)(psrc->raw_parse_tree)->stmt) == T_DoStmt &&
 		((DoStmt *)(((RawStmt *) psrc->raw_parse_tree)->stmt))->paramsmode != NIL)
@@ -1911,7 +1907,7 @@ exec_bind_message(StringInfo input_message)
 		params = makeParamList(numParams);
 
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		if (dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
+		if (ORA_PARSER == compatible_db && dostmt_modes != NIL && list_length(dostmt_modes) != numParams)
 			elog(ERROR, "parameters modes doesn't match to params");
 		/* End - ReqID:SRS-SQL-ANONYOUT */
 
@@ -1943,7 +1939,7 @@ exec_bind_message(StringInfo input_message)
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			/* get out parameters from Dostmt' modes */
-			if (dostmt_modes != NIL)
+			if (ORA_PARSER == compatible_db && dostmt_modes != NIL)
 			{
 				DefElem *def = NULL;
 				Value *v= NULL;
@@ -2392,7 +2388,7 @@ exec_execute_message(const char *portal_name, long max_rows)
 		SetRemoteDestReceiverParams(receiver, portal);
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 		/* If there are out parameters, should change it to send description */
-		if (portalParams != NULL && portalParams->haveout)
+		if (ORA_PARSER == compatible_db && portalParams != NULL && portalParams->haveout)
 			ChangeDestSendDescription(receiver);
 	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
