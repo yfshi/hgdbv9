@@ -57,6 +57,7 @@ PG_FUNCTION_INFO_V1(oradate_cmp_oratimestamp);
 PG_FUNCTION_INFO_V1(oradate_cmp_oratimestamptz);
 PG_FUNCTION_INFO_V1(oradate_cmp_oratimestampltz);
 PG_FUNCTION_INFO_V1(oradate_hash);
+PG_FUNCTION_INFO_V1(ora_datetime_hash_extended);	/* BUG:M0000085 */
 PG_FUNCTION_INFO_V1(oradate_smaller);
 PG_FUNCTION_INFO_V1(oradate_larger);
 PG_FUNCTION_INFO_V1(oradate_eq_oratimestamp);
@@ -596,6 +597,15 @@ oradate_hash(PG_FUNCTION_ARGS)
 	return hashfloat8(fcinfo);
 #endif
 }
+
+/* Begin - BUG:M0000085 */
+/* common routine for oradate, oratimestamp, oratimestamptz, oratimestampltz */
+Datum
+ora_datetime_hash_extended(PG_FUNCTION_ARGS)
+{
+	return hashint8extended(fcinfo);
+}
+/* End - BUG:M0000085 */
 
 /*****************************************************************************
  *	 Aggregate Function

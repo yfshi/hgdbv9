@@ -25,6 +25,7 @@
 #include "catalog/index.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_inherits.h"
+#include "catalog/storage_gtt.h"
 #include "catalog/toasting.h"
 #include "commands/alter.h"
 #include "commands/async.h"
