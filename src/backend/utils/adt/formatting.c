@@ -3902,6 +3902,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				if (n->key->id == DCH_FF)
 					out->ff = 6;	/* FF default precision */
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			/* fall through *//* BUG:M0000081 */
 			case DCH_US:		/* microsecond */
 				/* Begin - BUG:z101 */
 				if (ORA_PARSER == compatible_db)

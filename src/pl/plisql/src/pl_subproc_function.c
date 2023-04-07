@@ -2492,7 +2492,15 @@ plisql_expand_and_reorder_functionargs(ParseState *pstate, PLiSQL_subproc_functi
 	ListCell   *lc;
 	int provnargs = list_length(fargs);
 
-	MemSet(argarray, 0, funcnarg * sizeof(Node *));
+	/* Begin - BUG:M0000081 */
+	/*
+	 * Even if funcnarg has no chance of being larger than FUNC_MAX_ARGS,
+	 * we can still maintain a memset write out of bounds check.
+	 */
+	if (funcnarg < 0 || funcnarg > FUNC_MAX_ARGS)
+		elog(ERROR, "too many function arguments");
+	memset(argarray, 0, funcnarg * sizeof(Node *));
+	/* End - BUG:M0000081 */
 
 	i = 0;
 	foreach(lc, fargs)

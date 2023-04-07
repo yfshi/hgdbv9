@@ -17698,7 +17698,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	TableInfo  *owning_tab = NULL;
 	/* Begin - ReqID:SRS-SQL-SEQ */
 	bool 		is_scale;
-	bool		is_extend;
+	bool		is_extend = false;	/* BUG:M0000081 */
 	bool		is_session;
 	int16		flags;
 	/* End - ReqID:SRS-SQL-SEQ */
@@ -17776,10 +17776,30 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		default_minv = is_ascending ? 1 : PG_INT64_MIN;
 		default_maxv = is_ascending ? PG_INT64_MAX : -1;
 	}
-	else if (db_mode == DB_PG)	/* BUG#Z029 */
+	else
 	{
-		fatal("unrecognized sequence type: %s", seqtype);
-		default_minv = default_maxv = 0;	/* keep compiler quiet */
+		/* Begin - BUG:M0000081 */
+		if (db_mode == DB_PG)	/* BUG#Z029 */
+		{
+			fatal("unrecognized sequence type: %s", seqtype);
+			default_minv = default_maxv = 0;	/* keep compiler quiet */
+		}
+		else if (strcmp(seqtype, "number") == 0)
+		{
+			default_minv = is_ascending ? 1 : PG_INT64_MIN;
+			default_maxv = is_ascending ? PG_INT64_MAX : -1;
+		}
+		else if (strcmp(seqtype, "numeric") == 0)
+		{
+			default_minv = is_ascending ? 1 : PG_INT64_MIN;
+			default_maxv = is_ascending ? PG_INT64_MAX : -1;
+		}
+		else
+		{
+			fatal("unrecognized sequence type: %s", seqtype);
+			default_minv = default_maxv = 0;	/* keep compiler quiet */
+		}
+		/* End - BUG:M0000081 */
 	}
 
 	/*

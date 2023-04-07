@@ -4013,7 +4013,7 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 	{
 		FuncExpr	*funcexpr = (FuncExpr *) node;
 		Oid 		funcOid = funcexpr->funcid;
-		HeapTuple	func_tuple;
+		HeapTuple	func_tuple = NULL;	/* BUG:M0000081 */
 		Oid 	   *argtypes;
 		char	  **argnames;
 		char	   *argmodes;

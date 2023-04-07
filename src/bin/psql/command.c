@@ -235,7 +235,7 @@ HandleSlashCmds(PsqlScanState scan_state,
 		cmd = psql_scan_slash_command(scan_state);
 		psql_scan_slash_option_parser = pg_psql_scan_slash_option;
 	}
-	else if (db_mode == DB_ORACLE)
+	else /* BUG:M0000081 */
 	{
 		cmd = ora_psql_scan_slash_command(scan_state);
 		psql_scan_slash_option_parser = ora_psql_scan_slash_option;

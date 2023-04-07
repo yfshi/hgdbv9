@@ -127,8 +127,6 @@ CREATE TABLE hashpart_character (
 ) PARTITION BY HASH (a, b, c, d);
 CREATE TABLE P_ID_4 partition of hashpart_character for VALUES WITH (MODULUS 4,REMAINDER 0);
 
-\d
-
 drop table hashpart_numeric;
 drop table hashpart_datetime;
 drop table hashpart_interval;
