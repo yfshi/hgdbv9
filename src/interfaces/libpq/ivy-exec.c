@@ -286,8 +286,10 @@ IvyCreatePreparedStatement(const char *stmtName,
 	{
 		free(result->query);
 		free(result->stmtName);
-		free(result);
+		/* Begin - BUG:M0000081 */
 		ReleaseSemaphores(&result->lock);
+		free(result);
+		/* End - BUG:M0000081 */
 		return NULL;
 	}
 	else
@@ -3629,8 +3631,8 @@ ERROR_HANDLE:
 			free((*paramValuesp)[i]);
 	}
 	free(*paramValuesp);
-	free(paramLengthsp);
-	free(paramFormatsp);
+	free(*paramLengthsp);	/* BUG:M0000081 */
+	free(*paramFormatsp);	/* BUG:M0000081 */
 	*paramValuesp = NULL;
 	*paramLengthsp = NULL;
 	*paramFormatsp = NULL;

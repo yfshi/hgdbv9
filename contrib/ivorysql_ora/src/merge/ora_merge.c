@@ -391,6 +391,17 @@ lmerge_matched:;
 				 break;
 
 			 case CMD_DELETE:
+				/* Begin - BUG:M0000081 */
+				/*
+				 * In oracle mode, CMD_DELETE is not an independent merge action.
+				 * CMD_DELETE is a possible follow-up to CMD_UPDATE . Therefore,
+				 * the only possible situation to get here is the situation where
+				 * the condition of UPDATE is false and the condition of UPDATE's
+				 * DELETE clause is true, DELETE in this scenario does nothing.so
+				 * result=TM_Ok is OK.
+				 */
+				 result = TM_Ok;
+				/* End - BUG:M0000081 */
 				 break;
 
 			 case CMD_NOTHING:

@@ -393,7 +393,7 @@ main(int argc, char *argv[])
 									cell->val, strlen(cell->val),
 									pset.encoding, standard_strings());
 				}
-				else if (db_mode == DB_ORACLE)
+				else /* BUG:M0000081 */
 				{
 					scan_state = ora_psql_scan_create(&Ora_psqlscan_callbacks);
 					ora_psql_scan_setup(scan_state,
