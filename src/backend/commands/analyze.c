@@ -67,6 +67,7 @@
 #include "utils/spccache.h"
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
+#include "rewrite/rewriteHandler.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 
 /* Per-index data for ANALYZE */
@@ -2468,11 +2469,42 @@ compute_scalar_stats(VacAttrStatsP stats,
 		value = fetchfunc(stats, i, &isnull);
 
 		/* Check for null/nonnull */
-		if (isnull)
+		if (isnull && stats->attr->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL)	/* ReqID:SRS-SQL-VIRTUALCOL */
 		{
 			null_cnt++;
 			continue;
 		}
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		else if (stats->attr->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+		{
+			EState     *estate;
+			Expr       *varexpr;
+			Relation        rel;
+			ExprState  *exprState;
+			ExprContext *econtext;
+			TupleTableSlot *slot;
+
+			estate = CreateExecutorState();
+			rel = RelationIdGetRelation(stats->attr->attrelid);
+			varexpr = (Expr *)build_column_default(rel, stats->tupattnum);
+			fix_opfuncids((Node *) varexpr);
+			exprState = ExecInitExpr(varexpr, NULL);
+			econtext = GetPerTupleExprContext(estate);
+			slot = MakeSingleTupleTableSlot(RelationGetDescr(rel),
+										&TTSOpsHeapTuple);
+			if (TTS_EMPTY(slot))
+				slot->tts_flags &= ~TTS_FLAG_EMPTY;
+			econtext->ecxt_scantuple = slot;
+			((HeapTupleTableSlot *)slot)->tuple = stats->rows[i];
+			value = ExecEvalExprSwitchContext(exprState, econtext, &isnull);
+			if (stats->attr->attlen == -1)
+				value = PointerGetDatum(PG_DETOAST_DATUM_COPY(value));
+
+			RelationClose(rel);
+			ExecDropSingleTupleTableSlot(slot);
+			FreeExecutorState(estate);
+		}
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		nonnull_cnt++;
 
 		/*

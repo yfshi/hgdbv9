@@ -72,6 +72,7 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - BUG:M0000062 */
+#include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -178,6 +179,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	Oid			existing_relid;
 	int			ora_identity_cnt = 0;	/* ReqID:SRS-SQL-IDENTCOL */
 	ParseCallbackState pcbstate;
+	List	   *virtuallist = NIL;		/* ReqID:SRS-SQL-VIRTUALCOL */
 
 	/* Set up pstate */
 	pstate = make_parsestate(NULL);
@@ -307,11 +309,35 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 */
 	foreach(elements, cxt.columns)
 	{
+		ListCell *lc;		/* ReqID:SRS-SQL-VIRTUALCOL */
 		ColumnDef          *element = lfirst(elements);
 		if(element->identity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL ||
 				element->identity == ATTRIBUTE_ORA_IDENTITY_ALWAYS ||
 					element->identity == ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT)
 			ora_identity_cnt++;
+
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if(element->generated == ATTRIBUTE_GENERATED_VIRTUAL)
+		{
+			if (!virtuallist)
+				virtuallist = list_make1(element->raw_default);
+			else
+			{
+				foreach(lc, virtuallist)
+				{
+					Expr *expr = (Expr *)lfirst(lc);
+					if (element->raw_default && expr && equal(expr, element->raw_default))
+						elog(ERROR, "Duplicate column expression was specified");
+				}
+				virtuallist = lappend(virtuallist, element->raw_default);
+			}
+		}
+
+		if (element->generated == ATTRIBUTE_GENERATED_VIRTUAL &&
+				(stmt->relation->relpersistence == RELPERSISTENCE_GLOBAL_TEMP ||
+					stmt->relation->relpersistence == RELPERSISTENCE_TEMP))
+			elog(ERROR, "expression column is not supported for a temporary table");
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 	}
 	if(ora_identity_cnt > 1)
 		elog(ERROR, "table can have only one identity column");
@@ -817,7 +843,19 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 									column->colname, cxt->relation->relname),
 							 parser_errposition(cxt->pstate,
 												constraint->location)));
-				column->generated = ATTRIBUTE_GENERATED_STORED;
+				/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+				if (constraint->generated_kind == ATTRIBUTE_GENERATED_VIRTUAL)
+				{
+					Oid typeid;
+					typeid = typenameTypeId(NULL, column->typeName);
+					if(typeid == LONGOID || typeid == BLOBOID || typeid == CLOBOID || typeid == BOOLOID)
+						elog(ERROR, "specified data type is not supported for a virtual column");
+				}
+				if (ORA_PARSER == compatible_db)
+					column->generated = constraint->generated_kind;
+				else
+					column->generated = ATTRIBUTE_GENERATED_STORED;
+				/* End - ReqID:SRS-SQL-VIRTUALCOL */
 				column->raw_default = constraint->raw_expr;
 				Assert(constraint->cooked_expr == NULL);
 				saw_generated = true;
@@ -889,6 +927,10 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 							column->colname, cxt->relation->relname),
 					 parser_errposition(cxt->pstate,
 										constraint->location)));
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if (column->generated == ATTRIBUTE_GENERATED_VIRTUAL && saw_default)
+			elog(ERROR, "DEFAULT <expression> not allowed here");
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 		if (saw_default && saw_generated)
 			ereport(ERROR,

@@ -2018,7 +2018,8 @@ typedef enum AlterTableType
 	AT_AddIdentity,				/* ADD IDENTITY */
 	AT_SetIdentity,				/* SET identity column options */
 	AT_DropIdentity,			/* DROP IDENTITY */
-	AT_ReAddStatistics			/* internal to commands/tablecmds.c */
+	AT_ReAddStatistics,			/* internal to commands/tablecmds.c */
+	AT_SetVirtualColumn			/* Modify virtual columns */	/* ReqID:SRS-SQL-VIRTUALCOL */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
@@ -2346,6 +2347,7 @@ typedef struct Constraint
 	Node	   *raw_expr;		/* expr, as untransformed parse tree */
 	char	   *cooked_expr;	/* expr, as nodeToString representation */
 	char		generated_when; /* ALWAYS or BY DEFAULT */
+	char        generated_kind; /* STORED or VIRTUAL */	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 	/* Fields used for unique constraints (UNIQUE and PRIMARY KEY): */
 	List	   *keys;			/* String nodes naming referenced key

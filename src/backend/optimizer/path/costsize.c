@@ -97,6 +97,12 @@
 #include "utils/selfuncs.h"
 #include "utils/spccache.h"
 #include "utils/tuplesort.h"
+/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+#include "utils/guc.h"
+#include "utils/rel.h"
+#include "utils/ora_compatible.h"
+#include "rewrite/rewriteHandler.h"
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 
 #define LOG2(x)  (log(x) / 0.693147180559945)
@@ -4431,6 +4437,36 @@ cost_qual_eval_walker(Node *node, cost_qual_eval_context *context)
 		add_function_cost(context->root, ((OpExpr *) node)->opfuncid, node,
 						  &context->total);
 	}
+	/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+	else if (IsA(node, Var) && DB_ORACLE == compatible_db)
+	{
+		Relation rel;
+		RangeTblEntry *rte;
+		TupleDesc       tupdesc;
+
+		/*  Add the cost of the virtual column expr into the total cost */
+		if (context && context->root && context->root->simple_rel_array_size > 0)
+		{
+			rte = context->root->simple_rte_array[((Var *)node)->varno];
+			if (rte && rte->rtekind == RTE_RELATION && OidIsValid(rte->relid))
+			{
+				rel = RelationIdGetRelation(rte->relid);
+				if (!RelationIsValid(rel))
+					elog(ERROR, "could not open relation with OID %u", rte->relid);
+
+				tupdesc = RelationGetDescr(rel);
+				if (TupleDescAttr(tupdesc, ((Var *)node)->varattnosyn -1)->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+				{
+					node = build_column_default(rel, ((Var *)node)->varattnosyn);
+					set_opfuncid((OpExpr *) node);
+					add_function_cost(context->root, ((OpExpr *) node)->opfuncid, node, &context->total);
+				}
+
+				RelationClose(rel);
+			}
+		}
+	}
+	/* End - ReqID:SRS-SQL-VIRTUALCOL */
 	else if (IsA(node, ScalarArrayOpExpr))
 	{
 		ScalarArrayOpExpr *saop = (ScalarArrayOpExpr *) node;

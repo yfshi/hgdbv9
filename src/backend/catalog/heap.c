@@ -3090,13 +3090,18 @@ check_nested_generated_walker(Node *node, void *context)
 
 		attnum = var->varattno;
 
-		if (attnum > 0 && get_attgenerated(relid, attnum))
+		if (attnum > 0 && get_attgenerated(relid, attnum) == ATTRIBUTE_GENERATED_STORED) /* ReqID:SRS-SQL-VIRTUALCOL */
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 					 errmsg("cannot use generated column \"%s\" in column generation expression",
 							get_attname(relid, attnum, false)),
 					 errdetail("A generated column cannot reference another generated column."),
 					 parser_errposition(pstate, var->location)));
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if (attnum > 0 && get_attgenerated(relid, attnum) == ATTRIBUTE_GENERATED_VIRTUAL)
+			elog(ERROR, "virtual column is referenced in a column expression");
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
 		/* A whole-row Var is necessarily self-referential, so forbid it */
 		if (attnum == 0)
 			ereport(ERROR,
@@ -3148,7 +3153,7 @@ cookDefault(ParseState *pstate,
 	 */
 	expr = transformExpr(pstate, raw_default, attgenerated ? EXPR_KIND_GENERATED_COLUMN : EXPR_KIND_COLUMN_DEFAULT);
 
-	if (attgenerated)
+	if (attgenerated == ATTRIBUTE_GENERATED_STORED)	/* ReqID:SRS-SQL-VIRTUALCOL */
 	{
 		check_nested_generated(pstate, expr);
 
@@ -3157,6 +3162,18 @@ cookDefault(ParseState *pstate,
 					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 					 errmsg("generation expression is not immutable")));
 	}
+	/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+	else if (attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+	{
+		check_nested_generated(pstate, expr);
+		if (nodeTag(expr) == T_FuncExpr && contain_mutable_functions(expr))
+			elog(ERROR, "The function is not deterministic");
+
+		/* Virtual columns cannot simply refer to regular columns */
+		if (nodeTag(expr) == T_Var)
+			elog(ERROR, "Invalid column expression was specified");
+	}
+	/* End - ReqID:SRS-SQL-VIRTUALCOL */
 	else
 	{
 		/*

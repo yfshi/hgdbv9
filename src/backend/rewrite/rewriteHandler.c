@@ -773,6 +773,13 @@ rewriteTargetListIU(List *targetList,
 			/* We can (and must) ignore deleted attributes */
 			if (att_tup->attisdropped)
 				continue;
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			if (att_tup->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL && commandType == CMD_INSERT)
+				elog(ERROR, "INSERT operation disallowed on virtual columns");
+
+			if (att_tup->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL && commandType == CMD_UPDATE)
+				elog(ERROR, "UPDATE operation disallowed on virtual columns");
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 			/* Merge with any prior assignment to same attribute */
 			new_tles[attrno - 1] =

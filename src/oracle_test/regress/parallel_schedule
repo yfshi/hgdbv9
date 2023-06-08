@@ -158,3 +158,10 @@ test: ora_package
 #/* Begin - ReqID:SRS-SQL-GTT */
 test: ora_gtt
 #/* End - ReqID:SRS-SQL-GTT */
+
+# Begin - ReqID:SRS-SQL-VIRTUALCOL
+# ----------
+# test virtual column
+# ----------
+test: virtualcolumn
+# End - ReqID:SRS-SQL-VIRTUALCOL

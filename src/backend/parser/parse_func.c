@@ -749,6 +749,10 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 							 "after all regular arguments of the aggregate."),
 					 parser_errposition(pstate, location)));
 		}
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		else if (ORA_PARSER == compatible_db && pstate->p_expr_kind == EXPR_KIND_GENERATED_COLUMN)
+			elog(ERROR, "%s:invalid identifier", func_signature_string(funcname, nargs, argnames, actual_arg_types));
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		else if (proc_call)
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_FUNCTION),
