@@ -3380,9 +3380,17 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
+	printf(_("The files belonging to this database system will be owned "
+			 "by user \"%s\".\n"
+			 "This user must also own the server process.\n\n"),
+		   effective_user);
+
 	/* BEGIN - case sensitive indentify */
 	/* Oracle compatibility username transfor upper to lower */
 	if (database_mode == DB_ORACLE && username != NULL
+		/* Begin - BUG#M0000171 */
+		&& caseswitchmode != NORMAL
+		/* End - BUG#M0000171 */
 		&& is_all_upper(username, strlen(username)))
 	{
 		char *lowerusername = username;
@@ -3390,11 +3398,6 @@ main(int argc, char *argv[])
 		free(lowerusername);
 	}
 	/* END - case sensitive indentify */
-
-	printf(_("The files belonging to this database system will be owned "
-			 "by user \"%s\".\n"
-			 "This user must also own the server process.\n\n"),
-		   effective_user);
 
 	set_info_version();
 
