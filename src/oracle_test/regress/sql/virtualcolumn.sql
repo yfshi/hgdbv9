@@ -10,7 +10,7 @@ update vtest1 set b = 3 where a = 1;
 update vtest1 set a = 2 where b = 2;
 delete from vtest1 where b = 4;
 SELECT * FROM vtest1;
-select a, b from vtest1; 
+select a, b from vtest1;
 DROP TABLE vtest1;
 
 -- Test virtual column as index
@@ -206,3 +206,18 @@ analyze t1;
 SELECT m.* FROM pg_statistic_ext join pg_statistic_ext_data on (oid = stxoid), pg_mcv_list_items(stxdmcv) m WHERE stxname = 'stats';
 drop STATISTICS stats;
 drop table t1;
+
+--Test inherits table
+CREATE TABLE v_parent (a int primary key, b int GENERATED ALWAYS AS (a * 2));
+CREATE TABLE v_inh (
+    state           char(2)
+) INHERITS (v_parent);
+\d v_inh
+insert into v_inh (a, b, state) values (1, 3, 'd');
+drop table v_inh;
+
+CREATE TABLE v_like (like v_parent including generated);
+\d v_like
+insert into v_like (a, b) values (1,3);
+drop table v_like;
+drop table v_parent;

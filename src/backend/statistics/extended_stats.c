@@ -2616,7 +2616,6 @@ make_build_data(Relation rel, StatExtEntry *stat, int numrows, HeapTuple *rows,
 			{
 				EState     *estate;
 				Expr       *varexpr;
-				//Relation        rel;
 				ExprState  *exprState;
 				ExprContext *econtext;
 				bool            is_null;
