@@ -71,7 +71,10 @@
 #include "utils/snapmgr.h"
 #include "utils/spccache.h"
 #include "utils/ora_compatible.h"
-
+/* Begin BUG#Z376 */
+#include "catalog/storage.h"
+#include "catalog/storage_gtt.h"
+/* End BUG#Z376 */
 
 static HeapTuple heap_prepare_insert(Relation relation, HeapTuple tup,
 									 TransactionId xid, CommandId cid, int options);
@@ -2224,6 +2227,14 @@ heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 	HeapTupleHeaderSetCmin(tup->t_data, cid);
 	HeapTupleHeaderSetXmax(tup->t_data, 0); /* for cleanliness */
 	tup->t_tableOid = RelationGetRelid(relation);
+
+	/* Begin BUG#Z376 */
+	if(RELATION_IS_GLOBAL_TEMP(relation))
+	{
+		if (!gtt_storage_attached(RelationGetRelid(relation)))
+			RelationCreateStorage(relation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, relation);
+	}
+	/* End BUG#Z376 */
 
 	/*
 	 * If the new tuple is too big for storage or contains already toasted

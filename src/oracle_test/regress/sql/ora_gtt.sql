@@ -361,3 +361,20 @@ SELECT * FROM people_target;
 TRUNCATE TABLE people_target;
 DROP TABLE people_target;
 DROP TABLE people_source;
+
+/* Begin BUG#Z376 */
+create global temporary table gtt_create_3(id varchar(20), name varchar(50)) on commit preserve rows;
+insert into gtt_create_3 values('1', 'aaa');
+insert into gtt_create_3 values('2', 'bbb');
+
+select * from gtt_create_3;
+
+create global temporary table gtt_create_3_as on commit preserve rows as select * from gtt_create_3;
+select * from gtt_create_3_as;
+
+truncate table gtt_create_3;
+truncate table gtt_create_3_as;
+
+drop table gtt_create_3;
+drop table gtt_create_3_as;
+/* End BUG#Z376 */
