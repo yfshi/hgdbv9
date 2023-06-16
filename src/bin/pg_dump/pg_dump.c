@@ -16494,20 +16494,31 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		{
 			bool		addcomma = false;
 
-			appendPQExpBufferStr(q, "\nWITH (");
-			if (nonemptyReloptions(tbinfo->reloptions))
+			/* Begin BUG#Z378 */
+			if (tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
 			{
-				addcomma = true;
-				appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
-			}
-			if (nonemptyReloptions(tbinfo->toast_reloptions))
+				if (strstr(tbinfo->reloptions, "false"))
+					appendPQExpBuffer(q, " ON COMMIT PRESERVE ROWS");
+				else if (strstr(tbinfo->reloptions, "true"))
+					appendPQExpBuffer(q, " ON COMMIT DELETE ROWS");
+			} /* End BUG#Z378 */
+			else
 			{
-				if (addcomma)
-					appendPQExpBufferStr(q, ", ");
-				appendReloptionsArrayAH(q, tbinfo->toast_reloptions, "toast.",
-										fout);
+				appendPQExpBufferStr(q, "\nWITH (");
+				if (nonemptyReloptions(tbinfo->reloptions))
+				{
+					addcomma = true;
+					appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
+				}
+				if (nonemptyReloptions(tbinfo->toast_reloptions))
+				{
+					if (addcomma)
+						appendPQExpBufferStr(q, ", ");
+					appendReloptionsArrayAH(q, tbinfo->toast_reloptions, "toast.",
+											fout);
+				}
+				appendPQExpBufferChar(q, ')');
 			}
-			appendPQExpBufferChar(q, ')');
 		}
 
 		/* Dump generic options if any */
