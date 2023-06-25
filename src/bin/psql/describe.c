@@ -2307,6 +2307,14 @@ describeOneTableDetails(const char *schemaname,
 									   PQgetvalue(res, i, attrdef_col));
 				mustfree = true;
 			}
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			else if (generated[0] == ATTRIBUTE_GENERATED_VIRTUAL)
+			{
+				default_str = psprintf("generated always as (%s) virtual",
+									   PQgetvalue(res, i, attrdef_col));
+				mustfree = true;
+			}
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
 			else
 				default_str = PQgetvalue(res, i, attrdef_col);
 

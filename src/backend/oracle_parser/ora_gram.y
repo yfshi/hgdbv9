@@ -502,7 +502,7 @@ static void determineLanguage(List *options);
 %type <ival>	row_or_rows first_or_next
 
 %type <list>	OptSeqOptList SeqOptList OptParenthesizedSeqOptList
-%type <defelt>	SeqOptElem
+%type <defelt>	SeqOptElem OptAs_type	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 %type <istmt>	insert_rest
 %type <infer>	opt_conf_expr
@@ -589,7 +589,7 @@ static void determineLanguage(List *options);
 %type <ival>	TableLikeOptionList TableLikeOption
 %type <str>		column_compression opt_column_compression
 %type <list>	ColQualList
-%type <node>	ColConstraint ColConstraintElem ConstraintAttr
+%type <node>	ColConstraint ColConstraintElem ConstraintAttr virtual_node	/* ReqID:SRS-SQL-VIRTUALCOL */
 %type <ival>	key_actions key_delete key_match key_update key_action
 %type <ival>	ConstraintAttributeSpec ConstraintAttributeElem
 %type <str>		ExistingIndex
@@ -625,7 +625,7 @@ static void determineLanguage(List *options);
 %type <list>	window_clause window_definition_list opt_partition_clause
 %type <windef>	window_definition over_clause window_specification
 				opt_frame_clause frame_extent frame_bound
-%type <ival>	opt_window_exclusion_clause
+%type <ival>	opt_window_exclusion_clause opt_virtual_or_stored	/* ReqID:SRS-SQL-VIRTUALCOL */
 %type <str>		opt_existing_window_name
 %type <boolean> opt_if_not_exists
 %type <ival>	generated_when override_kind
@@ -653,6 +653,7 @@ static void determineLanguage(List *options);
 /* Begin - ReqID:SRS-SQL-CALL */
 %type <boolean>	opt_do_from_where
 /* End - ReqID:SRS-SQL-CALL */
+%type <typnam> virtual_type	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -771,7 +772,7 @@ static void determineLanguage(List *options);
 	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VOLATILE
+	VERBOSE VERSION_P VIEW VIEWS VIRTUAL VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
@@ -3071,7 +3072,47 @@ identity_options:
 
 					$$ = list_make1(n);	/* Bug#m0000070 */
 				}
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			| ColId Typename GENERATED generated_when AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					if ($9 == ATTRIBUTE_GENERATED_STORED)
+						n->subtype = AT_ColumnDefault;
+					else
+						n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $7;
+					$$ = list_make1(n);
+				}
+			| ColId virtual_type AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					if ($7 == ATTRIBUTE_GENERATED_STORED)
+						n->subtype = AT_ColumnDefault;
+					else
+						n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $5;
+					$$ = list_make1(n);
+				}
+			| ColId AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $4;
+					$$ = list_make1(n);
+				}
 		;
+
+virtual_type:
+		Numeric 							{ $$ = $1; }
+		| Character 							{ $$ = $1; }
+		| OracleCharacter						{ $$ = $1; }
+		| Datetime								{ $$ = $1; }
+		| LongTypename							{ $$ = $1; }
+	;
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 drop_identity:
 			ColId DROP IDENTITY_P
@@ -3741,6 +3782,7 @@ TypedTableElement:
 
 columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList
 				{
+					ListCell   *lc;	/* ReqID:SRS-SQL-VIRTUALCOL */
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
 					n->typeName = $2;
@@ -3756,10 +3798,84 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					n->fdwoptions = $4;
 					SplitColQualList($5, &n->constraints, &n->collClause,
 									 yyscanner);
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					foreach(lc, n->constraints)
+					{
+						Constraint *c = lfirst_node(Constraint,lc);
+						if (c->generated_kind == ATTRIBUTE_GENERATED_VIRTUAL)
+						{
+							n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
+							break;
+						}
+						else if (c->generated_kind == ATTRIBUTE_GENERATED_STORED)
+						{
+							n->generated = ATTRIBUTE_GENERATED_STORED;
+							break;
+						}
+					}
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			| ColId AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					ColumnDef *n = makeNode(ColumnDef);
+					Constraint *c = makeNode(Constraint);
+					n->colname = $1;
+					n->typeName = makeTypeName("int4");
+					c->contype = CONSTR_GENERATED;
+					c->raw_expr = $4;
+					n->constraints = list_make1(c);
+					c->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
+					if ($7)
+						n->constraints = lappend(n->constraints, $7);
+					n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
+					$$ = (Node *)n;
+				}
 		;
+
+virtual_node:
+			NULL_P
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_NULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| NOT NULL_P
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_NOTNULL;
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+			| PRIMARY KEY opt_definition OptConsTableSpace
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_PRIMARY;
+					n->location = @1;
+					n->keys = NULL;
+					n->options = $3;
+					n->indexname = NULL;
+					n->indexspace = $4;
+					$$ = (Node *)n;
+				}
+			| CHECK '(' a_expr ')' opt_no_inherit
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_CHECK;
+					n->location = @1;
+					n->is_no_inherit = $5;
+					n->raw_expr = $3;
+					n->cooked_expr = NULL;
+					n->skip_validation = false;
+					n->initially_valid = true;
+					$$ = (Node *)n;
+				}
+			|	/* empty */ { $$ = NULL; }
+;
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 columnOptions:	ColId ColQualList
 				{
@@ -3927,11 +4043,15 @@ ColConstraintElem:
 					n->location = @1;
 					$$ = (Node *)n;
 				}
-			| GENERATED generated_when AS '(' a_expr ')' STORED
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			| GENERATED generated_when AS '(' a_expr ')' opt_virtual_or_stored
 				{
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_GENERATED;
-					n->generated_when = $2;
+					if ($7 == ATTRIBUTE_GENERATED_STORED)
+						n->generated_kind = ATTRIBUTE_GENERATED_STORED;
+					else
+						n->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
 					n->raw_expr = $5;
 					n->cooked_expr = NULL;
 					n->location = @1;
@@ -3950,6 +4070,19 @@ ColConstraintElem:
 
 					$$ = (Node *)n;
 				}
+			| generated_when AS '(' a_expr ')' opt_virtual_or_stored
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_GENERATED;
+					n->generated_when = ATTRIBUTE_IDENTITY_ALWAYS;
+					n->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
+					n->raw_expr = $4;
+					n->cooked_expr = NULL;
+					n->location = @1;
+
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
 			| REFERENCES qualified_name opt_column_list key_match key_actions
 				{
 					Constraint *n = makeNode(Constraint);
@@ -3973,6 +4106,14 @@ generated_when:
 			| BY DEFAULT ON NULL_P	{ $$ = ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL; }	/* ReqID:SRS-SQL-IDENTCOL */
 			|				{ $$ = ATTRIBUTE_IDENTITY_ALWAYS;}						/* Bug#m0000069 */
 		;
+
+/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+opt_virtual_or_stored:
+			STORED                  { $$ = ATTRIBUTE_GENERATED_STORED; }
+			| VIRTUAL               { $$ = ATTRIBUTE_GENERATED_VIRTUAL; }
+			| /*EMPTY*/             { $$ = ATTRIBUTE_GENERATED_VIRTUAL; }
+		;
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 /*
  * ConstraintAttr represents constraint attributes, which we parse as if
@@ -4618,22 +4759,58 @@ RefreshMatViewStmt:
  *****************************************************************************/
 
 CreateSeqStmt:
-			CREATE OptTemp SEQUENCE qualified_name OptSharing OptSeqOptList	/* ReqID:SRS-SQL-SEQ */
+			CREATE OptTemp SEQUENCE qualified_name OptSharing OptAs_type OptSeqOptList	/* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-SQL-VIRTUALCOL */
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
 					$4->relpersistence = $2;
 					n->sequence = $4;
-					n->options = $6;	/* ReqID:SRS-SQL-SEQ */
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					if($6)
+						n->options = lcons($6, $7);	/* ReqID:SRS-SQL-SEQ */
+					else
+						n->options = $7;
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
 					n->ownerId = InvalidOid;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
-			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSharing OptSeqOptList	/* ReqID:SRS-SQL-SEQ */
+			| CREATE OptTemp SEQUENCE qualified_name OptSharing OptAs_type	/* ReqID:SRS-SQL-VIRTUALCOL */
+				{
+					CreateSeqStmt *n = makeNode(CreateSeqStmt);
+					$4->relpersistence = $2;
+					n->sequence = $4;
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					if($6)
+						n->options = list_make1($6);
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
+					n->ownerId = InvalidOid;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+				}
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSharing OptAs_type
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
 					$7->relpersistence = $2;
 					n->sequence = $7;
-					n->options = $9;	/* ReqID:SRS-SQL-SEQ */
+					if($9)
+						n->options = list_make1($9);
+					n->ownerId = InvalidOid;
+					n->if_not_exists = true;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
+			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSharing OptAs_type OptSeqOptList	/* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-SQL-VIRTUALCOL */
+				{
+					CreateSeqStmt *n = makeNode(CreateSeqStmt);
+					$7->relpersistence = $2;
+					n->sequence = $7;
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					if($9)
+						n->options = lcons($9, $10);
+					else
+						n->options = $10;	/* ReqID:SRS-SQL-SEQ */
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
 					n->ownerId = InvalidOid;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
@@ -4641,19 +4818,49 @@ CreateSeqStmt:
 		;
 
 AlterSeqStmt:
-			ALTER SEQUENCE qualified_name SeqOptList
+			ALTER SEQUENCE qualified_name OptAs_type SeqOptList	/* ReqID:SRS-SQL-VIRTUALCOL */
 				{
 					AlterSeqStmt *n = makeNode(AlterSeqStmt);
 					n->sequence = $3;
-					n->options = $4;
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					if ($4)
+						n->options = lcons($4, $5);
+					else
+						n->options = $5;
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
-			| ALTER SEQUENCE IF_P EXISTS qualified_name SeqOptList
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			| ALTER SEQUENCE qualified_name OptAs_type
+				{
+					AlterSeqStmt *n = makeNode(AlterSeqStmt);
+					n->sequence = $3;
+					if ($4)
+						n->options = list_make1($4);
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| ALTER SEQUENCE IF_P EXISTS qualified_name OptAs_type
 				{
 					AlterSeqStmt *n = makeNode(AlterSeqStmt);
 					n->sequence = $5;
-					n->options = $6;
+					if ($6)
+						n->options = list_make1($6);
+					n->missing_ok = true;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
+			| ALTER SEQUENCE IF_P EXISTS qualified_name OptAs_type SeqOptList	/* ReqID:SRS-SQL-VIRTUALCOL */
+				{
+					AlterSeqStmt *n = makeNode(AlterSeqStmt);
+					n->sequence = $5;
+					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+					if ($6)
+						n->options = lcons($6, $7);
+					else
+						n->options = $7;
+					/* End - ReqID:SRS-SQL-VIRTUALCOL */
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
@@ -4666,6 +4873,16 @@ OptSharing:
 			|
 		;
 
+/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+OptAs_type:
+			AS SimpleTypename
+				{
+					$$ = makeDefElem("as", (Node *)$2, @1);
+				}
+			| 	{ $$ = NULL; }
+		;
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
 sharing_mode:
 			 METADATA
 			| DATA_P
@@ -4673,7 +4890,6 @@ sharing_mode:
 		;
 /* End - ReqID:SRS-SQL-SEQ */
 OptSeqOptList: SeqOptList							{ $$ = $1; }
-			| /*EMPTY*/								{ $$ = NIL; }
 		;
 
 OptParenthesizedSeqOptList: '(' SeqOptList ')'		{ $$ = $2; }
@@ -4685,11 +4901,7 @@ SeqOptList: SeqOptElem								{ $$ = list_make1($1); }
 			| SeqOptList SeqOptElem					{ $$ = lappend($1, $2); }
 		;
 
-SeqOptElem: AS SimpleTypename
-				{
-					$$ = makeDefElem("as", (Node *)$2, @1);
-				}
-			| CACHE NumericOnly
+SeqOptElem:	CACHE NumericOnly
 				{
 					$$ = makeDefElem("cache", (Node *)$2, @1);
 				}
@@ -18645,6 +18857,7 @@ unreserved_keyword:
 			| VERSION_P
 			| VIEW
 			| VIEWS
+			| VIRTUAL			/* ReqID:SRS-SQL-VIRTUALCOL */
 			| VOLATILE
 			| WHITESPACE_P
 			| WITHIN
@@ -19336,6 +19549,7 @@ bare_label_keyword:
 			| VERSION_P
 			| VIEW
 			| VIEWS
+			| VIRTUAL		/* ReqID:SRS-SQL-VIRTUALCOL */
 			| VOLATILE
 			| WHEN
 			| WHITESPACE_P

@@ -606,6 +606,11 @@ tlist_matches_tupdesc(PlanState *ps, List *tlist, Index varno, TupleDesc tupdesc
 		if (att_tup->atthasmissing)
 			return false;		/* table contains cols with missing values */
 
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if (att_tup->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			return false;           /* table contains cols with virtual column */
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
 		/*
 		 * Note: usually the Var's type should match the tupdesc exactly, but
 		 * in situations involving unions of columns that have different

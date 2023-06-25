@@ -73,6 +73,7 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+#include "rewrite/rewriteHandler.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 static TupleDesc ExecTypeFromTLInternal(List *targetList,
 										bool skipjunk);
@@ -968,7 +969,7 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 	{
 		Form_pg_attribute thisatt = TupleDescAttr(tupleDesc, attnum);
 
-		if (hasnulls && att_isnull(attnum, bp))
+		if (hasnulls && att_isnull(attnum, bp) && thisatt->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL)	/* ReqID:SRS-SQL-VIRTUALCOL */
 		{
 			values[attnum] = (Datum) 0;
 			isnull[attnum] = true;
@@ -1007,7 +1008,41 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 				thisatt->attcacheoff = off;
 		}
 
-		values[attnum] = fetchatt(thisatt, tp + off);
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		/* Calculate the value of virtual columns */
+		if (thisatt->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+		{
+			EState     *estate;
+			Expr	   *varexpr;
+			Relation	rel;
+			ExprState  *exprState;
+			ExprContext *econtext;
+			bool		is_null;
+			Oid			tblOid = tuple->t_tableOid;
+
+			estate = CreateExecutorState();
+			if (!OidIsValid(tblOid))
+				tblOid = slot->tts_tableOid;
+			rel = RelationIdGetRelation(tblOid);
+			varexpr = (Expr *)build_column_default(rel, attnum + 1);
+			fix_opfuncids((Node *) varexpr);
+			exprState = ExecInitExpr(varexpr, NULL);
+			econtext = GetPerTupleExprContext(estate);
+			econtext->ecxt_scantuple = slot;
+
+			values[attnum] = ExecEvalExprSwitchContext(exprState,
+														econtext,
+														&is_null);
+			if (thisatt->attlen == -1)
+				values[attnum] = PointerGetDatum(PG_DETOAST_DATUM_COPY(values[attnum]));
+
+			RelationClose(rel);
+			FreeExecutorState(estate);
+			continue;
+		}
+		else
+			values[attnum] = fetchatt(thisatt, tp + off);
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 		off = att_addlength_pointer(off, thisatt->attlen, tp + off);
 

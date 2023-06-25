@@ -1,0 +1,395 @@
+--
+-- Virtual column test
+--
+-- Test regular virtual column test
+CREATE TABLE vtest1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2));
+insert into vtest1 (a) values (1);
+insert into vtest1(a,b) values (1,2);
+ERROR:  INSERT operation disallowed on virtual columns
+update vtest1 set b = 3 where a = 1;
+ERROR:  UPDATE operation disallowed on virtual columns
+update vtest1 set a = 2 where b = 2;
+delete from vtest1 where b = 4;
+SELECT * FROM vtest1;
+ a | b 
+---+---
+(0 rows)
+
+select a, b from vtest1;
+ a | b 
+---+---
+(0 rows)
+
+DROP TABLE vtest1;
+-- Test virtual column as index
+CREATE TABLE test_idx (a int, b int GENERATED ALWAYS AS (a * 2) PRIMARY KEY);
+insert into test_idx (a) values (1);
+select * from test_idx where b = 2;
+ a | b 
+---+---
+ 1 | 2
+(1 row)
+
+DROP TABLE test_idx;
+CREATE TABLE test_idx2 (a int, b int GENERATED ALWAYS AS (a * 2));
+create index gtest1_idx on test_idx2 (b);
+insert into test_idx2 (a) values (1);
+select * from test_idx2 where b = 2;
+ a | b 
+---+---
+ 1 | 2
+(1 row)
+
+DROP TABLE test_idx2;
+-- Test check constrains
+CREATE TABLE vtest2 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) check (b > 5));
+insert into vtest2(a) values (1);--error
+ERROR:  check constraint (vtest2_b_check) violated
+insert into vtest2(a) values (3);
+SELECT * FROM vtest2;
+ a | b 
+---+---
+ 3 | 6
+(1 row)
+
+DROP TABLE vtest2;
+-- Test Deafault and NULL
+CREATE TABLE vtest3 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) DEFAULT 5);--error
+ERROR:  DEFAULT <expression> not allowed here
+CREATE TABLE vtest4 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) NOT NULL);--ok
+insert into vtest4 (a) values (1);
+select * from vtest4;
+ a | b 
+---+---
+ 1 | 2
+(1 row)
+
+DROP TABLE vtest4;
+CREATE TABLE vtest5 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) NULL);
+insert into vtest5(a) values (3);
+SELECT * FROM vtest5;
+ a | b 
+---+---
+ 3 | 6
+(1 row)
+
+DROP TABLE vtest5;
+-- Can't refrence other virtual column
+CREATE TABLE vtest_err_1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (b * 2));
+ERROR:  virtual column is referenced in a column expression
+CREATE TABLE vtest_err_2 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2), c int GENERATED ALWAYS AS (b * 3));
+ERROR:  virtual column is referenced in a column expression
+-- Test not deterministic function as virtual column expr
+create or replace function my_func(a int) return int
+is
+begin
+	return a + 5;
+end;
+/
+CREATE TABLE vtest6 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (my_func(a)));
+ERROR:  The function is not deterministic
+DROP FUNCTION my_func;
+-- Test deterministic function as virtual column expr
+create or replace function my_func(a int) return int deterministic
+is
+begin
+	return a + 5;
+end;
+/
+CREATE TABLE vtest6 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (my_func(a)));
+insert into vtest6 (a) values (1);
+SELECT * FROM vtest6;
+ a | b 
+---+---
+ 1 | 6
+(1 row)
+
+DROP FUNCTION my_func;
+DROP TABLE vtest6;
+-- Test ALTER virtual column
+create table t1 (id number,product varchar2(50),price number(10,2),price_with_tax int generated always as (round(price*1.2,2)) virtual);
+insert into t1 (id, product, price) values (1, 'computer', 1500);
+insert into t1 (id, product, price) values (2, 'bike', 1000);
+select * from t1;
+ id | product  |  price  | price_with_tax 
+----+----------+---------+----------------
+ 1  | computer | 1500.00 |           1800
+ 2  | bike     | 1000.00 |           1200
+(2 rows)
+
+alter table t1 modify (price_with_tax int as (round(price*1.3,2)));
+select * from t1;
+ id | product  |  price  | price_with_tax 
+----+----------+---------+----------------
+ 1  | computer | 1500.00 |           1950
+ 2  | bike     | 1000.00 |           1300
+(2 rows)
+
+alter table t1 drop column price_with_tax;
+alter table t1 add (price_with_tax int as (round(price*1.5,2)));
+select * from t1;
+ id | product  |  price  | price_with_tax 
+----+----------+---------+----------------
+ 1  | computer | 1500.00 |           2250
+ 2  | bike     | 1000.00 |           1500
+(2 rows)
+
+drop table t1;
+create table t2 (id number,product varchar2(50),b int, price number(10,2),price_with_tax int generated always as (round(price*1.2,2)) virtual);
+insert into t2 (id,b, product, price) values (1, 5, 'computer', 1500);
+insert into t2 (id,b, product, price) values (2, 10, 'bike', 1000);
+select * from t2;
+ id | product  | b  |  price  | price_with_tax 
+----+----------+----+---------+----------------
+ 1  | computer |  5 | 1500.00 |           1800
+ 2  | bike     | 10 | 1000.00 |           1200
+(2 rows)
+
+alter table t2 modify (b as (round(price*1.3,2)));
+ERROR:  Real column cannot have an expression
+drop table t2;
+-- Test same virtual column expr
+create table vir_tbl (id int,id1 int,a as (id*2) ,b as (id*2));--error
+ERROR:  Duplicate column expression was specified
+create or replace function my_func(a int) return int deterministic
+is
+begin
+        return a + 5;
+end;
+/
+create table vir_tbl (id int,a as (my_func(id)) ,b as (my_func(id)));--error
+ERROR:  Duplicate column expression was specified
+drop function my_func;
+--test hash join
+CREATE TABLE vtest1 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2));
+insert into vtest1 (a) values (1);
+insert into vtest1 (a) values (2);
+CREATE TABLE vtest2 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2));
+insert into vtest2(a) values (1);
+insert into vtest2(a) values (2);
+select g1.a,g1.b,g2.a,g2.b from vtest1 g1,vtest2 g2 where g1.a = g2.a;
+ a | b | a | b 
+---+---+---+---
+ 1 | 2 | 1 | 2
+ 2 | 4 | 2 | 4
+(2 rows)
+
+drop table vtest1;
+drop table vtest2;
+-- test number type
+create table t1 (id number(10,2), price number(10,2) as (id*2));
+insert into t1 (id) values (1),(2);
+select * from t1;
+  id  | price 
+------+-------
+ 1.00 | 2.00
+ 2.00 | 4.00
+(2 rows)
+
+Drop table t1;
+--test invalid column expression
+CREATE TABLE gtest6 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a));--error
+ERROR:  Invalid column expression was specified
+--test not support type
+CREATE TABLE gtest6 (a CLOB, b CLOB GENERATED ALWAYS AS (a));--error
+ERROR:  specified data type is not supported for a virtual column
+CREATE TABLE gtest6 (a BLOB, b BLOB GENERATED ALWAYS AS (a));--error
+ERROR:  specified data type is not supported for a virtual column
+--test temp table
+create global temporary table glb_tbl (id number,price  number(10,2) generated always as (id*2) virtual);--error
+ERROR:  expression column is not supported for a temporary table
+create temporary table glb_tbl (id number,price  number(10,2) generated always as (id*2) virtual);--error
+ERROR:  expression column is not supported for a temporary table
+--test partiton table
+CREATE TABLE orders
+    (order_id INTEGER,
+     order_date DATE,
+     customer_id NUMBER(12) as (order_id*2))
+PARTITION BY RANGE (customer_id);
+CREATE TABLE orders_y2023 PARTITION OF orders
+    FOR VALUES FROM (1) TO (10);
+CREATE TABLE orders_y2024 PARTITION OF orders
+    FOR VALUES FROM (11) TO (20);
+insert into orders (order_id,order_date) values(1,current_timestamp);
+drop table orders;
+CREATE TABLE orders
+    (order_id INTEGER,
+     order_date DATE,
+     customer_id NUMBER(12) as (order_id*2))
+PARTITION BY RANGE (order_id);
+CREATE TABLE orders_y2023 PARTITION OF orders
+    FOR VALUES FROM (1) TO (10);
+CREATE TABLE orders_y2024 PARTITION OF orders
+    FOR VALUES FROM (11) TO (20);
+insert into orders (order_id,order_date) values(1,current_timestamp);
+drop table orders;
+CREATE TABLE orders (
+    id int,
+    country TEXT NOT NULL,
+    order_date DATE NOT NULL,
+    amount NUMERIC(10, 2) as (id*365)
+) PARTITION BY LIST (country);
+CREATE TABLE orders_germany PARTITION OF orders
+    FOR VALUES IN ('Germany');
+CREATE TABLE orders_france PARTITION OF orders
+    FOR VALUES IN ('France');
+CREATE TABLE orders_uk PARTITION OF orders
+    FOR VALUES IN ('United Kingdom');
+insert into orders (id,country,order_date) values(1,'Germany',current_timestamp);
+insert into orders (id,country,order_date) values(2,'France',current_timestamp);
+insert into orders (id,country,order_date) values(3,'United Kingdom',current_timestamp);
+drop table orders;
+CREATE TABLE orders (
+    id int,
+    customer_id INTEGER NOT NULL,
+    order_date DATE NOT NULL,
+    amount NUMERIC(10, 2) as (id*10)
+) PARTITION BY RANGE (amount);
+CREATE TABLE orders_10 PARTITION OF orders
+    FOR VALUES FROM (1) TO (100);
+CREATE TABLE orders_10000 PARTITION OF orders
+    FOR VALUES FROM (101) TO (10000);
+CREATE TABLE orders_1000000 PARTITION OF orders
+    FOR VALUES FROM (10001) TO (1000000);
+insert into orders (id,customer_id,order_date) values(1,10,current_timestamp);
+drop table orders;
+CREATE TABLE t1 (a int, b int GENERATED ALWAYS AS (a * 2));
+insert into t1 (a) values(generate_series(1,10000));
+CREATE STATISTICS stats on a,b from t1;
+analyze t1;
+SELECT m.* FROM pg_statistic_ext join pg_statistic_ext_data on (oid = stxoid), pg_mcv_list_items(stxdmcv) m WHERE stxname = 'stats';
+ index |  values   | nulls | frequency | base_frequency 
+-------+-----------+-------+-----------+----------------
+     0 | {1,2}     | {f,f} |    0.0001 |          1e-08
+     1 | {2,4}     | {f,f} |    0.0001 |          1e-08
+     2 | {3,6}     | {f,f} |    0.0001 |          1e-08
+     3 | {4,8}     | {f,f} |    0.0001 |          1e-08
+     4 | {5,10}    | {f,f} |    0.0001 |          1e-08
+     5 | {6,12}    | {f,f} |    0.0001 |          1e-08
+     6 | {7,14}    | {f,f} |    0.0001 |          1e-08
+     7 | {8,16}    | {f,f} |    0.0001 |          1e-08
+     8 | {9,18}    | {f,f} |    0.0001 |          1e-08
+     9 | {10,20}   | {f,f} |    0.0001 |          1e-08
+    10 | {11,22}   | {f,f} |    0.0001 |          1e-08
+    11 | {12,24}   | {f,f} |    0.0001 |          1e-08
+    12 | {13,26}   | {f,f} |    0.0001 |          1e-08
+    13 | {14,28}   | {f,f} |    0.0001 |          1e-08
+    14 | {15,30}   | {f,f} |    0.0001 |          1e-08
+    15 | {16,32}   | {f,f} |    0.0001 |          1e-08
+    16 | {17,34}   | {f,f} |    0.0001 |          1e-08
+    17 | {18,36}   | {f,f} |    0.0001 |          1e-08
+    18 | {19,38}   | {f,f} |    0.0001 |          1e-08
+    19 | {20,40}   | {f,f} |    0.0001 |          1e-08
+    20 | {21,42}   | {f,f} |    0.0001 |          1e-08
+    21 | {22,44}   | {f,f} |    0.0001 |          1e-08
+    22 | {23,46}   | {f,f} |    0.0001 |          1e-08
+    23 | {24,48}   | {f,f} |    0.0001 |          1e-08
+    24 | {25,50}   | {f,f} |    0.0001 |          1e-08
+    25 | {26,52}   | {f,f} |    0.0001 |          1e-08
+    26 | {27,54}   | {f,f} |    0.0001 |          1e-08
+    27 | {28,56}   | {f,f} |    0.0001 |          1e-08
+    28 | {29,58}   | {f,f} |    0.0001 |          1e-08
+    29 | {30,60}   | {f,f} |    0.0001 |          1e-08
+    30 | {31,62}   | {f,f} |    0.0001 |          1e-08
+    31 | {32,64}   | {f,f} |    0.0001 |          1e-08
+    32 | {33,66}   | {f,f} |    0.0001 |          1e-08
+    33 | {34,68}   | {f,f} |    0.0001 |          1e-08
+    34 | {35,70}   | {f,f} |    0.0001 |          1e-08
+    35 | {36,72}   | {f,f} |    0.0001 |          1e-08
+    36 | {37,74}   | {f,f} |    0.0001 |          1e-08
+    37 | {38,76}   | {f,f} |    0.0001 |          1e-08
+    38 | {39,78}   | {f,f} |    0.0001 |          1e-08
+    39 | {40,80}   | {f,f} |    0.0001 |          1e-08
+    40 | {41,82}   | {f,f} |    0.0001 |          1e-08
+    41 | {42,84}   | {f,f} |    0.0001 |          1e-08
+    42 | {43,86}   | {f,f} |    0.0001 |          1e-08
+    43 | {44,88}   | {f,f} |    0.0001 |          1e-08
+    44 | {45,90}   | {f,f} |    0.0001 |          1e-08
+    45 | {46,92}   | {f,f} |    0.0001 |          1e-08
+    46 | {47,94}   | {f,f} |    0.0001 |          1e-08
+    47 | {48,96}   | {f,f} |    0.0001 |          1e-08
+    48 | {49,98}   | {f,f} |    0.0001 |          1e-08
+    49 | {50,100}  | {f,f} |    0.0001 |          1e-08
+    50 | {51,102}  | {f,f} |    0.0001 |          1e-08
+    51 | {52,104}  | {f,f} |    0.0001 |          1e-08
+    52 | {53,106}  | {f,f} |    0.0001 |          1e-08
+    53 | {54,108}  | {f,f} |    0.0001 |          1e-08
+    54 | {55,110}  | {f,f} |    0.0001 |          1e-08
+    55 | {56,112}  | {f,f} |    0.0001 |          1e-08
+    56 | {57,114}  | {f,f} |    0.0001 |          1e-08
+    57 | {58,116}  | {f,f} |    0.0001 |          1e-08
+    58 | {59,118}  | {f,f} |    0.0001 |          1e-08
+    59 | {60,120}  | {f,f} |    0.0001 |          1e-08
+    60 | {61,122}  | {f,f} |    0.0001 |          1e-08
+    61 | {62,124}  | {f,f} |    0.0001 |          1e-08
+    62 | {63,126}  | {f,f} |    0.0001 |          1e-08
+    63 | {64,128}  | {f,f} |    0.0001 |          1e-08
+    64 | {65,130}  | {f,f} |    0.0001 |          1e-08
+    65 | {66,132}  | {f,f} |    0.0001 |          1e-08
+    66 | {67,134}  | {f,f} |    0.0001 |          1e-08
+    67 | {68,136}  | {f,f} |    0.0001 |          1e-08
+    68 | {69,138}  | {f,f} |    0.0001 |          1e-08
+    69 | {70,140}  | {f,f} |    0.0001 |          1e-08
+    70 | {71,142}  | {f,f} |    0.0001 |          1e-08
+    71 | {72,144}  | {f,f} |    0.0001 |          1e-08
+    72 | {73,146}  | {f,f} |    0.0001 |          1e-08
+    73 | {74,148}  | {f,f} |    0.0001 |          1e-08
+    74 | {75,150}  | {f,f} |    0.0001 |          1e-08
+    75 | {76,152}  | {f,f} |    0.0001 |          1e-08
+    76 | {77,154}  | {f,f} |    0.0001 |          1e-08
+    77 | {78,156}  | {f,f} |    0.0001 |          1e-08
+    78 | {79,158}  | {f,f} |    0.0001 |          1e-08
+    79 | {80,160}  | {f,f} |    0.0001 |          1e-08
+    80 | {81,162}  | {f,f} |    0.0001 |          1e-08
+    81 | {82,164}  | {f,f} |    0.0001 |          1e-08
+    82 | {83,166}  | {f,f} |    0.0001 |          1e-08
+    83 | {84,168}  | {f,f} |    0.0001 |          1e-08
+    84 | {85,170}  | {f,f} |    0.0001 |          1e-08
+    85 | {86,172}  | {f,f} |    0.0001 |          1e-08
+    86 | {87,174}  | {f,f} |    0.0001 |          1e-08
+    87 | {88,176}  | {f,f} |    0.0001 |          1e-08
+    88 | {89,178}  | {f,f} |    0.0001 |          1e-08
+    89 | {90,180}  | {f,f} |    0.0001 |          1e-08
+    90 | {91,182}  | {f,f} |    0.0001 |          1e-08
+    91 | {92,184}  | {f,f} |    0.0001 |          1e-08
+    92 | {93,186}  | {f,f} |    0.0001 |          1e-08
+    93 | {94,188}  | {f,f} |    0.0001 |          1e-08
+    94 | {95,190}  | {f,f} |    0.0001 |          1e-08
+    95 | {96,192}  | {f,f} |    0.0001 |          1e-08
+    96 | {97,194}  | {f,f} |    0.0001 |          1e-08
+    97 | {98,196}  | {f,f} |    0.0001 |          1e-08
+    98 | {99,198}  | {f,f} |    0.0001 |          1e-08
+    99 | {100,200} | {f,f} |    0.0001 |          1e-08
+(100 rows)
+
+drop STATISTICS stats;
+drop table t1;
+--Test inherits table
+CREATE TABLE v_parent (a int primary key, b int GENERATED ALWAYS AS (a * 2));
+CREATE TABLE v_inh (
+    state           char(2)
+) INHERITS (v_parent);
+\d v_inh
+                             Table "public.v_inh"
+ Column |  Type   | Collation | Nullable |               Default               
+--------+---------+-----------+----------+-------------------------------------
+ a      | integer |           | not null | 
+ b      | integer |           |          | generated always as (a * 2) virtual
+ state  | char(2) |           |          | 
+Inherits: v_parent
+
+insert into v_inh (a, b, state) values (1, 3, 'd');
+ERROR:  INSERT operation disallowed on virtual columns
+drop table v_inh;
+CREATE TABLE v_like (like v_parent including generated);
+\d v_like
+                             Table "public.v_like"
+ Column |  Type   | Collation | Nullable |               Default               
+--------+---------+-----------+----------+-------------------------------------
+ a      | integer |           | not null | 
+ b      | integer |           |          | generated always as (a * 2) virtual
+
+insert into v_like (a, b) values (1,3);
+ERROR:  INSERT operation disallowed on virtual columns
+drop table v_like;
+drop table v_parent;

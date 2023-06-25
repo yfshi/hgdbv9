@@ -47,6 +47,7 @@
 #include "utils/selfuncs.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "rewrite/rewriteHandler.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 /*
  * To avoid consuming too much memory during analysis and/or too much space
@@ -2519,6 +2520,7 @@ make_build_data(Relation rel, StatExtEntry *stat, int numrows, HeapTuple *rows,
 	int			k;
 	int			idx;
 	TupleTableSlot *slot;
+	TupleTableSlot *vslot;	/* ReqID:SRS-SQL-VIRTUALCOL */
 	EState	   *estate;
 	ExprContext *econtext;
 	List	   *exprstates = NIL;
@@ -2608,7 +2610,35 @@ make_build_data(Relation rel, StatExtEntry *stat, int numrows, HeapTuple *rows,
 			result->values[idx][i] = heap_getattr(rows[i], k,
 												  result->stats[idx]->tupDesc,
 												  &result->nulls[idx][i]);
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			if(result->nulls[idx][i] &&
+				result->stats[idx]->tupDesc->attrs[k - 1].attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			{
+				EState     *estate;
+				Expr       *varexpr;
+				ExprState  *exprState;
+				ExprContext *econtext;
+				bool            is_null;
 
+				estate = CreateExecutorState();
+				varexpr = (Expr *)build_column_default(rel, k);
+				fix_opfuncids((Node *) varexpr);
+				exprState = ExecInitExpr(varexpr, NULL);
+				econtext = GetPerTupleExprContext(estate);
+				vslot = MakeSingleTupleTableSlot(RelationGetDescr(rel), &TTSOpsHeapTuple);
+				econtext->ecxt_scantuple = vslot;
+				if (TTS_EMPTY(vslot))
+					vslot->tts_flags &= ~TTS_FLAG_EMPTY;
+				((HeapTupleTableSlot *)vslot)->tuple = result->stats[idx]->rows[i];
+				result->values[idx][i] = ExecEvalExprSwitchContext(exprState, econtext, &is_null);
+				if (result->stats[idx]->tupDesc->attrs[k - 1].attlen == -1)
+					result->values[idx][i] = PointerGetDatum(PG_DETOAST_DATUM_COPY(result->values[idx][i]));
+				result->nulls[idx][i] = false;
+
+				ExecDropSingleTupleTableSlot(vslot);
+				FreeExecutorState(estate);
+			}
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
 			idx++;
 		}
 	}

@@ -1917,6 +1917,7 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 	TupleDesc	tupdesc = RelationGetDescr(rel);
 	TupleConstr *constr = tupdesc->constr;
 	Bitmapset  *modifiedCols;
+	bool		hasVirtualCol = false;	/* ReqID:SRS-SQL-VIRTUALCOL */
 
 	Assert(constr);				/* we should not be called otherwise */
 
@@ -1929,7 +1930,12 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 		{
 			Form_pg_attribute att = TupleDescAttr(tupdesc, attrChk - 1);
 
-			if (att->attnotnull && slot_attisnull(slot, attrChk))
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			if (att->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+				hasVirtualCol = true;
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
+			if (att->attnotnull && slot_attisnull(slot, attrChk) && att->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL)	/* ReqID:SRS-SQL-VIRTUALCOL */
 			{
 				char	   *val_desc;
 				Relation	orig_rel = rel;
@@ -2023,6 +2029,10 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 													 tupdesc,
 													 modifiedCols,
 													 64);
+			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+			if (hasVirtualCol)
+				elog(ERROR, "check constraint (%s) violated", failed);
+			/* End - ReqID:SRS-SQL-VIRTUALCOL */
 			ereport(ERROR,
 					(errcode(ERRCODE_CHECK_VIOLATION),
 					 errmsg("new row for relation \"%s\" violates check constraint \"%s\"",
@@ -2262,6 +2272,11 @@ ExecBuildSlotValueDescription(Oid reloid,
 		/* ignore dropped columns */
 		if (att->attisdropped)
 			continue;
+
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if (att->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			continue;
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 		if (!table_perm)
 		{

@@ -452,6 +452,8 @@ static bool ConstraintImpliedByRelConstraint(Relation scanrel,
 											 List *testConstraint, List *provenConstraint);
 static ObjectAddress ATExecColumnDefault(Relation rel, const char *colName,
 										 Node *newDefault, LOCKMODE lockmode);
+static ObjectAddress ATExecVirtualColumn(Relation rel, const char *colName,
+										 Node *newDefault, LOCKMODE lockmode);	/* ReqID:SRS-SQL-VIRTUALCOL */
 static ObjectAddress ATExecCookedColumnDefault(Relation rel, AttrNumber attnum,
 											   Node *newDefault);
 static ObjectAddress ATExecAddIdentity(Relation rel, const char *colName,
@@ -4379,6 +4381,7 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_SetIdentity:
 			case AT_DropExpression:
 			case AT_SetCompression:
+			case AT_SetVirtualColumn:	/* ReqID:SRS-SQL-VIRTUALCOL */
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
@@ -4644,6 +4647,14 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			/* No command-specific prep needed */
 			pass = cmd->def ? AT_PASS_ADD_OTHERCONSTR : AT_PASS_DROP;
 			break;
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		case AT_SetVirtualColumn:
+			ATSimplePermissions(rel, ATT_TABLE | ATT_VIEW | ATT_FOREIGN_TABLE);
+			ATSimpleRecursion(wqueue, rel, cmd, recurse, lockmode, context);
+			/* No command-specific prep needed */
+			pass = cmd->def ? AT_PASS_ADD_OTHERCONSTR : AT_PASS_DROP;
+			break;
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		case AT_CookedColumnDefault:	/* add a pre-cooked default */
 			/* This is currently used only in CREATE TABLE */
 			/* (so the permission check really isn't necessary) */
@@ -5039,6 +5050,11 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			Assert(cmd != NULL);
 			address = ATExecAddIdentity(rel, cmd->name, cmd->def, lockmode);
 			break;
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		case AT_SetVirtualColumn:
+			address = ATExecVirtualColumn(rel, cmd->name, cmd->def, lockmode);
+			break;
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		case AT_SetIdentity:
 			cmd = ATParseTransformCmd(wqueue, tab, rel, cmd, false, lockmode,
 									  cur_pass, context);
@@ -6693,6 +6709,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	FormData_pg_attribute attribute;
 	int			newattnum;
 	char		relkind;
+	char		generate;	/* ReqID:SRS-SQL-VIRTUALCOL */
 	HeapTuple	typeTuple;
 	Oid			typeOid;
 	int32		typmod;
@@ -6778,6 +6795,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		return InvalidObjectAddress;
 	}
 
+	generate = colDef->generated;	/* ReqID:SRS-SQL-VIRTUALCOL */
 	/*
 	 * Okay, we need to add the column, so go ahead and do parse
 	 * transformation.  This can result in queueing up, or even immediately
@@ -6797,6 +6815,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		colDef = castNode(ColumnDef, (*cmd)->def);
 	}
 
+	colDef->generated = generate ? generate : colDef->generated;	/* ReqID:SRS-SQL-VIRTUALCOL */
 	/*
 	 * Cannot add identity column if table has children, because identity does
 	 * not inherit.  (Adding column and identity separately will work.)
@@ -7596,7 +7615,8 @@ ATExecColumnDefault(Relation rel, const char *colName,
 						colName, RelationGetRelationName(rel)),
 				 newDefault ? 0 : errhint("Use ALTER TABLE ... ALTER COLUMN ... DROP IDENTITY instead.")));
 
-	if (TupleDescAttr(tupdesc, attnum - 1)->attgenerated)
+	if (TupleDescAttr(tupdesc, attnum - 1)->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL &&
+											TupleDescAttr(tupdesc, attnum - 1)->attgenerated)	/* ReqID:SRS-SQL-VIRTUALCOL */
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("column \"%s\" of relation \"%s\" is a generated column",
@@ -7639,6 +7659,72 @@ ATExecColumnDefault(Relation rel, const char *colName,
 						RelationGetRelid(rel), attnum);
 	return address;
 }
+
+/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+static ObjectAddress
+ATExecVirtualColumn(Relation rel, const char *colName,
+					Node *newDefault, LOCKMODE lockmode)
+{
+	TupleDesc	tupdesc = RelationGetDescr(rel);
+	AttrNumber	attnum;
+	ObjectAddress address;
+
+	/*
+	 * get the number of the attribute
+	 */
+	attnum = get_attnum(RelationGetRelid(rel), colName);
+	if (attnum == InvalidAttrNumber)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+						colName, RelationGetRelationName(rel))));
+
+	/* Prevent them from altering a system attribute */
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot alter system column \"%s\"",
+						colName)));
+
+	if (TupleDescAttr(tupdesc, attnum - 1)->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL)
+		elog(ERROR, "Real column cannot have an expression");
+
+	/*
+	 * Remove any old default for the column.  We use RESTRICT here for
+	 * safety, but at present we do not expect anything to depend on the
+	 * default.
+	 *
+	 * We treat removing the existing default as an internal operation when it
+	 * is preparatory to adding a new default, but as a user-initiated
+	 * operation when the user asked for a drop.
+	 */
+	RemoveAttrDefault(RelationGetRelid(rel), attnum, DROP_RESTRICT, false,
+					  newDefault == NULL ? false : true);
+
+	if (newDefault)
+	{
+		/* SET DEFAULT */
+		RawColumnDefault *rawEnt;
+
+		rawEnt = (RawColumnDefault *) palloc(sizeof(RawColumnDefault));
+		rawEnt->attnum = attnum;
+		rawEnt->raw_default = newDefault;
+		rawEnt->missingMode = false;
+		rawEnt->generated = '\0';
+
+		/*
+		 * This function is intended for CREATE TABLE, so it processes a
+		 * _list_ of defaults, but we just do one.
+		 */
+		AddRelationNewConstraints(rel, list_make1(rawEnt), NIL,
+								  false, true, false, NULL);
+	}
+
+	ObjectAddressSubSet(address, RelationRelationId,
+						RelationGetRelid(rel), attnum);
+	return address;
+}
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 /*
  * Add a pre-cooked default expression.
@@ -17138,7 +17224,7 @@ ComputePartitionAttrs(ParseState *pstate, Relation rel, List *partParams, AttrNu
 			 * Generated columns cannot work: They are computed after BEFORE
 			 * triggers, but partition routing is done before all triggers.
 			 */
-			if (attform->attgenerated)
+			if (attform->attgenerated == ATTRIBUTE_GENERATED_STORED)	/* ReqID:SRS-SQL-VIRTUALCOL */
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 						 errmsg("cannot use generated column in partition key"),

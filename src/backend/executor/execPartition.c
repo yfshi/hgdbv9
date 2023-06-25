@@ -35,6 +35,11 @@
 #include "utils/partcache.h"
 #include "utils/rls.h"
 #include "utils/ruleutils.h"
+/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+#include "rewrite/rewriteHandler.h"
+#include "nodes/nodeFuncs.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-VIRTUALCOL */
 
 
 /*-----------------------
@@ -1307,11 +1312,38 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 		Datum		datum;
 		bool		isNull;
 
-		if (keycol != 0)
+		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		if ((keycol != 0 && (!estate->es_result_relations || !estate->es_result_relations[0])) ||
+					(keycol != 0 &&
+					 estate->es_result_relations &&
+					 estate->es_result_relations[0] &&
+					 estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated != ATTRIBUTE_GENERATED_VIRTUAL))
 		{
 			/* Plain column; get the value directly from the heap tuple */
 			datum = slot_getattr(slot, keycol, &isNull);
 		}
+		else if (ORA_PARSER == compatible_db &&
+			estate->es_result_relations &&
+			estate->es_result_relations[0] &&
+			estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+		{
+			Oid		tblOid;
+			Relation	rel;
+			Expr       *varexpr;
+			ExprState  *exprState;
+			ExprContext *econtext;
+
+			tblOid = estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attrelid;
+			rel = RelationIdGetRelation(tblOid);
+			varexpr = (Expr *)build_column_default(rel, keycol);
+			fix_opfuncids((Node *) varexpr);
+			exprState = ExecInitExpr(varexpr, NULL);
+			econtext = GetPerTupleExprContext(estate);
+			econtext->ecxt_scantuple = slot;
+			datum = ExecEvalExprSwitchContext(exprState, econtext, &isNull);
+			RelationClose(rel);
+		}
+		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		else
 		{
 			/* Expression; need to evaluate it */
