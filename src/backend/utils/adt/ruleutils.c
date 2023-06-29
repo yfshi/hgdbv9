@@ -3366,8 +3366,6 @@ ivy_get_plisql_functiondef(PG_FUNCTION_ARGS)
 	if (buf.data[buf.len - 1] != ';')
 		appendStringInfoChar(&buf, ';');
 
-	appendStringInfoChar(&buf, '\n');
-
 	ReleaseSysCache(proctup);
 
 	PG_RETURN_TEXT_P(string_to_text(buf.data));

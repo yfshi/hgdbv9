@@ -458,6 +458,9 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 /* Begin - SRS-PLSQL-SUBPROC*/
 %token <keyword>	K_USING_NLS_COMP
 /* End - SRS-PLSQL-SUBPROC */
+/* Begin - BUG#Z375 */
+%token <keyword>	K_VALUES
+/* End - BUG#Z375 */
 %token <keyword>	K_VARIABLE_CONFLICT
 %token <keyword>	K_WARNING
 %token <keyword>	K_WHEN
@@ -3879,11 +3882,16 @@ make_execsql_stmt(int firsttoken, int location)
 	PLiSQL_expr		*expr;
 	PLiSQL_variable	*target = NULL;
 	int					tok;
-	int					prev_tok;
+	int					prev_tok = 0;	/* BUG#Z375 */	
 	bool				have_into = false;
 	bool				have_strict = false;
 	int					into_start_loc = -1;
 	int					into_end_loc = -1;
+	/* Begin - BUG#Z375 */
+	bool				insert_targetalias_without_as = false;
+	int					prev_prev_tok = 0;
+	int					as_start_loc = -1;
+	/* End - BUG#Z375 */
 
 	initStringInfo(&ds);
 
@@ -3922,6 +3930,9 @@ make_execsql_stmt(int firsttoken, int location)
 	tok = firsttoken;
 	for (;;)
 	{
+		/* Begin - BUG#Z375 */
+		prev_prev_tok = prev_tok;
+		/* End - BUG#Z375 */
 		prev_tok = tok;
 		tok = yylex();
 		if (have_into && into_end_loc < 0)
@@ -3930,6 +3941,12 @@ make_execsql_stmt(int firsttoken, int location)
 			break;
 		if (tok == 0)
 			yyerror("unexpected end of function definition");
+
+		/* Begin - BUG#Z375 */
+		if (prev_tok == K_INSERT && tok == K_INTO)
+			as_start_loc = yylloc;
+		/* End - BUG#Z375 */
+
 		if (tok == K_INTO)
 		{
 			if (prev_tok == K_INSERT)
@@ -3944,6 +3961,13 @@ make_execsql_stmt(int firsttoken, int location)
 			read_into_target(&target, &have_strict);
 			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
 		}
+		/* Begin - BUG#Z375 */
+		else if (tok == K_VALUES && firsttoken == K_INSERT)
+		{
+			if (prev_tok != ')' && prev_prev_tok != K_INTO && prev_prev_tok != K_AS)
+				insert_targetalias_without_as = true;
+		}
+		/* End - BUG#Z375 */
 	}
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
@@ -3959,8 +3983,21 @@ make_execsql_stmt(int firsttoken, int location)
 		appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
 		plisql_append_source_text(&ds, into_end_loc, yylloc);
 	}
+	/* Begin - BUG#Z375 */
 	else
-		plisql_append_source_text(&ds, location, yylloc);
+	{
+		if (insert_targetalias_without_as && as_start_loc != -1)
+		{
+			plisql_append_source_text(&ds, location + ds.len, location + ds.len + as_start_loc);
+			appendStringInfoString(&ds, " AS");
+			plisql_append_source_text(&ds, location + ds.len - strlen(" AS"), yylloc);
+		}
+		else
+	/* End - BUG#Z375 */
+			plisql_append_source_text(&ds, location, yylloc);
+	/* Begin - BUG#Z375 */
+	}
+	/* End - BUG#Z375 */
 
 	/* trim any trailing whitespace, for neatness */
 	while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
