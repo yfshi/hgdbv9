@@ -496,9 +496,7 @@ type_maximum_size(Oid type_oid, int32 typemod)
 		case VARCHAROID:
 		/* Begin - BUG:M0000062 */
 		case ORACHARCHAROID:
-		case ORACHARBYTEOID:
 		case ORAVARCHARCHAROID:
-		case ORAVARCHARBYTEOID:
 		/* End - BUG:M0000062 */
 			/* typemod includes varlena header */
 
@@ -506,6 +504,13 @@ type_maximum_size(Oid type_oid, int32 typemod)
 			return (typemod - VARHDRSZ) *
 				pg_encoding_max_length(GetDatabaseEncoding())
 				+ VARHDRSZ;
+
+		/* Begin - BUG:M0000062 */
+		case ORACHARBYTEOID:
+		case ORAVARCHARBYTEOID:
+			/* typemod includes varlena header */
+			return typemod;
+		/* End - BUG:M0000062 */
 
 		case NUMERICOID:
 		case NUMBEROID:	/* BUG:M0000062 */
