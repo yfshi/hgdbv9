@@ -894,8 +894,7 @@ SELECT pg_get_functiondef('bug139_func'::regproc) from dual;
  IS                                             +
  BEGIN                                          +
      RETURN 1;                                  +
- END;                                           +
- 
+ END;
 (1 row)
 
 SELECT pg_get_functiondef('bug139_proc'::regproc) from dual;
@@ -907,8 +906,7 @@ SELECT pg_get_functiondef('bug139_proc'::regproc) from dual;
  p integer := 20;                                +
  begin                                           +
          raise notice '%', p;                    +
- end;                                            +
- 
+ end;
 (1 row)
 
 SELECT pg_get_functiondef('test_subproc_func'::regproc) from dual;
@@ -938,8 +936,7 @@ SELECT pg_get_functiondef('test_subproc_func'::regproc) from dual;
      raise info '%',original;                                        +
      a := original + 1;                                              +
      return mds;                                                     +
- end;                                                                +
- 
+ end;
 (1 row)
 
 -- ivy_get_plisql_functiondef is only using get plisql func/proc definition.
@@ -952,8 +949,7 @@ SELECT ivy_get_plisql_functiondef('bug139_func'::regproc) from dual;
  IS                                             +
  BEGIN                                          +
      RETURN 1;                                  +
- END;                                           +
- 
+ END;
 (1 row)
 
 SELECT ivy_get_plisql_functiondef('bug139_proc'::regproc) from dual;
@@ -965,8 +961,7 @@ SELECT ivy_get_plisql_functiondef('bug139_proc'::regproc) from dual;
  p integer := 20;                                +
  begin                                           +
          raise notice '%', p;                    +
- end;                                            +
- 
+ end;
 (1 row)
 
 SELECT ivy_get_plisql_functiondef('test_subproc_func'::regproc) from dual;
@@ -996,8 +991,7 @@ SELECT ivy_get_plisql_functiondef('test_subproc_func'::regproc) from dual;
      raise info '%',original;                                        +
      a := original + 1;                                              +
      return mds;                                                     +
- end;                                                                +
- 
+ end;
 (1 row)
 
 DROP PROCEDURE bug139_proc();
@@ -1175,8 +1169,7 @@ select pg_get_functiondef('test_f'::regproc);
    var1 := 1.1;                                      +
    raise notice '%', var1;                           +
    return id;                                        +
- end;                                                +
- 
+ end;
 (1 row)
 
 reset ivorysql.convert_plisql_int_to_number;

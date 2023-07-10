@@ -857,7 +857,7 @@ static void determineLanguage(List *options);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */
+%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P /* BUG#Z375 */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -12496,6 +12496,13 @@ insert_target:
 					$1->alias = makeAlias($3, NIL);
 					$$ = $1;
 				}
+			/* Begin - BUG#Z375 */
+			| qualified_name ColId
+				{
+					$1->alias = makeAlias($2, NIL);
+					$$ = $1;
+				}
+			/* End - BUG#Z375 */
 		;
 
 insert_rest:
@@ -12505,7 +12512,7 @@ insert_rest:
 					$$->cols = NIL;
 					$$->selectStmt = $1;
 				}
-			| OVERRIDING override_kind VALUE_P SelectStmt
+			| OVERRIDING_P /* BUG#Z375 */ override_kind VALUE_P SelectStmt
 				{
 					$$ = makeNode(InsertStmt);
 					$$->cols = NIL;

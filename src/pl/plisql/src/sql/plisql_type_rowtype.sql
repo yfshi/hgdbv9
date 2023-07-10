@@ -2707,6 +2707,53 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
 
 DROP FUNCTION fun2;
 
+--Begin - BUG#Z375
+create table t_375(id int,name varchar(5));
+declare
+ rt t_375%rowtype;
+begin
+ rt.id := 1;
+ rt.name := 'sam';
+ insert into t_375 a values rt;
+end;
+/
+select * from t_375;
+
+declare
+ rt t_375%rowtype;
+begin
+ rt.id := 2;
+ rt.name := 'sam2';
+ insert into t_375 a values (rt.id, rt.name);
+end;
+/
+select * from t_375;
+
+insert into t_375 a values (3, 'sam3');
+select * from t_375;
+drop table t_375;
+--End - BUG#Z375
+
+--Begin - BUG#Z370
+create table t_370(id int);
+
+create or replace function f1
+return int
+is
+begin
+   update t_370 set id=2 where id=1;
+
+   insert into t_370 values(1);
+   --commit;
+   return 1;
+end;
+/
+SELECT NAME, LINE, TEXT FROM ALL_SOURCE where NAME='F1';
+
+drop function f1;
+drop table t_370;
+--End - BUG#Z370
+
 RESET IVORYSQL.COMPATIBLE_MODE;
 RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 

@@ -738,6 +738,11 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			cur_token_length = 7;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - BUG#Z375 */
+		case OVERRIDING:
+			cur_token_length = 10;
+			break;
+		/* End - BUG#Z375 */
 		default:
 			return cur_token;
 	}
@@ -907,6 +912,12 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				cur_token = SCONST;
 			}
 			break;
+		/* Begin - BUG#Z375 */
+		case OVERRIDING:
+			if (next_token == USER || next_token == SYSTEM_P)
+				cur_token = OVERRIDING_P;
+			break;
+		/* End - BUG#Z375 */
 	}
 
 	return cur_token;
