@@ -253,6 +253,37 @@ create table notoast_varchar2(a varchar2(1 byte));
 select reltoastrelid from pg_class where relname='notoast_varchar2';	-- null
 create table notoast_number(a number(1,1));
 select reltoastrelid from pg_class where relname='notoast_number';		-- null
+create table notoast_char3(a char(2004 byte));
+select reltoastrelid from pg_class where relname='notoast_char3';	-- null
+create table toast_char4(a char(2005 byte));
+
+declare
+  var int := 0;
+begin
+  select reltoastrelid into var from pg_class where relname='toast_char4';
+  if var > 0 then
+    raise notice 'toast';
+  else
+    raise notice 'no toast';
+  end if;
+end;
+/
+
+create table notoast_varchar3(a varchar2(2004 byte));
+select reltoastrelid from pg_class where relname='notoast_varchar3';	-- null
+create table toast_varchar4(a varchar2(2005 byte));
+
+declare
+  var int := 0;
+begin
+  select reltoastrelid into var from pg_class where relname='toast_varchar4';
+  if var > 0 then
+    raise notice 'toast';
+  else
+    raise notice 'no toast';
+  end if;
+end;
+/
 
 --clean
 drop table notoast_char1;
@@ -261,4 +292,8 @@ drop table notoast_varchar1;
 drop table notoast_varchar2;
 drop table notoast_number;
 drop table test_varchar2_alter;
+drop table notoast_char3;
+drop table toast_char4;
+drop table notoast_varchar3;
+drop table toast_varchar4;
 /* End - BUG:M0000062 */

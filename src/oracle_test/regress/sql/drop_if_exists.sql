@@ -306,3 +306,19 @@ drop database test_database_exists (force);
 drop database test_database_exists with (force);
 drop database if exists test_database_exists (force);
 drop database if exists test_database_exists with (force);
+
+--Begin BUG:M0000118
+CREATE TABLE t1(id int);
+CREATE TABLE t2(id int);
+
+DROP TABLE t1 PURGE;
+DROP TABLE IF EXISTS t2 PURGE;
+
+CREATE TABLE atacc1 (test int);
+CREATE TABLE atacc2 (test2 int);
+CREATE TABLE atacc3 (test3 int) inherits (atacc1);
+CREATE TABLE atacc4 (test3 int) inherits (atacc2);
+
+DROP TABLE atacc1 CASCADE purge;
+DROP TABLE IF EXISTS atacc2 CASCADE purge;
+--End BUG:M0000118
