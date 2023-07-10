@@ -2296,7 +2296,9 @@ retry1:
 				/* Oracle compatibility tranfor upper to lower */
 				char *database_name = pstrdup(valptr);
 
-				if (DB_ORACLE == compatible_db && database_name != NULL)
+				/* Begin - BUG#M0000171 */
+				if (DB_ORACLE == database_mode && database_name != NULL)
+				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
 						is_all_upper(database_name, strlen(database_name)))
@@ -2350,7 +2352,9 @@ retry1:
 				/* Oracle compatibility tranfor upper to lower */
 				char *user_name = pstrdup(valptr);
 
-				if (DB_ORACLE == compatible_db && user_name != NULL)
+				/* Begin - BUG#M0000171 */
+				if (DB_ORACLE == database_mode && user_name != NULL)
+				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
 						is_all_upper(user_name, strlen(user_name)))

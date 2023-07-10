@@ -550,7 +550,7 @@ sub standard_initdb
 {
 	return (
 		#BEGIN - SQL PARSER
-		system('initdb', '-N', '-m', 'oracle') == 0 and system(
+		system('initdb', '-N', '-m', 'oracle', '-c', 'normal') == 0 and system(
 		#END - SQL PARSER
 			"$topdir/$Config/ora_pg_regress/ora_pg_regress", '--config-auth',
 			$ENV{PGDATA}) == 0);
