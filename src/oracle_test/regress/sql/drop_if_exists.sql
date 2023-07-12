@@ -314,11 +314,11 @@ CREATE TABLE t2(id int);
 DROP TABLE t1 PURGE;
 DROP TABLE IF EXISTS t2 PURGE;
 
-CREATE TABLE atacc1 (test int);
-CREATE TABLE atacc2 (test2 int);
-CREATE TABLE atacc3 (test3 int) inherits (atacc1);
-CREATE TABLE atacc4 (test3 int) inherits (atacc2);
+CREATE TABLE at1 (test int);
+CREATE TABLE at2 (test2 int);
+CREATE TABLE at3 (test3 int) inherits (at1);
+CREATE TABLE at4 (test3 int) inherits (at2);
 
-DROP TABLE atacc1 CASCADE purge;
-DROP TABLE IF EXISTS atacc2 CASCADE purge;
+DROP TABLE at1 CASCADE purge;
+DROP TABLE IF EXISTS at2 CASCADE purge;
 --End BUG:M0000118
