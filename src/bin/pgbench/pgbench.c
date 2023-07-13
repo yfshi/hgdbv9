@@ -69,7 +69,11 @@
 #include "pgbench.h"
 #include "port/pg_bitutils.h"
 #include "portability/instr_time.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -698,6 +702,73 @@ pg_time_now_lazy(pg_time_usec_t *now)
 static void
 usage(void)
 {
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf("%s is a benchmarking tool for PostgreSQL.\n\n"
+		   "Usage:\n"
+		   "  %s [OPTION]... [DBNAME]\n"
+		   "\nInitialization options:\n"
+		   "  -i, --initialize         invokes initialization mode\n"
+		   "  -I, --init-steps=[" ALL_INIT_STEPS "]+ (default \"" DEFAULT_INIT_STEPS "\")\n"
+		   "                           run selected initialization steps\n"
+		   "  -F, --fillfactor=NUM     set fill factor\n"
+		   "  -n, --no-vacuum          do not run VACUUM during initialization\n"
+		   "  -q, --quiet              quiet logging (one message each 5 seconds)\n"
+		   "  -s, --scale=NUM          scaling factor\n"
+		   "  --foreign-keys           create foreign key constraints between tables\n"
+		   "  --index-tablespace=TABLESPACE\n"
+		   "                           create indexes in the specified tablespace\n"
+		   "  --partition-method=(range|hash)\n"
+		   "                           partition pgbench_accounts with this method (default: range)\n"
+		   "  --partitions=NUM         partition pgbench_accounts into NUM parts (default: 0)\n"
+		   "  --tablespace=TABLESPACE  create tables in the specified tablespace\n"
+		   "  --unlogged-tables        create tables as unlogged tables\n"
+		   "\nOptions to select what to run:\n"
+		   "  -b, --builtin=NAME[@W]   add builtin script NAME weighted at W (default: 1)\n"
+		   "                           (use \"-b list\" to list available scripts)\n"
+		   "  -f, --file=FILENAME[@W]  add script FILENAME weighted at W (default: 1)\n"
+		   "  -N, --skip-some-updates  skip updates of pgbench_tellers and pgbench_branches\n"
+		   "                           (same as \"-b simple-update\")\n"
+		   "  -S, --select-only        perform SELECT-only transactions\n"
+		   "                           (same as \"-b select-only\")\n"
+		   "\nBenchmarking options:\n"
+		   "  -c, --client=NUM         number of concurrent database clients (default: 1)\n"
+		   "  -C, --connect            establish new connection for each transaction\n"
+		   "  -D, --define=VARNAME=VALUE\n"
+		   "                           define variable for use by custom script\n"
+		   "  -j, --jobs=NUM           number of threads (default: 1)\n"
+		   "  -l, --log                write transaction times to log file\n"
+		   "  -L, --latency-limit=NUM  count transactions lasting more than NUM ms as late\n"
+		   "  -M, --protocol=simple|extended|prepared\n"
+		   "                           protocol for submitting queries (default: simple)\n"
+		   "  -n, --no-vacuum          do not run VACUUM before tests\n"
+		   "  -P, --progress=NUM       show thread progress report every NUM seconds\n"
+		   "  -r, --report-latencies   report average latency per command\n"
+		   "  -R, --rate=NUM           target rate in transactions per second\n"
+		   "  -s, --scale=NUM          report this scale factor in output\n"
+		   "  -t, --transactions=NUM   number of transactions each client runs (default: 10)\n"
+		   "  -T, --time=NUM           duration of benchmark test in seconds\n"
+		   "  -v, --vacuum-all         vacuum all four standard tables before tests\n"
+		   "  --aggregate-interval=NUM aggregate data over NUM seconds\n"
+		   "  --log-prefix=PREFIX      prefix for transaction time log file\n"
+		   "                           (default: \"pgbench_log\")\n"
+		   "  --progress-timestamp     use Unix epoch timestamps for progress\n"
+		   "  --random-seed=SEED       set random seed (\"time\", \"rand\", integer)\n"
+		   "  --sampling-rate=NUM      fraction of transactions to log (e.g., 0.01 for 1%%)\n"
+		   "  --show-script=NAME       show builtin script code, then exit\n"
+		   "\nCommon options:\n"
+		   "  -d, --debug              print debugging output\n"
+		   "  -h, --host=HOSTNAME      database server host or socket directory\n"
+		   "  -p, --port=PORT          database server port number\n"
+		   "  -U, --username=USERNAME  connect as specified database user\n"
+		   "  -V, --version            output version information, then exit\n"
+		   "  -G, --highgo-version     output version of highgo information, then exit\n"
+		   "  -?, --help               show this help, then exit\n"
+		   "\n"
+		   "Report bugs to <%s>.\n"
+		   "%s home page: <%s>\n",
+		   progname, progname, PACKAGE_BUGREPORT, PACKAGE_NAME, PACKAGE_URL);
+#else	   
 	printf("%s is a benchmarking tool for PostgreSQL.\n\n"
 		   "Usage:\n"
 		   "  %s [OPTION]... [DBNAME]\n"
@@ -761,6 +832,8 @@ usage(void)
 		   "Report bugs to <%s>.\n"
 		   "%s home page: <%s>\n",
 		   progname, progname, PACKAGE_BUGREPORT, PACKAGE_NAME, PACKAGE_URL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */	
 }
 
 /* return whether str matches "^\s*[-+]?[0-9]+$" */
@@ -5858,7 +5931,12 @@ main(int argc, char **argv)
 
 	pg_logging_init(argv[0]);
 	progname = get_progname(argv[0]);
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -5871,6 +5949,15 @@ main(int argc, char **argv)
 			puts("pgbench (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("pgbench %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	state = (CState *) pg_malloc0(sizeof(CState));

@@ -18,7 +18,11 @@
 #include "getopt_long.h"
 #include "pg_upgrade.h"
 #include "utils/pidfile.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static void usage(void);
 static void check_required_directory(char **dirpath,
 									 const char *envVarName, bool useCwd,
@@ -90,6 +94,12 @@ parseCommandLine(int argc, char *argv[])
 		/* must save value, getenv()'s pointer is not stable */
 		os_info.user = pg_strdup(getenv("PGUSER"));
 	}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1)
 	{
@@ -103,6 +113,15 @@ parseCommandLine(int argc, char *argv[])
 			puts("pg_upgrade (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("pg_upgrade %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	/* Allow help and version to be run as root, so do the test here. */
@@ -337,6 +356,11 @@ usage(void)
 	printf(_("  -U, --username=NAME           cluster superuser (default \"%s\")\n"), os_info.user);
 	printf(_("  -v, --verbose                 enable verbose internal logging\n"));
 	printf(_("  -V, --version                 display version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version		  output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  --clone                       clone instead of copying files to new cluster\n"));
 	printf(_("  -?, --help                    show this help, then exit\n"));
 	printf(_("\n"

@@ -26551,6 +26551,28 @@ msgstr "非只读可串行化事务无法导入来自只读事务的快照"
 msgid "cannot import a snapshot from a different database"
 msgstr "无法导入来自不同数据库的快照"
 
+#: utils/misc/guc.c:12055
+#, c-format
+msgid "Cannot set max_connection to %d,it exceed the limit in license, Set max_connection to %d"
+msgstr "不能设置最大连接数为:%d,已超出license授权限制，故设置最大限制数为:%d"
+
+#, c-format
+msgid "This is an %s version of %s,valid until %s. After-sales service hotline: %s. Online technical support platform:%s."
+msgstr "这是瀚高 %s 版 %s 数据库, 有效日期至 %s. 售后服务热线: %s. 在线技术支持:%s."
+
+#, c-format
+msgid "This is an %s version of %s, which have expired on %s. The database can still be used. To ensure database availability, contact HighGo Software (%s) to purchase a new license. Online technical support platform:%s."
+msgstr "这是瀚高 %s 版 %s 数据库, 有效日期至 %s. 过期后仍可使用. 为确保数据库高效可用, 请拨打瀚高热线: %s 购买新授权license文件. 在线技术支持:%s."
+
+
+#, c-format
+msgid "This is an %s version of %s, valid until %s. After-sales service hotline: %s. Online technical support platform:%s."
+msgstr "这是瀚高 %s 版 %s 数据库, 有效日期至 %s. 售后服务热线: %s. 在线技术支持:%s."
+
+#, c-format
+msgid "This is an %s version of %s, which have expired on %s. The database can't still be used. To ensure database availability, contact HighGo Software (%s) to generate a new trial license. Online technical support platform:%s."
+msgstr "这是瀚高 %s 版 %s 数据库, 有效日期至 %s. 过期后不能正常使用. 为确保数据库高效可用, 请拨打瀚高热线: %s 购买新授权license文件. 在线技术支持:%s."
+
 #~ msgid "parameter \"%s\" requires a numeric value"
 #~ msgstr "参数 \"%s\" 需要一个数字值"
 

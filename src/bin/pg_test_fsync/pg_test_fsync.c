@@ -16,7 +16,11 @@
 #include "access/xlogdefs.h"
 #include "common/logging.h"
 #include "getopt_long.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 /*
  * put the temp files in the local directory
  * unless the user specifies otherwise
@@ -151,7 +155,12 @@ handle_args(int argc, char *argv[])
 	int			optindex = 0;	/* used by getopt_long */
 	unsigned long optval;		/* used for option parsing */
 	char	   *endptr;
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -164,6 +173,15 @@ handle_args(int argc, char *argv[])
 			puts("pg_test_fsync (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("pg_test_fsync %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	while ((option = getopt_long(argc, argv, "f:s:",

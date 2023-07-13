@@ -208,6 +208,7 @@ DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btre
 #define PROARGMODE_RESULT	'r'	 /* only used to represent the funtion result by jdbc */
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 /*
  * Symbolic values for prostatus column.

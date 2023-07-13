@@ -10,7 +10,11 @@
 
 #include "getopt_long.h"
 #include "portability/instr_time.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static const char *progname;
 
 static unsigned int test_duration = 3;
@@ -51,6 +55,12 @@ handle_args(int argc, char *argv[])
 	int			optindex = 0;	/* used by getopt_long */
 	unsigned long optval;		/* used for option parsing */
 	char	   *endptr;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1)
 	{
@@ -64,6 +74,15 @@ handle_args(int argc, char *argv[])
 			puts("pg_test_timing (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("pg_test_timing %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	while ((option = getopt_long(argc, argv, "d:",

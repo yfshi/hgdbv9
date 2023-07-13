@@ -16,6 +16,11 @@
 #include "getopt_long.h"
 #include "libpq-fe.h"
 #include "pg_getopt.h"
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /* an extensible array to keep track of elements to show */
 typedef struct
@@ -101,6 +106,13 @@ get_opts(int argc, char **argv, struct options *my_opts)
 	my_opts->username = NULL;
 	my_opts->progname = progname;
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -113,6 +125,15 @@ get_opts(int argc, char **argv, struct options *my_opts)
 			puts("oid2name (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("oid2name %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	/* get opts */
@@ -199,6 +220,34 @@ get_opts(int argc, char **argv, struct options *my_opts)
 static void
 help(const char *progname)
 {
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf("%s helps examining the file structure used by PostgreSQL.\n\n"
+		   "Usage:\n"
+		   "  %s [OPTION]...\n"
+		   "\nOptions:\n"
+		   "  -f, --filenode=FILENODE    show info for table with given file node\n"
+		   "  -i, --indexes              show indexes and sequences too\n"
+		   "  -o, --oid=OID              show info for table with given OID\n"
+		   "  -q, --quiet                quiet (don't show headers)\n"
+		   "  -s, --tablespaces          show all tablespaces\n"
+		   "  -S, --system-objects       show system objects too\n"
+		   "  -t, --table=TABLE          show info for named table\n"
+		   "  -V, --version              output version information, then exit\n"
+		   "  -G, --highgo-version      output version of highgo information, then exit\n"
+		   "  -x, --extended             extended (show additional columns)\n"
+		   "  -?, --help                 show this help, then exit\n"
+		   "\nConnection options:\n"
+		   "  -d, --dbname=DBNAME        database to connect to\n"
+		   "  -h, --host=HOSTNAME        database server host or socket directory\n"
+		   "  -H                         same as -h, deprecated option\n"
+		   "  -p, --port=PORT            database server port number\n"
+		   "  -U, --username=USERNAME    connect as specified database user\n"
+		   "\nThe default action is to show all database OIDs.\n\n"
+		   "Report bugs to <%s>.\n"
+		   "%s home page: <%s>\n",
+		   progname, progname, PACKAGE_BUGREPORT, PACKAGE_NAME, PACKAGE_URL);
+#else
 	printf("%s helps examining the file structure used by PostgreSQL.\n\n"
 		   "Usage:\n"
 		   "  %s [OPTION]...\n"
@@ -223,6 +272,8 @@ help(const char *progname)
 		   "Report bugs to <%s>.\n"
 		   "%s home page: <%s>\n",
 		   progname, progname, PACKAGE_BUGREPORT, PACKAGE_NAME, PACKAGE_URL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 }
 
 /*

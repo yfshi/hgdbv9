@@ -188,6 +188,7 @@ with_python	= @with_python@
 with_tcl	= @with_tcl@
 with_ssl	= @with_ssl@
 with_readline	= @with_readline@
+with_license	= @with_license@
 with_selinux	= @with_selinux@
 with_systemd	= @with_systemd@
 with_gssapi	= @with_gssapi@
@@ -235,6 +236,7 @@ CLANG = @CLANG@
 BITCODE_CFLAGS = @BITCODE_CFLAGS@
 BITCODE_CXXFLAGS = @BITCODE_CXXFLAGS@
 
+LICENSE_DIR = @LICENSE_DIR@
 ##########################################################################
 #
 # Programs and flags

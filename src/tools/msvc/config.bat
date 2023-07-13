@@ -38,6 +38,7 @@ if "%2" equ "" goto help
 >>config.pl		echo $config-^>{xslt} = '%2\deps\lib%up_x64%\libxslt';
 >>config.pl		echo $config-^>{iconv} = '%2\deps\lib%up_x64%\libiconv';
 >>config.pl		echo $config-^>{zlib} = '%2\deps\lib%up_x64%\zlib';
+::>>config.pl		echo $config-^>{license} = '%2\deps\lib%up_x64%\license';
 
 >buildenv.pl	echo # set environments
 >>buildenv.pl	echo $ENV{PATH} = 
@@ -49,6 +50,7 @@ if "%2" equ "" goto help
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libxml2\bin;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libxslt\lib;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\libiconv;'.
+::>>buildenv.pl	echo    '%2\deps\lib%up_x64%\license\lib;'.
 >>buildenv.pl	echo    '%2\deps\lib%up_x64%\zlib;'.$ENV{PATH};
 >>buildenv.pl	echo #$ENV{CONFIG} = "Debug";
 >>buildenv.pl	echo $ENV{DOCROOT} = '%2\deps\docbook';
@@ -66,6 +68,7 @@ if "%2" equ "" goto help
 >>instal.bat	echo copy %2\deps\lib%up_x64%\zlib\zlib1.dll %%1\bin
 >>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\libcrypto-3%openssl_x64%.dll %%1\bin
 >>instal.bat	echo copy %2\deps\lib%up_x64%\openssl\bin\libssl-3%openssl_x64%.dll %%1\bin
+::>>instal.bat	echo copy %2\deps\lib%up_x64%\license\share\license.dll %%1\bin
 >>instal.bat	echo cd %%~dp0 
 >>instal.bat	echo :exit
 >>instal.bat	echo exit /b %%errorlevel%%
