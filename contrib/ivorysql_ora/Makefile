@@ -38,11 +38,17 @@ DATA = ivorysql_ora--1.0.sql
 
 all: gensql
 
+install: install-data
+
 clean: cleansql
 
 # SQL(s) merge using perl
 gensql: gensql.pl
 	$(PERL) $< $(patsubst ivorysql_ora--%.sql, %, $(DATA))
+
+# Preload the compatible oracle misc sql script
+install-data:
+	$(INSTALL_DATA) $(srcdir)/preload_ora_misc.sql '$(DESTDIR)$(datadir)/preload_ora_misc.sql'
 
 # Clean the generated SQL(s).
 cleansql:
