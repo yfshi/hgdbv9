@@ -1228,7 +1228,7 @@ SELECT '' AS to_number_10, to_number('0', '99.99');
 (1 row)
 
 SELECT '' AS to_number_11, to_number('.-01', 'S99.99');
-ERROR:  invalid number format model
+ERROR:  invalid number
 SELECT '' AS to_number_12, to_number('.01-', '99.99S');
  to_number_12 | to_number 
 --------------+-----------
@@ -1256,7 +1256,7 @@ SELECT '' AS to_number_16, to_number('12.34','9G999D99');
 (1 row)
 
 SELECT '' AS to_number_17, to_number('1122.34','9G999D99');
-ERROR:  invalid number format model
+ERROR:  invalid number
 --
 -- Input syntax
 --

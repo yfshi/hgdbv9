@@ -21,7 +21,8 @@ include $(top_builddir)/src/Makefile.global
 override CPPFLAGS := -DFRONTEND -I$(libpq_srcdir) $(CPPFLAGS)
 
 OBJS = ora_string_utils.o \
-	ora_psqlscan.o
+	ora_psqlscan.o \
+	ora_number_utils.o
 /* ReqID:SRS-PSQL-PARSER */
 
 all: liborafeutils.a
@@ -50,4 +51,5 @@ clean distclean:
 	rm -f liborafeutils.a $(OBJS) lex.backup ora_psqlscan.c
 
 maintainer-clean: distclean
-	rm -f ora_psqlscan.c ora_string_utils.o	/* ReqID:SRS-PSQL-PARSER */
+	rm -f ora_psqlscan.c ora_string_utils.o	/* ReqID:SRS-PSQL-PARSER */	\
+		  ora_number_utils.o /* ReqID:SRS-SQL-SYSFUNC */

@@ -1,0 +1,659 @@
+--
+-- SHOW / SET system_variable value
+--
+show num numw numwi numwid numwidt numwidth
+NUMWIDTH -1
+NUMWIDTH -1
+NUMWIDTH -1
+NUMWIDTH -1
+NUMWIDTH -1
+NUMWIDTH -1
+set num 1
+NUMWIDTH option 1 out of range (2 through 128)
+show num
+NUMWIDTH -1
+set numw 2
+show num
+NUMWIDTH 2
+set numwi 3
+show num
+NUMWIDTH 3
+set numwid 4
+show num
+NUMWIDTH 4
+set numwidt 5
+show num
+NUMWIDTH 5
+set numwidth 6
+show num
+NUMWIDTH 6
+set num 2 numw 3 numwi 4 numwid 5 numwidt 6 numwidth 7
+show num
+NUMWIDTH 7
+set num -1
+set schema 'test';
+show search_path;
+ search_path 
+-------------
+ test
+(1 row)
+
+reset search_path;
+--
+-- TO_NUMBER()
+--
+set numw 10
+select to_number('') from dual;
+ to_number 
+-----------
+ 
+(1 row)
+
+select to_number(null) from dual;
+ to_number 
+-----------
+ 
+(1 row)
+
+select to_number(1E-130) from dual;
+ to_number  
+------------
+ 1.000E-130
+(1 row)
+
+select to_number(1E-131) from dual;
+ to_number  
+------------
+ 1.000E-131
+(1 row)
+
+select to_number(9.999E125) from dual;
+ to_number  
+------------
+ 9.999E+125
+(1 row)
+
+select to_number(9.9999E125) from dual;
+ to_number  
+------------
+ 1.000E+126
+(1 row)
+
+select to_number(1E126) from dual;
+ to_number  
+------------
+ 1.000E+126
+(1 row)
+
+select to_number(0.987654321) from dual;
+ to_number  
+------------
+ .987654321
+(1 row)
+
+select to_number(-0.987654321) from dual;
+ to_number  
+------------
+ -.98765432
+(1 row)
+
+select to_number(cast(BINARY_FLOAT_NAN as binary_float)) from dual;
+ERROR:  invalid number
+select to_number(cast(BINARY_FLOAT_INFINITY as binary_float)) from dual;
+ERROR:  numeric overflow
+select to_number(cast(1.23456-38F as binary_float)) from dual;
+ to_number 
+-----------
+ -36.76544
+(1 row)
+
+select to_number(cast(1.23456E+39F as binary_float)) from dual;
+ERROR:  "1.23456E+39" is out of range for type binary_float
+LINE 1: select to_number(cast(1.23456E+39F as binary_float)) from du...
+                              ^
+select to_number(cast(987654.321 as binary_float)) from dual;
+ to_number 
+-----------
+ 987654.3
+(1 row)
+
+select to_number(cast(-987654.321 as binary_float)) from dual;
+ to_number 
+-----------
+ -987654.3
+(1 row)
+
+select to_number(cast(BINARY_DOUBLE_NAN as binary_double)) from dual;
+ERROR:  invalid number
+select to_number(cast(BINARY_DOUBLE_INFINITY as binary_double)) from dual;
+ERROR:  numeric overflow
+select to_number(cast(1.23456E-308D as binary_double)) from dual;
+ to_number  
+------------
+ 1.235E-308
+(1 row)
+
+select to_number(cast(1.23456E+308D as binary_double)) from dual;
+ to_number  
+------------
+ 1.235E+308
+(1 row)
+
+select to_number(cast(987654.321 as binary_double)) from dual;
+ to_number  
+------------
+ 987654.321
+(1 row)
+
+select to_number(cast(-987654.321 as binary_double)) from dual;
+ to_number  
+------------
+ -987654.32
+(1 row)
+
+select to_number(cast('9876543211' as char(10))) from dual;
+ to_number  
+------------
+ 9876543211
+(1 row)
+
+select to_number(cast('98765432112' as char(11))) from dual;
+ to_number  
+------------
+ 9.8765E+10
+(1 row)
+
+select to_number(cast('9876543211' as char(11))) from dual;
+ to_number  
+------------
+ 9876543211
+(1 row)
+
+select to_number(cast('98765432112' as char(12))) from dual;
+ to_number  
+------------
+ 9.8765E+10
+(1 row)
+
+--
+-- TO_NUMBER(expr DEFAULT return_value ON CONVERSION ERROR)
+--
+select to_number('1,2' default null on conversion error) from dual;
+ to_number 
+-----------
+ 
+(1 row)
+
+select to_number('1,2' default '0' on conversion error) from dual;
+ to_number 
+-----------
+ 0
+(1 row)
+
+select to_number('1,2' default '0,0' on conversion error) from dual;
+ERROR:  invalid number
+--
+-- TO_NUMBER(expr, fmt)
+--
+select to_number(123, '999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number(' 123', '999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('123 ', '999') from dual;
+ERROR:  invalid number
+select to_number('123 ', '999 ') from dual;
+ERROR:  invalid number format model
+select to_number('+123', '999') from dual;
+ERROR:  invalid number
+select to_number('-123', '999') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number(cast('234' as binary_float),'999')  from dual;
+ERROR:  too many arguments for function
+select to_number(cast('234' as binary_double),'999')  from dual;
+ERROR:  too many arguments for function
+-- PR MI S
+select to_number('123', '999PR') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('<123>', '999PR') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number('<123', '999PR') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number('123', '999MI') from dual;
+ERROR:  invalid number
+select to_number('123 ', '999MI') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('123+', '999MI') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('123-', '999MI') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number('123+', '999S') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('123-', '999S') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number('123 ', '999S') from dual;
+ERROR:  invalid number
+select to_number('123', '999S') from dual;
+ERROR:  invalid number
+select to_number('+123', 'S999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('-123', 'S999') from dual;
+ to_number 
+-----------
+ -123
+(1 row)
+
+select to_number('123', 'S999') from dual;
+ERROR:  invalid number
+-- $ C L U
+select to_number('$123', '$999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('$123', '99$9') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('1$23', '9$99') from dual;
+ERROR:  invalid number
+alter session set nls_iso_currency = CHINA;
+select to_number('CNY123', 'C999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('cny123', 'C999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('CNY123', '9C99') from dual;
+ERROR:  invalid number
+select to_number('1CNY23', '9C99') from dual;
+ to_number 
+-----------
+ 1.23
+(1 row)
+
+select to_number('1cny23', '9C99') from dual;
+ERROR:  invalid number
+select to_number('123CNY', '999C') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('123cny', '999C') from dual;
+ERROR:  invalid number
+alter session set nls_currency = abcabcabcabc;
+select to_number('abcabcabcabc123', 'L999') from dual;
+ERROR:  invalid number
+select to_number('abcabcabca123', 'L999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('1ABCABCABCA23', '9L99') from dual;
+ to_number 
+-----------
+ 1.23
+(1 row)
+
+reset nls_currency;
+alter session set nls_dual_currency = abcabcabc;
+select to_number('abcabcabc123', 'U999') from dual;
+ERROR:  invalid number
+select to_number('abcabca123', 'U999') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('1ABCABCA23', '9U99') from dual;
+ to_number 
+-----------
+ 1.23
+(1 row)
+
+reset nls_dual_currency;
+-- EEEE
+select to_number('1.23e-04', '9.99eEEE') from dual;
+ERROR:  invalid number format model
+select to_number('1.23e-04', '9.99EEEE') from dual;
+ to_number 
+-----------
+ .000123
+(1 row)
+
+select to_number('1.23e-04 ', '9.99EEEEMI') from dual;
+ to_number 
+-----------
+ .000123
+(1 row)
+
+select to_number('1.23e-04+', '9.99EEEEMI') from dual;
+ to_number 
+-----------
+ .000123
+(1 row)
+
+select to_number('1.23e-04-', '9.99EEEEMI') from dual;
+ to_number 
+-----------
+ -.000123
+(1 row)
+
+select to_number('12.34e-04', '99.99EEEE') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04', '9L99EEEE') from dual;
+ERROR:  invalid number
+select to_number('-1￥23e-04', 'S9L99EEEE') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04+', '9L99EEEES') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04-', '9L99EEEES') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04', '9L99EEEEPR') from dual;
+ERROR:  invalid number
+select to_number('<1￥23e-04>', '9L99EEEEPR') from dual;
+ERROR:  invalid number
+select to_number('<1￥23e-04', '9L99EEEEPR') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04 ', '9L99EEEEMI') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04+', '9L99EEEEMI') from dual;
+ERROR:  invalid number
+select to_number('1￥23e-04+', '9L99EEEEMI') from dual;
+ERROR:  invalid number
+select to_number('1,2.3e-04', '9,9.9EEEE') from dual;
+ERROR:  invalid number format model
+-- , G
+select to_number('1,2,34,567,890', '9,9,99,999,999') from dual;
+ to_number  
+------------
+ 1234567890
+(1 row)
+
+select to_number('123,456,7890', '999,9999999') from dual;
+ to_number  
+------------
+ 1234567890
+(1 row)
+
+select to_number('123,456,7890', '999999,9999') from dual;
+ERROR:  invalid number
+select to_number('12,345,678,,,,,,90', '999,999,999,,,,,,99') from dual;
+ to_number  
+------------
+ 1234567890
+(1 row)
+
+select to_number('12,345,678,,,,,,90', '999,999,999,99') from dual;
+ to_number  
+------------
+ 1234567890
+(1 row)
+
+select to_number('12,345,,678,,,,,,90', '999,999,999,,,,,,99') from dual;
+ERROR:  invalid number
+select to_number('1,,,,,,2.3', '9,,,,,,9.9') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number('1,,,,,,2.3', '9gggggg9d9') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number(',123', ',999') from dual;
+ERROR:  invalid number format model
+select to_number('1.2,3', '9.9,9') from dual;
+ERROR:  invalid number format model
+select to_number('1,2.3', '9g9.9') from dual;
+ERROR:  invalid number format model
+select to_number('1,2.3', '9,9d9') from dual;
+ERROR:  invalid number format model
+-- X
+select to_number('FFFF', 'XXXX') from dual;
+ to_number 
+-----------
+ 65535
+(1 row)
+
+select to_number('F,,,F,,F,F', 'XXXX') from dual;
+ to_number 
+-----------
+ 65535
+(1 row)
+
+--
+-- TO_NUMBER(expr DEFAULT return_value ON CONVERSION ERROR, fmt)
+--
+select to_number('1,2.3,4' default '1,2.3' on conversion error, '9,9.9') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number('9,8.7' default '1,2.3' on conversion error, '9,9.9') from dual;
+ to_number 
+-----------
+ 98.7
+(1 row)
+
+--
+-- TO_NUMBER(expr, fmt, 'nlsparam')
+--
+select to_number('1b2a3', '9g9d9', 'nls_numeric_characters = ab') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number('1b2a3', '9g9d9', 'nls_numeric_characters = AB') from dual;
+ERROR:  invalid number
+select to_number('1 2.3', '9g9d9', 'nls_numeric_characters = ''. ''') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number('1 2.3', '9g9d9', 'nls_numeric_characters = . ') from dual;
+ERROR:  invalid NLS parameter string used in SQL Function
+select to_number('1 2.3', '9g9d9', 'nls_numeric_characters =. ') from dual;
+ERROR:  invalid NLS parameter string used in SQL Function
+select to_number('1a2"3', '9g9d9', 'nls_numeric_characters = "a"') from dual;
+ to_number 
+-----------
+ 12.3
+(1 row)
+
+select to_number('a''123', 'L999', 'nls_currency = ''a''''''') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('''''123', 'L999', 'nls_currency = ''''''''''''') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('''a123', 'L999', 'nls_currency = ''''a''') from dual;
+ERROR:  invalid NLS parameter string used in SQL Function
+select to_number('''a123', 'L999', 'nls_currency = ''''''a''') from dual;
+ to_number 
+-----------
+ 123
+(1 row)
+
+select to_number('1USD23', '9C99', 'nls_iso_currency = america') from dual;
+ to_number 
+-----------
+ 1.23
+(1 row)
+
+select to_number('--123', 'd999', 'nls_numeric_characters = ''-,''') from dual;
+ to_number 
+-----------
+ -.123
+(1 row)
+
+select to_number('--123', 'sd999', 'nls_numeric_characters = ''-,''') from dual;
+ to_number 
+-----------
+ -.123
+(1 row)
+
+select to_number('++123', 'd999', 'nls_numeric_characters = ''+,''') from dual;
+ERROR:  invalid number
+select to_number('++123', 'sd999', 'nls_numeric_characters = ''+,''') from dual;
+ to_number 
+-----------
+ .123
+(1 row)
+
+select to_number('-123-', 'd999mi', 'nls_numeric_characters = -,') from dual;
+ to_number 
+-----------
+ -.123
+(1 row)
+
+select to_number('--123-', 'd999mi', 'nls_numeric_characters = -,') from dual;
+ERROR:  invalid number
+select to_number('-123-', 'd999mi', 'nls_numeric_characters = -,') from dual;
+ to_number 
+-----------
+ -.123
+(1 row)
+
+select to_number('+1+123', '9d999', 'nls_numeric_characters = +,') from dual;
+ERROR:  invalid number
+select to_number('+1+123', 's9d999', 'nls_numeric_characters = +,') from dual;
+ to_number 
+-----------
+ 1.123
+(1 row)
+
+select to_number('-1+123', '9d999', 'nls_numeric_characters = +,') from dual;
+ to_number 
+-----------
+ -1.123
+(1 row)
+
+select to_number('-1+123', 's9d999', 'nls_numeric_characters = +,') from dual;
+ to_number 
+-----------
+ -1.123
+(1 row)
+
+select to_number('1.23e+04', '9.99eeee', 'nls_numeric_characters=.+') from dual;
+ to_number 
+-----------
+ 12300
+(1 row)
+
+select to_number('5432112', 'L99', 'nls_currency = 54321') from dual;
+ to_number 
+-----------
+ 12
+(1 row)
+
+select to_number('1254321', '99L', 'nls_currency = 54321') from dual;
+ERROR:  invalid number
+select to_number('1543212', '9L9', 'nls_currency = 54321') from dual;
+ERROR:  invalid number
+select to_number('12a54321', '99L', 'nls_currency = a54321') from dual;
+ to_number 
+-----------
+ 12
+(1 row)
+
+select to_number('1a543212', '9L9', 'nls_currency = a54321') from dual;
+ to_number 
+-----------
+ 1.2
+(1 row)
+
+--
+-- NLS parameters
+--
+alter session set nls_numeric_characters = '+a';
+ERROR:  Cannot access NLS data files or invalid environment specified
+alter session set nls_numeric_characters = '-a';
+ERROR:  Cannot access NLS data files or invalid environment specified
+alter session set nls_numeric_characters = '<a';
+ERROR:  Cannot access NLS data files or invalid environment specified
+alter session set nls_numeric_characters = '>a';
+ERROR:  Cannot access NLS data files or invalid environment specified
+alter session set nls_numeric_characters = '1a';
+ERROR:  Cannot access NLS data files or invalid environment specified
+alter session set nls_numeric_characters = ' ,';
+show nls_numeric_characters;
+ nls_numeric_characters 
+------------------------
+  ,
+(1 row)
+
+alter session set nls_numeric_characters = 'abaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+alter session set nls_numeric_characters = 'abaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+ERROR:  parameter value longer than 255 characters
+set numw -1

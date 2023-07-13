@@ -845,6 +845,16 @@ static void determineLanguage(List *options);
 %type<editionable> opt_ora_editioned ora_editioned
 /* End - BUG#Z206 Z208 */
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+%token <keyword> ERROR_P PARAMETER_P TO_NUMBER
+%type <node>	ora_to_number_default
+				ora_to_number_param
+				ora_to_number_fmt_param
+%type <list>	ora_to_number_parameters
+				ora_to_number_expr
+				ora_to_number_expr_fmt
+				ora_to_number_expr_fmt_nls
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 
 /*
@@ -1982,6 +1992,14 @@ VariableShowStmt:
 					n->name = $2;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-SYSFUNC */
+			| SHOW PARAMETER_P var_name
+				{
+					VariableShowStmt *n = makeNode(VariableShowStmt);
+					n->name = $3;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-SYSFUNC */
 			| SHOW TIME ZONE
 				{
 					VariableShowStmt *n = makeNode(VariableShowStmt);
@@ -16879,6 +16897,15 @@ func_expr_common_subexpr:
 											   COERCE_EXPLICIT_CALL,
 											   @1);
 				}
+			/* Begin - ReqID:SRS-SQL-SYSFUNC */
+			| TO_NUMBER '(' ora_to_number_parameters ')'
+				{
+					$$ = (Node *) makeFuncCall(list_make1(makeString("to_number")),
+											   $3,
+											   COERCE_EXPLICIT_CALL,
+											   @1);
+				}
+			/* End - ReqID:SRS-SQL-SYSFUNC */
 			| TREAT '(' a_expr AS Typename ')'
 				{
 					/* TREAT(expr AS target) converts expr of a particular type to target,
@@ -17158,6 +17185,138 @@ xml_passing_mech:
 			| BY VALUE_P
 		;
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+ora_to_number_parameters:
+			ora_to_number_expr                              { $$ = $1; }
+			| ora_to_number_expr_fmt                        { $$ = $1; }
+			| ora_to_number_expr_fmt_nls                    { $$ = $1; }
+		;
+
+ora_to_number_param:
+			NumericOnly
+				{
+					$$ = makeTypeCast(makeAConst($1, @1), makeTypeName("text"), @1);
+				}
+			| Sconst
+				{
+					$$ = makeStringConstCast($1, @1, makeTypeName("text"));
+				}
+			| NULL_P
+				{
+					$$ = makeTypeCast(makeNullAConst(@1), makeTypeName("text"), @1);
+				}
+		;
+ora_to_number_fmt_param:
+			ora_to_number_param                             { $$ = $1; }
+			| ora_to_number_param TYPECAST Typename         { $$ = $1; }
+			| CAST '(' ora_to_number_param AS Typename ')'  { $$ = $3; }
+		;
+
+ora_to_number_default:
+			DEFAULT ora_to_number_param ON CONVERSION_P ERROR_P { $$ = $2; }
+		;
+
+ora_to_number_expr:
+			a_expr
+				{
+					$$ = list_make3(makeBoolAConst(false, -1),
+									makeBoolAConst(false, -1),
+									makeTypeCast($1, makeTypeName("text"), @1));
+				}
+			| a_expr ora_to_number_default
+				{
+					A_Const *n = (A_Const *) ((TypeCast *) $2)->arg;
+
+					if (n->val.type == T_Null)
+						$$ = list_make3(makeBoolAConst(true, -1),
+										makeBoolAConst(true, -1),
+										makeTypeCast($1, makeTypeName("text"), @1));
+					else
+						$$ = list_make4(makeBoolAConst(true, -1),
+										makeBoolAConst(false, -1),
+										makeTypeCast($1, makeTypeName("text"), @1),
+										$2);
+				}
+		;
+
+ora_to_number_expr_fmt:
+		ora_to_number_expr ',' ora_to_number_fmt_param
+			{
+				A_Const	*left = (A_Const *) ((TypeCast *) lsecond((List *) $1))->arg;
+
+				if (strcmp(left->val.val.str, "t") == 0)
+				{
+					A_Const	*right = (A_Const *) ((TypeCast *) $3)->arg;
+
+					if (right->val.type == T_Null)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("This argument must be a literal"),
+								 parser_errposition(@3)));
+				}
+
+				if (((List *) $1)->length >= 3)
+				{
+					ListCell	*lc;
+
+					foreach (lc, ((List *) $1))
+					{
+						Node	*n = ((TypeCast *) lfirst(lc))->arg;
+
+						if (IsA(n, A_Const))
+						{
+							A_Const *a = (A_Const *) n;
+
+							if (a->val.type == T_BFloat || a->val.type == T_BDouble)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("too many arguments for function")/*,
+										 parser_errposition(@1)*/));
+						}
+						else if (IsA(n, TypeCast))
+						{
+							TypeCast    *t = (TypeCast *) n;
+
+							if (t->typeName->names
+								&& t->typeName->names->length == 2)
+							{
+								Value   *v = (Value *) lsecond(t->typeName->names);
+
+								if (strcmp(v->val.str, "binary_float") == 0
+									|| strcmp(v->val.str, "binary_double") == 0)
+									ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("too many arguments for function")/*,
+										 parser_errposition(@1)*/));
+							}
+						}
+					}
+				}
+
+				$$ = lappend($1, $3);
+			}
+	;
+
+ora_to_number_expr_fmt_nls:
+			ora_to_number_expr_fmt ',' Sconst
+				{
+					$$ = lappend($1, makeStringConst($3, @3));
+				}
+			| ora_to_number_expr_fmt ',' NULL_P
+				{
+					A_Const	*n =
+						(A_Const *) ((TypeCast *) lsecond((List *) $1))->arg;
+
+					if (strcmp(n->val.val.str, "t") == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("This argument must be a literal"),
+								 parser_errposition(@3)));
+
+					$$ = lappend($1, makeNullAConst(@3));
+				}
+		;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 /*
  * Aggregate decoration clauses
@@ -18616,6 +18775,7 @@ unreserved_keyword:
 			| ENCODING
 			| ENCRYPTED
 			| ENUM_P
+			| ERROR_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| ESCAPE
 			| EVENT
 			| EXCLUDE
@@ -18738,6 +18898,7 @@ unreserved_keyword:
 			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
+			| PARAMETER_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
 			| PARSER
 			| PARTIAL
@@ -18941,6 +19102,7 @@ col_name_keyword:
 			| SUBSTRING
 			| TIME
 			| TIMESTAMP
+			| TO_NUMBER	/* ReqID:SRS-SQL-SYSFUNC */
 			| TREAT
 			| TRIM
 			| UPDATEXML /* ReqID:SRS-SQL-XML */
@@ -19237,6 +19399,7 @@ bare_label_keyword:
 			| ENCRYPTED
 			| END_P
 			| ENUM_P
+			| ERROR_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| ESCAPE
 			| EVENT
 			| EXCLUDE
@@ -19400,6 +19563,7 @@ bare_label_keyword:
 			| PACKAGES	/* ReqID:SRS-SQL-PACKAGE */
 			| PARALLEL
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
+			| PARAMETER_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
 			| PARSER
 			| PARTIAL
@@ -19527,6 +19691,7 @@ bare_label_keyword:
 			| TIES
 			| TIME
 			| TIMESTAMP
+			| TO_NUMBER	/* ReqID:SRS-SQL-SYSFUNC */
 			| TRAILING
 			| TRANSACTION
 			| TRANSFORM
