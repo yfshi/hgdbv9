@@ -18,7 +18,11 @@
 /* Begin - SQL PARSER */
 #include "oracle_fe_utils/ora_string_utils.h"
 /* END - SQL PARSER */
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 static void help(const char *progname);
 
@@ -192,6 +196,11 @@ help(const char *progname)
 	printf(_("  -f, --force               try to terminate other connections before dropping\n"));
 	printf(_("  -i, --interactive         prompt before deleting anything\n"));
 	printf(_("  -V, --version             output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  --if-exists               don't report error if database doesn't exist\n"));
 	printf(_("  -?, --help                show this help, then exit\n"));
 	printf(_("\nConnection options:\n"));

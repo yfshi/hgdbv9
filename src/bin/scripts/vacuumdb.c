@@ -26,7 +26,11 @@
 /* Begin - SQL PARSER */
 #include "oracle_fe_utils/ora_string_utils.h"
 /* END - SQL PARSER */
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /* vacuum options controlled by user flags */
 typedef struct vacuumingOptions
@@ -1051,6 +1055,11 @@ help(const char *progname)
 	printf(_("  -t, --table='TABLE[(COLUMNS)]'  vacuum specific table(s) only\n"));
 	printf(_("  -v, --verbose                   write a lot of output\n"));
 	printf(_("  -V, --version                   output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version			output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -z, --analyze                   update optimizer statistics\n"));
 	printf(_("  -Z, --analyze-only              only update optimizer statistics; no vacuum\n"));
 	printf(_("      --analyze-in-stages         only update optimizer statistics, in multiple\n"

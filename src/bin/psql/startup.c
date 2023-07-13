@@ -27,7 +27,11 @@
 #include "oracle_fe_utils/ora_string_utils.h"	/* SQL PARSER */
 #include "oracle_fe_utils/ora_psqlscan.h"	/* ReqID:SRS-PSQL-PARSER */
 #include "settings.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 /*
  * Global psql options
  */
@@ -86,8 +90,12 @@ static void simple_action_list_append(SimpleActionList *list,
 static void process_psqlrc(char *argv0);
 static void process_psqlrc_file(char *filename);
 static void showVersion(void);
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+static void showHighgoVersion(void);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static void EstablishVariableSpace(void);
-
 #define NOPAGER		0
 
 static void
@@ -129,6 +137,12 @@ main(int argc, char *argv[])
 	pg_logging_set_pre_callback(log_pre_callback);
 	pg_logging_set_locus_callback(log_locus_callback);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("psql"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1)
 	{
@@ -142,6 +156,15 @@ main(int argc, char *argv[])
 			showVersion();
 			exit(EXIT_SUCCESS);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			showHighgoVersion();
+			exit(EXIT_SUCCESS);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	pset.progname = get_progname(argv[0]);
@@ -514,6 +537,11 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 		{"set", required_argument, NULL, 'v'},
 		{"variable", required_argument, NULL, 'v'},
 		{"version", no_argument, NULL, 'V'},
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		{"highgo-version", no_argument, NULL, 'G'},
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 		{"no-password", no_argument, NULL, 'w'},
 		{"password", no_argument, NULL, 'W'},
 		{"expanded", no_argument, NULL, 'x'},
@@ -527,8 +555,13 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 	int			c;
 
 	memset(options, 0, sizeof *options);
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VGwWxXz?01",
+#else
 	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01",
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -664,6 +697,13 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 			case 'V':
 				showVersion();
 				exit(EXIT_SUCCESS);
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+			case 'G':
+				showHighgoVersion();
+				exit(EXIT_SUCCESS);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 			case 'w':
 				pset.getPassword = TRI_NO;
 				break;
@@ -847,7 +887,19 @@ showVersion(void)
 	puts("psql (PostgreSQL) " PG_VERSION);
 }
 
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+/* showHighgoVersion
+ *
+ * This output format is intended to match GNU standards.
+ */
+static void
+showHighgoVersion(void)
+{
+	printf("%s\n", hg_get_highgoVersion());
+}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /*
  * Substitute hooks and assign hooks for psql variables.

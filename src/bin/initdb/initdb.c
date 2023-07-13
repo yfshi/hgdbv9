@@ -78,6 +78,11 @@
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /* Ideally this would be in a .h file, but it hardly seems worth the trouble */
 extern const char *select_default_timezone(const char *share_path);
@@ -125,6 +130,12 @@ static char *share_path = NULL;
 
 /* values to be obtained from arguments */
 static char *pg_data = NULL;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+static char *hg_database_name = NULL;
+static char *hg_database_port = NULL;
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static char *encoding = NULL;
 static char *locale = NULL;
 static char *lc_collate = NULL;
@@ -281,6 +292,13 @@ static void load_plpgsql(FILE *cmdfd);
 static void load_plisql(FILE *cmdfd);
 /* END - SQL PARSER */
 static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#if 0
+#ifdef USE_LICENSE
+static void load_hg_misc(FILE *cmdfd);
+#endif
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -1117,11 +1135,26 @@ setup_config(void)
 #endif
 	conflines = replace_token(conflines, "#unix_socket_directories = '/tmp'",
 							  repltok);
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	if (!hg_database_port) 
+	{
+		// get port from license file
+		snprintf(repltok, sizeof(repltok), "port = %d", atoi(hg_get_defaultDBport()));
+		conflines = replace_token(conflines, "#port = 5432", repltok);
+	}
+	else
+	{
+		snprintf(repltok, sizeof(repltok), "port = %d", atoi(hg_database_port));
+		conflines = replace_token(conflines, "#port = 5432", repltok);
+	}
+#else
 #if DEF_PGPORT != 5432
 	snprintf(repltok, sizeof(repltok), "#port = %d", DEF_PGPORT);
 	conflines = replace_token(conflines, "#port = 5432", repltok);
 #endif
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	/* set default max_wal_size and min_wal_size */
 	snprintf(repltok, sizeof(repltok), "min_wal_size = %s",
@@ -1273,6 +1306,14 @@ setup_config(void)
 		conflines = readfile(ora_conf_file);
 
 		snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
+
+		/* IvorySQL - BEGIN */
+ 		if (DEF_ORAPORT != 1521)
+		{
+			snprintf(repltok, sizeof(repltok), "ivorysql.port = %d", DEF_ORAPORT);
+			conflines = replace_token(conflines, "#ivorysql.port = 1521", repltok);
+		}
+		/* IvorySQL - END */
 
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
@@ -1987,6 +2028,19 @@ load_ivorysql_ora(FILE *cmdfd)
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#if 0
+#ifdef USE_LICENSE
+static void
+load_hg_misc(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION hg_misc;\n\n");
+	PG_CMD_PUTS("ALTER EXTENSION hg_misc SET SCHEMA public;\n\n");
+}
+#endif
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 /*
  * clean everything up in template1
  */
@@ -2042,11 +2096,33 @@ static void
 make_postgres(FILE *cmdfd)
 {
 	const char *const *line;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	static char commd_line1[128] = { 0 };
+	static char commd_line2[128] = { 0 };
+	static const char * postgres_setup[3] = { NULL };
+	if (!hg_database_name)
+	{
+		// get default databasename from license file
+		sprintf(commd_line1, "CREATE DATABASE %s;\n\n", hg_get_defaultDBname());
+		sprintf(commd_line2, "COMMENT ON DATABASE %s IS 'default administrative connection database';\n\n", hg_get_defaultDBname());
+	}
+	else
+	{
+		sprintf(commd_line1, "CREATE DATABASE %s;\n\n", hg_database_name);
+		sprintf(commd_line2, "COMMENT ON DATABASE %s IS 'default administrative connection database';\n\n", hg_database_name);
+	}
+	postgres_setup[0] = commd_line1;
+	postgres_setup[1] = commd_line2;
+	postgres_setup[2] = NULL;
+#else
 	static const char *const postgres_setup[] = {
 		"CREATE DATABASE postgres;\n\n",
 		"COMMENT ON DATABASE postgres IS 'default administrative connection database';\n\n",
 		NULL
 	};
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	for (line = postgres_setup; *line; line++)
 		PG_CMD_PUTS(*line);
@@ -2343,6 +2419,12 @@ usage(const char *progname)
 	printf(_("      --auth-host=METHOD    default authentication method for local TCP/IP connections\n"));
 	printf(_("      --auth-local=METHOD   default authentication method for local-socket connections\n"));
 	printf(_(" [-D, --pgdata=]DATADIR     location for this database cluster\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -H, --highgoDB=DBNAME     set highgo database name\n"));
+	printf(_("  -P, --port=PORT			  set highgo database listening port\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -E, --encoding=ENCODING   set default encoding for new databases\n"));
 	printf(_("  -g, --allow-group-access  allow group read/execute on data directory\n"));
 	printf(_("  -k, --data-checksums      use data page checksums\n"));
@@ -2374,6 +2456,11 @@ usage(const char *progname)
 	printf(_("  -S, --sync-only           only sync data directory\n"));
 	printf(_("\nOther options:\n"));
 	printf(_("  -V, --version             output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -?, --help                show this help, then exit\n"));
 	printf(_("\nIf the data directory is not specified, the environment variable PGDATA\n"
 			 "is used.\n"));
@@ -3029,6 +3116,13 @@ initialize_data_directory(void)
 	setup_schema(cmdfd);
 
 	load_plpgsql(cmdfd);
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#if 0
+#ifdef USE_LICENSE
+	load_hg_misc(cmdfd);
+#endif
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /* BEGIN - SQL PARSER */
   /* load oracle compatible objects and plisql language */
@@ -3056,6 +3150,12 @@ main(int argc, char *argv[])
 {
 	static struct option long_options[] = {
 		{"pgdata", required_argument, NULL, 'D'},
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		{"highgoDB", required_argument, NULL, 'H'},
+		{"port", required_argument, NULL, 'P'},
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 		{"encoding", required_argument, NULL, 'E'},
 		{"locale", required_argument, NULL, 1},
 		{"lc-collate", required_argument, NULL, 2},
@@ -3116,6 +3216,13 @@ main(int argc, char *argv[])
 	progname = get_progname(argv[0]);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("initdb"));
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -3128,14 +3235,31 @@ main(int argc, char *argv[])
 			puts("initdb (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("%s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	/* process command-line options */
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	/* BEGIN - SQL PARSER */
+	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
+	while ((c = getopt_long(argc, argv, "A:c:dD:E:gkL:m:nNsST:U:WX:H:P:", long_options, &option_index)) != -1)
+	/* END - SQL PARSER */
+#else
 	/* BEGIN - SQL PARSER */
 	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
 	while ((c = getopt_long(argc, argv, "A:c:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1)
 	/* END - SQL PARSER */
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	{
 		switch (c)
 		{
@@ -3161,6 +3285,16 @@ main(int argc, char *argv[])
 			case 'D':
 				pg_data = pg_strdup(optarg);
 				break;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+			case 'H':
+				hg_database_name = pg_strdup(optarg);
+				break;
+			case 'P':
+				hg_database_port = pg_strdup(optarg);
+				break;
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 			case 'E':
 				encoding = pg_strdup(optarg);
 				break;
@@ -3372,8 +3506,14 @@ main(int argc, char *argv[])
 
 	effective_user = get_id();
 	if (!username)
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		// get from license
+		username = (char *)hg_get_defaultDBuser();
+#else
 		username = effective_user;
-
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	if (strncmp(username, "pg_", 3) == 0)
 	{
 		pg_log_error("superuser name \"%s\" is disallowed; role names cannot begin with \"pg_\"", username);

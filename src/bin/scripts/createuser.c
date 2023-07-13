@@ -20,7 +20,11 @@
 /* Begin - SQL PARSER */
 #include "oracle_fe_utils/ora_string_utils.h"
 /* END - SQL PARSER */
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 static void help(const char *progname);
 
@@ -374,6 +378,11 @@ help(const char *progname)
 	printf(_("  -s, --superuser           role will be superuser\n"));
 	printf(_("  -S, --no-superuser        role will not be superuser (default)\n"));
 	printf(_("  -V, --version             output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  --interactive             prompt for missing role name and attributes rather\n"
 			 "                            than using defaults\n"));
 	printf(_("  --replication             role can initiate replication\n"));

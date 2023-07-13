@@ -21,8 +21,11 @@
 #endif
 
 #include "common/config_info.h"
-
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 /*
  * get_configdata(const char *my_exec_path, size_t *configdata_len)
  *
@@ -36,9 +39,16 @@ get_configdata(const char *my_exec_path, size_t *configdata_len)
 	char		path[MAXPGPATH];
 	char	   *lastsep;
 	int			i = 0;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	char		highgo_version[MAXPGPATH];
 
 	/* Adjust this to match the number of items filled below */
+	*configdata_len = 24;
+#else
 	*configdata_len = 23;
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	configdata = (ConfigData *) palloc(*configdata_len * sizeof(ConfigData));
 
 	configdata[i].name = pstrdup("BINDIR");
@@ -194,6 +204,15 @@ get_configdata(const char *my_exec_path, size_t *configdata_len)
 	configdata[i].name = pstrdup("VERSION");
 	configdata[i].setting = pstrdup("PostgreSQL " PG_VERSION);
 	i++;
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	memset(highgo_version, 0, sizeof(highgo_version));
+	configdata[i].name = pstrdup("HIGHGO-VERSION");
+	sprintf(highgo_version, "%s", hg_get_highgoVersion());
+	configdata[i].setting = pstrdup(highgo_version);
+	i++;
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	Assert(i == *configdata_len);
 

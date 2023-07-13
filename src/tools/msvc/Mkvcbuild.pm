@@ -190,6 +190,16 @@ sub mkvcbuild
 	$libpgfeutils->AddDefine('FRONTEND');
 	$libpgfeutils->AddIncludeDir('src/interfaces/libpq');
 	$libpgfeutils->AddFiles('src/fe_utils', @pgfeutilsfiles);
+	# Begin - ReqID:SRS-MISC-LICENSE
+	if ($solution->{options}->{license})
+	{
+		$libpgcommon->AddIncludeDir($solution->{options}->{license} . '\include');
+		$libpgcommon->AddLibrary($solution->{options}->{license} . '\share\license.lib');
+		
+		$libpgfeutils->AddIncludeDir($solution->{options}->{license} . '\include');
+		$libpgfeutils->AddLibrary($solution->{options}->{license} . '\share\license.lib');
+	}
+	# End - ReqID:SRS-MISC-LICENSE
 
 	# BEGIN - SQL PARSER
 	$liborafeutils = $solution->AddProject('liborafeutils', 'lib', 'misc');
@@ -369,6 +379,13 @@ sub mkvcbuild
 	$ecpg->AddPrefixInclude('src/interfaces/ecpg/preproc');
 	$ecpg->AddFiles('src/interfaces/ecpg/preproc', 'pgc.l', 'preproc.y');
 	$ecpg->AddReference($libpgcommon, $libpgport);
+	# Begin - ReqID:SRS-MISC-LICENSE
+	if ($solution->{options}->{license})
+	{
+		$ecpg->AddIncludeDir($solution->{options}->{license} . '\include');
+		$ecpg->AddLibrary($solution->{options}->{license} . '\share\license.lib');
+	}
+	# End - ReqID:SRS-MISC-LICENSE
 
 	my $pgregress_ecpg =
 	  $solution->AddProject('pg_regress_ecpg', 'exe', 'misc');
@@ -458,6 +475,7 @@ sub mkvcbuild
 		next if ($d =~ /^\./);
 		next unless (-f "src/bin/$d/Makefile");
 		next if (grep { /^$d$/ } @frontend_excludes);
+		next if (!$solution->{options}->{license} && $d eq 'licchk');
 		AddSimpleFrontend($d);
 	}
 
@@ -580,6 +598,7 @@ sub mkvcbuild
 			next if ($d =~ /^\./);
 			next unless (-f "$subdir/$d/Makefile");
 			next if (grep { /^$d$/ } @contrib_excludes);
+			next if (!$solution->{options}->{license} && $d eq 'hg_misc');
 			AddContrib($subdir, $d);
 		}
 		closedir($D);
@@ -921,6 +940,13 @@ sub mkvcbuild
 		# END - SQL PARSER
 		$proj->AddDirResourceFile('src/bin/scripts');
 		$proj->AddLibrary('ws2_32.lib');
+		# Begin - ReqID:SRS-MISC-LICENSE
+		if ($solution->{options}->{license})
+		{
+			$proj->AddIncludeDir($solution->{options}->{license} . '\include');
+			$proj->AddLibrary($solution->{options}->{license} . '\share\license.lib');			
+		}
+		# End - ReqID:SRS-MISC-LICENSE
 	}
 
 	# Regression DLL and EXE
@@ -969,6 +995,14 @@ sub mkvcbuild
 	$orapgregress->AddDirResourceFile('src/test/regress');
 	$orapgregress->AddReference($libpgcommon, $libpgport);
 	#END - SQL PARSER
+	
+	# Begin - ReqID:SRS-MISC-LICENSE
+	if ($solution->{options}->{license})
+	{
+		$postgres->AddIncludeDir($solution->{options}->{license} . '\include');
+		$postgres->AddLibrary($solution->{options}->{license} . '\lib\license.lib');
+	}
+	# End - ReqID:SRS-MISC-LICENSE
 
 	# fix up pg_waldump once it's been set up
 	# files symlinked on Unix are copied on windows
@@ -993,7 +1027,7 @@ sub AddSimpleFrontend
 {
 	my $n        = shift;
 	my $uselibpq = shift;
-
+	
 	my $p = $solution->AddProject($n, 'exe', 'bin');
 	$p->AddDir('src/bin/' . $n);
 	# BEGIN - SQL PARSER
@@ -1007,7 +1041,22 @@ sub AddSimpleFrontend
 
 	# Adjust module definition using frontend variables
 	AdjustFrontendProj($p);
-
+	
+	# Begin - ReqID:SRS-MISC-LICENSE
+	if ($solution->{options}->{license})
+	{
+		$p->AddIncludeDir($solution->{options}->{license} . '\include');
+		if ($n eq 'initdb' || $n eq 'licchk')
+		{
+			$p->AddLibrary($solution->{options}->{license} . '\lib\license.lib');
+		}
+		else
+		{
+			$p->AddLibrary($solution->{options}->{license} . '\share\license.lib');
+		}
+	}
+	# End - ReqID:SRS-MISC-LICENSE
+	
 	return $p;
 }
 
@@ -1092,6 +1141,12 @@ sub AddContrib
 		my $proj = $solution->AddProject($dn, 'dll', 'contrib', "$subdir/$n");
 		$proj->AddReference($postgres);
 		AdjustContribProj($proj);
+		# Begin - ReqID:SRS-MISC-LICENSE
+		if ($solution->{options}->{license} && $n eq 'hg_misc')
+		{
+			$proj->AddIncludeDir($solution->{options}->{license} . '\include');
+		}
+		# End - ReqID:SRS-MISC-LICENSE
 	}
 	elsif ($mf =~ /^MODULES\s*=\s*(.*)$/mg)
 	{
@@ -1109,6 +1164,13 @@ sub AddContrib
 	{
 		my $proj = $solution->AddProject($1, 'exe', 'contrib', "$subdir/$n");
 		AdjustContribProj($proj);
+		# Begin - ReqID:SRS-MISC-LICENSE
+		if (($n eq 'oid2name' || $n eq 'vacuumlo') && $solution->{options}->{license})
+		{
+			$proj->AddIncludeDir($solution->{options}->{license} . '\include');
+			$proj->AddLibrary($solution->{options}->{license} . '\share\license.lib');
+		}
+		# End - ReqID:SRS-MISC-LICENSE
 	}
 	else
 	{

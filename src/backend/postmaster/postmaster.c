@@ -932,6 +932,13 @@ PostmasterMain(int argc, char *argv[])
 	/* And switch working directory into it */
 	ChangeToDataDir();
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	/* Display license check warning */
+	ShowCheckLicenseWarnings();
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 	/*
 	 * Check for invalid combinations of GUC settings.
 	 */
@@ -1491,6 +1498,13 @@ PostmasterMain(int argc, char *argv[])
 		 * to the log.
 		 */
 	}
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	/* Display license expiration date information */
+	ShowLicenseEffectiveDate();
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 #ifdef HAVE_PTHREAD_IS_THREADED_NP
 

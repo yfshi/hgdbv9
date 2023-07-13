@@ -49,7 +49,11 @@
 #include "ora_psqlscanslash.h" /* ReqID:SRS-PSQL-PARSER */
 #include "settings.h"
 #include "variables.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 /*
  * Editable database object types.
  */
@@ -185,6 +189,12 @@ static char *pset_value_string(const char *param, printQueryOpt *popt);
 #ifdef WIN32
 static void checkWin32Codepage(void);
 #endif
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+static void printHighVersionInfo(void);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 
 
 
@@ -3650,6 +3660,11 @@ connection_warnings(bool in_startup)
 #endif
 		printSSLInfo();
 		printGSSInfo();
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		printHighVersionInfo();
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 }
 
@@ -3695,6 +3710,16 @@ printGSSInfo(void)
 
 	printf(_("GSSAPI-encrypted connection\n"));
 }
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+static void
+printHighVersionInfo(void)
+{
+	printf(_("%s\n"), hg_get_highgoVersion());
+}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 
 /*

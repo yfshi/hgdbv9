@@ -31,6 +31,11 @@ ifneq (,$(with_system_tzdata))
 override CPPFLAGS += '-DSYSTEMTZDIR="$(with_system_tzdata)"'
 endif
 
+# We remove liblicense.so from LIBS, using liblicense.a
+ifeq ($(with_license),yes)
+LIBS := $(subst -llicense, -l:liblicense.a, $(LIBS))
+endif
+
 OBJS = \
 	$(WIN32RES) \
 	findtimezone.o \

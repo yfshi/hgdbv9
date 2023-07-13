@@ -87,6 +87,10 @@ else
 ALWAYS_SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
 endif
 
+ifeq ($(with_license),yes)
+SUBDIRS += hg_misc
+endif
+
 # Missing:
 #		start-scripts	\ (does not have a makefile)
 

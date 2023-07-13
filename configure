@@ -654,6 +654,7 @@ UUID_LIBS
 LDAP_LIBS_BE
 LDAP_LIBS_FE
 with_ssl
+LICENSE_DIR
 PTHREAD_CFLAGS
 PTHREAD_LIBS
 PTHREAD_CC
@@ -713,6 +714,7 @@ with_uuid
 with_readline
 with_systemd
 with_selinux
+with_license
 with_ldap
 with_krb_srvnam
 krb_srvtab
@@ -801,6 +803,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -861,6 +864,7 @@ with_pam
 with_bsd_auth
 with_ldap
 with_bonjour
+with_license
 with_selinux
 with_systemd
 with_readline
@@ -945,6 +949,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1197,6 +1202,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1334,7 +1348,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1487,6 +1501,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1571,6 +1586,7 @@ Optional Packages:
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
   --with-bonjour          build with Bonjour support
+  --with-license          build with License support
   --with-selinux          build with SELinux support
   --with-systemd          build with systemd support
   --without-readline      do not use GNU Readline nor BSD Libedit for editing
@@ -8558,6 +8574,42 @@ fi
 $as_echo "$with_bonjour" >&6; }
 
 
+
+#
+# License
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with License support" >&5
+$as_echo_n "checking whether to build with License support... " >&6; }
+
+
+
+# Check whether --with-license was given.
+if test "${with_license+set}" = set; then :
+  withval=$with_license;
+  case $withval in
+    yes)
+
+$as_echo "#define USE_LICENSE 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --with-license option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  with_license=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_license" >&5
+$as_echo "$with_license" >&6; }
+
+
 #
 # SELinux
 #
@@ -12765,6 +12817,72 @@ fi
 fi
 
 #
+# license
+#
+if test "$with_license" = yes; then
+	if test "$PORTNAME" != "win32"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for hg_get_highgoVersion in -llicense" >&5
+$as_echo_n "checking for hg_get_highgoVersion in -llicense... " >&6; }
+if ${ac_cv_lib_license_hg_get_highgoVersion+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-llicense  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char hg_get_highgoVersion ();
+int
+main ()
+{
+return hg_get_highgoVersion ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_license_hg_get_highgoVersion=yes
+else
+  ac_cv_lib_license_hg_get_highgoVersion=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_license_hg_get_highgoVersion" >&5
+$as_echo "$ac_cv_lib_license_hg_get_highgoVersion" >&6; }
+if test "x$ac_cv_lib_license_hg_get_highgoVersion" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBLICENSE 1
+_ACEOF
+
+  LIBS="-llicense $LIBS"
+
+else
+  as_fn_error $? "library 'license' is required by IvorySQL" "$LINENO" 5
+fi
+
+	fi
+
+	ac_save_IFS=$IFS
+	IFS="${IFS}${PATH_SEPARATOR}"
+	for dir in $LIBRARY_DIRS; do
+		if test -e "$dir/liblicense.a"; then
+			LICENSE_DIR=$dir
+
+			break;
+		fi
+	done
+	IFS=$ac_save_IFS
+fi
+
+#
 # SSL Library
 #
 # There is currently only one supported SSL/TLS library: OpenSSL.
@@ -14048,6 +14166,17 @@ done
 fi
 
 done
+
+fi
+
+if test "$with_license" = yes ; then
+	ac_fn_c_check_header_mongrel "$LINENO" "license.h" "ac_cv_header_license_h" "$ac_includes_default"
+if test "x$ac_cv_header_license_h" = xyes; then :
+
+else
+  as_fn_error $? "header file license.h is required" "$LINENO" 5
+fi
+
 
 fi
 
@@ -15413,7 +15542,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -15459,7 +15588,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -15483,7 +15612,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -15528,7 +15657,7 @@ else
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];
@@ -15552,7 +15681,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     We can't simply define LARGE_OFF_T to be 9223372036854775807,
     since some C++ compilers masquerading as C compilers
     incorrectly reject 9223372036854775807.  */
-#define LARGE_OFF_T (((off_t) 1 << 62) - 1 + ((off_t) 1 << 62))
+#define LARGE_OFF_T ((((off_t) 1 << 31) << 31) - 1 + (((off_t) 1 << 31) << 31))
   int off_t_is_large[(LARGE_OFF_T % 2147483629 == 721
 		       && LARGE_OFF_T % 2147483647 == 1)
 		      ? 1 : -1];

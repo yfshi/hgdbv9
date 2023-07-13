@@ -1,0 +1,462 @@
+/*------------------------------------------------------------------
+ *
+ * File: licchk.c
+ *
+ * Abstract:
+ * 	  licchk tool checks and displays the content of the license.dat file..
+ *
+ * Copyright:
+ * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved.
+ *
+ * Identification:
+ *		src/bin/licchk/licchk.c
+ *
+ * Requirement description:
+ * 		ReqID:SRS-MISC-LICENSE
+ *------------------------------------------------------------------
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <locale.h>
+#include "getopt_long.h"
+
+#include "c.h"
+#include "port.h"
+#include "common/fe_memutils.h"
+
+#include "license.h"
+
+#define true	1
+#define false	0
+
+static char *license_dat = NULL;
+static bool  is_list = false;	/* list enabled features */
+static bool  is_all  = false;	/* all features */
+static bool  is_view = false;	/* view all features */
+static char *hardware_code_file = NULL;
+
+static bool  is_get_name = false;	/* view all features */
+static bool  is_get_port = false;	/* view all features */
+static bool  is_ignore_check_hardware = false;	/* ignore hardware code check */
+
+static void  printLicenseData(void);
+static void  _printFuncList(void);
+static void  gen_hardware_code_file(const char *);
+
+static char *lang = NULL;
+static bool  is_chinese = false;
+
+static void  print_funclist_title_head(bool is_chinese, bool is_view);
+static void  print_funclist_content(bool is_chinese, bool is_list, bool is_all, bool is_view);
+static void  print_funclist_title_tail(bool is_chinese, bool is_view);
+
+static void  usage(const char *progname);
+static void  usageCh(const char *progname);
+
+#ifdef WIN32
+static char *lic_win32_langinfo(const char *ctype);
+#endif
+
+int main(int argc, char **argv)
+{
+	int		c;
+	int		option_index;
+	int		iRet;
+#ifdef WIN32
+	char	*name;
+	char	*sys;
+#endif
+	
+
+	static struct option long_options[] = {
+		{ "list"    , no_argument      , NULL, 'l' },
+		{ "all"     , no_argument      , NULL, 'a' },
+		{ "view"    , no_argument      , NULL, 'v' },
+		{ "filename", required_argument, NULL, 'f' },
+		{ "check"   , required_argument, NULL, 'c' },
+		{ "username", no_argument      , NULL, 'U' },
+		{ "port"    , no_argument      , NULL, 'P' },
+		{ "ignore"  , no_argument      , NULL, 'i' },
+		{ "version" , no_argument      , NULL, 'V' },
+		{ "help"    , no_argument      , NULL, '?' },
+		{  NULL     , 0                , NULL,  0  }
+	};
+
+	/* for multiple languages support(zh_CN only for now) */
+	//set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("licchk"));
+	
+#ifdef WIN32
+	name = setlocale(LC_CTYPE, "");
+	if (!name)
+		return -1;
+		
+	sys = lic_win32_langinfo(name);
+	if (!sys)
+		return -1;
+		
+	if (pg_strncasecmp(sys, "CP936", strlen("CP936")) == 0)
+	{
+		is_chinese = true;
+		hg_set_encoding("GBK");		
+	}
+	else if (pg_strncasecmp(sys, "CP65001", strlen("CP65001")) == 0)
+	{
+		is_chinese = true;
+		// hg_set_encoding("UTF-8");
+	}
+#endif
+	
+	if (getenv("LANG"))
+	{
+		lang = strdup(getenv("LANG"));
+		if (pg_strncasecmp(lang, "zh_CN.GB18030", strlen("zh_CN.GB18030")) == 0)
+		{
+			is_chinese = true;
+			hg_set_encoding("GB18030");
+		}
+		else if (pg_strncasecmp(lang, "zh_CN.GBK", strlen("zh_CN.GBK")) == 0)
+		{
+			is_chinese = true;
+			hg_set_encoding("GBK");
+		}
+		else if (pg_strncasecmp(lang, "zh_CN.GB2312", strlen("zh_CN.GB2312")) == 0)
+		{
+			is_chinese = true;
+			hg_set_encoding("GB2312");
+		}
+		else if (pg_strncasecmp(lang, "zh_CN.UTF-8", strlen("zh_CN.UTF-8")) == 0)
+		{
+			is_chinese = true;
+		}
+		else if (pg_strncasecmp(lang, "en_US.UTF-8", strlen("en_US.UTF-8")) == 0)
+		{
+			is_chinese = false;
+		}
+		free(lang);
+	}
+
+	if (argc > 1)
+	{
+		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
+		{
+			is_chinese ? usageCh(argv[0]) : usage(argv[0]);
+			exit(0);
+		}
+		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
+		{
+			puts("licchk DB V0.1");
+			exit(0);
+		}
+	}
+
+	while ((c = getopt_long(argc, argv, "lavf:c:UPi", long_options, &option_index)) != -1)
+	{
+		switch (c)
+		{
+			case 'f':
+				license_dat = strdup(optarg);
+				break;
+
+			case 'l':
+				is_list = true;
+				break;
+
+			case 'a':
+				is_all = true;
+				break;
+
+			case 'c':
+				hardware_code_file = strdup(optarg);
+				break;
+			
+			case 'U':
+				is_get_name = true;
+				break;
+
+			case 'P':
+				is_get_port = true;
+				break;
+
+			case 'i':
+				is_ignore_check_hardware = true;
+				break;
+
+			case 'v':
+				is_view = true;
+				break;
+
+			default:
+				fprintf(stderr, "Try \"%s --help\" for more information.\n",
+						argv[0]);
+				exit(1);
+		}
+	}
+
+	if (hardware_code_file != NULL)
+	{
+		printf("hardware_code:%s\n", hg_get_calc_hardware_code());
+		gen_hardware_code_file(hardware_code_file);
+		free(hardware_code_file);
+		exit(0);
+	}
+
+	/* load license.dat */
+	if (license_dat == NULL)
+	{
+		hg_set_license_abspath(argv[0]);
+		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
+		hg_load_license(NULL);
+
+		if (is_get_name)
+		{
+			printf("%s\n", hg_get_defaultDBuser());
+		}
+		else if (is_get_port)
+		{
+			printf("%s\n", hg_get_defaultDBport());
+		}
+		else
+		{
+			printLicenseData();
+		}
+		exit(0);
+	}
+	else if (license_dat != NULL && license_dat[0] != 0)
+	{
+		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
+		iRet = hg_load_license(license_dat);
+		if (iRet != 0)
+		{
+			printf(_("license validate fail.\n"));
+			return -1;
+		}
+
+		if (is_get_name)
+		{
+			printf("%s\n", hg_get_defaultDBuser());
+		}
+		else if (is_get_port)
+		{
+			printf("%s\n", hg_get_defaultDBport());
+		}
+		else
+		{
+			printLicenseData();
+		}
+
+		exit(0);
+	}
+
+	return 0;
+}
+
+/* print license.dat contents */
+static void 
+printLicenseData(void)
+{
+	hg_set_is_with_title(true);
+	hg_set_is_chinese_title(is_chinese);
+
+	printf("%s\n", hg_get_licSerial());
+	printf("%s\n", hg_get_license_status());
+	printf("%s\n", hg_get_userInfo());
+	printf("%s\n", hg_get_authType());
+	printf("%s\n", hg_get_usedType());
+	printf("%s\n", hg_get_createTime());
+	printf("%s\n", hg_get_finalTime());
+	printf("%s\n", hg_get_highgoVersion());
+	printf("%s\n", hg_get_projectInfo());
+	printf("%s\n", hg_get_maxConnection());
+	printf("%s\n", hg_get_maxCpuCores());
+	printf("%s\n", hg_get_defaultDBname());
+	printf("%s\n", hg_get_defaultDBuser());
+	printf("%s\n", hg_get_defaultDBport());
+	printf("%s\n", hg_get_hardware_code());
+	
+	if (is_list || is_all || is_view)
+		_printFuncList();
+}
+
+static void 
+_printFuncList(void)
+{
+	print_funclist_title_head(is_chinese, is_view);
+
+	print_funclist_content(is_chinese, is_list, is_all, is_view);
+
+	print_funclist_title_tail(is_chinese, is_view);
+}
+
+static void
+gen_hardware_code_file(const char *filename)
+{
+	FILE *fp;
+
+	fp = fopen(filename, "w");
+	if (fp == NULL)
+	{
+		printf("file %s open error.\n", filename);
+		exit(-1);
+	}
+
+	fprintf(fp, "%s", hg_get_calc_hardware_code());
+
+	fflush(fp);
+	fclose(fp);
+}
+
+static void
+print_funclist_title_head(bool is_chinese, bool is_view)
+{
+	if (is_view)
+	{
+		printf("%s", hg_get_funclist_title_head(is_view, is_chinese ? 64 : 84));
+	}
+	else
+	{
+		printf("%s", hg_get_funclist_title_head(is_view, is_chinese ? 39 : 56));
+	}
+}
+
+static void
+print_funclist_content(bool is_chinese, bool is_list, bool is_all, bool is_view)
+{
+	// The is_chinese parameter will be used for control character output width in the future
+	printf("%s", hg_get_funclist_content(is_list, is_all, is_view, 18));
+}
+
+static void
+print_funclist_title_tail(bool is_chinese, bool is_view)
+{
+	if (is_view)
+	{
+		printf("%s", hg_get_funclist_title_tail(is_chinese ? 64 : 84));
+	}
+	else
+	{
+		printf("%s", hg_get_funclist_title_tail(is_chinese ? 39 : 56));
+	}
+}
+
+static void 
+usage(const char *progname)
+{
+	printf(_("Usage:\n"));
+	printf(_("  %s [OPTION]... [DATADIR]\n"), progname);
+	printf(_("\nOptions:\n"));
+	printf(_("  -l, --list                list enabled function items\n"));
+	printf(_("  -a, --all                 all functional items\n"));
+	printf(_("  -v, --view                show desc information\n"));
+	printf(_("  -f, --filename=xxx.dat    set license filename\n"));
+	printf(_("  -c, --check=xxx.txt       check hardware code, then exit.\n"));
+	printf(_("  -U, --username            obtain the username from the license file.\n"));
+	printf(_("  -P, --port                obtain the port from the license file.\n"));
+	printf(_("  -V, --version             output version information, then exit\n"));
+	printf(_("  -?, --help                show this help, then exit\n"));
+}
+
+static void 
+usageCh(const char *progname)
+{
+	char buffer[1024 * 4] = { 0 };
+	char trans_buffer[1024 * 4] = { 0 };
+
+	strcat(buffer, "使用方法:\n");
+	sprintf(buffer + strlen(buffer), "  %s [选项]... [DATADIR]\n", progname);
+	strcat(buffer, "\n选项:\n");
+	strcat(buffer, "  -l, --list                列出开启功能项\n");
+	strcat(buffer, "  -a, --all                 列出所有功能项\n");
+	strcat(buffer, "  -v, --view                显示描述信息\n");
+	strcat(buffer, "  -f, --filename=xxx.dat    指定license文件\n");
+	strcat(buffer, "  -c, --check=xxx.txt       查看硬件码序\n");
+	strcat(buffer, "  -U, --username            获取license文件中默认用户名\n");
+	strcat(buffer, "  -P, --port                获取license文件中默认端口号\n");
+	strcat(buffer, "  -V, --version             输出版本信息\n");
+	strcat(buffer, "  -?, --help                显示帮助\n");
+
+	hg_get_convert_string(buffer, trans_buffer);
+	printf("%s", trans_buffer);
+}
+
+#ifdef WIN32
+static char *
+lic_win32_langinfo(const char *ctype)
+{
+	char	   *r = NULL;
+
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+	_locale_t	loct = NULL;
+
+	loct = _create_locale(LC_CTYPE, ctype);
+	if (loct != NULL)
+	{
+		r = malloc(16);			/* excess */
+		if (r != NULL)
+			//sprintf(r, "CP%u", loct->locinfo->lc_codepage);
+			sprintf_s(r, 16, "CP%u", loct->locinfo->lc_codepage);
+		_free_locale(loct);
+	}
+#else
+	char	   *codepage;
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1900)
+	uint32		cp;
+	WCHAR		wctype[LOCALE_NAME_MAX_LENGTH];
+
+	memset(wctype, 0, sizeof(wctype));
+	MultiByteToWideChar(CP_ACP, 0, ctype, -1, wctype, LOCALE_NAME_MAX_LENGTH);
+
+	if (GetLocaleInfoEx(wctype,
+		LOCALE_IDEFAULTANSICODEPAGE | LOCALE_RETURN_NUMBER,
+		(LPWSTR)&cp, sizeof(cp) / sizeof(WCHAR)) > 0)
+	{
+		r = malloc(16);			/* excess */
+		if (r != NULL)
+		{
+			/*
+			* If the return value is CP_ACP that means no ANSI code page is
+			* available, so only Unicode can be used for the locale.
+			*/
+			if (cp == CP_ACP)
+				strcpy(r, "utf8");
+			else
+				sprintf(r, "CP%u", cp);
+		}
+	}
+	else
+#endif
+	{
+		/*
+		* Locale format on Win32 is <Language>_<Country>.<CodePage>.  For
+		* example, English_United States.1252.  If we see digits after the
+		* last dot, assume it's a codepage number.  Otherwise, we might be
+		* dealing with a Unix-style locale string; Windows' setlocale() will
+		* take those even though GetLocaleInfoEx() won't, so we end up here.
+		* In that case, just return what's after the last dot and hope we can
+		* find it in our table.
+		*/
+		codepage = strrchr(ctype, '.');
+		if (codepage != NULL)
+		{
+			size_t		ln;
+
+			codepage++;
+			ln = strlen(codepage);
+			r = malloc(ln + 3);
+			if (r != NULL)
+			{
+				if (strspn(codepage, "0123456789") == ln)
+					sprintf(r, "CP%s", codepage);
+				else
+					strcpy(r, codepage);
+			}
+		}
+
+	}
+#endif
+
+	return r;
+}
+#endif

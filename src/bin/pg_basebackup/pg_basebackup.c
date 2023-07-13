@@ -41,7 +41,11 @@
 #include "receivelog.h"
 #include "replication/basebackup.h"
 #include "streamutil.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 #define ERRCODE_DATA_CORRUPTED	"XX001"
 
 typedef struct TablespaceListCell
@@ -405,6 +409,11 @@ usage(void)
 	printf(_("  -S, --slot=SLOTNAME    replication slot to use\n"));
 	printf(_("  -v, --verbose          output verbose messages\n"));
 	printf(_("  -V, --version          output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version   output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("      --manifest-checksums=SHA{224,256,384,512}|CRC32C|NONE\n"
 			 "                         use algorithm for manifest checksums\n"));
 	printf(_("      --manifest-force-encode\n"
@@ -2268,6 +2277,13 @@ main(int argc, char **argv)
 	progname = get_progname(argv[0]);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_basebackup"));
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -2281,6 +2297,16 @@ main(int argc, char **argv)
 			puts("pg_basebackup (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		else if (strcmp(argv[1], "-G") == 0
+				 || strcmp(argv[1], "--highgo-version") == 0)
+		{
+			printf("pg_basebackup %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	atexit(cleanup_directories_atexit);

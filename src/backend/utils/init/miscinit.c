@@ -54,6 +54,10 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+
 
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
 
@@ -1698,3 +1702,21 @@ pg_bindtextdomain(const char *domain)
 	}
 #endif
 }
+
+#ifdef USE_LICENSE
+void
+ShowLicenseEffectiveDate(void)
+{
+	int log_lvl;
+	const char *prompt_format = hg_get_startup_info(&log_lvl);
+
+	//ereport(LOG, errmsg(hg_get_startup_info(&log_lvl)));
+	ereport(log_lvl, 
+			errmsg(prompt_format, 
+				hg_get_authType(), 
+				hg_get_highgoVersion(), 
+				hg_get_finalTime(),
+				hg_get_service_hotline(),
+				hg_get_technical_support_url()));
+}
+#endif

@@ -932,6 +932,9 @@
    (--with-libxslt) */
 #undef USE_LIBXSLT
 
+/* Define to build with LICENSE support. (--with-license) */
+#undef USE_LICENSE
+
 /* Define to 1 to build with LLVM based JIT support. (--with-llvm) */
 #undef USE_LLVM
 

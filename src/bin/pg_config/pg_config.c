@@ -26,7 +26,11 @@
 
 #include "common/config_info.h"
 #include "port.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 static const char *progname;
 
 /*
@@ -64,6 +68,11 @@ static const InfoItem info_items[] = {
 	{"--ldflags_sl", "LDFLAGS_SL"},
 	{"--libs", "LIBS"},
 	{"--version", "VERSION"},
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	{"--highgo-version", "HIGHGO-VERSION"},
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	{NULL, NULL}
 };
 
@@ -100,6 +109,11 @@ help(void)
 	printf(_("  --ldflags_sl          show LDFLAGS_SL value used when PostgreSQL was built\n"));
 	printf(_("  --libs                show LIBS value used when PostgreSQL was built\n"));
 	printf(_("  --version             show the PostgreSQL version\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  --highgo-version      show the HighgoDB versionn"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -?, --help            show this help, then exit\n"));
 	printf(_("\nWith no arguments, all known items are shown.\n\n"));
 	printf(_("Report bugs to <%s>.\n"), PACKAGE_BUGREPORT);

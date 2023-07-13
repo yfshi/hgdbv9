@@ -40,5 +40,9 @@ else
 ALWAYS_SUBDIRS += pgevent
 endif
 
+ifeq ($(with_license), yes)
+SUBDIRS += licchk
+endif
+
 $(recurse)
 $(recurse_always)

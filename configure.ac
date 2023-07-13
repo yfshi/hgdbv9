@@ -973,6 +973,16 @@ PGAC_ARG_BOOL(with, bonjour, no,
 AC_MSG_RESULT([$with_bonjour])
 
 
+
+#
+# License
+#
+AC_MSG_CHECKING([whether to build with License support])
+PGAC_ARG_BOOL(with, license, no, [build with License support],
+              [AC_DEFINE([USE_LICENSE], 1, [Define to build with LICENSE support. (--with-license)])])
+AC_MSG_RESULT([$with_license])
+AC_SUBST(with_license)
+
 #
 # SELinux
 #
@@ -1346,6 +1356,26 @@ if test "$with_gssapi" = yes ; then
 fi
 
 #
+# license
+#
+if test "$with_license" = yes; then
+	if test "$PORTNAME" != "win32"; then
+		AC_CHECK_LIB(license, hg_get_highgoVersion, [], [AC_MSG_ERROR([library 'license' is required by IvorySQL])])
+	fi
+
+	ac_save_IFS=$IFS
+	IFS="${IFS}${PATH_SEPARATOR}"
+	for dir in $LIBRARY_DIRS; do
+		if test -e "$dir/liblicense.a"; then
+			LICENSE_DIR=$dir
+			AC_SUBST(LICENSE_DIR)
+			break;
+		fi
+	done
+	IFS=$ac_save_IFS
+fi
+
+#
 # SSL Library
 #
 # There is currently only one supported SSL/TLS library: OpenSSL.
@@ -1578,6 +1608,10 @@ fi
 if test "$with_gssapi" = yes ; then
   AC_CHECK_HEADERS(gssapi/gssapi.h, [],
 	[AC_CHECK_HEADERS(gssapi.h, [], [AC_MSG_ERROR([gssapi.h header file is required for GSSAPI])])])
+fi
+
+if test "$with_license" = yes ; then
+	AC_CHECK_HEADER(license.h, [], [AC_MSG_ERROR([header file license.h is required])])
 fi
 
 if test "$with_ssl" = openssl ; then

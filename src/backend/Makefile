@@ -50,6 +50,11 @@ LIBS := $(filter-out -lpgport -lpgcommon, $(LIBS)) $(LDAP_LIBS_BE) $(ICU_LIBS)
 # The backend doesn't need everything that's in LIBS, however
 LIBS := $(filter-out -lz -lreadline -ledit -ltermcap -lncurses -lcurses, $(LIBS))
 
+# We remove liblicense.so from LIBS
+ifeq ($(with_license),yes)
+LIBS := $(subst -llicense, -l:liblicense.a, $(LIBS))
+endif
+
 ifeq ($(with_systemd),yes)
 LIBS += -lsystemd
 endif

@@ -521,6 +521,9 @@ sub GenerateFiles
 		ENABLE_CURSOR_UNNAME       => $self->{options}->{cursor_unname} ? 1 : undef,
 		#/* End - ReqID:SRS-SQL-PACKAGE */
 		USE_LDAP                   => $self->{options}->{ldap} ? 1 : undef,
+		# Begin - ReqID:SRS-MISC-LICENSE
+		USE_LICENSE				   => $self->{options}->{license} ? 1 : undef,
+		# End - ReqID:SRS-MISC-LICENSE
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
@@ -1289,6 +1292,9 @@ sub GetFakeConfigure
 	$cfg .= ' --with-tcl'           if ($self->{options}->{tcl});
 	$cfg .= ' --with-perl'          if ($self->{options}->{perl});
 	$cfg .= ' --with-python'        if ($self->{options}->{python});
+	# Begin - ReqID:SRS-MISC-LICENSE
+	$cfg .= ' --with-license'       if ($self->{options}->{license});
+	# End - ReqID:SRS-MISC-LICENSE
 	my $port = $self->{options}->{'--with-pgport'};
 	$cfg .= " --with-pgport=$port" if defined($port);
 

@@ -22,7 +22,11 @@
 #include "fe_utils/simple_list.h"
 #include "getopt_long.h"
 #include "parse_manifest.h"
-
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 /*
  * For efficiency, we'd like our hash table containing information about the
  * manifest to start out with approximately the correct number of entries.
@@ -183,6 +187,12 @@ main(int argc, char **argv)
 	progname = get_progname(argv[0]);
 
 	memset(&context, 0, sizeof(context));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1)
 	{
@@ -196,6 +206,15 @@ main(int argc, char **argv)
 			puts("pg_verifybackup (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
+		{
+			printf("pg_verifybackup %s\n", hg_get_highgoVersion());
+			exit(0);
+		}
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	}
 
 	/*
@@ -918,6 +937,11 @@ usage(void)
 	printf(_("  -s, --skip-checksums        skip checksum verification\n"));
 	printf(_("  -w, --wal-directory=PATH    use specified path for WAL files\n"));
 	printf(_("  -V, --version               output version information, then exit\n"));
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	printf(_("  -G, --highgo-version		output version of highgo information, then exit\n"));
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -?, --help                  show this help, then exit\n"));
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);
 	printf(_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);

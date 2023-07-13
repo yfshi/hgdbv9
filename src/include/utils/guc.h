@@ -418,6 +418,11 @@ extern int	GetConfigOptionFlags(const char *name, bool missing_ok);
 extern void ProcessConfigFile(GucContext context);
 extern void InitializeGUCOptions(void);
 extern bool SelectConfigFiles(const char *userDoption, const char *progname);
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+extern void ShowCheckLicenseWarnings(void);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 extern void ResetAllOptions(void);
 extern void AtStart_GUC(void);
 extern int	NewGUCNestLevel(void);
