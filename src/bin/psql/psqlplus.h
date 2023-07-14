@@ -86,4 +86,5 @@ extern void psqlplus_yyerror(yyscan_t yyscanner, const char *message);
 extern void orapsql_yyerror(yyscan_t yyscanner, const char *message);
 extern yyscan_t psqlplus_scanner_init(PsqlScanState state);
 extern void psqlplus_scanner_finish(yyscan_t yyscanner);
+extern char *psqlplus_downcase_identifier(const char *str, int len); /* BUG#Z351 */
 #endif   /* PSQLPLUS_H */

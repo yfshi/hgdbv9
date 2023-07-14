@@ -63,7 +63,6 @@ const int	NumKeywords = lengthof(psqlplus_keywords);
 
 static const PsqlScanKeyword *PsqlplusKeywordLookup(const char *text);
 static int process_integer_literal(const char *token, YYSTYPE *lval);
-static char *psqlplus_downcase_identifier(const char *str, int len);
 static void startlit(yyscan_t yyscanner);
 static void addlitchar(unsigned char ychar, yyscan_t yyscanner);
 static void addlit(char *ytext, int yleng, yyscan_t yyscanner);
@@ -460,7 +459,7 @@ psqlplus_scanner_finish(yyscan_t yyscanner)
 /*
  * Do downcasing and returns a palloc'd string.
  */
-static char *
+char *
 psqlplus_downcase_identifier(const char *str, int len)
 {
 	char	   *result;
