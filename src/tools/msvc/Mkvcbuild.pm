@@ -89,7 +89,12 @@ my $frontend_extrasource = {
 	# Begin - ReqID:SRS-PSQL-PARSER
 	# BEGIN - SQL PARSER
 	# Begin - ReqID:SRS-CMD-PSQL
-	'psql' => ['src/bin/psql/psqlplusscan.l', 'src/bin/psql/psqlplusparse.y', 'src/bin/psql/psqlscanslash.l', 'src/bin/psql/ora_psqlscanslash.l', 'src/oracle_fe_utils/ora_string_utils.c', 'src/oracle_fe_utils/ora_psqlscan.l', 'src/backend/oracle_parser/ora_keywords.c'],
+	'psql' => ['src/bin/psql/psqlplusscan.l', 'src/bin/psql/psqlplusparse.y',
+			   'src/bin/psql/psqlscanslash.l', 'src/bin/psql/ora_psqlscanslash.l',
+			   'src/oracle_fe_utils/ora_string_utils.c',
+			   'src/oracle_fe_utils/ora_number_utils.c', # ReqID:SRS-SQL-SYSFUNC
+			   'src/oracle_fe_utils/ora_psqlscan.l',
+			   'src/backend/oracle_parser/ora_keywords.c'],
 	# End - ReqID:SRS-CMD-PSQL
 	# END - SQL PARSER
 	# End - ReqID:SRS-PSQL-PARSER

@@ -67,7 +67,8 @@ REGRESS = \
 	datatype_and_func_bugs \
 	ora_sysview \
 	ora_like_operator \
-	ora_xml_functions
+	ora_xml_functions \
+	ora_to_number
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

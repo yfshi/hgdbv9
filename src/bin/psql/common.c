@@ -27,6 +27,7 @@
 #include "fe_utils/mbprint.h"
 #include "fe_utils/string_utils.h"
 #include "mb/pg_wchar.h" /* ReqID:SRS-CMD-PSQL */
+#include "oracle_fe_utils/ora_number_utils.h"	/* ReqID:SRS-SQL-SYSFUNC */
 #include "oracle_fe_utils/ora_string_utils.h" /* ReqID:SRS-CMD-PSQL */
 #include "portability/instr_time.h"
 #include "psqlplus.h"	/* ReqID:SRS-CMD-PSQL */
@@ -1276,6 +1277,14 @@ PrintQueryResults(PGresult *results, bool quiet, bool isoracall /* ReqID:SRS-SQL
 				break;
 			}
 			/* End - ReqID:SRS-CMD-PSQL */
+
+			/* Begin - ReqID:SRS-SQL-SYSFUNC */
+			if (!ora_numwidth_format(pset.db, &results))
+			{
+				success = false;
+				break;
+			}
+			/* End - ReqID:SRS-SQL-SYSFUNC */
 
 			/* store or execute or print the data ... */
 			if (pset.gset_prefix)

@@ -617,6 +617,26 @@ MainLoop(FILE *source)
 							goto non_psqlplus_cmd;
 						}
 						break;
+					/* Begin - ReqID:SRS-SQL-SYSFUNC */
+					case PSQLPLUS_CMD_SET:
+						{
+							psqlplus_cmd_sv *set;
+
+							set = (psqlplus_cmd_sv *) pstate->psqlpluscmd;
+							if (!SetSysVariable(set->sv_list))
+								goto non_psqlplus_cmd;
+						}
+						break;
+					case PSQLPLUS_CMD_SHOW:
+						{
+							psqlplus_cmd_sv *show;
+
+							show = (psqlplus_cmd_sv *) pstate->psqlpluscmd;
+							if (!ShowSysVariable(show->sv_list))
+								goto non_psqlplus_cmd;
+						}
+						break;
+					/* End - ReqID:SRS-SQL-SYSFUNC */
 					default:
 						pg_log_error("Invalid PSQL*PLUS client command.");
 						break;

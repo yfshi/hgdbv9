@@ -27,6 +27,13 @@
 static psqlplus_cmd_var *make_variable_node(void);
 static psqlplus_cmd_print *make_print_node(void);
 static psqlplus_cmd_execute *make_exec_node(void);
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static psqlplus_cmd_sv *make_set_node(void);
+static psqlplus_cmd_sv *make_show_node(void);
+static sys_var *make_system_variable(const char *name);
+static sys_var_list *sv_list_make1(sys_var *sv);
+static sys_var_list *sv_list_append(sys_var_list *list, sys_var *sv);
+/* End - ReqID:SRS-SQL-SYSFUNC */
 static BindVarType *make_bindvartype(int32 oid, int32 typmod, const char *typname);
 static char *get_guc_settings(const char *gucname);
 static print_item *make_print_item(char *name, bool valid);
@@ -51,6 +58,11 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 	psqlplus_cmd		*psqlplus_cmd;
 	BindVarType			*bindvartype;
 	print_list			*print_item_list;
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	bool				boolean;
+	sys_var				*system_variable;
+	sys_var_list		*system_variable_list;
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 }
 
 %type <psqlplus_cmd> variable_stmt variable_spec print_stmt exec_stmt
@@ -68,6 +80,14 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 %token <str>	SINGLE_QUOTE_NO_END DOUBLE_QUOTE_NO_END
 %token			TYPECAST
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+%type <boolean>					system_variable_on_off
+%type <psqlplus_cmd>			system_variable_stmt
+%type <system_variable>			set_system_variable
+%type <system_variable_list>	set_system_variable_list show_system_variable_list
+%token <keyword>				K_OFF K_ON K_SET K_SHOW
+/* End - ReqID:SRS-SQL-SYSFUNC */
+
 %%
 
 psqlplus_toplevel_stmt:
@@ -83,6 +103,12 @@ psqlplus_toplevel_stmt:
 			{
 				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
 			}
+		/* Begin - ReqID:SRS-SQL-SYSFUNC */
+		| system_variable_stmt opt_semi
+			{
+				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
+			}
+		/* End - ReqID:SRS-SQL-SYSFUNC */
 	;
 
 /*
@@ -429,6 +455,92 @@ exec_keyword:
 		| K_EXEC
 	;
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+system_variable_stmt:
+		K_SHOW show_system_variable_list
+			{
+				PsqlScanState state = psql_yyget_extra(yyscanner);
+				psqlplus_cmd_sv *show = make_show_node();
+				show->sv_list = $2;
+				state->psqlpluscmd = (psqlplus_cmd *) show;
+				return 0;
+			}
+		| K_SET set_system_variable_list
+			{
+				PsqlScanState state = psql_yyget_extra(yyscanner);
+				psqlplus_cmd_sv *set = make_set_node();
+				set->sv_list = $2;
+				state->psqlpluscmd = (psqlplus_cmd *) set;
+				return 0;
+			}
+	;
+
+show_system_variable_list:
+		IDENT
+			{
+				$$ = sv_list_make1(make_system_variable($1));
+			}
+		| show_system_variable_list IDENT
+			{
+				$$ = sv_list_append($1, make_system_variable($2));
+			}
+	;
+
+set_system_variable_list:
+		set_system_variable
+			{
+				$$ = sv_list_make1($1);
+			}
+		| set_system_variable_list set_system_variable
+			{
+				$$ = sv_list_append($1, $2);
+			}
+	;
+
+set_system_variable:
+		IDENT system_variable_on_off
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_BOOL;
+				sv->sv_value.on = $2;
+				$$ = sv;
+			}
+		| IDENT Sconst
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_STRING;
+				sv->sv_value.string = pg_strdup($2);
+				$$ = sv;
+			}
+		| IDENT ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = $2;
+				$$ = sv;
+			}
+		| IDENT '+' ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = $3;
+				$$ = sv;
+			}
+		| IDENT '-' ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = -$3;
+				$$ = sv;
+			}
+	;
+
+system_variable_on_off:
+		K_ON				{ $$ = true; }
+		| K_OFF				{ $$ = false; }
+	;
+/* End - ReqID:SRS-SQL-SYSFUNC */
+
 
 /*
  * Single quotes and double quotes have different semantics 
@@ -495,6 +607,58 @@ make_exec_node(void)
 	exec->plisqlstmts = NULL;
 	return exec;
 }
+
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static psqlplus_cmd_sv *
+make_set_node(void)
+{
+	psqlplus_cmd_sv	*set = pg_malloc0(sizeof(psqlplus_cmd_sv));
+	set->cmd_type = PSQLPLUS_CMD_SET;
+	set->sv_list = NULL;
+	return set;
+}
+
+static psqlplus_cmd_sv *
+make_show_node(void)
+{
+	psqlplus_cmd_sv	*show = pg_malloc0(sizeof(psqlplus_cmd_sv));
+	show->cmd_type = PSQLPLUS_CMD_SHOW;
+	show->sv_list = NULL;
+	return show;
+}
+
+static sys_var *
+make_system_variable(const char *name)
+{
+	sys_var	*sv = (sys_var *) pg_malloc0(sizeof(sys_var));
+	sv->sv_name = pg_strdup(name);
+	sv->sv_type = SVT_NONE;
+	sv->sv_value.string = NULL;
+	return sv;
+}
+
+static sys_var_list *
+sv_list_make1(sys_var *sv)
+{
+	sys_var_list	*list = pg_malloc0(sizeof(sys_var_list));
+	list->sysvars = (sys_var **) pg_malloc0(sizeof(sys_var *));
+	list->sysvars[0] = sv;
+	list->length = 1;
+	return list;
+}
+
+static sys_var_list *
+sv_list_append(sys_var_list *list, sys_var *sv)
+{
+	if (list == NULL)
+		return sv_list_make1(sv);
+
+	list->sysvars = (sys_var **) pg_realloc(list->sysvars,
+											sizeof(sys_var *) * (list->length+1));
+	list->sysvars[list->length++] = sv;
+	return list;
+}
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 static BindVarType *
 make_bindvartype(int32 oid, int32 typmod, const char *typname)
