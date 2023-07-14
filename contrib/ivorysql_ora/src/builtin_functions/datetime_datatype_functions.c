@@ -27,6 +27,7 @@
 #include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/numeric.h"
+#include "access/xact.h"
 
 #include "../include/common_datatypes.h"
 
@@ -245,7 +246,7 @@ Datum
 ora_current_timestamp(PG_FUNCTION_ARGS)
 {
 	/* Begin - bug0000415 */
-	TimestampTz timestamp = GetCurrentTimestamp();
+	TimestampTz timestamp = GetCurrentTransactionStartTimestamp();
 	int argsnum = PG_NARGS();
 	if (argsnum == 1)
 	{
@@ -273,7 +274,7 @@ Datum
 ora_local_timestamp(PG_FUNCTION_ARGS)
 {
 	/* Begin - BUG:0000843 */
-	Timestamp timestamp = GetCurrentTimestamp();
+	Timestamp timestamp = GetCurrentTransactionStartTimestamp();
 	int argsnum = PG_NARGS();
 	struct pg_tm tt,
 			   *tm = &tt;

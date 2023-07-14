@@ -23,6 +23,11 @@ SELECT current_timestamp = NOW();
 SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
 -- localtimestamp
 SELECT now()::timestamp::text = localtimestamp::text;
+-- precision overflow
+SELECT current_time = current_time(7);
+SELECT current_timestamp = current_timestamp(7);
+SELECT localtime = localtime(7);
+SELECT localtimestamp = localtimestamp(7);
 
 -- current_role/user/user is tested in rolnames.sql
 
