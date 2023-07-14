@@ -148,7 +148,10 @@ sub Install
 		#END - SQL PARSER
 		CopySetOfFiles(
 			'SQL files',
-			[ glob("src\\backend\\catalog\\*.sql") ],
+			[
+				glob("contrib\\ivorysql_ora\\preload_ora_misc.sql"),
+				glob("src\\backend\\catalog\\*.sql")
+			],
 			$target . '/share/');
 		CopyFiles(
 			'Information schema data', $target . '/share/',
