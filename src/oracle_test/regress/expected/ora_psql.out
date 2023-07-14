@@ -1404,3 +1404,333 @@ print x
 -- host variable not exist
 exec :nohostvar := '123'
 Bind variable "nohostvar" not declared.
+-- Begin - BUG#Z351
+var bug351 number = 1990;
+print bug351
+ BUG351 
+--------
+ 1990
+
+print BUG351
+ BUG351 
+--------
+ 1990
+
+print Bug351
+ BUG351 
+--------
+ 1990
+
+print bUG351
+ BUG351 
+--------
+ 1990
+
+print "Bug351"
+ BUG351 
+--------
+ 1990
+
+print "bUG351"
+ BUG351 
+--------
+ 1990
+
+exec :bug351 := 111;
+print bug351
+ BUG351 
+--------
+ 111
+
+exec :BUG351 := 222;
+print bug351
+ BUG351 
+--------
+ 222
+
+exec :Bug351 := 333;
+print bug351
+ BUG351 
+--------
+ 333
+
+exec :bUG351 := 444;
+print bug351
+ BUG351 
+--------
+ 444
+
+begin
+:bug351 := 555;
+end;
+/
+print bug351
+ BUG351 
+--------
+ 555
+
+begin
+:BUG351 := 666;
+end;
+/
+print bug351
+ BUG351 
+--------
+ 666
+
+begin
+:Bug351 := 777;
+end;
+/
+print bug351
+ BUG351 
+--------
+ 777
+
+begin
+:bUG351 := 888;
+end;
+/
+print bug351
+ BUG351 
+--------
+ 888
+
+VAR Test number;
+exec :Test :=1;
+exec :TEST :=2;
+exec :test :=3;
+print Test;
+ TEST 
+------
+ 3
+
+print TEST;
+ TEST 
+------
+ 3
+
+print test;
+ TEST 
+------
+ 3
+
+VAR Vv number=1;
+print vv;
+ VV 
+----
+ 1
+
+-- End - BUG#Z351
+-- Begin - BUG#Z352
+-- error: "1+1" is not a valid NUMBER.
+var v1 number = 1+1
+"1+1" is not a valid NUMBER.
+var v1 number = 1+1;
+"1+1" is not a valid NUMBER.
+var v1 number = 1+1 ;
+"1+1" is not a valid NUMBER.
+-- ok
+var v1 number = 1 + 1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = 1 + 1 ;
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1"+1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1" + 1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1" + 1;
+print v1
+ V1 
+----
+ 1
+
+-- "1;1;" is not a valid NUMBER.
+var v1 number = 1;1;;
+"1;1;" is not a valid NUMBER.
+-- "1;1" is not a valid NUMBER.
+var v1 number = 1;1;
+"1;1" is not a valid NUMBER.
+-- ok, value is 1;1
+var v1 varchar2(11) = 1;1;
+print v1
+ V1  
+-----
+ 1;1
+
+var v1 varchar2(11) = 1;1
+print v1
+ V1  
+-----
+ 1;1
+
+-- ok, values is 1;1;
+var v1 varchar2(11) = 1;1;;
+print v1
+  V1  
+------
+ 1;1;
+
+-- ok, values is 1;1;
+var v1 varchar2(11) = 1;1;   abc;
+print v1
+  V1  
+------
+ 1;1;
+
+-- ok, value is 1;1;   abc
+var v1 varchar2(11) = "1;1;   abc"   ;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+var v1 varchar2(11) = "1;1;   abc"  mid  ;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+var v1 varchar2(11) = "1;1;   abc"mid;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+-- Only test assignment statements for bind variables using var/variable command.
+var v1 number = 123;
+print v1
+ V1  
+-----
+ 123
+
+var v2 varchar2(11) = 123;
+print v2
+ V2  
+-----
+ 123
+
+-- error: "1+1" is not a valid NUMBER.
+var v1 = 1+1
+"1+1" is not a valid NUMBER.
+var v1 = 1+1;
+"1+1" is not a valid NUMBER.
+var v1 = 1+1 ;
+"1+1" is not a valid NUMBER.
+-- ok
+var v1 number = 1 + 1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = 1 + 1 ;
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1"+1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1" + 1
+print v1
+ V1 
+----
+ 1
+
+var v1 number = "1" + 1;
+print v1
+ V1 
+----
+ 1
+
+-- "1;1;" is not a valid NUMBER.
+var v1 = 1;1;;
+"1;1;" is not a valid NUMBER.
+-- "1;1" is not a valid NUMBER.
+var v1 = 1;1;
+"1;1" is not a valid NUMBER.
+var v1 varchar2(11) = "test";
+print v1
+  V1  
+------
+ test
+
+var v1 = 1;1;
+print v1
+ V1  
+-----
+ 1;1
+
+var v1 = 1;1
+print v1
+ V1  
+-----
+ 1;1
+
+-- ok, values is 1;1;
+var v1 = 1;1;;
+print v1
+  V1  
+------
+ 1;1;
+
+-- ok, values is 1;1;
+var v1 = 1;1;   abc;
+print v1
+  V1  
+------
+ 1;1;
+
+-- ok, value is 1;1;   abc
+var v1 = "1;1;   abc"   ;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+var v1 = "1;1;   abc"  mid  ;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+var v1 = "1;1;   abc"mid;
+print v1
+     V1     
+------------
+ 1;1;   abc
+
+var v1 = ab;b;b;;;;;
+print v1
+     V1     
+------------
+ ab;b;b;;;;
+
+var v1 = ab;b;b ;;;;;
+print v1
+   V1   
+--------
+ ab;b;b
+
+-- End - BUG#Z352
