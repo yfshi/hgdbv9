@@ -3494,9 +3494,9 @@ insert into convslot_test_parent (id, val) values (1, 2);
 begin;
 savepoint svp;
 update convslot_test_parent set val = 3;  -- error expected
-ERROR:  BOOM!
-CONTEXT:  PL/pgSQL function convslot_trig4() line 1 at RAISE
 rollback to savepoint svp;
 rollback;
 drop table convslot_test_parent;
 drop function convslot_trig4();
+ERROR:  BOOM!
+CONTEXT:  PL/pgSQL function convslot_trig4() line 1 at RAISE
