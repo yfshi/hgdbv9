@@ -365,13 +365,9 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		if (function_from == FUNC_FROM_PACKAGE)
 		{
-			FuncExpr *funcexpr;
-			PLiSQL_function *pfunc;
-
-			funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
-			pfunc = (PLiSQL_function *) funcexpr->parent_func;
-
-			pfunc->use_count--;
+			/* Begin - BUG#M000088 */
+			release_package_func_usecount(fcinfo);
+			/* End - BUG#M000088 */
 			PopOverrideSearchPath();
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */

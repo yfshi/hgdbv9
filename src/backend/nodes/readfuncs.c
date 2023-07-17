@@ -794,6 +794,9 @@ _readFuncExpr(void)
 	READ_STRING_FIELD(function_name);
 	READ_BOOL_FIELD(ref_pkgtype);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	READ_OID_FIELD(pkgoid);
+	/* End - BUG#M000088 */
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();

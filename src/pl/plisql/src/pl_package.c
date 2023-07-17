@@ -1339,6 +1339,9 @@ plisql_package_compile(Oid pkgoid,
 	PackageCacheKey pkey;
 	bool	package_valid = false;
 	PLiSQL_package_status oldstatus = PLISQL_PACKAGE_NO_STATUS;
+	/* Begin - BUG#M000088 */
+	bool		free_old_pkg = false;
+	/* End - BUG#M000088 */
 
 	/*
 	 * Lookup the pg_package tuple by Oid
@@ -1367,6 +1370,9 @@ plisql_package_compile(Oid pkgoid,
 
 				oldstatus = oldpsource->status;
 				plisql_free_package_function(olditem);
+				/* Begin - BUG#M000088 */
+				free_old_pkg = true;
+				/* End - BUG#M000088 */
 			}
 		}
 	}
@@ -1383,7 +1389,7 @@ plisql_package_compile(Oid pkgoid,
 		 * new status has status and old has status
 		 * we should set package has rebuild
 		 */
-		if (execcheck)
+		if (execcheck || free_old_pkg) /* BUG#M000088 */
 			newpsource->status = PLISQL_PACKAGE_REBUILD;
 		else if (!forValidator &&
 			newpsource->status == PLISQL_PACKAGE_NO_INIT &&
@@ -1415,6 +1421,9 @@ plisql_package_body_compile(Oid bodyoid,
 	bool	package_valid = true;
 	bool	package_body_valid = true;
 	PLiSQL_package *newpsource;
+	/* Begin - BUG#M000088 */
+	bool		free_old_pkg = false;
+	/* End - BUG#M000088 */
 
 	/*
 	 * Lookup the pg_package_body tuple by Oid
@@ -1465,6 +1474,9 @@ plisql_package_body_compile(Oid bodyoid,
 			hasbody = (bool) PACKAGE_HAS_BODY(olditem->cachestatus);
 			oldstatus = oldpsource->status;
 			plisql_free_package_function(olditem);
+			/* Begin - BUG#M000088 */
+			free_old_pkg = true;
+			/* End - BUG#M000088 */
 		}
 
 		item = package_doCompile(pkgTup, forValidator);
@@ -1479,7 +1491,7 @@ plisql_package_body_compile(Oid bodyoid,
 		 * 3) previous has been init
 		 * 4) doesn't create a package body
 		 */
-		if (execheck)
+		if (execheck || free_old_pkg) /* BUG#M000088 */
 			newpsource->status = PLISQL_PACKAGE_REBUILD;
 		else if (!forValidator &&
 			newpsource->status == PLISQL_PACKAGE_NO_INIT &&
@@ -2284,13 +2296,32 @@ plisql_get_package_func(FunctionCallInfo fcinfo, bool forValidator)
 	int	fno;
 	PLiSQL_function *func;
 	PLiSQL_package *psource;
+	/* Begin - BUG#M000088 */
+	PackageCacheItem *item = NULL;
+	/* End - BUG#M000088 */
 
 	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 
 	Assert(funcexpr->function_from == FUNC_FROM_PACKAGE);
 
+	/* Begin - BUG#M000088 */
+	if (!OidIsValid(funcexpr->pkgoid))
+		elog(ERROR, "funcexpr include invalid pkgoid");
+	item = PackageCacheLookup(&(funcexpr->pkgoid));
+	if (item == NULL)
+		elog(ERROR, "package %u cache is not found", funcexpr->pkgoid);
+	psource = (PLiSQL_package *) item->source;
+	/*
+	 * maybe others already rebuild
+	 */
+	if (psource->status == PLISQL_PACKAGE_REBUILD)
+	{
+		psource->status = PLISQL_PACKAGE_NO_INIT;
+		elog(ERROR, "existing state of packages has been discarded");
+	}
+	pfunc = &psource->source;
+	/* End - BUG#M000088 */
 
-	pfunc = (PLiSQL_function *) funcexpr->parent_func;
 	fno = (int) funcexpr->funcid;
 
 	if (pfunc == NULL)
@@ -2718,12 +2749,14 @@ plisql_addfunction_references(PLiSQL_function *func, PackageCacheItem *item)
  * get package or subproc function its top oid
  */
 Oid
-plisql_top_functin_oid(void *func, bool *is_package)
+plisql_top_functin_oid(FuncExpr *expr, bool *is_package)
 {
 	PLiSQL_function *pfunc;
 	Oid func_id;
 
-	pfunc = (PLiSQL_function *) func;
+	/* Begin - BUG#M000088 */
+	pfunc = get_parent_func(expr);
+	/* End - BUG#M000088 */
 	*is_package = false;
 
 	if (pfunc == NULL)
@@ -3450,10 +3483,11 @@ plisql_get_subproc_arg_info (FuncExpr *fexpr,
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -3508,10 +3542,11 @@ plisql_get_subproc_prokind (FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -3539,10 +3574,11 @@ plisql_subproc_should_change_return_type(FuncExpr *fexpr,
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -3612,5 +3648,34 @@ is_row_record_datum(PLiSQL_datum * datum)
 	else
 		return false;
 }
+
+
+/* Begin - BUG#M000088 */
+/*
+ * release package function use_count
+ */
+void
+release_package_func_usecount(FunctionCallInfo fcinfo)
+{
+	PackageCacheItem *item;
+	PLiSQL_package *psource;
+	FuncExpr *funcexpr;
+
+	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+
+	Assert(funcexpr->function_from == FUNC_FROM_PACKAGE);
+
+	if (!OidIsValid(funcexpr->pkgoid))
+		elog(ERROR, "invalid pkgoid");
+	item = PackageCacheLookup(&(funcexpr->pkgoid));
+	if (item == NULL)
+		elog(ERROR, "package %u cache is not found", funcexpr->pkgoid);
+	psource = (PLiSQL_package *) item->source;
+
+	psource->source.use_count--;
+
+	return;
+}
+/* End - BUG#M000088 */
 
 

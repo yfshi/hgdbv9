@@ -1262,6 +1262,9 @@ _outFuncExpr(StringInfo str, const FuncExpr *node)
 	WRITE_STRING_FIELD(function_name);
 	WRITE_BOOL_FIELD(ref_pkgtype);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	WRITE_OID_FIELD(pkgoid);
+	/* End - BUG#M000088 */
 	WRITE_LOCATION_FIELD(location);
 }
 

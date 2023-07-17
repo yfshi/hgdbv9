@@ -2460,6 +2460,9 @@ eval_const_expressions_mutator(Node *node,
 				else
 					newexpr->function_name = NULL;
 				/* End - ReqID:SRS-SQL-PACKAGE */
+				/* Begin - BUG#M000088 */
+				newexpr->pkgoid = expr->pkgoid;
+				/* End - BUG#M000088 */
 				newexpr->location = expr->location;
 				return (Node *) newexpr;
 			}
@@ -4105,6 +4108,9 @@ simplify_function(Oid funcid, Oid result_type, int32 result_typmod,
 		fexpr.function_name = NULL;
 		fexpr.ref_pkgtype = false;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - BUG#M000088 */
+		fexpr.pkgoid = InvalidOid;
+		/* End - BUG#M000088 */
 		fexpr.location = -1;
 
 		req.type = T_SupportRequestSimplify;
@@ -4540,6 +4546,9 @@ evaluate_function(Oid funcid, Oid result_type, int32 result_typmod,
 	newexpr->function_name = NULL;
 	newexpr->ref_pkgtype = false;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	newexpr->pkgoid = InvalidOid;
+	/* End - BUG#M000088 */
 	newexpr->location = -1;
 
 	return evaluate_expr((Expr *) newexpr, result_type, result_typmod,
@@ -4660,6 +4669,9 @@ inline_function(Oid funcid, Oid result_type, Oid result_collid,
 	fexpr->function_name = NULL;
 	fexpr->ref_pkgtype = false;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	fexpr->pkgoid = InvalidOid;
+	/* End - BUG#M000088 */
 	fexpr->location = -1;
 
 	/* Fetch the function body */

@@ -897,6 +897,9 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		funcexpr->function_from = function_from;
 		/* End - SRS-PLSQL-SUBPROC */
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - BUG#M000088 */
+		funcexpr->pkgoid = pkgoid;
+		/* End - BUG#M000088 */
 		if (function_from == FUNC_FROM_PACKAGE)
 		{
 			if (list_length(funcname) == 2)

@@ -204,7 +204,7 @@ typedef struct
 							bool missing_ok);
 	void (*package_free) (PackageCacheItem *item);
 	void (*package_free_list) (List *pkglist);
-	Oid (*get_top_function_id) (void *function, bool *is_package);
+	Oid (*get_top_function_id) (FuncExpr *expr, bool *is_package);
 	void (*get_subprocs_from_package) (Oid pkgoid, TupleDesc tupdesc,
 									Tuplestorestate *tupstore);
 	int (*get_subproc_arg_info) (FuncExpr *fexpr,

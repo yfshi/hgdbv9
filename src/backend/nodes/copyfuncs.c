@@ -1626,6 +1626,9 @@ _copyFuncExpr(const FuncExpr *from)
 	COPY_STRING_FIELD(function_name);
 	COPY_SCALAR_FIELD(ref_pkgtype);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	COPY_SCALAR_FIELD(pkgoid);
+	/* End - BUG#M000088 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
