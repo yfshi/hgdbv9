@@ -1283,6 +1283,9 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 	int			i;
 	FuncExpr	*funcexpr;
 	int start_level = -1;
+	/* Begin - BUG#M0000139 */
+	PLiSQL_package *psource = NULL;
+	/* End - BUG#M0000139 */
 
 	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 	Assert(funcexpr->function_from == FUNC_FROM_SUBPROCFUNC);
@@ -1294,6 +1297,11 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 	Assert(parestate != NULL);
 	Assert(fno >= 0 && fno < pfunc->nsubprocfuncs);
 
+	/* Begin - BUG#M0000139 */
+	if (pfunc->item != NULL)
+		psource = (PLiSQL_package *) pfunc->item->source;
+	/* End - BUG#M0000139 */
+
 	subprocfunc = pfunc->subprocfuncs[fno];
 
 	for (i = 0; i < subprocfunc->lastassignvardno; i++)
@@ -1303,6 +1311,14 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
 			OidIsValid(estate->datums[i]->pkgoid))
 			continue;
+
+		/* Begin - BUG#M0000139 */
+		/*
+		 * package no need init
+		 */
+		if (psource != NULL && i <= psource->last_globaldno)
+			continue;
+		/* End - BUG#M0000139 */
 
 		if (is_const_datum(estate, estate->datums[i]))
 			continue;
@@ -1347,6 +1363,9 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 	int			i;
 	FuncExpr	*funcexpr;
 	int start_level = -1;
+	/* Begin - BUG#M0000139 */
+	PLiSQL_package *psource = NULL;
+	/* End - BUG#M0000139 */
 
 	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 	Assert(funcexpr->function_from == FUNC_FROM_SUBPROCFUNC);
@@ -1358,6 +1377,11 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 	Assert(parestate != NULL);
 	Assert(fno >= 0 && fno < pfunc->nsubprocfuncs);
 
+	/* Begin - BUG#M0000139 */
+	if (pfunc->item != NULL)
+		psource = (PLiSQL_package *) pfunc->item->source;
+	/* End - BUG#M0000139 */
+
 	subprocfunc = pfunc->subprocfuncs[fno];
 
 	for (i = 0; i < subprocfunc->lastassignvardno; i++)
@@ -1367,6 +1391,14 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
 			OidIsValid(estate->datums[i]->pkgoid))
 			continue;
+
+		/* Begin - BUG#M0000139 */
+		/*
+		 * package no need init
+		 */
+		if (psource != NULL && i <= psource->last_globaldno)
+			continue;
+		/* End - BUG#M0000139 */
 
 		if (is_const_datum(estate, estate->datums[i]))
 			continue;

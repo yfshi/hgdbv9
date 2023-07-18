@@ -7270,3 +7270,142 @@ ERROR:  "var1" doesn't exist in package "test_pkg1"
 CONTEXT:  compilation of PL/iSQL function "inline_code_block" near line 2
 --clean data
 DROP package test_pkg1;
+--bug#M0000139
+create table test_id(id integer,name varchar2(256));
+INSERT INTO test_id VALUES(1,'ok');
+INSERT INTO test_id VALUES(2,'welcome');
+create or replace package test_cursor_pkg is
+  function test_f(id integer) return integer;
+  function test_f1(id integer) return integer;
+  function test_main(id integer) return integer;
+end;
+/
+create or replace package body test_cursor_pkg is
+  function test_f(id integer) return integer is
+    c1 CURSOR is select * from test_id ORDER BY id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_cursor_pkg.test_f(23);
+       ret := test_cursor_pkg.test_f1(23);
+    return 2;
+  end;
+end;
+/
+declare
+  ret integer;
+begin
+  ret := test_cursor_pkg.test_main(23);
+end;
+/
+INFO:  (1,ok)
+INFO:  (2,welcome)
+declare
+  ret integer;
+  function test_f(id integer) return integer is
+    c1 cursor is select * from test_id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_cursor_pkg.test_f(23);
+       ret := test_cursor_pkg.test_f1(23);
+    return 2;
+  end;
+begin
+  for id in 1 .. 2 LOOP
+    ret := test_main(23);
+  end loop;
+end;
+/
+INFO:  (1,ok)
+INFO:  (2,welcome)
+INFO:  (1,ok)
+INFO:  (2,welcome)
+declare
+  ret integer;
+  function test_f(id integer) return integer is
+    c1 cursor is select * from test_id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_f(23);
+       ret := test_f1(23);
+    return 2;
+  end;
+begin
+  for id in 1 .. 2 LOOP
+    ret := test_main(23);
+  end loop;
+end;
+/
+INFO:  (1,ok)
+INFO:  (2,welcome)
+INFO:  (1,ok)
+INFO:  (2,welcome)
+--clean data
+DROP package test_cursor_pkg;
+DROP TABLE test_id;
