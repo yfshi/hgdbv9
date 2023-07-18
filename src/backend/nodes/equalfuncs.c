@@ -306,6 +306,9 @@ _equalFuncExpr(const FuncExpr *a, const FuncExpr *b)
 	COMPARE_STRING_FIELD(function_name);
 	COMPARE_SCALAR_FIELD(ref_pkgtype);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	COMPARE_SCALAR_FIELD(pkgoid);
+	/* End - BUG#M000088 */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;

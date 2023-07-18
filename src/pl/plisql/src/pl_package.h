@@ -184,7 +184,7 @@ extern int plisql_get_package_last_globaldno(int sqlstate_dno, int sqlerrm_dno);
 extern PLiSQL_package_status plisql_set_package_compile_status(void);
 extern void plisql_close_package_cursorvar(PLiSQL_var *var);
 extern PackageCacheItem *get_current_compile_package(PackageCacheKey key);
-extern Oid plisql_top_functin_oid(void *func, bool *is_package);
+extern Oid plisql_top_functin_oid(FuncExpr *funcexpr, bool *is_package); /* BUG#M000088 */
 extern void plisql_package_validator(Oid objectid, bool is_body);
 extern PackageCacheItem *plisql_package_handle(Oid objectid, bool is_body);
 extern bool plisql_cursor_is_open(PLiSQL_var *var);
@@ -213,5 +213,8 @@ extern bool plisql_subproc_should_change_return_type(FuncExpr *fexpr,
 								int32 *typmod,
 								Oid *collationoid);
 extern bool is_row_record_datum(PLiSQL_datum *datum);
+/* Begin - BUG#M000088 */
+extern void release_package_func_usecount(FunctionCallInfo fcinfo);
+/* End - BUG#M000088 */
 #endif
 

@@ -431,6 +431,9 @@ set_pkginfo_from_funcexpr(FuncExpr *expr)
 		expr->funcid = funcexpr->funcid;
 		expr->funcresulttype = funcexpr->funcresulttype;
 		expr->funcvariadic = funcexpr->funcvariadic;
+		/* Begin - BUG#M000088 */
+		expr->pkgoid = funcexpr->pkgoid;
+		/* End - BUG#M000088 */
 		list_free(fn->funcname);
 		pfree(fn);
 		pfree(pstate);
@@ -509,10 +512,7 @@ get_top_function_info(FuncExpr *fexpr, bool *is_package)
 	if (FUNC_EXPR_FROM_PACKAGE(fexpr->function_from))
 		set_pkginfo_from_funcexpr(fexpr);
 
-	if (fexpr->parent_func == NULL)
-		return InvalidOid;
-
-	return plisql_internal_funcs.get_top_function_id(fexpr->parent_func,
+	return plisql_internal_funcs.get_top_function_id(fexpr,
 									is_package);
 }
 
