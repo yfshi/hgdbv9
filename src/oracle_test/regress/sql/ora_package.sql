@@ -864,7 +864,7 @@ begin
   raise info '%',r.name;
   call pkg.test_close();
   --raise syntax error
-  fetchs pkg.c2 INTO r;
+  fetchs pkg.c1 INTO r;
 end;
 /
 
@@ -6412,3 +6412,55 @@ ALTER package pkg1_tipa001133141 noneditionable;
 SELECT editable FROM pg_package WHERE pkgname='pkg1_tipa001133141';
 
 DROP package pkg1_tipa001133141;
+
+
+--test bug#M0000113
+create or replace package test_pkg1 is
+ var0 integer;
+ function test_f(id integer) return integer;
+end;
+/
+
+--create package body
+create or replace package body test_pkg1 is
+  var1 integer;
+  var2 integer;
+  function test_f2(id integer) return integer;
+  function test_f(id integer) return integer is
+  begin
+    return 2;
+  end;
+  function test_f2(id integer) return integer is
+  begin
+    return 23;
+  end;
+end;
+/
+
+--test ok
+select test_pkg1.test_f(23) from dual;
+
+--report error
+select test_pkg1.test_f2(23) from dual;
+
+
+--ok
+declare
+ var1 integer;
+begin
+ test_pkg1.var0 := 23;
+ var1 := test_pkg1.var0;
+end;
+/
+
+--report error
+declare
+ var1 integer;
+begin
+ test_pkg1.var1 := 23;
+ var1 := test_pkg1.var1;
+end;
+/
+
+--clean data
+DROP package test_pkg1;
