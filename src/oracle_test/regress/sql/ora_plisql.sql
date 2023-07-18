@@ -1670,3 +1670,224 @@ print x y z r
 drop package call_pkg;
 
 /* End - ReqID:SRS-SQL-CALL */
+
+--bug#M0000136
+create table test_insert(id integer,name varchar2(256));
+
+--test if stmt
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 2;
+  var1.name := 'ok';
+  if var1.id = 2 then
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  end if;
+end;
+/
+
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 3;
+  var1.name := 'ok';
+  if var1.id = 2 then
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  elsif var1.id = 3 THEN
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  end if;
+end;
+/
+
+
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 4;
+  var1.name := 'ok';
+  if var1.id = 2 then
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  elsif var1.id = 3 THEN
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  ELSE
+     begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+  end if;
+end;
+/
+
+
+--test case stmt
+DECLARE
+  var1 test_insert%rowtype;
+BEGIN
+  var1.id := 5;
+  var1.name := 'ok1';
+  CASE var1.id
+    WHEN 5 THEN
+       begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	WHEN 6 THEN
+	  begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+    else
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	END case;
+end;
+/
+
+DECLARE
+  var1 test_insert%rowtype;
+BEGIN
+  var1.id := 6;
+  var1.name := 'ok1';
+  CASE var1.id
+    WHEN 5 THEN
+       begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	WHEN 6 THEN
+	  begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+    else
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	END case;
+end;
+/
+
+DECLARE
+  var1 test_insert%rowtype;
+BEGIN
+  var1.id := 7;
+  var1.name := 'ok1';
+  CASE var1.id
+    WHEN 5 THEN
+       begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	WHEN 6 THEN
+	  begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+    else
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+	END case;
+end;
+/
+
+--test while
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 8;
+  var1.name := 'name';
+  while true loop
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+      exit;
+  end loop;
+end;
+/
+
+--test loop
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 9;
+  var1.name := 'name';
+  loop
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+      exit;
+  end loop;
+end;
+/
+
+--test fori
+declare
+  var1 test_insert%rowtype;
+begin
+  var1.id := 10;
+  var1.name := 'name';
+  FOR i IN 1.. 2 loop
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+      exit;
+  end loop;
+end;
+/
+
+
+--test forc
+declare
+  var1 test_insert%rowtype;
+  c CURSOR IS SELECT * FROM test_insert ORDER BY id;
+begin
+  var1.id := 11;
+  var1.name := 'name';
+  FOR i IN c LOOP
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+      exit;
+  end loop;
+end;
+/
+
+--test fors
+declare
+  var1 test_insert%rowtype;
+  var3 test_insert%rowtype;
+begin
+  var1.id := 12;
+  var1.name := 'name';
+  FOR var3 IN EXECUTE 'SELECT * FROM test_insert order by id' LOOP
+      begin
+       execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+      end;
+      exit;
+  end loop;
+end;
+/
+
+SELECT * FROM test_insert ORDER BY id;
+
+declare
+  var1 test_insert%rowtype;
+  var2 integer;
+begin
+  var1.id := 2;
+  var2 := 10 / 0;
+exception
+  when others then
+    begin
+      execute 'insert into test_insert values(:1,:2)' using var1.id,var1.name;
+    end;
+end;
+/
+
+--clean data
+DROP TABLE test_insert;
