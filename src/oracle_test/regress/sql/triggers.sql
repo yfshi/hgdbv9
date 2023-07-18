@@ -2644,6 +2644,7 @@ alter table convslot_test_parent
 
 create function convslot_trig4() returns trigger as
 $$begin raise exception 'BOOM!'; end$$ language plpgsql;
+/
 
 create trigger convslot_test_parent_update
     after update on convslot_test_parent

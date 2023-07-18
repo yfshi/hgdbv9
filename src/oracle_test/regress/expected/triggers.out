@@ -3486,6 +3486,7 @@ alter table convslot_test_parent
   attach partition convslot_test_part for values from (1) to (1000);
 create function convslot_trig4() returns trigger as
 $$begin raise exception 'BOOM!'; end$$ language plpgsql;
+/
 create trigger convslot_test_parent_update
     after update on convslot_test_parent
     referencing old table as old_rows new table as new_rows
@@ -3494,9 +3495,9 @@ insert into convslot_test_parent (id, val) values (1, 2);
 begin;
 savepoint svp;
 update convslot_test_parent set val = 3;  -- error expected
+ERROR:  BOOM!
+CONTEXT:  PL/pgSQL function convslot_trig4() line 1 at RAISE
 rollback to savepoint svp;
 rollback;
 drop table convslot_test_parent;
 drop function convslot_trig4();
-ERROR:  BOOM!
-CONTEXT:  PL/pgSQL function convslot_trig4() line 1 at RAISE
