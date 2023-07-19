@@ -213,8 +213,13 @@ extern bool plisql_subproc_should_change_return_type(FuncExpr *fexpr,
 								int32 *typmod,
 								Oid *collationoid);
 extern bool is_row_record_datum(PLiSQL_datum *datum);
+
 /* Begin - BUG#M000088 */
 extern void release_package_func_usecount(FunctionCallInfo fcinfo);
 /* End - BUG#M000088 */
+
+/* Begin - BUG#M0000141 */
+extern char plisql_get_subproc_parallel_enable(FuncExpr *fexpr);
+/* End - BUG#M0000141 */
 #endif
 

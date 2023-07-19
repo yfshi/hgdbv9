@@ -3650,6 +3650,7 @@ is_row_record_datum(PLiSQL_datum * datum)
 }
 
 
+
 /* Begin - BUG#M000088 */
 /*
  * release package function use_count
@@ -3677,5 +3678,41 @@ release_package_func_usecount(FunctionCallInfo fcinfo)
 	return;
 }
 /* End - BUG#M000088 */
+
+
+/* Begin - BUG#M0000141 */
+/*
+ * like func_parallel, we get subproc func_parallel
+ */
+char
+plisql_get_subproc_parallel_enable(FuncExpr *fexpr)
+{
+	PLiSQL_function *function;
+	PLiSQL_subproc_function *subprocfunc;
+	ListCell *lc;
+
+	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+		elog(ERROR, "FuncExpr is not a internal function");
+
+	function = get_parent_func(fexpr);
+	if (function == NULL)
+		elog(ERROR, "parent_func has not set");
+
+	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
+		elog(ERROR, "invalid fno %d", fexpr->funcid);
+
+	subprocfunc = function->subprocfuncs[fexpr->funcid];
+
+	foreach (lc, subprocfunc->properties)
+	{
+		PLiSQL_subprocfunc_proper *proper = (PLiSQL_subprocfunc_proper *) lfirst(lc);
+
+		if (proper->proper_type == FUNC_PROPER_PARALLEL_ENABLE)
+			return PROPARALLEL_SAFE;
+	}
+
+	return PROPARALLEL_UNSAFE;
+}
+/* End - BUG#M0000141 */
 
 

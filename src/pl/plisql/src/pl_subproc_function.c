@@ -741,6 +741,10 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 	ListCell *lc;
 	bool	has_result_cache = false;
 	bool	has_deterministic = false;
+	/* Begin - BUG#M0000141 */
+	bool	has_parallel_enable = false;
+	bool	has_pipelined = false;
+	/* End - BUG#M0000141 */
 
 	/* check result_cache match */
 	foreach (lc, subprocfunc->properties)
@@ -791,10 +795,25 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 				has_deterministic = true;
 				break;
 			case FUNC_PROPER_PARALLEL_ENABLE:
-				elog(ERROR, "illegal option for subprogram \"%s\"", subprocfunc->func_name);
+				/* Begin - BUG#M0000141 */
+				/* only allow package'funct */
+				if (has_parallel_enable)
+					elog(ERROR, "at most one declaration for 'PARALLEL_ENABLE' is permitted");
+				has_parallel_enable = true;
+				if (cur_compile_func_level != 0 ||
+					plisql_compile_packageitem == NULL)
+					elog(ERROR, "illegal option for subprogram \"%s\"", subprocfunc->func_name);
+				/* End - BUG#M0000141 */
 				break;
 			case FUNC_PROPER_PIPELINED:
-				elog(ERROR, "aggregate/table functions are not allowed in PLi/SQL scope");
+				/* Begin - BUG#M0000141 */
+				if (has_pipelined)
+					elog(ERROR, "at most one declaration for 'PIPELINED' is permitted");
+				has_pipelined = true;
+				if (cur_compile_func_level != 0 ||
+					plisql_compile_packageitem == NULL)
+					elog(ERROR, "aggregate/table functions are not allowed in PLi/SQL scope");
+				/* End - BUG#M0000141 */
 				break;
 			case PROC_PROPER_ACCESSIBLE_BY:
 				elog(ERROR, "Only schema-level programs allow ACCESSIBLE BY");
@@ -823,11 +842,20 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 
 		if (append)
 		{
-			if (proper->proper_type == FUNC_PROPER_RESULT_CACHE &&
-				(!isdeclare) && subprocfunc->has_declare) /* BUG#Z084 089 */
-				elog(ERROR, "RESULT_CACHE must be specified on \"%s\" declaration and definition",
-							subprocfunc->func_name);
-
+			/* Begin - BUG#M0000141 */
+			if ((!isdeclare) && subprocfunc->has_declare)
+			{
+				if (proper->proper_type == FUNC_PROPER_RESULT_CACHE)
+					elog(ERROR, "RESULT_CACHE must be specified on \"%s\" declaration and definition",
+								subprocfunc->func_name);
+				else if (proper->proper_type == FUNC_PROPER_PIPELINED)
+					elog(ERROR, "pipelined must be specified on \"%s\" declaration",
+								subprocfunc->func_name);
+				else if (proper->proper_type == FUNC_PROPER_PARALLEL_ENABLE)
+					elog(ERROR, "parallel_enable must be specified on \"%s\" declaration",
+								subprocfunc->func_name);
+			}
+			/* End - BUG#M0000141 */
 			subprocfunc->properties = lappend(subprocfunc->properties, proper);
 		}
 		else if (proper->value != NULL && dproper->value == NULL)
@@ -943,6 +971,9 @@ plisql_register_internal_func(void)
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	plisql_internal_funcs.function_free = plisql_free_function;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - BUG#M0000141 */
+	plisql_internal_funcs.get_subproc_parallel_enable = plisql_get_subproc_parallel_enable;
+	/* End - BUG#M0000141 */
 
 	plisql_internal_funcs.isload = true;
 }
