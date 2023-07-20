@@ -27,7 +27,7 @@ QUERY PLAN
 Sort                       
   Sort Key: id             
   ->  Seq Scan on test_dc  
-        Filter: (data = 34) 
+        Filter: (data = 34)
 (4 rows)
 
 step select2: SELECT * FROM test_dc WHERE data = 34 ORDER BY id,data;
