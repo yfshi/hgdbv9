@@ -190,10 +190,11 @@ extern PackageCacheItem *plisql_package_handle(Oid objectid, bool is_body);
 extern bool plisql_cursor_is_open(PLiSQL_var *var);
 extern char *plisql_get_portal_from_var(PLiSQL_var *var);
 extern PLiSQL_datum *plisql_get_datum(PLiSQL_execstate *estste, PLiSQL_datum *pkgdatum);
-extern MemoryContext plisql_get_relevantContext(Oid pkgoid, MemoryContext orig);
+extern MemoryContext plisql_get_relevantContext(PLiSQL_variable *var, /* BUG#M0000167 */
+								MemoryContext orig);
 extern PLiSQL_datum *get_package_datum_bydno(PLiSQL_execstate *estate,
 									Oid pkgoid, int dno);
-extern bool is_package_global_var(PLiSQL_var *var);
+extern bool is_package_global_var(PLiSQL_variable *var); /* BUG#M0000167 */
 extern bool is_const_datum(PLiSQL_execstate *estate, PLiSQL_datum *datum);
 extern void plisql_expand_rec_field(PLiSQL_rec *rec);
 extern void plisql_check_subproc_define(PLiSQL_function *function);
