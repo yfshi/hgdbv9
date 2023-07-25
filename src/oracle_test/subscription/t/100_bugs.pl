@@ -317,6 +317,7 @@ $node_publisher_d_cols->safe_psql(
 	ALTER TABLE generated_cols REPLICA IDENTITY FULL;
 	CREATE PUBLICATION pub_dropped_cols FOR TABLE dropped_cols, generated_cols;
 	-- some initial data
+	INSERT INTO dropped_cols VALUES (1, 1, 1);
 	INSERT INTO generated_cols (a, c) VALUES (1, 1);
 ));
 

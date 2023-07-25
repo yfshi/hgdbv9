@@ -375,7 +375,7 @@ UPDATE brintest_multi SET int8col = int8col * int4col;
 ERROR:  relation "brintest_multi" does not exist
 LINE 1: UPDATE brintest_multi SET int8col = int8col * int4col;
                ^
-			   +-- Test handling of inet netmasks with inet_minmax_multi_ops
+-- Test handling of inet netmasks with inet_minmax_multi_ops
 CREATE TABLE brin_test_inet (a inet);
 CREATE INDEX ON brin_test_inet USING brin (a inet_minmax_multi_ops);
 INSERT INTO brin_test_inet VALUES ('127.0.0.1/0');
