@@ -2718,12 +2718,11 @@ alter table parent disable trigger user;
 select tgrelid::regclass, tgname, tgenabled from pg_trigger
   where tgrelid in ('parent'::regclass, 'child1'::regclass)
   order by tgrelid::regclass::text, tgname;
- tgrelid | tgname  | tgenabled 
----------+---------+-----------
- child1  | tg      | D
- parent  | tg      | D
- parent  | tg_stmt | D
-(3 rows)
+ tgrelid | tgname | tgenabled 
+---------+--------+-----------
+ child1  | tg     | D
+ parent  | tg     | D
+(2 rows)
 
 drop table parent, child1;
 -- Check processing of foreign key triggers
