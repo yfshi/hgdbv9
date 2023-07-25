@@ -732,6 +732,21 @@ max_parallel_hazard_test(char proparallel, max_parallel_hazard_context *context)
 	return false;
 }
 
+/* Begin - BUG#M0000141 */
+/*
+ * check max_parallel_hazard_for_subproc
+ */
+static bool
+max_parallel_hazard_test_for_subproc(FuncExpr *funcexpr,
+			max_parallel_hazard_context *context)
+{
+	char proparallel = get_subproc_parallel_enable(funcexpr);
+
+	return max_parallel_hazard_test(proparallel, context);
+}
+/* End - BUG#M0000141 */
+
+
 /* check_functions_in_node callback */
 static bool
 max_parallel_hazard_checker(Oid func_id, void *context)
@@ -745,6 +760,18 @@ max_parallel_hazard_walker(Node *node, max_parallel_hazard_context *context)
 {
 	if (node == NULL)
 		return false;
+
+	/* Begin - BUG#M0000141 */
+	/* check package'func and subproc func */
+	if (nodeTag(node) == T_FuncExpr &&
+		ORA_PARSER == compatible_db)
+	{
+		FuncExpr *funcexpr = (FuncExpr *) node;
+
+		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			return max_parallel_hazard_test_for_subproc(funcexpr, context);
+	}
+	/* End - BUG#M0000141 */
 
 	/* Check for hazardous functions in node itself */
 	if (check_functions_in_node(node, max_parallel_hazard_checker,

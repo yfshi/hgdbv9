@@ -2533,6 +2533,27 @@ plisql_get_package_last_globaldno(int sqlstate_dno, int sqlerrm_dno)
 				elog(ERROR, "package global var define after function define");
 		}
 	}
+	/* Begin - BUG#M0000167 */
+	/*
+	 * PLiSQL_rec variable, we should include its
+	 * rec_filed dno
+	 */
+	if (plisql_Datums[lastdno]->dtype == PLISQL_DTYPE_REC)
+	{
+		int i;
+		PLiSQL_rec *rec = (PLiSQL_rec *) plisql_Datums[lastdno];
+
+		i = rec->firstfield;
+		while (i >= 0)
+		{
+			PLiSQL_recfield *fld = (PLiSQL_recfield *) plisql_Datums[i];
+
+			if (i > lastdno)
+				lastdno = i;
+			i = fld->nextfield;
+		}
+	}
+	/* End - BUG#M0000167 */
 	return lastdno;
 }
 
@@ -2923,7 +2944,10 @@ get_package_datum_bydno(PLiSQL_execstate *estate,
 		PackageCacheItem *item = NULL;
 
 		item = PackageCacheLookup(&pkgoid);
-		Assert(item != NULL);
+		/* Begin - BUG#M0000167 */
+		if (item == NULL)
+			elog(ERROR, "package %u cache is not found", pkgoid);
+		/* End - BUG#M0000167 */
 		psource = (PLiSQL_package *) item->source;
 		Assert(dno < psource->source.ndatums);
 
@@ -2937,10 +2961,18 @@ get_package_datum_bydno(PLiSQL_execstate *estate,
  * get given package's context
  */
 MemoryContext
-plisql_get_relevantContext(Oid pkgoid, MemoryContext orig)
+plisql_get_relevantContext(PLiSQL_variable *var, MemoryContext orig)
 {
 	PackageCacheItem *item = NULL;
+	/* Begin - BUG#M0000167 */
+	Oid pkgoid;
 
+	/* not package'global var */
+	if (!is_package_global_var(var))
+		return orig;
+
+	pkgoid = var->pkgoid;
+	/* End - BUG#M0000167 */
 	if (OidIsValid(pkgoid))
 		item = PackageCacheLookup(&pkgoid);
 
@@ -2955,7 +2987,7 @@ plisql_get_relevantContext(Oid pkgoid, MemoryContext orig)
  * it is a global var in package
  */
 bool
-is_package_global_var(PLiSQL_var *var)
+is_package_global_var(PLiSQL_variable *var)
 {
 	PackageCacheItem *item;
 	PLiSQL_package *psource;
@@ -2965,6 +2997,10 @@ is_package_global_var(PLiSQL_var *var)
 		return false;
 
 	item = PackageCacheLookup(&var->pkgoid);
+	/* Begin - BUG#M0000167 */
+	if (item == NULL)
+		elog(ERROR, "package %u cache is not found", var->pkgoid);
+	/* End - BUG#M0000167 */
 	psource = (PLiSQL_package *) item->source;
 
 	switch (var->dtype)
@@ -3022,7 +3058,7 @@ is_const_datum(PLiSQL_execstate *estate, PLiSQL_datum *datum)
 				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
 				PLiSQL_rec *rec;
 
-				if (OidIsValid(recfield->pkgoid))
+				if (is_package_global_var((PLiSQL_variable *)recfield)) /* BUG#M0000167 */
 					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
 												recfield->pkgoid,
 												recfield->recparentno);
@@ -3650,6 +3686,7 @@ is_row_record_datum(PLiSQL_datum * datum)
 }
 
 
+
 /* Begin - BUG#M000088 */
 /*
  * release package function use_count
@@ -3677,5 +3714,41 @@ release_package_func_usecount(FunctionCallInfo fcinfo)
 	return;
 }
 /* End - BUG#M000088 */
+
+
+/* Begin - BUG#M0000141 */
+/*
+ * like func_parallel, we get subproc func_parallel
+ */
+char
+plisql_get_subproc_parallel_enable(FuncExpr *fexpr)
+{
+	PLiSQL_function *function;
+	PLiSQL_subproc_function *subprocfunc;
+	ListCell *lc;
+
+	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+		elog(ERROR, "FuncExpr is not a internal function");
+
+	function = get_parent_func(fexpr);
+	if (function == NULL)
+		elog(ERROR, "parent_func has not set");
+
+	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
+		elog(ERROR, "invalid fno %d", fexpr->funcid);
+
+	subprocfunc = function->subprocfuncs[fexpr->funcid];
+
+	foreach (lc, subprocfunc->properties)
+	{
+		PLiSQL_subprocfunc_proper *proper = (PLiSQL_subprocfunc_proper *) lfirst(lc);
+
+		if (proper->proper_type == FUNC_PROPER_PARALLEL_ENABLE)
+			return PROPARALLEL_SAFE;
+	}
+
+	return PROPARALLEL_UNSAFE;
+}
+/* End - BUG#M0000141 */
 
 

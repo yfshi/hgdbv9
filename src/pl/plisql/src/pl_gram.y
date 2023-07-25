@@ -541,7 +541,8 @@ ora_outermost_pl_block: ora_decl_sect K_BEGIN proc_sect exception_sect K_END opt
 
 						/* we only consider package body level */
 						if (plisql_compile_packageitem != NULL &&
-							cur_compile_func_level == 0)
+							cur_compile_func_level == 0 &&
+							plisql_saved_compile[cur_compile_func_level] == (&plisql_compile_packageitem->source)) /* BUG#M0000167 */
 						{
 							plisql_check_package_refcursor_var(-1);
 							plisql_compile_packageitem->last_globaldno =
@@ -595,7 +596,13 @@ ora_pl_package: ora_decl_sect K_END opt_label
 				new->n_initvars = $1.n_initvars;
 				new->initvarnos = $1.initvarnos;
 
-				plisql_compile_packageitem->special_cur = plisql_ns_top();
+				/* Begin - BUG#M0000113 */
+				/*
+				 * compile package body doesn't set special_cur
+				 */
+				if (!plisql_compile_packageitem->finish_compile_special)
+					plisql_compile_packageitem->special_cur = plisql_ns_top();
+				/* End - BUG#M0000113 */
 				plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
 				/* Remember variables declared in decl_stmts */
 				check_labels($1.label, $3, @3);
