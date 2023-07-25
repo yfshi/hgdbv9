@@ -344,15 +344,6 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 		"Target-Session-Attrs", "", 15, /* sizeof("prefer-standby") = 15 */
 	offsetof(struct pg_conn, target_session_attrs)},
 
-	/* BEGIN - Oracle compatible mode ENV VARIABLE */
-	{"ivoryhost", "IYHOST", NULL, NULL,
-		"IvorySQL-Database-Host", "", 40,
-	offsetof(struct pg_conn, iyhost)},
-
-	{"ivoryport", "IYPORT", DEF_ORAPORT_STR, NULL,
-		"IvorySQL-Database-Port", "", 6,
-	offsetof(struct pg_conn, iyport)},
-	/* END - Oracle compatible mode ENV VARIABLE */
 
 	/* Terminating entry --- MUST BE LAST */
 	{NULL, NULL, NULL, NULL,

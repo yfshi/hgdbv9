@@ -761,3 +761,12 @@ SELECT unistr('wrong: \U0000db99\U00000061');
 SELECT unistr('wrong: \U002FFFFF');
 SELECT unistr('wrong: \xyz');
 reset ivorysql.enable_emptystring_to_null;
+
+
+
+-- BEGIN - BUG#M0000170
+--
+-- test regexp_instr
+--
+SELECT regexp_instr('abcabcabc', 'a.c', 1, 4);
+-- END - BUG#M0000170
