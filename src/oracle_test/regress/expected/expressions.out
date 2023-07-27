@@ -82,7 +82,7 @@ WARNING:  TIMESTAMP(7) effective number of fractional seconds is 6,the part of e
  t
 (1 row)
 
--- current_role/user/user is tested in rolnames.sql
+-- current_role/user/user is tested in rolenames.sql
 -- current database / catalog
 SELECT current_catalog = current_database();
  ?column? 
