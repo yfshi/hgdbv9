@@ -84,7 +84,11 @@ typedef enum psqlplus_cmd_type
 {
 	PSQLPLUS_CMD_VARIABLE,
 	PSQLPLUS_CMD_EXECUTE,
-	PSQLPLUS_CMD_PRINT
+	PSQLPLUS_CMD_PRINT,
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	PSQLPLUS_CMD_SET,
+	PSQLPLUS_CMD_SHOW
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 } psqlplus_cmd_type;
 
 typedef struct BindVarType
@@ -165,6 +169,58 @@ typedef struct psqlplus_cmd_execute
 	char				*plisqlstmts;	/* plisql statements text */
 } psqlplus_cmd_execute;
 /* End - ReqID:SRS-CMD-PSQL */
+
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+/*
+ * SET/SHOW system variable
+ */
+typedef enum sys_var_type
+{
+	SVT_NONE = 0,
+	SVT_BOOL,
+	SVT_INTEGER,
+	SVT_STRING
+} sys_var_type;
+
+typedef union sys_var_value
+{
+	int64	ival;
+	char   *string;
+	bool	on;
+} sys_var_value;
+
+typedef struct system_variable_data
+{
+	char		   *name;
+	sys_var_type	type;
+	sys_var_value	value;
+	int				min_name_len;	/* minimum matching length,
+									   e.g. 3 for NUM[WIDTH] */
+	void		   *extra;			/* extra information,
+									   e.g. range array of datatype integer */
+} system_variable_data;
+
+typedef system_variable_data *system_variable;
+
+typedef struct sys_var
+{
+	char		   *sv_name;
+	sys_var_type	sv_type;
+	sys_var_value	sv_value;
+} sys_var;
+
+typedef struct sys_var_list
+{
+	sys_var   **sysvars;
+	int			length;
+} sys_var_list;
+
+typedef struct psqlplus_cmd_sv
+{
+	psqlplus_cmd_type	cmd_type;
+	sys_var_list	   *sv_list;
+} psqlplus_cmd_sv;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 /*
  * All working state of the lexer must be stored in PsqlScanStateData
@@ -308,5 +364,10 @@ extern void ora_psqlscan_escape_variable(PsqlScanState state, const char *txt, i
 extern void ora_psqlscan_test_variable(PsqlScanState state, const char *txt, int len);
 /* End - ReqID:SRS-PSQL-PARSER */
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+extern system_variable GetSysVariable(const char *name);
+extern bool ShowSysVariable(sys_var_list *list);
+extern bool SetSysVariable(sys_var_list *list);
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 #endif							/* PSQLSCAN_INT_H */

@@ -44,7 +44,8 @@ OBJS = \
 	startup.o \
 	stringutils.o \
 	tab-complete.o \
-	variables.o
+	variables.o \
+	system_variables.o
 # ReqID:SRS-PSQL-PARSER
 # ReqID:SRS-SQL-ESCAPECHAR
 

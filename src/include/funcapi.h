@@ -204,7 +204,7 @@ typedef struct
 							bool missing_ok);
 	void (*package_free) (PackageCacheItem *item);
 	void (*package_free_list) (List *pkglist);
-	Oid (*get_top_function_id) (void *function, bool *is_package);
+	Oid (*get_top_function_id) (FuncExpr *expr, bool *is_package);
 	void (*get_subprocs_from_package) (Oid pkgoid, TupleDesc tupdesc,
 									Tuplestorestate *tupstore);
 	int (*get_subproc_arg_info) (FuncExpr *fexpr,
@@ -220,6 +220,9 @@ typedef struct
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	void (*function_free) (Oid funcOid);
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - BUG#M0000141 */
+	char (*get_subproc_parallel_enable) (FuncExpr *expr);
+	/* End - BUG#M0000141 */
 	bool isload;
 } PLiSQL_funcs_call;
 
@@ -314,6 +317,12 @@ extern bool subproc_should_change_return_type(FuncExpr *fexpr,
 extern char get_func_prostatus(HeapTuple procTup);
 extern void change_func_prostatus(Oid funcOid, char prostatus);
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+
+/* Begin - BUG#M0000141 */
+extern char get_subproc_parallel_enable(FuncExpr *funcexpr);
+/* End - BUG#M0000141 */
+
 
 
 /*----------

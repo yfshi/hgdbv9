@@ -741,6 +741,10 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 	ListCell *lc;
 	bool	has_result_cache = false;
 	bool	has_deterministic = false;
+	/* Begin - BUG#M0000141 */
+	bool	has_parallel_enable = false;
+	bool	has_pipelined = false;
+	/* End - BUG#M0000141 */
 
 	/* check result_cache match */
 	foreach (lc, subprocfunc->properties)
@@ -791,10 +795,25 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 				has_deterministic = true;
 				break;
 			case FUNC_PROPER_PARALLEL_ENABLE:
-				elog(ERROR, "illegal option for subprogram \"%s\"", subprocfunc->func_name);
+				/* Begin - BUG#M0000141 */
+				/* only allow package'funct */
+				if (has_parallel_enable)
+					elog(ERROR, "at most one declaration for 'PARALLEL_ENABLE' is permitted");
+				has_parallel_enable = true;
+				if (cur_compile_func_level != 0 ||
+					plisql_compile_packageitem == NULL)
+					elog(ERROR, "illegal option for subprogram \"%s\"", subprocfunc->func_name);
+				/* End - BUG#M0000141 */
 				break;
 			case FUNC_PROPER_PIPELINED:
-				elog(ERROR, "aggregate/table functions are not allowed in PLi/SQL scope");
+				/* Begin - BUG#M0000141 */
+				if (has_pipelined)
+					elog(ERROR, "at most one declaration for 'PIPELINED' is permitted");
+				has_pipelined = true;
+				if (cur_compile_func_level != 0 ||
+					plisql_compile_packageitem == NULL)
+					elog(ERROR, "aggregate/table functions are not allowed in PLi/SQL scope");
+				/* End - BUG#M0000141 */
 				break;
 			case PROC_PROPER_ACCESSIBLE_BY:
 				elog(ERROR, "Only schema-level programs allow ACCESSIBLE BY");
@@ -823,11 +842,20 @@ plisql_check_subprocfunc_properties(PLiSQL_subproc_function *subprocfunc,
 
 		if (append)
 		{
-			if (proper->proper_type == FUNC_PROPER_RESULT_CACHE &&
-				(!isdeclare) && subprocfunc->has_declare) /* BUG#Z084 089 */
-				elog(ERROR, "RESULT_CACHE must be specified on \"%s\" declaration and definition",
-							subprocfunc->func_name);
-
+			/* Begin - BUG#M0000141 */
+			if ((!isdeclare) && subprocfunc->has_declare)
+			{
+				if (proper->proper_type == FUNC_PROPER_RESULT_CACHE)
+					elog(ERROR, "RESULT_CACHE must be specified on \"%s\" declaration and definition",
+								subprocfunc->func_name);
+				else if (proper->proper_type == FUNC_PROPER_PIPELINED)
+					elog(ERROR, "pipelined must be specified on \"%s\" declaration",
+								subprocfunc->func_name);
+				else if (proper->proper_type == FUNC_PROPER_PARALLEL_ENABLE)
+					elog(ERROR, "parallel_enable must be specified on \"%s\" declaration",
+								subprocfunc->func_name);
+			}
+			/* End - BUG#M0000141 */
 			subprocfunc->properties = lappend(subprocfunc->properties, proper);
 		}
 		else if (proper->value != NULL && dproper->value == NULL)
@@ -943,6 +971,9 @@ plisql_register_internal_func(void)
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	plisql_internal_funcs.function_free = plisql_free_function;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - BUG#M0000141 */
+	plisql_internal_funcs.get_subproc_parallel_enable = plisql_get_subproc_parallel_enable;
+	/* End - BUG#M0000141 */
 
 	plisql_internal_funcs.isload = true;
 }
@@ -970,10 +1001,11 @@ plisql_get_func_result_tupdesc(FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -1024,10 +1056,11 @@ plisql_get_func_name(FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
-		return NULL;
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
+		elog(ERROR, "parent_func has not set");
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -1054,10 +1087,11 @@ plisql_get_subprocfunc_result_type(FuncExpr *fexpr,
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -1088,10 +1122,11 @@ plisql_get_subprocfunc_outargs(FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -1127,10 +1162,11 @@ plisql_get_subprocfunc_result_name(FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 		elog(ERROR, "FuncExpr is not a internal function");
 
-	if (fexpr->parent_func == NULL)
+	/* Begin - BUG#M000088 */
+	function = get_parent_func(fexpr);
+	if (function == NULL)
 		elog(ERROR, "parent_func has not set");
-
-	function = (PLiSQL_function *) fexpr->parent_func;
+	/* End - BUG#M000088 */
 
 	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
 		elog(ERROR, "invalid fno %d", fexpr->funcid);
@@ -1278,6 +1314,9 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 	int			i;
 	FuncExpr	*funcexpr;
 	int start_level = -1;
+	/* Begin - BUG#M0000139 */
+	PLiSQL_package *psource = NULL;
+	/* End - BUG#M0000139 */
 
 	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 	Assert(funcexpr->function_from == FUNC_FROM_SUBPROCFUNC);
@@ -1289,6 +1328,11 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 	Assert(parestate != NULL);
 	Assert(fno >= 0 && fno < pfunc->nsubprocfuncs);
 
+	/* Begin - BUG#M0000139 */
+	if (pfunc->item != NULL)
+		psource = (PLiSQL_package *) pfunc->item->source;
+	/* End - BUG#M0000139 */
+
 	subprocfunc = pfunc->subprocfuncs[fno];
 
 	for (i = 0; i < subprocfunc->lastassignvardno; i++)
@@ -1298,6 +1342,14 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
 			OidIsValid(estate->datums[i]->pkgoid))
 			continue;
+
+		/* Begin - BUG#M0000139 */
+		/*
+		 * package no need init
+		 */
+		if (psource != NULL && i <= psource->last_globaldno)
+			continue;
+		/* End - BUG#M0000139 */
 
 		if (is_const_datum(estate, estate->datums[i]))
 			continue;
@@ -1342,6 +1394,9 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 	int			i;
 	FuncExpr	*funcexpr;
 	int start_level = -1;
+	/* Begin - BUG#M0000139 */
+	PLiSQL_package *psource = NULL;
+	/* End - BUG#M0000139 */
 
 	funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
 	Assert(funcexpr->function_from == FUNC_FROM_SUBPROCFUNC);
@@ -1353,6 +1408,11 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 	Assert(parestate != NULL);
 	Assert(fno >= 0 && fno < pfunc->nsubprocfuncs);
 
+	/* Begin - BUG#M0000139 */
+	if (pfunc->item != NULL)
+		psource = (PLiSQL_package *) pfunc->item->source;
+	/* End - BUG#M0000139 */
+
 	subprocfunc = pfunc->subprocfuncs[fno];
 
 	for (i = 0; i < subprocfunc->lastassignvardno; i++)
@@ -1362,6 +1422,14 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
 			OidIsValid(estate->datums[i]->pkgoid))
 			continue;
+
+		/* Begin - BUG#M0000139 */
+		/*
+		 * package no need init
+		 */
+		if (psource != NULL && i <= psource->last_globaldno)
+			continue;
+		/* End - BUG#M0000139 */
 
 		if (is_const_datum(estate, estate->datums[i]))
 			continue;
@@ -3272,4 +3340,31 @@ plisql_subprocfunc_ref(ParseState *pstate, List *funcname,
 
 	return detail;
 }
+
+
+/* Begin - BUG#M000088 */
+/*
+ * get parent_func
+ */
+PLiSQL_function*
+get_parent_func(FuncExpr *expr)
+{
+	if (FUNC_EXPR_FROM_PACKAGE(expr->function_from))
+	{
+		PackageCacheItem *item;
+		PLiSQL_package *psource;
+
+		if (!OidIsValid(expr->pkgoid))
+			elog(ERROR, "funcexpr include invalid pkgoid");
+		item = PackageCacheLookup(&(expr->pkgoid));
+		if (item == NULL)
+			elog(ERROR, "package %u cache is not found", expr->pkgoid);
+		psource = (PLiSQL_package *) item->source;
+		return &psource->source;
+	}
+	else
+		return (PLiSQL_function *) expr->parent_func;
+
+}
+/* End - BUG#M000088 */
 

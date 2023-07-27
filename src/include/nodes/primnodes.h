@@ -528,6 +528,9 @@ typedef struct FuncExpr
 	char		*function_name;	/* package'func used in view */
 	bool		ref_pkgtype;	/* common'func has reference a package'type */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	Oid			pkgoid;			/* package'oid */
+	/* End - BUG#M000088 */
 	int			location;		/* token location, or -1 if unknown */
 } FuncExpr;
 

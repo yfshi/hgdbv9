@@ -47,6 +47,14 @@ char	   *nls_timestamp_tz_format = "";
 int 		datetime_ignore_nls_mask = 0;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+char	   *nls_territory = "";
+char	   *nls_currency = "";
+char	   *nls_iso_currency = "";
+char	   *nls_dual_currency = "";
+char	   *nls_numeric_characters = "";
+/* End - ReqID:SRS-SQL-SYSFUNC */
+
 /* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 bool			enable_emptystring_to_NULL = false;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
@@ -141,6 +149,13 @@ static bool check_nls_length_semantics(int *newval, void **extra, GucSource sour
 static bool check_compatible_mode(int *newval, void **extra, GucSource source);
 static bool check_database_mode(int *newval, void **extra, GucSource source);
 void assign_compatible_mode(int newval, void *extra);
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static void nls_case_conversion(char **param, char type);
+static bool nls_length_check(char **newval, void **extra, GucSource source);
+static bool nls_territory_check(char **newval, void **extra, GucSource source);
+static bool nls_numeric_characters_check(char **newval, void **extra,
+										 GucSource source);
+/* End - ReqID:SRS-SQL-SYSFUNC */
 #endif
 
 #if 0
@@ -406,6 +421,58 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		"YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM",
 		NULL, NULL, NULL
 	},
+
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	{
+		{"nls_territory", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_TERRITORY."),
+			NULL
+		},
+		&nls_territory,
+		"AMERICA",
+		nls_territory_check, NULL, NULL
+	},
+
+	{
+		{"nls_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_CURRENCY."),
+			NULL
+		},
+		&nls_currency,
+		"$",
+		nls_length_check, NULL, NULL
+	},
+
+	{
+		{"nls_iso_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_ISO_CURRENCY."),
+			NULL
+		},
+		&nls_iso_currency,
+		"AMERICA",
+		nls_territory_check, NULL, NULL
+	},
+
+	{
+		{"nls_dual_currency", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_DUAL_CURRENCY."),
+			NULL
+		},
+		&nls_dual_currency,
+		"$",
+		nls_length_check, NULL, NULL
+	},
+
+	{
+		{"nls_numeric_characters", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_NUMERIC_CHARACTERS."     ),
+			NULL
+		},
+		&nls_numeric_characters,
+		".,",
+		nls_numeric_characters_check, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -601,4 +668,122 @@ assign_compatible_mode(int newval, void *extra)
 		}
 	}
 }
+
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static void
+nls_case_conversion(char **param, char type)
+{
+	char   *p;
+
+CASE_CONVERSION:
+	if (type == 'u')
+	{
+		for (p = *param; p < *param + strlen(*param); ++p)
+			if (97 <= *p && *p <= 122)
+				*p -= 32;
+		*p = '\0';
+	}
+	else if (type == 'l')
+	{
+		for (p = *param; p < *param + strlen(*param); ++p)
+			if (65 <= *p && *p <= 90)
+				*p += 32;
+		*p = '\0';
+	}
+	else if (type == 'b')
+	{
+		bool    has_upper = false,
+				has_lower = false;
+
+		for (p = *param; p < *param + strlen(*param); ++p)
+		{
+			if (65 <= *p && *p <= 90)
+				has_upper = true;
+			else if (97 <= *p && *p <= 122)
+				has_lower = true;
+			if (has_upper && has_lower)
+				return;
+		}
+
+		if (has_upper && !has_lower)
+		{
+			type = 'l';
+			goto CASE_CONVERSION;
+		}
+		else if (!has_upper && has_lower)
+		{
+			type = 'u';
+			goto CASE_CONVERSION;
+		}
+	}
+}
+
+static bool
+nls_length_check(char **newval, void **extra, GucSource source)
+{
+	if (DB_ORACLE == database_mode
+			&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (strlen(*newval) > 255)
+			ereport(ERROR, (errmsg("parameter value longer than 255 characters")));
+		else if (isdigit(**newval))
+			ereport(ERROR, (errmsg("Cannot access NLS data files "
+								   "or invalid environment specified")));
+		else
+			nls_case_conversion(newval, 'b');
+	}
+
+	return true;
+}
+
+static bool
+nls_numeric_characters_check(char **newval, void **extra, GucSource source)
+{
+	if (DB_ORACLE == database_mode
+			&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (strlen(*newval) < 2)
+			ereport(ERROR, (errmsg("Cannot access NLS data files "
+								   "or invalid environment specified")));
+		else if (strlen(*newval) > 255)
+			ereport(ERROR, (errmsg("parameter value longer than 255 characters")));
+		else if ((*newval)[0] == (*newval)[1])
+			ereport(ERROR, (errmsg("Cannot access NLS data files "
+								   "or invalid environment specified")));
+		else
+		{
+			int i;
+			for (i = 0; i < 2; ++i)
+				if (isdigit((*newval)[i]) ||
+					(*newval)[i] == '+' || (*newval)[i] == '-' ||
+					(*newval)[i] == '<' || (*newval)[i] == '>' ||
+					(*newval)[i] < 32 || (*newval)[i] > 126)
+					ereport(ERROR, (errmsg("Cannot access NLS data files "
+										   "or invalid environment specified")));
+		}
+
+		nls_case_conversion(newval, 'b');
+	}
+
+	return true;
+}
+
+static bool
+nls_territory_check(char **newval, void **extra, GucSource source)
+{
+	if (DB_ORACLE == database_mode
+			&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (pg_strcasecmp(*newval, "CHINA") == 0)
+			memcpy(*newval, "CHINA", 5);
+		else if (pg_strcasecmp(*newval, "AMERICA") == 0)
+			memcpy(*newval, "AMERICA", 7);
+		else
+			ereport(ERROR, (errmsg("Cannot access NLS data files "
+								   "or invalid environment specified")));
+	}
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-SYSFUNC */
 #endif

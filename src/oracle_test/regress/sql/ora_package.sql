@@ -864,7 +864,7 @@ begin
   raise info '%',r.name;
   call pkg.test_close();
   --raise syntax error
-  fetchs pkg.c2 INTO r;
+  fetchs pkg.c1 INTO r;
 end;
 /
 
@@ -6412,3 +6412,401 @@ ALTER package pkg1_tipa001133141 noneditionable;
 SELECT editable FROM pg_package WHERE pkgname='pkg1_tipa001133141';
 
 DROP package pkg1_tipa001133141;
+
+
+--test bug#M0000113
+create or replace package test_pkg1 is
+ var0 integer;
+ function test_f(id integer) return integer;
+end;
+/
+
+--create package body
+create or replace package body test_pkg1 is
+  var1 integer;
+  var2 integer;
+  function test_f2(id integer) return integer;
+  function test_f(id integer) return integer is
+  begin
+    return 2;
+  end;
+  function test_f2(id integer) return integer is
+  begin
+    return 23;
+  end;
+end;
+/
+
+--test ok
+select test_pkg1.test_f(23) from dual;
+
+--report error
+select test_pkg1.test_f2(23) from dual;
+
+
+--ok
+declare
+ var1 integer;
+begin
+ test_pkg1.var0 := 23;
+ var1 := test_pkg1.var0;
+end;
+/
+
+--report error
+declare
+ var1 integer;
+begin
+ test_pkg1.var1 := 23;
+ var1 := test_pkg1.var1;
+end;
+/
+
+--clean data
+DROP package test_pkg1;
+
+--bug#M0000139
+create table test_id(id integer,name varchar2(256));
+
+INSERT INTO test_id VALUES(1,'ok');
+INSERT INTO test_id VALUES(2,'welcome');
+
+create or replace package test_cursor_pkg is
+  function test_f(id integer) return integer;
+  function test_f1(id integer) return integer;
+  function test_main(id integer) return integer;
+end;
+/
+
+create or replace package body test_cursor_pkg is
+  function test_f(id integer) return integer is
+    c1 CURSOR is select * from test_id ORDER BY id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_cursor_pkg.test_f(23);
+       ret := test_cursor_pkg.test_f1(23);
+    return 2;
+  end;
+end;
+/
+
+declare
+  ret integer;
+begin
+  ret := test_cursor_pkg.test_main(23);
+end;
+/
+
+declare
+  ret integer;
+  function test_f(id integer) return integer is
+    c1 cursor is select * from test_id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_cursor_pkg.test_f(23);
+       ret := test_cursor_pkg.test_f1(23);
+    return 2;
+  end;
+begin
+  for id in 1 .. 2 LOOP
+    ret := test_main(23);
+  end loop;
+end;
+/
+
+declare
+  ret integer;
+  function test_f(id integer) return integer is
+    c1 cursor is select * from test_id;
+    var1 test_id%rowtype;
+  begin
+     var1.id := 1;
+     var1.name := 'xiexie';
+	 var1.id := 1;
+     var1.name := 'xiexie';
+	 OPEN c1;
+	 LOOP
+	    FETCH c1 INTO var1;
+		IF NOT found THEN
+			exit;
+		END if;
+		raise info '%', var1;
+    END loop;
+	CLOSE c1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(id integer) return integer is
+    var1 integer;
+    ret integer;
+  begin
+       ret := test_f(23);
+       ret := test_f1(23);
+    return 2;
+  end;
+begin
+  for id in 1 .. 2 LOOP
+    ret := test_main(23);
+  end loop;
+end;
+/
+
+--clean data
+DROP package test_cursor_pkg;
+DROP TABLE test_id;
+
+--bug#M0000141
+--nested function doesn't support parallel_enable
+--error
+DECLARE
+  var1 integer;
+  FUNCTION test_f(id integer) RETURN integer parallel_enable IS
+  BEGIN
+    RETURN 1;
+  end;
+BEGIN
+  var1 := test_f(1);
+end;
+/
+
+--error
+DECLARE
+  var1 integer;
+  FUNCTION test_f(id integer) RETURN integer pipelined IS
+  BEGIN
+    RETURN 1;
+  end;
+BEGIN
+  var1 := test_f(1);
+end;
+/
+
+--package'priviate function
+--ok
+CREATE OR REPLACE package test_pkg1 IS
+  FUNCTION test_f(id integer) RETURN integer;
+end;
+/
+
+--ok
+CREATE OR REPLACE package body test_pkg1 IS
+ FUNCTION test_f1(id integer) RETURN integer parallel_enable IS
+ BEGIN
+   RETURN 23;
+ end;
+ FUNCTION test_f(id integer) RETURN integer IS
+   var2 integer;
+ BEGIN
+   var2 := test_f1(23);
+   RETURN var2;
+ end;
+end;
+/
+
+--ok
+DECLARE
+  var1 integer;
+BEGIN
+  var1 := test_pkg1.test_f(23);
+end;
+/
+
+DROP package test_pkg1;
+
+--ok
+create or replace package test_pkg is
+ function test_f(id integer) return integer parallel_enable;
+end;
+/
+
+
+--ok
+create or replace package body test_pkg is
+  function test_f(id integer) return integer parallel_enable is
+  begin
+   return 1;
+  end;
+end;
+/
+
+
+--ok
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+   return 1;
+  end;
+end;
+/
+
+
+--ok
+create or replace package test_pkg is
+ function test_f(id integer) return integer;
+end;
+/
+
+
+--report error
+create or replace package body test_pkg is
+  function test_f(id integer) return integer parallel_enable is
+  begin
+   return 1;
+  end;
+end;
+/
+
+--report error
+create or replace package test_pkg is
+ function test_f(id integer) return integer parallel_enable parallel_enable;
+end;
+/
+
+DROP package test_pkg;
+
+create table test_tab(id integer,name varchar2(256));
+create index test_index on test_tab(id);
+insert into test_tab select generate_series(1,1000000),'xiexie';
+create or replace package test_pkg is
+  function test_f(id integer) return integer;
+  function test_main(ids integer) return integer;
+end;
+/
+
+CREATE OR REPLACE package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(ids integer) return integer is
+    c1 cursor is
+    with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt;
+    var1 test_tab%rowtype;
+  begin
+    for var1 in c1 LOOP
+      raise info '%',var1;
+      exit;
+    end loop;
+    return 1;
+  end;
+end;
+/
+set enable_seqscan = off;
+with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt limit 1;
+
+with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt limit 1;
+
+declare
+  var1 integer;
+begin
+  var1 := test_pkg.test_main(23);
+end;
+/
+
+--test parallel_enable
+create or replace package test_pkg is
+  function test_f(id integer) return integer parallel_enable;
+  function test_main(ids integer) return integer parallel_enable;
+end;
+/
+
+CREATE OR REPLACE package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 1;
+  end;
+  function test_main(ids integer) return integer is
+    c1 cursor is
+    with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt;
+    var1 test_tab%rowtype;
+  begin
+    for var1 in c1 LOOP
+      raise info '%',var1;
+      exit;
+    end loop;
+    return 1;
+  end;
+end;
+/
+
+with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt limit 1;
+
+reset enable_seqscan;
+
+with wt as
+     (select 1 as id,(select test_pkg.test_f(23) from test_tab where
+      id = test_pkg.test_f(23)) as topvalue  from test_tab)
+      select * from wt limit 1;
+
+declare
+  var1 integer;
+begin
+  var1 := test_pkg.test_main(23);
+end;
+/
+
+--clean data
+DROP package test_pkg;
+DROP TABLE test_tab;

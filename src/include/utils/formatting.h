@@ -19,7 +19,6 @@
 
 #include "pgtime.h"
 #include "datatype/timestamp.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
-#include "utils/numeric.h"		/* BUG#451 */
 
 /* Copy from formatting.c to here */
 typedef struct TmToChar
@@ -81,5 +80,4 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 				struct pg_tm *tm, fsec_t *fsec, int *fprec,
 				uint32 *flags, bool *have_error, bool is_conv_func);
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
-extern Numeric ora_to_number_internal(text *value, text *fmt);	/* BUG#451 */
 #endif

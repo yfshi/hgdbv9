@@ -27,9 +27,16 @@
 static psqlplus_cmd_var *make_variable_node(void);
 static psqlplus_cmd_print *make_print_node(void);
 static psqlplus_cmd_execute *make_exec_node(void);
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static psqlplus_cmd_sv *make_set_node(void);
+static psqlplus_cmd_sv *make_show_node(void);
+static sys_var *make_system_variable(const char *name);
+static sys_var_list *sv_list_make1(sys_var *sv);
+static sys_var_list *sv_list_append(sys_var_list *list, sys_var *sv);
+/* End - ReqID:SRS-SQL-SYSFUNC */
 static BindVarType *make_bindvartype(int32 oid, int32 typmod, const char *typname);
 static char *get_guc_settings(const char *gucname);
-static print_item *make_print_item(char *name, bool valid);
+static print_item *make_print_item(char *name, bool valid, bool need_downcase/* BUG#Z351 */);
 static print_list *make_print_list1(print_item *item);
 static print_list *merge_print_list(print_list *list1, print_list *list2);
 
@@ -51,6 +58,11 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 	psqlplus_cmd		*psqlplus_cmd;
 	BindVarType			*bindvartype;
 	print_list			*print_item_list;
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	bool				boolean;
+	sys_var				*system_variable;
+	sys_var_list		*system_variable_list;
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 }
 
 %type <psqlplus_cmd> variable_stmt variable_spec print_stmt exec_stmt
@@ -58,7 +70,7 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 %type <print_item_list> print_items_list print_items
 %type <keyword> unreserved_keyword
 %type <keyword> variable_keyword exec_keyword
-%type <str> opt_varname bind_varname bind_varvalue
+%type <str> opt_varname bind_varname bind_varvalue bind_varvalue_sconst
 %type <str> Sconst
 
 %token <keyword>	K_VAR K_VARIABLE K_CHAR K_BYTE K_NCHAR K_VARCHAR2 K_NVARCHAR2
@@ -67,6 +79,14 @@ static print_list *merge_print_list(print_list *list1, print_list *list2);
 %token <ival>	ICONST
 %token <str>	SINGLE_QUOTE_NO_END DOUBLE_QUOTE_NO_END
 %token			TYPECAST
+
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+%type <boolean>					system_variable_on_off
+%type <psqlplus_cmd>			system_variable_stmt
+%type <system_variable>			set_system_variable
+%type <system_variable_list>	set_system_variable_list show_system_variable_list
+%token <keyword>				K_OFF K_ON K_SET K_SHOW
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 %%
 
@@ -83,6 +103,12 @@ psqlplus_toplevel_stmt:
 			{
 				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
 			}
+		/* Begin - ReqID:SRS-SQL-SYSFUNC */
+		| system_variable_stmt opt_semi
+			{
+				psql_yyget_extra(yyscanner)->psqlpluscmd = $1;
+			}
+		/* End - ReqID:SRS-SQL-SYSFUNC */
 	;
 
 /*
@@ -128,12 +154,56 @@ variable_spec:
 		| bind_varname '=' bind_varvalue
 			{
 				/* bind variable assignment */
+				PsqlScanState		state = psql_yyget_extra(yyscanner); /* BUG#Z352 */
+				psqlplus_cmd_var	*var = make_variable_node();
+				var->assign_bind_var = true;
+				var->var_name = $1;
+				/* Begin - BUG#Z352 */
+				if (state->safe_encoding &&
+					state->scanline[strlen(state->scanbuf)] != '\0' &&
+					state->scanline[strlen(state->scanbuf)] != ' ' &&
+					!(state->scanline[strlen(state->scanbuf)] == ';' &&
+					 state->scanline[strlen(state->scanbuf) + 1] == '\0'))
+				{
+					int		i = 0;
+					char	*val = pg_malloc0(strlen(state->scanline) - strlen(state->scanbuf) + 1);
+					const char *ptr = state->scanline + strlen(state->scanbuf);
+
+					while(ptr[i] != '\0' && ptr[i] != ' ')
+					{
+						if (ptr[i] == ';' && ptr[i + 1] == '\0')
+							break;
+
+						val[i] = ptr[i];
+						i++;
+					}
+					val[i] = '\0';
+					
+					var->init_value = psprintf("%s%s", $3, val);
+					pg_free(val);
+				}
+				else
+				/* End - BUG#Z352 */
+					var->init_value = $3;
+				/* Begin - BUG#Z352 */
+				state->psqlpluscmd = (psqlplus_cmd *) var;
+				return 0;
+				/* End - BUG#Z352 */
+			}
+/* Begin - BUG#Z352 */
+		| bind_varname '=' bind_varvalue_sconst
+			{
+				/* bind variable assignment */
+				PsqlScanState		state = psql_yyget_extra(yyscanner);
 				psqlplus_cmd_var *var = make_variable_node();
 				var->assign_bind_var = true;
 				var->var_name = $1;
 				var->init_value = $3;
 				$$ = (psqlplus_cmd *) var;
+				state->psqlpluscmd = (psqlplus_cmd *) var;
+				return 0;
 			}
+/* End - BUG#Z352 */
 		| bind_varname '='
 			{
 				/* An error scenario, bind variable assignment without a value */
@@ -186,12 +256,55 @@ variable_spec:
 				psqlplus_cmd_var	*var = make_variable_node();
 				var->var_name = $1;
 				var->vartype = $2;
+				/* Begin - BUG#Z352 */
+				if (state->safe_encoding &&
+					state->scanline[strlen(state->scanbuf)] != '\0' &&
+					state->scanline[strlen(state->scanbuf)] != ' ' &&
+					!(state->scanline[strlen(state->scanbuf)] == ';' &&
+					 state->scanline[strlen(state->scanbuf) + 1] == '\0'))
+				{
+					int		i = 0;
+					char	*val = pg_malloc0(strlen(state->scanline) - strlen(state->scanbuf) + 1);
+					const char *ptr = state->scanline + strlen(state->scanbuf);
+
+					while(ptr[i] != '\0' && ptr[i] != ' ')
+					{
+						if (ptr[i] == ';' && ptr[i + 1] == '\0')
+							break;
+
+						val[i] = ptr[i];
+						i++;
+					}
+					val[i] = '\0';
+					
+					var->init_value = psprintf("%s%s", $4, val);
+					pg_free(val);
+				}
+				else
+				/* End - BUG#Z352 */
+					var->init_value = $4;
+
+				var->list_bind_var = false;
+				var->initial_nonnull_value = true;
+				state->psqlpluscmd = (psqlplus_cmd *) var;
+				return 0;
+			}
+/* Begin - BUG#Z352 */
+		| bind_varname bind_vartype '=' bind_varvalue_sconst
+			{
+				/* declare a bind variable with an initial value */
+				PsqlScanState		state = psql_yyget_extra(yyscanner);
+				psqlplus_cmd_var	*var = make_variable_node();
+				var->var_name = $1;
+				var->vartype = $2;
 				var->init_value = $4;
 				var->list_bind_var = false;
 				var->initial_nonnull_value = true;
 				state->psqlpluscmd = (psqlplus_cmd *) var;
 				return 0;
 			}
+/* End - BUG#Z352 */
+
 		| bind_varname bind_vartype '='
 			{
 				psqlplus_cmd_var	*var = make_variable_node();
@@ -257,8 +370,7 @@ bind_varname: IDENT			{ $$ = $1; }
 	;
 
 bind_varvalue:
-		Sconst					{ $$ = $1; }
-		| LITERAL				{ $$ = $1; }
+		LITERAL				{ $$ = $1; }
 		| IDENT					{ $$ = $1; }
 		| '+' FCONST			{ $$ = $2; }
 		| '-' FCONST			{ $$ = psprintf("-%s", $2); } /* itoa() is not portable */
@@ -268,6 +380,12 @@ bind_varvalue:
 		| ICONST				{ $$ = psprintf("%d", $1); }
 		| unreserved_keyword	{ $$ = pg_strdup($1); }
 	;
+
+/* Begin - BUG#Z352 */
+bind_varvalue_sconst:
+		Sconst					{ $$ = $1; }
+	;
+/* End - BUG#Z352 */
 
 /*
  * Interact with the server in plsq, call the typmodout function of the datatype
@@ -381,11 +499,11 @@ print_items_list:
 print_items:
 	IDENT
 		{
-			$$ = make_print_list1(make_print_item($1, true));
+			$$ = make_print_list1(make_print_item($1, true, false/* BUG#Z351 */));
 		}
 	| unreserved_keyword
 		{
-			$$ = make_print_list1(make_print_item(pg_strdup($1), true));
+			$$ = make_print_list1(make_print_item(pg_strdup($1), true, false/* BUG#Z351 */));
 		}
 	| DQCONST
 		{
@@ -394,11 +512,11 @@ print_items:
 			 * it can be surrounded by double quotes but
 			 * not single quotes.
 			 */
-			$$ = make_print_list1(make_print_item($1, true));
+			$$ = make_print_list1(make_print_item($1, true, true/* BUG#Z351 */));
 		}
 	| SQCONST
 		{
-			$$ = make_print_list1(make_print_item($1, false));
+			$$ = make_print_list1(make_print_item($1, false, true/* BUG#Z351 */));
 		}
 	;
 
@@ -428,6 +546,92 @@ exec_keyword:
 		K_EXECUTE
 		| K_EXEC
 	;
+
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+system_variable_stmt:
+		K_SHOW show_system_variable_list
+			{
+				PsqlScanState state = psql_yyget_extra(yyscanner);
+				psqlplus_cmd_sv *show = make_show_node();
+				show->sv_list = $2;
+				state->psqlpluscmd = (psqlplus_cmd *) show;
+				return 0;
+			}
+		| K_SET set_system_variable_list
+			{
+				PsqlScanState state = psql_yyget_extra(yyscanner);
+				psqlplus_cmd_sv *set = make_set_node();
+				set->sv_list = $2;
+				state->psqlpluscmd = (psqlplus_cmd *) set;
+				return 0;
+			}
+	;
+
+show_system_variable_list:
+		IDENT
+			{
+				$$ = sv_list_make1(make_system_variable($1));
+			}
+		| show_system_variable_list IDENT
+			{
+				$$ = sv_list_append($1, make_system_variable($2));
+			}
+	;
+
+set_system_variable_list:
+		set_system_variable
+			{
+				$$ = sv_list_make1($1);
+			}
+		| set_system_variable_list set_system_variable
+			{
+				$$ = sv_list_append($1, $2);
+			}
+	;
+
+set_system_variable:
+		IDENT system_variable_on_off
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_BOOL;
+				sv->sv_value.on = $2;
+				$$ = sv;
+			}
+		| IDENT Sconst
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_STRING;
+				sv->sv_value.string = pg_strdup($2);
+				$$ = sv;
+			}
+		| IDENT ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = $2;
+				$$ = sv;
+			}
+		| IDENT '+' ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = $3;
+				$$ = sv;
+			}
+		| IDENT '-' ICONST
+			{
+				sys_var *sv = make_system_variable($1);
+				sv->sv_type = SVT_INTEGER;
+				sv->sv_value.ival = -$3;
+				$$ = sv;
+			}
+	;
+
+system_variable_on_off:
+		K_ON				{ $$ = true; }
+		| K_OFF				{ $$ = false; }
+	;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 
 
 /*
@@ -496,6 +700,58 @@ make_exec_node(void)
 	return exec;
 }
 
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+static psqlplus_cmd_sv *
+make_set_node(void)
+{
+	psqlplus_cmd_sv	*set = pg_malloc0(sizeof(psqlplus_cmd_sv));
+	set->cmd_type = PSQLPLUS_CMD_SET;
+	set->sv_list = NULL;
+	return set;
+}
+
+static psqlplus_cmd_sv *
+make_show_node(void)
+{
+	psqlplus_cmd_sv	*show = pg_malloc0(sizeof(psqlplus_cmd_sv));
+	show->cmd_type = PSQLPLUS_CMD_SHOW;
+	show->sv_list = NULL;
+	return show;
+}
+
+static sys_var *
+make_system_variable(const char *name)
+{
+	sys_var	*sv = (sys_var *) pg_malloc0(sizeof(sys_var));
+	sv->sv_name = pg_strdup(name);
+	sv->sv_type = SVT_NONE;
+	sv->sv_value.string = NULL;
+	return sv;
+}
+
+static sys_var_list *
+sv_list_make1(sys_var *sv)
+{
+	sys_var_list	*list = pg_malloc0(sizeof(sys_var_list));
+	list->sysvars = (sys_var **) pg_malloc0(sizeof(sys_var *));
+	list->sysvars[0] = sv;
+	list->length = 1;
+	return list;
+}
+
+static sys_var_list *
+sv_list_append(sys_var_list *list, sys_var *sv)
+{
+	if (list == NULL)
+		return sv_list_make1(sv);
+
+	list->sysvars = (sys_var **) pg_realloc(list->sysvars,
+											sizeof(sys_var *) * (list->length+1));
+	list->sysvars[list->length++] = sv;
+	return list;
+}
+/* End - ReqID:SRS-SQL-SYSFUNC */
+
 static BindVarType *
 make_bindvartype(int32 oid, int32 typmod, const char *typname)
 {
@@ -548,11 +804,24 @@ get_guc_settings(const char *gucname)
 }
 
 static print_item *
-make_print_item(char *name, bool valid)
+make_print_item(char *name, bool valid, bool need_downcase/* BUG#Z351 */)
 {
 	print_item *item = pg_malloc0(sizeof(print_item));
 
-	item->bv_name = name;
+	/* Begin - BUG#Z351 */
+	/*
+	 * When using PRINT to print bind variables in oracle, the semantics
+	 * of double quotes is to deal with the problem that the bind variable
+	 * has the same name as the keyword.  The name of the bind variable is
+	 * case-insensitive and we save it in lowercase,  so downcase needs to
+	 * be performed.
+	 */
+	if (need_downcase)
+		item->bv_name = psqlplus_downcase_identifier(name, strlen(name));
+	else
+	/* End - BUG#Z351 */
+		item->bv_name = name;
+
 	item->valid = valid;
 
 	return item;

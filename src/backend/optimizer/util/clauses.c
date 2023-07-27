@@ -732,6 +732,21 @@ max_parallel_hazard_test(char proparallel, max_parallel_hazard_context *context)
 	return false;
 }
 
+/* Begin - BUG#M0000141 */
+/*
+ * check max_parallel_hazard_for_subproc
+ */
+static bool
+max_parallel_hazard_test_for_subproc(FuncExpr *funcexpr,
+			max_parallel_hazard_context *context)
+{
+	char proparallel = get_subproc_parallel_enable(funcexpr);
+
+	return max_parallel_hazard_test(proparallel, context);
+}
+/* End - BUG#M0000141 */
+
+
 /* check_functions_in_node callback */
 static bool
 max_parallel_hazard_checker(Oid func_id, void *context)
@@ -745,6 +760,18 @@ max_parallel_hazard_walker(Node *node, max_parallel_hazard_context *context)
 {
 	if (node == NULL)
 		return false;
+
+	/* Begin - BUG#M0000141 */
+	/* check package'func and subproc func */
+	if (nodeTag(node) == T_FuncExpr &&
+		ORA_PARSER == compatible_db)
+	{
+		FuncExpr *funcexpr = (FuncExpr *) node;
+
+		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			return max_parallel_hazard_test_for_subproc(funcexpr, context);
+	}
+	/* End - BUG#M0000141 */
 
 	/* Check for hazardous functions in node itself */
 	if (check_functions_in_node(node, max_parallel_hazard_checker,
@@ -2460,6 +2487,9 @@ eval_const_expressions_mutator(Node *node,
 				else
 					newexpr->function_name = NULL;
 				/* End - ReqID:SRS-SQL-PACKAGE */
+				/* Begin - BUG#M000088 */
+				newexpr->pkgoid = expr->pkgoid;
+				/* End - BUG#M000088 */
 				newexpr->location = expr->location;
 				return (Node *) newexpr;
 			}
@@ -4105,6 +4135,9 @@ simplify_function(Oid funcid, Oid result_type, int32 result_typmod,
 		fexpr.function_name = NULL;
 		fexpr.ref_pkgtype = false;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - BUG#M000088 */
+		fexpr.pkgoid = InvalidOid;
+		/* End - BUG#M000088 */
 		fexpr.location = -1;
 
 		req.type = T_SupportRequestSimplify;
@@ -4540,6 +4573,9 @@ evaluate_function(Oid funcid, Oid result_type, int32 result_typmod,
 	newexpr->function_name = NULL;
 	newexpr->ref_pkgtype = false;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	newexpr->pkgoid = InvalidOid;
+	/* End - BUG#M000088 */
 	newexpr->location = -1;
 
 	return evaluate_expr((Expr *) newexpr, result_type, result_typmod,
@@ -4660,6 +4696,9 @@ inline_function(Oid funcid, Oid result_type, Oid result_collid,
 	fexpr->function_name = NULL;
 	fexpr->ref_pkgtype = false;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M000088 */
+	fexpr->pkgoid = InvalidOid;
+	/* End - BUG#M000088 */
 	fexpr->location = -1;
 
 	/* Fetch the function body */

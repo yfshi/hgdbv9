@@ -57,7 +57,8 @@ typedef struct polymorphic_actuals
 
 /* Begin - SRS-PLSQL-SUBPROC */
 PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
+NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 /* End - SRS-PLSQL-SUBPROC */
 
 
@@ -2877,3 +2878,20 @@ change_func_prostatus(Oid funcOid, char prostatus)
 	table_close(rel, RowExclusiveLock);
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - BUG#M0000141 */
+/*
+ * get subproc parallel_enable
+ */
+char
+get_subproc_parallel_enable(FuncExpr *funcexpr)
+{
+	plisql_internel_funcs_init();
+
+	if (FUNC_EXPR_FROM_PACKAGE(funcexpr->function_from))
+		set_pkginfo_from_funcexpr(funcexpr);
+
+	return plisql_internal_funcs.get_subproc_parallel_enable(funcexpr);
+}
+/* End - BUG#M0000141 */
+

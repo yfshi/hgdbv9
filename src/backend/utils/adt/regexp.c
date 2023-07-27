@@ -1405,6 +1405,10 @@ ora_setup_regexp_instr_matches(text *src_text,
 		}
 	}
 
+	/* BEGIN - BUG#M0000170 */
+	if (occur_posn > matchctx->nmatches)
+		return false;
+	/* END - BUG#M0000170 */
 	/*
 	 * If the substring position of the regular expression is not specified,
 	 * or if there is no string matching the regular expression,

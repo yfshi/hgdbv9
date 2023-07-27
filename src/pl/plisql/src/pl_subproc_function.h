@@ -256,6 +256,9 @@ extern PLiSQL_function* plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 													PLiSQL_subproc_function *subprocfunc,
 													bool forValidator);
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - BUG#M000088 */
+extern PLiSQL_function *get_parent_func(FuncExpr *expr);
+/* End - BUG#M000088 */
 
 #endif   /* PL_SUBPROC_FUNCTION_H */
 

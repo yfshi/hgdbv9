@@ -29,6 +29,7 @@
 #include "executor/executor.h"
 #include "foreign/fdwapi.h"
 #include "miscadmin.h"
+#include "funcapi.h" /* BUG#M0000141 */
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "optimizer/optimizer.h"
@@ -972,7 +973,14 @@ rewriteTargetListIU(List *targetList,
 				{
 					Node	   *numvar;
 					FuncExpr   *fun = (FuncExpr *) new_tle->expr;
-					char	   *funname = get_func_name(fun->funcid);
+					char	   *funname;
+
+					/* Begin - BUG#M0000141 */
+					if (FUNC_EXPR_FROM_PG_PROC(fun->function_from))
+						funname = get_func_name(fun->funcid);
+					else
+						funname = get_internal_function_name(fun);
+					/* End - BUG#M0000141 */
 					if (pg_strcasecmp(funname, "number") == 0)
 					{
 						numvar = (Node *) linitial(fun->args);

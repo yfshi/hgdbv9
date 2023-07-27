@@ -70,6 +70,9 @@ typedef struct SMgrRelationData
 
 	/* if unowned, list link in list of all unowned SMgrRelations */
 	dlist_node	node;
+
+	/* Determine if this SMgrRelationData is a GTT's SMgrRelationData */
+	bool	is_gtt;	/* BUG#M0000187 */
 } SMgrRelationData;
 
 typedef SMgrRelationData *SMgrRelation;

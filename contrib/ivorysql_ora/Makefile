@@ -38,11 +38,17 @@ DATA = ivorysql_ora--1.0.sql
 
 all: gensql
 
+install: install-data
+
 clean: cleansql
 
 # SQL(s) merge using perl
 gensql: gensql.pl
 	$(PERL) $< $(patsubst ivorysql_ora--%.sql, %, $(DATA))
+
+# Preload the compatible oracle misc sql script
+install-data:
+	$(INSTALL_DATA) $(srcdir)/preload_ora_misc.sql '$(DESTDIR)$(datadir)/preload_ora_misc.sql'
 
 # Clean the generated SQL(s).
 cleansql:
@@ -67,7 +73,8 @@ REGRESS = \
 	datatype_and_func_bugs \
 	ora_sysview \
 	ora_like_operator \
-	ora_xml_functions
+	ora_xml_functions \
+	ora_to_number
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

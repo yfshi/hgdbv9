@@ -27,6 +27,7 @@
 #include "fe_utils/mbprint.h"
 #include "fe_utils/string_utils.h"
 #include "mb/pg_wchar.h" /* ReqID:SRS-CMD-PSQL */
+#include "oracle_fe_utils/ora_number_utils.h"	/* ReqID:SRS-SQL-SYSFUNC */
 #include "oracle_fe_utils/ora_string_utils.h" /* ReqID:SRS-CMD-PSQL */
 #include "portability/instr_time.h"
 #include "psqlplus.h"	/* ReqID:SRS-CMD-PSQL */
@@ -1276,6 +1277,14 @@ PrintQueryResults(PGresult *results, bool quiet, bool isoracall /* ReqID:SRS-SQL
 				break;
 			}
 			/* End - ReqID:SRS-CMD-PSQL */
+
+			/* Begin - ReqID:SRS-SQL-SYSFUNC */
+			if (!ora_numwidth_format(pset.db, &results))
+			{
+				success = false;
+				break;
+			}
+			/* End - ReqID:SRS-SQL-SYSFUNC */
 
 			/* store or execute or print the data ... */
 			if (pset.gset_prefix)
@@ -2615,7 +2624,11 @@ get_hostvariables(const char *sql, bool *error)
 			/* First tuple is not a placeholder info tuple, start with 1 */
 			for (i = 1; i < ntuples; i++)
 			{
-				host->hostvars[i-1].name = pg_strdup(PQgetvalue(res, i, i_name));
+				/* Begin - BUG#Z351 */
+				/* Bind variable names are case-insensitive */
+				char	*bindvar_name = PQgetvalue(res, i, i_name);
+				host->hostvars[i-1].name = psqlplus_downcase_identifier(bindvar_name, strlen(bindvar_name));
+				/* End - BUG#Z351 */
 				host->hostvars[i-1].position = atoi(PQgetvalue(res, i, i_position));
 			}
 		}

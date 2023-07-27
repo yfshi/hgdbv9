@@ -40,7 +40,15 @@ static const PsqlScanKeyword psqlplus_keywords[] = {
 	PSQL_KEYWORD("nchar", K_NCHAR, UNRESERVED_PSQL_KEYWORD)
 	PSQL_KEYWORD("number", K_NUMBER, UNRESERVED_PSQL_KEYWORD)
 	PSQL_KEYWORD("nvarchar2", K_NVARCHAR2, UNRESERVED_PSQL_KEYWORD)
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	PSQL_KEYWORD("off", K_OFF, UNRESERVED_PSQL_KEYWORD)
+	PSQL_KEYWORD("on", K_ON, UNRESERVED_PSQL_KEYWORD)
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 	PSQL_KEYWORD("print", K_PRINT, UNRESERVED_PSQL_KEYWORD)
+	/* Begin - ReqID:SRS-SQL-SYSFUNC */
+	PSQL_KEYWORD("set", K_SET, UNRESERVED_PSQL_KEYWORD)
+	PSQL_KEYWORD("show", K_SHOW, UNRESERVED_PSQL_KEYWORD)
+	/* End - ReqID:SRS-SQL-SYSFUNC */
 	PSQL_KEYWORD("var", K_VAR, UNRESERVED_PSQL_KEYWORD)
 	PSQL_KEYWORD("varchar2", K_VARCHAR2, UNRESERVED_PSQL_KEYWORD)
 	PSQL_KEYWORD("variable", K_VARIABLE, UNRESERVED_PSQL_KEYWORD)
@@ -55,7 +63,6 @@ const int	NumKeywords = lengthof(psqlplus_keywords);
 
 static const PsqlScanKeyword *PsqlplusKeywordLookup(const char *text);
 static int process_integer_literal(const char *token, YYSTYPE *lval);
-static char *psqlplus_downcase_identifier(const char *str, int len);
 static void startlit(yyscan_t yyscanner);
 static void addlitchar(unsigned char ychar, yyscan_t yyscanner);
 static void addlit(char *ytext, int yleng, yyscan_t yyscanner);
@@ -452,7 +459,7 @@ psqlplus_scanner_finish(yyscan_t yyscanner)
 /*
  * Do downcasing and returns a palloc'd string.
  */
-static char *
+char *
 psqlplus_downcase_identifier(const char *str, int len)
 {
 	char	   *result;

@@ -741,20 +741,35 @@ STRICT
 IMMUTABLE;
 /* End - bug0000478 */
 
-CREATE FUNCTION sys.to_number(text,text)
-RETURNS sys.number
-AS 'MODULE_PATHNAME','ora_to_number'
+/* Begin - ReqID:SRS-SQL-SYSFUNC */
+CREATE FUNCTION sys.to_number(boolean, boolean, text)
+RETURNS NUMBER
+AS 'MODULE_PATHNAME','ora_to_number_w'
 LANGUAGE C
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION sys.to_number(text)
-RETURNS sys.number
-AS 'MODULE_PATHNAME','ora_to_number'
+CREATE FUNCTION sys.to_number(boolean, boolean, text, text)
+RETURNS NUMBER
+AS 'MODULE_PATHNAME','ora_to_number_w'
 LANGUAGE C
 STRICT
 IMMUTABLE;
 
+CREATE FUNCTION sys.to_number(boolean, boolean, text, text, text)
+RETURNS NUMBER
+AS 'MODULE_PATHNAME','ora_to_number_w'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.to_number(boolean, boolean, text, text, text, text)
+RETURNS NUMBER
+AS 'MODULE_PATHNAME','ora_to_number_w'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - ReqID:SRS-SQL-SYSFUNC */
 /***************************************************************
  *
  * RAW BLOB CLOB datatype functions. 
