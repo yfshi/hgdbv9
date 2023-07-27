@@ -24,6 +24,9 @@
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"	
+#include "commands/user.h"
 
 
 /*
@@ -41,9 +44,29 @@ get_role_password(const char *role, char **logdetail)
 	Datum		datum;
 	bool		isnull;
 	char	   *shadow_pass;
+	
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Find a specific type of user
+	 */
+	Oid			dboid;
 
-	/* Get role info from pg_authid */
-	roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(role));
+	dboid = CurrentUserOwnDboid();
+
+	if(DB_ORACLE == database_mode)
+	{
+		roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+							CStringGetDatum(role), 
+							ObjectIdGetDatum(dboid));
+	}
+	else
+		roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+							CStringGetDatum(role), 
+							ObjectIdGetDatum(0));
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+
 	if (!HeapTupleIsValid(roleTup))
 	{
 		*logdetail = psprintf(_("Role \"%s\" does not exist."),
@@ -51,7 +74,7 @@ get_role_password(const char *role, char **logdetail)
 		return NULL;			/* no such user */
 	}
 
-	datum = SysCacheGetAttr(AUTHNAME, roleTup,
+	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
 							Anum_pg_authid_rolpassword, &isnull);
 	if (isnull)
 	{
@@ -62,7 +85,7 @@ get_role_password(const char *role, char **logdetail)
 	}
 	shadow_pass = TextDatumGetCString(datum);
 
-	datum = SysCacheGetAttr(AUTHNAME, roleTup,
+	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
 							Anum_pg_authid_rolvaliduntil, &isnull);
 	if (!isnull)
 		vuntil = DatumGetTimestampTz(datum);

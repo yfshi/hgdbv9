@@ -126,6 +126,7 @@ static void make_directory(const char *dir);
 static void header(const char *fmt,...) pg_attribute_printf(1, 2);
 static void status(const char *fmt,...) pg_attribute_printf(1, 2);
 static void psql_command(const char *database, const char *query,...) pg_attribute_printf(2, 3);
+static void psql_command_nosys(const char *database, const char *query,...) pg_attribute_printf(2, 3);
 
 /*
  * allow core files if possible.
@@ -1130,6 +1131,8 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
 	 */
 	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 			   accountname, domainname, fmtHba(superuser_name)) >= 0);
+	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
+			   accountname, domainname, fmtHba("system")) >= 0);
 	for (sl = extraroles; sl; sl = sl->next)
 		CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 				   accountname, domainname, fmtHba(sl->str)) >= 0);
@@ -1144,7 +1147,7 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
  * Since we use system(), this doesn't return until the operation finishes
  */
 static void
-psql_command(const char *database, const char *query,...)
+psql_command_nosys(const char *database, const char *query,...)
 {
 	char		query_formatted[1024];
 	char		query_escaped[2048];
@@ -1176,6 +1179,55 @@ psql_command(const char *database, const char *query,...)
 			 query_escaped,
 			 database);
 
+	if (system(psql_cmd) != 0)
+	{
+		/* psql probably already reported the error */
+		fprintf(stderr, _("command failed: %s\n"), psql_cmd);
+		exit(2);
+	}
+}
+
+static void
+psql_command(const char *database, const char *query,...)
+{
+	char		query_formatted[1024];
+	char		query_escaped[2048];
+	char		psql_cmd[MAXPGPATH + 2048];
+	va_list		args;
+	char	   *s;
+	char	   *d;
+
+	/* Generate the query with insertion of sprintf arguments */
+	va_start(args, query);
+	vsnprintf(query_formatted, sizeof(query_formatted), query, args);
+	va_end(args);
+
+	/* Now escape any shell double-quote metacharacters */
+	d = query_escaped;
+	for (s = query_formatted; *s; s++)
+	{
+		if (strchr("\\\"$`", *s))
+			*d++ = '\\';
+		*d++ = *s;
+	}
+	*d = '\0';
+
+	/* And now we can build and execute the shell command */
+#ifndef WIN32
+	snprintf(psql_cmd, sizeof(psql_cmd),
+			 "\"%s%spsql\" -X -U system -c \"%s\" \"%s\"",
+			 bindir ? bindir : "",
+			 bindir ? "/" : "",
+			 query_escaped,
+			 database);
+#else
+	snprintf(psql_cmd, sizeof(psql_cmd),
+			 "\"%s%spsql\" -U system -X -c \"%s\" \"%s\"",
+			 bindir ? bindir : "",
+			 bindir ? "/" : "",
+			 query_escaped,
+			 database);
+#endif
 	if (system(psql_cmd) != 0)
 	{
 		/* psql probably already reported the error */
@@ -2020,7 +2072,7 @@ static void
 drop_database_if_exists(const char *dbname)
 {
 	header(_("dropping database \"%s\""), dbname);
-	psql_command("postgres", "DROP DATABASE IF EXISTS \"%s\"", dbname);
+	psql_command_nosys("postgres", "DROP DATABASE IF EXISTS \"%s\"", dbname);
 }
 
 static void
@@ -2034,12 +2086,12 @@ create_database(const char *dbname)
 	 */
 	header(_("creating database \"%s\""), dbname);
 	if (encoding)
-		psql_command("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0 ENCODING='%s'%s", dbname, encoding,
+		psql_command_nosys("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0 ENCODING='%s'%s", dbname, encoding,
 					 (nolocale) ? " LC_COLLATE='C' LC_CTYPE='C'" : "");
 	else
-		psql_command("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0%s", dbname,
+		psql_command_nosys("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0%s", dbname,
 					 (nolocale) ? " LC_COLLATE='C' LC_CTYPE='C'" : "");
-	psql_command(dbname,
+	psql_command_nosys(dbname,
 				 "ALTER DATABASE \"%s\" SET lc_messages TO 'C';"
 				 "ALTER DATABASE \"%s\" SET lc_monetary TO 'C';"
 				 "ALTER DATABASE \"%s\" SET lc_numeric TO 'C';"
@@ -2055,7 +2107,7 @@ create_database(const char *dbname)
 	for (sl = loadextension; sl != NULL; sl = sl->next)
 	{
 		header(_("installing %s"), sl->str);
-		psql_command(dbname, "CREATE EXTENSION IF NOT EXISTS \"%s\"", sl->str);
+		psql_command_nosys(dbname, "CREATE EXTENSION IF NOT EXISTS \"%s\"", sl->str);
 	}
 }
 
@@ -2464,12 +2516,19 @@ regression_main(int argc, char *argv[],
 		/*
 		 * Check if there is a postmaster running already.
 		 */
+#ifndef WIN32
 		snprintf(buf2, sizeof(buf2),
-				 "\"%s%spsql\" -X postgres <%s 2>%s",
+				 "\"%s%spsql\" -X postgres -U system<%s 2>%s",
 				 bindir ? bindir : "",
 				 bindir ? "/" : "",
 				 DEVNULL, DEVNULL);
-
+#else
+		snprintf(buf2, sizeof(buf2),
+				 "\"%s%spsql\" -U system -X postgres<%s 2>%s",
+				 bindir ? bindir : "",
+				 bindir ? "/" : "",
+				 DEVNULL, DEVNULL);
+#endif
 		for (i = 0; i < 16; i++)
 		{
 			if (system(buf2) == 0)
@@ -2631,8 +2690,60 @@ regression_main(int argc, char *argv[],
 		 */
 		if (!use_existing)
 		{
+			char		portname[16] = "";
+			char		oraportname[16] = "";
+			char		envport[16] = "";
+			char		*envoraport = NULL;
+			int				envport_s = 0;
+			int				envoraport_s = 0;
+			
+			if(oraPort)
+			{
+				sprintf(portname, "%d", port);
+				sprintf(oraportname, "%d", oraPort);
+			}
+			else
+			{
+				sprintf(portname, "%d", port-1);
+				sprintf(oraportname, "%d", port);
+			}
+
+			if(port > 0)
+				setenv("PGPORT", portname, 1);
+			else
+			{
+				envoraport = pg_strdup(getenv("PGPORT"));
+				envoraport_s = atoi(envoraport);
+				
+				if(envoraport_s == 1521)
+				{
+					envport_s = 5432;
+					sprintf(envport, "%d", envport_s);
+				}
+				else
+				{
+					envport_s = envoraport_s -1;
+					sprintf(envport, "%d", envport_s);
+
+				}
+
+				if(envoraport_s > 0)
+					setenv("PGPORT", envport, 1);
+
+			}
 			for (sl = dblist; sl; sl = sl->next)
 				drop_database_if_exists(sl->str);
+
+			if(port > 0)
+				setenv("PGPORT", oraportname, 1);
+			else
+			{
+				if(envoraport_s > 0)
+					setenv("PGPORT", envoraport, 1);
+			}
+
+			pg_free(envoraport);
+
 			for (sl = extraroles; sl; sl = sl->next)
 				drop_role_if_exists(sl->str);
 		}
@@ -2643,11 +2754,72 @@ regression_main(int argc, char *argv[],
 	 */
 	if (!use_existing)
 	{
+		char		portname[16] = "";
+		char		oraportname[16] = "";
+		char		envport[16] = "";
+		char		*envoraport = NULL;
+		int				envport_s = 0;
+		int				envoraport_s = 0;
+
+		if(oraPort)
+		{
+			sprintf(portname, "%d", port);
+			sprintf(oraportname, "%d", oraPort);
+		}
+		else
+		{
+			sprintf(portname, "%d", port-1);
+			sprintf(oraportname, "%d", port);
+		}
+		
+
+		if(port > 0)
+			setenv("PGPORT", portname, 1);
+		else
+		{
+
+			envoraport = pg_strdup(getenv("PGPORT"));
+			envoraport_s = atoi(envoraport);
+			if(envoraport_s == 1521)
+			{
+				envport_s = 5432;
+				sprintf(envport, "%d", envport_s);
+			}
+			else
+			{
+				envport_s = envoraport_s -1;
+				sprintf(envport, "%d", envport_s);
+
+			}
+			
+			if(envoraport_s > 0)
+				setenv("PGPORT", envport, 1);
+
+		}
+
 		for (sl = dblist; sl; sl = sl->next)
 			create_database(sl->str);
+
+		if(port > 0)
+			setenv("PGPORT", oraportname, 1);
+		else
+		{
+			if(envoraport_s > 0)
+				setenv("PGPORT", envoraport, 1);
+
+		}
+
+		if (envoraport != NULL)
+		{
+			pg_free(envoraport);
+			envoraport = NULL;
+		}
+
 		for (sl = extraroles; sl; sl = sl->next)
 			create_role(sl->str, dblist);
 	}
+
+	setenv("PGUSER", "system", 1);
 
 	/*
 	 * Ready to run the tests

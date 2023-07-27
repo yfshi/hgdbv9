@@ -26,6 +26,8 @@
 #include "utils/lsyscache.h"
 #include "utils/numeric.h"
 #include "utils/syscache.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 
 static char *printTypmod(const char *typname, int32 typmod, Oid typmodout);
 
@@ -115,7 +117,8 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 	Form_pg_type typeform;
 	Oid			array_base_type;
 	bool		is_array;
-	char	   *buf;
+	char	   *buf,
+			   *buf1;
 	bool		with_typemod;
 
 	if (type_oid == InvalidOid)
@@ -217,6 +220,17 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			}
 			else
 				buf = pstrdup("character");
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf = quote_catalog_qualified(type_oid, buf);
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 
 		case FLOAT4OID:
@@ -251,6 +265,19 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 				buf = printTypmod("interval", typemod, typeform->typmodout);
 			else
 				buf = pstrdup("interval");
+			
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf1 = quote_qualified_identifier("pg_catalog", buf);
+				buf = buf1;
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 
 		case TIMEOID:
@@ -272,6 +299,18 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 				buf = printTypmod("timestamp", typemod, typeform->typmodout);
 			else
 				buf = pstrdup("timestamp without time zone");
+			
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf = quote_catalog_qualified(type_oid, buf);
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 
 		case TIMESTAMPTZOID:
@@ -279,6 +318,18 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 				buf = printTypmod("timestamp", typemod, typeform->typmodout);
 			else
 				buf = pstrdup("timestamp with time zone");
+			
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf = quote_catalog_qualified(type_oid, buf);
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 
 		case VARBITOID:
@@ -293,6 +344,18 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 				buf = printTypmod("character varying", typemod, typeform->typmodout);
 			else
 				buf = pstrdup("character varying");
+			
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf = quote_catalog_qualified(type_oid, buf);
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 		/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 		case ORACHARCHAROID:
@@ -320,8 +383,30 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			break;
 		
 		case ORADATEOID:
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Distinguish between ORADATEOID and DATEOID
+			 */
+			buf = pstrdup("date");
+			break;
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 		case DATEOID:
 			buf = pstrdup("date");
+
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Change the name of the backup type
+			 */
+			if(buf && (ORA_DUMP == dumppgtype))
+			{
+				buf1 = quote_qualified_identifier("pg_catalog", buf);
+				buf = buf1;
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
 			break;
 		
 		case ORATIMESTAMPOID:
@@ -375,7 +460,7 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 		/* End - BUG#0000048 */
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	}
-
+	
 	if (buf == NULL)
 	{
 		/*

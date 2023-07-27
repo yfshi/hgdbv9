@@ -27,7 +27,16 @@ static bool parseAclItem(const char *item, const char *type,
 static char *copyAclUserName(PQExpBuffer output, char *input);
 static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
 				   const char *subname);
+static int grantee_type(char *att);
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+bool CurrentUserIsSuperuser = false;
+const char *CurrentSessionUserName = NULL;
+DBMode database_mode = DB_PG;
+DBParser compatible_db = PG_PARSER;
+DBGrantUser grant_usertype = PG_GRANTUSER;
+DBDump dumppgtype = PG_DUMP;
+/* END - ReqID:SRS-MISC-USER */
 
 /*
  * Build GRANT/REVOKE command(s) for an object.
@@ -185,11 +194,63 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					appendPQExpBufferStr(firstsql, "PUBLIC;\n");
 				else if (strncmp(grantee->data, "group ",
 								 strlen("group ")) == 0)
-					appendPQExpBuffer(firstsql, "GROUP %s;\n",
+				{
+					/* BEGIN - ReqID:SRS-MISC-USER */
+					/*
+					 * This phase occurs during the assembly phase of an sql statement.
+					 * ratt_result is determined by the aclitemout () function,
+					 * which assembles the sql step by step after obtaining grant/revoke
+					 */
+					if(DB_ORACLE == database_mode)
+					{
+						int ratt_result = -1;
+								ratt_result = grantee_type(grantee->data + strlen("group "));
+						if(ratt_result == 1)
+						{
+							appendPQExpBuffer(firstsql, "GROUP INSTANCEUSER %s;\n",
+										  fmtId(grantee->data + strlen("group ")));
+
+						}
+						else if(ratt_result == 0)
+						{
+							appendPQExpBuffer(firstsql, "GROUP DATABASEUSER %s;\n",
+										  fmtId(grantee->data + strlen("group ")));
+
+						}
+						else
+							appendPQExpBuffer(firstsql, "GROUP %s;\n",
+										  fmtId(grantee->data + strlen("group ")));
+					}
+					else
+						appendPQExpBuffer(firstsql, "GROUP %s;\n",
 									  fmtId(grantee->data + strlen("group ")));
+					/* END - ReqID:SRS-MISC-USER */
+				}
 				else
-					appendPQExpBuffer(firstsql, "%s;\n",
-									  fmtId(grantee->data));
+				{
+					/* BEGIN - ReqID:SRS-MISC-USER */
+					if(DB_ORACLE == database_mode)
+					{
+						int ratt_result = -1;
+								ratt_result = grantee_type(grantee->data);
+						if(ratt_result == 1)
+						{
+							appendPQExpBuffer(firstsql, "INSTANCEUSER %s;\n",
+											  fmtId(grantee->data));	
+						}
+						else if(ratt_result == 0)
+						{
+							appendPQExpBuffer(firstsql, "DATABASEUSER %s;\n",
+											  fmtId(grantee->data));	
+						}else
+							appendPQExpBuffer(firstsql, "%s;\n",
+											  fmtId(grantee->data));
+					}else
+						appendPQExpBuffer(firstsql, "%s;\n",
+										   fmtId(grantee->data));
+					/* END - ReqID:SRS-MISC-USER */
+				}
+					
 			}
 		}
 	}
@@ -248,8 +309,10 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					appendPQExpBuffer(firstsql, " ON %s ", type);
 					if (nspname && *nspname)
 						appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
+					
 					appendPQExpBuffer(firstsql, "%s FROM %s;\n",
-									  name, fmtId(grantee->data));
+										  name, fmtId(grantee->data));
+
 					if (privs->len > 0)
 					{
 						appendPQExpBuffer(firstsql,
@@ -257,10 +320,31 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 										  prefix, privs->data, type);
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						appendPQExpBuffer(firstsql,
-										  "%s TO %s;\n",
-										  name, fmtId(grantee->data));
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode)
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data);
+							if(att_result == 1)
+								appendPQExpBuffer(firstsql,
+												"%s TO INSTANCEUSER %s;\n",
+												name, fmtId(grantee->data));
+							else if(att_result == 0)
+								appendPQExpBuffer(firstsql,
+												"%s TO DATABASEUSER %s;\n",
+												name, fmtId(grantee->data));
+							else
+								appendPQExpBuffer(firstsql,
+												"%s TO %s;\n",
+												name, fmtId(grantee->data));
+						}
+						else
+							appendPQExpBuffer(firstsql,
+											  "%s TO %s;\n",
+											  name, fmtId(grantee->data));	
+						/* END - ReqID:SRS-MISC-USER */
 					}
+					
 					if (privswgo->len > 0)
 					{
 						appendPQExpBuffer(firstsql,
@@ -268,9 +352,29 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 										  prefix, privswgo->data, type);
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						appendPQExpBuffer(firstsql,
-										  "%s TO %s WITH GRANT OPTION;\n",
-										  name, fmtId(grantee->data));
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode)
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data);
+							if(att_result == 1)
+								appendPQExpBuffer(firstsql,
+												"%s TO INSTANCEUSER %s WITH GRANT OPTION;\n",
+												name, fmtId(grantee->data));
+							else if(att_result == 0)
+								appendPQExpBuffer(firstsql,
+												"%s TO DATABASEUSER %s WITH GRANT OPTION;\n",
+												name, fmtId(grantee->data));
+							else
+								appendPQExpBuffer(firstsql,
+												"%s TO %s WITH GRANT OPTION;\n",
+												name, fmtId(grantee->data));
+						}
+						else
+							appendPQExpBuffer(firstsql,
+											"%s TO %s WITH GRANT OPTION;\n",
+											name, fmtId(grantee->data));
+						/* END - ReqID:SRS-MISC-USER */
 					}
 				}
 			}
@@ -290,7 +394,6 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					&& (!owner || strcmp(owner, grantor->data) != 0))
 					appendPQExpBuffer(secondsql, "SET SESSION AUTHORIZATION %s;\n",
 									  fmtId(grantor->data));
-
 				if (privs->len > 0)
 				{
 					appendPQExpBuffer(secondsql, "%sGRANT %s ON %s ",
@@ -302,10 +405,48 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 						appendPQExpBufferStr(secondsql, "PUBLIC;\n");
 					else if (strncmp(grantee->data, "group ",
 									 strlen("group ")) == 0)
-						appendPQExpBuffer(secondsql, "GROUP %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
+					{
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode)
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data + strlen("group "));
+
+							if(att_result == 1)
+								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s;\n",
+														fmtId(grantee->data + strlen("group ")));
+							else if(att_result == 0)
+								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s;\n",
+														fmtId(grantee->data + strlen("group ")));
+							else
+								appendPQExpBuffer(secondsql, "GROUP %s;\n",
+													   fmtId(grantee->data + strlen("group ")));							
+							
+						}
+						else
+							appendPQExpBuffer(secondsql, "GROUP %s;\n",
+											fmtId(grantee->data + strlen("group ")));
+						/* END - ReqID:SRS-MISC-USER */
+					}
 					else
-						appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+					{
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode)
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data);
+							if(att_result == 1)
+								appendPQExpBuffer(secondsql, "INSTANCEUSER %s;\n", fmtId(grantee->data));
+							else if(att_result == 0)
+								appendPQExpBuffer(secondsql, "DATABASEUSER %s;\n", fmtId(grantee->data));
+							else
+								appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+						}
+						else
+							appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+						/* END - ReqID:SRS-MISC-USER */
+					}
+						
 				}
 				if (privswgo->len > 0)
 				{
@@ -318,10 +459,46 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 						appendPQExpBufferStr(secondsql, "PUBLIC");
 					else if (strncmp(grantee->data, "group ",
 									 strlen("group ")) == 0)
-						appendPQExpBuffer(secondsql, "GROUP %s",
-										  fmtId(grantee->data + strlen("group ")));
+					{
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode) 
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data + strlen("group "));
+							if(att_result == 1)
+								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s;\n",
+														fmtId(grantee->data + strlen("group ")));
+							else if(att_result == 0)
+								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s;\n",
+														fmtId(grantee->data + strlen("group ")));
+							else
+								appendPQExpBuffer(secondsql, "GROUP %s;\n",
+													   fmtId(grantee->data + strlen("group ")));
+							
+						}
+						else
+							appendPQExpBuffer(secondsql, "GROUP %s;\n",
+												   fmtId(grantee->data + strlen("group ")));
+						/* END - ReqID:SRS-MISC-USER */
+					}
 					else
-						appendPQExpBufferStr(secondsql, fmtId(grantee->data));
+					{
+						/* BEGIN - ReqID:SRS-MISC-USER */
+						if(DB_ORACLE == database_mode) 
+						{
+							int att_result = -1;
+								att_result = grantee_type(grantee->data);
+							if(att_result == 1 )
+								appendPQExpBuffer(secondsql, "INSTANCEUSER %s;\n", fmtId(grantee->data));
+							else if(att_result == 0)
+								appendPQExpBuffer(secondsql, "DATABASEUSER %s;\n", fmtId(grantee->data));
+							else
+								appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+						}
+						else
+							appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+						/* END - ReqID:SRS-MISC-USER */
+					}
 					appendPQExpBufferStr(secondsql, " WITH GRANT OPTION;\n");
 				}
 
@@ -1046,4 +1223,83 @@ makeAlterConfigCommand(PGconn *conn, const char *configitem,
 	appendPQExpBufferStr(buf, ";\n");
 
 	pg_free(mine);
+}
+
+/*
+ * grantee_type  ReqID:SRS-MISC-USE
+ *
+ * get user type
+ */
+static int 
+grantee_type(char *att)
+{
+	char	   *p = NULL;
+	int			att_grant;
+
+	p = att;
+	if(*p == '0')
+	{
+		att_grant = 0;
+		while(*(p))
+		{
+			*p = *(p+1);
+			p++;
+		}
+	}
+	else if(*p == '1')
+	{
+		att_grant = 1;
+		while(*(p))
+		{
+			*p = *(p+1);
+			p++;
+		}
+	}
+	else 
+		att_grant = -1;
+
+	return att_grant;
+}
+
+/*
+ * grantee_type  ReqID:SRS-MISC-USE
+ *
+ * get user type
+ */
+void
+getcurrentuserisInstanceSupperuser(PGconn *conn)
+{
+	PGresult *res;
+	PQExpBuffer cmd1 = createPQExpBuffer();
+
+	appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
+	res = PQexec(conn, cmd1->data);	
+	if(PQntuples(res))
+		CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+	PQclear(res);
+	destroyPQExpBuffer(cmd1);
+}
+
+/*
+ * getDatabaseMode  ReqID:SRS-MISC-USE
+ * 
+ */
+void 
+getDatabaseMode(PGconn *conn)
+{
+	PGresult *res;
+
+	char *db_style = NULL;
+
+	res = PQexec(conn, "show ivorysql.database_mode;");	
+
+	db_style = PQgetvalue(res, 0, 0);
+
+	if (db_style && (0 == pg_strcasecmp(db_style, "oracle")))
+		database_mode = DB_ORACLE;
+	else
+		database_mode = DB_PG;
+
+	if (res)
+		PQclear(res);
 }

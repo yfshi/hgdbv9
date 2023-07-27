@@ -78,14 +78,25 @@ psql_start_test(const char *testname,
 	 * Use HIDE_TABLEAM to hide different AMs to allow to use regression tests
 	 * against different AMs without unnecessary differences.
 	 */
+#ifndef WIN32
 	offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
-					   "\"%s%spsql\" -X -a -q -d \"%s\" %s < \"%s\" > \"%s\" 2>&1",
+					   "\"%s%spsql\" -X -U system -a -q -d \"%s\" %s < \"%s\" > \"%s\" 2>&1",
 					   bindir ? bindir : "",
 					   bindir ? "/" : "",
 					   dblist->str,
 					   "-v HIDE_TABLEAM=on -v HIDE_TOAST_COMPRESSION=on",
 					   infile,
 					   outfile);
+#else
+	offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
+					   "\"%s%spsql\" -U system -X -a -q -d \"%s\" %s < \"%s\" > \"%s\" 2>&1",
+					   bindir ? bindir : "",
+					   bindir ? "/" : "",
+					   dblist->str,
+					   "-v HIDE_TABLEAM=on -v HIDE_TOAST_COMPRESSION=on",
+					   infile,
+					   outfile);
+#endif
 
 	if (offset >= sizeof(psql_cmd))
 	{

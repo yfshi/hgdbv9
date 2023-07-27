@@ -83,6 +83,8 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 
 /*
  * Internal format used by ALTER DEFAULT PRIVILEGES.
@@ -383,7 +385,30 @@ ExecuteGrantStmt(GrantStmt *stmt)
 	{
 		Oid			grantor;
 
-		grantor = get_rolespec_oid(stmt->grantor, false);
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * Determine the type of user
+		 */
+		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
+		{
+			switch (stmt->grantor_type)
+			{
+				case DATABASE_USER:
+					grantor = get_databaserol_oid(stmt->grantor);
+					break;
+				case INSTANCE_USER:
+					grantor = get_instancerol_oid(stmt->grantor);
+					break;
+				case UNKNOWN_USER:
+					grantor = get_rolespec_oid(stmt->grantor, false);
+					break;
+			}
+		}
+		else
+			grantor = get_rolespec_oid(stmt->grantor, false);
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 
 		/*
 		 * Currently, this clause is only for SQL compatibility, not very
@@ -430,19 +455,93 @@ ExecuteGrantStmt(GrantStmt *stmt)
 	 */
 	foreach(cell, stmt->grantees)
 	{
-		RoleSpec   *grantee = (RoleSpec *) lfirst(cell);
-		Oid			grantee_uid;
-
-		switch (grantee->roletype)
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * Determine the type of user before adding to the linked list
+		 */
+		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
 		{
-			case ROLESPEC_PUBLIC:
-				grantee_uid = ACL_ID_PUBLIC;
-				break;
-			default:
-				grantee_uid = get_rolespec_oid(grantee, false);
-				break;
+			Oid			grantee_uid;
+			char	   *usertype = NULL;
+			RoleSpec   *grantee;
+			int clength;
+			ListCell   *cell1,
+					   *cell2;
+
+			switch (nodeTag(lfirst(cell)))
+			{
+				case T_List:
+					{
+						clength = list_length((List *)lfirst(cell));
+
+						if(clength == 2)
+						{
+							cell1 = list_head((List *)lfirst(cell));
+							cell2 = list_second_cell((List *)lfirst(cell));
+
+							usertype = strVal(lfirst(cell1));
+							grantee = (RoleSpec *) (lfirst(cell2));
+						}
+						else
+							elog(ERROR,"Please check the number of user");
+					}
+					break;
+				case T_RoleSpec:
+					{
+						grantee = (RoleSpec *) lfirst(cell);
+					}
+					break;
+				default:
+					elog(ERROR,"The type of user is incorrect");
+					break;
+			}
+
+			switch (grantee->roletype)
+			{
+				case ROLESPEC_PUBLIC:
+					grantee_uid = ACL_ID_PUBLIC;
+					break;
+				default:
+					if(usertype)
+					{
+						if(pg_strcasecmp(usertype, "DATABASEUSER") == 0 )
+							grantee_uid = get_databaserol_oid(grantee);
+						else if(pg_strcasecmp(usertype, "INSTANCEUSER") == 0 )
+							grantee_uid = get_instancerol_oid(grantee);
+						else
+						{
+							grantee = (RoleSpec *) lfirst(cell);
+							grantee_uid = get_rolespec_oid(grantee, false);
+						}
+
+					}
+					else
+						grantee_uid = get_rolespec_oid(grantee, false);
+
+					break;
+			}
+
+			istmt.grantees = lappend_oid(istmt.grantees, grantee_uid);
 		}
-		istmt.grantees = lappend_oid(istmt.grantees, grantee_uid);
+		else
+		{
+			RoleSpec   *grantee = (RoleSpec *) lfirst(cell);
+			Oid			grantee_uid;
+
+			switch (grantee->roletype)
+			{
+				case ROLESPEC_PUBLIC:
+					grantee_uid = ACL_ID_PUBLIC;
+					break;
+				default:
+					grantee_uid = get_rolespec_oid(grantee, false);
+					break;
+			}
+			istmt.grantees = lappend_oid(istmt.grantees, grantee_uid);
+		}
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 	}
 
 	/*
@@ -1040,19 +1139,92 @@ ExecAlterDefaultPrivilegesStmt(ParseState *pstate, AlterDefaultPrivilegesStmt *s
 	 */
 	foreach(cell, action->grantees)
 	{
-		RoleSpec   *grantee = (RoleSpec *) lfirst(cell);
-		Oid			grantee_uid;
-
-		switch (grantee->roletype)
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * Determine the type of user before adding to the linked list
+		 */
+		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
 		{
-			case ROLESPEC_PUBLIC:
-				grantee_uid = ACL_ID_PUBLIC;
-				break;
-			default:
-				grantee_uid = get_rolespec_oid(grantee, false);
-				break;
+			Oid			grantee_uid;
+			char	   *usertype = NULL;
+			RoleSpec   *grantee;
+			int clength;
+			ListCell   *cell1,
+					   *cell2;
+
+			switch (nodeTag(lfirst(cell)))
+			{
+				case T_List:
+					{
+						clength = list_length((List *)lfirst(cell));
+
+						if(clength == 2)
+						{
+							cell1 = list_head((List *)lfirst(cell));
+							cell2 = list_second_cell((List *)lfirst(cell));
+
+							usertype = strVal(lfirst(cell1));
+							grantee = (RoleSpec *) (lfirst(cell2));
+						}
+						else
+							elog(ERROR,"Please check the number of user");
+					}
+					break;
+				case T_RoleSpec:
+					{
+						grantee = (RoleSpec *) lfirst(cell);
+					}
+					break;
+				default:
+					elog(ERROR,"The type of user is incorrect");
+					break;
+			}
+
+			switch (grantee->roletype)
+			{
+				case ROLESPEC_PUBLIC:
+					grantee_uid = ACL_ID_PUBLIC;
+					break;
+				default:
+					if(usertype)
+					{
+						if(pg_strcasecmp(usertype, "DATABASEUSER") == 0 )
+							grantee_uid = get_databaserol_oid(grantee);
+						else if(pg_strcasecmp(usertype, "INSTANCEUSER") == 0 )
+							grantee_uid = get_instancerol_oid(grantee);
+						else
+						{
+							grantee = (RoleSpec *) lfirst(cell);
+							grantee_uid = get_rolespec_oid(grantee, false);
+						}
+					}
+					else
+						grantee_uid = get_rolespec_oid(grantee, false);
+
+					break;
+			}
+
+			iacls.grantees = lappend_oid(iacls.grantees, grantee_uid);
 		}
-		iacls.grantees = lappend_oid(iacls.grantees, grantee_uid);
+		else
+		{
+			RoleSpec   *grantee = (RoleSpec *) lfirst(cell);
+			Oid			grantee_uid;
+
+			switch (grantee->roletype)
+			{
+				case ROLESPEC_PUBLIC:
+					grantee_uid = ACL_ID_PUBLIC;
+					break;
+				default:
+					grantee_uid = get_rolespec_oid(grantee, false);
+					break;
+			}
+			iacls.grantees = lappend_oid(iacls.grantees, grantee_uid);
+		}
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 	}
 
 	/*

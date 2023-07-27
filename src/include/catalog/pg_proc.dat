@@ -1712,6 +1712,10 @@
   proname => 'int2smaller', prorettype => 'int2', proargtypes => 'int2 int2',
   prosrc => 'int2smaller' },
 
+{ oid => '786', descr => 'current user id',
+  proname => 'current_userid', provolatile => 's', prorettype => 'oid',
+  proargtypes => '', prosrc => 'current_userid' },
+  
 # OIDS 800 - 899
 
 { oid => '846',
@@ -3769,6 +3773,13 @@
   proname => 'pg_get_replica_identity_index', procost => '10',
   provolatile => 's', prorettype => 'regclass', proargtypes => 'regclass',
   prosrc => 'pg_get_replica_identity_index' },
+
+
+# /* Begin - ReqID:SRS-MISC-USER  */
+{ oid => '2137', descr => 'get current userid',
+  proname => 'get_current_userid', provolatile => 's', prorettype => 'oid',
+  proargtypes => '', prosrc => 'get_current_userid' },
+# /* End - ReqID:SRS-MISC-USER  */
 
 # Deferrable unique constraint trigger
 { oid => '1250', descr => 'deferred UNIQUE constraint check',

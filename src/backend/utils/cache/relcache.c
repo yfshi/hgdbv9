@@ -4233,7 +4233,7 @@ RelationCacheInitializePhase3(void)
 							DatabaseRelationId);
 		load_critical_index(DatabaseOidIndexId,
 							DatabaseRelationId);
-		load_critical_index(AuthIdRolnameIndexId,
+		load_critical_index(AuthIdRolnameDboidIndexId,			/* ReqID:SRS-MISC-USER */
 							AuthIdRelationId);
 		load_critical_index(AuthIdOidIndexId,
 							AuthIdRelationId);

@@ -212,6 +212,7 @@ extern bool is_member_of_role_nosuper(Oid member, Oid role);
 extern bool is_admin_of_role(Oid member, Oid role);
 extern void check_is_member_of_role(Oid member, Oid role);
 extern Oid	get_role_oid(const char *rolename, bool missing_ok);
+extern Oid	get_role_canlogin_oid(const char *rolname, bool missing_ok);
 extern Oid	get_role_oid_or_public(const char *rolename);
 extern Oid	get_rolespec_oid(const RoleSpec *role, bool missing_ok);
 extern void check_rolespec_name(const RoleSpec *role, const char *detail_msg);
@@ -223,6 +224,10 @@ extern void select_best_grantor(Oid roleId, AclMode privileges,
 								Oid *grantorId, AclMode *grantOptions);
 
 extern void initialize_acl(void);
+extern Oid get_instancerol_oid(const RoleSpec *role);
+extern Oid get_databaserol_oid(const RoleSpec *role);
+extern Oid get_databaseuser_oid(const char *rolename, Oid dboid);
+extern Oid get_instanceuser_oid(const char *rolename);
 
 /*
  * prototypes for functions in aclchk.c

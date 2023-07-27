@@ -17,6 +17,7 @@
 
 #include "libpq-fe.h"
 #include "pqexpbuffer.h"
+#include "utils/ora_compatible.h"
 
 /*
  * Preferred strftime(3) format specifier for printing timestamps in pg_dump
@@ -35,6 +36,14 @@
 #define PGDUMP_STRFTIME_FMT  "%Y-%m-%d %H:%M:%S"
 #endif
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+extern bool CurrentUserIsSuperuser;
+extern const char *CurrentSessionUserName;
+extern DBMode database_mode;
+extern DBParser compatible_db;
+extern DBGrantUser grant_usertype;
+extern DBDump dumppgtype;
+/* END - ReqID:SRS-MISC-USER */
 
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
 							 const char *type, const char *acls, const char *racls,
@@ -65,5 +74,8 @@ extern void makeAlterConfigCommand(PGconn *conn, const char *configitem,
 								   const char *type, const char *name,
 								   const char *type2, const char *name2,
 								   PQExpBuffer buf);
+
+extern void getcurrentuserisInstanceSupperuser(PGconn *conn);
+extern void getDatabaseMode(PGconn *conn);
 
 #endif							/* DUMPUTILS_H */

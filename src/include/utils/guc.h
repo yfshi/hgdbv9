@@ -294,6 +294,11 @@ extern int      database_mode;
 extern PGDLLIMPORT int  compatible_db;
 /* END - SQL PARSER */
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+extern PGDLLIMPORT int  dumppgtype;
+extern PGDLLIMPORT int  grant_usertype;
+/* END - ReqID:SRS-MISC-USER */
+
 /* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */

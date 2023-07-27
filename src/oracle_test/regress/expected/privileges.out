@@ -30,8 +30,10 @@ ERROR:  role "regress_priv_user5" already exists
 CREATE USER regress_priv_user6;
 CREATE USER regress_priv_user7;
 CREATE ROLE regress_priv_role;
-GRANT pg_read_all_data TO regress_priv_user6;
-GRANT pg_write_all_data TO regress_priv_user7;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_read_all_data TO regress_priv_user6;
+GRANT INSTANCEUSER pg_write_all_data TO regress_priv_user7;
 CREATE GROUP regress_priv_group1;
 CREATE GROUP regress_priv_group2 WITH USER regress_priv_user1, regress_priv_user2;
 ALTER GROUP regress_priv_group1 ADD USER regress_priv_user4;
@@ -1131,14 +1133,16 @@ select has_table_privilege(current_user,'pg_authid','insert');
 (1 row)
 
 select has_table_privilege(t2.oid,'pg_authid','update')
-from (select oid from pg_roles where rolname = current_user) as t2;
+from (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+and d.oid = r.dboid and d.datname = current_database()) as t2;
  has_table_privilege 
 ---------------------
  t
 (1 row)
 
 select has_table_privilege(t2.oid,'pg_authid','delete')
-from (select oid from pg_roles where rolname = current_user) as t2;
+from (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+and d.oid = r.dboid and d.datname = current_database()) as t2;
  has_table_privilege 
 ---------------------
  t
@@ -1162,7 +1166,8 @@ from (select oid from pg_class where relname = 'pg_authid') as t1;
 
 select has_table_privilege(t2.oid,t1.oid,'select')
 from (select oid from pg_class where relname = 'pg_authid') as t1,
-  (select oid from pg_roles where rolname = current_user) as t2;
+  (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+  and d.oid = r.dboid and d.datname = current_database()) as t2;
  has_table_privilege 
 ---------------------
  t
@@ -1170,7 +1175,8 @@ from (select oid from pg_class where relname = 'pg_authid') as t1,
 
 select has_table_privilege(t2.oid,t1.oid,'insert')
 from (select oid from pg_class where relname = 'pg_authid') as t1,
-  (select oid from pg_roles where rolname = current_user) as t2;
+  (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+  and d.oid = r.dboid and d.datname = current_database()) as t2;
  has_table_privilege 
 ---------------------
  t
@@ -1796,7 +1802,9 @@ SELECT * FROM pg_largeobject LIMIT 0;			-- to be denied
 ERROR:  permission denied for table pg_largeobject
 -- test pg_database_owner
 RESET SESSION AUTHORIZATION;
-GRANT pg_database_owner TO regress_priv_user1;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_database_owner TO regress_priv_user1;
 ERROR:  role "pg_database_owner" cannot have explicit members
 GRANT regress_priv_user1 TO pg_database_owner;
 ERROR:  role "pg_database_owner" cannot be a member of any role

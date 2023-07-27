@@ -63,6 +63,8 @@ typedef enum EditableObjectType
 	EditableView
 } EditableObjectType;
 
+extern PGDLLIMPORT int  compatible_db;
+
 /* Begin - ReqID:SRS-PSQL-PARSER */
 psql_scan_slash_option_hook_type psql_scan_slash_option_parser = pg_psql_scan_slash_option;
 /* End - ReqID:SRS-PSQL-PARSER */

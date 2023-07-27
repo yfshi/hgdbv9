@@ -12162,7 +12162,7 @@ standard_quote_identifier(const char *ident)
 	*optr = '\0';
 
 	return result;
-}
+}	
 
 /*
  * quote_qualified_identifier	- Quote a possibly-qualified identifier
@@ -12180,6 +12180,50 @@ quote_qualified_identifier(const char *qualifier,
 	if (qualifier)
 		appendStringInfo(&buf, "%s.", quote_identifier(qualifier));
 	appendStringInfoString(&buf, quote_identifier(ident));
+	return buf.data;
+}
+
+/*
+ * get_instanceuser_oid ReqID:SRS-MISC-USE
+ *
+ * get instance user oid
+ */
+char *
+quote_catalog_qualified(Oid tid, char *qualifier)
+{
+	StringInfoData buf;
+	char *p = NULL;
+	char buf3[64] = {0};
+	int i = 0, j= 0;
+
+	initStringInfo(&buf);
+
+	if(tid == TIMESTAMPOID)
+		appendStringInfo(&buf, "pg_catalog.%s", "timestamp");
+	else if(tid == TIMESTAMPTZOID)
+		appendStringInfo(&buf, "pg_catalog.%s", "timestamptz");
+	else if(tid == BPCHAROID)
+		appendStringInfo(&buf, "pg_catalog.%s", "bpchar");
+	else if(tid == VARCHAROID)
+		appendStringInfo(&buf, "pg_catalog.%s", "varchar");
+
+	for (p = qualifier; *p; p++)
+	{
+		if(*p == '(')
+			j = i;
+
+		if(*p == ')')
+		{
+			break;
+		}
+		i++;
+	}
+	if(j)
+	{
+		strncpy(buf3, qualifier + j, i - j + 1);
+		appendStringInfoString(&buf, buf3);
+	}
+
 	return buf.data;
 }
 

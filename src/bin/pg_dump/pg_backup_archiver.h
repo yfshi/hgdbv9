@@ -380,6 +380,7 @@ struct _tocEntry
 								 * means use database default */
 	char	   *tableam;		/* table access method, only for TABLE tags */
 	char	   *owner;
+	char	   *usertype; 			/* ReqID:SRS-MISC-USER */
 	char	   *desc;
 	char	   *defn;
 	char	   *dropStmt;

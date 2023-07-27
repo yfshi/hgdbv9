@@ -87,6 +87,8 @@ BackendId	ParallelLeaderBackendId = InvalidBackendId;
 
 Oid			MyDatabaseId = InvalidOid;
 
+Oid			CurrentUserOid = InvalidOid;    			/* ReqID:SRS-MISC-USER */
+
 Oid			MyDatabaseTableSpace = InvalidOid;
 
 /*
