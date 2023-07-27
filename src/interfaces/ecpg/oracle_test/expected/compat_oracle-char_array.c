@@ -236,7 +236,6 @@ if (sqlca.sqlcode < 0) exit (1);}
   { ECPGtrans(__LINE__, NULL, "commit work");
 #line 63 "char_array.pgc"
 
-
 if (sqlca.sqlwarn[0] == 'W') warn ( );
 #line 63 "char_array.pgc"
 
@@ -311,10 +310,11 @@ if (sqlca.sqlwarn[0] == 'W') sqlprint();
 if (sqlca.sqlcode < 0) exit (1);}
 #line 86 "char_array.pgc"
 
+
   { ECPGdo(__LINE__, 3, 1, NULL, 0, ECPGst_normal, "reset ivorysql . enable_emptystring_to_null", ECPGt_EOIT, ECPGt_EORT);
 #line 88 "char_array.pgc"
 
-if (sqlca.sqlwarn[0] == 'W') warn ( );
+if (sqlca.sqlwarn[0] == 'W') sqlprint();
 #line 88 "char_array.pgc"
 
 if (sqlca.sqlcode < 0) exit (1);}

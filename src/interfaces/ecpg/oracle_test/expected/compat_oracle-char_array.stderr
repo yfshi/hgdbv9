@@ -50,11 +50,11 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_process_output on line 46: OK: INSERT 0 1
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 48: query: declare C cursor for select strval , strval from strdbase; with 0 parameter(s) on connection ecpg1_regression
+[NO_PID]: ecpg_execute on line 49: query: declare C cursor for select strval , strval from strdbase; with 0 parameter(s) on connection ecpg1_regression
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 48: using PQexec
+[NO_PID]: ecpg_execute on line 49: using PQexec
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_process_output on line 48: OK: DECLARE CURSOR
+[NO_PID]: ecpg_process_output on line 49: OK: DECLARE CURSOR
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_execute on line 57: query: fetch C; with 0 parameter(s) on connection ecpg1_regression
 [NO_PID]: sqlca: code: 0, state: 00000
@@ -127,7 +127,7 @@ Warning: At least one column was truncated
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_process_output on line 57: correctly got 0 tuples with 2 fields
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: raising sqlcode 100 on line 57: no data found on line 51
+[NO_PID]: raising sqlcode 100 on line 57: no data found on line 57
 [NO_PID]: sqlca: code: 100, state: 02000
 [NO_PID]: ecpg_execute on line 61: query: close C; with 0 parameter(s) on connection ecpg1_regression
 [NO_PID]: sqlca: code: 0, state: 00000
