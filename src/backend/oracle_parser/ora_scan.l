@@ -432,6 +432,12 @@ ora_identifier		{ora_ident_start}{ora_ident_cont}*
 ora_param       :({integer}|{ora_identifier})
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
+/* Begin - BUG#Z366 */
+quoted_ora_param	:({dquote}{ora_identifier}{dquote})
+/* Avoid flex backup */
+quoted_ora_failed	((:{dquote})|(:{dquote}{ora_ident_start})|(:{dquote}{ora_ident_start}{ora_ident_cont}*))
+/* End - BUG#Z366 */
+
 other			.
 
 /*
@@ -1040,6 +1046,22 @@ other			.
 						return GREATER_GREATER;
 					}
 	/* Begin - ReqID:SRS-SQL-PROC */
+
+	/* Begin - BUG#Z366 */
+{quoted_ora_param}	{
+						char	*param_name;
+
+						SET_YYLLOC();
+						param_name = palloc0(yyleng - 2 + 1);	/* Remove \" and add the \0 */
+
+						param_name[0] = ':';
+						memcpy(param_name + 1, yytext + 2, yyleng - 3);
+						
+						yylval->str = param_name;
+						return ORAPARAM;
+					}
+{quoted_ora_failed}	{ yyerror("unterminated quoted oracle param"); }
+	/* End - BUG#Z366 */
 
 {self}			{
 					SET_YYLLOC();

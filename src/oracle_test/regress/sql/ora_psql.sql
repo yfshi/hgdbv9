@@ -788,3 +788,20 @@ print v1
 var v1 = ab;b;b ;;;;;
 print v1
 -- End - BUG#Z352
+
+-- BUG#Z366
+CREATE FUNCTION f1(arg1 number)
+RETURN number
+IS
+BEGIN
+   RETURN arg1;
+END;
+/
+
+var like number=123;
+select f1(:like) from dual;
+select f1(:"LIKE") from dual;
+select f1(:"like") from dual;
+select f1(:LIKE) from dual;
+
+DROP FUNCTION f1(arg1 number);
