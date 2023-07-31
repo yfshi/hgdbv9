@@ -2094,6 +2094,12 @@ SELECT translate('12345', '14', 'ax');
  a23x5
 (1 row)
 
+SELECT translate('12345', '134', 'a');
+ translate 
+-----------
+ a25
+(1 row)
+
 SELECT ascii('x');
  ascii 
 -------
@@ -2249,7 +2255,6 @@ SELECT unistr('wrong: \xyz');
 ERROR:  invalid Unicode escape
 HINT:  Unicode escapes must be \XXXX, \+XXXXXX, \uXXXX, or \UXXXXXXXX.
 reset ivorysql.enable_emptystring_to_null;
-
 -- BEGIN - BUG#M0000170
 --
 -- test regexp_instr
@@ -2259,4 +2264,5 @@ SELECT regexp_instr('abcabcabc', 'a.c', 1, 4);
 --------------
  0
 (1 row)
+
 -- END - BUG#M0000170

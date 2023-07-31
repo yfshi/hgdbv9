@@ -1777,6 +1777,7 @@ select pg_get_viewdef('tt20v', true);
 -- reverse-listing of various special function syntaxes required by SQL
 create view tt201v as
 select
+  ('2022-12-01'::date + '1 day'::pg_catalog.interval) at time zone 'UTC' as atz,
   PGEXTRACT(day from now()) as extr,
   (now(), '1 day'::pg_catalog.interval) overlaps
     (current_timestamp(2), '1 day'::pg_catalog.interval) as o,
@@ -1797,25 +1798,26 @@ select
   trim(leading E'\\000'::bytea from E'\\000Tom\\000'::bytea) as ltb,
   trim(trailing E'\\000'::bytea from E'\\000Tom\\000'::bytea) as rtb;
 select pg_get_viewdef('tt201v', true);
-                                         pg_get_viewdef                                          
--------------------------------------------------------------------------------------------------
-  SELECT EXTRACT(day FROM now()) AS extr,                                                       +
-     ((now(), '@ 1 day'::interval) OVERLAPS ("current_timestamp"(2), '@ 1 day'::interval)) AS o,+
-     (('foo'::text) IS NORMALIZED) AS isn,                                                      +
-     (('foo'::text) IS NFKC NORMALIZED) AS isnn,                                                +
-     NORMALIZE('foo'::text) AS n,                                                               +
-     NORMALIZE('foo'::text, NFKD) AS nfkd,                                                      +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2) AS ovl,                                    +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2 FOR 3) AS ovl2,                             +
-     POSITION(('foo'::text) IN ('foobar'::text)) AS p,                                          +
-     SUBSTRING('foo'::text FROM 2 FOR 3) AS s,                                                  +
-     SUBSTRING('foo'::text SIMILAR 'f'::text ESCAPE '#'::text) AS ss,                           +
-     "substring"('foo'::text, 'oo'::text) AS ssf,                                               +
-     "trim"(' foo '::varchar2, ' '::varchar2) AS bt,                                            +
-     ltrim(' foo '::varchar2, ' '::varchar2) AS lt,                                             +
-     rtrim(' foo '::varchar2) AS rt,                                                            +
-     "trim"('\x00546f6d00'::bytea, '\x00'::bytea) AS btb,                                       +
-     ltrim('\x00546f6d00'::bytea::varchar2, '\x00'::bytea::varchar2) AS ltb,                    +
+                                           pg_get_viewdef                                           
+----------------------------------------------------------------------------------------------------
+  SELECT timezone('UTC'::text, ('2022-12-01'::date::date + '@ 1 day'::interval)::timestamp) AS atz,+
+     EXTRACT(day FROM now()) AS extr,                                                              +
+     ((now(), '@ 1 day'::interval) OVERLAPS ("current_timestamp"(2), '@ 1 day'::interval)) AS o,   +
+     ('foo'::text IS NORMALIZED) AS isn,                                                           +
+     ('foo'::text IS NFKC NORMALIZED) AS isnn,                                                     +
+     NORMALIZE('foo'::text) AS n,                                                                  +
+     NORMALIZE('foo'::text, NFKD) AS nfkd,                                                         +
+     OVERLAY('foo'::text PLACING 'bar'::text FROM 2) AS ovl,                                       +
+     OVERLAY('foo'::text PLACING 'bar'::text FROM 2 FOR 3) AS ovl2,                                +
+     POSITION(('foo'::text) IN ('foobar'::text)) AS p,                                             +
+     SUBSTRING('foo'::text FROM 2 FOR 3) AS s,                                                     +
+     SUBSTRING('foo'::text SIMILAR 'f'::text ESCAPE '#'::text) AS ss,                              +
+     "substring"('foo'::text, 'oo'::text) AS ssf,                                                  +
+     "trim"(' foo '::varchar2, ' '::varchar2) AS bt,                                               +
+     ltrim(' foo '::varchar2, ' '::varchar2) AS lt,                                                +
+     rtrim(' foo '::varchar2) AS rt,                                                               +
+     "trim"('\x00546f6d00'::bytea, '\x00'::bytea) AS btb,                                          +
+     ltrim('\x00546f6d00'::bytea::varchar2, '\x00'::bytea::varchar2) AS ltb,                       +
      rtrim('\x00546f6d00'::bytea::varchar2, '\x00'::bytea::varchar2) AS rtb;
 (1 row)
 
@@ -1975,6 +1977,29 @@ select pg_get_viewdef('tt26v', true);
     FROM ( VALUES (1,2,3)) v(x, y, z);
 (1 row)
 
+-- Test that changing the relkind of a relcache entry doesn't cause
+-- trouble. Prior instances of where it did:
+-- CALDaNm2yXz+zOtv7y5zBd5WKT8O0Ld3YxikuU3dcyCvxF7gypA@mail.gmail.com
+-- CALDaNm3oZA-8Wbps2Jd1g5_Gjrr-x3YWrJPek-mF5Asrrvz2Dg@mail.gmail.com
+CREATE TABLE tt26(c int);
+BEGIN;
+CREATE TABLE tt27(c int);
+SAVEPOINT q;
+CREATE RULE "_RETURN" AS ON SELECT TO tt27 DO INSTEAD SELECT * FROM tt26;
+SELECT * FROM tt27;
+ c 
+---
+(0 rows)
+
+ROLLBACK TO q;
+CREATE RULE "_RETURN" AS ON SELECT TO tt27 DO INSTEAD SELECT * FROM tt26;
+ROLLBACK;
+BEGIN;
+CREATE TABLE tt28(c int);
+CREATE RULE "_RETURN" AS ON SELECT TO tt28 DO INSTEAD SELECT * FROM tt26;
+CREATE RULE "_RETURN" AS ON SELECT TO tt28 DO INSTEAD SELECT * FROM tt26;
+ERROR:  "tt28" is already a view
+ROLLBACK;
 -- clean up all the random objects we made above
 DROP SCHEMA temp_view_test CASCADE;
 NOTICE:  drop cascades to 27 other objects
@@ -2006,7 +2031,7 @@ drop cascades to view aliased_view_2
 drop cascades to view aliased_view_3
 drop cascades to view aliased_view_4
 DROP SCHEMA testviewschm2 CASCADE;
-NOTICE:  drop cascades to 73 other objects
+NOTICE:  drop cascades to 74 other objects
 DETAIL:  drop cascades to table t1
 drop cascades to view temporal1
 drop cascades to view temporal2
@@ -2080,4 +2105,5 @@ drop cascades to view tt23v
 drop cascades to view tt24v
 drop cascades to view tt25v
 drop cascades to view tt26v
+drop cascades to table tt26
 reset ivorysql.enable_emptystring_to_null;

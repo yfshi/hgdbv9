@@ -1848,6 +1848,27 @@ alter table parent enable always trigger tg;
 select tgrelid::regclass, tgname, tgenabled from pg_trigger
   where tgrelid in ('parent'::regclass, 'child1'::regclass)
   order by tgrelid::regclass::text, tgname;
+-- This variant malfunctioned in some releases.
+alter table parent disable trigger user;
+select tgrelid::regclass, tgname, tgenabled from pg_trigger
+  where tgrelid in ('parent'::regclass, 'child1'::regclass)
+  order by tgrelid::regclass::text, tgname;
+drop table parent, child1;
+
+-- Check processing of foreign key triggers
+create table parent (a int primary key, f int references parent)
+  partition by list (a);
+create table child1 partition of parent for values in (1);
+select tgrelid::regclass, rtrim(tgname, '0123456789') as tgname,
+  tgfoid::regproc, tgenabled
+  from pg_trigger where tgrelid in ('parent'::regclass, 'child1'::regclass)
+  order by tgrelid::regclass::text, tgfoid;
+-- Before v15, this has no effect because parent has no triggers:
+alter table parent disable trigger all;
+select tgrelid::regclass, rtrim(tgname, '0123456789') as tgname,
+  tgfoid::regproc, tgenabled
+  from pg_trigger where tgrelid in ('parent'::regclass, 'child1'::regclass)
+  order by tgrelid::regclass::text, tgfoid;
 drop table parent, child1;
 
 -- Verify that firing state propagates correctly on creation, too
@@ -2582,7 +2603,7 @@ insert into convslot_test_child(col1) values ('1');
 insert into convslot_test_parent(col1) values ('3');
 insert into convslot_test_child(col1) values ('3');
 
-create or replace function trigger_function1()
+create function convslot_trig1()
 returns trigger
 language plpgsql
 AS $$
@@ -2593,7 +2614,7 @@ raise notice 'trigger = %, old_table = %',
 return null;
 end; $$;
 
-create or replace function trigger_function2()
+create function convslot_trig2()
 returns trigger
 language plpgsql
 AS $$
@@ -2606,11 +2627,11 @@ end; $$;
 
 create trigger but_trigger after update on convslot_test_child
 referencing new table as new_table
-for each statement execute function trigger_function2();
+for each statement execute function convslot_trig2();
 
 update convslot_test_parent set col1 = col1 || '1';
 
-create or replace function trigger_function3()
+create function convslot_trig3()
 returns trigger
 language plpgsql
 AS $$
@@ -2624,12 +2645,45 @@ end; $$;
 
 create trigger but_trigger2 after update on convslot_test_child
 referencing old table as old_table new table as new_table
-for each statement execute function trigger_function3();
+for each statement execute function convslot_trig3();
 update convslot_test_parent set col1 = col1 || '1';
 
 create trigger bdt_trigger after delete on convslot_test_child
 referencing old table as old_table
-for each statement execute function trigger_function1();
+for each statement execute function convslot_trig1();
 delete from convslot_test_parent;
 
 drop table convslot_test_child, convslot_test_parent;
+drop function convslot_trig1();
+drop function convslot_trig2();
+drop function convslot_trig3();
+
+-- Bug #17607: variant of above in which trigger function raises an error;
+-- we don't see any ill effects unless trigger tuple requires mapping
+
+create table convslot_test_parent (id int primary key, val int)
+partition by range (id);
+
+create table convslot_test_part (val int, id int not null);
+
+alter table convslot_test_parent
+  attach partition convslot_test_part for values from (1) to (1000);
+
+create function convslot_trig4() returns trigger as
+$$begin raise exception 'BOOM!'; end$$ language plpgsql;
+
+create trigger convslot_test_parent_update
+    after update on convslot_test_parent
+    referencing old table as old_rows new table as new_rows
+    for each statement execute procedure convslot_trig4();
+
+insert into convslot_test_parent (id, val) values (1, 2);
+
+begin;
+savepoint svp;
+update convslot_test_parent set val = 3;  -- error expected
+rollback to savepoint svp;
+rollback;
+
+drop table convslot_test_parent;
+drop function convslot_trig4();

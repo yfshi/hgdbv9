@@ -125,7 +125,7 @@ sub mkvcbuild
 	  pread.c preadv.c pwrite.c pwritev.c pg_bitutils.c
 	  pg_strong_random.c pgcheckdir.c pgmkdirp.c pgsleep.c pgstrcasecmp.c
 	  pqsignal.c mkdtemp.c qsort.c qsort_arg.c bsearch_arg.c quotes.c system.c
-	  strerror.c tar.c thread.c
+	  strerror.c tar.c thread.c win32common.c win32fseek.c
 	  win32env.c win32error.c win32security.c win32setlocale.c win32stat.c identifier_alpha_transfor.c);
 
 	push(@pgportfiles, 'strtof.c') if ($vsVersion < '14.00');
@@ -696,6 +696,9 @@ sub mkvcbuild
 
 		# hack to prevent duplicate definitions of uid_t/gid_t
 		push(@perl_embed_ccflags, 'PLPERL_HAVE_UID_GID');
+		# prevent binary mismatch between MSVC built plperl and
+		# Strawberry or msys ucrt perl libraries
+		push(@perl_embed_ccflags, 'NO_THREAD_SAFE_LOCALE');
 
 		# Windows offers several 32-bit ABIs.  Perl is sensitive to
 		# sizeof(time_t), one of the ABI dimensions.  To get 32-bit time_t,
