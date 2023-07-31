@@ -94,9 +94,9 @@ main(int argc, char **argv)
     }
     	Ivyclear(res);
 	/* Step 2, activating prepared statement */
-	param_types[0] = 21 | 0x40000000;  /* out */;
-	param_types[1] = 21 | 0x40000000;  /* out */;
-	param_types[2] = 21 | 0x40000000;  /* out */;
+	param_types[0] = 21 | 0x80000000;  /* out */;
+	param_types[1] = 21 | 0x80000000;  /* out */;
+	param_types[2] = 21 | 0x80000000;  /* out */;
 
 	stmthandle = IvyCreatePreparedStatement(stmt_name, stmt, 3, param_types);
 	IvybindOutParameterByPos(stmthandle,

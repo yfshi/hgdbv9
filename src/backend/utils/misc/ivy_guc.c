@@ -89,6 +89,12 @@ bool		out_parameter_column_position = false;
 bool	seq_scale_fixed = false;
 /* End - ReqID:SRS-SQL-SEQ */
 bool	internal_warning = false;	/* BUG#Z230 */
+
+/* Begin - BUG#M0000201: support question marks as binding variables */
+/* where the application is coming from */
+int	where_from = FROM_UNKNOWN;
+/* End - BUG#M0000201: support question marks as binding variables */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -111,6 +117,23 @@ static const struct config_enum_entry db_parser_options[] = {
 	{NULL, 0, false}
 /* END - SQL PARSER */
 };
+
+/* Begin - BUG#M0000201: support question marks as binding variables */
+/* where the application is coming from */
+static const struct config_enum_entry where_from_options[] = {
+	{"unknown", FROM_UNKNOWN, false},
+	{"jdbc", FROM_JDBC, false},
+	{"c", FROM_C, false},
+	{"oci", FROM_OCI, false},
+	{"libpq", FROM_LIBPQ, false},
+	{"0", FROM_UNKNOWN, false},
+	{"1", FROM_JDBC, false},
+	{"2", FROM_C, false},
+	{"3", FROM_OCI, false},
+	{"4", FROM_LIBPQ, false},
+	{NULL, 0, false}
+};
+/* End - BUG#M0000201: support question marks as binding variables */
 
 /* BEGIN - case sensitive indentify */
 static const struct config_enum_entry case_conversion_mode[] = {
@@ -564,6 +587,19 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-MERGE */
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	/* where the application is coming from */
+	{
+		{"ivorysql.where_from", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Set where the application comes from"),
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
+		},
+		&where_from,
+		FROM_UNKNOWN, where_from_options,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000201: support question marks as binding variables */
 #endif
 #if 0
 	/* End-of-list marker */

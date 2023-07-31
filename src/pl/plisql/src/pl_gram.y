@@ -298,6 +298,10 @@ static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
 
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
+/* Begin - BUG#M0000201: support question marks as binding variables */ 
+%token			QUESTION_MARK;
+/* End - BUG#M0000201: support question marks as binding variables */	
+
 /*
  * Other tokens recognized by plisql's lexer interface layer (pl_scanner.c).
  */

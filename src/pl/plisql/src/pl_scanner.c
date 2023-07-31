@@ -23,6 +23,9 @@
 #include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC */
 #include "pl_gram.h"			/* must be after parser/scanner.h */
 #include "parser/parse_param.h"	/* ReqID:SRS-SQL-ANONYOUT */
+/* Begin - BUG#M0000134 */
+#include "catalog/pg_proc.h"
+/* End - BUG#M0000134 */
 
 
 /* Klugy flag to tell scanner how to look up identifiers */
@@ -191,7 +194,8 @@ plisql_yylex(void)
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	tok1 = internal_yylex(&aux1);
-	if (tok1 == IDENT || tok1 == PARAM || tok1 == ORAPARAM/* ReqID:SRS-SQL-ANONYOUT */)
+	if (tok1 == IDENT || tok1 == PARAM || tok1 == ORAPARAM/* ReqID:SRS-SQL-ANONYOUT */
+		|| tok1 == QUESTION_MARK/* BUG#M0000201: support question marks as binding variables */)
 	{
 		int			tok2;
 		TokenAuxData aux2;
@@ -242,11 +246,20 @@ plisql_yylex(void)
 			 * If the compiled function is PROKIND_ANONYMOUS_BLOCK_ONLY_PARSE,
 			 * we build variables dynamically.
 			 */
-			if (plisql_curr_compile->fn_prokind == 'a')
+			if (plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK_ONLY_PARSE /* BUG#M0000134 */)
 				dynamic_build_func_vars(&plisql_curr_compile);
 		}
 
 		/* End - ReqID:SRS-SQL-ANONYOUT */
+		/* Begin - BUG#M0000201: support question marks as binding variables */	
+		else if (tok1 == QUESTION_MARK)
+		{
+			char        buf[32];
+
+			sprintf(buf, "$%d", ++questionmarks_count);
+			aux1.lval.str = buf;
+		}
+		/* End - BUG#M0000201: support question marks as binding variables */	
 
 		tok2 = internal_yylex(&aux2);
 		if (tok2 == '.')

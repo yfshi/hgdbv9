@@ -56,9 +56,9 @@ exec_prepare_func(Ivyconn *conn)
 	memset(bindvar1, 0x00, 256);
 	memset(bindvar2, 0x00, 256);
 
-	param_types[0] = 9003 | 0x20000000  /* in */;
-	param_types[1] = 9003 | 0x40000000  /* out */;
-	param_types[2] = 9003 | 0x40000000  /* out */;
+	param_types[0] = 9003 | 0x40000000  /* in */;
+	param_types[1] = 9003 | 0x80000000  /* out */;
+	param_types[2] = 9003 | 0x80000000  /* out */;
 	stmthandle = IvyCreatePreparedStatement(stmt_name, stmt, 3, param_types);
 	IvybindOutParameterByPos(stmthandle,
 							&bindinfo[0],
@@ -131,8 +131,8 @@ exec_prepare_proc(Ivyconn *conn)
 	Ivyargmode modes[2];
 
 	memset(bindvar, 0x00, 256);
-	param_types[0] = 9003 | 0x20000000  /* in */;
-	param_types[1] = 9003 | 0x40000000  /* out */;
+	param_types[0] = 9003 | 0x40000000  /* in */;
+	param_types[1] = 9003 | 0x80000000  /* out */;
 	stmthandle = IvyCreatePreparedStatement(stmt_name, stmt, 2, param_types);
 	IvybindOutParameterByPos(stmthandle,
 							&bindinfo[0],

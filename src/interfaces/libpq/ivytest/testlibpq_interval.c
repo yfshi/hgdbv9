@@ -73,17 +73,17 @@ exec_prepare(Ivyconn *conn, int flag)
 
 	if (flag == 1)
 	{
-		param_types[0] = 23 | 0x20000000  /* in */;
-		param_types[1] = 9016 | 0x40000000  /* out */;
-		param_types[2] = 9017 | 0x40000000  /* out */;
-		param_types[3] = 9016 | 0x20000000  /* in */;
+		param_types[0] = 23 | 0x40000000  /* in */;
+		param_types[1] = 9016 | 0x80000000  /* out */;
+		param_types[2] = 9017 | 0x80000000  /* out */;
+		param_types[3] = 9016 | 0x40000000  /* in */;
 	}
 	else
 	{
-		param_types[0] = 23 | 0x20000000  /* in */;
-		param_types[1] = 9018 | 0x40000000  /* out */;
-		param_types[2] = 9019 | 0x40000000  /* out */;
-		param_types[3] = 9018 | 0x20000000  /* in */;
+		param_types[0] = 23 | 0x40000000  /* in */;
+		param_types[1] = 9018 | 0x80000000  /* out */;
+		param_types[2] = 9019 | 0x80000000  /* out */;
+		param_types[3] = 9018 | 0x40000000  /* in */;
 		time1 = "'4 12:12:12'";
 		time2 = "'4 13:12:12'";
 		time3 = "'4 14:12:12'";

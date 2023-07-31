@@ -1595,7 +1595,7 @@
   amoprighttype => 'jsonb', amopstrategy => '7', amopopr => '@>(jsonb,jsonb)',
   amopmethod => 'gin' },
 { amopfamily => 'gin/jsonb_ops', amoplefttype => 'jsonb',
-  amoprighttype => 'text', amopstrategy => '9', amopopr => '?(jsonb,text)',
+  amoprighttype => 'text', amopstrategy => '9', amopopr => '?@(jsonb,text)',#BUG#M0000201: support question marks as binding variables
   amopmethod => 'gin' },
 { amopfamily => 'gin/jsonb_ops', amoplefttype => 'jsonb',
   amoprighttype => '_text', amopstrategy => '10', amopopr => '?|(jsonb,_text)',

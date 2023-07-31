@@ -31,9 +31,7 @@ extern bool debugtup(TupleTableSlot *slot, DestReceiver *self);
 extern void spi_dest_startup(DestReceiver *self, int operation,
 							 TupleDesc typeinfo);
 extern bool spi_printtup(TupleTableSlot *slot, DestReceiver *self);
-/* Begin - ReqID:SRS-SQL-ANONYOUT */
-extern void ChangeDestSendDescription(DestReceiver *dest);
-/* End - ReqID:SRS-SQL-ANONYOUT */
+
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 extern void SetRemoteDestReceiverSendDescr(DestReceiver *self, bool send_info);
 /* End - ReqID:SRS-SQL-LIBPQOUT */

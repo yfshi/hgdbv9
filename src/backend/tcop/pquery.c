@@ -597,7 +597,13 @@ PortalStart(Portal portal, ParamListInfo params,
 					Node *node = linitial(portal->stmts);
 
 					if (nodeTag(node) == T_RawStmt &&
-						nodeTag(((RawStmt *)node)->stmt) == T_DoStmt)
+						nodeTag(((RawStmt *)node)->stmt) == T_DoStmt &&
+						!((DoStmt *)((RawStmt *)node)->stmt)->do_from_call)
+						portal->tupDesc = CreateTupleDescFromParams(params);
+					else if (nodeTag(node) == T_PlannedStmt &&
+						((PlannedStmt*)node)->utilityStmt != NULL &&
+						nodeTag(((PlannedStmt*)node)->utilityStmt) == T_DoStmt &&
+						!((DoStmt *)(((PlannedStmt*)node)->utilityStmt))->do_from_call)
 						portal->tupDesc = CreateTupleDescFromParams(params);
 				}
 				/* End - ReqID:SRS-SQL-ANONYOUT */
