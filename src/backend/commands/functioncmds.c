@@ -1751,7 +1751,7 @@ CompileFunction(CompileFunctionStmt *stmt)
 	procForm = (Form_pg_proc) GETSTRUCT(tup);
 
 	/* The OID of plisql language is not fixed */
-	languageTuple = SearchSysCache1(LANGOID, PointerGetDatum(procForm->prolang));
+	languageTuple = SearchSysCache1(LANGOID, ObjectIdGetDatum(procForm->prolang));
 	if (!HeapTupleIsValid(languageTuple))
 		elog(ERROR, "cache lookup failed for language %u", procForm->prolang);
 
