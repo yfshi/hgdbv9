@@ -123,7 +123,6 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
 	SMgrRelation srel;
 	BackendId	backend;
 	bool		needs_wal;
-	bool		is_gtt = false;	/* BUG#M0000187 */
 
 	Assert(!IsInParallelMode());	/* couldn't update pendingSyncHash */
 
@@ -134,13 +133,9 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
 		 * design on storage module.
 		 */
 		case RELPERSISTENCE_TEMP:
-			backend = BackendIdForTempRelations();
-			needs_wal = false;
-			break;
 		case RELPERSISTENCE_GLOBAL_TEMP:
 			backend = BackendIdForTempRelations();
 			needs_wal = false;
-			is_gtt = true;	/* BUG#M0000187 */
 			break;
 		case RELPERSISTENCE_UNLOGGED:
 			backend = InvalidBackendId;
@@ -157,7 +152,6 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
 
 	srel = smgropen(rnode, backend);
 	smgrcreate(srel, MAIN_FORKNUM, false);
-	srel->is_gtt = is_gtt;	/* BUG#M0000187 */
 
 	if (needs_wal)
 		log_smgrcreate(&srel->smgr_rnode.node, MAIN_FORKNUM);
