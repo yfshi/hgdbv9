@@ -630,6 +630,7 @@ TupleDescInitEntry(TupleDesc desc,
 	att->attisdropped = false;
 	att->attislocal = true;
 	att->attinhcount = 0;
+	att->attisvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	/* attacl, attoptions and attfdwoptions are not present in tupledescs */
 
 	tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(oidtypeid));
@@ -839,6 +840,7 @@ BuildDescForRelation(List *schema)
 		has_not_null |= entry->is_not_null;
 		att->attislocal = entry->is_local;
 		att->attinhcount = entry->inhcount;
+		att->attisvisible = entry->isvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	}
 
 	if (has_not_null)

@@ -95,6 +95,7 @@ bool	internal_warning = false;	/* BUG#Z230 */
 int	where_from = FROM_UNKNOWN;
 /* End - BUG#M0000201: support question marks as binding variables */
 
+bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -325,7 +326,19 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
-	/* Begin BUG#Z230 */
+	/* End BUG#Z230 */
+	/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+	{
+		{"colinvisible", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Used to control whether to view invisible column information."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&visibility_switch,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-INVISIBLECOL */
 #endif
 #if 0
 	/* End-of-list marker */

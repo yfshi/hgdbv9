@@ -336,6 +336,7 @@ extern PGDLLIMPORT bool	seq_scale_fixed;
 /* End - ReqID:SRS-SQL-SEQ */
 extern PGDLLIMPORT bool internal_warning; /* BUG#Z230 */
 
+extern PGDLLIMPORT bool	visibility_switch;	/* ReqID:SRS-SQL-INVISIBLECOL */
 /* Begin - ReqID:SRS-SQL-GTT */
 extern int max_active_gtt;
 extern int vacuum_gtt_defer_check_age;

@@ -3492,6 +3492,7 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
 					n->fdwoptions = $4;
+					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					SplitColQualList($5, &n->constraints, &n->collClause,
 									 yyscanner);
 					n->location = @1;
@@ -12763,6 +12764,7 @@ TableFuncElement:	ColId Typename opt_collate_clause
 					n->is_not_null = false;
 					n->is_from_type = false;
 					n->storage = 0;
+					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					n->raw_default = NULL;
 					n->cooked_default = NULL;
 					n->collClause = (CollateClause *) $3;

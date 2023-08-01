@@ -337,6 +337,7 @@ struct ParseNamespaceColumn
 	Index		p_varnosyn;		/* rangetable index of syntactic referent */
 	AttrNumber	p_varattnosyn;	/* attribute number of syntactic referent */
 	bool		p_dontexpand;	/* not included in star expansion */
+	bool		p_var_visible;  /* Mark whether the column is visible */	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 /* Support for parser_errposition_callback function */

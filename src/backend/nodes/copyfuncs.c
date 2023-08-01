@@ -3090,6 +3090,7 @@ _copyColumnDef(const ColumnDef *from)
 	COPY_SCALAR_FIELD(is_not_null);
 	COPY_SCALAR_FIELD(is_from_type);
 	COPY_SCALAR_FIELD(storage);
+	COPY_SCALAR_FIELD(isvisible);	/* ReqID:SRS-SQL-INVISIBLECOL */
 	COPY_NODE_FIELD(raw_default);
 	COPY_NODE_FIELD(cooked_default);
 	COPY_SCALAR_FIELD(identity);
@@ -3424,6 +3425,7 @@ _copyAlterTableCmd(const AlterTableCmd *from)
 	COPY_SCALAR_FIELD(behavior);
 	COPY_SCALAR_FIELD(missing_ok);
 	COPY_SCALAR_FIELD(recurse);
+	COPY_SCALAR_FIELD(isvisible);	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 	return newnode;
 }

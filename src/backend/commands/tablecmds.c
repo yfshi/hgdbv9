@@ -502,6 +502,14 @@ static ObjectAddress addFkRecurseReferenced(List **wqueue, Constraint *fkconstra
 											int numfks, int16 *pkattnum, int16 *fkattnum,
 											Oid *pfeqoperators, Oid *ppeqoperators, Oid *ffeqoperators,
 											bool old_check_ok);
+/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+static ObjectAddress ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCKMODE lockmode);
+static void SetIndexStorageProperties(Relation rel, Relation attrelation,
+											AttrNumber attnum,
+											bool setstorage, char newstorage,
+											bool setcompression, char newcompression,
+											LOCKMODE lockmode);
+/* End - ReqID:SRS-SQL-INVISIBLECOL */
 static void addFkRecurseReferencing(List **wqueue, Constraint *fkconstraint,
 									Relation rel, Relation pkrel, Oid indexOid, Oid parentConstr,
 									int numfks, int16 *pkattnum, int16 *fkattnum,
@@ -2732,6 +2740,7 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 				def->generated = attribute->attgenerated;
 				def->collClause = NULL;
 				def->collOid = attribute->attcollation;
+				def->isvisible = attribute->attisvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 				def->constraints = NIL;
 				def->location = -1;
 				if (CompressionMethodIsValid(attribute->attcompression))
@@ -4382,6 +4391,7 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_DropExpression:
 			case AT_SetCompression:
 			case AT_SetVirtualColumn:	/* ReqID:SRS-SQL-VIRTUALCOL */
+			case AT_SetVisibility:		/* ReqID:SRS-SQL-INVISIBLECOL */
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
@@ -4648,6 +4658,7 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = cmd->def ? AT_PASS_ADD_OTHERCONSTR : AT_PASS_DROP;
 			break;
 		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
+		case AT_SetVisibility:	/* ReqID:SRS-SQL-INVISIBLECOL */
 		case AT_SetVirtualColumn:
 			ATSimplePermissions(rel, ATT_TABLE | ATT_VIEW | ATT_FOREIGN_TABLE);
 			ATSimpleRecursion(wqueue, rel, cmd, recurse, lockmode, context);
@@ -5055,6 +5066,11 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			address = ATExecVirtualColumn(rel, cmd->name, cmd->def, lockmode);
 			break;
 		/* End - ReqID:SRS-SQL-VIRTUALCOL */
+		/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+		case AT_SetVisibility:
+			address = ATExecSetVisibility(rel, cmd->name, cmd->isvisible, lockmode);
+			break;
+		/* End - ReqID:SRS-SQL-INVISIBLECOL */
 		case AT_SetIdentity:
 			cmd = ATParseTransformCmd(wqueue, tab, rel, cmd, false, lockmode,
 									  cur_pass, context);
@@ -6918,6 +6934,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	attribute.attidentity = colDef->identity;
 	attribute.attgenerated = colDef->generated;
 	attribute.attisdropped = false;
+	attribute.attisvisible = colDef->isvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	attribute.attislocal = colDef->is_local;
 	attribute.attinhcount = colDef->inhcount;
 	attribute.attcollation = collOid;
@@ -7146,6 +7163,48 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	ObjectAddressSubSet(address, RelationRelationId, myrelid, newattnum);
 	return address;
 }
+
+/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+static ObjectAddress
+ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCKMODE lockmode)
+{
+	Oid			myrelid = RelationGetRelid(rel);
+	Relation	attrelation;
+	HeapTuple	tuple;
+	Form_pg_attribute	attrtuple;
+	int16		attnum;
+	ObjectAddress myself;
+
+	attrelation = table_open(AttributeRelationId, RowExclusiveLock);
+	tuple = SearchSysCacheCopyAttName(myrelid, colName);
+	if (!HeapTupleIsValid(tuple))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_COLUMN),
+					errmsg("column \"%s\" of relation \"%s\" does not exist",
+							colName, RelationGetRelationName(rel))));
+	attrtuple = (Form_pg_attribute) GETSTRUCT(tuple);
+	attnum = attrtuple->attnum;
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("cannot alter system column \"%s\"",
+					colName)));
+	attrtuple->attisvisible = new_visibility;
+	CatalogTupleUpdate(attrelation, &tuple->t_self, tuple);
+	InvokeObjectPostAlterHook(RelationRelationId,
+								RelationGetRelid(rel),
+								attrtuple->attnum);
+	heap_freetuple(tuple);
+	SetIndexStorageProperties(rel, attrelation, attnum,
+								true, 0,
+								false, 0,
+								lockmode);
+	table_close(attrelation, RowExclusiveLock);
+	ObjectAddressSubSet(myself, RelationRelationId,
+							RelationGetRelid(rel), attnum);
+	return myself;
+}
+/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 /*
  * If a new or renamed column will collide with the name of an existing

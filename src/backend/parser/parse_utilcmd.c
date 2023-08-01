@@ -73,6 +73,7 @@
 #include "utils/ora_compatible.h"
 /* End - BUG:M0000062 */
 #include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
+#include "funcapi.h"			/* ReqID:SRS-SQL-INVISIBLECOL */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -336,6 +337,14 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 					stmt->relation->relpersistence == RELPERSISTENCE_TEMP))
 			elog(ERROR, "expression column is not supported for a temporary table");
 		/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
+		/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+		if ((IsA(stmt, CreateForeignTableStmt)
+				|| stmt->relation->relpersistence == RELPERSISTENCE_TEMP
+				|| stmt->relation->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+				&& !((ColumnDef *) element)->isvisible)
+			elog(ERROR, "Invisible column is not supported on this type of table");
+		/* End - ReqID:SRS-SQL-INVISIBLECOL */
 	}
 	if(ora_identity_cnt > 1)
 		elog(ERROR, "table can have only one identity column");
@@ -656,6 +665,15 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	/* Do necessary work on the column type declaration */
 	if (column->typeName)
 		transformColumnType(cxt, column);
+
+	/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+	if (!column->isvisible && column->typeName)
+	{
+		Oid typOid = typenameTypeId(NULL,column->typeName);
+		if (get_typtype(typOid) != TYPTYPE_BASE)
+			elog(ERROR, "Visibility of an abstract data type column cannot be changed");
+	}
+	/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 	/* Special actions for SERIAL pseudo-types */
 	if (is_serial)
@@ -1158,6 +1176,7 @@ transformTableLikeClause(CreateStmtContext *cxt, TableLikeClause *table_like_cla
 		def->cooked_default = NULL;
 		def->collClause = NULL;
 		def->collOid = attribute->attcollation;
+		def->isvisible = attribute->attisvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 		def->constraints = NIL;
 		def->location = -1;
 
@@ -1600,6 +1619,7 @@ transformOfType(CreateStmtContext *cxt, TypeName *ofTypename)
 		n->collOid = attr->attcollation;
 		n->constraints = NIL;
 		n->location = -1;
+		n->isvisible = attr->attisvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 		cxt->columns = lappend(cxt->columns, n);
 	}
 	DecrTupleDescRefCount(tupdesc);

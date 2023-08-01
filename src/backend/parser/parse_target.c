@@ -1038,6 +1038,11 @@ checkInsertTargets(ParseState *pstate, List *cols, List **attrnos)
 			if (attr->attisdropped)
 				continue;
 
+			/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+			if (!attr->attisvisible)
+				continue;
+			/* End - ReqID:SRS-SQL-INVISIBLECOL */
+
 			col = makeNode(ResTarget);
 			col->name = pstrdup(NameStr(attr->attname));
 			col->indirection = NIL;

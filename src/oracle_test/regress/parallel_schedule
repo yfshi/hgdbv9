@@ -165,3 +165,10 @@ test: ora_gtt
 # ----------
 test: virtualcolumn
 # End - ReqID:SRS-SQL-VIRTUALCOL
+
+# Begin - ReqID:SRS-SQL-INVISIBLECOL
+# ----------
+# test visibility column
+# ----------
+# End - ReqID:SRS-SQL-INVISIBLECOL
+test: visibility_col

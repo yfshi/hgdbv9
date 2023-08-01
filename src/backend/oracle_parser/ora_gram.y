@@ -731,7 +731,7 @@ static void determineLanguage(List *options);
 	IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
-	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
+	INTERSECT INTERVAL INTO INVISIBLE INVOKER IS ISNULL ISOLATION	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 	JOIN
 
@@ -781,7 +781,7 @@ static void determineLanguage(List *options);
 	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VIRTUAL VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */
+	VERBOSE VERSION_P VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
@@ -853,6 +853,12 @@ static void determineLanguage(List *options);
 /* Begin - BUG#Z206 Z208  */
 %type<editionable> opt_ora_editioned ora_editioned
 /* End - BUG#Z206 Z208 */
+
+/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+%type <boolean> Opt_visibility
+%type <list> modify_col_visibilitys
+%type <node> modify_col_visibility
+/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
 %token <keyword> ERROR_P PARAMETER_P TO_NUMBER
@@ -2342,6 +2348,8 @@ alter_table_cmds:
 			alter_table_cmd							{ $$ = list_make1($1); }
 			| alter_table_cmds ',' alter_table_cmd	{ $$ = lappend($1, $3); }
 			| MODIFY identity_clause				{ $$ = $2; }	/* Bug#m0000070 */
+			| MODIFY modify_col_visibility			{ $$ = list_make1($2); }	/* ReqID:SRS-SQL-INVISIBLECOL */
+			| MODIFY '(' modify_col_visibilitys ')'	{ $$ = $3; }	/* ReqID:SRS-SQL-INVISIBLECOL */
 		;
 
 partition_cmd:
@@ -3073,6 +3081,32 @@ identity_clause:
 			| '(' drop_identity ')'			{ $$ = $2; }
 			| drop_identity					{ $$ = $1; }
 		;
+
+/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+modify_col_visibilitys:
+			modify_col_visibility	{ $$ = list_make1($1); }
+			| modify_col_visibilitys ',' modify_col_visibility	{ $$ = lappend($1, $3); }
+		;
+
+modify_col_visibility:
+			ColId VISIBLE
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->name = $1;
+					n->isvisible = true;
+					n->subtype = AT_SetVisibility;
+					$$ = (Node *)n;
+				}
+			| ColId INVISIBLE
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->name = $1;
+					n->isvisible = false;
+					n->subtype = AT_SetVisibility;
+					$$ = (Node *)n;
+				}
+		;
+/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 identity_options:
 			/* Begin - Bug#m0000070 */
@@ -3819,13 +3853,28 @@ TypedTableElement:
 			| TableConstraint					{ $$ = $1; }
 		;
 
-columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList
+columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_options ColQualList	/* ReqID:SRS-SQL-INVISIBLECOL */
 				{
 					ListCell   *lc;	/* ReqID:SRS-SQL-VIRTUALCOL */
+					char	   *tpname;		/* ReqID:SRS-SQL-INVISIBLECOL */
+					bool		keyword_is_visibility = false;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
 					n->typeName = $2;
-					n->compression = $3;
+					/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+					tpname = strVal(linitial(n->typeName->names));
+					if (pg_strcasecmp(tpname, "invisible") == 0 && $3)
+					{
+						n->typeName = makeTypeName("int4");
+						n->isvisible = false;
+						keyword_is_visibility = true;
+					}else if (pg_strcasecmp(tpname, "visible") == 0 && $3){
+						n->typeName = makeTypeName("int4");
+						n->isvisible = true;
+						keyword_is_visibility = true;
+					}
+					/* End - ReqID:SRS-SQL-INVISIBLECOL */
+					n->compression = $4;
 					n->inhcount = 0;
 					n->is_local = true;
 					n->is_not_null = false;
@@ -3834,8 +3883,17 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					n->raw_default = NULL;
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
-					n->fdwoptions = $4;
-					SplitColQualList($5, &n->constraints, &n->collClause,
+					n->fdwoptions = $5;
+					/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+					if (!keyword_is_visibility)
+					{
+						if ($3)
+							n->isvisible = true;
+						else
+							n->isvisible = false;
+					}
+					/* End - ReqID:SRS-SQL-INVISIBLECOL */
+					SplitColQualList($6, &n->constraints, &n->collClause,
 									 yyscanner);
 					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
 					foreach(lc, n->constraints)
@@ -3866,6 +3924,7 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					c->contype = CONSTR_GENERATED;
 					c->raw_expr = $4;
 					n->constraints = list_make1(c);
+					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					c->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
 					if ($7)
 						n->constraints = lappend(n->constraints, $7);
@@ -3873,6 +3932,14 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					$$ = (Node *)n;
 				}
 		;
+
+/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+Opt_visibility:
+			VISIBLE 		{ $$ = true; }
+			| INVISIBLE 	{ $$ = false; }
+			|  /* empty */	{ $$ = true; }
+		;
+/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 virtual_node:
 			NULL_P
@@ -14277,6 +14344,7 @@ TableFuncElement:	ColId Typename opt_collate_clause
 					n->is_not_null = false;
 					n->is_from_type = false;
 					n->storage = 0;
+					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					n->raw_default = NULL;
 					n->cooked_default = NULL;
 					n->collClause = (CollateClause *) $3;
@@ -18912,6 +18980,7 @@ unreserved_keyword:
 			| INSENSITIVE
 			| INSERT
 			| INSTEAD
+			| INVISIBLE	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| INVOKER
 			| ISOLATION
 			| IVYSQL /* ReqID:SRS-SQL-PROC */
@@ -19122,6 +19191,7 @@ unreserved_keyword:
 			| VIEW
 			| VIEWS
 			| VIRTUAL			/* ReqID:SRS-SQL-VIRTUALCOL */
+			| VISIBLE			/* ReqID:SRS-SQL-INVISIBLECOL */
 			| VOLATILE
 			| WHITESPACE_P
 			| WITHIN
@@ -19551,6 +19621,7 @@ bare_label_keyword:
 			| INT_P
 			| INTEGER
 			| INTERVAL
+			| INVISIBLE	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| INVOKER
 			| IS
 			| ISOLATION
@@ -19821,6 +19892,7 @@ bare_label_keyword:
 			| VIEW
 			| VIEWS
 			| VIRTUAL		/* ReqID:SRS-SQL-VIRTUALCOL */
+			| VISIBLE		/* ReqID:SRS-SQL-INVISIBLECOL */
 			| VOLATILE
 			| WHEN
 			| WHITESPACE_P

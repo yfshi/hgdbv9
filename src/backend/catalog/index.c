@@ -314,6 +314,7 @@ ConstructTupleDescriptor(Relation heapRelation,
 		to->attstattarget = -1;
 		to->attcacheoff = -1;
 		to->attislocal = true;
+		to->attisvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 		to->attcollation = (i < numkeyatts) ?
 			collationObjectId[i] : InvalidOid;
 

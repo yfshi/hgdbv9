@@ -1429,6 +1429,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 					res_nscolumn->p_varcollid = exprCollation(u_colvar);
 					res_nscolumn->p_varnosyn = 0;
 					res_nscolumn->p_varattnosyn = res_colindex;
+					res_nscolumn->p_var_visible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 				}
 			}
 
