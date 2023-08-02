@@ -836,6 +836,7 @@ select f1, sql_if(f1 > 0, bleat(f1), bleat(f1 + 1)) from int4_tbl;
 NOTICE:  bleat 1
 NOTICE:  bleat 123456
 NOTICE:  bleat -123455
+NOTICE:  bleat 35
 NOTICE:  bleat 2147483647
 NOTICE:  bleat -2147483646
      f1      |   sql_if    
@@ -843,9 +844,10 @@ NOTICE:  bleat -2147483646
            0 |           1
       123456 |      123456
      -123456 |     -123455
+          35 |          35
   2147483647 |  2147483647
  -2147483647 | -2147483646
-(5 rows)
+(6 rows)
 
 select q2, sql_if(q2 > 0, q2, q2 + 1) from int8_tbl;
         q2         |      sql_if       
@@ -2156,10 +2158,12 @@ select x, pg_typeof(x) from anyctest(11, '12') x;
  {11,12} | integer[]
 (1 row)
 
-select x, pg_typeof(x) from anyctest(11, '12.2') x;  -- fail
-ERROR:  invalid input syntax for type integer: "12.2"
-LINE 1: select x, pg_typeof(x) from anyctest(11, '12.2') x;
-                                                 ^
+select x, pg_typeof(x) from anyctest(11, '12.2') x;
+    x    | pg_typeof 
+---------+-----------
+ {11,12} | integer[]
+(1 row)
+
 select x, pg_typeof(x) from anyctest(variadic array[11, 12]) x;
     x    | pg_typeof 
 ---------+-----------

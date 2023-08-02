@@ -25,6 +25,7 @@
 #include "optimizer/optimizer.h"
 #include "utils/builtins.h"
 #include "utils/int8.h"
+#include "utils/ora_compatible.h"	/* BUG#M0000194 */
 
 
 typedef struct
@@ -135,6 +136,8 @@ int8in(PG_FUNCTION_ARGS)
 {
 	char	   *str = PG_GETARG_CSTRING(0);
 	int64		result;
+
+	str = ora_strtoint(str);		/* BUG#M0000194 */
 
 	(void) scanint8(str, false, &result);
 	PG_RETURN_INT64(result);

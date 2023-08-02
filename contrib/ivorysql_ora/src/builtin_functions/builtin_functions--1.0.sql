@@ -1096,3 +1096,40 @@ AS $$
   select sys.instr(str::text, patt::text);
 $$ LANGUAGE SQL IMMUTABLE STRICT;
 /* End - BUG:M0000084 */
+
+/* Begin - BUG#M0000194 */
+CREATE FUNCTION sys.to_multi_byte(varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'orafce_to_multi_byte'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.to_single_byte(varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'orafce_to_single_byte'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.asciistr(varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'ora_asciistr'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.compose(varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'ora_compose'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.decompose(varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'ora_decompose'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.decompose(varchar2, varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'ora_decompose'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION sys.convert(varchar2, name, name)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'ora_convert'
+LANGUAGE C IMMUTABLE STRICT;
+/* End - BUG#M0000194 */

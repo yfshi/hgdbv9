@@ -63,6 +63,15 @@ PG_FUNCTION_INFO_V1(oracle_instr2);
 PG_FUNCTION_INFO_V1(oracle_instr3);
 PG_FUNCTION_INFO_V1(oracle_instr4);
 /* End - BUG:M0000084 */
+/* Begin - BUG#M0000194 */
+PG_FUNCTION_INFO_V1(orafce_to_multi_byte);
+PG_FUNCTION_INFO_V1(orafce_to_single_byte);
+PG_FUNCTION_INFO_V1(ora_asciistr);
+PG_FUNCTION_INFO_V1(ora_compose);
+PG_FUNCTION_INFO_V1(ora_decompose);
+PG_FUNCTION_INFO_V1(ora_encname_mapping);
+PG_FUNCTION_INFO_V1(ora_convert);
+/* End - BUG#M0000194 */
 
 /* Begin - BUGID:0000467 */
 #define PG_STR_GET_TEXT(str_) \
@@ -1977,3 +1986,574 @@ ora_instr(text *txt, text *pattern, int start, int nth)
 	return 0;
 }
 /* End - BUG:M0000084 */
+
+/* Begin - BUG#M0000194 */
+/*
+ * Convert a tilde (~) to ...
+ *	1: a full width tilde. (same as JA16EUCTILDE in oracle)
+ *	0: a full width overline. (same as JA16EUC in oracle)
+ */
+#define JA_TO_FULL_WIDTH_TILDE	1
+
+static const char *
+TO_MULTI_BYTE_UTF8[95] =
+{
+	"\343\200\200",
+	"\357\274\201",
+	"\342\200\235",
+	"\357\274\203",
+	"\357\274\204",
+	"\357\274\205",
+	"\357\274\206",
+	"\342\200\231",
+	"\357\274\210",
+	"\357\274\211",
+	"\357\274\212",
+	"\357\274\213",
+	"\357\274\214",
+	"\357\274\215",
+	"\357\274\216",
+	"\357\274\217",
+	"\357\274\220",
+	"\357\274\221",
+	"\357\274\222",
+	"\357\274\223",
+	"\357\274\224",
+	"\357\274\225",
+	"\357\274\226",
+	"\357\274\227",
+	"\357\274\230",
+	"\357\274\231",
+	"\357\274\232",
+	"\357\274\233",
+	"\357\274\234",
+	"\357\274\235",
+	"\357\274\236",
+	"\357\274\237",
+	"\357\274\240",
+	"\357\274\241",
+	"\357\274\242",
+	"\357\274\243",
+	"\357\274\244",
+	"\357\274\245",
+	"\357\274\246",
+	"\357\274\247",
+	"\357\274\250",
+	"\357\274\251",
+	"\357\274\252",
+	"\357\274\253",
+	"\357\274\254",
+	"\357\274\255",
+	"\357\274\256",
+	"\357\274\257",
+	"\357\274\260",
+	"\357\274\261",
+	"\357\274\262",
+	"\357\274\263",
+	"\357\274\264",
+	"\357\274\265",
+	"\357\274\266",
+	"\357\274\267",
+	"\357\274\270",
+	"\357\274\271",
+	"\357\274\272",
+	"\357\274\273",
+	"\357\277\245",
+	"\357\274\275",
+	"\357\274\276",
+	"\357\274\277",
+	"\342\200\230",
+	"\357\275\201",
+	"\357\275\202",
+	"\357\275\203",
+	"\357\275\204",
+	"\357\275\205",
+	"\357\275\206",
+	"\357\275\207",
+	"\357\275\210",
+	"\357\275\211",
+	"\357\275\212",
+	"\357\275\213",
+	"\357\275\214",
+	"\357\275\215",
+	"\357\275\216",
+	"\357\275\217",
+	"\357\275\220",
+	"\357\275\221",
+	"\357\275\222",
+	"\357\275\223",
+	"\357\275\224",
+	"\357\275\225",
+	"\357\275\226",
+	"\357\275\227",
+	"\357\275\230",
+	"\357\275\231",
+	"\357\275\232",
+	"\357\275\233",
+	"\357\275\234",
+	"\357\275\235",
+#if JA_TO_FULL_WIDTH_TILDE
+	"\357\275\236"
+#else
+	"\357\277\243"
+#endif
+};
+
+static const char *
+TO_MULTI_BYTE_EUCJP[95] =
+{
+	"\241\241",
+	"\241\252",
+	"\241\311",
+	"\241\364",
+	"\241\360",
+	"\241\363",
+	"\241\365",
+	"\241\307",
+	"\241\312",
+	"\241\313",
+	"\241\366",
+	"\241\334",
+	"\241\244",
+	"\241\335",
+	"\241\245",
+	"\241\277",
+	"\243\260",
+	"\243\261",
+	"\243\262",
+	"\243\263",
+	"\243\264",
+	"\243\265",
+	"\243\266",
+	"\243\267",
+	"\243\270",
+	"\243\271",
+	"\241\247",
+	"\241\250",
+	"\241\343",
+	"\241\341",
+	"\241\344",
+	"\241\251",
+	"\241\367",
+	"\243\301",
+	"\243\302",
+	"\243\303",
+	"\243\304",
+	"\243\305",
+	"\243\306",
+	"\243\307",
+	"\243\310",
+	"\243\311",
+	"\243\312",
+	"\243\313",
+	"\243\314",
+	"\243\315",
+	"\243\316",
+	"\243\317",
+	"\243\320",
+	"\243\321",
+	"\243\322",
+	"\243\323",
+	"\243\324",
+	"\243\325",
+	"\243\326",
+	"\243\327",
+	"\243\330",
+	"\243\331",
+	"\243\332",
+	"\241\316",
+	"\241\357",
+	"\241\317",
+	"\241\260",
+	"\241\262",
+	"\241\306",
+	"\243\341",
+	"\243\342",
+	"\243\343",
+	"\243\344",
+	"\243\345",
+	"\243\346",
+	"\243\347",
+	"\243\350",
+	"\243\351",
+	"\243\352",
+	"\243\353",
+	"\243\354",
+	"\243\355",
+	"\243\356",
+	"\243\357",
+	"\243\360",
+	"\243\361",
+	"\243\362",
+	"\243\363",
+	"\243\364",
+	"\243\365",
+	"\243\366",
+	"\243\367",
+	"\243\370",
+	"\243\371",
+	"\243\372",
+	"\241\320",
+	"\241\303",
+	"\241\321",
+#if JA_TO_FULL_WIDTH_TILDE
+	"\241\301"
+#else
+	"\241\261"
+#endif
+};
+
+Datum
+orafce_to_multi_byte(PG_FUNCTION_ARGS)
+{
+	text	   *src;
+	text	   *dst;
+	const char *s;
+	char	   *d;
+	int			srclen;
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(__amd64__))
+	__int64		dstlen;
+#else
+	int			dstlen;
+#endif
+	int			i;
+	const char **map;
+
+	switch (GetDatabaseEncoding())
+	{
+		case PG_UTF8:
+			map = TO_MULTI_BYTE_UTF8;
+			break;
+		case PG_EUC_JP:
+		case PG_EUC_JIS_2004:
+			map = TO_MULTI_BYTE_EUCJP;
+			break;
+		/*
+		 * TODO: Add converter for encodings.
+		 */
+		default:	/* no need to convert */
+			PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+	}
+
+	src = PG_GETARG_TEXT_PP(0);
+	s = VARDATA_ANY(src);
+	srclen = VARSIZE_ANY_EXHDR(src);
+	dst = (text *) palloc(VARHDRSZ + srclen * MAX_CONVERSION_GROWTH);
+	d = VARDATA(dst);
+
+	for (i = 0; i < srclen; i++)
+	{
+		unsigned char	u = (unsigned char) s[i];
+		if (0x20 <= u && u <= 0x7e)
+		{
+			const char *m = map[u - 0x20];
+			while (*m)
+			{
+				*d++ = *m++;
+			}
+		}
+		else
+		{
+			*d++ = s[i];
+		}
+	}
+
+	dstlen = d - VARDATA(dst);
+	SET_VARSIZE(dst, VARHDRSZ + dstlen);
+
+	PG_RETURN_TEXT_P(dst);
+}
+
+static int
+getindex(const char **map, char *mbchar, int mblen)
+{
+	int		i;
+
+	for (i = 0; i < 95; i++)
+	{
+		if (!memcmp(map[i], mbchar, mblen))
+			return i;
+	}
+
+	return -1;
+}
+
+Datum
+orafce_to_single_byte(PG_FUNCTION_ARGS)
+{
+	text	   *src;
+	text	   *dst;
+	char	   *s;
+	char	   *d;
+	int			srclen;
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(__amd64__))
+	__int64		dstlen;
+#else
+	int			dstlen;
+#endif
+	const char **map;
+
+	switch (GetDatabaseEncoding())
+	{
+		case PG_UTF8:
+			map = TO_MULTI_BYTE_UTF8;
+			break;
+		case PG_EUC_JP:
+		case PG_EUC_JIS_2004:
+			map = TO_MULTI_BYTE_EUCJP;
+			break;
+		/*
+		 * TODO: Add converter for encodings.
+		 */
+		default:	/* no need to convert */
+			PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+	}
+
+	src = PG_GETARG_TEXT_PP(0);
+	s = VARDATA_ANY(src);
+	srclen = VARSIZE_ANY_EXHDR(src);
+
+	/* XXX - The output length should be <= input length */
+	dst = (text *) palloc0(VARHDRSZ + srclen);
+	d = VARDATA(dst);
+
+	while (*s && (s - VARDATA_ANY(src) < srclen))
+	{
+		char   *u = s;
+		int		clen;
+		int		mapindex;
+
+		clen = pg_mblen(u);
+		s += clen;
+
+		if (clen == 1)
+			*d++ = *u;
+		else if ((mapindex = getindex(map, u, clen)) >= 0)
+		{
+			const char m = 0x20 + mapindex;
+			*d++ = m;
+		}
+		else
+		{
+			memcpy(d, u, clen);
+			d += clen;
+		}
+	}
+
+	dstlen = d - VARDATA(dst);
+	SET_VARSIZE(dst, VARHDRSZ + dstlen);
+
+	PG_RETURN_TEXT_P(dst);
+}
+
+Datum
+ora_asciistr(PG_FUNCTION_ARGS)
+{
+	Datum		utf8bytea;
+	char	   *retval;
+
+	unsigned char  *p;
+	unsigned int	r;
+	int				i;
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	/* convert input string encoding to utf-8 */
+	utf8bytea = DirectFunctionCall2(pg_convert_to,
+									PG_GETARG_DATUM(0),
+									DirectFunctionCall1(namein,
+														CStringGetDatum("UTF8")));
+
+	retval = (char *) palloc0(VARSIZE_ANY(utf8bytea) * 3);
+	p = (unsigned char *) VARDATA_ANY(utf8bytea);
+
+	/* convert utf-8 to utf-16(be) except ascii characters */
+	for (i = 0; i < VARSIZE_ANY_EXHDR(utf8bytea); ++i)
+	{
+		r = 0x00;
+
+		if (0x20 <= *p && *p <= 0x7E)
+		{
+			sprintf(retval, "%s%c", retval, *p);
+		}
+		else if (0xC0 <= *p && *p <= 0xDF)
+		{
+			r |= ((*p & 0x1F) << 6);
+			r |= (*(++p) & 0x3F);
+			sprintf(retval, "%s\\%04X", retval, r);
+			++i;
+		}
+		else if (0xE0 <= *p && *p <= 0xEF)
+		{
+			r |= ((*p & 0x0F) << 12);
+			r |= ((*(++p) & 0x3F) << 6);
+			r |= (*(++p) & 0x3F);
+			sprintf(retval, "%s\\%04X", retval, r);
+			i += 2;
+		}
+		else if (0xF0 <= *p && *p <= 0xF7)
+		{
+			r |= ((*p & 0x07) << 18);
+			r |= ((*(++p) & 0x3F) << 12);
+			r |= ((*(++p) & 0x3F) << 6);
+			r |= (*(++p) & 0x3F);
+			r -= 0x10000;
+			sprintf(retval, "%s\\%04X\\%04X", retval, (0xD800 | (r >> 10)),
+													  (0xDC00 | (r & 0x03FF)));
+			i += 3;
+		}
+		++p;
+	}
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(retval));
+}
+
+/*
+ * Oracle:		compose(char)
+ * Postgres:	normalize(text, NFC)
+ */
+Datum
+ora_compose(PG_FUNCTION_ARGS)
+{
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	PG_RETURN_DATUM(DirectFunctionCall2(unicode_normalize_func,
+										PG_GETARG_DATUM(0),
+										PointerGetDatum(cstring_to_text("NFC"))));
+}
+
+/*
+ * Oracle:		decompose(string[, 'canonical' | 'compatibility'])
+ * Postgres:	normalize(text, NFD | NFKD)
+ */
+Datum
+ora_decompose(PG_FUNCTION_ARGS)
+{
+	if (PG_ARGISNULL(0) || (PG_NARGS() > 1 && PG_ARGISNULL(1)))
+		PG_RETURN_NULL();
+
+	if (PG_NARGS() > 1)
+	{
+		char   *form = text_to_cstring(PG_GETARG_TEXT_PP(1));
+
+		/* 'compatibility' <=> NFKD */
+		if (!pg_strcasecmp(form, "compatibility"))
+			PG_RETURN_DATUM(DirectFunctionCall2(
+								unicode_normalize_func,
+								PG_GETARG_DATUM(0),
+								PointerGetDatum(cstring_to_text("NFKD"))));
+		/* 'canonical' (default) <=> NFD */
+		else if (!pg_strcasecmp(form, "canonical"))
+			;	/* do it later */
+		else
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Invalid NLS Parameter String Used In SQL Function")));
+	}
+
+	PG_RETURN_DATUM(DirectFunctionCall2(unicode_normalize_func,
+										PG_GETARG_DATUM(0),
+										PointerGetDatum(cstring_to_text("NFD"))));
+}
+
+#define N_CHARSET_MAP	37
+
+static const char * charsets_mapping[N_CHARSET_MAP][2] =
+{
+	/* character set in Postgres, character set in Oracle (sort by ALPHABET) */
+	{"utf8",				"AL32UTF8"},
+	{"iso88596",			"AR8ISO8859P6"},
+	{"win1256",				"AR8MSWIN1256"},
+
+	{"latin7",				"BLT8ISO8859P13"},
+	{"win1257",				"BLT8MSWIN1257"},
+
+	{"latin8",				"CEL8ISO8859P14"},
+	{"iso88595",			"CL8ISO8859P5"},
+	{"koi8r",				"CL8KOI8R"},
+	{"koi8u",				"CL8KOI8U"},
+	{"win1251",				"CL8MSWIN1251"},
+
+	{"latin2",				"EE8ISO8859P2"},
+	{"win1250",				"EE8MSWIN1250"},
+	{"iso88597",			"EL8ISO8859P7"},
+	{"win1253",				"EL8MSWIN1253"},
+
+	{"iso88598",			"IW8ISO8859P8"},
+	{"win1255",				"IW8MSWIN1255"},
+
+	{"ecu_jp",				"JA16EUC"},
+	{"euc_jis_2004",		"JA16EUCTILDE"},
+	{"sjis",				"JA16SJIS"},
+	{"shiftjis2004",		"JA16SJISTILDE"},
+
+	{"johab",				"KO16KSCCS"},
+	{"uhc",					"KO16MSWIN949"},
+
+	{"latin4",				"NEE8ISO8859P4"},
+	{"latin6",				"NE8ISO8859P10"},
+
+	{"win866",				"RU8PC866"},
+
+	{"latin3",				"SE8ISO8859P3"},
+
+	{"win1254",				"TR8MSWIN1254"},
+
+	{"sqlascii",			"US7ASCII"},
+
+	{"win1258",				"VN8MSWIN1258"},
+
+	{"latin1",				"WE8ISO8859P1"},
+	{"latin5",				"WE8ISO8859P9"},
+	{"latin9",				"WE8ISO8859P15"},
+	{"win1252",				"WE8MSWIN1252"},
+
+	{"big5",				"ZHT16BIG5"},
+	{"gbk",					"ZHS16GBK"},
+	{"euc_tw",				"ZHT32EUC"},
+	{"gb18030",				"ZHS32GB18030"}
+};
+
+Datum
+ora_encname_mapping(PG_FUNCTION_ARGS)
+{
+	char   *input_name = NameStr(*PG_GETARG_NAME(0));
+	int8	idx;
+	Datum	result = PG_GETARG_DATUM(0);
+
+	for (idx = 0; idx < N_CHARSET_MAP; ++idx)
+	{
+		if (!pg_strcasecmp(input_name, charsets_mapping[idx][1]))
+		{
+			result = DirectFunctionCall1(namein,
+										 CStringGetDatum(charsets_mapping[idx][0]));
+			break;
+		}
+	}
+
+	PG_RETURN_DATUM(result);
+}
+
+/*
+ * Oracle:		convert(char, dest_char_set, source_char_set)
+ * Postgres:	convert(bytea, name(source), name(dest))
+ *
+ * convert(varchar2, name(dest), name(source)) -> varchar2
+ */
+Datum
+ora_convert(PG_FUNCTION_ARGS)
+{
+	Datum		string = PG_GETARG_DATUM(0);
+	Datum		dest_name = PG_GETARG_DATUM(1);
+	Datum		src_name = PG_GETARG_DATUM(2);
+	Datum		result;
+
+	result = DirectFunctionCall3(pg_convert, string,
+								 DirectFunctionCall1(ora_encname_mapping, src_name),
+								 DirectFunctionCall1(ora_encname_mapping, dest_name));
+
+	PG_RETURN_DATUM(result);
+}
+/* End - BUG#M0000194 */

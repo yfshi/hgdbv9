@@ -528,12 +528,13 @@ select f1, ss1 as relabel from
      from int4_tbl a) ss;
      f1      |  relabel   
 -------------+------------
-           0 | 2147607103
+           0 | 2147607138
       123456 | 2147607103
-     -123456 | 2147483647
+     -123456 | 2147483682
+          35 | 2147607138
   2147483647 | 2147483647
- -2147483647 |          0
-(5 rows)
+ -2147483647 |         35
+(6 rows)
 
 --
 -- Test cases involving PARAM_EXEC parameters and min/max index optimizations.
@@ -664,9 +665,10 @@ select q from (select max(f1) from int4_tbl group by f1 order by f1) q;
  (-2147483647)
  (-123456)
  (0)
+ (35)
  (123456)
  (2147483647)
-(5 rows)
+(6 rows)
 
 with q as (select max(f1) from int4_tbl group by f1 order by f1)
   select q from q;
@@ -675,9 +677,10 @@ with q as (select max(f1) from int4_tbl group by f1 order by f1)
  (-2147483647)
  (-123456)
  (0)
+ (35)
  (123456)
  (2147483647)
-(5 rows)
+(6 rows)
 
 --
 -- Test case for sublinks pulled up into joinaliasvars lists in an
@@ -1304,12 +1307,12 @@ select * from int4_tbl o where (f1, f1) in
   (select f1, generate_series(1,50) / 10 g from int4_tbl i group by f1);
                             QUERY PLAN                             
 -------------------------------------------------------------------
- Nested Loop Semi Join
+ Hash Semi Join
    Output: o.f1
-   Join Filter: (o.f1 = "ANY_subquery".f1)
+   Hash Cond: (o.f1 = "ANY_subquery".f1)
    ->  Seq Scan on public.int4_tbl o
          Output: o.f1
-   ->  Materialize
+   ->  Hash
          Output: "ANY_subquery".f1, "ANY_subquery".g
          ->  Subquery Scan on "ANY_subquery"
                Output: "ANY_subquery".f1, "ANY_subquery".g
@@ -1347,8 +1350,9 @@ from int4_tbl;
  (1,2,3)
  (4,5,6.0)
  (1,2,3)
+ (1,2,3)
  (4,5,6.0)
-(5 rows)
+(6 rows)
 
 --
 -- Check for sane handling of a lateral reference in a subquery's quals
@@ -1399,9 +1403,11 @@ where b and f1 >= 0;
           0 | t |  2
      123456 | t |  1
      123456 | t |  2
+         35 | t |  1
+         35 | t |  2
  2147483647 | t |  1
  2147483647 | t |  2
-(5 rows)
+(7 rows)
 
 --
 -- Check that volatile quals aren't pushed down past a DISTINCT:
