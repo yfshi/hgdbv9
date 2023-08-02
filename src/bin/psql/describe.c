@@ -1672,22 +1672,25 @@ describeOneTableDetails(const char *schemaname,
 	bool		retval = false;
 	PQExpBufferData buf;
 	PGresult   *res = NULL;
+	PGresult   *res_vi = NULL;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	printTableOpt myopt = pset.popt.topt;
 	printTableContent cont;
 	bool		printTableInitialized = false;
+	bool		is_visibility;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	int			i;
 	char	   *view_def = NULL;
 	char	   *headers[12];
 	PQExpBufferData title;
 	PQExpBufferData tmpbuf;
 	int			cols;
-	int			attname_col = -1,	/* column indexes in "res" */
+	int			attname_col = -1,	/* ReqID:SRS-SQL-INVISIBLECOL */
 				atttype_col = -1,
 				attrdef_col = -1,
 				attnotnull_col = -1,
 				attcoll_col = -1,
 				attidentity_col = -1,
 				attgenerated_col = -1,
+				attisvisible_col = -1,	/* ReqID:SRS-SQL-INVISIBLECOL */
 				isindexkey_col = -1,
 				indexdef_col = -1,
 				fdwopts_col = -1,
@@ -2087,6 +2090,13 @@ describeOneTableDetails(const char *schemaname,
 		else
 			appendPQExpBufferStr(&buf, ",\n  ''::pg_catalog.char AS attgenerated");
 		attgenerated_col = cols++;
+		/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+		if (pset.sversion >= 120000)
+			appendPQExpBufferStr(&buf, ",\n  a.attisvisible");
+		else
+			appendPQExpBufferStr(&buf, ",\n  ''::pg_catalog.char AS attisvisible");
+		/* End - ReqID:SRS-SQL-INVISIBLECOL */
+		attisvisible_col = cols++;
 	}
 	if (tableinfo.relkind == RELKIND_INDEX ||
 		tableinfo.relkind == RELKIND_PARTITIONED_INDEX)
@@ -2163,6 +2173,12 @@ describeOneTableDetails(const char *schemaname,
 		goto error_return;
 	numrows = PQntuples(res);
 
+	/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+	res_vi = PSQLexec("show colinvisible");
+	if (!res_vi)
+		goto error_return;
+	is_visibility = strcmp(PQgetvalue(res_vi, 0, 0), "on") == 0;
+	/* End - ReqID:SRS-SQL-INVISIBLECOL */
 	/* Make title */
 	switch (tableinfo.relkind)
 	{
@@ -2270,6 +2286,16 @@ describeOneTableDetails(const char *schemaname,
 	/* Generate table cells to be printed */
 	for (i = 0; i < numrows; i++)
 	{
+		/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+		if (tableinfo.relkind == RELKIND_RELATION ||
+			tableinfo.relkind == RELKIND_PARTITIONED_TABLE)
+		{
+			bool col_visible;
+			col_visible =  strcmp(PQgetvalue(res, i, attisvisible_col), "t") == 0;
+			if (!is_visibility && !col_visible)
+				continue;
+		}
+		/* End - ReqID:SRS-SQL-INVISIBLECOL */
 		/* Column */
 		printTableAddCell(&cont, PQgetvalue(res, i, attname_col), false, false);
 

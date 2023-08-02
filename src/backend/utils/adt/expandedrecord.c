@@ -1029,7 +1029,7 @@ expanded_record_lookup_field(ExpandedRecordHeader *erh, const char *fieldname,
 	{
 		attr = TupleDescAttr(tupdesc, fno);
 		if (namestrcmp(&attr->attname, fieldname) == 0 &&
-			!attr->attisdropped)
+			!attr->attisdropped && attr->attisvisible)	/* ReqID:SRS-SQL-INVISIBLECOL */
 		{
 			finfo->fnumber = attr->attnum;
 			finfo->ftypeid = attr->atttypid;

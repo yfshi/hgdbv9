@@ -212,6 +212,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 		coldef->collOid = InvalidOid;
 		coldef->constraints = NIL;
 		coldef->location = -1;
+		coldef->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 		null[i - 1] = false;
 

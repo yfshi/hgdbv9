@@ -9115,10 +9115,12 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 
 		if (fout->remoteVersion >= 120000)
 			appendPQExpBufferStr(q,
-								 "a.attgenerated\n");
+								 "a.attgenerated, \n");	/* ReqID:SRS-SQL-INVISIBLECOL */
 		else
 			appendPQExpBufferStr(q,
-								 "'' AS attgenerated\n");
+								 "'' AS attgenerated,\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
+
+		appendPQExpBufferStr(q, "a.attisvisible\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 		/* need left join here to not fail on dropped columns ... */
 		appendPQExpBuffer(q,
@@ -9143,6 +9145,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->attidentity = (char *) pg_malloc(ntups * sizeof(char));
 		tbinfo->attgenerated = (char *) pg_malloc(ntups * sizeof(char));
 		tbinfo->attisdropped = (bool *) pg_malloc(ntups * sizeof(bool));
+		tbinfo->attisvisible = (bool *) pg_malloc(ntups * sizeof(bool));	/* ReqID:SRS-SQL-INVISIBLECOL */
 		tbinfo->attlen = (int *) pg_malloc(ntups * sizeof(int));
 		tbinfo->attalign = (char *) pg_malloc(ntups * sizeof(char));
 		tbinfo->attislocal = (bool *) pg_malloc(ntups * sizeof(bool));
@@ -9171,6 +9174,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			tbinfo->attgenerated[j] = *(PQgetvalue(res, j, PQfnumber(res, "attgenerated")));
 			tbinfo->needs_override = tbinfo->needs_override || (tbinfo->attidentity[j] == ATTRIBUTE_IDENTITY_ALWAYS);
 			tbinfo->attisdropped[j] = (PQgetvalue(res, j, PQfnumber(res, "attisdropped"))[0] == 't');
+			tbinfo->attisvisible[j] = (PQgetvalue(res, j, PQfnumber(res, "attisvisible"))[0] == 't');	/* ReqID:SRS-SQL-INVISIBLECOL */
 			tbinfo->attlen[j] = atoi(PQgetvalue(res, j, PQfnumber(res, "attlen")));
 			tbinfo->attalign[j] = *(PQgetvalue(res, j, PQfnumber(res, "attalign")));
 			tbinfo->attislocal[j] = (PQgetvalue(res, j, PQfnumber(res, "attislocal"))[0] == 't');
@@ -16537,6 +16541,11 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 						appendPQExpBuffer(q, " %s",
 										  tbinfo->atttypnames[j]);
 					}
+
+					/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+					if (!tbinfo->attisvisible[j])
+						appendPQExpBufferStr(q, " INVISIBLE");
+					/* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 					if (print_default)
 					{

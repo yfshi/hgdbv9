@@ -164,6 +164,7 @@ static const FormData_pg_attribute a1 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 static const FormData_pg_attribute a2 = {
@@ -178,6 +179,7 @@ static const FormData_pg_attribute a2 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 static const FormData_pg_attribute a3 = {
@@ -192,6 +194,7 @@ static const FormData_pg_attribute a3 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 static const FormData_pg_attribute a4 = {
@@ -206,6 +209,7 @@ static const FormData_pg_attribute a4 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 static const FormData_pg_attribute a5 = {
@@ -220,6 +224,7 @@ static const FormData_pg_attribute a5 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 /*
@@ -240,6 +245,7 @@ static const FormData_pg_attribute a6 = {
 	.attstorage = TYPSTORAGE_PLAIN,
 	.attnotnull = true,
 	.attislocal = true,
+	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
 static const FormData_pg_attribute *SysAtt[] = {&a1, &a2, &a3, &a4, &a5, &a6};
@@ -795,6 +801,7 @@ InsertPgAttributeTuples(Relation pg_attribute_rel,
 		slot[slotCount]->tts_values[Anum_pg_attribute_attidentity - 1] = CharGetDatum(attrs->attidentity);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attgenerated - 1] = CharGetDatum(attrs->attgenerated);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attisdropped - 1] = BoolGetDatum(attrs->attisdropped);
+		slot[slotCount]->tts_values[Anum_pg_attribute_attisvisible - 1] = BoolGetDatum(attrs->attisvisible);	/* ReqID:SRS-SQL-INVISIBLECOL */
 		slot[slotCount]->tts_values[Anum_pg_attribute_attislocal - 1] = BoolGetDatum(attrs->attislocal);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attinhcount - 1] = Int32GetDatum(attrs->attinhcount);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attcollation - 1] = ObjectIdGetDatum(attrs->attcollation);

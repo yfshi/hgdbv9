@@ -687,6 +687,7 @@ typedef struct ColumnDef
 	bool		is_local;		/* column has local (non-inherited) def'n */
 	bool		is_not_null;	/* NOT NULL constraint specified? */
 	bool		is_from_type;	/* column definition came from table type */
+	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
 	char		storage;		/* attstorage setting, or 0 for default */
 	Node	   *raw_default;	/* default value (untransformed parse tree) */
 	Node	   *cooked_default; /* default value (transformed expr tree) */
@@ -2012,7 +2013,8 @@ typedef enum AlterTableType
 	AT_SetIdentity,				/* SET identity column options */
 	AT_DropIdentity,			/* DROP IDENTITY */
 	AT_ReAddStatistics,			/* internal to commands/tablecmds.c */
-	AT_SetVirtualColumn			/* Modify virtual columns */	/* ReqID:SRS-SQL-VIRTUALCOL */
+	AT_SetVirtualColumn,		/* Modify virtual columns */	/* ReqID:SRS-SQL-VIRTUALCOL */
+	AT_SetVisibility			/* Modify column visibility */	/* ReqID:SRS-SQL-INVISIBLECOL */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
@@ -2036,6 +2038,7 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	DropBehavior behavior;		/* RESTRICT or CASCADE for DROP cases */
 	bool		missing_ok;		/* skip error if missing? */
 	bool		recurse;		/* exec-time recursion */
+	bool		isvisible;		/* ReqID:SRS-SQL-INVISIBLECOL */
 } AlterTableCmd;
 
 

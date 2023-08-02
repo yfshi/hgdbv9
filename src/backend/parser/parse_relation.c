@@ -1273,6 +1273,7 @@ buildNSItemFromTupleDesc(RangeTblEntry *rte, Index rtindex, TupleDesc tupdesc)
 		nscolumns[varattno].p_varcollid = attr->attcollation;
 		nscolumns[varattno].p_varnosyn = rtindex;
 		nscolumns[varattno].p_varattnosyn = varattno + 1;
+		nscolumns[varattno].p_var_visible = attr->attisvisible;	/* ReqID:SRS-SQL-INVISIBLECOL */
 	}
 
 	/* ... and build the nsitem */
@@ -1334,6 +1335,7 @@ buildNSItemFromLists(RangeTblEntry *rte, Index rtindex,
 		nscolumns[varattno].p_varcollid = lfirst_oid(lcc);
 		nscolumns[varattno].p_varnosyn = rtindex;
 		nscolumns[varattno].p_varattnosyn = varattno + 1;
+		nscolumns[varattno].p_var_visible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 		varattno++;
 	}
 
@@ -3127,6 +3129,13 @@ expandNSItemVars(ParseNamespaceItem *nsitem,
 		{
 			Var		   *var;
 
+			/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
+			if (!nscol->p_var_visible)
+			{
+				colindex++;
+				continue;
+			}
+			/* End - ReqID:SRS-SQL-INVISIBLECOL */
 			Assert(nscol->p_varno > 0);
 			var = makeVar(nscol->p_varno,
 						  nscol->p_varattno,
