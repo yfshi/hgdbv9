@@ -612,10 +612,7 @@ smgrtruncate(SMgrRelation reln, ForkNumber *forknum, int nforks, BlockNumber *nb
 	 * is a performance-critical path.)  As in the unlink code, we want to be
 	 * sure the message is sent before we start changing things on-disk.
 	 */
-	/* Begin - BUG#M0000187 */
-	if (!reln->is_gtt)
-		CacheInvalidateSmgr(reln->smgr_rnode);
-	/* End - BUG#M0000187 */
+	CacheInvalidateSmgr(reln->smgr_rnode);
 
 	/* Do the truncation */
 	for (i = 0; i < nforks; i++)
