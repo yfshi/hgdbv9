@@ -2505,6 +2505,14 @@ compute_scalar_stats(VacAttrStatsP stats,
 			RelationClose(rel);
 			ExecDropSingleTupleTableSlot(slot);
 			FreeExecutorState(estate);
+			/* Begin - Bug#Z492 */
+			if (isnull)
+			{
+				values = (Datum) 0;
+				null_cnt++;
+				continue;
+			}
+			/* End - Bug#Z492 */
 		}
 		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		nonnull_cnt++;

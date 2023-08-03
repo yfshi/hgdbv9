@@ -67,8 +67,8 @@ end;
 CREATE TABLE vtest6 (a int PRIMARY KEY, b int GENERATED ALWAYS AS (my_func(a)));
 insert into vtest6 (a) values (1);
 SELECT * FROM vtest6;
-DROP FUNCTION my_func;
 DROP TABLE vtest6;
+DROP FUNCTION my_func;
 
 -- Test ALTER virtual column
 create table t1 (id number,product varchar2(50),price number(10,2),price_with_tax int generated always as (round(price*1.2,2)) virtual);
@@ -221,3 +221,58 @@ CREATE TABLE v_like (like v_parent including generated);
 insert into v_like (a, b) values (1,3);
 drop table v_like;
 drop table v_parent;
+
+--Begin - BUG#Z485
+create table vir_alt1 (a int);
+alter table vir_alt1 add b generated always as (a*3) virtual;
+drop table vir_alt1;
+--End - BUG#Z485
+
+--Begin - BUG#Z486
+create table vir_alt2 (a int);
+alter table vir_alt2 add (c  as (a*4), d as (a*5), e as (a*66));
+drop table vir_alt2;
+--End - BUG#Z486
+
+--Begin - BUG#Z487
+create table vir_alt3 (a int, b as (a*2), c as (a*3), d as (a*4));
+alter table vir_alt3 modify (b as (a*6), c as (a*7),  d as (a*9));
+drop table vir_alt3;
+--End - BUG#Z487
+
+--Begin - BUG#Z488
+create table vir_cons4_01 (a int, b as (a*2));
+alter table vir_cons4_01 alter column b set default 3;
+drop table vir_cons4_01;
+--End - BUG#Z488
+
+--Begin - BUG#Z489
+create table vir_cons8 (a int, b int, c as (b*2) UNIQUE);
+insert into vir_cons8 (a, b) values (1,1);
+insert into vir_cons8 (a, b) values (2,1);
+drop table vir_cons8;
+--End - BUG#Z489
+
+--Begin - BUG#Z491
+create table vir_cons7 (a int, b int, c as (b*2) not null);
+insert into vir_cons7 (a) values (1);
+drop table vir_cons7;
+--End - BUG#Z491
+
+--Begin - BUG#Z492
+create table vir_cons6 (a int, b int, c as (b*2) null);
+insert into vir_cons6 (a) values (1);
+select * from vir_cons6;
+drop table vir_cons6;
+--End - BUG#Z492
+
+--Begin - BUG#Z493
+create or replace function my_func(a int) return int deterministic
+as
+begin
+	return a+2;
+end;
+/
+create table vir_cite6 (a int, name varchar(100), v_id as (my_func(a))) partition by range (v_id);--error
+drop function my_func;
+--End - BUG#Z493

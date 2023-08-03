@@ -2633,7 +2633,15 @@ make_build_data(Relation rel, StatExtEntry *stat, int numrows, HeapTuple *rows,
 				result->values[idx][i] = ExecEvalExprSwitchContext(exprState, econtext, &is_null);
 				if (result->stats[idx]->tupDesc->attrs[k - 1].attlen == -1)
 					result->values[idx][i] = PointerGetDatum(PG_DETOAST_DATUM_COPY(result->values[idx][i]));
-				result->nulls[idx][i] = false;
+				/* Begin - Bug#Z492 */
+				if (is_null)
+				{
+					result->values[idx][i] = (Datum) 0;
+					result->nulls[idx][i] = true;
+				}
+				else
+					result->nulls[idx][i] = false;
+				/* End - Bug#Z492 */
 
 				ExecDropSingleTupleTableSlot(vslot);
 				FreeExecutorState(estate);

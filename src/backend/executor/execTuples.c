@@ -1035,6 +1035,14 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 														&is_null);
 			if (thisatt->attlen == -1)
 				values[attnum] = PointerGetDatum(PG_DETOAST_DATUM_COPY(values[attnum]));
+			/* Begin - Bug#Z492 */
+			if (is_null)
+			{
+				values[attnum] = (Datum) 0;
+				isnull[attnum] = true;
+				slow = true;
+			}
+			/* End - Bug#Z492 */
 
 			RelationClose(rel);
 			FreeExecutorState(estate);

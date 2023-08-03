@@ -2419,7 +2419,7 @@ StoreAttrDefault(Relation rel, AttrNumber attnum,
 	/*
 	 * Record dependencies on objects used in the expression, too.
 	 */
-	if (attgenerated)
+	if (attgenerated == ATTRIBUTE_GENERATED_STORED)	/* Bug#Z485 */
 	{
 		/*
 		 * Generated column: Dropping anything that the generation expression

@@ -68,7 +68,10 @@
 #include "utils/rls.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
-
+/* Begin - Bug#Z491 */
+#include "rewrite/rewriteHandler.h"
+#include "nodes/nodeFuncs.h"
+/* End - Bug#Z491 */
 
 /* Hooks for plugins to get control in ExecutorStart/Run/Finish/End */
 ExecutorStart_hook_type ExecutorStart_hook = NULL;
@@ -1934,6 +1937,31 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 			if (att->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
 				hasVirtualCol = true;
 			/* End - ReqID:SRS-SQL-VIRTUALCOL */
+
+			/* Begin - Bug#Z491 */
+			if (att->attnotnull && slot_attisnull(slot, attrChk) && att->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			{
+				Expr       *varexpr;
+				ExprState  *exprState;
+				ExprContext *econtext;
+				bool		is_null;
+
+				varexpr = (Expr *)build_column_default(rel, att->attnum);
+				fix_opfuncids((Node *) varexpr);
+				exprState = ExecInitExpr(varexpr, NULL);
+				econtext = GetPerTupleExprContext(estate);
+				econtext->ecxt_scantuple = slot;
+				ExecEvalExprSwitchContext(exprState, econtext, &is_null);
+				if (is_null && estate->es_plannedstmt->commandType == CMD_INSERT)
+					elog(ERROR, "cannot insert NULL into (\"%s.%s.%s\")", get_namespace_name(RelationGetNamespace(rel)),
+																			NameStr(rel->rd_rel->relname),
+																			NameStr(att->attname));
+				else if (is_null && estate->es_plannedstmt->commandType == CMD_UPDATE)
+					elog(ERROR, "cannot update (\"%s.%s.%s\") to NULL", get_namespace_name(RelationGetNamespace(rel)),
+																			NameStr(rel->rd_rel->relname),
+																			NameStr(att->attname));
+			}
+			/* End - Bug#Z491 */
 
 			if (att->attnotnull && slot_attisnull(slot, attrChk) && att->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL)	/* ReqID:SRS-SQL-VIRTUALCOL */
 			{

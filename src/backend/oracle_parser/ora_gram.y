@@ -870,7 +870,10 @@ static void determineLanguage(List *options);
 				ora_to_number_expr_fmt
 				ora_to_number_expr_fmt_nls
 /* End - ReqID:SRS-SQL-SYSFUNC */
-
+/* Begin - Bug#Z485 */
+%type <node> virtual_clause add_column
+%type <list> virtual_clauses add_columns
+/* End - Bug#Z485 */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -882,7 +885,7 @@ static void determineLanguage(List *options);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P /* BUG#Z375 */
+%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P INVISIBLE_AS VISIBLE_AS/* BUG#Z375 */ /* Bug#Z485 */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -2347,6 +2350,9 @@ AlterTableStmt:
 alter_table_cmds:
 			alter_table_cmd							{ $$ = list_make1($1); }
 			| alter_table_cmds ',' alter_table_cmd	{ $$ = lappend($1, $3); }
+			| ADD_P '(' add_columns ')'				{ $$ = $3; }	/* Bug#Z485 */
+			| MODIFY virtual_clause					{ $$ = list_make1($2); }	/* Bug#Z485 */
+			| MODIFY '(' virtual_clauses ')'		{ $$ = $3; }	/* Bug#Z485 */
 			| MODIFY identity_clause				{ $$ = $2; }	/* Bug#m0000070 */
 			| MODIFY modify_col_visibility			{ $$ = list_make1($2); }	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| MODIFY '(' modify_col_visibilitys ')'	{ $$ = $3; }	/* ReqID:SRS-SQL-INVISIBLECOL */
@@ -2422,17 +2428,6 @@ alter_table_cmd:
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-SQL-IDENTCOL */
-			/* ALTER TABLE <name> ADD ( <coldef> ) */
-			| ADD_P '(' columnDef ')'
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_AddColumn;
-					n->def = $3;
-					n->missing_ok = false;
-					$$ = (Node *)n;	
-				}
-			/* End - ReqID:SRS-SQL-IDENTCOL */
 			/* ALTER TABLE <name> ADD IF NOT EXISTS <coldef> */
 			| ADD_P IF_P NOT EXISTS columnDef
 				{
@@ -3074,6 +3069,62 @@ alter_identity_column_option:
 				}
 		;
 
+/* Begin - Bug#Z485 */
+add_columns:
+			add_column								{ $$ = list_make1($1); }
+			| add_columns ',' add_column			{ $$ = lappend($1, $3);}
+		;
+
+add_column:
+			columnDef
+			{
+				AlterTableCmd *n = makeNode(AlterTableCmd);
+				n->subtype = AT_AddColumn;
+				n->def = $1;
+				n->missing_ok = false;
+				$$ = (Node *)n;
+			}
+;
+
+virtual_clauses:
+			virtual_clause							{ $$ = list_make1($1); }
+			| virtual_clauses ',' virtual_clause	{ $$ = lappend($1, $3);}
+		;
+
+virtual_clause:
+			ColId Typename GENERATED generated_when AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					if ($9 == ATTRIBUTE_GENERATED_STORED)
+						n->subtype = AT_ColumnDefault;
+					else
+						n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $7;
+					$$ = (Node *)n;
+				}
+			| ColId virtual_type AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					if ($7 == ATTRIBUTE_GENERATED_STORED)
+						n->subtype = AT_ColumnDefault;
+					else
+						n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $5;
+					$$ = (Node *)n;
+				}
+			| ColId AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_SetVirtualColumn;
+					n->name = $1;
+					n->def = $4;
+					$$ = (Node *)n;
+				}
+		;
+/* End - Bug#Z485 */
+
 /* Begin - ReqID:SRS-SQL-IDENTCOL */
 identity_clause:
 			'(' identity_options ')'		{ $$ = $2; }
@@ -3146,36 +3197,6 @@ identity_options:
 					$$ = list_make1(n);	/* Bug#m0000070 */
 				}
 			/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-			| ColId Typename GENERATED generated_when AS '(' a_expr ')' opt_virtual_or_stored virtual_node
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					if ($9 == ATTRIBUTE_GENERATED_STORED)
-						n->subtype = AT_ColumnDefault;
-					else
-						n->subtype = AT_SetVirtualColumn;
-					n->name = $1;
-					n->def = $7;
-					$$ = list_make1(n);
-				}
-			| ColId virtual_type AS '(' a_expr ')' opt_virtual_or_stored virtual_node
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					if ($7 == ATTRIBUTE_GENERATED_STORED)
-						n->subtype = AT_ColumnDefault;
-					else
-						n->subtype = AT_SetVirtualColumn;
-					n->name = $1;
-					n->def = $5;
-					$$ = list_make1(n);
-				}
-			| ColId AS '(' a_expr ')' opt_virtual_or_stored virtual_node
-				{
-					AlterTableCmd *n = makeNode(AlterTableCmd);
-					n->subtype = AT_SetVirtualColumn;
-					n->name = $1;
-					n->def = $4;
-					$$ = list_make1(n);
-				}
 		;
 
 virtual_type:
@@ -3866,12 +3887,20 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					if (pg_strcasecmp(tpname, "invisible") == 0 && $3)
 					{
 						n->typeName = makeTypeName("int4");
+						n->not_spefify_column_type = true;	/* Bug#Z485 */
 						n->isvisible = false;
 						keyword_is_visibility = true;
 					}else if (pg_strcasecmp(tpname, "visible") == 0 && $3){
 						n->typeName = makeTypeName("int4");
+						n->not_spefify_column_type = true;	/* Bug#Z485 */
 						n->isvisible = true;
 						keyword_is_visibility = true;
+					/* Begin - Bug#Z485 */
+					}else if (pg_strcasecmp(tpname, "generated") == 0){
+						n->typeName = makeTypeName("int4");
+						n->not_spefify_column_type = true;
+						n->isvisible = true;
+					/* End - Bug#Z485 */
 					}
 					/* End - ReqID:SRS-SQL-INVISIBLECOL */
 					n->compression = $4;
@@ -3920,7 +3949,9 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					ColumnDef *n = makeNode(ColumnDef);
 					Constraint *c = makeNode(Constraint);
 					n->colname = $1;
+					n->is_local = true;	/* Bug#Z490 */
 					n->typeName = makeTypeName("int4");
+					n->not_spefify_column_type = true;		/* Bug#Z485 */
 					c->contype = CONSTR_GENERATED;
 					c->raw_expr = $4;
 					n->constraints = list_make1(c);
@@ -3931,6 +3962,44 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
 					$$ = (Node *)n;
 				}
+			/* Begin - Bug#Z485 */
+			| ColId INVISIBLE_AS AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					ColumnDef *n = makeNode(ColumnDef);
+					Constraint *c = makeNode(Constraint);
+					n->colname = $1;
+					n->is_local = true;
+					n->typeName = makeTypeName("int4");
+					n->not_spefify_column_type = true;		/* Bug#Z485 */
+					c->contype = CONSTR_GENERATED;
+					c->raw_expr = $5;
+					n->constraints = list_make1(c);
+					n->isvisible = false;	/* ReqID:SRS-SQL-INVISIBLECOL */
+					c->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
+					if ($8)
+						n->constraints = lappend(n->constraints, $8);
+					n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
+					$$ = (Node *)n;
+				}
+			| ColId VISIBLE_AS AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+				{
+					ColumnDef *n = makeNode(ColumnDef);
+					Constraint *c = makeNode(Constraint);
+					n->colname = $1;
+					n->is_local = true;
+					n->typeName = makeTypeName("int4");
+					n->not_spefify_column_type = true;		/* Bug#Z485 */
+					c->contype = CONSTR_GENERATED;
+					c->raw_expr = $5;
+					n->constraints = list_make1(c);
+					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
+					c->generated_kind = ATTRIBUTE_GENERATED_VIRTUAL;
+					if ($8)
+						n->constraints = lappend(n->constraints, $8);
+					n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
+					$$ = (Node *)n;
+				}
+			/* End - Bug#Z485 */
 		;
 
 /* Begin - ReqID:SRS-SQL-INVISIBLECOL */
@@ -3979,6 +4048,19 @@ virtual_node:
 					n->initially_valid = true;
 					$$ = (Node *)n;
 				}
+			/* Begin - Bug#Z489 */
+			| UNIQUE opt_definition OptConsTableSpace
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->keys = NULL;
+					n->options = $2;
+					n->indexname = NULL;
+					n->indexspace = $3;
+					$$ = (Node *)n;
+				}
+			/* End - Bug#Z489 */
 			|	/* empty */ { $$ = NULL; }
 ;
 /* End - ReqID:SRS-SQL-VIRTUALCOL */

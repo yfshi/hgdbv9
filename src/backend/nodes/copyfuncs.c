@@ -3091,6 +3091,7 @@ _copyColumnDef(const ColumnDef *from)
 	COPY_SCALAR_FIELD(is_from_type);
 	COPY_SCALAR_FIELD(storage);
 	COPY_SCALAR_FIELD(isvisible);	/* ReqID:SRS-SQL-INVISIBLECOL */
+	COPY_SCALAR_FIELD(not_spefify_column_type);	/* Bug#Z485 */
 	COPY_NODE_FIELD(raw_default);
 	COPY_NODE_FIELD(cooked_default);
 	COPY_SCALAR_FIELD(identity);
