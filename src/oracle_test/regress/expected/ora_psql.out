@@ -1734,3 +1734,37 @@ print v1
  ab;b;b
 
 -- End - BUG#Z352
+-- BUG#Z366
+CREATE FUNCTION f1(arg1 number)
+RETURN number
+IS
+BEGIN
+   RETURN arg1;
+END;
+/
+var like number=123;
+select f1(:like) from dual;
+ f1  
+-----
+ 123
+(1 row)
+
+select f1(:"LIKE") from dual;
+ f1  
+-----
+ 123
+(1 row)
+
+select f1(:"like") from dual;
+ f1  
+-----
+ 123
+(1 row)
+
+select f1(:LIKE) from dual;
+ f1  
+-----
+ 123
+(1 row)
+
+DROP FUNCTION f1(arg1 number);

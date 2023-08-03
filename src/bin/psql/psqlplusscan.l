@@ -141,8 +141,9 @@ typecast		"::"
  * This flex rule is not used in the syntax of bison,
  * we just use it to detect whether a bind variable is
  * referenced in a SQL text.
+ * BUG#Z366
  */
-bindvarref		:{identifier}
+bindvarref		((:{identifier})|(:{dquote}{identifier}{dquote}))
 
 /*
  * "self" is the set of chars that should be returned
