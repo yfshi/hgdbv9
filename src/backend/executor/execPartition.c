@@ -1342,6 +1342,14 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 			econtext->ecxt_scantuple = slot;
 			datum = ExecEvalExprSwitchContext(exprState, econtext, &isNull);
 			RelationClose(rel);
+			/* Begin - Bug#Z492 */
+			if (isNull)
+			{
+				values[i] = (Datum) 0;
+				isnull[i] = isNull;
+				continue;
+			}
+			/* End - Bug#Z492 */
 		}
 		/* End - ReqID:SRS-SQL-VIRTUALCOL */
 		else

@@ -672,6 +672,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	ListCell   *listptr;
 	AttrNumber	attnum;
 	bool		partitioned;
+	bool		need_change_column_datatype = false;	/* Bug#Z485 */
 	static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
 	Oid			ofTypeId;
 	ObjectAddress address;
@@ -946,7 +947,10 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 			RawColumnDefault *rawEnt;
 
 			Assert(colDef->cooked_default == NULL);
-
+			/* Begin - Bug#Z485 */
+			if (colDef->not_spefify_column_type && !need_change_column_datatype)
+				need_change_column_datatype = true;
+			/* End - Bug#Z485 */
 			rawEnt = (RawColumnDefault *) palloc(sizeof(RawColumnDefault));
 			rawEnt->attnum = attnum;
 			rawEnt->raw_default = colDef->raw_default;
@@ -1069,6 +1073,67 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * Make column generation expressions visible for use by partitioning.
 	 */
 	CommandCounterIncrement();
+
+	/* Begin - Bug#Z485 */
+	if (need_change_column_datatype)
+	{
+		ParseNamespaceItem *nsitem;
+		ParseState *pstate;
+		Relation	attrelation = NULL;
+
+		attrelation = table_open(AttributeRelationId, RowExclusiveLock);
+		pstate = make_parsestate(NULL);
+		nsitem = addRangeTableEntryForRelation(pstate,
+												rel,
+												AccessShareLock,
+												NULL,
+												false,
+												false);
+		addNSItemToQuery(pstate, nsitem, false, true, true);
+		attnum = 0;
+		foreach(listptr, stmt->tableElts)
+		{
+			Node	   *generated_column_expr;
+			Oid			exprtype;
+			HeapTuple	heapTup;
+			HeapTuple	typtp;
+			Form_pg_type typtup;
+			Form_pg_attribute attTup;
+
+			ColumnDef  *colDef = lfirst(listptr);
+			attnum++;
+			if (colDef->raw_default != NULL &&
+						colDef->generated == ATTRIBUTE_GENERATED_VIRTUAL &&
+						colDef->not_spefify_column_type)
+			{
+				generated_column_expr = transformExpr(pstate, colDef->raw_default, EXPR_KIND_GENERATED_COLUMN);
+				exprtype = exprType(generated_column_expr);
+				typtp = SearchSysCache1(TYPEOID, ObjectIdGetDatum(exprtype));
+				typtup = (Form_pg_type) GETSTRUCT(typtp);
+				heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), colDef->colname);
+				attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
+
+				attTup->atttypid = exprtype;
+				attTup->atttypmod = typtup->typtypmod;
+				attTup->attcollation = typtup->typcollation;
+				attTup->attndims = typtup->typdelim;
+				attTup->attlen = typtup->typlen;
+				attTup->attbyval = typtup->typbyval;
+				attTup->attalign = typtup->typalign;
+				attTup->attstorage = typtup->typstorage;
+
+				simple_heap_update(attrelation, &heapTup->t_self, heapTup);
+				add_column_datatype_dependency(RelationGetRelid(rel), attnum, exprtype);
+				add_column_collation_dependency(RelationGetRelid(rel), attnum, typtup->typcollation);
+				RemoveStatistics(RelationGetRelid(rel), attnum);
+				CommandCounterIncrement();
+
+				ReleaseSysCache(typtp);
+			}
+		}
+		table_close(attrelation, RowExclusiveLock);
+	}
+	/* End - Bug#Z485 */
 
 	/* Process and store partition bound, if any. */
 	if (stmt->partbound)
@@ -6898,7 +6963,32 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 				(errcode(ERRCODE_TOO_MANY_COLUMNS),
 				 errmsg("tables can have at most %d columns",
 						MaxHeapAttributeNumber)));
+	/* Begin - Bug#Z485 */
+	if (colDef->not_spefify_column_type)
+	{
+		ParseNamespaceItem *nsitem;
+		ParseState *pstate;
+		Node	   *generated_column_expr;
+		Oid			exprtype;
+		Type		targetType;
 
+		pstate = make_parsestate(NULL);
+		nsitem = addRangeTableEntryForRelation(pstate,
+											rel,
+											AccessShareLock,
+											NULL,
+											false,
+											false);
+		addNSItemToQuery(pstate, nsitem, false, true, true);
+		generated_column_expr = transformExpr(pstate, colDef->raw_default, EXPR_KIND_GENERATED_COLUMN);
+		exprtype = exprType(generated_column_expr);
+		targetType = typeidType(exprtype);
+		colDef->typeName = makeTypeName(typeTypeName(targetType));
+
+		ReleaseSysCache(targetType);
+		free_parsestate(pstate);
+	}
+	/* End - Bug#Z485 */
 	typeTuple = typenameType(NULL, colDef->typeName, &typmod);
 	tform = (Form_pg_type) GETSTRUCT(typeTuple);
 	typeOid = tform->oid;
@@ -7714,6 +7804,11 @@ ATExecColumnDefault(Relation rel, const char *colName,
 				 errmsg("column \"%s\" of relation \"%s\" is an identity column",
 						colName, RelationGetRelationName(rel)),
 				 newDefault ? 0 : errhint("Use ALTER TABLE ... ALTER COLUMN ... DROP IDENTITY instead.")));
+
+	/* Begin - Bug#Z488 */
+	if (TupleDescAttr(tupdesc, attnum - 1)->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+		elog(ERROR, "Virtual column cannot have a default value");
+	/* End - Bug#Z488 */
 
 	if (TupleDescAttr(tupdesc, attnum - 1)->attgenerated != ATTRIBUTE_GENERATED_VIRTUAL &&
 											TupleDescAttr(tupdesc, attnum - 1)->attgenerated)	/* ReqID:SRS-SQL-VIRTUALCOL */
@@ -17352,6 +17447,30 @@ ComputePartitionAttrs(ParseState *pstate, Relation rel, List *partParams, AttrNu
 								   pelem->name),
 						 parser_errposition(pstate, pelem->location)));
 
+			/* Begin - Bug#Z493 */
+			if (attform->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			{
+				Node   *varexpr;
+				varexpr = build_column_default(rel, attform->attnum);
+				if(IsA(varexpr, FuncExpr))
+				{
+					FuncExpr   *fexpr;
+					HeapTuple	proctup;
+					Form_pg_proc proc;
+
+					fexpr = castNode(FuncExpr, varexpr);
+					proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
+					if (!HeapTupleIsValid(proctup))
+						elog(ERROR, "function does not exist");
+					proc = (Form_pg_proc) GETSTRUCT(proctup);
+					if (strcmp("plisql", get_language_name(proc->prolang, false)) == 0 ||
+							strcmp("plpgsql", get_language_name(proc->prolang, false)) == 0)
+						elog(ERROR, "Cannot use PL/SQL expressions in partitioning or subpartitioning columns");
+
+					ReleaseSysCache(proctup);
+				}
+			}
+			/* End - Bug#Z493 */
 			partattrs[attn] = attform->attnum;
 			atttype = attform->atttypid;
 			attcollation = attform->attcollation;

@@ -812,7 +812,16 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				cur_token = PACKAGE_BODY;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
-
+		/* Begin - Bug#Z485 */
+		case INVISIBLE:
+			if (next_token == AS)
+				cur_token = INVISIBLE_AS;
+			break;
+		case VISIBLE:
+			if (next_token == AS)
+				cur_token = VISIBLE_AS;
+			break;
+		/* End - Bug#Z485 */
 		case WITH:
 			/* Replace WITH by WITH_LA if it's followed by TIME or ORDINALITY */
 			switch (next_token)
