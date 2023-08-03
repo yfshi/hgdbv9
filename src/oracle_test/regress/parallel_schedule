@@ -172,3 +172,7 @@ test: virtualcolumn
 # ----------
 # End - ReqID:SRS-SQL-INVISIBLECOL
 test: visibility_col
+
+#/* Begin - BUG#M0000199 */
+test: ora_sort
+#/* End - BUG#M0000199 */
