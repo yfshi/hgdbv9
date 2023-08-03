@@ -3452,7 +3452,10 @@ addTargetToSortList(ParseState *pstate, TargetEntry *tle,
 		{
 			case SORTBY_NULLS_DEFAULT:
 				/* NULLS FIRST is default for DESC; other way for ASC */
-				sortcl->nulls_first = reverse;
+				/* Begin - BUG#M0000197 */
+				/* NULLS LAST for DESC while "ivorysql.sort_desc_nulls_last" is true */
+				sortcl->nulls_first = (reverse && sort_desc_nulls_last) ? false : reverse;
+				/* End - BUG#M0000197 */
 				break;
 			case SORTBY_NULLS_FIRST:
 				sortcl->nulls_first = true;

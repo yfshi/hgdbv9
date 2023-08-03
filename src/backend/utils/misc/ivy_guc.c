@@ -96,6 +96,8 @@ int	where_from = FROM_UNKNOWN;
 /* End - BUG#M0000201: support question marks as binding variables */
 
 bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
+
+bool	sort_desc_nulls_last = false;	/* BUG#M0000197 */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -339,6 +341,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-INVISIBLECOL */
+	/* Begin - BUG#M0000197 */
+	{
+		{"ivorysql.sort_desc_nulls_last", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("NULLS LAST for ORDER BY ... DESC"),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&sort_desc_nulls_last,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000197 */
 #endif
 #if 0
 	/* End-of-list marker */
