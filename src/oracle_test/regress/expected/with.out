@@ -2099,9 +2099,10 @@ from int4_tbl;
            0
       123456
      -123456
+          35
   2147483647
  -2147483647
-(5 rows)
+(6 rows)
 
 select ( with cte(foo) as ( values(f1) )
           values((select foo from cte)) )
@@ -2111,9 +2112,10 @@ from int4_tbl;
            0
       123456
      -123456
+          35
   2147483647
  -2147483647
-(5 rows)
+(6 rows)
 
 --
 -- test for nested-recursive-WITH bug

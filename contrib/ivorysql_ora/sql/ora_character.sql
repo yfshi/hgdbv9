@@ -297,3 +297,15 @@ drop table toast_char4;
 drop table notoast_varchar3;
 drop table toast_varchar4;
 /* End - BUG:M0000062 */
+
+/* Begin - BUG#M0000194 */
+select to_multi_byte('鲁A');
+
+select to_single_byte('鲁Ａ');
+
+select compose('A' || unistr('\0300'));
+
+select asciistr(compose(unistr('\0041') || unistr('\0300')));
+
+select asciistr(decompose(unistr('\00C0')));
+/* End - BUG#M0000194 */

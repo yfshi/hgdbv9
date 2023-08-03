@@ -68,5 +68,7 @@ typedef enum
 } WhereFrom;
 /* End - BUG#M0000201: support question marks as binding variables */
 
+extern char * ora_strtoint(const char *num);	/* BUG#M0000194 */
+
 #endif							/* ORA_COMPATIBLE_H */
 

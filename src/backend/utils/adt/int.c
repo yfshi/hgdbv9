@@ -41,6 +41,10 @@
 #include "optimizer/optimizer.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
+/* Begin - BUG#M0000194 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG#M0000194 */
 
 #define Int2VectorSize(n)	(offsetof(int2vector, values) + (n) * sizeof(int16))
 
@@ -51,6 +55,71 @@ typedef struct
 	int32		step;
 } generate_series_fctx;
 
+
+/* Begin - BUG#M0000194 */
+char *
+ora_strtoint(const char *num)
+{
+	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER && num)
+	{
+		const char *ptr = num;
+		bool		int_digit = false,
+					dec_digit = false;
+
+		/* leading spaces */
+		while (*ptr && isspace((unsigned char) *ptr))
+			++ptr;
+
+		if (*ptr == '-' || *ptr == '+')
+			++ptr;
+
+		int_digit = (*ptr && isdigit((unsigned char) *ptr));
+
+		while (*ptr && isdigit((unsigned char) *ptr))
+			++ptr;
+
+		if (*ptr == '.')
+			++ptr;
+
+		dec_digit = (*ptr && isdigit((unsigned char) *ptr));
+
+		while (*ptr && isdigit((unsigned char) *ptr))
+			++ptr;
+
+		/* trailing spaces */
+		while (*ptr && isspace((unsigned char) *ptr))
+			++ptr;
+
+		if (*ptr == '\0' && (int_digit || dec_digit))
+		{
+			char   *endptr = NULL;
+			int64	llnum;
+
+			errno = 0;
+			llnum = strtoll(num, &endptr, 10);
+
+			if (errno == 0)
+			{
+				int64	carry = 0;
+
+				errno = 0;
+				carry = round(strtof(endptr, &endptr));
+
+				if (errno == 0 && llnum + carry < PG_INT64_MAX)
+				{
+					char   *ret = palloc0(21);
+
+					sprintf(ret, "%lld", (long long int) (llnum + carry));
+
+					return ret;
+				}
+			}
+		}
+	}
+
+	return (char *) num;
+}
+/* End - BUG#M0000194 */
 
 /*****************************************************************************
  *	 USER I/O ROUTINES														 *
@@ -63,6 +132,8 @@ Datum
 int2in(PG_FUNCTION_ARGS)
 {
 	char	   *num = PG_GETARG_CSTRING(0);
+
+	num = ora_strtoint(num);		/* BUG#M0000194 */
 
 	PG_RETURN_INT16(pg_strtoint16(num));
 }
@@ -266,6 +337,8 @@ Datum
 int4in(PG_FUNCTION_ARGS)
 {
 	char	   *num = PG_GETARG_CSTRING(0);
+
+	num = ora_strtoint(num);		/* BUG#M0000194 */
 
 	PG_RETURN_INT32(pg_strtoint32(num));
 }

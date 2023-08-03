@@ -7,9 +7,6 @@ INSERT INTO INT2_TBL(f1) VALUES ('0   ');
 INSERT INTO INT2_TBL(f1) VALUES ('  1234 ');
 INSERT INTO INT2_TBL(f1) VALUES ('    -1234');
 INSERT INTO INT2_TBL(f1) VALUES ('34.5');
-ERROR:  invalid input syntax for type smallint: "34.5"
-LINE 1: INSERT INTO INT2_TBL(f1) VALUES ('34.5');
-                                         ^
 -- largest and smallest values
 INSERT INTO INT2_TBL(f1) VALUES ('32767');
 INSERT INTO INT2_TBL(f1) VALUES ('-32767');
@@ -48,27 +45,30 @@ SELECT * FROM INT2_TBL;
       0
    1234
   -1234
+     35
   32767
  -32767
-(5 rows)
+(6 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int2 '0';
    f1   
 --------
    1234
   -1234
+     35
   32767
  -32767
-(4 rows)
+(5 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int4 '0';
    f1   
 --------
    1234
   -1234
+     35
   32767
  -32767
-(4 rows)
+(5 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 = int2 '0';
  f1 
@@ -116,38 +116,43 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 > int2 '0';
   f1   
 -------
   1234
+    35
  32767
-(2 rows)
+(3 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 > int4 '0';
   f1   
 -------
   1234
+    35
  32767
-(2 rows)
+(3 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int2 '0';
   f1   
 -------
      0
   1234
+    35
  32767
-(3 rows)
+(4 rows)
 
 SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int4 '0';
   f1   
 -------
      0
   1234
+    35
  32767
-(3 rows)
+(4 rows)
 
 -- positive odds
 SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
   f1   
 -------
+    35
  32767
-(1 row)
+(2 rows)
 
 -- any evens
 SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
@@ -167,7 +172,8 @@ WHERE abs(f1) < 16384;
      0 |     0
   1234 |  2468
  -1234 | -2468
-(3 rows)
+    35 |    70
+(4 rows)
 
 SELECT i.f1, i.f1 * int4 '2' AS x FROM INT2_TBL i;
    f1   |   x    
@@ -175,9 +181,10 @@ SELECT i.f1, i.f1 * int4 '2' AS x FROM INT2_TBL i;
       0 |      0
    1234 |   2468
   -1234 |  -2468
+     35 |     70
   32767 |  65534
  -32767 | -65534
-(5 rows)
+(6 rows)
 
 SELECT i.f1, i.f1 + int2 '2' AS x FROM INT2_TBL i;
 ERROR:  smallint out of range
@@ -188,8 +195,9 @@ WHERE f1 < 32766;
       0 |      2
    1234 |   1236
   -1234 |  -1232
+     35 |     37
  -32767 | -32765
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 + int4 '2' AS x FROM INT2_TBL i;
    f1   |   x    
@@ -197,9 +205,10 @@ SELECT i.f1, i.f1 + int4 '2' AS x FROM INT2_TBL i;
       0 |      2
    1234 |   1236
   -1234 |  -1232
+     35 |     37
   32767 |  32769
  -32767 | -32765
-(5 rows)
+(6 rows)
 
 SELECT i.f1, i.f1 - int2 '2' AS x FROM INT2_TBL i;
 ERROR:  smallint out of range
@@ -210,8 +219,9 @@ WHERE f1 > -32767;
      0 |    -2
   1234 |  1232
  -1234 | -1236
+    35 |    33
  32767 | 32765
-(4 rows)
+(5 rows)
 
 SELECT i.f1, i.f1 - int4 '2' AS x FROM INT2_TBL i;
    f1   |   x    
@@ -219,9 +229,10 @@ SELECT i.f1, i.f1 - int4 '2' AS x FROM INT2_TBL i;
       0 |     -2
    1234 |   1232
   -1234 |  -1236
+     35 |     33
   32767 |  32765
  -32767 | -32769
-(5 rows)
+(6 rows)
 
 SELECT i.f1, i.f1 / int2 '2' AS x FROM INT2_TBL i;
    f1   |   x    
@@ -229,9 +240,10 @@ SELECT i.f1, i.f1 / int2 '2' AS x FROM INT2_TBL i;
       0 |      0
    1234 |    617
   -1234 |   -617
+     35 |     17
   32767 |  16383
  -32767 | -16383
-(5 rows)
+(6 rows)
 
 SELECT i.f1, i.f1 / int4 '2' AS x FROM INT2_TBL i;
    f1   |   x    
@@ -239,9 +251,10 @@ SELECT i.f1, i.f1 / int4 '2' AS x FROM INT2_TBL i;
       0 |      0
    1234 |    617
   -1234 |   -617
+     35 |     17
   32767 |  16383
  -32767 | -16383
-(5 rows)
+(6 rows)
 
 -- corner cases
 SELECT (-1::int2<<15)::text;

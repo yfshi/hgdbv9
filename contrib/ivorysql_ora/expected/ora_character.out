@@ -598,3 +598,35 @@ drop table toast_char4;
 drop table notoast_varchar3;
 drop table toast_varchar4;
 /* End - BUG:M0000062 */
+/* Begin - BUG#M0000194 */
+select to_multi_byte('鲁A');
+ to_multi_byte 
+---------------
+ 鲁Ａ
+(1 row)
+
+select to_single_byte('鲁Ａ');
+ to_single_byte 
+----------------
+ 鲁A
+(1 row)
+
+select compose('A' || unistr('\0300'));
+ compose 
+---------
+ À
+(1 row)
+
+select asciistr(compose(unistr('\0041') || unistr('\0300')));
+ asciistr 
+----------
+ \00C0
+(1 row)
+
+select asciistr(decompose(unistr('\00C0')));
+ asciistr 
+----------
+ A\0300
+(1 row)
+
+/* End - BUG#M0000194 */
