@@ -37,6 +37,11 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
+/* Begin - ReqID:SRS-SQL-ROWID */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-ROWID */
+
 
 /*
  * Support for fuzzily matching columns.
@@ -1820,7 +1825,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 		else if (functypclass == TYPEFUNC_SCALAR)
 		{
 			/* Base data type, i.e. scalar */
-			tupdesc = CreateTemplateTupleDesc(1);
+			tupdesc = CreateTemplateTupleDesc(1, false);
 			TupleDescInitEntry(tupdesc,
 							   (AttrNumber) 1,
 							   chooseScalarFunctionAlias(funcexpr, funcname,
@@ -1848,7 +1853,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 								MaxHeapAttributeNumber),
 						 parser_errposition(pstate,
 											exprLocation((Node *) coldeflist))));
-			tupdesc = CreateTemplateTupleDesc(list_length(coldeflist));
+			tupdesc = CreateTemplateTupleDesc(list_length(coldeflist), false);
 			i = 1;
 			foreach(col, coldeflist)
 			{
@@ -1937,7 +1942,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 										exprLocation((Node *) funcexprs))));
 
 		/* Merge the tuple descs of each function into a composite one */
-		tupdesc = CreateTemplateTupleDesc(totalatts);
+		tupdesc = CreateTemplateTupleDesc(totalatts, false);
 		natts = 0;
 		for (i = 0; i < nfuncs; i++)
 		{

@@ -2784,9 +2784,9 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 	Assert(i == numoutargs);
 
 	if (rettype != VOIDOID)
-		desc = CreateTemplateTupleDesc(numoutargs + 1);
+		desc = CreateTemplateTupleDesc(numoutargs + 1, false);
 	else
-		desc = CreateTemplateTupleDesc(numoutargs);
+		desc = CreateTemplateTupleDesc(numoutargs, false);
 
 	i = 0;
 

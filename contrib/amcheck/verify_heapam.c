@@ -637,7 +637,7 @@ verify_heapam_tupdesc(void)
 	TupleDesc	tupdesc;
 	AttrNumber	a = 0;
 
-	tupdesc = CreateTemplateTupleDesc(HEAPCHECK_RELATION_COLS);
+	tupdesc = CreateTemplateTupleDesc(HEAPCHECK_RELATION_COLS, false);
 	TupleDescInitEntry(tupdesc, ++a, "blkno", INT8OID, -1, 0);
 	TupleDescInitEntry(tupdesc, ++a, "offnum", INT4OID, -1, 0);
 	TupleDescInitEntry(tupdesc, ++a, "attnum", INT4OID, -1, 0);
@@ -704,6 +704,12 @@ check_tuple_header(HeapCheckContext *ctx)
 		expected_hoff = MAXALIGN(SizeofHeapTupleHeader + BITMAPLEN(ctx->natts));
 	else
 		expected_hoff = MAXALIGN(SizeofHeapTupleHeader);
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (infomask & HEAP_HASROWID)
+		expected_hoff = expected_hoff + sizeof(int64);
+	/* End - ReqID:SRS-SQL-ROWID */
+
 	if (ctx->tuphdr->t_hoff != expected_hoff)
 	{
 		if ((infomask & HEAP_HASNULL) && ctx->natts == 1)

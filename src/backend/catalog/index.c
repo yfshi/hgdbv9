@@ -295,7 +295,7 @@ ConstructTupleDescriptor(Relation heapRelation,
 	/*
 	 * allocate the new tuple descriptor
 	 */
-	indexTupDesc = CreateTemplateTupleDesc(numatts);
+	indexTupDesc = CreateTemplateTupleDesc(numatts, false);
 
 	/*
 	 * Fill in the pg_attribute row.
@@ -336,12 +336,20 @@ ConstructTupleDescriptor(Relation heapRelation,
 			/* Simple index column */
 			const FormData_pg_attribute *from;
 
-			Assert(atnum > 0);	/* should've been caught above */
+			/* Begin - ReqID:SRS-SQL-ROWID */
+			if (atnum == RowIdAttributeNumber)
+			{
+				from = SystemAttributeDefinition(atnum);
+			} /* End - ReqID:SRS-SQL-ROWID */
+			else
+			{
+				Assert(atnum > 0);	/* should've been caught above */
 
-			if (atnum > natts)	/* safety check */
-				elog(ERROR, "invalid column number %d", atnum);
-			from = TupleDescAttr(heapTupDesc,
-								 AttrNumberGetAttrOffset(atnum));
+				if (atnum > natts)	/* safety check */
+					elog(ERROR, "invalid column number %d", atnum);
+				from = TupleDescAttr(heapTupDesc,
+									AttrNumberGetAttrOffset(atnum));
+			}
 
 			to->atttypid = from->atttypid;
 			to->attlen = from->attlen;

@@ -376,6 +376,14 @@ GetIntoRelEFlags(IntoClause *intoClause)
 {
 	int			flags = 0;
 
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (interpretRowidOption(intoClause->options,
+							 (intoClause->viewQuery == NULL)))
+		flags = EXEC_FLAG_WITH_ROWID;
+	else
+		flags = EXEC_FLAG_WITHOUT_ROWID;
+	/* End - ReqID:SRS-SQL-ROWID */
+
 	if (intoClause->skipData)
 		flags |= EXEC_FLAG_WITH_NO_DATA;
 

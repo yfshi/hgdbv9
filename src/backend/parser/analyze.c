@@ -3712,6 +3712,11 @@ transformIvyUpdateTargetList(ParseState *pstate, List *origTlist)
 		ResTarget  *origTarget = (ResTarget *) lfirst(o_target);
 		int 		attrno;
 
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (strcmp(origTarget->name, "rowid") == 0)
+			elog(ERROR, "cannot specify system column name \"%s\"", origTarget->name);
+		/* End - ReqID:SRS-SQL-ROWID */
+
 		/* Check if there is a column named "row" */
 		if (pg_strcasecmp(origTarget->name, "row") == 0)
 		{

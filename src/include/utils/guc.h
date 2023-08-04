@@ -342,6 +342,11 @@ extern int max_active_gtt;
 extern int vacuum_gtt_defer_check_age;
 /* End - ReqID:SRS-SQL-GTT */
 
+/* Begin - ReqID:SRS-SQL-ROWID */
+extern PGDLLIMPORT bool default_with_rowids;
+extern PGDLLIMPORT int rowid_seq_cache;
+/* End - ReqID:SRS-SQL-ROWID */
+
 /* Begin - BUG#M0000201: support question marks as binding variables */
 extern PGDLLIMPORT int where_from;
 /* End - BUG#M0000201: support question marks as binding variables */

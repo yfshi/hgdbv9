@@ -1271,6 +1271,11 @@ transformRelOptions(Datum oldOptions, List *defList, const char *namspace,
 									def->defnamespace)));
 			}
 
+			/* Begin - ReqID:SRS-SQL-ROWID */
+			if (strcmp(def->defname, "rowid") == 0)
+				continue;
+			/* End - ReqID:SRS-SQL-ROWID */
+
 			/* ignore if not in the same namespace */
 			if (namspace == NULL)
 			{

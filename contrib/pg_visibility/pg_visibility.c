@@ -294,7 +294,7 @@ pg_visibility_map_summary(PG_FUNCTION_ARGS)
 		ReleaseBuffer(vmbuffer);
 	relation_close(rel, AccessShareLock);
 
-	tupdesc = CreateTemplateTupleDesc(2);
+	tupdesc = CreateTemplateTupleDesc(2, false);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "all_visible", INT8OID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "all_frozen", INT8OID, -1, 0);
 	tupdesc = BlessTupleDesc(tupdesc);
@@ -456,7 +456,7 @@ pg_visibility_tupdesc(bool include_blkno, bool include_pd)
 		++maxattr;
 	if (include_pd)
 		++maxattr;
-	tupdesc = CreateTemplateTupleDesc(maxattr);
+	tupdesc = CreateTemplateTupleDesc(maxattr, false);
 	if (include_blkno)
 		TupleDescInitEntry(tupdesc, ++a, "blkno", INT8OID, -1, 0);
 	TupleDescInitEntry(tupdesc, ++a, "all_visible", BOOLOID, -1, 0);

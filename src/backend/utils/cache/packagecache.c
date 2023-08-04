@@ -549,7 +549,7 @@ pg_get_subprocs_in_package(PG_FUNCTION_ARGS)
 	/*
 	 * build tupdesc for result tuples.
 	 */
-	tupdesc = CreateTemplateTupleDesc(22);
+	tupdesc = CreateTemplateTupleDesc(22, false);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "oid",
 					   OIDOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "namespace",

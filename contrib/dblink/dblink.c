@@ -906,7 +906,7 @@ materializeResult(FunctionCallInfo fcinfo, PGconn *conn, PGresult *res)
 			 * need a tuple descriptor representing one TEXT column to return
 			 * the command status string as our result tuple
 			 */
-			tupdesc = CreateTemplateTupleDesc(1);
+			tupdesc = CreateTemplateTupleDesc(1, false);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "status",
 							   TEXTOID, -1, 0);
 			ntuples = 1;
@@ -1083,7 +1083,7 @@ materializeQueryResult(FunctionCallInfo fcinfo,
 			 * need a tuple descriptor representing one TEXT column to return
 			 * the command status string as our result tuple
 			 */
-			tupdesc = CreateTemplateTupleDesc(1);
+			tupdesc = CreateTemplateTupleDesc(1, false);
 			TupleDescInitEntry(tupdesc, (AttrNumber) 1, "status",
 							   TEXTOID, -1, 0);
 			attinmeta = TupleDescGetAttInMetadata(tupdesc);
@@ -1574,7 +1574,7 @@ dblink_get_pkey(PG_FUNCTION_ARGS)
 		/*
 		 * need a tuple descriptor representing one INT and one TEXT column
 		 */
-		tupdesc = CreateTemplateTupleDesc(2);
+		tupdesc = CreateTemplateTupleDesc(2, false);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "position",
 						   INT4OID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "colname",
@@ -1947,7 +1947,7 @@ dblink_get_notify(PG_FUNCTION_ARGS)
 	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
 	oldcontext = MemoryContextSwitchTo(per_query_ctx);
 
-	tupdesc = CreateTemplateTupleDesc(DBLINK_NOTIFY_COLS);
+	tupdesc = CreateTemplateTupleDesc(DBLINK_NOTIFY_COLS, false);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "notify_name",
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "be_pid",

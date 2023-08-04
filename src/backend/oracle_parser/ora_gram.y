@@ -763,7 +763,7 @@ static void determineLanguage(List *options);
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
-	ROUTINE ROUTINES ROW ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
+	ROUTINE ROUTINES ROW ROWID ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
 
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD SHARE SHOW					/* ReqID:SRS-SQL-SEQ */
@@ -2422,37 +2422,61 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ADD <coldef> */
 			ADD_P columnDef
 				{
+					ColumnDef  *colDef;
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $2;
 					n->missing_ok = false;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					colDef = castNode(ColumnDef, $2);
+					if (strcmp(colDef->colname, "rowid") == 0)
+						elog(ERROR, "column name \"%s\" conflicts with a system column name", colDef->colname);
+					/* End - ReqID:SRS-SQL-ROWID */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ADD IF NOT EXISTS <coldef> */
 			| ADD_P IF_P NOT EXISTS columnDef
 				{
+					ColumnDef  *colDef;
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $5;
 					n->missing_ok = true;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					colDef = castNode(ColumnDef, $5);
+					if (strcmp(colDef->colname, "rowid") == 0)
+						elog(ERROR, "column name \"%s\" conflicts with a system column name", colDef->colname);
+					 /* End - ReqID:SRS-SQL-ROWID */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ADD COLUMN <coldef> */
 			| ADD_P COLUMN columnDef
 				{
+					ColumnDef  *colDef;
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $3;
 					n->missing_ok = false;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					colDef = castNode(ColumnDef, $3);
+					if (strcmp(colDef->colname, "rowid") == 0)
+						elog(ERROR, "column name \"%s\" conflicts with a system column name", colDef->colname);
+					/* End - ReqID:SRS-SQL-ROWID */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ADD COLUMN IF NOT EXISTS <coldef> */
 			| ADD_P COLUMN IF_P NOT EXISTS columnDef
 				{
+					ColumnDef  *colDef;
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $6;
 					n->missing_ok = true;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					colDef = castNode(ColumnDef, $6);
+					if (strcmp(colDef->colname, "rowid") == 0)
+						elog(ERROR, "column name \"%s\" conflicts with a system column name", colDef->colname);
+					/* End - ReqID:SRS-SQL-ROWID */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> {SET DEFAULT <expr>|DROP DEFAULT} */
@@ -2610,6 +2634,11 @@ alter_table_cmd:
 					n->name = $5;
 					n->behavior = $6;
 					n->missing_ok = true;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					if (strcmp(n->name, "rowid") == 0)
+						elog(ERROR, "cannot drop system column \"%s\"", n->name);
+					/* End - ReqID:SRS-SQL-ROWID */
+
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> DROP [COLUMN] <colname> [RESTRICT|CASCADE] */
@@ -2620,6 +2649,11 @@ alter_table_cmd:
 					n->name = $3;
 					n->behavior = $4;
 					n->missing_ok = false;
+					/* Begin - ReqID:SRS-SQL-ROWID */
+					if (strcmp(n->name, "rowid") == 0)
+						elog(ERROR, "cannot drop system column \"%s\"", n->name);
+					/* End - ReqID:SRS-SQL-ROWID */
+
 					$$ = (Node *)n;
 				}
 			/*
@@ -2705,6 +2739,20 @@ alter_table_cmd:
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropOids;
+					$$ = (Node *)n;
+				}
+			/* ALTER TABLE <name> SET WITH ROWID */
+			| SET WITH ROWID
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_AddRowids;
+					$$ = (Node *)n;
+				}
+			/* ALTER TABLE <name> SET WITHOUT ROWID */
+			| SET WITHOUT ROWID
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DropRowids;
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> CLUSTER ON <indexname> */
@@ -4682,6 +4730,8 @@ table_access_method_clause:
 OptWith:
 			WITH reloptions				{ $$ = $2; }
 			| WITHOUT OIDS				{ $$ = NIL; }
+			| WITH ROWID				{ $$ = list_make1(makeDefElem("rowid", (Node *) makeInteger(true), @1)); }
+			| WITHOUT ROWID 			{ $$ = list_make1(makeDefElem("rowid", (Node *) makeInteger(false), @1)); }
 			| /*EMPTY*/					{ $$ = NIL; }
 		;
 
@@ -19194,6 +19244,7 @@ unreserved_keyword:
 			| ROLLUP
 			| ROUTINE
 			| ROUTINES
+			| ROWID		/* ReqID:SRS-SQL-ROWID */
 			| ROWS
 			| ROWTYPE /* ReqID:SRS-PLSQL-TYPE */
 			| RULE
@@ -19869,6 +19920,7 @@ bare_label_keyword:
 			| ROUTINE
 			| ROUTINES
 			| ROW
+			| ROWID		/* ReqID:SRS-SQL-ROWID */
 			| ROWS
 			| ROWTYPE /* ReqID:SRS-PLSQL-TYPE */
 			| RULE

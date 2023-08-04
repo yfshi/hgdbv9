@@ -1672,6 +1672,11 @@ expand_all_col_privileges(Oid table_oid, Form_pg_class classForm,
 		if (curr_att == InvalidAttrNumber)
 			continue;
 
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (curr_att == RowIdAttributeNumber)
+			continue;
+		/* End - ReqID:SRS-SQL-ROWID */
+
 		/* Views don't have any system columns at all */
 		if (classForm->relkind == RELKIND_VIEW && curr_att < 0)
 			continue;

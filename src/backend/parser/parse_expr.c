@@ -725,6 +725,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
 										   cref->location);
+
 				if (node == NULL)
 				{
 					/* Try it as a function call on the whole row */
@@ -794,6 +795,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
 										   cref->location);
+
 				if (node == NULL)
 				{
 					/* Try it as a function call on the whole row */
@@ -876,6 +878,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
 										   cref->location);
+
 				if (node == NULL)
 				{
 					/* Try it as a function call on the whole row */
@@ -1100,8 +1103,24 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 		/* Ordinary scalar operator */
 		Node	   *last_srf = pstate->p_last_srf;
 
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		Oid 		ltypeId = InvalidOid;
+
 		lexpr = transformExprRecurse(pstate, lexpr);
-		rexpr = transformExprRecurse(pstate, rexpr);
+		ltypeId = exprType(lexpr);
+
+		if (compatible_db == DB_ORACLE && ltypeId == ROWIDOID && nodeTag(rexpr) != T_TypeCast)
+		{
+			TypeCast   *castnode = makeNode(TypeCast);
+			castnode->typeName = makeTypeNameFromNameList(list_make2(makeString("sys"), makeString("rowid")));
+			castnode->arg = rexpr;
+			castnode->location = -1;
+
+			rexpr = transformExprRecurse(pstate, (Node *)castnode);
+		}
+		else
+			rexpr = transformExprRecurse(pstate, rexpr);
+		/* End - ReqID:SRS-SQL-ROWID */
 
 		result = (Node *) make_op(pstate,
 								  a->name,
@@ -1109,6 +1128,7 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 								  rexpr,
 								  last_srf,
 								  a->location);
+
 	}
 
 	return result;

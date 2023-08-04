@@ -172,6 +172,12 @@ heap_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 	hoff = SizeofHeapTupleHeader;
 	if ((ttc.ttc_flags & TOAST_HAS_NULLS) != 0)
 		hoff += BITMAPLEN(numAttrs);
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (newtup->t_data->t_infomask & HEAP_HASROWID)
+		hoff += sizeof(int64);
+	/* End - ReqID:SRS-SQL-ROWID */
+
 	hoff = MAXALIGN(hoff);
 	/* now convert to a limit on the tuple data size */
 	maxDataLen = RelationGetToastTupleTarget(rel, TOAST_TUPLE_TARGET) - hoff;
@@ -295,6 +301,12 @@ heap_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 		new_header_len = SizeofHeapTupleHeader;
 		if ((ttc.ttc_flags & TOAST_HAS_NULLS) != 0)
 			new_header_len += BITMAPLEN(numAttrs);
+
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (olddata->t_infomask & HEAP_HASROWID)
+			new_header_len += sizeof(int64);
+		/* End - ReqID:SRS-SQL-ROWID */
+
 		new_header_len = MAXALIGN(new_header_len);
 		new_data_len = heap_compute_data_size(tupleDesc,
 											  toast_values, toast_isnull);
@@ -316,6 +328,11 @@ heap_toast_insert_or_update(Relation rel, HeapTuple newtup, HeapTuple oldtup,
 		memcpy(new_data, olddata, SizeofHeapTupleHeader);
 		HeapTupleHeaderSetNatts(new_data, numAttrs);
 		new_data->t_hoff = new_header_len;
+
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (olddata->t_infomask & HEAP_HASROWID)
+			HeapTupleHeaderSetRowId(new_data, HeapTupleHeaderGetRowId(olddata));
+		/* End - ReqID:SRS-SQL-ROWID */
 
 		/* Copy over the data, and fill the null bitmap if needed */
 		heap_fill_tuple(tupleDesc,
@@ -507,6 +524,12 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
 	new_header_len = SizeofHeapTupleHeader;
 	if (has_nulls)
 		new_header_len += BITMAPLEN(numAttrs);
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (tup->t_infomask & HEAP_HASROWID)
+		new_header_len += sizeof(int64);
+	/* End - ReqID:SRS-SQL-ROWID */
+
 	new_header_len = MAXALIGN(new_header_len);
 	new_data_len = heap_compute_data_size(tupleDesc,
 										  toast_values, toast_isnull);
@@ -520,6 +543,11 @@ toast_flatten_tuple_to_datum(HeapTupleHeader tup,
 	memcpy(new_data, tup, SizeofHeapTupleHeader);
 	HeapTupleHeaderSetNatts(new_data, numAttrs);
 	new_data->t_hoff = new_header_len;
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (tup->t_infomask & HEAP_HASROWID)
+		HeapTupleHeaderSetRowId(new_data, HeapTupleHeaderGetRowId(tup));
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	/* Set the composite-Datum header fields correctly */
 	HeapTupleHeaderSetDatumLength(new_data, new_tuple_len);

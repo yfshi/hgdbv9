@@ -3862,3 +3862,51 @@ check_funcexpr_outparams(List *funcexprs)
 	}
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/* Begin - ReqID:SRS-SQL-ROWID */
+/*
+ * Give a relation-options list(of DefElems), return true if the specified
+ * table/result set should be created with ROWID. This needs to be done after
+ * parsing the query string because the return value can depend upon the
+ * ivorysql.default_with_rowid GUC var.
+ *
+ * In some situations, we want te reject an ROWID options even if it's present.
+ * That's (rather messily) handled here rather than reloptions.c because that
+ * code explicitly punts checking for oids to here.
+ */
+bool
+interpretRowidOption(List *defList, bool allowRowid)
+{
+	ListCell	*cell;
+
+	/* Scan list to see if ROWID was included */
+	foreach(cell, defList)
+	{
+		DefElem    *def = (DefElem *) lfirst(cell);
+
+		if (def->defnamespace == NULL &&
+			strcmp(def->defname, "rowid") == 0)
+		{
+			if (!allowRowid)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("unrecognized parameter \"%s\"",
+								def->defname)));
+			return defGetBoolean(def);
+		}
+	}
+
+	/* Force no-ROWID result if caller disallows ROWID */
+	if (!allowRowid)
+		return false;
+
+	/*
+	 * ROWID option was not specified, so use default GUC value,
+	 * but this GUC only valid in DB_ORACLE model
+	 */
+	if (compatible_db == DB_ORACLE)
+		return default_with_rowids;
+	else
+		return false;
+}
+/* End - ReqID:SRS-SQL-ROWID */

@@ -6523,6 +6523,7 @@ getTables(Archive *fout, int *numTables)
 	int			i_relrowsec;
 	int			i_relforcerowsec;
 	int			i_relhasoids;
+	int			i_relhasrowid;	/* ReqID:SRS-SQL-ROWID */
 	int			i_relfrozenxid;
 	int			i_relminmxid;
 	int			i_toastoid;
@@ -6625,7 +6626,7 @@ getTables(Archive *fout, int *numTables)
 						  "c.relkind, c.relnamespace, "
 						  "(%s c.relowner) AS rolname, "
 						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, %s AS relhasoids, "
+						  "c.relhasindex, c.relhasrules, %s AS relhasoids, c.relhasrowid, "
 						  "c.relrowsecurity, c.relforcerowsecurity, "
 						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
 						  "tc.relfrozenxid AS tfrozenxid, "
@@ -7117,6 +7118,7 @@ getTables(Archive *fout, int *numTables)
 	i_relrowsec = PQfnumber(res, "relrowsecurity");
 	i_relforcerowsec = PQfnumber(res, "relforcerowsecurity");
 	i_relhasoids = PQfnumber(res, "relhasoids");
+	i_relhasrowid = PQfnumber(res, "relhasrowid"); /* ReqID:SRS-SQL-ROWID */
 	i_relfrozenxid = PQfnumber(res, "relfrozenxid");
 	i_relminmxid = PQfnumber(res, "relminmxid");
 	i_toastoid = PQfnumber(res, "toid");
@@ -7171,6 +7173,7 @@ getTables(Archive *fout, int *numTables)
 		tblinfo[i].relkind = *(PQgetvalue(res, i, i_relkind));
 		tblinfo[i].relpersistence = *(PQgetvalue(res, i, i_relpersistence));
 		tblinfo[i].hasindex = (strcmp(PQgetvalue(res, i, i_relhasindex), "t") == 0);
+		tblinfo[i].relhasrowid = (strcmp(PQgetvalue(res, i, i_relhasrowid), "t") == 0); /* ReqID:SRS-SQL-ROWID */
 		tblinfo[i].hasrules = (strcmp(PQgetvalue(res, i, i_relhasrules), "t") == 0);
 		tblinfo[i].hastriggers = (strcmp(PQgetvalue(res, i, i_relhastriggers), "t") == 0);
 		tblinfo[i].rowsec = (strcmp(PQgetvalue(res, i, i_relrowsec), "t") == 0);
@@ -16649,6 +16652,11 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 				appendPQExpBuffer(q, "\nSERVER %s", fmtId(srvname));
 		}
 
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (tbinfo->relhasrowid)
+			appendPQExpBuffer(q, " WITH ROWID");
+		/* End - ReqID:SRS-SQL-ROWID */
+
 		if (nonemptyReloptions(tbinfo->reloptions) ||
 			nonemptyReloptions(tbinfo->toast_reloptions))
 		{
@@ -17888,6 +17896,11 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	bool		is_session;
 	int16		flags;
 	/* End - ReqID:SRS-SQL-SEQ */
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (tbinfo->relhasrowid)
+		return;
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	qseqname = pg_strdup(fmtId(tbinfo->dobj.name));
 
