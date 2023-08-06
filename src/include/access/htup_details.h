@@ -189,12 +189,11 @@ struct HeapTupleHeaderData
 #define HEAP_HASNULL			0x0001	/* has null attribute(s) */
 #define HEAP_HASVARWIDTH		0x0002	/* has variable-width attribute(s) */
 #define HEAP_HASEXTERNAL		0x0004	/* has external stored attribute(s) */
-#define HEAP_HASOID_OLD			0x0008	/* has an object-id field */
+#define HEAP_HASROWID			0x0008	/* has an ROWID field */
 #define HEAP_XMAX_KEYSHR_LOCK	0x0010	/* xmax is a key-shared locker */
 #define HEAP_COMBOCID			0x0020	/* t_cid is a combo CID */
 #define HEAP_XMAX_EXCL_LOCK		0x0040	/* xmax is exclusive locker */
 #define HEAP_XMAX_LOCK_ONLY		0x0080	/* xmax, if valid, is only a locker */
-
  /* xmax is a shared locker */
 #define HEAP_XMAX_SHR_LOCK	(HEAP_XMAX_EXCL_LOCK | HEAP_XMAX_KEYSHR_LOCK)
 
@@ -214,7 +213,6 @@ struct HeapTupleHeaderData
 										 * VACUUM FULL; kept for binary
 										 * upgrade support */
 #define HEAP_MOVED (HEAP_MOVED_OFF | HEAP_MOVED_IN)
-
 #define HEAP_XACT_MASK			0xFFF0	/* visibility-related bits */
 
 /*
@@ -538,6 +536,27 @@ do { \
 #define HeapTupleHeaderHasExternal(tup) \
 		(((tup)->t_infomask & HEAP_HASEXTERNAL) != 0)
 
+/* Begin - ReqID:SRS-SQL-ROWID */
+#define HeapTupleHeaderGetRowId(tup) \
+( \
+	((tup)->t_infomask & HEAP_HASROWID) ? \
+		*((int64 *) ((char *)(tup) + (tup)->t_hoff - sizeof(int64))) \
+	: \
+		-1	\
+)
+
+#define HeapTupleHeaderSetRowId(tup, seq)	\
+do { \
+	Assert((tup)->t_infomask & HEAP_HASROWID); \
+	*((int64 *) ((char *)(tup) + (tup)->t_hoff - sizeof(int64))) = (seq); \
+} while (0)
+
+#define HeapTupleGetRowId(tuple) \
+		HeapTupleHeaderGetRowId((tuple)->t_data)
+
+#define	HeapTupleSetRowId(tuple, seq) \
+		HeapTupleHeaderSetRowId((tuple)->t_data, (seq))
+/* End - ReqID:SRS-SQL-ROWID */
 
 /*
  * BITMAPLEN(NATTS) -

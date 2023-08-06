@@ -268,7 +268,7 @@ get_expr_result_type(Node *expr,
 		ListCell   *lcc,
 				   *lcn;
 
-		tupdesc = CreateTemplateTupleDesc(list_length(rexpr->args));
+		tupdesc = CreateTemplateTupleDesc(list_length(rexpr->args), false);
 		Assert(list_length(rexpr->args) == list_length(rexpr->colnames));
 		forboth(lcc, rexpr->args, lcn, rexpr->colnames)
 		{
@@ -2142,7 +2142,7 @@ build_function_result_tupdesc_d(char prokind,
 	if (numoutargs < 2 && prokind != PROKIND_PROCEDURE)
 		return NULL;
 
-	desc = CreateTemplateTupleDesc(numoutargs);
+	desc = CreateTemplateTupleDesc(numoutargs, false);
 	for (i = 0; i < numoutargs; i++)
 	{
 		TupleDescInitEntry(desc, i + 1,
@@ -2348,9 +2348,9 @@ build_plisql_function_result_tupdesc_d(char prokind,
 	}
 
 	if (prorettype != VOIDOID)
-		desc = CreateTemplateTupleDesc(numoutargs + 1);
+		desc = CreateTemplateTupleDesc(numoutargs + 1, false);
 	else
-		desc = CreateTemplateTupleDesc(numoutargs);
+		desc = CreateTemplateTupleDesc(numoutargs, false);
 
 	i = 0;
 
@@ -2528,7 +2528,7 @@ TypeGetTupleDesc(Oid typeoid, List *colaliases)
 		/* OK, get the column alias */
 		attname = strVal(linitial(colaliases));
 
-		tupdesc = CreateTemplateTupleDesc(1);
+		tupdesc = CreateTemplateTupleDesc(1, false);
 		TupleDescInitEntry(tupdesc,
 						   (AttrNumber) 1,
 						   attname,

@@ -88,6 +88,7 @@
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-ROWID */
 
 
 /* Potentially set by pg_upgrade_support functions */
@@ -248,7 +249,27 @@ static const FormData_pg_attribute a6 = {
 	.attisvisible = true,	/* ReqID:SRS-SQL-INVISIBLECOL */
 };
 
-static const FormData_pg_attribute *SysAtt[] = {&a1, &a2, &a3, &a4, &a5, &a6};
+/* Begin - ReqID:SRS-SQL-ROWID */
+/*
+ * Compatible Oracle ROWID pseudo column.
+ */
+static const FormData_pg_attribute a7 = {
+   .attname = {"rowid"},
+   .atttypid = ROWIDOID,
+   .attlen = -1,
+   .attnum = RowIdAttributeNumber,
+   .attcacheoff = -1,
+   .atttypmod = -1,
+   .attbyval = false,
+   .attalign = TYPALIGN_SHORT,
+   .attstorage = TYPSTORAGE_PLAIN,
+   .attnotnull = true,
+   .attislocal = true,
+   .attisvisible = true,
+};
+/* End - ReqID:SRS-SQL-ROWID */
+
+static const FormData_pg_attribute *SysAtt[] = {&a1, &a2, &a3, &a4, &a5, &a6, &a7};
 
 /*
  * This function returns a Form_pg_attribute pointer for a system attribute.
@@ -531,6 +552,11 @@ CheckAttributeNamesTypes(TupleDesc tupdesc, char relkind,
 		for (i = 0; i < natts; i++)
 		{
 			Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+
+			/* Begin - ReqID:SRS-SQL-ROWID */
+			if (strcmp(NameStr(attr->attname), "rowid") == 0 && compatible_db != DB_ORACLE)
+				continue;
+			/* End - ReqID:SRS-SQL-ROWID */
 
 			if (SystemAttributeByName(NameStr(attr->attname)) != NULL)
 				ereport(ERROR,
@@ -905,7 +931,7 @@ AddNewAttributeTuples(Oid new_rel_oid,
 	{
 		TupleDesc	td;
 
-		td = CreateTupleDesc(lengthof(SysAtt), (FormData_pg_attribute **) &SysAtt);
+		td = CreateTupleDesc(lengthof(SysAtt), (FormData_pg_attribute **) &SysAtt, tupdesc->tdhasrowid, true);
 
 		InsertPgAttributeTuples(rel, td, new_rel_oid, NULL, indstate);
 		FreeTupleDesc(td);
@@ -967,6 +993,7 @@ InsertPgClassTuple(Relation pg_class_desc,
 	values[Anum_pg_class_relkind - 1] = CharGetDatum(rd_rel->relkind);
 	values[Anum_pg_class_relnatts - 1] = Int16GetDatum(rd_rel->relnatts);
 	values[Anum_pg_class_relchecks - 1] = Int16GetDatum(rd_rel->relchecks);
+	values[Anum_pg_class_relhasrowid - 1] = BoolGetDatum(rd_rel->relhasrowid); /* ReqID:SRS-SQL-ROWID */
 	values[Anum_pg_class_relhasrules - 1] = BoolGetDatum(rd_rel->relhasrules);
 	values[Anum_pg_class_relhastriggers - 1] = BoolGetDatum(rd_rel->relhastriggers);
 	values[Anum_pg_class_relrowsecurity - 1] = BoolGetDatum(rd_rel->relrowsecurity);
@@ -1357,6 +1384,14 @@ heap_create_with_catalog(const char *relname,
 								   false);
 	}
 	Assert(relid == RelationGetRelid(new_rel_desc));
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (tupdesc->tdhasrowid)
+	{
+		new_rel_desc->rd_att->tdhasrowid = tupdesc->tdhasrowid;
+		new_rel_desc->rd_rel->relhasrowid = tupdesc->tdhasrowid;
+	}
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	new_rel_desc->rd_rel->relrewrite = relrewrite;
 

@@ -977,7 +977,7 @@ InitPlan(QueryDesc *queryDesc, int eflags)
 			TupleTableSlot *slot;
 
 			slot = ExecInitExtraTupleSlot(estate, NULL, &TTSOpsVirtual);
-			j = ExecInitJunkFilter(planstate->plan->targetlist,
+			j = ExecInitJunkFilter(planstate->plan->targetlist, tupType->tdhasrowid,
 								   slot);
 			estate->es_junkFilter = j;
 
@@ -1357,6 +1357,73 @@ ExecGetTriggerResultRel(EState *estate, Oid relid,
 
 	return rInfo;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWID */
+/*
+ *		ExecContextForcesRowId
+ *
+ * This is pretty grotty: when doing INSERT, UPDATE, or CREATE TABLE AS,
+ * we need to ensure that result tuples have space for an ROWID iff they are
+ * going to be stored into a relation that has ROWIDs.  In other contexts
+ * we are free to choose whether to leave space for ROWID in result tuples
+ * (we generally don't want to, but we do if a physical-tlist optimization
+ * is possible).  This routine checks the plan context and returns TRUE if the
+ * choice is forced, FALSE if the choice is not forced.  In the TRUE case,
+ * *hasrowid is set to the required value.
+ *
+ * One reason this is ugly is that all plan nodes in the plan tree will emit
+ * tuples with space for an ROWID, though we really only need the topmost node
+ * to do so.  However, node types like Sort don't project new tuples but just
+ * return their inputs, and in those cases the requirement propagates down
+ * to the input node.  Eventually we might make this code smart enough to
+ * recognize how far down the requirement really goes, but for now we just
+ * make all plan nodes do the same thing if the top level forces the choice.
+ *
+ * We assume that if we are generating tuples for INSERT or UPDATE,
+ * estate->es_result_relation_info is already set up to describe the target
+ * relation.  Note that in an UPDATE that spans an inheritance tree, some of
+ * the target relations may have ROWID and some not.  We have to make the
+ * decisions on a per-relation basis as we initialize each of the subplans of
+ * the ModifyTable node, so ModifyTable has to set es_result_relation_info
+ * while initializing each subplan.
+ *
+ * CREATE TABLE AS is even uglier, because we don't have the target relation's
+ * descriptor available when this code runs; we have to look aside at the
+ * flags passed to ExecutorStart().
+ */
+bool
+ExecContextForcesRowId(PlanState *planstate, bool *hasrowid)
+{
+	ResultRelInfo *info = NULL;
+	Relation	rel;
+	ResultRelInfo **ri = planstate->state->es_result_relations;
+
+	if (ri)
+	{
+		info = *ri;
+		if (info)
+		{
+			rel = info->ri_RelationDesc;
+			*hasrowid = rel->rd_rel->relhasrowid;
+			return true;
+		}
+	}
+
+	if (planstate->state->es_top_eflags & EXEC_FLAG_WITH_ROWID)
+	{
+		*hasrowid = true;
+		return true;
+	}
+
+	if (planstate->state->es_top_eflags & EXEC_FLAG_WITHOUT_ROWID)
+	{
+		*hasrowid = false;
+		return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-SQL-ROWID */
 
 /*
  * Return the ancestor relations of a given leaf partition result relation

@@ -28,6 +28,7 @@
 #include "settings.h"
 #include "variables.h"
 
+#include "oracle_fe_utils/ora_string_utils.h"	/* ReqID:SRS-SQL-ROWID */
 
 #define ORA_SCHEMA "sys"	/* ReqID:SRS-GKC-DATATYPE_001 */
 
@@ -1709,6 +1710,7 @@ describeOneTableDetails(const char *schemaname,
 		bool		rowsecurity;
 		bool		forcerowsecurity;
 		bool		hasoids;
+		bool		hasrowid;	/* ReqID:SRS-SQL-ROWID */
 		bool		ispartition;
 		Oid			tablespace;
 		char	   *reloptions;
@@ -1735,7 +1737,7 @@ describeOneTableDetails(const char *schemaname,
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "
 						  "false AS relhasoids, c.relispartition, %s, c.reltablespace, "
 						  "CASE WHEN c.reloftype = 0 THEN '' ELSE c.reloftype::pg_catalog.regtype::pg_catalog.text END, "
-						  "c.relpersistence, c.relreplident, am.amname\n"
+						  "c.relpersistence, c.relreplident, am.amname, c.relhasrowid\n"
 						  "FROM pg_catalog.pg_class c\n "
 						  "LEFT JOIN pg_catalog.pg_class tc ON (c.reltoastrelid = tc.oid)\n"
 						  "LEFT JOIN pg_catalog.pg_am am ON (c.relam = am.oid)\n"
@@ -1912,6 +1914,13 @@ describeOneTableDetails(const char *schemaname,
 			(char *) NULL : pg_strdup(PQgetvalue(res, 0, 14));
 	else
 		tableinfo.relam = NULL;
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if(pset.sversion >= 120000)
+		tableinfo.hasrowid = strcmp(PQgetvalue(res, 0, 15), "t") == 0;
+	else
+		tableinfo.hasrowid = false;
+	/* End - ReqID:SRS-SQL-ROWID */
+
 	PQclear(res);
 	res = NULL;
 
@@ -3751,6 +3760,14 @@ describeOneTableDetails(const char *schemaname,
 			printfPQExpBuffer(&buf, _("Access method: %s"), tableinfo.relam);
 			printTableAddFooter(&cont, buf.data);
 		}
+
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		/* ROWID, if verbose and not a materialized view */
+		if (verbose && tableinfo.relkind != RELKIND_MATVIEW && tableinfo.hasrowid)
+		{
+			printTableAddFooter(&cont, _("Has ROWID: yes"));
+		}
+		/* End - ReqID:SRS-SQL-ROWID */
 	}
 
 	/* reloptions, if verbose */

@@ -355,7 +355,7 @@ static void truncate_check_activity(Relation rel);
 static void RangeVarCallbackForTruncate(const RangeVar *relation,
 										Oid relId, Oid oldRelId, void *arg);
 static List *MergeAttributes(List *schema, List *supers, char relpersistence,
-							 bool is_partition, List **supconstr);
+							 bool is_partition, List **supconstr, int *supRowIdCount);
 static bool MergeCheckConstraint(List *constraints, char *name, Node *expr);
 static void MergeAttributesIntoExisting(Relation child_rel, Relation parent_rel);
 static void MergeConstraintsIntoExisting(Relation child_rel, Relation parent_rel);
@@ -666,6 +666,11 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	TupleDesc	descriptor;
 	List	   *inheritOids;
 	List	   *old_constraints;
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	bool		loclHasRowid;
+	int			parentRowIdCount;
+	IndexStmt	*rowid_index;
+	/* End - ReqID:SRS-SQL-ROWID */
 	List	   *rawDefaults;
 	List	   *cookedDefaults;
 	Datum		reloptions;
@@ -680,6 +685,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	const char *accessMethod = NULL;
 	Oid			accessMethodId = InvalidOid;
 	OnCommitAction	oncommit_action = ONCOMMIT_NOOP;
+
 
 	/*
 	 * Truncate relname to appropriate length (probably a waste of time, as
@@ -909,7 +915,8 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		MergeAttributes(stmt->tableElts, inheritOids,
 						stmt->relation->relpersistence,
 						stmt->partbound != NULL,
-						&old_constraints);
+						&old_constraints,
+						&parentRowIdCount);
 
 	/*
 	 * Create a tuple descriptor from the relation schema.  Note that this
@@ -917,6 +924,15 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * default values or CHECK constraints; we handle those below.
 	 */
 	descriptor = BuildDescForRelation(stmt->tableElts);
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	loclHasRowid = interpretRowidOption(stmt->options, (relkind == RELKIND_RELATION ||
+										relkind == RELKIND_PARTITIONED_TABLE));
+	descriptor->tdhasrowid = (loclHasRowid || parentRowIdCount > 0);
+
+	if (relkind == RELKIND_SEQUENCE)
+		descriptor->tdhasrowid = stmt->with_rowid_seq;
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	/*
 	 * Find columns with default values and prepare for insertion of the
@@ -1350,6 +1366,42 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		table_close(parent, NoLock);
 	}
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	/*
+	 * Build a default types index on rowid column, if it exist
+	 */
+	if (rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
+	{
+		IndexElem   *iparam;
+		const FormData_pg_attribute *from;
+		StringInfoData rowid_seq_name;
+
+		initStringInfo(&rowid_seq_name);
+		appendStringInfo(&rowid_seq_name, "%u", relationId);
+		appendStringInfoChar(&rowid_seq_name, '_');
+		appendStringInfo(&rowid_seq_name, "rowid");
+
+		iparam = makeNode(IndexElem);
+		from = SystemAttributeDefinition(RowIdAttributeNumber);
+		iparam->name = pstrdup(NameStr(from->attname));
+		iparam->expr = NULL;
+
+		rowid_index = makeNode(IndexStmt);
+		rowid_index->idxname = ChooseRelationName(relname, rowid_seq_name.data, "idx", namespaceId, false);
+		rowid_index->accessMethod = DEFAULT_INDEX_TYPE;
+
+		rowid_index->indexParams = lappend(rowid_index->indexParams, iparam);
+
+		DefineIndex(relationId,
+					rowid_index,
+					InvalidOid,
+					InvalidOid,
+					InvalidOid,
+					true, true, false, false, false);
+		pfree(rowid_seq_name.data);
+	}
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	/*
 	 * Now add any newly specified CHECK constraints to the new relation. Same
@@ -2484,10 +2536,11 @@ storage_name(char c)
  */
 static List *
 MergeAttributes(List *schema, List *supers, char relpersistence,
-				bool is_partition, List **supconstr)
+				bool is_partition, List **supconstr, int *supRowIdCount)
 {
 	List	   *inhSchema = NIL;
 	List	   *constraints = NIL;
+	int			parentsWithRowId = 0;
 	bool		have_bogus_defaults = false;
 	int			child_attno;
 	static Node bogus_marker = {0}; /* marks conflicting defaults */
@@ -2676,6 +2729,11 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 		if (!pg_class_ownercheck(RelationGetRelid(relation), GetUserId()))
 			aclcheck_error(ACLCHECK_NOT_OWNER, get_relkind_objtype(relation->rd_rel->relkind),
 						   RelationGetRelationName(relation));
+
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		if (relation->rd_rel->relhasrowid)
+			parentsWithRowId++;
+		/* End - ReqID:SRS-SQL-ROWID */
 
 		tupleDesc = RelationGetDescr(relation);
 		constr = tupleDesc->constr;
@@ -3229,6 +3287,7 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 	}
 
 	*supconstr = constraints;
+	*supRowIdCount = parentsWithRowId;
 	return schema;
 }
 
@@ -4369,6 +4428,7 @@ AlterTableGetLockLevel(List *cmds)
 								 * to SELECT */
 			case AT_SetTableSpace:	/* must rewrite heap */
 			case AT_AlterColumnType:	/* must rewrite heap */
+			case AT_AddRowids: /* ReqID:SRS-SQL-ROWID */
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
@@ -4399,6 +4459,7 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_DropColumn: /* change visible to SELECT */
 			case AT_AddColumnToView:	/* CREATE VIEW */
 			case AT_DropOids:	/* used to equiv to DropColumn */
+			case AT_DropRowids: /* ReqID:SRS-SQL-ROWID */
 			case AT_EnableAlwaysRule:	/* may change SELECT rules */
 			case AT_EnableReplicaRule:	/* may change SELECT rules */
 			case AT_EnableRule: /* may change SELECT rules */
@@ -4904,6 +4965,51 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
 			pass = AT_PASS_DROP;
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		case AT_AddRowids:
+			{
+				ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
+
+				if (!rel->rd_rel->relhasrowid || recursing)
+				{
+					if (cmd->def == NULL)
+					{
+						ColumnDef  *c_rowid;
+
+						c_rowid = makeColumnDef("rowid", INT8OID, -1, 0);
+						c_rowid->is_not_null = true;
+						cmd->def = (Node *) c_rowid;
+						cmd->is_rowid = true;
+					}
+
+					ATPrepAddColumn(wqueue, rel, recurse, recursing, false, cmd, lockmode, context);
+
+					if (recurse)
+						cmd->subtype = AT_AddRowidsRecurse;
+				}
+				pass = AT_PASS_ADD_COL;
+			}
+			break;
+		case AT_DropRowids:
+			{
+				ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
+
+				if (rel->rd_rel->relhasrowid)
+				{
+					AlterTableCmd *dropCmd;
+
+					dropCmd = makeNode(AlterTableCmd);
+					dropCmd->subtype = AT_DropColumn;
+					dropCmd->name = pstrdup("rowid");
+					dropCmd->behavior = cmd->behavior;
+					dropCmd->is_rowid = true;
+
+					ATPrepCmd(wqueue, rel, dropCmd, recurse, recursing, lockmode, context);
+				}
+				pass = AT_PASS_DROP;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWID */
 		case AT_SetTableSpace:	/* SET TABLESPACE */
 			ATSimplePermissions(rel, ATT_TABLE | ATT_MATVIEW | ATT_INDEX |
 								ATT_PARTITIONED_INDEX);
@@ -5287,6 +5393,32 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 		case AT_SetLogged:		/* SET LOGGED */
 		case AT_SetUnLogged:	/* SET UNLOGGED */
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		case AT_AddRowids:
+			{
+				if (cmd->def != NULL)
+					address =
+						ATExecAddColumn(wqueue, tab, rel, &cmd,
+										false, false,
+										lockmode, cur_pass, context);
+			}
+			break;
+		case AT_AddRowidsRecurse:
+			{
+				if (cmd->def != NULL)
+					address =
+						ATExecAddColumn(wqueue, tab, rel, &cmd,
+										true, false,
+										lockmode, cur_pass, context);
+			}
+			break;
+		case AT_DropRowids:
+			/*
+			 * Nothing to do here; we'll have generated a DropColumn
+			 * subcommand to do the real work
+			 */
+			break;
+		/* End - ReqID:SRS-SQL-ROWID */
 		case AT_DropOids:		/* SET WITHOUT OIDS */
 			/* nothing to do here, oid columns don't exist anymore */
 			break;
@@ -5899,7 +6031,16 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 	 */
 	oldrel = table_open(tab->relid, NoLock);
 	oldTupDesc = tab->oldDesc;
+
 	newTupDesc = RelationGetDescr(oldrel);	/* includes all mods */
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (oldrel->rd_rel->relhasrowid)
+	{
+		oldTupDesc->tdhasrowid = true;
+		newTupDesc->tdhasrowid = true;
+	}
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	if (OidIsValid(OIDNewHeap))
 		newrel = table_open(OIDNewHeap, lockmode);
@@ -5912,6 +6053,11 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 	 */
 	if (newrel)
 	{
+		/* Begin - ReqID:SRS-SQL-ROWID */
+		newrel->rd_rel->relhasrowid = oldrel->rd_rel->relhasrowid;
+		newrel->rd_rowdSeqid = oldrel->rd_rowdSeqid;
+		/* End - ReqID:SRS-SQL-ROWID */
+
 		mycid = GetCurrentCommandId(true);
 		bistate = GetBulkInsertState();
 		ti_options = TABLE_INSERT_SKIP_FSM;
@@ -6805,7 +6951,12 @@ ATPrepAddColumn(List **wqueue, Relation rel, bool recurse, bool recursing,
 		ATTypedTableRecursion(wqueue, rel, cmd, lockmode, context);
 
 	if (recurse && !is_view)
-		cmd->subtype = AT_AddColumnRecurse;
+	{
+		if (cmd->is_rowid)
+			cmd->subtype = AT_AddRowidsRecurse; /* ReqID:SRS-SQL-ROWID */
+		else
+			cmd->subtype = AT_AddColumnRecurse;
+	}
 }
 
 /*
@@ -6825,6 +6976,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	Oid			myrelid = RelationGetRelid(rel);
 	ColumnDef  *colDef = castNode(ColumnDef, (*cmd)->def);
 	bool		if_not_exists = (*cmd)->missing_ok;
+	bool		is_rowid = (*cmd)->is_rowid;	/* ReqID:SRS-SQL-ROWID */
 	Relation	pgclass,
 				attrdesc;
 	HeapTuple	reltup;
@@ -6894,6 +7046,14 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 								   get_collation_name(ccollid),
 								   get_collation_name(childatt->attcollation))));
 
+			/* Begin - ReqID:SRS-SQL-ROWID */
+			if (is_rowid && childatt->attnum != RowIdAttributeNumber)
+				ereport(ERROR,
+						(errcode(ERRCODE_DATATYPE_MISMATCH),
+						 errmsg("child table \"%s\" has a conflicting \"%s\" column",
+								RelationGetRelationName(rel), colDef->colname)));
+			/* End - ReqID:SRS-SQL-ROWID */
+
 			/* Bump the existing child att's inhcount */
 			childatt->attinhcount++;
 			CatalogTupleUpdate(attrdesc, &tuple->t_self, tuple);
@@ -6957,12 +7117,18 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	relkind = ((Form_pg_class) GETSTRUCT(reltup))->relkind;
 
 	/* Determine the new attribute's number */
-	newattnum = ((Form_pg_class) GETSTRUCT(reltup))->relnatts + 1;
-	if (newattnum > MaxHeapAttributeNumber)
-		ereport(ERROR,
-				(errcode(ERRCODE_TOO_MANY_COLUMNS),
-				 errmsg("tables can have at most %d columns",
-						MaxHeapAttributeNumber)));
+	if (is_rowid)
+		newattnum = RowIdAttributeNumber; /* ReqID:SRS-SQL-ROWID */
+	else
+	{
+		newattnum = ((Form_pg_class) GETSTRUCT(reltup))->relnatts + 1;
+		if (newattnum > MaxHeapAttributeNumber)
+			ereport(ERROR,
+					(errcode(ERRCODE_TOO_MANY_COLUMNS),
+					 errmsg("tables can have at most %d columns",
+							MaxHeapAttributeNumber)));
+	}
+
 	/* Begin - Bug#Z485 */
 	if (colDef->not_spefify_column_type)
 	{
@@ -7033,7 +7199,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	ReleaseSysCache(typeTuple);
 
-	tupdesc = CreateTupleDesc(lengthof(aattr), (FormData_pg_attribute **) &aattr);
+	tupdesc = CreateTupleDesc(lengthof(aattr), (FormData_pg_attribute **) &aattr, false, false);
 
 	InsertPgAttributeTuples(attrdesc, tupdesc, myrelid, NULL, NULL);
 
@@ -7042,7 +7208,10 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	/*
 	 * Update pg_class tuple as appropriate
 	 */
-	((Form_pg_class) GETSTRUCT(reltup))->relnatts = newattnum;
+	if (is_rowid)
+		((Form_pg_class) GETSTRUCT(reltup))->relhasrowid = true; /* ReqID:SRS-SQL-ROWID */
+	else
+		((Form_pg_class) GETSTRUCT(reltup))->relnatts = newattnum;
 
 	CatalogTupleUpdate(pgclass, &reltup->t_self, reltup);
 
@@ -7196,6 +7365,13 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	}
 
 	/*
+	 * If we are adding an ROWID column, we have to tell Phase 3 to rewrite the
+	 * table to fix that.
+	 */
+	if (is_rowid)
+		tab->rewrite |= AT_REWRITE_ALTER_ROWID; /* ReqID:SRS-SQL-ROWID */
+
+	/*
 	 * Add needed dependency entries for the new column.
 	 */
 	add_column_datatype_dependency(myrelid, newattnum, attribute.atttypid);
@@ -7242,6 +7418,8 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		/* Find or create work queue entry for this table */
 		childtab = ATGetQueueEntry(wqueue, childrel);
 
+		if (is_rowid)
+			childcmd->is_rowid = true; /* ReqID:SRS-SQL-ROWID */
 		/* Recurse to child; return value is ignored */
 		ATExecAddColumn(wqueue, childtab, childrel,
 						&childcmd, recurse, true,
@@ -8777,7 +8955,7 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 	attnum = targetatt->attnum;
 
 	/* Can't drop a system attribute */
-	if (attnum <= 0)
+	if (attnum <= 0 && attnum != RowIdAttributeNumber) /* ReqID:SRS-SQL-ROWID */
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot drop system column \"%s\"",
@@ -8912,6 +9090,78 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 		performMultipleDeletions(addrs, behavior, 0);
 		free_object_addresses(addrs);
 	}
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	/*
+	 * If we dropped the ROWID column, must adjust pg_class.relhasrowid and tell
+	 * Phase 3 to physically get rid of the column.
+	 */
+	if (attnum == RowIdAttributeNumber)
+	{
+		ScanKeyData key[3];
+		int			keycount;
+		TableScanDesc scan;
+		Relation	class_rel;
+		Form_pg_class tuple_class;
+		AlteredTableInfo *tab;
+
+		StringInfoData rowid_seq;
+
+		initStringInfo(&rowid_seq);
+		appendStringInfo(&rowid_seq, "%s", RelationGetRelationName(rel));
+		appendStringInfoChar(&rowid_seq, '_');
+		appendStringInfo(&rowid_seq, "rowid");
+		appendStringInfoChar(&rowid_seq, '_');
+		appendStringInfo(&rowid_seq, "seq");
+
+		keycount = 0;
+		ScanKeyInit(&key[keycount++],
+					Anum_pg_class_relname,
+					BTEqualStrategyNumber, F_NAMEEQ,
+					CStringGetDatum(rowid_seq.data));
+
+		ScanKeyInit(&key[keycount++],
+					Anum_pg_class_relnamespace,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(rel->rd_rel->relnamespace));
+
+		ScanKeyInit(&key[keycount++],
+					Anum_pg_class_relowner,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(rel->rd_rel->relowner));
+
+		class_rel = table_open(RelationRelationId, RowExclusiveLock);
+		tuple = SearchSysCacheCopy1(RELOID,
+									ObjectIdGetDatum(RelationGetRelid(rel)));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for relation %u",
+				 RelationGetRelid(rel));
+		tuple_class = (Form_pg_class) GETSTRUCT(tuple);
+
+		tuple_class->relhasrowid = false;
+		CatalogTupleUpdate(class_rel, &tuple->t_self, tuple);
+
+		/* Drop the seq with SET ROWID options */
+		scan = table_beginscan_catalog(class_rel, keycount, key);
+		while ((tuple = heap_getnext(scan, ForwardScanDirection)) != NULL)
+		{
+			Oid			seqoid = ((Form_pg_class) GETSTRUCT(tuple))->oid;
+
+			deleteDependencyRecordsFor(RelationRelationId, seqoid, true);
+			deleteSharedDependencyRecordsFor(RelationRelationId, seqoid, 0);
+			simple_heap_delete(class_rel, &tuple->t_self);
+		}
+
+		table_endscan(scan);
+		table_close(class_rel, RowExclusiveLock);
+
+		/* Find or create work queue entry for this table */
+		tab = ATGetQueueEntry(wqueue, rel);
+
+		/* Tell Phase 3 to physically remove the OID column */
+		tab->rewrite |= AT_REWRITE_ALTER_ROWID;
+	}
+	/* End - ReqID:SRS-SQL-ROWID */
 
 	return object;
 }

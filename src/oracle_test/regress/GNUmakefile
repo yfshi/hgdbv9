@@ -84,7 +84,7 @@ regress_data_files = \
 	$(wildcard $(srcdir)/output/*.source) \
 	$(filter-out $(addprefix $(srcdir)/,$(input_files)),$(wildcard $(srcdir)/sql/*.sql)) \
 	$(wildcard $(srcdir)/data/*.data) \
-	$(srcdir)/parallel_schedule $(srcdir)/resultmap
+	$(srcdir)/parallel_schedule $(srcdir)/serial_schedule $(srcdir)/resultmap
 
 install-tests: all install install-lib installdirs-tests
 	$(MAKE) -C $(top_builddir)/contrib/spi install
@@ -130,7 +130,8 @@ oracle-check-tests: all | temp-install
 	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(MAXCONNOPT) $(TESTS) $(EXTRA_TESTS)
 
 oracle-installcheck: all
-	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --max-connections=1 $(EXTRA_TESTS)
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule --port 1521 --max-connections=1 $(EXTRA_TESTS)
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --port 1521 --max-connections=1 $(EXTRA_TESTS)
 
 oracle-installcheck-parallel: all
 	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
@@ -148,6 +149,7 @@ runtest: oracle-installcheck
 runtest-parallel: installcheck-parallel oracle-installcheck-parallel
 
 bigtest: all
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/serial_schedule --max-connections=1 numeric_big
 	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule --max-connections=1 numeric_big
 
 bigcheck: all | temp-install

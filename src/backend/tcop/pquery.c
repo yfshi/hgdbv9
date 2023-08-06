@@ -555,7 +555,7 @@ PortalStart(Portal portal, ParamListInfo params,
 
 					pstmt = PortalGetPrimaryStmt(portal);
 					portal->tupDesc =
-						ExecCleanTypeFromTL(pstmt->planTree->targetlist);
+						ExecCleanTypeFromTL(pstmt->planTree->targetlist, false);
 				}
 
 				/*
@@ -1890,7 +1890,7 @@ CreateTupleDescFromParams(ParamListInfo params)
 		if (natts == 0)
 			return NULL;
 
-		desc = CreateTemplateTupleDesc(natts);
+		desc = CreateTemplateTupleDesc(natts, false);
 		for (i = 0, j = 0; i < natts; i++, j++)
 		{
 			for (; j < params->numParams; j++)

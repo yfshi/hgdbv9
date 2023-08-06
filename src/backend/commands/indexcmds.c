@@ -1069,7 +1069,7 @@ DefineIndex(Oid relationId,
 	{
 		AttrNumber	attno = indexInfo->ii_IndexAttrNumbers[i];
 
-		if (attno < 0)
+		if (attno < 0 && attno != RowIdAttributeNumber) /* ReqID:SRS-SQL-ROWID */
 			ereport(ERROR,
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("index creation on system columns is not supported")));
@@ -1087,7 +1087,8 @@ DefineIndex(Oid relationId,
 
 		for (i = FirstLowInvalidHeapAttributeNumber + 1; i < 0; i++)
 		{
-			if (bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
+			if (i != RowIdAttributeNumber &&
+				bms_is_member(i - FirstLowInvalidHeapAttributeNumber,
 							  indexattrs))
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),

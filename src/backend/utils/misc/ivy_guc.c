@@ -95,6 +95,11 @@ bool	internal_warning = false;	/* BUG#Z230 */
 int	where_from = FROM_UNKNOWN;
 /* End - BUG#M0000201: support question marks as binding variables */
 
+/* Begin - ReqID:SRS-SQL-ROWID */
+bool   default_with_rowids = false;
+int        rowid_seq_cache = 20;
+/* End - ReqID:SRS-SQL-ROWID */
+
 bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
 
 bool	sort_desc_nulls_last = false;	/* BUG#M0000197 */
@@ -329,6 +334,20 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End BUG#Z230 */
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+   	{
+       	{"ivorysql.default_with_rowids", PGC_USERSET, DEVELOPER_OPTIONS,
+           	gettext_noop("Auto add rowid column for create new table."),
+           	NULL,
+           	GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+       	},
+       	&default_with_rowids,
+       	false,
+       	NULL, NULL, NULL
+   	},
+   	/* End - ReqID:SRS-SQL-ROWID */
+
 	/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
 	{
 		{"colinvisible", PGC_USERSET, DEVELOPER_OPTIONS,
@@ -414,6 +433,19 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-GTT */
+
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	{
+		{"ivorysql.rowid_seq_cache", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Sets rowid Sequence cache number."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&rowid_seq_cache,
+		20, 1, 60000,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-ROWID */
 #endif
 #if 0
 	/* End-of-list marker */

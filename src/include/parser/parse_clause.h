@@ -51,4 +51,8 @@ extern List *addTargetToSortList(ParseState *pstate, TargetEntry *tle,
 extern Index assignSortGroupRef(TargetEntry *tle, List *tlist);
 extern bool targetIsInSortList(TargetEntry *tle, Oid sortop, List *sortList);
 
+/* Begin - ReqID:SRS-SQL-ROWID */
+extern bool	interpretRowidOption(List *defList, bool allowRowid);
+/* End - ReqID:SRS-SQL-ROWID */
+
 #endif							/* PARSE_CLAUSE_H */

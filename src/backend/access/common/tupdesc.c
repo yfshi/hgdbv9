@@ -33,7 +33,6 @@
 #include "utils/resowner_private.h"
 #include "utils/syscache.h"
 
-
 /*
  * CreateTemplateTupleDesc
  *		This function allocates an empty tuple descriptor structure.
@@ -42,7 +41,7 @@
  * caller can overwrite this if needed.
  */
 TupleDesc
-CreateTemplateTupleDesc(int natts)
+CreateTemplateTupleDesc(int natts, bool hasrowid)
 {
 	TupleDesc	desc;
 
@@ -65,7 +64,6 @@ CreateTemplateTupleDesc(int natts)
 	 */
 	desc = (TupleDesc) palloc(offsetof(struct TupleDescData, attrs) +
 							  natts * sizeof(FormData_pg_attribute));
-
 	/*
 	 * Initialize other fields of the tupdesc.
 	 */
@@ -73,6 +71,7 @@ CreateTemplateTupleDesc(int natts)
 	desc->constr = NULL;
 	desc->tdtypeid = RECORDOID;
 	desc->tdtypmod = -1;
+	desc->tdhasrowid = hasrowid;
 	desc->tdrefcount = -1;		/* assume not reference-counted */
 
 	return desc;
@@ -87,12 +86,17 @@ CreateTemplateTupleDesc(int natts)
  * caller can overwrite this if needed.
  */
 TupleDesc
-CreateTupleDesc(int natts, Form_pg_attribute *attrs)
+CreateTupleDesc(int natts, Form_pg_attribute *attrs, bool tdhasrowid, bool is_sysattr)
 {
 	TupleDesc	desc;
 	int			i;
 
-	desc = CreateTemplateTupleDesc(natts);
+	/* Begin - ReqID:SRS-SQL-ROWID */
+	if (!tdhasrowid && is_sysattr)
+		natts = natts - 1;
+	/* End - ReqID:SRS-SQL-ROWID */
+
+	desc = CreateTemplateTupleDesc(natts, false);
 
 	for (i = 0; i < natts; ++i)
 		memcpy(TupleDescAttr(desc, i), attrs[i], ATTRIBUTE_FIXED_PART_SIZE);
@@ -113,7 +117,7 @@ CreateTupleDescCopy(TupleDesc tupdesc)
 	TupleDesc	desc;
 	int			i;
 
-	desc = CreateTemplateTupleDesc(tupdesc->natts);
+	desc = CreateTemplateTupleDesc(tupdesc->natts, tupdesc->tdhasrowid);
 
 	/* Flat-copy the attribute array */
 	memcpy(TupleDescAttr(desc, 0),
@@ -154,7 +158,7 @@ CreateTupleDescCopyConstr(TupleDesc tupdesc)
 	TupleConstr *constr = tupdesc->constr;
 	int			i;
 
-	desc = CreateTemplateTupleDesc(tupdesc->natts);
+	desc = CreateTemplateTupleDesc(tupdesc->natts, tupdesc->tdhasrowid);
 
 	/* Flat-copy the attribute array */
 	memcpy(TupleDescAttr(desc, 0),
@@ -792,7 +796,7 @@ BuildDescForRelation(List *schema)
 	 * allocate a new tuple descriptor
 	 */
 	natts = list_length(schema);
-	desc = CreateTemplateTupleDesc(natts);
+	desc = CreateTemplateTupleDesc(natts, false);
 	has_not_null = false;
 
 	attnum = 0;
@@ -894,7 +898,7 @@ BuildDescFromLists(List *names, List *types, List *typmods, List *collations)
 	/*
 	 * allocate a new tuple descriptor
 	 */
-	desc = CreateTemplateTupleDesc(natts);
+	desc = CreateTemplateTupleDesc(natts, false);
 
 	attnum = 0;
 	forfour(l1, names, l2, types, l3, typmods, l4, collations)

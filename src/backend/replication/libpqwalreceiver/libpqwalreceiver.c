@@ -951,7 +951,7 @@ libpqrcv_processTuples(PGresult *pgres, WalRcvExecResult *walres,
 	walres->tuplestore = tuplestore_begin_heap(true, false, work_mem);
 
 	/* Create tuple descriptor corresponding to expected result. */
-	walres->tupledesc = CreateTemplateTupleDesc(nRetTypes);
+	walres->tupledesc = CreateTemplateTupleDesc(nRetTypes, false);
 	for (coln = 0; coln < nRetTypes; coln++)
 		TupleDescInitEntry(walres->tupledesc, (AttrNumber) coln + 1,
 						   PQfname(pgres, coln), retTypes[coln], -1, 0);
