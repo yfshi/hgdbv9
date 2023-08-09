@@ -1124,6 +1124,10 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 			{
 				generated_column_expr = transformExpr(pstate, colDef->raw_default, EXPR_KIND_GENERATED_COLUMN);
 				exprtype = exprType(generated_column_expr);
+				/* Begin - Bug#M0000206 */
+				if (exprtype == INT4OID)
+					continue;
+				/* End - Bug#M0000206 */
 				typtp = SearchSysCache1(TYPEOID, ObjectIdGetDatum(exprtype));
 				typtup = (Form_pg_type) GETSTRUCT(typtp);
 				heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), colDef->colname);
@@ -1138,7 +1142,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 				attTup->attalign = typtup->typalign;
 				attTup->attstorage = typtup->typstorage;
 
-				simple_heap_update(attrelation, &heapTup->t_self, heapTup);
+				CatalogTupleUpdate(attrelation, &heapTup->t_self, heapTup);	/* Bug#M0000206 */
 				add_column_datatype_dependency(RelationGetRelid(rel), attnum, exprtype);
 				add_column_collation_dependency(RelationGetRelid(rel), attnum, typtup->typcollation);
 				RemoveStatistics(RelationGetRelid(rel), attnum);
