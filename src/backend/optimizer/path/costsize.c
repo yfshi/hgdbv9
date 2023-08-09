@@ -4455,7 +4455,8 @@ cost_qual_eval_walker(Node *node, cost_qual_eval_context *context)
 					elog(ERROR, "could not open relation with OID %u", rte->relid);
 
 				tupdesc = RelationGetDescr(rel);
-				if (TupleDescAttr(tupdesc, ((Var *)node)->varattnosyn -1)->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+				if (((Var *)node)->varattnosyn > 0 &&
+					TupleDescAttr(tupdesc, ((Var *)node)->varattnosyn -1)->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)	/* Bug#M0000206 */
 				{
 					node = build_column_default(rel, ((Var *)node)->varattnosyn);
 					set_opfuncid((OpExpr *) node);
