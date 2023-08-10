@@ -160,11 +160,6 @@ extern bool trace_syncscan;
 #ifdef DEBUG_BOUNDED_SORT
 extern bool optimize_bounded_sort;
 #endif
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-#include "license.h"
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
 static int	GUC_check_errcode_value;
 
 /* global variables for check hook support */
@@ -6039,54 +6034,6 @@ SelectConfigFiles(const char *userDoption, const char *progname)
 
 	return true;
 }
-
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE 
-void
-ShowCheckLicenseWarnings(void)
-{
-	int lic_maxconn;
-	struct config_generic *record;
-	struct config_int *conf;
-	int		newval;
-	void	*extra;
-	const char *name = "max_connections";
-
-	record = find_option(name, false, false, WARNING);
-	if (record == NULL)
-		ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 errmsg("unrecognized configuration parameter \"%s\"",
-							name)));
-
-	conf = (struct config_int *) record;
-	newval = conf->boot_val;
-	extra = NULL;
-
-	Assert(newval >= conf->min);
-	Assert(newval <= conf->max);
-
-	/*
-	 * If is a non-zero value we set the minimal value as max_connections.
-	 * If we set max_connection = 0 in license, that means no limits, so
-	 * leave it with the user specifed value
-	 */
-	lic_maxconn = atoi(hg_get_maxConnection());
-	if ((lic_maxconn != 0) && (newval > lic_maxconn))
-	{
-		newval = lic_maxconn;
-		ereport(WARNING,
-						(errcode(ERRCODE_WARNING),
-		 				errmsg("Cannot set max_connection to %d," \
-		 	 			"it exceed the limit in license, " \
-		 				"Set max_connection to %d", conf->boot_val, newval)));
-	}
-			
-	*conf->variable = conf->reset_val = newval;
-	conf->gen.extra = conf->reset_extra = extra;
-}
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
 
 /*
  * Reset all options to their saved default values (implements RESET ALL)

@@ -209,6 +209,7 @@ DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btre
 
 
 
+
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 /*
  * Symbolic values for prostatus column.

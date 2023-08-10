@@ -141,12 +141,7 @@ main(int argc, char *argv[])
 	unsetenv("LC_ALL");
 
 	check_strxfrm_bug();
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
+
 	/*
 	 * Catch standard options before doing much else, in particular before we
 	 * insist on not being root.
@@ -167,6 +162,8 @@ main(int argc, char *argv[])
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_set_license_abspath(argv[0]);
+			hg_load_license(NULL);
 			printf("%s %s\n", progname, hg_get_highgoVersion());
 			exit(0);
 		}
@@ -214,6 +211,13 @@ main(int argc, char *argv[])
 	 */
 	pgwin32_signal_initialize();
 #endif
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1 && strcmp(argv[1], "--boot") == 0)
 		AuxiliaryProcessMain(argc, argv);	/* does not return */
