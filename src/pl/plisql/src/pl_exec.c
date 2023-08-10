@@ -7659,7 +7659,7 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 	int			anum;
 	int			strict_multiassignment_level = 0;
 	/* Begin - ReqID:SRS-SQL-ROWID */
-	HeapTupleHeader tuphd;
+	HeapTupleHeader tuphd = NULL;
 	Oid 		tupType;
 	int32		tupTypmod;
 	TupleDesc	rowidtupdesc;

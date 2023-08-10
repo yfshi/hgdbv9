@@ -104,7 +104,7 @@ number_bitand(PG_FUNCTION_ARGS)
 Datum
 ora_to_number_w(PG_FUNCTION_ARGS)
 {
-	Numeric	result;
+	Numeric	result = NULL;
 	bool	has_def,
 			def_isnull;
 	text   *expr,
@@ -961,9 +961,9 @@ ora_to_number_hex_check(char *format, char **expression, NLSParams *nls)
 static Numeric
 ora_hex_to_dec_calc(char *hexadecimal)
 {
-	Datum	result,
-			power,
-			multiple;
+	Datum	result = 0,
+			power = 0,
+			multiple = 0;
 	char   *decstr,
 		   *expstr,
 		   *ptr;

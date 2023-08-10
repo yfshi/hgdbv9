@@ -139,6 +139,7 @@
 /* BEGIN - case sensitive indentify */
 #include "parser/scansup.h"
 /* End - case sensitive indentify */
+#include "utils/guc_tables.h"
 
 #ifdef EXEC_BACKEND
 #include "storage/spin.h"
@@ -147,6 +148,12 @@
 #include "executor/nodeModifyTable.h"
 #include "access/heapam.h"
 #include "parser/parse_merge.h"
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /*
  * Possible types of a backend. Beyond being the possible bkend_type values in
@@ -451,6 +458,13 @@ static pid_t StartChildProcess(AuxProcType type);
 static void StartAutovacuumWorker(void);
 static void MaybeStartWalReceiver(void);
 static void InitPostmasterDeathWatchHandle(void);
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE 
+static void ShowCheckLicenseWarnings(void);
+static void ShowLicenseEffectiveDate(void);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
 
 /*
  * Archiver is allowed to start up at the current postmaster state?
@@ -5310,6 +5324,13 @@ SubPostmasterMain(int argc, char *argv[])
 		}
 #endif
 
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE
+	hg_set_license_abspath(argv[0]);
+	hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */
+
 		/*
 		 * Perform additional initialization and collect startup packet.
 		 *
@@ -6946,3 +6967,50 @@ InitPostmasterDeathWatchHandle(void)
 								 GetLastError())));
 #endif							/* WIN32 */
 }
+
+/* Begin - ReqID:SRS-MISC-LICENSE */
+#ifdef USE_LICENSE 
+static void
+ShowCheckLicenseWarnings(void)
+{
+	int lic_maxconn;
+	char max_connections_str[8];
+
+	/*
+	 * If is a non-zero value we set the minimal value as max_connections.
+	 * If we set max_connection = 0 in license, that means no limits, so
+	 * leave it with the user specifed value
+	 */
+	lic_maxconn = atoi(hg_get_maxConnection());
+	if ((lic_maxconn != 0) && (lic_maxconn < MaxConnections))
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_WARNING),
+				errmsg("Cannot set max_connections to %d, " \
+		 	 			"it exceed the limit in license, " \
+		 				"Set max_connections to %d", MaxConnections, lic_maxconn)));
+		MaxConnections = lic_maxconn;
+		memset(max_connections_str, 0, sizeof(max_connections_str));
+		sprintf(max_connections_str, "%d", MaxConnections);
+
+		SetConfigOption("max_connections", max_connections_str, PGC_POSTMASTER, PGC_S_FILE);
+	}
+}
+
+static void
+ShowLicenseEffectiveDate(void)
+{
+	int log_lvl;
+	const char *prompt_format = hg_get_startup_info(&log_lvl);
+
+	ereport(log_lvl, 
+			errmsg(prompt_format, 
+				hg_get_authType(), 
+				hg_get_highgoVersion(), 
+				hg_get_finalTime(),
+				hg_get_service_hotline(),
+				hg_get_technical_support_url()));
+}
+
+#endif
+/* End - ReqID:SRS-MISC-LICENSE */

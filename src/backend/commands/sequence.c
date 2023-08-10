@@ -2587,7 +2587,7 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 	DependencyType deptype;
 	int			nnames;
 	Relation	tablerel;
-	AttrNumber	attnum;
+	AttrNumber	attnum = InvalidAttrNumber;
 	char		*seqname; /* ReqID:SRS-SQL-ROWID */
 
 	deptype = for_identity ? DEPENDENCY_INTERNAL : DEPENDENCY_AUTO;
