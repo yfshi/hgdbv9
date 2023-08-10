@@ -41,6 +41,7 @@
 #include "utils/guc.h"
 #include "utils/int8.h"
 #include "utils/numeric.h"
+#include "utils/ora_compatible.h"	/* BUG#M0000194 */
 #include "utils/pg_lsn.h"
 #include "utils/sortsupport.h"
 
@@ -11356,3 +11357,129 @@ accum_sum_combine(NumericSumAccum *accum, NumericSumAccum *accum2)
 
 	free_var(&tmp_var);
 }
+
+/* Begin - BUG#M0000194 */
+bool
+ora_strtoint64(const char *num, const char *dtype, int64 *retval)
+{
+	Assert(strcmp(dtype, "smallint") == 0 ||
+		   strcmp(dtype, "integer") == 0 ||
+		   strcmp(dtype, "bigint") == 0);
+	Assert(retval != NULL);
+
+	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER &&
+		cast_int_like_oracle && num)
+	{
+		const char *cp;
+		bool		have_dp = false,
+					have_exp = false;
+
+		NumericVar	value;
+
+		/* Skip leading spaces */
+		cp = num;
+		while (*cp)
+		{
+			if (!isspace((unsigned char) *cp))
+				break;
+			cp++;
+		}
+
+		/* Could be leading positive / negative sign */
+		if (*cp == '+' || *cp == '-')
+			cp++;
+
+		/* Could be leading decimal point */
+		if (*cp == '.')
+		{
+			have_dp = true;
+			cp++;
+		}
+
+		/* Must be at least one digit */
+		if (!isdigit((unsigned char) *cp))
+			goto invalid_syntax;
+
+		/* Should be digits, decimal point (if not exist) or exponent */
+		while (*cp)
+		{
+			if (*cp == '.')
+			{
+				if (have_dp || have_exp)
+					goto invalid_syntax;
+				have_dp = true;
+				cp++;
+			}
+			else if (*cp == 'e' || *cp == 'E')
+			{
+				if (have_exp)
+					goto invalid_syntax;
+				have_exp = true;
+				cp++;
+				if (*cp == '+' || *cp == '-')
+					cp++;
+			}
+			else if (isdigit((unsigned char) *cp))
+				cp++;
+			else
+				break;
+		}
+
+		/* Should be nothing left but spaces */
+		while (*cp)
+		{
+			if (!isspace((unsigned char) *cp))
+				goto invalid_syntax;
+			cp++;
+		}
+
+		/*
+		 * Use set_var_from_str() to parse a normal numeric value
+		 * Skip leading spaces at first
+		 */
+		cp = num;
+		while (*cp)
+		{
+			if (!isspace((unsigned char) *cp))
+				break;
+			cp++;
+		}
+
+		init_var(&value);
+		cp = set_var_from_str(num, cp, &value);
+
+		/*
+		 * Try to convert numeric to int8, rounding if needed.
+		 */
+		if (numericvar_to_int64(&value, retval))
+		{
+			if (strcmp(dtype, "smallint") == 0 &&
+				(unlikely(*retval < PG_INT16_MIN) || unlikely(*retval > PG_INT16_MAX)))
+				goto out_of_range;
+			if (strcmp(dtype, "integer") == 0 &&
+				(unlikely(*retval < PG_INT32_MIN) || unlikely(*retval > PG_INT32_MAX)))
+				goto out_of_range;
+
+			return true;
+		}
+		else
+			goto out_of_range;
+	}
+
+	return false;
+
+out_of_range:
+	ereport(ERROR,
+			(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+			 errmsg("value \"%s\" is out of range for type %s",
+					num, dtype)));
+
+invalid_syntax:
+	ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					dtype, num)));
+
+	return false;					/* keep compiler quiet */
+}
+/* End - BUG#M0000194 */

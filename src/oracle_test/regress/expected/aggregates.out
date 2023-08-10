@@ -1026,10 +1026,9 @@ select f1, (select min(unique1) from tenk1 where unique1 > f1) AS gt
            0 |  1
       123456 |   
      -123456 |  0
-          35 | 36
   2147483647 |   
  -2147483647 |  0
-(6 rows)
+(5 rows)
 
 -- check some cases that were handled incorrectly in 8.3.0
 explain (costs off)

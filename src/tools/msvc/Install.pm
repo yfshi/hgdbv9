@@ -149,7 +149,7 @@ sub Install
 		CopySetOfFiles(
 			'SQL files',
 			[
-				glob("contrib\\ivorysql_ora\\preload_ora_misc.sql"),
+				glob("contrib\\ivorysql_ora\\preload_ora_misc.sql"), # BUG#M0000195
 				glob("src\\backend\\catalog\\*.sql")
 			],
 			$target . '/share/');

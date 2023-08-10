@@ -186,7 +186,7 @@ static bool caught_signal = false;
 static bool output_failed = false;
 static int	output_errno = 0;
 static char *pgdata_native;
-static char *preload_ora_misc;
+static char *preload_ora_misc;	/* BUG#M0000195 */
 
 /* BEGIN - case sensitive indentify */
 static char  *switchmode = "interchange";
@@ -2709,7 +2709,7 @@ setup_data_file_paths(void)
 	if (database_mode == DB_ORACLE)
 	{
 		set_input(&ora_conf_file, "ivorysql.conf.sample");
-		set_input(&preload_ora_misc, "preload_ora_misc.sql");
+		set_input(&preload_ora_misc, "preload_ora_misc.sql");	/* BUG#M0000195 */
 	}
 	/* END - SQL PARSER */
 	if (show_setting || debug)
@@ -2743,7 +2743,7 @@ setup_data_file_paths(void)
 	if (database_mode == DB_ORACLE)
 	{
 		check_input(ora_conf_file);
-		check_input(preload_ora_misc);
+		check_input(preload_ora_misc);	/* BUG#M0000195 */
 	}
 	/* END - SQL PARSER */
 }
@@ -3131,7 +3131,7 @@ initialize_data_directory(void)
   /* load oracle compatible objects and plisql language */
 	if (database_mode == DB_ORACLE)
 	{
-		setup_run_file(cmdfd, preload_ora_misc);
+		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 	}
