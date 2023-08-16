@@ -866,8 +866,8 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/* init datums */
-	plisql_start_datums();
 	cur_compile_func_level = 0;
+	plisql_start_datums();
 	plisql_start_subproc_func();
 	plisql_saved_compile[cur_compile_func_level] = function;
 
@@ -1138,8 +1138,8 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	plisql_ns_init();
 	plisql_ns_push(NameStr(pkgStruct->pkgname), PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
-	plisql_start_datums();
 	cur_compile_func_level = 0;
+	plisql_start_datums();
 	plisql_start_subproc_func();
 	plisql_saved_compile[cur_compile_func_level] = function;
 	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
