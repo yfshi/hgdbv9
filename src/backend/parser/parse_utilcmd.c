@@ -178,6 +178,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	Oid			namespaceid;
 	Oid			existing_relid;
 	int			ora_identity_cnt = 0;	/* ReqID:SRS-SQL-IDENTCOL */
+	int			visible_col_cnt = 0;	/* Bug#Z504 */
 	ParseCallbackState pcbstate;
 	List	   *virtuallist = NIL;		/* ReqID:SRS-SQL-VIRTUALCOL */
 	/* Begin - ReqID:SRS-SQL-ROWID */
@@ -366,6 +367,11 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 			}
 		}
 
+		/* Begin - Bug#Z504 */
+		if (!element->isvisible)
+			visible_col_cnt++;
+		/* End - Bug#Z504 */
+
 		if (element->generated == ATTRIBUTE_GENERATED_VIRTUAL &&
 				(stmt->relation->relpersistence == RELPERSISTENCE_GLOBAL_TEMP ||
 					stmt->relation->relpersistence == RELPERSISTENCE_TEMP))
@@ -384,6 +390,10 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		elog(ERROR, "table can have only one identity column");
 	/* End - ReqID:SRS-SQL-IDENTCOL */
 
+	/* Begin - Bug#Z504 */
+	if (cxt.columns && visible_col_cnt == list_length(cxt.columns))
+		elog(ERROR, "table must have at least one column that is not invisible");
+	/* End - Bug#Z504 */
 
 	/* Begin - ReqID:SRS-SQL-ROWID */
 	if (like_found && cxt.hasrowid)

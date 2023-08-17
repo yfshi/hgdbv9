@@ -4121,6 +4121,7 @@ columnOptions:	ColId ColQualList
 					n->inhcount = 0;
 					n->is_local = true;
 					n->is_not_null = false;
+					n->isvisible = true;	/* Bug#Z504 */
 					n->is_from_type = false;
 					n->storage = 0;
 					n->raw_default = NULL;
@@ -4139,6 +4140,7 @@ columnOptions:	ColId ColQualList
 					n->inhcount = 0;
 					n->is_local = true;
 					n->is_not_null = false;
+					n->isvisible = true;	/* Bug#Z504 */
 					n->is_from_type = false;
 					n->storage = 0;
 					n->raw_default = NULL;
