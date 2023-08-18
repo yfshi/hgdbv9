@@ -38,7 +38,7 @@ DATA = ivorysql_ora--1.0.sql
 
 all: gensql
 
-install: install-data
+install: install-data	# BUG#M0000195
 
 clean: cleansql
 
@@ -46,9 +46,11 @@ clean: cleansql
 gensql: gensql.pl
 	$(PERL) $< $(patsubst ivorysql_ora--%.sql, %, $(DATA))
 
+# Begin - BUG#M0000195
 # Preload the compatible oracle misc sql script
 install-data:
 	$(INSTALL_DATA) $(srcdir)/preload_ora_misc.sql '$(DESTDIR)$(datadir)/preload_ora_misc.sql'
+# End - BUG#M0000195
 
 # Clean the generated SQL(s).
 cleansql:

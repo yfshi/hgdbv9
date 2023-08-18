@@ -353,6 +353,8 @@ extern PGDLLIMPORT int where_from;
 
 extern PGDLLIMPORT bool sort_desc_nulls_last;	/* BUG#M0000197 */
 
+extern PGDLLIMPORT bool cast_int_like_oracle;	/* BUG#M0000194 */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

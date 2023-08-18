@@ -3271,11 +3271,10 @@ select * from sc_test();
 -------------
  -2147483647
   2147483647
-          35
      -123456
       123456
            0
-(6 rows)
+(5 rows)
 
 create or replace function sc_test() returns setof integer as $$
 declare
@@ -3316,11 +3315,10 @@ select * from sc_test();
 -------------
  -2147483647
   2147483647
-          35
      -123456
       123456
            0
-(6 rows)
+(5 rows)
 
 create or replace function sc_test() returns setof integer as $$
 declare
@@ -3341,8 +3339,8 @@ select * from sc_test();
    sc_test   
 -------------
  -2147483647
-          35
-      123456
+     -123456
+           0
 (3 rows)
 
 create or replace function sc_test() returns setof integer as $$
@@ -3365,7 +3363,7 @@ select * from sc_test();
    sc_test   
 -------------
  -2147483647
-     -123456
+      123456
 (2 rows)
 
 create or replace function sc_test() returns setof integer as $$

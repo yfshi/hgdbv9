@@ -137,7 +137,10 @@ int8in(PG_FUNCTION_ARGS)
 	char	   *str = PG_GETARG_CSTRING(0);
 	int64		result;
 
-	str = ora_strtoint(str);		/* BUG#M0000194 */
+	/* Begin - BUG#M0000194 */
+	if (ora_strtoint64((const char *) str, "bigint", &result))
+		PG_RETURN_INT64(result);
+	/* End - BUG#M0000194 */
 
 	(void) scanint8(str, false, &result);
 	PG_RETURN_INT64(result);

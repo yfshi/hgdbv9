@@ -1308,6 +1308,18 @@ text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte)
 	int			len1 = VARSIZE_ANY_EXHDR(t1);
 	int			len2 = VARSIZE_ANY_EXHDR(t2);
 
+	/* Begin - BUG#M0000207 */
+	state->use_wchar = false;
+	state->str1 = NULL;
+	state->str2 = NULL;
+	state->wstr1 = NULL;
+	state->wstr2 = NULL;
+	state->len1 = 0;
+	state->len2 = 0;
+	state->skiptablemask = 0;
+	memset(state->skiptable, (int) 0, 255);
+	/* End - BUG#M0000207 */
+
 	if (pg_database_encoding_max_length() == 1 || 
 		isbyte)	/* ReqID:SRS-GKC-DATATYPE_001 */
 	{
