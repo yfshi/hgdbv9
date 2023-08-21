@@ -99,6 +99,9 @@ bool check_referenced_objects = false;
 List *plisql_referenced_objects = NIL;	/*the list elements are ObjectAddress */
 /* End - ReqID:SRS-PLSQL-TYPE */
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+int questionmarks_count;
+/* End - BUG#M0000201: support question marks as binding variables */
 
 /* ----------
  * static prototypes
@@ -441,6 +444,10 @@ do_compile(FunctionCallInfo fcinfo,
 	check_referenced_objects = true;
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The
@@ -1334,6 +1341,10 @@ do_compile(FunctionCallInfo fcinfo,
 	list_free(plisql_referenced_objects);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
 	return function;
@@ -1425,6 +1436,10 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	check_referenced_objects = false;
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
@@ -1589,6 +1604,10 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	check_referenced_objects = false;
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
