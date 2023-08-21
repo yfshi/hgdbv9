@@ -949,12 +949,17 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 							list_free($2);
 
 						$1->lastoutsubprocfno = plisql_nsubprocFuncs;
-						plisql_push_subproc_func();
+						/* Begin - BUG#M0000168 */
+						$1->lastoutvardno = plisql_nDatums;
+						plisql_push_subproc_info();
+						/* End - BUG#M0000168 */
 						$1->global_cur = plisql_ns_top();
 						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
+						/* Begin - BUG#M0000168 */
+						plisql_start_datums();
+						/* End - BUG#M0000168 */
 						plisql_start_subproc_func();
 						plisql_curr_compile = $1->function;
-						$1->lastassignvardno = plisql_nDatums;
 						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
 						plisql_add_initdatums(NULL);
 					}
@@ -966,11 +971,12 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_ns_pop();
 						plisql_finish_datums($1->function);
 						plisql_finish_subproc_func($1->function);
-						plisql_pop_subproc_func();
+						/* Begin - BUG#M0000168 */
+						plisql_pop_subproc_info();
+						/* End - BUG#M0000168 */
 						initStringInfo(&ds);
 						plisql_append_source_text(&ds, @5 + 2, @6);
 						$1->src = ds.data;
-						$1->lastoutvardno = plisql_nDatums;
 						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
 					}
 				| procedure_heading procedure_properties ';'
@@ -993,12 +999,17 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 							list_free($2);
 
 						$1->lastoutsubprocfno = plisql_nsubprocFuncs;
-						plisql_push_subproc_func();
+						/* Begin - BUG#M0000168 */
+						$1->lastoutvardno = plisql_nDatums;
+						plisql_push_subproc_info();
+						/* End - BUG#M0000168 */
 						$1->global_cur = plisql_ns_top();
 						plisql_ns_push($1->func_name, PLISQL_LABEL_BLOCK);
+						/* Begin - BUG#M0000168 */
+						plisql_start_datums();
+						/* End - BUG#M0000168 */
 						plisql_start_subproc_func();
 						plisql_curr_compile = $1->function;
-						$1->lastassignvardno = plisql_nDatums;
 						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
 						plisql_add_initdatums(NULL);
 					}
@@ -1010,11 +1021,12 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_ns_pop();
 						plisql_finish_datums($1->function);
 						plisql_finish_subproc_func($1->function);
-						plisql_pop_subproc_func();
+						/* Begin - BUG#M0000168 */
+						plisql_pop_subproc_info();
+						/* End - BUG#M0000168 */
 						initStringInfo(&ds);
 						plisql_append_source_text(&ds, @5 + 2, @6);
 						$1->src = ds.data;
-						$1->lastoutvardno = plisql_nDatums;
 						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
 					}
 				/* End - SRS-PLSQL-SUBPROC */

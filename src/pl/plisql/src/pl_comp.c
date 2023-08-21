@@ -450,9 +450,9 @@ do_compile(FunctionCallInfo fcinfo,
 	plisql_ns_init();
 	plisql_ns_push(NameStr(procStruct->proname), PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
+	cur_compile_func_level = 0;
 	plisql_start_datums();
 	/* Begin - SRS-PLSQL-SUBPROC */
-	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -1429,9 +1429,9 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
+	cur_compile_func_level = 0;
 	plisql_start_datums();
 	/* Begin - SRS-PLSQL-SUBPROC */
-	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -3028,17 +3028,9 @@ plisql_build_record(const char *refname, int lineno,
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	rec->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
-	/*
-	 * there, if we compile package, and build a rec like table%rowtype
-	 * but others function or package first reference it first filed and then
-	 * lookup it in package, but its doesn't find, because compile package
-	 * doesn't references it, should we add datum during exec?
-	 * this is not fine, so we add all recfiled in compile
-	 * maybe it can expand out of package
-	 */
-	if (OidIsValid(rec->pkgoid))
-		plisql_expand_rec_field(rec);
-	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M0000168 */
+	plisql_expand_rec_field(rec);
+	/* End - BUG#M0000168 */
 
 	return rec;
 }
@@ -3124,10 +3116,30 @@ plisql_build_recfield(PLiSQL_rec *rec, const char *fldname)
 	i = rec->firstfield;
 	while (i >= 0)
 	{
-		PLiSQL_recfield *fld = (PLiSQL_recfield *) plisql_Datums[i];
+		PLiSQL_recfield *fld;
 
-		Assert(fld->dtype == PLISQL_DTYPE_RECFIELD &&
+		/* Begin - BUG#M0000168 */
+		/*
+		 * Pg record can only be used inside a function
+		 */
+		if ((rec->rectypeid == RECORDOID || !OidIsValid(rec->rectypeid)) &&
+			plisql_nsubprocFuncs > 0)
+		{
+			if (i >= plisql_nDatums)
+				elog(ERROR, "Pg record can only be used inside a function");
+			fld = (PLiSQL_recfield *) plisql_Datums[i];
+			if (fld->dtype != PLISQL_DTYPE_RECFIELD ||
+				fld->recparentno != rec->dno)
+				elog(ERROR, "Pg record can only be used inside a function");
+		}
+		else
+		{
+			fld = (PLiSQL_recfield *) plisql_Datums[i];
+
+			Assert(fld->dtype == PLISQL_DTYPE_RECFIELD &&
 			   fld->recparentno == rec->dno);
+		}
+		/* End - BUG#M0000168 */
 		if (strcmp(fld->fieldname, fldname) == 0)
 			return fld;
 		i = fld->nextfield;
@@ -3404,13 +3416,45 @@ plisql_parse_err_condition(char *condname)
 void
 plisql_start_datums(void)
 {
-	datums_alloc = 128;
-	plisql_nDatums = 0;
-	/* This is short-lived, so needn't allocate in function's cxt */
-	plisql_Datums = MemoryContextAlloc(plisql_compile_tmp_cxt,
-										sizeof(PLiSQL_datum *) * datums_alloc);
-	/* datums_last tracks what's been seen by plisql_add_initdatums() */
-	datums_last = 0;
+	/* Begin - BUG#M0000168 */
+	int pre_level = cur_compile_func_level - 1;
+
+	if (pre_level < 0)
+	{
+		datums_alloc = 128;
+		plisql_nDatums = 0;
+		/* This is short-lived, so needn't allocate in function's cxt */
+		plisql_Datums = MemoryContextAlloc(plisql_compile_tmp_cxt,
+											sizeof(PLiSQL_datum *) * datums_alloc);
+		/* datums_last tracks what's been seen by plisql_add_initdatums() */
+		datums_last = 0;
+	}
+	else
+	{
+		int	pre_datums_alloc = plisql_saved_datums_alloc[pre_level];
+		int pre_nDatums = plisql_saved_nDatums[pre_level];
+		int pre_datums_last = plisql_saved_datums_last[pre_level];
+		int i;
+		PLiSQL_datum **pre_Datums = plisql_saved_datums[pre_level];
+
+		/* handle datums_alloc */
+		if (pre_datums_alloc <= 128)
+			datums_alloc = 128;
+		else
+		{
+			datums_alloc = 128;
+			while (datums_alloc < pre_datums_alloc)
+				datums_alloc = datums_alloc * 2;
+		}
+		plisql_Datums = MemoryContextAlloc(plisql_compile_tmp_cxt,
+											sizeof(PLiSQL_datum *) * datums_alloc);
+		for (i = 0; i < pre_nDatums; i++)
+			plisql_Datums[i] = pre_Datums[i];
+		plisql_nDatums = pre_nDatums;
+		datums_last = pre_datums_last + 1;
+	}
+	return;
+	/* End - BUG#M0000168 */
 }
 
 /* ----------
@@ -3905,9 +3949,9 @@ plisql_compile_inline_internal(char *proc_source)
 	plisql_ns_init();
 	plisql_ns_push(func_name, PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
+	cur_compile_func_level = 0;
 	plisql_start_datums();
 	/* Begin - SRS-PLSQL-SUBPROC */
-	cur_compile_func_level = 0;
 	plisql_start_subproc_func();
 	/* End - SRS-PLSQL-SUBPROC */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */

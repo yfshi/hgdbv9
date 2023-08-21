@@ -355,6 +355,10 @@ extern PGDLLIMPORT bool sort_desc_nulls_last;	/* BUG#M0000197 */
 
 extern PGDLLIMPORT bool cast_int_like_oracle;	/* BUG#M0000194 */
 
+/* Begin - BUG#M0000183 */
+extern PGDLLIMPORT bool check_package_invalid_by_tuple;
+/* End - BUG#M0000183 */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

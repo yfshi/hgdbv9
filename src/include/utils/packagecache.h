@@ -65,6 +65,12 @@ typedef Oid PackageCacheKey;
 typedef struct PackageCacheItem
 {
 	PackageCacheKey pkey;
+	/* Begin - BUG#M0000183 */
+	TransactionId package_xmin;		/* pacage xmin from pg_package */
+	ItemPointerData package_tid;	/* package tid from pg_package */
+	TransactionId body_xmin;		/* package body xmin from pg_package_body */
+	ItemPointerData body_tid;		/* package body tid from pg_package_body */
+	/* End - BUG#M0000183 */
 	MemoryContext	ctxt;			/* memory context for PackageCacheItem and its source */
 	uint32			package_hash_value;	/* package'hash value in catcache of PKGOID */
 	uint32			body_hash_value;	/* package body hash value int catcache of PKGBODYOID */
@@ -107,5 +113,9 @@ extern void plisql_internel_funcs_init(void);
 extern Oid get_top_function_info(FuncExpr *fexpr, bool *is_package);
 extern void set_pkginfo_from_funcexpr(FuncExpr *funcexpr);
 extern void set_pkgtype_from_funcexpr(FuncExpr *funcexpr);
+/* Begin - BUG#M0000183 */
+extern void InvalidPackage(Oid pkgoid);
+extern void InvalidPackageBody(Oid bodyoid);
+/* End - BUG#M0000183 */
 #endif
 

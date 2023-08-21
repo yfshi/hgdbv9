@@ -3792,15 +3792,11 @@ OverrideSearchPathMatchesCurrent(OverrideSearchPath *path)
 		else
 			return false;
 	}
-	/* If path->addCatalog, next item should be pg_catalog. */
-	if (path->addCatalog)
-	{
-		if (lc && lfirst_oid(lc) == PG_CATALOG_NAMESPACE)
-			lc = lnext(activeSearchPath, lc);
-		else
-			return false;
-	}
 
+	/* Begin - BUG#M0000209 */
+	/*
+	 * sys namespace before pg_catalog
+	 */
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	/* If path->addSys, next item should be sys. */
 	if (path->addSys)
@@ -3811,6 +3807,16 @@ OverrideSearchPathMatchesCurrent(OverrideSearchPath *path)
 			return false;
 	}
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+	/* End - BUG#M0000209 */
+
+	/* If path->addCatalog, next item should be pg_catalog. */
+	if (path->addCatalog)
+	{
+		if (lc && lfirst_oid(lc) == PG_CATALOG_NAMESPACE)
+			lc = lnext(activeSearchPath, lc);
+		else
+			return false;
+	}
 
 	/* We should now be looking at the activeCreationNamespace. */
 	if (activeCreationNamespace != (lc ? lfirst_oid(lc) : InvalidOid))

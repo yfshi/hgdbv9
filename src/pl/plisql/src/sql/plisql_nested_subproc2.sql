@@ -4118,3 +4118,119 @@ DROP PROCEDURE test.test_proc1;
 DROP FUNCTION test.test_f;
 DROP SCHEMA test;
 DROP TABLE r1;
+
+--bug#M0000168
+--print 24
+declare
+  var1 integer := 23;
+  function test_f(id integer) return integer is
+    var2 integer := var1;
+  begin
+    raise info '%', var2;
+    return 1;
+  end;
+begin
+  var1 := 24;
+  var1 := test_f(23);
+ end;
+ /
+
+CREATE TABLE test_mds(id integer,name varchar2(256));
+
+INSERT INTO test_mds VALUES(1,'xiexie');
+
+--pg record as global variable
+--raise error
+declare
+  var1 record;
+  var2 integer;
+  function test_f(id integer) return integer is
+  begin
+    var1.id := 23;
+    return 23;
+  end;
+  function test_f1(id integer) return integer is
+  begin
+    var1.name := 'xiexie';
+    return 23;
+  end;
+ begin
+   select * into var1 from test_mds;
+   var2 := test_f(23);
+   var2 := test_f1(24);
+ end;
+ /
+
+--raise error
+declare
+  var1 record;
+  var2 integer;
+  function test_f(id integer) return integer is
+  begin
+    var1.id := 23;
+    return 23;
+  end;
+  function test_f1(id integer) return integer IS
+  begin
+    var1.id := 1;
+	var1.name := 'welcome';
+    return 23;
+  end;
+ begin
+   select * into var1 from test_mds;
+   var2 := test_f(23);
+   var2 := test_f1(24);
+ end;
+ /
+
+
+ --error
+declare
+  var1 record;
+  var2 integer;
+  function test_f(id integer) return integer is
+  begin
+    var1.id := 23;
+    return 23;
+  end;
+  function test_f1(id integer) return integer IS
+    var3 integer;
+  begin
+	var1.name := 'welcome';
+    return 23;
+  end;
+ begin
+   select * into var1 from test_mds;
+   var2 := test_f(23);
+   var2 := test_f1(24);
+ end;
+ /
+
+--inside a function ok
+declare
+  var2 integer;
+  function test_f(id integer) return integer IS
+	 var1 record;
+  BEGIN
+    select * into var1 from test_mds;
+	raise info '%', var1;
+	var1.id := 23;
+	raise info '%', var1;
+    return 23;
+  end;
+  function test_f1(id integer) return integer IS
+	var1 record;
+  BEGIN
+    select * into var1 from test_mds;
+	raise info '%', var1;
+    var1.name := 'welcome';
+	raise info '%', var1;
+    return 23;
+  end;
+ begin
+   var2 := test_f(23);
+   var2 := test_f1(24);
+ end;
+ /
+
+ DROP TABLE test_mds;

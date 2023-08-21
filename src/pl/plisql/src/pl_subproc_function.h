@@ -106,18 +106,7 @@ typedef struct PLiSQL_function_argitem
  *   	the number of the function arg which has default value.
  *
  * lastoutvardno:
- *		first, we consider the var2'dno as the lastoutvardno, but if
- *		global var is compisite type var and init its firistcol in
- *		subprocfunc, we should include this rec_filedvar because it
- *		also a member of the parent variable.
- *		so finial,we record lastoutvardno which include the inlinefunc
- *		datum, so in the above example, the lastoutvardno is var3'dno
- *
- * lastassignvardno
- *		the init and assign out global var, we consider the var2'dno
- *		we record this ,so that we don't repeate assign rec_filedvar
- *		for its firsitcol in inlinefunc, we only init and assign in
- *		its parent'var
+ *		the var2'dno as the lastoutvardno.
  *
  * lastoutsubprocfno:
  *		the last global subproc function'fno the test function maybe use
@@ -139,8 +128,7 @@ typedef struct PLiSQL_subproc_function
 	bool		has_declare;		/* has declare */
 	int			nargdefaults;
 	int			noutargs;			/* the number of out arguments */
-	int			lastoutvardno;
-	int			lastassignvardno;
+	int			lastoutvardno;		/* the last out subproc dno, which function can use */
 	int			lastoutsubprocfno;	/* the last out subproc fno, which function can use */
 	PLiSQL_nsitem *global_cur;		/* the namespace which the function to search global var */
 	HTAB		*poly_tab;			/* hash table for polymorphic argtype function or procedure */
@@ -175,12 +163,23 @@ extern int plisql_saved_subprocfunc_alloc[];
 extern PLiSQL_subproc_function **plisql_saved_subprocfuncs[];
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - BUG#M0000168 */
+extern PLiSQL_datum **plisql_saved_datums[];
+extern int plisql_saved_datums_alloc[];
+extern int	plisql_saved_nDatums[];
+extern int plisql_saved_datums_last[];
+/* End - BUG#M0000168 */
+
+
 
 /* some userfull funcs */
 extern void plisql_start_subproc_func(void);
 extern void plisql_finish_subproc_func(PLiSQL_function *function);
-extern void plisql_push_subproc_func(void);
-extern void plisql_pop_subproc_func(void);
+
+/* Begin - BUG#M0000168 */
+extern void plisql_push_subproc_info(void);
+extern void plisql_pop_subproc_info(void);
+/* End - BUG#M0000168 */
 
 extern void plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc,
 														bool forValidator, FunctionCallInfo fcinfo,
