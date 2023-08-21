@@ -15,6 +15,7 @@ decode('01 01 01 01 01 01 01 01
  95f8a5e5dd31d900
 (1 row)
 
+SET ivorysql.enable_emptystring_to_null to off;
 -- val 95 F8 A5 E5 DD 31 D9 00
 select encode(	encrypt('', 'foo', '3des'), 'hex');
       encode      
@@ -69,3 +70,4 @@ select decrypt(encrypt('Lets try a longer message.', '0123456789012345678901', '
  Lets try a longer message.
 (1 row)
 
+RESET ivorysql.enable_emptystring_to_null;

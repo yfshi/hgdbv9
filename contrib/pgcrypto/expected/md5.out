@@ -1,12 +1,14 @@
 --
 -- MD5 message digest
 --
+SET ivorysql.enable_emptystring_to_null to off;
 SELECT encode(digest('', 'md5'), 'hex');
               encode              
 ----------------------------------
  d41d8cd98f00b204e9800998ecf8427e
 (1 row)
 
+RESET ivorysql.enable_emptystring_to_null;
 SELECT encode(digest('a', 'md5'), 'hex');
               encode              
 ----------------------------------

@@ -16182,6 +16182,8 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr GREATER_GREATER a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">>", $1, $3, @2); }
 			/* End - ReqID:SRS-SQL-PROC */
+			| a_expr QUESTION_MARK a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "?", $1, $3, @2); }
 
 			| a_expr AND a_expr
 				{ $$ = makeAndExpr($1, $3, @2); }
@@ -16632,6 +16634,8 @@ b_expr:		c_expr
 			| b_expr GREATER_GREATER b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">>", $1, $3, @2); }
 			/* End - ReqID:SRS-SQL-PROC */
+			| b_expr QUESTION_MARK b_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "?", $1, $3, @2); }
 			| qual_Op b_expr					%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $1, NULL, $2, @1); }
 			| b_expr IS DISTINCT FROM b_expr		%prec IS
@@ -17818,6 +17822,7 @@ all_Op:		Op										{ $$ = $1; }
 			| MathOp								{ $$ = $1; }
 			| LESS_LESS                             { $$ = "<<"; }	/* ReqID:SRS-SQL-PROC */
 			| GREATER_GREATER                       { $$ = ">>"; }	/* ReqID:SRS-SQL-PROC */
+			| QUESTION_MARK                         { $$ = "?"; }
 		;
 
 MathOp:		 '+'									{ $$ = "+"; }

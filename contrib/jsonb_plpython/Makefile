@@ -11,6 +11,7 @@ PG_CPPFLAGS = -I$(top_srcdir)/src/pl/plpython $(python_includespec) -DPLPYTHON_L
 EXTENSION = jsonb_plpythonu jsonb_plpython2u jsonb_plpython3u
 DATA = jsonb_plpythonu--1.0.sql jsonb_plpython2u--1.0.sql jsonb_plpython3u--1.0.sql
 
+ORA_REGRESS = ivy_jsonb_plpython
 REGRESS = jsonb_plpython
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
 

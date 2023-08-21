@@ -1,3 +1,5 @@
+SET ivorysql.enable_emptystring_to_null to off;
+
 --
 -- SHA2 family
 --
@@ -31,3 +33,5 @@ SELECT encode(digest('abc', 'sha512'), 'hex');
 SELECT encode(digest('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq', 'sha512'), 'hex');
 SELECT encode(digest('abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu', 'sha512'), 'hex');
 SELECT encode(digest('abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz', 'sha512'), 'hex');
+
+RESET ivorysql.enable_emptystring_to_null;

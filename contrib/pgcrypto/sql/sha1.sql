@@ -2,7 +2,9 @@
 -- SHA1 message digest
 --
 
+SET ivorysql.enable_emptystring_to_null to off;
 SELECT encode(digest('', 'sha1'), 'hex');
+RESET ivorysql.enable_emptystring_to_null;
 SELECT encode(digest('a', 'sha1'), 'hex');
 SELECT encode(digest('abc', 'sha1'), 'hex');
 SELECT encode(digest('message digest', 'sha1'), 'hex');

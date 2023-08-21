@@ -15,6 +15,7 @@ decode('fedcba9876543210', 'hex'),
 (1 row)
 
 -- empty data
+SET ivorysql.enable_emptystring_to_null to off;
 select encode(	encrypt('', 'foo', 'des'), 'hex');
       encode      
 ------------------
@@ -61,3 +62,4 @@ select decrypt(encrypt('Lets try a longer message.', '01234567', 'des'), '012345
  Lets try a longer message.
 (1 row)
 
+RESET ivorysql.enable_emptystring_to_null;

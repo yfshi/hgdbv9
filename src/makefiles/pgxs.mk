@@ -47,9 +47,11 @@
 #   REGRESS -- list of regression test cases (without suffix)
 #   REGRESS_OPTS -- additional switches to pass to pg_regress
 #   ORACLE_REGRESS_OPTS -- oracle additional switches to pass to pg_regress
+#   ORA_REGRESS -- oracle list of regression test cases (without suffix)
 #   TAP_TESTS -- switch to enable TAP tests
 #   ISOLATION -- list of isolation test cases
 #   ISOLATION_OPTS -- additional switches to pass to pg_isolation_regress
+#   ORA_ISOLATION -- oracle list of isolation test cases
 #   NO_INSTALL -- don't define an install target, useful for test modules
 #     that don't need their build products to be installed
 #   NO_INSTALLCHECK -- don't define an installcheck target, useful e.g. if
@@ -374,13 +376,19 @@ endif
 ifdef REGRESS
 # things created by various check targets
 	rm -rf $(pg_regress_clean_files)
-#BEGIN - SQL PARSER
-	rm -rf $(oracle_regress_clean_files)
-#END - SQL PARSER
 ifeq ($(PORTNAME), win)
 	rm -f regress.def
 endif
 endif # REGRESS
+
+ifdef ORA_REGRESS
+# things created by various check targets
+	rm -rf $(oracle_regress_clean_files)
+ifeq ($(PORTNAME), win)
+	rm -f regress.def
+endif
+endif # ORA_REGRESS
+
 ifdef TAP_TESTS
 	rm -rf tmp_check/
 endif
@@ -398,6 +406,27 @@ distclean maintainer-clean: clean
 ifdef REGRESS
 
 REGRESS_OPTS += --dbname=$(CONTRIB_TESTDB)
+
+# When doing a VPATH build, must copy over the data files so that the
+# driver script can find them.  We have to use an absolute path for
+# the targets, because otherwise make will try to locate the missing
+# files using VPATH, and will find them in $(srcdir), but the point
+# here is that we want to copy them from $(srcdir) to the build
+# directory.
+
+ifdef VPATH
+abs_builddir := $(shell pwd)
+test_files_src := $(wildcard $(srcdir)/data/*.data)
+test_files_build := $(patsubst $(srcdir)/%, $(abs_builddir)/%, $(test_files_src))
+
+all: $(test_files_build)
+$(test_files_build): $(abs_builddir)/%: $(srcdir)/%
+	$(MKDIR_P) $(dir $@)
+	ln -s $< $@
+endif # VPATH
+endif # REGRESS
+
+ifdef ORA_REGRESS
 
 #BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --dbname=$(CONTRIB_TESTDB)
@@ -420,7 +449,7 @@ $(test_files_build): $(abs_builddir)/%: $(srcdir)/%
 	$(MKDIR_P) $(dir $@)
 	ln -s $< $@
 endif # VPATH
-endif # REGRESS
+endif # ORA_REGRESS
 
 .PHONY: submake oracle-submake
 submake:
@@ -441,6 +470,10 @@ ifdef ISOLATION
 ISOLATION_OPTS += --dbname=$(ISOLATION_TESTDB)
 endif
 
+ifdef ORA_ISOLATION
+ORA_ISOLATION_OPTS += --dbname=$(ISOLATION_TESTDB)
+endif
+
 # Standard rules to run regression tests including multiple test suites.
 # Runs against an installed postmaster.
 ifndef NO_INSTALLCHECK
@@ -456,11 +489,11 @@ ifdef TAP_TESTS
 endif
 #BEGIN - SQL PARSER
 oracle-installcheck: oracle-submake $(REGRESS_PREP)
-ifdef REGRESS
-	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(REGRESS)
+ifdef ORA_REGRESS
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 endif
-ifdef ISOLATION
-	$(oracle_isolation_regress_installcheck) $(ISOLATION_OPTS) $(ISOLATION)
+ifdef ORA_ISOLATION
+	$(oracle_isolation_regress_installcheck) $(ORA_ISOLATION_OPTS) $(ORA_ISOLATION)
 endif
 ifdef TAP_TESTS
 	$(oracle_prove_installcheck)
@@ -491,11 +524,11 @@ ifdef TAP_TESTS
 endif
 #BEGIN - SQL PARSER
 oracle-check: oracle-submake $(REGRESS_PREP)
-ifdef REGRESS
-	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(REGRESS)
+ifdef ORA_REGRESS
+	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 endif
-ifdef ISOLATION
-	$(oracle_isolation_regress_check) $(ISOLATION_OPTS) $(ISOLATION)
+ifdef ORA_ISOLATION
+	$(oracle_isolation_regress_check) $(ORA_ISOLATION_OPTS) $(ORA_ISOLATION)
 endif
 ifdef TAP_TESTS
 	$(oracle_prove_check)
