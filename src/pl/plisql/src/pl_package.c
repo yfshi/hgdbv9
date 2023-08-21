@@ -828,6 +828,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	body_source = TextDatumGetCString(pkgbodydatum);
 	plisql_scanner_init(body_source);
 
+	/* Begin - BUG#M0000183 */
+	item->body_tid = pkgbodyTup->t_self;
+	item->body_xmin = HeapTupleHeaderGetRawXmin(pkgbodyTup->t_data);
+	/* End - BUG#M0000183 */
 	item->body_hash_value = GetSysCacheHashValue1(PKGBODYOID,
 									ObjectIdGetDatum(bodyStruct->oid));
 	psource = (PLiSQL_package *) item->source;
@@ -1093,6 +1097,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 									ALLOCSET_DEFAULT_SIZES);
 	plisql_compile_tmp_cxt = MemoryContextSwitchTo(pkg_cxt);
 	item = (PackageCacheItem *) palloc0(sizeof(PackageCacheItem));
+	/* Begin - BUG#M0000183 */
+	item->package_tid = pkgTup->t_self;
+	item->package_xmin = HeapTupleHeaderGetRawXmin(pkgTup->t_data);
+	/* End - BUG#M0000183 */
 	item->ctxt = pkg_cxt;
 	item->intable = false;
 	pkey = pkgStruct->oid;
@@ -1357,9 +1365,21 @@ plisql_package_compile(Oid pkgoid,
 	if (item != NULL)
 	{
 		/* see cache is valid */
-		if (!forValidator && !PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
-			package_valid = true;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			if (!forValidator &&
+				item->package_xmin == HeapTupleHeaderGetRawXmin(pkgTup->t_data) &&
+				ItemPointerEquals(&item->package_tid, &pkgTup->t_self))
+				package_valid = true;
+		}
 		else
+		{
+			if (!forValidator && !PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
+				package_valid = true;
+		}
+		/* End - BUG#M0000183 */
+		if (!package_valid)
 		{
 			PackageCacheItem *olditem = NULL;
 
@@ -1449,11 +1469,31 @@ plisql_package_body_compile(Oid bodyoid,
 	if (item != NULL)
 	{
 		/* see package cache is valid */
-		if (forValidator || PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
-			package_valid = false;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			if (forValidator ||
+				item->package_xmin != HeapTupleHeaderGetRawXmin(pkgTup->t_data) ||
+				!ItemPointerEquals(&item->package_tid, &pkgTup->t_self))
+				package_valid = false;
 
-		if (forValidator || PACKAGE_BODY_IS_UPDATED(item->cachestatus))
-			package_body_valid = false;
+			/* new package body is always valid */
+			if (item->body_xmin == 0)
+				package_body_valid = true;
+			else if (forValidator ||
+				item->body_xmin != HeapTupleHeaderGetRawXmin(pkgbodyTup->t_data) ||
+				!ItemPointerEquals(&item->body_tid, &pkgbodyTup->t_self))
+				package_body_valid = false;
+		}
+		else
+		{
+			if (forValidator || PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
+				package_valid = false;
+
+			if (forValidator || PACKAGE_BODY_IS_UPDATED(item->cachestatus))
+				package_body_valid = false;
+		}
+		/* End - BUG#M0000183 */
 	}
 	else
 	{

@@ -105,6 +105,12 @@ bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
 bool	sort_desc_nulls_last = false;	/* BUG#M0000197 */
 
 bool	cast_int_like_oracle = false;	/* BUG#M0000194 */
+
+/* Begin - BUG#M0000183 */
+bool check_package_invalid_by_tuple = true;
+/* End - BUG#M0000183 */
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -386,6 +392,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000194 */
+	/* Begin - BUG#M0000183 */
+	{
+		{"ivorysql.check_package_invalid_by_tuple", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Wether check package invalid by tuple header."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&check_package_invalid_by_tuple,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000183 */
 #endif
 #if 0
 	/* End-of-list marker */

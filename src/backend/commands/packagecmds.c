@@ -773,9 +773,20 @@ AlterPackage(AlterPackageStmt *stmt)
 			{
 				Oid bodyid;
 
-				/* like create or replace package */
-				CacheInvalidateHeapTuple(rel, tup, NULL);
-				CommandCounterIncrement();
+				/* Begin - BUG#M0000183 */
+				if (check_package_invalid_by_tuple)
+				{
+					/* update pg_package */
+					CatalogTupleUpdate(rel, &tup->t_self, tup);
+					InvokeObjectPostAlterHook(PackageRelationId, pkgoid, 0);
+				}
+				else
+				{
+					/* like create or replace package */
+					CacheInvalidateHeapTuple(rel, tup, NULL);
+					CommandCounterIncrement();
+				}
+				/* End - BUG#M0000183 */
 				/* free package cache */
 				FreePackageCache(&pkgoid);
 				/* if has body, we cimpile include body */
@@ -798,11 +809,23 @@ AlterPackage(AlterPackageStmt *stmt)
 				if (!HeapTupleIsValid(bodytup))
 					elog(ERROR, "cache lookup failed for package body %u", pkgoid);
 
-				CacheInvalidateHeapTuple(bodyrel, bodytup, NULL);
-				CommandCounterIncrement();
-				/* free package cache */
 				FreePackageCache(&pkgoid);
 				bodyid = ((Form_pg_package_body) GETSTRUCT(bodytup))->oid;
+				/* Begin - BUG#M0000183 */
+				if (check_package_invalid_by_tuple)
+				{
+					/* update pg_package_body */
+					CatalogTupleUpdate(bodyrel, &bodytup->t_self, bodytup);
+					InvokeObjectPostAlterHook(PackageBodyRelationId, bodyid, 0);
+				}
+				else
+				{
+					CacheInvalidateHeapTuple(bodyrel, bodytup, NULL);
+					CommandCounterIncrement();
+				}
+				/* End - BUG#M0000183 */
+
+				/* free package cache */
 				ValidatroPackage(bodyid, true);
 
 				heap_freetuple(bodytup);

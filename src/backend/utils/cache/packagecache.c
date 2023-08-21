@@ -37,6 +37,7 @@
 #include "catalog/pg_package_body.h"
 #include "catalog/pg_language.h"
 #include "catalog/pg_proc.h"
+#include "catalog/indexing.h" /* BUG#M0000183 */
 #include "access/htup_details.h"
 #include "access/genam.h"
 #include "access/table.h"
@@ -94,8 +95,19 @@ PackageCacheIsValid(PackageCacheKey *key, bool check_body)
 	else
 	{
 		/* package specification isn't updated */
-		if (PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
-			is_valid = false;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			if (item->package_xmin != HeapTupleHeaderGetRawXmin(tuple->t_data) ||
+				!ItemPointerEquals(&item->package_tid, &tuple->t_self))
+					is_valid = false;
+		}
+		else
+		{
+			if (PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
+				is_valid = false;
+		}
+		/* End - BUG#M0000183 */
 	}
 
 	ReleaseSysCache(tuple);
@@ -105,9 +117,24 @@ PackageCacheIsValid(PackageCacheKey *key, bool check_body)
 	if (check_body)
 	{
 		/* has no body or body has been updated */
-		if (!PACKAGE_HAS_BODY(item->cachestatus) ||
-			PACKAGE_BODY_IS_UPDATED(item->cachestatus))
-			is_valid = false;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			tuple = SearchSysCache1(PKGBODYPKGOID, ObjectIdGetDatum(*key));
+			if (!HeapTupleIsValid(tuple))
+				return false;
+			if (item->body_xmin != HeapTupleHeaderGetRawXmin(tuple->t_data) ||
+				!ItemPointerEquals(&item->body_tid, &tuple->t_self))
+				is_valid = false;
+			ReleaseSysCache(tuple);
+		}
+		else
+		{
+			if (!PACKAGE_HAS_BODY(item->cachestatus) ||
+				PACKAGE_BODY_IS_UPDATED(item->cachestatus))
+				is_valid = false;
+		}
+		/* End - BUG#M0000183 */
 	}
 	return is_valid;
 }
@@ -270,8 +297,13 @@ BuildPackageCache(void)
 							 ALLOCSET_DEFAULT_SIZES);
 
 	/* register invalid cache */
-	CacheRegisterSyscacheCallback(PKGBODYOID, InvalidatePackageCacheCallback, (Datum) 0);
-	CacheRegisterSyscacheCallback(PKGOID, InvalidatePackageCacheCallback, (Datum) 0);
+	/* Begin - BUG#M0000183 */
+	if (!check_package_invalid_by_tuple)
+	{
+		CacheRegisterSyscacheCallback(PKGBODYOID, InvalidatePackageCacheCallback, (Datum) 0);
+		CacheRegisterSyscacheCallback(PKGOID, InvalidatePackageCacheCallback, (Datum) 0);
+	}
+	/* End - BUG#M0000183 */
 
 	/* Switch to correct memory context. */
 	oldcontext = MemoryContextSwitchTo(PackageCacheContext);
@@ -648,5 +680,92 @@ pg_get_subprocs_in_package(PG_FUNCTION_ARGS)
 	return (Datum) 0;
 }
 
+
+/* Begin - BUG#M0000183 */
+/*
+ * invalid a package
+ */
+void
+InvalidPackage(Oid pkgoid)
+{
+	HeapTuple tup;
+	Relation rel;
+
+	if (check_package_invalid_by_tuple)
+		rel = table_open(PackageRelationId, RowExclusiveLock);
+	else
+		rel = table_open(PackageRelationId, AccessShareLock);
+
+	tup = SearchSysCacheCopy1(PKGOID, ObjectIdGetDatum(pkgoid));
+	if (!HeapTupleIsValid(tup)) /* should not happen */
+	{
+		table_close(rel, NoLock);
+		return;
+	}
+
+	if (check_package_invalid_by_tuple)
+	{
+		/* update pg_package */
+		CatalogTupleUpdate(rel, &tup->t_self, tup);
+	}
+	else
+	{
+		/* send invalid message */
+		PackageCacheItem *item = PackageCacheLookup(&pkgoid);
+
+		CacheInvalidateHeapTuple(rel, tup, NULL);
+		if (item != NULL)
+			item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+	}
+	heap_freetuple(tup);
+	table_close(rel, NoLock);
+
+	return;
+}
+
+
+
+/*
+ * invalid a package body
+ */
+void
+InvalidPackageBody(Oid bodyoid)
+{
+	HeapTuple tup;
+	Relation rel;
+
+	if (check_package_invalid_by_tuple)
+		rel = table_open(PackageBodyRelationId, RowExclusiveLock);
+	else
+		rel = table_open(PackageBodyRelationId, AccessShareLock);
+
+	tup = SearchSysCacheCopy1(PKGBODYOID, ObjectIdGetDatum(bodyoid));
+	if (!HeapTupleIsValid(tup)) /* should not happen */
+	{
+		table_close(rel, NoLock);
+		return;
+	}
+
+	if (check_package_invalid_by_tuple)
+	{
+		/* update pg_package_body */
+		CatalogTupleUpdate(rel, &tup->t_self, tup);
+	}
+	else
+	{
+		/* send invalid message */
+		Oid pkgoid = ((Form_pg_package_body) GETSTRUCT(tup))->pkgoid;
+		PackageCacheItem *item = PackageCacheLookup(&pkgoid);
+
+		CacheInvalidateHeapTuple(rel, tup, NULL);
+		if (item != NULL)
+			item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
+	}
+	heap_freetuple(tup);
+	table_close(rel, NoLock);
+
+	return;
+}
+/* End - BUG#M0000183 */
 
 
