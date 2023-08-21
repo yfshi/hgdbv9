@@ -7446,6 +7446,14 @@ ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCK
 	Form_pg_attribute	attrtuple;
 	int16		attnum;
 	ObjectAddress myself;
+	/* Begin - Bug#Z504 */
+	int			attno;
+	int			attnums;
+	int			visible_col_cnt = 0;
+	Relation	relation;
+	HeapTuple	att_tuple;
+	Form_pg_attribute attr_tuple;
+	/* End - Bug#Z504 */
 
 	attrelation = table_open(AttributeRelationId, RowExclusiveLock);
 	tuple = SearchSysCacheCopyAttName(myrelid, colName);
@@ -7474,6 +7482,29 @@ ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCK
 	table_close(attrelation, RowExclusiveLock);
 	ObjectAddressSubSet(myself, RelationRelationId,
 							RelationGetRelid(rel), attnum);
+	/* Begin - Bug#Z504 */
+	if (!new_visibility)
+	{
+		CommandCounterIncrement();
+		relation = table_open(myrelid, RowExclusiveLock);
+		attnums =  RelationGetNumberOfAttributes(relation);
+		for (attno = 0; attno < attnums; attno++)
+		{
+			att_tuple = SearchSysCacheCopyAttNum(myrelid, attno + 1);
+			attr_tuple = (Form_pg_attribute) GETSTRUCT(att_tuple);
+			if (!attr_tuple->attisvisible)
+				visible_col_cnt++;
+
+			heap_freetuple(att_tuple);
+		}
+
+		if (visible_col_cnt == attnums)
+			elog(ERROR, "table must have at least one column that is not invisible");
+
+		table_close(relation, RowExclusiveLock);
+	}
+	/* End - Bug#Z504 */
+
 	return myself;
 }
 /* End - ReqID:SRS-SQL-INVISIBLECOL */
