@@ -127,9 +127,6 @@ typedef struct OraScannerCallbackState
 	ErrorContextCallback errcallback;
 } OraScannerCallbackState;
 
-/* Begin - BUG#M0000201: support question marks as binding variables */
-int questionmarks_count;
-/* End - BUG#M0000201: support question marks as binding variables */
 
 /* Constant data exported from oracle_parser/ora_scan.l */
 extern const uint16 OraScanKeywordTokens[];

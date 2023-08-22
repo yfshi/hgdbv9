@@ -258,6 +258,7 @@ plisql_yylex(void)
 
 			sprintf(buf, "$%d", ++questionmarks_count);
 			aux1.lval.str = buf;
+			paramname = buf;
 		}
 		/* End - BUG#M0000201: support question marks as binding variables */	
 

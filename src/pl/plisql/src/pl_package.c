@@ -869,6 +869,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	/* init datums */
 	cur_compile_func_level = 0;
 	plisql_start_datums();
@@ -1020,6 +1024,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	list_free(plisql_referenced_objects);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
 
@@ -1137,6 +1145,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	check_referenced_objects = true;
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The
@@ -1302,6 +1314,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	check_referenced_objects = false;
 	list_free(plisql_referenced_objects);
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
@@ -2007,6 +2023,10 @@ plisql_push_compile_global_proper(void)
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].check_referenced_objects = check_referenced_objects;
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_referenced_objects = plisql_referenced_objects;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	plisql_saved_compile_proper[plisql_curr_global_proper_level].questionmarks_count = questionmarks_count;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	/* come from pl_subproc_function.h */
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_subprocFuncs = plisql_subprocFuncs;

@@ -1326,6 +1326,9 @@ extern bool check_referenced_objects;
 extern List *plisql_referenced_objects;	/*the list elements are ObjectAddress */
 /* End - ReqID:SRS-PLSQL-TYPE */
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+extern int questionmarks_count;
+/* End - BUG#M0000201: support question marks as binding variables */
 
 /**********************************************************************
  * Function declarations

@@ -159,6 +159,10 @@ typedef struct GroupClause
 #define parser_yyerror(msg)  ora_scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  ora_scanner_errposition(pos, yyscanner)
 
+/* Begin - BUG#M0000201: support question marks as binding variables */
+static int questionmarks_count;
+/* End - BUG#M0000201: support question marks as binding variables */
+
 static void ora_base_yyerror(YYLTYPE *yylloc, ora_core_yyscan_t yyscanner,
 						 const char *msg);
 static RawStmt *makeRawStmt(Node *stmt, int stmt_location);
