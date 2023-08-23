@@ -1221,7 +1221,7 @@ step read_part: SELECT * FROM parttbl ORDER BY a, c;
 a| b|c| d
 -+--+-+--
 1|12|1|12
-2|13|2|15
+2|13|2|14
 (2 rows)
 
 
