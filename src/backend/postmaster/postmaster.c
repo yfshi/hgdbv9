@@ -6054,6 +6054,18 @@ BackgroundWorkerInitializeConnectionByOid(Oid dboid, Oid useroid, uint32 flags)
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("database connection requirement not indicated during registration")));
 
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * mode of a process
+	 */
+	if(worker->connmode == 'o')
+		compatible_db = ORA_PARSER;
+	else
+		compatible_db = PG_PARSER;
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+
 	InitPostgres(NULL, dboid, NULL, useroid, NULL, (flags & BGWORKER_BYPASS_ALLOWCONN) != 0);
 
 	/* it had better not gotten out of "init" mode yet */

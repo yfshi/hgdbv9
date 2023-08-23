@@ -89,6 +89,7 @@ typedef struct BackgroundWorker
 {
 	char		bgw_name[BGW_MAXLEN];
 	char		bgw_type[BGW_MAXLEN];
+	char		connmode;			/* ReqID:SRS-MISC-USER */
 	int			bgw_flags;
 	BgWorkerStartTime bgw_start_time;
 	int			bgw_restart_time;	/* in seconds, or BGW_NEVER_RESTART */

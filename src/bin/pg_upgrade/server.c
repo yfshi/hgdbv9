@@ -65,10 +65,10 @@ get_db_conn(ClusterInfo *cluster, const char *db_name)
 	appendPQExpBufferStr(&conn_opts, " user=");
 	appendConnStrVal(&conn_opts, os_info.user);
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (pg_cluster_within_oracle_mode)
-		appendPQExpBuffer(&conn_opts, " port=%d", cluster->port);
-	else
-		appendPQExpBuffer(&conn_opts, " port=%d", cluster->controldata.database_mode_is_oracle ? cluster->oraport : cluster->port);
+	//if (pg_cluster_within_oracle_mode)
+	appendPQExpBuffer(&conn_opts, " port=%d", cluster->port);
+	//else
+	//	appendPQExpBuffer(&conn_opts, " port=%d", cluster->controldata.database_mode_is_oracle ? cluster->oraport : cluster->port);
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	if (cluster->sockdir)
 	{
@@ -110,10 +110,10 @@ cluster_conn_opts(ClusterInfo *cluster)
 	}
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (pg_cluster_within_oracle_mode)
-		appendPQExpBuffer(buf, "--port %d --username ", cluster->port);
-	else
-		appendPQExpBuffer(buf, "--port %d --username ", cluster->controldata.database_mode_is_oracle ? cluster->oraport : cluster->port);
+	//if (pg_cluster_within_oracle_mode)
+	appendPQExpBuffer(buf, "--port %d --username ", cluster->port);
+	//else
+	//	appendPQExpBuffer(buf, "--port %d --username ", cluster->controldata.database_mode_is_oracle ? cluster->oraport : cluster->port);
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	
 	appendShellString(buf, os_info.user);

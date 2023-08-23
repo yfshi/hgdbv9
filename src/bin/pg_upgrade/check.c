@@ -84,7 +84,6 @@ void
 check_and_dump_old_cluster(bool live_check)
 {
 	/* -- OLD -- */
-
 	if (!live_check)
 		start_postmaster(&old_cluster, true);
 
@@ -94,7 +93,6 @@ check_and_dump_old_cluster(bool live_check)
 	init_tablespaces();
 
 	get_loadable_libraries();
-
 
 	/*
 	 * Check for various failure cases
@@ -660,10 +658,15 @@ check_is_install_user(ClusterInfo *cluster)
 
 	/* Can't use pg_authid because only superusers can view it. */
 	res = executeQueryOrDie(conn,
-							"SELECT rolsuper, oid "
-							"FROM pg_catalog.pg_roles "
-							"WHERE rolname = current_user "
-							"AND rolname !~ '^pg_'");
+							"SELECT r.rolsuper, r.oid "
+							"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
+							"WHERE r.rolname = current_user "
+							"AND d.datname = current_database() "
+							"AND r.rolname !~ '^pg_' "
+							"AND "
+							"CASE WHEN current_user = 'system' "
+							"  THEN d.oid = r.dboid "
+							"  ELSE r.rolname !='sys' AND r.rolname != 'system' END ");
 
 	/*
 	 * We only allow the install user in the new cluster (see comment below)
@@ -679,8 +682,13 @@ check_is_install_user(ClusterInfo *cluster)
 
 	res = executeQueryOrDie(conn,
 							"SELECT COUNT(*) "
-							"FROM pg_catalog.pg_roles "
-							"WHERE rolname !~ '^pg_'");
+							"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
+							"WHERE r.rolname !~ '^pg_' "
+							"AND d.datname = current_database()  "
+							"AND "
+							"CASE WHEN current_user= 'system' "
+							"  THEN d.oid = r.dboid "
+							"  ELSE r.rolname != 'sys' AND r.rolname != 'system' END ");
 
 	if (PQntuples(res) != 1)
 		pg_fatal("could not determine the number of users\n");

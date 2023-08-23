@@ -5384,9 +5384,31 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 												(List *) cmd->def, lockmode);
 			break;
 		case AT_ChangeOwner:	/* ALTER OWNER */
-			ATExecChangeOwner(RelationGetRelid(rel),
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Determine the type of user
+			 */
+			switch (cmd->utype)
+			{
+				case DATABASE_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
+							  get_databaserol_oid(cmd->newowner),
+							  false, lockmode);
+					break;
+				case INSTANCE_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
+							  get_instancerol_oid(cmd->newowner),
+							  false, lockmode);
+					break;
+				case UNKNOWN_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
 							  get_rolespec_oid(cmd->newowner, false),
 							  false, lockmode);
+					break;
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+		 	*/
 			break;
 		case AT_ClusterOn:		/* CLUSTER ON */
 			address = ATExecClusterOn(rel, cmd->name, lockmode);

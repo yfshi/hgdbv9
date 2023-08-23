@@ -32,6 +32,11 @@
 static void _check_database_version(ArchiveHandle *AH);
 static void notice_processor(void *arg, const char *message);
 
+static void SetCompatibleMode(PGconn *conn);
+static void SetDumptypeMode(PGconn *conn);
+static int RestoringToDB(ArchiveHandle *AH);
+static bool isSuperuser(PGconn *conn);
+
 static void
 _check_database_version(ArchiveHandle *AH)
 {
@@ -103,6 +108,10 @@ ReconnectToServer(ArchiveHandle *AH, const char *dbname)
 	getDbCompatibleMode(AH->connection);
 	/* END - SQL PARSER */
 
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	getDatabaseMode(AH->connection);
+	/* END - ReqID:SRS-MISC-USER */
+	
 	PQfinish(oldConn);
 }
 
@@ -223,6 +232,20 @@ ConnectDatabase(Archive *AHX,
 	/* check for version mismatch */
 	_check_database_version(AH);
 
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	getDatabaseMode(AH->connection);
+	if((database_mode == DB_ORACLE) && (!RestoringToDB(AH)))
+	{
+		if(strcmp(cparams->dbname,"template1") !=0 && strstr(cparams->dbname, "dbname=template1") == 0)
+		{
+			SetCompatibleMode(AH->connection);
+			SetDumptypeMode(AH->connection);
+			ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
+		}
+		
+	}
+	/* END - ReqID:SRS-MISC-USER */
+	
 	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
 
 	/* arrange for SIGINT to issue a query cancel on this connection */
@@ -578,3 +601,90 @@ DropBlobIfExists(ArchiveHandle *AH, Oid oid)
 				 oid, oid);
 	}
 }
+
+
+/*
+ * SetCompatibleMode  ReqID:SRS-MISC-USE
+ * 
+ */
+static void 
+SetCompatibleMode(PGconn *conn)
+{
+	PGresult		  *res,
+					  *res1;
+
+	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+		fatal("change compatible_mode error");
+	if (res)
+		PQclear(res);
+
+	if(CurrentUserIsSuperuser)
+	{
+		res1 = PQexec(conn, "set session authorization system;");	
+
+		if (PQresultStatus(res1) != PGRES_COMMAND_OK)
+			fatal("change user error");
+
+		pg_log_warning("use database_user \"system\" pg_dump ");
+		
+		CurrentSessionUserName = "system";	
+	}
+
+	if (res1)
+		PQclear(res1);
+}
+
+/*
+ * SetDumptypeMode  ReqID:SRS-MISC-USE
+ * 
+ */
+static void 
+SetDumptypeMode(PGconn *conn)
+{
+	PGresult		  *res,
+					  *res1;
+	
+	res = PQexec(conn, "set ivorysql.dumppgtype to oracle;");
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+		fatal("change dumppgtype error");
+	if (res)
+		PQclear(res);
+
+	res1 = PQexec(conn, "set ivorysql.grant_usertype to oracle;");
+	if (PQresultStatus(res1) != PGRES_COMMAND_OK)
+		fatal("change grant user type error");	
+	if (res1)
+		PQclear(res1);
+}
+
+/*
+ * RestoringToDB  ReqID:SRS-MISC-USE
+ * 
+ */
+static int
+RestoringToDB(ArchiveHandle *AH)
+{
+	RestoreOptions *ropt = AH->public.ropt;
+
+	return (ropt && ropt->useDB && AH->connection);
+}
+
+/*
+ * isSuperuser  ReqID:SRS-MISC-USE
+ * 
+ */
+static bool
+isSuperuser(PGconn *conn)
+{
+	const char *val;
+
+	val = PQparameterStatus(conn, "is_superuser");
+
+	if (val && strcmp(val, "on") == 0)
+		return true;
+
+	return false;
+}
+
+

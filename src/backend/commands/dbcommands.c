@@ -65,6 +65,10 @@
 #include "utils/pg_locale.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+#include "libpq/crypt.h"
+#include "catalog/pg_auth_members.h"
+#include "commands/user.h"
+#include "utils/ora_compatible.h"
 
 typedef struct
 {
@@ -144,6 +148,31 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	int			notherbackends;
 	int			npreparedxacts;
 	createdb_failure_params fparms;
+
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * database should be created by instance-level use when compatible_db is oracle
+	 */
+	if( DB_ORACLE == database_mode)
+	{
+		if(PG_PARSER == compatible_db)
+		{
+			bool	result = isinstancelevel();
+
+			if(!result)
+			{
+				elog(ERROR,"database should be created by instance-level user");
+			}
+		}
+		else if(ORA_PARSER == compatible_db)
+		{
+			elog(ERROR,"database cannot be created when compatible_db is oracle");
+		}
+	}
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+
 
 	/* Extract options from the statement node tree */
 	foreach(option, stmt->options)
@@ -727,6 +756,18 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	PG_END_ENSURE_ERROR_CLEANUP(createdb_failure_callback,
 								PointerGetDatum(&fparms));
 
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Both sys and system are created when the database is created
+	 */
+	if (DB_ORACLE == database_mode && dbname && strcmp(dbname , "template0") != 0 )
+	{
+		createsysrole("sys",dboid);
+		createsysrole("system",dboid);
+	}
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
 	return dboid;
 }
 
@@ -858,6 +899,31 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	if (!pg_database_ownercheck(db_id, GetUserId()))
 		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_DATABASE,
 					   dbname);
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * database should be droped by instance-level use when compatible_db is oracle
+	 */
+	if( DB_ORACLE == database_mode)
+	{
+		if(PG_PARSER == compatible_db)
+		{
+			bool	result = isinstancelevel();
+
+			if(!result)
+			{
+				table_close(pgdbrel, NoLock);
+				elog(ERROR,"database should be drop by instance-level user");
+			}
+		}
+		else if(ORA_PARSER == compatible_db)
+		{
+			table_close(pgdbrel, NoLock);
+			elog(ERROR,"database cannot be droped when compatible_db is oracle");
+		}
+	}
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
 
 	/* DROP hook for the database being removed */
 	InvokeObjectDropHook(DatabaseRelationId, db_id, 0);

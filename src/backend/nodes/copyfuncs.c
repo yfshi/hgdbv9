@@ -3427,6 +3427,8 @@ _copyAlterTableCmd(const AlterTableCmd *from)
 	COPY_SCALAR_FIELD(missing_ok);
 	COPY_SCALAR_FIELD(recurse);
 	COPY_SCALAR_FIELD(isvisible);	/* ReqID:SRS-SQL-INVISIBLECOL */
+	COPY_SCALAR_FIELD(utype);		/* ReqID:SRS-MISC-USER */
+
 
 	return newnode;
 }

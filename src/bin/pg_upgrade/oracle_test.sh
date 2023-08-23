@@ -171,6 +171,7 @@ done
 # buildfarm may try to override port via EXTRA_REGRESS_OPTS ...
 EXTRA_REGRESS_OPTS="$EXTRA_REGRESS_OPTS --port=$ORAPORT"
 export EXTRA_REGRESS_OPTS
+unset PGUSER
 
 standard_initdb "$oldbindir"/initdb
 "$oldbindir"/pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
@@ -252,7 +253,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT"
+pg_upgrade -g $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.

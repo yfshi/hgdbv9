@@ -121,9 +121,7 @@ main(int argc, char **argv)
 				 new_cluster.pgdata, strerror(errno));
 
 	umask(pg_mode_mask);
-
 	check_and_dump_old_cluster(live_check);
-
 
 	/* -- NEW -- */
 	start_postmaster(&new_cluster, true);

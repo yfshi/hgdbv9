@@ -118,11 +118,6 @@ create database DB2;
 create database "db3";
 create database "DB4";
 create database "Db5";
-drop database db1;
-drop database db2;
-drop database "db3";
-drop database "DB4";
-drop database "Db5";
 
 --user
 create user u1;
@@ -175,11 +170,6 @@ create database DB2;
 create database "db3";
 create database "DB4";
 create database "Db5";
-drop database db1;
-drop database db2;
-drop database db3;
-drop database db4;
-drop database "Db5";
 
 --user
 create user u1;
@@ -232,11 +222,6 @@ create database DB2;
 create database "db3";
 create database "DB4";
 create database "Db5";
-drop database db1;
-drop database DB2;
-drop database "db3";
-drop database "DB4";
-drop database "Db5";
 
 --user
 create user u1;

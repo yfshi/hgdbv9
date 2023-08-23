@@ -31,6 +31,20 @@ typedef enum DBParser
 	ORA_PARSER
 }DBParser;
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+typedef enum DBDump
+{
+	PG_DUMP = 0,
+	ORA_DUMP
+}DBDump;
+
+typedef enum DBGrantUser
+{
+	PG_GRANTUSER = 0,
+	ORA_GRANTUSER
+}DBGrantUser;
+/* END - ReqID:SRS-MISC-USER */
+
 /* BEGIN - case sensitive indentify */
 typedef enum CaseSwitchMode
 {

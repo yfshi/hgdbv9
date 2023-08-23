@@ -32,6 +32,9 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "utils/varlena.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+#include "commands/user.h"
 
 /*
  * DATESTYLE
@@ -764,7 +767,42 @@ check_session_authorization(char **newval, void **extra, GucSource source)
 	}
 
 	/* Look up the username */
-	roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(*newval));
+	/*
+	 * Begin - ReqID:SRS-MISC-USERs
+	 * Find a specific type of user
+	 */
+	if(strcmp(*newval, CurrentUsername()) != 0)
+	{
+		if ((DB_ORACLE == database_mode) && (ORA_PARSER == compatible_db))
+		{
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+										PointerGetDatum(*newval), 
+										ObjectIdGetDatum(MyDatabaseId));
+		}
+		else
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+										PointerGetDatum(*newval), 
+										ObjectIdGetDatum(InvalidOid));	
+	}
+	else
+	{
+		if ((DB_ORACLE == database_mode) && ((GetPortConnmode() == 2) || ORA_PARSER == compatible_db))
+		{
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+										PointerGetDatum(*newval), 
+										ObjectIdGetDatum(MyDatabaseId));
+		}
+		else
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+										PointerGetDatum(*newval), 
+										ObjectIdGetDatum(InvalidOid));
+	}
+	
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+	
+
 	if (!HeapTupleIsValid(roleTup))
 	{
 		/*
@@ -855,8 +893,37 @@ check_role(char **newval, void **extra, GucSource source)
 		 */
 
 		/* Look up the username */
-		roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(*newval));
-		if (!HeapTupleIsValid(roleTup))
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * Find a specific type of user
+		 */
+		if ((DB_ORACLE == database_mode) && (ORA_PARSER == compatible_db))
+		{
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+									PointerGetDatum(*newval), 
+									ObjectIdGetDatum(MyDatabaseId));
+			if (!HeapTupleIsValid(roleTup))
+			{
+				roleTup = SearchSysCache2(AUTHNAMEDBOID,
+									PointerGetDatum(*newval), ObjectIdGetDatum(InvalidOid));
+				
+				if(!HeapTupleIsValid(roleTup) && (get_role_canlogin(*newval)))
+				{
+					ReleaseSysCache(roleTup);
+					roleTup = NULL;
+				}
+					
+			}	
+		}
+		else
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+									PointerGetDatum(*newval), 
+									ObjectIdGetDatum(InvalidOid));
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
+
+		if (!HeapTupleIsValid(roleTup)) 
 		{
 			if (source == PGC_S_TEST)
 			{
