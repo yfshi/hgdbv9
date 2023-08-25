@@ -383,7 +383,7 @@ ExecuteGrantStmt(GrantStmt *stmt)
 
 	if (stmt->grantor)
 	{
-		Oid			grantor;
+		Oid			grantor = InvalidOid;
 
 		/*
 		 * Begin - ReqID:SRS-MISC-USER

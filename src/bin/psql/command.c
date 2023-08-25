@@ -3183,6 +3183,16 @@ do_connect(enum trivalue reuse_previous_specification,
 		return false;
 	}
 
+	getDbCompatibleMode(pset.db);
+	if(db_mode == DB_ORACLE)
+	{
+		if (has_connection_string && (user != NULL))
+		{
+			pg_log_error("Do not give user when using a connection string");
+			return false;
+		}
+	}
+
 	switch (reuse_previous_specification)
 	{
 		case TRI_YES:

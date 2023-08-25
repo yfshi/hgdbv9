@@ -585,6 +585,7 @@ aclitemout(PG_FUNCTION_ARGS)
 	char	   *out;
 	HeapTuple	htup;
 	unsigned	i;
+	Oid dboid = InvalidOid;
 
 	out = palloc(strlen("=/") +
 				 2 * N_ACL_RIGHTS +
@@ -611,7 +612,7 @@ aclitemout(PG_FUNCTION_ARGS)
 			{
 				putid(q, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
 				
-				Oid dboid = (((Form_pg_authid) GETSTRUCT(htup))->rolowndboid);
+				dboid = (((Form_pg_authid) GETSTRUCT(htup))->rolowndboid);
 				
 				if(OidIsValid(dboid))
 					sprintf(p, "0%s", q);

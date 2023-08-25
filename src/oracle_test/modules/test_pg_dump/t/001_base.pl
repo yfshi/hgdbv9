@@ -324,9 +324,9 @@ my %tests = (
                     \n\s+\QAS integer\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNO MINVALUE\E
-                    \n\s+\QNO MAXVALUE\E
-                    \n\s+\QCACHE 1;\E
+                    \n\s+\QNOMINVALUE\E
+                    \n\s+\QNOMAXVALUE\E
+                    \n\s+\QNOCACHE ;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -348,9 +348,9 @@ my %tests = (
                     \QCREATE SEQUENCE public.regress_pg_dump_seq\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNO MINVALUE\E
-                    \n\s+\QNO MAXVALUE\E
-                    \n\s+\QCACHE 1;\E
+                    \n\s+\QNOMINVALUE\E
+                    \n\s+\QNOMAXVALUE\E
+                    \n\s+\QNOCACHE ;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -408,8 +408,8 @@ my %tests = (
 				 WHERE proname = 'wgo_then_no_access')); END$$;},
 		regexp => qr/^
 			\QREVOKE ALL ON FUNCTION public.wgo_then_no_access() FROM PUBLIC;\E
-			\n\QREVOKE ALL ON FUNCTION public.wgo_then_no_access() FROM \E.*;
-			\n\QREVOKE ALL ON FUNCTION public.wgo_then_no_access() FROM pg_signal_backend;\E
+			\n\QREVOKE ALL ON FUNCTION public.wgo_then_no_access() FROM INSTANCEUSER \E.*;
+			\n\QREVOKE ALL ON FUNCTION public.wgo_then_no_access() FROM INSTANCEUSER pg_signal_backend;\E
 			/xm,
 		like => {
 			%full_runs,
@@ -424,8 +424,8 @@ my %tests = (
 		create_sql   => 'REVOKE GRANT OPTION FOR UPDATE ON SEQUENCE
 							wgo_then_regular FROM pg_signal_backend;',
 		regexp => qr/^
-			\QREVOKE ALL ON SEQUENCE public.wgo_then_regular FROM pg_signal_backend;\E
-			\n\QGRANT SELECT,UPDATE ON SEQUENCE public.wgo_then_regular TO pg_signal_backend;\E
+			\QREVOKE ALL ON SEQUENCE public.wgo_then_regular FROM INSTANCEUSER pg_signal_backend;\E
+			\n\QGRANT SELECT,UPDATE ON SEQUENCE public.wgo_then_regular TO INSTANCEUSER pg_signal_backend;\E
 			\n\QGRANT USAGE ON SEQUENCE public.wgo_then_regular TO pg_signal_backend WITH GRANT OPTION;\E
 			/xm,
 		like => {
@@ -461,7 +461,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT SELECT ON regress_pg_dump_table_added TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT SELECT ON TABLE public.regress_pg_dump_table_added TO regress_dump_test_role;\E
+			\QGRANT SELECT ON TABLE public.regress_pg_dump_table_added TO INSTANCEUSER regress_dump_test_role;\E
 			\n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -471,7 +471,7 @@ my %tests = (
 		create_sql =>
 		  'REVOKE SELECT ON regress_pg_dump_table_added FROM regress_dump_test_role;',
 		regexp => qr/^
-			\QREVOKE SELECT ON TABLE public.regress_pg_dump_table_added FROM regress_dump_test_role;\E
+			\QREVOKE SELECT ON TABLE public.regress_pg_dump_table_added FROM INSTANCEUSER regress_dump_test_role;\E
 			\n/xm,
 		like => {
 			%full_runs,
@@ -484,7 +484,7 @@ my %tests = (
 	'GRANT SELECT ON TABLE regress_pg_dump_table' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT SELECT ON TABLE public.regress_pg_dump_table TO regress_dump_test_role;\E\n
+			\QGRANT SELECT ON TABLE public.regress_pg_dump_table TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },
@@ -505,7 +505,7 @@ my %tests = (
 		create_sql   => 'GRANT SELECT(col2) ON regress_pg_dump_table
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT SELECT(col2) ON TABLE public.regress_pg_dump_table TO regress_dump_test_role;\E
+			\QGRANT SELECT(col2) ON TABLE public.regress_pg_dump_table TO INSTANCEUSER regress_dump_test_role;\E
 			\n/xm,
 		like => {
 			%full_runs,
@@ -521,7 +521,7 @@ my %tests = (
 		create_sql => 'GRANT USAGE ON SEQUENCE regress_pg_dump_table_col1_seq
 		                   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT USAGE ON SEQUENCE public.regress_pg_dump_table_col1_seq TO regress_dump_test_role;\E
+			\QGRANT USAGE ON SEQUENCE public.regress_pg_dump_table_col1_seq TO INSTANCEUSER regress_dump_test_role;\E
 			\n/xm,
 		like => {
 			%full_runs,
@@ -533,7 +533,7 @@ my %tests = (
 
 	'GRANT USAGE ON regress_pg_dump_seq TO regress_dump_test_role' => {
 		regexp => qr/^
-			\QGRANT USAGE ON SEQUENCE public.regress_pg_dump_seq TO regress_dump_test_role;\E
+			\QGRANT USAGE ON SEQUENCE public.regress_pg_dump_seq TO INSTANCEUSER regress_dump_test_role;\E
 			\n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -567,7 +567,7 @@ my %tests = (
 	'GRANT SELECT ON regress_pg_dump_schema.test_table' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT SELECT ON TABLE regress_pg_dump_schema.test_table TO regress_dump_test_role;\E\n
+			\QGRANT SELECT ON TABLE regress_pg_dump_schema.test_table TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },
@@ -578,9 +578,9 @@ my %tests = (
                     \QCREATE SEQUENCE regress_pg_dump_schema.test_seq\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNO MINVALUE\E
-                    \n\s+\QNO MAXVALUE\E
-                    \n\s+\QCACHE 1;\E
+                    \n\s+\QNOMINVALUE\E
+                    \n\s+\QNOMAXVALUE\E
+                    \n\s+\QNOCACHE ;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -588,7 +588,7 @@ my %tests = (
 	'GRANT USAGE ON regress_pg_dump_schema.test_seq' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT USAGE ON SEQUENCE regress_pg_dump_schema.test_seq TO regress_dump_test_role;\E\n
+			\QGRANT USAGE ON SEQUENCE regress_pg_dump_schema.test_seq TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },
@@ -605,7 +605,7 @@ my %tests = (
 	'GRANT USAGE ON regress_pg_dump_schema.test_type' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT ALL ON TYPE regress_pg_dump_schema.test_type TO regress_dump_test_role;\E\n
+			\QGRANT ALL ON TYPE regress_pg_dump_schema.test_type TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },
@@ -622,7 +622,7 @@ my %tests = (
 	'GRANT ALL ON regress_pg_dump_schema.test_func' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT ALL ON FUNCTION regress_pg_dump_schema.test_func() TO regress_dump_test_role;\E\n
+			\QGRANT ALL ON FUNCTION regress_pg_dump_schema.test_func() TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },
@@ -640,7 +640,7 @@ my %tests = (
 	'GRANT ALL ON regress_pg_dump_schema.test_agg' => {
 		regexp => qr/^
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\E\n
-			\QGRANT ALL ON FUNCTION regress_pg_dump_schema.test_agg(smallint) TO regress_dump_test_role;\E\n
+			\QGRANT ALL ON FUNCTION regress_pg_dump_schema.test_agg(smallint) TO INSTANCEUSER regress_dump_test_role;\E\n
 			\QSELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\E
 			\n/xms,
 		like => { binary_upgrade => 1, },

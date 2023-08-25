@@ -466,18 +466,18 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 							int att_result = -1;
 								att_result = grantee_type(grantee->data + strlen("group "));
 							if(att_result == 1)
-								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s;\n",
+								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s",
 														fmtId(grantee->data + strlen("group ")));
 							else if(att_result == 0)
-								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s;\n",
+								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s",
 														fmtId(grantee->data + strlen("group ")));
 							else
-								appendPQExpBuffer(secondsql, "GROUP %s;\n",
+								appendPQExpBuffer(secondsql, "GROUP %s",
 													   fmtId(grantee->data + strlen("group ")));
 							
 						}
 						else
-							appendPQExpBuffer(secondsql, "GROUP %s;\n",
+							appendPQExpBuffer(secondsql, "GROUP %s",
 												   fmtId(grantee->data + strlen("group ")));
 						/* END - ReqID:SRS-MISC-USER */
 					}
@@ -489,14 +489,14 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 							int att_result = -1;
 								att_result = grantee_type(grantee->data);
 							if(att_result == 1 )
-								appendPQExpBuffer(secondsql, "INSTANCEUSER %s;\n", fmtId(grantee->data));
+								appendPQExpBuffer(secondsql, "INSTANCEUSER %s", fmtId(grantee->data));
 							else if(att_result == 0)
-								appendPQExpBuffer(secondsql, "DATABASEUSER %s;\n", fmtId(grantee->data));
+								appendPQExpBuffer(secondsql, "DATABASEUSER %s", fmtId(grantee->data));
 							else
-								appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+								appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
 						}
 						else
-							appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
+							appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
 						/* END - ReqID:SRS-MISC-USER */
 					}
 					appendPQExpBufferStr(secondsql, " WITH GRANT OPTION;\n");

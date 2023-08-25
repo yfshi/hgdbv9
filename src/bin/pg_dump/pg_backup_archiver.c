@@ -537,7 +537,8 @@ RestoreArchive(Archive *AHX)
 		{
 			PQExpBuffer qry1;
 		
-			PGresult    *res1,*res2;
+			PGresult    *res1 = NULL,
+						*res2 = NULL;
 			qry1 = createPQExpBuffer();
 			if(!isSuperuser(AH->connection))
 				appendPQExpBuffer(qry1, "set session authorization %s;", AH->public.use_role);
@@ -562,9 +563,12 @@ RestoreArchive(Archive *AHX)
 			{
 				res1 = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
 				res2 = PQexec(AH->connection, qry1->data);
+
+				if(res1)
+					PQclear(res1);
+				if(res2)
+					PQclear(res2);
 			}
-			PQclear(res1);
-			PQclear(res2);
 			destroyPQExpBuffer(qry1);
 		}
 
@@ -951,7 +955,8 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 				{
 					PQExpBuffer qrycmd1;
 		
-					PGresult    *res1,*res2;
+					PGresult    *res1 = NULL,
+							    *res2 = NULL;
 					
 					qrycmd1 = createPQExpBuffer();
 					
@@ -965,9 +970,12 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 					{
 						res1 = PQexec(AH->connection, qrycmd1->data);
 						res2 = PQexec(AH->connection, "reset ivorysql.compatible_mode;");
+
+						if(res1)
+							PQclear(res1);
+						if(res2)
+							PQclear(res2);
 					}
-					PQclear(res1);
-					PQclear(res2);
 					destroyPQExpBuffer(qrycmd1);
 				}
 
@@ -2650,7 +2658,7 @@ get_desc_ownerto(ArchiveHandle *AH, TocEntry *te)
 		strcmp(te->desc, "PACKAGE") == 0 ||
 		strcmp(te->desc, "SUBSCRIPTION") == 0)
 	{
-		int utype;
+		int utype = 0;
 
 		if (te->owner && te->catalogId.oid && te->tag)
 			utype = get_owner_type(AH,te);
@@ -5910,8 +5918,8 @@ OradumpDatabaseRoleMembership(ArchiveHandle *AH)
 {
 	PQExpBuffer buf = createPQExpBuffer();
 	PQExpBuffer buf1 = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
+	PGresult   *res = NULL;
+	int			i = 0;
 
 	printfPQExpBuffer(buf, "SELECT ur.rolname AS roleid, "
 					  "um.rolname AS member, "
@@ -5939,7 +5947,8 @@ OradumpDatabaseRoleMembership(ArchiveHandle *AH)
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		Oid			rdboid, gdboid;
+		Oid			rdboid = InvalidOid, 
+					gdboid = InvalidOid;
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
@@ -5956,13 +5965,12 @@ OradumpDatabaseRoleMembership(ArchiveHandle *AH)
 		if (!PQgetisnull(res, i, 3))
 		{
 			gdboid = FindUserLevelbyoid(AH->connection, grantoroid);
-			if(rdboid == 0 && gdboid == 0)
+			if(!OidIsValid(rdboid) && !OidIsValid(gdboid))
 				continue;
-			
 		}
 		else
 		{
-			if(rdboid == 0)
+			if(!OidIsValid(rdboid))
 				continue;
 		}
 
@@ -5988,7 +5996,7 @@ OradumpDatabaseRoleMembership(ArchiveHandle *AH)
 		{
 			char	   *grantor = PQgetvalue(res, i, 3);
 
-			if(gdboid)
+			if(OidIsValid(gdboid))
 				appendPQExpBuffer(buf1, " GRANTED BY DATABASEUSER %s", fmtId(grantor));
 			else
 				appendPQExpBuffer(buf1, " GRANTED BY INSTANCEUSER %s", fmtId(grantor));
@@ -6177,7 +6185,7 @@ FindUserLevelbyoid(PGconn *conn, Oid oid)
 {
 	PGresult	   *res;
 	PQExpBuffer		query_cmd;
-	Oid				userdboid;
+	Oid				userdboid = InvalidOid;
 
 	query_cmd = createPQExpBuffer();
 	appendPQExpBuffer(query_cmd, "select rolowndboid from pg_authid where oid = %u", oid);
@@ -6202,7 +6210,7 @@ GetCurrentDboid(PGconn *conn)
 {
 	PGresult	   *res;
 	PQExpBuffer		query_cmd;
-	Oid				dboid;
+	Oid				dboid = InvalidOid;
 
 	query_cmd = createPQExpBuffer();
 	appendPQExpBuffer(query_cmd, "select oid from pg_database WHERE datname = current_database();");

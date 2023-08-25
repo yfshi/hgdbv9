@@ -35,7 +35,6 @@ static void notice_processor(void *arg, const char *message);
 static void SetCompatibleMode(PGconn *conn);
 static void SetDumptypeMode(PGconn *conn);
 static int RestoringToDB(ArchiveHandle *AH);
-static bool isSuperuser(PGconn *conn);
 
 static void
 _check_database_version(ArchiveHandle *AH)
@@ -629,10 +628,10 @@ SetCompatibleMode(PGconn *conn)
 		pg_log_warning("use database_user \"system\" pg_dump ");
 		
 		CurrentSessionUserName = "system";	
+		
+		if (res1)
+			PQclear(res1);		
 	}
-
-	if (res1)
-		PQclear(res1);
 }
 
 /*
@@ -668,23 +667,6 @@ RestoringToDB(ArchiveHandle *AH)
 	RestoreOptions *ropt = AH->public.ropt;
 
 	return (ropt && ropt->useDB && AH->connection);
-}
-
-/*
- * isSuperuser  ReqID:SRS-MISC-USE
- * 
- */
-static bool
-isSuperuser(PGconn *conn)
-{
-	const char *val;
-
-	val = PQparameterStatus(conn, "is_superuser");
-
-	if (val && strcmp(val, "on") == 0)
-		return true;
-
-	return false;
 }
 
 
