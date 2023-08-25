@@ -580,7 +580,7 @@ savepoint x;
 create table trans_abc (a int);
 insert into trans_abc values (5);
 insert into trans_abc values (10);
-declare foo cursor for select * from trans_abc
+declare foo cursor for select * from trans_abc;
 fetch from foo;
  a 
 ---
