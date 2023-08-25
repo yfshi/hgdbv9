@@ -232,12 +232,12 @@ step wrtwcte	{ UPDATE table_a SET value = 'tableAValue2' WHERE id = 1; }
 step wrjt	{ UPDATE jointest SET data = 42 WHERE id = 7; }
 
 step conditionalpartupdate	{
-	update parttbl p set b = u.b + 100 from u where p.a = u.a;
+	update parttbl set c = -c where b < 10;
 }
 
 step complexpartupdate	{
 	with u as (update parttbl set b = b + 1 returning parttbl.*)
-	update parttbl set b = u.b + 100 from u;
+	update parttbl p set b = u.b + 100 from u where p.a = u.a;
 }
 
 step complexpartupdate_route_err1 {
