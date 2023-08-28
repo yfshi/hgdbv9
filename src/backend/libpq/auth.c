@@ -792,7 +792,8 @@ CheckPasswordAuth(Port *port, char **logdetail)
 	if (passwd == NULL)
 		return STATUS_EOF;		/* client wouldn't send password */
 
-	shadow_pass = get_role_password(port->user_name, logdetail);
+	//shadow_pass = get_role_password(port->user_name, logdetail);
+	shadow_pass = ora_get_role_password(port->user_name, port, logdetail);
 	if (shadow_pass)
 	{
 		result = plain_crypt_verify(port->user_name, shadow_pass, passwd,
@@ -825,7 +826,8 @@ CheckPWChallengeAuth(Port *port, char **logdetail)
 		   port->hba->auth_method == uaMD5);
 
 	/* First look up the user's password. */
-	shadow_pass = get_role_password(port->user_name, logdetail);
+	//shadow_pass = get_role_password(port->user_name, logdetail);
+	shadow_pass = ora_get_role_password(port->user_name, port, logdetail);
 
 	/*
 	 * If the user does not exist, or has no password or it's expired, we

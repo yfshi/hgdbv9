@@ -1511,7 +1511,7 @@ void
 GrantRole(GrantRoleStmt *stmt)
 {
 	Relation	pg_authid_rel;
-	Oid			grantor;
+	Oid			grantor = InvalidOid;
 	List	   *grantee_ids;
 	ListCell   *item;
 

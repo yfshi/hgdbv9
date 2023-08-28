@@ -1178,7 +1178,8 @@ OradumpRoleMembership(PGconn *conn)
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		Oid			rdboid, gdboid;
+		Oid			rdboid = InvalidOid,
+					gdboid = InvalidOid;
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
@@ -1191,12 +1192,12 @@ OradumpRoleMembership(PGconn *conn)
 		if (!PQgetisnull(res, i, 3))
 		{
 			gdboid = FindUserLevelbyoid(conn, grantoroid);
-			if(rdboid || gdboid)
+			if(OidIsValid(rdboid) || OidIsValid(gdboid))
 				continue;
 		}
 		else
 		{
-			if(rdboid)
+			if(OidIsValid(rdboid))
 				continue;
 		}
 
@@ -1206,7 +1207,7 @@ OradumpRoleMembership(PGconn *conn)
 			fprintf(OPF, "GRANT INSTANCEUSER %s", fmtId(roleid));
 		
 		rdboid = FindUserLevelbyoid(conn, memberoid);
-		if(rdboid)
+		if(OidIsValid(rdboid))
 			fprintf(OPF, " TO DATABASEUSER %s", fmtId(member));
 		else
 			fprintf(OPF, " TO INSTANCEUSER %s", fmtId(member));
@@ -1222,7 +1223,7 @@ OradumpRoleMembership(PGconn *conn)
 		{
 			char	   *grantor = PQgetvalue(res, i, 3);
 
-			if(gdboid)
+			if(OidIsValid(gdboid))
 				fprintf(OPF, " GRANTED BY DATABASEUSER %s", fmtId(grantor));
 			else
 				fprintf(OPF, " GRANTED BY INSTANCEUSER %s", fmtId(grantor));

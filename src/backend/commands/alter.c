@@ -872,7 +872,7 @@ ExecAlterOwnerStmt(AlterOwnerStmt *stmt)
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Determine the type of user
 	 */
-	Oid			newowner;
+	Oid			newowner = InvalidOid;
 	bool current_user_level;
 
 	current_user_level = isinstancelevel();
