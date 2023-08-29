@@ -933,6 +933,11 @@ index_create(Relation heapRelation,
 											collationObjectId,
 											classObjectId);
 
+	/* Begin - BUG#Z505 */
+	if (heapRelation->rd_rel->relhasrowid)
+		indexTupDesc->tdhasrowid = true;
+	/* End - BUG#Z505 */
+
 	/*
 	 * Allocate an OID for the index, unless we were told what to use.
 	 *
