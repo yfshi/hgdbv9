@@ -101,8 +101,8 @@ get_lic_baseinfo(PG_FUNCTION_ARGS)
 
 	sprintf(result_info, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
 						 "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
-						 "%s\n",
-							hg_get_licSerial(), hg_get_license_status(), hg_get_userInfo(), hg_get_authType(),
+						 "%s\n%s\n",
+							hg_get_licver(), hg_get_licSerial(), hg_get_license_status(), hg_get_userInfo(), hg_get_authType(),
 							hg_get_usedType(), hg_get_createTime(), hg_get_finalTime(), hg_get_highgoVersion(),
 							hg_get_projectInfo(), hg_get_maxConnection(), hg_get_maxCpuCores(), hg_get_defaultDBname(),
 							hg_get_defaultDBuser(), hg_get_defaultDBport(), hg_get_hardware_code());

@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V0.1");
+			puts("licchk DB V1.3");
 			exit(0);
 		}
 	}
@@ -259,6 +259,7 @@ printLicenseData(void)
 	hg_set_is_with_title(true);
 	hg_set_is_chinese_title(is_chinese);
 
+	printf("%s\n", hg_get_licver());
 	printf("%s\n", hg_get_licSerial());
 	printf("%s\n", hg_get_license_status());
 	printf("%s\n", hg_get_userInfo());

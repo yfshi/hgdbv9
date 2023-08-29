@@ -6,7 +6,7 @@ include $(top_builddir)/src/Makefile.global
 
 NAME = license
 SO_MAJOR_VERSION=1
-SO_MINOR_VERSION=2
+SO_MINOR_VERSION=3
 
 include $(top_builddir)/src/Makefile.shlib 
 
