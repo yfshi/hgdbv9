@@ -45,7 +45,7 @@ $(call recurse,distprep coverage,doc src config contrib)
 
 # clean, distclean, etc should apply to contrib too, even though
 # it's not built by default
-$(call recurse,clean,doc contrib src config)
+$(call recurse,clean,doc contrib contrib/ivorysql_ora src config)
 clean:
 	rm -rf tmp_install/ portlock/
 # Garbage from autoconf:
