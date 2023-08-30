@@ -17319,6 +17319,11 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 	if (dopt->dataOnly)
 		return;
 
+	/* Begin - BUG#Z505 */
+	if (indxinfo->indextable->relhasrowid)
+		return;
+	/* End - BUG#Z505 */
+
 	q = createPQExpBuffer();
 	delq = createPQExpBuffer();
 

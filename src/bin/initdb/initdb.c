@@ -294,10 +294,8 @@ static void load_plisql(FILE *cmdfd);
 /* END - SQL PARSER */
 static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
 #ifdef USE_LICENSE
 static void load_hg_misc(FILE *cmdfd);
-#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 static void vacuum_db(FILE *cmdfd);
@@ -2089,15 +2087,12 @@ load_ivorysql_ora(FILE *cmdfd)
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
 #ifdef USE_LICENSE
 static void
 load_hg_misc(FILE *cmdfd)
 {
 	PG_CMD_PUTS("CREATE EXTENSION hg_misc;\n\n");
-	PG_CMD_PUTS("ALTER EXTENSION hg_misc SET SCHEMA public;\n\n");
 }
-#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
@@ -3188,7 +3183,7 @@ initialize_data_directory(void)
 
 	load_plpgsql(cmdfd);
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
+#if 1
 #ifdef USE_LICENSE
 	load_hg_misc(cmdfd);
 #endif
