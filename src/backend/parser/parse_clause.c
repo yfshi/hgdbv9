@@ -2108,6 +2108,11 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 				 parser_errposition(pstate, location)));
 	}
 
+	/* Begin - BUG#M0000217 */
+	if (exprKind == EXPR_KIND_ORDER_BY)
+		pstate->p_targetlist = tlist;
+	/* End - BUG#M0000217 */
+
 	/*
 	 * Otherwise, we have an expression, so process it per SQL99 rules.
 	 */

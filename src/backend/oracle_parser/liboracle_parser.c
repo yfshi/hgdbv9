@@ -86,6 +86,8 @@ static get_keywords_hook_type prev_pg_get_keywords = NULL;
 static fill_in_constant_lengths_hook_type prev_fill_in_contant_lengths = NULL;
 quote_identifier_hook_type prev_quote_identifier = NULL;
 
+int extral_alias_counts;	/* BUG#M0000217 */
+
 void _PG_init(void);
 void _PG_fini(void);
 
@@ -161,6 +163,8 @@ oracle_raw_parser(const char *str, RawParseMode mode)
 	ora_core_yyscan_t yyscanner;
 	ora_base_yy_extra_type yyextra;
 	int			yyresult;
+
+	extral_alias_counts = 0;	/* BUG#M0000217 */
 
 	/* initialize the flex scanner */
 	yyscanner = ora_scanner_init(str, &yyextra.core_yy_extra,

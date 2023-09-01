@@ -649,8 +649,62 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				set_merge_on_attrno(pstate, colname);
 				/* End - Bug#Z167 */
 
-				/* Try to identify as an unqualified column */
-				node = colNameToVar(pstate, colname, false, cref->location);
+				/* Begin - BUG#M0000217 */
+				if (compatible_db == ORA_PARSER &&
+					pstate->p_expr_kind == EXPR_KIND_ORDER_BY &&
+					pstate->p_targetlist)
+				{
+					ListCell	*tl;
+					List		**tlist = pstate->p_targetlist;
+					TargetEntry	*target_result = NULL;
+
+					foreach(tl, *tlist)
+					{
+						TargetEntry *tle = (TargetEntry *) lfirst(tl);
+
+						if (!tle->resjunk &&
+							strcmp(tle->resname, colname) == 0)
+						{
+							if (target_result != NULL)
+							{
+								if (!equal(target_result->expr, tle->expr))
+									ereport(ERROR,
+											(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+											 errmsg("%s \"%s\" is ambiguous",
+													ParseExprKindName(EXPR_KIND_ORDER_BY),
+													colname),
+											 parser_errposition(pstate, cref->location)));
+							}
+							else
+								target_result = tle;
+							/* Stay in loop to check for ambiguity */
+						}
+					}
+
+					if (target_result != NULL)
+					{
+						/*
+						 * target_result->expr become new arg instead of cref,
+						 * We need modify the location of node, so must use a copy.
+						 */
+						node = (Node *) copyObject(target_result->expr);
+
+						/*
+						 * Try to propagate location knowledge.  This should
+						 * be extended if node can ever take on other node types.
+						 */
+						if (IsA(node, Var))
+							((Var *) node)->location = cref->location;
+					}
+					else
+						node = colNameToVar(pstate, colname, false, cref->location);
+				}
+				else
+				/* End - BUG#M0000217 */
+				{
+					/* Try to identify as an unqualified column */
+					node = colNameToVar(pstate, colname, false, cref->location);
+				}
 
 				if (node == NULL)
 				{

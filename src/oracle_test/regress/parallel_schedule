@@ -186,4 +186,6 @@ test: ora_cast_as_int
 test: dbuser
 #/* BEGIN - ReqID:SRS-MISC-USER */
 
-
+#/* Begin - BUG#M0000217 */
+test: ora_compatible_oracle_misc
+#/* End - BUG#M0000217 */

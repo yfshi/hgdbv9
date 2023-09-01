@@ -14818,6 +14818,8 @@ table_ref:	relation_expr opt_alias_clause
 					 * However, it does seem like a good idea to emit
 					 * an error message that's better than "syntax error".
 					 */
+					/* Begin - BUG#M0000217 */
+					#if 0
 					if ($2 == NULL)
 					{
 						if (IsA($1, SelectStmt) &&
@@ -14834,6 +14836,19 @@ table_ref:	relation_expr opt_alias_clause
 									 errhint("For example, FROM (SELECT ...) [AS] foo."),
 									 parser_errposition(@1)));
 					}
+					#endif
+
+					if ($2 == NULL)
+					{
+						Alias *a = makeNode(Alias);
+						StringInfoData buf;
+
+						initStringInfo(&buf);
+						appendStringInfo(&buf, "__new_alias__%d", ++extral_alias_counts);
+						a->aliasname = buf.data;
+						n->alias = a;
+					}
+					/* Begin - BUG#M0000217 */
 					$$ = (Node *) n;
 				}
 			| LATERAL_P select_with_parens opt_alias_clause
