@@ -3997,7 +3997,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	}
 
 	/* set up epqstate with dummy subplan data for the moment */
-	EvalPlanQualInit(&mtstate->mt_epqstate, estate, NULL, NIL, node->epqParam);
+	EvalPlanQualInitExt(&mtstate->mt_epqstate, estate, NULL, NIL,
+						node->epqParam, node->resultRelations);
 	mtstate->fireBSTriggers = true;
 
 	/*
