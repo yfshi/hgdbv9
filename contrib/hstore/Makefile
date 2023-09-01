@@ -23,7 +23,6 @@ PGFILEDESC = "hstore - key/value pair data type"
 HEADERS = hstore.h
 
 REGRESS = hstore
-ORA_REGRESS = ivy_hstore
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

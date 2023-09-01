@@ -3,6 +3,7 @@
 -- ===================================================================
 
 CREATE EXTENSION postgres_fdw;
+SET ivorysql.identifier_case_switch = normal;
 \set EXECUTE_RUN_PREPARE on
 
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
@@ -10,15 +11,15 @@ DO $d$
     BEGIN
         EXECUTE $$CREATE SERVER loopback FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('ivorysql.port')||$$'
             )$$;
         EXECUTE $$CREATE SERVER loopback2 FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('ivorysql.port')||$$'
             )$$;
         EXECUTE $$CREATE SERVER loopback3 FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('ivorysql.port')||$$'
             )$$;
     END;
 $d$;
@@ -35,31 +36,31 @@ CREATE USER MAPPING FOR public SERVER loopback3;
 CREATE TYPE user_enum AS ENUM ('foo', 'bar', 'buz');
 CREATE SCHEMA "S 1";
 CREATE TABLE "S 1"."T 1" (
-	"C 1" int NOT NULL,
-	c2 int NOT NULL,
-	c3 text,
-	c4 pg_catalog.timestamptz,
-	c5 pg_catalog.timestamp,
+	"C 1" number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024),
+	c4 timestamptz,
+	c5 timestamp,
 	c6 varchar(10),
 	c7 char(10),
 	c8 user_enum,
 	CONSTRAINT t1_pkey PRIMARY KEY ("C 1")
 );
 CREATE TABLE "S 1"."T 2" (
-	c1 int NOT NULL,
-	c2 text,
+	c1 number(38,0) NOT NULL,
+	c2 varchar2(1024),
 	CONSTRAINT t2_pkey PRIMARY KEY (c1)
 );
 CREATE TABLE "S 1"."T 3" (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text,
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024),
 	CONSTRAINT t3_pkey PRIMARY KEY (c1)
 );
 CREATE TABLE "S 1"."T 4" (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text,
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024),
 	CONSTRAINT t4_pkey PRIMARY KEY (c1)
 );
 
@@ -73,8 +74,8 @@ INSERT INTO "S 1"."T 1"
 	SELECT id,
 	       id % 10,
 	       to_char(id, 'FM00000'),
-	       '1970-01-01'::pg_catalog.timestamptz + ((id % 100) || ' days')::pg_catalog.interval,
-	       '1970-01-01'::pg_catalog.timestamp + ((id % 100) || ' days')::pg_catalog.interval,
+	       '1970-01-01'::timestamptz + ((id % 100) || ' days')::pg_catalog.interval,
+	       '1970-01-01'::timestamp + ((id % 100) || ' days')::pg_catalog.interval,
 	       id % 10,
 	       id % 10,
 	       'foo'::user_enum
@@ -105,12 +106,12 @@ ANALYZE "S 1"."T 4";
 -- create foreign tables
 -- ===================================================================
 CREATE FOREIGN TABLE ft1 (
-	c0 int,
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text,
-	c4 pg_catalog.timestamptz,
-	c5 pg_catalog.timestamp,
+	c0 number(38,0),
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024),
+	c4 timestamptz,
+	c5 timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -118,12 +119,12 @@ CREATE FOREIGN TABLE ft1 (
 ALTER FOREIGN TABLE ft1 DROP COLUMN c0;
 
 CREATE FOREIGN TABLE ft2 (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	cx int,
-	c3 text,
-	c4 pg_catalog.timestamptz,
-	c5 pg_catalog.timestamp,
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	cx number(38,0),
+	c3 varchar2(1024),
+	c4 timestamptz,
+	c5 timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft2',
 	c8 user_enum
@@ -131,28 +132,89 @@ CREATE FOREIGN TABLE ft2 (
 ALTER FOREIGN TABLE ft2 DROP COLUMN cx;
 
 CREATE FOREIGN TABLE ft4 (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024)
 ) SERVER loopback OPTIONS (schema_name 'S 1', table_name 'T 3');
 
 CREATE FOREIGN TABLE ft5 (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024)
 ) SERVER loopback OPTIONS (schema_name 'S 1', table_name 'T 4');
 
 CREATE FOREIGN TABLE ft6 (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024)
 ) SERVER loopback2 OPTIONS (schema_name 'S 1', table_name 'T 4');
 
 CREATE FOREIGN TABLE ft7 (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024)
 ) SERVER loopback3 OPTIONS (schema_name 'S 1', table_name 'T 4');
+
+--test inteval
+CREATE TABLE "S 1".test_interval (
+    candidate_id NUMBER,
+    first_name VARCHAR2(50 byte) NOT NULL,
+    last_name VARCHAR2(50 byte) NOT NULL,
+    job_title VARCHAR2(255 char) NOT NULL,
+    year_of_experience INTERVAL YEAR TO MONTH,
+    second_of_experience INTERVAL day TO SECOND
+);
+
+INSERT INTO "S 1".test_interval (
+    candidate_id,
+    first_name,
+    last_name,
+    job_title,
+    year_of_experience,
+    second_of_experience
+    )
+VALUES (
+    1,
+    'Camila',
+    'Kramer',
+    'SCM Manager',
+    INTERVAL '10-2' YEAR TO MONTH,
+    INTERVAL '11 10:09:08.555' DAY TO SECOND
+    );
+
+select * from "S 1".test_interval;
+
+CREATE FOREIGN TABLE test_interval_foreige (
+    candidate_id NUMBER,
+    first_name VARCHAR2(50 byte) NOT NULL,
+    last_name VARCHAR2(50 byte) NOT NULL,
+    job_title VARCHAR2(255 char) NOT NULL,
+    year_of_experience INTERVAL YEAR TO MONTH,
+    second_of_experience INTERVAL day TO SECOND
+)SERVER loopback3 OPTIONS (schema_name 'S 1', table_name 'test_interval');
+
+
+INSERT INTO test_interval_foreige (
+	candidate_id,
+    first_name,
+    last_name,
+    job_title,
+    year_of_experience,
+	second_of_experience
+    )
+VALUES (
+	1,
+    'Camila',
+    'Kramer',
+    'SCM Manager',
+    INTERVAL '10-2' YEAR TO MONTH,
+	INTERVAL '11 10:09:08.555' DAY TO SECOND
+    );
+
+select * from test_interval_foreige;
+
+DROP FOREIGN TABLE test_interval_foreige;
+DROP TABLE "S 1".test_interval;
 
 -- ===================================================================
 -- tests for validator
@@ -313,8 +375,8 @@ RESET enable_nestloop;
 -- Test executing assertion in estimate_path_cost_size() that makes sure that
 -- retrieved_rows for foreign rel re-used to cost pre-sorted foreign paths is
 -- a sensible value even when the rel has tuples=0
-CREATE TABLE loct_empty (c1 int NOT NULL, c2 text);
-CREATE FOREIGN TABLE ft_empty (c1 int NOT NULL, c2 text)
+CREATE TABLE loct_empty (c1 number(38,0) NOT NULL, c2 varchar2(1024));
+CREATE FOREIGN TABLE ft_empty (c1 number(38,0) NOT NULL, c2 varchar2(1024))
   SERVER loopback OPTIONS (table_name 'loct_empty');
 INSERT INTO loct_empty
   SELECT id, 'AAA' || to_char(id, 'FM000') FROM generate_series(1, 100) id;
@@ -358,16 +420,16 @@ EXPLAIN (VERBOSE, COSTS OFF)
 	SELECT * FROM ft2 ORDER BY ft2.c1, ft2.c3 collate "C";
 
 -- user-defined operator/function
-CREATE FUNCTION postgres_fdw_abs(int) RETURNS int AS $$
+CREATE FUNCTION postgres_fdw_abs(number(38,0)) RETURNS int AS $$
 BEGIN
 RETURN abs($1);
 END
 $$ LANGUAGE plpgsql IMMUTABLE;
 /
 CREATE OPERATOR === (
-    LEFTARG = int,
-    RIGHTARG = int,
-    PROCEDURE = int4eq,
+    LEFTARG = number(38,0),
+    RIGHTARG = number(38,0),
+    PROCEDURE = sys.number_eq,
     COMMUTATOR = ===
 );
 
@@ -393,8 +455,8 @@ EXPLAIN (VERBOSE, COSTS OFF)
 SELECT * FROM ft1 t1 WHERE t1.c1 === t1.c2 order by t1.c2 limit 1;
 
 -- but let's put them in an extension ...
-ALTER EXTENSION postgres_fdw ADD FUNCTION postgres_fdw_abs(int);
-ALTER EXTENSION postgres_fdw ADD OPERATOR === (int, int);
+ALTER EXTENSION postgres_fdw ADD FUNCTION postgres_fdw_abs(number(38,0));
+ALTER EXTENSION postgres_fdw ADD OPERATOR === (number(38,0), number(38,0));
 ALTER SERVER loopback OPTIONS (ADD extensions 'postgres_fdw');
 
 -- ... now they can be shipped
@@ -810,8 +872,8 @@ select sum(c2) filter (where c2 in (select c2 from ft1 where c2 < 5)) from ft1;
 
 -- Ordered-sets within aggregate
 explain (verbose, costs off)
-select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::pg_catalog.numeric) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::pg_catalog.numeric) within group (order by c1) < 500 order by c2;
-select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::pg_catalog.numeric) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::pg_catalog.numeric) within group (order by c1) < 500 order by c2;
+select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::number) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::number) within group (order by c1) < 500 order by c2;
+select c2, rank('10'::pg_catalog.varchar) within group (order by c6), percentile_cont(c2/10::number) within group (order by c1) from ft1 where c2 < 10 group by c2 having percentile_cont(c2/10::number) within group (order by c1) < 500 order by c2;
 
 -- Using multiple arguments within aggregates
 explain (verbose, costs off)
@@ -865,34 +927,34 @@ drop function least_accum(anyelement, variadic anyarray);
 -- user defined objects are considered unshippable unless they are part of
 -- the extension.
 create operator public.<^ (
- leftarg = int4,
- rightarg = int4,
- procedure = int4eq
+ leftarg = number(38,0),
+ rightarg = number(38,0),
+ procedure = sys.number_eq
 );
 
 create operator public.=^ (
- leftarg = int4,
- rightarg = int4,
- procedure = int4lt
+ leftarg = number(38,0),
+ rightarg = number(38,0),
+ procedure = sys.number_lt
 );
 
 create operator public.>^ (
- leftarg = int4,
- rightarg = int4,
- procedure = int4gt
+ leftarg = number(38,0),
+ rightarg = number(38,0),
+ procedure = sys.number_gt
 );
 
 create operator family my_op_family using btree;
 
-create function my_op_cmp(a int, b int) returns int as
-  $$begin return btint4cmp(a, b); end $$ language plpgsql;
+create function my_op_cmp(a number(38,0), b number(38,0)) returns integer as
+  $$begin return sys.number_cmp(a, b); end $$ language plisql;
 /
 
-create operator class my_op_class for type int using btree family my_op_family as
+create operator class my_op_class for type number(38,0) using btree family my_op_family as
  operator 1 public.<^,
  operator 3 public.=^,
  operator 5 public.>^,
- function 1 my_op_cmp(int, int);
+ function 1 my_op_cmp(number(38,0), number(38,0));
 
 -- This will not be pushed as user defined sort operator is not part of the
 -- extension yet.
@@ -908,11 +970,11 @@ ANALYZE ft2;
 
 -- Add into extension
 alter extension postgres_fdw add operator class my_op_class using btree;
-alter extension postgres_fdw add function my_op_cmp(a int, b int);
+alter extension postgres_fdw add function my_op_cmp(a number(38,0), b number(38,0));
 alter extension postgres_fdw add operator family my_op_family using btree;
-alter extension postgres_fdw add operator public.<^(int, int);
-alter extension postgres_fdw add operator public.=^(int, int);
-alter extension postgres_fdw add operator public.>^(int, int);
+alter extension postgres_fdw add operator public.<^(number(38,0), number(38,0));
+alter extension postgres_fdw add operator public.=^(number(38,0), number(38,0));
+alter extension postgres_fdw add operator public.>^(number(38,0), number(38,0));
 alter server loopback options (set extensions 'postgres_fdw');
 
 -- Now this will be pushed as sort operator is part of the extension.
@@ -926,11 +988,11 @@ select * from ft2 order by c1 using operator(public.<^);
 
 -- Remove from extension
 alter extension postgres_fdw drop operator class my_op_class using btree;
-alter extension postgres_fdw drop function my_op_cmp(a int, b int);
+alter extension postgres_fdw drop function my_op_cmp(a number(38,0), b number(38,0));
 alter extension postgres_fdw drop operator family my_op_family using btree;
-alter extension postgres_fdw drop operator public.<^(int, int);
-alter extension postgres_fdw drop operator public.=^(int, int);
-alter extension postgres_fdw drop operator public.>^(int, int);
+alter extension postgres_fdw drop operator public.<^(number(38,0), number(38,0));
+alter extension postgres_fdw drop operator public.=^(number(38,0), number(38,0));
+alter extension postgres_fdw drop operator public.>^(number(38,0), number(38,0));
 alter server loopback options (set extensions 'postgres_fdw');
 
 -- This will not be pushed as sort operator is now removed from the extension.
@@ -939,11 +1001,11 @@ select array_agg(c1 order by c1 using operator(public.<^)) from ft2 where c2 = 6
 
 -- Cleanup
 drop operator class my_op_class using btree;
-drop function my_op_cmp(a int, b int);
+drop function my_op_cmp(a number(38,0), b number(38,0));
 drop operator family my_op_family using btree;
-drop operator public.>^(int, int);
-drop operator public.=^(int, int);
-drop operator public.<^(int, int);
+drop operator public.>^(number(38,0), number(38,0));
+drop operator public.=^(number(38,0), number(38,0));
+drop operator public.<^(number(38,0), number(38,0));
 
 -- Input relation to aggregate push down hook is not safe to pushdown and thus
 -- the aggregate cannot be pushed down to foreign server.
@@ -1047,22 +1109,22 @@ select c2, array_agg(c2) over (partition by c2%2 order by c2 range between curre
 -- parameterized queries
 -- ===================================================================
 -- simple join
-PREPARE st1(int, int) AS SELECT t1.c3, t2.c3 FROM ft1 t1, ft2 t2 WHERE t1.c1 = $1 AND t2.c1 = $2;
+PREPARE st1(number(38,0), number(38,0)) AS SELECT t1.c3, t2.c3 FROM ft1 t1, ft2 t2 WHERE t1.c1 = $1 AND t2.c1 = $2;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st1(1, 2);
 EXECUTE st1(1, 1);
 EXECUTE st1(101, 101);
 -- subquery using stable function (can't be sent to remote)
-PREPARE st2(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND c4::pg_catalog.date = '1970-01-17'::date) ORDER BY c1;
+PREPARE st2(number(38,0)) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND c4::date = '1970-01-17'::date) ORDER BY c1;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st2(10, 20);
 EXECUTE st2(10, 20);
 EXECUTE st2(101, 121);
 -- subquery using immutable function (can be sent to remote)
-PREPARE st3(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND c5::pg_catalog.date = '1970-01-17'::date) ORDER BY c1;
+PREPARE st3(number(38,0)) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND c5::date = '1970-01-17'::date) ORDER BY c1;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st3(10, 20);
 EXECUTE st3(10, 20);
 EXECUTE st3(20, 30);
 -- custom plan should be chosen initially
-PREPARE st4(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 = $1;
+PREPARE st4(number(38,0)) AS SELECT * FROM ft1 t1 WHERE t1.c1 = $1;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
@@ -1071,7 +1133,7 @@ EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
 -- once we try it enough times, should switch to generic plan
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
 -- value of $1 should not be sent to remote
-PREPARE st5(user_enum,int) AS SELECT * FROM ft1 t1 WHERE c8 = $1 and c1 = $2;
+PREPARE st5(user_enum,number(38,0)) AS SELECT * FROM ft1 t1 WHERE c8 = $1 and c1 = $2;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st5('foo', 1);
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st5('foo', 1);
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st5('foo', 1);
@@ -1127,9 +1189,9 @@ SELECT ctid, * FROM ft1 t1 LIMIT 1;
 -- ===================================================================
 -- used in PL/pgSQL function
 -- ===================================================================
-CREATE OR REPLACE FUNCTION f_test(p_c1 int) RETURNS int AS $$
+CREATE OR REPLACE FUNCTION f_test(p_c1 number(38,0)) RETURNS number(38,0) AS $$
 DECLARE
-	v_c1 int;
+	v_c1 number(38,0);
 BEGIN
     SELECT c1 INTO v_c1 FROM ft1 WHERE c1 = p_c1 LIMIT 1;
     PERFORM c1 FROM ft1 WHERE c1 = p_c1 AND p_c1 = v_c1 LIMIT 1;
@@ -1138,19 +1200,19 @@ END;
 $$ LANGUAGE plpgsql;
 /
 SELECT f_test(100);
-DROP FUNCTION f_test(int);
+DROP FUNCTION f_test(number(38,0));
 
 -- ===================================================================
 -- REINDEX
 -- ===================================================================
 -- remote table is not created here
-CREATE FOREIGN TABLE reindex_foreign (c1 int, c2 int)
+CREATE FOREIGN TABLE reindex_foreign (c1 number(38,0), c2 number(38,0))
   SERVER loopback2 OPTIONS (table_name 'reindex_local');
 REINDEX TABLE reindex_foreign; -- error
 REINDEX TABLE CONCURRENTLY reindex_foreign; -- error
 DROP FOREIGN TABLE reindex_foreign;
 -- partitions and foreign tables
-CREATE TABLE reind_fdw_parent (c1 int) PARTITION BY RANGE (c1);
+CREATE TABLE reind_fdw_parent (c1 number(38,0)) PARTITION BY RANGE (c1);
 CREATE TABLE reind_fdw_0_10 PARTITION OF reind_fdw_parent
   FOR VALUES FROM (0) TO (10);
 CREATE FOREIGN TABLE reind_fdw_10_20 PARTITION OF reind_fdw_parent
@@ -1163,7 +1225,7 @@ DROP TABLE reind_fdw_parent;
 -- ===================================================================
 -- conversion error
 -- ===================================================================
-ALTER FOREIGN TABLE ft1 ALTER COLUMN c8 TYPE int;
+ALTER FOREIGN TABLE ft1 ALTER COLUMN c8 TYPE number(38,0);
 SELECT * FROM ft1 ftx(x1,x2,x3,x4,x5,x6,x7,x8) WHERE x1 = 1;  -- ERROR
 SELECT ftx.x1, ft2.c2, ftx.x8 FROM ft1 ftx(x1,x2,x3,x4,x5,x6,x7,x8), ft2
   WHERE ftx.x1 = ft2.c1 AND ftx.x1 = 1; -- ERROR
@@ -1194,8 +1256,8 @@ COMMIT;
 -- ===================================================================
 -- test handling of collations
 -- ===================================================================
-create table loct3 (f1 text collate "C" unique, f2 text, f3 varchar(10) unique);
-create foreign table ft3 (f1 text collate "C", f2 text, f3 varchar(10))
+create table loct3 (f1 varchar2(1024) collate "C" unique, f2 varchar2(1024), f3 varchar(10) unique);
+create foreign table ft3 (f1 varchar2(1024) collate "C", f2 varchar2(1024), f3 varchar(10))
   server loopback options (table_name 'loct3', use_remote_estimate 'true');
 
 -- can be sent to remote
@@ -1475,13 +1537,13 @@ DROP TABLE base_tbl;
 
 -- test WCO for partitions
 
-CREATE TABLE child_tbl (a int, b int);
+CREATE TABLE child_tbl (a number(38,0), b number(38,0));
 ALTER TABLE child_tbl SET (autovacuum_enabled = 'false');
 CREATE TRIGGER row_before_insupd_trigger BEFORE INSERT OR UPDATE ON child_tbl FOR EACH ROW EXECUTE PROCEDURE row_before_insupd_trigfunc();
-CREATE FOREIGN TABLE foreign_tbl (a int, b int)
+CREATE FOREIGN TABLE foreign_tbl (a number(38,0), b number(38,0))
   SERVER loopback OPTIONS (table_name 'child_tbl');
 
-CREATE TABLE parent_tbl (a int, b int) PARTITION BY RANGE(a);
+CREATE TABLE parent_tbl (a number(38,0), b number(38,0)) PARTITION BY RANGE(a);
 ALTER TABLE parent_tbl ATTACH PARTITION foreign_tbl FOR VALUES FROM (0) TO (100);
 -- Detach and re-attach once, to stress the concurrent detach case.
 ALTER TABLE parent_tbl DETACH PARTITION foreign_tbl CONCURRENTLY;
@@ -1524,9 +1586,9 @@ DROP FUNCTION row_before_insupd_trigfunc;
 -- ===================================================================
 -- test serial columns (ie, sequence-based defaults)
 -- ===================================================================
-create table loc1 (f1 serial, f2 text);
+create table loc1 (f1 serial, f2 varchar2(1024));
 alter table loc1 set (autovacuum_enabled = 'false');
-create foreign table rem1 (f1 serial, f2 text)
+create foreign table rem1 (f1 serial, f2 varchar2(1024))
   server loopback options(table_name 'loc1');
 select pg_catalog.setval('rem1_f1_seq', 10, false);
 insert into loc1(f2) values('hi');
@@ -1540,12 +1602,12 @@ select * from rem1;
 -- test generated columns
 -- ===================================================================
 create table gloc1 (
-  a int,
-  b int generated always as (a * 2) stored);
+  a number(38,0),
+  b number(38,0) generated always as (a * 2) stored);
 alter table gloc1 set (autovacuum_enabled = 'false');
 create foreign table grem1 (
-  a int,
-  b int generated always as (a * 2) stored)
+  a number(38,0),
+  b number(38,0) generated always as (a * 2) stored)
   server loopback options(table_name 'gloc1');
 explain (verbose, costs off)
 insert into grem1 (a) values (1), (2);
@@ -1577,12 +1639,12 @@ delete from grem1;
 -- batch insert with foreign partitions.
 -- This schema uses two partitions, one local and one remote with a modulo
 -- to loop across all of them in batches.
-create table tab_batch_local (id int, data text);
+create table tab_batch_local (id number(38,0), data varchar2(1024));
 insert into tab_batch_local select i, 'test'|| i from generate_series(1, 45) i;
-create table tab_batch_sharded (id int, data text) partition by hash(id);
+create table tab_batch_sharded (id number(38,0), data varchar2(1024)) partition by hash(id);
 create table tab_batch_sharded_p0 partition of tab_batch_sharded
   for values with (modulus 2, remainder 0);
-create table tab_batch_sharded_p1_remote (id int, data text);
+create table tab_batch_sharded_p1_remote (id number(38,0), data varchar(1024));
 create foreign table tab_batch_sharded_p1 partition of tab_batch_sharded
   for values with (modulus 2, remainder 1)
   server loopback options (table_name 'tab_batch_sharded_p1_remote');
@@ -1930,11 +1992,11 @@ DROP TRIGGER trig_row_after_delete ON rem1;
 -- test inheritance features
 -- ===================================================================
 
-CREATE TABLE a (aa TEXT);
-CREATE TABLE loct (aa TEXT, bb TEXT);
+CREATE TABLE a (aa varchar2(1024));
+CREATE TABLE loct (aa varchar2(1024), bb varchar2(1024));
 ALTER TABLE a SET (autovacuum_enabled = 'false');
 ALTER TABLE loct SET (autovacuum_enabled = 'false');
-CREATE FOREIGN TABLE b (bb TEXT) INHERITS (a)
+CREATE FOREIGN TABLE b (bb varchar2(1024)) INHERITS (a)
   SERVER loopback OPTIONS (table_name 'loct');
 
 INSERT INTO a(aa) VALUES('aaa');
@@ -1977,17 +2039,17 @@ DROP TABLE a CASCADE;
 DROP TABLE loct;
 
 -- Check SELECT FOR UPDATE/SHARE with an inherited source table
-create table loct1 (f1 int, f2 int, f3 int);
-create table loct2 (f1 int, f2 int, f3 int);
+create table loct1 (f1 number(38,0), f2 number(38,0), f3 number(38,0));
+create table loct2 (f1 number(38,0), f2 number(38,0), f3 number(38,0));
 
 alter table loct1 set (autovacuum_enabled = 'false');
 alter table loct2 set (autovacuum_enabled = 'false');
 
-create table foo (f1 int, f2 int);
-create foreign table foo2 (f3 int) inherits (foo)
+create table foo (f1 number(38,0), f2 number(38,0));
+create foreign table foo2 (f3 number(38,0)) inherits (foo)
   server loopback options (table_name 'loct1');
-create table bar (f1 int, f2 int);
-create foreign table bar2 (f3 int) inherits (bar)
+create table bar (f1 number(38,0), f2 number(38,0));
+create foreign table bar2 (f3 number(38,0)) inherits (bar)
   server loopback options (table_name 'loct2');
 
 alter table foo set (autovacuum_enabled = 'false');
@@ -2014,8 +2076,8 @@ select * from bar where f1 in (select f1 from foo) for share;
 
 -- Now check SELECT FOR UPDATE/SHARE with an inherited source table,
 -- where the parent is itself a foreign table
-create table loct4 (f1 int, f2 int, f3 int);
-create foreign table foo2child (f3 int) inherits (foo2)
+create table loct4 (f1 number(38,0), f2 number(38,0), f3 number(38,0));
+create foreign table foo2child (f3 number(38,0)) inherits (foo2)
   server loopback options (table_name 'loct4');
 
 explain (verbose, costs off)
@@ -2025,7 +2087,7 @@ select * from bar where f1 in (select f1 from foo2) for share;
 drop foreign table foo2child;
 
 -- And with a local child relation of the foreign table parent
-create table foo2child (f3 int) inherits (foo2);
+create table foo2child (f3 number(38,0)) inherits (foo2);
 
 explain (verbose, costs off)
 select * from bar where f1 in (select f1 from foo2) for share;
@@ -2117,12 +2179,44 @@ drop table loct1;
 drop table loct2;
 
 -- Test pushing down UPDATE/DELETE joins to the remote server
-create table parent (a int, b text);
-create table loct1 (a int, b text);
-create table loct2 (a int, b text);
-create foreign table remt1 (a int, b text)
+create table parent (a number(38,0), b varchar2(1024 byte));
+create table loct1 (a number(38,0), b varchar2(1024 byte));
+create table loct2 (a number(38,0), b varchar2(1024 byte));
+create foreign table remt1 (a number(38,0), b varchar2(1024 byte))
   server loopback options (table_name 'loct1');
-create foreign table remt2 (a int, b text)
+create foreign table remt2 (a number(38,0), b varchar2(1024 byte))
+  server loopback options (table_name 'loct2');
+alter foreign table remt1 inherit parent;
+
+insert into remt1 values (1, 'foo');
+insert into remt1 values (2, 'bar');
+insert into remt2 values (1, 'foo');
+insert into remt2 values (2, 'bar');
+
+analyze remt1;
+analyze remt2;
+
+explain (verbose, costs off)
+update parent set b = parent.b || remt2.b from remt2 where parent.a = remt2.a returning *;
+update parent set b = parent.b || remt2.b from remt2 where parent.a = remt2.a returning *;
+explain (verbose, costs off)
+delete from parent using remt2 where parent.a = remt2.a returning parent;
+delete from parent using remt2 where parent.a = remt2.a returning parent;
+
+-- cleanup
+drop foreign table remt1;
+drop foreign table remt2;
+drop table loct1;
+drop table loct2;
+drop table parent;
+
+
+create table parent (a number(38,0), b varchar2(1024 char));
+create table loct1 (a number(38,0), b varchar2(1024 char));
+create table loct2 (a number(38,0), b varchar2(1024 char));
+create foreign table remt1 (a number(38,0), b varchar2(1024 char))
+  server loopback options (table_name 'loct1');
+create foreign table remt2 (a number(38,0), b varchar2(1024 char))
   server loopback options (table_name 'loct2');
 alter foreign table remt1 inherit parent;
 
@@ -2153,11 +2247,11 @@ drop table parent;
 -- ===================================================================
 
 -- Test insert tuple routing
-create table itrtest (a int, b text) partition by list (a);
-create table loct1 (a int check (a in (1)), b text);
-create foreign table remp1 (a int check (a in (1)), b text) server loopback options (table_name 'loct1');
-create table loct2 (a int check (a in (2)), b text);
-create foreign table remp2 (b text, a int check (a in (2))) server loopback options (table_name 'loct2');
+create table itrtest (a number(38,0), b varchar2(1024)) partition by list (a);
+create table loct1 (a number(38,0) check (a in (1)), b varchar2(1024));
+create foreign table remp1 (a number(38,0) check (a in (1)), b varchar2(1024)) server loopback options (table_name 'loct1');
+create table loct2 (a number(38,0) check (a in (2)), b varchar2(1024));
+create foreign table remp2 (b varchar2(1024), a number(38,0) check (a in (2))) server loopback options (table_name 'loct2');
 alter table itrtest attach partition remp1 for values in (1);
 alter table itrtest attach partition remp2 for values in (2);
 
@@ -2216,10 +2310,10 @@ drop table loct1;
 drop table loct2;
 
 -- Test update tuple routing
-create table utrtest (a int, b text) partition by list (a);
-create table loct (a int check (a in (1)), b text);
-create foreign table remp (a int check (a in (1)), b text) server loopback options (table_name 'loct');
-create table locp (a int check (a in (2)), b text);
+create table utrtest (a number(38,0), b varchar2(1024)) partition by list (a);
+create table loct (a number(38,0) check (a in (1)), b varchar2(1024));
+create foreign table remp (a number(38,0) check (a in (1)), b varchar2(1024)) server loopback options (table_name 'loct');
+create table locp (a number(38,0) check (a in (2)), b varchar2(1024));
 alter table utrtest attach partition remp for values in (1);
 alter table utrtest attach partition locp for values in (2);
 
@@ -2296,7 +2390,7 @@ alter table utrtest detach partition remp;
 drop foreign table remp;
 alter table loct drop constraint loct_a_check;
 alter table loct add check (a in (3));
-create foreign table remp (a int check (a in (3)), b text) server loopback options (table_name 'loct');
+create foreign table remp (a number(38,0) check (a in (3)), b varchar2(1024)) server loopback options (table_name 'loct');
 alter table utrtest attach partition remp for values in (3);
 insert into utrtest values (2, 'qux');
 insert into utrtest values (3, 'xyzzy');
@@ -2316,11 +2410,11 @@ drop table utrtest;
 drop table loct;
 
 -- Test copy tuple routing
-create table ctrtest (a int, b text) partition by list (a);
-create table loct1 (a int check (a in (1)), b text);
-create foreign table remp1 (a int check (a in (1)), b text) server loopback options (table_name 'loct1');
-create table loct2 (a int check (a in (2)), b text);
-create foreign table remp2 (b text, a int check (a in (2))) server loopback options (table_name 'loct2');
+create table ctrtest (a number(38,0), b varchar2(1024)) partition by list (a);
+create table loct1 (a number(38,0) check (a in (1)), b varchar2(1024));
+create foreign table remp1 (a number(38,0) check (a in (1)), b varchar2(1024)) server loopback options (table_name 'loct1');
+create table loct2 (a number(38,0) check (a in (2)), b varchar2(1024));
+create foreign table remp2 (b varchar2(1024), a number(38,0) check (a in (2))) server loopback options (table_name 'loct2');
 alter table ctrtest attach partition remp1 for values in (1);
 alter table ctrtest attach partition remp2 for values in (2);
 
@@ -2348,9 +2442,9 @@ drop table loct2;
 -- test COPY FROM
 -- ===================================================================
 
-create table loc2 (f1 int, f2 text);
+create table loc2 (f1 number(38,0), f2 varchar2(1024));
 alter table loc2 set (autovacuum_enabled = 'false');
-create foreign table rem2 (f1 int, f2 text) server loopback options(table_name 'loc2');
+create foreign table rem2 (f1 number(38,0), f2 varchar2(1024)) server loopback options(table_name 'loc2');
 
 -- Test basic functionality
 copy rem2 from stdin;
@@ -2481,9 +2575,9 @@ drop trigger loc2_trig_row_before_insert on loc2;
 delete from rem2;
 
 -- test COPY FROM with foreign table created in the same transaction
-create table loc3 (f1 int, f2 text);
+create table loc3 (f1 number(38,0), f2 varchar(1024));
 begin;
-create foreign table rem3 (f1 int, f2 text)
+create foreign table rem3 (f1 number(38,0), f2 varchar(1024))
 	server loopback options(table_name 'loc3');
 copy rem3 from stdin;
 1	foo
@@ -2497,30 +2591,30 @@ drop table loc3;
 -- ===================================================================
 -- test for TRUNCATE
 -- ===================================================================
-CREATE TABLE tru_rtable0 (id int primary key);
-CREATE FOREIGN TABLE tru_ftable (id int)
+CREATE TABLE tru_rtable0 (id number(38,0) primary key);
+CREATE FOREIGN TABLE tru_ftable (id number(38,0))
        SERVER loopback OPTIONS (table_name 'tru_rtable0');
 INSERT INTO tru_rtable0 (SELECT x FROM generate_series(1,10) x);
 
 CREATE TABLE tru_ptable (id int) PARTITION BY HASH(id);
 CREATE TABLE tru_ptable__p0 PARTITION OF tru_ptable
                             FOR VALUES WITH (MODULUS 2, REMAINDER 0);
-CREATE TABLE tru_rtable1 (id int primary key);
+CREATE TABLE tru_rtable1 (id number(38,0) primary key);
 CREATE FOREIGN TABLE tru_ftable__p1 PARTITION OF tru_ptable
                                     FOR VALUES WITH (MODULUS 2, REMAINDER 1)
        SERVER loopback OPTIONS (table_name 'tru_rtable1');
 INSERT INTO tru_ptable (SELECT x FROM generate_series(11,20) x);
 
-CREATE TABLE tru_pk_table(id int primary key);
-CREATE TABLE tru_fk_table(fkey int references tru_pk_table(id));
+CREATE TABLE tru_pk_table(id number(38,0) primary key);
+CREATE TABLE tru_fk_table(fkey number(38,0) references tru_pk_table(id));
 INSERT INTO tru_pk_table (SELECT x FROM generate_series(1,10) x);
 INSERT INTO tru_fk_table (SELECT x % 10 + 1 FROM generate_series(5,25) x);
-CREATE FOREIGN TABLE tru_pk_ftable (id int)
+CREATE FOREIGN TABLE tru_pk_ftable (id number(38,0))
        SERVER loopback OPTIONS (table_name 'tru_pk_table');
 
-CREATE TABLE tru_rtable_parent (id int);
-CREATE TABLE tru_rtable_child (id int);
-CREATE FOREIGN TABLE tru_ftable_parent (id int)
+CREATE TABLE tru_rtable_parent (id number(38,0));
+CREATE TABLE tru_rtable_child (id number(38,0));
+CREATE FOREIGN TABLE tru_ftable_parent (id number(38,0))
        SERVER loopback OPTIONS (table_name 'tru_rtable_parent');
 CREATE FOREIGN TABLE tru_ftable_child () INHERITS (tru_ftable_parent)
        SERVER loopback OPTIONS (table_name 'tru_rtable_child');
@@ -2606,15 +2700,15 @@ tru_rtable_parent,tru_rtable_child, tru_rtable0_child;
 -- ===================================================================
 
 CREATE SCHEMA import_source;
-CREATE TABLE import_source.t1 (c1 int, c2 pg_catalog.varchar(42) NOT NULL);
-CREATE TABLE import_source.t2 (c1 int default 42, c2 pg_catalog.varchar(42) NULL, c3 text collate "POSIX");
-CREATE TYPE typ1 AS (m1 int, m2 varchar);
-CREATE TABLE import_source.t3 (c1 pg_catalog.timestamptz default now(), c2 typ1);
-CREATE TABLE import_source."x 4" (c1 float8, "C 2" text, c3 pg_catalog.varchar(42));
-CREATE TABLE import_source."x 5" (c1 float8);
+CREATE TABLE import_source.t1 (c1 number(38,0), c2 pg_catalog.varchar(64) NOT NULL);
+CREATE TABLE import_source.t2 (c1 number(38,0) default 42, c2 pg_catalog.varchar(64) NULL, c3 varchar2(1024) collate "POSIX");
+CREATE TYPE typ1 AS (m1 number(38,0), m2 pg_catalog.varchar);
+CREATE TABLE import_source.t3 (c1 timestamptz default now(), c2 typ1);
+CREATE TABLE import_source."x 4" (c1 binary_double, "C 2" varchar2(1024), c3 pg_catalog.varchar(64));
+CREATE TABLE import_source."x 5" (c1 binary_double);
 ALTER TABLE import_source."x 5" DROP COLUMN c1;
-CREATE TABLE import_source."x 6" (c1 int, c2 int generated always as (c1 * 2) stored);
-CREATE TABLE import_source.t4 (c1 int) PARTITION BY RANGE (c1);
+CREATE TABLE import_source."x 6" (c1 number(38,0), c2 number(38,0) generated always as (c1 * 2) stored);
+CREATE TABLE import_source.t4 (c1 number(38,0)) PARTITION BY RANGE (c1);
 CREATE TABLE import_source.t4_part PARTITION OF import_source.t4
   FOR VALUES FROM (1) TO (100);
 CREATE TABLE import_source.t4_part2 PARTITION OF import_source.t4
@@ -2654,7 +2748,7 @@ IMPORT FOREIGN SCHEMA nonesuch FROM SERVER nowhere INTO notthere;
 -- Check case of a type present only on the remote server.
 -- We can fake this by dropping the type locally in our transaction.
 CREATE TYPE "Colors" AS ENUM ('red', 'green', 'blue');
-CREATE TABLE import_source.t5 (c1 int, c2 text collate "C", "Col" "Colors");
+CREATE TABLE import_source.t5 (c1 number(38,0), c2 varchar2(1024) collate "C", "Col" "Colors");
 
 CREATE SCHEMA import_dest5;
 BEGIN;
@@ -2686,7 +2780,7 @@ FROM pg_foreign_server
 WHERE srvname = 'fetch101'
 AND srvoptions @> array['fetch_size=202'];
 
-CREATE FOREIGN TABLE table30000 ( x int ) SERVER fetch101 OPTIONS ( fetch_size '30000' );
+CREATE FOREIGN TABLE table30000 ( x number(38,0) ) SERVER fetch101 OPTIONS ( fetch_size '30000' );
 
 SELECT COUNT(*)
 FROM pg_foreign_table
@@ -2712,7 +2806,7 @@ ROLLBACK;
 -- ===================================================================
 SET enable_partitionwise_join=on;
 
-CREATE TABLE fprt1 (a int, b int, c pg_catalog.varchar(42)) PARTITION BY RANGE(a);
+CREATE TABLE fprt1 (a number(38,0), b number(38,0), c pg_catalog.varchar(42)) PARTITION BY RANGE(a);
 CREATE TABLE fprt1_p1 (LIKE fprt1);
 CREATE TABLE fprt1_p2 (LIKE fprt1);
 ALTER TABLE fprt1_p1 SET (autovacuum_enabled = 'false');
@@ -2727,14 +2821,14 @@ ANALYZE fprt1;
 ANALYZE fprt1_p1;
 ANALYZE fprt1_p2;
 
-CREATE TABLE fprt2 (a int, b int, c pg_catalog.varchar(42)) PARTITION BY RANGE(b);
+CREATE TABLE fprt2 (a number(38,0), b number(38,0), c pg_catalog.varchar(42)) PARTITION BY RANGE(b);
 CREATE TABLE fprt2_p1 (LIKE fprt2);
 CREATE TABLE fprt2_p2 (LIKE fprt2);
 ALTER TABLE fprt2_p1 SET (autovacuum_enabled = 'false');
 ALTER TABLE fprt2_p2 SET (autovacuum_enabled = 'false');
 INSERT INTO fprt2_p1 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(0, 249, 3) i;
 INSERT INTO fprt2_p2 SELECT i, i, to_char(i/50, 'FM0000') FROM generate_series(250, 499, 3) i;
-CREATE FOREIGN TABLE ftprt2_p1 (b int, c pg_catalog.varchar(42), a int)
+CREATE FOREIGN TABLE ftprt2_p1 (b number(38,0), c pg_catalog.varchar(42), a number(38,0))
 	SERVER loopback OPTIONS (table_name 'fprt2_p1', use_remote_estimate 'true');
 ALTER TABLE fprt2 ATTACH PARTITION ftprt2_p1 FOR VALUES FROM (0) TO (250);
 CREATE FOREIGN TABLE ftprt2_p2 PARTITION OF fprt2 FOR VALUES FROM (250) TO (500)
@@ -2780,7 +2874,7 @@ RESET enable_partitionwise_join;
 -- test partitionwise aggregates
 -- ===================================================================
 
-CREATE TABLE pagg_tab (a int, b int, c text) PARTITION BY RANGE(a);
+CREATE TABLE pagg_tab (a number(38,0), b number(38,0), c varchar2(1024)) PARTITION BY RANGE(a);
 
 CREATE TABLE pagg_tab_p1 (LIKE pagg_tab);
 CREATE TABLE pagg_tab_p2 (LIKE pagg_tab);
@@ -2840,7 +2934,7 @@ DO $d$
     BEGIN
         EXECUTE $$CREATE SERVER loopback_nopw FOREIGN DATA WRAPPER postgres_fdw
             OPTIONS (dbname '$$||current_database()||$$',
-                     port '$$||current_setting('port')||$$'
+                     port '$$||current_setting('ivorysql.port')||$$'
             )$$;
     END;
 $d$;
@@ -2850,11 +2944,11 @@ CREATE USER MAPPING FOR public SERVER loopback_nopw;
 CREATE USER MAPPING FOR CURRENT_USER SERVER loopback_nopw;
 
 CREATE FOREIGN TABLE ft1_nopw (
-	c1 int NOT NULL,
-	c2 int NOT NULL,
-	c3 text,
-	c4 pg_catalog.timestamptz,
-	c5 pg_catalog.timestamp,
+	c1 number(38,0) NOT NULL,
+	c2 number(38,0) NOT NULL,
+	c3 varchar2(1024),
+	c4 timestamptz,
+	c5 timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -3105,7 +3199,7 @@ FROM pg_foreign_server
 WHERE srvname = 'batch10'
 AND srvoptions @> array['batch_size=20'];
 
-CREATE FOREIGN TABLE table30 ( x int ) SERVER batch10 OPTIONS ( batch_size '30' );
+CREATE FOREIGN TABLE table30 ( x number(38,0) ) SERVER batch10 OPTIONS ( batch_size '30' );
 
 SELECT COUNT(*)
 FROM pg_foreign_table
@@ -3126,9 +3220,9 @@ AND ftoptions @> array['batch_size=40'];
 
 ROLLBACK;
 
-CREATE TABLE batch_table ( x int );
+CREATE TABLE batch_table ( x number(38,0) );
 
-CREATE FOREIGN TABLE ftable ( x int ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '10' );
+CREATE FOREIGN TABLE ftable ( x number(38,0) ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '10' );
 EXPLAIN (VERBOSE, COSTS OFF) INSERT INTO ftable SELECT * FROM generate_series(1, 10) i;
 INSERT INTO ftable SELECT * FROM generate_series(1, 10) i;
 INSERT INTO ftable SELECT * FROM generate_series(11, 31) i;
@@ -3139,14 +3233,14 @@ TRUNCATE batch_table;
 DROP FOREIGN TABLE ftable;
 
 -- try if large batches exceed max number of bind parameters
-CREATE FOREIGN TABLE ftable ( x int ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '100000' );
+CREATE FOREIGN TABLE ftable ( x number(38,0) ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '100000' );
 INSERT INTO ftable SELECT * FROM generate_series(1, 70000) i;
 SELECT COUNT(*) FROM ftable;
 TRUNCATE batch_table;
 DROP FOREIGN TABLE ftable;
 
 -- Disable batch insert
-CREATE FOREIGN TABLE ftable ( x int ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '1' );
+CREATE FOREIGN TABLE ftable ( x number(38,0) ) SERVER loopback OPTIONS ( table_name 'batch_table', batch_size '1' );
 EXPLAIN (VERBOSE, COSTS OFF) INSERT INTO ftable VALUES (1), (2);
 INSERT INTO ftable VALUES (1), (2);
 SELECT COUNT(*) FROM ftable;
@@ -3166,7 +3260,7 @@ DROP FOREIGN TABLE ftable;
 DROP TABLE batch_table;
 
 -- Use partitioning
-CREATE TABLE batch_table ( x int ) PARTITION BY HASH (x);
+CREATE TABLE batch_table ( x number(38,0) ) PARTITION BY HASH (x);
 
 CREATE TABLE batch_table_p0 (LIKE batch_table);
 CREATE FOREIGN TABLE batch_table_p0f
@@ -3191,7 +3285,7 @@ SELECT COUNT(*) FROM batch_table;
 
 -- Check that enabling batched inserts doesn't interfere with cross-partition
 -- updates
-CREATE TABLE batch_cp_upd_test (a int) PARTITION BY LIST (a);
+CREATE TABLE batch_cp_upd_test (a number(38,0)) PARTITION BY LIST (a);
 CREATE TABLE batch_cp_upd_test1 (LIKE batch_cp_upd_test);
 CREATE FOREIGN TABLE batch_cp_upd_test1_f
 	PARTITION OF batch_cp_upd_test
@@ -3212,7 +3306,7 @@ DROP TABLE batch_table, batch_cp_upd_test, batch_table_p0, batch_table_p1 CASCAD
 -- Use partitioning
 ALTER SERVER loopback OPTIONS (ADD batch_size '10');
 
-CREATE TABLE batch_table ( x int, field1 text, field2 text) PARTITION BY HASH (x);
+CREATE TABLE batch_table ( x number(38,0), field1 varchar2(1024), field2 varchar2(1024)) PARTITION BY HASH (x);
 
 CREATE TABLE batch_table_p0 (LIKE batch_table);
 ALTER TABLE batch_table_p0 ADD CONSTRAINT p0_pkey PRIMARY KEY (x);
@@ -3242,11 +3336,11 @@ DROP TABLE batch_table_p1;
 ALTER SERVER loopback OPTIONS (DROP batch_size);
 
 -- Test that pending inserts are handled properly when needed
-CREATE TABLE batch_table (a text, b int);
-CREATE FOREIGN TABLE ftable (a text, b int)
+CREATE TABLE batch_table (a varchar2(1024), b number(38,0));
+CREATE FOREIGN TABLE ftable (a varchar2(1024), b number(38,0))
 	SERVER loopback
 	OPTIONS (table_name 'batch_table', batch_size '2');
-CREATE TABLE ltable (a text, b int);
+CREATE TABLE ltable (a varchar2(1024), b number(38,0));
 CREATE FUNCTION ftable_rowcount_trigf() RETURNS trigger LANGUAGE plpgsql AS
 $$
 begin
@@ -3297,8 +3391,8 @@ DROP TABLE batch_table;
 DROP TRIGGER ftable_rowcount_trigger ON ltable;
 DROP TABLE ltable;
 
-CREATE TABLE parent (a text, b int) PARTITION BY LIST (a);
-CREATE TABLE batch_table (a text, b int);
+CREATE TABLE parent (a varchar2(1024), b number(38,0)) PARTITION BY LIST (a);
+CREATE TABLE batch_table (a varchar2(1024), b number(38,0));
 CREATE FOREIGN TABLE ftable
 	PARTITION OF parent
 	FOR VALUES IN ('AAA')
@@ -3331,9 +3425,9 @@ ALTER SERVER loopback OPTIONS (DROP extensions);
 ALTER SERVER loopback OPTIONS (ADD async_capable 'true');
 ALTER SERVER loopback2 OPTIONS (ADD async_capable 'true');
 
-CREATE TABLE async_pt (a int, b int, c text) PARTITION BY RANGE (a);
-CREATE TABLE base_tbl1 (a int, b int, c text);
-CREATE TABLE base_tbl2 (a int, b int, c text);
+CREATE TABLE async_pt (a number(38,0), b number(38,0), c varchar2(1024)) PARTITION BY RANGE (a);
+CREATE TABLE base_tbl1 (a number(38,0), b number(38,0), c varchar2(1024));
+CREATE TABLE base_tbl2 (a number(38,0), b number(38,0), c varchar2(1024));
 CREATE FOREIGN TABLE async_p1 PARTITION OF async_pt FOR VALUES FROM (1000) TO (2000)
   SERVER loopback OPTIONS (table_name 'base_tbl1');
 CREATE FOREIGN TABLE async_p2 PARTITION OF async_pt FOR VALUES FROM (2000) TO (3000)
@@ -3343,7 +3437,7 @@ INSERT INTO async_p2 SELECT 2000 + i, i, to_char(i, 'FM0000') FROM generate_seri
 ANALYZE async_pt;
 
 -- simple queries
-CREATE TABLE result_tbl (a int, b int, c text);
+CREATE TABLE result_tbl (a number(38,0), b number(38,0), c varchar2(1024));
 
 EXPLAIN (VERBOSE, COSTS OFF)
 INSERT INTO result_tbl SELECT * FROM async_pt WHERE b % 100 = 0;
@@ -3360,7 +3454,7 @@ SELECT * FROM result_tbl ORDER BY a;
 DELETE FROM result_tbl;
 
 -- Check case where multiple partitions use the same connection
-CREATE TABLE base_tbl3 (a int, b int, c text);
+CREATE TABLE base_tbl3 (a number(38,0), b number(38,0), c varchar2(1024));
 CREATE FOREIGN TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO (4000)
   SERVER loopback2 OPTIONS (table_name 'base_tbl3');
 INSERT INTO async_p3 SELECT 3000 + i, i, to_char(i, 'FM0000') FROM generate_series(0, 999, 5) i;
@@ -3391,7 +3485,7 @@ DELETE FROM result_tbl;
 -- partitionwise joins
 SET enable_partitionwise_join TO true;
 
-CREATE TABLE join_tbl (a1 int, b1 int, c1 text, a2 int, b2 int, c2 text);
+CREATE TABLE join_tbl (a1 number(38,0), b1 number(38,0), c1 varchar2(1024), a2 number(38,0), b2 number(38,0), c2 varchar2(1024));
 
 EXPLAIN (VERBOSE, COSTS OFF)
 INSERT INTO join_tbl SELECT * FROM async_pt t1, async_pt t2 WHERE t1.a = t2.a AND t1.b = t2.b AND t1.b % 100 = 0;
@@ -3424,7 +3518,7 @@ SELECT * FROM async_pt WHERE a < 2000;
 -- Test interaction of async execution with run-time partition pruning
 SET plan_cache_mode TO force_generic_plan;
 
-PREPARE async_pt_query (int, int) AS
+PREPARE async_pt_query (number(38,0), number(38,0)) AS
   INSERT INTO result_tbl SELECT * FROM async_pt WHERE a < $1 AND b === $2;
 
 EXPLAIN (VERBOSE, COSTS OFF)
@@ -3443,7 +3537,7 @@ DELETE FROM result_tbl;
 
 RESET plan_cache_mode;
 
-CREATE TABLE local_tbl(a int, b int, c text);
+CREATE TABLE local_tbl(a number(38,0), b number(38,0), c varchar2(1024));
 INSERT INTO local_tbl VALUES (1505, 505, 'foo'), (2505, 505, 'bar');
 ANALYZE local_tbl;
 
@@ -3484,7 +3578,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
 SELECT * FROM async_pt t1, async_p2 t2 WHERE t1.a = t2.a AND t1.b === 505;
 SELECT * FROM async_pt t1, async_p2 t2 WHERE t1.a = t2.a AND t1.b === 505;
 
-CREATE TABLE local_tbl (a int, b int, c text);
+CREATE TABLE local_tbl (a number(38,0), b number(38,0), c varchar2(1024));
 INSERT INTO local_tbl VALUES (1505, 505, 'foo');
 ANALYZE local_tbl;
 
@@ -3501,13 +3595,13 @@ SELECT * FROM async_pt t1 WHERE t1.b === 505 LIMIT 1;
 SELECT * FROM async_pt t1 WHERE t1.b === 505 LIMIT 1;
 
 -- Check with foreign modify
-CREATE TABLE base_tbl3 (a int, b int, c text);
-CREATE FOREIGN TABLE remote_tbl (a int, b int, c text)
+CREATE TABLE base_tbl3 (a number(38,0), b number(38,0), c varchar2(1024));
+CREATE FOREIGN TABLE remote_tbl (a number(38,0), b number(38,0), c varchar2(1024))
   SERVER loopback OPTIONS (table_name 'base_tbl3');
 INSERT INTO remote_tbl VALUES (2505, 505, 'bar');
 
-CREATE TABLE base_tbl4 (a int, b int, c text);
-CREATE FOREIGN TABLE insert_tbl (a int, b int, c text)
+CREATE TABLE base_tbl4 (a number(38,0), b number(38,0), c varchar2(1024));
+CREATE FOREIGN TABLE insert_tbl (a number(38,0), b number(38,0), c varchar2(1024))
   SERVER loopback OPTIONS (table_name 'base_tbl4');
 
 EXPLAIN (VERBOSE, COSTS OFF)
@@ -3560,9 +3654,9 @@ DROP TABLE join_tbl;
 
 -- Test that an asynchronous fetch is processed before restarting the scan in
 -- ReScanForeignScan
-CREATE TABLE base_tbl (a int, b int);
+CREATE TABLE base_tbl (a number(38,0), b number(38,0));
 INSERT INTO base_tbl VALUES (1, 11), (2, 22), (3, 33);
-CREATE FOREIGN TABLE foreign_tbl (b int)
+CREATE FOREIGN TABLE foreign_tbl (b number(38,0))
   SERVER loopback OPTIONS (table_name 'base_tbl');
 CREATE FOREIGN TABLE foreign_tbl2 () INHERITS (foreign_tbl)
   SERVER loopback OPTIONS (table_name 'base_tbl');
@@ -3588,8 +3682,8 @@ CREATE SERVER inv_scst FOREIGN DATA WRAPPER postgres_fdw
 CREATE SERVER inv_scst FOREIGN DATA WRAPPER postgres_fdw
 	OPTIONS(fdw_tuple_cost '100$%$#$#');
 -- Invalid fetch_size option
-CREATE FOREIGN TABLE inv_fsz (c1 int )
+CREATE FOREIGN TABLE inv_fsz (c1 number(38,0) )
 	SERVER loopback OPTIONS (fetch_size '100$%$#$#');
 -- Invalid batch_size option
-CREATE FOREIGN TABLE inv_bsz (c1 int )
+CREATE FOREIGN TABLE inv_bsz (c1 number(38,0) )
 	SERVER loopback OPTIONS (batch_size '100$%$#$#');

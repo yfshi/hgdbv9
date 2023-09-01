@@ -384,4 +384,21 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '23.*{1}.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
 SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+
+CREATE FUNCTION sys.ltree2varchar2(ltree)
+RETURNS text AS $$
+SELECT ltree2text($1::ltree);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+/
+
+CREATE FUNCTION sys.varchar22ltree(varchar2)
+RETURNS ltree AS $$
+SELECT text2ltree($1::text);
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+/
+
+SELECT ltree2varchar2('1.2.3.34.sdf');
+SELECT varchar22ltree('1.2.3.34.sdf');
+SELECT 'Top.Child1.Child2'::ltree || 'Child3'::varchar2;
+
 RESET ivorysql.enable_emptystring_to_null;
