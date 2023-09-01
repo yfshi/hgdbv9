@@ -45,10 +45,6 @@ ora_get_role_password(const char *role, Port *port, char **logdetail)
 	Datum		datum;
 	bool		isnull;
 	char	   *shadow_pass;
-	Oid			dboid = InvalidOid;
-
-	if(port->database_name)
-		dboid = get_database_oid(port->database_name, true);
 	
 	/*
 	 * Begin - ReqID:SRS-MISC-USER
@@ -64,15 +60,9 @@ ora_get_role_password(const char *role, Port *port, char **logdetail)
 		}
 		else if (port->connmode == 'o')
 		{
-			if(OidIsValid(dboid))
-				roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(role), 
-										ObjectIdGetDatum(dboid));
-
-			else
-				roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(role), 
-										ObjectIdGetDatum(MyDatabaseId));
+			roleTup = SearchSysCache2(AUTHNAMEDBOID,
+									CStringGetDatum(role),
+									ObjectIdGetDatum(MyDatabaseId));
 		}
 	}
 	else
