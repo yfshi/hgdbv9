@@ -279,11 +279,7 @@ oratimestamptz_recv(PG_FUNCTION_ARGS)
 			   *tm = &tt;
 	fsec_t		fsec;
 
-#ifdef HAVE_INT64_TIMESTAMP
 	timestamp = (TimestampTz) pq_getmsgint64(buf);
-#else
-	timestamp = (TimestampTz) pq_getmsgfloat8(buf);
-#endif
 
 	/* rangecheck: see if timestamptz_out would like it */
 	if (TIMESTAMP_NOT_FINITE(timestamp))
@@ -308,11 +304,7 @@ oratimestamptz_send(PG_FUNCTION_ARGS)
 	StringInfoData buf;
 
 	pq_begintypsend(&buf);
-#ifdef HAVE_INT64_TIMESTAMP
 	pq_sendint64(&buf, timestamp);
-#else
-	pq_sendfloat8(&buf, timestamp);
-#endif
 	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
 }
 
@@ -661,12 +653,7 @@ oratimestamptz_cmp_oratimestampltz(PG_FUNCTION_ARGS)
 Datum
 oratimestamptz_hash(PG_FUNCTION_ARGS)
 {
-	/* We can use either hashint8 or hashfloat8 directly */
-#ifdef HAVE_INT64_TIMESTAMP
 	return hashint8(fcinfo);
-#else
-	return hashfloat8(fcinfo);
-#endif
 }
 
 /*****************************************************************************

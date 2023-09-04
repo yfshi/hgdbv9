@@ -590,12 +590,7 @@ oradate_cmp_oratimestampltz(PG_FUNCTION_ARGS)
 Datum
 oradate_hash(PG_FUNCTION_ARGS)
 {
-	/* We can use either hashint8 or hashfloat8 directly */
-#ifdef HAVE_INT64_TIMESTAMP
 	return hashint8(fcinfo);
-#else
-	return hashfloat8(fcinfo);
-#endif
 }
 
 /* Begin - BUG:M0000085 */

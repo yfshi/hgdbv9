@@ -27,6 +27,7 @@
 #include "access/hash.h"
 #include "access/xact.h"
 #include "catalog/pg_type.h"
+#include "common/int128.h"
 #include "funcapi.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
@@ -60,6 +61,8 @@ PG_FUNCTION_INFO_V1(yminterval_pl);
 PG_FUNCTION_INFO_V1(yminterval_div);
 
 PG_FUNCTION_INFO_V1(yminterval_cmp);
+PG_FUNCTION_INFO_V1(in_range_yminterval_yminterval);
+
 PG_FUNCTION_INFO_V1(yminterval_hash);
 PG_FUNCTION_INFO_V1(yminterval_hash_extended);	/* BUG:M0000085 */
 
@@ -1673,6 +1676,36 @@ yminterval_cmp(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(yminterval_cmp_internal(interval1, interval2));
 }
 
+Datum
+in_range_yminterval_yminterval(PG_FUNCTION_ARGS)
+{
+	Interval   *val = PG_GETARG_INTERVAL_P(0);
+	Interval   *base = PG_GETARG_INTERVAL_P(1);
+	Interval   *offset = PG_GETARG_INTERVAL_P(2);
+	bool		sub = PG_GETARG_BOOL(3);
+	bool		less = PG_GETARG_BOOL(4);
+	Interval   *sum;
+
+	if (int128_compare(int64_to_int128(yminterval_cmp_value(offset)), int64_to_int128(0)) < 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PRECEDING_OR_FOLLOWING_SIZE),
+				 errmsg("invalid preceding or following size in window function")));
+
+	/* We don't currently bother to avoid overflow hazards here */
+	if (sub)
+		sum = DatumGetIntervalP(DirectFunctionCall2(yminterval_mi,
+													IntervalPGetDatum(base),
+													IntervalPGetDatum(offset)));
+	else
+		sum = DatumGetIntervalP(DirectFunctionCall2(yminterval_pl,
+													IntervalPGetDatum(base),
+													IntervalPGetDatum(offset)));
+
+	if (less)
+		PG_RETURN_BOOL(yminterval_cmp_internal(val, sum) <= 0);
+	else
+		PG_RETURN_BOOL(yminterval_cmp_internal(val, sum) >= 0);
+}
 
 /*****************************************************************************
  *	 Hash index support procedure 
@@ -1691,11 +1724,7 @@ yminterval_hash(PG_FUNCTION_ARGS)
 	Interval   *interval = PG_GETARG_INTERVAL_P(0);
 	TimeOffset	span = yminterval_cmp_value(interval);
 
-#ifdef HAVE_INT64_TIMESTAMP
 	return DirectFunctionCall1(hashint8, Int64GetDatumFast(span));
-#else
-	return DirectFunctionCall1(hashfloat8, Float8GetDatumFast(span));
-#endif
 }
 
 /* Begin - BUG:M0000085 */
