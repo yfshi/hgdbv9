@@ -470,7 +470,9 @@ CREATE ROLE regress_role_haspriv;
 CREATE ROLE regress_role_nopriv;
 
 -- pg_read_all_stats
-GRANT pg_read_all_stats TO regress_role_haspriv;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_read_all_stats TO regress_role_haspriv;
 SET SESSION AUTHORIZATION regress_role_haspriv;
 -- returns true with role member of pg_read_all_stats
 SELECT COUNT(*) = 0 AS haspriv FROM pg_stat_activity
@@ -480,10 +482,12 @@ SET SESSION AUTHORIZATION regress_role_nopriv;
 SELECT COUNT(*) = 0 AS haspriv FROM pg_stat_activity
   WHERE query = '<insufficient privilege>';
 RESET SESSION AUTHORIZATION;
-REVOKE pg_read_all_stats FROM regress_role_haspriv;
+REVOKE INSTANCEUSER pg_read_all_stats FROM regress_role_haspriv;
 
 -- pg_read_all_settings
-GRANT pg_read_all_settings TO regress_role_haspriv;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_read_all_settings TO regress_role_haspriv;
 BEGIN;
 -- A GUC using GUC_SUPERUSER_ONLY is useful for negative tests.
 SET LOCAL session_preload_libraries TO 'path-to-preload-libraries';
@@ -495,7 +499,7 @@ SET SESSION AUTHORIZATION regress_role_nopriv;
 SHOW session_preload_libraries;
 RESET SESSION AUTHORIZATION;
 ROLLBACK;
-REVOKE pg_read_all_settings FROM regress_role_haspriv;
+REVOKE INSTANCEUSER pg_read_all_settings FROM regress_role_haspriv;
 
 -- clean up
 \c

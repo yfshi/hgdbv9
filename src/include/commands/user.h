@@ -33,5 +33,11 @@ extern ObjectAddress RenameRole(const char *oldname, const char *newname);
 extern void DropOwnedObjects(DropOwnedStmt *stmt);
 extern void ReassignOwnedObjects(ReassignOwnedStmt *stmt);
 extern List *roleSpecsToIds(List *memberNames);
+extern void createsysrole(const char *srolname, Oid dboid);
+extern bool isinstancelevel(void);
+extern Oid FindUserLevelbyoid(Oid useroid);
+extern Oid CurrentUserOwnDboid(void);
+extern bool get_role_canlogin(const char *srolname);
+extern char *CurrentUsername(void);
 
 #endif							/* USER_H */

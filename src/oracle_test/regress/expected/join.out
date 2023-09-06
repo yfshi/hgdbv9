@@ -3087,9 +3087,9 @@ where i41.f1 > 0;
                Filter: (f1 > 0)
          ->  Nested Loop
                Join Filter: (i41.f1 = i42.f1)
-               ->  Seq Scan on int4_tbl i42
+               ->  Seq Scan on int8_tbl i81
                ->  Materialize
-                     ->  Seq Scan on int8_tbl i81
+                     ->  Seq Scan on int4_tbl i42
    ->  Materialize
          ->  Seq Scan on int4_tbl i43
                Filter: (f1 > 1)
@@ -3117,26 +3117,6 @@ where i41.f1 > 0;
      123456 | 1
      123456 | 1
      123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-     123456 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
-         35 | 1
  2147483647 | 1
  2147483647 | 1
  2147483647 | 1
@@ -3147,12 +3127,7 @@ where i41.f1 > 0;
  2147483647 | 1
  2147483647 | 1
  2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
- 2147483647 | 1
-(45 rows)
+(20 rows)
 
 --
 -- test the corner cases FULL JOIN ON TRUE and FULL JOIN ON FALSE
@@ -3163,40 +3138,29 @@ select * from int4_tbl a full join int4_tbl b on true;
            0 |           0
            0 |      123456
            0 |     -123456
-           0 |          35
            0 |  2147483647
            0 | -2147483647
       123456 |           0
       123456 |      123456
       123456 |     -123456
-      123456 |          35
       123456 |  2147483647
       123456 | -2147483647
      -123456 |           0
      -123456 |      123456
      -123456 |     -123456
-     -123456 |          35
      -123456 |  2147483647
      -123456 | -2147483647
-          35 |           0
-          35 |      123456
-          35 |     -123456
-          35 |          35
-          35 |  2147483647
-          35 | -2147483647
   2147483647 |           0
   2147483647 |      123456
   2147483647 |     -123456
-  2147483647 |          35
   2147483647 |  2147483647
   2147483647 | -2147483647
  -2147483647 |           0
  -2147483647 |      123456
  -2147483647 |     -123456
- -2147483647 |          35
  -2147483647 |  2147483647
  -2147483647 | -2147483647
-(36 rows)
+(25 rows)
 
 select * from int4_tbl a full join int4_tbl b on false;
      f1      |     f1      
@@ -3204,16 +3168,14 @@ select * from int4_tbl a full join int4_tbl b on false;
              |           0
              |      123456
              |     -123456
-             |          35
              |  2147483647
              | -2147483647
            0 |            
       123456 |            
      -123456 |            
-          35 |            
   2147483647 |            
  -2147483647 |            
-(12 rows)
+(10 rows)
 
 --
 -- test for ability to use a cartesian join when necessary
@@ -3799,7 +3761,7 @@ select count(*) from
   join int4_tbl on b.thousand = f1;
  count 
 -------
-    20
+    10
 (1 row)
 
 explain (costs off)
@@ -3809,28 +3771,24 @@ select b.unique1 from
   join int4_tbl i1 on b.thousand = f1
   right join int4_tbl i2 on i2.f1 = b.tenthous
   order by 1;
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
  Sort
    Sort Key: b.unique1
-   ->  Hash Right Join
-         Hash Cond: (b.tenthous = i2.f1)
+   ->  Nested Loop Left Join
+         ->  Seq Scan on int4_tbl i2
          ->  Nested Loop Left Join
                Join Filter: (b.unique1 = 42)
                ->  Nested Loop
                      ->  Nested Loop
                            ->  Seq Scan on int4_tbl i1
-                           ->  Bitmap Heap Scan on tenk1 b
-                                 Recheck Cond: (thousand = i1.f1)
-                                 ->  Bitmap Index Scan on tenk1_thous_tenthous
-                                       Index Cond: (thousand = i1.f1)
+                           ->  Index Scan using tenk1_thous_tenthous on tenk1 b
+                                 Index Cond: ((thousand = i1.f1) AND (tenthous = i2.f1))
                      ->  Index Scan using tenk1_unique1 on tenk1 a
                            Index Cond: (unique1 = b.unique2)
                ->  Index Only Scan using tenk1_thous_tenthous on tenk1 c
                      Index Cond: (thousand = a.thousand)
-         ->  Hash
-               ->  Seq Scan on int4_tbl i2
-(19 rows)
+(15 rows)
 
 select b.unique1 from
   tenk1 a join tenk1 b on a.unique1 = b.unique2
@@ -3841,12 +3799,11 @@ select b.unique1 from
  unique1 
 ---------
        0
-      35
         
         
         
         
-(6 rows)
+(5 rows)
 
 explain (costs off)
 select * from
@@ -3946,8 +3903,7 @@ select f1, unique2, case when unique2 is null then f1 else 0 end
  f1 | unique2 | case 
 ----+---------+------
   0 |       0 |    0
- 35 |      35 |    0
-(2 rows)
+(1 row)
 
 --
 -- another case with equivalence clauses above outer joins (bug #8591)
@@ -4045,37 +4001,39 @@ select t1.* from
   on (t1.f1 = b1.d1)
   left join int4_tbl i4
   on (i8.q2 = i4.f1);
-                             QUERY PLAN                             
---------------------------------------------------------------------
- Nested Loop Left Join
+                              QUERY PLAN                              
+----------------------------------------------------------------------
+ Hash Left Join
    Output: t1.f1
-   Join Filter: (t1.f1 = '***'::text)
-   ->  Seq Scan on public.text_tbl t1
-         Output: t1.f1
-   ->  Materialize
-         ->  Hash Right Join
-               Hash Cond: ((NULL::integer) = i8b1.q2)
-               ->  Hash Join
-                     Output: (NULL::integer)
-                     Hash Cond: (i8.q1 = i8b2.q1)
-                     ->  Hash Right Join
-                           Output: i8.q1
-                           Hash Cond: (i4.f1 = i8.q2)
-                           ->  Seq Scan on public.int4_tbl i4
-                                 Output: i4.f1
-                           ->  Hash
+   Hash Cond: (i8.q2 = i4.f1)
+   ->  Nested Loop Left Join
+         Output: t1.f1, i8.q2
+         Join Filter: (t1.f1 = '***'::text)
+         ->  Seq Scan on public.text_tbl t1
+               Output: t1.f1
+         ->  Materialize
+               Output: i8.q2
+               ->  Hash Right Join
+                     Output: i8.q2
+                     Hash Cond: ((NULL::integer) = i8b1.q2)
+                     ->  Hash Join
+                           Output: i8.q2, (NULL::integer)
+                           Hash Cond: (i8.q1 = i8b2.q1)
+                           ->  Seq Scan on public.int8_tbl i8
                                  Output: i8.q1, i8.q2
-                                 ->  Seq Scan on public.int8_tbl i8
-                                       Output: i8.q1, i8.q2
+                           ->  Hash
+                                 Output: i8b2.q1, (NULL::integer)
+                                 ->  Seq Scan on public.int8_tbl i8b2
+                                       Output: i8b2.q1, NULL::integer
                      ->  Hash
-                           Output: i8b2.q1, (NULL::integer)
-                           ->  Seq Scan on public.int8_tbl i8b2
-                                 Output: i8b2.q1, NULL::integer
-               ->  Hash
-                     Output: i8b1.q2
-                     ->  Seq Scan on public.int8_tbl i8b1
                            Output: i8b1.q2
-(28 rows)
+                           ->  Seq Scan on public.int8_tbl i8b1
+                                 Output: i8b1.q2
+   ->  Hash
+         Output: i4.f1
+         ->  Seq Scan on public.int4_tbl i4
+               Output: i4.f1
+(30 rows)
 
 select t1.* from
   text_tbl t1
@@ -4124,12 +4082,10 @@ select t1.* from
                            Hash Cond: (i8b2.q1 = i8.q1)
                            ->  Nested Loop
                                  Output: i8b2.q1, NULL::integer
-                                 ->  Seq Scan on public.int4_tbl i4b2
-                                       Output: i4b2.f1
+                                 ->  Seq Scan on public.int8_tbl i8b2
+                                       Output: i8b2.q1, i8b2.q2
                                  ->  Materialize
-                                       Output: i8b2.q1
-                                       ->  Seq Scan on public.int8_tbl i8b2
-                                             Output: i8b2.q1
+                                       ->  Seq Scan on public.int4_tbl i4b2
                            ->  Hash
                                  Output: i8.q1, i8.q2
                                  ->  Seq Scan on public.int8_tbl i8
@@ -4142,7 +4098,7 @@ select t1.* from
          Output: i4.f1
          ->  Seq Scan on public.int4_tbl i4
                Output: i4.f1
-(36 rows)
+(34 rows)
 
 select t1.* from
   text_tbl t1
@@ -4192,13 +4148,13 @@ select t1.* from
                            Hash Cond: (i8b2.q1 = i8.q1)
                            ->  Hash Join
                                  Output: i8b2.q1, NULL::integer
-                                 Hash Cond: (i4b2.f1 = i8b2.q1)
-                                 ->  Seq Scan on public.int4_tbl i4b2
-                                       Output: i4b2.f1
+                                 Hash Cond: (i8b2.q1 = i4b2.f1)
+                                 ->  Seq Scan on public.int8_tbl i8b2
+                                       Output: i8b2.q1, i8b2.q2
                                  ->  Hash
-                                       Output: i8b2.q1
-                                       ->  Seq Scan on public.int8_tbl i8b2
-                                             Output: i8b2.q1
+                                       Output: i4b2.f1
+                                       ->  Seq Scan on public.int4_tbl i4b2
+                                             Output: i4b2.f1
                            ->  Hash
                                  Output: i8.q1, i8.q2
                                  ->  Seq Scan on public.int8_tbl i8
@@ -4239,8 +4195,8 @@ select * from
   on t1.f1 = 'doh!'
   left join int4_tbl i4
   on i8.q1 = i4.f1;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                       QUERY PLAN                       
+--------------------------------------------------------
  Nested Loop Left Join
    Output: t1.f1, i8.q1, i8.q2, t2.f1, i4.f1
    ->  Seq Scan on public.text_tbl t2
@@ -4249,20 +4205,18 @@ select * from
          Output: i8.q1, i8.q2, i4.f1, t1.f1
          ->  Nested Loop
                Output: i8.q1, i8.q2, i4.f1, t1.f1
-               ->  Hash Right Join
+               ->  Nested Loop Left Join
                      Output: i8.q1, i8.q2, i4.f1
-                     Hash Cond: (i4.f1 = i8.q1)
+                     Join Filter: (i8.q1 = i4.f1)
+                     ->  Seq Scan on public.int8_tbl i8
+                           Output: i8.q1, i8.q2
+                           Filter: (i8.q2 = 456)
                      ->  Seq Scan on public.int4_tbl i4
                            Output: i4.f1
-                     ->  Hash
-                           Output: i8.q1, i8.q2
-                           ->  Seq Scan on public.int8_tbl i8
-                                 Output: i8.q1, i8.q2
-                                 Filter: (i8.q2 = 456)
                ->  Seq Scan on public.text_tbl t1
                      Output: t1.f1
                      Filter: (t1.f1 = 'doh!'::text)
-(21 rows)
+(19 rows)
 
 select * from
   text_tbl t1
@@ -5023,8 +4977,7 @@ from tenk1 a, lateral (select * from int4_tbl b where f1 = a.unique1) x;
  unique2 | f1 
 ---------+----
     9998 |  0
-    1114 | 35
-(2 rows)
+(1 row)
 
 explain (costs off)
   select unique2, x.*
@@ -5042,8 +4995,7 @@ from int4_tbl x, lateral (select unique2 from tenk1 where f1 = unique1) ss;
  unique2 | f1 
 ---------+----
     9998 |  0
-    1114 | 35
-(2 rows)
+(1 row)
 
 explain (costs off)
   select unique2, x.*
@@ -5074,10 +5026,9 @@ from int4_tbl x left join lateral (select unique1, unique2 from tenk1 where f1 =
     9998 |           0
          |      123456
          |     -123456
-    1114 |          35
          |  2147483647
          | -2147483647
-(6 rows)
+(5 rows)
 
 explain (costs off)
   select unique2, x.*
@@ -5263,12 +5214,10 @@ select * from int8_tbl a,
               123 |               456 | 4567890123456789 |               123 |              123
               123 |               456 | 4567890123456789 |               123 |              123
               123 |               456 | 4567890123456789 |               123 |              123
-              123 |               456 | 4567890123456789 |               123 |              123
               123 |               456 | 4567890123456789 |  4567890123456789 |                 
               123 |  4567890123456789 |              123 |               456 |                 
               123 |  4567890123456789 |              123 |  4567890123456789 |                 
               123 |  4567890123456789 | 4567890123456789 | -4567890123456789 |                 
-              123 |  4567890123456789 | 4567890123456789 |               123 |              123
               123 |  4567890123456789 | 4567890123456789 |               123 |              123
               123 |  4567890123456789 | 4567890123456789 |               123 |              123
               123 |  4567890123456789 | 4567890123456789 |               123 |              123
@@ -5281,7 +5230,6 @@ select * from int8_tbl a,
  4567890123456789 | -4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 | -4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 | -4567890123456789 |              123 |  4567890123456789 | 4567890123456789
- 4567890123456789 | -4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 | -4567890123456789 | 4567890123456789 | -4567890123456789 |                 
  4567890123456789 | -4567890123456789 | 4567890123456789 |               123 |                 
  4567890123456789 | -4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
@@ -5289,9 +5237,7 @@ select * from int8_tbl a,
  4567890123456789 | -4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 | -4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 | -4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
- 4567890123456789 | -4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 |              123 |               456 |                 
- 4567890123456789 |               123 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 |              123 |  4567890123456789 | 4567890123456789
@@ -5304,9 +5250,7 @@ select * from int8_tbl a,
  4567890123456789 |               123 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |               123 | 4567890123456789 |  4567890123456789 | 4567890123456789
- 4567890123456789 |               123 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 |              123 |               456 |                 
- 4567890123456789 |  4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 |              123 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 |              123 |  4567890123456789 | 4567890123456789
@@ -5319,8 +5263,7 @@ select * from int8_tbl a,
  4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
  4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
- 4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789 | 4567890123456789
-(65 rows)
+(57 rows)
 
 -- lateral reference to a join alias variable
 select * from (select f1/2 as x from int4_tbl) ss1 join int4_tbl i4 on x = f1,
@@ -5337,10 +5280,9 @@ select * from (select f1 as x from int4_tbl) ss1 join int4_tbl i4 on x = f1,
            0 |           0 |           0
       123456 |      123456 |      123456
      -123456 |     -123456 |     -123456
-          35 |          35 |          35
   2147483647 |  2147483647 |  2147483647
  -2147483647 | -2147483647 | -2147483647
-(6 rows)
+(5 rows)
 
 select * from ((select f1/2 as x from int4_tbl) ss1 join int4_tbl i4 on x = f1) j,
   lateral (select x) ss2(y);
@@ -5379,11 +5321,6 @@ select * from (select f1/1000000000 from int4_tbl) x(lb),
   0 |  2
   0 |  3
   0 |  4
-  0 |  0
-  0 |  1
-  0 |  2
-  0 |  3
-  0 |  4
   2 |  2
   2 |  3
   2 |  4
@@ -5394,7 +5331,7 @@ select * from (select f1/1000000000 from int4_tbl) x(lb),
  -2 |  2
  -2 |  3
  -2 |  4
-(30 rows)
+(25 rows)
 
 select * from (values(1)) x(lb),
   lateral (values(lb)) y(lbcopy);
@@ -5412,8 +5349,7 @@ select * from (values(1)) x(lb),
   1 |      1
   1 |      1
   1 |      1
-  1 |      1
-(6 rows)
+(5 rows)
 
 select * from
   int8_tbl x left join (select q1,coalesce(q2,0) q2 from int8_tbl) y on x.q2 = y.q1,
@@ -5472,22 +5408,22 @@ select v.* from
   lateral (select x.q1,y.q1 union all select x.q2,y.q2) v(vx,vy);
         vx         |        vy         
 -------------------+-------------------
-  4567890123456789 | 4567890123456789
-  4567890123456789 | -4567890123456789
-  4567890123456789 | 4567890123456789
-  4567890123456789 | 4567890123456789
-  4567890123456789 | 4567890123456789
-  4567890123456789 | 123
-               123 | 4567890123456789
-  4567890123456789 | -4567890123456789
-               123 | 4567890123456789
-  4567890123456789 | 4567890123456789
-               123 | 4567890123456789
-  4567890123456789 | 123
-  4567890123456789 | 123
-               123 | 4567890123456789
   4567890123456789 | 123
                123 | 456
+  4567890123456789 | 123
+               123 | 4567890123456789
+  4567890123456789 | 4567890123456789
+  4567890123456789 | 123
+               123 | 4567890123456789
+  4567890123456789 | 123
+  4567890123456789 | 4567890123456789
+  4567890123456789 | 4567890123456789
+               123 | 4567890123456789
+  4567890123456789 | 4567890123456789
+  4567890123456789 | 4567890123456789
+  4567890123456789 | -4567890123456789
+               123 | 4567890123456789
+  4567890123456789 | -4567890123456789
                123 | 
                456 | 
   4567890123456789 | 
@@ -5639,10 +5575,9 @@ select * from int4_tbl i left join
            0 |  0
       123456 |   
      -123456 |   
-          35 | 35
   2147483647 |   
  -2147483647 |   
-(6 rows)
+(5 rows)
 
 explain (verbose, costs off)
 select * from int4_tbl i left join
@@ -5665,10 +5600,9 @@ select * from int4_tbl i left join
            0 | (0)
       123456 | 
      -123456 | 
-          35 | (35)
   2147483647 | 
  -2147483647 | 
-(6 rows)
+(5 rows)
 
 explain (verbose, costs off)
 select * from int4_tbl a,
@@ -5702,40 +5636,29 @@ select * from int4_tbl a,
            0 |           0 |    |   
            0 |      123456 |    |   
            0 |     -123456 |    |   
-           0 |          35 |    |   
            0 |  2147483647 |    |   
            0 | -2147483647 |    |   
       123456 |           0 |    |   
       123456 |      123456 |    |   
       123456 |     -123456 |    |   
-      123456 |          35 |    |   
       123456 |  2147483647 |    |   
       123456 | -2147483647 |    |   
      -123456 |           0 |    |   
      -123456 |      123456 |    |   
      -123456 |     -123456 |    |   
-     -123456 |          35 |    |   
      -123456 |  2147483647 |    |   
      -123456 | -2147483647 |    |   
-          35 |           0 |    |   
-          35 |      123456 |    |   
-          35 |     -123456 |    |   
-          35 |          35 |    |   
-          35 |  2147483647 |    |   
-          35 | -2147483647 |    |   
   2147483647 |           0 |    |   
   2147483647 |      123456 |    |   
   2147483647 |     -123456 |    |   
-  2147483647 |          35 |    |   
   2147483647 |  2147483647 |    |   
   2147483647 | -2147483647 |    |   
  -2147483647 |           0 |    |   
  -2147483647 |      123456 |    |   
  -2147483647 |     -123456 |    |   
- -2147483647 |          35 |    |   
  -2147483647 |  2147483647 |    |   
  -2147483647 | -2147483647 |    |   
-(36 rows)
+(25 rows)
 
 -- lateral reference in a PlaceHolderVar evaluated at join level
 explain (verbose, costs off)
@@ -5860,42 +5783,42 @@ select c.*,a.*,ss1.q1,ss2.q1,ss3.* from
     lateral (select q1, coalesce(ss1.x,q2) as y from int8_tbl d) ss2
   ) on c.q2 = ss2.q1,
   lateral (select * from int4_tbl i where ss2.y > f1) ss3;
-                                                   QUERY PLAN                                                    
------------------------------------------------------------------------------------------------------------------
- Hash Right Join
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
    Output: c.q1, c.q2, a.q1, a.q2, b.q1, d.q1, i.f1
-   Hash Cond: (d.q1 = c.q2)
-   Filter: ((COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number)) > (i.f1)::number)
-   ->  Nested Loop
-         Output: a.q1, a.q2, b.q1, d.q1, (COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number))
-         ->  Hash Right Join
-               Output: a.q1, a.q2, b.q1, (COALESCE((b.q2)::number, (b2.f1)::number))
-               Hash Cond: (b.q1 = a.q2)
-               ->  Nested Loop
-                     Output: b.q1, COALESCE((b.q2)::number, (b2.f1)::number)
-                     Join Filter: (b.q1 < b2.f1)
-                     ->  Seq Scan on public.int4_tbl b2
-                           Output: b2.f1
-                     ->  Materialize
-                           Output: b.q1, b.q2
+   Join Filter: ((COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number)) > (i.f1)::number)
+   ->  Hash Right Join
+         Output: c.q1, c.q2, a.q1, a.q2, b.q1, d.q1, (COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number))
+         Hash Cond: (d.q1 = c.q2)
+         ->  Nested Loop
+               Output: a.q1, a.q2, b.q1, d.q1, (COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number))
+               ->  Hash Right Join
+                     Output: a.q1, a.q2, b.q1, (COALESCE((b.q2)::number, (b2.f1)::number))
+                     Hash Cond: (b.q1 = a.q2)
+                     ->  Nested Loop
+                           Output: b.q1, COALESCE((b.q2)::number, (b2.f1)::number)
+                           Join Filter: (b.q1 < b2.f1)
                            ->  Seq Scan on public.int8_tbl b
                                  Output: b.q1, b.q2
-               ->  Hash
-                     Output: a.q1, a.q2
-                     ->  Seq Scan on public.int8_tbl a
+                           ->  Materialize
+                                 Output: b2.f1
+                                 ->  Seq Scan on public.int4_tbl b2
+                                       Output: b2.f1
+                     ->  Hash
                            Output: a.q1, a.q2
-         ->  Seq Scan on public.int8_tbl d
-               Output: d.q1, COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number)
-   ->  Hash
-         Output: c.q1, c.q2, i.f1
-         ->  Nested Loop
-               Output: c.q1, c.q2, i.f1
-               ->  Seq Scan on public.int4_tbl i
-                     Output: i.f1
-               ->  Materialize
+                           ->  Seq Scan on public.int8_tbl a
+                                 Output: a.q1, a.q2
+               ->  Seq Scan on public.int8_tbl d
+                     Output: d.q1, COALESCE((COALESCE((b.q2)::number, (b2.f1)::number)), (d.q2)::number)
+         ->  Hash
+               Output: c.q1, c.q2
+               ->  Seq Scan on public.int8_tbl c
                      Output: c.q1, c.q2
-                     ->  Seq Scan on public.int8_tbl c
-                           Output: c.q1, c.q2
+   ->  Materialize
+         Output: i.f1
+         ->  Seq Scan on public.int4_tbl i
+               Output: i.f1
 (34 rows)
 
 -- check processing of postponed quals (bug #9041)
@@ -6537,6 +6460,23 @@ left join j2 on j1.id1 = j2.id1 where j1.id2 = 1;
          Output: j2.id1, j2.id2
 (8 rows)
 
+create unique index j1_id2_idx on j1(id2) where id2 is not null;
+-- ensure we don't use a partial unique index as unique proofs
+explain (verbose, costs off)
+select * from j1
+inner join j2 on j1.id2 = j2.id2;
+                QUERY PLAN                
+------------------------------------------
+ Nested Loop
+   Output: j1.id1, j1.id2, j2.id1, j2.id2
+   Join Filter: (j1.id2 = j2.id2)
+   ->  Seq Scan on public.j2
+         Output: j2.id1, j2.id2
+   ->  Seq Scan on public.j1
+         Output: j1.id1, j1.id2
+(7 rows)
+
+drop index j1_id2_idx;
 -- validate logic in merge joins which skips mark and restore.
 -- it should only do this if all quals which were used to detect the unique
 -- are present as join quals, and not plain quals.

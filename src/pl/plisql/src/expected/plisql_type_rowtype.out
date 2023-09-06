@@ -273,7 +273,8 @@ ERROR:  invalid input syntax for type integer: "a"
 CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun4(integer) line 6 during statement block local variable initialization
+CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
+PL/iSQL function fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 
@@ -307,7 +308,8 @@ ERROR:  invalid input syntax for type integer: "a"
 CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun4(integer) line 6 during statement block local variable initialization
+CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
+PL/iSQL function fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 

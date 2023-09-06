@@ -78,6 +78,8 @@
 
 #include "access/table.h"
 
+#include "utils/ora_compatible.h"
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -973,7 +975,6 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			 * The following statements are supported by Event Triggers only
 			 * in some cases, so we "fast path" them in the other cases.
 			 */
-
 		case T_GrantStmt:
 			{
 				GrantStmt  *stmt = (GrantStmt *) parsetree;

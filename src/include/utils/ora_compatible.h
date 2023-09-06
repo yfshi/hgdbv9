@@ -31,6 +31,20 @@ typedef enum DBParser
 	ORA_PARSER
 }DBParser;
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+typedef enum DBDump
+{
+	PG_DUMP = 0,
+	ORA_DUMP
+}DBDump;
+
+typedef enum DBGrantUser
+{
+	PG_GRANTUSER = 0,
+	ORA_GRANTUSER
+}DBGrantUser;
+/* END - ReqID:SRS-MISC-USER */
+
 /* BEGIN - case sensitive indentify */
 typedef enum CaseSwitchMode
 {
@@ -68,7 +82,7 @@ typedef enum
 } WhereFrom;
 /* End - BUG#M0000201: support question marks as binding variables */
 
-extern char * ora_strtoint(const char *num);	/* BUG#M0000194 */
+extern bool ora_strtoint64(const char *num, const char *dtype, int64 *retval);	/* BUG#M0000194 */
 
 #endif							/* ORA_COMPATIBLE_H */
 

@@ -868,11 +868,43 @@ AlterObjectNamespace_internal(Relation rel, Oid objid, Oid nspOid)
 ObjectAddress
 ExecAlterOwnerStmt(AlterOwnerStmt *stmt)
 {
-	Oid			newowner = get_rolespec_oid(stmt->newowner, false);
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Determine the type of user
+	 */
+	Oid			newowner = InvalidOid;
+	bool current_user_level;
+
+	current_user_level = isinstancelevel();
+
+	switch (stmt->utype)
+	{
+		case DATABASE_USER:
+			newowner = get_databaserol_oid(stmt->newowner);
+			break;
+		case INSTANCE_USER:
+			newowner = get_instancerol_oid(stmt->newowner);
+			break;
+		case UNKNOWN_USER:
+			newowner = get_rolespec_oid(stmt->newowner, false);
+			break;
+	}
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
 
 	switch (stmt->objectType)
 	{
 		case OBJECT_DATABASE:
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * database shouldn't be alter by database-level user
+			 */
+			if((!current_user_level) && (get_role_canlogin(stmt->newowner->rolename)))
+				elog(ERROR,"database shouldn't be alter by database-level user");
+			/*
+			 * End - ReqID:SRS-MISC-USER
+		 	*/
 			return AlterDatabaseOwner(strVal((Value *) stmt->object), newowner);
 
 		case OBJECT_SCHEMA:

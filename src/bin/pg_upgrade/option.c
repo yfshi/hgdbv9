@@ -128,7 +128,7 @@ parseCommandLine(int argc, char *argv[])
 	if (os_user_effective_id == 0)
 		pg_fatal("%s: cannot be run as root\n", os_info.progname);
 
-	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */
+	while ((option = getopt_long(argc, argv, "d:D:gb:B:cj:ko:O:p:P:q:Q:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)

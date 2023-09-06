@@ -41,6 +41,9 @@
 #include "utils/memutils.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"	
+#include "commands/user.h"
 
 typedef struct
 {
@@ -578,11 +581,17 @@ aclitemout(PG_FUNCTION_ARGS)
 {
 	AclItem    *aip = PG_GETARG_ACLITEM_P(0);
 	char	   *p;
+	char	   *q;
 	char	   *out;
 	HeapTuple	htup;
 	unsigned	i;
+	Oid dboid = InvalidOid;
 
 	out = palloc(strlen("=/") +
+				 2 * N_ACL_RIGHTS +
+				 2 * (2 * NAMEDATALEN + 2) +
+				 1);
+	q = palloc(strlen("=/") +
 				 2 * N_ACL_RIGHTS +
 				 2 * (2 * NAMEDATALEN + 2) +
 				 1);
@@ -590,20 +599,57 @@ aclitemout(PG_FUNCTION_ARGS)
 	p = out;
 	*p = '\0';
 
-	if (aip->ai_grantee != ACL_ID_PUBLIC)
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Determine the type of user
+	 */
+	if((ORA_GRANTUSER == grant_usertype) && (ORA_PARSER == compatible_db))
 	{
-		htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
-		if (HeapTupleIsValid(htup))
+		if (aip->ai_grantee != ACL_ID_PUBLIC)
 		{
-			putid(p, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
-			ReleaseSysCache(htup);
-		}
-		else
-		{
-			/* Generate numeric OID if we don't find an entry */
-			sprintf(p, "%u", aip->ai_grantee);
+			htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
+			if (HeapTupleIsValid(htup))
+			{
+				putid(q, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
+				
+				dboid = (((Form_pg_authid) GETSTRUCT(htup))->rolowndboid);
+				
+				if(OidIsValid(dboid))
+					sprintf(p, "0%s", q);
+
+				else
+					sprintf(p, "1%s", q);
+				
+				ReleaseSysCache(htup);
+			}
+			else
+			{
+				/* Generate numeric OID if we don't find an entry */
+				sprintf(p, "%u", aip->ai_grantee);
+			}
 		}
 	}
+	else
+	{
+		if (aip->ai_grantee != ACL_ID_PUBLIC)
+		{
+			htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
+			if (HeapTupleIsValid(htup))
+			{
+				putid(p, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
+				ReleaseSysCache(htup);
+			}
+			else
+			{
+				/* Generate numeric OID if we don't find an entry */
+				sprintf(p, "%u", aip->ai_grantee);
+			}
+		}
+	}
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+	
 	while (*p)
 		++p;
 
@@ -4502,8 +4548,8 @@ pg_has_role_name_name(PG_FUNCTION_ARGS)
 	AclMode		mode;
 	AclResult	aclresult;
 
-	roleid = get_role_oid(NameStr(*username), false);
-	roleoid = get_role_oid(NameStr(*rolename), false);
+	roleid = get_role_canlogin_oid(NameStr(*username), false);
+	roleoid = get_role_canlogin_oid(NameStr(*rolename), false);
 	mode = convert_role_priv_string(priv_type_text);
 
 	aclresult = pg_role_aclcheck(roleoid, roleid, mode);
@@ -5139,10 +5185,69 @@ select_best_grantor(Oid roleId, AclMode privileges,
 Oid
 get_role_oid(const char *rolname, bool missing_ok)
 {
-	Oid			oid;
+	Oid			oid = InvalidOid;
+	Oid			dboid = InvalidOid;
 
-	oid = GetSysCacheOid1(AUTHNAME, Anum_pg_authid_oid,
-						  CStringGetDatum(rolname));
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Determine the type of user
+	 */
+	
+	if (DB_ORACLE == database_mode) 
+	{
+		if(GetUserId())
+		{
+			dboid = CurrentUserOwnDboid();
+		}
+		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolname), ObjectIdGetDatum(dboid));
+	}
+	else
+		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolname), ObjectIdGetDatum(0));
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+
+	if (!OidIsValid(oid) && !missing_ok)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("role \"%s\" does not exist", rolname)));
+	return oid;
+}
+
+/*
+ * get_role_canlogin_oid ReqID:SRS-MISC-USE
+ *
+ * Whether the user can login
+ */
+Oid
+get_role_canlogin_oid(const char *rolname, bool missing_ok)
+{
+	Oid			oid = InvalidOid;
+	Oid			dboid = InvalidOid;
+
+	if(GetUserId())
+	{
+		dboid = CurrentUserOwnDboid();
+	}
+	if (DB_ORACLE == database_mode) 
+	{
+		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolname), ObjectIdGetDatum(dboid));
+		if (!OidIsValid(oid))
+		{
+			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolname), ObjectIdGetDatum(0));
+			
+			if(OidIsValid(oid) && (get_role_canlogin(rolname)))
+				oid = InvalidOid;
+		}	
+	}
+	else
+		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolname), ObjectIdGetDatum(0));
+
 	if (!OidIsValid(oid) && !missing_ok)
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -5179,7 +5284,8 @@ get_rolespec_oid(const RoleSpec *role, bool missing_ok)
 	{
 		case ROLESPEC_CSTRING:
 			Assert(role->rolename);
-			oid = get_role_oid(role->rolename, missing_ok);
+			oid = get_role_canlogin_oid(role->rolename, missing_ok);
+			//oid = get_role_oid(role->rolename, missing_ok);
 			break;
 
 		case ROLESPEC_CURRENT_ROLE:
@@ -5213,12 +5319,44 @@ HeapTuple
 get_rolespec_tuple(const RoleSpec *role)
 {
 	HeapTuple	tuple;
+	Oid			dboid = InvalidOid;
 
 	switch (role->roletype)
 	{
 		case ROLESPEC_CSTRING:
 			Assert(role->rolename);
-			tuple = SearchSysCache1(AUTHNAME, CStringGetDatum(role->rolename));
+			dboid = CurrentUserOwnDboid();
+
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Find a specific type of user
+			 */
+			if (DB_ORACLE == database_mode)
+			{
+				tuple = SearchSysCache2(AUTHNAMEDBOID, 
+										CStringGetDatum(role->rolename), 
+										ObjectIdGetDatum(dboid));
+				if (!HeapTupleIsValid(tuple))
+				{
+					tuple = SearchSysCache2(AUTHNAMEDBOID, 
+										CStringGetDatum(role->rolename), 
+										ObjectIdGetDatum(0));
+
+					if(HeapTupleIsValid(tuple) && (get_role_canlogin(role->rolename)))
+					{
+						ReleaseSysCache(tuple);
+						tuple = NULL;
+					}
+				}
+			}
+			else
+				tuple = SearchSysCache2(AUTHNAMEDBOID, 
+										CStringGetDatum(role->rolename), 
+										ObjectIdGetDatum(0));
+			/*
+			 * End - ReqID:SRS-MISC-USER
+			 */
+			
 			if (!HeapTupleIsValid(tuple))
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -5301,3 +5439,110 @@ check_rolespec_name(const RoleSpec *role, const char *detail_msg)
 							role->rolename)));
 	}
 }
+
+/*
+ * get_databaserol_oid ReqID:SRS-MISC-USE
+ *
+ * get database role oid
+ */
+Oid 
+get_databaserol_oid(const RoleSpec *role)
+{
+	Oid			oid = InvalidOid,
+				dboid = InvalidOid;
+
+	if(role->roletype == ROLESPEC_CSTRING)
+		oid = get_databaseuser_oid(role->rolename, dboid);
+	else
+		ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					errmsg("role \"%s\" type is wrong", role->rolename)));	
+
+	return oid;
+}
+
+/*
+ * get_databaseuser_oid ReqID:SRS-MISC-USE
+ *
+ * get database user oid
+ */
+Oid 
+get_databaseuser_oid(const char *rolename, Oid dboid)
+{
+	Oid			oid = InvalidOid;
+	Oid			temp_dboid = InvalidOid;
+
+	if(!OidIsValid(dboid))
+	{
+		if(GetUserId())
+			temp_dboid = CurrentUserOwnDboid();
+		if(OidIsValid(temp_dboid))
+			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolename), ObjectIdGetDatum(temp_dboid));
+		else
+			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+							CStringGetDatum(rolename), ObjectIdGetDatum(MyDatabaseId));
+	}
+	else
+		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+							CStringGetDatum(rolename), ObjectIdGetDatum(dboid));
+	
+
+	if(!OidIsValid(oid))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				errmsg("role \"%s\" does not exist", rolename)));		
+
+
+	return oid;
+}
+
+/*
+ * get_instancerol_oid ReqID:SRS-MISC-USE
+ *
+ * get instance role oid
+ */
+Oid 
+get_instancerol_oid(const RoleSpec *role)
+{
+	Oid			oid = InvalidOid;
+
+	if(role->roletype == ROLESPEC_CSTRING)
+		oid = get_instanceuser_oid(role->rolename);
+	else
+		ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					errmsg("role \"%s\" type is wrong", role->rolename)));
+	return oid;
+}
+
+/*
+ * get_instanceuser_oid ReqID:SRS-MISC-USE
+ *
+ * get instance user oid
+ */
+Oid 
+get_instanceuser_oid(const char *rolename)
+{
+	Oid			oid = InvalidOid;
+
+	oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
+								CStringGetDatum(rolename), ObjectIdGetDatum(0));
+	if(!OidIsValid(oid))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				errmsg("role \"%s\" does not exist", rolename)));
+	
+	return oid;
+}
+
+Datum
+get_current_userid(PG_FUNCTION_ARGS)
+{
+	Oid			roleid;
+
+	roleid = GetUserId();
+
+	PG_RETURN_OID(roleid);
+}
+

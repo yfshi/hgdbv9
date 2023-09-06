@@ -294,6 +294,11 @@ extern int      database_mode;
 extern PGDLLIMPORT int  compatible_db;
 /* END - SQL PARSER */
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+extern PGDLLIMPORT int  dumppgtype;
+extern PGDLLIMPORT int  grant_usertype;
+/* END - ReqID:SRS-MISC-USER */
+
 /* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 extern PGDLLIMPORT bool	enable_emptystring_to_NULL;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
@@ -352,6 +357,12 @@ extern PGDLLIMPORT int where_from;
 /* End - BUG#M0000201: support question marks as binding variables */
 
 extern PGDLLIMPORT bool sort_desc_nulls_last;	/* BUG#M0000197 */
+
+extern PGDLLIMPORT bool cast_int_like_oracle;	/* BUG#M0000194 */
+
+/* Begin - BUG#M0000183 */
+extern PGDLLIMPORT bool check_package_invalid_by_tuple;
+/* End - BUG#M0000183 */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

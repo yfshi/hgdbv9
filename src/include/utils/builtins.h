@@ -129,4 +129,6 @@ extern int32 type_maximum_size(Oid type_oid, int32 typemod);
 /* quote.c */
 extern char *quote_literal_cstr(const char *rawstr);
 
+char *quote_catalog_qualified(Oid tid, char *qualifier);
+
 #endif							/* BUILTINS_H */

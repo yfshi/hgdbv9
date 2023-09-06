@@ -13,6 +13,40 @@
  * cannot write a semicolon immediately followed by an empty line in a
  * string literal (including a function body!) or a multiline comment.
  */
+CREATE VIEW ivory_user AS
+    SELECT
+        rolname AS usename,
+        pg_authid.oid AS usesysid,
+        rolcreatedb AS usecreatedb,
+        rolsuper AS usesuper,
+        rolreplication AS userepl,
+        rolbypassrls AS usebypassrls,
+        '********'::text as passwd,
+        rolvaliduntil AS valuntil,
+        setconfig AS useconfig,
+        rolowndboid AS dboid
+    FROM pg_authid LEFT JOIN pg_db_role_setting s
+    ON (pg_authid.oid = setrole AND setdatabase = 0)
+    WHERE rolcanlogin;
+
+CREATE VIEW ivory_roles AS
+    SELECT
+        rolname,
+        rolsuper,
+        rolinherit,
+        rolcreaterole,
+        rolcreatedb,
+        rolcanlogin,
+        rolreplication,
+        rolconnlimit,
+        '********'::text as rolpassword,
+        rolvaliduntil,
+        rolbypassrls,
+        setconfig as rolconfig,
+        pg_authid.oid,
+        rolowndboid AS dboid
+    FROM pg_authid LEFT JOIN pg_db_role_setting s
+    ON (pg_authid.oid = setrole AND setdatabase = 0);
 
 CREATE VIEW pg_roles AS
     SELECT
@@ -1322,7 +1356,7 @@ CREATE VIEW pg_user_mappings AS
                      AND (pg_has_role(S.srvowner, 'USAGE')
                           OR has_server_privilege(S.oid, 'USAGE')))
                     OR (U.umuser = 0 AND pg_has_role(S.srvowner, 'USAGE'))
-                    OR (SELECT rolsuper FROM pg_authid WHERE rolname = current_user)
+                    OR (SELECT rolsuper FROM pg_authid WHERE rolname = current_user and oid = get_current_userid() )
                     THEN U.umoptions
                  ELSE NULL END AS umoptions
     FROM pg_user_mapping U

@@ -572,6 +572,16 @@ LaunchParallelWorkers(ParallelContext *pcxt)
 	worker.bgw_notify_pid = MyProcPid;
 
 	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Multi-process synchronization mode
+	 */
+	if(MyProcPort != NULL)
+		worker.connmode = MyProcPort->connmode;
+	else
+		worker.connmode = 'u';
+	/* End - ReqID:SRS-MISC-USER */
+
+	/*
 	 * Start workers.
 	 *
 	 * The caller must be able to tolerate ending up with fewer workers than

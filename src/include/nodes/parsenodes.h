@@ -2021,6 +2021,15 @@ typedef enum AlterTableType
 	AT_SetVisibility			/* Modify column visibility */	/* ReqID:SRS-SQL-INVISIBLECOL */
 } AlterTableType;
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+typedef enum UserType
+{
+	UNKNOWN_USER,
+	DATABASE_USER,
+	INSTANCE_USER
+} UserType;
+/* END - ReqID:SRS-MISC-USER */
+
 typedef struct ReplicaIdentityStmt
 {
 	NodeTag		type;
@@ -2044,6 +2053,8 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	bool		recurse;		/* exec-time recursion */
 	bool        is_rowid;		/* ReqID:SRS-SQL-ROWID */
 	bool		isvisible;		/* ReqID:SRS-SQL-INVISIBLECOL */
+	UserType	utype; 			/* ReqID:SRS-MISC-USER */
+
 } AlterTableCmd;
 
 
@@ -2107,6 +2118,7 @@ typedef struct GrantStmt
 	/* privileges == NIL denotes ALL PRIVILEGES */
 	List	   *grantees;		/* list of RoleSpec nodes */
 	bool		grant_option;	/* grant or revoke grant option */
+	UserType	grantor_type; 			/* ReqID:SRS-MISC-USER */
 	RoleSpec   *grantor;
 	DropBehavior behavior;		/* drop behavior (for REVOKE) */
 } GrantStmt;
@@ -2147,6 +2159,7 @@ typedef struct ObjectWithArgs
 typedef struct AccessPriv
 {
 	NodeTag		type;
+	UserType	utype; 			/* ReqID:SRS-MISC-USER */
 	char	   *priv_name;		/* string name of privilege */
 	List	   *cols;			/* list of Value strings */
 } AccessPriv;
@@ -2167,6 +2180,7 @@ typedef struct GrantRoleStmt
 	List	   *grantee_roles;	/* list of member roles to add/delete */
 	bool		is_grant;		/* true = GRANT, false = REVOKE */
 	bool		admin_opt;		/* with admin option */
+	UserType	grantor_type; 			/* ReqID:SRS-MISC-USER */
 	RoleSpec   *grantor;		/* set grantor to other than current role */
 	DropBehavior behavior;		/* drop behavior (for REVOKE) */
 } GrantRoleStmt;
@@ -3197,6 +3211,7 @@ typedef struct AlterOwnerStmt
 	RangeVar   *relation;		/* in case it's a table */
 	Node	   *object;			/* in case it's some other object */
 	RoleSpec   *newowner;		/* the new owner */
+	UserType   utype; 			/* ReqID:SRS-MISC-USER */
 } AlterOwnerStmt;
 
 /* ----------------------

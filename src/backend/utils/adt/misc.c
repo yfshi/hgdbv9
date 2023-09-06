@@ -195,6 +195,18 @@ current_database(PG_FUNCTION_ARGS)
 	PG_RETURN_NAME(db);
 }
 
+/*
+ * current_userid ReqID:SRS-MISC-USE
+ *
+ * current user Oid
+ */
+Datum
+current_userid(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_OID(GetUserId());
+}
+
+
 
 /*
  * current_query()

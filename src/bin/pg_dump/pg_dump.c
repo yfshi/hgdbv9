@@ -103,6 +103,13 @@ typedef enum OidOptions
 	zeroAsNone = 4
 } OidOptions;
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+static char role_catalog[10];
+#define PG_AUTHID "pg_authid"
+#define PG_ROLES  "pg_roles "
+static int	no_role_passwords = 0;
+/* END - ReqID:SRS-MISC-USER */
+
 /* global decls */
 static bool dosync = true;		/* Issue fsync() to make dump durable on disk. */
 
@@ -323,7 +330,6 @@ static void setupDumpWorker(Archive *AHX);
 static TableInfo *getRootTableInfo(const TableInfo *tbinfo);
 static bool forcePartitionRootLoad(const TableInfo *tbinfo);
 
-
 int
 main(int argc, char **argv)
 {
@@ -410,6 +416,7 @@ main(int argc, char **argv)
 		{"use-set-session-authorization", no_argument, &dopt.use_setsessauth, 1},
 		{"no-comments", no_argument, &dopt.no_comments, 1},
 		{"no-publications", no_argument, &dopt.no_publications, 1},
+		{"no-role-passwords", no_argument, &no_role_passwords, 1},
 		{"no-security-labels", no_argument, &dopt.no_security_labels, 1},
 		{"no-subscriptions", no_argument, &dopt.no_subscriptions, 1},
 		{"no-synchronized-snapshots", no_argument, &dopt.no_synchronized_snapshots, 1},
@@ -679,6 +686,13 @@ main(int argc, char **argv)
 		exit_nicely(1);
 	}
 
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	if (no_role_passwords)
+		sprintf(role_catalog, "%s", PG_ROLES);
+	else
+		sprintf(role_catalog, "%s", PG_AUTHID);
+	/* END - ReqID:SRS-MISC-USER */
+
 	/* --column-inserts implies --inserts */
 	if (dopt.column_inserts && dopt.dump_inserts == 0)
 		dopt.dump_inserts = DUMP_DEFAULT_ROWS_PER_INSERT;
@@ -798,6 +812,10 @@ main(int argc, char **argv)
 	getDbCompatibleMode(((ArchiveHandle *) fout)->connection);
 	/* END - SQL PARSER */
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	getDatabaseMode(((ArchiveHandle *) fout)->connection);
+	getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection);
+	/* END - ReqID:SRS-MISC-USER */
 
 	/* Begin - ReqID:SRS-MISC-GUC */
 	ExecuteSqlStatement(fout, "set ivorysql.identifier_case_switch = normal;");	/* case sensitive indentify */
@@ -6124,6 +6142,7 @@ getAggregates(Archive *fout, int *numAggs)
 						  agginfo[i].aggfn.argtypes,
 						  agginfo[i].aggfn.nargs);
 		}
+		agginfo[i].aggfn.postponed_def = false; /* might get set during sort */
 
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(agginfo[i].aggfn.dobj), fout);
@@ -6354,6 +6373,7 @@ getFuncs(Archive *fout, int *numFuncs)
 			parseOidArray(PQgetvalue(res, i, i_proargtypes),
 						  finfo[i].argtypes, finfo[i].nargs);
 		}
+		finfo[i].postponed_def = false; /* might get set during sort */
 
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(finfo[i].dobj), fout);
@@ -13027,7 +13047,8 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 								  .namespace = finfo->dobj.namespace->dobj.name,
 								  .owner = finfo->rolname,
 								  .description = keyword,
-								  .section = SECTION_PRE_DATA,
+								  .section = finfo->postponed_def ?
+								  SECTION_POST_DATA : SECTION_PRE_DATA,
 								  .createStmt = q->data,
 								  .dropStmt = delqry->data));
 
@@ -15504,6 +15525,7 @@ dumpUserMappings(Archive *fout,
 					  "), E',\n    ') AS umoptions "
 					  "FROM pg_user_mappings "
 					  "WHERE srvid = '%u' "
+					  " AND usename != 'public' "
 					  "ORDER BY usename",
 					  catalogId.oid);
 
@@ -15602,17 +15624,17 @@ dumpDefaultACL(Archive *fout, const DefaultACLInfo *daclinfo)
 
 	/* build the actual command(s) for this tuple */
 	if (!buildDefaultACLCommands(type,
-								 daclinfo->dobj.namespace != NULL ?
-								 daclinfo->dobj.namespace->dobj.name : NULL,
-								 daclinfo->defaclacl,
-								 daclinfo->rdefaclacl,
-								 daclinfo->initdefaclacl,
-								 daclinfo->initrdefaclacl,
-								 daclinfo->defaclrole,
-								 fout->remoteVersion,
-								 q))
-		fatal("could not parse default ACL list (%s)",
-			  daclinfo->defaclacl);
+								daclinfo->dobj.namespace != NULL ?
+								daclinfo->dobj.namespace->dobj.name : NULL,
+								daclinfo->defaclacl,
+								daclinfo->rdefaclacl,
+								daclinfo->initdefaclacl,
+								daclinfo->initrdefaclacl,
+								daclinfo->defaclrole,
+								fout->remoteVersion,
+								q))
+	fatal("could not parse default ACL list (%s)",
+			daclinfo->defaclacl);
 
 	if (daclinfo->dobj.dump & DUMP_COMPONENT_ACL)
 		ArchiveEntry(fout, daclinfo->dobj.catId, daclinfo->dobj.dumpId,
@@ -15694,18 +15716,18 @@ dumpACL(Archive *fout, DumpId objDumpId, DumpId altDumpId,
 	{
 		appendPQExpBufferStr(sql, "SELECT pg_catalog.binary_upgrade_set_record_init_privs(true);\n");
 		if (!buildACLCommands(name, subname, nspname, type,
-							  initacls, initracls, owner,
-							  "", fout->remoteVersion, sql))
+								initacls, initracls, owner,
+							"", fout->remoteVersion, sql))
 			fatal("could not parse initial GRANT ACL list (%s) or initial REVOKE ACL list (%s) for object \"%s\" (%s)",
-				  initacls, initracls, name, type);
+					initacls, initracls, name, type);
 		appendPQExpBufferStr(sql, "SELECT pg_catalog.binary_upgrade_set_record_init_privs(false);\n");
 	}
 
 	if (!buildACLCommands(name, subname, nspname, type,
-						  acls, racls, owner,
-						  "", fout->remoteVersion, sql))
+							acls, racls, owner,
+							"", fout->remoteVersion, sql))
 		fatal("could not parse GRANT ACL list (%s) or REVOKE ACL list (%s) for object \"%s\" (%s)",
-			  acls, racls, name, type);
+				acls, racls, name, type);
 
 	if (sql->len > 0)
 	{
@@ -17296,6 +17318,11 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 
 	if (dopt->dataOnly)
 		return;
+
+	/* Begin - BUG#Z505 */
+	if (indxinfo->indextable->relhasrowid)
+		return;
+	/* End - BUG#Z505 */
 
 	q = createPQExpBuffer();
 	delq = createPQExpBuffer();
@@ -19588,3 +19615,5 @@ appendReloptionsArrayAH(PQExpBuffer buffer, const char *reloptions,
 	if (!res)
 		pg_log_warning("could not parse reloptions array");
 }
+
+

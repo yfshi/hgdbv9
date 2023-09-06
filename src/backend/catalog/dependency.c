@@ -1153,49 +1153,19 @@ findDependentObjects(const ObjectAddress *object,
 			case OCLASS_PACKAGE:
 				{
 					/* invalidate package */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-
-					/* get package cache */
-					pkey = objectId;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+					/* Begin - BUG#M0000183 */
+					InvalidPackage(objectId);
+					/* End - BUG#M0000183 */
 				}
 				break;
 			case OCLASS_PACKAGE_BODY:
 				{
 					/* invalidate package body */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-					HeapTuple pkgbodyTup;
-					Form_pg_package_body pkgbodyStruct;
-
-					/*
-					 * Lookup the pg_package_body tuple by Oid
-					 */
-					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
-					if (!HeapTupleIsValid(pkgbodyTup))
-						elog(ERROR, "cache lookup failed for package body %u", objectId);
-
-					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
-					pkey = pkgbodyStruct->pkgoid;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
-					ReleaseSysCache(pkgbodyTup);
+					/* Begin - BUG#M0000183 */
+					InvalidPackageBody(objectId);
+					/* End - BUG#M0000183 */
 				}
-					break;
+				break;
 
 			default:
 				break;

@@ -34,8 +34,10 @@ CREATE USER regress_priv_user6;
 CREATE USER regress_priv_user7;
 CREATE ROLE regress_priv_role;
 
-GRANT pg_read_all_data TO regress_priv_user6;
-GRANT pg_write_all_data TO regress_priv_user7;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_read_all_data TO regress_priv_user6;
+GRANT INSTANCEUSER pg_write_all_data TO regress_priv_user7;
 
 CREATE GROUP regress_priv_group1;
 CREATE GROUP regress_priv_group2 WITH USER regress_priv_user1, regress_priv_user2;
@@ -783,9 +785,11 @@ select has_table_privilege(current_user,'pg_authid','select');
 select has_table_privilege(current_user,'pg_authid','insert');
 
 select has_table_privilege(t2.oid,'pg_authid','update')
-from (select oid from pg_roles where rolname = current_user) as t2;
+from (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+and d.oid = r.dboid and d.datname = current_database()) as t2;
 select has_table_privilege(t2.oid,'pg_authid','delete')
-from (select oid from pg_roles where rolname = current_user) as t2;
+from (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+and d.oid = r.dboid and d.datname = current_database()) as t2;
 
 -- 'rule' privilege no longer exists, but for backwards compatibility
 -- has_table_privilege still recognizes the keyword and says FALSE
@@ -796,10 +800,12 @@ from (select oid from pg_class where relname = 'pg_authid') as t1;
 
 select has_table_privilege(t2.oid,t1.oid,'select')
 from (select oid from pg_class where relname = 'pg_authid') as t1,
-  (select oid from pg_roles where rolname = current_user) as t2;
+  (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+  and d.oid = r.dboid and d.datname = current_database()) as t2;
 select has_table_privilege(t2.oid,t1.oid,'insert')
 from (select oid from pg_class where relname = 'pg_authid') as t1,
-  (select oid from pg_roles where rolname = current_user) as t2;
+  (select r.oid from ivory_roles r, pg_database d where r.rolname = current_user 
+  and d.oid = r.dboid and d.datname = current_database()) as t2;
 
 select has_table_privilege('pg_authid','update');
 select has_table_privilege('pg_authid','delete');
@@ -1090,7 +1096,9 @@ SELECT * FROM pg_largeobject LIMIT 0;			-- to be denied
 
 -- test pg_database_owner
 RESET SESSION AUTHORIZATION;
-GRANT pg_database_owner TO regress_priv_user1;
+set ivorysql.dumppgtype to oracle;
+set ivorysql.grant_usertype to oracle;
+GRANT INSTANCEUSER pg_database_owner TO regress_priv_user1;
 GRANT regress_priv_user1 TO pg_database_owner;
 CREATE TABLE datdba_only ();
 ALTER TABLE datdba_only OWNER TO pg_database_owner;

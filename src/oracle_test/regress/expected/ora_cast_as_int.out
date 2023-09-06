@@ -1,0 +1,345 @@
+/* Begin - BUG#M0000194 */
+select cast('' as int2);
+ int2 
+------
+     
+(1 row)
+
+select cast('' as int4);
+ int4 
+------
+     
+(1 row)
+
+select cast('' as int8);
+ int8 
+------
+     
+(1 row)
+
+select cast(' ' as int2);
+ERROR:  invalid input syntax for type smallint: " "
+LINE 1: select cast(' ' as int2);
+                    ^
+select cast(' ' as int4);
+ERROR:  invalid input syntax for type integer: " "
+LINE 1: select cast(' ' as int4);
+                    ^
+select cast(' ' as int8);
+ERROR:  invalid input syntax for type bigint: " "
+LINE 1: select cast(' ' as int8);
+                    ^
+select cast('32767' as int2);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('2147483647' as int4);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('9223372036854775807' as int8);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select cast('-32768' as int2);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-2147483648' as int4);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-9223372036854775808' as int8);
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+select cast('32768' as int2);
+ERROR:  value "32768" is out of range for type smallint
+LINE 1: select cast('32768' as int2);
+                    ^
+select cast('2147483648' as int4);
+ERROR:  value "2147483648" is out of range for type integer
+LINE 1: select cast('2147483648' as int4);
+                    ^
+select cast('9223372036854775808' as int8);
+ERROR:  value "9223372036854775808" is out of range for type bigint
+LINE 1: select cast('9223372036854775808' as int8);
+                    ^
+select cast('32767.4' as int2);
+ERROR:  invalid input syntax for type smallint: "32767.4"
+LINE 1: select cast('32767.4' as int2);
+                    ^
+select cast('2147483647.4' as int4);
+ERROR:  invalid input syntax for type integer: "2147483647.4"
+LINE 1: select cast('2147483647.4' as int4);
+                    ^
+select cast('9223372036854775807.4' as int8);
+ERROR:  invalid input syntax for type bigint: "9223372036854775807.4"
+LINE 1: select cast('9223372036854775807.4' as int8);
+                    ^
+select cast('- 32768' as int2);
+ERROR:  invalid input syntax for type smallint: "- 32768"
+LINE 1: select cast('- 32768' as int2);
+                    ^
+select cast('- 2147483648' as int4);
+ERROR:  invalid input syntax for type integer: "- 2147483648"
+LINE 1: select cast('- 2147483648' as int4);
+                    ^
+select cast('- 9223372036854775808' as int8);
+ERROR:  invalid input syntax for type bigint: "- 9223372036854775808"
+LINE 1: select cast('- 9223372036854775808' as int8);
+                    ^
+select cast('3.27E+4' as int2);
+ERROR:  invalid input syntax for type smallint: "3.27E+4"
+LINE 1: select cast('3.27E+4' as int2);
+                    ^
+select cast('2.14E+9' as int4);
+ERROR:  invalid input syntax for type integer: "2.14E+9"
+LINE 1: select cast('2.14E+9' as int4);
+                    ^
+select cast('9.22E+18' as int8);
+ERROR:  invalid input syntax for type bigint: "9.22E+18"
+LINE 1: select cast('9.22E+18' as int8);
+                    ^
+set ivorysql.cast_int_like_oracle to true;
+select cast('' as int2);
+ int2 
+------
+     
+(1 row)
+
+select cast('' as int4);
+ int4 
+------
+     
+(1 row)
+
+select cast('' as int8);
+ int8 
+------
+     
+(1 row)
+
+select cast(' ' as int2);
+ERROR:  invalid input syntax for type smallint: " "
+LINE 1: select cast(' ' as int2);
+                    ^
+select cast(' ' as int4);
+ERROR:  invalid input syntax for type integer: " "
+LINE 1: select cast(' ' as int4);
+                    ^
+select cast(' ' as int8);
+ERROR:  invalid input syntax for type bigint: " "
+LINE 1: select cast(' ' as int8);
+                    ^
+select cast('32767' as int2);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('2147483647' as int4);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('9223372036854775807' as int8);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select cast('-32768' as int2);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-2147483648' as int4);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-9223372036854775808' as int8);
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+select cast('32768' as int2);
+ERROR:  value "32768" is out of range for type smallint
+LINE 1: select cast('32768' as int2);
+                    ^
+select cast('2147483648' as int4);
+ERROR:  value "2147483648" is out of range for type integer
+LINE 1: select cast('2147483648' as int4);
+                    ^
+select cast('9223372036854775808' as int8);
+ERROR:  value "9223372036854775808" is out of range for type bigint
+LINE 1: select cast('9223372036854775808' as int8);
+                    ^
+select cast('32767.4' as int2);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('2147483647.4' as int4);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('9223372036854775807.4' as int8);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select cast('32767.5' as int2);
+ERROR:  value "32767.5" is out of range for type smallint
+LINE 1: select cast('32767.5' as int2);
+                    ^
+select cast('2147483647.5' as int4);
+ERROR:  value "2147483647.5" is out of range for type integer
+LINE 1: select cast('2147483647.5' as int4);
+                    ^
+select cast('9223372036854775807.5' as int8);
+ERROR:  value "9223372036854775807.5" is out of range for type bigint
+LINE 1: select cast('9223372036854775807.5' as int8);
+                    ^
+select cast(' 32767.4 ' as int2);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast(' 2147483647.4 ' as int4);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast(' 9223372036854775807.4 ' as int8);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select cast('-32769' as int2);
+ERROR:  value "-32769" is out of range for type smallint
+LINE 1: select cast('-32769' as int2);
+                    ^
+select cast('-2147483649' as int4);
+ERROR:  value "-2147483649" is out of range for type integer
+LINE 1: select cast('-2147483649' as int4);
+                    ^
+select cast('-9223372036854775809' as int8);
+ERROR:  value "-9223372036854775809" is out of range for type bigint
+LINE 1: select cast('-9223372036854775809' as int8);
+                    ^
+select cast('- 32768' as int2);
+ERROR:  invalid input syntax for type smallint: "- 32768"
+LINE 1: select cast('- 32768' as int2);
+                    ^
+select cast('- 2147483648' as int4);
+ERROR:  invalid input syntax for type integer: "- 2147483648"
+LINE 1: select cast('- 2147483648' as int4);
+                    ^
+select cast('- 9223372036854775808' as int8);
+ERROR:  invalid input syntax for type bigint: "- 9223372036854775808"
+LINE 1: select cast('- 9223372036854775808' as int8);
+                    ^
+select cast('-32768.4' as int2);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-2147483648.4' as int4);
+    int4     
+-------------
+ -2147483648
+(1 row)
+
+select cast('-9223372036854775808.4' as int8);
+         int8         
+----------------------
+ -9223372036854775808
+(1 row)
+
+select cast('-32768.5' as int2);
+ERROR:  value "-32768.5" is out of range for type smallint
+LINE 1: select cast('-32768.5' as int2);
+                    ^
+select cast('-2147483648.5' as int4);
+ERROR:  value "-2147483648.5" is out of range for type integer
+LINE 1: select cast('-2147483648.5' as int4);
+                    ^
+select cast('-9223372036854775808.5' as int8);
+ERROR:  value "-9223372036854775808.5" is out of range for type bigint
+LINE 1: select cast('-9223372036854775808.5' as int8);
+                    ^
+select cast('3.27E+4' as int2);
+ int2  
+-------
+ 32700
+(1 row)
+
+select cast('2.14E+9' as int4);
+    int4    
+------------
+ 2140000000
+(1 row)
+
+select cast('9.22E+18' as int8);
+        int8         
+---------------------
+ 9220000000000000000
+(1 row)
+
+select cast('3.27674E+4' as int2);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('2.1474836474E+9' as int4);
+    int4    
+------------
+ 2147483647
+(1 row)
+
+select cast('9.2233720368547758074E+18' as int8);
+        int8         
+---------------------
+ 9223372036854775807
+(1 row)
+
+select cast('3.27675E+4' as int2);
+ERROR:  value "3.27675E+4" is out of range for type smallint
+LINE 1: select cast('3.27675E+4' as int2);
+                    ^
+select cast('2.1474836475E+9' as int4);
+ERROR:  value "2.1474836475E+9" is out of range for type integer
+LINE 1: select cast('2.1474836475E+9' as int4);
+                    ^
+select cast('9.2233720368547758075E+18' as int8);
+ERROR:  value "9.2233720368547758075E+18" is out of range for type bigint
+LINE 1: select cast('9.2233720368547758075E+18' as int8);
+                    ^
+/* End - BUG#M0000194 */

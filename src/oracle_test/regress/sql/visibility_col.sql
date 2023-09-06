@@ -176,3 +176,11 @@ drop table vtest1_as;
 drop table vtest1_like;
 drop table v_inh;
 drop table vtest1;
+
+--Begin - Bug#Z504
+CREATE TABLE tab1 (id NUMBER INVISIBLE,description VARCHAR2(50) INVISIBLE);--error
+create table inv_alt1 (id int, name varchar(100), age int);
+insert into inv_alt1 (id, name, age) values (1, '张三', 23);
+alter table inv_alt1 modify (id invisible, name invisible, age invisible);--error
+drop table inv_alt1;
+--End - Bug#Z504

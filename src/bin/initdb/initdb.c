@@ -186,7 +186,7 @@ static bool caught_signal = false;
 static bool output_failed = false;
 static int	output_errno = 0;
 static char *pgdata_native;
-static char *preload_ora_misc;
+static char *preload_ora_misc;	/* BUG#M0000195 */
 
 /* BEGIN - case sensitive indentify */
 static char  *switchmode = "interchange";
@@ -294,10 +294,8 @@ static void load_plisql(FILE *cmdfd);
 /* END - SQL PARSER */
 static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
 #ifdef USE_LICENSE
 static void load_hg_misc(FILE *cmdfd);
-#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 static void vacuum_db(FILE *cmdfd);
@@ -323,6 +321,7 @@ void		create_data_directory(void);
 void		create_xlog_or_symlink(void);
 void		warn_on_mount_point(int error);
 void		initialize_data_directory(void);
+static void setup_ora_auth(FILE *cmdfd);
 
 /*
  * macros for running pipes to postgres
@@ -354,6 +353,17 @@ do { \
 		output_failed = true, output_errno = errno; \
 } while (0)
 
+/*
+	* Begin - ReqID:SRS-MISC-USER
+	*/
+#define PG_CMD_PRINTF1(fmt, arg1) \
+do { \
+	if (fprintf(cmdfd, fmt, arg1) < 0 || fflush(cmdfd) < 0) \
+		output_failed = true, output_errno = errno; \
+} while (0)
+/*
+	* End - ReqID:SRS-MISC-USER
+	*/
 /*
  * Escape single quotes and backslashes, suitably for insertions into
  * configuration files or SQL E'' strings.
@@ -1567,6 +1577,53 @@ setup_auth(FILE *cmdfd)
 }
 
 /*
+ * setup_ora_auth ReqID:SRS-MISC-USE
+ *
+ * set up the shadow password table
+ */
+static void
+setup_ora_auth(FILE *cmdfd)
+{
+	const char *const *line;
+	static const char *const pg_authid_setup[] = {
+		/*
+		 * The authid table shouldn't be readable except through views, to
+		 * ensure passwords are not publicly visible.
+		 */
+		"REVOKE ALL ON pg_authid FROM public;\n\n",
+		NULL
+	};
+
+	for (line = pg_authid_setup; *line != NULL; line++)
+		PG_CMD_PUTS(*line);
+
+	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
+
+	PG_CMD_PUTS("create user SYS SUPERUSER;\n\n");
+	PG_CMD_PUTS("create user SYSTEM SUPERUSER;\n\n");		
+	
+	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
+	
+	if (superuser_password)
+	{
+		PG_CMD_PRINTF("ALTER USER \"%s\" WITH PASSWORD E'%s';\n\n",
+					  username, escape_quotes(superuser_password));
+	
+		PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
+	
+		PG_CMD_PRINTF1("ALTER USER \"SYS\" WITH PASSWORD E'%s';\n\n",
+					   escape_quotes(superuser_password));
+
+		PG_CMD_PRINTF1("ALTER USER \"SYSTEM\" WITH PASSWORD E'%s';\n\n",
+					   escape_quotes(superuser_password));			
+		PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
+	
+	}
+
+}
+
+
+/*
  * get the superuser password if required
  */
 static void
@@ -2030,15 +2087,12 @@ load_ivorysql_ora(FILE *cmdfd)
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
 #ifdef USE_LICENSE
 static void
 load_hg_misc(FILE *cmdfd)
 {
 	PG_CMD_PUTS("CREATE EXTENSION hg_misc;\n\n");
-	PG_CMD_PUTS("ALTER EXTENSION hg_misc SET SCHEMA public;\n\n");
 }
-#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
@@ -2709,7 +2763,7 @@ setup_data_file_paths(void)
 	if (database_mode == DB_ORACLE)
 	{
 		set_input(&ora_conf_file, "ivorysql.conf.sample");
-		set_input(&preload_ora_misc, "preload_ora_misc.sql");
+		set_input(&preload_ora_misc, "preload_ora_misc.sql");	/* BUG#M0000195 */
 	}
 	/* END - SQL PARSER */
 	if (show_setting || debug)
@@ -2743,7 +2797,7 @@ setup_data_file_paths(void)
 	if (database_mode == DB_ORACLE)
 	{
 		check_input(ora_conf_file);
-		check_input(preload_ora_misc);
+		check_input(preload_ora_misc);	/* BUG#M0000195 */
 	}
 	/* END - SQL PARSER */
 }
@@ -3088,7 +3142,16 @@ initialize_data_directory(void)
 
 	PG_CMD_OPEN;
 
-	setup_auth(cmdfd);
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	if (strcmp(dbmode, "pg") == 0)
+	{
+		setup_auth(cmdfd);
+	}
+	else
+	{
+		setup_ora_auth(cmdfd);
+	}
+	/* END - ReqID:SRS-MISC-USER */
 
 	setup_run_file(cmdfd, system_constraints_file);
 
@@ -3120,7 +3183,7 @@ initialize_data_directory(void)
 
 	load_plpgsql(cmdfd);
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 0
+#if 1
 #ifdef USE_LICENSE
 	load_hg_misc(cmdfd);
 #endif
@@ -3131,7 +3194,7 @@ initialize_data_directory(void)
   /* load oracle compatible objects and plisql language */
 	if (database_mode == DB_ORACLE)
 	{
-		setup_run_file(cmdfd, preload_ora_misc);
+		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 	}
@@ -3423,8 +3486,10 @@ main(int argc, char *argv[])
 				exit(1);
 		}
 	}
-
-
+/*
+	if(NULL == pwfilename)
+		pwprompt = true;
+*/
 	/*
 	 * Non-option argument specifies data directory as long as it wasn't
 	 * already specified with -D / --pgdata

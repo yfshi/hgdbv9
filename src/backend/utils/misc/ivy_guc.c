@@ -103,6 +103,19 @@ int        rowid_seq_cache = 20;
 bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
 
 bool	sort_desc_nulls_last = false;	/* BUG#M0000197 */
+
+bool	cast_int_like_oracle = false;	/* BUG#M0000194 */
+
+/* Begin - BUG#M0000183 */
+bool check_package_invalid_by_tuple = true;
+/* End - BUG#M0000183 */
+
+/* BEGIN - ReqID:SRS-MISC-USER */
+int dumppgtype = PG_DUMP;
+int grant_usertype = PG_GRANTUSER;
+/* END - ReqID:SRS-MISC-USER */
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -155,6 +168,24 @@ static const struct config_enum_entry case_conversion_mode[] = {
 };
 /* END - case sensitive indentify */
 
+/* BEGIN - ReqID:SRS-MISC-USER */
+static const struct config_enum_entry dump_pgtype_options[] = {
+	{"pg", PG_DUMP, false},
+	{"oracle", ORA_DUMP, false},
+	{"0", PG_DUMP, false},
+	{"1", ORA_DUMP, false},
+	{NULL, 0, false}
+};
+
+static const struct config_enum_entry grant_usertype_options[] = {
+	{"pg", PG_GRANTUSER, false},
+	{"oracle", ORA_GRANTUSER, false},
+	{"0", PG_GRANTUSER, false},
+	{"1", ORA_GRANTUSER, false},
+	{NULL, 0, false}
+};
+/* END - ReqID:SRS-MISC-USER */
+
 /* Begin - BUG#Z091 */
 static const struct config_enum_entry nls_length_options[] = {
 	{"byte", NLS_LENGTH_BYTE, false},
@@ -186,6 +217,8 @@ static bool nls_length_check(char **newval, void **extra, GucSource source);
 static bool nls_territory_check(char **newval, void **extra, GucSource source);
 static bool nls_numeric_characters_check(char **newval, void **extra,
 										 GucSource source);
+static bool check_dump_pgtype(int *newval, void **extra, GucSource source);
+static bool check_grant_usertype(int *newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SQL-SYSFUNC */
 #endif
 
@@ -372,6 +405,30 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000197 */
+	/* Begin - BUG#M0000194 */
+	{
+		{"ivorysql.cast_int_like_oracle", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("CAST(expr AS int) processing float and exponent like Oracle"),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&cast_int_like_oracle,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000194 */
+	/* Begin - BUG#M0000183 */
+	{
+		{"ivorysql.check_package_invalid_by_tuple", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Wether check package invalid by tuple header."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&check_package_invalid_by_tuple,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000183 */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -646,6 +703,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-MERGE */
+
 	/* Begin - BUG#M0000201: support question marks as binding variables */
 	/* where the application is coming from */
 	{
@@ -659,6 +717,28 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000201: support question marks as binding variables */
+
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	{
+		{"ivorysql.dumppgtype", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Set pg type use oracle parser."),
+			NULL
+		},
+		&dumppgtype,
+		PG_DUMP, dump_pgtype_options,
+		check_dump_pgtype, NULL, NULL
+	},
+	{
+		{"ivorysql.grant_usertype", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Set user type use oracle parser."),
+			NULL
+		},
+		&grant_usertype,
+		PG_GRANTUSER, grant_usertype_options,
+		check_grant_usertype, NULL, NULL
+	},
+	/* END - ReqID:SRS-MISC-USER */
+
 #endif
 #if 0
 	/* End-of-list marker */
@@ -763,6 +843,79 @@ assign_compatible_mode(int newval, void *extra)
 		}
 	}
 }
+
+/* BEGIN - ReqID:SRS-MISC-USER */
+static bool
+check_dump_pgtype(int *newval, void **extra, GucSource source)
+{
+	int		newmode = *newval;
+
+	if (DB_PG == database_mode && newmode == ORA_DUMP)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG mode.")));
+
+	if (PG_PARSER == compatible_db && newmode == ORA_DUMP)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG parser.")));
+	
+	if(DB_ORACLE == database_mode && ORA_PARSER == compatible_db
+		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (newmode == ORA_DUMP)
+		{
+			if (ora_raw_parser == NULL)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("liboracle_parser not found!"),
+					errhint("You must load liboracle_parser to use oracle parser.")));
+			if (!ISLOADIVORYSQL_ORA)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("IVORYSQL_ORA library not found!"),
+					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
+		}
+	}
+	return true;
+}
+
+static bool
+check_grant_usertype(int *newval, void **extra, GucSource source)
+{
+	int		newmode = *newval;
+
+	if (DB_PG == database_mode && newmode == ORA_GRANTUSER)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG mode.")));
+
+	if (PG_PARSER == compatible_db && newmode == ORA_GRANTUSER)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG parser.")));
+
+	if(DB_ORACLE == database_mode && ORA_PARSER == compatible_db
+		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (newmode == ORA_GRANTUSER)
+		{
+			if (ora_raw_parser == NULL)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("liboracle_parser not found!"),
+					errhint("You must load liboracle_parser to use oracle parser.")));
+			if (!ISLOADIVORYSQL_ORA)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("IVORYSQL_ORA library not found!"),
+					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
+		}
+	}
+	return true;
+}
+/* END - ReqID:SRS-MISC-USER */
+
 
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
 static void

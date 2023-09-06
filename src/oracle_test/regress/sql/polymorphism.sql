@@ -1207,7 +1207,7 @@ $$ language sql;
 select x, pg_typeof(x) from anyctest(11, 12) x;
 select x, pg_typeof(x) from anyctest(11, 12.2) x;
 select x, pg_typeof(x) from anyctest(11, '12') x;
-select x, pg_typeof(x) from anyctest(11, '12.2') x;
+select x, pg_typeof(x) from anyctest(11, '12.2') x;  -- fail
 select x, pg_typeof(x) from anyctest(variadic array[11, 12]) x;
 select x, pg_typeof(x) from anyctest(variadic array[11, 12.2]) x;
 

@@ -58,8 +58,6 @@ int cur_compile_func_level;
  * saved subproc informations
  * plisql_saved_compile:
  *		save the last compile function
- * plisql_saved_last_datums:
- *		saved the last var'dno of block init var
  * plisql_saved_error_funcname
  *		saved the last Plisql_error_funcname
  * plisql_saved_nsubprocfuncs
@@ -70,11 +68,29 @@ int cur_compile_func_level;
  * 		saved tha lst plisql_subprocFuncs
  */
 PLiSQL_function *plisql_saved_compile[FUNC_MAX_NEST_LEVEL];
-int plisql_saved_datums_last[FUNC_MAX_NEST_LEVEL];
 char *plisql_saved_error_funcname[FUNC_MAX_NEST_LEVEL];
 int plisql_saved_nsubprocfuncs[FUNC_MAX_NEST_LEVEL];
 int plisql_saved_subprocfunc_alloc[FUNC_MAX_NEST_LEVEL];
 PLiSQL_subproc_function **plisql_saved_subprocfuncs[FUNC_MAX_NEST_LEVEL];
+
+/*
+ * saved subproc datums informations
+ * plisql_saved_datums
+ *		saved PLiSQL_datums
+ * plisql_saved_datum_alloc
+ *		saved datum_alloc
+ * plisql_saved_nDatums
+ *		saved PLiSQL_nDatums
+ * plisql_saved_last_datums:
+ *		saved the last var'dno of block init var
+ */
+/* Begin - BUG#M0000168 */
+PLiSQL_datum **plisql_saved_datums[FUNC_MAX_NEST_LEVEL];
+int plisql_saved_datums_alloc[FUNC_MAX_NEST_LEVEL];
+int	plisql_saved_nDatums[FUNC_MAX_NEST_LEVEL];
+int plisql_saved_datums_last[FUNC_MAX_NEST_LEVEL];
+/* End - BUG#M0000168 */
+
 
 
 /* user full functions */
@@ -119,7 +135,15 @@ static void plsql_init_glovalvar_from_stack(PLiSQL_execstate *estate, int dno,
 														int *start_level);
 static void plsql_assign_out_glovalvar_from_stack(PLiSQL_execstate *estate,
 													int dno, int *start_level);
-static bool is_subprocfunc_argnum(PLiSQL_function *pfunc, int dno);
+
+
+/* Begin - BUG#M0000168 */
+static void plisql_push_subproc_func(void);
+static void plisql_pop_subproc_func(void);
+static void plisql_push_datums(void);
+static void plisql_pop_datums(void);
+/* End - BUG#M0000168 */
+
 
 /*
  * like plisql_start_datums
@@ -193,7 +217,7 @@ plisql_finish_subproc_func(PLiSQL_function *function)
  * saved current level subproc function
  * global variable into stack
  */
-void
+static void
 plisql_push_subproc_func(void)
 {
 	/* Begin - BUG#Z084 089 */
@@ -206,9 +230,6 @@ plisql_push_subproc_func(void)
 	plisql_saved_nsubprocfuncs[cur_compile_func_level] = plisql_nsubprocFuncs;
 	plisql_saved_subprocfunc_alloc[cur_compile_func_level] = subprocFuncs_alloc;
 	plisql_saved_subprocfuncs[cur_compile_func_level] = plisql_subprocFuncs;
-	plisql_saved_datums_last[cur_compile_func_level] = datums_last;
-
-	cur_compile_func_level++;
 }
 
 /*
@@ -216,11 +237,9 @@ plisql_push_subproc_func(void)
  * we recover the last global variable from
  * stack
  */
-void
+static void
 plisql_pop_subproc_func(void)
 {
-	cur_compile_func_level--;
-
 	if (cur_compile_func_level < 0)
 		elog(ERROR, "invalid nested level %d", FUNC_MAX_NEST_LEVEL);
 
@@ -229,10 +248,76 @@ plisql_pop_subproc_func(void)
 	plisql_nsubprocFuncs = plisql_saved_nsubprocfuncs[cur_compile_func_level];
 	subprocFuncs_alloc = plisql_saved_subprocfunc_alloc[cur_compile_func_level];
 	plisql_subprocFuncs = plisql_saved_subprocfuncs[cur_compile_func_level];
+
+	return;
+}
+
+
+/* Begin - BUG#M0000168 */
+/*
+ * saved current func datums into stack
+ * when begin compile subproc
+ */
+static void
+plisql_push_datums(void)
+{
+	/* Begin - BUG#Z084 089 */
+	if (cur_compile_func_level > FUNC_MAX_NEST_LEVEL - 1)
+		elog(ERROR, "function or procedure nested level more than: %d", FUNC_MAX_NEST_LEVEL);
+	/* End - BUG#Z084 089 */
+
+	plisql_saved_datums[cur_compile_func_level] = plisql_Datums;
+	plisql_saved_datums_alloc[cur_compile_func_level] = datums_alloc;
+	plisql_saved_nDatums[cur_compile_func_level] = plisql_nDatums;
+	plisql_saved_datums_last[cur_compile_func_level] = datums_last;
+}
+
+
+/*
+ * recover previouts func datums from stack
+ * when subproc finish compile
+ */
+static void
+plisql_pop_datums(void)
+{
+	if (cur_compile_func_level < 0)
+		elog(ERROR, "invalid nested level %d", FUNC_MAX_NEST_LEVEL);
+
+	plisql_Datums = plisql_saved_datums[cur_compile_func_level];
+	datums_alloc = plisql_saved_datums_alloc[cur_compile_func_level];
+	plisql_nDatums = plisql_saved_nDatums[cur_compile_func_level];
 	datums_last = plisql_saved_datums_last[cur_compile_func_level];
 
 	return;
 }
+
+
+/*
+ * saved some informations
+ * into stack
+ */
+void
+plisql_push_subproc_info(void)
+{
+	plisql_push_datums();
+	plisql_push_subproc_func();
+	cur_compile_func_level++;
+}
+
+
+/*
+ * recover some informations from stack
+ */
+void
+plisql_pop_subproc_info(void)
+{
+	cur_compile_func_level--;
+	plisql_pop_datums();
+	plisql_pop_subproc_func();
+}
+
+/* End - BUG#M0000168 */
+
 
 
 /*
@@ -1335,12 +1420,11 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 
 	subprocfunc = pfunc->subprocfuncs[fno];
 
-	for (i = 0; i < subprocfunc->lastassignvardno; i++)
+	for (i = 0; i < subprocfunc->lastoutvardno; i++) /* BUG#M0000168 */
 	{
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* ignore package datum*/
-		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
-			OidIsValid(estate->datums[i]->pkgoid))
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
 			continue;
 
 		/* Begin - BUG#M0000139 */
@@ -1359,14 +1443,31 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_ROW)
 			continue;
 
-		/* ignore some datums, which need not assign */
-		if (is_subprocfunc_argnum(pfunc, i))
+		/* Begin - BUG#M0000168 */
+		/* ignore PLISQL_DTYPE_RECFIELD which assign by rec */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_RECFIELD)
 			continue;
 
-		if (i < parestate->ndatums)
+		/*
+		 * maybe i is another parent'var like var2, which
+		 * is not the test_f1'datums
+		 *
+		 * function test_f1(id integer) is
+		 *   xxxxx
+		 * begin
+		 *     var1 := test_f(xx);
+		 * end
+		 * var2 xxx;
+		 * function test_f(id integer)
+		 *
+		 */
+		if (i < parestate->ndatums &&
+			parestate->func != NULL &&
+			parestate->func->datums[i] == estate->func->datums[i])
 		{
 			plisql_assign_in_global_var(estate, parestate, i);
 		}
+		/* End - BUG#M0000168 */
 		else
 		{
 			if (start_level == -1)
@@ -1415,12 +1516,11 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 
 	subprocfunc = pfunc->subprocfuncs[fno];
 
-	for (i = 0; i < subprocfunc->lastassignvardno; i++)
+	for (i = 0; i < subprocfunc->lastoutvardno; i++) /* BUG#M0000168 */
 	{
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* ignore package datum*/
-		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM ||
-			OidIsValid(estate->datums[i]->pkgoid))
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
 			continue;
 
 		/* Begin - BUG#M0000139 */
@@ -1439,11 +1539,15 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_ROW)
 			continue;
 
-		/* ignore some datums, which need not assign */
-		if (is_subprocfunc_argnum(pfunc, i))
+		/* Begin - BUG#M0000168 */
+		/* ignore PLISQL_DTYPE_RECFIELD which assign by rec */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_RECFIELD)
 			continue;
+		/* End - BUG#M0000168 */
 
-		if (i < parestate->ndatums)
+		if (i < parestate->ndatums &&
+			parestate->func != NULL &&
+			parestate->func->datums[i] == estate->func->datums[i]) /* BUG#M0000168 */
 			plisql_assign_out_global_var(estate, parestate, i, SPI_get_connected() - 1);
 		else
 		{
@@ -3184,9 +3288,18 @@ plsql_init_glovalvar_from_stack(PLiSQL_execstate *estate, int dno, int *start_le
 		/* dno not match */
 		if (dno >= parestate->ndatums)
 			continue;
-		plisql_assign_in_global_var(estate, parestate, dno);
-		match = true;
-		*start_level = connected;
+
+		/* Begin - BUG#M0000168 */
+		if (parestate->func != NULL &&
+			parestate->func->datums[dno] == estate->func->datums[dno])
+		{
+			plisql_assign_in_global_var(estate, parestate, dno);
+			match = true;
+			*start_level = connected;
+		}
+		else
+			continue;
+		/* End - BUG#M0000168 */
 		break;
 	}
 	Assert(match);
@@ -3216,43 +3329,21 @@ plsql_assign_out_glovalvar_from_stack(PLiSQL_execstate *estate, int dno, int *st
 		/* dno not match */
 		if (dno >= parestate->ndatums)
 			continue;
-		plisql_assign_out_global_var(estate, parestate, dno, connected);
-		*start_level = connected;
-		match = true;
-		break;
+		/* Begin - BUG#M0000168 */
+		if (parestate->func != NULL &&
+			parestate->func->datums[dno] == estate->func->datums[dno])
+		{
+			plisql_assign_out_global_var(estate, parestate, dno, connected);
+			*start_level = connected;
+			match = true;
+			break;
+		}
+		else
+			continue;
+		/* End - BUG#M0000168 */
 	}
 	Assert(match);
 	return;
-}
-
-
-/*
- * decide wether the dno
- * is subprocfunc argnum
- */
-static bool
-is_subprocfunc_argnum(PLiSQL_function *pfunc, int dno)
-{
-	int i;
-
-	for (i = 0; i < pfunc->nsubprocfuncs; i++)
-	{
-		PLiSQL_subproc_function *subprocfunc = pfunc->subprocfuncs[i];
-
-		/* ignore no action function and its self */
-		if (subprocfunc->function->action != NULL &&
-			subprocfunc->function != pfunc) /* ReqID:SRS-SQL-PACKAGE */
-		{
-			int j;
-
-			for (j = 0; j < subprocfunc->function->fn_nargs; j++)
-			{
-				if (subprocfunc->function->fn_argvarnos[j] == dno)
-					return true;
-			}
-		}
-	}
-	return false;
 }
 
 

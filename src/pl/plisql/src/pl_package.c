@@ -828,6 +828,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	body_source = TextDatumGetCString(pkgbodydatum);
 	plisql_scanner_init(body_source);
 
+	/* Begin - BUG#M0000183 */
+	item->body_tid = pkgbodyTup->t_self;
+	item->body_xmin = HeapTupleHeaderGetRawXmin(pkgbodyTup->t_data);
+	/* End - BUG#M0000183 */
 	item->body_hash_value = GetSysCacheHashValue1(PKGBODYOID,
 									ObjectIdGetDatum(bodyStruct->oid));
 	psource = (PLiSQL_package *) item->source;
@@ -865,9 +869,13 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	/* init datums */
-	plisql_start_datums();
 	cur_compile_func_level = 0;
+	plisql_start_datums();
 	plisql_start_subproc_func();
 	plisql_saved_compile[cur_compile_func_level] = function;
 
@@ -1016,6 +1024,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	list_free(plisql_referenced_objects);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
 
@@ -1093,6 +1105,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 									ALLOCSET_DEFAULT_SIZES);
 	plisql_compile_tmp_cxt = MemoryContextSwitchTo(pkg_cxt);
 	item = (PackageCacheItem *) palloc0(sizeof(PackageCacheItem));
+	/* Begin - BUG#M0000183 */
+	item->package_tid = pkgTup->t_self;
+	item->package_xmin = HeapTupleHeaderGetRawXmin(pkgTup->t_data);
+	/* End - BUG#M0000183 */
 	item->ctxt = pkg_cxt;
 	item->intable = false;
 	pkey = pkgStruct->oid;
@@ -1130,6 +1146,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	plisql_referenced_objects = NIL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The
 	 * outermost namespace contains function parameters and other special
@@ -1138,8 +1158,8 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	plisql_ns_init();
 	plisql_ns_push(NameStr(pkgStruct->pkgname), PLISQL_LABEL_BLOCK);
 	plisql_DumpExecTree = false;
-	plisql_start_datums();
 	cur_compile_func_level = 0;
+	plisql_start_datums();
 	plisql_start_subproc_func();
 	plisql_saved_compile[cur_compile_func_level] = function;
 	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
@@ -1295,6 +1315,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	list_free(plisql_referenced_objects);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	questionmarks_count = 0;
+	/* End - BUG#M0000201: support question marks as binding variables */
+
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
 
@@ -1357,9 +1381,21 @@ plisql_package_compile(Oid pkgoid,
 	if (item != NULL)
 	{
 		/* see cache is valid */
-		if (!forValidator && !PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
-			package_valid = true;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			if (!forValidator &&
+				item->package_xmin == HeapTupleHeaderGetRawXmin(pkgTup->t_data) &&
+				ItemPointerEquals(&item->package_tid, &pkgTup->t_self))
+				package_valid = true;
+		}
 		else
+		{
+			if (!forValidator && !PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
+				package_valid = true;
+		}
+		/* End - BUG#M0000183 */
+		if (!package_valid)
 		{
 			PackageCacheItem *olditem = NULL;
 
@@ -1449,11 +1485,31 @@ plisql_package_body_compile(Oid bodyoid,
 	if (item != NULL)
 	{
 		/* see package cache is valid */
-		if (forValidator || PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
-			package_valid = false;
+		/* Begin - BUG#M0000183 */
+		if (check_package_invalid_by_tuple)
+		{
+			if (forValidator ||
+				item->package_xmin != HeapTupleHeaderGetRawXmin(pkgTup->t_data) ||
+				!ItemPointerEquals(&item->package_tid, &pkgTup->t_self))
+				package_valid = false;
 
-		if (forValidator || PACKAGE_BODY_IS_UPDATED(item->cachestatus))
-			package_body_valid = false;
+			/* new package body is always valid */
+			if (item->body_xmin == 0)
+				package_body_valid = true;
+			else if (forValidator ||
+				item->body_xmin != HeapTupleHeaderGetRawXmin(pkgbodyTup->t_data) ||
+				!ItemPointerEquals(&item->body_tid, &pkgbodyTup->t_self))
+				package_body_valid = false;
+		}
+		else
+		{
+			if (forValidator || PACKAGE_SPECIFICATION_IS_UPDATED(item->cachestatus))
+				package_valid = false;
+
+			if (forValidator || PACKAGE_BODY_IS_UPDATED(item->cachestatus))
+				package_body_valid = false;
+		}
+		/* End - BUG#M0000183 */
 	}
 	else
 	{
@@ -1967,6 +2023,10 @@ plisql_push_compile_global_proper(void)
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].check_referenced_objects = check_referenced_objects;
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_referenced_objects = plisql_referenced_objects;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	plisql_saved_compile_proper[plisql_curr_global_proper_level].questionmarks_count = questionmarks_count;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	/* come from pl_subproc_function.h */
 	plisql_saved_compile_proper[plisql_curr_global_proper_level].plisql_subprocFuncs = plisql_subprocFuncs;

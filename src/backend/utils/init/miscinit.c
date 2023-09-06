@@ -53,6 +53,7 @@
 #include "utils/pidfile.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
+#include "utils/ora_compatible.h"
 
 
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
@@ -468,6 +469,37 @@ static int	SecurityRestrictionContext = 0;
 /* We also remember if a SET ROLE is currently active */
 static bool SetRoleIsActive = false;
 
+
+/*
+ * GetPortConnmode  ReqID:SRS-MISC-USE
+ *
+ * get Port Connection mode
+ */
+int
+GetPortConnmode(void)
+{
+	Port	   *port = MyProcPort;
+
+	if(MyProcPort == NULL)
+	{
+		if(ORA_PARSER == compatible_db)
+			return 2;
+		else
+			return 1;
+	}
+	else
+	{
+		if (port->connmode == 'p')
+			return 1;
+		else if (port->connmode == 'o')
+			return 2;
+		else if (port->connmode == 'u')
+			return 0;
+	}
+	return 0;
+}
+
+
 /*
  * GetUserId - get the current effective user ID.
  *
@@ -679,7 +711,7 @@ has_rolreplication(Oid roleid)
  * Initialize user identity during normal backend startup
  */
 void
-InitializeSessionUserId(const char *rolename, Oid roleid)
+InitializeSessionUserId(const char *rolename, Oid roleid, Oid dboid)
 {
 	HeapTuple	roleTup;
 	Form_pg_authid rform;
@@ -703,11 +735,28 @@ InitializeSessionUserId(const char *rolename, Oid roleid)
 
 	if (rolename != NULL)
 	{
-		roleTup = SearchSysCache1(AUTHNAME, PointerGetDatum(rolename));
+		/* Look up the username */
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * Find a specific type of user
+		 */
+		Port	   *port = MyProcPort;
+		if ((DB_ORACLE == database_mode) && (port->connmode == 'o'))
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+									CStringGetDatum(rolename), 
+									ObjectIdGetDatum(dboid));
+		else
+			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
+									CStringGetDatum(rolename), 
+									Int32GetDatum(0));
+		
 		if (!HeapTupleIsValid(roleTup))
 			ereport(FATAL,
 					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 					 errmsg("role \"%s\" does not exist", rolename)));
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 	}
 	else
 	{
@@ -721,6 +770,8 @@ InitializeSessionUserId(const char *rolename, Oid roleid)
 	rform = (Form_pg_authid) GETSTRUCT(roleTup);
 	roleid = rform->oid;
 	rname = NameStr(rform->rolname);
+	MyDatabaseId = dboid;
+	CurrentUserOid = roleid;
 
 	AuthenticatedUserId = roleid;
 	AuthenticatedUserIsSuperuser = rform->rolsuper;

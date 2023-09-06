@@ -376,6 +376,17 @@ BackgroundWorkerStateChange(bool allow_new_workers)
 		rw->rw_worker.bgw_restart_time = slot->worker.bgw_restart_time;
 		rw->rw_worker.bgw_main_arg = slot->worker.bgw_main_arg;
 		memcpy(rw->rw_worker.bgw_extra, slot->worker.bgw_extra, BGW_EXTRALEN);
+		/*
+		 * Begin - ReqID:SRS-MISC-USER
+		 * mode of a process
+		 */
+		if(slot->worker.connmode != 'o')
+			rw->rw_worker.connmode = 'u';
+		else
+			rw->rw_worker.connmode = slot->worker.connmode;
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 
 		/*
 		 * Copy the PID to be notified about state changes, but only if the

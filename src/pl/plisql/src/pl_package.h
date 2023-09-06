@@ -102,6 +102,9 @@ typedef struct PLiSQL_compile_global_proper
 	bool check_referenced_objects;
 	List *plisql_referenced_objects;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - BUG#M0000201: support question marks as binding variables */
+	int questionmarks_count;
+	/* End - BUG#M0000201: support question marks as binding variables */
 
 	/* pl_subproc_function.h */
 	PLiSQL_subproc_function **plisql_subprocFuncs;

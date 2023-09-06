@@ -719,6 +719,15 @@ ApplyLauncherRegister(void)
 	bgw.bgw_restart_time = 5;
 	bgw.bgw_notify_pid = 0;
 	bgw.bgw_main_arg = (Datum) 0;
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * mode of a process
+	 */
+	if(bgw.connmode != 'o')
+		bgw.connmode = 'u';
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
 
 	RegisterBackgroundWorker(&bgw);
 }

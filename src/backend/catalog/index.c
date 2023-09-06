@@ -54,6 +54,7 @@
 #include "catalog/pg_trigger.h"
 #include "catalog/pg_type.h"
 #include "catalog/storage.h"
+#include "catalog/storage_xlog.h"
 #include "catalog/storage_gtt.h"
 #include "commands/event_trigger.h"
 #include "commands/progress.h"
@@ -932,6 +933,11 @@ index_create(Relation heapRelation,
 											accessMethodObjectId,
 											collationObjectId,
 											classObjectId);
+
+	/* Begin - BUG#Z505 */
+	if (heapRelation->rd_rel->relhasrowid)
+		indexTupDesc->tdhasrowid = true;
+	/* End - BUG#Z505 */
 
 	/*
 	 * Allocate an OID for the index, unless we were told what to use.
@@ -3116,6 +3122,7 @@ index_build(Relation heapRelation,
 		!smgrexists(RelationGetSmgr(indexRelation), INIT_FORKNUM))
 	{
 		smgrcreate(RelationGetSmgr(indexRelation), INIT_FORKNUM, false);
+		log_smgrcreate(&indexRelation->rd_node, INIT_FORKNUM);
 		indexRelation->rd_indam->ambuildempty(indexRelation);
 	}
 

@@ -56,6 +56,8 @@ typedef struct
 #define MAX_PUSHBACKS 16
 /* End - ReqID:SRS-SQL-PROC */
 
+extern int extral_alias_counts;	/* BUG#M0000217 */
+
 /*
  * The YY_EXTRA data that a flex scanner allows us to pass around.  Private
  * state needed for raw parsing/lexing goes here.

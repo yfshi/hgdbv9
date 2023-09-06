@@ -1,3 +1,4 @@
+/* Begin - BUG#M0000199 */
 show ivorysql.sort_desc_nulls_last;
 
 create table tbl_sort (id int, t date);
@@ -24,3 +25,4 @@ select * from tbl_sort order by t desc;	-- nulls last (set by guc)
 select * from tbl_sort order by t desc nulls last;
 
 select * from tbl_sort order by t desc nulls first;
+/* End - BUG#M0000199 */

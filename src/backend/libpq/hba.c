@@ -44,6 +44,7 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/varlena.h"
+#include "utils/ora_compatible.h"
 
 #ifdef USE_LDAP
 #ifdef WIN32
@@ -54,7 +55,7 @@
 #endif
 
 
-#define MAX_TOKEN	256
+#define MAX_TOKEN	10240
 
 /* callback data for check_network_callback */
 typedef struct check_network_data
@@ -2129,7 +2130,19 @@ check_hba(hbaPort *port)
 	HbaLine    *hba;
 
 	/* Get the target role's OID.  Note we do not error out for bad role. */
-	roleid = get_role_oid(port->user_name, true);
+	//roleid = get_role_oid(port->user_name, true);
+	if( DB_ORACLE == database_mode)
+	{
+		//Oid			datid = get_dboid(port->database_name);
+
+		if ((GetPortConnmode() == 2))
+			roleid = get_databaseuser_oid(port->user_name, MyDatabaseId);
+		else
+			roleid = get_instanceuser_oid(port->user_name);
+	}
+	else
+		roleid = get_role_oid(port->user_name, true);
+
 
 	foreach(line, parsed_hba_lines)
 	{

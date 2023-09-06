@@ -5384,9 +5384,31 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 												(List *) cmd->def, lockmode);
 			break;
 		case AT_ChangeOwner:	/* ALTER OWNER */
-			ATExecChangeOwner(RelationGetRelid(rel),
+			/*
+			 * Begin - ReqID:SRS-MISC-USER
+			 * Determine the type of user
+			 */
+			switch (cmd->utype)
+			{
+				case DATABASE_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
+							  get_databaserol_oid(cmd->newowner),
+							  false, lockmode);
+					break;
+				case INSTANCE_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
+							  get_instancerol_oid(cmd->newowner),
+							  false, lockmode);
+					break;
+				case UNKNOWN_USER:
+					ATExecChangeOwner(RelationGetRelid(rel),
 							  get_rolespec_oid(cmd->newowner, false),
 							  false, lockmode);
+					break;
+			}
+			/*
+			 * End - ReqID:SRS-MISC-USER
+		 	*/
 			break;
 		case AT_ClusterOn:		/* CLUSTER ON */
 			address = ATExecClusterOn(rel, cmd->name, lockmode);
@@ -7446,6 +7468,14 @@ ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCK
 	Form_pg_attribute	attrtuple;
 	int16		attnum;
 	ObjectAddress myself;
+	/* Begin - Bug#Z504 */
+	int			attno;
+	int			attnums;
+	int			visible_col_cnt = 0;
+	Relation	relation;
+	HeapTuple	att_tuple;
+	Form_pg_attribute attr_tuple;
+	/* End - Bug#Z504 */
 
 	attrelation = table_open(AttributeRelationId, RowExclusiveLock);
 	tuple = SearchSysCacheCopyAttName(myrelid, colName);
@@ -7474,6 +7504,29 @@ ATExecSetVisibility(Relation rel, const char *colName, bool new_visibility, LOCK
 	table_close(attrelation, RowExclusiveLock);
 	ObjectAddressSubSet(myself, RelationRelationId,
 							RelationGetRelid(rel), attnum);
+	/* Begin - Bug#Z504 */
+	if (!new_visibility)
+	{
+		CommandCounterIncrement();
+		relation = table_open(myrelid, RowExclusiveLock);
+		attnums =  RelationGetNumberOfAttributes(relation);
+		for (attno = 0; attno < attnums; attno++)
+		{
+			att_tuple = SearchSysCacheCopyAttNum(myrelid, attno + 1);
+			attr_tuple = (Form_pg_attribute) GETSTRUCT(att_tuple);
+			if (!attr_tuple->attisvisible)
+				visible_col_cnt++;
+
+			heap_freetuple(att_tuple);
+		}
+
+		if (visible_col_cnt == attnums)
+			elog(ERROR, "table must have at least one column that is not invisible");
+
+		table_close(relation, RowExclusiveLock);
+	}
+	/* End - Bug#Z504 */
+
 	return myself;
 }
 /* End - ReqID:SRS-SQL-INVISIBLECOL */
@@ -13221,49 +13274,19 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_PACKAGE:
 				{
 					/* invalidate package */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-
-					/* get package cache */
-					pkey = objectId;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+					/* Begin - BUG#M0000183 */
+					InvalidPackage(objectId);
+					/* End - BUG#M0000183 */
 				}
 				break;
 			case OCLASS_PACKAGE_BODY:
 				{
 					/* invalidate package body */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-					HeapTuple pkgbodyTup;
-					Form_pg_package_body pkgbodyStruct;
-
-					/*
-					 * Lookup the pg_package_body tuple by Oid
-					 */
-					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
-					if (!HeapTupleIsValid(pkgbodyTup))
-						elog(ERROR, "cache lookup failed for package body %u", objectId);
-
-					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
-					pkey = pkgbodyStruct->pkgoid;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
-					ReleaseSysCache(pkgbodyTup);
+					/* Begin - BUG#M0000183 */
+					InvalidPackageBody(objectId);
+					/* End - BUG#M0000183 */
 				}
-					break;
+				break;
 
 			default:
 				break;
@@ -18512,8 +18535,8 @@ AttachPartitionEnsureIndexes(Relation rel, Relation attachrel)
 
 		/*
 		 * Scan the list of existing indexes in the partition-to-be, and mark
-		 * the first matching, unattached one we find, if any, as partition of
-		 * the parent index.  If we find one, we're done.
+		 * the first matching, valid, unattached one we find, if any, as
+		 * partition of the parent index.  If we find one, we're done.
 		 */
 		for (i = 0; i < list_length(attachRelIdxs); i++)
 		{
@@ -18522,6 +18545,10 @@ AttachPartitionEnsureIndexes(Relation rel, Relation attachrel)
 
 			/* does this index have a parent?  if so, can't use it */
 			if (attachrelIdxRels[i]->rd_rel->relispartition)
+				continue;
+
+			/* If this index is invalid, can't use it */
+			if (!attachrelIdxRels[i]->rd_index->indisvalid)
 				continue;
 
 			if (CompareIndexInfo(attachInfos[i], info,
@@ -19555,17 +19582,24 @@ validatePartitionedIndex(Relation partedIdx, Relation partedTbl)
 	if (tuples == RelationGetPartitionDesc(partedTbl, true)->nparts)
 	{
 		Relation	idxRel;
-		HeapTuple	newtup;
+		HeapTuple	indTup;
+		Form_pg_index indexForm;
 
 		idxRel = table_open(IndexRelationId, RowExclusiveLock);
+		indTup = SearchSysCacheCopy1(INDEXRELID,
+									 ObjectIdGetDatum(RelationGetRelid(partedIdx)));
+		if (!HeapTupleIsValid(indTup))
+			elog(ERROR, "cache lookup failed for index %u",
+				 RelationGetRelid(partedIdx));
+		indexForm = (Form_pg_index) GETSTRUCT(indTup);
 
-		newtup = heap_copytuple(partedIdx->rd_indextuple);
-		((Form_pg_index) GETSTRUCT(newtup))->indisvalid = true;
+		indexForm->indisvalid = true;
 		updated = true;
 
-		CatalogTupleUpdate(idxRel, &partedIdx->rd_indextuple->t_self, newtup);
+		CatalogTupleUpdate(idxRel, &indTup->t_self, indTup);
 
 		table_close(idxRel, RowExclusiveLock);
+		heap_freetuple(indTup);
 	}
 
 	/*
@@ -19963,49 +19997,19 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 			case OCLASS_PACKAGE:
 				{
 					/* invalidate package */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-
-					/* get package cache */
-					pkey = objectId;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_SPECIFICATION_UPDATE_FLAG(item->cachestatus);
+					/* Begin - BUG#M0000183 */
+					InvalidPackage(objectId);
+					/* End - BUG#M0000183 */
 				}
 				break;
 			case OCLASS_PACKAGE_BODY:
 				{
 					/* invalidate package body */
-					PackageCacheKey pkey;
-					PackageCacheItem *item;
-					HeapTuple pkgbodyTup;
-					Form_pg_package_body pkgbodyStruct;
-
-					/*
-					 * Lookup the pg_package_body tuple by Oid
-					 */
-					pkgbodyTup = SearchSysCache1(PKGBODYOID, ObjectIdGetDatum(objectId));
-					if (!HeapTupleIsValid(pkgbodyTup))
-						elog(ERROR, "cache lookup failed for package body %u", objectId);
-
-					pkgbodyStruct = (Form_pg_package_body) GETSTRUCT(pkgbodyTup);
-					pkey = pkgbodyStruct->pkgoid;
-
-					if (PackageCacheIsValid(&pkey, false))
-						item = PackageCacheLookup(&pkey);
-					else
-						item = PackageHandle(pkey, false);
-
-					if (item != NULL)
-						item->cachestatus = PACKAGE_SET_BODY_UPDATE_FLAG(item->cachestatus);
-					ReleaseSysCache(pkgbodyTup);
+					/* Begin - BUG#M0000183 */
+					InvalidPackageBody(objectId);
+					/* End - BUG#M0000183 */
 				}
-					break;
+				break;
 
 			default:
 				break;

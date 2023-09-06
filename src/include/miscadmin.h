@@ -200,6 +200,8 @@ extern char postgres_exec_path[];
  */
 extern PGDLLIMPORT Oid MyDatabaseId;
 
+extern PGDLLIMPORT Oid CurrentUserOid;
+
 extern PGDLLIMPORT Oid MyDatabaseTableSpace;
 
 /*
@@ -359,7 +361,7 @@ extern bool InSecurityRestrictedOperation(void);
 extern bool InNoForceRLSOperation(void);
 extern void GetUserIdAndContext(Oid *userid, bool *sec_def_context);
 extern void SetUserIdAndContext(Oid userid, bool sec_def_context);
-extern void InitializeSessionUserId(const char *rolename, Oid useroid);
+extern void InitializeSessionUserId(const char *rolename, Oid useroid, Oid dboid);
 extern void InitializeSessionUserIdStandalone(void);
 extern void SetSessionAuthorization(Oid userid, bool is_superuser);
 extern Oid	GetCurrentRoleId(void);
@@ -368,6 +370,7 @@ extern void SetCurrentRoleId(Oid roleid, bool is_superuser);
 /* in utils/misc/superuser.c */
 extern bool superuser(void);	/* current user is superuser */
 extern bool superuser_arg(Oid roleid);	/* given user is superuser */
+extern int GetPortConnmode(void);
 
 
 /*****************************************************************************

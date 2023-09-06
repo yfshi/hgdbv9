@@ -8538,6 +8538,18 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	char		AutoConfFileName[MAXPGPATH];
 	char		AutoConfTmpFileName[MAXPGPATH];
 
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * Determine the type of user 
+	 */
+	if(!isinstancelevel())
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("database-level user cann't execute ALTER SYSTEM command")));
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */
+
 	if (!superuser())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
