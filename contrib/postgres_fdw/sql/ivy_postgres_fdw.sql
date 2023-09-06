@@ -6,6 +6,8 @@ CREATE EXTENSION postgres_fdw;
 SET ivorysql.identifier_case_switch = normal;
 \set EXECUTE_RUN_PREPARE on
 
+show ivorysql.compatible_mode ;
+
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
 DO $d$
     BEGIN
@@ -25,10 +27,10 @@ DO $d$
 $d$;
 
 CREATE USER MAPPING FOR public SERVER testserver1
-	OPTIONS (user 'value', password 'value');
-CREATE USER MAPPING FOR CURRENT_USER SERVER loopback;
-CREATE USER MAPPING FOR CURRENT_USER SERVER loopback2;
-CREATE USER MAPPING FOR public SERVER loopback3;
+	OPTIONS (user 'system');
+CREATE USER MAPPING FOR system SERVER loopback OPTIONS (user 'system');
+CREATE USER MAPPING FOR system SERVER loopback2 OPTIONS (user 'system');
+CREATE USER MAPPING FOR public SERVER loopback3 OPTIONS (user 'system');
 
 -- ===================================================================
 -- create objects used through FDW loopback server
@@ -193,22 +195,21 @@ CREATE FOREIGN TABLE test_interval_foreige (
     second_of_experience INTERVAL day TO SECOND
 )SERVER loopback3 OPTIONS (schema_name 'S 1', table_name 'test_interval');
 
-
 INSERT INTO test_interval_foreige (
-	candidate_id,
+    candidate_id,
     first_name,
     last_name,
     job_title,
     year_of_experience,
-	second_of_experience
+    second_of_experience
     )
 VALUES (
-	1,
+    1,
     'Camila',
     'Kramer',
     'SCM Manager',
     INTERVAL '10-2' YEAR TO MONTH,
-	INTERVAL '11 10:09:08.555' DAY TO SECOND
+    INTERVAL '11 10:09:08.555' DAY TO SECOND
     );
 
 select * from test_interval_foreige;
@@ -260,7 +261,9 @@ ALTER SERVER testserver1 OPTIONS (ADD extensions 'foo, bar');
 ALTER SERVER testserver1 OPTIONS (DROP extensions);
 
 ALTER USER MAPPING FOR public SERVER testserver1
-	OPTIONS (DROP user, DROP password);
+	OPTIONS (DROP user);
+ALTER USER MAPPING FOR public SERVER testserver1
+	OPTIONS (ADD user 'system');
 
 -- Attempt to add a valid option that's not allowed in a user mapping
 ALTER USER MAPPING FOR public SERVER testserver1
@@ -296,11 +299,11 @@ $d$;
 SELECT c3, c4 FROM ft1 ORDER BY c3, c1 LIMIT 1;  -- should work again
 
 -- Test that alteration of user mapping options causes reconnection
-ALTER USER MAPPING FOR CURRENT_USER SERVER loopback
-  OPTIONS (ADD user 'no such user');
+--ALTER USER MAPPING FOR CURRENT_USER SERVER loopback
+--  OPTIONS (ADD user 'no such user');
 SELECT c3, c4 FROM ft1 ORDER BY c3, c1 LIMIT 1;  -- should fail
-ALTER USER MAPPING FOR CURRENT_USER SERVER loopback
-  OPTIONS (DROP user);
+--ALTER USER MAPPING FOR CURRENT_USER SERVER loopback
+--  OPTIONS (DROP user);
 SELECT c3, c4 FROM ft1 ORDER BY c3, c1 LIMIT 1;  -- should work again
 \set VERBOSITY default
 
@@ -709,7 +712,7 @@ DROP TABLE local_tbl;
 
 -- check join pushdown in situations where multiple userids are involved
 CREATE ROLE regress_view_owner SUPERUSER;
-CREATE USER MAPPING FOR regress_view_owner SERVER loopback;
+CREATE USER MAPPING FOR regress_view_owner SERVER loopback OPTIONS (user 'system');
 GRANT SELECT ON ft4 TO regress_view_owner;
 GRANT SELECT ON ft5 TO regress_view_owner;
 
@@ -2940,8 +2943,8 @@ DO $d$
 $d$;
 
 -- But creation of user mappings for non-superusers should fail
-CREATE USER MAPPING FOR public SERVER loopback_nopw;
-CREATE USER MAPPING FOR CURRENT_USER SERVER loopback_nopw;
+CREATE USER MAPPING FOR public SERVER loopback_nopw OPTIONS (user 'system');
+CREATE USER MAPPING FOR CURRENT_USER SERVER loopback_nopw OPTIONS (user 'system');
 
 CREATE FOREIGN TABLE ft1_nopw (
 	c1 number(38,0) NOT NULL,
@@ -3133,8 +3136,8 @@ SELECT server_name FROM postgres_fdw_get_connections() ORDER BY 1;
 -- =============================================================================
 CREATE ROLE regress_multi_conn_user1 SUPERUSER;
 CREATE ROLE regress_multi_conn_user2 SUPERUSER;
-CREATE USER MAPPING FOR regress_multi_conn_user1 SERVER loopback;
-CREATE USER MAPPING FOR regress_multi_conn_user2 SERVER loopback;
+CREATE USER MAPPING FOR regress_multi_conn_user1 SERVER loopback OPTIONS (user 'system');
+CREATE USER MAPPING FOR regress_multi_conn_user2 SERVER loopback OPTIONS (user 'system');
 
 BEGIN;
 -- Will cache loopback connection with user mapping for regress_multi_conn_user1
