@@ -27,6 +27,7 @@ ERROR:  encrypt error: Cipher cannot be initialized ?
 -- result: 7A C8 16 D1 6E 9B 30 2E
 -- cbc
 -- empty data
+SET ivorysql.enable_emptystring_to_null to off;
 select encode(	encrypt('', 'foo', 'cast5'), 'hex');
 ERROR:  encrypt error: Cipher cannot be initialized ?
 -- 10 bytes key
@@ -46,3 +47,4 @@ select encode(encrypt('Lets try a longer message.', '0123456789', 'cast5'), 'hex
 ERROR:  encrypt error: Cipher cannot be initialized ?
 select decrypt(encrypt('Lets try a longer message.', '0123456789', 'cast5'), '0123456789', 'cast5');
 ERROR:  encrypt error: Cipher cannot be initialized ?
+RESET ivorysql.enable_emptystring_to_null;

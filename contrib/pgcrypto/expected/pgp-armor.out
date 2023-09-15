@@ -3,6 +3,7 @@
 --
 -- ensure consistent test output regardless of the default bytea format
 SET bytea_output TO escape;
+SET ivorysql.enable_emptystring_to_null to off;
 select armor('');
             armor            
 -----------------------------
@@ -370,3 +371,4 @@ select armor('', array['foo'], array[E'embedded\nnewline']);
 ERROR:  header value must not contain newlines
 select armor('', array['embedded: colon+space'], array['foo']);
 ERROR:  header key must not contain ": "
+RESET ivorysql.enable_emptystring_to_null;

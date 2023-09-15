@@ -1,12 +1,14 @@
 --
 -- SHA1 message digest
 --
+SET ivorysql.enable_emptystring_to_null to off;
 SELECT encode(digest('', 'sha1'), 'hex');
                   encode                  
 ------------------------------------------
  da39a3ee5e6b4b0d3255bfef95601890afd80709
 (1 row)
 
+RESET ivorysql.enable_emptystring_to_null;
 SELECT encode(digest('a', 'sha1'), 'hex');
                   encode                  
 ------------------------------------------

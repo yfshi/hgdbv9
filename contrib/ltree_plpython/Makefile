@@ -9,6 +9,7 @@ PGFILEDESC = "ltree_plpython - ltree transform for plpython"
 EXTENSION = ltree_plpythonu ltree_plpython2u ltree_plpython3u
 DATA = ltree_plpythonu--1.0.sql ltree_plpython2u--1.0.sql ltree_plpython3u--1.0.sql
 
+ORA_REGRESS = ivy_ltree_plpython
 REGRESS = ltree_plpython
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
 

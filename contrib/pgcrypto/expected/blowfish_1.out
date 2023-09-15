@@ -72,6 +72,7 @@ decode('f0e1d2c3b4a5968778695a4b3c2d1e0f001122334455667704689104c2fd3b2f58402364
 ERROR:  encrypt error: Key was too big
 -- result: c04504012e4e1f53
 -- empty data
+SET ivorysql.enable_emptystring_to_null to off;
 select encode(encrypt('', 'foo', 'bf'), 'hex');
 ERROR:  encrypt error: Cipher cannot be initialized ?
 -- 10 bytes key
@@ -93,3 +94,4 @@ select encode(encrypt('Lets try a longer message.', '0123456789', 'bf'), 'hex');
 ERROR:  encrypt error: Cipher cannot be initialized ?
 select decrypt(encrypt('Lets try a longer message.', '0123456789', 'bf'), '0123456789', 'bf');
 ERROR:  encrypt error: Cipher cannot be initialized ?
+RESET ivorysql.enable_emptystring_to_null;

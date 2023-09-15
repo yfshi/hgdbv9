@@ -20,6 +20,7 @@ REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_st
 ORACLE_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/pg_stat_statements/pg_stat_statements.conf
 #END - SQL PARSER
 REGRESS = pg_stat_statements
+ORA_REGRESS = ivy_pg_stat_statements
 # Disabled because these tests require "shared_preload_libraries=pg_stat_statements",
 # which typical installcheck users do not have (e.g. buildfarm clients).
 NO_INSTALLCHECK = 1

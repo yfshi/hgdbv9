@@ -74,6 +74,7 @@ decode('f0e1d2c3b4a5968778695a4b3c2d1e0f001122334455667704689104c2fd3b2f58402364
 -- result: c04504012e4e1f53
 
 -- empty data
+SET ivorysql.enable_emptystring_to_null to off;
 select encode(encrypt('', 'foo', 'bf'), 'hex');
 -- 10 bytes key
 select encode(encrypt('foo', '0123456789', 'bf'), 'hex');
@@ -90,3 +91,4 @@ select decrypt_iv(decode('95c7e89322525d59', 'hex'), '0123456', 'abcd', 'bf');
 -- long message
 select encode(encrypt('Lets try a longer message.', '0123456789', 'bf'), 'hex');
 select decrypt(encrypt('Lets try a longer message.', '0123456789', 'bf'), '0123456789', 'bf');
+RESET ivorysql.enable_emptystring_to_null;

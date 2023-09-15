@@ -4,6 +4,7 @@
 
 -- Clean up in case a prior regression run failed
 SET client_min_messages TO 'warning';
+SET ivorysql.emptystring_to_null to off;
 DROP ROLE IF EXISTS regress_file_fdw_superuser, regress_file_fdw_user, regress_no_priv_user;
 RESET client_min_messages;
 
@@ -71,13 +72,13 @@ CREATE FOREIGN TABLE agg_csv (
 	a	int2,
 	b	float4
 ) SERVER file_server
-OPTIONS (format 'csv', filename '@abs_srcdir@/data/agg.csv', header 'true', delimiter ';', quote '@', escape '"', null '');
+OPTIONS (format 'csv', filename '@abs_srcdir@/data/agg.csv', header 'true', delimiter ';', quote '@', escape '"', null '\N');
 ALTER FOREIGN TABLE agg_csv ADD CHECK (a >= 0);
 CREATE FOREIGN TABLE agg_bad (
 	a	int2,
 	b	float4
 ) SERVER file_server
-OPTIONS (format 'csv', filename '@abs_srcdir@/data/agg.bad', header 'true', delimiter ';', quote '@', escape '"', null '');
+OPTIONS (format 'csv', filename '@abs_srcdir@/data/agg.bad', header 'true', delimiter ';', quote '@', escape '"', null '\N');
 ALTER FOREIGN TABLE agg_bad ADD CHECK (a >= 0);
 
 -- per-column options tests
@@ -118,6 +119,7 @@ SELECT * FROM agg_csv c JOIN agg_text t ON (t.a = c.a) ORDER BY c.a;
 SELECT * FROM agg_bad;               -- ERROR
 
 -- misc query tests
+\set EXECUTE_RUN_PREPARE on
 \t on
 EXPLAIN (VERBOSE, COSTS FALSE) SELECT * FROM agg_csv;
 \t off
@@ -220,5 +222,6 @@ SET ROLE regress_file_fdw_superuser;
 
 -- cleanup
 RESET ROLE;
+RESET ivorysql.emptystring_to_null;
 DROP EXTENSION file_fdw CASCADE;
 DROP ROLE regress_file_fdw_superuser, regress_file_fdw_user, regress_no_priv_user;

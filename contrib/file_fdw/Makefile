@@ -7,6 +7,7 @@ DATA = file_fdw--1.0.sql
 PGFILEDESC = "file_fdw - foreign data wrapper for files"
 
 REGRESS = file_fdw
+ORA_REGRESS = ivy_file_fdw
 
 EXTRA_CLEAN = sql/file_fdw.sql expected/file_fdw.out
 

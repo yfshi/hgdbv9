@@ -30,6 +30,7 @@ decode('01 23 45 67 12', 'hex'),
 -- cbc
 
 -- empty data
+SET ivorysql.enable_emptystring_to_null to off;
 select encode(	encrypt('', 'foo', 'cast5'), 'hex');
 -- 10 bytes key
 select encode(	encrypt('foo', '0123456789', 'cast5'), 'hex');
@@ -45,3 +46,4 @@ select decrypt_iv(decode('384a970695ce016a', 'hex'),
 -- long message
 select encode(encrypt('Lets try a longer message.', '0123456789', 'cast5'), 'hex');
 select decrypt(encrypt('Lets try a longer message.', '0123456789', 'cast5'), '0123456789', 'cast5');
+RESET ivorysql.enable_emptystring_to_null;
