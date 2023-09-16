@@ -2037,7 +2037,8 @@ typedef enum AlterTableType
 	AT_DropIdentity,			/* DROP IDENTITY */
 	AT_ReAddStatistics,			/* internal to commands/tablecmds.c */
 	AT_SetVirtualColumn,		/* Modify virtual columns */	/* ReqID:SRS-SQL-VIRTUALCOL */
-	AT_SetVisibility			/* Modify column visibility */	/* ReqID:SRS-SQL-INVISIBLECOL */
+	AT_SetVisibility,			/* Modify column visibility */	/* ReqID:SRS-SQL-INVISIBLECOL */
+	AT_ForceViewCompile			/* Compile view */ /* ReqID:SRS-SQL-FORCEVIEW */
 } AlterTableType;
 
 /* BEGIN - ReqID:SRS-MISC-USER */
@@ -3405,6 +3406,10 @@ typedef struct ViewStmt
 	List	   *aliases;		/* target column names */
 	Node	   *query;			/* the SELECT query (as a raw parse tree) */
 	bool		replace;		/* replace an existing view? */
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	bool		force;			/* force view? */
+	char	   *stmt_literal;	/* the original text that defines the force view */
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 	List	   *options;		/* options from WITH clause */
 	ViewCheckOption withCheckOption;	/* WITH CHECK OPTION */
 } ViewStmt;

@@ -318,6 +318,7 @@ typedef struct _tableInfo
 	bool		postponed_def;	/* matview must be postponed into post-data */
 	bool		ispartition;	/* is table a partition? */
 	bool		unsafe_partitions;	/* is it an unsafe partitioned table? */
+	bool		force_view;		/* ReqID:SRS-SQL-FORCEVIEW */
 
 	/*
 	 * These fields are computed only if we decide the table is interesting

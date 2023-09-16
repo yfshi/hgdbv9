@@ -40,6 +40,7 @@
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_opclass.h"
+#include "catalog/pg_rewrite.h" /* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_trigger.h"
@@ -59,6 +60,7 @@
 #include "commands/trigger.h"
 #include "commands/typecmds.h"
 #include "commands/user.h"
+#include "commands/view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "executor/executor.h"
 #include "foreign/fdwapi.h"
 #include "foreign/foreign.h"
@@ -4661,6 +4663,12 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessShareLock;
 				break;
 
+			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+			case AT_ForceViewCompile:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+			/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -5109,6 +5117,12 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		case AT_ForceViewCompile:	/* ALTER VIEW COMPILE */
+			ATSimplePermissions(rel, ATT_VIEW);
+			pass = AT_PASS_MISC;
+			break;
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -5585,6 +5599,17 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 		case AT_DetachPartitionFinalize:
 			ATExecDetachPartitionFinalize(rel, ((PartitionCmd *) cmd->def)->name);
 			break;
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		case AT_ForceViewCompile:
+			if (tab->rel)
+			{
+				relation_close(tab->rel, NoLock);
+				tab->rel = NULL;
+			}
+			if (!compile_force_view(tab->relid))
+				elog(WARNING, "View altered with compilation errors");
+			break;
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -12981,12 +13006,64 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 
 			case OCLASS_REWRITE:
 				/* XXX someday see if we can cope with revising views */
-				ereport(ERROR,
-						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						 errmsg("cannot alter type of a column used by a view or rule"),
-						 errdetail("%s depends on column \"%s\"",
-								   getObjectDescription(&foundObject, false),
-								   colName)));
+				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+				if (ORA_PARSER == compatible_db)
+				{
+					Relation	ruleDesc;
+					ScanKeyData skey[1];
+					SysScanDesc rcscan;
+					HeapTuple	tup;
+					Form_pg_rewrite rule;
+
+					ruleDesc = table_open(RewriteRelationId, AccessShareLock);
+
+					ScanKeyInit(&skey[0],
+								Anum_pg_rewrite_oid,
+								BTEqualStrategyNumber, F_OIDEQ,
+								ObjectIdGetDatum(foundObject.objectId));
+
+					rcscan = systable_beginscan(ruleDesc, RewriteOidIndexId, true,
+												NULL, 1, skey);
+
+					tup = systable_getnext(rcscan);
+
+					if (!HeapTupleIsValid(tup))
+					{
+						systable_endscan(rcscan);
+						table_close(ruleDesc, AccessShareLock);
+						elog(ERROR, "could not find tuple for rule %u",
+							 foundObject.objectId);
+					}
+
+					rule = (Form_pg_rewrite) GETSTRUCT(tup);
+
+					/* view ? */
+					if (strcmp(NameStr(rule->rulename), "_RETURN") == 0)
+					{
+						make_view_invalid(rule->ev_class);
+						systable_endscan(rcscan);
+						table_close(ruleDesc, AccessShareLock);
+						continue;
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("cannot alter type of a column used by a view or rule"),
+								 errdetail("%s depends on column \"%s\"",
+										   getObjectDescription(&foundObject, false),
+										   colName)));
+						break;
+					}
+				}
+				else
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("cannot alter type of a column used by a view or rule"),
+							 errdetail("%s depends on column \"%s\"",
+									   getObjectDescription(&foundObject, false),
+									   colName)));
+				/* End - ReqID:SRS-SQL-FORCEVIEW */
 				break;
 
 			case OCLASS_TRIGGER:

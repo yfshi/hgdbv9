@@ -5187,6 +5187,48 @@ findNamespace(Oid nsoid)
 	return nsinfo;
 }
 
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+static bool
+table_is_force_view(Archive *fout, Oid viewOid)
+{
+	PQExpBuffer query;
+	PGresult   *res;
+	bool		result = false;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT oid FROM pg_catalog.pg_rewrite WHERE ev_class = %u AND rulename = '_RETURN';", viewOid);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	if (PQntuples(res) == 1)
+		result = false;
+	else
+		result = true;
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	return result;
+}
+
+static char*
+get_force_view_ident_case(Archive *AHX, Oid viewOid)
+{
+	PQExpBuffer query ;
+	PGresult   *res;
+	char	   *ident_case;
+
+	query = createPQExpBuffer();
+	appendPQExpBuffer(query, "SELECT ident_case FROM pg_catalog.pg_force_view WHERE fvoid = %u;", viewOid);
+	res = ExecuteSqlQueryForSingleRow(AHX, query->data);
+	ident_case = pg_strdup(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	return ident_case;
+}
+/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 /*
  * getExtensions:
  *	  read all extensions in the system catalogs and return them in the
@@ -7430,6 +7472,12 @@ getTables(Archive *fout, int *numTables)
 		tblinfo[i].toast_minmxid = atooid(PQgetvalue(res, i, i_toastminmxid));
 		tblinfo[i].reloftype = atooid(PQgetvalue(res, i, i_reloftype));
 		tblinfo[i].ncheck = atoi(PQgetvalue(res, i, i_relchecks));
+
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		if (tblinfo[i].relkind == RELKIND_VIEW)
+			tblinfo[i].force_view = table_is_force_view(fout, tblinfo[i].dobj.catId.oid);
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 		if (PQgetisnull(res, i, i_owning_tab))
 		{
 			tblinfo[i].owning_tab = InvalidOid;
@@ -16705,9 +16753,38 @@ createViewAsClause(Archive *fout, const TableInfo *tbinfo)
 		fatal("definition of view \"%s\" appears to be empty (length zero)",
 			  tbinfo->dobj.name);
 
-	/* Strip off the trailing semicolon so that other things may follow. */
-	Assert(PQgetvalue(res, 0, 0)[len - 1] == ';');
-	appendBinaryPQExpBuffer(result, PQgetvalue(res, 0, 0), len - 1);
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	if (tbinfo->force_view)
+	{
+		char	*source = pstrdup(PQgetvalue(res, 0, 0)); 
+
+		/* the force view definition may be followed by multiple newlines or semicolons */
+		while (len > 0)
+		{
+			/* strip the newline of Unix or Windows and strip the trailing semicolons */
+			if (source[len - 1] == '\n' ||
+				source[len - 1] == '\r' ||
+				source[len - 1] == ';')
+				source[len - 1] = '\0';
+			else
+				break;
+			len--;
+		}
+
+		/* recheck */
+		if (strlen(source) == 0)
+			fatal("definition of view \"%s\" appears to be empty (length zero)",
+				  tbinfo->dobj.name);
+		appendBinaryPQExpBuffer(result, source, strlen(source));
+		pfree(source);
+	}
+	else
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
+	{
+		/* Strip off the trailing semicolon so that other things may follow. */
+		Assert(PQgetvalue(res, 0, 0)[len - 1] == ';');
+		appendBinaryPQExpBuffer(result, PQgetvalue(res, 0, 0), len - 1);
+	}
 
 	PQclear(res);
 	destroyPQExpBuffer(query);
@@ -16779,6 +16856,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	char	   *storage;
 	int			j,
 				k;
+	char		ident_case = '\0'; /* ReqID:SRS-SQL-FORCEVIEW */
 
 	/* We had better have loaded per-column details about this table */
 	Assert(tbinfo->interesting);
@@ -16811,26 +16889,54 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			binary_upgrade_set_pg_class_oids(fout, q,
 											 tbinfo->dobj.catId.oid, false);
 
-		appendPQExpBuffer(q, "CREATE VIEW %s", qualrelname);
-
-		if (tbinfo->dummy_view)
-			result = createDummyViewAsClause(fout, tbinfo);
-		else
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		if (tbinfo->force_view)
 		{
-			if (nonemptyReloptions(tbinfo->reloptions))
-			{
-				appendPQExpBufferStr(q, " WITH (");
-				appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
-				appendPQExpBufferChar(q, ')');
-			}
-			result = createViewAsClause(fout, tbinfo);
-		}
-		appendPQExpBuffer(q, " AS\n%s", result->data);
-		destroyPQExpBuffer(result);
+			char	*tmp;
 
-		if (tbinfo->checkoption != NULL && !tbinfo->dummy_view)
-			appendPQExpBuffer(q, "\n  WITH %s CHECK OPTION", tbinfo->checkoption);
-		appendPQExpBufferStr(q, ";\n");
+			tmp = get_force_view_ident_case(fout, tbinfo->dobj.catId.oid);
+
+			if (strcmp(tmp, "u") != 0)
+			{
+				if (strcmp(tmp, "n") == 0)
+					ident_case = 'n';
+				else if (strcmp(tmp, "i") == 0)
+					ident_case = 'i';
+				else if (strcmp(tmp, "l") == 0)
+					ident_case = 'l';
+			}
+			else
+				ident_case = 'u';
+
+			result = createViewAsClause(fout, tbinfo);
+			appendPQExpBuffer(q, "%s", result->data);
+			appendPQExpBufferStr(q, ";\n");
+			destroyPQExpBuffer(result);
+		}
+		else
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
+		{
+			appendPQExpBuffer(q, "CREATE VIEW %s", qualrelname);
+
+			if (tbinfo->dummy_view)
+				result = createDummyViewAsClause(fout, tbinfo);
+			else
+			{
+				if (nonemptyReloptions(tbinfo->reloptions))
+				{
+					appendPQExpBufferStr(q, " WITH (");
+					appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
+					appendPQExpBufferChar(q, ')');
+				}
+				result = createViewAsClause(fout, tbinfo);
+			}
+			appendPQExpBuffer(q, " AS\n%s", result->data);
+			destroyPQExpBuffer(result);
+
+			if (tbinfo->checkoption != NULL && !tbinfo->dummy_view)
+				appendPQExpBuffer(q, "\n  WITH %s CHECK OPTION", tbinfo->checkoption);
+			appendPQExpBufferStr(q, ";\n");
+		}
 	}
 	else
 	{
@@ -17555,7 +17661,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			tbinfo->relkind == RELKIND_MATVIEW)
 			tableam = tbinfo->amname;
 
-		ArchiveEntry(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,
+		ArchiveEntry2(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,
 					 ARCHIVE_OPTS(.tag = tbinfo->dobj.name,
 								  .namespace = tbinfo->dobj.namespace->dobj.name,
 								  .tablespace = (tbinfo->relkind == RELKIND_VIEW) ?
@@ -17566,7 +17672,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 								  .section = tbinfo->postponed_def ?
 								  SECTION_POST_DATA : SECTION_PRE_DATA,
 								  .createStmt = q->data,
-								  .dropStmt = delq->data));
+								  .dropStmt = delq->data),
+								  (tbinfo->relkind == RELKIND_VIEW && tbinfo->force_view) ? ident_case : '\0' /* ReqID:SRS-SQL-FORCEVIEW */);
 	}
 
 	/* Dump Table Comments */

@@ -25,6 +25,7 @@
 #include "access/table.h"
 #include "catalog/dependency.h"
 #include "catalog/pg_type.h"
+#include "commands/view.h" /* ReqID:SRS-SQL-FORCEVIEW */
 #include "commands/trigger.h"
 #include "executor/executor.h"
 #include "foreign/fdwapi.h"
@@ -45,6 +46,8 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
+#include "utils/guc.h"				/* ReqID:SRS-SQL-FORCEVIEW */
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 
 
 /* We use a list of these to detect recursion in RewriteQuery */
@@ -2562,6 +2565,20 @@ get_view_query(Relation view)
 	int			i;
 
 	Assert(view->rd_rel->relkind == RELKIND_VIEW);
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	/*
+	 * BulletProof:
+	 * The rewrite rule of force view is NULL, but this function directly
+	 * uses view->rd_rules without check whether it is NULL.
+	 *
+	 * In order to avoid crash, we report an error here. If you are lucky
+	 * enough to encounter this error, the SQL statement you are executing
+	 * does not consider force view. This may be a modification we missed.
+	 */
+	if (ORA_PARSER == compatible_db && rel_is_force_view(RelationGetRelid(view)))
+		elog(ERROR, "force view does not have a Query tree");
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	for (i = 0; i < view->rd_rules->numLocks; i++)
 	{

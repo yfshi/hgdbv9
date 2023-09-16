@@ -22,4 +22,14 @@ extern ObjectAddress DefineView(ViewStmt *stmt, const char *queryString,
 
 extern void StoreViewQuery(Oid viewOid, Query *viewParse, bool replace);
 
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+extern void StoreForceViewQuery(Oid viewOid, bool replace, char ident_case, const char *queryString);
+extern void DeleteForceView(Oid forceviewid);
+extern bool rel_is_force_view(Oid relid);
+extern char *get_force_view_def(Oid viewoid);
+extern bool compile_force_view(Oid viewoid);
+extern bool make_view_invalid(Oid viewid);
+extern bool make_view_valid(List *tlist, Oid viewOid, List *options, Query *viewParse);
+/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 #endif							/* VIEW_H */

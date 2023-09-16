@@ -93,10 +93,13 @@ typedef z_stream *z_streamp;
 #define K_VERS_1_13 MAKE_ARCHIVE_VERSION(1, 13, 0)	/* change search_path
 													 * behavior */
 #define K_VERS_1_14 MAKE_ARCHIVE_VERSION(1, 14, 0)	/* add tableam */
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+#define K_VERS_1_15 MAKE_ARCHIVE_VERSION(1, 15, 0)	/* add ident_case for force view */
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 /* Current archive version number (the format we can output) */
 #define K_VERS_MAJOR 1
-#define K_VERS_MINOR 14
+#define K_VERS_MINOR 15		/* ReqID:SRS-SQL-FORCEVIEW */
 #define K_VERS_REV 0
 #define K_VERS_SELF MAKE_ARCHIVE_VERSION(K_VERS_MAJOR, K_VERS_MINOR, K_VERS_REV)
 
@@ -406,6 +409,7 @@ struct _tocEntry
 	int			nRevDeps;		/* number of such dependencies */
 	DumpId	   *lockDeps;		/* dumpIds of objects this one needs lock on */
 	int			nLockDeps;		/* number of such dependencies */
+	char		ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
 };
 
 extern int	parallel_restore(ArchiveHandle *AH, TocEntry *te);
@@ -435,6 +439,10 @@ typedef struct _archiveOpts
 /* Called to add a TOC entry */
 extern TocEntry *ArchiveEntry(Archive *AHX, CatalogId catalogId,
 							  DumpId dumpId, ArchiveOpts *opts);
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+extern TocEntry *ArchiveEntry2(Archive *AHX, CatalogId catalogId,
+							  DumpId dumpId, ArchiveOpts *opts, char ident_case);
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 extern void WriteHead(ArchiveHandle *AH);
 extern void ReadHead(ArchiveHandle *AH);

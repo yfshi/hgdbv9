@@ -39,6 +39,7 @@
 #include "catalog/pg_description.h"
 #include "catalog/pg_enum.h"
 #include "catalog/pg_event_trigger.h"
+#include "catalog/pg_force_view.h" /* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/pg_foreign_data_wrapper.h"
 #include "catalog/pg_foreign_server.h"
 #include "catalog/pg_foreign_table.h"
@@ -436,6 +437,19 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		8
 	},
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	{ForceViewRelationId,	/* FORCEVIEWOID */
+		ForceViewFvoidIndexId,
+		1,
+		{
+			Anum_pg_force_view_fvoid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 	{ForeignDataWrapperRelationId,	/* FOREIGNDATAWRAPPERNAME */
 		ForeignDataWrapperNameIndexId,
 		1,
