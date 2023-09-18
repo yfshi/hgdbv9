@@ -77,5 +77,6 @@ extern void makeAlterConfigCommand(PGconn *conn, const char *configitem,
 
 extern void getcurrentuserisInstanceSupperuser(PGconn *conn);
 extern void getDatabaseMode(PGconn *conn);
+extern void setIdentifierCaseSwitch(PGconn *conn);		/* BUG#M229 */
 
 #endif							/* DUMPUTILS_H */

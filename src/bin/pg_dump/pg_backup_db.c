@@ -239,9 +239,10 @@ ConnectDatabase(Archive *AHX,
 		{
 			SetCompatibleMode(AH->connection);
 			SetDumptypeMode(AH->connection);
-			ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
+
+			//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
+			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
 		}
-		
 	}
 	/* END - ReqID:SRS-MISC-USER */
 	

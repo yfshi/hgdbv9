@@ -1272,6 +1272,12 @@ getcurrentuserisInstanceSupperuser(PGconn *conn)
 	PGresult *res;
 	PQExpBuffer cmd1 = createPQExpBuffer();
 
+	/* Begin - BUG#M229 */
+	/* When the database mode is pg, you do not need to get it */
+	if(database_mode == DB_PG)
+		return;
+	/* End - BUG#M229 */
+
 	appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
 	res = PQexec(conn, cmd1->data);	
 	if(PQntuples(res))
@@ -1291,15 +1297,38 @@ getDatabaseMode(PGconn *conn)
 
 	char *db_style = NULL;
 
-	res = PQexec(conn, "show ivorysql.database_mode;");	
+	res = PQexec(conn, "show ivorysql.database_mode;");
 
-	db_style = PQgetvalue(res, 0, 0);
-
-	if (db_style && (0 == pg_strcasecmp(db_style, "oracle")))
-		database_mode = DB_ORACLE;
-	else
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
 		database_mode = DB_PG;
+	}
+	else
+	{
+		db_style = PQgetvalue(res, 0, 0);
+
+		if (db_style && (0 == pg_strcasecmp(db_style, "oracle")))
+			database_mode = DB_ORACLE;
+		else
+			database_mode = DB_PG;
+	}
+	
+	if (res)
+		PQclear(res);
+}
+
+/*
+ *  setIdentifierCaseSwitch - BUG#M229 
+ * 
+ */
+void 
+setIdentifierCaseSwitch(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "set ivorysql.identifier_case_switch = normal;");
 
 	if (res)
 		PQclear(res);
 }
+

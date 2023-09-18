@@ -22,6 +22,7 @@
 #include "pg_backup_archiver.h"
 #include "pg_backup_utils.h"
 #include "pg_dump.h"
+#include "dumputils.h"
 
 /*
  * Variables for mapping DumpId to DumpableObject
@@ -137,7 +138,12 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	pg_log_info("reading user-defined packages");
-	getPackages(fout, &numPkgs);
+
+	/* Begin - BUG#M229 */
+	/* When the database mode is pg, you do not need to back up the package */
+	if(DB_ORACLE == database_mode)
+		getPackages(fout, &numPkgs);
+	/* End- BUG#M229 */
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
