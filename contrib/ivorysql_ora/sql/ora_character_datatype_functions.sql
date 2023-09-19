@@ -985,6 +985,7 @@ select length(cast(192.922 as numeric)) from dual;
 select length('192') from dual;
 select length('Highgo DB!') from dual;
 select length('今天') from dual;
+select sys.length('明天') from dual;
 select length(cast('Highgo DB!' as char(10))) from dual;
 select length(cast('Highgo DB!' as char(20))) from dual;
 select length(cast('Highgo DB!' as varchar(20))) from dual;

@@ -2171,6 +2171,12 @@ select length('今天') from dual;
       2
 (1 row)
 
+select sys.length('明天') from dual;
+ length 
+--------
+      2
+(1 row)
+
 select length(cast('Highgo DB!' as char(10))) from dual;
  length 
 --------
