@@ -3432,7 +3432,8 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 			getDatabaseMode(AH->connection);
 		if((database_mode == DB_ORACLE))
 		{
-			ExecuteSqlStatement((Archive *)AH, "set ivorysql.identifier_case_switch = normal;");
+			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+			//ExecuteSqlStatement((Archive *)AH, "set ivorysql.identifier_case_switch = normal;");
 			SetCompatible(&connectbuf);
 		}
 		/* BEGIN - ReqID:SRS-MISC-USER */
