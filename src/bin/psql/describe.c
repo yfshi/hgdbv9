@@ -2118,7 +2118,7 @@ describeOneTableDetails(const char *schemaname,
 			appendPQExpBufferStr(&buf, ",\n  ''::pg_catalog.char AS attgenerated");
 		attgenerated_col = cols++;
 		/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
-		if (pset.sversion >= 120000)
+		if (pset.sversion >= 140008)	/* Bug#M233 */
 			appendPQExpBufferStr(&buf, ",\n  a.attisvisible");
 		else
 			appendPQExpBufferStr(&buf, ",\n  ''::pg_catalog.char AS attisvisible");
