@@ -9218,7 +9218,12 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			appendPQExpBufferStr(q,
 								 "'' AS attgenerated,\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
 
-		appendPQExpBufferStr(q, "a.attisvisible\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
+		/* Begin - Bug#M233 */
+		if (fout->remoteVersion >= 140008)
+			appendPQExpBufferStr(q, "a.attisvisible\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
+		else
+			appendPQExpBufferStr(q, "true AS attisvisible\n");
+		/* End - Bug#M233 */
 
 		/* need left join here to not fail on dropped columns ... */
 		appendPQExpBuffer(q,
