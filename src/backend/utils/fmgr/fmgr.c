@@ -19,6 +19,7 @@
 #include "catalog/pg_language.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_package.h" /* BUG#M0000227 */
 #include "executor/functions.h"
 #include "executor/spi.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "lib/stringinfo.h"
@@ -33,6 +34,7 @@
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
 #include "commands/proclang.h" /* SRS-PLSQL-SUBPROC */
+#include "commands/packagecmds.h" /* BUG#M0000227 */
 
 /*
  * Hooks for function calls
@@ -55,7 +57,11 @@ typedef struct
 
 static HTAB *CFuncHash = NULL;
 
-
+/* Begin - BUG#M0000227 */
+static void fmgr_subproc_info_cxt_security(Oid functionId, FmgrInfo *finfo,
+						MemoryContext mcxt, Oid pkgoid,
+						char function_from, bool ignore_security);
+/* End - BUG#M0000227 */
 static void fmgr_info_cxt_security(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
 								   bool ignore_security);
 static void fmgr_info_C_lang(Oid functionId, FmgrInfo *finfo, HeapTuple procedureTuple);
@@ -66,6 +72,9 @@ static void record_C_func(HeapTuple procedureTuple,
 
 /* extern so it's callable via JIT */
 extern Datum fmgr_security_definer(PG_FUNCTION_ARGS);
+/* Begin - BUG#M0000227 */
+static Datum fmgr_package_security_definer(PG_FUNCTION_ARGS);
+/* End - BUG#M0000227 */
 
 
 /*
@@ -136,12 +145,30 @@ fmgr_info(Oid functionId, FmgrInfo *finfo)
  * but we force it to plisql_call_handle
  */
 void
-fmgr_subproc_info_cxt(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt)
+fmgr_subproc_info_cxt(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt,
+						Oid pkgoid, char function_from) /* BUG#M0000227 */
 {
+	fmgr_subproc_info_cxt_security(functionId, finfo, mcxt,
+					pkgoid, function_from, false);
+}
+
+
+/*
+ * This one does the actual work.  ignore_security is ordinarily false
+ * but is set to true when we need to avoid recursion.
+ */
+static void
+fmgr_subproc_info_cxt_security(Oid functionId, FmgrInfo *finfo,
+						MemoryContext mcxt, Oid pkgoid,
+						char function_from, bool ignore_security)
+{
+
 	Oid			language = get_language_oid("plisql", false);
 	HeapTuple	languageTuple;
 	Form_pg_language languageStruct;
 	FmgrInfo	plfinfo;
+	Oid			current_user = GetUserId();
+	Oid			define_user = InvalidOid;
 
 	/*
 	 * fn_oid *must* be filled in last.  Some code assumes that if fn_oid is
@@ -155,6 +182,21 @@ fmgr_subproc_info_cxt(Oid functionId, FmgrInfo *finfo, MemoryContext mcxt)
 
 	finfo->fn_strict = false; /* inline function is awalys not strict */
 
+
+	/*
+	 * handle invoke define from package or type
+	 */
+	if (!ignore_security &&
+		function_from == FUNC_FROM_PACKAGE &&
+		package_invoke_by_define(pkgoid, &define_user) &&
+		define_user != current_user)
+	{
+		finfo->fn_addr = fmgr_package_security_definer;
+		finfo->fn_stats = TRACK_FUNC_ALL;		/* ie, never track */
+		finfo->fn_oid = functionId;
+		finfo->fn_pkgoid = pkgoid;
+		return;
+	}
 
 	languageTuple = SearchSysCache1(LANGOID, language);
 	if (!HeapTupleIsValid(languageTuple))
@@ -767,6 +809,123 @@ fmgr_security_definer(PG_FUNCTION_ARGS)
 	if (OidIsValid(fcache->userid))
 		SetUserIdAndSecContext(fcache->userid,
 							   save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+
+	if (fcache->proconfig)
+	{
+		ProcessGUCArray(fcache->proconfig,
+						(superuser() ? PGC_SUSET : PGC_USERSET),
+						PGC_S_SESSION,
+						GUC_ACTION_SAVE);
+	}
+
+	/* function manager hook */
+	if (fmgr_hook)
+		(*fmgr_hook) (FHET_START, &fcache->flinfo, &fcache->arg);
+
+	/*
+	 * We don't need to restore GUC or userid settings on error, because the
+	 * ensuing xact or subxact abort will do that.  The PG_TRY block is only
+	 * needed to clean up the flinfo link.
+	 */
+	save_flinfo = fcinfo->flinfo;
+
+	PG_TRY();
+	{
+		fcinfo->flinfo = &fcache->flinfo;
+
+		/* See notes in fmgr_info_cxt_security */
+		pgstat_init_function_usage(fcinfo, &fcusage);
+
+		result = FunctionCallInvoke(fcinfo);
+
+		/*
+		 * We could be calling either a regular or a set-returning function,
+		 * so we have to test to see what finalize flag to use.
+		 */
+		pgstat_end_function_usage(&fcusage,
+								  (fcinfo->resultinfo == NULL ||
+								   !IsA(fcinfo->resultinfo, ReturnSetInfo) ||
+								   ((ReturnSetInfo *) fcinfo->resultinfo)->isDone != ExprMultipleResult));
+	}
+	PG_CATCH();
+	{
+		fcinfo->flinfo = save_flinfo;
+		if (fmgr_hook)
+			(*fmgr_hook) (FHET_ABORT, &fcache->flinfo, &fcache->arg);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	fcinfo->flinfo = save_flinfo;
+
+	if (fcache->proconfig)
+		AtEOXact_GUC(true, save_nestlevel);
+	if (OidIsValid(fcache->userid))
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	if (fmgr_hook)
+		(*fmgr_hook) (FHET_END, &fcache->flinfo, &fcache->arg);
+
+	return result;
+}
+
+
+
+/* Begin - BUG#M0000227 */
+/*
+ * like fmgr_security_definer, but this
+ * function handle package'func
+ */
+static Datum
+fmgr_package_security_definer(PG_FUNCTION_ARGS)
+{
+	Datum		result;
+	struct fmgr_security_definer_cache *volatile fcache;
+	FmgrInfo   *save_flinfo;
+	Oid			save_userid;
+	int			save_sec_context;
+	volatile int save_nestlevel;
+	PgStat_FunctionCallUsage fcusage;
+
+	if (!fcinfo->flinfo->fn_extra)
+	{
+		HeapTuple	tuple;
+		Form_pg_package pkgStruct;
+
+		fcache = MemoryContextAllocZero(fcinfo->flinfo->fn_mcxt,
+										sizeof(*fcache));
+
+		fmgr_subproc_info_cxt_security(fcinfo->flinfo->fn_oid, &fcache->flinfo,
+							   fcinfo->flinfo->fn_mcxt, fcinfo->flinfo->fn_pkgoid,
+							   FUNC_FROM_PACKAGE, true);
+		fcache->flinfo.fn_expr = fcinfo->flinfo->fn_expr;
+
+		tuple = SearchSysCache1(PKGOID,
+								ObjectIdGetDatum(fcinfo->flinfo->fn_pkgoid));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for package %u",
+				 fcinfo->flinfo->fn_pkgoid);
+		pkgStruct = (Form_pg_package) GETSTRUCT(tuple);
+
+		if (pkgStruct->define_invok)
+			fcache->userid = pkgStruct->pkgowner;
+
+		ReleaseSysCache(tuple);
+
+		fcinfo->flinfo->fn_extra = fcache;
+	}
+	else
+		fcache = fcinfo->flinfo->fn_extra;
+
+	/* GetUserIdAndSecContext is cheap enough that no harm in a wasted call */
+	GetUserIdAndSecContext(&save_userid, &save_sec_context);
+	if (fcache->proconfig)		/* Need a new GUC nesting level */
+		save_nestlevel = NewGUCNestLevel();
+	else
+		save_nestlevel = 0;		/* keep compiler quiet */
+
+	if (OidIsValid(fcache->userid))
+		SetUserIdAndSecContext(fcache->userid,
+							save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
 
 	if (fcache->proconfig)
 	{

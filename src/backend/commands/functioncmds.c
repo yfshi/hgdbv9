@@ -3180,7 +3180,8 @@ SKIP_PG_PROC_CHECK:
 	/* Begin - SRS-PLSQL-SUBPROC */
 	if (!FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
 	{
-		 fmgr_subproc_info_cxt(fexpr->funcid, &flinfo, CurrentMemoryContext);
+		fmgr_subproc_info_cxt(fexpr->funcid, &flinfo, CurrentMemoryContext,
+					fexpr->pkgoid, fexpr->function_from); /* BUG#M0000227 */
 	}
 	else
 	{

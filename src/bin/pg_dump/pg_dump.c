@@ -12561,7 +12561,7 @@ dumpPackage(Archive *fout, const PkgInfo *pkginfo)
 		PQExpBuffer bodyasPart;
 
 		bodyasPart = createPQExpBuffer();
-		appendPQExpBuffer(bodyasPart, " AS ");
+		appendPQExpBuffer(bodyasPart, " AS\n");
 		if (dopt->disable_dollar_quoting)
 			appendStringLiteralAH(bodyasPart, body_src, fout);
 		else
@@ -13003,6 +13003,11 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 
 	if (prosecdef[0] == 't')
 		appendPQExpBufferStr(q, " SECURITY DEFINER");
+	/* Begin - BUG#M0000227 */
+	else if (db_mode == DB_ORACLE &&
+		strcmp(lanname, "plisql") == 0)
+		appendPQExpBufferStr(q, " SECURITY INVOKER");
+	/* End - BUG#M0000227 */
 
 	if (proleakproof[0] == 't')
 		appendPQExpBufferStr(q, " LEAKPROOF");
