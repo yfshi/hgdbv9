@@ -487,3 +487,4 @@ BEGIN
 END;
 $$;
 NOTICE:  v_cnt = 
+drop procedure p1;

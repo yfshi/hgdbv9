@@ -18,6 +18,7 @@
 
 #include <ctype.h>
 
+#include "miscadmin.h" /* BUG#M0000227 */
 #include "access/htup_details.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_proc.h"
@@ -342,6 +343,12 @@ do_compile(FunctionCallInfo fcinfo,
 	char		*rettypename = NULL;
 	PLiSQL_type	*rettype = NULL;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M0000227 */
+	Oid 		define_useid = InvalidOid;
+	Oid 		save_userid;
+	int 		save_sec_context;
+	Oid			current_user = GetUserId();
+	/* End - BUG#M0000227 */
 
 	/*
 	 * Setup the scanner input and error info.  We assume that this function
@@ -364,6 +371,22 @@ do_compile(FunctionCallInfo fcinfo,
 	plerrcontext.arg = forValidator ? proc_source : NULL;
 	plerrcontext.previous = error_context_stack;
 	error_context_stack = &plerrcontext;
+
+	/* Begin - BUG#M0000227 */
+	/*
+	 * invoke as define in compiling, we should
+	 * switch current user for plsql
+	 */
+	if (compile_plisql_use_owner &&
+		current_user != procStruct->proowner)
+	{
+		define_useid = procStruct->proowner;
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+		SetUserIdAndSecContext(define_useid,
+								save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+	}
+	/* End - BUG#M0000227 */
 
 	/*
 	 * Do extra syntax checks when validating the function definition. We skip
@@ -1322,6 +1345,11 @@ do_compile(FunctionCallInfo fcinfo,
 		}
 	}
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	/* Begin - BUG#M0000227 */
+	if (OidIsValid(define_useid))
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	/* End - BUG#M0000227 */
 
 	/*
 	 * add it to the hash table

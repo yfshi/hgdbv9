@@ -1364,3 +1364,31 @@ get_functup_bytypenames(Oid namespaceid,
 	return tuple;
 }
 
+/* Begin - BUG#M0000227 */
+/*
+ * check wether package invoke by define
+ */
+bool
+package_invoke_by_define(Oid pkgoid, Oid *ownerid)
+{
+	HeapTuple tup;
+	Form_pg_package pkg_Form;
+	bool	invok_define;
+
+	if (!OidIsValid(pkgoid))
+		elog(ERROR, "invalid package oid %u", pkgoid);
+
+	tup = SearchSysCache1(PKGOID, ObjectIdGetDatum(pkgoid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for package %u", pkgoid);
+
+	pkg_Form = (Form_pg_package) GETSTRUCT(tup);
+	invok_define = pkg_Form->define_invok;
+	if (ownerid != NULL)
+		*ownerid = pkg_Form->pkgowner;
+	ReleaseSysCache(tup);
+
+	return invok_define;
+}
+/* End - BUG#M0000227 */
+

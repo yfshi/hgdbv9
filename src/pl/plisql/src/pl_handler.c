@@ -287,16 +287,7 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	else if (function_from == FUNC_FROM_PACKAGE)
 	{
-		OverrideSearchPath *overridePath;
-
 		func = plisql_get_package_func(fcinfo, false);
-
-		/* append package namespace */
-		overridePath = GetOverrideSearchPath(CurrentMemoryContext);
-		Assert(func->item != NULL);
-		overridePath->schemas = lcons_oid(get_package_namespace(func->item->pkey),
-										overridePath->schemas);
-		PushOverrideSearchPath(overridePath);
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	else
@@ -369,7 +360,6 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 			/* Begin - BUG#M000088 */
 			release_package_func_usecount(fcinfo);
 			/* End - BUG#M000088 */
-			PopOverrideSearchPath();
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
 

@@ -57,6 +57,9 @@ typedef struct FmgrInfo
 {
 	PGFunction	fn_addr;		/* pointer to function or handler to be called */
 	Oid			fn_oid;			/* OID of function (NOT of handler, if any) */
+	/* Begin - BUG#M0000227 */
+	Oid			fn_pkgoid;		/* OID of pakcage or object type */
+	/* End - BUG#M0000227 */
 	short		fn_nargs;		/* number of input args (0..FUNC_MAX_ARGS) */
 	bool		fn_strict;		/* function is "strict" (NULL in => NULL out) */
 	bool		fn_retset;		/* function returns a set */
@@ -125,7 +128,8 @@ extern void fmgr_info(Oid functionId, FmgrInfo *finfo);
 
 /* Begin - SRS-PLSQL-SUBPROC */
 extern void fmgr_subproc_info_cxt(Oid functionId, FmgrInfo *finfo,
-						  MemoryContext mcxt);
+						  MemoryContext mcxt,
+						  Oid pkgoid, char function_from); /* BUG#M0000227 */
 /* End - SRS-PLSQL-SUBPROC */
 
 

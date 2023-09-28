@@ -739,6 +739,10 @@ init_sexpr(Oid foid, Oid input_collation, Expr *node,
 	size_t		numargs = list_length(sexpr->args);
 	/* Begin - SRS-PLSQL-SUBPROC */
 	bool is_subproc_func = false;
+	/* Begin - BUG#M0000227 */
+	char function_from = FUNC_FROM_PG_PROC;
+	Oid pkgoid = InvalidOid;
+	/* End - BUG#M0000227 */
 
 	if (node != NULL && nodeTag(node) == T_FuncExpr)
 	{
@@ -746,6 +750,10 @@ init_sexpr(Oid foid, Oid input_collation, Expr *node,
 
 		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
 			is_subproc_func = true;
+		/* Begin - BUG#M0000227 */
+		function_from = funcexpr->function_from;
+		pkgoid = funcexpr->pkgoid;
+		/* End - BUG#M0000227 */
 	}
 
 	if (!is_subproc_func)
@@ -775,7 +783,8 @@ init_sexpr(Oid foid, Oid input_collation, Expr *node,
 	/* Set up the primary fmgr lookup information */
 	/* Begin - SRS-PLSQL-SUBPROC */
 	if (is_subproc_func)
-		fmgr_subproc_info_cxt(foid, &(sexpr->func), sexprCxt);
+		fmgr_subproc_info_cxt(foid, &(sexpr->func), sexprCxt,
+						pkgoid, function_from); /* BUG#M0000227 */
 	else
 		fmgr_info_cxt(foid, &(sexpr->func), sexprCxt);
 	/* End - SRS-PLSQL-SUBPROC */

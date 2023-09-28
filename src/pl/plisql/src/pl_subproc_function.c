@@ -19,6 +19,7 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "miscadmin.h" /* BUG#M0000227 */
 #include "plisql.h"
 #include "pl_subproc_function.h"
 /* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -30,6 +31,7 @@
 #include "nodes/nodeFuncs.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_package.h" /* BUG#M0000227 */
 #include "utils/builtins.h"
 #include "utils/syscache.h"
 #include "utils/lsyscache.h"
@@ -3123,6 +3125,12 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	PLiSQL_function *function;
 	int	parse_rc;
 	int found_varno = subprocfunc->function->found_varno;
+	/* Begin - BUG#M0000227 */
+	Oid 		define_useid = InvalidOid;
+	Oid 		save_userid;
+	int 		save_sec_context;
+	Oid			current_user = GetUserId();
+	/* End - BUG#M0000227 */
 
 	plisql_scanner_init(subprocfunc->src);
 
@@ -3140,12 +3148,31 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	/* append package namespace */
 	if (subprocfunc->function->item != NULL)
 	{
-		OverrideSearchPath *overridePath;
+		/* Begin - BUG#M0000227 */
+		if (compile_plisql_use_owner)
+		{
+			HeapTuple	pkgTup;
+			Form_pg_package pkgStruct;
 
-		overridePath = GetOverrideSearchPath(CurrentMemoryContext);
-		overridePath->schemas = lcons_oid(get_package_namespace(subprocfunc->function->item->pkey),
-										overridePath->schemas);
-		PushOverrideSearchPath(overridePath);
+			pkgTup = SearchSysCache1(PKGOID,
+					ObjectIdGetDatum(subprocfunc->function->item->pkey));
+			if (!HeapTupleIsValid(pkgTup))
+				elog(ERROR, "cache lookup failed for package %u",
+				subprocfunc->function->item->pkey);
+
+			pkgStruct = (Form_pg_package) GETSTRUCT(pkgTup);
+
+			if (current_user != pkgStruct->pkgowner)
+			{
+				define_useid = pkgStruct->pkgowner;
+				GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+				SetUserIdAndSecContext(define_useid,
+										save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+			}
+			ReleaseSysCache(pkgTup);
+		}
+		/* End - BUG#M0000227 */
 		plerrcontext.callback = plisql_compile_package_error_callback;
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
@@ -3230,10 +3257,10 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (function->item != NULL)
-		PopOverrideSearchPath();
-	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - BUG#M0000227 */
+	if (OidIsValid(define_useid))
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	/* End - BUG#M0000227 */
 
 	plisql_compile_tmp_cxt = NULL;
 

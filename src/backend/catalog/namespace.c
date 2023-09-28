@@ -1321,6 +1321,10 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 										&isNull);
 			if (!isNull)
 			{
+				/* Begin - BUG#M0000227 */
+				int	i;
+				/* End - BUG#M0000227 */
+
 				deconstruct_array(DatumGetArrayTypeP(protypenames),
 									TEXTOID, -1, false, 'i',
 									&elems, NULL, &nelems);

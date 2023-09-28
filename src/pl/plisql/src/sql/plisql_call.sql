@@ -441,3 +441,4 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
+drop procedure p1;

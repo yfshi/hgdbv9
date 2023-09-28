@@ -1133,6 +1133,16 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
 			   accountname, domainname, fmtHba(superuser_name)) >= 0);
 	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 			   accountname, domainname, fmtHba("system")) >= 0);
+	/* Begin - BUG#M0000227 */
+	/*
+	 * oracle_test regression test used owner
+	 */
+	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
+			   accountname, domainname, fmtHba("enrol11")) >= 0);
+	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
+			   accountname, domainname, fmtHba("enrol22")) >= 0);
+	/* End - BUG#M0000227 */
+
 	for (sl = extraroles; sl; sl = sl->next)
 		CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 				   accountname, domainname, fmtHba(sl->str)) >= 0);

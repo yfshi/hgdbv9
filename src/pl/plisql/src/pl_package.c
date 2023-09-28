@@ -21,6 +21,7 @@
 
 #include <ctype.h>
 
+#include "miscadmin.h" /* BUG#M0000227 */
 #include "plisql.h"
 #include "pl_package.h"
 #include "parser/parse_type.h"
@@ -813,7 +814,12 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	PLiSQL_function *function;
 	int			parse_rc;
 	PLiSQL_package *psource;
-	OverrideSearchPath *overridePath;
+	/* Begin - BUG#M0000227 */
+	Oid 		define_useid = InvalidOid;
+	Oid 		save_userid;
+	int 		save_sec_context;
+	Oid			current_user = GetUserId();
+	/* End - BUG#M0000227 */
 
 
 	/*
@@ -837,10 +843,33 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	psource = (PLiSQL_package *) item->source;
 	function = &psource->source;
 
-	/* append package namespace */
-	overridePath = GetOverrideSearchPath(CurrentMemoryContext);
-	overridePath->schemas = lcons_oid(get_package_namespace(item->pkey), overridePath->schemas);
-	PushOverrideSearchPath(overridePath);
+	/* Begin - BUG#M0000227 */
+	/*
+	 * invoke as define in compiling, we should
+	 * switch current user for plisql
+	 */
+	if (compile_plisql_use_owner)
+	{
+		HeapTuple	pkgTup;
+		Form_pg_package pkgStruct;
+
+		pkgTup = SearchSysCache1(PKGOID, ObjectIdGetDatum(item->pkey));
+		if (!HeapTupleIsValid(pkgTup))
+			elog(ERROR, "cache lookup failed for package %u", item->pkey);
+
+		pkgStruct = (Form_pg_package) GETSTRUCT(pkgTup);
+
+		if (current_user != pkgStruct->pkgowner)
+		{
+			define_useid = pkgStruct->pkgowner;
+			GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+			SetUserIdAndSecContext(define_useid,
+									save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+		}
+		ReleaseSysCache(pkgTup);
+	}
+	/* End - BUG#M0000227 */
 
 	plisql_error_funcname = pstrdup(function->fn_signature);
 
@@ -1031,8 +1060,10 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	MemoryContextSwitchTo(plisql_compile_tmp_cxt);
 	plisql_compile_tmp_cxt = NULL;
 
-	/* recover search path */
-	PopOverrideSearchPath();
+	/* Begin - BUG#M0000227 */
+	if (OidIsValid(define_useid))
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	/* End - BUG#M0000227 */
 
 	return;
 }
@@ -1057,7 +1088,12 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	PackageCacheKey pkey;
 	PLiSQL_variable	*var;
 	PLiSQL_function *function;
-	OverrideSearchPath *overridePath;
+	/* Begin - BUG#M0000227 */
+	Oid 		define_useid = InvalidOid;
+	Oid 		save_userid;
+	int 		save_sec_context;
+	Oid			current_user = GetUserId();
+	/* End - BUG#M0000227 */
 
 	/*
 	 * Setup the scanner input and error info.  We assume that this package
@@ -1071,10 +1107,21 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	pkg_source = TextDatumGetCString(pkgdatum);
 	plisql_scanner_init(pkg_source);
 
-	/* append package namespace */
-	overridePath = GetOverrideSearchPath(CurrentMemoryContext);
-	overridePath->schemas = lcons_oid(pkgStruct->pkgnamespace, overridePath->schemas);
-	PushOverrideSearchPath(overridePath);
+	/* Begin - BUG#M0000227 */
+	/*
+	 * invoke as define in compiling, we should
+	 * switch current user for plsql
+	 */
+	if (compile_plisql_use_owner &&
+		current_user != pkgStruct->pkgowner)
+	{
+		define_useid = pkgStruct->pkgowner;
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+		SetUserIdAndSecContext(define_useid,
+							save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+	}
+	/* End - BUG#M0000227 */
 
 	plisql_error_funcname = pstrdup(NameStr(pkgStruct->pkgname));
 
@@ -1325,8 +1372,10 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 	/* set package status */
 	item->cachestatus = 0;
 
-	/* recover search path */
-	PopOverrideSearchPath();
+	/* Begin - BUG#M0000227 */
+	if (OidIsValid(define_useid))
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	/* End - BUG#M0000227 */
 
 	/*
 	 * create package, we doesn't push it
@@ -1590,7 +1639,14 @@ plisql_exec_package_init(FunctionCallInfo fcinfo, PLiSQL_function *func)
 	PLiSQL_execstate *save_cur_estate;
 	ResourceOwner procedure_resowner;
 	int			rc;
-	OverrideSearchPath	*overridePath = NULL;
+	/* Begin - BUG#M0000227 */
+	Oid 		define_useid = InvalidOid;
+	Oid 		save_userid;
+	int 		save_sec_context;
+	HeapTuple	pkgTup;
+	Form_pg_package pkgStruct;
+	Oid			current_user = GetUserId();
+	/* End - BUG#M0000227 */
 
 	nonatomic = fcinfo->context &&
 		IsA(fcinfo->context, CallContext) &&
@@ -1608,12 +1664,29 @@ plisql_exec_package_init(FunctionCallInfo fcinfo, PLiSQL_function *func)
 	SPI_remember_func(func);
 	/* End - SRS-PLSQL-SUBPROC */
 
-	/* append package namespace */
-	overridePath = GetOverrideSearchPath(CurrentMemoryContext);
-	Assert(func->item != NULL);
-	overridePath->schemas = lcons_oid(get_package_namespace(func->item->pkey),
-									overridePath->schemas);
-	PushOverrideSearchPath(overridePath);
+	/* Begin - BUG#M0000227 */
+	/*
+	 * check wether invoke define, we should
+	 * switch current user for package init
+	 */
+	pkgTup = SearchSysCache1(PKGOID, ObjectIdGetDatum(func->item->pkey));
+	if (!HeapTupleIsValid(pkgTup))
+		elog(ERROR, "cache lookup failed for package %u", func->item->pkey);
+
+	pkgStruct = (Form_pg_package) GETSTRUCT(pkgTup);
+	if (pkgStruct->define_invok &&
+		current_user != pkgStruct->pkgowner)
+		define_useid = pkgStruct->pkgowner;
+	ReleaseSysCache(pkgTup);
+
+	if (OidIsValid(define_useid))
+	{
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+		SetUserIdAndSecContext(define_useid,
+							save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+	}
+	/* End - BUG#M0000227 */
 
 	/* Must save and restore prior value of cur_estate */
 	save_cur_estate = func->cur_estate;
@@ -1645,14 +1718,17 @@ plisql_exec_package_init(FunctionCallInfo fcinfo, PLiSQL_function *func)
 		func->use_count--;
 		func->cur_estate = save_cur_estate;
 
-		PopOverrideSearchPath();
-
 		/* Be sure to release the procedure resowner if any */
 		if (procedure_resowner)
 		{
 			ResourceOwnerReleaseAllPlanCacheRefs(procedure_resowner);
 			ResourceOwnerDelete(procedure_resowner);
 		}
+
+		/* Begin - BUG#M0000227 */
+		if (OidIsValid(define_useid))
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+		/* End - BUG#M0000227 */
 	}
 	PG_END_TRY();
 

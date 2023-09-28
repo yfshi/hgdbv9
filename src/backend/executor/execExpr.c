@@ -2483,6 +2483,10 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 	ListCell   *lc;
 	/* Begin - SRS-PLSQL-SUBPROC */
 	bool is_subproc_func = false;
+	/* Begin - BUG#M0000227 */
+	char function_from = FUNC_FROM_PG_PROC;
+	Oid pkgoid = InvalidOid;
+	/* End - BUG#M0000227 */
 
 	if (nodeTag(node) == T_FuncExpr)
 	{
@@ -2490,6 +2494,10 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 
 		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
 			is_subproc_func = true;
+		/* Begin - BUG#M0000227 */
+		function_from = funcexpr->function_from;
+		pkgoid = funcexpr->pkgoid;
+		/* End - BUG#M0000227 */
 	}
 
 	if (!is_subproc_func)
@@ -2525,7 +2533,8 @@ ExecInitFunc(ExprEvalStep *scratch, Expr *node, List *args, Oid funcid,
 	/* Set up the primary fmgr lookup information */
 	/* Begin - SRS-PLSQL-SUBPROC */
 	if (is_subproc_func)
-		fmgr_subproc_info_cxt(funcid, flinfo, CurrentMemoryContext);
+		fmgr_subproc_info_cxt(funcid, flinfo, CurrentMemoryContext,
+						pkgoid, function_from); /* BUG#M0000227 */
 	else
 		fmgr_info(funcid, flinfo);
 	/* End - SRS-PLSQL-SUBPROC */

@@ -6810,3 +6810,291 @@ end;
 --clean data
 DROP package test_pkg;
 DROP TABLE test_tab;
+
+
+--bug#M0000227
+create or replace package test_pkg is
+  var1 integer;
+  function test_f(id integer) return integer;
+  function test_f1(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    var1 := var1 + 2;
+    if id % 3 = 1 then
+       return 2;
+    elseif id % 1000 = 2 then
+       return var1 + 2;
+    else
+       return var1;
+    end if;
+  end;
+  function test_f1(id integer) return integer is
+    var1 integer;
+  begin
+    var1 := test_f(id);
+    return var1;
+  end;
+begin
+  var1 := 1;
+end;
+/
+
+create schema test_schema;
+create or replace package test_schema.test_invoke_pkg is
+  function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_schema.test_invoke_pkg is
+  function test_f(id integer) return integer is
+    var1 integer;
+  begin
+    var1 := test_pkg.test_f(id);
+     return var1;
+  end;
+end;
+/
+
+
+declare
+  var1 integer;
+begin
+  for i in 1 .. 500000 LOOP
+    var1 := test_schema.test_invoke_pkg.test_f(var1);
+    var1 := test_pkg.test_f(var1);
+  end loop;
+end;
+/
+
+
+---test procedure
+create or replace package test_pkg is
+  var1 integer;
+  procedure test_p(id integer);
+  procedure test_p1(id integer);
+end;
+/
+
+create or replace package body test_pkg is
+  procedure test_p(id integer) IS
+    var2 integer;
+  begin
+    var1 := var1 + 2;
+    if id % 3 = 1 then
+       var2 := 2;
+    elseif id % 1000 = 2 then
+       var2 := var1 + 2;
+    else
+       var2 := var1;
+    end if;
+  end;
+  procedure test_p1(id integer)  is
+    var1 integer;
+  begin
+    call test_p(id);
+  end;
+begin
+  var1 := 1;
+end;
+/
+
+
+create or replace package test_schema.test_invoke_pkg is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_schema.test_invoke_pkg is
+  procedure test_p(id integer) is
+  begin
+     call test_pkg.test_p(id);
+  end;
+end;
+/
+
+
+begin
+  for i in 1 .. 500000 LOOP
+    call test_schema.test_invoke_pkg.test_p(i);
+    call test_pkg.test_p(i);
+  end loop;
+end;
+/
+
+--clean data
+DROP package test_pkg;
+DROP package test_schema.test_invoke_pkg;
+DROP SCHEMA test_schema;
+
+
+--test compile by define
+create user enrol11;
+create schema enrol11;
+alter schema enrol11 owner to enrol11;
+
+\c - enrol11
+
+create table test_id(id integer,name varchar2(256));
+
+--invoke define
+create or replace function test_f(id integer) return integer is
+begin
+  insert into test_id values(1,'one');
+  return 1;
+end;
+/
+
+create or replace function test_rowtype_variable(id test_id%rowtype) return integer is
+begin
+  insert into test_id values(1,'one');
+  return 1;
+end;
+/
+
+--invoke current_user
+create or replace function test_f1(id integer) return integer authid current_user is
+begin
+  insert into test_id values(2,'two');
+  return 1;
+end;
+/
+
+--invoke define
+create or replace package test_pkg is
+  function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    insert into test_id values(3,'three');
+    return 1;
+  end;
+end;
+/
+
+
+create or replace package test_pkg1 authid current_user is
+  function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg1 is
+  function test_f(id integer) return integer is
+  begin
+    insert into test_id values(4,'four');
+    return 1;
+  end;
+end;
+/
+
+
+--procedure
+create or replace procedure test_p(id integer) is
+begin
+  insert into test_id values(5,'five');
+end;
+/
+
+--invoke current_user
+create or replace procedure test_p1(id integer) authid current_user is
+begin
+  insert into test_id values(6,'six');
+end;
+/
+
+--invoke define
+create or replace package test_ppkg is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_ppkg is
+  procedure test_p(id integer) is
+  begin
+    insert into test_id values(7,'seven');
+  end;
+end;
+/
+
+
+create or replace package test_ppkg1 authid current_user is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_ppkg1 is
+  procedure test_p(id integer) is
+  begin
+    insert into test_id values(8,'eight');
+  end;
+end;
+/
+
+
+--recover system
+\c - system
+
+--ok
+select enrol11.test_f(1) from dual;
+--failed
+select enrol11.test_f1(1) from dual;
+--ok
+select enrol11.test_pkg.test_f(1) from dual;
+--failed
+select enrol11.test_pkg1.test_f(1) from dual;
+--ok
+call enrol11.test_p(1);
+--failed
+call enrol11.test_p1(1);
+--ok
+call enrol11.test_ppkg.test_p(1);
+--failed
+call enrol11.test_ppkg1.test_p(1);
+
+select * from enrol11.test_id order by id;
+
+--clean data
+drop package enrol11.test_ppkg1;
+drop package enrol11.test_ppkg;
+drop package enrol11.test_pkg;
+drop package enrol11.test_pkg1;
+drop function enrol11.test_f;
+drop function enrol11.test_f1;
+drop procedure enrol11.test_p;
+drop procedure enrol11.test_p1;
+drop function enrol11.test_rowtype_variable;
+drop table enrol11.test_id;
+drop schema enrol11;
+drop user enrol11;
+
+
+--bug#M0000214
+create or replace package test_pkg is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_pkg is
+  procedure test_p(id integer) is
+    var1 integer;
+    var2 integer;
+  begin
+    for var1 in 1 .. 5 LOOP
+      var2 := var1 + 1;
+      commit;
+    end loop;
+  end;
+end;
+/
+
+--ok
+call test_pkg.test_p(23);
+
+--clean data
+DROP package test_pkg;

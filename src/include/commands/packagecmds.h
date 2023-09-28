@@ -48,5 +48,8 @@ extern HeapTuple get_functup_bytypenames(Oid namespaceid,
 						const char *func_name, Datum typenames,
 						oidvector *parametertypes,
 						Datum allParametertypes);
+/* Begin - BUG#M0000227 */
+extern bool package_invoke_by_define(Oid pkgoid, Oid *ownerid);
+/* End - BUG#M0000227 */
 #endif
 
