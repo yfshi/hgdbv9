@@ -522,6 +522,18 @@ endif
 ifdef TAP_TESTS
 	$(prove_check)
 endif
+#BEGIN - BUGM0000237
+oracle-pg-check: submake $(REGRESS_PREP)
+ifdef REGRESS
+	$(ora_pg_regress_check) $(REGRESS_OPTS) $(REGRESS)
+endif
+ifdef ISOLATION
+	$(oracle_pg_isolation_regress_check) $(ISOLATION_OPTS) $(ISOLATION)
+endif
+ifdef TAP_TESTS
+	$(prove_check)
+endif
+#END - BUGM0000237
 #BEGIN - SQL PARSER
 oracle-check: oracle-submake $(REGRESS_PREP)
 ifdef ORA_REGRESS
@@ -541,6 +553,7 @@ checkprep: EXTRA_INSTALL+=$(subdir)
 #BEGIN - SQL PARSER
 oracle-checkprep: EXTRA_INSTALL+=$(subdir)
 #END - SQL PARSER
+oracle-pg-checkprep: EXTRA_INSTALL+=$(subdir)	#BUGM0000237
 endif
 
 
