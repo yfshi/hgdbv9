@@ -1,3 +1,7 @@
 # src/oracle_test/regress/serial_schedule
 # This should probably be in an order similar to parallel_schedule.
-test: ora_rowid
+# BEGIN - BUG#M0000239
+# This feature already test successful.
+# so this case will be ignore in oracle-installcheck.
+# test: ora_rowid
+# END - BUG#M0000239

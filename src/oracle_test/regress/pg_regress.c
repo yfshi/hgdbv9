@@ -73,6 +73,7 @@ const char *pretty_diff_opts = "-w -U3";
 #endif
 
 static int oraPort;	/* SQL PARSER */
+static int port_pg;	/* BUG#M0000239 */
 
 /* options settable from command line */
 _stringlist *dblist = NULL;
@@ -1165,6 +1166,13 @@ psql_command_nosys(const char *database, const char *query,...)
 	va_list		args;
 	char	   *s;
 	char	   *d;
+	/* BEGIN - BUG#M0000239 */
+#ifndef WIN32
+	FILE *fp;
+	char pg_port[10];
+	char *temp_p;
+#endif
+	/* END - BUG#M0000239 */
 
 	/* Generate the query with insertion of sprintf arguments */
 	va_start(args, query);
@@ -1181,20 +1189,62 @@ psql_command_nosys(const char *database, const char *query,...)
 	}
 	*d = '\0';
 
-	/* And now we can build and execute the shell command */
-	snprintf(psql_cmd, sizeof(psql_cmd),
-			 "\"%s%spsql\" -X -c \"%s\" \"%s\"",
-			 bindir ? bindir : "",
-			 bindir ? "/" : "",
-			 query_escaped,
-			 database);
-
-	if (system(psql_cmd) != 0)
+/* BEGIN - BUG#M0000239 */
+#ifndef WIN32
+	if(port == (0xC000 | (PG_VERSION_NUM & 0x3FFF)))
 	{
-		/* psql probably already reported the error */
-		fprintf(stderr, _("command failed: %s\n"), psql_cmd);
-		exit(2);
+#endif
+		/* Now do make oracle-check */
+		/* And now we can build and execute the shell command */
+		snprintf(psql_cmd, sizeof(psql_cmd),
+				"\"%s%spsql\" -X -c \"%s\" \"%s\"",
+				bindir ? bindir : "",
+				bindir ? "/" : "",
+				query_escaped,
+				database);
+
+		if (system(psql_cmd) != 0)
+		{
+			/* psql probably already reported the error */
+			fprintf(stderr, _("command failed: %s\n"), psql_cmd);
+			exit(2);
+		}
+#ifndef WIN32
 	}
+	else
+	{
+		snprintf(psql_cmd, sizeof(psql_cmd),
+			"export test=$(\"%s%spsql\" -p %d -U system -X -c \"show port\" \"%s\") && export test=${test##*-} && export test=${test\%\%(*} && echo $test",
+			bindir ? bindir : "",
+			bindir ? "/" : "",
+			port,
+			database);
+
+		fp = popen(psql_cmd, "r");
+		temp_p = fgets(pg_port, sizeof(pg_port), fp);
+		if(temp_p == NULL)
+			printf("get port fail in make oracle-installcheck");
+		pclose(fp);
+		port_pg = atoi(pg_port);
+
+		/* Now do make oracle-installcheck */
+		snprintf(psql_cmd, sizeof(psql_cmd),
+			"\"%s%spsql\" -p %d -X -c \"%s\" \"%s\"",
+			bindir ? bindir : "",
+			bindir ? "/" : "",
+			port_pg,
+			query_escaped,
+			database);
+		if (system(psql_cmd) != 0)
+		{
+			/* psql probably already reported the error */
+			fprintf(stderr, _("command failed: %s\n"), psql_cmd);
+			exit(2);
+		}
+
+	}
+#endif
+/* END - BUG#M0000239 */
 }
 
 static void
