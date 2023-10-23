@@ -12,6 +12,7 @@ DATA = ltree_plpythonu--1.0.sql ltree_plpython2u--1.0.sql ltree_plpython3u--1.0.
 ORA_REGRESS = ivy_ltree_plpython
 REGRESS = ltree_plpython
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
+ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)	#BUG0000245
 
 PG_CPPFLAGS = $(python_includespec) -DPLPYTHON_LIBNAME='"plpython$(python_majorversion)"'
 
