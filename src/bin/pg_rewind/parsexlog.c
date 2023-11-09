@@ -40,6 +40,7 @@ static void extractPageInfo(XLogReaderState *record);
 static int	xlogreadfd = -1;
 static XLogSegNo xlogreadsegno = -1;
 static char xlogfpath[MAXPGPATH];
+bool save_wal_file = true;
 
 typedef struct XLogPageReadPrivate
 {
@@ -220,7 +221,7 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 		}
 
 		/* We are trying to detect if the new WAL file was opened */
-		if (xlogreader->seg.ws_tli != tli || xlogreader->seg.ws_segno != segno)
+		if (save_wal_file && (xlogreader->seg.ws_tli != tli || xlogreader->seg.ws_segno != segno))
 		{
 			char		xlogfname[MAXFNAMELEN];
 

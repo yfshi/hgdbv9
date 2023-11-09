@@ -735,7 +735,7 @@ decide_file_action(file_entry_t *entry)
 	{
 		/* File exists in target, but not source. */
 
-		if (keepwalhash_entry_exists(path))
+		if (save_wal_file && keepwalhash_entry_exists(path))
 		{
 			/* This is a WAL file that should be kept. */
 			pg_log_debug("Not removing %s because it is required for recovery", path);

@@ -24,6 +24,7 @@ extern bool showprogress;
 extern bool dry_run;
 extern bool do_sync;
 extern int	WalSegSz;
+extern bool save_wal_file;
 
 /* Target history */
 extern TimeLineHistoryEntry *targetHistory;
