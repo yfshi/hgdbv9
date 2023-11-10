@@ -128,6 +128,7 @@ main(int argc, char **argv)
 		{"dry-run", no_argument, NULL, 'n'},
 		{"no-sync", no_argument, NULL, 'N'},
 		{"progress", no_argument, NULL, 'P'},
+		{"no-save-wal", no_argument, NULL, 'w'},
 		{"debug", no_argument, NULL, 3},
 		{NULL, 0, NULL, 0}
 	};
@@ -181,7 +182,7 @@ main(int argc, char **argv)
 /* End - ReqID:SRS-MISC-LICENSE */
 	}
 
-	while ((c = getopt_long(argc, argv, "cD:nNPR", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "cD:nNPRw", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -228,6 +229,10 @@ main(int argc, char **argv)
 
 			case 4:
 				no_ensure_shutdown = true;
+				break;
+
+			case 'w':
+				save_wal_file = false;
 				break;
 		}
 	}
@@ -422,6 +427,9 @@ main(int argc, char **argv)
 								GenerateRecoveryConfig(conn, NULL));
 		exit(0);
 	}
+
+	/* Hash to memorize WAL files that should be kept */
+	keepwalhash_init();
 
 	findLastCheckpoint(datadir_target, divergerec, lastcommontliIndex,
 					   &chkptrec, &chkpttli, &chkptredo, restore_command);
