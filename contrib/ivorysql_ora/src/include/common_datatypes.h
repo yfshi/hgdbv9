@@ -46,6 +46,13 @@ extern text *ora_dotrim(const char *string, int stringlen, const char *set, int 
 
 /* oratimestamp.c */
 extern void OraAdjustTimestampForTypmod(Timestamp *time, int32 typmod);
+extern Timestamp pg_oratimestamp_in(char *str, int32 typmod); /* BUG#M0000247 */
+
+/* oradate.c */
+extern Timestamp pg_oradate_in(char *str, int32 typmod); /* BUG#M0000247 */
+
+/* oratimestamptz.c */
+extern TimestampTz pg_oratimestamptz_in(char *str, int32 typmod); /* BUG#M0000247 */
 
 /* dsinterval.c */
 extern Datum dsinterval_out(PG_FUNCTION_ARGS);
