@@ -687,8 +687,6 @@ typedef struct ColumnDef
 	bool		is_local;		/* column has local (non-inherited) def'n */
 	bool		is_not_null;	/* NOT NULL constraint specified? */
 	bool		is_from_type;	/* column definition came from table type */
-	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
-	bool		not_spefify_column_type;	/* mark  virtual column whether lack of data type */	/* Bug#Z485 */
 	char		storage;		/* attstorage setting, or 0 for default */
 	Node	   *raw_default;	/* default value (untransformed parse tree) */
 	Node	   *cooked_default; /* default value (transformed expr tree) */
@@ -701,6 +699,10 @@ typedef struct ColumnDef
 	List	   *constraints;	/* other constraints on column */
 	List	   *fdwoptions;		/* per-column FDW options */
 	int			location;		/* parse location, or -1 if none/unknown */
+	/* Begin - BUG#M0000257 */
+	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
+	bool		not_spefify_column_type;	/* mark  virtual column whether lack of data type */	/* Bug#Z485 */
+	/* End - BUG#M0000257 */
 } ColumnDef;
 
 /*
@@ -3863,13 +3865,15 @@ typedef enum editionable_flag
 typedef struct CompileFunctionStmt
 {
 	NodeTag		type;
+	bool		is_compile;		/* if false, it is change the editable|noneditable */
+	List		*parameters;
+	/* Begin - BUG#M0000257 */
 	/* Begin - BUG#Z106 */
 	ObjectType	objtype;
 	ObjectWithArgs *func;		/* name and args of function */
 	/* End - BUG#Z106 */
-	bool		is_compile;		/* if false, it is change the editable|noneditable */
 	editionable_flag		editable;	/* BUG#Z206 Z208 */
-	List		*parameters;
+	/* End - BUG#M0000257 */
 } CompileFunctionStmt;
 
 typedef struct ColumnRefOrFuncCall
@@ -3891,10 +3895,12 @@ typedef struct CreatePackageStmt
 	bool		replace;		/* T => replace if already exists */
 	List		*pkgname;
 	List		*propers;		/* invok rigth or access by or default collation */
+	char		*pkgsrc;
+	/* Begin - BUG#M0000257 */
 	/* Begin - BUG#Z206 Z208  */
 	editionable_flag	editable;		/* EDITIONABLE */
 	/* End - BUG#Z206 Z208 */
-	char		*pkgsrc;
+	/* End - BUG#M0000257 */
 } CreatePackageStmt;
 
 
@@ -3903,8 +3909,10 @@ typedef struct CreatePackageBodyStmt
 	NodeTag		type;
 	bool		replace;
 	List		*pkgname;
-	editionable_flag	editable; /* BUG#Z206 Z208 */
 	char		*bodysrc;
+	/* Begin - BUG#M0000257 */
+	editionable_flag	editable; /* BUG#Z206 Z208 */
+	/* End - BUG#M0000257 */
 } CreatePackageBodyStmt;
 
 typedef enum package_alter_flag
@@ -3922,8 +3930,10 @@ typedef struct AlterPackageStmt
 	NodeTag					type;
 	List					*pkgname;
 	package_alter_flag		alter_flag;
-	editionable_flag		editable;	/* BUG#Z206 Z208 */
 	List					*parameters;
+	/* Begin - BUG@M0000257 */
+	editionable_flag		editable;	/* BUG#Z206 Z208 */
+	/* End - BUG#M0000257 */
 } AlterPackageStmt;
 /* End - ReqID:SRS-SQL-PACKAGE */
 

@@ -57,9 +57,6 @@ typedef struct FmgrInfo
 {
 	PGFunction	fn_addr;		/* pointer to function or handler to be called */
 	Oid			fn_oid;			/* OID of function (NOT of handler, if any) */
-	/* Begin - BUG#M0000227 */
-	Oid			fn_pkgoid;		/* OID of pakcage or object type */
-	/* End - BUG#M0000227 */
 	short		fn_nargs;		/* number of input args (0..FUNC_MAX_ARGS) */
 	bool		fn_strict;		/* function is "strict" (NULL in => NULL out) */
 	bool		fn_retset;		/* function returns a set */
@@ -67,6 +64,11 @@ typedef struct FmgrInfo
 	void	   *fn_extra;		/* extra space for use by handler */
 	MemoryContext fn_mcxt;		/* memory context to store fn_extra in */
 	fmNodePtr	fn_expr;		/* expression parse tree for call, or NULL */
+	/* Begin - BUG#M0000257 */
+	/* Begin - BUG#M0000227 */
+	Oid			fn_pkgoid;		/* OID of pakcage or object type */
+	/* End - BUG#M0000227 */
+	/* End - BUG#M0000257 */
 } FmgrInfo;
 
 /*
