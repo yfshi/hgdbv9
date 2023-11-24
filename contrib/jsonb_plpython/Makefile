@@ -14,6 +14,7 @@ DATA = jsonb_plpythonu--1.0.sql jsonb_plpython2u--1.0.sql jsonb_plpython3u--1.0.
 ORA_REGRESS = ivy_jsonb_plpython
 REGRESS = jsonb_plpython
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
+ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)	#BUGM0000245
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

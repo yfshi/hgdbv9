@@ -1,4 +1,4 @@
-CREATE TABLE test_hash (a number(38,0), b varchar2(1024));
+CREATE TABLE test_hash (a int, b varchar2(1024));
 INSERT INTO test_hash VALUES (1, 'one');
 CREATE INDEX test_hash_a_idx ON test_hash USING hash (a);
 
