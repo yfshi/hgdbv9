@@ -64,9 +64,11 @@ static PGresult *executeQuery(PGconn *conn, const char *query);
 static void executeCommand(PGconn *conn, const char *query);
 static void expand_dbname_patterns(PGconn *conn, SimpleStringList *patterns,
 								   SimpleStringList *names);
+/* BEGIN - ReqID:SRS-MISC-USER */
 static void ResetCompatible(PQExpBuffer buf, PGconn *conn);
 static char *getInstanceSuperuser(PGconn *conn);
 static Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
+/* END - ReqID:SRS-MISC-USER */
 
 static char pg_dump_bin[MAXPGPATH];
 static const char *progname;
@@ -242,7 +244,7 @@ main(int argc, char *argv[])
 
 	pgdumpopts = createPQExpBuffer();
 
-	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:Op:rsS:tU:vwWx", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:m:Op:rsS:tU:vwWx", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -282,6 +284,12 @@ main(int argc, char *argv[])
 			case 'l':
 				pgdb = pg_strdup(optarg);
 				break;
+
+			/* BEGIN - bug#M0000261 */
+			case 'm':			/* Specify the dump mode */
+				DumpMode = pg_strdup(optarg);
+				break;
+			/* End - bug#M0000261 */
 
 			case 'O':
 				appendPQExpBufferStr(pgdumpopts, " -O");
@@ -503,17 +511,35 @@ main(int argc, char *argv[])
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(conn);
+	haveDatabaseUser(conn);				/* begin - bug:M0000261 */
 
-	if(database_mode == DB_ORACLE)
+	if (DB_ORACLE == database_mode)
 	{
 		Oid			cdboid = InvalidOid;
 		cdboid = FindUserLevelbyoid(conn , InvalidOid);
-		if(OidIsValid(cdboid))
+		if (OidIsValid(cdboid))
 		{
 			pg_log_error("Can't pg_dumpall use databaseuser");
 			exit_nicely(1);
 		}
 	}
+
+	/* BEGIN - bug#M0000261 */
+	if (DumpMode)
+	{
+		if (DB_ORACLE == database_mode)
+		{
+			;
+		}
+		else
+		{
+			pg_log_error("Can't use -M when dbmode is pg.");
+			exit_nicely(1);
+		}
+
+	}
+	/* END - bug#M0000261 */
+	
 	
 	/* END - ReqID:SRS-MISC-USER */
 
@@ -639,14 +665,14 @@ main(int argc, char *argv[])
 			/* BEGIN - ReqID:SRS-MISC-USER */
 			if (server_version >= 80100)
 			{
-				if(database_mode == DB_ORACLE)
+				if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser)		/*  bug#M0000261 */
 					OradumpRoleMembership(conn);
 				else
 					dumpRoleMembership(conn);
 			}
 			else
 			{
-				if(database_mode == DB_ORACLE)
+				if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser)		/*  bug#M0000261 */
 					OradumpGroups(conn);
 				else
 					dumpGroups(conn);
@@ -836,21 +862,35 @@ dumpRoles(PGconn *conn)
 
 	/* note: rolconfig is dumped later */
 	if (server_version >= 90600)
-		printfPQExpBuffer(buf,
-						  "SELECT oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, rolbypassrls, "
-						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM %s "
-						  "WHERE rolname !~ '^pg_' "
-						  "ORDER BY 2", role_catalog, role_catalog);
+	{
+		if(haveDBuser)			/*  bug#M0000261 */
+			printfPQExpBuffer(buf,
+							  "SELECT oid, rolname, rolsuper, rolinherit, "
+							  "rolcreaterole, rolcreatedb, "
+							  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+							  "rolvaliduntil, rolreplication, rolbypassrls, "
+							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+							  "rolname = current_user AS is_current_user "
+							  "FROM %s "
+							  "WHERE rolname !~ '^pg_' "
+							  "ORDER BY 2", role_catalog, role_catalog);
+		else
+			printfPQExpBuffer(buf,
+							  "SELECT oid, rolname, rolsuper, rolinherit, "
+							  "rolcreaterole, rolcreatedb, "
+							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+							  "rolvaliduntil, rolreplication, rolbypassrls, "
+							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+							  "rolname = current_user AS is_current_user "
+							  "FROM %s "
+							  "WHERE rolname !~ '^pg_' "
+							  "ORDER BY 2", role_catalog, role_catalog);
+	}
 	else if (server_version >= 90500)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
 						  "rolvaliduntil, rolreplication, rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
 						  "rolname = current_user AS is_current_user "
@@ -860,7 +900,7 @@ dumpRoles(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
 						  "rolvaliduntil, rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -871,7 +911,7 @@ dumpRoles(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -882,7 +922,7 @@ dumpRoles(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "null as rolcomment, "
@@ -964,7 +1004,7 @@ dumpRoles(PGconn *conn)
 		}
 
 		/* BEGIN - ReqID:SRS-MISC-USER */
-		if ((dboid != 0) && (database_mode == DB_ORACLE))
+		if ((dboid != 0) && (DB_ORACLE == database_mode))
 			continue;
 		/* BEGIN - ReqID:SRS-MISC-USER */
 
@@ -972,8 +1012,8 @@ dumpRoles(PGconn *conn)
 
 		if (binary_upgrade)
 		{
-			/* BEGIN - ReqID:SRS-MISC-USER */
-			if(databasename && strcmp(databasename, "template1") != 0 && (database_mode == DB_ORACLE))
+			/* BEGIN - ReqID:SRS-MISC-USER   bug#M0000261  */
+			if (databasename && strcmp(databasename, "template1") != 0 && (DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))
 				ResetCompatible(buf, conn);
 			/* BEGIN - ReqID:SRS-MISC-USER */
 			
@@ -1309,7 +1349,7 @@ dumpGroups(PGconn *conn)
 
 
 /*
- * OradumpRoleMembership  ReqID:SRS-MISC-USE
+ * OradumpGroups  ReqID:SRS-MISC-USE
  * 
  * Dump group memberships from a pre-8.1 server.  It's annoying that we
  * can't share any useful amount of code with the post-8.1 case, but
@@ -1815,13 +1855,18 @@ dumpDatabases(PGconn *conn)
 				fprintf(OPF, "\\connect %s\n\n", dbname);
 				
 				/* BEGIN - ReqID:SRS-MISC-USER */
-				if(database_mode == DB_ORACLE)
+				if (DB_ORACLE == database_mode) 
 				{
-					fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-					fprintf(OPF, "set session authorization system;\n");
-					fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-					fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
-					fprintf(OPF, "\n\n");
+					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
+					{
+						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
+						fprintf(OPF, "set session authorization system;\n");
+						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
+						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
+						fprintf(OPF, "\n\n");
+					}
+					else
+						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
 				}
 				/* END - ReqID:SRS-MISC-USER */
 			}
@@ -1866,9 +1911,15 @@ runPgDump(const char *dbname, const char *create_opts)
 	PQExpBuffer cmd = createPQExpBuffer();
 	int			ret;
 
-	appendPQExpBuffer(cmd, "\"%s\" %s %s", pg_dump_bin,
-					  pgdumpopts->data, create_opts);
+	/* BEGIN - bug#M0000261 */
+	if(DumpMode)
+		appendPQExpBuffer(cmd, "\"%s\" %s %s -M %s", pg_dump_bin,
+						  pgdumpopts->data, create_opts, DumpMode);
+	else
+		appendPQExpBuffer(cmd, "\"%s\" %s %s", pg_dump_bin,
+						  pgdumpopts->data, create_opts);
 
+	/* END - bug#M0000261 */
 	/*
 	 * If we have a filename, use the undocumented plain-append pg_dump
 	 * format.
@@ -2250,7 +2301,6 @@ ResetCompatible(PQExpBuffer buf, PGconn *conn)
 		appendPQExpBufferStr(buf,  getInstanceSuperuser(conn));
 		appendPQExpBufferStr(buf, "\";\n\n");
 	}
-
 }
 
 /*
@@ -2283,8 +2333,11 @@ FindUserLevelbyoid(PGconn *conn, Oid oid)
 	PQExpBuffer		query_cmd;
 	Oid				userdboid = InvalidOid;
 
+	if (!haveDBuser)			/*  bug#M0000261 */
+		return userdboid;
+
 	query_cmd = createPQExpBuffer();
-	if(OidIsValid(oid))
+	if (OidIsValid(oid))
 	{
 		appendPQExpBuffer(query_cmd, "select dboid from ivory_user where usesysid = %u", oid);
 		res = PQexec(conn, query_cmd->data);
@@ -2292,7 +2345,7 @@ FindUserLevelbyoid(PGconn *conn, Oid oid)
 	else
 		res = PQexec(conn, "select dboid from ivory_user where usesysid = get_current_userid();");
 
-	if(PQntuples(res))	
+	if (PQntuples(res))	
 		userdboid = atooid(PQgetvalue(res, 0, 0));
 	PQclear(res);
 	destroyPQExpBuffer(query_cmd);

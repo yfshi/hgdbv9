@@ -32,6 +32,15 @@ typedef enum DBParser
 }DBParser;
 
 /* BEGIN - ReqID:SRS-MISC-USER */
+/* BEGIN - bug#M0000261 */
+typedef enum AssignDumpMode
+{
+	ASSIGNDUMPMODE_UNKNOWN = 0,
+	ASSIGNDUMPMODE_PG,
+	ASSIGNDUMPMODE_ORACLE
+}AssignDumpMode;
+/* END bug#M0000261 */
+
 typedef enum DBDump
 {
 	PG_DUMP = 0,
