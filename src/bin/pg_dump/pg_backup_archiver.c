@@ -69,7 +69,7 @@ typedef struct _parallelReadyList
 	bool		sorted;			/* are valid entries currently sorted? */
 } ParallelReadyList;
 
-static void SetCompatible(PQExpBuffer buf);
+
 
 static ArchiveHandle *_allocAH(const char *FileSpec, const ArchiveFormat fmt,
 							   const int compression, bool dosync, ArchiveMode mode,
@@ -145,8 +145,10 @@ static void mark_create_done(ArchiveHandle *AH, TocEntry *te);
 static void inhibit_data_for_failed_table(ArchiveHandle *AH, TocEntry *te);
 
 static void StrictNamesCheck(RestoreOptions *ropt);
+/* BEGIN - ReqID:SRS-MISC-USER */
 static void dumpDatabaseRoles(ArchiveHandle *AH);
 
+static void SetCompatible(PQExpBuffer buf);
 static int get_owner_type(ArchiveHandle *AH, TocEntry *te);
 static void get_desc_ownerto(ArchiveHandle *AH, TocEntry *te);
 static char *getInstanceSuperuser(PGconn *conn);
@@ -158,7 +160,8 @@ static void OradumpDatabaseGroups(ArchiveHandle *AH);
 static Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
 static Oid GetCurrentDboid(PGconn *conn);
 static bool isSuperuser(PGconn *conn);
-static void SetDumptypeMode(PGconn *conn);
+static void SetDumptypeMode(PGconn *conn);		/*  bug#M0000261 */
+/* End - ReqID:SRS-MISC-USER */
 
 /*
  * Allocate a new DumpOptions block containing all default values.
@@ -517,59 +520,73 @@ RestoreArchive(Archive *AHX)
 		}
 	}
 
-	if(AH->connection)
-		getDatabaseMode(AH->connection);
-	if((database_mode == DB_ORACLE) && !iscreatetable )
+	if (AH->connection)
 	{
-
-		ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-		
-		if(CurrentUserIsSuperuser)
-			ahprintf(AH, "set session authorization system;\n");
-		
-		ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-		ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-		ahprintf(AH, "\n\n");
-		
-		SetDumptypeMode(AH->connection);
-
-		if(!RestoringToDB(AH) && CurrentUserIsSuperuser)
+		getDatabaseMode(AH->connection);
+		haveDatabaseUser(AH->connection);			/*  bug#M0000261 */
+	}
+	if ((DB_ORACLE == database_mode) && !iscreatetable)
+	{
+		/* BEGIN - bug#M0000238 */
+		if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
 		{
-			PQExpBuffer qry1;
-		
-			PGresult    *res1 = NULL,
-						*res2 = NULL;
-			qry1 = createPQExpBuffer();
-			if(!isSuperuser(AH->connection))
-				appendPQExpBuffer(qry1, "set session authorization %s;", AH->public.use_role);
-
-			dumpDatabaseRoles(AH);
-			if (AHX->remoteVersion >= 80100)
+			if(restoremode)
 			{
-				if(database_mode == DB_ORACLE)
-					OradumpDatabaseRoleMembership(AH);
-				else
-					dumpDatabaseRoleMembership(AH);
-			}
-			else
-			{
-				if(database_mode == DB_ORACLE)
-					OradumpDatabaseGroups(AH);
-				else
-					dumpDatabaseGroups(AH);
-			}
+				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 			
-			if(qry1->data)
-			{
-				res1 = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
-				res2 = PQexec(AH->connection, qry1->data);
-
-				if(res1)
-					PQclear(res1);
-				if(res2)
-					PQclear(res2);
+				if(CurrentUserIsSuperuser)
+					ahprintf(AH, "set session authorization system;\n");
+				
+				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
+				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+				ahprintf(AH, "\n\n");
+				
+				SetDumptypeMode(AH->connection);
 			}
-			destroyPQExpBuffer(qry1);
+			/* END - bug#M0000238 */
+
+			if(!RestoringToDB(AH) && CurrentUserIsSuperuser && haveDBuser)
+			{
+				PQExpBuffer qry1;
+			
+				PGresult    *res1 = NULL,
+							*res2 = NULL;
+				qry1 = createPQExpBuffer();
+				if(!isSuperuser(AH->connection))
+					appendPQExpBuffer(qry1, "set session authorization %s;", AH->public.use_role);
+
+				dumpDatabaseRoles(AH);
+				if (AHX->remoteVersion >= 80100)
+				{
+					if (DB_ORACLE == database_mode && haveDBuser)
+						OradumpDatabaseRoleMembership(AH);
+					else
+						dumpDatabaseRoleMembership(AH);
+				}
+				else
+				{
+					if (DB_ORACLE == database_mode)
+						OradumpDatabaseGroups(AH);
+					else
+						dumpDatabaseGroups(AH);
+				}
+				
+				if(qry1->data)
+				{
+					res1 = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
+					res2 = PQexec(AH->connection, qry1->data);
+
+					if(res1)
+						PQclear(res1);
+					if(res2)
+						PQclear(res2);
+				}
+				destroyPQExpBuffer(qry1);
+			}
+		}
+		else if(getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
 		}
 
 	}
@@ -823,14 +840,17 @@ RestoreArchive(Archive *AHX)
 	ahprintf(AH, "--\n-- PostgreSQL database dump complete\n--\n\n");
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
-	if((database_mode == DB_ORACLE) && 
+	if ((DB_ORACLE == database_mode) && 
 			strcmp((&ropt->cparams)->dbname,"template1") !=0 && 
 			strstr((&ropt->cparams)->dbname, "dbname=template1") == 0)
 	{
+		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+			if(CurrentUserIsSuperuser)
+				ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
+		}
 		
-		ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-		if(CurrentUserIsSuperuser)
-			ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
 	}
 	/* END - ReqID:SRS-MISC-USER */
  
@@ -941,48 +961,56 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 			_reconnectToDB(AH, te->tag);
 
 			/* BEGIN - ReqID:SRS-MISC-USER */
-			if(database_mode == DB_ORACLE)
+			if (DB_ORACLE == database_mode)
 			{
-				if (RestoringToDB(AH))
+				if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 				{
-					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-					if(CurrentUserIsSuperuser)
-						ahprintf(AH, "set session authorization system;\n");
-					ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-					ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-				}
-				else
-				{
-					PQExpBuffer qrycmd1;
-		
-					PGresult    *res1 = NULL,
-							    *res2 = NULL;
-					
-					qrycmd1 = createPQExpBuffer();
-					
-					if(!isSuperuser(AH->connection))
-						appendPQExpBuffer(qrycmd1, "set session authorization %s", AH->public.use_role);
-					
-					SetDumptypeMode(AH->connection);
-					dumpDatabaseRoles(AH);
-					
-					if(qrycmd1->data)
+					if (RestoringToDB(AH))
 					{
-						res1 = PQexec(AH->connection, qrycmd1->data);
-						res2 = PQexec(AH->connection, "reset ivorysql.compatible_mode;");
-
-						if(res1)
-							PQclear(res1);
-						if(res2)
-							PQclear(res2);
+						if(restoremode)
+						{
+							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
+							if(CurrentUserIsSuperuser)
+								ahprintf(AH, "set session authorization system;\n");
+							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
+							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+						}
 					}
-					destroyPQExpBuffer(qrycmd1);
-				}
+					else
+					{
+						PQExpBuffer qrycmd1;
+			
+						PGresult    *res1 = NULL,
+									*res2 = NULL;
+						
+						qrycmd1 = createPQExpBuffer();
+						
+						if(!isSuperuser(AH->connection))
+							appendPQExpBuffer(qrycmd1, "set session authorization %s;", AH->public.use_role);
+						
+						SetDumptypeMode(AH->connection);
+						dumpDatabaseRoles(AH);
+						
+						if(qrycmd1->data)
+						{
+							res1 = PQexec(AH->connection, qrycmd1->data);
+							res2 = PQexec(AH->connection, "reset ivorysql.compatible_mode;");
 
+							if(res1)
+								PQclear(res1);
+							if(res2)
+								PQclear(res2);
+						}
+						destroyPQExpBuffer(qrycmd1);
+					}
+				}
+				else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
+				{
+					ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+				}
 			}
 			/* END - ReqID:SRS-MISC-USER */
 		}
-		
 	}
 
 	/*
@@ -2714,9 +2742,9 @@ WriteToc(ArchiveHandle *AH)
 		WriteStr(AH, te->tablespace);
 		WriteStr(AH, te->tableam);
 		/* BEGIN - ReqID:SRS-MISC-USER */
-		if(AH->connection)
+		if (AH->connection)
 			getDatabaseMode(AH->connection);
-		if(DB_ORACLE == database_mode)
+		if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 			get_desc_ownerto(AH, te);
 		/* END - ReqID:SRS-MISC-USER */
 		WriteStr(AH, te->owner);
@@ -3446,17 +3474,23 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 		appendPsqlMetaConnect(&connectbuf, dbname);
 
 		/* BEGIN - ReqID:SRS-MISC-USER */
-		if(AH->connection)
+		if (AH->connection)
 			getDatabaseMode(AH->connection);
-		if((database_mode == DB_ORACLE))
+		if ((DB_ORACLE == database_mode))
 		{
-			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
-			//ExecuteSqlStatement((Archive *)AH, "set ivorysql.identifier_case_switch = normal;");
-			SetCompatible(&connectbuf);
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+			{
+				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+				//ExecuteSqlStatement((Archive *)AH, "set ivorysql.identifier_case_switch = normal;");
+				SetCompatible(&connectbuf);
+			}
+			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)
+			{
+				ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+			}
 		}
-		/* BEGIN - ReqID:SRS-MISC-USER */
-
 		ahprintf(AH, "%s\n", connectbuf.data);
+		/* End - ReqID:SRS-MISC-USER */
 		termPQExpBuffer(&connectbuf);
 	}
 
@@ -3837,11 +3871,15 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	}
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
-	if((strcmp(te->desc, "DATABASE") == 0) && (DB_ORACLE == database_mode) && (strcmp(te->tag, "template1") !=0 ))
+	if ((strcmp(te->desc, "DATABASE") == 0) && (DB_ORACLE == database_mode) && (strcmp(te->tag, "template1") !=0 ))
 	{
-		ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-		if(CurrentUserIsSuperuser)
-			ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
+		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+			if (CurrentUserIsSuperuser)
+				ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
+		}
+		
 	}
 	/* END - ReqID:SRS-MISC-USER */
 
@@ -3907,22 +3945,22 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			_getObjectDescription(temp, te);
 
 			/* BEGIN - ReqID:SRS-MISC-USER */
-			if(DB_ORACLE == database_mode)
+			if (DB_ORACLE == database_mode)
 			{
 				if(!RestoringToDB(AH))
 				{	
 					int utype = get_owner_type(AH,te);
 
-					if(utype == 2)
+					if((utype == 2) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						appendPQExpBuffer(temp, " OWNER TO DATABASEUSER %s;", fmtId(te->owner));
-					else if(utype == 1)
+					else if((utype == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						appendPQExpBuffer(temp, " OWNER TO INSTANCEUSER %s;", fmtId(te->owner));
 					else 
 						appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
 				}
 				else
 				{
-					if(te->usertype)
+					if ((te->usertype) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						appendPQExpBuffer(temp, " OWNER TO %s %s;", te->usertype, fmtId(te->owner));
 					else
 						appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
@@ -3970,14 +4008,21 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	}
 	
 	/* BEGIN - ReqID:SRS-MISC-USER */
-	if((strcmp(te->desc,"DATABASE") == 0) && (database_mode == DB_ORACLE))
+	if ((strcmp(te->desc,"DATABASE") == 0) && (DB_ORACLE == database_mode))
 	{
-		ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-		if(CurrentUserIsSuperuser)
-			ahprintf(AH, "set session authorization system;\n");
-		ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-		ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-		ahprintf(AH, "\n\n");
+		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
+			if(CurrentUserIsSuperuser)
+				ahprintf(AH, "set session authorization system;\n");
+			ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
+			ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+			ahprintf(AH, "\n\n");
+		}
+		else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+		}
 	}
 	/* END - ReqID:SRS-MISC-USER */
 }
@@ -4027,6 +4072,10 @@ WriteHead(ArchiveHandle *AH)
 	struct tm	crtm;
 
 	AH->WriteBufPtr(AH, "PGDMP", 5);	/* Magic code */
+	/* BEGIN - bug#M0000238 */
+	if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))			/*  bug#M0000261 */
+		AH->WriteBytePtr(AH, 'O');
+	/* END - bug#M0000238 */
 	AH->WriteBytePtr(AH, ARCHIVE_MAJOR(AH->version));
 	AH->WriteBytePtr(AH, ARCHIVE_MINOR(AH->version));
 	AH->WriteBytePtr(AH, ARCHIVE_REV(AH->version));
@@ -4054,6 +4103,7 @@ ReadHead(ArchiveHandle *AH)
 				vmin,
 				vrev;
 	int			fmt;
+	char		tmp1 = '\0';
 
 	/*
 	 * If we haven't already read the header, do so.
@@ -4071,7 +4121,19 @@ ReadHead(ArchiveHandle *AH)
 			fatal("did not find magic string in file header");
 	}
 
-	vmaj = AH->ReadBytePtr(AH);
+	tmp1 = AH->ReadBytePtr(AH);
+
+	/* BEGIN - bug#M0000238 */
+	if (tmp1 && (tmp1 == 'O'))
+		restoremode = true;
+	else
+		restoremode = false;
+
+	if(tmp1 != 'O')
+		vmaj = tmp1;
+	else
+		vmaj = AH->ReadBytePtr(AH);
+	/* END - bug#M0000238 */
 	vmin = AH->ReadBytePtr(AH);
 
 	if (vmaj > 1 || (vmaj == 1 && vmin > 0))	/* Version > 1.0 */
@@ -5432,6 +5494,9 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 	int			ntups;
 	PGresult   *res;
 
+	if(!haveDBuser)		/*  bug#M0000261 */
+		return 1;
+
 	query_cmd = createPQExpBuffer();
 	
 
@@ -5846,7 +5911,7 @@ getInstanceSuperuser(PGconn *conn)
 	PQExpBuffer q_cmd = createPQExpBuffer();
 	char *instancesu = NULL;
 
-	appendPQExpBufferStr(q_cmd, "select usename from ivory_user where usesysid=10;");
+	appendPQExpBufferStr(q_cmd, "select usename from pg_user where usesysid=10;");
 	res = PQexec(conn, q_cmd->data);	
 	instancesu = pg_strdup(PQgetvalue(res, 0, 0));
 	PQclear(res);
@@ -6282,7 +6347,7 @@ SetDumptypeMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsSuperuser)
+	if((CurrentUserIsSuperuser) && haveDBuser)			/*  bug#M0000261 */
 	{
 		res1 = PQexec(conn, "set session authorization system;");	
 

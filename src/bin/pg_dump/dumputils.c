@@ -33,9 +33,12 @@ static int grantee_type(char *att);
 bool CurrentUserIsSuperuser = false;
 const char *CurrentSessionUserName = NULL;
 DBMode database_mode = DB_PG;
+bool restoremode = true; 					/*  bug#M0000238 */
 DBParser compatible_db = PG_PARSER;
 DBGrantUser grant_usertype = PG_GRANTUSER;
 DBDump dumppgtype = PG_DUMP;
+const char *DumpMode = NULL;				/*  bug#M0000261 */
+bool haveDBuser = false;			/*  bug#M0000261 */
 /* END - ReqID:SRS-MISC-USER */
 
 /*
@@ -201,17 +204,17 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					 * ratt_result is determined by the aclitemout () function,
 					 * which assembles the sql step by step after obtaining grant/revoke
 					 */
-					if(DB_ORACLE == database_mode)
+					if (DB_ORACLE == database_mode) 
 					{
 						int ratt_result = -1;
 								ratt_result = grantee_type(grantee->data + strlen("group "));
-						if(ratt_result == 1)
+						if ((ratt_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						{
 							appendPQExpBuffer(firstsql, "GROUP INSTANCEUSER %s;\n",
 										  fmtId(grantee->data + strlen("group ")));
 
 						}
-						else if(ratt_result == 0)
+						else if ((ratt_result == 0)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						{
 							appendPQExpBuffer(firstsql, "GROUP DATABASEUSER %s;\n",
 										  fmtId(grantee->data + strlen("group ")));
@@ -229,20 +232,21 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 				else
 				{
 					/* BEGIN - ReqID:SRS-MISC-USER */
-					if(DB_ORACLE == database_mode)
+					if (DB_ORACLE == database_mode) 
 					{
 						int ratt_result = -1;
 								ratt_result = grantee_type(grantee->data);
-						if(ratt_result == 1)
+						if ((ratt_result == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						{
 							appendPQExpBuffer(firstsql, "INSTANCEUSER %s;\n",
 											  fmtId(grantee->data));	
 						}
-						else if(ratt_result == 0)
+						else if ((ratt_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 						{
 							appendPQExpBuffer(firstsql, "DATABASEUSER %s;\n",
 											  fmtId(grantee->data));	
-						}else
+						}
+						else
 							appendPQExpBuffer(firstsql, "%s;\n",
 											  fmtId(grantee->data));
 					}else
@@ -321,15 +325,15 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode)
+						if (DB_ORACLE == database_mode) 
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data);
-							if(att_result == 1)
+							if ((att_result == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(firstsql,
 												"%s TO INSTANCEUSER %s;\n",
 												name, fmtId(grantee->data));
-							else if(att_result == 0)
+							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(firstsql,
 												"%s TO DATABASEUSER %s;\n",
 												name, fmtId(grantee->data));
@@ -353,15 +357,15 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode)
+						if (DB_ORACLE == database_mode)
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data);
-							if(att_result == 1)
+							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(firstsql,
 												"%s TO INSTANCEUSER %s WITH GRANT OPTION;\n",
 												name, fmtId(grantee->data));
-							else if(att_result == 0)
+							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(firstsql,
 												"%s TO DATABASEUSER %s WITH GRANT OPTION;\n",
 												name, fmtId(grantee->data));
@@ -407,15 +411,15 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 									 strlen("group ")) == 0)
 					{
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode)
+						if (DB_ORACLE == database_mode) 
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data + strlen("group "));
 
-							if(att_result == 1)
+							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s;\n",
 														fmtId(grantee->data + strlen("group ")));
-							else if(att_result == 0)
+							else if ((att_result == 0)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s;\n",
 														fmtId(grantee->data + strlen("group ")));
 							else
@@ -431,13 +435,13 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					else
 					{
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode)
+						if (DB_ORACLE == database_mode)
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data);
-							if(att_result == 1)
+							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "INSTANCEUSER %s;\n", fmtId(grantee->data));
-							else if(att_result == 0)
+							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "DATABASEUSER %s;\n", fmtId(grantee->data));
 							else
 								appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
@@ -461,14 +465,14 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 									 strlen("group ")) == 0)
 					{
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode) 
+						if (DB_ORACLE == database_mode) 
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data + strlen("group "));
-							if(att_result == 1)
+							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s",
 														fmtId(grantee->data + strlen("group ")));
-							else if(att_result == 0)
+							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s",
 														fmtId(grantee->data + strlen("group ")));
 							else
@@ -484,13 +488,13 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					else
 					{
 						/* BEGIN - ReqID:SRS-MISC-USER */
-						if(DB_ORACLE == database_mode) 
+						if (DB_ORACLE == database_mode) 
 						{
 							int att_result = -1;
 								att_result = grantee_type(grantee->data);
-							if(att_result == 1 )
+							if ((att_result == 1 )&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "INSTANCEUSER %s", fmtId(grantee->data));
-							else if(att_result == 0)
+							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
 								appendPQExpBuffer(secondsql, "DATABASEUSER %s", fmtId(grantee->data));
 							else
 								appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
@@ -1278,12 +1282,19 @@ getcurrentuserisInstanceSupperuser(PGconn *conn)
 		return;
 	/* End - BUG#M229 */
 
-	appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
-	res = PQexec(conn, cmd1->data);	
-	if(PQntuples(res))
-		CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
-	PQclear(res);
-	destroyPQExpBuffer(cmd1);
+	if(haveDBuser)		/*  bug#M0000261 */
+	{
+		appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
+		res = PQexec(conn, cmd1->data);	
+
+		if (PQntuples(res))
+			CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+
+		PQclear(res);
+		destroyPQExpBuffer(cmd1);
+	}
+	else
+		CurrentUserIsSuperuser = true;
 }
 
 /*
@@ -1330,5 +1341,55 @@ setIdentifierCaseSwitch(PGconn *conn)
 
 	if (res)
 		PQclear(res);
+}
+
+/*
+ * getDumpMode  ReqID:SRS-MISC-USE bug:M0000261
+ * 
+ */
+AssignDumpMode  
+getDumpMode(const char *dumpmode)
+{
+	if(dumpmode)
+	{
+		if (strcmp(dumpmode, "oracle") == 0)
+			return ASSIGNDUMPMODE_ORACLE;
+		else if (strcmp(dumpmode, "pg") == 0)
+			return ASSIGNDUMPMODE_PG;
+		else
+		{
+			printf("Dump mode cannot find : %s , use default parameters.\n\n", dumpmode);
+			dumpmode = NULL;
+			return ASSIGNDUMPMODE_UNKNOWN;
+		}
+	}
+	else
+		return ASSIGNDUMPMODE_UNKNOWN;
+
+}
+
+/*
+ * haveDatabaseUser  ReqID:SRS-MISC-USE bug:M0000261
+ * 
+ */
+bool 
+haveDatabaseUser(PGconn *conn)
+{
+	PGresult *res;
+
+	/* When the database mode is pg, you do not need to get it */
+	if(database_mode == DB_PG)
+		return false;
+
+	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");	
+
+	if (PQntuples(res))
+	{
+		haveDBuser = true;		/*  bug#M0000261 */
+		return true;
+	}
+
+	PQclear(res);
+	return false;
 }
 

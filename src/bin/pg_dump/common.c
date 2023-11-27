@@ -141,7 +141,7 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 
 	/* Begin - BUG#M229 */
 	/* When the database mode is pg, you do not need to back up the package */
-	if(DB_ORACLE == database_mode)
+	if (DB_ORACLE == database_mode)
 		getPackages(fout, &numPkgs);
 	/* End- BUG#M229 */
 	/* End - ReqID:SRS-SQL-PACKAGE */

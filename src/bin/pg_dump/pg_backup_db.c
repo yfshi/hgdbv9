@@ -32,9 +32,11 @@
 static void _check_database_version(ArchiveHandle *AH);
 static void notice_processor(void *arg, const char *message);
 
+/* BEGIN - ReqID:SRS-MISC-USER */
 static void SetCompatibleMode(PGconn *conn);
 static void SetDumptypeMode(PGconn *conn);
 static int RestoringToDB(ArchiveHandle *AH);
+/* END - ReqID:SRS-MISC-USER */
 
 static void
 _check_database_version(ArchiveHandle *AH)
@@ -109,6 +111,7 @@ ReconnectToServer(ArchiveHandle *AH, const char *dbname)
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
+	haveDatabaseUser(AH->connection);
 	/* END - ReqID:SRS-MISC-USER */
 	
 	PQfinish(oldConn);
@@ -233,15 +236,25 @@ ConnectDatabase(Archive *AHX,
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
-	if((database_mode == DB_ORACLE) && (!RestoringToDB(AH)))
+	if ((DB_ORACLE == database_mode) && (!RestoringToDB(AH)))
 	{
-		if(strcmp(cparams->dbname,"template1") !=0 && strstr(cparams->dbname, "dbname=template1") == 0)
+		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			SetCompatibleMode(AH->connection);
-			SetDumptypeMode(AH->connection);
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+			{
+				SetCompatibleMode(AH->connection);
+				SetDumptypeMode(AH->connection);
 
-			//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
-			setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+				//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
+				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+			}
+			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
+			{
+				PGresult		  *res;
+				res = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
+				if (res)
+					PQclear(res);	
+			}
 		}
 	}
 	/* END - ReqID:SRS-MISC-USER */
@@ -619,7 +632,7 @@ SetCompatibleMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsSuperuser)
+	if((CurrentUserIsSuperuser) && haveDBuser)			/*  bug#M0000261 */
 	{
 		res1 = PQexec(conn, "set session authorization system;");	
 

@@ -2926,7 +2926,7 @@ alter_table_cmd:
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ChangeOwner;
-					n->utype = UNKNOWN_USER;
+					n->utype = UNKNOWN_USER;			/* ReqID:SRS-MISC-USER */
 					n->newowner = $3;
 					$$ = (Node *)n;
 				}
@@ -11508,6 +11508,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_PACKAGE;
 					n->object = (Node *) $3;
+					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -11710,6 +11711,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MISC-USER */
 			| ALTER AGGREGATE aggregate_with_argtypes OWNER TO instance_database RoleSpec
 				{
 					if(ORA_GRANTUSER == grant_usertype)
@@ -11727,7 +11729,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 									errmsg("This is used for dump when oracle but Postgresql not support.")));
 					
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
 			| ALTER COLLATION any_name OWNER TO instance_database RoleSpec
 				{
 					if(ORA_GRANTUSER == grant_usertype)
@@ -11744,6 +11745,22 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 									errmsg("This is used for dump when oracle but Postgresql not support.")));
 					
+				}
+			| ALTER PACKAGE package_names OWNER TO instance_database RoleSpec
+				{
+					if(ORA_GRANTUSER == grant_usertype)
+					{
+						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
+						n->objectType = OBJECT_PACKAGE;
+						n->object = (Node *) $3;
+						n->utype = $6;
+						n->newowner = $7;
+						$$ = (Node *)n;
+					}
+					else
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("This is used for dump when oracle but Postgresql not support.")));
 				}
 			| ALTER CONVERSION_P any_name OWNER TO instance_database RoleSpec
 				{

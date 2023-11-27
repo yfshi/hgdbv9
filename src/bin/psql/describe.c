@@ -1733,7 +1733,7 @@ describeOneTableDetails(const char *schemaname,
 	if (pset.sversion >= 120000)
 	{
 		/* Begin - BUG#M229 */
-		if (db_mode == DB_ORACLE)
+		if (DB_ORACLE == db_mode)
 			printfPQExpBuffer(&buf,
 						  "SELECT c.relchecks, c.relkind, c.relhasindex, c.relhasrules, "
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "

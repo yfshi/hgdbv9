@@ -43,6 +43,9 @@ extern DBMode database_mode;
 extern DBParser compatible_db;
 extern DBGrantUser grant_usertype;
 extern DBDump dumppgtype;
+extern bool restoremode; 			/*  bug#M0000238 */
+extern const char *DumpMode;			/*  bug#M0000261 */
+extern bool haveDBuser;					/*  bug#M0000261 */
 /* END - ReqID:SRS-MISC-USER */
 
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
@@ -75,8 +78,12 @@ extern void makeAlterConfigCommand(PGconn *conn, const char *configitem,
 								   const char *type2, const char *name2,
 								   PQExpBuffer buf);
 
+/* BEGIN - ReqID:SRS-MISC-USER */
 extern void getcurrentuserisInstanceSupperuser(PGconn *conn);
 extern void getDatabaseMode(PGconn *conn);
 extern void setIdentifierCaseSwitch(PGconn *conn);		/* BUG#M229 */
+extern AssignDumpMode  getDumpMode(const char *dumpmode);		/*  bug#M0000261 */
+extern bool haveDatabaseUser(PGconn *conn);		/*  bug#M0000261 */
+/* END - ReqID:SRS-MISC-USER */
 
 #endif							/* DUMPUTILS_H */
