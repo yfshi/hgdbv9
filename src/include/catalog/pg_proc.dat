@@ -11695,6 +11695,21 @@
   prosrc => 'get_parameter_descr' },
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 
+# /* BEGIN  - SRS-MISC-GB18030 */
+{ oid => '4650',
+  descr => 'internal conversion function for gb18030 to gbk',
+  proname => 'gb18030_to_gbk', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gb18030_to_gbk', probin => '$libdir/gb18030_and_gbk' },
+
+  { oid => '4651',
+  descr => 'internal conversion function for gbk to gb18030',
+  proname => 'gbk_to_gb18030', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gbk_to_gb18030', probin => '$libdir/gb18030_and_gbk' },
+
+# /* END - SRS-MISC-GB18030 */
+
 /*BEGIN Oracle Compatibility Metadatas*/
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 { oid => '9101', descr => 'call this function for execution of PL/iSQL procedures',
