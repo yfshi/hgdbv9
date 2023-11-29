@@ -475,7 +475,7 @@ static bool SetRoleIsActive = false;
  *
  * get Port Connection mode
  */
-int
+char
 GetPortConnmode(void)
 {
 	Port	   *port = MyProcPort;
@@ -483,20 +483,20 @@ GetPortConnmode(void)
 	if(MyProcPort == NULL)
 	{
 		if(ORA_PARSER == compatible_db)
-			return 2;
+			return 'o';
 		else
-			return 1;
+			return 'p';
 	}
 	else
 	{
 		if (port->connmode == 'p')
-			return 1;
+			return 'p';
 		else if (port->connmode == 'o')
-			return 2;
+			return 'o';
 		else if (port->connmode == 'u')
-			return 0;
+			return 'u';
 	}
-	return 0;
+	return 'u';
 }
 
 

@@ -34,7 +34,6 @@ static void notice_processor(void *arg, const char *message);
 
 /* BEGIN - ReqID:SRS-MISC-USER */
 static void SetCompatibleMode(PGconn *conn);
-static void SetDumptypeMode(PGconn *conn);
 static int RestoringToDB(ArchiveHandle *AH);
 /* END - ReqID:SRS-MISC-USER */
 
@@ -648,28 +647,7 @@ SetCompatibleMode(PGconn *conn)
 	}
 }
 
-/*
- * SetDumptypeMode  ReqID:SRS-MISC-USE
- * 
- */
-static void 
-SetDumptypeMode(PGconn *conn)
-{
-	PGresult		  *res,
-					  *res1;
-	
-	res = PQexec(conn, "set ivorysql.dumppgtype to oracle;");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-		fatal("change dumppgtype error");
-	if (res)
-		PQclear(res);
 
-	res1 = PQexec(conn, "set ivorysql.grant_usertype to oracle;");
-	if (PQresultStatus(res1) != PGRES_COMMAND_OK)
-		fatal("change grant user type error");	
-	if (res1)
-		PQclear(res1);
-}
 
 /*
  * RestoringToDB  ReqID:SRS-MISC-USE

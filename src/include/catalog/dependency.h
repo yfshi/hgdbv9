@@ -295,4 +295,6 @@ extern void shdepDropOwned(List *relids, DropBehavior behavior);
 
 extern void shdepReassignOwned(List *relids, Oid newrole);
 
+extern void dropUserDependencies(Oid userId);		/* ReqID:SRS-MISC-USER */
+
 #endif							/* DEPENDENCY_H */

@@ -404,10 +404,10 @@ static void determineLanguage(List *options);
 %type <str>		iso_level opt_encoding
 %type <rolespec> grantee
 /* Begin - ReqID:ReqID:SRS-MISC-USER */
-%type <list>	grantee_list instance_database_grantee_list instance_database_grantee 
+%type <list>	grantee_list instance_database_grantee_list instance_database_grantee  
 				instance_database_role_list instance_database_role 
 
-%type <ival>	instance_database instance_database_granted_by 
+%type <ival>	instance_database instance_database_granted_by instance_database_owner 
 /* End - ReqID:ReqID:SRS-MISC-USER */
 %type <accesspriv> privilege
 %type <list>	privileges privilege_list
@@ -5375,16 +5375,44 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
+					n->utype = UNKNOWN_USER;
 					n->owner = $4;
 					n->location = $6;
 					n->options = $7;
 					$$ = (Node *) n;
 				}
+				/* Begin - ReqID:SRS-MISC-USER bug:z561  */
+				| CREATE TABLESPACE name instance_database_owner RoleSpec LOCATION Sconst opt_reloptions
+				{
+					if(ORA_GRANTUSER == grant_usertype)
+					{
+						CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
+						n->tablespacename = $3; 
+						n->utype = $4;
+						n->owner = $5;
+						n->location = $7;
+						n->options = $8;
+						$$ = (Node *) n;
+					}
+					else
+						ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									errmsg("This is used for dump when oracle but Postgresql not support.")));
+					
+				}
+				/* End - ReqID:SRS-MISC-USER bug:z561  */
 		;
 
 OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 			| /*EMPTY */				{ $$ = NULL; }
 		;
+
+/* Begin - ReqID:SRS-MISC-USER bug:z561  */
+instance_database_owner:
+			OWNER DATABASEUSER					{ $$ = DATABASE_USER; }
+			| OWNER INSTANCEUSER					{ $$ = INSTANCE_USER; }
+		;
+/* End - ReqID:SRS-MISC-USER bug:z561  */
 
 /*****************************************************************************
  *
@@ -8814,6 +8842,7 @@ CreateFunctionStmt:
 ora_editioned:
 			EDITIONABLE 		{ $$ = FLAG_EDITIONABLE; }
 			| NONEDITIONABLE	{ $$ = FLAG_NOEDITIONABLE; }
+			;
 
 opt_ora_editioned:
 			ora_editioned		{ $$ = $1; }
@@ -10264,7 +10293,7 @@ ora_anonymous_declare: DECLARE
 			}
 		;
 
-any_identifier: NonReservedWord { $$ = $1; }
+any_identifier: NonReservedWord { $$ = $1; };
 /* End - ReqID:SRS-SQL-PROC */
 
 dostmt_opt_list:

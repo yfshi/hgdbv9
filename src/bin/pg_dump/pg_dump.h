@@ -38,6 +38,7 @@ typedef enum
 {
 	/* When modifying this enum, update priority tables in pg_dump_sort.c! */
 	DO_NAMESPACE,
+	DO_DATABASEROLE,
 	DO_EXTENSION,
 	DO_TYPE,
 	DO_SHELL_TYPE,
@@ -672,6 +673,24 @@ typedef struct _extensionMemberId
 	ExtensionInfo *ext;			/* owning extension */
 } ExtensionMemberId;
 
+/* Begin - ReqID:SRS-MISC-USER */
+typedef struct _DatabaseRolesInfo
+{
+	DumpableObject dobj;
+	bool			rolsuper;
+	bool			rolinherit;
+	bool			rolcreaterole;
+	bool			rolcreatedb;
+	bool			rolcanlogin;
+	int				rolconnlimit;
+	char		   *rolvaliduntil;
+	bool			rolreplication;
+	bool			rolbypassrls;
+	char		   *rolpassword;
+	char		   *rolcomment;
+} DatabaseRolesInfo;
+/* End - ReqID:SRS-MISC-USER */
+
 /*
  *	common utility functions
  */
@@ -757,5 +776,8 @@ extern PublicationInfo *getPublications(Archive *fout,
 extern void getPublicationTables(Archive *fout, TableInfo tblinfo[],
 								 int numTables);
 extern void getSubscriptions(Archive *fout);
+
+extern TableInfo *getTables(Archive *fout, int *numTables);
+extern DatabaseRolesInfo *getDbRoles(Archive *fout, int *numRoles);
 
 #endif							/* PG_DUMP_H */

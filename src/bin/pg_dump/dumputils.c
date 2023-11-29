@@ -758,6 +758,8 @@ do { \
 		CONVERT_PRIV('U', "USAGE");
 	else if (strcmp(type, "FOREIGN TABLE") == 0)
 		CONVERT_PRIV('r', "SELECT");
+	else if (strcmp(type, "DATABASEROLE") == 0)		/* bug:z538 */
+		CONVERT_PRIV('X', "EXECUTE");
 	else if (strcmp(type, "LARGE OBJECT") == 0)
 	{
 		CONVERT_PRIV('r', "SELECT");
@@ -1278,11 +1280,7 @@ getcurrentuserisInstanceSupperuser(PGconn *conn)
 
 	/* Begin - BUG#M229 */
 	/* When the database mode is pg, you do not need to get it */
-	if(database_mode == DB_PG)
-		return;
-	/* End - BUG#M229 */
-
-	if(haveDBuser)		/*  bug#M0000261 */
+	if(haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
 	{
 		appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
 		res = PQexec(conn, cmd1->data);	
@@ -1295,6 +1293,7 @@ getcurrentuserisInstanceSupperuser(PGconn *conn)
 	}
 	else
 		CurrentUserIsSuperuser = true;
+	/* End - BUG#M229 */
 }
 
 /*
@@ -1391,5 +1390,78 @@ haveDatabaseUser(PGconn *conn)
 
 	PQclear(res);
 	return false;
+}
+
+/*
+ * SetDumptypeMode  ReqID:SRS-MISC-USE
+ * 
+ * Set Dumptype Mode
+ */
+void 
+SetDumptypeMode(PGconn *conn)
+{
+	PGresult		  *res,
+					  *res1,
+					  *res2,
+					  *res3;
+	
+	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
+	if (res)
+		PQclear(res);
+
+	if(CurrentUserIsSuperuser)
+	{
+		res1 = PQexec(conn, "set session authorization system;");	
+
+		CurrentSessionUserName = "system";
+		if (res1)
+			PQclear(res1);
+	}
+
+	res2 = PQexec(conn, "set ivorysql.dumppgtype to oracle;");
+	if (res2)
+		PQclear(res2);
+
+	res3 = PQexec(conn, "set ivorysql.grant_usertype to oracle;");
+
+	if (res3)
+		PQclear(res3);
+}
+
+
+/*
+ * ReSetDumptypeMode  ReqID:SRS-MISC-USE
+ * 
+ * reset Dumptype Mode
+ */
+void 
+ReSetDumptypeMode(PGconn *conn)
+{
+	PGresult		  *res,
+					  *res1,
+					  *res2,
+					  *res3;
+	
+	res = PQexec(conn, "reset ivorysql.compatible_mode;");
+	if (res)
+		PQclear(res);
+
+	if(CurrentUserIsSuperuser)
+	{
+		res1 = PQexec(conn, "reset session authorization;");	
+
+		CurrentSessionUserName = NULL;
+		if (res1)
+			PQclear(res1);
+	}
+
+	res2 = PQexec(conn, "reset ivorysql.dumppgtype;");	
+	if (res2)
+		PQclear(res2);
+
+	res3 = PQexec(conn, "reset ivorysql.grant_usertype;");	
+
+	if (res3)
+		PQclear(res3);
 }
 

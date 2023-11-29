@@ -369,18 +369,53 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	}
 	else
 	{
-		if ((is_instance_user) && (strcmp(stmt->role,"sys") != 0) && (strcmp(stmt->role,"system") != 0))
+		if (is_instance_user)
 		{
-			tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(stmt->role), 
-									ObjectIdGetDatum(InvalidOid));
-			if(HeapTupleIsValid(tuple1))
+			if((strcmp(stmt->role,"sys") != 0) && (strcmp(stmt->role,"system") != 0))
 			{
-				ReleaseSysCache(tuple1);
-				ereport(ERROR,
-						(errcode(ERRCODE_DUPLICATE_OBJECT),
-						errmsg("role \"%s\" already exists",
-								stmt->role)));
+				tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
+										CStringGetDatum(stmt->role), 
+										ObjectIdGetDatum(InvalidOid));
+				if(HeapTupleIsValid(tuple1))
+				{
+					ReleaseSysCache(tuple1);
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_OBJECT),
+							errmsg("role \"%s\" already exists",
+									stmt->role)));
+				}
+			}
+			else
+			{
+				/*
+				 * Begin - bug: z536
+				 */				
+				if(MyDatabaseId == 1)
+				{
+					tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
+									CStringGetDatum(stmt->role), 
+									ObjectIdGetDatum(MyDatabaseId));
+					if(HeapTupleIsValid(tuple1))
+					{
+						ReleaseSysCache(tuple1);
+						ereport(ERROR,
+									(errcode(ERRCODE_DUPLICATE_OBJECT),
+									errmsg("The name of the instance-level user cannot be sys or system ,error name: \"%s\" ",
+											stmt->role)));
+					}
+				}
+				else
+				{
+					ereport(ERROR,
+									(errcode(ERRCODE_DUPLICATE_OBJECT),
+									errmsg("The name of the instance-level user cannot be sys or system ,error name: \"%s\" ",
+											stmt->role)));
+				}
+				
+
+				/*
+				 * End - bug: z536
+				 */
 			}
 		}
 		else
@@ -439,7 +474,12 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 
 	new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper);
 	new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(inherit);
-	new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
+	//new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
+	if((strcmp(stmt->role, "system") == 0) || (strcmp(stmt->role, "sys") == 0))
+		new_record[Anum_pg_authid_rolcreaterole - 1] = true;
+	else
+		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
+
 	new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb);
 	new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(canlogin);
 	new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(isreplication);
@@ -719,6 +759,10 @@ AlterRole(AlterRoleStmt *stmt)
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
 			dcreatedb = defel;
+			if ((intVal(dcreatedb->arg) > 0) && ((strcmp(stmt->role->rolename,"system") == 0) || (strcmp(stmt->role->rolename,"sys") == 0)))
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("Sys and system cannot be granted the createdb permission")));
 		}
 		else if (strcmp(defel->defname, "canlogin") == 0)
 		{
@@ -2146,7 +2190,7 @@ isinstancelevel(void)
  * Create a database superuser
  */
 void 
-createsysrole(const char *srolname, Oid dboid)
+createsysrole(const char *srolname, Oid dboid, Oid templateid)
 {
 	Relation	pg_authid_rel;
 	TupleDesc	pg_authid_dsc;
@@ -2202,7 +2246,7 @@ createsysrole(const char *srolname, Oid dboid)
 	 * The new super users need to set passwords.
 	 * In this case, the password of the template1 is directly copied to the newly created library super user
 	 */
-	roleTup = SearchSysCache2(AUTHNAMEDBOID, CStringGetDatum(srolname), ObjectIdGetDatum(1));
+	roleTup = SearchSysCache2(AUTHNAMEDBOID, CStringGetDatum(srolname), ObjectIdGetDatum(templateid));
 	if (!HeapTupleIsValid(roleTup))
 		elog(ERROR, "no such user \"%s\"", srolname);
 
@@ -2352,3 +2396,19 @@ get_role_canlogin(const char *srolname)
 	return result;
 }
 
+
+bool
+get_role_canlogin_byoid(Oid userid)
+{
+	HeapTuple	roleTup;
+	bool		result = false;
+
+	roleTup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(userid));
+	if (HeapTupleIsValid(roleTup))
+	{
+		result = ((Form_pg_authid) GETSTRUCT(roleTup))->rolcanlogin;
+		ReleaseSysCache(roleTup);
+	}
+
+	return result;
+}
