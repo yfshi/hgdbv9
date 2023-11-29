@@ -20,11 +20,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <locale.h>
-#include "getopt_long.h"
 
 #include "c.h"
 #include "port.h"
 #include "common/fe_memutils.h"
+#include "getopt_long.h" /* fix bug#z642 */
 
 #include "license.h"
 
