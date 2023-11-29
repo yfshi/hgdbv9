@@ -1,0 +1,7 @@
+# BEGIN - SRS-MISC-GB18030,gb18030_2022 extension
+comment = 'support gb18030 2022 with extension'
+default_version = '1.0'
+module_pathname = '$libdir/gb18030_2022'
+relocatable = true
+trusted = true
+# END - SRS-MISC-GB18030

@@ -1147,6 +1147,14 @@ CopyAttributeOutText(CopyToState cstate, char *string)
 				CopySendChar(cstate, '\\');
 				start = ptr++;	/* we include char in next run */
 			}
+			/* BEGIN -SRS-MISC-GB18030
+			 * since we add gb18030 and gbk as server_encoding,
+			 * it's not safe by just looking at this byte is in ascii range,
+			 * cause the 18030 and gbk secbyte-char can also be in ascii range
+			 */
+			else if (IS_HIGHBIT_SET(c))
+				ptr += pg_encoding_mblen(cstate->file_encoding, ptr);
+			/* END - SRS-MISC-GB18030 */
 			else
 				ptr++;
 		}
@@ -1201,7 +1209,7 @@ CopyAttributeOutCSV(CopyToState cstate, char *string,
 					use_quote = true;
 					break;
 				}
-				if (IS_HIGHBIT_SET(c) && cstate->encoding_embeds_ascii)
+				if (IS_HIGHBIT_SET(c) && (cstate->encoding_embeds_ascii || cstate->file_encoding == PG_GBK || cstate->file_encoding == PG_GB18030)) /* SRS-MISC-GB18030 */
 					tptr += pg_encoding_mblen(cstate->file_encoding, tptr);
 				else
 					tptr++;
@@ -1225,7 +1233,7 @@ CopyAttributeOutCSV(CopyToState cstate, char *string,
 				CopySendChar(cstate, escapec);
 				start = ptr;	/* we include char in next run */
 			}
-			if (IS_HIGHBIT_SET(c) && cstate->encoding_embeds_ascii)
+			if (IS_HIGHBIT_SET(c) && (cstate->encoding_embeds_ascii || cstate->file_encoding == PG_GBK || cstate->file_encoding == PG_GB18030)) /* SRS-MISC-GB18030 */
 				ptr += pg_encoding_mblen(cstate->file_encoding, ptr);
 			else
 				ptr++;
