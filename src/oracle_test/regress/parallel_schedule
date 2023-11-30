@@ -189,3 +189,7 @@ test: dbuser
 #/* Begin - BUG#M0000217 */
 test: ora_compatible_oracle_misc
 #/* End - BUG#M0000217 */
+
+#/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+test: ora_like_operator
+#/* End - ReqID:SRS-SQL-ORACLE-LIKE */

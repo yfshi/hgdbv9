@@ -610,9 +610,9 @@ print v1
  3.14
 
 print v3 v5
-  V3  
-------
- 3.14
+    V3     
+-----------
+ 3.14E+000
 
      V5     
 ------------
@@ -719,9 +719,9 @@ print
 ------
  3.14
 
-  V3  
-------
- 3.14
+    V3     
+-----------
+ 3.14E+000
 
     V4    
 ----------
@@ -926,7 +926,7 @@ end;
 /
 NOTICE:  old value of v1 is 123
 NOTICE:  old value of v2 is 3.14
-NOTICE:  old value of v3 is 3.1415926
+NOTICE:  old value of v3 is 3.1415926E+000
 NOTICE:  old value of v4 is t
 NOTICE:  old value of v5 is this is char(100) datatype                                                                          
 NOTICE:  old value of v6 is this is char(100 char) datatype                                                                     
@@ -939,7 +939,7 @@ NOTICE:  old value of v12 is this is varchar2(100 byte) datatype
 NOTICE:  old value of v13 is this is nvarchar2(100) datatype
 NOTICE:  new value of v1 is 3.141592657
 NOTICE:  new value of v2 is 3.1415927
-NOTICE:  new value of v3 is 3.141592657
+NOTICE:  new value of v3 is 3.141592657E+000
 NOTICE:  new value of v4 is f
 NOTICE:  new value of v5 is new value = this is char(100) datatype                                                              
 NOTICE:  new value of v6 is new value = this is char(100 char) datatype                                                         
@@ -952,7 +952,7 @@ NOTICE:  new value of v12 is new value = this is varchar2(100 byte) datatype
 NOTICE:  new value of v13 is new value = this is nvarchar2(100) datatype
 NOTICE:  the value of local variable is 123
 NOTICE:  the value of local variable is 3.14
-NOTICE:  the value of local variable is 3.1415926
+NOTICE:  the value of local variable is 3.1415926E+000
 NOTICE:  the value of local variable is t
 NOTICE:  the value of local variable is this is char(100) datatype                                                                          
 NOTICE:  the value of local variable is this is char(100 char) datatype                                                                     
@@ -974,9 +974,9 @@ print v2
  3.1415927
 
 print v3
-     V3      
--------------
- 3.141592657
+        V3        
+------------------
+ 3.141592657E+000
 
 print v4
  V4 

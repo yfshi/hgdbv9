@@ -3355,14 +3355,14 @@ select count(*), sum(t1.c1), avg(t2.c1) from ft1 t1 inner join ft1 t2 on (t1.c2 
 -- Not pushed down due to local conditions present in underneath input rel
 explain (verbose, costs off)
 select sum(t1.c1), count(t2.c1) from ft1 t1 inner join ft2 t2 on (t1.c1 = t2.c1) where ((t1.c1 * t2.c1)/(t1.c1 * t2.c1)) * random() <= 1;
-                                                           QUERY PLAN                                                            
----------------------------------------------------------------------------------------------------------------------------------
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
  Aggregate
    Output: sum(t1.c1), count(t2.c1)
    ->  Hash Join
          Output: t1.c1, t2.c1
          Hash Cond: (t2.c1 = t1.c1)
-         Join Filter: (((((t1.c1 * t2.c1) / (t1.c1 * t2.c1)))::binary_double * (random())::binary_double) <= '1'::binary_double)
+         Join Filter: (((((t1.c1 * t2.c1) / (t1.c1 * t2.c1)))::binary_double * (random())::binary_double) <= '1.0E+000'::binary_double)
          ->  Foreign Scan on public.ft2 t2
                Output: t2.c1
                Remote SQL: SELECT "C 1" FROM "S 1"."T 1"
@@ -3557,14 +3557,14 @@ select c2, sum(c1) from ft2 group by c2 having avg(c1) < 500 and sum(c1) < 49800
 -- Unshippable HAVING clause will be evaluated locally, and other qual in HAVING clause is pushed down
 explain (verbose, costs off)
 select count(*) from (select c5, count(c1) from ft1 group by c5, sqrt(c2) having (avg(c1) / avg(c1)) * random() <= 1 and avg(c1) < 500) x;
-                                                                       QUERY PLAN                                                                       
---------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
  Aggregate
    Output: count(*)
    ->  HashAggregate
          Output: ft1.c5, NULL::bigint, (sqrt((ft1.c2)::double precision))
          Group Key: ft1.c5, sqrt((ft1.c2)::double precision)
-         Filter: ((avg(ft1.c1) < '500'::number) AND ((((avg(ft1.c1) / avg(ft1.c1)))::binary_double * (random())::binary_double) <= '1'::binary_double))
+         Filter: ((avg(ft1.c1) < '500'::number) AND ((((avg(ft1.c1) / avg(ft1.c1)))::binary_double * (random())::binary_double) <= '1.0E+000'::binary_double))
          ->  Foreign Scan on public.ft1
                Output: ft1.c5, sqrt((ft1.c2)::double precision), ft1.c1
                Remote SQL: SELECT "C 1", c2, c5 FROM "S 1"."T 1"
@@ -3906,13 +3906,13 @@ select distinct (select count(t1.c1) filter (where t2.c2 = 6 and t2.c1 < 10) fro
 -- Aggregate not pushed down as FILTER condition is not pushable
 explain (verbose, costs off)
 select sum(c1) filter (where (c1 / c1) * random() <= 1) from ft1 group by c2 order by 1;
-                                                            QUERY PLAN                                                             
------------------------------------------------------------------------------------------------------------------------------------
+                                                                QUERY PLAN                                                                
+------------------------------------------------------------------------------------------------------------------------------------------
  Sort
-   Output: (sum(c1) FILTER (WHERE ((((c1 / c1))::binary_double * (random())::binary_double) <= '1'::binary_double))), c2
-   Sort Key: (sum(ft1.c1) FILTER (WHERE ((((ft1.c1 / ft1.c1))::binary_double * (random())::binary_double) <= '1'::binary_double)))
+   Output: (sum(c1) FILTER (WHERE ((((c1 / c1))::binary_double * (random())::binary_double) <= '1.0E+000'::binary_double))), c2
+   Sort Key: (sum(ft1.c1) FILTER (WHERE ((((ft1.c1 / ft1.c1))::binary_double * (random())::binary_double) <= '1.0E+000'::binary_double)))
    ->  HashAggregate
-         Output: sum(c1) FILTER (WHERE ((((c1 / c1))::binary_double * (random())::binary_double) <= '1'::binary_double)), c2
+         Output: sum(c1) FILTER (WHERE ((((c1 / c1))::binary_double * (random())::binary_double) <= '1.0E+000'::binary_double)), c2
          Group Key: ft1.c2
          ->  Foreign Scan on public.ft1
                Output: c1, c2

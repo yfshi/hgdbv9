@@ -439,7 +439,7 @@ alter table p1_c1 add constraint inh_check_constraint2 check (f1 < 10);
 alter table p1 add constraint inh_check_constraint2 check (f1 < 10);
 
 select conrelid::regclass::text as relname, conname, conislocal, coninhcount
-from pg_constraint where conname like 'inh\_check\_constraint%'
+from pg_constraint where conname like 'inh_check_constraint%'
 order by 1, 2;
 
 drop table p1 cascade;
@@ -462,7 +462,7 @@ insert into invalid_check_con_child values(0); -- fail
 
 select conrelid::regclass::text as relname, conname,
        convalidated, conislocal, coninhcount, connoinherit
-from pg_constraint where conname like 'inh\_check\_constraint%'
+from pg_constraint where conname like 'inh_check_constraint%'
 order by 1, 2;
 
 -- We don't drop the invalid_check_con* tables, to test dump/reload with

@@ -298,6 +298,9 @@ extern PGDLLIMPORT int  compatible_db;
 extern PGDLLIMPORT int  dumppgtype;
 extern PGDLLIMPORT int  grant_usertype;
 /* END - ReqID:SRS-MISC-USER */
+/* Begin - BUG#z476 */
+extern PGDLLIMPORT bool numerictonumber;
+/* End - BUG#z476 */
 
 /* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 extern PGDLLIMPORT bool	enable_emptystring_to_NULL;

@@ -1156,10 +1156,9 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 	{
 		/* Ordinary scalar operator */
 		Node	   *last_srf = pstate->p_last_srf;
-
-		/* Begin - ReqID:SRS-SQL-ROWID */
 		Oid 		ltypeId = InvalidOid;
 
+		/* Begin - ReqID:SRS-SQL-ROWID */
 		lexpr = transformExprRecurse(pstate, lexpr);
 		ltypeId = exprType(lexpr);
 
