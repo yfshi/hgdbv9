@@ -96,6 +96,7 @@ static bool have_createdb_privilege(void);
 static void remove_dbtablespaces(Oid db_id);
 static bool check_db_file_conflict(Oid db_id);
 static int	errdetail_busy_db(int notherbackends, int npreparedxacts);
+static void dropsrolowndboid(Oid db_id);
 
 
 /*
@@ -770,10 +771,10 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Both sys and system are created when the database is created
 	 */
-	if (DB_ORACLE == database_mode && dbname && strcmp(dbname , "template0") != 0 )
+	if (DB_ORACLE == database_mode && dbname )
 	{
-		createsysrole("sys",dboid);
-		createsysrole("system",dboid);
+		createsysrole("sys", dboid, get_database_oid(dbtemplate, true));
+		createsysrole("system", dboid, get_database_oid(dbtemplate, true));
 	}
 	/*
 	 * End - ReqID:SRS-MISC-USER
@@ -1095,6 +1096,16 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	table_close(pgdbrel, NoLock);
 
 	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * BUG: Z530
+	 */
+	CommandCounterIncrement();
+	dropsrolowndboid(db_id);
+	/*
+	 * End - ReqID:SRS-MISC-USER
+	 */	
+
+	/*
 	 * Force synchronous commit, thus minimizing the window between removal of
 	 * the database files and committal of the transaction. If we crash before
 	 * committing, we'll have a DB that's gone on disk but still there
@@ -1102,6 +1113,98 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	 */
 	ForceSyncCommit();
 }
+
+/* 
+ * ReqID:SRS-MISC-USER
+ * 
+ * dropsrolowndboid : When deleting a database, we also delete database-users
+ */
+static void dropsrolowndboid(Oid db_id)
+{
+	Relation	pg_authid_rel,
+				pg_auth_members_rel;
+	ScanKeyData skey;
+	SysScanDesc sscan_auth;
+	HeapTuple	tuple;
+
+	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
+	pg_auth_members_rel = table_open(AuthMemRelationId, RowExclusiveLock);
+
+	ScanKeyInit(&skey,
+				Anum_pg_authid_rolowndboid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(db_id));
+
+	sscan_auth = systable_beginscan(pg_authid_rel, AuthIdRolnameDboidIndexId, true,
+							   NULL, 1, &skey);
+	while (HeapTupleIsValid(tuple = systable_getnext(sscan_auth)))
+	{
+		HeapTuple	tmp_tuple;
+		Form_pg_authid roleform;
+		ScanKeyData scankey;
+		SysScanDesc sscan;
+		Oid			roleid;
+		char	   *detail = NULL;
+		char	   *detail_log = NULL;
+
+		roleform = (Form_pg_authid) GETSTRUCT(tuple);
+		roleid = roleform->oid;
+
+		/* DROP hook for the role being removed */
+		InvokeObjectDropHook(AuthIdRelationId, roleid, 0);
+
+		LockSharedObject(AuthIdRelationId, roleid, 0, AccessExclusiveLock);
+
+		/* Check for pg_shdepend entries depending on this role */
+		if (checkSharedDependencies(AuthIdRelationId, roleid,
+									&detail, &detail_log))
+			ereport(ERROR,
+					(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+					 errmsg("role \"%s\" cannot be dropped because some objects depend on it",
+							NameStr(roleform->rolname)),
+					 errdetail_internal("%s", detail),
+					 errdetail_log("%s", detail_log)));
+
+		CatalogTupleDelete(pg_authid_rel, &tuple->t_self);
+
+		ScanKeyInit(&scankey,
+					Anum_pg_auth_members_roleid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(roleid));
+
+		sscan = systable_beginscan(pg_auth_members_rel, AuthMemRoleMemIndexId,
+								   true, NULL, 1, &scankey);
+
+		while (HeapTupleIsValid(tmp_tuple = systable_getnext(sscan)))
+		{
+			CatalogTupleDelete(pg_auth_members_rel, &tmp_tuple->t_self);
+		}
+
+		systable_endscan(sscan);
+
+		ScanKeyInit(&scankey,
+					Anum_pg_auth_members_member,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(roleid));
+
+		sscan = systable_beginscan(pg_auth_members_rel, AuthMemMemRoleIndexId,
+								   true, NULL, 1, &scankey);
+
+		while (HeapTupleIsValid(tmp_tuple = systable_getnext(sscan)))
+		{
+			CatalogTupleDelete(pg_auth_members_rel, &tmp_tuple->t_self);
+		}
+		systable_endscan(sscan);
+		DeleteSharedComments(roleid, AuthIdRelationId);
+		DeleteSharedSecurityLabel(roleid, AuthIdRelationId);
+		DropSetting(InvalidOid, roleid);
+		CommandCounterIncrement();
+	}
+	systable_endscan(sscan_auth);
+	table_close(pg_auth_members_rel, NoLock);
+	table_close(pg_authid_rel, NoLock);
+}
+
 
 
 /*

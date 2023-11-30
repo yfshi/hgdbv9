@@ -45,6 +45,7 @@
 #include "utils/memutils.h"
 #include "utils/varlena.h"
 #include "utils/ora_compatible.h"
+#include "commands/dbcommands.h"
 
 #ifdef USE_LDAP
 #ifdef WIN32
@@ -2131,18 +2132,39 @@ check_hba(hbaPort *port)
 
 	/* Get the target role's OID.  Note we do not error out for bad role. */
 	//roleid = get_role_oid(port->user_name, true);
+	/*
+	 * Begin - ReqID:SRS-MISC-USER
+	 * When pg_basebackup is executed, the database name and MyDatabaseId cannot be queried. 
+	 * Therefore, only instance-level users can be specified to perform this operation.
+	 * By extension, all database names and MyDatabaseId that cannot be queried 
+	 * should be used as instance-level users
+	 * Begin - bug: z555
+	 */
 	if( DB_ORACLE == database_mode)
 	{
 		//Oid			datid = get_dboid(port->database_name);
-
-		if ((GetPortConnmode() == 2))
-			roleid = get_databaseuser_oid(port->user_name, MyDatabaseId);
+		if (GetPortConnmode() == 'o')
+		{
+			if(MyDatabaseId)
+				roleid = get_databaseuser_oid(port->user_name, MyDatabaseId);
+			else if(port->database_name)
+			{
+				Oid			datid = get_database_oid(port->database_name,true);
+				roleid = get_databaseuser_oid(port->user_name, datid);
+			}
+			else
+				ereport(ERROR,
+				(errmsg("We should use instance-level users to do this")));
+		}
 		else
 			roleid = get_instanceuser_oid(port->user_name);
 	}
 	else
 		roleid = get_role_oid(port->user_name, true);
-
+	/*
+	 * End - bug: z555
+	 * End - ReqID:SRS-MISC-USER
+ 	 */
 
 	foreach(line, parsed_hba_lines)
 	{

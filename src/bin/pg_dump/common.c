@@ -65,6 +65,9 @@ static int	numCollations;
 static int	numNamespaces;
 static int	numExtensions;
 static int	numPublications;
+/* BEGIN - ReqID:SRS-MISC-USER  BUG:Z538 */
+static int	numRoles;
+/* END - ReqID:SRS-MISC-USER  BUG:Z538 */
 
 /* This is an array of object identities, not actual DumpableObjects */
 static ExtensionMemberId *extmembers;
@@ -125,6 +128,15 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	 * extension membership needs to be consultable during decisions about
 	 * whether other objects are to be dumped.
 	 */
+
+	/* BEGIN - ReqID:SRS-MISC-USER  BUG#Z538 */
+	if(DB_ORACLE == database_mode && CurrentUserIsSuperuser)
+	{
+		pg_log_info("reading database user");
+		getDbRoles(fout,&numRoles);
+	}
+	/* End - ReqID:SRS-MISC-USER  BUG#Z538 */
+
 	pg_log_info("reading extensions");
 	extinfo = getExtensions(fout, &numExtensions);
 	extinfoindex = buildIndexArray(extinfo, numExtensions, sizeof(ExtensionInfo));

@@ -683,7 +683,17 @@ main(int argc, char *argv[])
 		/* Dump tablespaces */
 		if (!roles_only && !no_tablespaces)
 		{
+			/* BEGIN - ReqID:SRS-MISC-USER  BUG: Z561 */
+			if(database_mode == DB_ORACLE)
+			{
+				SetDumptypeMode(conn);
+			}
 			dumpTablespaces(conn);
+			if(database_mode == DB_ORACLE)
+			{
+				ReSetDumptypeMode(conn);
+			}
+			/* END - ReqID:SRS-MISC-USER  BUG: Z561 */
 		}
 	}
 
@@ -1501,34 +1511,73 @@ dumpTablespaces(PGconn *conn)
 	 * tablespaces, so this logic cannot make use of buildACLQueries().
 	 */
 	if (server_version >= 90600)
-		res = executeQuery(conn, "SELECT oid, spcname, "
-						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-						   "pg_catalog.pg_tablespace_location(oid), "
-						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-						   "  (SELECT acl, row_n FROM "
-						   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-						   "     WITH ORDINALITY AS perm(acl,row_n) "
-						   "   WHERE NOT EXISTS ( "
-						   "     SELECT 1 "
-						   "     FROM unnest(acldefault('t',spcowner)) "
-						   "       AS init(init_acl) "
-						   "     WHERE acl = init_acl)) AS spcacls) "
-						   " AS spcacl, "
-						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-						   "  (SELECT acl, row_n FROM "
-						   "     unnest(acldefault('t',spcowner)) "
-						   "     WITH ORDINALITY AS initp(acl,row_n) "
-						   "   WHERE NOT EXISTS ( "
-						   "     SELECT 1 "
-						   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-						   "       AS permp(orig_acl) "
-						   "     WHERE acl = orig_acl)) AS rspcacls) "
-						   " AS rspcacl, "
-						   "array_to_string(spcoptions, ', '),"
-						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
-						   "FROM pg_catalog.pg_tablespace "
-						   "WHERE spcname !~ '^pg_' "
-						   "ORDER BY 1");
+	{
+		/* Begin - ReqID:SRS-MISC-USER */
+		if(DB_ORACLE == database_mode)
+		{
+			res = executeQuery(conn, "SELECT oid, spcname, "
+							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+							   "pg_catalog.pg_tablespace_location(oid), "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "     WITH ORDINALITY AS perm(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(acldefault('t',spcowner)) "
+							   "       AS init(init_acl) "
+							   "     WHERE acl = init_acl)) AS spcacls) "
+							   " AS spcacl, "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(acldefault('t',spcowner)) "
+							   "     WITH ORDINALITY AS initp(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "       AS permp(orig_acl) "
+							   "     WHERE acl = orig_acl)) AS rspcacls) "
+							   " AS rspcacl, "
+							   "array_to_string(spcoptions, ', '),"
+							   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
+							   "spcowner as spcownerid "
+							   "FROM pg_catalog.pg_tablespace "
+							   "WHERE spcname !~ '^pg_' "
+							   "ORDER BY 1");
+		}
+		else
+		{
+			res = executeQuery(conn, "SELECT oid, spcname, "
+							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+							   "pg_catalog.pg_tablespace_location(oid), "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "     WITH ORDINALITY AS perm(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(acldefault('t',spcowner)) "
+							   "       AS init(init_acl) "
+							   "     WHERE acl = init_acl)) AS spcacls) "
+							   " AS spcacl, "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(acldefault('t',spcowner)) "
+							   "     WITH ORDINALITY AS initp(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "       AS permp(orig_acl) "
+							   "     WHERE acl = orig_acl)) AS rspcacls) "
+							   " AS rspcacl, "
+							   "array_to_string(spcoptions, ', '),"
+							   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+							   "FROM pg_catalog.pg_tablespace "
+							   "WHERE spcname !~ '^pg_' "
+							   "ORDER BY 1");
+		}
+		/* End - ReqID:SRS-MISC-USER */
+	}
 	else if (server_version >= 90200)
 		res = executeQuery(conn, "SELECT oid, spcname, "
 						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
@@ -1580,12 +1629,30 @@ dumpTablespaces(PGconn *conn)
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
 		char	   *fspcname;
+		Oid			spcownerid = InvalidOid;
+		Oid			spcownerdboid = InvalidOid;
+
+		if(DB_ORACLE == database_mode)
+		{
+			spcownerid = atooid(PQgetvalue(res, i, 8));
+			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
+		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
 
 		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
-		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
+		if(DB_ORACLE == database_mode)
+		{
+			if(spcownerdboid)
+				appendPQExpBuffer(buf, " OWNER DATABASEUSER %s", fmtId(spcowner));
+			else
+				appendPQExpBuffer(buf, " OWNER INSTANCEUSER %s", fmtId(spcowner));
+		}
+		else
+		{
+			appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
+		}
 
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);

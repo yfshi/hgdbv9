@@ -1618,19 +1618,6 @@ setup_auth(FILE *cmdfd)
 static void
 setup_ora_auth(FILE *cmdfd)
 {
-	const char *const *line;
-	static const char *const pg_authid_setup[] = {
-		/*
-		 * The authid table shouldn't be readable except through views, to
-		 * ensure passwords are not publicly visible.
-		 */
-		"REVOKE ALL ON pg_authid FROM public;\n\n",
-		NULL
-	};
-
-	for (line = pg_authid_setup; *line != NULL; line++)
-		PG_CMD_PUTS(*line);
-
 	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
 
 	PG_CMD_PUTS("create user SYS SUPERUSER;\n\n");
@@ -1640,9 +1627,6 @@ setup_ora_auth(FILE *cmdfd)
 	
 	if (superuser_password)
 	{
-		PG_CMD_PRINTF("ALTER USER \"%s\" WITH PASSWORD E'%s';\n\n",
-					  username, escape_quotes(superuser_password));
-	
 		PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
 	
 		PG_CMD_PRINTF1("ALTER USER \"SYS\" WITH PASSWORD E'%s';\n\n",
@@ -3190,16 +3174,7 @@ initialize_data_directory(void)
 
 	PG_CMD_OPEN;
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
-	if (strcmp(dbmode, "pg") == 0)
-	{
-		setup_auth(cmdfd);
-	}
-	else
-	{
-		setup_ora_auth(cmdfd);
-	}
-	/* END - ReqID:SRS-MISC-USER */
+	setup_auth(cmdfd);
 
 	setup_run_file(cmdfd, system_constraints_file);
 
@@ -3211,6 +3186,11 @@ initialize_data_directory(void)
 	setup_run_file(cmdfd, system_functions_file);
 
 	setup_depend(cmdfd);
+
+	/* BEGIN - ReqID:SRS-MISC-USER */
+	if (database_mode == DB_ORACLE)
+		setup_ora_auth(cmdfd);
+	/* END - ReqID:SRS-MISC-USER */
 
 	/*
 	 * Note that no objects created after setup_depend() will be "pinned".

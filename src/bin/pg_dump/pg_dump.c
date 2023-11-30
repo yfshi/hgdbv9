@@ -329,6 +329,9 @@ static char *get_synchronized_snapshot(Archive *fout);
 static void setupDumpWorker(Archive *AHX);
 static TableInfo *getRootTableInfo(const TableInfo *tbinfo);
 static bool forcePartitionRootLoad(const TableInfo *tbinfo);
+/* Begin - ReqID:SRS-MISC-USER */
+static void dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo);
+/* End - ReqID:SRS-MISC-USER */
 
 int
 main(int argc, char **argv)
@@ -819,15 +822,21 @@ main(int argc, char **argv)
 	/* END - SQL PARSER */
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(((ArchiveHandle *) fout)->connection);
-	getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection);
+
 	haveDatabaseUser(((ArchiveHandle *) fout)->connection);
+
+	if(use_role)
+		CurrentUserIsSuperuser = false;
+	else
+		getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection);
+
 	/* END - ReqID:SRS-MISC-USER */
 
 	/* Begin - ReqID:SRS-MISC-GUC */
 	setIdentifierCaseSwitch(((ArchiveHandle *) fout)->connection);		/* BUG#M229 */
 	//ExecuteSqlStatement(fout, "set ivorysql.identifier_case_switch = normal;");	/* case sensitive indentify */
 	/* End - ReqID:SRS-MISC-GUC */
-	
+
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
 	/*
@@ -10487,6 +10496,305 @@ getDefaultACLs(Archive *fout, int *numDefaultACLs)
 	return daclinfo;
 }
 
+
+/*
+ * dumpDbRoles
+ *  ReqID:SRS-MISC-USE    BUG#Z538
+ * dump Database Roles
+ */
+static void
+dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer query;
+
+	if (dopt->dataOnly)
+		return;
+	
+
+	if (dbrinfo->dobj.name)
+	{
+		query = createPQExpBuffer();
+
+		appendPQExpBuffer(query, "ALTER ROLE %s WITH", fmtId(dbrinfo->dobj.name));
+
+		if (dbrinfo->rolsuper)
+			appendPQExpBufferStr(query, " SUPERUSER");
+		else
+			appendPQExpBufferStr(query, " NOSUPERUSER");
+
+		if (dbrinfo->rolinherit)
+			appendPQExpBufferStr(query, " INHERIT");
+		else
+			appendPQExpBufferStr(query, " NOINHERIT");
+
+		if (dbrinfo->rolcreaterole)
+			appendPQExpBufferStr(query, " CREATEROLE");
+		else
+			appendPQExpBufferStr(query, " NOCREATEROLE");
+
+		if (dbrinfo->rolcreatedb)
+			appendPQExpBufferStr(query, " CREATEDB");
+		else
+			appendPQExpBufferStr(query, " NOCREATEDB");
+
+		if (dbrinfo->rolcanlogin)
+			appendPQExpBufferStr(query, " LOGIN");
+		else
+			appendPQExpBufferStr(query, " NOLOGIN");
+
+		if (dbrinfo->rolreplication)
+			appendPQExpBufferStr(query, " REPLICATION");
+		else
+			appendPQExpBufferStr(query, " NOREPLICATION");
+
+		if (dbrinfo->rolbypassrls)
+			appendPQExpBufferStr(query, " BYPASSRLS");
+		else
+			appendPQExpBufferStr(query, " NOBYPASSRLS");
+
+		if (dbrinfo->rolconnlimit != -1)
+			appendPQExpBuffer(query, " CONNECTION LIMIT %d", dbrinfo->rolconnlimit );
+
+
+		if (!dbrinfo->rolpassword)
+			appendPQExpBuffer(query, " PASSWORD %s", dbrinfo->rolpassword);
+
+		if (!dbrinfo->rolvaliduntil)
+			appendPQExpBuffer(query, " VALID UNTIL '%s'", dbrinfo->rolvaliduntil );
+
+		appendPQExpBufferStr(query, ";\n");
+
+		if (!dbrinfo->rolcomment)
+			appendPQExpBuffer(query, "COMMENT ON ROLE %s IS %s;\n", fmtId(dbrinfo->dobj.name), dbrinfo->rolcomment);
+
+		if (dbrinfo->dobj.dump & DUMP_COMPONENT_POLICY)
+			ArchiveEntry(fout, dbrinfo->dobj.catId, dbrinfo->dobj.dumpId,
+						 ARCHIVE_OPTS(.tag = dbrinfo->dobj.name,
+									  .description = "DATABASEROLE",
+									  .section = SECTION_NONE,
+									  .createStmt = query->data));
+
+		destroyPQExpBuffer(query);
+	}
+	return;
+}
+
+/*
+ * getDbRoles  ReqID:SRS-MISC-USE
+ * 
+ * Dump roles
+ */
+DatabaseRolesInfo *
+getDbRoles(Archive *fout, int *numRoles)
+{
+	DatabaseRolesInfo *dbrinfo;
+	PQExpBuffer buf = createPQExpBuffer();
+	PGconn	   *conn = GetConnection(fout);
+	PGresult   *res;
+	int			i_tableoid,
+				i_oid,
+				i_rolname,
+				i_rolsuper,
+				i_rolinherit,
+				i_rolcreaterole,
+				i_rolcreatedb,
+				i_rolcanlogin,
+				i_rolconnlimit,
+				i_rolowndboid,
+				i_rolpassword,
+				i_rolvaliduntil,
+				i_rolreplication,
+				i_rolbypassrls,
+				i_rolcomment;
+	int			i = 0;
+	int			ntups = 0;
+
+	if (fout->remoteVersion >= 90600)
+		printfPQExpBuffer(buf,
+						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolvaliduntil, rolreplication, rolbypassrls, "
+						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM pg_authid a, pg_database d "
+						  "WHERE rolname !~ '^pg_' AND "
+						  "d.datname = current_database() AND "
+						  "a.rolowndboid = d.oid "
+						  "ORDER BY 2");
+	else if (fout->remoteVersion >= 90500)
+		printfPQExpBuffer(buf,
+						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolvaliduntil, rolreplication, rolbypassrls, "
+						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM pg_authid a, pg_database d "
+						  "WHERE d.datname = current_database() AND "
+						  "a.rolowndboid = d.oid "
+						  "ORDER BY 2");
+	else if (fout->remoteVersion >= 90100)
+		printfPQExpBuffer(buf,
+						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolvaliduntil, rolreplication, "
+						  "false as rolbypassrls, "
+						  "pg_catalog.shobj_description(oid, 'pg_authid') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM pg_authid a, pg_database d "
+						  "WHERE d.datname = current_database() AND "
+						  "a.rolowndboid = d.oid "
+						  "ORDER BY 2");
+	else if (fout->remoteVersion >= 80200)
+		printfPQExpBuffer(buf,
+						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolvaliduntil, false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM pg_authid a, pg_database d "
+						  "WHERE d.datname = current_database() AND "
+						  "a.rolowndboid = d.oid "
+						  "ORDER BY 2");
+	else if (fout->remoteVersion >= 80100)
+		printfPQExpBuffer(buf,
+						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+						  "rolvaliduntil, false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM pg_authid a, pg_database d "
+						  "WHERE d.datname = current_database() AND "
+						  "a.rolowndboid = d.oid "
+						  "ORDER BY 2");
+	else
+		printfPQExpBuffer(buf,
+						  "SELECT 0 as tableoid, 0 as oid, usename as rolname, "
+						  "usesuper as rolsuper, "
+						  "true as rolinherit, "
+						  "usesuper as rolcreaterole, "
+						  "usecreatedb as rolcreatedb, "
+						  "true as rolcanlogin, "
+						  "-1 as rolconnlimit, "
+						  "0 as rolowndboid,"
+						  "passwd as rolpassword, "
+						  "valuntil as rolvaliduntil, "
+						  "false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "usename = current_user AS is_current_user "
+						  "FROM pg_shadow "
+						  "UNION ALL "
+						  "SELECT 0 as oid, groname as rolname, "
+						  "false as rolsuper, "
+						  "true as rolinherit, "
+						  "false as rolcreaterole, "
+						  "false as rolcreatedb, "
+						  "false as rolcanlogin, "
+						  "-1 as rolconnlimit, "
+						  "null::text as rolpassword, "
+						  "null::timestamptz as rolvaliduntil, "
+						  "false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "false AS is_current_user "
+						  "FROM pg_group "
+						  "WHERE NOT EXISTS (SELECT 1 FROM pg_shadow "
+						  " WHERE usename = groname) "
+						  "ORDER BY 2");
+
+	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_rolname = PQfnumber(res, "rolname");
+	i_rolsuper = PQfnumber(res, "rolsuper");
+	i_rolinherit = PQfnumber(res, "rolinherit");
+	i_rolcreaterole = PQfnumber(res, "rolcreaterole");
+	i_rolcreatedb = PQfnumber(res, "rolcreatedb");
+	i_rolcanlogin = PQfnumber(res, "rolcanlogin");
+	i_rolconnlimit = PQfnumber(res, "rolconnlimit");
+	i_rolowndboid = PQfnumber(res, "rolowndboid");
+	i_rolpassword = PQfnumber(res, "rolpassword");
+	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
+	i_rolreplication = PQfnumber(res, "rolreplication");
+	i_rolbypassrls = PQfnumber(res, "rolbypassrls");
+	i_rolcomment = PQfnumber(res, "rolcomment");
+	
+	ntups = PQntuples(res);
+
+	dbrinfo = (DatabaseRolesInfo *) pg_malloc0(ntups * sizeof(DatabaseRolesInfo));
+
+	for (i = 0; i < ntups; i++)
+	{
+		const char *rolename;
+		Oid			dboid = InvalidOid;
+
+		dboid = atooid(PQgetvalue(res, i, i_rolowndboid));
+		rolename = PQgetvalue(res, i, i_rolname);
+
+		if (strncmp(rolename, "pg_", 3) == 0)
+		{
+			pg_log_warning("role name starting with \"pg_\" skipped (%s)", rolename);
+			continue;
+		}
+
+		if(dboid == 0)
+			continue;
+
+		dbrinfo[i].dobj.objType = DO_DATABASEROLE;
+		dbrinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		dbrinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		dbrinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_rolname));
+		dbrinfo[i].rolsuper = (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0);
+		dbrinfo[i].rolinherit = (strcmp(PQgetvalue(res, i, i_rolinherit), "t") == 0);
+		dbrinfo[i].rolcreaterole = (strcmp(PQgetvalue(res, i, i_rolcreaterole), "t") == 0);
+		dbrinfo[i].rolcreatedb = (strcmp(PQgetvalue(res, i, i_rolcreatedb), "t") == 0);
+		dbrinfo[i].rolcanlogin = (strcmp(PQgetvalue(res, i, i_rolcanlogin), "t") == 0);
+		dbrinfo[i].rolconnlimit = atoi(PQgetvalue(res, i, i_rolconnlimit));
+		//dbrinfo[i].rolvaliduntil = atoi(PQgetvalue(res, i, i_rolvaliduntil));
+		dbrinfo[i].rolreplication = (strcmp(PQgetvalue(res, i, i_rolreplication), "t") == 0);
+		dbrinfo[i].rolbypassrls = (strcmp(PQgetvalue(res, i, i_rolbypassrls), "t") == 0);
+		//dbrinfo[i].rolcomment = pg_strdup(PQgetvalue(res, i, i_rolcomment));
+
+		if (!PQgetisnull(res, i, i_rolvaliduntil))
+			dbrinfo[i].rolvaliduntil = pg_strdup(PQgetvalue(res, i, i_rolvaliduntil));
+
+		if (!PQgetisnull(res, i, i_rolpassword))
+		{
+			resetPQExpBuffer(buf);
+			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolpassword), conn);
+			dbrinfo[i].rolpassword = pg_strdup(buf->data);
+		}
+		else
+			dbrinfo[i].rolpassword = NULL;
+
+		if (!PQgetisnull(res, i, i_rolcomment))
+		{
+			resetPQExpBuffer(buf);
+			//appendPQExpBuffer(buf, "COMMENT ON ROLE %s IS ", fmtId(rolename));
+			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolcomment), conn);
+			dbrinfo[i].rolcomment = pg_strdup(buf->data);
+		}
+		else
+			dbrinfo[i].rolpassword = NULL;
+	}
+
+	*numRoles = ntups;
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+	return dbrinfo;
+}
+
+
 /*
  * dumpComment --
  *
@@ -10834,6 +11142,11 @@ dumpDumpableObject(Archive *fout, const DumpableObject *dobj)
 		case DO_NAMESPACE:
 			dumpNamespace(fout, (const NamespaceInfo *) dobj);
 			break;
+		/* Begin - BUG#Z538  */
+		case DO_DATABASEROLE:
+			dumpDbRoles(fout, (const DatabaseRolesInfo *) dobj);
+			break;
+		/* End - BUG#Z538 */
 		case DO_EXTENSION:
 			dumpExtension(fout, (const ExtensionInfo *) dobj);
 			break;
@@ -19522,6 +19835,7 @@ addBoundaryDependencies(DumpableObject **dobjs, int numObjs,
 		switch (dobj->objType)
 		{
 			case DO_NAMESPACE:
+			case DO_DATABASEROLE:
 			case DO_EXTENSION:
 			case DO_TYPE:
 			case DO_SHELL_TYPE:

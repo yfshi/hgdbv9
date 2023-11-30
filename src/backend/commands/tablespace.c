@@ -83,6 +83,11 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MISC-USER */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MISC-USER */
+
 
 /* GUC variables */
 char	   *default_tablespace = NULL;
@@ -216,9 +221,9 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Datum		values[Natts_pg_tablespace];
 	bool		nulls[Natts_pg_tablespace];
 	HeapTuple	tuple;
-	Oid			tablespaceoid;
+	Oid			tablespaceoid = InvalidOid;
 	char	   *location;
-	Oid			ownerId;
+	Oid			ownerId = InvalidOid;
 	Datum		newOptions;
 	bool		in_place;
 
@@ -231,10 +236,31 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				 errhint("Must be superuser to create a tablespace.")));
 
 	/* However, the eventual owner of the tablespace need not be */
+	/* Begin - ReqID:SRS-MISC-USER bug:z561  */
 	if (stmt->owner)
-		ownerId = get_rolespec_oid(stmt->owner, false);
+	{
+		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
+		{
+			switch (stmt->utype)
+			{
+				case DATABASE_USER:
+					ownerId = get_databaserol_oid(stmt->owner);
+					break;
+				case INSTANCE_USER:
+					ownerId = get_instancerol_oid(stmt->owner);
+					break;
+				case UNKNOWN_USER:
+					ownerId = get_rolespec_oid(stmt->owner, false);
+					break;
+			}
+		}
+		else
+			ownerId = get_rolespec_oid(stmt->owner, false);
+	}
 	else
 		ownerId = GetUserId();
+
+	/* End - ReqID:SRS-MISC-USER bug:z561  */
 
 	/* Unix-ify the offered path, and strip any trailing slashes */
 	location = pstrdup(stmt->location);
@@ -402,7 +428,7 @@ DropTableSpace(DropTableSpaceStmt *stmt)
 	HeapTuple	tuple;
 	Form_pg_tablespace spcform;
 	ScanKeyData entry[1];
-	Oid			tablespaceoid;
+	Oid			tablespaceoid = InvalidOid;
 	char	   *detail;
 	char	   *detail_log;
 
@@ -935,7 +961,7 @@ remove_tablespace_symlink(const char *linkloc)
 ObjectAddress
 RenameTableSpace(const char *oldname, const char *newname)
 {
-	Oid			tspId;
+	Oid			tspId = InvalidOid;
 	Relation	rel;
 	ScanKeyData entry[1];
 	TableScanDesc scan;
@@ -1024,7 +1050,7 @@ AlterTableSpaceOptions(AlterTableSpaceOptionsStmt *stmt)
 	ScanKeyData entry[1];
 	TableScanDesc scandesc;
 	HeapTuple	tup;
-	Oid			tablespaceoid;
+	Oid			tablespaceoid = InvalidOid;
 	Datum		datum;
 	Datum		newOptions;
 	Datum		repl_val[Natts_pg_tablespace];
@@ -1148,7 +1174,7 @@ check_default_tablespace(char **newval, void **extra, GucSource source)
 Oid
 GetDefaultTablespace(char relpersistence, bool partitioned)
 {
-	Oid			result;
+	Oid			result = InvalidOid;
 
 	/* The temp-table case is handled elsewhere */
 	if (relpersistence == RELPERSISTENCE_TEMP)
@@ -1238,7 +1264,7 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 		foreach(l, namelist)
 		{
 			char	   *curname = (char *) lfirst(l);
-			Oid			curoid;
+			Oid			curoid = InvalidOid;
 			AclResult	aclresult;
 
 			/* Allow an empty string (signifying database default) */
@@ -1376,7 +1402,7 @@ PrepareTempTablespaces(void)
 	foreach(l, namelist)
 	{
 		char	   *curname = (char *) lfirst(l);
-		Oid			curoid;
+		Oid			curoid = InvalidOid;
 		AclResult	aclresult;
 
 		/* Allow an empty string (signifying database default) */
@@ -1431,7 +1457,7 @@ PrepareTempTablespaces(void)
 Oid
 get_tablespace_oid(const char *tablespacename, bool missing_ok)
 {
-	Oid			result;
+	Oid			result = InvalidOid;
 	Relation	rel;
 	TableScanDesc scandesc;
 	HeapTuple	tuple;

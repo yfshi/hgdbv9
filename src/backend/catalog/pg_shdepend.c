@@ -948,6 +948,52 @@ copyTemplateDependencies(Oid templateDbId, Oid newDbId)
 }
 
 /*
+ * dropUserDependencies			ReqID:SRS-MISC-USER 
+ *
+ * Delete pg_shdepend entries corresponding to a user that's being
+ * dropped.
+ */
+void
+dropUserDependencies(Oid userId)
+{
+	Relation	sdepRel;
+	ScanKeyData key[1];
+	SysScanDesc scan;
+	HeapTuple	tup;
+
+	sdepRel = table_open(SharedDependRelationId, RowExclusiveLock);
+
+	/*
+	 * First, delete all the entries that have the user Oid in the dbid
+	 * field.
+	 */
+	ScanKeyInit(&key[0],
+				Anum_pg_shdepend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(userId));
+	/* We leave the other index fields unspecified */
+
+	scan = systable_beginscan(sdepRel, SharedDependReferenceIndexId, true,
+							  NULL, 1, key);
+
+	while (HeapTupleIsValid(tup = systable_getnext(scan)))
+	{
+		CatalogTupleDelete(sdepRel, &tup->t_self);
+	}
+
+	systable_endscan(scan);
+
+	/* Now delete all entries corresponding to the database itself */
+	/*
+	shdepDropDependency(sdepRel, DatabaseRelationId, databaseId, 0, true,
+						InvalidOid, InvalidOid,
+						SHARED_DEPENDENCY_INVALID);
+	*/
+
+	table_close(sdepRel, RowExclusiveLock);
+}
+
+/*
  * dropDatabaseDependencies
  *
  * Delete pg_shdepend entries corresponding to a database that's being

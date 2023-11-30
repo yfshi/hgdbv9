@@ -899,10 +899,14 @@ ExecAlterOwnerStmt(AlterOwnerStmt *stmt)
 			/*
 			 * Begin - ReqID:SRS-MISC-USER
 			 * database shouldn't be alter by database-level user
+			 * Begin - bug: z529 bug:z528
 			 */
-			if((!current_user_level) && (get_role_canlogin(stmt->newowner->rolename)))
+			if(!current_user_level)
 				elog(ERROR,"database shouldn't be alter by database-level user");
+			if(FindUserLevelbyoid(newowner))
+				elog(ERROR,"database shouldn't owner to database-level user");
 			/*
+			 * End - bug: z529 bug:z528
 			 * End - ReqID:SRS-MISC-USER
 		 	*/
 			return AlterDatabaseOwner(strVal((Value *) stmt->object), newowner);

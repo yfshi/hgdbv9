@@ -809,6 +809,9 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	{
 		/* normal multiuser case */
 		Assert(MyProcPort != NULL);
+		/*
+		 * Begin - ReqID:SRS-MISC-USER 
+		 */
 
 		if (in_dbname != NULL && strcmp(in_dbname,"") != 0)
 		{
@@ -834,6 +837,9 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		else 
 			InitializeSessionUserId(username, useroid, 0);
 		am_superuser = superuser();
+		/*
+		 * End - ReqID:SRS-MISC-USER
+		 */
 	}
 
 	/*

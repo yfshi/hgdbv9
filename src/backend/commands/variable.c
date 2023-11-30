@@ -786,7 +786,7 @@ check_session_authorization(char **newval, void **extra, GucSource source)
 	}
 	else
 	{
-		if ((DB_ORACLE == database_mode) && ((GetPortConnmode() == 2) || ORA_PARSER == compatible_db))
+		if ((DB_ORACLE == database_mode) && ((GetPortConnmode() == 'o') || ORA_PARSER == compatible_db))
 		{
 			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
 										PointerGetDatum(*newval), 

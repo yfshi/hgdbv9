@@ -370,7 +370,7 @@ extern void SetCurrentRoleId(Oid roleid, bool is_superuser);
 /* in utils/misc/superuser.c */
 extern bool superuser(void);	/* current user is superuser */
 extern bool superuser_arg(Oid roleid);	/* given user is superuser */
-extern int GetPortConnmode(void);
+extern char GetPortConnmode(void);
 
 
 /*****************************************************************************

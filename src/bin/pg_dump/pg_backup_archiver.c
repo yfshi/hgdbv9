@@ -160,7 +160,7 @@ static void OradumpDatabaseGroups(ArchiveHandle *AH);
 static Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
 static Oid GetCurrentDboid(PGconn *conn);
 static bool isSuperuser(PGconn *conn);
-static void SetDumptypeMode(PGconn *conn);		/*  bug#M0000261 */
+
 /* End - ReqID:SRS-MISC-USER */
 
 /*
@@ -439,6 +439,11 @@ RestoreArchive(Archive *AHX)
 		AHX->maxRemoteVersion = 9999999;
 
 		ConnectDatabase(AHX, &ropt->cparams, false);
+		/* BEGIN - ReqID:SRS-MISC-USER */
+		getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
+		getDatabaseMode(((ArchiveHandle *) AHX)->connection);
+		getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection);
+		/* END - SQL PARSER */
 
 		/*
 		 * If we're talking to the DB directly, don't send comments since they
@@ -2684,6 +2689,7 @@ get_desc_ownerto(ArchiveHandle *AH, TocEntry *te)
 		strcmp(te->desc, "STATISTICS") == 0 ||
 		strcmp(te->desc, "PUBLICATION") == 0 ||
 		strcmp(te->desc, "PACKAGE") == 0 ||
+		strcmp(te->desc, "TABLESPACE") == 0 ||
 		strcmp(te->desc, "SUBSCRIPTION") == 0)
 	{
 		int utype = 0;
@@ -3868,6 +3874,13 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		if (AH->PrintExtraTocPtr != NULL)
 			AH->PrintExtraTocPtr(AH, te);
 		ahprintf(AH, "--\n\n");
+	}
+
+	if(strcmp(te->desc, "DATABASEROLE") == 0)
+	{
+		if(strcmp( fmtId(te->tag), "system") != 0 || strcmp( fmtId(te->tag), "sys") != 0)
+			ahprintf(AH, "CREATE USER %s;\n", fmtId(te->tag));
+		ahprintf(AH, "%s\n\n", te->defn);
 	}
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
@@ -5406,8 +5419,6 @@ dumpDatabaseRoles(ArchiveHandle *AH)
 		if (strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0 && 
 			((strcmp(rolename, "sys") != 0 ) && (strcmp(rolename, "system") != 0 )))
 			appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
-		else
-			continue;
 		
 		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
 
@@ -5790,14 +5801,32 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 		else
 			is_ownerto_database = 0;
 	}
-	else if(strcmp(te->desc, "FUNCTION") == 0  ||
+	else if(strcmp(te->desc, "FUNCTION") == 0 ||
 			strcmp(te->desc, "AGGREGATE") == 0 ||
-			strcmp(te->desc, "PROCEDURE") == 0 ||
-			strcmp(te->desc, "PROCEDURAL LANGUAGE") == 0 )
+			strcmp(te->desc, "PROCEDURE") == 0)
 	{
 		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_proc p " 
 								"left join ivory_user a on p.proowner = a.usesysid "
 								"where p.oid = %d and a.usename = '%s'",
+								te->catalogId.oid, te->owner);
+		
+		res = PQexec(AH->connection, query_cmd->data);
+		ntups = PQntuples(res);
+		if (ntups == 1)
+		{
+			if(atooid(PQgetvalue(res, 0, 0)) == 0)
+				is_ownerto_database = 1;
+			else 
+				is_ownerto_database = 2;
+		}
+		else
+			is_ownerto_database = 0;
+	}
+	else if(strcmp(te->desc, "PROCEDURAL LANGUAGE") == 0)
+	{
+		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_language l " 
+								"left join ivory_user a on l.lanowner = a.usesysid "
+								"where l.oid = %d and a.usename = '%s'",
 								te->catalogId.oid, te->owner);
 		
 		res = PQexec(AH->connection, query_cmd->data);
@@ -5874,6 +5903,25 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_package pa " 
 								"left join ivory_user a on pa.pkgowner = a.usesysid "
 								"where pa.oid = %d and pa.pkgname = '%s' and a.usename = '%s'",
+								te->catalogId.oid, te->tag, te->owner);
+		
+		res = PQexec(AH->connection, query_cmd->data);
+		ntups = PQntuples(res);
+		if (ntups == 1)
+		{
+			if(atooid(PQgetvalue(res, 0, 0)) == 0)
+				is_ownerto_database = 1;
+			else 
+				is_ownerto_database = 2;
+		}
+		else
+			is_ownerto_database = 0;
+	}
+	else if(strcmp(te->desc, "TABLESPACE") == 0 )
+	{
+		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_tablespace tsp " 
+								"left join ivory_user a on tsp.spcowner = a.usesysid "
+								"where tsp.oid = %d and tsp.spcname = '%s' and a.usename = '%s'",
 								te->catalogId.oid, te->tag, te->owner);
 		
 		res = PQexec(AH->connection, query_cmd->data);
@@ -6327,49 +6375,4 @@ isSuperuser(PGconn *conn)
 	return false;
 }
 
-
-/*
- * SetDumptypeMode  ReqID:SRS-MISC-USE
- * 
- * Set Dumptype Mode
- */
-static void 
-SetDumptypeMode(PGconn *conn)
-{
-	PGresult		  *res,
-					  *res1,
-					  *res2,
-					  *res3;
-	
-	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-		fatal("change compatible_mode error");
-	if (res)
-		PQclear(res);
-
-	if((CurrentUserIsSuperuser) && haveDBuser)			/*  bug#M0000261 */
-	{
-		res1 = PQexec(conn, "set session authorization system;");	
-
-		if (PQresultStatus(res1) != PGRES_COMMAND_OK)
-			fatal("change user error");
-
-		CurrentSessionUserName = "system";
-		if (res1)
-			PQclear(res1);
-	}
-
-	res2 = PQexec(conn, "set ivorysql.dumppgtype to oracle;");
-	if (PQresultStatus(res2) != PGRES_COMMAND_OK)
-		fatal("change dumppgtype error");	
-	if (res2)
-		PQclear(res2);
-
-	res3 = PQexec(conn, "set ivorysql.grant_usertype to oracle;");
-	if (PQresultStatus(res3) != PGRES_COMMAND_OK)
-		fatal("change grant user type error");	
-
-	if (res3)
-		PQclear(res3);
-}
 

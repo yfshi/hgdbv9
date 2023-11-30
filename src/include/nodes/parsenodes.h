@@ -2414,6 +2414,7 @@ typedef struct CreateTableSpaceStmt
 	RoleSpec   *owner;
 	char	   *location;
 	List	   *options;
+	UserType   utype; 			/* ReqID:SRS-MISC-USER  bug:z561 */
 } CreateTableSpaceStmt;
 
 typedef struct DropTableSpaceStmt
