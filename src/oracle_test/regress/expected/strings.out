@@ -340,8 +340,8 @@ SELECT CAST(f1 AS varchar) AS "varchar(text)" FROM TEXT_TBL;
 SELECT CAST(f1 AS varchar) AS "varchar(char)" FROM CHAR_TBL;
  varchar(char) 
 ---------------
- a
- ab
+ a   
+ ab  
  abcd
 (3 rows)
 
