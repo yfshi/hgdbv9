@@ -404,28 +404,18 @@ WITHOUT FUNCTION
 AS IMPLICIT;
 
 -- Convert 'oracharchar' to 'oravarcharchar' 
-CREATE FUNCTION sys.orachar_oravarchar(sys.oracharchar)
-RETURNS sys.oravarcharchar
-AS 'MODULE_PATHNAME','rtrim'
-LANGUAGE C
-STRICT
-IMMUTABLE;
-
+/* Begin - BUG#M0000265 */
 CREATE CAST (sys.oracharchar AS sys.oravarcharchar)
-WITH FUNCTION sys.orachar_oravarchar(sys.oracharchar)
+WITHOUT FUNCTION
 AS IMPLICIT;
+/* End - BUG#M0000265 */
 
 -- Convert 'oracharchar' to 'oravarcharbyte' 
-CREATE FUNCTION sys.orachar_oravarcharbyte(sys.oracharchar)
-RETURNS sys.oravarcharbyte
-AS 'MODULE_PATHNAME','rtrim'
-LANGUAGE C
-STRICT
-IMMUTABLE;
-
+/* Begin - BUG#M0000265 */
 CREATE CAST (sys.oracharchar AS sys.oravarcharbyte)
-WITH FUNCTION sys.orachar_oravarcharbyte(sys.oracharchar)
+WITHOUT FUNCTION
 AS IMPLICIT;
+/* End - BUG#M0000265 */
 
 CREATE CAST (sys.oracharchar AS sys.oradate)
 WITH INOUT
@@ -829,28 +819,18 @@ WITHOUT FUNCTION
 AS IMPLICIT;
 
 -- Convert 'oracharbyte' to 'oravarcharchar' 
-CREATE FUNCTION sys.orachar_oravarchar(sys.oracharbyte)
-RETURNS sys.oravarcharchar
-AS 'MODULE_PATHNAME','rtrim'
-LANGUAGE C
-STRICT
-IMMUTABLE;
-
+/* Begin - BUG#M0000265 */
 CREATE CAST (sys.oracharbyte AS sys.oravarcharchar)
-WITH FUNCTION sys.orachar_oravarchar(sys.oracharbyte)
+WITHOUT FUNCTION
 AS IMPLICIT;
+/* End - BUG#M0000265 */
 
 -- Convert 'oracharbyte' to 'oravarcharbyte' 
-CREATE FUNCTION sys.orachar_oravarcharbyte(sys.oracharbyte)
-RETURNS sys.oravarcharbyte
-AS 'MODULE_PATHNAME','rtrim'
-LANGUAGE C
-STRICT
-IMMUTABLE;
-
+/* Begin - BUG#M0000265 */
 CREATE CAST (sys.oracharbyte AS sys.oravarcharbyte)
-WITH FUNCTION sys.orachar_oravarcharbyte(sys.oracharbyte)
+WITHOUT FUNCTION
 AS IMPLICIT;
+/* End - BUG#M0000265 */
 
 CREATE CAST (sys.oracharbyte AS sys.oradate)
 WITH INOUT
