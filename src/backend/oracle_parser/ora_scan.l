@@ -1449,6 +1449,8 @@ ora_scanner_init(const char *str,
 	yyext->escape_string_warning = escape_string_warning;
 	yyext->standard_conforming_strings = standard_conforming_strings;
 
+	yyext->warn_on_first_escape = true;			/* ReqID:SRS-SQL-ORACLE-LIKE */
+
 	/*
 	 * Make a scan buffer with special termination needed by flex.
 	 */

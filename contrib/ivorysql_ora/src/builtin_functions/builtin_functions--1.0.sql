@@ -948,6 +948,21 @@ BEGIN
 END;     
 $$ LANGUAGE plpgsql STRICT SET client_min_messages to error;
 
+
+/* Begin - BUG:Z475 */
+CREATE OR REPLACE FUNCTION sys.length(smallint)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE OR REPLACE FUNCTION sys.length(bigint)
+RETURNS integer
+AS 'select sys.length($1::sys.oravarcharchar)'
+LANGUAGE SQL 
+IMMUTABLE PARALLEL SAFE STRICT;
+/* End - BUG:Z475 */
+
 /* Begin - ReqID:SRS-SQL-SYSFUNC: using numeric because float point number 
  * and big number, them can't recognized by number type
  */

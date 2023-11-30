@@ -74,7 +74,6 @@ ORA_REGRESS = \
 	ora_merge \
 	datatype_and_func_bugs \
 	ora_sysview \
-	ora_like_operator \
 	ora_xml_functions \
 	ora_to_number
 

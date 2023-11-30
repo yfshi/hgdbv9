@@ -595,6 +595,9 @@ static void accum_sum_reset(NumericSumAccum *accum);
 static void accum_sum_final(NumericSumAccum *accum, NumericVar *result);
 static void accum_sum_copy(NumericSumAccum *dst, NumericSumAccum *src);
 static void accum_sum_combine(NumericSumAccum *accum, NumericSumAccum *accum2);
+/* Begin - BUG:Z475 */
+static char *ora_get_str_from_var(const NumericVar *var);
+/* End - BUG:Z475 */
 
 
 /* Begin - bug0000457 */
@@ -804,7 +807,12 @@ numeric_out(PG_FUNCTION_ARGS)
 	 */
 	init_var_from_num(num, &x);
 
-	str = get_str_from_var(&x);
+	/* Begin - ReqID:SRS-SQL-ORACLE-LIKE  BUG:Z475 */
+	if(database_mode == DB_ORACLE && compatible_db == ORA_PARSER && numerictonumber)
+		str = ora_get_str_from_var(&x);
+	else
+		str = get_str_from_var(&x);
+	/* End - ReqID:SRS-SQL-ORACLE-LIKE  BUG:Z475 */
 
 	PG_RETURN_CSTRING(str);
 }
@@ -7120,6 +7128,169 @@ set_var_from_var(const NumericVar *value, NumericVar *dest)
 	memmove(dest, value, sizeof(NumericVar));
 	dest->buf = newbuf;
 	dest->digits = newbuf + 1;
+}
+
+
+/*
+ * ora_get_str_from_var() - BUG:Z475 
+ *
+ *	Convert a var to text representation (guts of numeric_out).
+ *	The var is displayed to the number of digits indicated by its dscale.
+ *	Returns a palloc'd string.
+ */
+static char *
+ora_get_str_from_var(const NumericVar *var)
+{
+	int			dscale;
+	char	   *str;
+	char	   *cp;
+	char	   *endcp;
+	int			i;
+	int			d;
+	NumericDigit dig;
+	bool		flag = false;
+
+#if DEC_DIGITS > 1
+	NumericDigit d1;
+#endif
+
+	dscale = var->dscale;
+
+	/*
+	 * Allocate space for the result.
+	 *
+	 * i is set to the # of decimal digits before decimal point. dscale is the
+	 * # of decimal digits we will print after decimal point. We may generate
+	 * as many as DEC_DIGITS-1 excess digits at the end, and in addition we
+	 * need room for sign, decimal point, null terminator.
+	 */
+	i = (var->weight + 1) * DEC_DIGITS;
+	if (i <= 0)
+		i = 1;
+
+	str = palloc(i + dscale + DEC_DIGITS + 2);
+	cp = str;
+
+	/*
+	 * Output a dash for negative values
+	 */
+	if (var->sign == NUMERIC_NEG)
+		*cp++ = '-';
+
+	/*
+	 * Output all digits before the decimal point
+	 */
+	if (var->weight < 0)
+	{
+		d = var->weight + 1;
+		*cp++ = '0';
+	}
+	else
+	{
+		for (d = 0; d <= var->weight; d++)
+		{
+			dig = (d < var->ndigits) ? var->digits[d] : 0;
+			/* In the first digit, suppress extra leading decimal zeroes */
+#if DEC_DIGITS == 4
+			{
+				bool		putit = (d > 0);
+
+				d1 = dig / 1000;
+				dig -= d1 * 1000;
+				putit |= (d1 > 0);
+				if (putit)
+					*cp++ = d1 + '0';
+				d1 = dig / 100;
+				dig -= d1 * 100;
+				putit |= (d1 > 0);
+				if (putit)
+					*cp++ = d1 + '0';
+				d1 = dig / 10;
+				dig -= d1 * 10;
+				putit |= (d1 > 0);
+				if (putit)
+					*cp++ = d1 + '0';
+				*cp++ = dig + '0';
+			}
+#elif DEC_DIGITS == 2
+			d1 = dig / 10;
+			dig -= d1 * 10;
+			if (d1 > 0 || d > 0)
+				*cp++ = d1 + '0';
+			*cp++ = dig + '0';
+#elif DEC_DIGITS == 1
+			*cp++ = dig + '0';
+#else
+#error unsupported NBASE
+#endif
+		}
+	}
+
+	/*
+	 * If requested, output a decimal point and all the digits that follow it.
+	 * We initially put out a multiple of DEC_DIGITS digits, then truncate if
+	 * needed.
+	 */
+	if (dscale > 0)
+	{
+		*cp++ = '.';
+		endcp = cp + dscale;
+		for (i = 0; i < dscale; d++, i += DEC_DIGITS)
+		{
+			dig = (d >= 0 && d < var->ndigits) ? var->digits[d] : 0;
+#if DEC_DIGITS == 4
+			d1 = dig / 1000;
+			dig -= d1 * 1000;
+			*cp++ = d1 + '0';
+			d1 = dig / 100;
+			dig -= d1 * 100;
+			*cp++ = d1 + '0';
+			d1 = dig / 10;
+			dig -= d1 * 10;
+			*cp++ = d1 + '0';
+			*cp++ = dig + '0';
+#elif DEC_DIGITS == 2
+			d1 = dig / 10;
+			dig -= d1 * 10;
+			*cp++ = d1 + '0';
+			*cp++ = dig + '0';
+#elif DEC_DIGITS == 1
+			*cp++ = dig + '0';
+#else
+#error unsupported NBASE
+#endif
+		}
+
+		if (dscale > 0)
+		{
+			while(*(cp - 1))
+			{
+				if(*(cp-1) == '0' && !flag)
+				{
+					*(cp-1) = '\0';
+					*(cp) = '\0';
+					cp--;
+				}
+				else if(*(cp-1) == '.')
+				{
+					flag = true;
+					*(cp-1) = '\0';
+					*(cp) = '\0';
+					cp--;
+				}
+				else
+					break;
+			}
+		}
+		cp = endcp;
+
+	}
+
+	/*
+	 * terminate the string and return it
+	 */
+	*cp = '\0';
+	return str;
 }
 
 

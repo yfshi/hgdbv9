@@ -119,7 +119,9 @@ bool compile_plisql_use_owner = true;
 int dumppgtype = PG_DUMP;
 int grant_usertype = PG_GRANTUSER;
 /* END - ReqID:SRS-MISC-USER */
-
+/* Begin - BUG#z476 */
+bool numerictonumber = false;
+/* End - BUG#z476 */
 
 #endif
 
@@ -446,6 +448,17 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000227 */
+	/* Begin - BUG#z476 */
+	{
+		{"ivorysql.numerictonumber", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Set numeric to number(38)."),
+			NULL
+		},
+		&numerictonumber,
+		false, 
+		NULL, NULL, NULL
+	},
+	/* End - BUG#z476 */
 #endif
 #if 0
 	/* End-of-list marker */

@@ -919,10 +919,10 @@ begin
   raise info '%',binary4;
 end;
 /
-INFO:  213.256
-INFO:  [0:2]={3.1415926,4.1415926,5.1415926}
-INFO:  24.12
-INFO:  24.12
+INFO:  2.13256E+002
+INFO:  [0:2]={3.1415926E+000,4.1415926E+000,5.1415926E+000}
+INFO:  2.412E+001
+INFO:  2.412E+001
 drop function test_interval(integer,interval year to month, interval year to month[], interval year to month);
 drop function test_interval(integer,interval day to second, interval day to second[], interval day to second);
 drop function test_number(integer,number,number[],number);

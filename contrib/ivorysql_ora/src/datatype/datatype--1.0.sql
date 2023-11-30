@@ -10710,6 +10710,39 @@ PROCEDURE = sys.varchar2like,
 LEFTARG   = varchar2,
 RIGHTARG  = varchar2
 );
+
+CREATE  OR REPLACE FUNCTION sys.varchar2notlike(varchar2, varchar2)
+RETURNS bool AS $$
+SELECT $1::text not like $2::text;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OPERATOR !~~ (
+PROCEDURE = sys.varchar2notlike,
+LEFTARG   = varchar2,
+RIGHTARG  = varchar2
+);
+
+CREATE  OR REPLACE FUNCTION sys.byteatextlike(bytea, text)
+RETURNS bool AS $$
+SELECT $1::text like $2;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OPERATOR ~~ (
+PROCEDURE = sys.byteatextlike,
+LEFTARG   = bytea,
+RIGHTARG  = text
+);
+
+CREATE  OR REPLACE FUNCTION sys.byteatextnotlike(bytea, text)
+RETURNS bool AS $$
+SELECT $1::text not like $2;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OPERATOR !~~ (
+PROCEDURE = sys.byteatextnotlike,
+LEFTARG   = bytea,
+RIGHTARG  = text
+);
 /* End - ReqID:SRS-SQL-ORACLE-LIKE*/
 
 /***************************************************************

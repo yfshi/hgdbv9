@@ -217,6 +217,9 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 /* Begin - ReqID:SRS-SQL-PROC */
 static void determineLanguage(List *options);
 /* End - ReqID:SRS-SQL-PROC */
+/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
+/* End - ReqID:SRS-SQL-ORACLE-LIKE */
 
 %}
 
@@ -3989,6 +3992,7 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					/* End - Bug#Z485 */
 					}
 					/* End - ReqID:SRS-SQL-INVISIBLECOL */
+					/* Begin - Bug#Z476 */
 					n->compression = $4;
 					n->inhcount = 0;
 					n->is_local = true;
@@ -8842,7 +8846,8 @@ CreateFunctionStmt:
 ora_editioned:
 			EDITIONABLE 		{ $$ = FLAG_EDITIONABLE; }
 			| NONEDITIONABLE	{ $$ = FLAG_NOEDITIONABLE; }
-			;
+		;
+
 
 opt_ora_editioned:
 			ora_editioned		{ $$ = $1; }
@@ -15778,9 +15783,23 @@ Numeric:	INT_P
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			| NUMERIC numeric_opt_type_modifiers
 				{
-					$$ = SystemTypeName("numeric");
-					$$->typmods = $2;
-					$$->location = @1;
+					/* Begin - Bug#Z476 */
+					if(numerictonumber && (ORA_PARSER == compatible_db))
+					{
+						$$ = OracleSystemTypeName("number");
+						if($2)
+							$$->typmods = $2;
+						else
+							$$->typmods = list_make1(makeIntConst(38, -1));
+						$$->location = @1;
+					}
+					else
+					{
+						$$ = SystemTypeName("numeric");
+						$$->typmods = $2;
+						$$->location = @1;
+					}
+					/* End - Bug#Z476 */
 				}
 			| BOOLEAN_P
 				{
@@ -17053,31 +17072,152 @@ a_expr:		c_expr									{ $$ = $1; }
 
 			| a_expr LIKE a_expr
 				{
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
-												   $1, $3, @2);
+					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+					/* If there is already an E conversion, there is no need to do it (like "") */
+					if ((ORA_PARSER == compatible_db) && (nodeTag($3) == T_A_Const) 
+						&& getXeFirstEscape(yyscanner))
+					{
+						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+												   list_make2($3, makeStringConst("", -1)),
+												   COERCE_EXPLICIT_CALL,
+												   -1);
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
+													   $1, (Node *) n, @2);
+					}
+					else
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
+													   $1, $3, @2);
+					/* End - ReqID:SRS-SQL-ORACLE-LIKE */
+					
 				}
 			| a_expr LIKE a_expr ESCAPE a_expr					%prec LIKE
 				{
-					FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
-											   list_make2($3, $5),
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
-												   $1, (Node *) n, @2);
+					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+					if (ORA_PARSER == compatible_db)
+					{
+						if(nodeTag($5) == T_A_Const)
+						{
+							A_Const *node  = (A_Const *)$5;
+							char  *p = strVal(&node->val);
+
+							if (p == NULL)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										errmsg("\"ESCAPE ''\"  is not support for compatible oracle.")));
+							}
+							else if(strcmp(p, "\\") == 0)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										errmsg("\"ESCAPE '\\'\"  is not support for compatible oracle.")));
+							}
+							else
+							{
+								FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+														list_make2($3, $5),
+														COERCE_EXPLICIT_CALL,
+														@2);
+								$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
+															$1, (Node *) n, @2);
+							}
+
+						}
+						else
+						{
+							FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+												   list_make2($3, $5),
+												   COERCE_EXPLICIT_CALL,
+												   @2);
+							$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
+													   $1, (Node *) n, @2);
+						}
+						
+					}else
+					{
+						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+												   list_make2($3, $5),
+												   COERCE_EXPLICIT_CALL,
+												   @2);
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
+													   $1, (Node *) n, @2);
+					}
+					/* End - ReqID:SRS-SQL-ORACLE-LIKE */
 				}
 			| a_expr NOT_LA LIKE a_expr							%prec NOT_LA
 				{
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
-												   $1, $4, @2);
+					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+					if ((ORA_PARSER == compatible_db) && getXeFirstEscape(yyscanner))
+					{
+						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+												   list_make2($4, makeStringConst("", -1)),
+												   COERCE_EXPLICIT_CALL,
+												   -1);
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
+													   $1, (Node *) n, @2);
+					}
+					else
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
+													   $1, $4, @2);
+					/* End - ReqID:SRS-SQL-ORACLE-LIKE */
+					
 				}
 			| a_expr NOT_LA LIKE a_expr ESCAPE a_expr			%prec NOT_LA
 				{
-					FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
-											   list_make2($4, $6),
-											   COERCE_EXPLICIT_CALL,
-											   @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
-												   $1, (Node *) n, @2);
+					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+					if (ORA_PARSER == compatible_db)
+					{
+						if(nodeTag($6) == T_A_Const)
+						{
+							A_Const *node = (A_Const *)$6;
+							char  *p = strVal(&node->val);
+
+							if (p == NULL)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										errmsg("\"ESCAPE ''\"  is not support for compatible oracle.")));
+							}
+							else if(strcmp(p, "\\") == 0)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										errmsg("\"ESCAPE '\\'\"  is not support for compatible oracle.")));
+							}
+							else
+							{
+								FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+														list_make2($4, $6),
+														COERCE_EXPLICIT_CALL,
+														@2);
+								$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
+															$1, (Node *) n, @2);
+							}
+							
+						}
+						else
+						{
+							FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+													list_make2($4, $6),
+													COERCE_EXPLICIT_CALL,
+													@2);
+							$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
+														$1, (Node *) n, @2);
+						}
+					}
+					else
+					{
+						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
+													list_make2($4, $6),
+													COERCE_EXPLICIT_CALL,
+													@2);
+						$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "!~~",
+														$1, (Node *) n, @2);
+					}
+
+
+						
+					/* End - ReqID:SRS-SQL-ORACLE-LIKE */
 				}
 			| a_expr ILIKE a_expr
 				{
@@ -21866,3 +22006,18 @@ ora_parser_init(ora_base_yy_extra_type *yyext)
 	questionmarks_count = 0;
 	/* End - BUG#M0000201: support question marks as binding variables */
 }
+
+/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
+static bool 
+getXeFirstEscape(ora_core_yyscan_t yyscanner)
+{
+	bool		warn_on_first_escape = true;
+
+	ora_base_yy_extra_type *byyextra = pg_yyget_extra(yyscanner);
+	ora_core_yy_extra_type cyyextra = byyextra->core_yy_extra;
+
+	warn_on_first_escape = cyyextra.warn_on_first_escape;
+
+	return warn_on_first_escape;
+}
+/* End - ReqID:SRS-SQL-ORACLE-LIKE */
