@@ -1465,6 +1465,11 @@ ora_scanner_init(const char *str,
 	yyext->literalbuf = (char *) palloc(yyext->literalalloc);
 	yyext->literallen = 0;
 
+	/*  Begin - BUGID:0000246 */
+	ora_parameter_list = NIL;
+	ora_parameter_name_list = NIL;
+	/* End - BUG#M0000264 */
+
 	return scanner;
 }
 

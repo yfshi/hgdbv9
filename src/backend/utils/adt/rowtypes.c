@@ -2061,14 +2061,13 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 	/* Begin - ReqID:SRS-SQL-CALL */
 	typedef struct
 	{
-		OraParamExtralData	*extral;
-		const char			*cmdtag;
-		char				*callintoexpr;
+		OraParamExtralData		*extral;
+		const char						*cmdtag;
+		char							*callintoexpr;
 	} outparam_fctx;
 	/* End - ReqID:SRS-SQL-CALL */
 	FuncCallContext *funcctx;
 	outparam_fctx	*user_fctx;
-	bool			dostmt = false;
 
 	if (SRF_IS_FIRSTCALL())
 	{
@@ -2079,155 +2078,33 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		int			nparams = 0;
 		char		**paramnames = NULL;
 		MemoryContext	oldcxt;
-		int oraparam_top_level;
 		int oraparam_cur_level;
 
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcxt = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		push_oraparam_stack();
-		get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
-		forward_oraparam_stack();
-		setdynamic_parser(true);
+		/* Begin - BUG#M0000264 */
+		oraparam_cur_level = push_oraparam_stack();
 		PG_TRY();
 		{
 			parsetree = raw_parser(sql, RAW_PARSE_DEFAULT);
 		}
 		PG_CATCH();
 		{
-			backward_oraparam_stack();
-			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-			setdynamic_parser(false);
+			pop_oraparam_stack(oraparam_cur_level);
 			PG_RE_THROW();
 		}
 		PG_END_TRY();
 
 		if (list_length(parsetree) != 1)
 		{
-			/* Begin - BUG:M0000077 */
-			backward_oraparam_stack();
-			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-			setdynamic_parser(false);
-			/* End - BUG:M0000077 */
+			pop_oraparam_stack(oraparam_cur_level);
 			elog(ERROR, "we only support one parse tree");
 		}
 
-		/* Begin - ReqID:SRS-SQL-CALL */
-		/* allocate memory and initialize */
-		user_fctx = (outparam_fctx *) palloc(sizeof(outparam_fctx));
-		user_fctx->extral = NULL;
-		user_fctx->cmdtag = NULL;
-		user_fctx->callintoexpr = NULL;
-
-		user_fctx->cmdtag = CreateCommandName(linitial(parsetree));
-		/* End - ReqID:SRS-SQL-CALL */
-
-		if (nodeTag(linitial(parsetree)) == T_RawStmt &&
-			nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_DoStmt)
-		{
-			/* Begin - BUG:M0000077 */
-			DoStmt		*stmt = (DoStmt *)(((RawStmt *)linitial(parsetree))->stmt);
-			ListCell	*arg;
-			DefElem		*as_item = NULL;
-			DefElem		*language_item = NULL;
-			char		*language = NULL;
-			char		*source_text = NULL;
-
-			foreach(arg, stmt->args)
-			{
-				DefElem    *defel = (DefElem *) lfirst(arg);
-
-				if (strcmp(defel->defname, "as") == 0)
-				{
-					as_item = defel;
-				}
-				else if (strcmp(defel->defname, "language") == 0)
-				{
-					language_item = defel;
-				}
-			}
-
-			if (language_item)
-				language = strVal(language_item->arg);
-			if (as_item)
-				source_text = strVal(as_item->arg);
-			/* End - BUG:M0000077 */
-
-			dostmt = true;
-
-			/*
-			 * Currently, only Oracle-compatible anonymous blocks support placeholders
-			 * for OUT parameters. For anonymous blocks in other PL languages, we only
-			 * return a {true, 0} tuple instead of reporting an error,Because interfaces
-			 * of libpq may implicitly call this function, if an error is reported, the
-			 * transaction block state of the display transaction will be destroyed.
-			 */
-			/* Begin - BUG:M0000077 */
-			if (language &&
-				strcmp(language, "plisql") == 0 &&
-				stmt->paramsmode == NIL)
-			{
-				PG_TRY();
-				{
-					if (!plisql_internal_funcs.isload)
-					{
-						FmgrInfo	flinfo;
-						HeapTuple	languageTuple;
-						Form_pg_language languageStruct;
-						Oid 		laninline;
-
-						/* Look up the language and validate permissions */
-						languageTuple = SearchSysCache1(LANGOID, ObjectIdGetDatum(LANG_PLISQL_OID));
-						if (!HeapTupleIsValid(languageTuple))
-							ereport(ERROR,
-									(errcode(ERRCODE_UNDEFINED_OBJECT),
-									 errmsg("language plisql does not exist"),
-									 (extension_file_exists("plisql") ?
-									  errhint("Use CREATE EXTENSION to load the language into the database.") : 0)));
-
-						languageStruct = (Form_pg_language) GETSTRUCT(languageTuple);
-
-						/* get the handler function's OID */
-						laninline = languageStruct->laninline;
-						if (!OidIsValid(laninline))
-							ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									 errmsg("language \"%s\" does not support inline code execution",
-											NameStr(languageStruct->lanname))));
-
-						ReleaseSysCache(languageTuple);
-						fmgr_info(laninline, &flinfo);
-					}
-					//plisql_internal_funcs.compile_inline_internal(sql);
-					plisql_internal_funcs.compile_inline_internal(source_text);
-					nparams = calculate_oraparamname(&paramnames);
-				}
-				PG_CATCH();
-				{
-					backward_oraparam_stack();
-					pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-					setdynamic_parser(false);
-					PG_RE_THROW();
-				}
-				PG_END_TRY();
-			}
-			/* End - BUG:M0000077 */
-		}
-		/* Begin - ReqID:SRS-SQL-CALL */
-		else if (nodeTag(linitial(parsetree)) == T_RawStmt &&
-				nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_CallStmt)
-		{
-			CallStmt	*stmt = (CallStmt *)(((RawStmt *)linitial(parsetree))->stmt);
-			user_fctx->callintoexpr = stmt->callinto ? pstrdup(stmt->callinto) : NULL;
-		}
-		/* End - ReqID:SRS-SQL-CALL */
-
-		backward_oraparam_stack();
-		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-		setdynamic_parser(false);
-
-		if (!dostmt)
-			nparams = calculate_oraparamname_position(linitial(parsetree), &paramnames);
+		nparams = recalculate_oraparamname_position(&paramnames);
+		pop_oraparam_stack(oraparam_cur_level);
+		/* End - BUG#M0000264 */
 
 		/*
 		 * build tupdesc for result tuples (matches out parameters in pg_proc
@@ -2244,7 +2121,20 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		/* End - ReqID:SRS-SQL-CALL */
 
 		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
+
 		/* Begin - ReqID:SRS-SQL-CALL */
+		/* allocate memory and initialize */
+		user_fctx = (outparam_fctx *) palloc(sizeof(outparam_fctx));
+		user_fctx->extral = NULL;
+		user_fctx->callintoexpr = NULL;
+		user_fctx->cmdtag = CreateCommandName(linitial(parsetree));
+		if (nodeTag(linitial(parsetree)) == T_RawStmt &&
+			nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_CallStmt)
+		{
+			CallStmt		*stmt = (CallStmt *)(((RawStmt *)linitial(parsetree))->stmt);
+			user_fctx->callintoexpr = stmt->callinto ? pstrdup(stmt->callinto) : NULL;
+		}
+		/* End - ReqID:SRS-SQL-CALL */
 		user_fctx->extral = (OraParamExtralData *) palloc(sizeof(OraParamExtralData));
 		user_fctx->extral->next_params = 0;
 		user_fctx->extral->total_params = nparams;

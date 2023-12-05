@@ -2878,8 +2878,9 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 	Form_pg_language languageStruct;
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	Datum		result;
-	int         oraparam_top_level = -1;
-	int         oraparam_cur_level = -1;
+	/* Begin - BUG#M0000264 */
+	int 		param_level = get_current_oraparam_level();
+	/* End - BUG#M0000264 */
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Process options we got from gram.y */
@@ -2988,28 +2989,32 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 		codeblock->params = params;
 
 		/* to use check_variables_does_match to check variables match, push stack */
-		if (stmt->paramsmode != NIL)
+		/* Begin - BUG#M0000264 */
+		/*
+		 * handle do $$ xxxx $$ using out,out
+		 */
+		if (param_level == 0 && stmt->paramsmode != NIL)
 		{
-			push_oraparam_stack();
-			get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
+			param_level = push_oraparam_stack();
+			setdynamic_docheckvar(true);
+			setdynamic_doparser(true);
+			PG_TRY();
+			{
+				/* execute the inline handler */
+				result = OidFunctionCall1(laninline, PointerGetDatum(codeblock));
+			}
+			PG_FINALLY();
+			{
+				pop_oraparam_stack(param_level);
+			}
+			PG_END_TRY();
 		}
-
-		PG_TRY();
+		else
 		{
 			/* execute the inline handler */
 			result = OidFunctionCall1(laninline, PointerGetDatum(codeblock));
 		}
-		PG_CATCH();
-		{
-			if (stmt->paramsmode != NIL)
-				pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-
-			PG_RE_THROW();
-		}
-		PG_END_TRY();
-
-		if (stmt->paramsmode != NIL)
-			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
+		/* End - BUG#M0000264 */
 
 		/* Anonymous block has out parameters, its return value will be not NULL */
 		if (result != 0 && dest != NULL && stmt->paramsmode != NIL)

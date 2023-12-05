@@ -556,11 +556,6 @@ typedef struct PLiSQL_stmt_block
 	int			n_initvars;		/* Length of initvarnos[] */
 	int		   *initvarnos;		/* dnos of variables declared in this block */
 	PLiSQL_exception_block *exceptions;
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	int       ora_param_stack_top_level;
-	int       ora_param_stack_cur_level;
-	/* End - ReqID:SRS-SQL-ANONYOUT */
-
 } PLiSQL_stmt_block;
 
 /*

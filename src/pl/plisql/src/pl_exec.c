@@ -1890,10 +1890,6 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		}
 	}
 
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	pop_oraparam_stack(block->ora_param_stack_top_level, block->ora_param_stack_cur_level);
-	/* End - ReqID:SRS-SQL-ANONYOUT */
-
 	if (block->exceptions)
 	{
 		/*
@@ -1974,10 +1970,6 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		{
 			ErrorData  *edata;
 			ListCell   *e;
-
-			/* Begin - ReqID:SRS-SQL-ANONYOUT */
-			pop_oraparam_stack(block->ora_param_stack_top_level, block->ora_param_stack_cur_level);
-			/* End - ReqID:SRS-SQL-ANONYOUT */
 
 			estate->err_text = gettext_noop("during exception cleanup");
 
@@ -3876,6 +3868,9 @@ exec_stmt_return_query(PLiSQL_execstate *estate,
 		int32		restypmod;
 		char	   *querystr;
 		SPIExecuteOptions options;
+		/* Begin - BUG#M0000264 */
+		int param_level;
+		/* End - BUG#M0000264 */
 
 		/*
 		 * Evaluate the string expression after the EXECUTE keyword. Its
@@ -3897,10 +3892,6 @@ exec_stmt_return_query(PLiSQL_execstate *estate,
 
 		exec_eval_cleanup(estate);
 
-		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		forward_oraparam_stack();
-		/* End - ReqID:SRS-SQL-ANONYOUT */
-
 		/* Execute query, passing params if necessary */
 		memset(&options, 0, sizeof(options));
 		options.params = exec_eval_using_params(estate,
@@ -3909,13 +3900,22 @@ exec_stmt_return_query(PLiSQL_execstate *estate,
 		options.must_return_tuples = true;
 		options.dest = treceiver;
 
-		rc = SPI_execute_extended(querystr, &options);
+		/* Begin - BUG#M0000264 */
+		param_level = push_oraparam_stack();
+
+		PG_TRY();
+		{
+			rc = SPI_execute_extended(querystr, &options);
+		}
+		PG_FINALLY();
+		{
+			pop_oraparam_stack(param_level);
+		}
+		PG_END_TRY();
+		/* End - BUG#M0000264 */
 		if (rc < 0)
 			elog(ERROR, "SPI_execute_extended failed executing query \"%s\": %s",
 				 querystr, SPI_result_code_string(rc));
-		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		backward_oraparam_stack();
-		/* End - ReqID:SRS-SQL-ANONYOUT */
 	}
 
 	/* Clean up */
@@ -4716,6 +4716,9 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	ParamListInfo paramLI;
 	SPIExecuteOptions options;
 	MemoryContext stmt_mcontext = get_stmt_mcontext(estate);
+	/* Begin - BUG#M0000264 */
+	int param_level;
+	/* End - BUG#M0000264 */
 
 	/*
 	 * First we evaluate the string expression after the EXECUTE keyword. Its
@@ -4744,18 +4747,19 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	options.params = paramLI;
 	options.read_only = estate->readonly_func;
 
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	forward_oraparam_stack();
-	setdynamic_parser(true);
-	setdynamic_doparser(true);
-	setdynamic_haspgparam(false);
-	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - BUG#M0000264 */
+	param_level = push_oraparam_stack();
 
-	exec_res = SPI_execute_extended(querystr, &options);
-
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	backward_oraparam_stack();
-	/* End - ReqID:SRS-SQL-ANONYOUT */
+	PG_TRY();
+	{
+		exec_res = SPI_execute_extended(querystr, &options);
+	}
+	PG_FINALLY();
+	{
+		pop_oraparam_stack(param_level);
+	}
+	PG_END_TRY();
+	/* End - BUG#M0000264 */
 
 	switch (exec_res)
 	{
@@ -4910,18 +4914,25 @@ exec_stmt_dynfors(PLiSQL_execstate *estate, PLiSQL_stmt_dynfors *stmt)
 {
 	Portal		portal;
 	int			rc;
+	/* Begin - BUG#M0000264 */
+	int param_level;
+	/* End - BUG#M0000264 */
 
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - BUG#M0000264 */
 	/*To recalculate the placeholder number*/
-	forward_oraparam_stack();
-	/* End - ReqID:SRS-SQL-ANONYOUT */
+	param_level = push_oraparam_stack();
 
-	portal = exec_dynquery_with_params(estate, stmt->query, stmt->params,
+	PG_TRY();
+	{
+		portal = exec_dynquery_with_params(estate, stmt->query, stmt->params,
 									   NULL, CURSOR_OPT_NO_SCROLL);
-
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	backward_oraparam_stack();
-	/* End - ReqID:SRS-SQL-ANONYOUT */
+	}
+	PG_FINALLY();
+	{
+		pop_oraparam_stack(param_level);
+	}
+	PG_END_TRY();
+	/* End - BUG#M0000264 */
 
 	/*
 	 * Execute the loop
@@ -4999,18 +5010,24 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 		 * ----------
 		 */
 
-		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		forward_oraparam_stack();
-		/* End - ReqID:SRS-SQL-ANONYOUT */
+		/* Begin - BUG#M0000264 */
+		int param_level;
 
-		portal = exec_dynquery_with_params(estate,
+		param_level = push_oraparam_stack();
+		PG_TRY();
+		{
+			portal = exec_dynquery_with_params(estate,
 										   stmt->dynquery,
 										   stmt->params,
 										   curname,
 										   stmt->cursor_options);
-		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		backward_oraparam_stack();
-		/* End - ReqID:SRS-SQL-ANONYOUT */
+		}
+		PG_FINALLY();
+		{
+			pop_oraparam_stack(param_level);
+		}
+		PG_END_TRY();
+		/* End - BUG#M0000264 */
 
 		/*
 		 * If cursor variable was NULL, store the generated portal name in it.

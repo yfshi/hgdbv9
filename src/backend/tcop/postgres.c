@@ -1494,28 +1494,22 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	if (compatible_db== ORA_PARSER)
 	{
 		/* parser :select * from f(:x,:y) */
-		int oraparam_top_level;
 		int oraparam_cur_level;
 
-		push_oraparam_stack();
-		get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
-		forward_oraparam_stack();
-		setdynamic_parser(true);
+		/* Begin - BUG#M0000264 */
+		oraparam_cur_level = push_oraparam_stack();
 		PG_TRY();
 		{
 			parsetree_list = pg_parse_query(query_string);
 		}
 		PG_CATCH();
 		{
-			backward_oraparam_stack();
-			pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-			setdynamic_parser(false);
+			pop_oraparam_stack(oraparam_cur_level);
 			PG_RE_THROW();
 		}
 		PG_END_TRY();
-		backward_oraparam_stack();
-		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-		setdynamic_parser(false);
+		pop_oraparam_stack(oraparam_cur_level);
+		/* End - BUG#M0000264 */
 	}
 	else
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
