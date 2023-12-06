@@ -17106,12 +17106,6 @@ a_expr:		c_expr									{ $$ = $1; }
 										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 										errmsg("\"ESCAPE ''\"  is not support for compatible oracle.")));
 							}
-							else if(strcmp(p, "\\") == 0)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-										errmsg("\"ESCAPE '\\'\"  is not support for compatible oracle.")));
-							}
 							else
 							{
 								FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
@@ -17147,7 +17141,8 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr NOT_LA LIKE a_expr							%prec NOT_LA
 				{
 					/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
-					if ((ORA_PARSER == compatible_db) && getXeFirstEscape(yyscanner))
+					if ((ORA_PARSER == compatible_db) && (nodeTag($4) == T_A_Const)
+						 && getXeFirstEscape(yyscanner))
 					{
 						FuncCall *n = makeFuncCall(SystemFuncName("like_escape"),
 												   list_make2($4, makeStringConst("", -1)),
@@ -17177,12 +17172,6 @@ a_expr:		c_expr									{ $$ = $1; }
 								ereport(ERROR,
 										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 										errmsg("\"ESCAPE ''\"  is not support for compatible oracle.")));
-							}
-							else if(strcmp(p, "\\") == 0)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-										errmsg("\"ESCAPE '\\'\"  is not support for compatible oracle.")));
 							}
 							else
 							{
