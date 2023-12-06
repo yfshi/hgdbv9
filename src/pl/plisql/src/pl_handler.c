@@ -46,9 +46,6 @@
 static bool plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source);
 static void plisql_extra_warnings_assign_hook(const char *newvalue, void *extra);
 static void plisql_extra_errors_assign_hook(const char *newvalue, void *extra);
-/* Begin - ReqID:SRS-SQL-ANONYOUT */
-static void set_blocks_oraparam_level(PLiSQL_stmt *stmt, int top, int cur); /* BUG#M0000136 */
-/* End - ReqID:SRS-SQL-ANONYOUT */
 
 PG_MODULE_MAGIC;
 
@@ -265,10 +262,6 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	char	function_from = plisql_function_from(fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	int         oraparam_top_level = -1;
-	int         oraparam_cur_level = -1;
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	nonatomic = fcinfo->context &&
 		IsA(fcinfo->context, CallContext) &&
@@ -316,13 +309,6 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		(nonatomic && func->requires_procedure_resowner) ?
 		ResourceOwnerCreate(NULL, "PL/iSQL procedure resources") : NULL;
 
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	push_oraparam_stack();
-	get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
-	set_blocks_oraparam_level((PLiSQL_stmt *) func->action,/* BUG#M0000136 */
-			oraparam_top_level, oraparam_cur_level);
-	/* End - ReqID:SRS-SQL-ANONYOUT */
-
 	PG_TRY();
 	{
 		/*
@@ -346,10 +332,6 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	}
 	PG_FINALLY();
 	{
-		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-		/* End - ReqID:SRS-SQL-ANONYOUT */
-
 		/* Decrement use-count, restore cur_estate */
 		func->use_count--;
 		func->cur_estate = save_cur_estate;
@@ -371,9 +353,6 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		}
 	}
 	PG_END_TRY();
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/*
 	 * Disconnect from SPI manager
@@ -403,11 +382,6 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	ResourceOwner simple_eval_resowner;
 	Datum		retval;
 	int			rc;
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	bool		ora_forward = false;
-	int         oraparam_top_level = -1;
-	int         oraparam_cur_level = -1;
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 	MemoryContext oldcontext = CurrentMemoryContext; /* ReqID:SRS-SQL-CALL */
 
 	/*
@@ -419,30 +393,9 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	if (codeblock->params != NULL)
 	{
-		bool check_var = getdynmaic_docheckvar();
-
-		 setdynamic_parser(true);
-		 setdynamic_doparser(true);
-		 setdynamic_haspgparam(false);
-		 setdynamic_parser(true);
-		 setdynamic_doparser(true);
-		 setdynamic_docheckvar(check_var);
-
-		 if (codeblock->params->paramnames != NULL)
+		if (codeblock->params->paramnames != NULL)
 			set_bindbyname(true);
 	}
-
-	/*
-	 * Anonymous block has parameters, we should
-	 * forward_oraparam_stack, so that we can check if the variable match
-	 */
-	if (codeblock->params != NULL &&
-		SPI_get_connected() == 0)
-	{
-		forward_oraparam_stack();
-		ora_forward = true;
-	}
-	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* Compile the anonymous code block */
 	func = plisql_compile_inline(codeblock->source_text, codeblock->params/* ReqID:SRS-SQL-ANONYOUT */, codeblock->do_from_call /* ReqID:SRS-SQL-CALL */);
@@ -454,7 +407,7 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	/* check bound variables */
-	if (getdynmaic_docheckvar() || ora_forward)
+	if (getdynmaic_docheckvar())
 	{
 		PG_TRY();
 		{
@@ -467,9 +420,6 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 							0, NULL);
 			/* ... so we can free subsidiary storage */
 			plisql_free_function_memory(func, 0, 0);
-
-			if (ora_forward)
-				backward_oraparam_stack();
 
 			/* And propagate the error */
 			PG_RE_THROW();
@@ -526,10 +476,6 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 			fake_fcinfo->args[i].isnull = codeblock->params->params[i].isnull;
 		}
 	}
-	push_oraparam_stack();		
-	get_oraparam_level(&oraparam_top_level, &oraparam_cur_level);
-	set_blocks_oraparam_level((PLiSQL_stmt *) func->action, /* BUG#M0000136 */
-			oraparam_top_level, oraparam_cur_level);
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
 	/* And run the function */
@@ -561,11 +507,8 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 			FreeErrorData(edata);
 		}
 		/* End - ReqID:SRS-SQL-CALL */
-		
+
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
-		pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-		if (ora_forward)
-			backward_oraparam_stack();
 		set_bindbyname(false);
 		/* End - ReqID:SRS-SQL-ANONYOUT */
 
@@ -603,12 +546,6 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
-
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	pop_oraparam_stack(oraparam_top_level - 1, oraparam_cur_level);
-	if (ora_forward)
-		backward_oraparam_stack();
-
 	set_bindbyname(false);
 
 	if (codeblock->params != NULL && codeblock->params->haveout)
@@ -797,224 +734,3 @@ plisql_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
-/* Begin - ReqID:SRS-SQL-ANONYOUT */
-/*
- * BUG#M0000136,maybe if and while statement has block
- * so we should consider all plisql stmt
- */
-static void
-set_blocks_oraparam_level(PLiSQL_stmt *stmt, int top, int cur)
-{
-	ListCell   *s;
-
-	if (stmt == NULL)
-		return;
-
-	switch (stmt->cmd_type)
-	{
-		case PLISQL_STMT_BLOCK:
-			{
-				PLiSQL_stmt_block *block = (PLiSQL_stmt_block *) stmt;
-
-				block->ora_param_stack_top_level = top;
-				block->ora_param_stack_cur_level = cur;
-				foreach(s, block->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *)lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-				if (block->exceptions != NULL)
-				{
-					foreach (s, block->exceptions->exc_list)
-					{
-						PLiSQL_exception *excep = (PLiSQL_exception *) lfirst(s);
-						ListCell *lc;
-
-						foreach (lc, excep->action)
-						{
-							PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(lc);
-
-							set_blocks_oraparam_level(stmt_tmp, top, cur);
-						}
-					}
-				}
-			}
-			break;
-		case PLISQL_STMT_ASSIGN:
-			break;
-		case PLISQL_STMT_IF:
-			{
-				PLiSQL_stmt_if *stmt_if = (PLiSQL_stmt_if *) stmt;
-
-				foreach (s, stmt_if->then_body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *)lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-				foreach (s, stmt_if->elsif_list)
-				{
-					PLiSQL_if_elsif *stmt_tmp = (PLiSQL_if_elsif *) lfirst(s);
-					ListCell *lc;
-
-					foreach (lc, stmt_tmp->stmts)
-					{
-						PLiSQL_stmt *stmt_tmp2 = (PLiSQL_stmt *) lfirst(lc);
-
-						set_blocks_oraparam_level(stmt_tmp2, top, cur);
-					}
-				}
-				foreach (s, stmt_if->else_body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_CASE:
-			{
-				PLiSQL_stmt_case *stmt_case = (PLiSQL_stmt_case *) stmt;
-
-				foreach (s, stmt_case->case_when_list)
-				{
-					PLiSQL_case_when *case_when = (PLiSQL_case_when *) lfirst(s);
-					ListCell *lc;
-
-					foreach (lc, case_when->stmts)
-					{
-						PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(lc);
-
-						set_blocks_oraparam_level(stmt_tmp, top, cur);
-					}
-				}
-				foreach (s, stmt_case->else_stmts)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_LOOP:
-			{
-				PLiSQL_stmt_loop *stmt_loop = (PLiSQL_stmt_loop *) stmt;
-
-				foreach (s, stmt_loop->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_WHILE:
-			{
-				PLiSQL_stmt_while *stmt_while = (PLiSQL_stmt_while *) stmt;
-
-				foreach (s, stmt_while->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_FORI:
-			{
-				PLiSQL_stmt_fori *stmt_fori = (PLiSQL_stmt_fori *) stmt;
-
-				foreach (s, stmt_fori->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_FORS:
-			{
-				PLiSQL_stmt_fors *stmt_fors = (PLiSQL_stmt_fors *) stmt;
-
-				foreach (s, stmt_fors->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_FORC:
-			{
-				PLiSQL_stmt_forc *stmt_forc = (PLiSQL_stmt_forc *) stmt;
-
-				foreach (s, stmt_forc->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_FOREACH_A:
-			{
-				PLiSQL_stmt_foreach_a *stmt_fora = (PLiSQL_stmt_foreach_a *) stmt;
-
-				foreach (s, stmt_fora->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_EXIT:
-			break;
-		case PLISQL_STMT_RETURN:
-			break;
-		case PLISQL_STMT_RETURN_NEXT:
-			break;
-		case PLISQL_STMT_RETURN_QUERY:
-			break;
-		case PLISQL_STMT_RAISE:
-			break;
-		case PLISQL_STMT_ASSERT:
-			break;
-		case PLISQL_STMT_EXECSQL:
-			break;
-		case PLISQL_STMT_DYNEXECUTE:
-			break;
-		case PLISQL_STMT_DYNFORS:
-			{
-				PLiSQL_stmt_dynfors *stmt_dyn = (PLiSQL_stmt_dynfors *) stmt;
-
-				foreach (s, stmt_dyn->body)
-				{
-					PLiSQL_stmt *stmt_tmp = (PLiSQL_stmt *) lfirst(s);
-
-					set_blocks_oraparam_level(stmt_tmp, top, cur);
-				}
-			}
-			break;
-		case PLISQL_STMT_GETDIAG:
-			break;
-		case PLISQL_STMT_OPEN:
-			break;
-		case PLISQL_STMT_FETCH:
-			break;
-		case PLISQL_STMT_CLOSE:
-			break;
-		case PLISQL_STMT_PERFORM:
-			break;
-		case PLISQL_STMT_CALL:
-			break;
-		case PLISQL_STMT_COMMIT:
-		case PLISQL_STMT_ROLLBACK:
-			break;
-		default:
-			elog(ERROR, "unrecognized cmd_type: %d", stmt->cmd_type);
-			break;
-	}
-}
-/* End - ReqID:SRS-SQL-ANONYOUT */

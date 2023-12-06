@@ -1263,6 +1263,10 @@ CallStmt:	CALL func_application
 					callstr = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @2, @3 - @2);
 					n->callinto = psprintf("%s := %s;", $4, callstr);
 					pfree(callstr);
+					/* Begin - BUG#M0000264 */
+					/* record OraParamRef */
+					ora_parameter_list = lappend(ora_parameter_list, hostvar);
+					/* End - BUG#M0000264 */
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-SQL-CALL */
@@ -17688,6 +17692,10 @@ c_expr:		columnref								{ $$ = $1; }
 					p->number = 0;
 					p->location = @1;					
 					p->name = $1;
+					/* Begin - BUG#M0000264 */
+					/* record OraParamRef */
+					ora_parameter_list = lappend(ora_parameter_list, p);
+					/* End - BUG#M0000264 */
 					if ($2)
 					{
 						A_Indirection *n = makeNode(A_Indirection);

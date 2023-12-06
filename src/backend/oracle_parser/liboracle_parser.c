@@ -229,9 +229,16 @@ oracle_raw_parser(const char *str, RawParseMode mode)
 	if (yyresult)				/* error */
 		return NIL;
 
-	/* Begin - ReqID:SRS-SQL-ANONYOUT */
-	calculate_oraparamnumbers(yyextra.parsetree);
-	/* End - ReqID:SRS-SQL-ANONYOUT */
+	/* Begin - BUG#M0000264 */
+	/*
+	 * calculate oraparamnumber
+	 */
+	recalculate_oraparamnumber(yyextra.parsetree);
+	list_free(ora_parameter_name_list);
+	list_free(ora_parameter_list);
+	ora_parameter_list = NIL;
+	ora_parameter_name_list = NIL;
+	/* End - BUG#M0000264 */
 
 	return yyextra.parsetree;
 }
@@ -309,6 +316,27 @@ ora_internal_yylex(ora_core_yyscan_t yyscanner, YYLTYPE *llocp, TokenAuxData *au
  	/* remember the length of yytext before it gets changed */
  	yytext = yyextra->core_yy_extra.scanbuf + auxdata->lloc;
  	auxdata->leng = strlen(yytext);
+
+	/* Begin - BUG#M0000264 */
+	/*
+	 * When there are multiple syntaxes, we must identify the positional
+	 * variable in the anonymous block, otherwise we will get wrong results
+	 * when calculating the positional variable number
+	 * that is not an anonymous block statement.
+	 * like:
+	 * begin
+	 *    :x := sfsf
+	 * end;
+	 * insert into xxx values(:y,:z)
+	 *
+	 */
+	if (token == PARAM)
+		setdynamic_haspgparam(true);
+	else if (token == ORAPARAM)
+	{
+		ora_parameter_name_list = lappend(ora_parameter_name_list, auxdata->lval.str);
+	}
+	/* End - BUG#M0000264 */
 
 	return token;
 }

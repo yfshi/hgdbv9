@@ -15,6 +15,13 @@
 
 #include "parser/parse_node.h"
 
+
+/* Begin - BUG#M0000264 */
+extern PGDLLIMPORT List *ora_parameter_list;
+extern PGDLLIMPORT List *ora_parameter_name_list;
+/* End - BUG#M0000264 */
+
+
 extern void parse_fixed_parameters(ParseState *pstate,
 								   Oid *paramTypes, int numParams);
 extern void parse_variable_parameters(ParseState *pstate,
@@ -43,14 +50,14 @@ extern void ParseVarParamState(void *arg, Node *param,
 /* End - ReqID:SRS-SQL-FUNCOUT */
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 extern int push_oraparam_stack(void);
-extern void pop_oraparam_stack(int top, int cur);
-extern void get_oraparam_level(int *top, int *cur);
-
-extern void forward_oraparam_stack(void);
-extern void backward_oraparam_stack(void);
+extern void pop_oraparam_stack(int cur); /* BUG#M0000264 */
 
 extern  int calculate_oraparamnumber(const char* name);
-extern bool calculate_oraparamnumbers(List	   *parsetree_list);
+/* Begin - BUG#M0000264 */
+extern void recalculate_oraparamnumber(List* parsetree_list);
+extern int get_current_oraparam_level(void);
+extern int recalculate_oraparamname_position(char ***paramnames);
+/* End - BUG#M0000264 */
 extern void setdynamic_parser(bool value);
 extern bool getdynamic_parser(void);
 extern void check_variables_does_match(int variables);
@@ -62,9 +69,5 @@ extern void set_bindbyname(bool value);
 extern bool get_bindbyname(void);
 /* End - ReqID:SRS-SQL-ANONYOUT */
 extern void setdynamic_callparser(bool value); /* ReqID:SRS-SQL-CALL */
-/* Begin - ReqID:SRS-SQL-LIBPQOUT */
-extern int calculate_oraparamname_position(Node *parsetree, char ***paramnames);
-extern int calculate_oraparamname(char ***paramnames);
-/* End - ReqID:SRS-SQL-LIBPQOUT */
 
 #endif							/* PARSE_PARAM_H */
