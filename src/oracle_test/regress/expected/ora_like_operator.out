@@ -213,10 +213,20 @@ select '12\' like '12\'  AS "true";
  t
 (1 row)
 
-select '12\' like '12\' escape '\';         --error
-ERROR:  "ESCAPE '\'"  is not support for compatible oracle.
+select '12_12' like '12\_12' escape '\';
+ ?column? 
+----------
+ t
+(1 row)
+
 select '1212' like '12%' escape '';         --error
 ERROR:  "ESCAPE ''"  is not support for compatible oracle.
+SELECT E'\\xDeAdBeE'like '\x%';
+ ?column? 
+----------
+ t
+(1 row)
+
 --   not like
 select '123456'::char(6) not like '123%'  AS "false";
  false 
@@ -420,6 +430,26 @@ SELECT null not like '123%'::varchar2  AS "false";
  false 
 -------
  
+(1 row)
+
+select '12\' not like '12\'  AS "false";
+ false 
+-------
+ f
+(1 row)
+
+select '12_12' not like '12\_12' escape '\';
+ ?column? 
+----------
+ f
+(1 row)
+
+select '1212' not like '12%' escape '';         --error
+ERROR:  "ESCAPE ''"  is not support for compatible oracle.
+SELECT E'\\xDeAdBeE' not like '\x%';
+ ?column? 
+----------
+ f
 (1 row)
 
 -- test table 

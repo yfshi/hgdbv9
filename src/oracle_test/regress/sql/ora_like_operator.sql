@@ -50,10 +50,10 @@ SELECT null like '123%'  AS "true";
 SELECT null like '123%'::varchar2  AS "true";
 
 select '12\' like '12\'  AS "true";
-select '12\' like '12\' escape '\';         --error
+select '12_12' like '12\_12' escape '\';
 select '1212' like '12%' escape '';         --error
 
-
+SELECT E'\\xDeAdBeE'like '\x%';
 
 
 
@@ -102,6 +102,12 @@ select '123456'::char(6) not like null  AS "false";
 select 123456::integer not like null  AS "false";
 SELECT null not like '123%'  AS "false";
 SELECT null not like '123%'::varchar2  AS "false";
+
+select '12\' not like '12\'  AS "false";
+select '12_12' not like '12\_12' escape '\';
+select '1212' not like '12%' escape '';         --error
+
+SELECT E'\\xDeAdBeE' not like '\x%';
 
 -- test table 
 
