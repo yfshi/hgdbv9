@@ -3483,7 +3483,7 @@ pg_get_package_head(PG_FUNCTION_ARGS)
 				pfree(unitname);
 			}
 			/* replace last ',' to )' */
-			buf.data[buf.len] = ')';
+			buf.data[buf.len - 1] = ')'; /* BUG#M0000275 */
 	}
 
 	ReleaseSysCache(pkgtup);
