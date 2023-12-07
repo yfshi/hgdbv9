@@ -25,6 +25,7 @@
 #include "miscadmin.h"
 #include "nodes/extensible.h"
 #include "nodes/pathnodes.h"
+#include "nodes/parsenodes.h"	/* ReqID:SRS-SQL-ROWNUM */
 #include "nodes/plannodes.h"
 #include "utils/datum.h"
 #include "utils/rel.h"
@@ -104,6 +105,7 @@ _copyPlannedStmt(const PlannedStmt *from)
 	COPY_NODE_FIELD(utilityStmt);
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
+	COPY_SCALAR_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
 
 	return newnode;
 }
@@ -1234,6 +1236,30 @@ _copyLimit(const Limit *from)
 
 	return newnode;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * _copyCount
+ */
+static Count *
+_copyCount(const Count *from)
+{
+	Count		*newnode = makeNode(Count);
+
+	COPY_SCALAR_FIELD(countnode_id);
+	/*
+	 * copy node superclass fields
+	 */
+	CopyPlanFields((Plan *) from, (Plan *) newnode);
+
+	/*
+	 * copy remainder of node
+	 */
+	COPY_NODE_FIELD(stopkeys);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * _copyNestLoopParam
@@ -2759,6 +2785,31 @@ _copyColumnRef(const ColumnRef *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static PseudoColumnRef *
+_copyPseudoColumnRef(const PseudoColumnRef *from)
+{
+	PseudoColumnRef	*newnode = makeNode(PseudoColumnRef);
+
+	COPY_SCALAR_FIELD(pckind);
+	COPY_SCALAR_FIELD(location);
+
+	return newnode;
+}
+
+static PseudoColVar *
+_copyPseudoColVar(const PseudoColVar *from)
+{
+	PseudoColVar	*newnode = makeNode(PseudoColVar);
+
+	COPY_SCALAR_FIELD(pvarkind);
+	COPY_SCALAR_FIELD(pvartype);
+	COPY_SCALAR_FIELD(pvartypmod);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 static ParamRef *
 _copyParamRef(const ParamRef *from)
 {
@@ -3226,6 +3277,7 @@ _copyQuery(const Query *from)
 	COPY_SCALAR_FIELD(hasModifyingCTE);
 	COPY_SCALAR_FIELD(hasForUpdate);
 	COPY_SCALAR_FIELD(hasRowSecurity);
+	COPY_SCALAR_FIELD(hasRownum);	/* ReqID:SRS-SQL-ROWNUM */
 	COPY_SCALAR_FIELD(isReturn);
 	COPY_NODE_FIELD(cteList);
 	COPY_NODE_FIELD(rtable);
@@ -5313,6 +5365,11 @@ copyObjectImpl(const void *from)
 		case T_PlanInvalItem:
 			retval = _copyPlanInvalItem(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			retval = _copyCount(from);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * PRIMITIVE NODES
@@ -5332,6 +5389,11 @@ copyObjectImpl(const void *from)
 		case T_Var:
 			retval = _copyVar(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			retval = _copyPseudoColVar(from);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			retval = _copyConst(from);
 			break;
@@ -5923,6 +5985,9 @@ copyObjectImpl(const void *from)
 			break;
 		case T_ColumnRef:
 			retval = _copyColumnRef(from);
+			break;
+		case T_PseudoColumnRef:
+			retval = _copyPseudoColumnRef(from);
 			break;
 		case T_ParamRef:
 			retval = _copyParamRef(from);

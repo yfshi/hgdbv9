@@ -384,6 +384,11 @@ find_base_rel(PlannerInfo *root, int relid)
 			return rel;
 	}
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (root->hasCount)
+		return fetch_upper_rel(root, UPPERREL_ROWNUM, NULL);
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	elog(ERROR, "no relation entry for relid %d", relid);
 
 	return NULL;				/* keep compiler quiet */
@@ -1239,6 +1244,11 @@ fetch_upper_rel(PlannerInfo *root, UpperRelationKind kind, Relids relids)
 	upperrel->cheapest_total_path = NULL;
 	upperrel->cheapest_unique_path = NULL;
 	upperrel->cheapest_parameterized_paths = NIL;
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (kind == UPPERREL_ROWNUM)
+		upperrel->rtekind = RTE_COUNT;
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	root->upper_rels[kind] = lappend(root->upper_rels[kind], upperrel);
 

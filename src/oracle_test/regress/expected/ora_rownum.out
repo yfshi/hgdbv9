@@ -1,0 +1,1595 @@
+--
+-- Test compatible Oracle ROWNUM pseudo-column.
+--
+drop table if exists eemp;
+NOTICE:  table "eemp" does not exist, skipping
+CREATE TABLE eemp(
+    empno           NUMBER(4) NOT NULL CONSTRAINT emp_pk PRIMARY KEY,
+    ename           VARCHAR2(10),
+    job             VARCHAR2(9),
+    mgr             NUMBER(4),
+    hiredate        DATE,
+    sal             NUMBER(7,2) CONSTRAINT emp_sal_ck CHECK (sal > 0),
+    comm            NUMBER(7,2),
+    deptno          NUMBER(2)
+);
+INSERT INTO eemp VALUES (7369,'SMITH','CLERK',7902, to_date('17-10-1980','dd-mm-yyyy'),800,NULL,20);
+INSERT INTO eemp VALUES (7499,'ALLEN','SALESMAN',7698,to_date('20-02-1981','dd-mm-yyyy'),1600,300,30);
+INSERT INTO eemp VALUES (7521,'WARD','SALESMAN',7698,to_date('22-02-1981','dd-mm-yyyy'),1250,500,30);
+INSERT INTO eemp VALUES (7566,'JONES','MANAGER',7839,to_date('02-04-1981','dd-mm-yyyy'),2975,NULL,20);
+INSERT INTO eemp VALUES (7654,'MARTIN','SALESMAN',7698,to_date('28-09-1981','dd-mm-yyyy'),1250,1400,30);
+INSERT INTO eemp VALUES (7698,'BLAKE','MANAGER',7839,to_date('01-05-1981','dd-mm-yyyy'),2850,NULL,30);
+INSERT INTO eemp VALUES (7782,'CLARK','MANAGER',7839,to_date('09-06-1981','dd-mm-yyyy'),2450,NULL,10);
+INSERT INTO eemp VALUES (7788,'SCOTT','ANALYST',7566,to_date('17-04-1987','dd-mm-yyyy'),3000,NULL,20);
+INSERT INTO eemp VALUES (7839,'KING','PRESIDENT',NULL,to_date('17-11-1981','dd-mm-yyyy'),5000,NULL,10);
+INSERT INTO eemp VALUES (7844,'TURNER','SALESMAN',7698,to_date('08-09-1981','dd-mm-yyyy'),1500,0,30);
+INSERT INTO eemp VALUES (7876,'ADAMS','CLERK',7788,to_date('23-05-1987','dd-mm-yyyy'),1100,NULL,20);
+INSERT INTO eemp VALUES (7900,'JAMES','CLERK',7698,to_date('03-10-1981','dd-mm-yyyy'),950,NULL,30);
+INSERT INTO eemp VALUES (7902,'FORD','ANALYST',7566,to_date('17-10-1980','dd-mm-yyyy'),3000,NULL,20);
+INSERT INTO eemp VALUES (7934,'MILLER','CLERK',7782,to_date('23-02-1982','dd-mm-yyyy'),1300,NULL,10);
+select rownum, * from eemp;
+ rownum | empno | ename  |    job    | mgr  |  hiredate  |   sal   |  comm   | deptno 
+--------+-------+--------+-----------+------+------------+---------+---------+--------
+      1 | 7369  | SMITH  | CLERK     | 7902 | 1980-10-17 | 800.00  |         | 20
+      2 | 7499  | ALLEN  | SALESMAN  | 7698 | 1981-02-20 | 1600.00 | 300.00  | 30
+      3 | 7521  | WARD   | SALESMAN  | 7698 | 1981-02-22 | 1250.00 | 500.00  | 30
+      4 | 7566  | JONES  | MANAGER   | 7839 | 1981-04-02 | 2975.00 |         | 20
+      5 | 7654  | MARTIN | SALESMAN  | 7698 | 1981-09-28 | 1250.00 | 1400.00 | 30
+      6 | 7698  | BLAKE  | MANAGER   | 7839 | 1981-05-01 | 2850.00 |         | 30
+      7 | 7782  | CLARK  | MANAGER   | 7839 | 1981-06-09 | 2450.00 |         | 10
+      8 | 7788  | SCOTT  | ANALYST   | 7566 | 1987-04-17 | 3000.00 |         | 20
+      9 | 7839  | KING   | PRESIDENT |      | 1981-11-17 | 5000.00 |         | 10
+     10 | 7844  | TURNER | SALESMAN  | 7698 | 1981-09-08 | 1500.00 | 0.00    | 30
+     11 | 7876  | ADAMS  | CLERK     | 7788 | 1987-05-23 | 1100.00 |         | 20
+     12 | 7900  | JAMES  | CLERK     | 7698 | 1981-10-03 | 950.00  |         | 30
+     13 | 7902  | FORD   | ANALYST   | 7566 | 1980-10-17 | 3000.00 |         | 20
+     14 | 7934  | MILLER | CLERK     | 7782 | 1982-02-23 | 1300.00 |         | 10
+(14 rows)
+
+select rownum, * from eemp where rownum  > 5;
+ rownum | empno | ename | job | mgr | hiredate | sal | comm | deptno 
+--------+-------+-------+-----+-----+----------+-----+------+--------
+(0 rows)
+
+select rownum, * from eemp where rownum  < 5;
+ rownum | empno | ename |   job    | mgr  |  hiredate  |   sal   |  comm  | deptno 
+--------+-------+-------+----------+------+------------+---------+--------+--------
+      1 | 7369  | SMITH | CLERK    | 7902 | 1980-10-17 | 800.00  |        | 20
+      2 | 7499  | ALLEN | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00 | 30
+      3 | 7521  | WARD  | SALESMAN | 7698 | 1981-02-22 | 1250.00 | 500.00 | 30
+      4 | 7566  | JONES | MANAGER  | 7839 | 1981-04-02 | 2975.00 |        | 20
+(4 rows)
+
+select rownum, * from eemp where rownum  != 5;
+ rownum | empno | ename |   job    | mgr  |  hiredate  |   sal   |  comm  | deptno 
+--------+-------+-------+----------+------+------------+---------+--------+--------
+      1 | 7369  | SMITH | CLERK    | 7902 | 1980-10-17 | 800.00  |        | 20
+      2 | 7499  | ALLEN | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00 | 30
+      3 | 7521  | WARD  | SALESMAN | 7698 | 1981-02-22 | 1250.00 | 500.00 | 30
+      4 | 7566  | JONES | MANAGER  | 7839 | 1981-04-02 | 2975.00 |        | 20
+(4 rows)
+
+select rownum, * from eemp where rownum  >= 5;
+ rownum | empno | ename | job | mgr | hiredate | sal | comm | deptno 
+--------+-------+-------+-----+-----+----------+-----+------+--------
+(0 rows)
+
+select rownum, * from eemp where rownum  <= 5;
+ rownum | empno | ename  |   job    | mgr  |  hiredate  |   sal   |  comm   | deptno 
+--------+-------+--------+----------+------+------------+---------+---------+--------
+      1 | 7369  | SMITH  | CLERK    | 7902 | 1980-10-17 | 800.00  |         | 20
+      2 | 7499  | ALLEN  | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00  | 30
+      3 | 7521  | WARD   | SALESMAN | 7698 | 1981-02-22 | 1250.00 | 500.00  | 30
+      4 | 7566  | JONES  | MANAGER  | 7839 | 1981-04-02 | 2975.00 |         | 20
+      5 | 7654  | MARTIN | SALESMAN | 7698 | 1981-09-28 | 1250.00 | 1400.00 | 30
+(5 rows)
+
+select rownum, * from eemp where rownum  = 5;
+ rownum | empno | ename | job | mgr | hiredate | sal | comm | deptno 
+--------+-------+-------+-----+-----+----------+-----+------+--------
+(0 rows)
+
+select rownum, * from eemp where rownum = 1;
+ rownum | empno | ename |  job  | mgr  |  hiredate  |  sal   | comm | deptno 
+--------+-------+-------+-------+------+------------+--------+------+--------
+      1 | 7369  | SMITH | CLERK | 7902 | 1980-10-17 | 800.00 |      | 20
+(1 row)
+
+select rownum, * from eemp where rownum > 1;
+ rownum | empno | ename | job | mgr | hiredate | sal | comm | deptno 
+--------+-------+-------+-----+-----+----------+-----+------+--------
+(0 rows)
+
+select rownum, * from eemp where rownum >= 1;
+ rownum | empno | ename  |    job    | mgr  |  hiredate  |   sal   |  comm   | deptno 
+--------+-------+--------+-----------+------+------------+---------+---------+--------
+      1 | 7369  | SMITH  | CLERK     | 7902 | 1980-10-17 | 800.00  |         | 20
+      2 | 7499  | ALLEN  | SALESMAN  | 7698 | 1981-02-20 | 1600.00 | 300.00  | 30
+      3 | 7521  | WARD   | SALESMAN  | 7698 | 1981-02-22 | 1250.00 | 500.00  | 30
+      4 | 7566  | JONES  | MANAGER   | 7839 | 1981-04-02 | 2975.00 |         | 20
+      5 | 7654  | MARTIN | SALESMAN  | 7698 | 1981-09-28 | 1250.00 | 1400.00 | 30
+      6 | 7698  | BLAKE  | MANAGER   | 7839 | 1981-05-01 | 2850.00 |         | 30
+      7 | 7782  | CLARK  | MANAGER   | 7839 | 1981-06-09 | 2450.00 |         | 10
+      8 | 7788  | SCOTT  | ANALYST   | 7566 | 1987-04-17 | 3000.00 |         | 20
+      9 | 7839  | KING   | PRESIDENT |      | 1981-11-17 | 5000.00 |         | 10
+     10 | 7844  | TURNER | SALESMAN  | 7698 | 1981-09-08 | 1500.00 | 0.00    | 30
+     11 | 7876  | ADAMS  | CLERK     | 7788 | 1987-05-23 | 1100.00 |         | 20
+     12 | 7900  | JAMES  | CLERK     | 7698 | 1981-10-03 | 950.00  |         | 30
+     13 | 7902  | FORD   | ANALYST   | 7566 | 1980-10-17 | 3000.00 |         | 20
+     14 | 7934  | MILLER | CLERK     | 7782 | 1982-02-23 | 1300.00 |         | 10
+(14 rows)
+
+select rownum, * from eemp where rownum > 0;
+ rownum | empno | ename  |    job    | mgr  |  hiredate  |   sal   |  comm   | deptno 
+--------+-------+--------+-----------+------+------------+---------+---------+--------
+      1 | 7369  | SMITH  | CLERK     | 7902 | 1980-10-17 | 800.00  |         | 20
+      2 | 7499  | ALLEN  | SALESMAN  | 7698 | 1981-02-20 | 1600.00 | 300.00  | 30
+      3 | 7521  | WARD   | SALESMAN  | 7698 | 1981-02-22 | 1250.00 | 500.00  | 30
+      4 | 7566  | JONES  | MANAGER   | 7839 | 1981-04-02 | 2975.00 |         | 20
+      5 | 7654  | MARTIN | SALESMAN  | 7698 | 1981-09-28 | 1250.00 | 1400.00 | 30
+      6 | 7698  | BLAKE  | MANAGER   | 7839 | 1981-05-01 | 2850.00 |         | 30
+      7 | 7782  | CLARK  | MANAGER   | 7839 | 1981-06-09 | 2450.00 |         | 10
+      8 | 7788  | SCOTT  | ANALYST   | 7566 | 1987-04-17 | 3000.00 |         | 20
+      9 | 7839  | KING   | PRESIDENT |      | 1981-11-17 | 5000.00 |         | 10
+     10 | 7844  | TURNER | SALESMAN  | 7698 | 1981-09-08 | 1500.00 | 0.00    | 30
+     11 | 7876  | ADAMS  | CLERK     | 7788 | 1987-05-23 | 1100.00 |         | 20
+     12 | 7900  | JAMES  | CLERK     | 7698 | 1981-10-03 | 950.00  |         | 30
+     13 | 7902  | FORD   | ANALYST   | 7566 | 1980-10-17 | 3000.00 |         | 20
+     14 | 7934  | MILLER | CLERK     | 7782 | 1982-02-23 | 1300.00 |         | 10
+(14 rows)
+
+select rownum, * from eemp where rownum < 0;
+ rownum | empno | ename | job | mgr | hiredate | sal | comm | deptno 
+--------+-------+-------+-----+-----+----------+-----+------+--------
+(0 rows)
+
+select empno, ename, job rownum from eemp; -- error
+ERROR:  syntax error at or near "rownum"
+LINE 1: select empno, ename, job rownum from eemp;
+                                 ^
+select empno, ename, job as rownum from eemp; -- error
+ERROR:  ROWNUM cannot be used as an alias
+LINE 1: select empno, ename, job as rownum from eemp;
+                                    ^
+select * from eemp where rownum <= 5 order by sal desc;
+ empno | ename  |   job    | mgr  |  hiredate  |   sal   |  comm   | deptno 
+-------+--------+----------+------+------------+---------+---------+--------
+ 7566  | JONES  | MANAGER  | 7839 | 1981-04-02 | 2975.00 |         | 20
+ 7499  | ALLEN  | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00  | 30
+ 7521  | WARD   | SALESMAN | 7698 | 1981-02-22 | 1250.00 | 500.00  | 30
+ 7654  | MARTIN | SALESMAN | 7698 | 1981-09-28 | 1250.00 | 1400.00 | 30
+ 7369  | SMITH  | CLERK    | 7902 | 1980-10-17 | 800.00  |         | 20
+(5 rows)
+
+select * from
+	(select * from eemp order by sal desc)
+  where rownum <= 5;
+ empno | ename |    job    | mgr  |  hiredate  |   sal   | comm | deptno 
+-------+-------+-----------+------+------------+---------+------+--------
+ 7839  | KING  | PRESIDENT |      | 1981-11-17 | 5000.00 |      | 10
+ 7902  | FORD  | ANALYST   | 7566 | 1980-10-17 | 3000.00 |      | 20
+ 7788  | SCOTT | ANALYST   | 7566 | 1987-04-17 | 3000.00 |      | 20
+ 7566  | JONES | MANAGER   | 7839 | 1981-04-02 | 2975.00 |      | 20
+ 7698  | BLAKE | MANAGER   | 7839 | 1981-05-01 | 2850.00 |      | 30
+(5 rows)
+
+select *
+  from (select * from eemp where rownum < 8 ORDER BY deptno)
+  where rownum < 5;
+ empno | ename |   job    | mgr  |  hiredate  |   sal   |  comm  | deptno 
+-------+-------+----------+------+------------+---------+--------+--------
+ 7782  | CLARK | MANAGER  | 7839 | 1981-06-09 | 2450.00 |        | 10
+ 7566  | JONES | MANAGER  | 7839 | 1981-04-02 | 2975.00 |        | 20
+ 7369  | SMITH | CLERK    | 7902 | 1980-10-17 | 800.00  |        | 20
+ 7499  | ALLEN | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00 | 30
+(4 rows)
+
+-- Pagination with ROWNUM
+select *
+	from
+	(select a.*, rownum rnum
+		from
+		(select empno, sal
+			from eemp
+		 order by sal) a
+		where rownum <= 12
+	)
+	where rnum >= 8;
+ empno |   sal   | rnum 
+-------+---------+------
+ 7499  | 1600.00 |    8
+ 7782  | 2450.00 |    9
+ 7698  | 2850.00 |   10
+ 7566  | 2975.00 |   11
+ 7902  | 3000.00 |   12
+(5 rows)
+
+select deptno from eemp where rownum < 5 group by deptno;
+ deptno 
+--------
+ 20
+ 30
+(2 rows)
+
+select rownum from eemp group by deptno; -- error
+ERROR:  column "ROWNUM" must appear in the GROUP BY clause or be used in an aggregate function
+select empno, deptno, avg(sal) as averge_sal from eemp
+	where rownum < 5 group by empno, deptno;
+ empno | deptno |      averge_sal       
+-------+--------+-----------------------
+ 7369  | 20     | 800.0000000000000000
+ 7499  | 30     | 1600.0000000000000000
+ 7521  | 30     | 1250.0000000000000000
+ 7566  | 20     | 2975.0000000000000000
+(4 rows)
+
+select deptno, MAX(rownum), MIN(rownum), SUM(rownum), AVG(rownum)
+	from eemp GROUP BY deptno ORDER BY deptno;
+ deptno | max | min | sum |         avg         
+--------+-----+-----+-----+---------------------
+ 10     |  14 |   7 |  30 | 10.0000000000000000
+ 20     |  13 |   1 |  37 |  7.4000000000000000
+ 30     |  12 |   2 |  38 |  6.3333333333333333
+(3 rows)
+
+select
+   ename,
+   hiredate
+from
+   eemp
+where
+   hiredate = (select max(hiredate) from eemp)
+and
+   rownum = 1;
+ ename |  hiredate  
+-------+------------
+ ADAMS | 1987-05-23
+(1 row)
+
+select rownum, empno, ename, job, mgr, sal, deptno from eemp
+	where deptno = 20 and rownum <= 5;
+ rownum | empno | ename |   job   | mgr  |   sal   | deptno 
+--------+-------+-------+---------+------+---------+--------
+      1 | 7369  | SMITH | CLERK   | 7902 | 800.00  | 20
+      2 | 7566  | JONES | MANAGER | 7839 | 2975.00 | 20
+      3 | 7788  | SCOTT | ANALYST | 7566 | 3000.00 | 20
+      4 | 7876  | ADAMS | CLERK   | 7788 | 1100.00 | 20
+      5 | 7902  | FORD  | ANALYST | 7566 | 3000.00 | 20
+(5 rows)
+
+select rownum, empno, ename, job, mgr, sal, deptno from eemp where (deptno = 20 and rownum <= 5)
+	or (job = 'CLERK' and rownum <= 10);
+ rownum | empno | ename  |   job   | mgr  |   sal   | deptno 
+--------+-------+--------+---------+------+---------+--------
+      1 | 7369  | SMITH  | CLERK   | 7902 | 800.00  | 20
+      2 | 7566  | JONES  | MANAGER | 7839 | 2975.00 | 20
+      3 | 7788  | SCOTT  | ANALYST | 7566 | 3000.00 | 20
+      4 | 7876  | ADAMS  | CLERK   | 7788 | 1100.00 | 20
+      5 | 7900  | JAMES  | CLERK   | 7698 | 950.00  | 30
+      6 | 7934  | MILLER | CLERK   | 7782 | 1300.00 | 10
+(6 rows)
+
+--
+-- Test View
+--
+create view e_v as select * from eemp;
+select rownum, * from e_v where rownum < 5;
+ rownum | empno | ename |   job    | mgr  |  hiredate  |   sal   |  comm  | deptno 
+--------+-------+-------+----------+------+------------+---------+--------+--------
+      1 | 7369  | SMITH | CLERK    | 7902 | 1980-10-17 | 800.00  |        | 20
+      2 | 7499  | ALLEN | SALESMAN | 7698 | 1981-02-20 | 1600.00 | 300.00 | 30
+      3 | 7521  | WARD  | SALESMAN | 7698 | 1981-02-22 | 1250.00 | 500.00 | 30
+      4 | 7566  | JONES | MANAGER  | 7839 | 1981-04-02 | 2975.00 |        | 20
+(4 rows)
+
+drop view e_v;
+drop table eemp;
+--
+-- Test ROWNUM in update/delete
+--
+drop table if exists tr;
+NOTICE:  table "tr" does not exist, skipping
+create table tr(a int, b int);
+insert into tr values(11, 2);
+insert into tr values(3, 5);
+insert into tr values(2, 9);
+insert into tr values(100, 17);
+insert into tr values(33, 14);
+insert into tr values(21, 6);
+insert into tr values(50, 36);
+select * from tr order by a;
+  a  | b  
+-----+----
+   2 |  9
+   3 |  5
+  11 |  2
+  21 |  6
+  33 | 14
+  50 | 36
+ 100 | 17
+(7 rows)
+
+select * from tr where rownum < 3;
+ a  | b 
+----+---
+ 11 | 2
+  3 | 5
+(2 rows)
+
+update tr set b = a + b where rownum < 3;
+select * from tr order by a;
+  a  | b  
+-----+----
+   2 |  9
+   3 |  8
+  11 | 13
+  21 |  6
+  33 | 14
+  50 | 36
+ 100 | 17
+(7 rows)
+
+update tr set b = rownum;
+select * from tr;
+  a  | b 
+-----+---
+   2 | 1
+ 100 | 2
+  33 | 3
+  21 | 4
+  50 | 5
+  11 | 6
+   3 | 7
+(7 rows)
+
+delete from tr where rownum < 3;
+select * from tr;
+ a  | b 
+----+---
+ 33 | 3
+ 21 | 4
+ 50 | 5
+ 11 | 6
+  3 | 7
+(5 rows)
+
+drop table tr;
+--
+-- Test ROWNUM in Merge command
+--
+drop table if exists t1;
+NOTICE:  table "t1" does not exist, skipping
+drop table if exists s1;
+NOTICE:  table "s1" does not exist, skipping
+create table t1(id number, name varchar2(32), score numeric(8));
+create table s1(id number, name varchar2(32), score numeric(8));
+insert into t1 values (1, 'Jack', 540);
+insert into t1 values (2, 'Rose', null);
+insert into t1 values (3, 'William', 650);
+insert into t1 values (4, 'Caledon', 620);
+insert into t1 values (5, 'Fabrizio', 600);
+insert into t1 values (6, 'Thomas', null);
+insert into t1 values (7, 'Ruth', 680);
+insert into t1 values (8, 'Spacer', 555);
+insert into s1 values (7, 'Ruth', 690);
+insert into s1 values (8, 'Spicer', 620);
+insert into s1 values (9, 'Wallace', 600);
+insert into s1 values (10, 'Lizzy', null);
+insert into s1 values (11, 'Brock', 705);
+insert into s1 values (1, 'Booker', 709);
+insert into s1 values (2, 'Tony', null);
+select * from t1;
+ id |   name   | score 
+----+----------+-------
+ 1  | Jack     |   540
+ 2  | Rose     |      
+ 3  | William  |   650
+ 4  | Caledon  |   620
+ 5  | Fabrizio |   600
+ 6  | Thomas   |      
+ 7  | Ruth     |   680
+ 8  | Spacer   |   555
+(8 rows)
+
+select * from s1;
+ id |  name   | score 
+----+---------+-------
+ 7  | Ruth    |   690
+ 8  | Spicer  |   620
+ 9  | Wallace |   600
+ 10 | Lizzy   |      
+ 11 | Brock   |   705
+ 1  | Booker  |   709
+ 2  | Tony    |      
+(7 rows)
+
+begin;
+merge into t1 a
+using (select id, name, score from s1 where rownum < 3) b
+ on (a.id = b.id)
+when matched then
+ update set a.name = b.name,
+            a.score = b.score
+;
+select * from t1 order by id;
+ id |   name   | score 
+----+----------+-------
+ 1  | Jack     |   540
+ 2  | Rose     |      
+ 3  | William  |   650
+ 4  | Caledon  |   620
+ 5  | Fabrizio |   600
+ 6  | Thomas   |      
+ 7  | Ruth     |   690
+ 8  | Spicer   |   620
+(8 rows)
+
+rollback;
+begin;
+merge into t1 a
+using (select id, name, score from s1) b
+ on (a.id = b.id)
+when matched then
+ update set a.name = b.name,
+            a.score = b.score where rownum < 3
+;
+select * from t1 order by id;
+ id |   name   | score 
+----+----------+-------
+ 1  | Booker   |   709
+ 2  | Tony     |      
+ 3  | William  |   650
+ 4  | Caledon  |   620
+ 5  | Fabrizio |   600
+ 6  | Thomas   |      
+ 7  | Ruth     |   690
+ 8  | Spicer   |   620
+(8 rows)
+
+rollback;
+begin;
+merge into t1 a
+using (select id, name, score from s1) b
+ on (a.id = b.id)
+when matched then
+ update set a.score = rownum
+;
+select * from t1 order by id;
+ id |   name   | score 
+----+----------+-------
+ 1  | Jack     |     0
+ 2  | Rose     |     0
+ 3  | William  |   650
+ 4  | Caledon  |   620
+ 5  | Fabrizio |   600
+ 6  | Thomas   |      
+ 7  | Ruth     |     0
+ 8  | Spacer   |     0
+(8 rows)
+
+rollback;
+drop table t1;
+drop table s1;
+--
+-- Test ROWNUM in partition table
+--
+drop table if exists partition_range;
+NOTICE:  table "partition_range" does not exist, skipping
+CREATE TABLE partition_range (
+	   c1 int,
+	   c2 int
+)PARTITION BY RANGE (c2);
+CREATE TABLE p1 PARTITION OF partition_range FOR VALUES FROM (1) to (1000);
+CREATE TABLE p2 PARTITION OF partition_range FOR VALUES FROM (1000) to (2000);
+CREATE TABLE p3 PARTITION OF partition_range FOR VALUES FROM (2000) to (2500);
+insert into partition_range values(1,200);
+insert into partition_range values(1,300);
+insert into partition_range values(1,400);
+insert into partition_range values(1,1500);
+insert into partition_range values(1,1600);
+insert into partition_range values(1,1700);
+insert into partition_range values(1,2100);
+insert into partition_range values(1,2300);
+select * from partition_range;
+ c1 |  c2  
+----+------
+  1 |  200
+  1 |  300
+  1 |  400
+  1 | 1500
+  1 | 1600
+  1 | 1700
+  1 | 2100
+  1 | 2300
+(8 rows)
+
+select rownum, * from partition_range;
+ rownum | c1 |  c2  
+--------+----+------
+      1 |  1 |  200
+      2 |  1 |  300
+      3 |  1 |  400
+      4 |  1 | 1500
+      5 |  1 | 1600
+      6 |  1 | 1700
+      7 |  1 | 2100
+      8 |  1 | 2300
+(8 rows)
+
+select rownum, * from partition_range where rownum < 5;
+ rownum | c1 |  c2  
+--------+----+------
+      1 |  1 |  200
+      2 |  1 |  300
+      3 |  1 |  400
+      4 |  1 | 1500
+(4 rows)
+
+select rownum, * from p1;
+ rownum | c1 | c2  
+--------+----+-----
+      1 |  1 | 200
+      2 |  1 | 300
+      3 |  1 | 400
+(3 rows)
+
+select rownum, * from p1 where rownum < 2;
+ rownum | c1 | c2  
+--------+----+-----
+      1 |  1 | 200
+(1 row)
+
+drop table partition_range cascade;
+--
+-- Cursor test
+--
+CREATE TABLE test_cursor_null (c1 int);
+CREATE TABLE test_cursor (c1 serial, c2 int);
+create or replace procedure prepare_test_cursor()
+as
+	i int;
+begin
+	for i in 1..60 loop
+		insert into test_cursor(c2) values (i);
+	end loop;
+end;
+/
+call prepare_test_cursor();
+-- Case 1: curse with hold
+-- 1.1 null
+DECLARE C1 CURSOR WITH HOLD FOR SELECT * FROM test_cursor_null;
+FETCH 50 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH FIRST IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH LAST IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH PRIOR IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH NEXT IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH ABSOLUTE 5 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH RELATIVE 1 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 
+----
+(0 rows)
+
+CLOSE C1;
+-- 1.2 common value
+DECLARE C1 CURSOR WITH HOLD FOR SELECT * FROM test_cursor;
+FETCH 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+  2 |  2
+  3 |  3
+  4 |  4
+  5 |  5
+  6 |  6
+  7 |  7
+  8 |  8
+  9 |  9
+ 10 | 10
+ 11 | 11
+ 12 | 12
+ 13 | 13
+ 14 | 14
+ 15 | 15
+ 16 | 16
+ 17 | 17
+ 18 | 18
+ 19 | 19
+ 20 | 20
+ 21 | 21
+ 22 | 22
+ 23 | 23
+ 24 | 24
+ 25 | 25
+ 26 | 26
+ 27 | 27
+ 28 | 28
+ 29 | 29
+ 30 | 30
+ 31 | 31
+ 32 | 32
+ 33 | 33
+ 34 | 34
+ 35 | 35
+ 36 | 36
+ 37 | 37
+ 38 | 38
+ 39 | 39
+ 40 | 40
+ 41 | 41
+ 42 | 42
+ 43 | 43
+ 44 | 44
+ 45 | 45
+ 46 | 46
+ 47 | 47
+ 48 | 48
+ 49 | 49
+ 50 | 50
+(50 rows)
+
+FETCH FIRST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 
+----+----
+ 59 | 59
+(1 row)
+
+FETCH NEXT IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 
+----+----
+ 17 | 17
+(1 row)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 
+----+----
+ 14 | 14
+(1 row)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 
+----+----
+ 58 | 58
+(1 row)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+ 59 | 59
+ 58 | 58
+ 57 | 57
+ 56 | 56
+ 55 | 55
+ 54 | 54
+ 53 | 53
+ 52 | 52
+ 51 | 51
+ 50 | 50
+ 49 | 49
+ 48 | 48
+ 47 | 47
+ 46 | 46
+ 45 | 45
+ 44 | 44
+ 43 | 43
+ 42 | 42
+ 41 | 41
+ 40 | 40
+ 39 | 39
+ 38 | 38
+ 37 | 37
+ 36 | 36
+ 35 | 35
+ 34 | 34
+ 33 | 33
+ 32 | 32
+ 31 | 31
+ 30 | 30
+ 29 | 29
+ 28 | 28
+ 27 | 27
+ 26 | 26
+ 25 | 25
+ 24 | 24
+ 23 | 23
+ 22 | 22
+ 21 | 21
+ 20 | 20
+ 19 | 19
+ 18 | 18
+ 17 | 17
+ 16 | 16
+ 15 | 15
+ 14 | 14
+ 13 | 13
+ 12 | 12
+ 11 | 11
+(50 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 
+----+----
+ 12 | 12
+ 13 | 13
+ 14 | 14
+ 15 | 15
+ 16 | 16
+ 17 | 17
+ 18 | 18
+ 19 | 19
+ 20 | 20
+ 21 | 21
+ 22 | 22
+ 23 | 23
+ 24 | 24
+ 25 | 25
+ 26 | 26
+ 27 | 27
+ 28 | 28
+ 29 | 29
+ 30 | 30
+ 31 | 31
+ 32 | 32
+ 33 | 33
+ 34 | 34
+ 35 | 35
+ 36 | 36
+ 37 | 37
+ 38 | 38
+ 39 | 39
+ 40 | 40
+ 41 | 41
+ 42 | 42
+ 43 | 43
+ 44 | 44
+ 45 | 45
+ 46 | 46
+ 47 | 47
+ 48 | 48
+ 49 | 49
+ 50 | 50
+ 51 | 51
+ 52 | 52
+ 53 | 53
+ 54 | 54
+ 55 | 55
+ 56 | 56
+ 57 | 57
+ 58 | 58
+ 59 | 59
+ 60 | 60
+(49 rows)
+
+CLOSE C1;
+-- 1.3 limit..offset
+DECLARE C1 CURSOR WITH HOLD FOR SELECT * FROM test_cursor WHERE rownum < 10 ORDER BY c2 LIMIT 1;
+FETCH 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH FIRST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH NEXT IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+CLOSE C1;
+DECLARE C1 SCROLL CURSOR WITH HOLD FOR
+SELECT *
+FROM (SELECT *, rownum rn FROM test_cursor WHERE rownum <= 25) AS foo
+WHERE rn > 5 LIMIT 10 OFFSET 5;
+FETCH 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+FETCH FIRST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 19 | 19 | 19
+(1 row)
+
+FETCH NEXT IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+ 19 | 19 | 19
+ 18 | 18 | 18
+ 17 | 17 | 17
+ 16 | 16 | 16
+ 15 | 15 | 15
+ 14 | 14 | 14
+ 13 | 13 | 13
+ 12 | 12 | 12
+ 11 | 11 | 11
+(10 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+CLOSE C1;
+-- Case 2: cursor with transaction
+-- 2.1 null
+BEGIN;
+DECLARE C1 SCROLL CURSOR FOR SELECT * FROM test_cursor_null;
+FETCH 50 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH FIRST IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH LAST IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH PRIOR IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH NEXT IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH ABSOLUTE 5 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH RELATIVE 1 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 
+----
+(0 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 
+----
+(0 rows)
+
+CLOSE C1;
+COMMIT;
+-- 2.2 common value
+BEGIN;
+DECLARE C1 SCROLL CURSOR FOR SELECT * FROM test_cursor;
+FETCH 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+  2 |  2
+  3 |  3
+  4 |  4
+  5 |  5
+  6 |  6
+  7 |  7
+  8 |  8
+  9 |  9
+ 10 | 10
+ 11 | 11
+ 12 | 12
+ 13 | 13
+ 14 | 14
+ 15 | 15
+ 16 | 16
+ 17 | 17
+ 18 | 18
+ 19 | 19
+ 20 | 20
+ 21 | 21
+ 22 | 22
+ 23 | 23
+ 24 | 24
+ 25 | 25
+ 26 | 26
+ 27 | 27
+ 28 | 28
+ 29 | 29
+ 30 | 30
+ 31 | 31
+ 32 | 32
+ 33 | 33
+ 34 | 34
+ 35 | 35
+ 36 | 36
+ 37 | 37
+ 38 | 38
+ 39 | 39
+ 40 | 40
+ 41 | 41
+ 42 | 42
+ 43 | 43
+ 44 | 44
+ 45 | 45
+ 46 | 46
+ 47 | 47
+ 48 | 48
+ 49 | 49
+ 50 | 50
+(50 rows)
+
+FETCH FIRST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 
+----+----
+ 59 | 59
+(1 row)
+
+FETCH NEXT IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 
+----+----
+ 17 | 17
+(1 row)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 
+----+----
+ 14 | 14
+(1 row)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 
+----+----
+ 58 | 58
+(1 row)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 
+----+----
+ 60 | 60
+ 59 | 59
+ 58 | 58
+ 57 | 57
+ 56 | 56
+ 55 | 55
+ 54 | 54
+ 53 | 53
+ 52 | 52
+ 51 | 51
+ 50 | 50
+ 49 | 49
+ 48 | 48
+ 47 | 47
+ 46 | 46
+ 45 | 45
+ 44 | 44
+ 43 | 43
+ 42 | 42
+ 41 | 41
+ 40 | 40
+ 39 | 39
+ 38 | 38
+ 37 | 37
+ 36 | 36
+ 35 | 35
+ 34 | 34
+ 33 | 33
+ 32 | 32
+ 31 | 31
+ 30 | 30
+ 29 | 29
+ 28 | 28
+ 27 | 27
+ 26 | 26
+ 25 | 25
+ 24 | 24
+ 23 | 23
+ 22 | 22
+ 21 | 21
+ 20 | 20
+ 19 | 19
+ 18 | 18
+ 17 | 17
+ 16 | 16
+ 15 | 15
+ 14 | 14
+ 13 | 13
+ 12 | 12
+ 11 | 11
+(50 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 
+----+----
+ 12 | 12
+ 13 | 13
+ 14 | 14
+ 15 | 15
+ 16 | 16
+ 17 | 17
+ 18 | 18
+ 19 | 19
+ 20 | 20
+ 21 | 21
+ 22 | 22
+ 23 | 23
+ 24 | 24
+ 25 | 25
+ 26 | 26
+ 27 | 27
+ 28 | 28
+ 29 | 29
+ 30 | 30
+ 31 | 31
+ 32 | 32
+ 33 | 33
+ 34 | 34
+ 35 | 35
+ 36 | 36
+ 37 | 37
+ 38 | 38
+ 39 | 39
+ 40 | 40
+ 41 | 41
+ 42 | 42
+ 43 | 43
+ 44 | 44
+ 45 | 45
+ 46 | 46
+ 47 | 47
+ 48 | 48
+ 49 | 49
+ 50 | 50
+ 51 | 51
+ 52 | 52
+ 53 | 53
+ 54 | 54
+ 55 | 55
+ 56 | 56
+ 57 | 57
+ 58 | 58
+ 59 | 59
+ 60 | 60
+(49 rows)
+
+CLOSE C1;
+-- 2.3 limit..offset
+BEGIN;
+WARNING:  there is already a transaction in progress
+DECLARE C1 SCROLL CURSOR FOR
+SELECT * FROM test_cursor WHERE rownum < 10 ORDER BY c2 LIMIT 1;
+FETCH 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH FIRST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH NEXT IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 
+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 
+----+----
+  1 |  1
+(1 row)
+
+CLOSE C1;
+COMMIT;
+BEGIN;
+DECLARE C1 SCROLL CURSOR FOR
+SELECT *
+FROM (SELECT *, rownum rn FROM test_cursor WHERE rownum <= 25) AS foo
+WHERE rn > 5 LIMIT 10 OFFSET 5;
+FETCH 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+FETCH FIRST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 19 | 19 | 19
+(1 row)
+
+FETCH NEXT IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+ 19 | 19 | 19
+ 18 | 18 | 18
+ 17 | 17 | 17
+ 16 | 16 | 16
+ 15 | 15 | 15
+ 14 | 14 | 14
+ 13 | 13 | 13
+ 12 | 12 | 12
+ 11 | 11 | 11
+(10 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+CLOSE C1;
+COMMIT;
+-- Case 3: special test case
+BEGIN;
+DECLARE C1 SCROLL CURSOR FOR
+SELECT *
+FROM (SELECT *, rownum rn FROM test_cursor WHERE rownum <= 25) AS foo
+WHERE rn > 5 LIMIT 10 OFFSET 5;
+FETCH 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+FETCH FIRST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+(1 row)
+
+FETCH LAST IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH PRIOR IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 19 | 19 | 19
+(1 row)
+
+FETCH NEXT IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+(1 row)
+
+FETCH ABSOLUTE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE 0 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH ABSOLUTE 17 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH RELATIVE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH ABSOLUTE -3 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 18 | 18 | 18
+(1 row)
+
+FETCH RELATIVE 13 IN C1;
+ c1 | c2 | rn 
+----+----+----
+(0 rows)
+
+FETCH BACKWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 20 | 20 | 20
+ 19 | 19 | 19
+ 18 | 18 | 18
+ 17 | 17 | 17
+ 16 | 16 | 16
+ 15 | 15 | 15
+ 14 | 14 | 14
+ 13 | 13 | 13
+ 12 | 12 | 12
+ 11 | 11 | 11
+(10 rows)
+
+FETCH FORWARD 50 IN C1;
+ c1 | c2 | rn 
+----+----+----
+ 11 | 11 | 11
+ 12 | 12 | 12
+ 13 | 13 | 13
+ 14 | 14 | 14
+ 15 | 15 | 15
+ 16 | 16 | 16
+ 17 | 17 | 17
+ 18 | 18 | 18
+ 19 | 19 | 19
+ 20 | 20 | 20
+(10 rows)
+
+CLOSE C1;
+COMMIT;
+-- cleanup
+DROP PROCEDURE prepare_test_cursor();
+DROP TABLE test_cursor_null;
+DROP TABLE test_cursor;

@@ -282,6 +282,15 @@ extern LimitPath *create_limit_path(PlannerInfo *root, RelOptInfo *rel,
 									Node *limitOffset, Node *limitCount,
 									LimitOption limitOption,
 									int64 offset_est, int64 count_est);
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+extern CountPath *create_count_path(PlannerInfo *root,
+									RelOptInfo *rel,
+									Path *subpath,
+									List *restrict_clauses,
+									List *stopKeys,
+									List *motionkeys);
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 extern void adjust_limit_rows_costs(double *rows,
 									Cost *startup_cost, Cost *total_cost,
 									int64 offset_est, int64 count_est);

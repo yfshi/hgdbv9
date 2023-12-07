@@ -20,6 +20,7 @@
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
+#include "nodes/primnodes.h"
 #include "optimizer/optimizer.h"
 #include "parser/analyze.h"
 #include "parser/parse_agg.h"
@@ -99,6 +100,9 @@ static Node *make_nulltest_from_distinct(ParseState *pstate,
 /* Begin - ReqID:SRS-SQL-PROC */
 static Node *transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall *cref_func);
 /* End - ReqID:SRS-SQL-PROC */
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static Node *transformPseudoColumnRef(ParseState *pstate, PseudoColumnRef *pcr);
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /* Begin - Bug#Z167 */
 static inline void
@@ -156,6 +160,12 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 		case T_ColumnRef:
 			result = transformColumnRef(pstate, (ColumnRef *) expr);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColumnRef:
+			result = transformPseudoColumnRef(pstate, (PseudoColumnRef *) expr);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 		case T_ParamRef:
 			result = transformParamRef(pstate, (ParamRef *) expr);
@@ -359,6 +369,7 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 			 */
 		case T_CaseTestExpr:
 		case T_Var:
+		case T_PseudoColVar: /* ReqID:SRS-SQL-ROWNUM */
 			{
 				result = (Node *) expr;
 				break;
@@ -1684,6 +1695,38 @@ transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall *cref_func)
 	return node;
 }
 /* End - ReqID:SRS-SQL-PROC */
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * transformPseudoColumnRef:
+ *	 transform ROWNUM
+ */
+static Node *
+transformPseudoColumnRef(ParseState *pstate, PseudoColumnRef *pcr)
+{
+	PseudoColVar	*pv = makeNode(PseudoColVar);
+
+	pv->pvarkind = pcr->pckind;
+	switch (pv->pvarkind)
+	{
+		case PSEUDOCOL_KIND_ROWNUM:
+			/* Count RTE is add on demand. */
+			pstate->p_hasRownum = true;
+
+			pv->pvartype = INT8OID;
+			pv->pvartypmod = -1;
+			break;
+
+		default:
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("Invalid pseudocolumn kind:%d", pv->pvarkind),
+					parser_errposition(pstate, pcr->location)));
+			break;
+	}
+	return (Node*) pv;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 static Node *
 transformMultiAssignRef(ParseState *pstate, MultiAssignRef *maref)

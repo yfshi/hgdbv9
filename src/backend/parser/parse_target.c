@@ -389,6 +389,7 @@ markTargetListOrigin(ParseState *pstate, TargetEntry *tle,
 		case RTE_TABLEFUNC:
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
+		case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
 			/* not a simple relation, leave it unmarked */
 			break;
 		case RTE_CTE:
@@ -1591,6 +1592,7 @@ expandRecordVariable(ParseState *pstate, Var *var, int levelsup)
 		case RTE_VALUES:
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
+		case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * This case should not occur: a column of a table, values list,
@@ -1781,6 +1783,17 @@ FigureColnameInternal(Node *node, char **name)
 				}
 			}
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColumnRef:
+			{
+				if (((PseudoColumnRef *) node)->pckind == PSEUDOCOL_KIND_ROWNUM)
+				{
+					*name = "rownum";
+					return 2;
+				}
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_A_Indirection:
 			{
 				A_Indirection *ind = (A_Indirection *) node;

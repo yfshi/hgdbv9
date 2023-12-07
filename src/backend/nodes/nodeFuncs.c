@@ -53,6 +53,11 @@ exprType(const Node *expr)
 		case T_Var:
 			type = ((const Var *) expr)->vartype;
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			type = ((const PseudoColVar *) expr)->pvartype;
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			type = ((const Const *) expr)->consttype;
 			break;
@@ -293,6 +298,10 @@ exprTypmod(const Node *expr)
 	{
 		case T_Var:
 			return ((const Var *) expr)->vartypmod;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			return ((const PseudoColVar *) expr)->pvartypmod;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			return ((const Const *) expr)->consttypmod;
 		case T_Param:
@@ -796,6 +805,11 @@ exprCollation(const Node *expr)
 		case T_Var:
 			coll = ((const Var *) expr)->varcollid;
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			coll = InvalidOid;
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			coll = ((const Const *) expr)->constcollid;
 			break;
@@ -1966,6 +1980,7 @@ expression_tree_walker(Node *node,
 	switch (nodeTag(node))
 	{
 		case T_Var:
+		case T_PseudoColVar:	/* ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 		case T_Param:
 		case T_CaseTestExpr:
@@ -2575,6 +2590,7 @@ range_table_entry_walker(RangeTblEntry *rte,
 		case RTE_CTE:
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
+		case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
 			/* nothing to do */
 			break;
 	}
@@ -2696,6 +2712,17 @@ expression_tree_mutator(Node *node,
 				return (Node *) newnode;
 			}
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			{
+				PseudoColVar 	*pvar = (PseudoColVar *)node;
+				PseudoColVar	*newnode;
+
+				FLATCOPY(newnode, pvar, PseudoColVar);
+				return (Node *) newnode;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			{
 				Const	   *oldnode = (Const *) node;
@@ -3512,6 +3539,7 @@ range_table_mutator(List *rtable,
 			case RTE_CTE:
 			case RTE_NAMEDTUPLESTORE:
 			case RTE_RESULT:
+			case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
 				/* nothing to do */
 				break;
 		}

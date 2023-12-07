@@ -34,6 +34,11 @@
 #include "rewrite/rewriteManip.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 
 /* These parameters are set by GUC */
 int			from_collapse_limit;
@@ -182,16 +187,36 @@ add_other_rels_to_query(PlannerInfo *root)
 void
 build_base_rel_tlists(PlannerInfo *root, List *final_tlist)
 {
-	List	   *tlist_vars = pull_var_clause((Node *) final_tlist,
-											 PVC_RECURSE_AGGREGATES |
-											 PVC_RECURSE_WINDOWFUNCS |
-											 PVC_INCLUDE_PLACEHOLDERS);
+	List	   *tlist_vars = NIL;
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (contain_oracompat_expr((Node *) final_tlist, OCE_ROWNUM))
+		tlist_vars = pull_var_clause((Node *) final_tlist,
+									 PVC_RECURSE_AGGREGATES |
+									 PVC_RECURSE_WINDOWFUNCS |
+									 PVC_INCLUDE_PLACEHOLDERS |
+									 PVC_INCLUDE_ROWNUM);
+	/* End - ReqID:SRS-SQL-ROWNUM */
+	else
+		tlist_vars = pull_var_clause((Node *) final_tlist,
+									 PVC_RECURSE_AGGREGATES |
+									 PVC_RECURSE_WINDOWFUNCS |
+									 PVC_INCLUDE_PLACEHOLDERS);
 
 	if (tlist_vars != NIL)
 	{
 		add_vars_to_targetlist(root, tlist_vars, bms_make_singleton(0), true);
 		list_free(tlist_vars);
 	}
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (list_length(root->count_required_vars) > 0)
+	{
+		List	*vars = pull_var_clause((Node *) root->count_required_vars, PVC_RECURSE_AGGREGATES);
+		add_vars_to_targetlist(root, vars, bms_make_singleton(0), true);
+		list_free(vars);
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * If there's a HAVING clause, we'll need the Vars it uses, too.  Note
@@ -268,6 +293,25 @@ add_vars_to_targetlist(PlannerInfo *root, List *vars,
 			phinfo->ph_needed = bms_add_members(phinfo->ph_needed,
 												where_needed);
 		}
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		else if (IsA(node, PseudoColVar))
+		{
+			switch(((PseudoColVar *) node)->pvarkind)
+			{
+				case PSEUDOCOL_KIND_ROWNUM:
+				{
+					RelOptInfo	*count_rel = fetch_upper_rel(root, UPPERREL_ROWNUM, NULL);
+					count_rel->reltarget->exprs = lappend(count_rel->reltarget->exprs,
+														copyObject(node));
+					count_rel->max_attr = list_length(count_rel->reltarget->exprs);
+					break;
+				}
+				default:
+					Assert(false);
+					break;
+			}
+		}
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		else
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(node));
 	}
@@ -2748,4 +2792,120 @@ check_memoizable(RestrictInfo *restrictinfo)
 		return;
 
 	restrictinfo->hasheqoperator = typentry->eq_opr;
+}
+
+/*
+ * split_rels_qual
+ *
+ *		Return a new quals only metioned specified qualscope. If qualscope is
+ *		NULL, pull all of quals.
+ */
+Node *
+split_rels_qual(PlannerInfo *root, Node *quals, Relids qualscope,
+				List **needed_vars, List **my_restrictinfo)
+{
+	List		*splitted_quals = NIL;
+	ListCell	*l;
+
+	Assert(my_restrictinfo);
+	Assert(needed_vars);
+
+	/* Pull the qualscope metioned quals from WHERE. */
+	foreach(l, (List *) quals)
+	{
+		Node	*clause = lfirst(l);
+		Relids	relids = pull_varnos(root, clause);
+
+		if (contain_oracompat_expr(clause, OCE_COUNT))
+			relids = bms_add_member(relids, root->countRI);
+
+		/* It seems volatile function can be put here directly. */
+		if (bms_is_empty(relids)
+			|| bms_is_empty(qualscope)
+			|| bms_is_subset(qualscope, relids))
+		{
+			List	*vars;
+			bool	isPseudoConstant;
+			RestrictInfo	*restriction;
+
+			isPseudoConstant = bms_is_empty(relids)
+								&& !contain_volatile_functions(clause);
+			root->hasPseudoConstantQuals |= isPseudoConstant;
+
+			restriction = make_restrictinfo(root, (Expr *) clause,
+											true,
+											false,
+											isPseudoConstant,
+											0,
+											relids,
+											NULL,
+											NULL);
+
+			/*
+			 * Check merge joinable here can enable us optimize ROWNUM
+			 * qualification and GROUP BY/ORDER BY clauses after the hierarchical
+			 * query.
+			 */
+			check_mergejoinable(restriction);
+
+			*my_restrictinfo = lappend(*my_restrictinfo, restriction);
+
+			/* Add essential vars. */
+			vars = pull_var_clause(clause,
+								   PVC_RECURSE_AGGREGATES |
+								   PVC_RECURSE_WINDOWFUNCS |
+								   PVC_INCLUDE_PLACEHOLDERS |
+								   PVC_INCLUDE_ROWNUM);
+			*needed_vars = list_concat_unique(*needed_vars, vars);
+			list_free(vars);
+		}
+		else
+		{
+			/*
+			 * Leave it untouched, distribute_qual_to_rels will take care of
+			 * it.
+			 */
+			splitted_quals = lappend(splitted_quals, clause);
+			bms_free(relids);
+		}
+	}
+
+	return (Node *) splitted_quals;
+}
+
+/*
+ * generate_count_stopkeys
+ *		Generate a list of restrictions for stop keys. The stop key is the
+ *		expression which result value changes if ROWNUM get changed and
+ *		the ROWNUM will change if there is a tuple satisfied the expression.
+ *		At start the expression will be evaluated to true or false, but it
+ *		will be always false if there is a tuple who does not satisifiy the
+ *		expression. This is true because the result of expression will only
+ *		be effected by the ROWNUM not the tuple itself. So the stop keys can
+ *		be used opitimized for Count node.
+ */
+List *
+generate_count_stopkeys(PlannerInfo *root, List **restrictinfoes)
+{
+	ListCell	*l;
+	List		*stopKeys = NIL;
+	List		*new_restrictinfoes = NIL;
+
+	foreach(l, *restrictinfoes)
+	{
+		RestrictInfo	*restriction = (RestrictInfo *) lfirst(l);
+
+		Assert(IsA(restriction, RestrictInfo));
+
+		/* We do not need to deal with pseudo constant case! */
+		if (bms_num_members(restriction->required_relids) == 1
+			&& bms_is_member(root->countRI, restriction->required_relids)
+			&& !contain_volatile_functions((Node *) restriction->clause))
+			stopKeys = lappend(stopKeys, restriction);
+		else
+			new_restrictinfoes = lappend(new_restrictinfoes, restriction);
+	}
+
+	*restrictinfoes = new_restrictinfoes;
+	return stopKeys;
 }

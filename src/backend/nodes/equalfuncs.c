@@ -179,6 +179,18 @@ _equalVar(const Var *a, const Var *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static bool
+_equalPseudoColVar(const PseudoColVar *a, const PseudoColVar *b)
+{
+	COMPARE_SCALAR_FIELD(pvarkind);
+	COMPARE_SCALAR_FIELD(pvartype);
+	COMPARE_SCALAR_FIELD(pvartypmod);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 static bool
 _equalConst(const Const *a, const Const *b)
 {
@@ -990,6 +1002,7 @@ _equalQuery(const Query *a, const Query *b)
 	COMPARE_SCALAR_FIELD(hasModifyingCTE);
 	COMPARE_SCALAR_FIELD(hasForUpdate);
 	COMPARE_SCALAR_FIELD(hasRowSecurity);
+	COMPARE_SCALAR_FIELD(hasRownum);	/* ReqID:SRS-SQL-ROWNUM */
 	COMPARE_SCALAR_FIELD(isReturn);
 	COMPARE_NODE_FIELD(cteList);
 	COMPARE_NODE_FIELD(rtable);
@@ -2504,6 +2517,17 @@ _equalColumnRef(const ColumnRef *a, const ColumnRef *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static bool
+_equalPseudoColumnRef(const PseudoColumnRef *a, const PseudoColumnRef *b)
+{
+	COMPARE_SCALAR_FIELD(pckind);
+	COMPARE_SCALAR_FIELD(location);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 static bool
 _equalParamRef(const ParamRef *a, const ParamRef *b)
 {
@@ -3321,6 +3345,11 @@ equal(const void *a, const void *b)
 		case T_Var:
 			retval = _equalVar(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			retval = _equalPseudoColVar(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 			retval = _equalConst(a, b);
 			break;
@@ -3900,6 +3929,11 @@ equal(const void *a, const void *b)
 		case T_ColumnRef:
 			retval = _equalColumnRef(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColumnRef:
+			retval = _equalPseudoColumnRef(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_ParamRef:
 			retval = _equalParamRef(a, b);
 			break;

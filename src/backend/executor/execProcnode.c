@@ -116,6 +116,7 @@
 #include "executor/nodeValuesscan.h"
 #include "executor/nodeWindowAgg.h"
 #include "executor/nodeWorktablescan.h"
+#include "executor/nodeCount.h"	/* ReqID:SRS-SQL-ROWNUM */
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 
@@ -202,6 +203,13 @@ ExecInitNode(Plan *node, EState *estate, int eflags)
 			result = (PlanState *) ExecInitBitmapOr((BitmapOr *) node,
 													estate, eflags);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			result = (PlanState *) ExecInitCount((Count *) node,
+												 estate, eflags);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * scan nodes
@@ -611,6 +619,12 @@ ExecEndNode(PlanState *node)
 		case T_BitmapOrState:
 			ExecEndBitmapOr((BitmapOrState *) node);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_CountState:
+			ExecEndCount((CountState *) node);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * scan nodes

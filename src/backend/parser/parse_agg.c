@@ -733,6 +733,18 @@ check_agg_arguments_walker(Node *node,
 		}
 		return false;
 	}
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (IsA(node, PseudoColVar))
+	{
+		if (context->sublevels_up == 0)
+		{
+			context->min_varlevel = 0;
+			return false;
+		}
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	if (IsA(node, Aggref))
 	{
 		int			agglevelsup = ((Aggref *) node)->agglevelsup;
@@ -1358,6 +1370,16 @@ check_ungrouped_columns_walker(Node *node,
 				return false;	/* acceptable, do not descend more */
 		}
 	}
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (context->sublevels_up == 0 && IsA(node, PseudoColVar))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_GROUPING_ERROR),
+				 errmsg("column \"ROWNUM\" must appear in the GROUP BY clause or be used in an aggregate function")));
+
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * If we have an ungrouped Var of the original query level, we have a

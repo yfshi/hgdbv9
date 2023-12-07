@@ -186,6 +186,9 @@ extern SortGroupClause *get_sortgroupref_clause_noerr(Index sortref,
 											 * output list */
 #define PVC_RECURSE_PLACEHOLDERS	0x0020	/* recurse into PlaceHolderVar
 											 * arguments */
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+#define PVC_INCLUDE_ROWNUM 		0x0040	/* include ROWNUM pseudo-column in list */
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 extern Bitmapset *pull_varnos(PlannerInfo *root, Node *node);
 extern Bitmapset *pull_varnos_of_level(PlannerInfo *root, Node *node, int levelsup);

@@ -982,6 +982,26 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				break;
 			}
 
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			{
+
+				PseudoColVar *pvar = (PseudoColVar *) node;
+
+				if (pvar->pvarkind == PSEUDOCOL_KIND_ROWNUM)
+				{
+					if (state->parent == NULL)
+						ereport(ERROR,
+								(errcode(ERRCODE_INTERNAL_ERROR),
+								 errmsg("RowNum expr must have parent plan state")));
+					scratch.opcode = EEOP_ORA_ROWNUM;
+					scratch.d.ptr_rownum.num = &(state->parent->ps_ExprContext->count_rownum);
+					ExprEvalPushStep(state, &scratch);
+				}
+				break;
+			}
+		/* End - ReqID:SRS-SQL-ROWNUM */
+
 		case T_Param:
 			{
 				Param	   *param = (Param *) node;

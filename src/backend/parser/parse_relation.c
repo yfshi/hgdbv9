@@ -3798,3 +3798,46 @@ is_query_using_gtt(Query *query)
 {
 	return is_query_using_gtt_walker((Node *) query, NULL);
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * Add an entry for the ROWNUM to the pstate's range table (p_rtable).
+ */
+RangeTblEntry *
+addRangeTableEntryForCount(ParseState *pstate)
+{
+	RangeTblEntry *rte = makeNode(RangeTblEntry);
+
+	rte->rtekind = RTE_COUNT;
+	rte->relkind = RELKIND_RELATION;
+	rte->relid = InvalidOid;
+	rte->subquery = NULL;
+	rte->alias = NULL;
+	rte->eref = makeAlias("count", NIL);
+
+	/*----------
+	 * Flags:
+	 * - this RTE should be expanded to include descendant tables,
+	 * - this RTE is in the FROM clause,
+	 * - this RTE should be checked for appropriate access rights.
+	 *
+	 * Connects are never checked for access rights.
+	 *----------
+	 */
+	rte->inh = false;			/* never true for subqueries */
+	rte->inFromCl = false;
+
+	rte->requiredPerms = 0;
+	rte->checkAsUser = InvalidOid;
+
+	/*
+	 * Add completed RTE to pstate's range table list, but not to join list
+	 * nor namespace --- caller must do that if appropriate.
+	 */
+	if (pstate != NULL)
+		pstate->p_rtable = lappend(pstate->p_rtable, rte);
+
+	return rte;
+
+}
+/* End - ReqID:SRS-SQL-ROWNUM */

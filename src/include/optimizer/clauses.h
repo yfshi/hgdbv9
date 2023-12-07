@@ -16,6 +16,22 @@
 
 #include "nodes/pathnodes.h"
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/* Bits defined in OraCompatExprKind */
+#define OCE_ROWNUM_BIT		(1 << 0)
+
+/*
+ * Oracle Compatible Expression.
+ */
+typedef enum OraExprKind
+{
+	OCE_INVALID = 0,
+	/* single class */
+	OCE_ROWNUM = OCE_ROWNUM_BIT,
+	OCE_COUNT = OCE_ROWNUM_BIT
+} OraExprKind;
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 typedef struct
 {
 	int			numWindowFuncs; /* total number of WindowFuncs found */
@@ -54,5 +70,9 @@ extern Query *inline_set_returning_function(PlannerInfo *root,
 											RangeTblEntry *rte);
 
 extern Bitmapset *pull_paramids(Expr *expr);
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+extern bool contain_oracompat_expr(Node *clause, OraExprKind oraExprkind);
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 #endif							/* CLAUSES_H */

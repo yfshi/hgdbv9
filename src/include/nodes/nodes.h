@@ -96,6 +96,7 @@ typedef enum NodeTag
 	T_PartitionPruneStepOp,
 	T_PartitionPruneStepCombine,
 	T_PlanInvalItem,
+	T_Count, /* ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * TAGS FOR PLAN STATE NODES (execnodes.h)
@@ -147,6 +148,7 @@ typedef enum NodeTag
 	T_SetOpState,
 	T_LockRowsState,
 	T_LimitState,
+	T_CountState, /* ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * TAGS FOR PRIMITIVE NODES (primnodes.h)
@@ -204,6 +206,7 @@ typedef enum NodeTag
 	T_OnConflictExpr,
 	T_IntoClause,
 	T_NonDefValNode,	/* ReqID:SRS-SQL-FUNCOUT */
+	T_PseudoColVar, /* ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)
@@ -265,6 +268,7 @@ typedef enum NodeTag
 	T_LockRowsPath,
 	T_ModifyTablePath,
 	T_LimitPath,
+	T_CountPath, /* ReqID:SRS-SQL-ROWNUM */
 	/* these aren't subclasses of Path: */
 	T_EquivalenceClass,
 	T_EquivalenceMember,
@@ -508,6 +512,7 @@ typedef enum NodeTag
 	T_PartitionCmd,
 	T_VacuumRelation,
 	T_ColumnRefOrFuncCall,	/* ReqID:SRS-SQL-PROC */
+	T_PseudoColumnRef, /* ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * TAGS FOR REPLICATION GRAMMAR PARSE NODES (replnodes.h)

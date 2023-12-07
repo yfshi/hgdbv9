@@ -2757,6 +2757,12 @@ finalize_plan(PlannerInfo *root, Plan *plan,
 							  &context);
 			break;
 
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			finalize_primnode((Node *) ((Count *) plan)->stopkeys, &context);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
+
 		case T_ProjectSet:
 		case T_Material:
 		case T_Sort:

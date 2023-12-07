@@ -540,6 +540,7 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 			break;
 
 		case T_Var:
+		case T_PseudoColVar: /* ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 		case T_Param:
 		case T_CoerceToDomainValue:

@@ -711,8 +711,8 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 			if (!is_parallel_safe(root, (Node *) rte->values_lists))
 				return;
 			break;
-
-		case RTE_CTE:
+		case RTE_COUNT:
+		case RTE_CTE:	/* ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * CTE tuplestores aren't shared among parallel workers, so we
@@ -3171,6 +3171,11 @@ subquery_is_pushdown_safe(Query *subquery, Query *topquery,
 		subquery->hasWindowFuncs ||
 		subquery->hasTargetSRFs)
 		safetyInfo->unsafeVolatile = true;
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (subquery->hasRownum)
+		return false;
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * If we're at a leaf query, check for unsafe expressions in its target

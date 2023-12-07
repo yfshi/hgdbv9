@@ -325,6 +325,7 @@ _outPlannedStmt(StringInfo str, const PlannedStmt *node)
 	WRITE_NODE_FIELD(utilityStmt);
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
+	WRITE_INT_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
 }
 
 /*
@@ -974,6 +975,19 @@ _outLimit(StringInfo str, const Limit *node)
 	WRITE_OID_ARRAY(uniqCollations, node->uniqNumCols);
 }
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static void
+_outCount(StringInfo str, const Count *node)
+{
+	WRITE_NODE_TYPE("Count");
+
+	_outPlanInfo(str, (const Plan *) node);
+
+	WRITE_INT_FIELD(countnode_id);
+	WRITE_NODE_FIELD(stopkeys);
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 static void
 _outNestLoopParam(StringInfo str, const NestLoopParam *node)
 {
@@ -1136,6 +1150,18 @@ _outVar(StringInfo str, const Var *node)
 	WRITE_INT_FIELD(varattnosyn);
 	WRITE_LOCATION_FIELD(location);
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static void
+_outPseudoColVar(StringInfo str, const PseudoColVar *node)
+{
+	WRITE_NODE_TYPE("PSEUDOCOLVAR");
+
+	WRITE_ENUM_FIELD(pvarkind, PseudoColumnKind);
+	WRITE_OID_FIELD(pvartype);
+	WRITE_INT_FIELD(pvartypmod);
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 static void
 _outConst(StringInfo str, const Const *node)
@@ -2234,6 +2260,20 @@ _outLimitPath(StringInfo str, const LimitPath *node)
 	WRITE_ENUM_FIELD(limitOption, LimitOption);
 }
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static void
+_outCountPath(StringInfo str, const CountPath *node)
+{
+	WRITE_NODE_TYPE("COUNTPATH");
+
+	_outPathInfo(str, (const Path *) node);
+
+	WRITE_NODE_FIELD(subpath);
+	WRITE_NODE_FIELD(restrict_clauses);
+	WRITE_INT_FIELD(countnode_id);
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 static void
 _outGatherMergePath(StringInfo str, const GatherMergePath *node)
 {
@@ -2302,6 +2342,7 @@ _outPlannerGlobal(StringInfo str, const PlannerGlobal *node)
 	WRITE_BOOL_FIELD(parallelModeOK);
 	WRITE_BOOL_FIELD(parallelModeNeeded);
 	WRITE_CHAR_FIELD(maxParallelHazard);
+	WRITE_INT_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
 }
 
 static void
@@ -2358,6 +2399,11 @@ _outPlannerInfo(StringInfo str, const PlannerInfo *node)
 	WRITE_BITMAPSET_FIELD(curOuterRels);
 	WRITE_NODE_FIELD(curOuterParams);
 	WRITE_BOOL_FIELD(partColsUpdated);
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	WRITE_BOOL_FIELD(hasCount);
+	WRITE_UINT_FIELD(countRI);
+	WRITE_NODE_FIELD(count_required_vars);
+	/* End - ReqID:SRS-SQL-ROWNUM */
 }
 
 static void
@@ -3111,6 +3157,7 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_BOOL_FIELD(hasModifyingCTE);
 	WRITE_BOOL_FIELD(hasForUpdate);
 	WRITE_BOOL_FIELD(hasRowSecurity);
+	WRITE_BOOL_FIELD(hasRownum);	/* ReqID:SRS-SQL-ROWNUM */
 	WRITE_BOOL_FIELD(isReturn);
 	WRITE_NODE_FIELD(cteList);
 	WRITE_NODE_FIELD(rtable);
@@ -3366,6 +3413,8 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 		case RTE_RESULT:
 			/* no extra fields */
 			break;
+		case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
+			break;
 		default:
 			elog(ERROR, "unrecognized RTE kind: %d", (int) node->rtekind);
 			break;
@@ -3531,6 +3580,17 @@ _outColumnRef(StringInfo str, const ColumnRef *node)
 	WRITE_NODE_FIELD(fields);
 	WRITE_LOCATION_FIELD(location);
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static void
+_outPseudoColumnRef(StringInfo str, const PseudoColumnRef *node)
+{
+	WRITE_NODE_TYPE("PSEUDOCOLUMNREF");
+
+	WRITE_ENUM_FIELD(pckind, PseudoColumnKind);
+	WRITE_INT_FIELD(location);
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 static void
 _outParamRef(StringInfo str, const ParamRef *node)
@@ -4088,6 +4148,11 @@ outNode(StringInfo str, const void *obj)
 			case T_Limit:
 				_outLimit(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			case T_Count:
+				_outCount(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-ROWNUM */
 			case T_NestLoopParam:
 				_outNestLoopParam(str, obj);
 				break;
@@ -4124,6 +4189,11 @@ outNode(StringInfo str, const void *obj)
 			case T_Var:
 				_outVar(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			case T_PseudoColVar:
+				_outPseudoColVar(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-ROWNUM */
 			case T_Const:
 				_outConst(str, obj);
 				break;
@@ -4358,6 +4428,11 @@ outNode(StringInfo str, const void *obj)
 			case T_LimitPath:
 				_outLimitPath(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			case T_CountPath:
+				_outCountPath(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-ROWNUM */
 			case T_GatherMergePath:
 				_outGatherMergePath(str, obj);
 				break;
@@ -4475,6 +4550,11 @@ outNode(StringInfo str, const void *obj)
 			case T_ColumnDef:
 				_outColumnDef(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			case T_PseudoColumnRef:
+				_outPseudoColumnRef(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-ROWNUM */
 			case T_TypeName:
 				_outTypeName(str, obj);
 				break;

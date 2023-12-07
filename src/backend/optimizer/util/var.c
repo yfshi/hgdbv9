@@ -58,6 +58,9 @@ typedef struct
 {
 	List	   *varlist;
 	int			flags;
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	bool		includeCountPseudoVars;
+	/* End - ReqID:SRS-SQL-ROWNUM */
 } pull_var_clause_context;
 
 typedef struct
@@ -606,6 +609,16 @@ pull_var_clause(Node *node, int flags)
 	Assert((flags & (PVC_INCLUDE_PLACEHOLDERS | PVC_RECURSE_PLACEHOLDERS))
 		   != (PVC_INCLUDE_PLACEHOLDERS | PVC_RECURSE_PLACEHOLDERS));
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (flags & PVC_INCLUDE_ROWNUM)
+	{
+		context.includeCountPseudoVars = true;
+		flags &= ~(PVC_INCLUDE_ROWNUM);
+	}
+	else
+		context.includeCountPseudoVars = false;
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	context.varlist = NIL;
 	context.flags = flags;
 
@@ -692,6 +705,18 @@ pull_var_clause_walker(Node *node, pull_var_clause_context *context)
 		else
 			elog(ERROR, "PlaceHolderVar found where not expected");
 	}
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	else if (IsA(node, PseudoColVar))
+	{
+		PseudoColVar	*pvar = (PseudoColVar *) node;
+		if (pvar->pvarkind == PSEUDOCOL_KIND_ROWNUM)
+		{
+			if (context->includeCountPseudoVars)
+				context->varlist = lappend(context->varlist, node);
+		}
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	return expression_tree_walker(node, pull_var_clause_walker,
 								  (void *) context);
 }

@@ -201,6 +201,28 @@ typedef struct Var
 	int			location;		/* token location, or -1 if unknown */
 } Var;
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/* Support four kind of pseudocolumns for ROWNUM */
+typedef enum PseudoColumnKind
+{
+	/* Belongs to Count Execute Node */
+	PSEUDOCOL_KIND_ROWNUM,
+} PseudoColumnKind;
+
+/*
+ * PseudoVars really like the plain Vars, but they belong to the RTE_COUNT
+ * Optimizer will cope with PseudoVars in the same way with Vars.
+ */
+typedef struct PseudoColVar
+{
+	Expr		xpr;
+	PseudoColumnKind	pvarkind;
+	Oid			pvartype;
+	int32		pvartypmod;
+} PseudoColVar;
+/* End - ReqID:SRS-SQL-ROWNUM */
+
+
 /*
  * Const
  *

@@ -89,6 +89,7 @@ typedef struct PlannedStmt
 	/* statement location in source string (copied from Query) */
 	int			stmt_location;	/* start location, or -1 if unknown */
 	int			stmt_len;		/* length in bytes; 0 means "rest of string" */
+	int			countnode_num;	/* ReqID:SRS-SQL-ROWNUM */
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */
@@ -1053,6 +1054,18 @@ typedef struct Limit
 	Oid		   *uniqCollations; /* collations for equality comparisons */
 } Limit;
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/* ----------------
+ *		Count node
+ * ----------------
+ */
+typedef struct Count
+{
+	Plan		plan;
+	List		*stopkeys;
+	int			countnode_id;
+} Count;
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * RowMarkType -

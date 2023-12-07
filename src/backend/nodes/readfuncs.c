@@ -271,6 +271,7 @@ _readQuery(void)
 	READ_BOOL_FIELD(hasModifyingCTE);
 	READ_BOOL_FIELD(hasForUpdate);
 	READ_BOOL_FIELD(hasRowSecurity);
+	READ_BOOL_FIELD(hasRownum);	/* ReqID:SRS-SQL-ROWNUM */
 	READ_BOOL_FIELD(isReturn);
 	READ_NODE_FIELD(cteList);
 	READ_NODE_FIELD(rtable);
@@ -635,6 +636,23 @@ _readVar(void)
 
 	READ_DONE();
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * _readPseudoColVar
+ */
+static PseudoColVar *
+_readPseudoColVar(void)
+{
+	READ_LOCALS(PseudoColVar);
+
+	READ_ENUM_FIELD(pvarkind, PseudoColumnKind);
+	READ_OID_FIELD(pvartype);
+	READ_INT_FIELD(pvartypmod);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * _readConst
@@ -1555,6 +1573,8 @@ _readRangeTblEntry(void)
 		case RTE_RESULT:
 			/* no extra fields */
 			break;
+		case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
+			break;
 		default:
 			elog(ERROR, "unrecognized RTE kind: %d",
 				 (int) local_node->rtekind);
@@ -1660,6 +1680,7 @@ _readPlannedStmt(void)
 	READ_NODE_FIELD(utilityStmt);
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
+	READ_INT_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
 
 	READ_DONE();
 }
@@ -3096,6 +3117,10 @@ parseNodeString(void)
 	else if (MATCH("TYPENAME", 8))
 		return_value = _readTypeName();
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	else if (MATCH("PSEUDOCOLVAR", 12))
+		return_value = _readPseudoColVar();
+	/* End - ReqID:SRS-SQL-ROWNUM */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

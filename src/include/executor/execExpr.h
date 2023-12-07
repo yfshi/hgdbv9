@@ -268,6 +268,10 @@ typedef enum ExprEvalOp
 	EEOP_OUT_PARAM_CALLBACK,
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	EEOP_ORA_ROWNUM,
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -693,8 +697,14 @@ typedef struct ExprEvalStep
 			void		*pestate;		/* the parent of current PLiSQL_execstate */
 			ExecEvalOutParamSubroutine outparam_func;
 		}			out_params;
-
 		/* End - ReqID:SRS-SQL-FUNCOUT */
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		/* for EEOP_PSEUDOCOLVAR */
+		struct
+		{
+			int64		*num;
+		} ptr_rownum;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 	}			d;
 } ExprEvalStep;
 

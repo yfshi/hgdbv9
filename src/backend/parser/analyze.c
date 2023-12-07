@@ -527,6 +527,14 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 
 	qry->returningList = transformReturningList(pstate, stmt->returningList);
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (pstate->p_hasRownum)
+	{
+		qry->hasRownum = pstate->p_hasRownum;
+		addRangeTableEntryForCount(pstate);
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	/* done building the range table and jointree */
 	qry->rtable = pstate->p_rtable;
 	qry->jointree = makeFromExpr(pstate->p_joinlist, qual);
@@ -980,6 +988,11 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	qry->hasTargetSRFs = pstate->p_hasTargetSRFs;
 	qry->hasSubLinks = pstate->p_hasSubLinks;
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (pstate->p_hasRownum)
+		elog(ERROR, "not expected ROWNUM in INSERT statement");
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	assign_query_collations(pstate, qry);
 
 	return qry;
@@ -1426,6 +1439,14 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	/* resolve any still-unresolved output columns as being type text */
 	if (pstate->p_resolve_unknowns)
 		resolveTargetListUnknowns(pstate, qry->targetList);
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (pstate->p_hasRownum)
+	{
+		qry->hasRownum = pstate->p_hasRownum;
+		addRangeTableEntryForCount(pstate);
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	qry->rtable = pstate->p_rtable;
 	qry->jointree = makeFromExpr(pstate->p_joinlist, qual);
@@ -2434,7 +2455,17 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	if (DB_ORACLE == compatible_db)
+	{
 		qry->targetList = transformIvyUpdateTargetList(pstate, stmt->targetList);
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		if (pstate->p_hasRownum)
+		{
+			qry->hasRownum = pstate->p_hasRownum;
+			addRangeTableEntryForCount(pstate);
+		}
+		/* End - ReqID:SRS-SQL-ROWNUM */
+	}
 	else
 	/* End - ReqID:SRS-PLSQL-TYPE */
 	{

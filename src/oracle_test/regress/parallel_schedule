@@ -193,3 +193,7 @@ test: ora_compatible_oracle_misc
 #/* Begin - ReqID:SRS-SQL-ORACLE-LIKE */
 test: ora_like_operator
 #/* End - ReqID:SRS-SQL-ORACLE-LIKE */
+
+#/* Begin - ReqID:SRS-SQL-ROWNUM */
+test: ora_rownum
+#/* End - ReqID:SRS-SQL-ROWNUM */

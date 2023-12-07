@@ -314,6 +314,11 @@ static ModifyTable *make_modifytable(PlannerInfo *root, Plan *subplan,
 									 List *mergeActionList, int epqParam);
 static GatherMerge *create_gather_merge_plan(PlannerInfo *root,
 											 GatherMergePath *best_path);
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static Plan *create_count_plan(PlannerInfo *root, CountPath *best_path);
+static Count *make_count(List *tlist, List *stopKeys, List *count_clauses,
+							  Plan *subplan, int countnode_id);
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 
 /*
@@ -535,6 +540,11 @@ create_plan_recurse(PlannerInfo *root, Path *best_path, int flags)
 											  (LimitPath *) best_path,
 											  flags);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			plan = create_count_plan(root, (CountPath *) best_path);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_GatherMerge:
 			plan = (Plan *) create_gather_merge_plan(root,
 													 (GatherMergePath *) best_path);
@@ -2841,6 +2851,54 @@ create_limit_plan(PlannerInfo *root, LimitPath *best_path, int flags)
 					  numUniqkeys, uniqColIdx, uniqOperators, uniqCollations);
 
 	copy_generic_path_info(&plan->plan, (Path *) best_path);
+
+	return plan;
+}
+
+/*
+ * create_count_plan
+ *	  Create a count plan for 'best_path' and (recursively) plans for its
+ *	  outer path.
+ *
+ *  NB: root->count_rel must contains final tlist.
+ *  NB: pseudoconstant should be in the restrict_clauses.
+ */
+static Plan *
+create_count_plan(PlannerInfo *root, CountPath *best_path)
+{
+	List		*tlist = build_path_tlist(root, &best_path->path);
+	Plan		*subplan;
+	Plan		*plan;
+	List		*count_clauses;
+	List		*stopKeys;
+
+	subplan = create_plan_recurse(root, best_path->subpath, CP_SMALL_TLIST);
+
+	/* Get the qual clauses (in plain expression form) */
+	/* Any pseudoconstant clauses are ignored here */
+	count_clauses = extract_actual_clauses(best_path->restrict_clauses, false);
+
+	/* stopKeys should not contains any pseudoconstant! */
+	Assert(list_length(extract_actual_clauses(best_path->stopKeys, true)) == 0);
+	stopKeys = extract_actual_clauses(best_path->stopKeys, false);
+
+	/* Sort clauses into best execution order */
+	count_clauses = order_qual_clauses(root, count_clauses);
+	stopKeys = order_qual_clauses(root, stopKeys);
+
+	plan = (Plan *) make_count(tlist, stopKeys, count_clauses,
+							   subplan, best_path->countnode_id);
+
+	copy_generic_path_info(plan, &best_path->path);
+
+	/*
+	 * If there are any pseudoconstant clauses attached to this node, insert a
+	 * gating Result node that evaluates the pseudoconstants as one-time
+	 * quals.
+	 */
+	if (extract_actual_clauses(best_path->restrict_clauses, true))
+		plan = create_gating_plan(root, (Path *)best_path, plan,
+								  best_path->restrict_clauses);
 
 	return plan;
 }
@@ -6898,6 +6956,29 @@ make_result(List *tlist,
 	plan->lefttree = subplan;
 	plan->righttree = NULL;
 	node->resconstantqual = resconstantqual;
+
+	return node;
+}
+
+/*
+ * make_count
+ *		Build a Count plan node
+ */
+static Count *
+make_count(List *tlist, List *stopKeys, List *otherclauses,
+				Plan *lefttree, int countnode_id)
+{
+	Count		*node = makeNode(Count);
+	Plan		*plan = &node->plan;
+
+	/* cost should be inserted by caller */
+	plan->targetlist = tlist;
+	plan->qual = otherclauses;
+	plan->lefttree = lefttree;
+	plan->righttree = NULL;
+	node->stopkeys = stopKeys;
+	/* countnode_id the count node id in a whole plan, it is from count path. */
+	node->countnode_id = countnode_id;
 
 	return node;
 }
