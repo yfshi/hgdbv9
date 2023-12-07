@@ -124,4 +124,8 @@ extern bool isQueryUsingTempRelation(Query *query);
 /* global temp table check */
 extern bool is_query_using_gtt(Query *query);
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+extern RangeTblEntry *addRangeTableEntryForCount(ParseState *pstate);
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 #endif							/* PARSE_RELATION_H */

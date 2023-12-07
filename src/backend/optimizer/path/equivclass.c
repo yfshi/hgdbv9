@@ -568,6 +568,14 @@ add_eq_member(EquivalenceClass *ec, Expr *expr, Relids relids,
 		em->em_is_const = true;
 		ec->ec_has_const = true;
 		/* it can't affect ec_relids */
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		if (IsA(expr, PseudoColVar))
+		{
+			em->em_is_const = false;
+			ec->ec_has_const = false;
+		}
+		/* End - ReqID:SRS-SQL-ROWNUM */
 	}
 	else if (!is_child)			/* child members don't add to ec_relids */
 	{

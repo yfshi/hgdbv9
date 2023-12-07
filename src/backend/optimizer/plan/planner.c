@@ -64,6 +64,11 @@
 #include "utils/rel.h"
 #include "utils/selfuncs.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 
 /* GUC parameters */
 double		cursor_tuple_fraction = DEFAULT_CURSOR_TUPLE_FRACTION;
@@ -310,6 +315,7 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	glob->lastPlanNodeId = 0;
 	glob->transientPlan = false;
 	glob->dependsOnRole = false;
+	glob->countnode_num = 0;	/* ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * Assess whether it's feasible to use parallel mode for this query. We
@@ -525,6 +531,7 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	result->utilityStmt = parse->utilityStmt;
 	result->stmt_location = parse->stmt_location;
 	result->stmt_len = parse->stmt_len;
+	result->countnode_num = glob->countnode_num;	/* ReqID:SRS-SQL-ROWNUM */
 
 	result->jitFlags = PGJIT_NONE;
 	if (jit_enabled && jit_above_cost >= 0 &&
@@ -635,6 +642,11 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 		root->wt_param_id = -1;
 	root->non_recursive_path = NULL;
 	root->partColsUpdated = false;
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	root->hasCount = parse->hasRownum;
+	if (root->hasCount)
+		root->countRI = list_length(parse->rtable);
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	/*
 	 * If there is a WITH list, process each WITH query and either convert it
@@ -987,6 +999,15 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	foreach(l, (List *) parse->havingQual)
 	{
 		Node	   *havingclause = (Node *) lfirst(l);
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		/* having quals can not be pushed down into where */
+		if (parse->hasRownum)
+		{
+			newHaving = lappend(newHaving, havingclause);
+			continue;
+		}
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 		if ((parse->groupClause && parse->groupingSets) ||
 			contain_agg_clause(havingclause) ||
@@ -1458,7 +1479,17 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 		 * We also generate (in standard_qp_callback) pathkey representations
 		 * of the query's sort clause, distinct clause, etc.
 		 */
-		current_rel = query_planner(root, standard_qp_callback, &qp_extra);
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		/*
+		 * if this Query contains the ROWNUM pseudo-column, then we need to do
+		 * some extra work before calling query_planner. So we added the
+		 * build_count_path function to wrap the query_planner call.
+		 */
+		if (parse->hasRownum)
+			current_rel = build_count_path(root, standard_qp_callback, &qp_extra);
+		/* End - ReqID:SRS-SQL-ROWNUM */
+		else
+			current_rel = query_planner(root, standard_qp_callback, &qp_extra);
 
 		/*
 		 * Convert the query's result tlist into PathTarget format.
@@ -4815,10 +4846,18 @@ make_group_input_target(PlannerInfo *root, PathTarget *final_target)
 	 * ORDER BY and window specifications.  Vars used within Aggrefs and
 	 * WindowFuncs will be pulled out here, too.
 	 */
-	non_group_vars = pull_var_clause((Node *) non_group_cols,
-									 PVC_RECURSE_AGGREGATES |
-									 PVC_RECURSE_WINDOWFUNCS |
-									 PVC_INCLUDE_PLACEHOLDERS);
+	if (contain_oracompat_expr((Node *) non_group_cols, OCE_ROWNUM))
+		non_group_vars = pull_var_clause((Node *) non_group_cols,
+										 PVC_RECURSE_AGGREGATES |
+										 PVC_RECURSE_WINDOWFUNCS |
+										 PVC_INCLUDE_PLACEHOLDERS |
+										 PVC_INCLUDE_ROWNUM);
+	else
+		non_group_vars = pull_var_clause((Node *) non_group_cols,
+										 PVC_RECURSE_AGGREGATES |
+										 PVC_RECURSE_WINDOWFUNCS |
+										 PVC_INCLUDE_PLACEHOLDERS);
+
 	add_new_columns_to_pathtarget(input_target, non_group_vars);
 
 	/* clean up cruft */

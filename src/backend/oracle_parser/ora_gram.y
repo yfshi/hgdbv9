@@ -777,7 +777,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE RIGHT ROLE ROLLBACK ROLLUP
-	ROUTINE ROUTINES ROW ROWID ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
+	ROUTINE ROUTINES ROW ROWID ROWNUM /* ReqID:SRS-SQL-ROWNUM */ ROWS ROWTYPE /* ReqID:SRS-PLSQL-TYPE */ RULE
 
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD SHARE SHOW					/* ReqID:SRS-SQL-SEQ */
@@ -17659,6 +17659,15 @@ b_expr:		c_expr
  */
 c_expr:		columnref								{ $$ = $1; }
 			| AexprConst							{ $$ = $1; }
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			| ROWNUM
+				{
+					PseudoColumnRef	*pcr = makeNode(PseudoColumnRef);
+					pcr->pckind = PSEUDOCOL_KIND_ROWNUM;
+					pcr->location = @1;
+					$$ = (Node *) pcr;
+				}
+			/* End - ReqID:SRS-SQL-ROWNUM */
 			| PARAM opt_indirection
 				{
 					ParamRef *p = makeNode(ParamRef);
@@ -19948,7 +19957,16 @@ ColLabel:	IDENT									{ $$ = $1; }
 			| unreserved_keyword					{ $$ = pstrdup($1); }
 			| col_name_keyword						{ $$ = pstrdup($1); }
 			| type_func_name_keyword				{ $$ = pstrdup($1); }
-			| reserved_keyword						{ $$ = pstrdup($1); }
+			| reserved_keyword
+				{/* Begin - ReqID:SRS-SQL-ROWNUM */
+					if (strcmp($1, "rownum") == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("ROWNUM cannot be used as an alias"),
+									parser_errposition(@1)));
+					$$ = pstrdup($1);
+				/* End - ReqID:SRS-SQL-ROWNUM */
+				}
 		;
 
 /* Bare column label --- names that can be column labels without writing "AS".
@@ -20525,6 +20543,7 @@ reserved_keyword:
 			| PRIMARY
 			| REFERENCES
 			| RETURNING
+			| ROWNUM	/* ReqID:SRS-SQL-ROWNUM */
 			| SELECT
 			| SESSION_USER
 			| SOME

@@ -1208,6 +1208,7 @@ pull_up_simple_subquery(PlannerInfo *root, Node *jtnode, RangeTblEntry *rte,
 				case RTE_CTE:
 				case RTE_NAMEDTUPLESTORE:
 				case RTE_RESULT:
+				case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
 					/* these can't contain any lateral references */
 					break;
 			}
@@ -1610,6 +1611,11 @@ is_simple_subquery(PlannerInfo *root, Query *subquery, RangeTblEntry *rte,
 	 */
 	if (contain_volatile_functions((Node *) subquery->targetList))
 		return false;
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (subquery->hasRownum)
+		return false;
+	/* End - ReqID:SRS-SQL-ROWNUM */
 
 	return true;
 }
@@ -2266,6 +2272,7 @@ replace_vars_in_jointree(Node *jtnode,
 					case RTE_CTE:
 					case RTE_NAMEDTUPLESTORE:
 					case RTE_RESULT:
+					case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
 						/* these shouldn't be marked LATERAL */
 						Assert(false);
 						break;

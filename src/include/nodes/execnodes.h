@@ -263,6 +263,8 @@ typedef struct ExprContext
 
 	/* Functions to call back when ExprContext is shut down or rescanned */
 	ExprContext_CB *ecxt_callbacks;
+
+	int64		count_rownum;	/* ReqID:SRS-SQL-ROWNUM */
 } ExprContext;
 
 /*
@@ -694,6 +696,8 @@ typedef struct EState
 
 	/* List of ResultRelInfoExtra structs (see above) */
 	List	   *es_resultrelinfo_extra;
+
+	int64	   *count;	/* array store the count number for every countnode */
 } EState;
 
 
@@ -1435,6 +1439,20 @@ typedef struct BitmapOrState
 	PlanState **bitmapplans;	/* array of PlanStates for my inputs */
 	int			nplans;			/* number of input plans */
 } BitmapOrState;
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/* ----------------
+ *	 CountState information
+ * ----------------
+ */
+typedef struct CountState
+{
+	PlanState	ps;
+	ExprState	*stopkeys;
+	int64		*counter;
+	bool		countDone;
+} CountState;
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /* ----------------------------------------------------------------
  *				 Scan State Information

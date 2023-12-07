@@ -142,6 +142,7 @@ typedef struct Query
 	bool		hasModifyingCTE;	/* has INSERT/UPDATE/DELETE in WITH */
 	bool		hasForUpdate;	/* FOR [KEY] UPDATE/SHARE was specified */
 	bool		hasRowSecurity; /* rewriter has applied some RLS policy */
+	bool		hasRownum;		/* has rownum in tlist or qual */
 
 	bool		isReturn;		/* is a RETURN statement */
 
@@ -259,6 +260,21 @@ typedef struct ColumnRef
 	List	   *fields;			/* field names (Value strings) or A_Star */
 	int			location;		/* token location, or -1 if unknown */
 } ColumnRef;
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * PseudoColumnRef
+ *
+ * A pseudocolumn behaves like a table column, but is not actually stored in
+ * the table. It support some special informations about the specified query.
+ */
+typedef struct PseudoColumnRef
+{
+	NodeTag		type;
+	PseudoColumnKind	pckind;
+	int			location;
+} PseudoColumnRef;
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * ParamRef - specifies a $n parameter reference
@@ -1005,9 +1021,10 @@ typedef enum RTEKind
 	RTE_VALUES,					/* VALUES (<exprlist>), (<exprlist>), ... */
 	RTE_CTE,					/* common table expr (WITH list element) */
 	RTE_NAMEDTUPLESTORE,		/* tuplestore, e.g. for AFTER triggers */
-	RTE_RESULT					/* RTE represents an empty FROM clause; such
+	RTE_RESULT,					/* RTE represents an empty FROM clause; such
 								 * RTEs are added by the planner, they're not
 								 * present during parsing or rewriting */
+	RTE_COUNT	/* ReqID:SRS-SQL-ROWNUM */
 } RTEKind;
 
 typedef struct RangeTblEntry

@@ -513,6 +513,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		&&CASE_EEOP_OUT_PARAM_CALLBACK,
 		/* End - ReqID:SRS-SQL-FUNCOUT */
+		&&CASE_EEOP_ORA_ROWNUM,	/* ReqID:SRS-SQL-ROWNUM */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1820,6 +1821,19 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* End - ReqID:SRS-SQL-FUNCOUT */
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		EEO_CASE(EEOP_ORA_ROWNUM)
+		{
+#ifdef USE_FLOAT8_BYVAL
+			*op->resvalue = *op->d.ptr_rownum.num;
+#else
+			*op->resvalue = PointerGetDatum(op->d.ptr_rownum.num);
+#endif
+			*op->resnull = false;
+			EEO_NEXT();
+		}
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
 
 		EEO_CASE(EEOP_LAST)
 		{

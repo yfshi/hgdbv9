@@ -196,6 +196,10 @@ static double relation_byte_size(double tuples, int width);
 static double page_size(double tuples, int width);
 static double get_parallel_divisor(Path *path);
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static void set_count_rel_width(PlannerInfo *root, RelOptInfo *count_rel);
+static int get_ora_expr_typelen(Node *expr);
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * clamp_row_est
@@ -2293,6 +2297,29 @@ cost_append(AppendPath *apath)
 	apath->path.total_cost +=
 		cpu_tuple_cost * APPEND_CPU_COST_MULTIPLIER * apath->path.rows;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+void
+cost_count(CountPath *path, RelOptInfo *count_rel)
+{
+	Path		*subpath = path->subpath;
+	Cost		startup_cost = 0;
+	Cost		run_cost = 0;
+	Cost		cpu_per_tuple;
+
+	/* cost of source data */
+	startup_cost = subpath->startup_cost;
+
+	/* CPU costs */
+	startup_cost += count_rel->baserestrictcost.startup;
+	cpu_per_tuple = cpu_tuple_cost + count_rel->baserestrictcost.per_tuple;
+
+	run_cost += cpu_per_tuple * subpath->parent->rows;
+
+	path->path.startup_cost = startup_cost;
+	path->path.total_cost = startup_cost + run_cost;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * cost_merge_append
@@ -5773,6 +5800,33 @@ set_result_size_estimates(PlannerInfo *root, RelOptInfo *rel)
 }
 
 /*
+ * set_count_size_estimates
+ *		Set the size estimates for the given count relation.
+ *
+ * The rel's targetlist must have been constructed already.
+ */
+void
+set_count_size_estimates(PlannerInfo *root, RelOptInfo *rel, RelOptInfo *subRel)
+{
+	double		nrows;
+
+	Assert(fetch_upper_rel(root, UPPERREL_ROWNUM, NULL) == rel);
+
+	nrows = subRel->tuples *
+		clauselist_selectivity(root,
+							   rel->baserestrictinfo,
+							   0,
+							   JOIN_INNER,
+							   NULL);
+
+	rel->rows = clamp_row_est(nrows);
+
+	cost_qual_eval(&rel->baserestrictcost, rel->baserestrictinfo, root);
+
+	set_count_rel_width(root, rel);
+}
+
+/*
  * set_foreign_size_estimates
  *		Set the size estimates for a base relation that is a foreign table.
  *
@@ -5967,6 +6021,176 @@ set_rel_width(PlannerInfo *root, RelOptInfo *rel)
 	Assert(tuple_width >= 0);
 	rel->reltarget->width = tuple_width;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static int
+get_ora_expr_typelen(Node *expr)
+{
+	if (IsA(expr, PseudoColVar))
+		return get_typavgwidth(((PseudoColVar *) expr)->pvartype,
+							   ((PseudoColVar *) expr)->pvartypmod);
+	return -1;
+}
+
+static void
+set_count_rel_width(PlannerInfo *root, RelOptInfo *count_rel)
+{
+	int32		tuple_width = 0;
+	bool		have_wholerow_var = false;
+	ListCell   *lc;
+	RelOptInfo *rel;
+	Oid			reloid;
+
+	Assert(count_rel->rtekind == RTE_COUNT);
+
+	/* Vars are assumed to have cost zero, but other exprs do not */
+	count_rel->reltarget->cost.startup = 0;
+	count_rel->reltarget->cost.per_tuple = 0;
+
+	foreach(lc, count_rel->reltarget->exprs)
+	{
+		Node	   *node = (Node *) lfirst(lc);
+
+		if (IsA(node, PseudoColVar))
+		{
+			tuple_width += get_ora_expr_typelen((Node *) node);
+			continue;
+		}
+
+		/*
+		 * Ordinarily, a Var in a rel's targetlist must belong to that rel;
+		 * but there are corner cases involving LATERAL references where that
+		 * isn't so.  If the Var has the wrong varno, fall through to the
+		 * generic case (it doesn't seem worth the trouble to be any smarter).
+		 */
+		if (IsA(node, Var))
+		{
+			Var		   *var = (Var *) node;
+			int			ndx;
+			int32		item_width;
+
+			rel = find_base_rel(root, ((Var *)node)->varno);
+			reloid = planner_rt_fetch(rel->relid, root)->relid;
+
+			Assert(var->varattno >= rel->min_attr);
+			Assert(var->varattno <= rel->max_attr);
+
+			ndx = var->varattno - rel->min_attr;
+
+			/*
+			 * If it's a whole-row Var, we'll deal with it below after we have
+			 * already cached as many attr widths as possible.
+			 */
+			if (var->varattno == 0)
+			{
+				have_wholerow_var = true;
+				continue;
+			}
+
+			/*
+			 * The width may have been cached already (especially if it's a
+			 * subquery), so don't duplicate effort.
+			 */
+			if (rel->attr_widths[ndx] > 0)
+			{
+				tuple_width += rel->attr_widths[ndx];
+				continue;
+			}
+
+			/* Try to get column width from statistics */
+			if (reloid != InvalidOid && var->varattno > 0)
+			{
+				item_width = get_attavgwidth(reloid, var->varattno);
+				if (item_width > 0)
+				{
+					rel->attr_widths[ndx] = item_width;
+					tuple_width += item_width;
+					continue;
+				}
+			}
+
+			/*
+			 * Not a plain relation, or can't find statistics for it. Estimate
+			 * using just the type info.
+			 */
+			item_width = get_typavgwidth(var->vartype, var->vartypmod);
+			Assert(item_width > 0);
+			rel->attr_widths[ndx] = item_width;
+			tuple_width += item_width;
+		}
+		else if (IsA(node, PlaceHolderVar))
+		{
+			/*
+			 * We will need to evaluate the PHV's contained expression while
+			 * scanning this rel, so be sure to include it in reltarget->cost.
+			 */
+			PlaceHolderVar *phv = (PlaceHolderVar *) node;
+			PlaceHolderInfo *phinfo = find_placeholder_info(root, phv, false);
+			QualCost	cost;
+
+			tuple_width += phinfo->ph_width;
+			cost_qual_eval_node(&cost, (Node *) phv->phexpr, root);
+			count_rel->reltarget->cost.startup += cost.startup;
+			count_rel->reltarget->cost.per_tuple += cost.per_tuple;
+		}
+		else
+		{
+			/*
+			 * We could be looking at an expression pulled up from a subquery,
+			 * or a ROW() representing a whole-row child Var, etc.  Do what we
+			 * can using the expression type information.
+			 */
+			int32		item_width;
+			QualCost	cost;
+
+			item_width = get_typavgwidth(exprType(node), exprTypmod(node));
+			Assert(item_width > 0);
+			tuple_width += item_width;
+			/* Not entirely clear if we need to account for cost, but do so */
+			cost_qual_eval_node(&cost, node, root);
+
+			count_rel->reltarget->cost.startup += cost.startup;
+			count_rel->reltarget->cost.per_tuple += cost.per_tuple;
+		}
+	}
+
+	/*
+	 * If we have a whole-row reference, estimate its width as the sum of
+	 * per-column widths plus heap tuple header overhead.
+	 */
+	if (have_wholerow_var)
+	{
+		int32		wholerow_width = MAXALIGN(SizeofHeapTupleHeader);
+
+		if (reloid != InvalidOid)
+		{
+			/* Real relation, so estimate true tuple width */
+			wholerow_width += get_relation_data_width(reloid,
+								rel->attr_widths - rel->min_attr);
+		}
+		else
+		{
+			/* Do what we can with info for a phony rel */
+			AttrNumber	i;
+
+			for (i = 1; i <= rel->max_attr; i++)
+				wholerow_width += rel->attr_widths[i - rel->min_attr];
+		}
+
+		rel->attr_widths[0 - rel->min_attr] = wholerow_width;
+
+		/*
+		 * Include the whole-row Var as part of the output tuple.  Yes, that
+		 * really is what happens at runtime.
+		 */
+		tuple_width += wholerow_width;
+	}
+
+	Assert(tuple_width >= 0);
+
+	count_rel->reltarget->width = tuple_width;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * set_pathtarget_cost_width

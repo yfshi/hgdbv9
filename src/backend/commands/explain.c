@@ -1400,6 +1400,16 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_Hash:
 			pname = sname = "Hash";
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			{
+				if (((Count *) plan)->stopkeys)
+					pname = sname = "Count StopKey";
+				else
+					pname = sname = "Count";
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		default:
 			pname = sname = "???";
 			break;
@@ -2031,6 +2041,13 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			show_memoize_info(castNode(MemoizeState, planstate), ancestors,
 							  es);
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			show_upper_qual((List *)((Count *) plan)->stopkeys,
+							"Filter", planstate, ancestors, es);
+			show_upper_qual(plan->qual, "Filter", planstate, ancestors, es);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		default:
 			break;
 	}

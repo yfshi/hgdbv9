@@ -875,6 +875,13 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 					fix_scan_expr(root, splan->limitCount, rtoffset, 1);
 			}
 			break;
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_Count:
+			{
+				set_upper_references(root, plan, rtoffset);
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_Agg:
 			{
 				Agg		   *agg = (Agg *) plan;

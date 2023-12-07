@@ -4282,3 +4282,47 @@ reparameterize_pathlist_by_child(PlannerInfo *root,
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * create_count_path
+ *	  Creates a pathnode corresponding to a count for FROM clause.
+ *
+ * 'rel' is the count relation
+ * 'subpath' is the cheapest sub path(outer path)
+ * 'restrict_clauses' are the RestrictInfo nodes to apply at the count
+ * 'stopKeys' are the RestrictInfo nodes to use as a hint to stop the
+ *     scan as soon as possible(get evaluated to false).
+ */
+CountPath *
+create_count_path(PlannerInfo *root,
+				RelOptInfo *rel,
+				Path *subpath,
+				List *restrict_clauses,
+				List *stopKeys,
+				List *motionkeys)
+{
+	CountPath	*pathnode = makeNode(CountPath);
+
+	pathnode->path.pathtype = T_Count;
+	pathnode->path.parent = rel;
+	pathnode->subpath = subpath;
+	pathnode->restrict_clauses = restrict_clauses;
+	pathnode->stopKeys = stopKeys;
+	pathnode->path.pathkeys = subpath->pathkeys;
+	pathnode->path.pathtarget = rel->reltarget;
+
+	pathnode->path.parallel_aware = false;
+	pathnode->path.parallel_safe = rel->consider_parallel;
+	pathnode->path.parallel_workers = 0;
+
+	/*
+	 * glob->countnode_num store the count node counter now,
+	 * assignment it to the CountPath->countnode_id, then transmit to the plan.
+	 */
+	pathnode->countnode_id = root->glob->countnode_num;
+	cost_count(pathnode, rel);
+
+	return pathnode;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */

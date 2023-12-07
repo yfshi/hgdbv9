@@ -186,6 +186,10 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 
 	oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
 
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	estate->count = (int64*)palloc0(sizeof(int64)*queryDesc->plannedstmt->countnode_num);
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
 	/*
 	 * Fill in external parameters, if any, from queryDesc; and allocate
 	 * workspace for internal parameters

@@ -30,6 +30,10 @@ typedef void (*query_pathkeys_callback) (PlannerInfo *root, void *extra);
 extern RelOptInfo *query_planner(PlannerInfo *root,
 								 query_pathkeys_callback qp_callback, void *qp_extra);
 
+extern RelOptInfo *build_count_path(PlannerInfo *root,
+										query_pathkeys_callback qp_callback, void *qp_extra);
+
+
 /*
  * prototypes for plan/planagg.c
  */
@@ -115,5 +119,12 @@ extern Plan *set_plan_references(PlannerInfo *root, Plan *plan);
 extern void record_plan_function_dependency(PlannerInfo *root, Oid funcid);
 extern void record_plan_type_dependency(PlannerInfo *root, Oid typid);
 extern bool extract_query_dependencies_walker(Node *node, PlannerInfo *root);
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+extern Node *split_rels_qual(PlannerInfo *root, Node *quals, Relids qualscope,
+						List **needed_vars, List **n_restrictinfo);
+extern List *generate_count_stopkeys(PlannerInfo *root, List **restrictinfoes);
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 
 #endif							/* PLANMAIN_H */

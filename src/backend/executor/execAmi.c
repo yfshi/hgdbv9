@@ -58,6 +58,7 @@
 #include "executor/nodeValuesscan.h"
 #include "executor/nodeWindowAgg.h"
 #include "executor/nodeWorktablescan.h"
+#include "executor/nodeCount.h" /* ReqID:SRS-SQL-ROWNUM */
 #include "nodes/extensible.h"
 #include "nodes/nodeFuncs.h"
 #include "nodes/pathnodes.h"
@@ -298,6 +299,12 @@ ExecReScan(PlanState *node)
 		case T_LimitState:
 			ExecReScanLimit((LimitState *) node);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_CountState:
+			ExecReScanCount((CountState *) node);
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(node));

@@ -8155,6 +8155,7 @@ get_name_for_var_field(Var *var, int fieldno,
 		case RTE_VALUES:
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
+		case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
 
 			/*
 			 * This case should not occur: a column of a table, values list,
@@ -8663,6 +8664,7 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 	switch (nodeTag(node))
 	{
 		case T_Var:
+		case T_PseudoColVar: /* ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 		case T_Param:
 		case T_CoerceToDomainValue:
@@ -9003,6 +9005,15 @@ get_rule_expr(Node *node, deparse_context *context,
 		case T_Var:
 			(void) get_variable((Var *) node, 0, false, context);
 			break;
+
+		/* Begin - ReqID:SRS-SQL-ROWNUM */
+		case T_PseudoColVar:
+			{
+				if (((PseudoColVar *) node)->pvarkind == PSEUDOCOL_KIND_ROWNUM)
+					appendStringInfoString(buf, "rownum");
+			}
+			break;
+		/* End - ReqID:SRS-SQL-ROWNUM */
 
 		case T_Const:
 			get_const_expr((Const *) node, context, 0);

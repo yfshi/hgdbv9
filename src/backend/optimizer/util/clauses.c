@@ -85,6 +85,14 @@ typedef struct
 	int			sublevels_up;
 } substitute_actual_srf_parameters_context;
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+typedef struct
+{
+	int					sublevels_up;
+	OraExprKind			oraCompatKind;
+} containOraCompatExpr_context;
+/* End - ReqID:SRS-SQL-ROWNUM */
+
 typedef struct
 {
 	char	   *proname;
@@ -160,7 +168,9 @@ static Query *substitute_actual_srf_parameters(Query *expr,
 static Node *substitute_actual_srf_parameters_mutator(Node *node,
 													  substitute_actual_srf_parameters_context *context);
 static bool pull_paramids_walker(Node *node, Bitmapset **context);
-
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+static bool contain_oracompat_expr_walker(Node *node, containOraCompatExpr_context *context);
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*****************************************************************************
  *		Aggregate-function clause manipulation
@@ -5525,3 +5535,57 @@ pull_paramids_walker(Node *node, Bitmapset **context)
 	return expression_tree_walker(node, pull_paramids_walker,
 								  (void *) context);
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * contain_oracompat_expr
+ *	Recursively search for contain_oracompat_expr within a clause.
+ *
+ * Returns true if any oracompat_expr is found, The idea here is that the
+ * caller has verified that the expression contains one or more PseudoVar.
+ */
+bool
+contain_oracompat_expr(Node *clause, OraExprKind oraExprKind)
+{
+	containOraCompatExpr_context	context;
+
+	context.sublevels_up = 0;
+	context.oraCompatKind = oraExprKind;
+
+	return contain_oracompat_expr_walker(clause, &context);
+}
+
+static bool
+contain_oracompat_expr_walker(Node *node,
+								containOraCompatExpr_context *context)
+{
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, PseudoColVar))
+	{
+		PseudoColVar	*pv = (PseudoColVar *) node;
+
+		if (context->oraCompatKind & OCE_ROWNUM
+			&& pv->pvarkind == PSEUDOCOL_KIND_ROWNUM)
+			return true;
+
+		return false;
+	}
+
+
+	if (IsA(node, Query))
+	{
+		bool	result;
+
+		context->sublevels_up++;
+		result = query_tree_walker((Query *) node,
+						contain_oracompat_expr_walker,
+						(void *) context, 0);
+		context->sublevels_up--;
+		return result;
+	}
+
+	return expression_tree_walker(node, contain_oracompat_expr_walker, context);
+}
+/* End - ReqID:SRS-SQL-ROWNUM */

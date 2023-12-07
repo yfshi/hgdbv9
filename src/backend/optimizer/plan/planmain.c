@@ -29,6 +29,7 @@
 #include "optimizer/paths.h"
 #include "optimizer/placeholder.h"
 #include "optimizer/planmain.h"
+#include "optimizer/cost.h"	/* ReqID:SRS-SQL-ROWNUM */
 
 
 /*
@@ -282,3 +283,67 @@ query_planner(PlannerInfo *root,
 
 	return final_rel;
 }
+
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * build_count_path
+ *
+ *	Generate a Count path for a contain rownum pseudo-column query,
+ */
+RelOptInfo *
+build_count_path(PlannerInfo *root,
+			  query_pathkeys_callback qp_callback, void *qp_extra)
+{
+	Query		*parse = root->parse;
+	RelOptInfo	*subRel;
+	RelOptInfo	*count_rel;
+	Node		*original_quals = parse->jointree->quals;
+	List		*stopKeys= NIL;
+
+	count_rel = fetch_upper_rel(root, UPPERREL_ROWNUM, NULL);
+	count_rel->relid = root->countRI;
+
+	/* Distribute the quals for count case */
+	if (parse->jointree->quals)
+	{
+		Relids		count_relid;
+
+		count_relid = bms_make_singleton(count_rel->relid);
+		parse->jointree->quals = split_rels_qual(root,
+						parse->jointree->quals,
+						count_relid,
+						&root->count_required_vars,
+						&count_rel->baserestrictinfo);
+		bms_free(count_relid);
+	}
+
+	/* Check is there any quals can be used as StopKeys */
+	stopKeys = generate_count_stopkeys(root, &count_rel->baserestrictinfo);
+
+	subRel = query_planner(root, qp_callback, qp_extra);
+
+	/* Merge the tlist to form the final tlist. */
+	count_rel->reltarget->exprs =
+		list_concat_unique(count_rel->reltarget->exprs, subRel->reltarget->exprs);
+
+	/* Mark rel with estimated output rows, width, etc */
+	set_count_size_estimates(root, count_rel, subRel);
+
+	/* Generate access path for count rel */
+	add_path(count_rel, (Path *) create_count_path(root,
+												count_rel,
+												subRel->cheapest_total_path,
+												count_rel->baserestrictinfo,
+												stopKeys, NIL));
+	/* Select cheapest path (pretty easy in this case...) */
+	set_cheapest(count_rel);
+
+	/* Restore the original quals */
+	parse->jointree->quals = original_quals;
+
+	root->glob->countnode_num ++;
+
+	/* count the countnode in a plan, bug23733*/
+	return count_rel;
+}
+/* End - ReqID:SRS-SQL-ROWNUM */

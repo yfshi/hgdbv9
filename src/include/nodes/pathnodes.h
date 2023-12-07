@@ -73,6 +73,7 @@ typedef enum UpperRelationKind
 	UPPERREL_WINDOW,			/* result of window functions, if any */
 	UPPERREL_DISTINCT,			/* result of "SELECT DISTINCT", if any */
 	UPPERREL_ORDERED,			/* result of ORDER BY, if any */
+	UPPERREL_ROWNUM,	/* ReqID:SRS-SQL-ROWNUM */
 	UPPERREL_FINAL				/* result of any remaining top-level actions */
 	/* NB: UPPERREL_FINAL must be last enum entry; it's used to size arrays */
 } UpperRelationKind;
@@ -129,6 +130,7 @@ typedef struct PlannerGlobal
 	char		maxParallelHazard;	/* worst PROPARALLEL hazard level */
 
 	PartitionDirectory partition_directory; /* partition descriptors */
+	int			countnode_num; /* ReqID:SRS-SQL-ROWNUM */
 } PlannerGlobal;
 
 /* macro for fetching the Plan associated with a SubPlan node */
@@ -377,6 +379,12 @@ struct PlannerInfo
 
 	/* Does this query modify any partition key columns? */
 	bool		partColsUpdated;
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	bool		hasCount;
+	Index		countRI;
+	List		*count_required_vars;	/* The vars Count node needs */
+	/* End - ReqID:SRS-SQL-ROWNUM */
 };
 
 
@@ -1909,6 +1917,21 @@ typedef struct LimitPath
 	LimitOption limitOption;	/* FETCH FIRST with ties or exact number */
 } LimitPath;
 
+/* Begin - ReqID:SRS-SQL-ROWNUM */
+/*
+ * CountPath is used to compute the ROWNUM value. It also can stop
+ * scan if stopkeys is evaluated to false.
+ */
+typedef struct CountPath
+{
+	Path		path;
+	Path		*subpath;
+	List		*restrict_clauses;
+	List		*stopKeys;
+	List		*motionkeys;
+	int 		countnode_id;
+} CountPath;
+/* End - ReqID:SRS-SQL-ROWNUM */
 
 /*
  * Restriction clause info.
