@@ -225,11 +225,9 @@ ORDER BY 1;
  three 
 -------
  a
- a   
  ab
- ab  
  abcd
-(5 rows)
+(3 rows)
 
 SELECT f1 AS eight FROM VARCHAR_TBL
 UNION ALL
@@ -239,8 +237,8 @@ SELECT f1 FROM CHAR_TBL;
  a
  ab
  abcd
- a   
- ab  
+ a
+ ab
  abcd
 (6 rows)
 
