@@ -153,10 +153,7 @@ static int get_owner_type(ArchiveHandle *AH, TocEntry *te);
 static void get_desc_ownerto(ArchiveHandle *AH, TocEntry *te);
 static char *getInstanceSuperuser(PGconn *conn);
 
-static void dumpDatabaseRoleMembership(ArchiveHandle *AH);
 static void OradumpDatabaseRoleMembership(ArchiveHandle *AH);
-static void dumpDatabaseGroups(ArchiveHandle *AH);
-static void OradumpDatabaseGroups(ArchiveHandle *AH);
 static Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
 static Oid GetCurrentDboid(PGconn *conn);
 static bool isSuperuser(PGconn *conn);
@@ -548,9 +545,11 @@ RestoreArchive(Archive *AHX)
 				
 				SetDumptypeMode(AH->connection);
 			}
+			else 
+				ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
 			/* END - bug#M0000238 */
 
-			if(!RestoringToDB(AH) && CurrentUserIsSuperuser && haveDBuser)
+			if(!RestoringToDB(AH) && CurrentUserIsSuperuser && haveDBuser && (AHX->remoteVersion >= 140008))	/*  bug#M0000261 */
 			{
 				PQExpBuffer qry1;
 			
@@ -561,21 +560,8 @@ RestoreArchive(Archive *AHX)
 					appendPQExpBuffer(qry1, "set session authorization %s;", AH->public.use_role);
 
 				dumpDatabaseRoles(AH);
-				if (AHX->remoteVersion >= 80100)
-				{
-					if (DB_ORACLE == database_mode && haveDBuser)
-						OradumpDatabaseRoleMembership(AH);
-					else
-						dumpDatabaseRoleMembership(AH);
-				}
-				else
-				{
-					if (DB_ORACLE == database_mode)
-						OradumpDatabaseGroups(AH);
-					else
-						dumpDatabaseGroups(AH);
-				}
-				
+				OradumpDatabaseRoleMembership(AH);
+
 				if(qry1->data)
 				{
 					res1 = PQexec(AH->connection, "set ivorysql.compatible_mode to pg;");
@@ -845,15 +831,13 @@ RestoreArchive(Archive *AHX)
 	ahprintf(AH, "--\n-- PostgreSQL database dump complete\n--\n\n");
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
-	if ((DB_ORACLE == database_mode) && 
-			strcmp((&ropt->cparams)->dbname,"template1") !=0 && 
+	if ((DB_ORACLE == database_mode) && (&ropt->cparams)->dbname &&
+			strcmp((&ropt->cparams)->dbname,"template1") != 0 && 
 			strstr((&ropt->cparams)->dbname, "dbname=template1") == 0)
 	{
 		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 		{
 			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-			if(CurrentUserIsSuperuser)
-				ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
 		}
 		
 	}
@@ -972,16 +956,15 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 				{
 					if (RestoringToDB(AH))
 					{
-						if(restoremode)
+						if (restoremode)
 						{
 							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-							if(CurrentUserIsSuperuser)
-								ahprintf(AH, "set session authorization system;\n");
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+							ahprintf(AH, "\n\n");
 						}
 					}
-					else
+					else if (CurrentUserIsSuperuser && haveDBuser && (((Archive *)AH)->remoteVersion >= 140008))
 					{
 						PQExpBuffer qrycmd1;
 			
@@ -5276,8 +5259,8 @@ dumpDatabaseRoles(ArchiveHandle *AH)
 				i_is_current_user;
 	int			i;
 
-	if (AHX->remoteVersion >= 90600)
-		printfPQExpBuffer(buf,
+	/* bug:z683 */
+	printfPQExpBuffer(buf,
 						  "SELECT a.oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
 						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
@@ -5288,92 +5271,6 @@ dumpDatabaseRoles(ArchiveHandle *AH)
 						  "WHERE rolname !~ '^pg_' AND "
 						  "d.datname = current_database() AND "
 						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (AHX->remoteVersion >= 90500)
-		printfPQExpBuffer(buf,
-						  "SELECT a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, rolbypassrls, "
-						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (AHX->remoteVersion >= 90100)
-		printfPQExpBuffer(buf,
-						  "SELECT a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (AHX->remoteVersion >= 80200)
-		printfPQExpBuffer(buf,
-						  "SELECT a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (AHX->remoteVersion >= 80100)
-		printfPQExpBuffer(buf,
-						  "SELECT a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else
-		printfPQExpBuffer(buf,
-						  "SELECT 0 as oid, usename as rolname, "
-						  "usesuper as rolsuper, "
-						  "true as rolinherit, "
-						  "usesuper as rolcreaterole, "
-						  "usecreatedb as rolcreatedb, "
-						  "true as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "0 as rolowndboid,"
-						  "passwd as rolpassword, "
-						  "valuntil as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "usename = current_user AS is_current_user "
-						  "FROM pg_shadow "
-						  "UNION ALL "
-						  "SELECT 0 as oid, groname as rolname, "
-						  "false as rolsuper, "
-						  "true as rolinherit, "
-						  "false as rolcreaterole, "
-						  "false as rolcreatedb, "
-						  "false as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "null::text as rolpassword, "
-						  "null::timestamptz as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "false AS is_current_user "
-						  "FROM pg_group "
-						  "WHERE NOT EXISTS (SELECT 1 FROM pg_shadow "
-						  " WHERE usename = groname) "
 						  "ORDER BY 2");
 
 	res = PQexec(AH->connection, buf->data);
@@ -5508,8 +5405,10 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 	if(!haveDBuser)		/*  bug#M0000261 */
 		return 1;
 
+	if(((Archive *)AH)->remoteVersion < 140008)
+		return 1;
+
 	query_cmd = createPQExpBuffer();
-	
 
 	if (strcmp(te->desc, "TABLE") == 0 ||
 			strcmp(te->desc, "VIEW") == 0 ||
@@ -5969,7 +5868,7 @@ getInstanceSuperuser(PGconn *conn)
 }
 
 /*
- * dumpDatabaseRoleMembership  ReqID:SRS-MISC-USE
+ * SetCompatible  ReqID:SRS-MISC-USE
  * 
  */
 static void 
@@ -5980,66 +5879,6 @@ SetCompatible(PQExpBuffer buf)
 	appendPQExpBufferStr(buf, "set ivorysql.dumppgtype to oracle;\n");
 	appendPQExpBufferStr(buf, "set ivorysql.grant_usertype to oracle;\n");
 	appendPQExpBufferStr(buf, "\n\n");
-}
-
-/*
- * dumpDatabaseRoleMembership  ReqID:SRS-MISC-USE
- * 
- */
-static void
-dumpDatabaseRoleMembership(ArchiveHandle *AH)
-{
-	PQExpBuffer buf = createPQExpBuffer();
-	PQExpBuffer buf1 = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
-
-	printfPQExpBuffer(buf, "SELECT ur.rolname AS roleid, "
-					  "um.rolname AS member, "
-					  "a.admin_option, "
-					  "ug.rolname AS grantor "
-					  "FROM pg_auth_members a "
-					  "LEFT JOIN PG_AUTHID ur on ur.oid = a.roleid "
-					  "LEFT JOIN PG_AUTHID um on um.oid = a.member "
-					  "LEFT JOIN PG_AUTHID ug on ug.oid = a.grantor "
-					  "WHERE NOT (ur.rolname ~ '^pg_' AND um.rolname ~ '^pg_')"
-					  "ORDER BY 1,2,3");
-	
-	res = PQexec(AH->connection, buf->data);
-
-	if (PQntuples(res) > 0)
-		ahprintf(AH, "--\n-- Role memberships\n--\n\n");
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		char	   *roleid = PQgetvalue(res, i, 0);
-		char	   *member = PQgetvalue(res, i, 1);
-		char	   *option = PQgetvalue(res, i, 2);
-
-		appendPQExpBuffer(buf1, "GRANT %s", fmtId(roleid));
-		appendPQExpBuffer(buf1, " TO %s", fmtId(member));
-		if (*option == 't')
-			appendPQExpBuffer(buf1, " WITH ADMIN OPTION");
-
-		/*
-		 * We don't track the grantor very carefully in the backend, so cope
-		 * with the possibility that it has been dropped.
-		 */
-		if (!PQgetisnull(res, i, 3))
-		{
-			char	   *grantor = PQgetvalue(res, i, 3);
-
-			appendPQExpBuffer(buf1, " GRANTED BY %s", fmtId(grantor));
-		}
-		appendPQExpBuffer(buf1, ";\n");
-	}
-	ahprintf(AH, "%s", buf1->data);
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-	destroyPQExpBuffer(buf1);
-
-	ahprintf(AH, "\n\n");
 }
 
 /*
@@ -6144,170 +5983,6 @@ OradumpDatabaseRoleMembership(ArchiveHandle *AH)
 
 	ahprintf(AH, "\n\n");
 }
-
-/*
- * dumpDatabaseGroups  ReqID:SRS-MISC-USE
- * 
- * dump DatabaseGroups
- */
-static void
-dumpDatabaseGroups(ArchiveHandle *AH)
-{
-	PQExpBuffer buf = createPQExpBuffer();
-	PQExpBuffer buf1 = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
-
-	res = PQexec(AH->connection,
-					   "SELECT groname, grolist FROM pg_group ORDER BY 1");
-
-	if (PQntuples(res) > 0)
-		ahprintf(AH, "--\n-- Role memberships\n--\n\n");
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		char	   *groname = PQgetvalue(res, i, 0);
-		char	   *grolist = PQgetvalue(res, i, 1);
-		PGresult   *res2;
-		int			j;
-
-		/*
-		 * Array representation is {1,2,3} ... convert to (1,2,3)
-		 */
-		if (strlen(grolist) < 3)
-			continue;
-
-		grolist = pg_strdup(grolist);
-		grolist[0] = '(';
-		grolist[strlen(grolist) - 1] = ')';
-		printfPQExpBuffer(buf,
-						  "SELECT usename FROM pg_shadow "
-						  "WHERE usesysid IN %s ORDER BY 1",
-						  grolist);
-		free(grolist);
-
-		res2 = PQexec(AH->connection, buf->data);
-
-		for (j = 0; j < PQntuples(res2); j++)
-		{
-			char	   *usename = PQgetvalue(res2, j, 0);
-
-			/*
-			 * Don't try to grant a role to itself; can happen if old
-			 * installation has identically named user and group.
-			 */
-			if (strcmp(groname, usename) == 0)
-				continue;
-
-			appendPQExpBuffer(buf1, "GRANT %s", fmtId(groname));
-			appendPQExpBuffer(buf1, " TO %s;\n", fmtId(usename));
-		}
-		PQclear(res2);
-	}
-
-	ahprintf(AH, "%s", buf1->data);
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-	destroyPQExpBuffer(buf1);
-
-	ahprintf(AH, "\n\n");
-}
-
-
-/**
- * OradumpDatabaseGroups  ReqID:SRS-MISC-USE
- * 
- * Dump group memberships from a pre-8.1 server.  It's annoying that we
- * can't share any useful amount of code with the post-8.1 case, but
- * the catalog representations are too different.
- *
- * Note: we expect dumpRoles already created all the roles, but there is
- * no membership yet.
- */
-static void
-OradumpDatabaseGroups(ArchiveHandle *AH)
-{
-	PQExpBuffer buf = createPQExpBuffer();
-	PQExpBuffer buf1 = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
-
-	res = PQexec(AH->connection,
-					   "SELECT groname, grolist, grosysid FROM pg_group ORDER BY 1");
-
-	if (PQntuples(res) > 0)
-		ahprintf(AH, "--\n-- Database Role memberships\n--\n\n");
-
-	ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-	if(CurrentUserIsSuperuser)
-		ahprintf(AH, "set session authorization system;\n");
-	ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-	ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n\n");
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		char	   *groname = PQgetvalue(res, i, 0);
-		char	   *grolist = PQgetvalue(res, i, 1);
-		Oid			grosysid = atooid(PQgetvalue(res, i, 2));
-		PGresult   *res2;
-		int			j;
-		Oid			grosysdboid = FindUserLevelbyoid(AH->connection, grosysid);
-
-		/*
-		 * Array representation is {1,2,3} ... convert to (1,2,3)
-		 */
-		if (strlen(grolist) < 3)
-			continue;
-
-		grolist = pg_strdup(grolist);
-		grolist[0] = '(';
-		grolist[strlen(grolist) - 1] = ')';
-		printfPQExpBuffer(buf,
-						  "SELECT usename, dboid FROM pg_shadow "
-						  "WHERE usesysid IN %s ORDER BY 1",
-						  grolist);
-		free(grolist);
-
-		res2 = PQexec(AH->connection, buf->data);
-
-		for (j = 0; j < PQntuples(res2); j++)
-		{
-			char	   *usename = PQgetvalue(res2, j, 0);
-			Oid			dboid = atooid(PQgetvalue(res2, j, 1));
-
-			/*
-			 * Don't try to grant a role to itself; can happen if old
-			 * installation has identically named user and group.
-			 */
-			if (strcmp(groname, usename) == 0)
-				continue;
-
-			if(grosysdboid && dboid)
-				continue;
-
-			if(grosysdboid)
-				appendPQExpBuffer(buf1, " GRANT DATABASEUSER %s;\n", fmtId(groname));
-			else
-				appendPQExpBuffer(buf1, " GRANT INSTANCEUSER %s;\n", fmtId(groname));
-
-			if(dboid)
-				appendPQExpBuffer(buf1, " TO DATABASEUSER %s;\n", fmtId(usename));
-			else
-				appendPQExpBuffer(buf1, " TO INSTANCEUSER %s;\n", fmtId(usename));
-			
-			ahprintf(AH, "%s", buf1->data);
-		}
-
-		PQclear(res2);
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-	destroyPQExpBuffer(buf1);
-
-	ahprintf(AH, "\n\n");
-}
-
 
 /*
  * FindUserLevelbyoid  ReqID:SRS-MISC-USE

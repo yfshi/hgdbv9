@@ -871,7 +871,7 @@ dumpRoles(PGconn *conn)
 	int			i;
 
 	/* note: rolconfig is dumped later */
-	if (server_version >= 90600)
+	if (server_version >= 140008)				/* bug:z683 */
 	{
 		if(haveDBuser)			/*  bug#M0000261 */
 			printfPQExpBuffer(buf,
@@ -896,6 +896,17 @@ dumpRoles(PGconn *conn)
 							  "WHERE rolname !~ '^pg_' "
 							  "ORDER BY 2", role_catalog, role_catalog);
 	}
+	else if (server_version >= 90600)
+		printfPQExpBuffer(buf,
+							  "SELECT oid, rolname, rolsuper, rolinherit, "
+							  "rolcreaterole, rolcreatedb, "
+							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+							  "rolvaliduntil, rolreplication, rolbypassrls, "
+							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+							  "rolname = current_user AS is_current_user "
+							  "FROM %s "
+							  "WHERE rolname !~ '^pg_' "
+							  "ORDER BY 2", role_catalog, role_catalog);
 	else if (server_version >= 90500)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "

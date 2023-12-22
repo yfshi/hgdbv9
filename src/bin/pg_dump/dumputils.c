@@ -1385,6 +1385,7 @@ haveDatabaseUser(PGconn *conn)
 	if (PQntuples(res))
 	{
 		haveDBuser = true;		/*  bug#M0000261 */
+		PQclear(res);
 		return true;
 	}
 

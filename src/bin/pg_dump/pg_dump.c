@@ -10510,7 +10510,6 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 
 	if (dopt->dataOnly)
 		return;
-	
 
 	if (dbrinfo->dobj.name)
 	{
@@ -10610,8 +10609,7 @@ getDbRoles(Archive *fout, int *numRoles)
 	int			i = 0;
 	int			ntups = 0;
 
-	if (fout->remoteVersion >= 90600)
-		printfPQExpBuffer(buf,
+	printfPQExpBuffer(buf,
 						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
 						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
@@ -10622,92 +10620,6 @@ getDbRoles(Archive *fout, int *numRoles)
 						  "WHERE rolname !~ '^pg_' AND "
 						  "d.datname = current_database() AND "
 						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (fout->remoteVersion >= 90500)
-		printfPQExpBuffer(buf,
-						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, rolbypassrls, "
-						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (fout->remoteVersion >= 90100)
-		printfPQExpBuffer(buf,
-						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (fout->remoteVersion >= 80200)
-		printfPQExpBuffer(buf,
-						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else if (fout->remoteVersion >= 80100)
-		printfPQExpBuffer(buf,
-						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-	else
-		printfPQExpBuffer(buf,
-						  "SELECT 0 as tableoid, 0 as oid, usename as rolname, "
-						  "usesuper as rolsuper, "
-						  "true as rolinherit, "
-						  "usesuper as rolcreaterole, "
-						  "usecreatedb as rolcreatedb, "
-						  "true as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "0 as rolowndboid,"
-						  "passwd as rolpassword, "
-						  "valuntil as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "usename = current_user AS is_current_user "
-						  "FROM pg_shadow "
-						  "UNION ALL "
-						  "SELECT 0 as oid, groname as rolname, "
-						  "false as rolsuper, "
-						  "true as rolinherit, "
-						  "false as rolcreaterole, "
-						  "false as rolcreatedb, "
-						  "false as rolcanlogin, "
-						  "-1 as rolconnlimit, "
-						  "null::text as rolpassword, "
-						  "null::timestamptz as rolvaliduntil, "
-						  "false as rolreplication, "
-						  "false as rolbypassrls, "
-						  "null as rolcomment, "
-						  "false AS is_current_user "
-						  "FROM pg_group "
-						  "WHERE NOT EXISTS (SELECT 1 FROM pg_shadow "
-						  " WHERE usename = groname) "
 						  "ORDER BY 2");
 
 	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);

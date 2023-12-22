@@ -50,11 +50,11 @@ CREATE INDEX binary_floatidx ON binary_floattmp USING gist ( a );
 SET enable_seqscan=off;
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a <  -179.0::binary_float;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double < '-179'::binary_double)
+         Filter: ((a)::binary_double < '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
@@ -66,11 +66,11 @@ SELECT count(*) FROM binary_floattmp WHERE a <  -179.0::binary_float;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a <= -179.0::binary_float;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double <= '-179'::binary_double)
+         Filter: ((a)::binary_double <= '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
@@ -82,11 +82,11 @@ SELECT count(*) FROM binary_floattmp WHERE a <= -179.0::binary_float;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a  = -179.0::binary_float;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double = '-179'::binary_double)
+         Filter: ((a)::binary_double = '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
@@ -98,11 +98,11 @@ SELECT count(*) FROM binary_floattmp WHERE a  = -179.0::binary_float;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a >= -179.0::binary_float;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double >= '-179'::binary_double)
+         Filter: ((a)::binary_double >= '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
@@ -114,11 +114,11 @@ SELECT count(*) FROM binary_floattmp WHERE a >= -179.0::binary_float;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a >  -179.0::binary_float;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double > '-179'::binary_double)
+         Filter: ((a)::binary_double > '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
@@ -130,11 +130,11 @@ SELECT count(*) FROM binary_floattmp WHERE a >  -179.0::binary_float;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM binary_floattmp WHERE a <> -179.0::binary_float;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on binary_floattmp
-         Filter: ((a)::binary_double <> '-179'::binary_double)
+         Filter: ((a)::binary_double <> '-1.79E+002'::binary_double)
          ->  Bitmap Index Scan on binary_floatidx
 (4 rows)
 
