@@ -5878,6 +5878,7 @@ SetCompatible(PQExpBuffer buf)
 	appendPQExpBufferStr(buf, "set session authorization system;\n");
 	appendPQExpBufferStr(buf, "set ivorysql.dumppgtype to oracle;\n");
 	appendPQExpBufferStr(buf, "set ivorysql.grant_usertype to oracle;\n");
+	appendPQExpBufferStr(buf, "\\parser\n");
 	appendPQExpBufferStr(buf, "\n\n");
 }
 

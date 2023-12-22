@@ -533,7 +533,7 @@ main(int argc, char *argv[])
 		}
 		else
 		{
-			pg_log_error("Can't use -M when dbmode is pg.");
+			pg_log_error("Can't use -m when dbmode is pg.");
 			exit_nicely(1);
 		}
 
@@ -663,20 +663,17 @@ main(int argc, char *argv[])
 
 			/* Dump role memberships --- need different method for pre-8.1 */
 			/* BEGIN - ReqID:SRS-MISC-USER */
-			if (server_version >= 80100)
+			if (server_version >= 140008 )
 			{
 				if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser)		/*  bug#M0000261 */
 					OradumpRoleMembership(conn);
 				else
 					dumpRoleMembership(conn);
 			}
+			else if (server_version >= 80100)
+				dumpRoleMembership(conn);
 			else
-			{
-				if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser)		/*  bug#M0000261 */
-					OradumpGroups(conn);
-				else
-					dumpGroups(conn);
-			}
+				dumpGroups(conn);
 			/* END - ReqID:SRS-MISC-USER */
 		}
 
@@ -1991,7 +1988,7 @@ runPgDump(const char *dbname, const char *create_opts)
 
 	/* BEGIN - bug#M0000261 */
 	if(DumpMode)
-		appendPQExpBuffer(cmd, "\"%s\" %s %s -M %s", pg_dump_bin,
+		appendPQExpBuffer(cmd, "\"%s\" %s %s -m %s", pg_dump_bin,
 						  pgdumpopts->data, create_opts, DumpMode);
 	else
 		appendPQExpBuffer(cmd, "\"%s\" %s %s", pg_dump_bin,
