@@ -1220,6 +1220,24 @@ RenameDatabase(const char *oldname, const char *newname)
 	int			npreparedxacts;
 	ObjectAddress address;
 
+	/* If the current user is a database user, this operation is not allowed */
+	/* Begin - bug:z528  bug:530 */
+	if( DB_ORACLE == database_mode)
+	{
+		if(PG_PARSER == compatible_db)
+		{
+			if(!isinstancelevel())
+			{
+				elog(ERROR,"database should be renamed by instance-level user");
+			}
+		}
+		else if(ORA_PARSER == compatible_db)
+		{
+			elog(ERROR,"database cannot be renamed when compatible_db is oracle");
+		}
+	}
+	/* End - bug:z528 bug:530 */
+
 	/*
 	 * Look up the target database's OID, and get exclusive lock on it. We
 	 * need this for the same reasons as DROP DATABASE.

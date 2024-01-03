@@ -227,6 +227,15 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	Datum		newOptions;
 	bool		in_place;
 
+	/* Begin - ReqID:SRS-MISC-USER bug:z561  */
+	bool		is_instance_user = isinstancelevel();
+
+	if (!is_instance_user)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					errmsg("tablespace should be created by instance-superuser")));
+
+	/* End - ReqID:SRS-MISC-USER bug:z561  */
 	/* Must be super user */
 	if (!superuser())
 		ereport(ERROR,
@@ -234,6 +243,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				 errmsg("permission denied to create tablespace \"%s\"",
 						stmt->tablespacename),
 				 errhint("Must be superuser to create a tablespace.")));
+	
 
 	/* However, the eventual owner of the tablespace need not be */
 	/* Begin - ReqID:SRS-MISC-USER bug:z561  */
@@ -244,10 +254,16 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 			switch (stmt->utype)
 			{
 				case DATABASE_USER:
-					ownerId = get_databaserol_oid(stmt->owner);
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("tablespace should be created by instance-superuser")));
+					//ownerId = get_databaserol_oid(stmt->owner);
 					break;
 				case INSTANCE_USER:
-					ownerId = get_instancerol_oid(stmt->owner);
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("tablespace should be created by instance-superuser")));
+					//ownerId = get_instancerol_oid(stmt->owner);
 					break;
 				case UNKNOWN_USER:
 					ownerId = get_rolespec_oid(stmt->owner, false);

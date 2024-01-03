@@ -45,7 +45,6 @@ static void dumpRoles(PGconn *conn);
 static void dumpRoleMembership(PGconn *conn);
 static void OradumpRoleMembership(PGconn *conn);
 static void dumpGroups(PGconn *conn);
-static void OradumpGroups(PGconn *conn);
 static void dropTablespaces(PGconn *conn);
 static void dumpTablespaces(PGconn *conn);
 static void dropDBs(PGconn *conn);
@@ -100,8 +99,9 @@ static int	load_via_partition_root = 0;
 static int	on_conflict_do_nothing = 0;
 
 static char role_catalog[10];
-#define PG_AUTHID "pg_authid"
+#define PG_AUTHID "pg_authid "
 #define PG_ROLES  "pg_roles "
+#define IVORY_ROLES "ivory_roles "
 
 static FILE *OPF;
 static char *filename = NULL;
@@ -185,6 +185,7 @@ main(int argc, char *argv[])
 	int			c,
 				ret;
 	int			optindex;
+	char	   *connectdb = "postgres";			/* bug:z540 */
 
 	pg_logging_init(argv[0]);
 	pg_logging_set_level(PG_LOG_WARNING);
@@ -193,8 +194,8 @@ main(int argc, char *argv[])
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
+	//hg_set_license_abspath(argv[0]);
+	//hg_load_license(NULL);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
@@ -214,6 +215,8 @@ main(int argc, char *argv[])
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_set_license_abspath(argv[0]);
+			hg_load_license(NULL);
 			printf("pg_dumpall %s\n", hg_get_highgoVersion());
 			exit_nicely(0);
 		}
@@ -435,10 +438,6 @@ main(int argc, char *argv[])
 	 * pg_roles which is equally useful, just more likely to have unrestricted
 	 * access than pg_authid.
 	 */
-	if (no_role_passwords)
-		sprintf(role_catalog, "%s", PG_ROLES);
-	else
-		sprintf(role_catalog, "%s", PG_AUTHID);
 
 	/* Add long options to the pg_dump argument list */
 	if (binary_upgrade)
@@ -493,8 +492,17 @@ main(int argc, char *argv[])
 	}
 	else
 	{
-		conn = connectDatabase("postgres", connstr, pghost, pgport, pguser,
+
+/* Begin - bug:z540 */
+#ifdef USE_LICENSE
+		hg_set_license_abspath(argv[0]);
+		hg_load_license(NULL);
+		connectdb = (char *)hg_get_defaultDBname();
+#endif
+
+		conn = connectDatabase(connectdb, connstr, pghost, pgport, pguser,
 							   prompt_password, false);
+/* End - bug:z540 */
 		if (!conn)
 			conn = connectDatabase("template1", connstr, pghost, pgport, pguser,
 								   prompt_password, true);
@@ -508,6 +516,16 @@ main(int argc, char *argv[])
 			exit_nicely(1);
 		}
 	}
+		if (no_role_passwords)
+	{
+		if(server_version >= 140008)
+			sprintf(role_catalog, "%s", IVORY_ROLES);
+		else
+			sprintf(role_catalog, "%s", PG_ROLES);
+	}
+		
+	else
+		sprintf(role_catalog, "%s", PG_AUTHID);
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(conn);
@@ -630,6 +648,11 @@ main(int argc, char *argv[])
 	/* Begin - ReqID:SRS-MISC-GUC */
 	fprintf(OPF, "SET ivorysql.identifier_case_switch = normal;\n");	/* case sensitive indentify */
 	/* End - ReqID:SRS-MISC-GUC */
+	/* Begin - bug:z774 */
+	fprintf(OPF, "SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';\n");
+	fprintf(OPF, "SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
+	fprintf(OPF, "SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
+	/* End - bug:z774 */
 	fprintf(OPF, "\n");
 
 	if (!data_only)
@@ -1228,16 +1251,11 @@ OradumpRoleMembership(PGconn *conn)
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Database Role memberships\n--\n\n");
 
-	
-	fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-	fprintf(OPF, "set session authorization system;\n");
-	fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-	fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n\n");
-
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		Oid			rdboid = InvalidOid,
-					gdboid = InvalidOid;
+					gdboid = InvalidOid,
+					mdboid = InvalidOid;
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
@@ -1247,6 +1265,7 @@ OradumpRoleMembership(PGconn *conn)
 
 
 		rdboid = FindUserLevelbyoid(conn, roleoidoid);
+		mdboid = FindUserLevelbyoid(conn, memberoid);
 		if (!PQgetisnull(res, i, 3))
 		{
 			gdboid = FindUserLevelbyoid(conn, grantoroid);
@@ -1259,16 +1278,11 @@ OradumpRoleMembership(PGconn *conn)
 				continue;
 		}
 
-		if(rdboid)
-			fprintf(OPF, "GRANT DATABASEUSER %s", fmtId(roleid));
-		else
-			fprintf(OPF, "GRANT INSTANCEUSER %s", fmtId(roleid));
-		
-		rdboid = FindUserLevelbyoid(conn, memberoid);
-		if(OidIsValid(rdboid))
-			fprintf(OPF, " TO DATABASEUSER %s", fmtId(member));
-		else
-			fprintf(OPF, " TO INSTANCEUSER %s", fmtId(member));
+		if (OidIsValid(mdboid))
+			continue;
+
+		fprintf(OPF, "GRANT %s", fmtId(roleid));
+		fprintf(OPF, " TO %s", fmtId(member));
 		
 		if (*option == 't')
 			fprintf(OPF, " WITH ADMIN OPTION");
@@ -1281,11 +1295,7 @@ OradumpRoleMembership(PGconn *conn)
 		{
 			char	   *grantor = PQgetvalue(res, i, 3);
 
-			if(OidIsValid(gdboid))
-				fprintf(OPF, " GRANTED BY DATABASEUSER %s", fmtId(grantor));
-			else
-				fprintf(OPF, " GRANTED BY INSTANCEUSER %s", fmtId(grantor));
-
+			fprintf(OPF, " GRANTED BY %s", fmtId(grantor));
 		}
 		fprintf(OPF, ";\n");
 	}
@@ -1364,97 +1374,6 @@ dumpGroups(PGconn *conn)
 
 	fprintf(OPF, "\n\n");
 }
-
-
-/*
- * OradumpGroups  ReqID:SRS-MISC-USE
- * 
- * Dump group memberships from a pre-8.1 server.  It's annoying that we
- * can't share any useful amount of code with the post-8.1 case, but
- * the catalog representations are too different.
- *
- * Note: we expect dumpRoles already created all the roles, but there is
- * no membership yet.
- */
-static void
-OradumpGroups(PGconn *conn)
-{
-	PQExpBuffer buf = createPQExpBuffer();
-	PGresult   *res;
-	int			i;
-
-	res = executeQuery(conn,
-					   "SELECT groname, grolist, grosysid FROM pg_group ORDER BY 1");
-
-	if (PQntuples(res) > 0)
-		fprintf(OPF, "--\n-- Database Role memberships\n--\n\n");
-
-	fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-	fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-	fprintf(OPF, "set session authorization system;\n");
-	fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n\n");
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		char	   *groname = PQgetvalue(res, i, 0);
-		char	   *grolist = PQgetvalue(res, i, 1);
-		Oid			grosysid = atooid(PQgetvalue(res, i, 2));
-		PGresult   *res2;
-		int			j;
-		Oid			grosysdboid = FindUserLevelbyoid(conn, grosysid);
-
-		/*
-		 * Array representation is {1,2,3} ... convert to (1,2,3)
-		 */
-		if (strlen(grolist) < 3)
-			continue;
-
-		grolist = pg_strdup(grolist);
-		grolist[0] = '(';
-		grolist[strlen(grolist) - 1] = ')';
-		printfPQExpBuffer(buf,
-						  "SELECT usename, dboid FROM pg_shadow "
-						  "WHERE usesysid IN %s ORDER BY 1",
-						  grolist);
-		free(grolist);
-
-		res2 = executeQuery(conn, buf->data);
-
-		for (j = 0; j < PQntuples(res2); j++)
-		{
-			char	   *usename = PQgetvalue(res2, j, 0);
-			Oid			dboid = atooid(PQgetvalue(res2, j, 1));
-
-			/*
-			 * Don't try to grant a role to itself; can happen if old
-			 * installation has identically named user and group.
-			 */
-			if (strcmp(groname, usename) == 0)
-				continue;
-
-			if(grosysdboid && dboid)
-				continue;
-
-			if(grosysdboid)
-				fprintf(OPF, " GRANT DATABASEUSER %s;\n", fmtId(groname));
-			else
-				fprintf(OPF, " GRANT INSTANCEUSER %s;\n", fmtId(groname));
-
-			if(dboid)
-				fprintf(OPF, " TO DATABASEUSER %s;\n", fmtId(usename));
-			else
-				fprintf(OPF, " TO INSTANCEUSER %s;\n", fmtId(usename));
-		}
-
-		PQclear(res2);
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-
-	fprintf(OPF, "\n\n");
-}
-
 
 /*
  * Drop tablespaces.
@@ -1644,12 +1563,15 @@ dumpTablespaces(PGconn *conn)
 		{
 			spcownerid = atooid(PQgetvalue(res, i, 8));
 			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
+			if (spcownerdboid)
+				continue;
 		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
 
 		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
+		/*
 		if(DB_ORACLE == database_mode)
 		{
 			if(spcownerdboid)
@@ -1661,6 +1583,8 @@ dumpTablespaces(PGconn *conn)
 		{
 			appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		}
+		*/
+		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);
@@ -1935,7 +1859,8 @@ dumpDatabases(PGconn *conn)
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						fprintf(OPF, "set session authorization system;\n");
+						if(CurrentUserIsSuperuser && haveDBuser)
+							fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
 						fprintf(OPF, "\n\n");

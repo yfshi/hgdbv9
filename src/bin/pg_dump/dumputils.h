@@ -82,6 +82,7 @@ extern void makeAlterConfigCommand(PGconn *conn, const char *configitem,
 extern void getcurrentuserisInstanceSupperuser(PGconn *conn);
 extern void getDatabaseMode(PGconn *conn);
 extern void setIdentifierCaseSwitch(PGconn *conn);		/* BUG#M229 */
+extern void setNLSdateFormat(PGconn *conn); 				/* BUG:z774 */
 
 extern AssignDumpMode  getDumpMode(const char *dumpmode);		/*  bug#M0000261 */
 extern bool haveDatabaseUser(PGconn *conn);		/*  bug#M0000261 */

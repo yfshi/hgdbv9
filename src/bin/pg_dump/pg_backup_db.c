@@ -33,7 +33,6 @@ static void _check_database_version(ArchiveHandle *AH);
 static void notice_processor(void *arg, const char *message);
 
 /* BEGIN - ReqID:SRS-MISC-USER */
-static void SetCompatibleMode(PGconn *conn);
 static int RestoringToDB(ArchiveHandle *AH);
 /* END - ReqID:SRS-MISC-USER */
 
@@ -241,11 +240,11 @@ ConnectDatabase(Archive *AHX,
 		{
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 			{
-				SetCompatibleMode(AH->connection);
 				SetDumptypeMode(AH->connection);
 
 				//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
 				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
+				setNLSdateFormat(AH->connection);				/* BUG:z774 */
 			}
 			else if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)	
 			{
@@ -613,41 +612,6 @@ DropBlobIfExists(ArchiveHandle *AH, Oid oid)
 				 oid, oid);
 	}
 }
-
-
-/*
- * SetCompatibleMode  ReqID:SRS-MISC-USE
- * 
- */
-static void 
-SetCompatibleMode(PGconn *conn)
-{
-	PGresult		  *res,
-					  *res1;
-
-	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-		fatal("change compatible_mode error");
-	if (res)
-		PQclear(res);
-
-	if((CurrentUserIsSuperuser) && haveDBuser)			/*  bug#M0000261 */
-	{
-		res1 = PQexec(conn, "set session authorization system;");	
-
-		if (PQresultStatus(res1) != PGRES_COMMAND_OK)
-			fatal("change user error");
-
-		pg_log_warning("use database_user \"system\" pg_dump ");
-		
-		CurrentSessionUserName = "system";	
-		
-		if (res1)
-			PQclear(res1);		
-	}
-}
-
-
 
 /*
  * RestoringToDB  ReqID:SRS-MISC-USE

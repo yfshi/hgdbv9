@@ -444,10 +444,12 @@ main(int argc, char **argv)
 	init_parallel_dump_utils();
 
 	progname = get_progname(argv[0]);
+#if 0
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 	hg_set_license_abspath(argv[0]);
 	hg_load_license(NULL);
+#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
@@ -467,6 +469,8 @@ main(int argc, char **argv)
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_set_license_abspath(argv[0]);
+			hg_load_license(NULL);
 			printf("pg_dump %s\n", hg_get_highgoVersion());
 			exit_nicely(0);
 		}
@@ -836,6 +840,7 @@ main(int argc, char **argv)
 	setIdentifierCaseSwitch(((ArchiveHandle *) fout)->connection);		/* BUG#M229 */
 	//ExecuteSqlStatement(fout, "set ivorysql.identifier_case_switch = normal;");	/* case sensitive indentify */
 	/* End - ReqID:SRS-MISC-GUC */
+	setNLSdateFormat(((ArchiveHandle *) fout)->connection);				/* BUG:z774 */
 
 	setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
@@ -10556,15 +10561,15 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 			appendPQExpBuffer(query, " CONNECTION LIMIT %d", dbrinfo->rolconnlimit );
 
 
-		if (!dbrinfo->rolpassword)
+		if (dbrinfo->rolpassword)			/*  bug#z680 */
 			appendPQExpBuffer(query, " PASSWORD %s", dbrinfo->rolpassword);
 
-		if (!dbrinfo->rolvaliduntil)
+		if (dbrinfo->rolvaliduntil)			/*  bug#z680 */
 			appendPQExpBuffer(query, " VALID UNTIL '%s'", dbrinfo->rolvaliduntil );
 
 		appendPQExpBufferStr(query, ";\n");
 
-		if (!dbrinfo->rolcomment)
+		if (dbrinfo->rolcomment)			/*  bug#z680 */
 			appendPQExpBuffer(query, "COMMENT ON ROLE %s IS %s;\n", fmtId(dbrinfo->dobj.name), dbrinfo->rolcomment);
 
 		if (dbrinfo->dobj.dump & DUMP_COMPONENT_POLICY)
@@ -10642,6 +10647,8 @@ getDbRoles(Archive *fout, int *numRoles)
 	
 	ntups = PQntuples(res);
 
+	*numRoles = ntups;
+
 	dbrinfo = (DatabaseRolesInfo *) pg_malloc0(ntups * sizeof(DatabaseRolesInfo));
 
 	for (i = 0; i < ntups; i++)
@@ -10664,6 +10671,7 @@ getDbRoles(Archive *fout, int *numRoles)
 		dbrinfo[i].dobj.objType = DO_DATABASEROLE;
 		dbrinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
 		dbrinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		AssignDumpId(&dbrinfo[i].dobj);			/*  bug#z680 bug:z538 */
 		dbrinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_rolname));
 		dbrinfo[i].rolsuper = (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0);
 		dbrinfo[i].rolinherit = (strcmp(PQgetvalue(res, i, i_rolinherit), "t") == 0);
@@ -10697,9 +10705,11 @@ getDbRoles(Archive *fout, int *numRoles)
 		}
 		else
 			dbrinfo[i].rolpassword = NULL;
-	}
 
-	*numRoles = ntups;
+		selectDumpableObject(&(dbrinfo[i].dobj), fout);
+
+		dbrinfo[i].dobj.dump &= ~DUMP_COMPONENT_ACL;
+	}
 
 	PQclear(res);
 	destroyPQExpBuffer(buf);

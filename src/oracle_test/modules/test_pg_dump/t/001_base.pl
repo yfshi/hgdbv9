@@ -614,7 +614,7 @@ my %tests = (
 	'CREATE FUNCTION regress_pg_dump_schema.test_func' => {
 		regexp => qr/^
             \QCREATE FUNCTION regress_pg_dump_schema.test_func() RETURNS integer\E
-            \n\s+\QLANGUAGE sql\E
+            \n\s+\QLANGUAGE sql SECURITY INVOKER\E
             \n/xm,
 		like => { binary_upgrade => 1, },
 	},
