@@ -1571,7 +1571,7 @@ dumpTablespaces(PGconn *conn)
 		fspcname = pg_strdup(fmtId(spcname));
 
 		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
-		/*
+
 		if(DB_ORACLE == database_mode)
 		{
 			if(spcownerdboid)
@@ -1583,8 +1583,6 @@ dumpTablespaces(PGconn *conn)
 		{
 			appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		}
-		*/
-		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);

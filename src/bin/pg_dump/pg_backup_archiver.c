@@ -2616,7 +2616,7 @@ get_desc_ownerto(ArchiveHandle *AH, TocEntry *te)
 		strcmp(te->desc, "STATISTICS") == 0 ||
 		strcmp(te->desc, "PUBLICATION") == 0 ||
 		strcmp(te->desc, "PACKAGE") == 0 ||
-		/*strcmp(te->desc, "TABLESPACE") == 0 ||*/
+		strcmp(te->desc, "TABLESPACE") == 0 ||
 		strcmp(te->desc, "SUBSCRIPTION") == 0)
 	{
 		int utype = 0;
