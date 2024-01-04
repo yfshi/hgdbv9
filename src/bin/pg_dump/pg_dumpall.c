@@ -702,6 +702,8 @@ main(int argc, char *argv[])
 
 		/* Dump tablespaces */
 		if (!roles_only && !no_tablespaces)
+			dumpTablespaces(conn);
+#if 0		
 		{
 			/* BEGIN - ReqID:SRS-MISC-USER  BUG: Z561 */
 			if(database_mode == DB_ORACLE)
@@ -715,6 +717,7 @@ main(int argc, char *argv[])
 			}
 			/* END - ReqID:SRS-MISC-USER  BUG: Z561 */
 		}
+#endif
 	}
 
 	if (!globals_only && !roles_only && !tablespaces_only)
@@ -1571,7 +1574,7 @@ dumpTablespaces(PGconn *conn)
 		fspcname = pg_strdup(fmtId(spcname));
 
 		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
-
+/*
 		if(DB_ORACLE == database_mode)
 		{
 			if(spcownerdboid)
@@ -1583,7 +1586,8 @@ dumpTablespaces(PGconn *conn)
 		{
 			appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		}
-
+*/
+		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		appendPQExpBufferStr(buf, " LOCATION ");
 		appendStringLiteralConn(buf, spclocation, conn);
 		appendPQExpBufferStr(buf, ";\n");
