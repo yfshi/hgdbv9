@@ -86,6 +86,7 @@
 /* Begin - ReqID:SRS-MISC-USER */
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+#include "commands/user.h"
 /* End - ReqID:SRS-MISC-USER */
 
 
