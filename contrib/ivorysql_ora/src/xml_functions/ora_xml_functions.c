@@ -1278,14 +1278,7 @@ ivy_deletexml(PG_FUNCTION_ARGS)
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	/* Begin - BUG#M0000280 */
-	if (ws.xpathcomp)
-		xmlXPathFreeCompExpr(ws.xpathcomp);
-	if (ws.xpathctx)
-		xmlXPathFreeContext(ws.xpathctx);
-	if (ws.doc)
-		xmlFreeDoc(ws.doc);
-	/* End - BUG#M0000280 */
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1329,14 +1322,7 @@ ivy_deletexml2(PG_FUNCTION_ARGS)
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	/* Begin - BUG#M0000280 */
-	if (ws.xpathcomp)
-		xmlXPathFreeCompExpr(ws.xpathcomp);
-	if (ws.xpathctx)
-		xmlXPathFreeContext(ws.xpathctx);
-	if (ws.doc)
-		xmlFreeDoc(ws.doc);
-	/* End - BUG#M0000280 */
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
