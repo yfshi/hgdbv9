@@ -954,10 +954,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 													constraint->location)));
 					/* Begin - ReqID:SRS-SQL-IDENTCOL */
 					/* Allow DEFAULT ON NULL to insert NULL values */
-					if (column->identity == ATTRIBUTE_IDENTITY_DEFAULT_ON_NULL)
-						column->is_not_null = false;
-					else
-						column->is_not_null = true;
+					column->is_not_null = true;
 					/* End - ReqID:SRS-SQL-IDENTCOL */
 
 					saw_nullable = true;
