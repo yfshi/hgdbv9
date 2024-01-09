@@ -188,6 +188,7 @@ static bool output_failed = false;
 static int	output_errno = 0;
 static char *pgdata_native;
 static char *preload_ora_misc;	/* BUG#M0000195 */
+//static char *set_parser_by_extension;		 /* bug:z776 */
 
 /* BEGIN - case sensitive indentify */
 static char  *switchmode = "interchange";
@@ -939,6 +940,23 @@ set_null_conf(void)
 			exit(1);
 		}
 		free(path);
+#if 0
+		/*  BEGIN - bug:z776 */
+		path = psprintf("%s/set_parser_by_extension.txt", pg_data);
+		conf_file = fopen(path, PG_BINARY_W);
+		if (conf_file == NULL)
+		{
+			pg_log_error("could not open file \"%s\" for writing: %m", path);
+			exit(1);
+		}
+		if (fclose(conf_file))
+		{
+			pg_log_error("could not write file \"%s\": %m", path);
+			exit(1);
+		}
+		free(path);
+		/* END - bug:z776 */
+#endif
 	}
 	/* END - SQL PARSER */
 }
@@ -1491,6 +1509,21 @@ setup_config(void)
 
 	free(conflines);
 	/* END - SRS-MISC-GB18030 */
+#if 0
+	/*  BEGIN - bug:z776 */
+	conflines = readfile(set_parser_by_extension);
+	snprintf(path, sizeof(path), "%s/set_parser_by_extension.txt", pg_data);
+
+	writefile(path, conflines);
+	if (chmod(path, pg_file_create_mode) != 0)
+	{
+		pg_log_error("could not change permissions of \"%s\": %m", path);
+		exit(1);
+	}
+
+	free(conflines);
+	/*  END- bug:z776 */
+#endif
 	check_ok();
 }
 
@@ -2796,6 +2829,7 @@ setup_data_file_paths(void)
 	{
 		set_input(&ora_conf_file, "ivorysql.conf.sample");
 		set_input(&preload_ora_misc, "preload_ora_misc.sql");	/* BUG#M0000195 */
+//		set_input(&set_parser_by_extension, "set_parser_by_extension.txt");			/* bug:z776 */
 	}
 	/* END - SQL PARSER */
 	if (show_setting || debug)
@@ -2830,6 +2864,7 @@ setup_data_file_paths(void)
 	{
 		check_input(ora_conf_file);
 		check_input(preload_ora_misc);	/* BUG#M0000195 */
+//		check_input(set_parser_by_extension);			/* bug:z776 */
 	}
 	/* END - SQL PARSER */
 }

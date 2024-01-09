@@ -1576,7 +1576,7 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.pltestlang_call_handler() \E
 			\QRETURNS language_handler\E
-			\n\s+\QLANGUAGE c\E
+			\n\s+\QLANGUAGE c SECURITY INVOKER\E
 			\n\s+AS\ \'\$
 			\Qlibdir\/plpgsql', 'plpgsql_call_handler';\E
 			/xm,
@@ -1592,7 +1592,7 @@ my %tests = (
 					   AS $$ BEGIN RETURN NULL; END;$$;',
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.trigger_func() RETURNS trigger\E
-			\n\s+\QLANGUAGE plpgsql\E
+			\n\s+\QLANGUAGE plpgsql SECURITY INVOKER\E
 			\n\s+AS\ \$\$
 			\Q BEGIN RETURN NULL; END;\E
 			\$\$;/xm,
@@ -1608,7 +1608,7 @@ my %tests = (
 					   AS $$ BEGIN RETURN; END;$$;',
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.event_trigger_func() RETURNS event_trigger\E
-			\n\s+\QLANGUAGE plpgsql\E
+			\n\s+\QLANGUAGE plpgsql SECURITY INVOKER\E
 			\n\s+AS\ \$\$
 			\Q BEGIN RETURN; END;\E
 			\$\$;/xm,
@@ -1920,7 +1920,7 @@ my %tests = (
 					   LANGUAGE internal STRICT IMMUTABLE;',
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.int42_in(cstring) RETURNS dump_test.int42\E
-			\n\s+\QLANGUAGE internal IMMUTABLE STRICT\E
+			\n\s+\QLANGUAGE internal IMMUTABLE STRICT SECURITY INVOKER\E
 			\n\s+AS\ \$\$int4in\$\$;
 			/xm,
 		like =>
@@ -1935,7 +1935,7 @@ my %tests = (
 					   LANGUAGE internal STRICT IMMUTABLE;',
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.int42_out(dump_test.int42) RETURNS cstring\E
-			\n\s+\QLANGUAGE internal IMMUTABLE STRICT\E
+			\n\s+\QLANGUAGE internal IMMUTABLE STRICT SECURITY INVOKER\E
 			\n\s+AS\ \$\$int4out\$\$;
 			/xm,
 		like =>
@@ -1949,7 +1949,7 @@ my %tests = (
 		  'CREATE FUNCTION dump_test.func_with_support() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$ SUPPORT varchar_support;',
 		regexp => qr/^
 			\QCREATE FUNCTION dump_test.func_with_support() RETURNS integer\E
-			\n\s+\QLANGUAGE sql SUPPORT varchar_support\E
+			\n\s+\QLANGUAGE sql SECURITY INVOKER SUPPORT varchar_support\E
 			\n\s+AS\ \$\$\Q SELECT 1 \E\$\$;
 			/xm,
 		like =>
@@ -1963,7 +1963,7 @@ my %tests = (
 					   LANGUAGE SQL AS $$ INSERT INTO dump_test.test_table (col1) VALUES (a) $$;',
 		regexp => qr/^
 			\QCREATE PROCEDURE dump_test.ptest1(IN a integer)\E
-			\n\s+\QLANGUAGE sql\E
+			\n\s+\QLANGUAGE sql SECURITY INVOKER\E
 			\n\s+AS\ \$\$\Q INSERT INTO dump_test.test_table (col1) VALUES (a) \E\$\$;
 			/xm,
 		like =>

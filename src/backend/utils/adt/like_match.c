@@ -69,6 +69,10 @@
  * pattern either, so an upper-level % scan can stop scanning now.
  *--------------------
  */
+/* Begin - BUG:Z473 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG:Z473  */
 
 #ifdef MATCH_LOWER
 #define GETCHAR(t) MATCH_LOWER(t)
@@ -300,8 +304,36 @@ do_like_escape(text *pat, text *esc)
 		 */
 		if (*e == '\\')
 		{
-			memcpy(result, pat, VARSIZE_ANY(pat));
-			return result;
+			/* Begin - BUG:Z473 */
+			if (ORA_PARSER == compatible_db)
+			{
+				afterescape = false;
+				while (plen > 0)
+				{
+					if (CHAREQ(p, e) && !afterescape)
+					{
+						CopyAdvChar(r, p, plen);
+						afterescape = true;
+					}
+					else if(afterescape && !((*p == '%') || (*p == '_') || CHAREQ(p, e)))
+					{
+						ereport(ERROR,
+									(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
+									errmsg("missing or illegal character follwing the escape character.")));
+					}
+					else
+					{
+						CopyAdvChar(r, p, plen);
+						afterescape = false;
+					}
+				}
+			}
+			/* End - BUG:Z473 */
+			else
+			{
+				memcpy(result, pat, VARSIZE_ANY(pat));
+				return result;
+			}
 		}
 
 		/*
@@ -331,6 +363,16 @@ do_like_escape(text *pat, text *esc)
 				CopyAdvChar(r, p, plen);
 				afterescape = false;
 			}
+
+			/* Begin - BUG:Z473 */
+			if(afterescape && (plen > 0) && (ORA_PARSER == compatible_db))
+			{
+				if(!((*p == '%') || (*p == '_') || CHAREQ(p, e)))
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
+							 errmsg("The character after the escape character is missing or invalid.")));
+			}
+			/* End - BUG:Z473 */
 		}
 	}
 

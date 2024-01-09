@@ -115,7 +115,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	 * Determine the type of the current user
 	 */
 	HeapTuple	tuple1;
-	bool		is_instance_user = isinstancelevel();;
+	bool		is_instance_user = isinstancelevel();
 	/*
 	 * End - ReqID:SRS-MISC-USER
 	 */
@@ -328,6 +328,13 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 					 errmsg("permission denied to create role")));
 	}
 
+	/* Begin - bug:z535 */
+	if (!is_instance_user && (DB_ORACLE == database_mode) && createdb > 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("database user cannot be granted the createdb permission")));
+	/* End - bug:z535 */
+
 	/*
 	 * Check that the user is not trying to create a role in the reserved
 	 * "pg_" namespace.
@@ -480,7 +487,10 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	else
 		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
 
-	new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb);
+	if (((strcmp(stmt->role,"sys") == 0) || (strcmp(stmt->role, "system") == 0) )&& is_instance_user)
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(false);
+	else
+		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb);
 	new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(canlogin);
 	new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(isreplication);
 	new_record[Anum_pg_authid_rolconnlimit - 1] = Int32GetDatum(connlimit);
@@ -759,10 +769,6 @@ AlterRole(AlterRoleStmt *stmt)
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
 			dcreatedb = defel;
-			if ((intVal(dcreatedb->arg) > 0) && ((strcmp(stmt->role->rolename,"system") == 0) || (strcmp(stmt->role->rolename,"sys") == 0)))
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("Sys and system cannot be granted the createdb permission")));
 		}
 		else if (strcmp(defel->defname, "canlogin") == 0)
 		{
@@ -846,6 +852,19 @@ AlterRole(AlterRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
+
+	/* Begin - bug:z535 */
+	if ((ORA_PARSER == compatible_db) && createdb > 0 && 
+		((strcmp(stmt->role->rolename,"system") == 0)||(strcmp(stmt->role->rolename,"sys") == 0)))
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("Sys and system cannot be granted the createdb permission")));
+	
+	if	(dboid && createdb > 0 && (ORA_PARSER == compatible_db))
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("database user cannot be granted the createdb permission")));
+	/* Begin - bug:z535 */
 
 	/*
 	 * Scan the pg_authid relation to be certain the user exists.

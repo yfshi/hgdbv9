@@ -758,8 +758,6 @@ do { \
 		CONVERT_PRIV('U', "USAGE");
 	else if (strcmp(type, "FOREIGN TABLE") == 0)
 		CONVERT_PRIV('r', "SELECT");
-	else if (strcmp(type, "DATABASEROLE") == 0)		/* bug:z538 */
-		CONVERT_PRIV('X', "EXECUTE");
 	else if (strcmp(type, "LARGE OBJECT") == 0)
 	{
 		CONVERT_PRIV('r', "SELECT");
@@ -1287,12 +1285,23 @@ getcurrentuserisInstanceSupperuser(PGconn *conn)
 
 		if (PQntuples(res))
 			CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+		else
+			CurrentUserIsSuperuser = false;
 
-		PQclear(res);
-		destroyPQExpBuffer(cmd1);
 	}
-	else
-		CurrentUserIsSuperuser = true;
+	else 			/* Begin - BUG#M686 */
+	{
+		appendPQExpBufferStr(cmd1, "select usesuper from pg_user where usesysid = current_user::regrole;");
+		res = PQexec(conn, cmd1->data);	
+
+		if (PQntuples(res))
+			CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+
+	}				/* End - BUG#M686 */
+
+	PQclear(res);
+	destroyPQExpBuffer(cmd1);
+		
 	/* End - BUG#M229 */
 }
 
@@ -1342,6 +1351,30 @@ setIdentifierCaseSwitch(PGconn *conn)
 		PQclear(res);
 }
 
+
+/*
+ *  setNLSdateFormat - BUG:z774  
+ * 
+ */
+void 
+setNLSdateFormat(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';");
+	if (res)
+		PQclear(res);
+
+	res = PQexec(conn, "SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';");
+	if (res)
+		PQclear(res);
+
+	res = PQexec(conn, "SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';");
+	if (res)
+		PQclear(res);
+}
+
+
 /*
  * getDumpMode  ReqID:SRS-MISC-USE bug:M0000261
  * 
@@ -1385,6 +1418,7 @@ haveDatabaseUser(PGconn *conn)
 	if (PQntuples(res))
 	{
 		haveDBuser = true;		/*  bug#M0000261 */
+		PQclear(res);
 		return true;
 	}
 
@@ -1409,7 +1443,7 @@ SetDumptypeMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsSuperuser)
+	if(CurrentUserIsSuperuser && haveDBuser)
 	{
 		res1 = PQexec(conn, "set session authorization system;");	
 

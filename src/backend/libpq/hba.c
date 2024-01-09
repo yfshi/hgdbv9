@@ -2147,14 +2147,14 @@ check_hba(hbaPort *port)
 		{
 			if(MyDatabaseId)
 				roleid = get_databaseuser_oid(port->user_name, MyDatabaseId);
-			else if(port->database_name)
+			else if (port->database_name && (strlen(port->database_name) >0))			/* bug: z555 */
 			{
 				Oid			datid = get_database_oid(port->database_name,true);
 				roleid = get_databaseuser_oid(port->user_name, datid);
 			}
 			else
 				ereport(ERROR,
-				(errmsg("We should use instance-level users to do this")));
+				(errmsg("We should use instance-level users to do this.")));
 		}
 		else
 			roleid = get_instanceuser_oid(port->user_name);

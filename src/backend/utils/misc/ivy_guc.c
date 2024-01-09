@@ -436,18 +436,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000183 */
-	/* Begin - BUG#M0000227 */
-	{
-		{"ivorysql.compile_plisql_use_owner", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
-			gettext_noop("Wether compiling plisqluse its owner."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&compile_plisql_use_owner,
-		true,
-		NULL, NULL, NULL
-	},
-	/* End - BUG#M0000227 */
 	/* Begin - BUG#z476 */
 	{
 		{"ivorysql.numerictonumber", PGC_USERSET, CLIENT_CONN_STATEMENT,

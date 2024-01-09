@@ -86,6 +86,7 @@
 /* Begin - ReqID:SRS-MISC-USER */
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+#include "commands/user.h"
 /* End - ReqID:SRS-MISC-USER */
 
 
@@ -234,6 +235,7 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 				 errmsg("permission denied to create tablespace \"%s\"",
 						stmt->tablespacename),
 				 errhint("Must be superuser to create a tablespace.")));
+	
 
 	/* However, the eventual owner of the tablespace need not be */
 	/* Begin - ReqID:SRS-MISC-USER bug:z561  */
