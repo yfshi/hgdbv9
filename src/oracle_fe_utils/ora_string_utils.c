@@ -26,37 +26,9 @@
 #include "oracle_parser/ora_keywords.h"
 
 
-static PQExpBuffer oraDefaultGetLocalPQExpBuffer(void);
-
 /* Globals exported by this file */
 DBMode db_mode = DB_PG;
 
-/*
- * Returns a temporary PQExpBuffer, valid until the next call to the function.
- * This is used by ora_fmtId and fmtQualifiedId.
- *
- * Non-reentrant and non-thread-safe but reduces memory leakage. You can
- * replace this with a custom version by setting the oraGetLocalPQExpBuffer
- * function pointer.
- */
-static PQExpBuffer
-oraDefaultGetLocalPQExpBuffer(void)
-{
-	static PQExpBuffer id_return = NULL;
-
-	if (id_return)				/* first time through? */
-	{
-		/* same buffer, just wipe contents */
-		resetPQExpBuffer(id_return);
-	}
-	else
-	{
-		/* new buffer */
-		id_return = createPQExpBuffer();
-	}
-
-	return id_return;
-}
 
 /*
  *	Quotes input string if it's not a legitimate SQL identifier as-is.
@@ -67,7 +39,7 @@ oraDefaultGetLocalPQExpBuffer(void)
 const char *
 ora_fmtId(const char *rawid)
 {
-	PQExpBuffer id_return = oraDefaultGetLocalPQExpBuffer();
+	PQExpBuffer id_return = getLocalPQExpBuffer(); /* BUG#M0000282 */
 
 	const char *cp;
 	bool		need_quotes = false;
