@@ -3017,13 +3017,13 @@ call pg_myfirst.sp_emp_insert();
 select * FROM pg_myfirst.f_getename(7384);
  f_getename 
 ------------
- WangYi
+ WangYi    
 (1 row)
 
 select pg_myfirst.f_getename(7384) from dual;
  f_getename 
 ------------
- WangYi
+ WangYi    
 (1 row)
 
 select * from pg_myfirst.f_out(23,NULL);

@@ -1004,17 +1004,13 @@ WHERE c.castmethod = 'b' AND
  text              | char              |        0 | i
  xml               | char              |        0 | a
  character varying | char              |        0 | i
- varchar2          | char              |        0 | i
- varchar2          | char              |        0 | i
  text              | char              |        0 | i
  xml               | char              |        0 | a
  character varying | char              |        0 | i
- varchar2          | char              |        0 | i
- varchar2          | char              |        0 | i
  xml               | varchar2          |        0 | a
  xml               | varchar2          |        0 | a
  date              | timestamp         |        0 | i
-(25 rows)
+(21 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

@@ -630,3 +630,66 @@ select asciistr(decompose(unistr('\00C0')));
 (1 row)
 
 /* End - BUG#M0000194 */
+/* Begin - BUG#M0000265 */
+create table test_m265(a char(10), b varchar2(10));
+insert into test_m265 values('aaa', 'bbb');
+select * from test_m265;
+     a      |  b  
+------------+-----
+ aaa        | bbb
+(1 row)
+
+select lengthb(a), lengthb(b) from test_m265;	-- 10 3
+ lengthb | lengthb 
+---------+---------
+      10 |       3
+(1 row)
+
+select lengthb(a), lengthb(cast(a as varchar2(64))) from test_m265;	-- 10 10
+ lengthb | lengthb 
+---------+---------
+      10 |      10
+(1 row)
+
+select lengthb(b), lengthb(cast(b as char(64))) from test_m265;		-- 3 64
+ lengthb | lengthb 
+---------+---------
+       3 |      64
+(1 row)
+
+insert into test_m265 values('aaa  ', 'bbb  ');
+select a, lengthb(a), b, lengthb(b) from test_m265;	-- 10 3, 10 5
+     a      | lengthb |   b   | lengthb 
+------------+---------+-------+---------
+ aaa        |      10 | bbb   |       3
+ aaa        |      10 | bbb   |       5
+(2 rows)
+
+select * from test_m265 where a = 'aaa';								-- 2 line
+     a      |   b   
+------------+-------
+ aaa        | bbb
+ aaa        | bbb  
+(2 rows)
+
+select * from test_m265 where a = cast('aaa' as char(64));				-- 2 line
+     a      |   b   
+------------+-------
+ aaa        | bbb
+ aaa        | bbb  
+(2 rows)
+
+select * from test_m265 where a = cast('aaa' as varchar2(64));			-- 0 line
+ a | b 
+---+---
+(0 rows)
+
+select * from test_m265 where a = cast('aaa       ' as varchar2(64));	-- 2 line
+     a      |   b   
+------------+-------
+ aaa        | bbb
+ aaa        | bbb  
+(2 rows)
+
+drop table test_m265;
+/* End - BUG#M0000265 */

@@ -309,3 +309,21 @@ select asciistr(compose(unistr('\0041') || unistr('\0300')));
 
 select asciistr(decompose(unistr('\00C0')));
 /* End - BUG#M0000194 */
+
+/* Begin - BUG#M0000265 */
+create table test_m265(a char(10), b varchar2(10));
+insert into test_m265 values('aaa', 'bbb');
+select * from test_m265;
+select lengthb(a), lengthb(b) from test_m265;	-- 10 3
+select lengthb(a), lengthb(cast(a as varchar2(64))) from test_m265;	-- 10 10
+select lengthb(b), lengthb(cast(b as char(64))) from test_m265;		-- 3 64
+
+insert into test_m265 values('aaa  ', 'bbb  ');
+select a, lengthb(a), b, lengthb(b) from test_m265;	-- 10 3, 10 5
+
+select * from test_m265 where a = 'aaa';								-- 2 line
+select * from test_m265 where a = cast('aaa' as char(64));				-- 2 line
+select * from test_m265 where a = cast('aaa' as varchar2(64));			-- 0 line
+select * from test_m265 where a = cast('aaa       ' as varchar2(64));	-- 2 line
+drop table test_m265;
+/* End - BUG#M0000265 */
