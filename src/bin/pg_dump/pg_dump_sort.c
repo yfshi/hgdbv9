@@ -1326,6 +1326,7 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 			snprintf(buf, bufsize,
 					 "DATABASEROLE  (ID %d)",
 					 obj->dumpId);
+			return;
 		case DO_NAMESPACE:
 			snprintf(buf, bufsize,
 					 "SCHEMA %s  (ID %d OID %u)",
