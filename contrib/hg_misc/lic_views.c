@@ -97,7 +97,7 @@ get_lic_baseinfo(PG_FUNCTION_ARGS)
 	hg_set_is_with_title(true);
 	hg_set_is_chinese_title(is_chinese);
 	curr_encoding = (char *)hg_get_encoding();
-	hg_set_encoding("UTF-8");
+	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true)); // Fix bug#M0000278
 
 	sprintf(result_info, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
 						 "%s\n%s\n%s\n%s\n%s\n%s\n%s\n" \
@@ -129,6 +129,7 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	bool is_chinese = false;
 	char *encoding = "UTF8";
 	char *utf8_region = NULL;
+	char *curr_encoding = NULL;
 
 	encoding = GetConfigOptionByName("client_encoding", NULL, true);
 	/* output the Chinese version if specified*/
@@ -167,7 +168,10 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	rsinfo->setDesc = tupdesc;
 
 	MemoryContextSwitchTo(oldcontext);
-
+	// Begin - bug#M0000278
+	curr_encoding = (char *)hg_get_encoding();
+	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true));
+	// End - bug#M0000278
 	for (idx = 0; idx < funclist_size; idx++)
 	{
 		Datum		values[LIC_FUNC_VIEWS_COLS];
@@ -201,6 +205,9 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	}
 
 	tuplestore_donestoring(tupstore);
-
+	// Begin - bug#M0000278
+	hg_set_encoding(curr_encoding);
+	free(curr_encoding);
+	// End - bug#M0000278
 	return (Datum)0;
 }
