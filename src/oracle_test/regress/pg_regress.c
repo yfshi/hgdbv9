@@ -1214,7 +1214,7 @@ psql_command_nosys(const char *database, const char *query,...)
 	else
 	{
 		snprintf(psql_cmd, sizeof(psql_cmd),
-			"\"%s%spsql\" -p %d -U system -X -t -c \"show port\" \"%s\"",
+			"export test=$(\"%s%spsql\" -p %d -U system -X -c \"show port\" \"%s\") && export test=${test##*-} && export test=${test\%\%(*} && echo $test",
 			bindir ? bindir : "",
 			bindir ? "/" : "",
 			port,
