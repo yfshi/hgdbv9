@@ -1941,10 +1941,10 @@ variable x char(10) = '123456789'
 variable y char(11)
 variable z char(12 char)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 ERROR:  value too long for type char(12 char)
 print x y z
      X      
@@ -1964,10 +1964,10 @@ variable x char(10) = '123456789'
 variable y char(11)
 variable z char(12 byte)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 ERROR:  value too long for type char(12 byte)
 print x y z
      X      
@@ -1987,10 +1987,10 @@ variable x char(10) = '123456789'
 variable y char(11)
 variable z char(20 char)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 print x y z
      X      
 ------------
@@ -2002,17 +2002,17 @@ print x y z
 
           Z           
 ----------------------
- 123456789 123456789 
+ 123456789123456789  
 
 -- ok
 variable x char(10) = '123456789'
 variable y char(11)
 variable z char(20 byte)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 print x y z
      X      
 ------------
@@ -2024,17 +2024,17 @@ print x y z
 
           Z           
 ----------------------
- 123456789 123456789 
+ 123456789123456789  
 
 -- error
 variable x char(10) = '123456789'
 variable y char(5 char)
 variable z char(20)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 ERROR:  value too long for type char(5 char)
 print x y z
      X      
@@ -2054,10 +2054,10 @@ variable x char(10) = '123456789'
 variable y char(5 byte)
 variable z char(20)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 ERROR:  value too long for type char(5 byte)
 print x y z
      X      
@@ -2077,10 +2077,10 @@ variable x char(10) = '123456789'
 variable y char(10 char)
 variable z char(20)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 print x y z
      X      
 ------------
@@ -2092,17 +2092,17 @@ print x y z
 
           Z           
 ----------------------
- 123456789 123456789 
+ 123456789123456789  
 
 -- ok
 variable x char(10) = '123456789'
 variable y char(10 byte)
 variable z char(20)
 call f_test(:x, :y) INTO :z;
-NOTICE:  123456789 
+NOTICE:  123456789
 NOTICE:  <NULL>
-NOTICE:  123456789 
-NOTICE:  123456789 
+NOTICE:  123456789
+NOTICE:  123456789
 print x y z
      X      
 ------------
@@ -2114,7 +2114,7 @@ print x y z
 
           Z           
 ----------------------
- 123456789 123456789 
+ 123456789123456789  
 
 -- ORA-06578: output parameter cannot be a duplicate bind.
 -- Cause: The bind variable corresponding to an IN/OUT or
