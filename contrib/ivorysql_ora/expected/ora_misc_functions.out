@@ -475,9 +475,9 @@ drop table test1;
 create table test1(col1 char(10),col2  int);
 insert into test1 values('sales',1);
 SELECT NVL (col1, NULL) from test1;
-  nvl  
--------
- sales
+    nvl     
+------------
+ sales     
 (1 row)
 
 drop table test1;
@@ -888,9 +888,9 @@ drop table test1;
 create table test1(col1 char(10),col2  int);
 insert into test1 values('sales',1);
 SELECT NVL (NULL, col1) from test1;
-  nvl  
--------
- sales
+    nvl     
+------------
+ sales     
 (1 row)
 
 drop table test1;
@@ -3834,9 +3834,9 @@ drop table test1;
 create table test1(col1 char(10),col2  int);
 insert into test1 values('sales',1);
 SELECT decode (23, 20,NULL,23,col1,col1) from test1;
- decode 
---------
- sales
+   decode   
+------------
+ sales     
 (1 row)
 
 drop table test1;
