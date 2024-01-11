@@ -317,7 +317,9 @@ extern PGDLLIMPORT char *nls_date_format;
 extern PGDLLIMPORT char *nls_timestamp_format;
 extern PGDLLIMPORT char *nls_timestamp_tz_format;
 extern PGDLLIMPORT int	datetime_ignore_nls_mask;
-
+/* Begin - ReqID:COMPATIBLE_GROUP */
+extern PGDLLIMPORT bool compatible_group;
+/* End - ReqID:COMPATIBLE_GROUP */
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
 extern PGDLLIMPORT char *nls_territory;
 extern PGDLLIMPORT char *nls_currency;

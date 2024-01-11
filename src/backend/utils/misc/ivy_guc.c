@@ -59,6 +59,11 @@ char	   *nls_numeric_characters = "";
 bool			enable_emptystring_to_NULL = false;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
 
+
+/* Begin - ReqID:COMPATIBLE_GROUP */
+bool          compatible_group = false;
+/* End - ReqID:COMPATIBLE_GROUP */
+
 /* Begin - ReqID:SRS-SQL-INSERT */
 bool		insert_enable_alias = false;
 /* End - ReqID:SRS-SQL-INSERT */
@@ -269,6 +274,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:EMPTY_STIRNG_TO_NULL */
+
+    /* Begin - ReqID:COMPATIBLE_GROUP */	
+	{
+		{"ivorysql.compatible_group", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("whether fully consistent with the Oracle mode."),
+			NULL
+		},
+		&compatible_group,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End  - ReqID:COMPATIBLE_GROUP */
 
 	/* Begin - ReqID:SRS-SQL-INSERT */
 	{
