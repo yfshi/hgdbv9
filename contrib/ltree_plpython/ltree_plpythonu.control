@@ -4,3 +4,6 @@ default_version = '1.0'
 module_pathname = '$libdir/ltree_plpython2'
 relocatable = true
 requires = 'ltree,plpythonu'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

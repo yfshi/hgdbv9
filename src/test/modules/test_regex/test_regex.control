@@ -2,3 +2,6 @@ comment = 'Test code for backend/regex/'
 default_version = '1.0'
 module_pathname = '$libdir/test_regex'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

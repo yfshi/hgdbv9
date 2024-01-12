@@ -3,3 +3,6 @@ comment = 'connect to other PostgreSQL databases from within a database'
 default_version = '1.2'
 module_pathname = '$libdir/dblink'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

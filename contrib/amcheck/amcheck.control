@@ -3,3 +3,6 @@ comment = 'functions for verifying relation integrity'
 default_version = '1.3'
 module_pathname = '$libdir/amcheck'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

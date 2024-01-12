@@ -3,3 +3,6 @@ comment = 'show row-level locking information'
 default_version = '1.2'
 module_pathname = '$libdir/pgrowlocks'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

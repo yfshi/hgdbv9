@@ -4,3 +4,6 @@ default_version = '1.0'
 module_pathname = '$libdir/bool_plperl'
 relocatable = true
 requires = 'plperlu'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

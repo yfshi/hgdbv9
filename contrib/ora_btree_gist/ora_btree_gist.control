@@ -6,3 +6,6 @@ relocatable = false
 trusted = true
 schema = sys
 requires = 'ivorysql_ora'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

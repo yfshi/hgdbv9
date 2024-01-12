@@ -3,3 +3,6 @@ default_version = '1.0'
 relocatable = false
 superuser = true
 schema = 'test_ext6'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

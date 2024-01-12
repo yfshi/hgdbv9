@@ -3,3 +3,6 @@ comment = 'text search dictionary template for extended synonym processing'
 default_version = '1.0'
 module_pathname = '$libdir/dict_xsyn'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

@@ -3,3 +3,6 @@ comment = 'functions for autoincrementing fields'
 default_version = '1.0'
 module_pathname = '$libdir/autoinc'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

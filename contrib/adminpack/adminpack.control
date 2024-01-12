@@ -4,3 +4,7 @@ default_version = '2.1'
 module_pathname = '$libdir/adminpack'
 relocatable = false
 schema = pg_catalog
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676
+

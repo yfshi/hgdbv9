@@ -4,3 +4,6 @@ default_version = '1.8'
 module_pathname = '$libdir/hstore'
 relocatable = true
 trusted = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

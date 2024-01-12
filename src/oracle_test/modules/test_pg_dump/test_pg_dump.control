@@ -1,3 +1,6 @@
 comment = 'Test pg_dump with an extension'
 default_version = '1.0'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

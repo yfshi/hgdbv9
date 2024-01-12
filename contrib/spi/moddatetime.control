@@ -3,3 +3,6 @@ comment = 'functions for tracking last modification time'
 default_version = '1.0'
 module_pathname = '$libdir/moddatetime'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

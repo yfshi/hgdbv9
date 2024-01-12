@@ -3,3 +3,6 @@ comment = 'examine the shared buffer cache'
 default_version = '1.3'
 module_pathname = '$libdir/pg_buffercache'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676
