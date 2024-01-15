@@ -65,6 +65,8 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/varlena.h"
+#include "miscadmin.h"
+#include "utils/ora_compatible.h"
 
 
 /* Globally visible state variables */
@@ -88,6 +90,7 @@ typedef struct ExtensionControlFile
 	bool		trusted;		/* allow becoming superuser on the fly? */
 	int			encoding;		/* encoding of the script file, or -1 */
 	List	   *requires;		/* names of prerequisite extensions */
+	char	   *parse_options;	/* can be create by pg/oracle parser  bug:z676,z776*/
 } ExtensionControlFile;
 
 /*
@@ -592,6 +595,12 @@ parse_extension_control_file(ExtensionControlFile *control,
 								item->name)));
 			}
 		}
+		/* begin - bug:z676,z776 */
+		else if (strcmp(item->name, "parse_options") == 0)
+		{
+			control->parse_options = pstrdup(item->value);
+		}
+		/* end - bug:z676,z776  */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -626,6 +635,7 @@ read_extension_control_file(const char *extname)
 	control->superuser = true;
 	control->trusted = false;
 	control->encoding = -1;
+	control->parse_options = NULL;		/* bug: z676,z776*/
 
 	/*
 	 * Parse the primary control file.
@@ -1409,6 +1419,8 @@ CreateExtensionInternal(char *extensionName,
 	Oid			extensionOid;
 	ObjectAddress address;
 	ListCell   *lc;
+	bool		modify_flag = false;
+	int			compatible_db_flag = PG_PARSER;
 
 	/*
 	 * Read the primary control file.  Note we assume that it does not contain
@@ -1417,209 +1429,288 @@ CreateExtensionInternal(char *extensionName,
 	 */
 	pcontrol = read_extension_control_file(extensionName);
 
-	/*
-	 * Determine the version to install
+	/* begin - bug:z676,z776 */
+	/* If parser_options is pg, it can only be created extension when it's pg parser. 
+	 * Therefore, you need to change the compatibale_mode to pg when creating extension.
+	 *
+	 * If parser_options is oracle, it can only be created extension when it's oracle parser. 
+	 * Therefore, you need to change the compatibale_mode to oracle when creating extension.
+	 * 
+	 * If parser_options is empty, it can only be created extension when it's pg parser. 
+	 * Therefore, you need to change the compatibale_mode to pg when creating extension.
+	 *
+	 * If parser_options is all, it can be created extension anyway. 
+	 * we don't need to  change the compatibale_mode .
+	 * 
 	 */
-	if (versionName == NULL)
+	PG_TRY();
 	{
-		if (pcontrol->default_version)
-			versionName = pcontrol->default_version;
-		else
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("version to install must be specified")));
-	}
-	check_valid_version_name(versionName);
-
-	/*
-	 * Figure out which script(s) we need to run to install the desired
-	 * version of the extension.  If we do not have a script that directly
-	 * does what is needed, we try to find a sequence of update scripts that
-	 * will get us there.
-	 */
-	filename = get_extension_script_filename(pcontrol, NULL, versionName);
-	if (stat(filename, &fst) == 0)
-	{
-		/* Easy, no extra scripts */
-		updateVersions = NIL;
-	}
-	else
-	{
-		/* Look for best way to install this version */
-		List	   *evi_list;
-		ExtensionVersionInfo *evi_start;
-		ExtensionVersionInfo *evi_target;
-
-		/* Extract the version update graph from the script directory */
-		evi_list = get_ext_ver_list(pcontrol);
-
-		/* Identify the target version */
-		evi_target = get_ext_ver_info(versionName, &evi_list);
-
-		/* Identify best path to reach target */
-		evi_start = find_install_path(evi_list, evi_target,
-									  &updateVersions);
-
-		/* Fail if no path ... */
-		if (evi_start == NULL)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("extension \"%s\" has no installation script nor update path for version \"%s\"",
-							pcontrol->name, versionName)));
-
-		/* Otherwise, install best starting point and then upgrade */
-		versionName = evi_start->name;
-	}
-
-	/*
-	 * Fetch control parameters for installation target version
-	 */
-	control = read_extension_aux_control_file(pcontrol, versionName);
-
-	/*
-	 * Determine the target schema to install the extension into
-	 */
-	if (schemaName)
-	{
-		/* If the user is giving us the schema name, it must exist already. */
-		schemaOid = get_namespace_oid(schemaName, false);
-	}
-
-	if (control->schema != NULL)
-	{
-		/*
-		 * The extension is not relocatable and the author gave us a schema
-		 * for it.
-		 *
-		 * Unless CASCADE parameter was given, it's an error to give a schema
-		 * different from control->schema if control->schema is specified.
-		 */
-		if (schemaName && strcmp(control->schema, schemaName) != 0 &&
-			!cascade)
-			ereport(ERROR,
-					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-					 errmsg("extension \"%s\" must be installed in schema \"%s\"",
-							control->name,
-							control->schema)));
-
-		/* Always use the schema from control file for current extension. */
-		schemaName = control->schema;
-
-		/* Find or create the schema in case it does not exist. */
-		schemaOid = get_namespace_oid(schemaName, true);
-
-		if (!OidIsValid(schemaOid))
+		if (DB_ORACLE == database_mode )
 		{
-			CreateSchemaStmt *csstmt = makeNode(CreateSchemaStmt);
+			if (pcontrol->parse_options != NULL)
+			{
+				if (strcmp(pcontrol->parse_options, "all") == 0)
+					;
+				else if (strcmp(pcontrol->parse_options, "pg") == 0)
+				{
+					if (PG_PARSER == compatible_db)
+						;
+					else
+					{
+						compatible_db_flag = compatible_db;
+						compatible_db = PG_PARSER;
+						modify_flag = true;
+					}
+				}
+				else if (strcmp(pcontrol->parse_options, "oracle") == 0)
+				{
+					if (ORA_PARSER == compatible_db)
+						;
+					else
+					{
+						compatible_db_flag = compatible_db;
+						compatible_db = ORA_PARSER;
+						modify_flag = true;
+					}
+				}
 
-			csstmt->schemaname = schemaName;
-			csstmt->authrole = NULL;	/* will be created by current user */
-			csstmt->schemaElts = NIL;
-			csstmt->if_not_exists = false;
-			CreateSchemaCommand(csstmt, "(generated CREATE SCHEMA command)",
-								-1, -1);
+			}
+			else
+			{
+				if (PG_PARSER == compatible_db)
+					;
+				else
+				{
+					compatible_db_flag = compatible_db;
+					compatible_db = PG_PARSER;
+					modify_flag = true;
+				}
+			}
+		}
+		/* end - bug:z676,z776 */
 
-			/*
-			 * CreateSchemaCommand includes CommandCounterIncrement, so new
-			 * schema is now visible.
-			 */
+		/*
+		* Determine the version to install
+		*/
+		if (versionName == NULL)
+		{
+			if (pcontrol->default_version)
+				versionName = pcontrol->default_version;
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						errmsg("version to install must be specified")));
+		}
+		check_valid_version_name(versionName);
+
+		/*
+		* Figure out which script(s) we need to run to install the desired
+		* version of the extension.  If we do not have a script that directly
+		* does what is needed, we try to find a sequence of update scripts that
+		* will get us there.
+		*/
+		filename = get_extension_script_filename(pcontrol, NULL, versionName);
+		if (stat(filename, &fst) == 0)
+		{
+			/* Easy, no extra scripts */
+			updateVersions = NIL;
+		}
+		else
+		{
+			/* Look for best way to install this version */
+			List	   *evi_list;
+			ExtensionVersionInfo *evi_start;
+			ExtensionVersionInfo *evi_target;
+
+			/* Extract the version update graph from the script directory */
+			evi_list = get_ext_ver_list(pcontrol);
+
+			/* Identify the target version */
+			evi_target = get_ext_ver_info(versionName, &evi_list);
+
+			/* Identify best path to reach target */
+			evi_start = find_install_path(evi_list, evi_target,
+										&updateVersions);
+
+			/* Fail if no path ... */
+			if (evi_start == NULL)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						errmsg("extension \"%s\" has no installation script nor update path for version \"%s\"",
+								pcontrol->name, versionName)));
+
+			/* Otherwise, install best starting point and then upgrade */
+			versionName = evi_start->name;
+		}
+
+		/*
+		* Fetch control parameters for installation target version
+		*/
+		control = read_extension_aux_control_file(pcontrol, versionName);
+
+		/*
+		* Determine the target schema to install the extension into
+		*/
+		if (schemaName)
+		{
+			/* If the user is giving us the schema name, it must exist already. */
 			schemaOid = get_namespace_oid(schemaName, false);
 		}
-	}
-	else if (!OidIsValid(schemaOid))
-	{
+
+		if (control->schema != NULL)
+		{
+			/*
+			* The extension is not relocatable and the author gave us a schema
+			* for it.
+			*
+			* Unless CASCADE parameter was given, it's an error to give a schema
+			* different from control->schema if control->schema is specified.
+			*/
+			if (schemaName && strcmp(control->schema, schemaName) != 0 &&
+				!cascade)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("extension \"%s\" must be installed in schema \"%s\"",
+								control->name,
+								control->schema)));
+
+			/* Always use the schema from control file for current extension. */
+			schemaName = control->schema;
+
+			/* Find or create the schema in case it does not exist. */
+			schemaOid = get_namespace_oid(schemaName, true);
+
+			if (!OidIsValid(schemaOid))
+			{
+				CreateSchemaStmt *csstmt = makeNode(CreateSchemaStmt);
+
+				csstmt->schemaname = schemaName;
+				csstmt->authrole = NULL;	/* will be created by current user */
+				csstmt->schemaElts = NIL;
+				csstmt->if_not_exists = false;
+				CreateSchemaCommand(csstmt, "(generated CREATE SCHEMA command)",
+									-1, -1);
+
+				/*
+				* CreateSchemaCommand includes CommandCounterIncrement, so new
+				* schema is now visible.
+				*/
+				schemaOid = get_namespace_oid(schemaName, false);
+			}
+		}
+		else if (!OidIsValid(schemaOid))
+		{
+			/*
+			* Neither user nor author of the extension specified schema; use the
+			* current default creation namespace, which is the first explicit
+			* entry in the search_path.
+			*/
+			List	   *search_path = fetch_search_path(false);
+
+			if (search_path == NIL) /* nothing valid in search_path? */
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_SCHEMA),
+						errmsg("no schema has been selected to create in")));
+			schemaOid = linitial_oid(search_path);
+			schemaName = get_namespace_name(schemaOid);
+			if (schemaName == NULL) /* recently-deleted namespace? */
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_SCHEMA),
+						errmsg("no schema has been selected to create in")));
+
+			list_free(search_path);
+		}
+
 		/*
-		 * Neither user nor author of the extension specified schema; use the
-		 * current default creation namespace, which is the first explicit
-		 * entry in the search_path.
-		 */
-		List	   *search_path = fetch_search_path(false);
+		* Make note if a temporary namespace has been accessed in this
+		* transaction.
+		*/
+		if (isTempNamespace(schemaOid))
+			MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
 
-		if (search_path == NIL) /* nothing valid in search_path? */
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_SCHEMA),
-					 errmsg("no schema has been selected to create in")));
-		schemaOid = linitial_oid(search_path);
-		schemaName = get_namespace_name(schemaOid);
-		if (schemaName == NULL) /* recently-deleted namespace? */
-			ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_SCHEMA),
-					 errmsg("no schema has been selected to create in")));
+		/*
+		* We don't check creation rights on the target namespace here.  If the
+		* extension script actually creates any objects there, it will fail if
+		* the user doesn't have such permissions.  But there are cases such as
+		* procedural languages where it's convenient to set schema = pg_catalog
+		* yet we don't want to restrict the command to users with ACL_CREATE for
+		* pg_catalog.
+		*/
 
-		list_free(search_path);
+		/*
+		* Look up the prerequisite extensions, install them if necessary, and
+		* build lists of their OIDs and the OIDs of their target schemas.
+		*/
+		requiredExtensions = NIL;
+		requiredSchemas = NIL;
+		foreach(lc, control->requires)
+		{
+			char	   *curreq = (char *) lfirst(lc);
+			Oid			reqext;
+			Oid			reqschema;
+
+			reqext = get_required_extension(curreq,
+											extensionName,
+											origSchemaName,
+											cascade,
+											parents,
+											is_create);
+			reqschema = get_extension_schema(reqext);
+			requiredExtensions = lappend_oid(requiredExtensions, reqext);
+			requiredSchemas = lappend_oid(requiredSchemas, reqschema);
+		}
+
+		/*
+		* Insert new tuple into pg_extension, and create dependency entries.
+		*/
+		address = InsertExtensionTuple(control->name, extowner,
+									schemaOid, control->relocatable,
+									versionName,
+									PointerGetDatum(NULL),
+									PointerGetDatum(NULL),
+									requiredExtensions);
+		extensionOid = address.objectId;
+
+		/*
+		* Apply any control-file comment on extension
+		*/
+		if (control->comment != NULL)
+			CreateComments(extensionOid, ExtensionRelationId, 0, control->comment);
+
+		/*
+		* Execute the installation script file
+		*/
+		execute_extension_script(extensionOid, control,
+								NULL, versionName,
+								requiredSchemas,
+								schemaName, schemaOid);
+
+		/*
+		* If additional update scripts have to be executed, apply the updates as
+		* though a series of ALTER EXTENSION UPDATE commands were given
+		*/
+		ApplyExtensionUpdates(extensionOid, pcontrol,
+							versionName, updateVersions,
+							origSchemaName, cascade, is_create);
+
+		
+		/* begin - bug:z676,z776 */
+		if(modify_flag)
+		{
+			compatible_db = compatible_db_flag;
+			modify_flag = false;
+		}
 	}
-
-	/*
-	 * Make note if a temporary namespace has been accessed in this
-	 * transaction.
-	 */
-	if (isTempNamespace(schemaOid))
-		MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
-
-	/*
-	 * We don't check creation rights on the target namespace here.  If the
-	 * extension script actually creates any objects there, it will fail if
-	 * the user doesn't have such permissions.  But there are cases such as
-	 * procedural languages where it's convenient to set schema = pg_catalog
-	 * yet we don't want to restrict the command to users with ACL_CREATE for
-	 * pg_catalog.
-	 */
-
-	/*
-	 * Look up the prerequisite extensions, install them if necessary, and
-	 * build lists of their OIDs and the OIDs of their target schemas.
-	 */
-	requiredExtensions = NIL;
-	requiredSchemas = NIL;
-	foreach(lc, control->requires)
+	PG_FINALLY();
 	{
-		char	   *curreq = (char *) lfirst(lc);
-		Oid			reqext;
-		Oid			reqschema;
-
-		reqext = get_required_extension(curreq,
-										extensionName,
-										origSchemaName,
-										cascade,
-										parents,
-										is_create);
-		reqschema = get_extension_schema(reqext);
-		requiredExtensions = lappend_oid(requiredExtensions, reqext);
-		requiredSchemas = lappend_oid(requiredSchemas, reqschema);
+		if(modify_flag)
+		{
+			compatible_db = compatible_db_flag;
+			modify_flag = false;
+		}
 	}
-
-	/*
-	 * Insert new tuple into pg_extension, and create dependency entries.
-	 */
-	address = InsertExtensionTuple(control->name, extowner,
-								   schemaOid, control->relocatable,
-								   versionName,
-								   PointerGetDatum(NULL),
-								   PointerGetDatum(NULL),
-								   requiredExtensions);
-	extensionOid = address.objectId;
-
-	/*
-	 * Apply any control-file comment on extension
-	 */
-	if (control->comment != NULL)
-		CreateComments(extensionOid, ExtensionRelationId, 0, control->comment);
-
-	/*
-	 * Execute the installation script file
-	 */
-	execute_extension_script(extensionOid, control,
-							 NULL, versionName,
-							 requiredSchemas,
-							 schemaName, schemaOid);
-
-	/*
-	 * If additional update scripts have to be executed, apply the updates as
-	 * though a series of ALTER EXTENSION UPDATE commands were given
-	 */
-	ApplyExtensionUpdates(extensionOid, pcontrol,
-						  versionName, updateVersions,
-						  origSchemaName, cascade, is_create);
+	PG_END_TRY();
+	/* end - bug:z676,z776 */
 
 	return address;
 }
@@ -2157,8 +2248,8 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 	{
 		ExtensionVersionInfo *evi = (ExtensionVersionInfo *) lfirst(lc);
 		ExtensionControlFile *control;
-		Datum		values[8];
-		bool		nulls[8];
+		Datum		values[9];
+		bool		nulls[9];
 		ListCell   *lc2;
 
 		if (!evi->installable)
@@ -2199,6 +2290,13 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 			nulls[7] = true;
 		else
 			values[7] = CStringGetTextDatum(control->comment);
+
+		/* begin - bug:z676,z776 */
+		if (control->parse_options == NULL)
+			nulls[8] = true;
+		else
+			values[8] = CStringGetTextDatum(control->parse_options);
+		/* end - bug:z676,z776 */
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 

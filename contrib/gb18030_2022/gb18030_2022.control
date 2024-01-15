@@ -5,3 +5,6 @@ module_pathname = '$libdir/gb18030_2022'
 relocatable = true
 trusted = true
 # END - SRS-MISC-GB18030
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

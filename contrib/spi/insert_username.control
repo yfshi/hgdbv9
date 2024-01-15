@@ -3,3 +3,6 @@ comment = 'functions for tracking who changed a table'
 default_version = '1.0'
 module_pathname = '$libdir/insert_username'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

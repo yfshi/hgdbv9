@@ -6,3 +6,6 @@ relocatable = false
 schema = public
 superuser = true
 trusted = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

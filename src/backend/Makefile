@@ -219,7 +219,6 @@ endif
 	# BEGIN - SQL PARSER
 	$(INSTALL_DATA) $(srcdir)/utils/misc/ivorysql.conf.sample '$(DESTDIR)$(datadir)/ivorysql.conf.sample'
 	# END - SQL PARSER
-	$(INSTALL_DATA) $(srcdir)/utils/misc/set_parser_by_extension.txt '$(DESTDIR)$(datadir)/set_parser_by_extension.txt'
 
 ifeq ($(with_llvm), yes)
 install-bin: install-postgres-bitcode

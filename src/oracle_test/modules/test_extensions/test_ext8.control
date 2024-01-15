@@ -2,3 +2,6 @@ comment = 'Test extension 8'
 default_version = '1.0'
 schema = 'public'
 relocatable = false
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

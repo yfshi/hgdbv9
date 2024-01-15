@@ -1,3 +1,6 @@
 comment = 'test @extschema@'
 default_version = '1.0'
 relocatable = false
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

@@ -3,3 +3,6 @@ comment = 'foreign-data wrapper for flat file access'
 default_version = '1.0'
 module_pathname = '$libdir/file_fdw'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

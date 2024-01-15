@@ -130,7 +130,8 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	 */
 
 	/* BEGIN - ReqID:SRS-MISC-USER  BUG#Z538 */
-	if(DB_ORACLE == database_mode && haveDBuser && (fout->remoteVersion >= 140008) &&  CurrentUserIsSuperuser)
+	if(DB_ORACLE == database_mode && haveDBuser && (fout->remoteVersion >= 140008) 
+		&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && CurrentUserIsSuperuser)
 	{
 		pg_log_info("reading database user");
 		getDbRoles(fout,&numRoles);

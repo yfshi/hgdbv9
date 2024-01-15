@@ -2,3 +2,6 @@ comment = 'Test extension 4'
 default_version = '1.0'
 relocatable = true
 requires = 'test_ext5'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

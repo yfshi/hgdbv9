@@ -2,3 +2,6 @@ comment = 'Test opclass for SP-GiST'
 default_version = '1.0'
 module_pathname = '$libdir/spgist_name_ops'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

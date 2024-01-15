@@ -3,3 +3,6 @@ comment = 'functions for implementing referential integrity (obsolete)'
 default_version = '1.0'
 module_pathname = '$libdir/refint'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

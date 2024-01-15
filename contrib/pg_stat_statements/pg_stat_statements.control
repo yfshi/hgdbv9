@@ -3,3 +3,6 @@ comment = 'track planning and execution statistics of all SQL statements execute
 default_version = '1.9'
 module_pathname = '$libdir/pg_stat_statements'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

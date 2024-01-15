@@ -5,3 +5,6 @@ module_pathname = '$libdir/plperl'
 relocatable = false
 schema = pg_catalog
 superuser = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

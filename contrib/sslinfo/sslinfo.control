@@ -3,3 +3,6 @@ comment = 'information about SSL certificates'
 default_version = '1.2'
 module_pathname = '$libdir/sslinfo'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

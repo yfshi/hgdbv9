@@ -3,3 +3,6 @@ comment = 'Sample background worker'
 default_version = '1.0'
 module_pathname = '$libdir/worker_spi'
 relocatable = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

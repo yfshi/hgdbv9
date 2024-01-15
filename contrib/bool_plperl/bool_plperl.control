@@ -5,3 +5,6 @@ module_pathname = '$libdir/bool_plperl'
 relocatable = true
 trusted = true
 requires = 'plperl'
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676
