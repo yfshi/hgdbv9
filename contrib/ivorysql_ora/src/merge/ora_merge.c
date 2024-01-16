@@ -367,6 +367,11 @@ lmerge_matched:;
 						econtext->ecxt_scantuple = newslot;
 						if (ExecQual(del->mas_whenqual, econtext))
 						{
+							/* Begin BUG#M0000287 */
+							if (result == TM_Updated && !ItemPointerIsValid(&newslot->tts_tid))
+								return false;
+							/* End BUG#M0000287 */
+
 							/* Fire row-level before delete trigger */
 							if (!ExecDeletePrologue(context, resultRelInfo, &newslot->tts_tid, NULL, NULL))
 							{
