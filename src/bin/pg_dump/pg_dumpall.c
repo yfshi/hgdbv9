@@ -561,11 +561,9 @@ main(int argc, char *argv[])
 	
 	/* END - ReqID:SRS-MISC-USER */
 
-#ifdef KingbaseES
 	/* BEGIN - SQL PARSER */
 	getDbCompatibleMode(conn);
 	/* END - SQL PARSER */
-#endif
 
 	/*
 	 * Get a list of database names that match the exclude patterns

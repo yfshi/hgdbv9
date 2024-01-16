@@ -327,3 +327,250 @@ select * from test_m265 where a = cast('aaa' as varchar2(64));			-- 0 line
 select * from test_m265 where a = cast('aaa       ' as varchar2(64));	-- 2 line
 drop table test_m265;
 /* End - BUG#M0000265 */
+
+/* Begin - BUG#M0000262 */
+CREATE TABLE test_m262 (
+  a VARCHAR2(24 char),
+  b VARCHAR2(24 byte),
+  c char(24 char),
+  d char(24 byte)
+);
+
+CREATE INDEX idx_test_m262_a ON test_m262(a);
+CREATE INDEX idx_test_m262_b ON test_m262(b);
+CREATE INDEX idx_test_m262_c ON test_m262(c);
+CREATE INDEX idx_test_m262_d ON test_m262(d);
+
+INSERT INTO test_m262 (a, b, c, d)
+SELECT 
+  'a' || RANDOM(),
+  'b' || RANDOM(),
+  'c' || RANDOM(),
+  'd' || RANDOM()
+FROM generate_series (1,100000);
+insert into test_m262 values('testa', 'testb', 'testc', 'testd');
+VACUUM ANALYZE test_m262;
+
+-- varchar2(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);	-- using index scan.
+
+-- varchar2(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);	-- using index scan.
+
+-- varchar2(n char) = char(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);		-- using index scan.
+
+-- varchar2(n char) = char(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);		-- using index scan.
+
+-- varchar2(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);		-- using index scan.
+
+-- varchar2(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);		-- using index scan.
+
+-- varchar2(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);	-- using index scan.
+
+-- varchar2(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);	-- using index scan.
+
+-- varchar2(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);		-- using index scan.
+
+-- varchar2(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);		-- using index scan.
+
+-- varchar2(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);		-- using index scan.
+
+-- varchar2(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);		-- using index scan.
+
+
+-- char(n char) = char(n char)
+SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);		-- using index scan.
+
+-- char(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);		-- using index scan.
+
+-- char(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);	-- using index scan.
+
+-- char(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);	-- using index scan.
+
+-- char(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);	-- using index scan.
+
+-- char(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);	-- using index scan.
+
+
+-- char(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);		-- using index scan.
+
+-- char(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);		-- using index scan.
+
+-- char(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);	-- using index scan.
+
+-- char(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);	-- using index scan.
+
+-- char(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);	-- using index scan.
+
+-- char(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);	-- using index scan.
+
+DROP TABLE test_m262;
+
+-- test for hash index.
+CREATE TABLE test_m262 (
+  a VARCHAR2(24 char),
+  b VARCHAR2(24 byte),
+  c char(24 char),
+  d char(24 byte)
+);
+
+CREATE INDEX idx_test_m262_a ON test_m262 using hash(a);
+CREATE INDEX idx_test_m262_b ON test_m262 using hash(b);
+CREATE INDEX idx_test_m262_c ON test_m262 using hash(c);
+CREATE INDEX idx_test_m262_d ON test_m262 using hash(d);
+
+INSERT INTO test_m262 (a, b, c, d)
+SELECT 
+  'a' || RANDOM(),
+  'b' || RANDOM(),
+  'c' || RANDOM(),
+  'd' || RANDOM()
+FROM generate_series (1,100000);
+insert into test_m262 values('testa', 'testb', 'testc', 'testd');
+VACUUM ANALYZE test_m262;
+
+-- varchar2(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);	-- using index scan.
+
+-- varchar2(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);	-- using index scan.
+
+-- varchar2(n char) = char(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);		-- using index scan.
+
+-- varchar2(n char) = char(n char)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);		-- using index scan.
+
+-- varchar2(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);		-- using index scan.
+
+-- varchar2(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);		-- using index scan.
+
+-- varchar2(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);	-- using index scan.
+
+-- varchar2(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);	-- using index scan.
+
+-- varchar2(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);		-- using index scan.
+
+-- varchar2(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);		-- using index scan.
+
+-- varchar2(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);		-- using index scan.
+
+-- varchar2(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);							-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);		-- using index scan.
+
+
+-- char(n char) = char(n char)
+SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);		-- using index scan.
+
+-- char(n char) = char(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);		-- using index scan.
+
+-- char(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);	-- using index scan.
+
+-- char(n char) = varchar2(n char)
+SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);	-- using index scan.
+
+-- char(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);	-- using index scan.
+
+-- char(n char) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);	-- using index scan.
+
+
+-- char(n byte) = char(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);		-- using index scan.
+
+-- char(n byte) = char(n char)
+SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);							-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);		-- using index scan.
+
+-- char(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);	-- using index scan.
+
+-- char(n byte) = varchar2(n char)
+SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);	-- using index scan.
+
+-- char(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);						-- 0 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);	-- using index scan.
+
+-- char(n byte) = varchar2(n byte)
+SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);						-- 1 line.
+EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);	-- using index scan.
+
+DROP TABLE test_m262;
+/* End - BUG#M0000262 */

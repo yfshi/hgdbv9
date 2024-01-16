@@ -570,19 +570,48 @@ btoravarcharcharsortsupport(PG_FUNCTION_ARGS)
 }
 
 /* Hash support procedure for type 'oravarcharbyte' and 'oravarcharchar' */
+/* Begin - BUG#M0000262 */
+/*
+ * In order to support the hash index of char op varchar2, our hash function
+ * for the varchar2 type also trims the blanks at the end,  because the hash
+ * of the char type trims the blanks, and whether the index returns a tuple
+ * depends on the recheck action after the index scan, because the hash index
+ * defaults to is lossy.
+ */
+static int
+varchar2_Truelen(VarChar *arg)
+{
+	char	   *s = VARDATA_ANY(arg);
+	int			i;
+	int			len;
+
+	len = VARSIZE_ANY_EXHDR(arg);
+	for (i = len - 1; i >= 0; i--)
+	{
+		if (s[i] != ' ')
+			break;
+	}
+	return i + 1;
+}
+/* End - BUG#M0000262 */
+
 Datum
 hashoravarchar(PG_FUNCTION_ARGS)
 {
 	VarChar	   *key = PG_GETARG_VARCHAR_PP(0);
+	char	   *keydata; /* BUG#M0000262 */
+	int			keylen;  /* BUG#M0000262 */
 	Datum		result;
+
+	keydata = VARDATA_ANY(key);     /* BUG#M0000262 */
+	keylen = varchar2_Truelen(key); /* BUG#M0000262 */
 
 	/*
 	 * Note: this is currently identical in behavior to hashvarlena, but keep
 	 * it as a separate function in case we someday want to do something
 	 * different in non-C locales.  (See also hashbpchar, if so.)
 	 */
-	result = hash_any((unsigned char *) VARDATA_ANY(key),
-					  VARSIZE_ANY_EXHDR(key));
+	result = hash_any((unsigned char *) keydata, keylen); /* BUG#M0000262 */
 
 	/* Avoid leaking memory for toasted inputs */
 	PG_FREE_IF_COPY(key, 0);
