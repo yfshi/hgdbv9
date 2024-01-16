@@ -559,3 +559,20 @@ order by a, b, c;
 
 -- end
 reset ivorysql.enable_emptystring_to_null;
+-- test Compatibility testing of Oracle group by clause.
+show ivorysql.compatible_mode;
+show ivorysql.compatible_group;
+create table test(id int primary key,name varchar(20));
+insert into test values(1,'a');
+insert into test values(2,'b');
+select name from test group by id;
+select id,name from test group by id;
+select id,name from test group by id,name;
+
+set ivorysql.compatible_group = true;
+select name from test group by id;
+select id,name from test group by id;
+select id,name from test group by id,name;
+drop table test;
+set ivorysql.compatible_mode to default;
+set ivroysql.compatible_group to default;
