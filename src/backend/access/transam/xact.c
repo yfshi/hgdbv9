@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include "access/commit_ts.h"
+#include "access/fdwxact.h"
 #include "access/multixact.h"
 #include "access/parallel.h"
 #include "access/subtrans.h"
@@ -2131,6 +2132,9 @@ CommitTransaction(void)
 	if (IsInParallelMode())
 		AtEOXact_Parallel(true);
 
+	/* Call foreign transaction callbacks at pre-commit phase, if any */
+	PreCommit_FdwXact(is_parallel_worker);
+
 	/* Shut down the deferred-trigger manager */
 	AfterTriggerEndXact(true);
 
@@ -2294,6 +2298,7 @@ CommitTransaction(void)
 	AtEOXact_PgStat(true, is_parallel_worker);
 	AtEOXact_Snapshot(true, false);
 	AtEOXact_ApplyLauncher(true);
+	AtEOXact_FdwXact(true, is_parallel_worker);
 	pgstat_report_xact_timestamp(0);
 
 	CurrentResourceOwner = NULL;
@@ -2380,6 +2385,9 @@ PrepareTransaction(void)
 	 * of this stuff could still throw an error, which would switch us into
 	 * the transaction-abort path.
 	 */
+
+	/* Process foreign trasactions */
+	AtPrepare_FdwXact();
 
 	/* Shut down the deferred-trigger manager */
 	AfterTriggerEndXact(true);
@@ -2570,6 +2578,7 @@ PrepareTransaction(void)
 	PostPrepare_Twophase();
 
 	/* PREPARE acts the same as COMMIT as far as GUC is concerned */
+	AtEOXact_FdwXact(true, false);
 	AtEOXact_GUC(true, 1);
 	AtEOXact_SPI(true);
 	AtEOXact_Enum();
@@ -2726,6 +2735,7 @@ AbortTransaction(void)
 	AtAbort_Notify();
 	AtEOXact_RelationMap(false, is_parallel_worker);
 	AtAbort_Twophase();
+	AtEOXact_FdwXact(false, is_parallel_worker);
 
 	/*
 	 * Advertise the fact that we aborted in pg_xact (assuming that we got as

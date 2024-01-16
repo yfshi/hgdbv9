@@ -212,6 +212,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateUserMappingStmt:
 		case T_CreatedbStmt:
 		case T_DefineStmt:
+		case T_DropForeignServerStmt:
 		case T_DropOwnedStmt:
 		case T_DropRoleStmt:
 		case T_DropStmt:
@@ -1616,6 +1617,10 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = AlterForeignServer((AlterForeignServerStmt *) parsetree);
 				break;
 
+			case T_DropForeignServerStmt:
+				RemoveForeignServer((DropForeignServerStmt *) parsetree);
+				break;
+
 			case T_CreateUserMappingStmt:
 				address = CreateUserMapping((CreateUserMappingStmt *) parsetree);
 				break;
@@ -2557,6 +2562,10 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_ALTER_SERVER;
 			break;
 
+		case T_DropForeignServerStmt:
+			tag = CMDTAG_DROP_SERVER;
+			break;
+
 		case T_CreateUserMappingStmt:
 			tag = CMDTAG_CREATE_USER_MAPPING;
 			break;
@@ -2660,9 +2669,6 @@ CreateCommandTag(Node *parsetree)
 					break;
 				case OBJECT_FDW:
 					tag = CMDTAG_DROP_FOREIGN_DATA_WRAPPER;
-					break;
-				case OBJECT_FOREIGN_SERVER:
-					tag = CMDTAG_DROP_SERVER;
 					break;
 				case OBJECT_OPCLASS:
 					tag = CMDTAG_DROP_OPERATOR_CLASS;
