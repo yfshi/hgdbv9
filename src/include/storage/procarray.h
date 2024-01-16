@@ -99,6 +99,8 @@ extern void ProcArraySetReplicationSlotXmin(TransactionId xmin,
 extern void ProcArrayGetReplicationSlotXmin(TransactionId *xmin,
 											TransactionId *catalog_xmin);
 
+extern void ProcArraySetFdwXactUnresolvedXmin(TransactionId xmin);
+
 extern int list_all_backend_gtt_frozenxids(int max_size, int *pids, uint32 *xids, int *n);
 
 #endif							/* PROCARRAY_H */
