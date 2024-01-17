@@ -262,11 +262,11 @@ SELECT '{1.2.3.4.5, 7.12.asd}'::ltree[] @> '1.2.3.4';
 SELECT '{1.3.3, 7.12.asd}'::ltree[] @> '1.2.3.4';
 SELECT '{ltree.asd, tree.awdfg}'::ltree[] @ 'tree & aWdfg@'::ltxtquery;
 SELECT '{j.k.l.m, g.b.c.d.e}'::ltree[] ~ 'A*@|g.b.c.d.e';
-SELECT 'a.b.c.d.e'::ltree ? '{A.b.c.d.e}';
-SELECT 'a.b.c.d.e'::ltree ? '{a.b.c.d.e}';
-SELECT 'a.b.c.d.e'::ltree ? '{A.b.c.d.e, a.*}';
-SELECT '{a.b.c.d.e,B.df}'::ltree[] ? '{A.b.c.d.e}';
-SELECT '{a.b.c.d.e,B.df}'::ltree[] ? '{A.b.c.d.e,*.df}';
+SELECT 'a.b.c.d.e'::ltree @? '{A.b.c.d.e}';--BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
+SELECT 'a.b.c.d.e'::ltree @? '{a.b.c.d.e}';
+SELECT 'a.b.c.d.e'::ltree @? '{A.b.c.d.e, a.*}';
+SELECT '{a.b.c.d.e,B.df}'::ltree[] @? '{A.b.c.d.e}';
+SELECT '{a.b.c.d.e,B.df}'::ltree[] @? '{A.b.c.d.e,*.df}';
 
 --extractors
 SELECT ('{3456,1.2.3.34}'::ltree[] ?@> '1.2.3.4') is null;
@@ -292,7 +292,7 @@ SELECT * FROM ltreetest WHERE t ~ '*.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*{1}.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*.2' order by t asc;
-SELECT * FROM ltreetest WHERE t ? '{23.*.1,23.*.2}' order by t asc;
+SELECT * FROM ltreetest WHERE t @? '{23.*.1,23.*.2}' order by t asc;
 
 create unique index tstidx on ltreetest (t);
 set enable_seqscan=off;
@@ -320,7 +320,7 @@ SELECT * FROM ltreetest WHERE t ~ '*.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*{1}.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*.1' order by t asc;
 SELECT * FROM ltreetest WHERE t ~ '23.*.2' order by t asc;
-SELECT * FROM ltreetest WHERE t ? '{23.*.1,23.*.2}' order by t asc;
+SELECT * FROM ltreetest WHERE t @? '{23.*.1,23.*.2}' order by t asc;
 
 drop index tstidx;
 create index tstidx on ltreetest using gist (t gist_ltree_ops(siglen=0));
@@ -342,7 +342,7 @@ SELECT count(*) FROM ltreetest WHERE t ~ '*.1';
 SELECT count(*) FROM ltreetest WHERE t ~ '23.*{1}.1';
 SELECT count(*) FROM ltreetest WHERE t ~ '23.*.1';
 SELECT count(*) FROM ltreetest WHERE t ~ '23.*.2';
-SELECT count(*) FROM ltreetest WHERE t ? '{23.*.1,23.*.2}';
+SELECT count(*) FROM ltreetest WHERE t @? '{23.*.1,23.*.2}';
 
 create table _ltreetest (t ltree[]);
 \copy _ltreetest FROM 'data/_ltree.data'
@@ -355,7 +355,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*{1}.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
 
 create index _tstidx on _ltreetest using gist (t);
 set enable_seqscan=off;
@@ -368,7 +368,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*{1}.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
 
 drop index _tstidx;
 create index _tstidx on _ltreetest using gist (t gist__ltree_ops(siglen=0));
@@ -383,7 +383,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*{1}.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.1' ;
 SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
 
 CREATE FUNCTION sys.ltree2varchar2(ltree)
 RETURNS text AS $$
