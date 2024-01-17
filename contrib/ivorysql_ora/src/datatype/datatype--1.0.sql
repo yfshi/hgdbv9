@@ -1125,54 +1125,6 @@ CREATE OPERATOR <= (
 	join = scalarltjoinsel
 );
 
---
--- B-tree index support
---
-/* CREATE OPERATOR FAMILY */
-CREATE OPERATOR FAMILY sys.orachar_ops USING btree;
-
-/* CREATE OPERATOR CLASS for 'oracharchar' */
-CREATE OPERATOR CLASS sys.oracharchar_ops
-    DEFAULT FOR TYPE sys.oracharchar USING btree FAMILY sys.orachar_ops AS
-        OPERATOR        1       < (sys.oracharchar, sys.oracharchar),
-        OPERATOR        2       <= (sys.oracharchar, sys.oracharchar),
-        OPERATOR        3       = (sys.oracharchar, sys.oracharchar),
-        OPERATOR        4       >= (sys.oracharchar, sys.oracharchar),
-        OPERATOR        5       > (sys.oracharchar, sys.oracharchar),
-        FUNCTION        1       sys.oracharcharcmp(sys.oracharchar, sys.oracharchar),
-		FUNCTION        2 (sys.oracharchar, sys.oracharchar)       sys.oracharchar_sortsupport(internal),
-		FUNCTION        4 (sys.oracharchar, sys.oracharchar)       sys.btoravarstrequalimage(oid);
-		
-/* CREATE OPERATOR CLASS for 'oracharbyte' */
-CREATE OPERATOR CLASS sys.oracharbyte_ops
-    DEFAULT FOR TYPE sys.oracharbyte USING btree FAMILY sys.orachar_ops AS
-        OPERATOR        1       < (sys.oracharbyte, sys.oracharbyte),
-        OPERATOR        2       <= (sys.oracharbyte, sys.oracharbyte),
-        OPERATOR        3       = (sys.oracharbyte, sys.oracharbyte),
-        OPERATOR        4       >= (sys.oracharbyte, sys.oracharbyte),
-        OPERATOR        5       > (sys.oracharbyte, sys.oracharbyte),
-        FUNCTION        1       sys.oracharbytecmp(sys.oracharbyte, sys.oracharbyte),
-		FUNCTION        2 (sys.oracharbyte, sys.oracharbyte)       sys.oracharbyte_sortsupport(internal),
-		FUNCTION        4 (sys.oracharbyte, sys.oracharbyte)       sys.btoravarstrequalimage(oid);		
-
-ALTER OPERATOR FAMILY sys.orachar_ops USING btree ADD
-	-- Cross data type comparison
-	OPERATOR        1       < (sys.oracharchar, sys.oracharbyte),
-	OPERATOR        2       <= (sys.oracharchar, sys.oracharbyte),
-	OPERATOR        3       = (sys.oracharchar, sys.oracharbyte),
-	OPERATOR        4       >= (sys.oracharchar, sys.oracharbyte),
-	OPERATOR        5       > (sys.oracharchar, sys.oracharbyte),
-	FUNCTION        1       sys.orachar_bytecmp(sys.oracharchar, sys.oracharbyte),
-	FUNCTION        2 (sys.oracharchar, sys.oracharbyte)       sys.oracharchar_sortsupport(internal),
-	
-	-- Cross data type comparison
-	OPERATOR        1       < (sys.oracharbyte, sys.oracharchar),
-	OPERATOR        2       <= (sys.oracharbyte, sys.oracharchar),
-	OPERATOR        3       = (sys.oracharbyte, sys.oracharchar),
-	OPERATOR        4       >= (sys.oracharbyte, sys.oracharchar),
-	OPERATOR        5       > (sys.oracharbyte, sys.oracharchar),
-	FUNCTION        1       sys.orabyte_charcmp(sys.oracharbyte, sys.oracharchar),
-	FUNCTION        2 (sys.oracharbyte, sys.oracharchar)       sys.oracharbyte_sortsupport(internal);
 
 /*
  * Character-by-Character comparison operators.
@@ -1631,28 +1583,6 @@ LANGUAGE internal
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
-/* CREATE OPERATOR FAMILY */
-CREATE OPERATOR FAMILY sys.orachar_ops USING hash;
-
-/* CREATE OPERATOR CLASS for 'oracharchar' */
-CREATE OPERATOR CLASS sys.oracharchar_ops
-    DEFAULT FOR TYPE sys.oracharchar USING hash FAMILY sys.orachar_ops AS
-		OPERATOR        1       = (sys.oracharchar, sys.oracharchar),
-        FUNCTION        1       sys.oracharcharhash(sys.oracharchar),
-		FUNCTION        2 (sys.oracharchar, sys.oracharchar)       sys.hashoracharcharextended(sys.oracharchar, bigint);
-
-/* CREATE OPERATOR CLASS for 'oracharbyte' */
-CREATE OPERATOR CLASS sys.oracharbyte_ops
-    DEFAULT FOR TYPE sys.oracharbyte USING hash FAMILY sys.orachar_ops AS
-		OPERATOR        1       = (sys.oracharbyte, sys.oracharbyte),
-        FUNCTION        1       sys.oracharbytehash(sys.oracharbyte),
-		FUNCTION        2 (sys.oracharbyte, sys.oracharbyte)       sys.hashoracharbyteextended(sys.oracharbyte, bigint);
-
-ALTER OPERATOR FAMILY sys.orachar_ops USING hash ADD
-	-- Cross data type comparison
-	OPERATOR        1       = (sys.oracharchar, sys.oracharbyte),
-	OPERATOR        1       = (sys.oracharbyte, sys.oracharchar);
 
 	
 /* CREATE OPERATOR FAMILY */
@@ -2850,6 +2780,1017 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
+/* Begin - BUG#M0000262 */
+/* Operator function (oracharchar, oravarcharchar) */
+CREATE FUNCTION sys.oracle_char_varchar2_eq(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ne(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_le(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_gt(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_lt(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ge(sys.oracharchar, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oracharchar, oravarcharbyte) */
+CREATE FUNCTION sys.oracle_char_varchar2_eq(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ne(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_le(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_gt(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_lt(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ge(sys.oracharchar, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oracharbyte, oravarcharchar) */
+CREATE FUNCTION sys.oracle_char_varchar2_eq(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ne(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_le(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_gt(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_lt(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ge(sys.oracharbyte, sys.oravarcharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oracharbyte, oravarcharbyte) */
+CREATE FUNCTION sys.oracle_char_varchar2_eq(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ne(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_le(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_gt(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_lt(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_char_varchar2_ge(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oravarcharchar, oracharchar) */
+CREATE FUNCTION sys.oracle_varchar2_char_eq(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ne(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_le(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_gt(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_lt(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ge(sys.oravarcharchar, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oravarcharchar, oracharbyte) */
+CREATE FUNCTION sys.oracle_varchar2_char_eq(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ne(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_le(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_gt(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_lt(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ge(sys.oravarcharchar, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oravarcharbyte, oracharchar) */
+CREATE FUNCTION sys.oracle_varchar2_char_eq(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ne(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_le(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_gt(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_lt(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ge(sys.oravarcharbyte, sys.oracharchar)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* Operator function (oravarcharbyte, oracharbyte) */
+CREATE FUNCTION sys.oracle_varchar2_char_eq(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchareq'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ne(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharne'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_le(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharle'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_gt(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarchargt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_lt(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharlt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.oracle_varchar2_char_ge(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS boolean
+AS 'MODULE_PATHNAME','oravarcharge'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+/* CREATE OPERATOR for (oracharchar, oravarcharchar) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_char_varchar2_eq,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_char_varchar2_gt,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_char_varchar2_lt,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_char_varchar2_ne,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_char_varchar2_ge,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_char_varchar2_le,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharchar,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oracharchar, oravarcharbyte) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_char_varchar2_eq,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_char_varchar2_gt,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_char_varchar2_lt,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_char_varchar2_ne,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_char_varchar2_ge,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_char_varchar2_le,
+	leftarg = sys.oracharchar,
+	rightarg = sys.oravarcharbyte,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oracharbyte, oravarcharchar) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_char_varchar2_eq,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_char_varchar2_gt,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_char_varchar2_lt,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_char_varchar2_ne,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_char_varchar2_ge,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_char_varchar2_le,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharchar,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oracharbyte, oravarcharbyte) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_char_varchar2_eq,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_char_varchar2_gt,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_char_varchar2_lt,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_char_varchar2_ne,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_char_varchar2_ge,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_char_varchar2_le,
+	leftarg = sys.oracharbyte,
+	rightarg = sys.oravarcharbyte,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oravarcharchar, oracharchar) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_varchar2_char_eq,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_varchar2_char_gt,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_varchar2_char_lt,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_varchar2_char_ne,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_varchar2_char_ge,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_varchar2_char_le,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharchar,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oravarcharchar, oracharbyte) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_varchar2_char_eq,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_varchar2_char_gt,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_varchar2_char_lt,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_varchar2_char_ne,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_varchar2_char_ge,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_varchar2_char_le,
+	leftarg = sys.oravarcharchar,
+	rightarg = sys.oracharbyte,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oravarcharbyte, oracharchar) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_varchar2_char_eq,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_varchar2_char_gt,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_varchar2_char_lt,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_varchar2_char_ne,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_varchar2_char_ge,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_varchar2_char_le,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharchar,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+/* CREATE OPERATOR for (oravarcharbyte, oracharbyte) */
+CREATE OPERATOR = (
+	procedure = sys.oracle_varchar2_char_eq,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = =,
+	negator = <>,
+	restrict = eqsel,
+	join = eqjoinsel,
+	hashes,
+	merges
+);
+
+CREATE OPERATOR > (
+	procedure = sys.oracle_varchar2_char_gt,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = <,
+	negator = <=,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR < (
+	procedure = sys.oracle_varchar2_char_lt,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = >,
+	negator = >=,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+CREATE OPERATOR <> (
+	procedure = sys.oracle_varchar2_char_ne,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = <>,
+	negator = =,
+	restrict = neqsel,
+	join = neqjoinsel
+);
+
+CREATE OPERATOR >= (
+	procedure = sys.oracle_varchar2_char_ge,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = <=,
+	negator = <,
+	restrict = scalargtsel,
+	join = scalargtjoinsel
+);
+
+CREATE OPERATOR <= (
+	procedure = sys.oracle_varchar2_char_le,
+	leftarg = sys.oravarcharbyte,
+	rightarg = sys.oracharbyte,
+	commutator = >=,
+	negator = >,
+	restrict = scalarltsel,
+	join = scalarltjoinsel
+);
+
+
+CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharbyte)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharbyte)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharchar)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharchar)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharbyte)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharchar)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharbyte)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharchar)
+RETURNS integer
+AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
+LANGUAGE C
+STRICT
+IMMUTABLE
+LEAKPROOF;
+/* End - BUG#M0000262 */
+
 /* The sort support procedure required by B-trees */
 CREATE FUNCTION sys.btoravarcharcharsortsupport(internal)
 RETURNS void
@@ -2867,12 +3808,37 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-/* CREATE OPERATOR FAMILY */
-CREATE OPERATOR FAMILY sys.oravarchar_ops USING btree;
+/* Begin - BUG#M0000262 */
+/* CREATE OPERATOR FAMILY FOR CHAR AND VARCHAR2 */
+CREATE OPERATOR FAMILY sys.ora_character_ops USING btree;
+
+/* CREATE OPERATOR CLASS for 'oracharchar' */
+CREATE OPERATOR CLASS sys.oracharchar_ops
+    DEFAULT FOR TYPE sys.oracharchar USING btree FAMILY sys.ora_character_ops AS
+        OPERATOR        1       < (sys.oracharchar, sys.oracharchar),
+        OPERATOR        2       <= (sys.oracharchar, sys.oracharchar),
+        OPERATOR        3       = (sys.oracharchar, sys.oracharchar),
+        OPERATOR        4       >= (sys.oracharchar, sys.oracharchar),
+        OPERATOR        5       > (sys.oracharchar, sys.oracharchar),
+        FUNCTION        1       sys.oracharcharcmp(sys.oracharchar, sys.oracharchar),
+		FUNCTION        2 (sys.oracharchar, sys.oracharchar)       sys.oracharchar_sortsupport(internal),
+		FUNCTION        4 (sys.oracharchar, sys.oracharchar)       sys.btoravarstrequalimage(oid);
+
+/* CREATE OPERATOR CLASS for 'oracharbyte' */
+CREATE OPERATOR CLASS sys.oracharbyte_ops
+    DEFAULT FOR TYPE sys.oracharbyte USING btree FAMILY sys.ora_character_ops AS
+        OPERATOR        1       < (sys.oracharbyte, sys.oracharbyte),
+        OPERATOR        2       <= (sys.oracharbyte, sys.oracharbyte),
+        OPERATOR        3       = (sys.oracharbyte, sys.oracharbyte),
+        OPERATOR        4       >= (sys.oracharbyte, sys.oracharbyte),
+        OPERATOR        5       > (sys.oracharbyte, sys.oracharbyte),
+        FUNCTION        1       sys.oracharbytecmp(sys.oracharbyte, sys.oracharbyte),
+		FUNCTION        2 (sys.oracharbyte, sys.oracharbyte)       sys.oracharbyte_sortsupport(internal),
+		FUNCTION        4 (sys.oracharbyte, sys.oracharbyte)       sys.btoravarstrequalimage(oid);
 
 /* CREATE OPERATOR CLASS for 'oravarcharchar' */
 CREATE OPERATOR CLASS sys.oravarcharchar_ops
-    DEFAULT FOR TYPE sys.oravarcharchar USING btree FAMILY sys.oravarchar_ops AS
+    DEFAULT FOR TYPE sys.oravarcharchar USING btree FAMILY sys.ora_character_ops AS
         OPERATOR        1       < (sys.oravarcharchar, sys.oravarcharchar),
         OPERATOR        2       <= (sys.oravarcharchar, sys.oravarcharchar),
         OPERATOR        3       = (sys.oravarcharchar, sys.oravarcharchar),
@@ -2881,10 +3847,10 @@ CREATE OPERATOR CLASS sys.oravarcharchar_ops
         FUNCTION        1       sys.bt_oravarchar_cmp(sys.oravarcharchar, sys.oravarcharchar),
         FUNCTION        2 (sys.oravarcharchar, sys.oravarcharchar)       sys.btoravarcharcharsortsupport(internal),
 		FUNCTION        4 (sys.oravarcharchar, sys.oravarcharchar)       sys.btoravarstrequalimage(oid);
-		
+
 /* CREATE OPERATOR CLASS for 'oravarcharbyte' */
 CREATE OPERATOR CLASS sys.oravarcharbyte_ops
-    DEFAULT FOR TYPE sys.oravarcharbyte USING btree FAMILY sys.oravarchar_ops AS
+    DEFAULT FOR TYPE sys.oravarcharbyte USING btree FAMILY sys.ora_character_ops AS
         OPERATOR        1       < (sys.oravarcharbyte, sys.oravarcharbyte),
         OPERATOR        2       <= (sys.oravarcharbyte, sys.oravarcharbyte),
         OPERATOR        3       = (sys.oravarcharbyte, sys.oravarcharbyte),
@@ -2894,7 +3860,25 @@ CREATE OPERATOR CLASS sys.oravarcharbyte_ops
         FUNCTION        2 (sys.oravarcharbyte, sys.oravarcharbyte)       sys.btoravarcharbytesortsupport(internal),
 		FUNCTION        4 (sys.oravarcharbyte, sys.oravarcharbyte)       sys.btoravarstrequalimage(oid);
 
-ALTER OPERATOR FAMILY sys.oravarchar_ops USING btree ADD
+ALTER OPERATOR FAMILY sys.ora_character_ops USING btree ADD
+	-- Cross data type comparison
+	OPERATOR        1       < (sys.oracharchar, sys.oracharbyte),
+	OPERATOR        2       <= (sys.oracharchar, sys.oracharbyte),
+	OPERATOR        3       = (sys.oracharchar, sys.oracharbyte),
+	OPERATOR        4       >= (sys.oracharchar, sys.oracharbyte),
+	OPERATOR        5       > (sys.oracharchar, sys.oracharbyte),
+	FUNCTION        1       sys.orachar_bytecmp(sys.oracharchar, sys.oracharbyte),
+	FUNCTION        2 (sys.oracharchar, sys.oracharbyte)       sys.oracharchar_sortsupport(internal),
+	
+	-- Cross data type comparison
+	OPERATOR        1       < (sys.oracharbyte, sys.oracharchar),
+	OPERATOR        2       <= (sys.oracharbyte, sys.oracharchar),
+	OPERATOR        3       = (sys.oracharbyte, sys.oracharchar),
+	OPERATOR        4       >= (sys.oracharbyte, sys.oracharchar),
+	OPERATOR        5       > (sys.oracharbyte, sys.oracharchar),
+	FUNCTION        1       sys.orabyte_charcmp(sys.oracharbyte, sys.oracharchar),
+	FUNCTION        2 (sys.oracharbyte, sys.oracharchar)       sys.oracharbyte_sortsupport(internal),
+
 	-- Cross data type comparison
 	OPERATOR        1       < (sys.oravarcharchar, sys.oravarcharbyte),
 	OPERATOR        2       <= (sys.oravarcharchar, sys.oravarcharbyte),
@@ -2911,7 +3895,73 @@ ALTER OPERATOR FAMILY sys.oravarchar_ops USING btree ADD
 	OPERATOR        4       >= (sys.oravarcharbyte, sys.oravarcharchar),
 	OPERATOR        5       > (sys.oravarcharbyte, sys.oravarcharchar),
 	FUNCTION        1       sys.bt_oravarchar_cmp(sys.oravarcharbyte, sys.oravarcharchar),
-	FUNCTION        2 (sys.oravarcharbyte, sys.oravarcharchar)       sys.btoravarcharbytesortsupport(internal);
+	FUNCTION        2 (sys.oravarcharbyte, sys.oravarcharchar)       sys.btoravarcharbytesortsupport(internal),
+
+	OPERATOR        1       < (sys.oracharchar, sys.oravarcharchar),
+	OPERATOR        2       <= (sys.oracharchar, sys.oravarcharchar),
+	OPERATOR        3       = (sys.oracharchar, sys.oravarcharchar),
+	OPERATOR        4       >= (sys.oracharchar, sys.oravarcharchar),
+	OPERATOR        5       > (sys.oracharchar, sys.oravarcharchar),
+	FUNCTION        1       sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharchar),
+	FUNCTION        2 (sys.oracharchar, sys.oravarcharchar)       sys.btoravarcharcharsortsupport(internal),
+
+	OPERATOR        1       < (sys.oracharchar, sys.oravarcharbyte),
+	OPERATOR        2       <= (sys.oracharchar, sys.oravarcharbyte),
+	OPERATOR        3       = (sys.oracharchar, sys.oravarcharbyte),
+	OPERATOR        4       >= (sys.oracharchar, sys.oravarcharbyte),
+	OPERATOR        5       > (sys.oracharchar, sys.oravarcharbyte),
+	FUNCTION        1       sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharbyte),
+	FUNCTION        2 (sys.oracharchar, sys.oravarcharbyte)       sys.btoravarcharbytesortsupport(internal),
+
+	OPERATOR        1       < (sys.oracharbyte, sys.oravarcharchar),
+	OPERATOR        2       <= (sys.oracharbyte, sys.oravarcharchar),
+	OPERATOR        3       = (sys.oracharbyte, sys.oravarcharchar),
+	OPERATOR        4       >= (sys.oracharbyte, sys.oravarcharchar),
+	OPERATOR        5       > (sys.oracharbyte, sys.oravarcharchar),
+	FUNCTION        1       sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharchar),
+	FUNCTION        2 (sys.oracharbyte, sys.oravarcharchar)       sys.btoravarcharcharsortsupport(internal),
+
+	OPERATOR        1       < (sys.oracharbyte, sys.oravarcharbyte),
+	OPERATOR        2       <= (sys.oracharbyte, sys.oravarcharbyte),
+	OPERATOR        3       = (sys.oracharbyte, sys.oravarcharbyte),
+	OPERATOR        4       >= (sys.oracharbyte, sys.oravarcharbyte),
+	OPERATOR        5       > (sys.oracharbyte, sys.oravarcharbyte),
+	FUNCTION        1       sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharbyte),
+	FUNCTION        2 (sys.oracharbyte, sys.oravarcharbyte)       sys.btoravarcharbytesortsupport(internal),
+
+	OPERATOR        1       < (sys.oravarcharchar, sys.oracharchar),
+	OPERATOR        2       <= (sys.oravarcharchar, sys.oracharchar),
+	OPERATOR        3       = (sys.oravarcharchar, sys.oracharchar),
+	OPERATOR        4       >= (sys.oravarcharchar, sys.oracharchar),
+	OPERATOR        5       > (sys.oravarcharchar, sys.oracharchar),
+	FUNCTION        1       sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharchar),
+	FUNCTION        2 (sys.oravarcharchar, sys.oracharchar)       sys.btoravarcharcharsortsupport(internal),
+
+	OPERATOR        1       < (sys.oravarcharchar, sys.oracharbyte),
+	OPERATOR        2       <= (sys.oravarcharchar, sys.oracharbyte),
+	OPERATOR        3       = (sys.oravarcharchar, sys.oracharbyte),
+	OPERATOR        4       >= (sys.oravarcharchar, sys.oracharbyte),
+	OPERATOR        5       > (sys.oravarcharchar, sys.oracharbyte),
+	FUNCTION        1       sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharbyte),
+	FUNCTION        2 (sys.oravarcharchar, sys.oracharbyte)       sys.btoravarcharcharsortsupport(internal),
+
+	OPERATOR        1       < (sys.oravarcharbyte, sys.oracharchar),
+	OPERATOR        2       <= (sys.oravarcharbyte, sys.oracharchar),
+	OPERATOR        3       = (sys.oravarcharbyte, sys.oracharchar),
+	OPERATOR        4       >= (sys.oravarcharbyte, sys.oracharchar),
+	OPERATOR        5       > (sys.oravarcharbyte, sys.oracharchar),
+	FUNCTION        1       sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharchar),
+	FUNCTION        2 (sys.oravarcharbyte, sys.oracharchar)       sys.btoravarcharbytesortsupport(internal),
+
+	OPERATOR        1       < (sys.oravarcharbyte, sys.oracharbyte),
+	OPERATOR        2       <= (sys.oravarcharbyte, sys.oracharbyte),
+	OPERATOR        3       = (sys.oravarcharbyte, sys.oracharbyte),
+	OPERATOR        4       >= (sys.oravarcharbyte, sys.oracharbyte),
+	OPERATOR        5       > (sys.oravarcharbyte, sys.oracharbyte),
+	FUNCTION        1       sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharbyte),
+	FUNCTION        2 (sys.oravarcharbyte, sys.oracharbyte)       sys.btoravarcharbytesortsupport(internal);
+/* End - BUG#M0000262 */
+
 
 --
 -- Hash index support (oravarchar)
@@ -2948,27 +3998,55 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
+
+/* Begin - BUG#M0000262 */
 /* CREATE OPERATOR FAMILY */
-CREATE OPERATOR FAMILY sys.oravarchar_ops USING hash;
+CREATE OPERATOR FAMILY sys.ora_charater_ops USING hash;
+
+/* CREATE OPERATOR CLASS for 'oracharchar' */
+CREATE OPERATOR CLASS sys.oracharchar_ops
+    DEFAULT FOR TYPE sys.oracharchar USING hash FAMILY sys.ora_charater_ops AS
+		OPERATOR        1       = (sys.oracharchar, sys.oracharchar),
+        FUNCTION        1       sys.oracharcharhash(sys.oracharchar),
+		FUNCTION        2 (sys.oracharchar, sys.oracharchar)       sys.hashoracharcharextended(sys.oracharchar, bigint);
+
+/* CREATE OPERATOR CLASS for 'oracharbyte' */
+CREATE OPERATOR CLASS sys.oracharbyte_ops
+    DEFAULT FOR TYPE sys.oracharbyte USING hash FAMILY sys.ora_charater_ops AS
+		OPERATOR        1       = (sys.oracharbyte, sys.oracharbyte),
+        FUNCTION        1       sys.oracharbytehash(sys.oracharbyte),
+		FUNCTION        2 (sys.oracharbyte, sys.oracharbyte)       sys.hashoracharbyteextended(sys.oracharbyte, bigint);
 
 /* CREATE OPERATOR CLASS for 'oravarcharchar' */
 CREATE OPERATOR CLASS sys.oravarcharchar_ops
-    DEFAULT FOR TYPE sys.oravarcharchar USING hash FAMILY sys.oravarchar_ops AS
+    DEFAULT FOR TYPE sys.oravarcharchar USING hash FAMILY sys.ora_charater_ops AS
 		OPERATOR        1       = (sys.oravarcharchar, sys.oravarcharchar),
         FUNCTION        1       sys.hashoravarchar(sys.oravarcharchar),
 		FUNCTION        2       sys.hashoravarcharcharextended(sys.oravarcharchar, bigint);
 
 /* CREATE OPERATOR CLASS for 'oravarcharbyte' */
 CREATE OPERATOR CLASS sys.oravarcharbyte_ops
-    DEFAULT FOR TYPE sys.oravarcharbyte USING hash FAMILY sys.oravarchar_ops AS
+    DEFAULT FOR TYPE sys.oravarcharbyte USING hash FAMILY sys.ora_charater_ops AS
 		OPERATOR        1       = (sys.oravarcharbyte, sys.oravarcharbyte),
         FUNCTION        1       sys.hashoravarchar(sys.oravarcharbyte),
 		FUNCTION        2       sys.hashoravarcharbyteextended(sys.oravarcharbyte, bigint);
 
-ALTER OPERATOR FAMILY sys.oravarchar_ops USING hash ADD
+ALTER OPERATOR FAMILY sys.ora_charater_ops USING hash ADD
 	-- Cross data type comparison
 	OPERATOR        1       = (sys.oravarcharchar, sys.oravarcharbyte),
-	OPERATOR        1       = (sys.oravarcharbyte, sys.oravarcharchar);
+	OPERATOR        1       = (sys.oravarcharbyte, sys.oravarcharchar),
+	OPERATOR        1       = (sys.oracharchar, sys.oracharbyte),
+	OPERATOR        1       = (sys.oracharbyte, sys.oracharchar),
+	OPERATOR        1       = (sys.oracharchar, sys.oravarcharchar),
+	OPERATOR        1       = (sys.oracharchar, sys.oravarcharbyte),
+	OPERATOR        1       = (sys.oracharbyte, sys.oravarcharchar),
+	OPERATOR        1       = (sys.oracharbyte, sys.oravarcharbyte),
+	OPERATOR        1       = (sys.oravarcharchar, sys.oracharchar),
+	OPERATOR        1       = (sys.oravarcharchar, sys.oracharbyte),
+	OPERATOR        1       = (sys.oravarcharbyte, sys.oracharchar),
+	OPERATOR        1       = (sys.oravarcharbyte, sys.oracharbyte);
+/* End - BUG#M0000262 */
+
 	
 /* 
  * VARCHAR2(n char/byte) pattern comparison. 
