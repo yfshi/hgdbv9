@@ -10,8 +10,10 @@ DATA = ora_btree_gin--1.0.sql
 
 PGFILEDESC = "ora_btree_gin - B-tree equivalent GIN operator classes"
 
-REGRESS = init number varchar2 binary_float binary_double \
+# Begin - BUGM0000266
+ORA_REGRESS = init number varchar2 binary_float binary_double \
 	  date timestamp timestamptz timestampltz
+# End - BUGM0000266
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

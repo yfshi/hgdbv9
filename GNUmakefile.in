@@ -3,12 +3,17 @@
 #
 # GNUmakefile.in
 #
+#	Begin - BUGM0000266
+#					!!!!!!!READ THIS!!!!!!!
+# If you want to add an extension, you should add it in contrib/Makefile,
+# Unless your extension is kernel-bound like ivorysql_ora. 
+#	End - BUGM0000266
 
 subdir =
 top_builddir = .
 include $(top_builddir)/src/Makefile.global
 
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/ora_btree_gist contrib/ora_btree_gin)	# SRS-MISC-GB18030
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora)	# SRS-MISC-GB18030	# BUGM0000266
 
 docs:
 	$(MAKE) -C doc all
@@ -45,7 +50,7 @@ $(call recurse,distprep coverage,doc src config contrib)
 
 # clean, distclean, etc should apply to contrib too, even though
 # it's not built by default
-$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/ora_btree_gist contrib/ora_btree_gin src config)	#BUG#M0000243
+$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 src config)	#BUG#M0000243 #BUGM0000266
 clean:
 	rm -rf tmp_install/ portlock/
 # Garbage from autoconf:
@@ -90,7 +95,7 @@ $(call recurse,install-tests,src/test/regress,install-tests)
 #BEGIN - SQL PARSER
 $(call recurse,oracle-pg-check-world,src/test,oracle-pg-check)		#BUGM0000237
 #add oracle regression
-$(call recurse,oracle-check-world,src/oracle_test src/pl src/interfaces/ecpg src/interfaces/libpq/ivytest contrib contrib/ivorysql_ora contrib/ora_btree_gist contrib/ora_btree_gin src/bin,oracle-check)	#BUG#M0000243
+$(call recurse,oracle-check-world,src/oracle_test src/pl src/interfaces/ecpg src/interfaces/libpq/ivytest contrib contrib/ivorysql_ora src/bin,oracle-check)	#BUG#M0000243 #BUGM0000266
 $(call recurse,oracle-checkprep,  src/oracle_test src/pl src/interfaces/ecpg contrib src/bin)
 
 $(call recurse,oracle-installcheck-world,src/oracle_test src/pl src/interfaces/ecpg contrib src/bin,oracle-installcheck)
