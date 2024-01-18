@@ -23,6 +23,7 @@
 #include "catalog/heap.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_type.h"
+#include "commands/view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "funcapi.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -1454,6 +1455,42 @@ addRangeTableEntry(ParseState *pstate,
 	 * to a rel in a statement, we must open the rel with the proper lockmode.
 	 */
 	rel = parserOpenTable(pstate, relation, lockmode);
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	/*
+	 * We compile the force view here, maybe this is not a good place to
+	 * do the compile, because the compile action is a DDL.Oracle SELECT
+	 * statement will compile the force view recursively, so we do it here
+	 * for now temp.
+	 */
+	if (ORA_PARSER == compatible_db && rel_is_force_view(RelationGetRelid(rel)))
+	{
+		bool	compile_res;
+		char	*nspname;
+		char	*viewname;
+		Oid		viewoid;
+
+		viewoid = RelationGetRelid(rel);
+		nspname = get_namespace_name(RelationGetNamespace(rel));
+		viewname = RelationGetRelationName(rel);
+		table_close(rel, lockmode);
+
+		compile_res = compile_force_view(viewoid);
+
+		if (compile_res)
+		{
+			/* reopen the view */
+			lockmode = isLockedRefname(pstate, refname) ? RowShareLock : AccessShareLock;
+			rel = parserOpenTable(pstate, relation, lockmode);
+		}
+		else
+		{
+			/* ORA-04063: view "xxx.xxx" has errors */
+			elog(ERROR, "view \"%s.%s\" has errors", nspname, viewname);
+		}
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 	rte->relid = RelationGetRelid(rel);
 	rte->relkind = rel->rd_rel->relkind;
 	rte->rellockmode = lockmode;

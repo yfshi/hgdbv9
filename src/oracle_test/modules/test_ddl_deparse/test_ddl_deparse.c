@@ -282,6 +282,11 @@ get_altertable_subcmdtypes(PG_FUNCTION_ARGS)
 			case AT_GenericOptions:
 				strtype = "SET OPTIONS";
 				break;
+			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+			case AT_ForceViewCompile:
+				strtype = "COMPILE FOIRCE VIEW";
+				break;
+			/* End - ReqID:SRS-SQL-FORCEVIEW */
 			default:
 				strtype = "unrecognized";
 				break;

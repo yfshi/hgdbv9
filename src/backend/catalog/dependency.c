@@ -76,6 +76,7 @@
 #include "commands/sequence.h"
 #include "commands/trigger.h"
 #include "commands/typecmds.h"
+#include "commands/view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "nodes/nodeFuncs.h"
 #include "parser/parsetree.h"
 #include "rewrite/rewriteRemove.h"
@@ -84,6 +85,7 @@
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "utils/packagecache.h"
@@ -214,7 +216,8 @@ static void findDependentObjects(const ObjectAddress *object,
 static void reportDependentObjects(const ObjectAddresses *targetObjects,
 								   DropBehavior behavior,
 								   int flags,
-								   const ObjectAddress *origObject);
+								   const ObjectAddress *origObject,
+								   bool	*refinddepobj /* ReqID:SRS-SQL-FORCEVIEW */);
 static void deleteOneObject(const ObjectAddress *object,
 							Relation *depRel, int32 flags);
 static void doDeletion(const ObjectAddress *object, int flags);
@@ -334,6 +337,7 @@ performDeletion(const ObjectAddress *object,
 {
 	Relation	depRel;
 	ObjectAddresses *targetObjects;
+	bool	need_refinddepobj = false;	/* ReqID:SRS-SQL-FORCEVIEW */
 
 	/*
 	 * We save some cycles by opening pg_depend just once and passing the
@@ -367,7 +371,24 @@ performDeletion(const ObjectAddress *object,
 	reportDependentObjects(targetObjects,
 						   behavior,
 						   flags,
-						   object);
+						   object,
+						   &need_refinddepobj/* ReqID:SRS-SQL-FORCEVIEW */);
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	if (ORA_PARSER == compatible_db && need_refinddepobj)
+	{
+		free_object_addresses(targetObjects);
+		targetObjects = new_object_addresses();
+
+		findDependentObjects(object,
+							 DEPFLAG_ORIGINAL,
+							 flags,
+							 NULL,	/* empty stack */
+							 targetObjects,
+							 NULL,	/* no pendingObjects */
+							 &depRel);
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	/* do the deed */
 	deleteObjectsInList(targetObjects, &depRel, flags);
@@ -394,6 +415,7 @@ performMultipleDeletions(const ObjectAddresses *objects,
 	Relation	depRel;
 	ObjectAddresses *targetObjects;
 	int			i;
+	bool	need_refinddepobj = false;	/* ReqID:SRS-SQL-FORCEVIEW */
 
 	/* No work if no objects... */
 	if (objects->numrefs <= 0)
@@ -443,7 +465,35 @@ performMultipleDeletions(const ObjectAddresses *objects,
 	reportDependentObjects(targetObjects,
 						   behavior,
 						   flags,
-						   (objects->numrefs == 1 ? objects->refs : NULL));
+						   (objects->numrefs == 1 ? objects->refs : NULL),
+						   &need_refinddepobj /* ReqID:SRS-SQL-FORCEVIEW */);
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	if (ORA_PARSER == compatible_db && need_refinddepobj)
+	{
+		free_object_addresses(targetObjects);
+		targetObjects = new_object_addresses();
+
+		for (i = 0; i < objects->numrefs; i++)
+		{
+			const ObjectAddress *thisobj = objects->refs + i;
+
+			/*
+			 * Acquire deletion lock on each target object.  (Ideally the caller
+			 * has done this already, but many places are sloppy about it.)
+			 */
+			AcquireDeletionLock(thisobj, flags);
+
+			findDependentObjects(thisobj,
+								 DEPFLAG_ORIGINAL,
+								 flags,
+								 NULL,	/* empty stack */
+								 targetObjects,
+								 objects,
+								 &depRel);
+		}
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	/* do the deed */
 	deleteObjectsInList(targetObjects, &depRel, flags);
@@ -1210,7 +1260,8 @@ static void
 reportDependentObjects(const ObjectAddresses *targetObjects,
 					   DropBehavior behavior,
 					   int flags,
-					   const ObjectAddress *origObject)
+					   const ObjectAddress *origObject,
+					   bool	*refinddepobj /* ReqID:SRS-SQL-FORCEVIEW */)
 {
 	int			msglevel = (flags & PERFORM_DELETION_QUIETLY) ? DEBUG2 : NOTICE;
 	bool		ok = true;
@@ -1257,6 +1308,95 @@ reportDependentObjects(const ObjectAddresses *targetObjects,
 	if (behavior == DROP_CASCADE &&
 		!message_level_is_interesting(msglevel))
 		return;
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	if (ORA_PARSER == compatible_db && behavior == DROP_RESTRICT)
+	{
+		bool	all_cascade_dep_is_view = true;
+		ObjectAddresses *viewObjects;
+
+		viewObjects = new_object_addresses();
+		
+		for (i = targetObjects->numrefs - 1; i >= 0; i--)
+		{
+			const ObjectAddress *obj = &targetObjects->refs[i];
+			const ObjectAddressExtra *extra = &targetObjects->extras[i];
+			char	   *objDesc;
+
+			/* Ignore the original deletion target(s) */
+			if (extra->flags & DEPFLAG_ORIGINAL)
+				continue;
+
+			/* Also ignore sub-objects; we'll report the whole object elsewhere */
+			if (extra->flags & DEPFLAG_SUBOBJECT)
+				continue;
+
+			objDesc = getObjectDescription(obj, false);
+
+			/* An object being dropped concurrently doesn't need to be reported */
+			if (objDesc == NULL)
+				continue;
+
+			/*
+			 * If, at any stage of the recursive search, we reached the object via
+			 * an AUTO, INTERNAL, PARTITION, or EXTENSION dependency, then it's
+			 * okay to delete it even in RESTRICT mode.
+			 */
+			if (extra->flags & (DEPFLAG_AUTO |
+								DEPFLAG_INTERNAL |
+								DEPFLAG_PARTITION |
+								DEPFLAG_EXTENSION))
+			{
+				/*
+				 * auto-cascades are reported at DEBUG2, not msglevel.  We don't
+				 * try to combine them with the regular message because the
+				 * results are too confusing when client_min_messages and
+				 * log_min_messages are different.
+				 */
+				ereport(DEBUG2,
+						(errmsg_internal("drop auto-cascades to %s",
+										 objDesc)));
+			}
+			else if (extra->flags & DEPFLAG_TYPE)
+			{
+				pfree(objDesc);
+				continue;
+			}
+			else
+			{
+				if (get_rel_relkind(obj->objectId) != RELKIND_VIEW)
+				{
+					all_cascade_dep_is_view = false;
+					pfree(objDesc);
+					break;
+				}
+				else
+					add_exact_object_address(obj, viewObjects);
+			}
+			pfree(objDesc);
+		}
+
+		if (all_cascade_dep_is_view && viewObjects->numrefs > 0)
+		{
+			for (i = viewObjects->numrefs - 1; i >= 0; i--)
+			{
+				make_view_invalid(viewObjects->refs[i].objectId);
+			}
+			
+			/*
+			 * After the view is invalid, we re-obtain targetObjects without
+			 * directly subtracting viewObjects from targetObjects, because
+			 * re-searching for the dependent objects can also detect whether
+			 * make_view_invalid has processed the dependencies cleanly.
+			 */
+			if (refinddepobj)
+				*refinddepobj = true;
+			return;
+		}
+
+		free_object_addresses(viewObjects);
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	/*
 	 * We limit the number of dependencies reported to the client to
@@ -1617,6 +1757,15 @@ doDeletion(const ObjectAddress *object, int flags)
 				 */
 				if (relKind == RELKIND_SEQUENCE)
 					DeleteSequenceTuple(object->objectId);
+
+				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+				#if 0
+				if (relKind == RELKIND_VIEW && rel_is_force_view(object->objectId))
+					  DeleteForceView(object->objectId);
+				#endif
+				if (ORA_PARSER == compatible_db && relKind == RELKIND_VIEW)
+					  DeleteForceView(object->objectId);
+				/* End - ReqID:SRS-SQL-FORCEVIEW */
 				break;
 			}
 

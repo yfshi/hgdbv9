@@ -1319,14 +1319,11 @@ ivory_user| SELECT pg_authid.rolname AS usename,
    FROM (pg_authid
      LEFT JOIN pg_db_role_setting s ON (((pg_authid.oid = s.setrole) AND (s.setdatabase = (0)::oid))))
   WHERE pg_authid.rolcanlogin;
-key_dependent_view| SELECT view_base_table.key,
+key_dependent_view|CREATE FORCE VIEW public.key_dependent_view AS 
+ SELECT view_base_table.key,
     view_base_table.data
    FROM view_base_table
   GROUP BY view_base_table.key;
-key_dependent_view_no_cols| SELECT
-   FROM view_base_table
-  GROUP BY view_base_table.key
- HAVING (length(view_base_table.data) > 0);
 mvtest_tv| SELECT mvtest_t.type,
     sum(mvtest_t.amt) AS totamt
    FROM mvtest_t

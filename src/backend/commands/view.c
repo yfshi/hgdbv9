@@ -15,8 +15,13 @@
 #include "postgres.h"
 
 #include "access/relation.h"
+#include "access/table.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "access/xact.h"
+#include "catalog/heap.h"		/* ReqID:SRS-SQL-FORCEVIEW */
+#include "catalog/indexing.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/namespace.h"
+#include "catalog/pg_force_view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
+#include "catalog/pg_rewrite.h"		/* ReqID:SRS-SQL-FORCEVIEW */
 #include "commands/defrem.h"
 #include "commands/tablecmds.h"
 #include "commands/view.h"
@@ -24,6 +29,7 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/analyze.h"
+#include "parser/parser.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "parser/parse_relation.h"
 #include "rewrite/rewriteDefine.h"
 #include "rewrite/rewriteHandler.h"
@@ -32,7 +38,10 @@
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/guc.h"				/* ReqID:SRS-SQL-FORCEVIEW */
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "utils/rel.h"
+#include "utils/regproc.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "utils/syscache.h"
 
 static void checkViewTupleDesc(TupleDesc newdesc, TupleDesc olddesc);
@@ -100,6 +109,25 @@ DefineVirtualRelation(RangeVar *relation, List *tlist, bool replace,
 	 */
 	lockmode = replace ? AccessExclusiveLock : NoLock;
 	(void) RangeVarGetAndCheckCreationNamespace(relation, lockmode, &viewOid);
+
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	/*
+	 * If the view is a force view, rebuild the view.
+	 */
+	if (ORA_PARSER == compatible_db &&
+		OidIsValid(viewOid) &&
+		rel_is_force_view(viewOid))
+	{
+		if (replace)
+		{
+			ObjectAddress address;
+
+			make_view_valid(tlist, viewOid, options, viewParse);
+			ObjectAddressSet(address, RelationRelationId, viewOid);
+			return address;
+		}
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	if (OidIsValid(viewOid) && replace)
 	{
@@ -261,6 +289,99 @@ DefineVirtualRelation(RangeVar *relation, List *tlist, bool replace,
 		return address;
 	}
 }
+
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+/*---------------------------------------------------------------------
+ * CreateForceVirtualPlaceholder
+ *
+ * 		Create virtual relation when force view compilation fails.
+ *---------------------------------------------------------------------
+ */
+static ObjectAddress
+CreateForceVirtualPlaceholder(RangeVar *relation, bool replace, List *options, bool *need_update)
+{
+	Oid			viewOid;
+	LOCKMODE	lockmode;
+	CreateStmt *createStmt = makeNode(CreateStmt);
+	List	   *attrList;
+
+	/* the target list of force view is NULL */
+	attrList = NIL;
+
+	/*
+	 * Look up, check permissions on, and lock the creation namespace; also
+	 * check for a preexisting view with the same name.  This will also set
+	 * relation->relpersistence to RELPERSISTENCE_TEMP if the selected
+	 * namespace is temporary.
+	 */
+	lockmode = replace ? AccessExclusiveLock : NoLock;
+	(void) RangeVarGetAndCheckCreationNamespace(relation, lockmode, &viewOid);
+
+	/*
+	 * If the old view is a force view, it is just a placeholder
+	 * and does not need to be replaced.
+	 * 
+	 * If there is an 'or replace' option, the metadata needs to be
+	 * updated in pg_force_view. Otherwise, nothing need to be done.
+	 */
+	if (OidIsValid(viewOid) && rel_is_force_view(viewOid))
+	{
+		ObjectAddress address;
+
+		ObjectAddressSet(address, RelationRelationId, viewOid);
+		if (replace)
+			*need_update = true;
+		else
+			*need_update = false;
+		return address;
+	}
+
+	/* old view is a valid view */
+	if (OidIsValid(viewOid))
+	{
+		if (replace)
+		{
+			ObjectAddress address;
+
+			make_view_invalid(viewOid);
+			ObjectAddressSet(address, RelationRelationId, viewOid);
+			*need_update = true;
+			return address;
+		}
+		else
+		{
+			ObjectAddress address;
+
+			/* do nothing */
+			ObjectAddressSet(address, RelationRelationId, viewOid);
+			*need_update = false;
+			return address;
+		}
+	}
+	else
+	{
+		ObjectAddress address;
+
+		/*
+		 * now set the parameters for keys/inheritance etc. All of these are
+		 * uninteresting for views...
+		 */
+		createStmt->relation = relation;
+		createStmt->tableElts = attrList;
+		createStmt->inhRelations = NIL;
+		createStmt->constraints = NIL;
+		createStmt->options = options;
+		createStmt->oncommit = ONCOMMIT_NOOP;
+		createStmt->tablespacename = NULL;
+		createStmt->if_not_exists = false;
+
+		address = DefineRelation(createStmt, RELKIND_VIEW, InvalidOid, NULL, NULL);
+		Assert(address.objectId != InvalidOid);
+		*need_update = true;
+		return address;
+	}
+}
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 /*
  * Verify that tupledesc associated with proposed new view definition
@@ -426,6 +547,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	RangeVar   *view;
 	ListCell   *cell;
 	bool		check_option;
+	bool		compile_failed = false; /* ReqID:SRS-SQL-FORCEVIEW */
 	ObjectAddress address;
 
 	/*
@@ -437,7 +559,72 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	rawstmt->stmt_location = stmt_location;
 	rawstmt->stmt_len = stmt_len;
 
-	viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	PG_TRY();
+	{
+		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+	}
+	PG_CATCH();
+	{
+		if (ORA_PARSER == compatible_db && stmt->force)
+		{
+			compile_failed = true;
+			FlushErrorState();
+		}
+		else
+			PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	/*
+	 * There are three situations where force view compile fail:
+	 *	1. If there is no view with the same name, we create a placeholder
+	 *	   in pg_class, and store the metadata of the view that failed to
+	 *	   compile in the pg_force_view catalog.
+	 *	2. If there is a view with the same name, and the old view is a valid
+	 *	   view, then do nothing if without or replace option, otherwise replace
+	 *	   the valid old view, and new force view is invalid.
+	 *	3. If there is a view with the same name and the old view is invalid,
+	 *	   then do nothing if without or replace option, otherwise update the
+	 *	   metadata of the new view in the pg_force_view catalog.
+	 */
+	if (stmt->force && compile_failed)
+	{
+		bool	need_store;
+
+		/* TODO: Special case,the grammar can't be suppress SELECT INTO */
+		view = copyObject(stmt->view);		/* don't corrupt original command */
+
+		address = CreateForceVirtualPlaceholder(view, stmt->replace, stmt->options, &need_store);
+
+		CommandCounterIncrement();
+
+		/* insert or update on pg_force_view catalog */
+		if (need_store)
+		{
+			char	ident_case;
+
+			if (identifier_case_switch == NORMAL)
+				ident_case = IDENT_CASE_NORMAL;
+			else if (identifier_case_switch == INTERCHANGE)
+				ident_case = IDENT_CASE_INTERCHANGE;
+			else if (identifier_case_switch == LOWERCASE)
+				ident_case = IDENT_CASE_LOWERCASE;
+			else
+			{
+				/* Normally this will not happen unless you increase the identifier_case_switch enum value */
+				ident_case = IDENT_CASE_UNDEFINE;	/* keep compiler quiet */
+				elog(ERROR, "Incorrect identifier_case_switch value");
+			}
+
+			StoreForceViewQuery(address.objectId, stmt->replace, ident_case, stmt->stmt_literal ? stmt->stmt_literal : queryString);
+		}
+
+		/* oracle always issues this warning */
+		elog(WARNING, "View created with compilation errors");
+		return address;
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 	/*
 	 * The grammar should ensure that the result is a single SELECT Query.
@@ -592,3 +779,670 @@ StoreViewQuery(Oid viewOid, Query *viewParse, bool replace)
 	 */
 	DefineViewRules(viewOid, viewParse, replace);
 }
+
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+void
+StoreForceViewQuery(Oid viewOid, bool replace, char ident_case ,const char *queryString)
+{
+	Datum		values[Natts_pg_force_view];
+	bool		nulls[Natts_pg_force_view];
+	bool		replaces[Natts_pg_force_view];
+	HeapTuple	tup,
+				oldtup;
+	Relation	pg_force_view_desc;
+
+	MemSet(nulls, false, sizeof(nulls));
+
+	values[Anum_pg_force_view_fvoid - 1] = ObjectIdGetDatum(viewOid);
+	values[Anum_pg_force_view_ident_case - 1] = CharGetDatum(ident_case);
+	values[Anum_pg_force_view_source - 1] = CStringGetTextDatum(queryString);
+
+	/*
+	 * Ready to store new pg_force_view tuple
+	 */
+	pg_force_view_desc = table_open(ForceViewRelationId, RowExclusiveLock);
+
+	/*
+	 * Check to see if we are replacing an existing tuple
+	 */
+	oldtup = SearchSysCache1(FORCEVIEWOID, ObjectIdGetDatum(viewOid));
+
+	if (HeapTupleIsValid(oldtup))
+	{
+		if (!replace)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					 errmsg("force view \"%s\" already exists",
+							get_rel_name(viewOid))));
+
+		MemSet(replaces, false, sizeof(replaces));
+		replaces[Anum_pg_force_view_source - 1] = true;
+		replaces[Anum_pg_force_view_ident_case - 1] = true;
+
+		tup = heap_modify_tuple(oldtup, RelationGetDescr(pg_force_view_desc),
+								values, nulls, replaces);
+
+		CatalogTupleUpdate(pg_force_view_desc, &tup->t_self, tup);
+
+		ReleaseSysCache(oldtup);
+	}
+	else
+	{
+		tup = heap_form_tuple(pg_force_view_desc->rd_att, values, nulls);
+		CatalogTupleInsert(pg_force_view_desc, tup);
+	}
+
+	heap_freetuple(tup);
+	table_close(pg_force_view_desc, RowExclusiveLock);
+}
+
+/*
+ * Delete the tuple of pg_force_view by specified oid.
+ */
+void
+DeleteForceView(Oid forceviewid)
+{
+	Relation	force_view_rel;
+	HeapTuple	tup;
+
+	force_view_rel = table_open(ForceViewRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(FORCEVIEWOID, ObjectIdGetDatum(forceviewid));
+
+	#if 0
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for force view %u", forceviewid);
+	#endif
+
+	if (!HeapTupleIsValid(tup))
+	{
+		table_close(force_view_rel, RowExclusiveLock);
+		return;	
+	}
+
+	CatalogTupleDelete(force_view_rel, &tup->t_self);
+	ReleaseSysCache(tup);
+	table_close(force_view_rel, RowExclusiveLock);
+}
+
+#if 0
+bool
+rel_is_force_view(Oid relid)
+{
+	bool		res = false;
+	bool		isNull;
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+
+	if (HeapTupleIsValid(tp))
+	{
+		Datum		reloptions;
+
+		reloptions = SysCacheGetAttr(RELOID, tp, Anum_pg_class_reloptions, &isNull);
+
+		ReleaseSysCache(tp);
+
+		if (!isNull)
+		{
+			if (PointerIsValid(DatumGetPointer(reloptions)))
+			{
+				Datum	   *options;
+				int			count;
+				int			i;
+
+				deconstruct_array(DatumGetArrayTypeP(reloptions),
+								TEXTOID, -1, false, TYPALIGN_INT,
+								&options, NULL, &count);
+
+				for (i = 0; i < count; i++)
+				{
+					char	   *option = TextDatumGetCString(options[i]);
+
+					if (strstr(option, "force_view"))
+					{
+						if (strstr(option, "true"))
+						{
+							res = true;
+							pfree(option);
+							break;
+						}
+					}
+					pfree(option);
+				}
+			}
+			else
+				res = false;
+		}
+		else
+			res = false;
+	}
+	else
+		res = false;
+
+	return res;
+}
+#endif
+
+/*
+ * rel_is_force_view
+ *
+ *		Given an OID checks whether a relation is a force view.
+ */
+bool
+rel_is_force_view(Oid relid)
+{
+	if (IsUnderPostmaster &&
+		get_rel_relkind(relid) == RELKIND_VIEW)
+	{
+		HeapTuple	tuple;
+
+		tuple = SearchSysCache2(RULERELNAME, ObjectIdGetDatum(relid), CStringGetDatum("_RETURN"));
+		if (HeapTupleIsValid(tuple))
+		{
+			ReleaseSysCache(tuple);
+			return false;
+		}
+		else
+			return true;
+	}
+	else
+		return false;
+}
+
+/*
+ * Currently we store the sql statement of force view,
+ * which may be parsed and generated from the raw parse
+ * tree in the future.
+ */
+char *
+get_force_view_def(Oid viewoid)
+{
+	HeapTuple	tup;
+	Datum		view_source;
+	bool		isnull;
+	char		*source;
+
+	tup = SearchSysCache1(FORCEVIEWOID, ObjectIdGetDatum(viewoid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for force view %u", viewoid);
+
+	view_source = SysCacheGetAttr(FORCEVIEWOID, tup,
+									 Anum_pg_force_view_source,
+									 &isnull);
+	if (isnull)
+		elog(ERROR, "the definition of force view %u is lost", viewoid);
+
+	source = TextDatumGetCString(view_source);
+	ReleaseSysCache(tup);
+	return source;
+}
+
+static bool
+compile_force_view_internal(ViewStmt *stmt, const char *queryString, Oid viewoid)
+{
+	RawStmt    *rawstmt;
+	Query	   *viewParse;
+	RangeVar   *view;
+	ListCell   *cell;
+	bool		check_option;
+
+	/*
+	 * Run parse analysis to convert the raw parse tree to a Query.  Note this
+	 * also acquires sufficient locks on the source table(s).
+	 */
+	rawstmt = makeNode(RawStmt);
+	rawstmt->stmt = stmt->query;
+	rawstmt->stmt_location = 0;
+	rawstmt->stmt_len = 0;
+
+	PG_TRY();
+	{
+		viewParse = parse_analyze(rawstmt, queryString, NULL, 0, NULL);
+	}
+	PG_CATCH();
+	{
+		FlushErrorState();
+		return false;
+	}
+	PG_END_TRY();
+
+	/*
+	 * The grammar should ensure that the result is a single SELECT Query.
+	 * However, it doesn't forbid SELECT INTO, so we have to check for that.
+	 */
+	if (!IsA(viewParse, Query))
+		elog(ERROR, "unexpected parse analysis result");
+	if (viewParse->utilityStmt != NULL &&
+		IsA(viewParse->utilityStmt, CreateTableAsStmt))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("views must not contain SELECT INTO")));
+	if (viewParse->commandType != CMD_SELECT)
+		elog(ERROR, "unexpected parse analysis result");
+
+	/*
+	 * Check for unsupported cases.  These tests are redundant with ones in
+	 * DefineQueryRewrite(), but that function will complain about a bogus ON
+	 * SELECT rule, and we'd rather the message complain about a view.
+	 */
+	if (viewParse->hasModifyingCTE)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("views must not contain data-modifying statements in WITH")));
+
+	/*
+	 * If the user specified the WITH CHECK OPTION, add it to the list of
+	 * reloptions.
+	 */
+	if (stmt->withCheckOption == LOCAL_CHECK_OPTION)
+		stmt->options = lappend(stmt->options,
+								makeDefElem("check_option",
+											(Node *) makeString("local"), -1));
+	else if (stmt->withCheckOption == CASCADED_CHECK_OPTION)
+		stmt->options = lappend(stmt->options,
+								makeDefElem("check_option",
+											(Node *) makeString("cascaded"), -1));
+
+	/*
+	 * Check that the view is auto-updatable if WITH CHECK OPTION was
+	 * specified.
+	 */
+	check_option = false;
+
+	foreach(cell, stmt->options)
+	{
+		DefElem    *defel = (DefElem *) lfirst(cell);
+
+		if (strcmp(defel->defname, "check_option") == 0)
+			check_option = true;
+	}
+
+	/*
+	 * If the check option is specified, look to see if the view is actually
+	 * auto-updatable or not.
+	 */
+	if (check_option)
+	{
+		const char *view_updatable_error =
+		view_query_is_auto_updatable(viewParse, true);
+
+		if (view_updatable_error)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("WITH CHECK OPTION is supported only on automatically updatable views"),
+					 errhint("%s", _(view_updatable_error))));
+	}
+
+	/*
+	 * If a list of column names was given, run through and insert these into
+	 * the actual query tree. - thomas 2000-03-08
+	 */
+	if (stmt->aliases != NIL)
+	{
+		ListCell   *alist_item = list_head(stmt->aliases);
+		ListCell   *targetList;
+
+		foreach(targetList, viewParse->targetList)
+		{
+			TargetEntry *te = lfirst_node(TargetEntry, targetList);
+
+			/* junk columns don't get aliases */
+			if (te->resjunk)
+				continue;
+			te->resname = pstrdup(strVal(lfirst(alist_item)));
+			alist_item = lnext(stmt->aliases, alist_item);
+			if (alist_item == NULL)
+				break;			/* done assigning aliases */
+		}
+
+		if (alist_item != NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("CREATE VIEW specifies more column "
+							"names than columns")));
+	}
+
+	/* Unlogged views are not sensible. */
+	if (stmt->view->relpersistence == RELPERSISTENCE_UNLOGGED)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("views cannot be unlogged because they do not have storage")));
+
+	/* Global temporary table are not sensible. */
+	if (stmt->view->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("views cannot be global temp because they do not have storage")));
+
+	/*
+	 * If the user didn't explicitly ask for a temporary view, check whether
+	 * we need one implicitly.  We allow TEMP to be inserted automatically as
+	 * long as the CREATE command is consistent with that --- no explicit
+	 * schema name.
+	 */
+	view = copyObject(stmt->view);	/* don't corrupt original command */
+	if (view->relpersistence == RELPERSISTENCE_PERMANENT
+		&& isQueryUsingTempRelation(viewParse))
+	{
+		view->relpersistence = RELPERSISTENCE_TEMP;
+		ereport(NOTICE,
+				(errmsg("view \"%s\" will be a temporary view",
+						view->relname)));
+	}
+
+	make_view_valid(viewParse->targetList, viewoid, stmt->options, viewParse);
+	return true;
+}
+
+/*
+ * Compile a force view, return true if success, otherwise return false.
+ */
+bool
+compile_force_view(Oid viewoid)
+{
+	bool		res = false;
+	bool		isnull;
+	char		*fview_querystring;
+	Datum		view_source;
+	List	   *raw_parsetree_list;
+	RawStmt    *rs;
+	Node		*node;
+	HeapTuple	tup;
+
+	if (!rel_is_force_view(viewoid))
+		return true;
+
+	/* first: fetch force view metadata */
+	tup = SearchSysCache1(FORCEVIEWOID, ObjectIdGetDatum(viewoid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for force view %u", viewoid);
+
+	view_source = SysCacheGetAttr(FORCEVIEWOID, tup,
+									 Anum_pg_force_view_source,
+									 &isnull);
+	if (isnull)
+		elog(ERROR, "the definition of force view %u is lost", viewoid);
+
+	fview_querystring = TextDatumGetCString(view_source);
+	ReleaseSysCache(tup);
+
+	/* second: parser */
+	raw_parsetree_list = raw_parser(fview_querystring, RAW_PARSE_DEFAULT);
+	if (list_length(raw_parsetree_list) != 1)
+		elog(ERROR, "The definition of force view is wrong");
+
+	rs = linitial_node(RawStmt, raw_parsetree_list);
+	node = rs->stmt;
+	if (node->type != T_ViewStmt)
+		elog(ERROR, "force view %u compile fail due to metadata wrong", viewoid);
+	
+	/*
+	 * third: do compile
+	 *
+	 * We don't use PG_TRY() here for now, even though the function may emit an error message.
+	 * We want to emit rather than ignore the error that the view creation check fails, which
+	 * helps to analyze the problem for user.
+	 */
+	res = compile_force_view_internal((ViewStmt *) node, fview_querystring, viewoid);
+	pfree(fview_querystring);
+
+	return res;
+}
+
+/* 
+ * make_view_invalid
+ *
+ *		Make a view to force view, which is an invalid state.
+ *		Currently, the invalidation of a view cannot be issued explicitly. 
+ *		In most cases, it is caused by the deletion of dependent objects.
+ */
+bool
+make_view_invalid(Oid viewid)
+{
+	Relation	viewrel;
+	Relation	relation;
+	HeapTuple	tuple;
+	StringInfo	buf;
+	Form_pg_class classForm;
+	Datum		viewdef;
+	Oid			ruleoid = InvalidOid;
+	bool		isnull;
+
+	if (rel_is_force_view(viewid))
+		return true;
+
+	/*
+	 * TODO:
+	 * This interface cannot be used directly, because the definition
+	 * of this view must be with a schema, otherwise other sessions
+	 * cannot compile the view, except the session that created the view.
+	 */
+	viewdef = DirectFunctionCall1(pg_get_viewdef, ObjectIdGetDatum(viewid));
+	viewrel = relation_open(viewid, AccessExclusiveLock);
+	CheckTableNotInUse(viewrel, "INVALID VIEW");
+
+	/*
+	 * 1.pg_attribute
+	 * Create or replace force view maybe change targetlist of view.
+	 */
+	DeleteAttributeTuples(viewid);
+
+	/*
+	 *  2.pg_class
+	 * Update the relhasrules and relnatts of pg_class.
+	 */
+	relation = table_open(RelationRelationId, RowExclusiveLock);
+	tuple = SearchSysCacheCopy1(RELOID, ObjectIdGetDatum(viewid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", viewid);
+	classForm = (Form_pg_class) GETSTRUCT(tuple);
+	classForm->relhasrules = false;
+	classForm->relnatts = 0;
+	CatalogTupleUpdate(relation, &tuple->t_self, tuple);
+	heap_freetuple(tuple);
+	table_close(relation, RowExclusiveLock);
+
+	/*
+	 * Close relcache entry, but *keep* AccessExclusiveLock on the relation
+	 * until transaction commit.  This ensures no one else will try to do
+	 * something with the doomed relation.
+	 */
+	relation_close(viewrel, NoLock);
+
+	/*
+	 * 3.pg_rewrite
+	 * Only delete the _RETURN rule of view.
+	 * Are other non-SELECT type rules considered for deletion?
+	 */
+	relation = table_open(RewriteRelationId, RowExclusiveLock);
+	tuple = SearchSysCache2(RULERELNAME, ObjectIdGetDatum(viewid), CStringGetDatum("_RETURN"));
+	if (!HeapTupleIsValid(tuple)) /* should not happen */
+		elog(ERROR, "Unable to get the view's rules when invalid the view");
+	ruleoid = heap_getattr(tuple, Anum_pg_rewrite_oid, RelationGetDescr(relation), &isnull);
+	if (isnull)
+		elog(ERROR, "Unable to get the view rule's OID when invalid the view");
+	CatalogTupleDelete(relation, &tuple->t_self);
+	ReleaseSysCache(tuple);
+	table_close(relation, RowExclusiveLock);
+
+	/*
+	 * 4.pg_depend
+	 * Get rid of old dependencies for the rule of this force view.
+	 */
+	deleteDependencyRecordsFor(RewriteRelationId, ruleoid, false);
+
+	/*
+	 * 5.pg_force_view
+	 * Store the definition of force view.
+	 */
+	buf = makeStringInfo();
+	appendStringInfoString(buf, "CREATE FORCE VIEW ");
+	appendStringInfoString(buf, quote_identifier(get_namespace_name(get_rel_namespace(viewid))));
+	appendStringInfoChar(buf, '.');
+	appendStringInfoString(buf, quote_identifier(get_rel_name(viewid)));
+	appendStringInfoString(buf, " AS \n");
+	appendStringInfoString(buf, TextDatumGetCString(viewdef));
+
+	/*
+	 * When invalidating the view, we do not obtain the view definition directly
+	 * from the query text entered by the user, but obtain it through pg_get_viewdef.
+	 * Therefore, the correctness of the meaning of double quotes in obtaining the view
+	 * definition should depend on pg_get_viewdef, so we use IDENT_CASE_UNDEFINE directly.
+	 */
+	StoreForceViewQuery(viewid, false, IDENT_CASE_UNDEFINE, buf->data);
+
+	/* Make change visible */
+	CommandCounterIncrement();
+
+	return true;
+}
+
+
+bool
+make_view_valid(List *tlist, Oid viewOid, List *options, Query *viewParse)
+{
+	Relation	rel;
+	Relation	relation;
+	HeapTuple	tuple;
+	Form_pg_class classForm;
+	TupleDesc	descriptor;
+	List	   *atcmds = NIL;
+	AlterTableCmd *atcmd;
+	List	   *attrList;
+	ListCell   *t;
+
+	if (!rel_is_force_view(viewOid))
+		return true;
+
+	/*
+	 * create a list of ColumnDef nodes based on the names and types of the
+	 * (non-junk) targetlist items from the view's SELECT list.
+	 */
+	attrList = NIL;
+	foreach(t, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(t);
+
+		if (!tle->resjunk)
+		{
+			ColumnDef  *def = makeColumnDef(tle->resname,
+											exprType((Node *) tle->expr),
+											exprTypmod((Node *) tle->expr),
+											exprCollation((Node *) tle->expr));
+
+			/*
+			 * It's possible that the column is of a collatable type but the
+			 * collation could not be resolved, so double-check.
+			 */
+			if (type_is_collatable(exprType((Node *) tle->expr)))
+			{
+				if (!OidIsValid(def->collOid))
+					ereport(ERROR,
+							(errcode(ERRCODE_INDETERMINATE_COLLATION),
+							 errmsg("could not determine which collation to use for view column \"%s\"",
+									def->colname),
+							 errhint("Use the COLLATE clause to set the collation explicitly.")));
+			}
+			else
+				Assert(!OidIsValid(def->collOid));
+
+			attrList = lappend(attrList, def);
+		}
+	}
+
+	rel = relation_open(viewOid, AccessExclusiveLock);
+
+	/* Make sure it *is* a view. */
+	if (rel->rd_rel->relkind != RELKIND_VIEW)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("\"%s\" is not a view",
+						RelationGetRelationName(rel))));
+
+	/* Check the view not in use */
+	CheckTableNotInUse(rel, "COMPILE FORCE VIEW");
+
+	/*
+	 * Create a tuple descriptor to compare against the existing view, and
+	 * verify that the old column list is an initial prefix of the new
+	 * column list.
+	 */
+	descriptor = BuildDescForRelation(attrList);
+	checkViewTupleDesc(descriptor, rel->rd_att);
+
+	/*
+	 * The target list of force view is null. Here, we construct
+	 * ALTER TABLE ADD COLUMN infrastructure is for force view.
+	 */
+	if (list_length(attrList) > rel->rd_att->natts)
+	{
+		ListCell   *c;
+		int			skip = rel->rd_att->natts;
+
+		foreach(c, attrList)
+		{
+			if (skip > 0)
+			{
+				skip--;
+				continue;
+			}
+			atcmd = makeNode(AlterTableCmd);
+			atcmd->subtype = AT_AddColumnToView;
+			atcmd->def = (Node *) lfirst(c);
+			atcmds = lappend(atcmds, atcmd);
+		}
+
+		AlterTableInternal(viewOid, atcmds, true);
+
+		/* Make the new view columns visible */
+		CommandCounterIncrement();
+	}
+
+	/*
+	 * Update the query for the view.
+	 *
+	 * Note that we must do this before updating the view options, because
+	 * the new options may not be compatible with the old view query (for
+	 * example if we attempt to add the WITH CHECK OPTION, we require that
+	 * the new view be automatically updatable, but the old view may not
+	 * have been).
+	 */
+	StoreViewQuery(viewOid, viewParse, false);
+
+	/* Make the new view query visible */
+	CommandCounterIncrement();
+
+	/*
+	 * Update the view's options.
+	 *
+	 * The new options list replaces the existing options list, even if
+	 * it's empty.
+	 */
+	atcmd = makeNode(AlterTableCmd);
+	atcmd->subtype = AT_ReplaceRelOptions;
+	atcmd->def = (Node *) options;
+	atcmds = list_make1(atcmd);
+
+	AlterTableInternal(viewOid, atcmds, true);
+	relation_close(rel, NoLock);	/* keep the lock! */
+
+	/* Update the relhasrules of pg_class */
+	relation = table_open(RelationRelationId, RowExclusiveLock);
+	tuple = SearchSysCacheCopy1(RELOID, ObjectIdGetDatum(viewOid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", viewOid);
+	classForm = (Form_pg_class) GETSTRUCT(tuple);
+	classForm->relhasrules = true;
+	CatalogTupleUpdate(relation, &tuple->t_self, tuple);
+	heap_freetuple(tuple);
+	table_close(relation, RowExclusiveLock);
+
+	DeleteForceView(viewOid);
+
+	/* Make all change visible */
+	CommandCounterIncrement();
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-FORCEVIEW */

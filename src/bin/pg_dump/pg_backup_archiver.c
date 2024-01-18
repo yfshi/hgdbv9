@@ -151,6 +151,7 @@ static void get_desc_ownerto(ArchiveHandle *AH, TocEntry *te);
 static char *getInstanceSuperuser(PGconn *conn);
 
 /* End - ReqID:SRS-MISC-USER */
+static char *getInstanceIdentifier_case_switch(PGconn *conn);	/* ReqID:SRS-SQL-FORCEVIEW */
 
 /*
  * Allocate a new DumpOptions block containing all default values.
@@ -1263,6 +1264,69 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 
 	return newToc;
 }
+
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+/*
+ * like ArchiveEntry, except that we add add ident_case argument for force view.
+ */
+TocEntry *
+ArchiveEntry2(Archive *AHX, CatalogId catalogId, DumpId dumpId,
+			 ArchiveOpts *opts, char ident_case)
+{
+	ArchiveHandle *AH = (ArchiveHandle *) AHX;
+	TocEntry   *newToc;
+
+	newToc = (TocEntry *) pg_malloc0(sizeof(TocEntry));
+
+	AH->tocCount++;
+	if (dumpId > AH->maxDumpId)
+		AH->maxDumpId = dumpId;
+
+	newToc->prev = AH->toc->prev;
+	newToc->next = AH->toc;
+	AH->toc->prev->next = newToc;
+	AH->toc->prev = newToc;
+
+	newToc->catalogId = catalogId;
+	newToc->dumpId = dumpId;
+	newToc->section = opts->section;
+
+	newToc->tag = pg_strdup(opts->tag);
+	newToc->namespace = opts->namespace ? pg_strdup(opts->namespace) : NULL;
+	newToc->tablespace = opts->tablespace ? pg_strdup(opts->tablespace) : NULL;
+	newToc->tableam = opts->tableam ? pg_strdup(opts->tableam) : NULL;
+	newToc->owner = opts->owner ? pg_strdup(opts->owner) : NULL;
+	newToc->desc = pg_strdup(opts->description);
+	newToc->defn = opts->createStmt ? pg_strdup(opts->createStmt) : NULL;
+	newToc->dropStmt = opts->dropStmt ? pg_strdup(opts->dropStmt) : NULL;
+	newToc->copyStmt = opts->copyStmt ? pg_strdup(opts->copyStmt) : NULL;
+	newToc->ident_case = ident_case;
+
+	if (opts->nDeps > 0)
+	{
+		newToc->dependencies = (DumpId *) pg_malloc(opts->nDeps * sizeof(DumpId));
+		memcpy(newToc->dependencies, opts->deps, opts->nDeps * sizeof(DumpId));
+		newToc->nDeps = opts->nDeps;
+	}
+	else
+	{
+		newToc->dependencies = NULL;
+		newToc->nDeps = 0;
+	}
+
+	newToc->dataDumper = opts->dumpFn;
+	newToc->dataDumperArg = opts->dumpArg;
+	newToc->hadDumper = opts->dumpFn ? true : false;
+
+	newToc->formatData = NULL;
+	newToc->dataLength = 0;
+
+	if (AH->ArchiveEntryPtr != NULL)
+		AH->ArchiveEntryPtr(AH, newToc);
+
+	return newToc;
+}
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 /* Public */
 void
@@ -2682,6 +2746,7 @@ WriteToc(ArchiveHandle *AH)
 		/* END - ReqID:SRS-MISC-USER */
 		WriteStr(AH, te->owner);
 		WriteStr(AH, "false");
+		WriteInt(AH, te->ident_case);/* ReqID:SRS-SQL-FORCEVIEW */
 
 		/* Dump list of dependencies */
 		for (i = 0; i < te->nDeps; i++)
@@ -2798,6 +2863,11 @@ ReadToc(ArchiveHandle *AH)
 
 		if (AH->version < K_VERS_1_9 || strcmp(ReadStr(AH), "true") == 0)
 			pg_log_warning("restoring tables WITH OIDS is not supported anymore");
+
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		if (AH->version >= K_VERS_1_15)
+			te->ident_case = ReadInt(AH);
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 		/* Read TOC entry dependencies */
 		if (AH->version >= K_VERS_1_5)
@@ -3853,7 +3923,45 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	else
 	{
 		if (te->defn && strlen(te->defn) > 0)
-			ahprintf(AH, "%s\n\n", te->defn);
+		{
+			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+			if (strcmp(te->desc, "VIEW") == 0)
+			{
+				bool		need_reset = false;
+				char		*ident_case_now = getInstanceIdentifier_case_switch(AH->connection);
+				if (strcmp(ident_case_now, "normal") != 0)
+				{
+					switch(te->ident_case)
+					{
+						case 'i':
+							need_reset = true;
+							ahprintf(AH, "SET ivorysql.identifier_case_switch = interchange;\n");
+							break;
+						case 'n':
+							need_reset = false;
+							ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");
+							break;
+						case 'l':
+							need_reset = true;
+							ahprintf(AH, "SET ivorysql.identifier_case_switch = lowercase;\n");
+							break;
+						case 'u':
+							need_reset = false;
+							break;
+						default:
+							need_reset = false;
+							break;
+					}
+				}
+				ahprintf(AH, "%s\n\n", te->defn);
+
+				if (need_reset)
+					ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");
+			}
+			/* End - ReqID:SRS-SQL-FORCEVIEW */
+			else
+				ahprintf(AH, "%s\n\n", te->defn);
+		}
 	}
 
 	/*
@@ -5672,4 +5780,29 @@ getInstanceSuperuser(PGconn *conn)
 	return instancesu;
 }
 
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+/*
+ * getInstanceIdentifier_case_switch - ReqID:SRS-SQL-FORCEVIEW
+ *
+ * get ivorysql.identifier_case_switch from instance now
+ */
+static char *
+getInstanceIdentifier_case_switch(PGconn *conn)
+{
+	PGresult *res;
+	PQExpBuffer cmd = createPQExpBuffer();
+	char *identifier_case_switch = NULL;
+
+	appendPQExpBufferStr(cmd, "show ivorysql.identifier_case_switch;");
+	res = PQexec(conn, cmd->data);
+	if(res)
+		identifier_case_switch = pg_strdup(PQgetvalue(res, 0, 0));
+	else
+		identifier_case_switch = "normal";
+	PQclear(res);
+	destroyPQExpBuffer(cmd);
+
+	return identifier_case_switch;
+}
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 

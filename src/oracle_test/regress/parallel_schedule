@@ -197,3 +197,6 @@ test: ora_like_operator
 #/* Begin - ReqID:SRS-SQL-ROWNUM */
 test: ora_rownum
 #/* End - ReqID:SRS-SQL-ROWNUM */
+#/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+test: ora_force_view
+#/* End - ReqID:SRS-SQL-FORCEVIEW */

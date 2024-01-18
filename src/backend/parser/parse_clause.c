@@ -19,6 +19,7 @@
 #include "access/nbtree.h"
 #include "access/table.h"
 #include "access/tsmapi.h"
+#include "access/relation.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/catalog.h"
 #include "catalog/heap.h"
 #include "catalog/pg_am.h"
@@ -27,6 +28,7 @@
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_type.h"
 #include "commands/defrem.h"
+#include "commands/view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -213,7 +215,15 @@ setTargetTable(ParseState *pstate, RangeVar *relation,
 	 */
 	pstate->p_target_relation = parserOpenTable(pstate, relation,
 												RowExclusiveLock);
-
+	/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+	if(rel_is_force_view(RelationGetRelid(pstate->p_target_relation)))
+	{
+		relation_close(pstate->p_target_relation, RowExclusiveLock);
+		compile_force_view(RelationGetRelid(pstate->p_target_relation));
+		pstate->p_target_relation = parserOpenTable(pstate, relation,
+													RowExclusiveLock);
+	}
+	/* End - ReqID:SRS-SQL-FORCEVIEW */
 	/*
 	 * Now build an RTE and a ParseNamespaceItem.
 	 */

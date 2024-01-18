@@ -889,6 +889,12 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %type <list> virtual_clauses add_columns
 /* End - Bug#Z485 */
 
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+%type <boolean> OptViewForce
+%type <node>	ora_alter_view_cmd
+%type <list>	ora_alter_view_cmds
+/* End - ReqID:SRS-SQL-FORCEVIEW */
+
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
  * list and so can never be entered directly.  The filter in parser.c
@@ -2288,6 +2294,17 @@ AlterTableStmt:
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
+		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+		|	ALTER VIEW qualified_name ora_alter_view_cmds
+				{
+					AlterTableStmt *n = makeNode(AlterTableStmt);
+					n->relation = $3;
+					n->cmds = $4;
+					n->objtype = OBJECT_VIEW;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+		/* End - ReqID:SRS-SQL-FORCEVIEW */
 		|	ALTER VIEW qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
@@ -2376,6 +2393,23 @@ alter_table_cmds:
 			| MODIFY modify_col_visibility			{ $$ = list_make1($2); }	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| MODIFY '(' modify_col_visibilitys ')'	{ $$ = $3; }	/* ReqID:SRS-SQL-INVISIBLECOL */
 		;
+
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+ora_alter_view_cmds:
+			ora_alter_view_cmd								{ $$ = list_make1($1); }
+			| ora_alter_view_cmds ora_alter_view_cmd		{ $$ = lappend($1, $2); }
+		;
+
+ora_alter_view_cmd:
+		COMPILE
+			{
+				AlterTableCmd *n = makeNode(AlterTableCmd);
+				n->subtype = AT_ForceViewCompile;
+				n->name = NULL;
+				$$ = (Node *)n;
+			}
+		;
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 partition_cmd:
 			/* ALTER TABLE <name> ATTACH PARTITION <table_name> FOR VALUES */
@@ -12707,30 +12741,54 @@ opt_transaction_chain:
  *
  *****************************************************************************/
 
-ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
+ViewStmt: CREATE OptTemp OptViewForce VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
-					n->view = $4;
+					char	*stmt_iteral = NULL; /* ReqID:SRS-SQL-FORCEVIEW */
+					n->view = $5;
 					n->view->relpersistence = $2;
-					n->aliases = $5;
-					n->query = $8;
+					n->aliases = $6;
+					n->query = $9;
 					n->replace = false;
-					n->options = $6;
-					n->withCheckOption = $9;
+					n->force = $3;	/* ReqID:SRS-SQL-FORCEVIEW */
+					n->options = $7;
+					n->withCheckOption = $10;
+					/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+					/*
+					 * Save the source text of the force view definition in ViewStmt to avoid
+					 * incorrectly obtaining the view definition when using a multi-statement
+					 * parser tree.
+					 */
+					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @1, yylloc - @1);
+					n->stmt_literal = psprintf("%s;", stmt_iteral);
+					pfree(stmt_iteral);
+					/* End - ReqID:SRS-SQL-FORCEVIEW */
 					$$ = (Node *) n;
 				}
-		| CREATE OR REPLACE OptTemp VIEW qualified_name opt_column_list opt_reloptions
+		| CREATE OR REPLACE OptTemp OptViewForce VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
-					n->view = $6;
+					char	*stmt_iteral = NULL; /* ReqID:SRS-SQL-FORCEVIEW */
+					n->view = $7;
 					n->view->relpersistence = $4;
-					n->aliases = $7;
-					n->query = $10;
+					n->aliases = $8;
+					n->query = $11;
 					n->replace = true;
-					n->options = $8;
-					n->withCheckOption = $11;
+					n->force = $5;	/* ReqID:SRS-SQL-FORCEVIEW */
+					n->options = $9;
+					n->withCheckOption = $12;
+					/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+					/*
+					 * Save the source text of the force view definition in ViewStmt to avoid
+					 * incorrectly obtaining the view definition when using a multi-statement
+					 * parser tree.
+					 */
+					stmt_iteral = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @1, yylloc - @1);
+					n->stmt_literal = psprintf("%s;", stmt_iteral);
+					pfree(stmt_iteral);
+					/* End - ReqID:SRS-SQL-FORCEVIEW */
 					$$ = (Node *) n;
 				}
 		| CREATE OptTemp RECURSIVE VIEW qualified_name '(' columnList ')' opt_reloptions
@@ -12742,6 +12800,10 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 					n->aliases = $7;
 					n->query = makeRecursiveViewSelect(n->view->relname, n->aliases, $11);
 					n->replace = false;
+					/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+					n->force = false;
+					n->stmt_literal = NULL;
+					/* End - ReqID:SRS-SQL-FORCEVIEW */
 					n->options = $9;
 					n->withCheckOption = $12;
 					if (n->withCheckOption != NO_CHECK_OPTION)
@@ -12760,6 +12822,10 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 					n->aliases = $9;
 					n->query = makeRecursiveViewSelect(n->view->relname, n->aliases, $13);
 					n->replace = true;
+					/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+					n->force = false;
+					n->stmt_literal= NULL;
+					/* End - ReqID:SRS-SQL-FORCEVIEW */
 					n->options = $11;
 					n->withCheckOption = $14;
 					if (n->withCheckOption != NO_CHECK_OPTION)
@@ -12777,6 +12843,14 @@ opt_check_option:
 		| WITH LOCAL CHECK OPTION		{ $$ = LOCAL_CHECK_OPTION; }
 		| /* EMPTY */					{ $$ = NO_CHECK_OPTION; }
 		;
+
+/* Begin - ReqID:SRS-SQL-FORCEVIEW */
+OptViewForce:
+		NO FORCE				{ $$ = false; }
+		| FORCE					{ $$ = true; }
+		| /* EMPTY */			{ $$ = false; }
+		;
+/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 /*****************************************************************************
  *
