@@ -3033,22 +3033,22 @@ RESET enable_hashjoin;
 -- return columns needed by the parent ForeignScan node
 EXPLAIN (VERBOSE, COSTS OFF)
 SELECT * FROM local_tbl LEFT JOIN (SELECT ft1.*, COALESCE(ft1.c3 || ft2.c3, 'foobar') FROM ft1 INNER JOIN ft2 ON (ft1.c1 = ft2.c1 AND ft1.c1 < 100)) ss ON (local_tbl.c1 = ss.c1) ORDER BY local_tbl.c1 FOR UPDATE OF local_tbl;
-                                                                                                          QUERY PLAN                                                                                                          
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                                QUERY PLAN                                                                                                                
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  LockRows
-   Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::text || (ft2.c3)::text), 'foobar'::text)), local_tbl.ctid, ft1.*, ft2.*
+   Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
    ->  Sort
-         Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::text || (ft2.c3)::text), 'foobar'::text)), local_tbl.ctid, ft1.*, ft2.*
+         Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
          Sort Key: local_tbl.c1
          ->  Hash Left Join
-               Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::text || (ft2.c3)::text), 'foobar'::text)), local_tbl.ctid, ft1.*, ft2.*
+               Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)), local_tbl.ctid, ft1.*, ft2.*
                Hash Cond: ((local_tbl.c1)::number = ft1.c1)
                ->  Seq Scan on public.local_tbl
                      Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, local_tbl.ctid
                ->  Hash
-                     Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, (COALESCE(((ft1.c3)::text || (ft2.c3)::text), 'foobar'::text))
+                     Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, (COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2))
                      ->  Hash Join
-                           Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, COALESCE(((ft1.c3)::text || (ft2.c3)::text), 'foobar'::text)
+                           Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*, COALESCE(((ft1.c3)::varchar2 || (ft2.c3)::varchar2), 'foobar'::varchar2)
                            Hash Cond: (ft2.c1 = ft1.c1)
                            ->  Foreign Scan on public.ft2
                                  Output: ft2.*, ft2.c1, ft2.c3
@@ -5338,7 +5338,7 @@ INSERT INTO ft2 (c1,c2,c3) SELECT c1+1000,c2+100, c3 || c3 FROM ft2 LIMIT 20;
    ->  Subquery Scan on "*SELECT*"
          Output: "*SELECT*"."?column?", "*SELECT*"."?column?_1", NULL::integer, "*SELECT*"."?column?_2", NULL::timestamp with time zone, NULL::timestamp, NULL::varchar2, 'ft2       '::char(10), NULL::user_enum
          ->  Foreign Scan on public.ft2 ft2_1
-               Output: (ft2_1.c1 + '1000'::number), (ft2_1.c2 + '100'::number), ((ft2_1.c3)::text || (ft2_1.c3)::text)
+               Output: (ft2_1.c1 + '1000'::number), (ft2_1.c2 + '100'::number), ((ft2_1.c3)::varchar2 || (ft2_1.c3)::varchar2)
                Remote SQL: SELECT "C 1", c2, c3 FROM "S 1"."T 1" LIMIT 20::bigint
 (8 rows)
 
@@ -5360,7 +5360,7 @@ UPDATE ft2 SET c2 = c2 + 300, c3 = c3 || '_update3' WHERE c1 % 10 = 3;          
  Update on public.ft2
    Remote SQL: UPDATE "S 1"."T 1" SET c2 = $2, c3 = $3 WHERE ctid = $1
    ->  Foreign Scan on public.ft2
-         Output: (c2 + '300'::number), ((c3)::text || '_update3'::text), ctid, ft2.*
+         Output: (c2 + '300'::number), ((c3)::varchar2 || '_update3'::varchar2), ctid, ft2.*
          Filter: ((ft2.c1 % '10'::number) = '3'::number)
          Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8, ctid FROM "S 1"."T 1" FOR UPDATE
 (6 rows)
@@ -5374,7 +5374,7 @@ UPDATE ft2 SET c2 = c2 + 400, c3 = c3 || '_update7' WHERE c1 % 10 = 7 RETURNING 
    Output: c1, c2, c3, c4, c5, c6, c7, c8
    Remote SQL: UPDATE "S 1"."T 1" SET c2 = $2, c3 = $3 WHERE ctid = $1 RETURNING "C 1", c2, c3, c4, c5, c6, c7, c8
    ->  Foreign Scan on public.ft2
-         Output: (c2 + '400'::number), ((c3)::text || '_update7'::text), ctid, ft2.*
+         Output: (c2 + '400'::number), ((c3)::varchar2 || '_update7'::varchar2), ctid, ft2.*
          Filter: ((ft2.c1 % '10'::number) = '7'::number)
          Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8, ctid FROM "S 1"."T 1" FOR UPDATE
 (7 rows)
@@ -5489,12 +5489,12 @@ UPDATE ft2 SET c2 = c2 + 400, c3 = c3 || '_update7' WHERE c1 % 10 = 7 RETURNING 
 EXPLAIN (verbose, costs off)
 UPDATE ft2 SET c2 = ft2.c2 + 500, c3 = ft2.c3 || '_update9', c7 = DEFAULT
   FROM ft1 WHERE ft1.c1 = ft2.c2 AND ft1.c1 % 10 = 9;                               -- can be pushed down
-                                                           QUERY PLAN                                                           
---------------------------------------------------------------------------------------------------------------------------------
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
  Update on public.ft2
    Remote SQL: UPDATE "S 1"."T 1" SET c2 = $2, c3 = $3, c7 = $4 WHERE ctid = $1
    ->  Hash Join
-         Output: (ft2.c2 + '500'::number), ((ft2.c3)::text || '_update9'::text), 'ft2       '::char(10), ft2.ctid, ft2.*, ft1.*
+         Output: (ft2.c2 + '500'::number), ((ft2.c3)::varchar2 || '_update9'::varchar2), 'ft2       '::char(10), ft2.ctid, ft2.*, ft1.*
          Hash Cond: (ft2.c2 = ft1.c1)
          ->  Foreign Scan on public.ft2
                Output: ft2.c2, ft2.c3, ft2.ctid, ft2.*
@@ -9055,15 +9055,15 @@ analyze remt1;
 analyze remt2;
 explain (verbose, costs off)
 update parent set b = parent.b || remt2.b from remt2 where parent.a = remt2.a returning *;
-                                                           QUERY PLAN                                                           
---------------------------------------------------------------------------------------------------------------------------------
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
  Update on public.parent
    Output: parent_1.a, parent_1.b, remt2.a, remt2.b
    Update on public.parent parent_1
    Foreign Update on public.remt1 parent_2
      Remote SQL: UPDATE public.loct1 SET b = $2 WHERE ctid = $1 RETURNING a, b
    ->  Nested Loop
-         Output: ((parent.b)::text || (remt2.b)::text), remt2.*, remt2.a, remt2.b, parent.tableoid, parent.ctid, (NULL::record)
+         Output: ((parent.b)::varchar2 || (remt2.b)::varchar2), remt2.*, remt2.a, remt2.b, parent.tableoid, parent.ctid, (NULL::record)
          Join Filter: (parent.a = remt2.a)
          ->  Append
                ->  Seq Scan on public.parent parent_1
@@ -12095,15 +12095,15 @@ SELECT * FROM insert_tbl ORDER BY a;
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH t AS (UPDATE remote_tbl SET c = c || c RETURNING *)
 INSERT INTO join_tbl SELECT * FROM async_pt LEFT JOIN t ON (async_pt.a = t.a AND async_pt.b = t.b) WHERE async_pt.b === 505;
-                                              QUERY PLAN                                               
--------------------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  Insert on public.join_tbl
    CTE t
      ->  Update on public.remote_tbl
            Output: remote_tbl.a, remote_tbl.b, remote_tbl.c
            Remote SQL: UPDATE public.base_tbl3 SET c = $2 WHERE ctid = $1 RETURNING a, b, c
            ->  Foreign Scan on public.remote_tbl
-                 Output: ((remote_tbl.c)::text || (remote_tbl.c)::text), remote_tbl.ctid, remote_tbl.*
+                 Output: ((remote_tbl.c)::varchar2 || (remote_tbl.c)::varchar2), remote_tbl.ctid, remote_tbl.*
                  Remote SQL: SELECT a, b, c, ctid FROM public.base_tbl3 FOR UPDATE
    ->  Nested Loop Left Join
          Output: async_pt.a, async_pt.b, async_pt.c, t.a, t.b, t.c
@@ -12145,8 +12145,8 @@ RESET enable_hashjoin;
 -- Test that UPDATE/DELETE with inherited target works with async_capable enabled
 EXPLAIN (VERBOSE, COSTS OFF)
 UPDATE async_pt SET c = c || c WHERE b = 0 RETURNING *;
-                                                        QUERY PLAN                                                        
---------------------------------------------------------------------------------------------------------------------------
+                                                            QUERY PLAN                                                            
+----------------------------------------------------------------------------------------------------------------------------------
  Update on public.async_pt
    Output: async_pt_1.a, async_pt_1.b, async_pt_1.c
    Foreign Update on public.async_p1 async_pt_1
@@ -12156,15 +12156,15 @@ UPDATE async_pt SET c = c || c WHERE b = 0 RETURNING *;
    Update on public.async_p3 async_pt_3
    ->  Append
          ->  Foreign Scan on public.async_p1 async_pt_1
-               Output: ((async_pt_1.c)::text || (async_pt_1.c)::text), async_pt_1.tableoid, async_pt_1.ctid, async_pt_1.*
+               Output: ((async_pt_1.c)::varchar2 || (async_pt_1.c)::varchar2), async_pt_1.tableoid, async_pt_1.ctid, async_pt_1.*
                Filter: (async_pt_1.b = '0'::number)
                Remote SQL: SELECT a, b, c, ctid FROM public.base_tbl1 FOR UPDATE
          ->  Foreign Scan on public.async_p2 async_pt_2
-               Output: ((async_pt_2.c)::text || (async_pt_2.c)::text), async_pt_2.tableoid, async_pt_2.ctid, async_pt_2.*
+               Output: ((async_pt_2.c)::varchar2 || (async_pt_2.c)::varchar2), async_pt_2.tableoid, async_pt_2.ctid, async_pt_2.*
                Filter: (async_pt_2.b = '0'::number)
                Remote SQL: SELECT a, b, c, ctid FROM public.base_tbl2 FOR UPDATE
          ->  Seq Scan on public.async_p3 async_pt_3
-               Output: ((async_pt_3.c)::text || (async_pt_3.c)::text), async_pt_3.tableoid, async_pt_3.ctid, NULL::record
+               Output: ((async_pt_3.c)::varchar2 || (async_pt_3.c)::varchar2), async_pt_3.tableoid, async_pt_3.ctid, NULL::record
                Filter: (async_pt_3.b = '0'::number)
 (19 rows)
 

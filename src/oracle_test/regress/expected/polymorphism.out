@@ -1144,7 +1144,7 @@ select pg_typeof('x');            -- unknown
 select pg_typeof('' || '');       -- text
  pg_typeof 
 -----------
- text
+ varchar2
 (1 row)
 
 select pg_typeof(pg_typeof(0));   -- regtype
