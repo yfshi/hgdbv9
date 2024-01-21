@@ -399,8 +399,18 @@ greater_greater ">>"
  * rule for "operator"!
  */
 self			[,()\[\].;\:\+\-\*\/\%\^\<\>\=]
-op_chars		[\~\!\@\#\^\&\|\`\?\+\-\*\/\%\<\>\=]
+op_chars		[\~\!\@\#\^\&\|\`\+\-\*\/\%\<\>\=]
 operator		{op_chars}+
+
+/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+/* We treate the single operator ? as question mark, it returns QUESTION_MARK.
+ * Others operators including the ? operator, can be jsonb_operator or operator_with_question_mark,
+ * if you will add new operator including the ? operator, you can modify operator_with_question_mark.
+ */
+question_mark_as_bind_variable		"?"
+jsonb_operator		[?][@\|\&\|\-\#\>\<\~]+
+operator_with_question_mark		[@\^][?]
+/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
 
 /* we no longer allow unary minus in numbers.
  * instead we pass it separately to parser. there it gets
@@ -1169,14 +1179,6 @@ other			.
 						}
 					}
 
-					/* Begin - BUG#M0000201: support question marks as binding variables */
-					if (nchars == 1 && yytext[0] == '?')
-					{
-						yylval->str = pstrdup(yytext);
-						return QUESTION_MARK;
-					}					
-					/* End - BUG#M0000201: support question marks as binding variables */
-
 					/*
 					 * Complain if operator is too long.  Unlike the case
 					 * for identifiers, we make this an error not a notice-
@@ -1189,6 +1191,30 @@ other			.
 					yylval->str = pstrdup(yytext);
 					return Op;
 				}
+
+{question_mark_as_bind_variable}	{
+										/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+										SET_YYLLOC();
+										yylval->str = pstrdup(yytext);
+										return QUESTION_MARK;
+										/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+									}
+
+{jsonb_operator}				{
+									/* Begin - BUG#M0000292: json operators reutrn Op */
+									SET_YYLLOC();
+									yylval->str = pstrdup(yytext);
+									return Op;
+									/* End - BUG#M0000292: json operators reutrn Op */
+								}
+
+{operator_with_question_mark}	{
+									/* Begin - BUG#M0000292: other operators contained ? return Op */
+									SET_YYLLOC();
+									yylval->str = pstrdup(yytext);
+									return Op;
+									/* End - BUG#M0000292: ? other operators contained ? return Op */
+								}
 
 {param}			{
 					SET_YYLLOC();

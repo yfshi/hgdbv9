@@ -81,11 +81,11 @@ ALTER OPERATOR ^~ (ltree, lquery)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
 ALTER OPERATOR ^~ (lquery, ltree)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
-ALTER OPERATOR ? (ltree, _lquery)
+ALTER OPERATOR @? (ltree, _lquery)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
-ALTER OPERATOR ? (_lquery, ltree)
+ALTER OPERATOR @? (_lquery, ltree) --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
-ALTER OPERATOR ^? (ltree, _lquery)
+ALTER OPERATOR ^? (ltree, _lquery) --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
 ALTER OPERATOR ^? (_lquery, ltree)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
@@ -109,9 +109,9 @@ ALTER OPERATOR ~ (_ltree, lquery)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
 ALTER OPERATOR ~ (lquery, _ltree)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
-ALTER OPERATOR ? (_ltree, _lquery)
+ALTER OPERATOR @? (_ltree, _lquery) --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
-ALTER OPERATOR ? (_lquery, _ltree)
+ALTER OPERATOR @? (_lquery, _ltree) --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
 ALTER OPERATOR @ (_ltree, ltxtquery)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);

@@ -2422,5 +2422,40 @@ exception
     end;
 end;
 /
+--/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace = ? and oid=16384;
+end;
+/
+ERROR:  there is no parameter $1
+LINE 1: ...elname         from pg_class where relnamespace = ? and oid=...
+                                                             ^
+QUERY:  select relname         from pg_class where relnamespace = ? and oid=16384
+CONTEXT:  PL/iSQL function inline_code_block line 4 at SQL statement
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace=? and oid=16384;
+end;
+/
+ERROR:  there is no parameter $1
+LINE 1: ... relname         from pg_class where relnamespace=? and oid=...
+                                                             ^
+QUERY:  select relname         from pg_class where relnamespace=? and oid=16384
+CONTEXT:  PL/iSQL function inline_code_block line 4 at SQL statement
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace>=? and oid=16384;
+end;
+/
+ERROR:  there is no parameter $1
+LINE 1: ...relname         from pg_class where relnamespace>=? and oid=...
+                                                             ^
+QUERY:  select relname         from pg_class where relnamespace>=? and oid=16384
+CONTEXT:  PL/iSQL function inline_code_block line 4 at SQL statement
+--/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
 --clean data
 DROP TABLE test_insert;

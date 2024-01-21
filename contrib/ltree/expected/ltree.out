@@ -1352,31 +1352,31 @@ SELECT '{j.k.l.m, g.b.c.d.e}'::ltree[] ~ 'A*@|g.b.c.d.e';
  t
 (1 row)
 
-SELECT 'a.b.c.d.e'::ltree ? '{A.b.c.d.e}';
+SELECT 'a.b.c.d.e'::ltree @? '{A.b.c.d.e}';--BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT 'a.b.c.d.e'::ltree ? '{a.b.c.d.e}';
+SELECT 'a.b.c.d.e'::ltree @? '{a.b.c.d.e}';
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT 'a.b.c.d.e'::ltree ? '{A.b.c.d.e, a.*}';
+SELECT 'a.b.c.d.e'::ltree @? '{A.b.c.d.e, a.*}';
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT '{a.b.c.d.e,B.df}'::ltree[] ? '{A.b.c.d.e}';
+SELECT '{a.b.c.d.e,B.df}'::ltree[] @? '{A.b.c.d.e}';
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT '{a.b.c.d.e,B.df}'::ltree[] ? '{A.b.c.d.e,*.df}';
+SELECT '{a.b.c.d.e,B.df}'::ltree[] @? '{A.b.c.d.e,*.df}';
  ?column? 
 ----------
  t
@@ -3589,7 +3589,7 @@ SELECT * FROM ltreetest WHERE t ~ '23.*.2' order by t asc;
  23.20.12.16.15.2
 (1 row)
 
-SELECT * FROM ltreetest WHERE t ? '{23.*.1,23.*.2}' order by t asc;
+SELECT * FROM ltreetest WHERE t @? '{23.*.1,23.*.2}' order by t asc;
              t             
 ---------------------------
  23.17.22.1.23.4.29.32.4.1
@@ -7809,7 +7809,7 @@ SELECT * FROM ltreetest WHERE t ~ '23.*.2' order by t asc;
  23.20.12.16.15.2
 (1 row)
 
-SELECT * FROM ltreetest WHERE t ? '{23.*.1,23.*.2}' order by t asc;
+SELECT * FROM ltreetest WHERE t @? '{23.*.1,23.*.2}' order by t asc;
              t             
 ---------------------------
  23.17.22.1.23.4.29.32.4.1
@@ -7909,7 +7909,7 @@ SELECT count(*) FROM ltreetest WHERE t ~ '23.*.2';
      1
 (1 row)
 
-SELECT count(*) FROM ltreetest WHERE t ? '{23.*.1,23.*.2}';
+SELECT count(*) FROM ltreetest WHERE t @? '{23.*.1,23.*.2}';
  count 
 -------
      4
@@ -7965,7 +7965,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
      5
 (1 row)
 
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
  count 
 -------
     15
@@ -8021,7 +8021,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
      5
 (1 row)
 
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
  count 
 -------
     15
@@ -8083,7 +8083,7 @@ SELECT count(*) FROM _ltreetest WHERE t ~ '23.*.2' ;
      5
 (1 row)
 
-SELECT count(*) FROM _ltreetest WHERE t ? '{23.*.1,23.*.2}' ;
+SELECT count(*) FROM _ltreetest WHERE t @? '{23.*.1,23.*.2}' ;
  count 
 -------
     15

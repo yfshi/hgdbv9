@@ -374,20 +374,21 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
 
-CREATE OPERATOR ? (
+--BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
+CREATE OPERATOR @? (
         LEFTARG = ltree,
 	RIGHTARG = _lquery,
 	PROCEDURE = lt_q_regex,
-	COMMUTATOR = '?',
+	COMMUTATOR = '@?',
 	RESTRICT = contsel,
 	JOIN = contjoinsel
 );
 
-CREATE OPERATOR ? (
+CREATE OPERATOR @? (
         LEFTARG = _lquery,
 	RIGHTARG = ltree,
 	PROCEDURE = lt_q_rregex,
-	COMMUTATOR = '?',
+	COMMUTATOR = '@?',
 	RESTRICT = contsel,
 	JOIN = contjoinsel
 );
@@ -530,8 +531,8 @@ CREATE OPERATOR CLASS gist_ltree_ops
 	OPERATOR	13	~ (lquery, ltree) ,
 	OPERATOR	14	@ (ltree, ltxtquery) ,
 	OPERATOR	15	@ (ltxtquery, ltree) ,
-	OPERATOR	16	? (ltree, _lquery) ,
-	OPERATOR	17	? (_lquery, ltree) ,
+	OPERATOR	16	@? (ltree, _lquery) , --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
+	OPERATOR	17	@? (_lquery, ltree) , --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
 	FUNCTION	1	ltree_consistent (internal, ltree, int2, oid, internal),
 	FUNCTION	2	ltree_union (internal, internal),
 	FUNCTION	3	ltree_compress (internal),
@@ -648,20 +649,21 @@ CREATE OPERATOR ~ (
 	JOIN = contjoinsel
 );
 
-CREATE OPERATOR ? (
+--BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
+CREATE OPERATOR @? (
         LEFTARG = _ltree,
 	RIGHTARG = _lquery,
 	PROCEDURE = _lt_q_regex,
-        COMMUTATOR = '?',
+        COMMUTATOR = '@?',
         RESTRICT = contsel,
 	JOIN = contjoinsel
 );
 
-CREATE OPERATOR ? (
+CREATE OPERATOR @? (
         LEFTARG = _lquery,
 	RIGHTARG = _ltree,
 	PROCEDURE = _lt_q_rregex,
-        COMMUTATOR = '?',
+        COMMUTATOR = '@?',
         RESTRICT = contsel,
 	JOIN = contjoinsel
 );
@@ -860,8 +862,8 @@ CREATE OPERATOR CLASS gist__ltree_ops
 	OPERATOR	13	~ (lquery, _ltree),
 	OPERATOR	14	@ (_ltree, ltxtquery),
 	OPERATOR	15	@ (ltxtquery, _ltree),
-	OPERATOR	16	? (_ltree, _lquery),
-	OPERATOR	17	? (_lquery, _ltree),
+	OPERATOR	16	@? (_ltree, _lquery), --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
+	OPERATOR	17	@? (_lquery, _ltree), --BUG#M0000292: We treate the single operator ? as a binding variable placeholder,so change the ltree operator ? to @?
 	FUNCTION	1	_ltree_consistent (internal, _ltree, int2, oid, internal),
 	FUNCTION	2	_ltree_union (internal, internal),
 	FUNCTION	3	_ltree_compress (internal),

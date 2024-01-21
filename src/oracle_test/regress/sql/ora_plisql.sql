@@ -1889,5 +1889,28 @@ exception
 end;
 /
 
+--/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace = ? and oid=16384;
+end;
+/
+
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace=? and oid=16384;
+end;
+/
+
+declare
+  v1 varchar(10);
+begin
+  select relname into v1 from pg_class where relnamespace>=? and oid=16384;
+end;
+/
+--/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+
 --clean data
 DROP TABLE test_insert;
