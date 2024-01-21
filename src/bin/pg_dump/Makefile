@@ -19,11 +19,6 @@ include $(top_builddir)/src/Makefile.global
 override CPPFLAGS := -I$(libpq_srcdir) $(CPPFLAGS)
 LDFLAGS_INTERNAL += -L$(top_builddir)/src/fe_utils -lpgfeutils $(libpq_pgport)
 
-# We remove liblicense.so from LIBS, using liblicense.a
-ifeq ($(with_license),yes)
-LIBS := $(subst -llicense, -l:liblicense.a, $(LIBS))
-endif
-
 OBJS = \
 	$(WIN32RES) \
 	compress_io.o \
