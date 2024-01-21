@@ -17,7 +17,6 @@ SUBDIRS = \
 		  test_bloomfilter \
 		  test_ddl_deparse \
 		  test_extensions \
-		  test_fdwxact \
 		  test_ginpostinglist \
 		  test_integerset \
 		  test_misc \
