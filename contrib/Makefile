@@ -50,7 +50,8 @@ SUBDIRS = \
 		tsm_system_time \
 		unaccent	\
 		vacuumlo	\
-		gb18030_2022
+		ora_btree_gist	\
+		ora_btree_gin
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

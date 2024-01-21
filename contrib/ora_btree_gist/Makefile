@@ -20,8 +20,10 @@ EXTENSION = ora_btree_gist
 DATA = ora_btree_gist--1.0.sql
 PGFILEDESC = "ora_btree_gist - B-tree equivalent GiST operator classes"
 
-REGRESS = init number varchar2 binary_float binary_double date \
+# Begin - BUGM0000266
+ORA_REGRESS = init number varchar2 binary_float binary_double date \
 	  timestamp timestamptz timestampltz yminterval dsinterval
+# End - BUGM0000266
 EXTRA_INSTALL = contrib/ivorysql_ora
 
 SHLIB_LINK += $(filter -lm, $(LIBS))

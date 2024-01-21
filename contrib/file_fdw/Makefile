@@ -9,7 +9,7 @@ PGFILEDESC = "file_fdw - foreign data wrapper for files"
 REGRESS = file_fdw
 ORA_REGRESS = ivy_file_fdw
 
-EXTRA_CLEAN = sql/file_fdw.sql expected/file_fdw.out
+EXTRA_CLEAN = sql/file_fdw.sql expected/file_fdw.out sql/ivy_file_fdw.sql expected/ivy_file_fdw.out		# BUGM0000266
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
