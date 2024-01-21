@@ -30,7 +30,8 @@ static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
 static int grantee_type(char *att);
 
 /* BEGIN - ReqID:SRS-MISC-USER */
-bool CurrentUserIsSuperuser = false;
+bool CurrentUserIsInstanceSuperuser = false;
+bool CurrentUserIsDatabaseSuperuser = false;					/* BUG:z680,z538 */
 const char *CurrentSessionUserName = NULL;
 DBMode database_mode = DB_PG;
 bool restoremode = true; 					/*  bug#M0000238 */
@@ -1266,42 +1267,109 @@ grantee_type(char *att)
 }
 
 /*
- * grantee_type  ReqID:SRS-MISC-USE
+ * getCurrentuserisInstanceSupperuser  ReqID:SRS-MISC-USE
  *
- * get user type
+ * get Currentuser is Instance Supperuser
+ * 
+ * Usually we judge the current user, that is, get the current user's dboid, 
+ * but again, we may specify the user name, then we need to judge by the 
+ * user name and dboid
+ * 
  */
 void
-getcurrentuserisInstanceSupperuser(PGconn *conn)
+getcurrentuserisInstanceSupperuser(PGconn *conn, char *name)
 {
 	PGresult *res;
 	PQExpBuffer cmd1 = createPQExpBuffer();
 
 	/* Begin - BUG#M229 */
-	/* When the database mode is pg, you do not need to get it */
-	if(haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
+	/* When the database mode is pg, you needn't to get it 
+	 * ivory_user is a new view, and it was created after version 14.5.
+	 * if you want to select the message from the view ,you should be sure
+	 * that we have the view. It is judged by haveDBuser.
+	 */
+	if (haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
 	{
-		appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where usesysid = current_userid() and dboid = 0;");
+		if (name != NULL)
+			appendPQExpBuffer(cmd1, "select usesuper from ivory_user where "
+							"usename = %s and dboid = 0;\n", name);
+		else
+			appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where "
+							"usesysid = current_userid() and dboid = 0;\n");
+
 		res = PQexec(conn, cmd1->data);	
 
 		if (PQntuples(res))
-			CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+			CurrentUserIsInstanceSuperuser = *(PQgetvalue(res, 0, 0))== 't';
 		else
-			CurrentUserIsSuperuser = false;
-
+			CurrentUserIsInstanceSuperuser = false;
 	}
 	else 			/* Begin - BUG#M686 */
 	{
-		appendPQExpBufferStr(cmd1, "select usesuper from pg_user where usesysid = current_user::regrole;");
+		if (name != NULL)
+			appendPQExpBuffer(cmd1, "select usesuper from pg_user where "
+							"usename = %s;\n", name);
+		else
+			appendPQExpBufferStr(cmd1, "select usesuper from pg_user where "
+							"usesysid = current_user::regrole;\n");
+
 		res = PQexec(conn, cmd1->data);	
 
 		if (PQntuples(res))
-			CurrentUserIsSuperuser = *(PQgetvalue(res, 0, 0))== 't';
-
+			CurrentUserIsInstanceSuperuser = *(PQgetvalue(res, 0, 0))== 't';
 	}				/* End - BUG#M686 */
 
-	PQclear(res);
+	if (res)
+		PQclear(res);
 	destroyPQExpBuffer(cmd1);
-		
+	/* End - BUG#M229 */
+}
+
+/*
+ * CurrentuserisDatabaseSupperuser  ReqID:SRS-MISC-USE	 BUG:z680,z538 
+ *
+ * currentuser is Database Supperuser
+ */
+void
+getcurrentuserisDatabaseSupperuser(PGconn *conn, char *name)
+{
+	PGresult	   *res;
+	PQExpBuffer		cmd1 = createPQExpBuffer();
+
+	/* Begin - BUG#M229 */
+	/* When the database mode is pg, you needn't to get it 
+	 * ivory_user is a new view, and it was created after version 14.5.
+	 * if you want to select the message from the view ,you should be sure
+	 * that we have the view. It is judged by haveDBuser.
+	 */
+	if(haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
+	{
+		if (name != NULL)
+			appendPQExpBuffer(cmd1, 
+								 "select usesuper from ivory_user u, pg_database d "
+								 "where u.dboid = d.oid and "
+								 "u.usename = %s "
+								 "and d.datname = current_database();", name);
+		else
+			appendPQExpBufferStr(cmd1, 
+								 "select usesuper from ivory_user u, pg_database d "
+								 "where u.dboid = d.oid and "
+								 "u.usesysid = current_userid() "
+								 "and d.datname = current_database();");
+
+		res = PQexec(conn, cmd1->data);	
+
+		if (PQntuples(res))
+			CurrentUserIsDatabaseSuperuser = *(PQgetvalue(res, 0, 0))== 't';
+		else
+			CurrentUserIsDatabaseSuperuser = false;
+
+		PQclear(res);
+	}				/* End - BUG#M686 */
+	else
+		CurrentUserIsDatabaseSuperuser = false;
+
+	destroyPQExpBuffer(cmd1);
 	/* End - BUG#M229 */
 }
 
@@ -1355,6 +1423,8 @@ setIdentifierCaseSwitch(PGconn *conn)
 /*
  *  setNLSdateFormat - BUG:z774  
  * 
+ * During the backup, we need to make sure that all data will be backed up, 
+ * and at this time, we need to set the value of nls to the maximum
  */
 void 
 setNLSdateFormat(PGconn *conn)
@@ -1377,7 +1447,9 @@ setNLSdateFormat(PGconn *conn)
 
 /*
  * getDumpMode  ReqID:SRS-MISC-USE bug:M0000261
- * 
+ *
+ * The main purpose of this function is to determine whether the -m parameter 
+ * is added during the backup, and in what mode
  */
 AssignDumpMode  
 getDumpMode(const char *dumpmode)
@@ -1402,7 +1474,10 @@ getDumpMode(const char *dumpmode)
 
 /*
  * haveDatabaseUser  ReqID:SRS-MISC-USE bug:M0000261
- * 
+ *
+ * Check whether the ivory_user view exists in the current database. 
+ * If it does not exist, return false. This is to ensure compatibility 
+ * with databases of earlier versions
  */
 bool 
 haveDatabaseUser(PGconn *conn)
@@ -1429,7 +1504,7 @@ haveDatabaseUser(PGconn *conn)
 /*
  * SetDumptypeMode  ReqID:SRS-MISC-USE
  * 
- * Set Dumptype Mode
+ * Set Dumptype Mode to oracle
  */
 void 
 SetDumptypeMode(PGconn *conn)
@@ -1443,7 +1518,7 @@ SetDumptypeMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsSuperuser && haveDBuser)
+	if(CurrentUserIsInstanceSuperuser && haveDBuser)
 	{
 		res1 = PQexec(conn, "set session authorization system;");	
 
@@ -1480,7 +1555,7 @@ ReSetDumptypeMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsSuperuser)
+	if(CurrentUserIsInstanceSuperuser)
 	{
 		res1 = PQexec(conn, "reset session authorization;");	
 

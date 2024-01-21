@@ -1247,6 +1247,11 @@ psql_command_nosys(const char *database, const char *query,...)
 /* END - BUG#M0000239 */
 }
 
+/*
+ * Issue a command via psql, connecting to the specified database
+ *
+ * Since we use system(), this doesn't return until the operation finishes
+ */
 static void
 psql_command(const char *database, const char *query,...)
 {
@@ -1273,6 +1278,12 @@ psql_command(const char *database, const char *query,...)
 	*d = '\0';
 
 	/* And now we can build and execute the shell command */
+
+/* BEGIN - ReqID:SRS-MISC-USER */
+	/* 
+	 *If it is port 1521, we need to use a database-level super user 
+	 * system to psql the database 
+	 */
 #ifndef WIN32
 	snprintf(psql_cmd, sizeof(psql_cmd),
 			 "\"%s%spsql\" -X -U system -c \"%s\" \"%s\"",
@@ -1288,6 +1299,7 @@ psql_command(const char *database, const char *query,...)
 			 query_escaped,
 			 database);
 #endif
+/* END- ReqID:SRS-MISC-USER */
 	if (system(psql_cmd) != 0)
 	{
 		/* psql probably already reported the error */
@@ -2576,6 +2588,11 @@ regression_main(int argc, char *argv[],
 		/*
 		 * Check if there is a postmaster running already.
 		 */
+/* BEGIN - ReqID:SRS-MISC-USER */
+		/* 
+		 *If it is port 1521, we need to use a database-level super user 
+		 * system to psql the database 
+		 */
 #ifndef WIN32
 		snprintf(buf2, sizeof(buf2),
 				 "\"%s%spsql\" -X postgres -U system<%s 2>%s",
@@ -2589,6 +2606,7 @@ regression_main(int argc, char *argv[],
 				 bindir ? "/" : "",
 				 DEVNULL, DEVNULL);
 #endif
+/* END - ReqID:SRS-MISC-USER */
 		for (i = 0; i < 16; i++)
 		{
 			if (system(buf2) == 0)
@@ -2756,7 +2774,13 @@ regression_main(int argc, char *argv[],
 			char		*envoraport = NULL;
 			int				envport_s = 0;
 			int				envoraport_s = 0;
-			
+
+			/* BEGIN - ReqID:SRS-MISC-USER */
+			/* 
+			 * database-level users cannot create and delete databases, 
+			 * so you need to use instance-level users to connect databases
+			 * 
+			 */
 			if(oraPort)
 			{
 				sprintf(portname, "%d", port);
@@ -2803,6 +2827,7 @@ regression_main(int argc, char *argv[],
 			}
 
 			pg_free(envoraport);
+			/* END - ReqID:SRS-MISC-USER */
 
 			for (sl = extraroles; sl; sl = sl->next)
 				drop_role_if_exists(sl->str);
@@ -2821,6 +2846,12 @@ regression_main(int argc, char *argv[],
 		int				envport_s = 0;
 		int				envoraport_s = 0;
 
+		/* BEGIN - ReqID:SRS-MISC-USER */
+		/* 
+		 * database-level users cannot create and delete databases, 
+		 * so you need to use instance-level users to connect databases
+		 * 
+		 */
 		if(oraPort)
 		{
 			sprintf(portname, "%d", port);
@@ -2866,7 +2897,6 @@ regression_main(int argc, char *argv[],
 		{
 			if(envoraport_s > 0)
 				setenv("PGPORT", envoraport, 1);
-
 		}
 
 		if (envoraport != NULL)
@@ -2874,6 +2904,7 @@ regression_main(int argc, char *argv[],
 			pg_free(envoraport);
 			envoraport = NULL;
 		}
+		/* END - ReqID:SRS-MISC-USER */
 
 		for (sl = extraroles; sl; sl = sl->next)
 			create_role(sl->str, dblist);

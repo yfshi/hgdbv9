@@ -37,7 +37,8 @@
 #endif
 
 /* BEGIN - ReqID:SRS-MISC-USER */
-extern bool CurrentUserIsSuperuser;
+extern bool CurrentUserIsInstanceSuperuser;
+extern bool CurrentUserIsDatabaseSuperuser;				/* BUG:z680,z538 */
 extern const char *CurrentSessionUserName;
 extern DBMode database_mode;
 extern DBParser compatible_db;
@@ -79,7 +80,8 @@ extern void makeAlterConfigCommand(PGconn *conn, const char *configitem,
 								   PQExpBuffer buf);
 
 /* BEGIN - ReqID:SRS-MISC-USER */
-extern void getcurrentuserisInstanceSupperuser(PGconn *conn);
+extern void getcurrentuserisInstanceSupperuser(PGconn *conn, char *name);
+extern void getcurrentuserisDatabaseSupperuser(PGconn *conn, char *name);
 extern void getDatabaseMode(PGconn *conn);
 extern void setIdentifierCaseSwitch(PGconn *conn);		/* BUG#M229 */
 extern void setNLSdateFormat(PGconn *conn); 				/* BUG:z774 */
