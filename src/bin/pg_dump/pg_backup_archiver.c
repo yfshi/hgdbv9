@@ -432,7 +432,23 @@ RestoreArchive(Archive *AHX)
 		/* BEGIN - ReqID:SRS-MISC-USER */
 		getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
 		getDatabaseMode(((ArchiveHandle *) AHX)->connection);
-		getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection);
+
+		/* BEGIN - BUG:z680,z538 */
+		if (DB_ORACLE == database_mode)
+		{
+			if (ropt->use_role != NULL)
+				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
+			else
+				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
+		}
+		if ((DB_ORACLE == database_mode) && (DB_ORACLE == db_mode))
+		{
+			if (ropt->use_role != NULL)
+				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
+			else
+				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
+		}
+		/* END - BUG:z680,z538 */
 		/* END - SQL PARSER */
 
 		/*
@@ -529,7 +545,7 @@ RestoreArchive(Archive *AHX)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 			
-				if(CurrentUserIsSuperuser && haveDBuser)
+				if(CurrentUserIsInstanceSuperuser && haveDBuser)
 					ahprintf(AH, "set session authorization system;\n");
 				
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
@@ -927,7 +943,7 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 						if (restoremode)
 						{
 							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-							if(CurrentUserIsSuperuser && haveDBuser)
+							if(CurrentUserIsInstanceSuperuser && haveDBuser)
 								ahprintf(AH, "set session authorization system;\n");
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
@@ -3493,7 +3509,7 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 				setNLSdateFormat(AH->connection);							/* BUG:z774 */
 
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.compatible_mode to oracle;\n");
-				if(CurrentUserIsSuperuser && haveDBuser)
+				if(CurrentUserIsInstanceSuperuser && haveDBuser)
 					appendPQExpBufferStr(&connectbuf, "set session authorization system;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.grant_usertype to oracle;\n");
@@ -3894,7 +3910,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 		{
 			ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-			if (CurrentUserIsSuperuser)
+			if (CurrentUserIsInstanceSuperuser)
 				ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
 		}
 	}
@@ -3913,7 +3929,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	}
 	else if (strcmp(te->desc, "DATABASEROLE") == 0 && (DB_ORACLE == database_mode))
 	{
-		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && CurrentUserIsSuperuser && haveDBuser)			/*  bug#M0000261 */
+		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser && 
+			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))			/*  bug#M0000261 */	/* BUG:z680,z538 */
 		{
 			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0))			/*  bug#z680 */
 				ahprintf(AH, "CREATE ROLE %s;\n", fmtId(te->tag));
@@ -4077,7 +4094,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 		{
 			ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-			if(CurrentUserIsSuperuser && haveDBuser)
+			if(CurrentUserIsInstanceSuperuser && haveDBuser)
 				ahprintf(AH, "set session authorization system;\n");
 			ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 			ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");

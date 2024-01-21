@@ -1859,7 +1859,7 @@ dumpDatabases(PGconn *conn)
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						if(CurrentUserIsSuperuser && haveDBuser)
+						if(CurrentUserIsInstanceSuperuser && haveDBuser)
 							fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
@@ -2295,7 +2295,7 @@ ResetCompatible(PQExpBuffer buf, PGconn *conn)
 {
 	appendPQExpBufferStr(buf, "set ivorysql.compatible_mode to pg;\n");
 
-	if(CurrentUserIsSuperuser)
+	if(CurrentUserIsInstanceSuperuser)
 	{
 		appendPQExpBufferStr(buf, "set session authorization \"");
 		appendPQExpBufferStr(buf,  getInstanceSuperuser(conn));

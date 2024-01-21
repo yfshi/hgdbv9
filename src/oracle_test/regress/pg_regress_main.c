@@ -78,6 +78,11 @@ psql_start_test(const char *testname,
 	 * Use HIDE_TABLEAM to hide different AMs to allow to use regression tests
 	 * against different AMs without unnecessary differences.
 	 */
+/* BEGIN - ReqID:SRS-MISC-USER */
+	/* 
+	 *If it is port 1521, we need to use a database-level super user 
+	 * system to psql the database 
+	 */
 #ifndef WIN32
 	offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
 					   "\"%s%spsql\" -X -U system -a -q -d \"%s\" %s < \"%s\" > \"%s\" 2>&1",
@@ -97,6 +102,7 @@ psql_start_test(const char *testname,
 					   infile,
 					   outfile);
 #endif
+/* END - ReqID:SRS-MISC-USER */
 
 	if (offset >= sizeof(psql_cmd))
 	{

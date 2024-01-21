@@ -130,8 +130,16 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	 */
 
 	/* BEGIN - ReqID:SRS-MISC-USER  BUG#Z538 */
+	/*
+	 *When backing up library-level users, we must first determine whether 
+	 * there is a library-level user in the current database, and whether 
+	 * the current user is a super user. The purpose of judging this is 
+	 * to be compatible with the lower version and backup native pg
+	 *
+	 */
 	if(DB_ORACLE == database_mode && haveDBuser && (fout->remoteVersion >= 140008) 
-		&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && CurrentUserIsSuperuser)
+		&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && 
+		(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))		/* BUG:z680,z538 */
 	{
 		pg_log_info("reading database user");
 		getDbRoles(fout,&numRoles);
@@ -150,12 +158,13 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 	nspinfoindex = buildIndexArray(nspinfo, numNamespaces, sizeof(NamespaceInfo));
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	pg_log_info("reading user-defined packages");
-
 	/* Begin - BUG#M229 */
 	/* When the database mode is pg, you do not need to back up the package */
 	if (DB_ORACLE == database_mode)
+	{
+		pg_log_info("reading user-defined packages");
 		getPackages(fout, &numPkgs);
+	}
 	/* End- BUG#M229 */
 	/* End - ReqID:SRS-SQL-PACKAGE */
 

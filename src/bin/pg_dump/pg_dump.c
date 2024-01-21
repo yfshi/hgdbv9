@@ -829,10 +829,22 @@ main(int argc, char **argv)
 
 	haveDatabaseUser(((ArchiveHandle *) fout)->connection);
 
-	if(use_role)
-		CurrentUserIsSuperuser = false;
-	else
-		getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection);
+	/* BEGIN - BUG:z680,z538 */
+	if (DB_ORACLE == database_mode)
+	{
+		if (use_role != NULL)
+			getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection, use_role);
+		else
+			getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection, NULL);
+	}
+	if ((DB_ORACLE == database_mode) && (DB_ORACLE == db_mode))
+	{
+		if (use_role != NULL)
+			getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) fout)->connection, use_role);
+		else
+			getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) fout)->connection, NULL);
+	}
+	/* END - BUG:z680,z538 */
 
 	/* END - ReqID:SRS-MISC-USER */
 
@@ -10727,15 +10739,13 @@ getDbRoles(Archive *fout, int *numRoles)
 		dbrinfo[i].rolcreatedb = (strcmp(PQgetvalue(res, i, i_rolcreatedb), "t") == 0);
 		dbrinfo[i].rolcanlogin = (strcmp(PQgetvalue(res, i, i_rolcanlogin), "t") == 0);
 		dbrinfo[i].rolconnlimit = atoi(PQgetvalue(res, i, i_rolconnlimit));
-		//dbrinfo[i].rolvaliduntil = atoi(PQgetvalue(res, i, i_rolvaliduntil));
 		dbrinfo[i].rolreplication = (strcmp(PQgetvalue(res, i, i_rolreplication), "t") == 0);
 		dbrinfo[i].rolbypassrls = (strcmp(PQgetvalue(res, i, i_rolbypassrls), "t") == 0);
-		//dbrinfo[i].rolcomment = pg_strdup(PQgetvalue(res, i, i_rolcomment));
 
 		if (!PQgetisnull(res, i, i_rolvaliduntil))
 			dbrinfo[i].rolvaliduntil = pg_strdup(PQgetvalue(res, i, i_rolvaliduntil));
 
-		if (!PQgetisnull(res, i, i_rolpassword))
+		if (!PQgetisnull(res, i, i_rolpassword) && !no_role_passwords)
 		{
 			resetPQExpBuffer(buf);
 			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolpassword), conn);
@@ -10747,16 +10757,15 @@ getDbRoles(Archive *fout, int *numRoles)
 		if (!PQgetisnull(res, i, i_rolcomment))
 		{
 			resetPQExpBuffer(buf);
-			//appendPQExpBuffer(buf, "COMMENT ON ROLE %s IS ", fmtId(rolename));
 			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolcomment), conn);
 			dbrinfo[i].rolcomment = pg_strdup(buf->data);
 		}
 		else
-			dbrinfo[i].rolpassword = NULL;
+			dbrinfo[i].rolcomment = NULL;
 
+		/* Decide whether we want to dump it */
 		selectDumpableObject(&(dbrinfo[i].dobj), fout);
 
-		dbrinfo[i].dobj.dump &= ~DUMP_COMPONENT_ACL;
 	}
 
 	PQclear(res);
