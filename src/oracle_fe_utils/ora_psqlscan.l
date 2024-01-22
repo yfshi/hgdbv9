@@ -1825,11 +1825,12 @@ is_oracle_slash(PsqlScanState state, const char *line)
 		case INITIAL:
 		case xqs:	/* we treat these like INITIAL */
 			{
-				int len, i;
+				int len=0, i,j=0;
 				bool has_slash = false;
+				bool has_enter = false;
 
 				len = strlen(line);
-				for (i = 0; i < len; i++)
+				for (i = len-1; i >=0; i--)
 				{
 					/* allowed special char */
 					if (line[i] == '\t' ||
@@ -1843,13 +1844,63 @@ is_oracle_slash(PsqlScanState state, const char *line)
 						if (has_slash)
 							break;
 						has_slash = true;
-						continue;
+						j = i;
+						break;
 					}
 					/* others */
 					break;
 				}
 
-				if (i == len && has_slash)
+				if(i == 0)
+					has_enter = true;
+				/*
+				 * Fixed the bug that the function could not be created by pressing the up key
+				 * add the bool variable has_enter make sure \n be created correctly,
+				 * and modify the search order
+				 */
+				else
+				{
+					for(i=i-1;i >= 0;i--)
+					{
+						/* allowed special char */
+						if (line[i] == '\t' ||
+							line[i] == '\r' ||
+							line[i] == ' ')
+							continue;
+
+						else if (line[i] == '\n')
+						{
+							has_enter = true;
+							break;
+						}
+
+						else
+						{
+							has_enter = false;
+							i = i-1;
+							break;
+						}
+					}
+					if (line[i+1] == ' ')
+						has_enter = true;
+				}
+
+
+				if (has_slash)
+				{
+					for (i = j+1; i < len;i++)
+					{
+						/* allowed special char */
+						if (line[i] == '\t' ||
+							line[i] == '\n' ||
+							line[i] == '\r' ||
+							line[i] == ' ')
+							continue;
+						break;
+					}
+				}
+
+				if (i == len && has_slash&& has_enter == true)
 					result = true;
 			}
 			break;
