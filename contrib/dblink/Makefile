@@ -13,6 +13,9 @@ PGFILEDESC = "dblink - connect to other PostgreSQL databases"
 
 REGRESS = paths dblink
 REGRESS_OPTS = --dlpath=$(top_builddir)/src/test/regress
+# Begin - BUGM0000294
+ORA_REGRESS = paths	ivy_dblink
+# End - BUGM0000294
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS = --dlpath=$(top_builddir)/src/oracle_test/regress
 # END - SQL PARSER
