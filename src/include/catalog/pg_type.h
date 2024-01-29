@@ -307,6 +307,19 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 #define  TYPSTORAGE_EXTENDED	'x' /* fully toastable */
 #define  TYPSTORAGE_MAIN		'm' /* like 'x' but try to store inline */
 
+/* Begin - BUG#M0000296 */
+/*
+ * Currently, we reserve 100 OIDs for Oracle data types.
+ * If the range of Oracle data type OID changes in the future,
+ * please note that these macro definition must be modified.
+ *
+ * Also modify the OID range restrictions in genbki.pl.
+ */
+#define ORACLE_TYPE_OID_INITIAL	9000
+#define ORACLE_TYPE_OID_LAST	9099
+#define IS_ORACLE_TYPE(typid) (((typid) >= ORACLE_TYPE_OID_INITIAL && (typid) <= ORACLE_TYPE_OID_LAST))
+/* End - BUG#M0000296 */
+
 /* Is a type OID a polymorphic pseudotype?	(Beware of multiple evaluation) */
 #define IsPolymorphicType(typid)  \
 	(IsPolymorphicTypeFamily1(typid) || \

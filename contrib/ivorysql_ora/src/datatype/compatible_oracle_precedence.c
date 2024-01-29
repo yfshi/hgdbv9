@@ -23,84 +23,57 @@
 
 #include "../include/ivorysql_ora.h"
 
-#define	ORACLE_DATATYPE_MUMBER	15
+/* OracleDataTypePriority array size */
+#define	ORACLE_DATATYPE_NUM	28
 
-/* Oracle data type precedence array */
-static const int OracleDataTypePriority[ORACLE_DATATYPE_MUMBER][2] =
+/*
+ * Oracle data type precedence array.
+ * Note that the elements of this array must be sorted in
+ * the order of OID value.Therefore, we using the OID of a 
+ * certain data type - 9000 is the subscript of the array.
+ */
+static const int OracleDataTypePriority[ORACLE_DATATYPE_NUM][2] =
 {
-	{ORACHARCHAROID, 1},
-	{ORACHARBYTEOID, 1},
-	{ORAVARCHARCHAROID, 2},   /* assume the precedence of varchar2 higher than char */
-	{ORAVARCHARBYTEOID, 2},
-	{NUMBEROID, 3},
-	{BINARY_FLOATOID, 4},
-	{BINARY_DOUBLEOID, 5},
-	{ORADATEOID, 6},
-	{ORATIMESTAMPOID, 6},
-	{ORATIMESTAMPTZOID, 6},
-	{ORATIMESTAMPLTZOID, 6},
-	{YMINTERVALOID, 6},
-	{DSINTERVALOID, 6},
-	{InvalidOid, 0},	/* Used in the future */
-	{InvalidOid, 0}		/* Used in the future */
+	{ORACHARCHAROID, 1},		/* 9000 */
+	{ORACHARBYTEOID, 1},		/* 9001 */
+	{ORAVARCHARCHAROID, 2},		/* 9002 */
+	{ORAVARCHARBYTEOID, 2},		/* 9003 */
+	{InvalidOid, 0},			/* 9004 - ORACHARCHARARRAYOID */
+	{InvalidOid, 0},			/* 9005 - ORACHARBYTEARRAYOID */
+	{InvalidOid, 0},			/* 9006 - ORAVARCHARCHARARRAYOID */
+	{InvalidOid, 0},			/* 9007 - ORAVARCHARBYTEARRAYOID */
+	{ORADATEOID, 6},			/* 9008 */
+	{InvalidOid, 0},			/* 9009 - ORADATEARRAYOID */
+	{ORATIMESTAMPOID, 6},		/* 9010 */
+	{InvalidOid, 0},			/* 9011 - ORATIMESTAMPARRAYOID */
+	{ORATIMESTAMPTZOID, 6},		/* 9012 */
+	{InvalidOid, 0},			/* 9013 - ORATIMESTAMPTZARRAYOID */
+	{ORATIMESTAMPLTZOID, 6},	/* 9014 */
+	{InvalidOid, 0},			/* 9015 - ORATIMESTAMPLTZARRAYOID */
+	{YMINTERVALOID, 6},			/* 9016 */
+	{InvalidOid, 0},			/* 9017 - YMINTERVALARRAYOID */
+	{DSINTERVALOID, 6},			/* 9018 */
+	{InvalidOid, 0},			/* 9019 - DSINTERVALARRAYOID */
+	{NUMBEROID, 3},				/* 9020 */
+	{InvalidOid, 0},			/* 9021 - NUMBERARRAYOID */
+	{BINARY_FLOATOID, 4},		/* 9022 */
+	{InvalidOid, 0},			/* 9023 - BINARY_FLOATARRAYOID */
+	{BINARY_DOUBLEOID, 5},		/* 9024 */
+	{InvalidOid, 0},			/* 9025 - BINARY_DOUBLEARRAYOID */
+	{InvalidOid, 0},			/* Used in the future */
+	{InvalidOid, 0}				/* Used in the future */
 };
 
-/* parameter_in_priorityarray()
- * Search the left operand or the right operand is or not in the priority array.
- * Return true if successful, otherwise return false.
+
+/*
+ * pg_compatible_oracle_precedence
  *
- * TODO:
- * In order to determine whether a data type is compatible with Oracle through OID,
- * we can add a macro definition in pg_type.h to do this for better performance but
- * the prerequisite for this is that there must be a coding convention, that is,
- * limiting the scope of OID:
- *		#define IsOracleType(oid) oid >= 9000 && oid <= 9200
- *		#define IsMysqlType(oid)  oid > 9200 && oid <= 9400
- */
-static bool
-parameter_in_priorityarray(Oid datatype)
-{
-	int i;
-	
-	for (i = 0; i < ORACLE_DATATYPE_MUMBER; i++)
-	{
-		if (datatype == (Oid)OracleDataTypePriority[i][0])
-			return true;
-	}
-	
-	return false;
-}
-
-
-/* get_precedence()
- * Get precedence of oracle data type.
- * Before calling this function, we assume datatype 
- * is the data type of compatible oracle .
- */
-static int
-get_precedence(Oid datatype)
-{
-	int i;
-	int result = 0;
-	
-	for (i=0; i < ORACLE_DATATYPE_MUMBER; i++)
-	{
-		if (datatype == OracleDataTypePriority[i][0])
-		{
-			result = OracleDataTypePriority[i][1];
-			break;
-		}		
-	}
-	
-	return result;
-}
-
-
-/* pg_compatible_oracle_precedence
  * The function is used to compatible with the Oracle data type precedence , 
  * It is the caller's responsibility to ensure that opname_p is not NULL. 
  *
- * If the data type are in Postgresql, then return false. otherwise sucess return true;
+ * When OpernameGetOprid cannot accurately find an operator, this hook provides
+ * an opportunity to change the data type of the left and right operands and search
+ * again. If the change is successful, it returns true, otherwise it returns false.
  */
 bool
 pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_arg1, Oid *result_arg2)
@@ -127,8 +100,23 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 	arg2 = getBaseType(arg2);
 	/* End - BUGID:0001052 */
 
-	arg1_is_oracle = parameter_in_priorityarray(arg1);
-	arg2_is_oracle = parameter_in_priorityarray(arg2);
+	/* Begin - BUG#M0000296 */
+	if (IS_ORACLE_TYPE(arg1))
+	{
+		int	idx = arg1 - ORACLE_TYPE_OID_INITIAL;
+
+		/* Avoid invalid reads of array and exclude array types */
+		arg1_is_oracle = (idx < ORACLE_DATATYPE_NUM && arg1 == (Oid)OracleDataTypePriority[idx][0]) ? true : false;
+	}
+
+	if (IS_ORACLE_TYPE(arg2))
+	{
+		int	idx = arg2 - ORACLE_TYPE_OID_INITIAL;
+
+		/* Avoid invalid reads of array and exclude array types */
+		arg2_is_oracle = (idx < ORACLE_DATATYPE_NUM && arg2 == (Oid)OracleDataTypePriority[idx][0]) ? true : false;
+	}
+	/* End - BUG#M0000296 */
 	
 	/* Compatible Oracle
 	 * If the left operand or right operand is compatible with oracle's data type and 
@@ -137,7 +125,7 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 	 */
 	if (arg1_is_oracle && arg2_is_oracle)
 	{
-		/* Both arg1 and arg2 are Oracle data type , so do nothing */
+		/* Both arg1 and arg2 are Oracle data type, do nothing */
 	}
 	else if (arg1_is_oracle)
 	{
@@ -177,11 +165,9 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			case TIMESTAMPTZOID:
 				arg2 = ORATIMESTAMPTZOID;
 				break;
-				
-			case INTERVALOID:
+
 			default:
-				;
-				/* do nothing */
+				break;	/* do nothing */
 		}
 	}
 	else if (arg2_is_oracle)
@@ -222,27 +208,46 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			case TIMESTAMPTZOID:
 				arg1 = ORATIMESTAMPTZOID;
 				break;
-				
-			case INTERVALOID:
+
 			default:
-				;
-				/* do nothing */
+				break;	/* do nothing */
 		}
 	}
 	else
 	{
-		/* Both arg1 and arg2 are Postgresql data type, return -1 */
-		PG_RETURN_BOOL(false);
+		/* Both arg1 and arg2 are Postgresql data type, return false */
+		return false;
 	}
 
-	/* At this point,be sure both arg1 and arg2 are oracle data type */	
-	arg1_is_oracle = parameter_in_priorityarray(arg1);
-	arg2_is_oracle = parameter_in_priorityarray(arg2);
-	
+	/* Begin - BUG#M0000296 */
+	/*
+	 * Security check, a little paranoid?
+	 * Avoid not being in array OracleDataTypePriority after
+	 * converting from postgres data type to oracle data type.
+	 */
+	if (IS_ORACLE_TYPE(arg1))
+	{
+		int	idx = arg1 - ORACLE_TYPE_OID_INITIAL;
+
+		/* Avoid invalid reads of array and exclude array types */
+		arg1_is_oracle = (idx < ORACLE_DATATYPE_NUM && arg1 == (Oid)OracleDataTypePriority[idx][0]) ? true : false;
+	}
+
+	if (IS_ORACLE_TYPE(arg2))
+	{
+		int	idx = arg2 - ORACLE_TYPE_OID_INITIAL;
+
+		/* Avoid invalid reads of array and exclude array types */
+		arg2_is_oracle = (idx < ORACLE_DATATYPE_NUM && arg2 == (Oid)OracleDataTypePriority[idx][0]) ? true : false;
+	}
+	/* End - BUG#M0000296 */
+
 	if (arg1_is_oracle && arg2_is_oracle)
 	{
-		arg1_precedence = get_precedence(arg1);
-		arg2_precedence = get_precedence(arg2);
+		/* Begin - BUG#M0000296 */
+		arg1_precedence = OracleDataTypePriority[arg1 - ORACLE_TYPE_OID_INITIAL][1];
+		arg2_precedence = OracleDataTypePriority[arg2 - ORACLE_TYPE_OID_INITIAL][1];
+		/* End - BUG#M0000296 */
 		
 		/* Compatible Oracle implicit conversion
 		 * In arithmetic operations between CHAR/VARCHAR2 and NCHAR/NVARCHAR2,  
@@ -256,9 +261,8 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			 strcmp(opname_p, "/") == 0))
 		{
 			*result_arg1 = NUMBEROID;
-			*result_arg2 = NUMBEROID;	
-			
-			PG_RETURN_BOOL(true);	
+			*result_arg2 = NUMBEROID;
+			return true;
 		}
 		
 		/* Compatible Oracle 
@@ -282,15 +286,13 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			{
 				*result_arg2 = NUMBEROID;
 				*result_arg1 = arg1;
-				
-				PG_RETURN_BOOL(true);
+				return true;
 			}
 			else
 			{
 				*result_arg2 = arg2;
 				*result_arg1 = arg1;
-				
-				PG_RETURN_BOOL(true);
+				return true;
 			}	
 		}
 		else if ((arg2_precedence == 6 && 
@@ -310,15 +312,13 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			{
 				*result_arg1 = NUMBEROID;
 				*result_arg2 = arg2;
-				
-				PG_RETURN_BOOL(true);
+				return true;
 			}
 			else
 			{
 				*result_arg2 = arg2;
 				*result_arg1 = arg1;
-				
-				PG_RETURN_BOOL(true);
+				return true;
 			}	
 		}		
 		
@@ -352,7 +352,7 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 		{
 			*result_arg1 = ORAVARCHARCHAROID;
 			*result_arg2 = ORAVARCHARCHAROID;
-			PG_RETURN_BOOL(true);
+			return true;
 		}
 		/* End - BUG#M0000234 */
 	}
@@ -385,10 +385,10 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 		/* arg1 and arg2 is postgresql data type */
 		*result_arg1 = InvalidOid;
 		*result_arg2 = InvalidOid;
-		PG_RETURN_BOOL(false);
+		return false;
 	}
-	
-	PG_RETURN_BOOL(true);
+
+	return true;
 }
 
 
