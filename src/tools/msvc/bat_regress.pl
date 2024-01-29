@@ -36,10 +36,10 @@ foreach $a (@vcregress_pg){
 chdir($installdir) or die "can not change install dir!";
 rmtree("data");
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D $installdir/data -m pg");
+system("initdb.exe -D $installdir/data -m pg --encoding=UTF-8");	#BUGM0000294
 my $status1 = $? >> 8;
 exit $status1 if $status1;
-system("pg_ctl.exe -D $installdir/data start");
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg.txt start");	#BUGM0000294
 my $status2 = $? >> 8;
 exit $status2 if $status2;
 chdir "$startdir";
@@ -49,7 +49,7 @@ my @vcregress_pg_install = ("installcheck","plcheck","contribcheck","moduleschec
 foreach $a (@vcregress_pg_install){
 	system("vcregress_pg.bat $a");
 	my $status3 = $? >> 8;
-#	exit $status3 if $status3;
+	exit $status3 if $status3;		#BUGM0000294
 	print "=======end vcregress_pg.bat $a regression================\n";
 }
 chdir($installdir) or die "can not change install dir!";
@@ -59,6 +59,7 @@ my $status4 = $? >> 8;
 exit $status4 if $status4;
 chdir($installdir) or die "can not change install dir!";
 rmtree("data");
+rmtree("log_pg.txt");	#BUGM0000294
 chdir "$startdir";
 delete $ENV{PGPORT};
 
@@ -73,10 +74,10 @@ foreach $a (@vcregress_ora_pg){
 
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D $installdir/data -m oracle");
+system("initdb.exe -D $installdir/data -m oracle --encoding=UTF-8");	#BUGM0000294
 my $status6 = $? >> 8;
 exit $status6 if $status6;
-system("pg_ctl.exe -D $installdir/data start");
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg_ora.txt start");	#BUGM0000294
 my $status7 = $? >> 8;
 exit $status7 if $status7;
 chdir "$startdir";
@@ -87,7 +88,7 @@ my @vcregress_ora_pg_install = ("installcheck","plcheck","contribcheck","modules
 foreach $a (@vcregress_ora_pg_install){
 	system("vcregress_ora_pg.bat $a");
 	my $status8 = $? >> 8;
-#	exit $status8 if $status8;
+	exit $status8 if $status8;		#BUGM0000294
 	print "=======end vcregress_ora_pg.bat $a regression================\n";
 }
 chdir($installdir) or die "can not change install dir!";
@@ -97,6 +98,7 @@ my $status9 = $? >> 8;
 exit $status9 if $status9;
 chdir($installdir) or die "can not change install dir!";
 rmtree("data");
+rmtree("log_pg_ora.txt");	#BUGM0000294
 chdir "$startdir";
 delete $ENV{PGPORT};
 
@@ -110,17 +112,17 @@ foreach $a (@vcregress_ora){
 
 chdir($installdir) or die "can not change install dir!";
 chdir("bin") or die "can not change bin dir!";
-system("initdb.exe -D $installdir/data -c normal");
+system("initdb.exe -D $installdir/data -c normal --encoding=UTF-8");	#BUGM0000294
 my $status11 = $? >> 8;
 exit $status11 if $status11;
-system("pg_ctl.exe -D $installdir/data start");
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_ora.txt start");	#BUGM0000294
 my $status12 = $? >> 8;
 exit $status12 if $status12;
 chdir "$startdir";
 
 $ENV{PGPORT} = 1521;
 
-my @vcregress_ora_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck");
+my @vcregress_ora_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck","contribcheck");	#BUGM0000294
 foreach $a (@vcregress_ora_install){
 	system("vcregress_ora.bat $a");
 	my $status13 = $? >> 8;
@@ -134,5 +136,6 @@ my $status14 = $? >> 8;
 exit $status14 if $status14;
 chdir($installdir) or die "can not change install dir!";
 rmtree("data");
+rmtree("log_ora.txt");	#BUGM0000294
 chdir "$startdir";
 print "===============================finish all regress check========================================\n";

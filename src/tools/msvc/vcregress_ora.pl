@@ -64,6 +64,7 @@ my $Config = -e "release/postgres/postgres.exe" ? "Release" : "Debug";
 copy("$Config/refint/refint.dll",                 "src/oracle_test/regress");
 copy("$Config/autoinc/autoinc.dll",               "src/oracle_test/regress");
 copy("$Config/oraregress/oraregress.dll",         "src/oracle_test/regress");
+copy("$Config/oraregress/oraregress.dll",         "src/oracle_test/regress/regress.dll");	# BUGM0000294 : because of contrib/dblink
 copy("$Config/dummy_seclabel/dummy_seclabel.dll", "src/oracle_test/regress");
 
 # Configuration settings used by TAP tests
@@ -509,9 +510,10 @@ sub contribcheck
 		next if ($module eq "uuid-ossp"  && !defined($config->{uuid}));
 		next if ($module eq "sslinfo"    && !defined($config->{openssl}));
 		next if ($module eq "xml2"       && !defined($config->{xml}));
-		next if ($module =~ /_plperl$/   && !defined($config->{perl}));
-		next if ($module =~ /_plpython$/ && !defined($config->{python}));
+		next if ($module =~ /_plperl$/   );		# BUGM0000294
+		next if ($module =~ /_plpython$/ );		# BUGM0000294
 		next if ($module eq "sepgsql");
+		next if ($module eq "gb18030_2022");	# BUGM0000294
 
 		subdircheck($module);
 		my $status = $? >> 8;
@@ -743,7 +745,7 @@ sub fetchTests
 		return ();
 	}
 
-	if ($m =~ /^REGRESS\s*=\s*(.*)$/gm)
+	if ($m =~ /^ORA_REGRESS\s*=\s*(.*)$/gm)		# BUGM0000294
 	{
 		$t = $1;
 		$t =~ s/\s+/ /g;
