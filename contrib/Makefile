@@ -50,6 +50,8 @@ SUBDIRS = \
 		tsm_system_time \
 		unaccent	\
 		vacuumlo	\
+		gb18030_2022	\
+		ivorysql_ora	\
 		ora_btree_gist	\
 		ora_btree_gin
 
