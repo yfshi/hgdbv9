@@ -1350,9 +1350,9 @@ SELECT text 'text' || ' and unknown' AS "Concat text to unknown type";
 (1 row)
 
 SELECT char(20) 'characters' || ' and text' AS "Concat char to unknown type";
- Concat char to unknown type 
------------------------------
- characters and text
+  Concat char to unknown type  
+-------------------------------
+ characters           and text
 (1 row)
 
 SELECT text 'text' || char(20) ' and characters' AS "Concat text to char";

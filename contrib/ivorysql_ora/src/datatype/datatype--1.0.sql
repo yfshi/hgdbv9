@@ -11897,3 +11897,21 @@ AS IMPLICIT;
 CREATE CAST (text AS text)
 WITH FUNCTION sys.orachar_to_long_with_typmod(text, integer, boolean)
 AS IMPLICIT;
+
+/* Begin - BUG#M0000234 */
+CREATE CAST (pg_catalog.date AS sys.oravarcharchar)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (pg_catalog.timestamp AS sys.oravarcharchar)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (pg_catalog.timestamptz AS sys.oravarcharchar)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (pg_catalog.interval AS sys.oravarcharchar)
+WITH INOUT
+AS IMPLICIT;
+/* End - BUG#M0000234 */

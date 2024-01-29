@@ -48,6 +48,14 @@ static const int OracleDataTypePriority[ORACLE_DATATYPE_MUMBER][2] =
 /* parameter_in_priorityarray()
  * Search the left operand or the right operand is or not in the priority array.
  * Return true if successful, otherwise return false.
+ *
+ * TODO:
+ * In order to determine whether a data type is compatible with Oracle through OID,
+ * we can add a macro definition in pg_type.h to do this for better performance but
+ * the prerequisite for this is that there must be a coding convention, that is,
+ * limiting the scope of OID:
+ *		#define IsOracleType(oid) oid >= 9000 && oid <= 9200
+ *		#define IsMysqlType(oid)  oid > 9200 && oid <= 9400
  */
 static bool
 parameter_in_priorityarray(Oid datatype)
@@ -329,6 +337,24 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 			*result_arg1 = arg2;
 			*result_arg2 = arg2;
 		}
+
+		/* Begin - BUG#M0000234 */
+		/*
+		 * Compatible with Oracle's concatenation operator ||,this operatoris in
+		 * SYS mode and should have only one. The left and right operands are of
+		 * VARCHAR2 type. All Oracle-compatible data types use this unique || operator.
+		 *
+		 * This || operator may also be used when mixing Oracle data types and postgres
+		 * data types. Because we may implicitly convert certain postgres data types to
+		 * oracle data types.
+		 */
+		if (strcmp(opname_p, "||") == 0)
+		{
+			*result_arg1 = ORAVARCHARCHAROID;
+			*result_arg2 = ORAVARCHARCHAROID;
+			PG_RETURN_BOOL(true);
+		}
+		/* End - BUG#M0000234 */
 	}
 	else
 	{

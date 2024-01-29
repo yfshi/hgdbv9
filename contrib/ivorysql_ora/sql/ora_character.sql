@@ -574,3 +574,159 @@ EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '
 
 DROP TABLE test_m262;
 /* End - BUG#M0000262 */
+
+/* Begin - BUG#M0000234 */
+-- oracharchar vs orachabyte
+select 'china'::char(10 char) || 'made'::char(10 char) from dual;
+select 'china'::char(10 char) || 'made'::char(10 byte) from dual;
+select 'china'::char(10 byte) || 'made'::char(10 byte) from dual;
+select 'china'::char(10 byte) || 'made'::char(10 char) from dual;
+select length('china'::char(10 byte) || 'made'::char(10 char)) from dual; -- 20
+
+-- oravarcharchar vs oravarcharbyte
+select 'china'::varchar2(10 char) || 'made'::varchar2(10 char) from dual;
+select 'china'::varchar2(10 char) || 'made'::varchar2(10 byte) from dual;
+select 'china'::varchar2(10 byte) || 'made'::varchar2(10 byte) from dual;
+select 'china'::varchar2(10 byte) || 'made'::varchar2(10 char) from dual;
+select length('china'::varchar2(10 byte) || 'made'::varchar2(10 char)) from dual; -- 9
+
+-- char vs varchar2
+select 'china'::char(10 char) || 'made'::varchar2(10 char) from dual;
+select 'china'::char(10 char) || 'made'::varchar2(10 byte) from dual;
+select 'china'::char(10 byte) || 'made'::varchar2(10 char) from dual;
+select 'china'::char(10 byte) || 'made'::varchar2(10 byte) from dual;
+select length('china'::char(10 byte) || 'made'::varchar2(10 byte)) from dual; -- 14
+
+-- varchar2 vs char
+select 'china'::varchar2(10 char) || 'made'::char(10 char) from dual;
+select 'china'::varchar2(10 char) || 'made'::char(10 byte) from dual;
+select 'china'::varchar2(10 byte) || 'made'::char(10 char) from dual;
+select 'china'::varchar2(10 byte) || 'made'::char(10 byte) from dual;
+select length('china'::varchar2(10 byte) || 'made'::char(10 byte)) from dual; -- 15
+
+-- unknown
+select 'china'::char(10 char) || 'made' from dual;
+select 'china'::char(10 byte) || 'made' from dual;
+select 'china'::varchar2(10 char) || 'made' from dual;
+select 'china'::varchar2(10 byte) || 'made' from dual;
+
+-- oracle character vs oracle number
+select 'china'::char(10 char) || '1949'::number from dual;
+select 'china'::char(10 byte) || '1949'::number from dual;
+select 'china'::varchar2(10 char) || '1949'::number from dual;
+select 'china'::varchar2(10 byte) || '1949'::number from dual;
+
+-- oracle character vs oracle datetime
+select 'china'::char(10 char) || date'1949-10-1' from dual;
+select 'china'::char(10 byte) || date'1949-10-1' from dual;
+select 'china'::varchar2(10 char) || date'1949-10-1' from dual;
+select 'china'::varchar2(10 byte) || date'1949-10-1' from dual;
+select 'china'::char(10 char) || timestamp'1949-10-1 12:34:56' from dual;
+select 'china'::char(10 byte) || timestamp'1949-10-1 12:34:56' from dual;
+select 'china'::varchar2(10 char) || timestamp'1949-10-1 12:34:56' from dual;
+select 'china'::varchar2(10 byte) || timestamp'1949-10-1 12:34:56' from dual;
+
+-- oracle character vs oracle interval
+select 'china'::char(10 char) || interval '1-1' year to month from dual;
+select 'china'::char(10 byte) || interval '1-1' year to month from dual;
+select 'china'::varchar2(10 char) || interval '1-1' year to month from dual;
+select 'china'::varchar2(10 byte) || interval '1-1' year to month from dual;
+select 'china'::char(10 char) || interval '1 11:11:11' day to second from dual;
+select 'china'::char(10 byte) || interval '1 11:11:11' day to second from dual;
+select 'china'::varchar2(10 char) || interval '1 11:11:11' day to second from dual;
+select 'china'::varchar2(10 byte) || interval '1 11:11:11' day to second from dual;
+
+-- oracle character vs pg_catalog.int4
+select 'china'::char(10 char) || 1949 from dual;
+select 'china'::char(10 byte) || 1949 from dual;
+select 'china'::varchar2(10 char) || 1949 from dual;
+select 'china'::varchar2(10 byte) || 1949 from dual;
+
+-- oracle character vs pg_catalog.numeric
+select 'china'::char(10 char) || 19.49::numeric from dual;
+select 'china'::char(10 byte) || 19.49::numeric from dual;
+select 'china'::varchar2(10 char) || 19.49::numeric from dual;
+select 'china'::varchar2(10 byte) || 19.49::numeric from dual;
+
+-- oracle character vs pg_catalog.float4
+select 'china'::char(10 char) || 19.49::float4 from dual;
+select 'china'::char(10 byte) || 19.49::float4 from dual;
+select 'china'::varchar2(10 char) || 19.49::float4 from dual;
+select 'china'::varchar2(10 byte) || 19.49::float4 from dual;
+
+-- oracle character vs pg_catalog.float8
+select 'china'::char(10 char) || 19.49::float8 from dual;
+select 'china'::char(10 byte) || 19.49::float8 from dual;
+select 'china'::varchar2(10 char) || 19.49::float8 from dual;
+select 'china'::varchar2(10 byte) || 19.49::float8 from dual;
+
+-- oracle character vs pg_catalog.bpchar
+select 'china'::char(10 char) || 'made'::pg_catalog.bpchar(10) from dual;
+select 'china'::char(10 byte) || 'made'::pg_catalog.bpchar(10) from dual;
+select 'china'::varchar2(10 char) || 'made'::pg_catalog.bpchar(10) from dual;
+select 'china'::varchar2(10 byte) || 'made'::pg_catalog.bpchar(10) from dual;
+
+-- oracle character vs pg_catalog.varchar
+select 'china'::char(10 char) || 'made'::pg_catalog.varchar(10) from dual;
+select 'china'::char(10 byte) || 'made'::pg_catalog.varchar(10) from dual;
+select 'china'::varchar2(10 char) || 'made'::pg_catalog.varchar(10) from dual;
+select 'china'::varchar2(10 byte) || 'made'::pg_catalog.varchar(10) from dual;
+
+-- oracle character vs pg_catalog.date
+select 'china'::char(10 char) || '1949-10-1'::pg_catalog.date from dual;
+select 'china'::char(10 byte) || '1949-10-1'::pg_catalog.date from dual;
+select 'china'::varchar2(10 char) || '1949-10-1'::pg_catalog.date from dual;
+select 'china'::varchar2(10 byte) || '1949-10-1'::pg_catalog.date from dual;
+
+-- oracle character vs pg_catalog.timestamp
+select 'china'::char(10 char) || '1949-10-1'::pg_catalog.timestamp from dual;
+select 'china'::char(10 byte) || '1949-10-1'::pg_catalog.timestamp from dual;
+select 'china'::varchar2(10 char) || '1949-10-1'::pg_catalog.timestamp from dual;
+select 'china'::varchar2(10 byte) || '1949-10-1'::pg_catalog.timestamp from dual;
+
+-- oracle character vs pg_catalog.timestamptz
+select 'china'::char(10 char) || '1949-10-1'::pg_catalog.timestamptz from dual;
+select 'china'::char(10 byte) || '1949-10-1'::pg_catalog.timestamptz from dual;
+select 'china'::varchar2(10 char) || '1949-10-1'::pg_catalog.timestamptz from dual;
+select 'china'::varchar2(10 byte) || '1949-10-1'::pg_catalog.timestamptz from dual;
+
+-- oracle character vs pg_catalog.interval
+select 'china'::char(10 char) || '10-1'::pg_catalog.interval from dual;
+select 'china'::char(10 byte) || '10-1'::pg_catalog.interval from dual;
+select 'china'::varchar2(10 char) || '10-1'::pg_catalog.interval from dual;
+select 'china'::varchar2(10 byte) || '10-1'::pg_catalog.interval from dual;
+
+-- pg_catalog.text vs oralce char&varchar2
+select 'pg-text'::pg_catalog.text || 'oracle'::char(10 char) from dual;
+select 'pg-text'::pg_catalog.text || 'oracle'::char(10 byte) from dual;
+select 'pg-text'::pg_catalog.text || 'oracle'::varchar2(10 char) from dual;
+select 'pg-text'::pg_catalog.text || 'oracle'::varchar2(10 byte) from dual;
+
+-- pg_catalog.text vs oralce number
+select 'pg-text'::pg_catalog.text || '3.14'::number from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::number from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::number from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::number from dual;
+
+-- pg_catalog.text vs oralce binary_float
+select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
+
+-- pg_catalog.text vs oralce binary_double
+select 'pg-text'::pg_catalog.text || '3.14'::binary_double from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_double from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_double from dual;
+select 'pg-text'::pg_catalog.text || '3.14'::binary_double from dual;
+
+-- pg_catalog.text vs oralce date/timetamp
+select 'pg-text'::pg_catalog.text || date'1949-10-1' from dual;
+select 'pg-text'::pg_catalog.text || timestamp'1949-10-1 11:11:11' from dual;
+select 'pg-text'::pg_catalog.text || timestamp'1949-10-1 11:11:11'::sys.oratimestamptz from dual;
+select 'pg-text'::pg_catalog.text || timestamp'1949-10-1 11:11:11'::sys.oratimestampltz from dual;
+
+-- pg_catalog.text vs oralce yminterval/dsinterval
+select 'pg-text'::pg_catalog.text || interval '11-11' year to month from dual;
+select 'pg-text'::pg_catalog.text || interval '1 11:11:11' day to second from dual;
+/* End - BUG#M0000234 */

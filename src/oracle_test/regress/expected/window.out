@@ -2904,13 +2904,13 @@ SELECT * FROM
           min(salary) OVER (PARTITION BY depname || 'A', depname) depminsalary
    FROM empsalary) emp
 WHERE depname = 'sales';
-                                QUERY PLAN                                
---------------------------------------------------------------------------
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
  Subquery Scan on emp
    ->  WindowAgg
          ->  WindowAgg
                ->  Sort
-                     Sort Key: (((empsalary.depname)::text || 'A'::text))
+                     Sort Key: (((empsalary.depname)::varchar2 || 'A'::varchar2))
                      ->  Seq Scan on empsalary
                            Filter: (depname = 'sales'::varchar2)
 (7 rows)
