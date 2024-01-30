@@ -2496,7 +2496,7 @@ static const char * charsets_mapping[N_CHARSET_MAP][2] =
 	{"iso88598",			"IW8ISO8859P8"},
 	{"win1255",				"IW8MSWIN1255"},
 
-	{"ecu_jp",				"JA16EUC"},
+	{"euc_jp",				"JA16EUC"},
 	{"euc_jis_2004",		"JA16EUCTILDE"},
 	{"sjis",				"JA16SJIS"},
 	{"shiftjis2004",		"JA16SJISTILDE"},

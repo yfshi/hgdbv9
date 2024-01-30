@@ -23,6 +23,7 @@
 #include "optimizer/inherit.h"
 #include "optimizer/joininfo.h"
 #include "optimizer/optimizer.h"
+#include "optimizer/ora_indexcond.h"	/* BUG#M0000302 */
 #include "optimizer/pathnode.h"
 #include "optimizer/paths.h"
 #include "optimizer/placeholder.h"
@@ -1669,6 +1670,12 @@ distribute_qual_to_rels(PlannerInfo *root, Node *clause,
 	 * Retrieve all relids mentioned within the clause.
 	 */
 	relids = pull_varnos(root, clause);
+
+	/* Begin - BUG#M0000302 */
+	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER &&
+		ora_views_index_scan && identifier_case_switch != LOWERCASE)
+		clause = take_oracasetrans_away(clause);
+	/* End - BUG#M0000302 */
 
 	/*
 	 * In ordinary SQL, a WHERE or JOIN/ON clause can't reference any rels

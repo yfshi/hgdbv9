@@ -2031,7 +2031,7 @@ IMMUTABLE;
 
 CREATE CAST (sys.oravarcharchar AS pg_catalog.name)
 WITH FUNCTION sys.oravarchar_name(sys.oravarcharchar)
-AS ASSIGNMENT;
+AS IMPLICIT;			/* BUG#M0000302 */
 
 -- Convert cidr to oravarchar
 CREATE FUNCTION sys.cidr_oravarchar(cidr)
@@ -2467,7 +2467,7 @@ AS ASSIGNMENT;
 
 CREATE CAST (sys.oravarcharbyte AS pg_catalog.name)
 WITH FUNCTION sys.oravarchar_name(sys.oravarcharchar)
-AS ASSIGNMENT;
+AS IMPLICIT;			/* BUG#M0000302 */
 
 CREATE CAST (cidr AS sys.oravarcharbyte)
 WITH FUNCTION sys.cidr_oravarchar(cidr)

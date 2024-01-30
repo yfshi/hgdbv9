@@ -17,11 +17,11 @@
 
 #include <ctype.h>
 
+#include "catalog/pg_type_d.h"
 #include "common/logging.h"
 #include "fe_utils/psqlscan_int.h"
 #include "oracle_fe_utils/ora_number_utils.h"
 
-#define NUMBEROID 9020
 
 /* GUC parameter */
 static char	decimal_point;
@@ -29,12 +29,14 @@ static char	decimal_point;
 static int numwidth;
 static int explen;
 
+
 static char * sci_notation(char *value);
 static void get_numeric_symbol(const PGconn *conn);
 static void calc_exp_len(int exponent);
 static char * out_of_numwidth(bool is_negative, int exponent);
 static char * round_sigs(char *sigs, bool is_negative, int *exponent, int dp_offset);
 static char * format_number(bool is_negative, char *sigs, int exponent);
+
 
 /*
  * format each number datatype field in results

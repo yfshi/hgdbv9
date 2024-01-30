@@ -1,0 +1,2005 @@
+-- view consists of columns from one relation
+create view v_oct_1 as
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(relname::varchar2)::varchar2(128) as name
+	from pg_class
+;
+-- view consists of columns from two relations
+create view v_oct_2 as
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(relname::varchar2)::varchar2(128) as name
+	from pg_class
+union
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(proname::varchar2)::varchar2(128)
+	from pg_proc
+;
+-- view consists of columns from three relations
+create view v_oct_3 as
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(relname::varchar2)::varchar2(128) as name
+	from pg_class
+union
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(proname::varchar2)::varchar2(128) as name
+	from pg_proc
+union
+	select
+		oid::varchar2(10)::number as id,
+		ora_case_trans(typname::varchar2)::varchar2(128) as name
+	from pg_type
+;
+create table " AAA_asc" (id oid);
+create table "zzz_DESC" (id oid);
+set ivorysql.ora_views_index_scan to on;
+-- prefer Index Scan not Seq Scan
+set seq_page_cost = 100.0;
+set random_page_cost = 1.0;
+--
+-- ora_case_trans() does nothing
+--
+set ivorysql.identifier_case_switch to normal;
+-- Index Cond: relname / proname / typname = 'pg_class'::name
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class'::name;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::name)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::name)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::name)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class'::name;
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- relname / proname / typname = 'pg_class'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class';
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class';
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'pg_class'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class'::text;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class'::text;
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'pg_class'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class'::varchar;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class'::varchar;
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'pg_class'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class'::varchar2;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class'::varchar2;
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'pg_class'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'pg_class'::bpchar;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'pg_class'::bpchar;
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1259 | pg_class
+(2 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::name[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::name[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::name[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::name[]);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}');
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}');
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::text[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::text[]);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::varchar[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::varchar[]);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::varchar2[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::varchar2[]);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::bpchar[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{pg_class,pg_proc}'::bpchar[]);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{pg_class,pg_proc}'::name[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class'::name, 'pg_proc'::name);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::name[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class'::name, 'pg_proc'::name);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class', 'pg_proc');
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class', 'pg_proc');
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class'::text, 'pg_proc'::text);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class'::text, 'pg_proc'::text);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class'::varchar, 'pg_proc'::varchar);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class'::varchar, 'pg_proc'::varchar);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class'::varchar2, 'pg_proc'::varchar2);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class'::varchar2, 'pg_proc'::varchar2);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- relname / proname / typname = any ('{pg_class,pg_proc}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('pg_class'::bpchar, 'pg_proc'::bpchar);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('pg_class'::bpchar, 'pg_proc'::bpchar);
+  id  |   name   
+------+----------
+ 83   | pg_class
+ 1255 | pg_proc
+ 81   | pg_proc
+ 1259 | pg_class
+(4 rows)
+
+-- Index Cond: relname = ($0)::text
+explain (costs off)
+	select name from v_oct_1
+	where name = (select name from v_oct_2 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Only Scan using pg_class_relname_nsp_index on pg_class
+   Index Cond: (relname = ($0)::text)
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_2.id DESC
+                 ->  Subquery Scan on v_oct_2
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc
+(12 rows)
+
+	select name from v_oct_1
+	where name = (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname / proname = ($0)::text
+explain (costs off)
+	select name from v_oct_2
+	where name = (select name from v_oct_1 order by id desc limit 1);
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_2
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: (((pg_class_1.oid)::varchar2(10))::number) DESC
+                 ->  Seq Scan on pg_class pg_class_1
+   ->  Unique
+         ->  Sort
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  Append
+                     ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                           Index Cond: (relname = ($0)::text)
+                     ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                           Index Cond: (proname = ($0)::text)
+(14 rows)
+
+	select name from v_oct_2
+	where name = (select name from v_oct_1 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname / proname = ($0)::text
+explain (costs off)
+	select name from v_oct_2
+	where name = (select name from v_oct_3 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_2
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_3.id DESC
+                 ->  Subquery Scan on v_oct_3
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc pg_proc_1
+                                   ->  Seq Scan on pg_type
+   ->  Unique
+         ->  Sort
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  Append
+                     ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                           Index Cond: (relname = ($0)::text)
+                     ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                           Index Cond: (proname = ($0)::text)
+(20 rows)
+
+	select name from v_oct_2
+	where name = (select name from v_oct_3 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname = ($0)::text
+explain (costs off)
+	select name from v_oct_3
+	where name = (select name from v_oct_2 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_3
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_2.id DESC
+                 ->  Subquery Scan on v_oct_2
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc pg_proc_1
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                     Index Cond: (relname = ($0)::text)
+               ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                     Index Cond: (proname = ($0)::text)
+               ->  Index Scan using pg_type_typname_nsp_index on pg_type
+                     Index Cond: (typname = ($0)::text)
+(20 rows)
+
+	select name from v_oct_3
+	where name = (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+ zzz_DESC
+(2 rows)
+
+explain (costs off)
+	select name from v_oct_1
+	where name in (select name from v_oct_2 order by id desc limit 1);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  HashAggregate
+         Group Key: v_oct_2.name
+         ->  Limit
+               ->  Sort
+                     Sort Key: v_oct_2.id DESC
+                     ->  Subquery Scan on v_oct_2
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc
+   ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+         Index Cond: (relname = (v_oct_2.name)::text)
+(14 rows)
+
+	select name from v_oct_1
+	where name in (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_2
+	where name in (select name from v_oct_1 order by id desc limit 1);
+                                                          QUERY PLAN                                                          
+------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: (((pg_class_1.oid)::varchar2(10))::number) DESC
+                           ->  Seq Scan on pg_class pg_class_1
+(13 rows)
+
+	select name from v_oct_2
+	where name in (select name from v_oct_1 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_2
+	where name in (select name from v_oct_3 order by id desc limit 1);
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: v_oct_3.id DESC
+                           ->  Subquery Scan on v_oct_3
+                                 ->  HashAggregate
+                                       Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                       ->  Append
+                                             ->  Seq Scan on pg_class pg_class_1
+                                             ->  Seq Scan on pg_proc pg_proc_1
+                                             ->  Seq Scan on pg_type
+(19 rows)
+
+	select name from v_oct_2
+	where name in (select name from v_oct_3 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_3
+	where name in (select name from v_oct_2 order by id desc limit 1);
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+               ->  Seq Scan on pg_type
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: v_oct_2.id DESC
+                           ->  Subquery Scan on v_oct_2
+                                 ->  HashAggregate
+                                       Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                       ->  Append
+                                             ->  Seq Scan on pg_class pg_class_1
+                                             ->  Seq Scan on pg_proc pg_proc_1
+(19 rows)
+
+	select name from v_oct_3
+	where name in (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+ zzz_DESC
+(2 rows)
+
+explain (costs off)
+	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Nested Loop
+         ->  HashAggregate
+               Group Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  HashAggregate
+                     Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class pg_class_1
+                           ->  Seq Scan on pg_proc
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = (((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text)
+(11 rows)
+
+	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_2 where name in (select name from v_oct_1);
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Semi Join
+         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(id) from v_oct_2 where name in (select name from v_oct_1);
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_2 where name in (select name from v_oct_3);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_3.name)
+         ->  HashAggregate
+               Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  HashAggregate
+                     Group Key: v_oct_3.name
+                     ->  Subquery Scan on v_oct_3
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc pg_proc_1
+                                       ->  Seq Scan on pg_type
+(18 rows)
+
+	select min(id) from v_oct_2 where name in (select name from v_oct_3);
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_3 where name in (select name from v_oct_2);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_2.name)
+         ->  HashAggregate
+               Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class
+                     ->  Seq Scan on pg_proc
+                     ->  Seq Scan on pg_type
+         ->  Hash
+               ->  HashAggregate
+                     Group Key: v_oct_2.name
+                     ->  Subquery Scan on v_oct_2
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc pg_proc_1
+(18 rows)
+
+	select min(id) from v_oct_3 where name in (select name from v_oct_2);
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(v_oct_1.id) from v_oct_1 join v_oct_2
+		on v_oct_1.name = v_oct_2.name;
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(v_oct_1.id) from v_oct_1 join v_oct_2
+		on v_oct_1.name = v_oct_2.name;
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(v_oct_2.id) from v_oct_2 join v_oct_1
+		on v_oct_2.name = v_oct_1.name;
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(v_oct_2.id) from v_oct_2 join v_oct_1
+		on v_oct_2.name = v_oct_1.name;
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(v_oct_2.id) from v_oct_2 join v_oct_3
+		on v_oct_2.name = v_oct_3.name;
+                                                                     QUERY PLAN                                                                     
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Merge Join
+         Merge Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_3.name)
+         ->  Sort
+               Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  HashAggregate
+                     Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class
+                           ->  Seq Scan on pg_proc
+         ->  Sort
+               Sort Key: v_oct_3.name COLLATE "C"
+               ->  Subquery Scan on v_oct_3
+                     ->  HashAggregate
+                           Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                           ->  Append
+                                 ->  Seq Scan on pg_class pg_class_1
+                                 ->  Seq Scan on pg_proc pg_proc_1
+                                 ->  Seq Scan on pg_type
+(19 rows)
+
+	select min(v_oct_2.id) from v_oct_2 join v_oct_3
+		on v_oct_2.name = v_oct_3.name;
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(v_oct_3.id) from v_oct_3 join v_oct_2
+		on v_oct_3.name = v_oct_2.name;
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Merge Join
+         Merge Cond: (v_oct_2.name = ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))
+         ->  Sort
+               Sort Key: v_oct_2.name COLLATE "C"
+               ->  Subquery Scan on v_oct_2
+                     ->  HashAggregate
+                           Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+                           ->  Append
+                                 ->  Seq Scan on pg_class
+                                 ->  Seq Scan on pg_proc
+         ->  Sort
+               Sort Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  HashAggregate
+                     Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class pg_class_1
+                           ->  Seq Scan on pg_proc pg_proc_1
+                           ->  Seq Scan on pg_type
+(19 rows)
+
+	select min(v_oct_3.id) from v_oct_3 join v_oct_2
+		on v_oct_3.name = v_oct_2.name;
+ min 
+-----
+ 3
+(1 row)
+
+-- order by
+explain (costs off)
+	select name from v_oct_1 order by name limit 1;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ Limit
+   ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(2 rows)
+
+	select name from v_oct_1 order by name limit 1;
+   name   
+----------
+  AAA_asc
+(1 row)
+
+-- order by desc
+explain (costs off)
+	select name from v_oct_1 order by name desc limit 1;
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Limit
+   ->  Index Only Scan Backward using pg_class_relname_nsp_index on pg_class
+(2 rows)
+
+	select name from v_oct_1 order by name desc limit 1;
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+--
+-- ora_case_trans() converts all-uppercase to all-lowercase and vice versa
+--
+set ivorysql.identifier_case_switch to interchange;
+-- Index Cond: relname / proname / typname = 'PG_CLASS'::name
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::name;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::name)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::name)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::name)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::name;
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- relname / proname / typname = 'PG_CLASS'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS';
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS';
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'PG_CLASS'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::text;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::text;
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'PG_CLASS'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::varchar;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::varchar;
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'PG_CLASS'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::varchar2;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::varchar2;
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- Index Cond: relname / proname / typname = 'PG_CLASS'::text
+explain (costs off)
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::bpchar;
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = 'pg_class'::text)
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = 'pg_class'::text)
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = 'pg_class'::text)
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = 'PG_CLASS'::bpchar;
+  id  |   name   
+------+----------
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+(2 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::name[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::name[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::name[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::name[]);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}');
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}');
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::text[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::text[]);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::varchar[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::varchar[]);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::varchar2[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::varchar2[]);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::bpchar[]);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name = any('{PG_CLASS,PG_PROC}'::bpchar[]);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::name[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::name, 'PG_PROC'::name);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::name[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::name[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::name, 'PG_PROC'::name);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS', 'PG_PROC');
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS', 'PG_PROC');
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::text, 'PG_PROC'::text);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::text, 'PG_PROC'::text);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::varchar, 'PG_PROC'::varchar);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::varchar, 'PG_PROC'::varchar);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::varchar2, 'PG_PROC'::varchar2);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::varchar2, 'PG_PROC'::varchar2);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- relname / proname / typname = any ('{PG_CLASS,PG_PROC}'::text[])
+explain (costs off)
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::bpchar, 'PG_PROC'::bpchar);
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+   ->  Append
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+         ->  Index Scan using pg_type_typname_nsp_index on pg_type
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+(9 rows)
+
+	select id, name from v_oct_3
+	where name in ('PG_CLASS'::bpchar, 'PG_PROC'::bpchar);
+  id  |   name   
+------+----------
+ 1255 | PG_PROC
+ 83   | PG_CLASS
+ 1259 | PG_CLASS
+ 81   | PG_PROC
+(4 rows)
+
+-- Index Cond: relname = ($0)::text
+explain (costs off)
+	select name from v_oct_1
+	where name = (select name from v_oct_2 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Only Scan using pg_class_relname_nsp_index on pg_class
+   Index Cond: (relname = (ora_case_trans($0))::text)
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_2.id DESC
+                 ->  Subquery Scan on v_oct_2
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc
+(12 rows)
+
+	select name from v_oct_1
+	where name = (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname / proname = ($0)::text
+explain (costs off)
+	select name from v_oct_2
+	where name = (select name from v_oct_1 order by id desc limit 1);
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_2
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: (((pg_class_1.oid)::varchar2(10))::number) DESC
+                 ->  Seq Scan on pg_class pg_class_1
+   ->  Unique
+         ->  Sort
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  Append
+                     ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                           Index Cond: (relname = (ora_case_trans($0))::text)
+                     ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                           Index Cond: (proname = (ora_case_trans($0))::text)
+(14 rows)
+
+	select name from v_oct_2
+	where name = (select name from v_oct_1 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname / proname = ($0)::text
+explain (costs off)
+	select name from v_oct_2
+	where name = (select name from v_oct_3 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_2
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_3.id DESC
+                 ->  Subquery Scan on v_oct_3
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc pg_proc_1
+                                   ->  Seq Scan on pg_type
+   ->  Unique
+         ->  Sort
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  Append
+                     ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                           Index Cond: (relname = (ora_case_trans($0))::text)
+                     ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                           Index Cond: (proname = (ora_case_trans($0))::text)
+(20 rows)
+
+	select name from v_oct_2
+	where name = (select name from v_oct_3 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- Index Cond: relname = ($0)::text
+explain (costs off)
+	select name from v_oct_3
+	where name = (select name from v_oct_2 order by id desc limit 1);
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Subquery Scan on v_oct_3
+   InitPlan 1 (returns $0)
+     ->  Limit
+           ->  Sort
+                 Sort Key: v_oct_2.id DESC
+                 ->  Subquery Scan on v_oct_2
+                       ->  HashAggregate
+                             Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                             ->  Append
+                                   ->  Seq Scan on pg_class pg_class_1
+                                   ->  Seq Scan on pg_proc pg_proc_1
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Index Scan using pg_class_relname_nsp_index on pg_class
+                     Index Cond: (relname = (ora_case_trans($0))::text)
+               ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
+                     Index Cond: (proname = (ora_case_trans($0))::text)
+               ->  Index Scan using pg_type_typname_nsp_index on pg_type
+                     Index Cond: (typname = (ora_case_trans($0))::text)
+(20 rows)
+
+	select name from v_oct_3
+	where name = (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+ zzz_DESC
+(2 rows)
+
+explain (costs off)
+	select name from v_oct_1
+	where name in (select name from v_oct_2 order by id desc limit 1);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  HashAggregate
+         Group Key: v_oct_2.name
+         ->  Limit
+               ->  Sort
+                     Sort Key: v_oct_2.id DESC
+                     ->  Subquery Scan on v_oct_2
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc
+   ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+         Index Cond: (relname = (ora_case_trans(v_oct_2.name))::text)
+(14 rows)
+
+	select name from v_oct_1
+	where name in (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_2
+	where name in (select name from v_oct_1 order by id desc limit 1);
+                                                          QUERY PLAN                                                          
+------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: (((pg_class_1.oid)::varchar2(10))::number) DESC
+                           ->  Seq Scan on pg_class pg_class_1
+(13 rows)
+
+	select name from v_oct_2
+	where name in (select name from v_oct_1 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_2
+	where name in (select name from v_oct_3 order by id desc limit 1);
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: v_oct_3.id DESC
+                           ->  Subquery Scan on v_oct_3
+                                 ->  HashAggregate
+                                       Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                       ->  Append
+                                             ->  Seq Scan on pg_class pg_class_1
+                                             ->  Seq Scan on pg_proc pg_proc_1
+                                             ->  Seq Scan on pg_type
+(19 rows)
+
+	select name from v_oct_2
+	where name in (select name from v_oct_3 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+explain (costs off)
+	select name from v_oct_3
+	where name in (select name from v_oct_2 order by id desc limit 1);
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Semi Join
+   Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = "ANY_subquery".name)
+   ->  HashAggregate
+         Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+         ->  Append
+               ->  Seq Scan on pg_class
+               ->  Seq Scan on pg_proc
+               ->  Seq Scan on pg_type
+   ->  Hash
+         ->  Subquery Scan on "ANY_subquery"
+               ->  Limit
+                     ->  Sort
+                           Sort Key: v_oct_2.id DESC
+                           ->  Subquery Scan on v_oct_2
+                                 ->  HashAggregate
+                                       Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                       ->  Append
+                                             ->  Seq Scan on pg_class pg_class_1
+                                             ->  Seq Scan on pg_proc pg_proc_1
+(19 rows)
+
+	select name from v_oct_3
+	where name in (select name from v_oct_2 order by id desc limit 1);
+   name   
+----------
+ zzz_DESC
+ zzz_DESC
+(2 rows)
+
+explain (costs off)
+	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Nested Loop
+         ->  HashAggregate
+               Group Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  HashAggregate
+                     Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class pg_class_1
+                           ->  Seq Scan on pg_proc
+         ->  Index Scan using pg_class_relname_nsp_index on pg_class
+               Index Cond: (relname = (ora_case_trans(((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))))::text)
+(11 rows)
+
+	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_2 where name in (select name from v_oct_1);
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Semi Join
+         Hash Cond: ((ora_case_trans(((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(id) from v_oct_2 where name in (select name from v_oct_1);
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_2 where name in (select name from v_oct_3);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_3.name)
+         ->  HashAggregate
+               Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  HashAggregate
+                     Group Key: v_oct_3.name
+                     ->  Subquery Scan on v_oct_3
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc pg_proc_1
+                                       ->  Seq Scan on pg_type
+(18 rows)
+
+	select min(id) from v_oct_2 where name in (select name from v_oct_3);
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(id) from v_oct_3 where name in (select name from v_oct_2);
+                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_2.name)
+         ->  HashAggregate
+               Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class
+                     ->  Seq Scan on pg_proc
+                     ->  Seq Scan on pg_type
+         ->  Hash
+               ->  HashAggregate
+                     Group Key: v_oct_2.name
+                     ->  Subquery Scan on v_oct_2
+                           ->  HashAggregate
+                                 Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                                 ->  Append
+                                       ->  Seq Scan on pg_class pg_class_1
+                                       ->  Seq Scan on pg_proc pg_proc_1
+(18 rows)
+
+	select min(id) from v_oct_3 where name in (select name from v_oct_2);
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(v_oct_1.id) from v_oct_1 join v_oct_2
+		on v_oct_1.name = v_oct_2.name;
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: ((ora_case_trans(((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(v_oct_1.id) from v_oct_1 join v_oct_2
+		on v_oct_1.name = v_oct_2.name;
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(v_oct_2.id) from v_oct_2 join v_oct_1
+		on v_oct_2.name = v_oct_1.name;
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Hash Join
+         Hash Cond: ((ora_case_trans(((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))))::text = pg_class.relname)
+         ->  HashAggregate
+               Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+               ->  Append
+                     ->  Seq Scan on pg_class pg_class_1
+                     ->  Seq Scan on pg_proc
+         ->  Hash
+               ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(10 rows)
+
+	select min(v_oct_2.id) from v_oct_2 join v_oct_1
+		on v_oct_2.name = v_oct_1.name;
+ min 
+-----
+ 112
+(1 row)
+
+explain (costs off)
+	select min(v_oct_2.id) from v_oct_2 join v_oct_3
+		on v_oct_2.name = v_oct_3.name;
+                                                                     QUERY PLAN                                                                     
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Merge Join
+         Merge Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_3.name)
+         ->  Sort
+               Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  HashAggregate
+                     Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class
+                           ->  Seq Scan on pg_proc
+         ->  Sort
+               Sort Key: v_oct_3.name COLLATE "C"
+               ->  Subquery Scan on v_oct_3
+                     ->  HashAggregate
+                           Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                           ->  Append
+                                 ->  Seq Scan on pg_class pg_class_1
+                                 ->  Seq Scan on pg_proc pg_proc_1
+                                 ->  Seq Scan on pg_type
+(19 rows)
+
+	select min(v_oct_2.id) from v_oct_2 join v_oct_3
+		on v_oct_2.name = v_oct_3.name;
+ min 
+-----
+ 3
+(1 row)
+
+explain (costs off)
+	select min(v_oct_3.id) from v_oct_3 join v_oct_2
+		on v_oct_3.name = v_oct_2.name;
+                                                                   QUERY PLAN                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Merge Join
+         Merge Cond: (v_oct_2.name = ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))
+         ->  Sort
+               Sort Key: v_oct_2.name COLLATE "C"
+               ->  Subquery Scan on v_oct_2
+                     ->  HashAggregate
+                           Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
+                           ->  Append
+                                 ->  Seq Scan on pg_class
+                                 ->  Seq Scan on pg_proc
+         ->  Sort
+               Sort Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               ->  HashAggregate
+                     Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
+                     ->  Append
+                           ->  Seq Scan on pg_class pg_class_1
+                           ->  Seq Scan on pg_proc pg_proc_1
+                           ->  Seq Scan on pg_type
+(19 rows)
+
+	select min(v_oct_3.id) from v_oct_3 join v_oct_2
+		on v_oct_3.name = v_oct_2.name;
+ min 
+-----
+ 3
+(1 row)
+
+-- order by
+explain (costs off)
+	select name from v_oct_1 order by name limit 1;
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
+ Limit
+   ->  Sort
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+         ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(4 rows)
+
+	select name from v_oct_1 order by name limit 1;
+   name   
+----------
+  AAA_asc
+(1 row)
+
+-- order by desc
+explain (costs off)
+	select name from v_oct_1 order by name desc limit 1;
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
+ Limit
+   ->  Sort
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C" DESC
+         ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(4 rows)
+
+	select name from v_oct_1 order by name desc limit 1;
+   name   
+----------
+ zzz_DESC
+(1 row)
+
+-- restore and clean
+reset seq_page_cost;
+reset ivorysql.identifier_case_switch;
+reset ivorysql.ora_views_index_scan;
+drop table if exists " AAA_asc";
+drop table if exists "zzz_DESC";
+drop view if exists v_oct_1, v_oct_2, v_oct_3;
