@@ -1914,3 +1914,141 @@ end;
 
 --clean data
 DROP TABLE test_insert;
+
+/* Begin - BUG #M0000304 */
+CREATE TABLE test1 (a int);
+CREATE OR REPLACE PROCEDURE protest2
+ AS
+ BEGIN
+INSERT INTO test1 VALUES (1);
+ END;
+ /
+
+call protest2();
+exec protest2();
+exec protest2;
+
+BEGIN
+protest2();
+END;
+/
+
+BEGIN
+protest2;
+END;
+/
+
+--error
+BEGIN
+exec protest2();
+END;
+/
+
+BEGIN
+call protest2();
+END;
+/
+
+CREATE or replace FUNCTION  func2
+RETURN INT
+AS
+BEGIN
+protest2();
+RETURN 25;
+END;
+/
+
+select func2() from dual;
+
+select * from test1;
+truncate test1;
+
+CREATE OR REPLACE PROCEDURE exec
+AS
+BEGIN
+INSERT INTO test1 VALUES (2);
+END;
+/
+
+call exec();
+exec exec();
+exec exec;
+
+BEGIN
+exec;
+END;
+/
+
+BEGIN
+exec();
+END;
+/
+
+select * from test1;
+
+DROP TABLE test1;
+
+CREATE TABLE test1 (a int);
+CREATE PROCEDURE test_proc3(x int)
+LANGUAGE plisql
+AS $$
+BEGIN
+    INSERT INTO test1 VALUES (x);
+END;
+$$;
+/
+
+call test_proc3(1);
+exec test_proc3(2);
+
+BEGIN
+test_proc3(3);
+END;
+/
+
+select * from test1;
+
+
+CREATE PROCEDURE test_proc4(y int)
+LANGUAGE plisql
+AS $$
+BEGIN
+     test_proc3(y);
+END;
+$$;
+/
+
+call test_proc4(4);
+exec test_proc4(5);
+
+BEGIN
+test_proc4(6);
+END;
+/
+
+select * from test1;
+
+begin
+CREATE TEMP TABLE __rp_ora_alerts(event text, message text);
+end;
+/
+
+do
+$$
+	begin
+		analyze;
+	end;
+$$ language plisql;
+
+do
+$$
+	begin
+		call;
+	end;
+$$ language plisql;
+
+
+
+DROP TABLE test1;
+DROP TABLE __rp_ora_alerts;
+/*End - BUG #M0000304*/
