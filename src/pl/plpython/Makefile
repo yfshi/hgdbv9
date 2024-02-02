@@ -81,6 +81,7 @@ REGRESS_OPTS = --dbname=$(PL_TESTDB)
 # the versioned language plpython(2|3)u.
 ifeq ($(python_majorversion),2)
 REGRESS_OPTS += --load-extension=plpythonu
+ORACLE_REGRESS_OPTS += --load-extension=plpythonu	# BUGM0000301
 endif
 
 REGRESS = \
@@ -109,7 +110,34 @@ REGRESS = \
 	plpython_drop
 
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
+# Begin - BUGM0000301
+ORA_REGRESS = \
+	plpython_schema \
+	plpython_populate \
+	ivy_plpython_test \
+	plpython_do \
+	ivy_plpython_global \
+	ivy_plpython_import \
+	ivy_plpython_spi \
+	ivy_plpython_newline \
+	ivy_plpython_void \
+	ivy_plpython_call \
+	ivy_plpython_params \
+	ivy_plpython_setof \
+	ivy_plpython_record \
+	ivy_plpython_trigger \
+	ivy_plpython_types \
+	ivy_plpython_error \
+	ivy_plpython_ereport \
+	ivy_plpython_unicode \
+	ivy_plpython_quote \
+	ivy_plpython_composite \
+	ivy_plpython_subtransaction \
+	ivy_plpython_transaction \
+	plpython_drop
 
+ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)
+# End - BUGM0000301
 include $(top_srcdir)/src/Makefile.shlib
 
 all: all-lib
@@ -145,11 +173,21 @@ check: submake-pg-regress
 installcheck: submake-pg-regress
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(REGRESS)
 
+# Begin - BUGM0000301
+oracle-check: submake_ora
+	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 
-.PHONY: submake-pg-regress
+oracle-installcheck: submake_ora
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+
+.PHONY: submake-pg-regress	submake_ora
+# End - BUGM0000301
 submake-pg-regress: | submake-generated-headers
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
-
+# Begin - BUGM0000301
+submake_ora: | submake-generated-headers
+	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
+# End - BUGM0000301
 clean distclean: clean-lib
 	rm -f $(OBJS)
 	rm -rf $(pg_regress_clean_files)

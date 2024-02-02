@@ -59,6 +59,12 @@ REGRESS_OPTS = --dbname=$(PL_TESTDB)
 REGRESS = plperl_setup plperl plperl_lc plperl_trigger plperl_shared \
 	plperl_elog plperl_util plperl_init plperlu plperl_array \
 	plperl_call plperl_transaction
+# Begin - BUGM0000301
+ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB)
+ORA_REGRESS = ivy_plperl_setup ivy_plperl plperl_lc ivy_plperl_trigger ivy_plperl_shared \
+	ivy_plperl_elog ivy_plperl_util plperl_init plperlu ivy_plperl_array \
+	ivy_plperl_call ivy_plperl_transaction
+# End - BUGM0000301
 # if Perl can support two interpreters in one backend,
 # test plperl-and-plperlu cases
 ifneq ($(PERL),)
@@ -66,7 +72,13 @@ ifeq ($(shell $(PERL) -V:usemultiplicity), usemultiplicity='define';)
 	REGRESS += plperl_plperlu
 endif
 endif
-
+# Begin - BUGM0000301
+ifneq ($(PERL),)
+ifeq ($(shell $(PERL) -V:usemultiplicity), usemultiplicity='define';)
+	ORA_REGRESS += ivy_plperl_plperlu
+endif
+endif
+# End - BUGM0000301
 # where to find xsubpp for building XS.
 XSUBPPDIR = $(shell $(PERL) -e 'use List::Util qw(first); print first { -r "$$_/ExtUtils/xsubpp" } @INC')
 
@@ -117,11 +129,21 @@ check: submake
 
 installcheck: submake
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(REGRESS)
+# Begin - BUGM0000301
+oracle-check: submake_ora
+	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 
-.PHONY: submake
+oracle-installcheck: submake_ora
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+
+.PHONY: submake submake_ora
+# End - BUGM0000301
 submake:
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
-
+# Begin - BUGM0000301
+submake_ora:
+	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
+# End - BUGM0000301
 clean distclean maintainer-clean: clean-lib
 	rm -f SPI.c Util.c $(OBJS) perlchunks.h plperl_opmask.h
 	rm -rf $(pg_regress_clean_files)

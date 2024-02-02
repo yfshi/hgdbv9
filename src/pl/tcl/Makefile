@@ -32,6 +32,10 @@ DATA = pltcl.control pltcl--1.0.sql \
 REGRESS_OPTS = --dbname=$(PL_TESTDB) --load-extension=pltcl
 REGRESS = pltcl_setup pltcl_queries pltcl_trigger pltcl_call pltcl_start_proc pltcl_subxact pltcl_unicode pltcl_transaction
 
+# Begin - BUGM0000301
+ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB) --load-extension=pltcl
+ORA_REGRESS = ivy_pltcl_setup ivy_pltcl_queries ivy_pltcl_trigger ivy_pltcl_call ivy_pltcl_start_proc ivy_pltcl_subxact ivy_pltcl_unicode ivy_pltcl_transaction
+# End - BUGM0000301
 # Tcl on win32 ships with import libraries only for Microsoft Visual C++,
 # which are not compatible with mingw gcc. Therefore we need to build a
 # new import library to link with.
@@ -86,11 +90,21 @@ check: submake
 
 installcheck: submake
 	$(pg_regress_installcheck) $(REGRESS_OPTS) $(REGRESS)
+# Begin - BUGM0000301
+oracle-check: submake_ora
+	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 
-.PHONY: submake
+oracle-installcheck: submake_ora
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+
+.PHONY: submake submake_ora
+# End - BUGM0000301
 submake:
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
-
+# Begin - BUGM0000301
+submake_ora:
+	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
+# End - BUGM0000301
 # pltclerrcodes.h is in the distribution tarball, so don't clean it here.
 clean distclean: clean-lib
 	rm -f $(OBJS)
