@@ -730,3 +730,39 @@ select 'pg-text'::pg_catalog.text || timestamp'1949-10-1 11:11:11'::sys.oratimes
 select 'pg-text'::pg_catalog.text || interval '11-11' year to month from dual;
 select 'pg-text'::pg_catalog.text || interval '1 11:11:11' day to second from dual;
 /* End - BUG#M0000234 */
+
+-- Begin - SRS-MISC-COMPATDM-SQL
+create table ora_char_a(x char(10 char));
+create table ora_char_b(x char(10 char));
+create table ora_char_c(x char(10 byte));
+create table ora_char_d(x char(10 byte));
+create table ora_char_e(x text);
+create table ora_char_f(x varchar2(10));
+insert into ora_char_a values('aaa');
+insert into ora_char_b values('bbb');
+insert into ora_char_c values('ccc');               
+insert into ora_char_d values('ddd');
+insert into ora_char_e values('eee');
+insert into ora_char_f values('fff');
+select ora_char_a.x||ora_char_b.x from ora_char_a,ora_char_b; 	-- oracahrchar || oracharchar
+select ora_char_a.x||ora_char_c.x from ora_char_a,ora_char_c;	-- oracharchar || oracharbyte
+select ora_char_c.x||ora_char_a.x from ora_char_c,ora_char_a;	-- oracharbyte || oracharchar
+select ora_char_c.x||ora_char_d.x from ora_char_c,ora_char_d;	-- oracharbyte || oracharbyte
+select ora_char_a.x||ora_char_e.x from ora_char_a,ora_char_e;	-- oracharchar || text
+select ora_char_e.x||ora_char_a.x from ora_char_e,ora_char_a;	-- text || oracharchar
+select ora_char_c.x||ora_char_e.x from ora_char_c,ora_char_e; -- oracharbyte || text       
+select ora_char_e.x||ora_char_c.x from ora_char_e,ora_char_c;	-- text || oracharbyte
+select ora_char_a.x||ora_char_f.x from ora_char_a,ora_char_f;	-- oracharchar || varchar2
+select ora_char_f.x||ora_char_a.x from ora_char_f,ora_char_a;	-- varchar2 || oracharchar
+select ora_char_c.x||ora_char_f.x from ora_char_c,ora_char_f;	-- oracharbyte || varchar2
+select ora_char_f.x||ora_char_c.x from ora_char_f,ora_char_c;	-- varchar2 || oracharbyte 
+select ora_char_a.x||ora_char_b.x||ora_char_c.x from ora_char_a,ora_char_b,ora_char_c; -- oracharchar || oracharchar || oracharbyte
+select ora_char_a.x||ora_char_b.x||ora_char_e.x from ora_char_a,ora_char_b,ora_char_e; -- oracharchar || oracharchar || text
+select ora_char_e.x||ora_char_a.x||ora_char_b.x from ora_char_e,ora_char_a,ora_char_b; -- text || oracharchar || oracharchar
+select ora_char_a.x||ora_char_c.x||ora_char_e.x from ora_char_a,ora_char_c,ora_char_e; -- oracharchar || oracharbyte || text
+select ora_char_e.x||ora_char_a.x||ora_char_c.x from ora_char_e,ora_char_a,ora_char_c; -- text || oracharchar || oracharbyte
+select ora_char_a.x||ora_char_e.x||ora_char_b.x from ora_char_a,ora_char_e,ora_char_b; -- oracharchar || text || oracharchar
+select ora_char_a.x||ora_char_e.x||ora_char_c.x from ora_char_a,ora_char_e,ora_char_c; -- oracharchar || text || oracharbyte
+select ora_char_a.x||ora_char_f.x||ora_char_c.x from ora_char_a,ora_char_f,ora_char_c; -- oracharchar || varchar2 || oracharbyte
+drop table ora_char_a,ora_char_b,ora_char_c,ora_char_d,ora_char_e,ora_char_f;
+-- End - SRS-MISC-COMPATDM-SQL

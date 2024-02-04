@@ -287,16 +287,50 @@ textlike(PG_FUNCTION_ARGS)
 	text	   *pat = PG_GETARG_TEXT_PP(1);
 	bool		result;
 	char	   *s,
-			   *p;
+			   *p,
+			   *s_trimed,
+			   *p_trimed;	/* SRS-MISC-COMPATDM-SQL */
 	int			slen,
-				plen;
+				plen,
+				s_trimed_len,
+				p_trimed_len;	/* SRS-MISC-COMPATDM-SQL */
+	text		*str_trimed,
+				*pat_trimed;	/* SRS-MISC-COMPATDM-SQL */
 
 	s = VARDATA_ANY(str);
 	slen = VARSIZE_ANY_EXHDR(str);
 	p = VARDATA_ANY(pat);
 	plen = VARSIZE_ANY_EXHDR(pat);
-
-	result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) == LIKE_TRUE);
+	/* 
+	 * Begin - SRS-MISC-COMPATDM-SQL
+	 * if  enable_blankspace_copmpare is off,we should not compare blank space,
+	 * so rtrim both str and pat blank spaces then compare.
+	 */
+	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+	{
+		str_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(0)));
+		pat_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(1)));
+	
+		s_trimed = VARDATA_ANY(str_trimed);
+		s_trimed_len = VARSIZE_ANY_EXHDR(str_trimed);
+		p_trimed = VARDATA_ANY(pat_trimed);
+		p_trimed_len = VARSIZE_ANY_EXHDR(pat_trimed);
+		/* 
+		 * if the blank padded space in patern more than in str,it's 
+		 * actually exact match in DM, in this situation just return false,
+		 * else use trimed string to compare.
+		 */
+		if(slen - s_trimed_len >= plen - p_trimed_len)
+		{
+			result = (GenericMatchText(s_trimed, s_trimed_len, p_trimed, p_trimed_len, PG_GET_COLLATION()) == LIKE_TRUE);
+			PG_RETURN_BOOL(result);
+		}
+		else
+			PG_RETURN_BOOL(false);
+	}
+	else
+	/* End - SRS-MISC-COMPATDM-SQL */
+		result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) == LIKE_TRUE);
 
 	PG_RETURN_BOOL(result);
 }
@@ -308,16 +342,42 @@ textnlike(PG_FUNCTION_ARGS)
 	text	   *pat = PG_GETARG_TEXT_PP(1);
 	bool		result;
 	char	   *s,
-			   *p;
+			   *p,
+			   *s_trimed,
+			   *p_trimed;	/* SRS-MISC-COMPATDM-SQL */
 	int			slen,
-				plen;
+				plen,
+				s_trimed_len,
+				p_trimed_len;	/* SRS-MISC-COMPATDM-SQL */
+	text		*str_trimed,
+				*pat_trimed;	/* SRS-MISC-COMPATDM-SQL */
 
 	s = VARDATA_ANY(str);
 	slen = VARSIZE_ANY_EXHDR(str);
 	p = VARDATA_ANY(pat);
 	plen = VARSIZE_ANY_EXHDR(pat);
+	/* SRS-MISC-COMPATDM-SQL,same as textlike */
+	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+	{
+		str_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(0)));
+		pat_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(1)));
+	
+		s_trimed = VARDATA_ANY(str_trimed);
+		s_trimed_len = VARSIZE_ANY_EXHDR(str_trimed);
+		p_trimed = VARDATA_ANY(pat_trimed);
+		p_trimed_len = VARSIZE_ANY_EXHDR(pat_trimed);
 
-	result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) != LIKE_TRUE);
+		if(slen - s_trimed_len >= plen - p_trimed_len)
+		{
+			result = (GenericMatchText(s_trimed, s_trimed_len, p_trimed, p_trimed_len, PG_GET_COLLATION()) != LIKE_TRUE);
+			PG_RETURN_BOOL(result);
+		}
+		else
+			PG_RETURN_BOOL(false);
+	}
+	else
+	/* SRS-MISC-COMPATDM-SQL */
+		result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) != LIKE_TRUE);
 
 	PG_RETURN_BOOL(result);
 }

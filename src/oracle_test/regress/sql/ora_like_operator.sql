@@ -184,3 +184,62 @@ drop table tb2;
 drop table tb3;
 drop table tb4;
 
+-- Begin - Bug#Z471 && SRS-MISC-COMPATDM-SQL
+-- oracharchar like and not like operator
+set ivorysql.enable_blankspace_compare to on;
+create table ora_charchar_a(x char(10 char));
+insert into ora_charchar_a values('aaa');
+insert into ora_charchar_a values('a');
+insert into ora_charchar_a values ('th is test');
+insert into ora_charchar_a values ('th is st');
+insert into ora_charchar_a values ('th is tst');
+-- ivorysql.enable_blankspace_compare=on
+select * from ora_charchar_a where x like '%a';	-- expected return null
+select * from ora_charchar_a where x like '%a       '; -- expected return 1 rows 
+select * from ora_charchar_a where x like '%st'; -- expected return 1 rows
+select * from ora_charchar_a where x like '%st  ';	-- expected return 1 rows
+select * from ora_charchar_a where x like '%a'::varchar2;	-- expected return null
+select * from ora_charchar_a where x like '%st'::varchar2; -- expected return 1 rows
+select * from ora_charchar_a where x like '%st  '::varchar2;	-- expected return 1 rows
+select * from ora_charchar_a where x not like '%a';	-- expected return 5 rows
+set ivorysql.enable_blankspace_compare to off;
+-- ivorysql.enable_blankspace_compare=off
+select * from ora_charchar_a where x like '%a';	-- expected return 2 rows
+select * from ora_charchar_a where x like '%st'; -- expected return 3 rows
+select * from ora_charchar_a where x like '%st  ';	-- expected return 1 rows
+select * from ora_charchar_a where x like '%st   ';	-- expected return null
+select * from ora_charchar_a where x like '%a'::varchar2;	-- expected return 2 rows
+select * from ora_charchar_a where x like '%st'::varchar2; -- expected return 3 rows
+select * from ora_charchar_a where x like '%st  '::varchar2;	-- expected return 1 rows
+select * from ora_charchar_a where x not like '%a';  -- expected return 3 rows
+drop table ora_charchar_a;
+
+-- oracharbyte like and not like operator
+set ivorysql.enable_blankspace_compare to on;
+create table ora_charbyte_a(x char(10 byte));
+insert into ora_charbyte_a values('aaa');
+insert into ora_charbyte_a values('a');
+insert into ora_charbyte_a values ('th is test');
+insert into ora_charbyte_a values ('th is st');
+insert into ora_charbyte_a values ('th is tst');
+-- ivorysql.enable_blankspace_compare=on
+select * from ora_charbyte_a where x like '%a';	-- expected return null
+select * from ora_charbyte_a where x like '%a       '; -- expected return 1 rows 
+select * from ora_charbyte_a where x like '%st'; -- expected return 1 rows
+select * from ora_charbyte_a where x like '%st  ';	-- expected return 1 rows
+select * from ora_charbyte_a where x like '%a'::varchar2;	-- expected return null
+select * from ora_charbyte_a where x like '%st'::varchar2; -- expected return 1 rows
+select * from ora_charbyte_a where x like '%st  '::varchar2;	-- expected return 1 rows
+select * from ora_charbyte_a where x not like '%a';	-- expected return 5 rows
+set ivorysql.enable_blankspace_compare to off;
+-- ivorysql.enable_blankspace_compare=off
+select * from ora_charbyte_a where x like '%a';	-- expected return 2 rows
+select * from ora_charbyte_a where x like '%st'; -- expected return 3 rows
+select * from ora_charbyte_a where x like '%st  ';	-- expected return 1 rows
+select * from ora_charbyte_a where x like '%st   ';	-- expected return null
+select * from ora_charbyte_a where x like '%a'::varchar2;	-- expected return 2 rows
+select * from ora_charbyte_a where x like '%st'::varchar2; -- expected return 3 rows
+select * from ora_charbyte_a where x like '%st  '::varchar2;	-- expected return 1 rows
+select * from ora_charbyte_a where x not like '%a';  -- expected return 3 rows
+drop table ora_charbyte_a;
+-- End - Bug#Z471 && SRS-MISC-COMPATDM-SQL

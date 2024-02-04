@@ -373,6 +373,9 @@ extern PGDLLIMPORT bool check_package_invalid_by_tuple;
 extern PGDLLIMPORT bool compile_plisql_use_owner;
 /* End - BUG#M0000227 */
 
+/* Begin - SRS-MISC-COMPATDM-SQL */
+extern PGDLLIMPORT bool enable_blankspace_compare;
+/* End - SRS-MISC-COMPATDM-SQL */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
