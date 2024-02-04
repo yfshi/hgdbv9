@@ -3,8 +3,10 @@
  * File: sysview_functions.c
  *
  * Abstract: 
- * 		Function which converts all-uppercase text to all-lowercase text 
+ * 		Function which converts all-uppercase text to all-lowercase text
  * 		and vice versa.
+ *
+ * ReqID:SRS-SQL-SYSVIEW
  *
  * Authored by xuzhuang@highgo.com, 20220923.
  *
@@ -26,33 +28,24 @@
 #include "utils/ora_compatible.h"
 
 
-/* Begin - ReqID:SRS-SQL-SYSVIEW */
 PG_FUNCTION_INFO_V1(ora_case_trans);
+
+
 Datum
 ora_case_trans(PG_FUNCTION_ARGS)
 {
-	char	*string,
-			*retval;
+	char	*string = NULL,
+			*retval = NULL;
 
 	if (PG_ARGISNULL(0))
 		PG_RETURN_NULL();
 
-	string = (char *) TextDatumGetCString(PG_GETARG_DATUM(0));
-
-	/* if identifier_case_switch is NORMAL, return it directly. */
-	if (NORMAL == identifier_case_switch)
+	/* if identifier_case_switch is NORMAL / LOWERCASE, return it directly. */
+	if (INTERCHANGE != identifier_case_switch)
 		PG_RETURN_DATUM(PG_GETARG_DATUM(0));
 
-	/* if identifier_case_switch is LOWERCASE, return all-lowercase text. */
-	if (LOWERCASE == identifier_case_switch)
-	{
-		retval = downcase_identifier(string, strlen(string), true, true);
-		PG_RETURN_TEXT_P(CStringGetTextDatum(retval));
-	}
-
 	/* otherwise, performs the transformation. */
+	string = (char *) TextDatumGetCString(PG_GETARG_DATUM(0));
 	retval = identifier_case_transform(string, strlen(string));
 	PG_RETURN_TEXT_P(CStringGetTextDatum(retval));
 }
-/* End - ReqID:SRS-SQL-SYSVIEW */
-

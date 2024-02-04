@@ -200,3 +200,7 @@ test: ora_rownum
 #/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 test: ora_force_view
 #/* End - ReqID:SRS-SQL-FORCEVIEW */
+
+# Begin - BUG#M0000302
+test: ora_views_index_scan
+# End - BUG#M0000302

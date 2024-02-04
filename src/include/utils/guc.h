@@ -362,8 +362,8 @@ extern PGDLLIMPORT int where_from;
 /* End - BUG#M0000201: support question marks as binding variables */
 
 extern PGDLLIMPORT bool sort_desc_nulls_last;	/* BUG#M0000197 */
-
 extern PGDLLIMPORT bool cast_int_like_oracle;	/* BUG#M0000194 */
+extern PGDLLIMPORT bool ora_views_index_scan;	/* BUG#M0000302 */
 
 /* Begin - BUG#M0000183 */
 extern PGDLLIMPORT bool check_package_invalid_by_tuple;

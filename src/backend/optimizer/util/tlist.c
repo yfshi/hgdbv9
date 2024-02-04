@@ -19,6 +19,16 @@
 #include "optimizer/cost.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/tlist.h"
+/* Begin - BUG#M0000302 */
+#include "catalog/pg_namespace_d.h"
+#include "catalog/pg_operator.h"
+#include "optimizer/ora_indexcond.h"
+#include "utils/fmgroids.h"
+#include "utils/guc.h"
+#include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
+#include "utils/syscache.h"
+/* End - BUG#M0000302 */
 
 
 /*
@@ -379,6 +389,53 @@ Node *
 get_sortgroupclause_expr(SortGroupClause *sgClause, List *targetList)
 {
 	TargetEntry *tle = get_sortgroupclause_tle(sgClause, targetList);
+
+	/* Begin - BUG#M0000302 */
+	if (database_mode == DB_ORACLE && compatible_db == ORA_PARSER &&
+		ora_views_index_scan && identifier_case_switch == NORMAL &&
+		tle->expr != NULL && get_opcode(sgClause->eqop) != (RegProcedure) F_NAMEEQ)
+	{
+		Node   *inner_var = NULL;
+
+		if (is_oct_inside((Node *) tle->expr, &inner_var))
+		{
+			HeapTuple	tuple;
+			char	   *oprname;
+
+			tle->expr = (Expr *) inner_var;
+
+			/* sgClause->eqop */
+			oprname = get_opname(sgClause->eqop);
+			tuple = SearchSysCache4(OPERNAMENSP,
+									PointerGetDatum(oprname), NAMEOID, NAMEOID,
+									ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
+
+			if (HeapTupleIsValid(tuple))
+			{
+				Form_pg_operator	opr;
+
+				opr = (Form_pg_operator) GETSTRUCT(tuple);
+				sgClause->eqop = opr->oid;
+				ReleaseSysCache(tuple);
+			}
+
+			/* sgClause->sortop */
+			oprname = get_opname(sgClause->sortop);
+			tuple = SearchSysCache4(OPERNAMENSP,
+									PointerGetDatum(oprname), NAMEOID, NAMEOID,
+									ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
+
+			if (HeapTupleIsValid(tuple))
+			{
+				Form_pg_operator	opr;
+
+				opr = (Form_pg_operator) GETSTRUCT(tuple);
+				sgClause->sortop = opr->oid;
+				ReleaseSysCache(tuple);
+			}
+		}
+	}
+	/* End - BUG#M0000302 */
 
 	return (Node *) tle->expr;
 }

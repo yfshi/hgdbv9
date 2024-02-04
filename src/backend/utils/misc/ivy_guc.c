@@ -107,9 +107,9 @@ int        rowid_seq_cache = 20;
 
 bool   visibility_switch = false;      /* ReqID:SRS-SQL-INVISIBLECOL */
 
-bool	sort_desc_nulls_last = false;	/* BUG#M0000197 */
-
-bool	cast_int_like_oracle = false;	/* BUG#M0000194 */
+bool sort_desc_nulls_last = false;		/* BUG#M0000197 */
+bool cast_int_like_oracle = false;		/* BUG#M0000194 */
+bool ora_views_index_scan = false;		/* BUG#M0000302 */
 
 /* Begin - BUG#M0000183 */
 bool check_package_invalid_by_tuple = true;
@@ -464,6 +464,19 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#z476 */
+	/* Begin - BUG#M0000302 */
+	{
+		{"ivorysql.ora_views_index_scan", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Try to scan oracle compatible views using "
+						 "pg_catalog indexes on specific column."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&ora_views_index_scan,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000302 */
 #endif
 #if 0
 	/* End-of-list marker */
