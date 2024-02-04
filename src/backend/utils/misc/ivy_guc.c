@@ -128,6 +128,12 @@ int grant_usertype = PG_GRANTUSER;
 bool numerictonumber = false;
 /* End - BUG#z476 */
 
+/* Begin - SRS-MISC-COMPATDM-SQL, this GUC for compat DM SPACE_COMPARE_MODE,
+ * if this is true,we  compare the blank padding in chracter type as same as oracle,
+ * else, as same as DM(SPACE_COMPARE_MODE =0,BLANK_PAD_MODE=0) 
+ */
+bool enable_blankspace_compare = true;
+/* End - SRS-MISC-COMPATDM-SQL */
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -453,6 +459,19 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000183 */
+	/* Begin - SRS-MISC-COMPATDM-SQL */
+	{
+		{"ivorysql.enable_blankspace_compare", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Enable character type blank space compare."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_blankspace_compare,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - SRS-MISC-COMPATDM-SQL */
+
 	/* Begin - BUG#z476 */
 	{
 		{"ivorysql.numerictonumber", PGC_USERSET, CLIENT_CONN_STATEMENT,
