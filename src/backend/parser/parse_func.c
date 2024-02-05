@@ -180,13 +180,13 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 
 		Oid			argtype = exprType(arg);
 
+		/* Begin - ReqID:SRS-SQL-FUNCOUT */
+		bool		firstOutIsReturn = false;
+
 		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 		if (hasPlusFlag(arg) && !hasplus_outer_join)
 			hasplus_outer_join = true;
 		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
-
-		/* Begin - ReqID:SRS-SQL-FUNCOUT */
-		bool		firstOutIsReturn = false;
 
 		/*
 		 * Oid is 32 bit, the 32nd-31nd bit is used for sepecial purpose.
