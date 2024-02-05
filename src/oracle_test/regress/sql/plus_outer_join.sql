@@ -125,6 +125,9 @@ select * from t1 left join t2 on t1.i(+) in (t2.i);
 select * from t1 inner join t2 on t1.i(+) in (t2.i,4);
 select * from t1 right join t2 on t1.i(+) in (t2.i(+), 4);
 
+--this test case is difference from oracle
+select * from t1, t2,t3,t4 where t1.i = t2.i(+) and t3.i = t4.i and t4.j = 1 or t2.i(+) = 1;
+
 drop view v1;
 drop table t1;
 drop table t2;
@@ -257,6 +260,9 @@ select *from toj1, toj2 where toj1.id  - toj2.id = toj2.id(+) + toj1.id;
 select *from toj1, toj2 where toj1.id(+) + toj1.id2 = toj2.id;
 select *from toj1, toj2 where toj1.id(+) + toj2.id2 = toj2.id - toj1.id2;
 select *from toj1, toj2 where toj1.id(+)  = toj2.id(+);
+
+--this test case is difference from oracle
+select * from toj1, toj2 where (toj1.id(+) = toj2.id and toj1.id = 2) or (toj1.id = 2 or toj2.id = 3);
 
 --IN , NOT IN
 select * from toj1, toj2 where toj1.id in (toj2.id(+));
