@@ -1912,7 +1912,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				List	   *tidquals = ((TidScan *) plan)->tidquals;
 
 				if (list_length(tidquals) > 1)
-					tidquals = list_make1(make_orclause(tidquals));
+					tidquals = list_make1(make_orclause(tidquals, false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				show_scan_qual(tidquals, "TID Cond", planstate, ancestors, es);
 				show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
 				if (plan->qual)
@@ -1929,7 +1929,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				List	   *tidquals = ((TidRangeScan *) plan)->tidrangequals;
 
 				if (list_length(tidquals) > 1)
-					tidquals = list_make1(make_andclause(tidquals));
+					tidquals = list_make1(make_andclause(tidquals, false)); /* ReqID:SRS-SQL-OUTERJOIN(+) */
 				show_scan_qual(tidquals, "TID Cond", planstate, ancestors, es);
 				show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
 				if (plan->qual)

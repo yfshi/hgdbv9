@@ -2388,7 +2388,7 @@ match_boolean_index_clause(PlannerInfo *root,
 		op = make_opclause(BooleanEqualOperator, BOOLOID, false,
 						   (Expr *) clause,
 						   (Expr *) makeBoolConst(true, false),
-						   InvalidOid, InvalidOid);
+						   InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 	/* NOT clause? */
 	else if (is_notclause(clause))
@@ -2401,7 +2401,7 @@ match_boolean_index_clause(PlannerInfo *root,
 			op = make_opclause(BooleanEqualOperator, BOOLOID, false,
 							   (Expr *) arg,
 							   (Expr *) makeBoolConst(false, false),
-							   InvalidOid, InvalidOid);
+							   InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		}
 	}
 
@@ -2422,7 +2422,7 @@ match_boolean_index_clause(PlannerInfo *root,
 			op = make_opclause(BooleanEqualOperator, BOOLOID, false,
 							   (Expr *) arg,
 							   (Expr *) makeBoolConst(true, false),
-							   InvalidOid, InvalidOid);
+							   InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		}
 		else if (btest->booltesttype == IS_FALSE &&
 				 match_index_to_operand(arg, indexcol, index))
@@ -2431,7 +2431,7 @@ match_boolean_index_clause(PlannerInfo *root,
 			op = make_opclause(BooleanEqualOperator, BOOLOID, false,
 							   (Expr *) arg,
 							   (Expr *) makeBoolConst(false, false),
-							   InvalidOid, InvalidOid);
+							   InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		}
 	}
 
@@ -3066,7 +3066,8 @@ expand_indexqual_rowcompare(PlannerInfo *root,
 							   copyObject(linitial(var_args)),
 							   copyObject(linitial(non_var_args)),
 							   InvalidOid,
-							   linitial_oid(clause->inputcollids));
+							   linitial_oid(clause->inputcollids),
+							   false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			iclause->indexquals = list_make1(make_simple_restrictinfo(root, op));
 		}
 	}

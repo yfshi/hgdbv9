@@ -1826,7 +1826,7 @@ convert_EXISTS_to_ANY(PlannerInfo *root, Query *subselect,
 		testlist = lappend(testlist,
 						   make_opclause(opid, BOOLOID, false,
 										 (Expr *) leftarg, (Expr *) param,
-										 InvalidOid, opcollation));
+										 InvalidOid, opcollation, false));
 		paramids = lappend_int(paramids, param->paramid);
 	}
 
@@ -2014,7 +2014,7 @@ process_sublinks_mutator(Node *node, process_sublinks_context *context)
 			else
 				newargs = lappend(newargs, newarg);
 		}
-		return (Node *) make_andclause(newargs);
+		return (Node *) make_andclause(newargs, ((BoolExpr *) node)->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	if (is_orclause(node))
@@ -2035,7 +2035,7 @@ process_sublinks_mutator(Node *node, process_sublinks_context *context)
 			else
 				newargs = lappend(newargs, newarg);
 		}
-		return (Node *) make_orclause(newargs);
+		return (Node *) make_orclause(newargs, ((BoolExpr *) node)->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	/*

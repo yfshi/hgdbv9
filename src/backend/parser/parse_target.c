@@ -111,6 +111,11 @@ transformTargetEntry(ParseState *pstate,
 		colname = FigureColname(node);
 	}
 
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	if (hasPlusFlag(expr))
+		elog(ERROR, "outer join operator (+) is not allowed here");
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 	return makeTargetEntry((Expr *) expr,
 						   (AttrNumber) pstate->p_next_resno++,
 						   colname,

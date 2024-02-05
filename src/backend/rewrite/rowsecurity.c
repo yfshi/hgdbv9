@@ -714,7 +714,7 @@ add_security_quals(int rt_index,
 		if (list_length(permissive_quals) == 1)
 			rowsec_expr = (Expr *) linitial(permissive_quals);
 		else
-			rowsec_expr = makeBoolExpr(OR_EXPR, permissive_quals, -1);
+			rowsec_expr = makeBoolExpr(OR_EXPR, permissive_quals, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		ChangeVarNodes((Node *) rowsec_expr, 1, rt_index, 0);
 		*securityQuals = list_append_unique(*securityQuals, rowsec_expr);
@@ -808,7 +808,7 @@ add_with_check_options(Relation rel,
 		if (list_length(permissive_quals) == 1)
 			wco->qual = (Node *) linitial(permissive_quals);
 		else
-			wco->qual = (Node *) makeBoolExpr(OR_EXPR, permissive_quals, -1);
+			wco->qual = (Node *) makeBoolExpr(OR_EXPR, permissive_quals, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		ChangeVarNodes(wco->qual, 1, rt_index, 0);
 

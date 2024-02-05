@@ -255,6 +255,12 @@ struct ParseState
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	bool		do_from_call;	/* ReqID:SRS-SQL-CALL */
 	List	   **p_targetlist;	/* BUG#M0000217 */
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	/* For (+) outer join */
+	bool	p_hasAnsiJoinType;
+	bool	p_hasOraJoinType;
+	bool	p_hasref_outer_tbl;
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 };
 
 /*
@@ -369,5 +375,15 @@ extern SubscriptingRef *transformContainerSubscripts(ParseState *pstate,
 													 bool isAssignment);
 
 extern Const *make_const(ParseState *pstate, Value *value, int location);
-
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+#define hasPlusFlag(expr) \
+	   (((nodeTag((expr)) == T_JoinExpr && ((JoinExpr *)(expr))->has_outer_join) || \
+	   (nodeTag((expr)) == T_OpExpr && ((OpExpr *)(expr))->has_outer_join) || \
+	   (nodeTag((expr)) == T_BoolExpr && ((BoolExpr *)(expr))->has_outer_join))|| \
+	   (nodeTag((expr)) == T_Var && ((Var *)(expr))->has_outer_join) ||	\
+	   (nodeTag((expr)) == T_NullTest && nodeTag(((NullTest *)expr)->arg) == T_Var && ((Var *)((NullTest *)expr)->arg)->has_outer_join) || \
+	   (nodeTag((expr)) == T_NullTest && nodeTag(((NullTest *)expr)->arg) == T_OpExpr && ((OpExpr *)((NullTest *)expr)->arg)->has_outer_join) || \
+	   (nodeTag((expr)) == T_FuncExpr && ((FuncExpr *)(expr))->has_outer_join) || \
+	   (nodeTag((expr)) == T_Aggref && ((Aggref *)(expr))->has_outer_join))
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 #endif							/* PARSE_NODE_H */

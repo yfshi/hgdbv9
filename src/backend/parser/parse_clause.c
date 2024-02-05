@@ -110,6 +110,25 @@ static Node *transformFrameOffset(ParseState *pstate, int frameOptions,
 static void check_funcexpr_outparams(List *funcexprs);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+static JoinExpr *outer_join_Recurse(ParseState *pstate, List **multi_outer_joins,
+									JoinExpr *join, Outer_join_vars *plus_var);
+static void make_one_outerjoin(ParseState *pstate, List *innerjoin_list, Var *plus_var, Node *qual);
+static void parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_joins, List **return_args);
+static void dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType boolop);
+
+
+#define is_valid_operator(expr) \
+	(!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "=") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), ">") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "<") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "<>") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), ">=") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "<=") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "~~") || \
+	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "!~~"))
+
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /*
  * transformFromClause -
@@ -314,6 +333,21 @@ extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,
 	return colcount;
 }
 
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+int
+ora_extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,
+									List *src_colnames,
+									List **src_colnos,
+									List **res_colnames, List **res_colvars,
+									ParseNamespaceColumn *res_nscolumns,
+									int res_colindex)
+{
+	return extractRemainingColumns(src_nscolumns, src_colnames,
+														src_colnos, res_colnames, res_colvars,
+														res_nscolumns + res_colindex);
+}
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 /* transformJoinUsingClause()
  *	  Build a complete ON clause from a partially-transformed USING list.
  *	  We are given lists of nodes representing left and right match columns.
@@ -359,7 +393,7 @@ transformJoinUsingClause(ParseState *pstate,
 	if (list_length(andargs) == 1)
 		result = (Node *) linitial(andargs);
 	else
-		result = (Node *) makeBoolExpr(AND_EXPR, andargs, -1);
+		result = (Node *) makeBoolExpr(AND_EXPR, andargs, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/*
 	 * Since the references are already Vars, and are certainly from the input
@@ -1190,6 +1224,12 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		int			sv_namespace_length;
 		int			k;
 
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* It's ANSI type join */
+		if (j->jointype != JOIN_INNER)
+			pstate->p_hasAnsiJoinType = true;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 		/*
 		 * Recursively process the left subtree, then the right.  We must do
 		 * it in this order for correct visibility of LATERAL references.
@@ -1449,8 +1489,115 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		}
 		else if (j->quals)
 		{
+			Node *plus_ref = NULL;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			/* User-written ON-condition; transform it */
 			j->quals = transformJoinOnClause(pstate, j, my_namespace);
+
+			/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+			/* Record which table column can use (+) */
+			if (j->jointype == JOIN_RIGHT)
+				plus_ref = j->larg;
+			else if (j->jointype == JOIN_LEFT)
+				plus_ref = j->rarg;
+
+			if (hasPlusFlag(j->quals) && (is_opclause(j->quals) || IsA(j->quals, NullTest)))
+			{
+				List *ltables = NIL;
+				ListCell *l;
+				Var	*plus_var = NULL;
+
+				ltables = check_Outerjoin_Opexpr(j->quals);
+				if (list_length(ltables) > 1)
+				{
+					List *ltables_copy = NIL;
+
+					ltables_copy = list_copy(ltables);
+					foreach(l, ltables_copy)
+					{
+						Var *v1 = (Var *)lfirst(l);
+						if (hasPlusFlag(v1))
+						{
+							plus_var = v1;
+							ltables = list_delete(ltables, (Node *)v1);
+						}
+					}
+					/* Ignoring:t1.i(+)=t1.j(+) */
+					if (ltables)
+					{
+						if (j->jointype == JOIN_RIGHT && IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->larg)->rtindex != plus_var->varno)
+							elog(ERROR, "a predicate may reference only one outer-joined table");
+						else if (j->jointype == JOIN_LEFT &&  IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->rarg)->rtindex != plus_var->varno)
+							elog(ERROR, "a predicate may reference only one outer-joined table");
+						else if (j->jointype == JOIN_FULL &&  IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->larg)->rtindex == plus_var->varno)
+							j->jointype = JOIN_RIGHT;
+						else if (j->jointype == JOIN_FULL &&  IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->rarg)->rtindex == plus_var->varno)
+							j->jointype = JOIN_LEFT;
+						else if (j->jointype == JOIN_INNER &&  IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->larg)->rtindex == plus_var->varno)
+							j->jointype = JOIN_RIGHT;
+						else if (j->jointype == JOIN_INNER &&  IsA(j->larg, RangeTblRef) && ((RangeTblRef *)j->rarg)->rtindex == plus_var->varno)
+							j->jointype = JOIN_LEFT;
+					}
+				}
+			}
+			else if (IsA(j->quals, BoolExpr) && hasPlusFlag(j->quals))
+			{
+				ListCell   *l;
+
+				/* If j is not left/right join,we cannot use (+) operator at or condition */
+				if(((BoolExpr *)j->quals)->boolop == OR_EXPR && !plus_ref)
+					elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+
+				foreach(l, ((BoolExpr *)j->quals)->args)
+				{
+					Node *v1 = NULL;
+					v1 = (Node *)lfirst(l);
+					if((is_opclause(v1) || IsA(v1, NullTest)) && hasPlusFlag(v1))
+					{
+						List *ltables = NIL;
+						ListCell *l;
+						Var	*plus_var = NULL;
+						List *ltables_copy = NIL;
+
+						ltables = check_Outerjoin_Opexpr(v1);
+
+						ltables_copy = list_copy(ltables);
+						foreach(l, ltables_copy)
+						{
+							Var *v1 = (Var *)lfirst(l);
+							if (hasPlusFlag(v1))
+							{
+								plus_var = v1;
+								ltables = list_delete(ltables, (Node *)v1);
+							}
+						}
+
+						if (plus_var)
+						{
+							/* if plus_ref is null(inner/full join) */
+							if (!plus_ref)
+							{
+								if (((RangeTblRef *)j->larg)->rtindex == plus_var->varno)
+									j->jointype = JOIN_RIGHT;
+								else if (((RangeTblRef *)j->rarg)->rtindex == plus_var->varno)
+									j->jointype = JOIN_LEFT;
+							}
+							else
+							{
+								if(((RangeTblRef *)plus_ref)->rtindex != plus_var->varno && is_andclause(j->quals))
+									elog(ERROR, "a predicate may reference only one outer-joined table");
+								else if (((RangeTblRef *)plus_ref)->rtindex != plus_var->varno && is_orclause(j->quals))
+									elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+							}
+						}
+						else
+						{
+							if (is_orclause(j->quals))
+								elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+						}
+					}
+				}
+			}
+			/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 		}
 		else
 		{
@@ -1753,11 +1900,299 @@ transformWhereClause(ParseState *pstate, Node *clause,
 					 ParseExprKind exprKind, const char *constructName)
 {
 	Node	   *qual;
-
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	Node	   *copyqual;
+	Node	   *return_qual = NULL;
+	List	   *return_args = NIL;
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 	if (clause == NULL)
 		return NULL;
 
 	qual = transformExpr(pstate, clause, exprKind);
+
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	/* Resolve the NOT expression in advance */
+	if (is_notclause(qual) && hasPlusFlag(qual))
+	{
+		copyqual = copyObject(qual);
+		qual = eval_const_expressions(NULL, qual);
+		if (IsA(qual, BoolExpr))
+			((BoolExpr *)qual)->has_outer_join = ((BoolExpr *)copyqual)->has_outer_join;
+	}
+
+	if (IsA(qual, Var) && hasPlusFlag(qual))
+		elog(ERROR, "invalid relational operator");
+
+	if (strcmp(constructName, "WHERE") == 0 && hasPlusFlag(qual) &&
+			pstate->p_hasAnsiJoinType)
+		elog(ERROR, "old style outer join (+) cannot be used with ANSI joins");
+
+	/* Parsing single conditions */
+	if ((is_opclause(qual) || IsA(qual, NullTest)) && hasPlusFlag(qual) && strcmp(constructName, "WHERE") == 0)
+	{
+		List *ltables = NIL;
+		List *ltables_copy = NIL;
+		Var  *var_has_plus;
+		ListCell *l;
+
+		if (IsA(qual, OpExpr)  && !is_valid_operator(qual))
+			elog(ERROR, "invalid relational operator");
+
+		ltables = check_Outerjoin_Opexpr(qual);
+		/* just for single Var,like:t1.i(+) = 2 */
+		if (list_length(ltables) == 1)
+		{
+			qual = coerce_to_boolean(pstate, qual, constructName);
+			return qual;
+		}
+		/* delete vars which has plus */
+		ltables_copy = list_copy(ltables);
+		foreach(l, ltables_copy)
+		{
+			Var *v1 = (Var *)lfirst(l);
+			if (hasPlusFlag(v1))
+			{
+				var_has_plus = v1;
+				ltables = list_delete(ltables, (Node *)v1);
+			}
+		}
+
+		/* for:t1.i(+) = t1.j(+) */
+		if (!ltables)
+			return qual;
+
+		/* Do final joins */
+		make_one_outerjoin(pstate, ltables, var_has_plus, qual);
+
+		return NULL;
+	}
+	else if (IsA(qual, BoolExpr) && hasPlusFlag(qual) && strcmp(constructName, "WHERE") == 0)
+	{
+		ListCell   *l;
+		List 	   *multi_outer_joins = NIL;
+		List	   *multi_outer_joins_copy = NIL;
+		List	   *has_rmvar_list = NIL;
+		List	   *singlevar_list = NIL;
+		JoinExpr   *prev_join = NULL;
+
+		if (((BoolExpr *)qual)->boolop == OR_EXPR && is_andclause(linitial(((BoolExpr *)qual)->args)))
+			elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+		/* Recursive parsing of bool expressions */
+		parseBoolexpr((BoolExpr *)qual, &singlevar_list, &multi_outer_joins, &return_args);
+
+		/*
+		 * There are no expressions that require outer join here,
+		 * just return them directly
+		 */
+		if (list_length(multi_outer_joins) == 0)
+		{
+			/* The qual of all individual column expressions should return */
+			if (singlevar_list)
+			{
+				ListCell   *ll;
+
+				foreach(ll, singlevar_list)
+				{
+					Outer_join_vars *node = NULL;
+					node = (Outer_join_vars *)lfirst(ll);
+					return_args = lappend(return_args, node->qual);
+				}
+			}
+			return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, false, -1);
+			return return_qual;
+		}
+
+		/*Merge the same expression with (+)*/
+		dedumplicate_outerjoin_list(&multi_outer_joins, ((BoolExpr *)qual)->boolop);
+		multi_outer_joins_copy = list_copy(multi_outer_joins);
+		foreach(l, multi_outer_joins_copy)
+		{
+			ListCell   *ln;
+			ListCell   *lln;
+			Outer_join_vars *outer_join = NULL;
+
+			outer_join = (Outer_join_vars *)lfirst(l);
+
+			/*
+			 * Check if there are any items in the expression that need to be
+			 * merged with a single element list
+			 */
+			if (singlevar_list)
+			{
+				List *nulltest_singlevar_list_copy = NIL;
+				ListCell   *ll;
+
+				nulltest_singlevar_list_copy = list_copy(singlevar_list);
+				foreach(ll, nulltest_singlevar_list_copy)
+				{
+					Outer_join_vars *node = NULL;
+					node = (Outer_join_vars *)lfirst(ll);
+					/*
+					 * If has same plus var, merge the expresion,If outer_join's
+					 * var_list include singlevar plus var,single var expr should return
+					 */
+					if (node->plus_var->varno == outer_join->plus_var->varno)
+					{
+						outer_join->qual = (Node *) makeBoolExpr(((BoolExpr *)qual)->boolop, list_make2(outer_join->qual, node->qual), false, -1);
+						singlevar_list = list_delete(singlevar_list, node);
+					}
+				}
+			}
+
+			for_each_cell(ln, multi_outer_joins_copy, lnext(multi_outer_joins_copy, l))
+			{
+				Outer_join_vars *outer_joinl = NULL;
+				List *outer_join_list_copy = NIL;
+				List *outer_join_varlist_copy = NIL;
+
+				outer_joinl = (Outer_join_vars *)lfirst(ln);
+				outer_join_list_copy = list_copy(outer_joinl->var_list);
+				foreach(lln, outer_join_list_copy)
+				{
+					Var *var = NULL;
+					var = (Var *)lfirst(lln);
+					/* t1.i(+)+t2.i = t3.i and t4.i(+)= t2.i + t5.i :remove t2 on var_list */
+					if(list_var_member(outer_join->var_list, var))
+						outer_joinl->var_list = list_delete(outer_joinl->var_list, var);
+
+					/* t1.i(+) = t2.i and t3(+) = t1.i:move t1 to rmvar*/
+					if (outer_join->plus_var->varno == var->varno)
+					{
+						outer_joinl->var_list = list_delete(outer_joinl->var_list, var);
+						outer_joinl->rmvar = lappend(outer_joinl->rmvar, (Var *)copyObject(var));
+						if (!list_member(has_rmvar_list, outer_joinl))
+						{
+							multi_outer_joins = list_delete(multi_outer_joins, outer_joinl);
+							has_rmvar_list = lappend(has_rmvar_list, outer_joinl);
+						}
+					}
+				}
+
+				/*
+				 * muti AND question,like :t1.i(+)= t2.i+t3.i and t2.i(+) = t4.i+t5.i
+				 * and t4.i(+) = t6.i +t7.i: move t2 and t4 to rmvar struct member
+				 */
+				outer_join_varlist_copy= list_copy(outer_join->var_list);
+				foreach(lln, outer_join_varlist_copy)
+				{
+					Var *var = NULL;
+					var = (Var *)lfirst(lln);
+
+					if (var->varno == outer_joinl->plus_var->varno)
+					{
+						outer_join->var_list = list_delete(outer_join->var_list, var);
+						outer_join->rmvar = lappend(outer_join->rmvar, (Var *)copyObject(var));
+						if (!list_member(has_rmvar_list, outer_join))
+						{
+							has_rmvar_list = lappend(has_rmvar_list, outer_join);
+							multi_outer_joins = list_delete(multi_outer_joins, outer_join);
+						}
+					}
+				}
+			}
+		}
+
+		/* All single var expressions quals must be returned */
+		if (singlevar_list)
+		{
+			List	*nulltest_singlevar_list_copy = NIL;
+			nulltest_singlevar_list_copy = list_copy(singlevar_list);
+			foreach(l, nulltest_singlevar_list_copy)
+			{
+				Outer_join_vars *outer_join_nulltest = NULL;
+				outer_join_nulltest = (Outer_join_vars *)lfirst(l);
+				return_args = lappend(return_args, outer_join_nulltest->qual);
+				singlevar_list = list_delete(singlevar_list, outer_join_nulltest);
+			}
+		}
+		/* Loop outer join */
+		if (list_length(multi_outer_joins) == 0)
+			elog(ERROR, "two tables cannot be outer-joined to each other");
+
+		/* Do all join expr */
+		foreach(l, multi_outer_joins)
+		{
+			JoinExpr	   *cross_join = NULL;
+			JoinExpr	   *join = NULL;
+			JoinExpr	   *cur_join = NULL;
+			Outer_join_vars *outer_join;
+			RangeTblRef	   *ltr = makeNode(RangeTblRef);
+			RangeTblRef	   *rtr = makeNode(RangeTblRef);
+
+			outer_join = (Outer_join_vars *)lfirst(l);
+			if(prev_join == NULL)
+			{//first node
+				join = makeNode(JoinExpr);
+				if (list_length(outer_join->var_list) > 1)
+				{
+					cross_join = make_inner_join(pstate, outer_join->var_list);
+					join->larg = (Node *)copyObject(cross_join);
+				}
+				else if (list_length(outer_join->var_list) == 1)
+				{
+					Var *var1 = NULL;
+					var1 = (Var *)linitial(outer_join->var_list);
+					ltr->rtindex = var1 ->varno;
+					join->larg = (Node *)ltr;
+				}
+				rtr->rtindex = outer_join->plus_var->varno;
+				join->rarg = (Node *)rtr;
+				join->jointype = JOIN_LEFT;
+				join->quals = outer_join->qual;
+				join->rtindex = list_length(pstate->p_rtable) + 1;
+				AddJoinOnToRtable(pstate, join);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, join->larg);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, join->rarg);
+				pstate->p_joinlist = lappend(pstate->p_joinlist, copyObject(join));
+				prev_join = (JoinExpr *)outer_join_Recurse(pstate, &has_rmvar_list, join, outer_join);
+			}
+			else
+			{
+				ListCell *ln;
+				foreach(ln, outer_join->var_list)
+				{
+					Var *var;
+					var = (Var *)lfirst(ln);
+					join = makeNode(JoinExpr);
+					rtr->rtindex = var->varno;
+					join->larg = (Node *)copyObject(prev_join);
+					join->rarg = (Node *)rtr;
+					join->jointype = JOIN_INNER;
+					join->rtindex = list_length(pstate->p_rtable) + 1;
+					AddJoinOnToRtable(pstate, join);
+					pstate->p_joinlist = list_delete(pstate->p_joinlist, join->larg);
+					pstate->p_joinlist = list_delete(pstate->p_joinlist, join->rarg);
+					pstate->p_joinlist = lappend(pstate->p_joinlist, copyObject(join));
+					prev_join = copyObject(join);
+				}
+				//do outer join
+				cur_join = makeNode(JoinExpr);
+				rtr->rtindex = outer_join->plus_var->varno;
+				cur_join->larg = (Node *)copyObject(prev_join);
+				cur_join->rarg = (Node *)rtr;
+				cur_join->jointype = JOIN_LEFT;
+				cur_join->quals = outer_join->qual;
+				cur_join->rtindex = list_length(pstate->p_rtable) + 1;
+				AddJoinOnToRtable(pstate, cur_join);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
+				pstate->p_joinlist = lappend(pstate->p_joinlist, copyObject(cur_join));
+				prev_join = outer_join_Recurse(pstate, &has_rmvar_list, cur_join, outer_join);
+			}
+		}
+		/* It's loop join */
+		if (list_length(has_rmvar_list) > 0)
+			elog(ERROR, "two tables cannot be outer-joined to each other");
+
+		if (return_args)
+		{
+			return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, false, -1);
+			return return_qual;
+		}
+
+		return NULL;
+	}
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	qual = coerce_to_boolean(pstate, qual, constructName);
 
@@ -1969,7 +2404,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			 * breaks no cases that are legal per spec, and it seems a more
 			 * self-consistent behavior.
 			 */
-			if (colNameToVar(pstate, name, true, location) != NULL)
+			if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				name = NULL;
 		}
 
@@ -2037,7 +2472,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			 * breaks no cases that are legal per spec, and it seems a more
 			 * self-consistent behavior.
 			 */
-			if (colNameToVar(pstate, name, true, location) != NULL)
+			if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				name = NULL;
 		}
 
@@ -3925,3 +4360,516 @@ interpretRowidOption(List *defList, bool allowRowid)
 		return false;
 }
 /* End - ReqID:SRS-SQL-ROWID */
+
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+void
+AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr)
+{
+	List	*l_colnames,
+			*r_colnames,
+			*res_colnames,
+			*res_colvars,
+			*l_colnos,
+			*r_colnos;
+	Index	leftrti,
+			rightrti;
+	int		res_colindex;
+	int		k;
+	ParseNamespaceColumn *res_nscolumns;
+	ParseNamespaceItem *nsitem;
+	ParseNamespaceItem *lnsitem;
+	ParseNamespaceItem *rnsitem;
+
+	if (IsA(joinexpr->larg, RangeTblRef))
+		leftrti = ((RangeTblRef *) joinexpr->larg)->rtindex;
+	else if (IsA(joinexpr->larg, JoinExpr))
+		leftrti = ((JoinExpr *) joinexpr->larg)->rtindex;
+	else
+	{
+		elog(ERROR, "unrecognized node type: %d", (int) nodeTag(joinexpr->larg));
+		leftrti = 0;		/* keep compiler quiet */
+	}
+
+	if (IsA(joinexpr->rarg, RangeTblRef))
+		rightrti = ((RangeTblRef *) joinexpr->rarg)->rtindex;
+	else if (IsA(joinexpr->rarg, JoinExpr))
+		rightrti = ((JoinExpr *) joinexpr->rarg)->rtindex;
+	else
+	{
+		elog(ERROR, "unrecognized node type: %d", (int) nodeTag(joinexpr->rarg));
+		rightrti = 0;		/* keep compiler quiet */
+	}
+
+	lnsitem = list_nth(pstate->p_namespace, leftrti - 1);
+	rnsitem = list_nth(pstate->p_namespace, rightrti - 1);
+	l_colnames = lnsitem->p_names->colnames;
+	r_colnames = rnsitem->p_names->colnames;
+	res_nscolumns = (ParseNamespaceColumn *)
+						palloc0((list_length(l_colnames) + list_length(r_colnames)) *
+							sizeof(ParseNamespaceColumn));
+	l_colnos = NIL;
+	r_colnos = NIL;
+	res_colnames = NIL;
+	res_colvars = NIL;
+	res_colindex = 0;
+	res_colindex = ora_extractRemainingColumns(lnsitem->p_nscolumns, l_colnames,
+																	&l_colnos, &res_colnames, &res_colvars,
+																	res_nscolumns, res_colindex);
+	res_colindex += ora_extractRemainingColumns(rnsitem->p_nscolumns, r_colnames,
+																	&r_colnos, &res_colnames, &res_colvars,
+																	res_nscolumns, res_colindex);
+	nsitem = addRangeTableEntryForJoin(pstate,
+									res_colnames,
+									res_nscolumns,
+									joinexpr->jointype,
+									0,
+									res_colvars,
+									l_colnos,
+									r_colnos,
+									NULL,
+									NULL,
+									true);
+	joinexpr->rtindex = nsitem->p_rtindex;
+	Assert(res_colindex == list_length(nsitem->p_names->colnames));
+	for (k = 0; k < res_colindex; k++)
+	{
+		ParseNamespaceColumn *nscol = res_nscolumns + k;
+		if (nscol->p_varno == 0)
+			nscol->p_varno = joinexpr->rtindex;
+		if (nscol->p_varnosyn == 0)
+			nscol->p_varnosyn = joinexpr->rtindex;
+		/* if join has an alias, it syntactically hides all inputs */
+		if (joinexpr->alias)
+		{
+			nscol->p_varnosyn = joinexpr->rtindex;
+			nscol->p_varattnosyn = k + 1;
+		}
+	}
+	for (k = list_length(pstate->p_joinexprs) + 1; k < joinexpr->rtindex; k++)
+		pstate->p_joinexprs = lappend(pstate->p_joinexprs, NULL);
+	if (joinexpr->jointype == JOIN_INNER)
+		pstate->p_joinexprs = lappend(pstate->p_joinexprs, NULL);
+	else
+		pstate->p_joinexprs = lappend(pstate->p_joinexprs, joinexpr);
+	pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
+}
+
+/*
+ * Extract var from the expression and check its validity and deduplication
+ */
+List *
+check_Outerjoin_Opexpr(Node *expr)
+{
+	List *ltables = NIL;
+	List *rtables = NIL;
+	ListCell *l;
+	ListCell *ln;
+	ListCell *lln;
+	Var *v1;
+	Var *v2;
+
+	if (IsA(expr, NullTest))
+		ltables = pull_vars_of_level((Node *)((NullTest *)expr)->arg, 0);
+	else
+	{
+		if (contain_var_clause(get_leftop(expr)))
+			ltables = pull_vars_of_level(get_leftop(expr), 0);
+		if (contain_var_clause(get_rightop(expr)))
+			rtables = pull_vars_of_level(get_rightop(expr), 0);
+	}
+
+	if (ltables && rtables && list_length(ltables) == 1 &&
+								list_length(rtables) == 1)
+	{
+		Var *lvar;
+		Var *rvar;
+
+		lvar = (Var *)linitial(ltables);
+		rvar = (Var *)linitial(rtables);
+		/* Cannot join itselfes: t1.i = t1.i(+) */
+		if (equal(lvar, rvar) && ((hasPlusFlag(lvar) && !hasPlusFlag(rvar)) ||
+						(!hasPlusFlag(lvar) && hasPlusFlag(rvar))))
+			elog(ERROR, "two tables cannot be outer-joined to each other");
+	}
+
+	if(ltables || rtables)
+	{
+		List *ltables_copy = NIL;
+
+		ltables = list_concat(ltables, rtables);
+		ltables_copy = list_copy(ltables);
+		foreach(l, ltables_copy)
+		{
+			v1 = (Var *)lfirst(l);
+			for_each_cell(ln, ltables_copy, lnext(ltables_copy, l))
+			{
+				v2 = (Var *)lfirst(ln);
+				if (!list_member(ltables, v1))
+					break;
+				/* t1.i(+) + t2.j(+) = 1*/
+				if (v1->varno != v2->varno && (hasPlusFlag(v1) && hasPlusFlag(v2)))
+					elog(ERROR, "a predicate may reference only one outer-joined table");
+				/* Deduplicati Var like:t2.i = t1.i(+)+t2.j */
+				if (v1->varno == v2->varno && (!hasPlusFlag(v1) && !hasPlusFlag(v2)))
+					ltables = list_delete(ltables, (Node *)v2);
+			}
+		}
+		foreach(l, ltables_copy)
+		{
+			v1 = (Var *)lfirst(l);
+			for_each_cell(lln, ltables_copy, lnext(ltables_copy, l))
+			{
+				Var *v3 = NULL;
+				v3 = (Var *)lfirst(lln);
+				/* t2.j+t2.i(+) = t3.i */
+				if (v1->varno == v3->varno && ((hasPlusFlag(v1) && !hasPlusFlag(v3)) ||
+						(!hasPlusFlag(v1) && hasPlusFlag(v3))))
+					elog(ERROR, "two tables cannot be outer-joined to each other");
+			}
+		}
+	}
+
+	return ltables;
+}
+
+JoinExpr *
+make_inner_join(ParseState *pstate, List *tables)
+{
+	int i;
+	JoinExpr *prev_join = NULL;
+	JoinExpr *cur_join = NULL;
+	RangeTblRef     *ltr = makeNode(RangeTblRef);
+	RangeTblRef     *rtr = makeNode(RangeTblRef);
+
+	for (i = 0; i < list_length(tables); i++)
+	{
+		Var *v1 = list_nth(tables, i);
+		if (list_length(tables) > i+1)
+		{
+			if (!prev_join)
+			{//first item
+				Var *v2 = NULL;
+				cur_join = makeNode(JoinExpr);
+				prev_join = makeNode(JoinExpr);
+				cur_join->jointype = JOIN_INNER;
+				v2 = (Var*)list_nth(tables, ++i);
+				ltr->rtindex = v1->varno;
+				rtr->rtindex = v2->varno;
+				cur_join->larg = (Node *)ltr;
+				cur_join->rarg = (Node *)rtr;
+				cur_join->rtindex = list_length(pstate->p_rtable);
+				AddJoinOnToRtable(pstate, copyObject(cur_join));
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
+				prev_join = copyObject(cur_join);
+			}
+			else
+			{
+				cur_join = makeNode(JoinExpr);
+				cur_join->jointype = JOIN_INNER;
+				rtr->rtindex = v1->varno;
+				cur_join->larg = (Node *)copyObject(prev_join);
+				cur_join->rarg = (Node *)rtr;
+				cur_join->rtindex = prev_join->rtindex + 1;
+				AddJoinOnToRtable(pstate, copyObject(cur_join));
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
+				pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
+				prev_join = copyObject(cur_join);
+			}
+		}
+		else
+		{
+			cur_join = makeNode(JoinExpr);
+			cur_join->jointype = JOIN_INNER;
+			ltr->rtindex = prev_join->rtindex;
+			rtr->rtindex = v1->varno;
+			cur_join->larg = (Node *)copyObject(prev_join);
+			cur_join->rarg = (Node *)rtr;
+			cur_join->rtindex = list_length(pstate->p_rtable);
+			AddJoinOnToRtable(pstate, copyObject(cur_join));
+			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
+			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
+			prev_join = copyObject(cur_join);
+		}
+	}
+	return prev_join;
+}
+
+static JoinExpr *
+outer_join_Recurse(ParseState *pstate, List **multi_outer_joins, JoinExpr *join, Outer_join_vars *plus_var)
+{
+	ListCell	   *l;
+	ListCell	   *ln;
+	JoinExpr	   *join_inner = NULL;
+	JoinExpr	   *cur_join = NULL;
+	JoinExpr	   *prev_join = NULL;
+	RangeTblRef	   *rtr = makeNode(RangeTblRef);
+	List 		   *multi_outer_joins_copy;
+
+	if (!*multi_outer_joins)
+		return join;
+
+	multi_outer_joins_copy = list_copy(*multi_outer_joins);
+	foreach(l, multi_outer_joins_copy)
+	{
+		Outer_join_vars *outer_join;
+		outer_join = (Outer_join_vars *)lfirst(l);
+		if (list_var_member(outer_join->rmvar, plus_var->plus_var))
+		{
+			outer_join->rmvar = list_delete_var(outer_join->rmvar, plus_var->plus_var);
+			if (list_length(outer_join->rmvar) >= 1)
+				return join;
+
+			if (!prev_join)
+				prev_join = copyObject(join);
+			*multi_outer_joins = list_delete(*multi_outer_joins, outer_join);
+			if (list_length(outer_join->var_list) >= 1)
+			{//Do inner join
+				foreach(ln, outer_join->var_list)
+				{
+					Var *var;
+					var = (Var *)lfirst(ln);
+					join_inner = makeNode(JoinExpr);
+					rtr->rtindex = var->varno;
+					join_inner->larg = (Node *)copyObject(prev_join);
+					join_inner->rarg = (Node *)rtr;
+					join_inner->jointype = JOIN_INNER;
+					join_inner->rtindex = list_length(pstate->p_rtable) + 1;
+					AddJoinOnToRtable(pstate, join_inner);
+					pstate->p_joinlist = list_delete(pstate->p_joinlist, join_inner->larg);
+					pstate->p_joinlist = list_delete(pstate->p_joinlist, join_inner->rarg);
+					pstate->p_joinlist = lappend(pstate->p_joinlist, copyObject(join_inner));
+					prev_join = copyObject(join_inner);
+				}
+			}
+
+			cur_join = makeNode(JoinExpr);
+			cur_join->larg = (Node *)copyObject(prev_join);
+			rtr->rtindex = outer_join->plus_var->varno;
+			cur_join->rarg = (Node *)rtr;
+			cur_join->jointype = JOIN_LEFT;
+			cur_join->quals = outer_join->qual;
+			cur_join->rtindex = list_length(pstate->p_rtable) + 1;
+			AddJoinOnToRtable(pstate, cur_join);
+			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
+			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
+			pstate->p_joinlist = lappend(pstate->p_joinlist,copyObject(cur_join));
+			return outer_join_Recurse(pstate, multi_outer_joins, cur_join, outer_join);
+		}
+	}
+	return join;
+}
+
+static void
+make_one_outerjoin(ParseState *pstate, List *innerjoin_list, Var *plus_var, Node *qual)
+{
+	JoinExpr *newres = NULL;
+
+	if (list_length(innerjoin_list) == 1)
+	{
+		JoinExpr *join = NULL;
+		Var 	*var;
+		RangeTblRef     *ltr = makeNode(RangeTblRef);
+		RangeTblRef     *rtr = makeNode(RangeTblRef);
+		join = makeNode(JoinExpr);
+		var = (Var *)linitial(innerjoin_list);
+		ltr->rtindex = var->varno;
+		rtr->rtindex = plus_var->varno;
+		join->rtindex =	list_length(pstate->p_rtable) + 1;
+		join->jointype = JOIN_LEFT;
+		join->larg = (Node *)ltr;
+		join->rarg = (Node *)rtr;
+		join->quals = qual;
+		AddJoinOnToRtable(pstate, join);
+		pstate->p_joinlist = list_delete(pstate->p_joinlist, join->larg);
+		pstate->p_joinlist = list_delete(pstate->p_joinlist, join->rarg);
+		pstate->p_joinlist = lappend(pstate->p_joinlist, join);
+	}
+	else if (list_length(innerjoin_list) > 1)
+	{
+		JoinExpr	   *prev_join = NULL;
+		RangeTblRef	   *rtr = makeNode(RangeTblRef);
+		prev_join = make_inner_join(pstate, innerjoin_list);
+		/* Do outer join */
+		newres = makeNode(JoinExpr);
+		rtr->rtindex = plus_var->varno;
+		newres->larg = (Node *)copyObject(prev_join);
+		newres->rarg = (Node *)rtr;
+		newres->jointype = JOIN_LEFT;
+		newres->rtindex = list_length(pstate->p_rtable) + 1;
+		newres->quals = qual;
+		AddJoinOnToRtable(pstate, copyObject(newres));
+		pstate->p_joinlist = list_delete(pstate->p_joinlist, newres->larg);
+		pstate->p_joinlist = list_delete(pstate->p_joinlist, newres->rarg);
+		pstate->p_joinlist = lappend(pstate->p_joinlist, newres);
+	}
+}
+
+static void
+parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_joins, List **return_args)
+{
+	ListCell   *l;
+
+	foreach(l, boolexpr->args)
+	{
+		Node *v1 = NULL;
+		v1 = (Node *)lfirst(l);
+		if (is_notclause(v1) && hasPlusFlag(v1))
+		{
+			Node	   *copyv1;
+			copyv1 = copyObject(v1);
+			v1 = eval_const_expressions(NULL, v1);
+			if (IsA(v1, BoolExpr))
+				((BoolExpr *)v1)->has_outer_join = ((BoolExpr *)copyv1)->has_outer_join;
+
+			if(is_orclause(v1) && list_cell_number(boolexpr->args, l) != 0 && hasPlusFlag(v1))
+				elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+			parseBoolexpr((BoolExpr *)v1, singlevar_list, multi_outer_joins, return_args);
+		}
+		else if (IsA(v1, BoolExpr) && hasPlusFlag(v1))
+		{
+			if(is_orclause(boolexpr) && list_cell_number(boolexpr->args, l) != 0 && hasPlusFlag(v1))
+				elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+			parseBoolexpr((BoolExpr *)v1, singlevar_list, multi_outer_joins, return_args);
+		}
+		else if (is_opclause(v1) && hasPlusFlag(v1))
+		{
+			ListCell 		*l;
+			ListCell 		*ln;
+			List 			*tables;
+			Outer_join_vars *outer_joinnode;
+
+			if (is_orclause(boolexpr))
+				elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
+
+			tables = check_Outerjoin_Opexpr(v1);
+
+			if (list_length(tables) == 1)
+			{
+				Outer_join_vars *singlevar_node = NULL;
+
+				singlevar_node = makeNode(Outer_join_vars);
+				singlevar_node->plus_var = (Var *)copyObject((Var *)linitial(tables));
+				singlevar_node->qual = (Node *)v1;
+				*singlevar_list = lappend(*singlevar_list, singlevar_node);
+				continue;
+			}
+			outer_joinnode = makeNode(Outer_join_vars);
+			foreach(l, tables)
+			{
+				Var *var = NULL;
+				var = (Var *)lfirst(l);
+				if (hasPlusFlag(var))
+				{
+					outer_joinnode->plus_var = var;
+					continue;
+				}
+				if (outer_joinnode->var_list)
+				{
+					foreach(ln,outer_joinnode->var_list)
+					{
+						Var *var1 = NULL;
+						var1 = (Var *)lfirst(ln);
+						if(var->varno == var1->varno)
+							continue;
+					}
+				}
+				outer_joinnode->var_list = lappend(outer_joinnode->var_list, var);
+			}
+			outer_joinnode->qual = v1;
+			*multi_outer_joins = lappend(*multi_outer_joins, outer_joinnode);
+		}
+		else if (IsA(v1, NullTest) && hasPlusFlag(v1))
+		{
+			Expr *null_expr;
+			List *tables;
+			Outer_join_vars *outer_joinnode;
+
+			null_expr = ((NullTest *)v1)->arg;
+			outer_joinnode = makeNode(Outer_join_vars);
+			if (nodeTag(null_expr) == T_Var && hasPlusFlag(null_expr))
+			{
+				Outer_join_vars *nulltest_singlevar_node = NULL;
+
+				nulltest_singlevar_node = makeNode(Outer_join_vars);
+				nulltest_singlevar_node->plus_var = (Var *)copyObject(null_expr);
+				nulltest_singlevar_node->qual = (Node *)v1;
+				*singlevar_list = lappend(*singlevar_list, nulltest_singlevar_node);
+			}
+			else if (nodeTag(null_expr) == T_OpExpr)
+			{
+				ListCell *l;
+				ListCell *ln;
+
+				tables = check_Outerjoin_Opexpr((Node *)null_expr);
+				if (list_length(tables) > 1)
+				{
+					foreach(l, tables)
+					{
+						Var *var = (Var *)lfirst(l);
+						if (hasPlusFlag(var))
+						{
+							outer_joinnode->plus_var = var;
+							continue;
+						}
+
+						if (list_length(outer_joinnode->var_list) > 0)
+						{
+							foreach(ln,outer_joinnode->var_list)
+							{
+								Var *var1 = (Var *)lfirst(ln);
+								if(var->varno == var1->varno)
+									continue;
+							}
+							outer_joinnode->var_list = lappend(outer_joinnode->var_list, var);
+						}
+						else
+							outer_joinnode->var_list = list_make1(var);
+					}
+				}
+				else if (list_length(tables) == 1)
+					outer_joinnode->var_list = list_make1(linitial(tables));
+
+				if (!outer_joinnode->plus_var)
+					*return_args = lappend(*return_args, v1);
+				else
+					outer_joinnode->qual = (Node *)v1;
+
+				*multi_outer_joins = lappend(*multi_outer_joins, outer_joinnode);
+			}
+		}
+		else
+			*return_args = lappend(*return_args, v1);
+	}
+}
+
+/*
+ * Merge two expressions with the same table with (+)
+ */
+static void
+dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType boolop)
+{
+	ListCell   *l;
+	ListCell   *ln;
+	List	   *multi_outer_joins_copy;
+
+	multi_outer_joins_copy = list_copy(*multi_outer_joins);
+	foreach(l, multi_outer_joins_copy)
+	{
+		Outer_join_vars *outer_join = NULL;
+		outer_join = (Outer_join_vars *)lfirst(l);
+		for_each_cell(ln, multi_outer_joins_copy, lnext(multi_outer_joins_copy, l))
+		{
+			Outer_join_vars *node = NULL;
+
+			node = (Outer_join_vars *)lfirst(ln);
+			if (outer_join->plus_var->varno == node->plus_var->varno)
+			{
+				outer_join->var_list = list_var_union(outer_join->var_list, node->var_list);
+				outer_join->qual = (Node *) makeBoolExpr(boolop, list_make2(outer_join->qual, node->qual), false, -1);
+				*multi_outer_joins = list_delete(*multi_outer_joins, node);
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */

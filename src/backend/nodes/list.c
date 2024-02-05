@@ -21,6 +21,7 @@
 #include "port/pg_bitutils.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
+#include "nodes/primnodes.h"	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 
 /*
@@ -640,6 +641,68 @@ list_member(const List *list, const void *datum)
 
 	return false;
 }
+
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+List *
+list_var_union(const List *list1, const List *list2)
+{
+	List	   *result;
+	const ListCell *cell;
+
+	Assert(IsPointerList(list1));
+	Assert(IsPointerList(list2));
+
+	result = list_copy(list1);
+	foreach(cell, list2)
+	{
+		if (!list_var_member(result, (Var *)lfirst(cell)))
+			result = lappend(result, (Var *)lfirst(cell));
+	}
+
+	check_list_invariants(result);
+	return result;
+}
+
+bool
+list_var_member(const List *list, const void *var)
+{
+	const ListCell *cell;
+	Var *varl;
+
+	Assert(IsPointerList(list));
+	check_list_invariants(list);
+
+	foreach(cell, list)
+	{
+		varl = (Var *)lfirst(cell);
+		if (((Var *)var)->varno == varl->varno)
+			return true;
+	}
+
+	return false;
+}
+
+List *
+list_delete_var(List *list, void *datum)
+{
+	ListCell   *cell;
+	Var *varl;
+
+	Assert(IsPointerList(list));
+	check_list_invariants(list);
+
+	foreach(cell, list)
+	{
+		varl = (Var *)lfirst(cell);
+		if (varl->varno == ((Var *)datum)->varno)
+			return list_delete_cell(list, cell);
+	}
+
+	/* Didn't find a match: return the list unmodified */
+	return list;
+}
+
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /*
  * Return true iff 'datum' is a member of the list. Equality is

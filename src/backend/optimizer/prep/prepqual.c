@@ -108,6 +108,7 @@ negate_clause(Node *node)
 					newopexpr->inputcollid = opexpr->inputcollid;
 					newopexpr->args = opexpr->args;
 					newopexpr->location = opexpr->location;
+					newopexpr->has_outer_join = opexpr->has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 					return (Node *) newopexpr;
 				}
 			}
@@ -167,7 +168,7 @@ negate_clause(Node *node)
 								nargs = lappend(nargs,
 												negate_clause(lfirst(lc)));
 							}
-							return (Node *) make_orclause(nargs);
+							return (Node *) make_orclause(nargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 						break;
 					case OR_EXPR:
@@ -180,7 +181,7 @@ negate_clause(Node *node)
 								nargs = lappend(nargs,
 												negate_clause(lfirst(lc)));
 							}
-							return (Node *) make_andclause(nargs);
+							return (Node *) make_andclause(nargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 						break;
 					case NOT_EXPR:
@@ -263,7 +264,7 @@ negate_clause(Node *node)
 	 * Otherwise we don't know how to simplify this, so just tack on an
 	 * explicit NOT node.
 	 */
-	return (Node *) make_notclause((Expr *) node);
+	return (Node *) make_notclause((Expr *) node, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 
@@ -499,7 +500,7 @@ find_duplicate_ors(Expr *qual, bool is_check)
 			return (Expr *) linitial(andlist);
 
 		/* Else we still need an AND node */
-		return make_andclause(andlist);
+		return make_andclause(andlist, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 	else
 		return qual;
@@ -604,7 +605,7 @@ process_duplicate_ors(List *orlist)
 	 * If no winners, we can't transform the OR
 	 */
 	if (winners == NIL)
-		return make_orclause(orlist);
+		return make_orclause(orlist, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/*
 	 * Generate new OR list consisting of the remaining sub-clauses.
@@ -631,7 +632,7 @@ process_duplicate_ors(List *orlist)
 				if (list_length(subclauses) == 1)
 					neworlist = lappend(neworlist, linitial(subclauses));
 				else
-					neworlist = lappend(neworlist, make_andclause(subclauses));
+					neworlist = lappend(neworlist, make_andclause(subclauses, false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			}
 			else
 			{
@@ -662,7 +663,7 @@ process_duplicate_ors(List *orlist)
 		if (list_length(neworlist) == 1)
 			winners = lappend(winners, linitial(neworlist));
 		else
-			winners = lappend(winners, make_orclause(pull_ors(neworlist)));
+			winners = lappend(winners, make_orclause(pull_ors(neworlist), false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	/*
@@ -672,5 +673,5 @@ process_duplicate_ors(List *orlist)
 	if (list_length(winners) == 1)
 		return (Expr *) linitial(winners);
 	else
-		return make_andclause(pull_ands(winners));
+		return make_andclause(pull_ands(winners), false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }

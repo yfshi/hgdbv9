@@ -424,6 +424,8 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 	ora_base_yy_extra_type *yyextra = pg_yyget_extra(yyscanner);
 	int			cur_token;
 	int			next_token;
+	int			tok3;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	int			begin_loc;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			cur_token_length;
 	YYLTYPE		cur_yylloc;
 
@@ -775,6 +777,11 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			cur_token_length = 10;
 			break;
 		/* End - BUG#Z375 */
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		case '(':
+			cur_token_length = 1;
+			break;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 		default:
 			return cur_token;
 	}
@@ -800,7 +807,10 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 
 	/* Get next token, saving outputs into lookahead variables */
 	next_token = internal_yylex(yyscanner, llocp, &aux1);
-	forward_token(yyscanner, next_token, &aux1);
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	if (cur_token != '(' && next_token != '+')
+		forward_token(yyscanner, next_token, &aux1);
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 	/* End - ReqID:SRS-SQL-PROC */
 
 	*llocp = cur_yylloc;
@@ -959,6 +969,26 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				cur_token = OVERRIDING_P;
 			break;
 		/* End - BUG#Z375 */
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		case '(':
+			begin_loc = *llocp;
+			if (next_token == '+')
+			{
+				tok3 = ora_internal_yylex(yyscanner, llocp, &aux1);
+				if (tok3 == ')')
+				{
+					*llocp = begin_loc;
+					cur_token = OUTER_JOIN;
+				}
+				else
+					push_back_token(yyscanner, tok3, &aux1);
+			}
+			else
+			{
+				push_back_token(yyscanner, next_token, &aux1);
+			}
+			break;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	return cur_token;

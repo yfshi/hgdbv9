@@ -138,6 +138,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	Oid pkgoid = InvalidOid;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	bool		hasplus_outer_join = false;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/*
 	 * If there's an aggregate filter, transform it using transformWhereClause
@@ -176,7 +177,14 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	foreach(l, fargs)
 	{
 		Node	   *arg = lfirst(l);
+
 		Oid			argtype = exprType(arg);
+
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		if (hasPlusFlag(arg) && !hasplus_outer_join)
+			hasplus_outer_join = true;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		bool		firstOutIsReturn = false;
 
@@ -900,6 +908,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		/* Begin - BUG#M000088 */
 		funcexpr->pkgoid = pkgoid;
 		/* End - BUG#M000088 */
+		funcexpr->has_outer_join = hasplus_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		if (function_from == FUNC_FROM_PACKAGE)
 		{
 			if (list_length(funcname) == 2)
@@ -990,6 +999,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		aggref->aggsplit = AGGSPLIT_SIMPLE; /* planner might change this */
 		aggref->aggno = -1;		/* planner will set aggno and aggtransno */
 		aggref->aggtransno = -1;
+		aggref->has_outer_join = hasplus_outer_join;
 		aggref->location = location;
 
 		/*
@@ -2258,7 +2268,7 @@ ParseComplexProjection(ParseState *pstate, const char *funcname, Node *first_arg
 		/* Return a Var if funcname matches a column, else NULL */
 		return scanNSItemForColumn(pstate, nsitem,
 								   ((Var *) first_arg)->varlevelsup,
-								   funcname, location);
+								   funcname,  ((Var *) first_arg)->has_outer_join, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	/*

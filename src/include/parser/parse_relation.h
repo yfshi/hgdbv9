@@ -37,9 +37,9 @@ extern RangeTblEntry *GetRTEByRangeTablePosn(ParseState *pstate,
 extern CommonTableExpr *GetCTEForRTE(ParseState *pstate, RangeTblEntry *rte,
 									 int rtelevelsup);
 extern Node *scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
-								 int sublevels_up, const char *colname,
+								 int sublevels_up, const char *colname, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 								 int location);
-extern Node *colNameToVar(ParseState *pstate, const char *colname, bool localonly,
+extern Node *colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						  int location);
 extern void markVarForSelectPriv(ParseState *pstate, Var *var);
 extern Relation parserOpenTable(ParseState *pstate, const RangeVar *relation,

@@ -2559,6 +2559,7 @@ eval_const_expressions_mutator(Node *node,
 				newexpr->opcollid = expr->opcollid;
 				newexpr->inputcollid = expr->inputcollid;
 				newexpr->args = args;
+				newexpr->has_outer_join = expr->has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				newexpr->location = expr->location;
 				return (Node *) newexpr;
 			}
@@ -2744,7 +2745,7 @@ eval_const_expressions_mutator(Node *node,
 							if (list_length(newargs) == 1)
 								return (Node *) linitial(newargs);
 							/* Else we still need an OR node */
-							return (Node *) make_orclause(newargs);
+							return (Node *) make_orclause(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 					case AND_EXPR:
 						{
@@ -2772,7 +2773,7 @@ eval_const_expressions_mutator(Node *node,
 							if (list_length(newargs) == 1)
 								return (Node *) linitial(newargs);
 							/* Else we still need an AND node */
-							return (Node *) make_andclause(newargs);
+							return (Node *) make_andclause(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 					case NOT_EXPR:
 						{
@@ -3519,7 +3520,7 @@ eval_whenexpr2:
 					if (list_length(newargs) == 1)
 						return (Node *) linitial(newargs);
 					/* Else we need an AND node */
-					return (Node *) make_andclause(newargs);
+					return (Node *) make_andclause(newargs, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 				if (!ntest->argisrow && arg && IsA(arg, Const))
 				{

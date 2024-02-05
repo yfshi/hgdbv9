@@ -259,6 +259,7 @@ typedef struct ColumnRef
 	NodeTag		type;
 	List	   *fields;			/* field names (Value strings) or A_Star */
 	int			location;		/* token location, or -1 if unknown */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 } ColumnRef;
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */

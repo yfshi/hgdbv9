@@ -15,7 +15,15 @@
 #define PARSE_CLAUSE_H
 
 #include "parser/parse_node.h"
-
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+typedef struct outer_join_vars{
+	 Node	 type;
+	 Var	 *plus_var;
+	 List	 *rmvar;
+	 List	 *var_list;
+	 Node	 *qual;
+ }Outer_join_vars;
+ /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 extern void transformFromClause(ParseState *pstate, List *frmList);
 extern int	setTargetTable(ParseState *pstate, RangeVar *relation,
 						   bool inh, bool alsoSource, AclMode requiredPerms);
@@ -55,4 +63,18 @@ extern bool targetIsInSortList(TargetEntry *tle, Oid sortop, List *sortList);
 extern bool	interpretRowidOption(List *defList, bool allowRowid);
 /* End - ReqID:SRS-SQL-ROWID */
 
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+extern int	ora_extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,
+									List *src_colnames,
+									List **src_colnos,
+									List **res_colnames, List **res_colvars,
+									ParseNamespaceColumn *res_nscolumns,
+									int res_colindex);
+
+extern List *check_Outerjoin_Opexpr(Node *expr);
+
+extern void AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr);
+
+extern JoinExpr *make_inner_join(ParseState *pstate, List *tables);
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 #endif							/* PARSE_CLAUSE_H */

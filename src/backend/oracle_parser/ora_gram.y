@@ -695,6 +695,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
+%token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 /* Begin - BUG#M0000201: support question marks as binding variables */
 %token			QUESTION_MARK;
 /* End - BUG#M0000201: support question marks as binding variables */
@@ -869,7 +870,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* End - BUG#Z206 Z208 */
 
 /* Begin - ReqID:SRS-SQL-INVISIBLECOL */
-%type <boolean> Opt_visibility
+%type <boolean> Opt_visibility opt_out_join	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 %type <list> modify_col_visibilitys
 %type <node> modify_col_visibility
 /* End - ReqID:SRS-SQL-INVISIBLECOL */
@@ -982,6 +983,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %left		'(' ')'
 %left		TYPECAST
 %left		'.'
+%left		OUTERJOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+
 /*
  * These might seem to be low-precedence, but actually they are not part
  * of the arithmetic hierarchy at all in their use as JOIN operators.
@@ -19346,16 +19349,20 @@ case_arg:	a_expr									{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
-columnref:	ColId
+columnref:	ColId opt_out_join	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				{
 					/* Begin - ReqID:SRS-SQL-PROC */
 					ColumnRefOrFuncCall *crorfc = makeNode(ColumnRefOrFuncCall);
 					crorfc->func = makeFuncCall(list_make1(makeString($1)), NIL, COERCE_EXPLICIT_CALL, @1);
 					crorfc->cref = (ColumnRef *) makeColumnRef($1, NIL, @1, yyscanner);
+					/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+					if ($2)
+						crorfc->cref->has_outer_join = true;
+					/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 					$$ = (Node *) crorfc;
 					/* End - ReqID:SRS-SQL-PROC */
 				}
-			| ColId indirection
+			| ColId indirection opt_out_join	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				{
 					/* Begin - ReqID:SRS-SQL-PROC */
 					if (IsA(llast($2), A_Star))
@@ -19371,7 +19378,14 @@ columnref:	ColId
 						}
 
 						if (lc != NULL)
-							$$ = makeColumnRef($1, $2, @1, yyscanner);
+						{
+							/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+							ColumnRef *colref = (ColumnRef *)makeColumnRef($1, $2, @1, yyscanner);
+							if ($3)
+								colref->has_outer_join = true;
+							$$ = (Node *)colref;
+							/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+						}
 						else
 						{
 							List *fname = list_copy($2);
@@ -19379,12 +19393,23 @@ columnref:	ColId
 							fname = lcons(makeString($1), fname);
 							crorfc->func = makeFuncCall(fname, NIL, COERCE_EXPLICIT_CALL, @1);
 							crorfc->cref = (ColumnRef *) makeColumnRef($1, $2, @1, yyscanner);
+							/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+							if ($3)
+								crorfc->cref->has_outer_join = true;
+							/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 							$$ = (Node *) crorfc;						
 						}
 					}
 					/* End - ReqID:SRS-SQL-PROC */
 				}
 		;
+
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+opt_out_join:
+			OUTER_JOIN		{ $$ = true; }
+			| /* epmty */	{ $$ = false; }
+		;
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 indirection_el:
 			'.' attr_name
@@ -21755,7 +21780,7 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 static Node *
@@ -21772,13 +21797,13 @@ makeOrExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), location);
+	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 static Node *
 makeNotExpr(Node *expr, int location)
 {
-	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), location);
+	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 static Node *

@@ -1855,7 +1855,8 @@ operator_predicate_proof(Expr *predicate, Node *clause,
 							  (Expr *) pred_const,
 							  (Expr *) clause_const,
 							  InvalidOid,
-							  pred_collation);
+							  pred_collation,
+							  false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/* Fill in opfuncids */
 	fix_opfuncids((Node *) test_expr);

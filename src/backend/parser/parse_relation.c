@@ -161,6 +161,7 @@ refnameNamespaceItem(ParseState *pstate,
 		else
 			break;
 
+		pstate->p_hasref_outer_tbl = true;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		pstate = pstate->parentParseState;
 	}
 	return NULL;
@@ -673,7 +674,7 @@ updateFuzzyAttrMatchState(int fuzzy_rte_penalty,
  */
 Node *
 scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
-					int sublevels_up, const char *colname, int location)
+					int sublevels_up, const char *colname, bool has_plus_token, int location)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	RangeTblEntry *rte = nsitem->p_rte;
 	int			attnum;
@@ -742,6 +743,7 @@ scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
 		/* makeVar doesn't offer parameters for these, so set them by hand: */
 		var->varnosyn = nscol->p_varnosyn;
 		var->varattnosyn = nscol->p_varattnosyn;
+		var->has_outer_join = has_plus_token;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 	else
 	{
@@ -872,7 +874,7 @@ scanRTEForColumn(ParseState *pstate, RangeTblEntry *rte,
  *	  If localonly is true, only names in the innermost query are considered.
  */
 Node *
-colNameToVar(ParseState *pstate, const char *colname, bool localonly,
+colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			 int location)
 {
 	Node	   *result = NULL;
@@ -897,7 +899,7 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly,
 
 			/* use orig_pstate here for consistency with other callers */
 			newresult = scanNSItemForColumn(orig_pstate, nsitem, sublevels_up,
-											colname, location);
+											colname, has_plus_token, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 			if (newresult)
 			{

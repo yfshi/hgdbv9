@@ -366,13 +366,14 @@ makeBoolConst(bool value, bool isnull)
  *	  creates a BoolExpr node
  */
 Expr *
-makeBoolExpr(BoolExprType boolop, List *args, int location)
+makeBoolExpr(BoolExprType boolop, List *args, bool has_outer_join, int location)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	BoolExpr   *b = makeNode(BoolExpr);
 
 	b->boolop = boolop;
 	b->args = args;
 	b->location = location;
+	b->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	return (Expr *) b;
 }
@@ -621,7 +622,7 @@ makeFuncCall(List *name, List *args, CoercionForm funcformat, int location)
 Expr *
 make_opclause(Oid opno, Oid opresulttype, bool opretset,
 			  Expr *leftop, Expr *rightop,
-			  Oid opcollid, Oid inputcollid)
+			  Oid opcollid, Oid inputcollid, bool has_outer_join)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	OpExpr	   *expr = makeNode(OpExpr);
 
@@ -631,6 +632,7 @@ make_opclause(Oid opno, Oid opresulttype, bool opretset,
 	expr->opretset = opretset;
 	expr->opcollid = opcollid;
 	expr->inputcollid = inputcollid;
+	expr->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	if (rightop)
 		expr->args = list_make2(leftop, rightop);
 	else
@@ -645,12 +647,13 @@ make_opclause(Oid opno, Oid opresulttype, bool opretset,
  * Creates an 'and' clause given a list of its subclauses.
  */
 Expr *
-make_andclause(List *andclauses)
+make_andclause(List *andclauses, bool has_outer_join)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	BoolExpr   *expr = makeNode(BoolExpr);
 
 	expr->boolop = AND_EXPR;
 	expr->args = andclauses;
+	expr->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	expr->location = -1;
 	return (Expr *) expr;
 }
@@ -661,12 +664,13 @@ make_andclause(List *andclauses)
  * Creates an 'or' clause given a list of its subclauses.
  */
 Expr *
-make_orclause(List *orclauses)
+make_orclause(List *orclauses, bool has_outer_join)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	BoolExpr   *expr = makeNode(BoolExpr);
 
 	expr->boolop = OR_EXPR;
 	expr->args = orclauses;
+	expr->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	expr->location = -1;
 	return (Expr *) expr;
 }
@@ -677,12 +681,13 @@ make_orclause(List *orclauses)
  * Create a 'not' clause given the expression to be negated.
  */
 Expr *
-make_notclause(Expr *notclause)
+make_notclause(Expr *notclause, bool has_outer_join)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	BoolExpr   *expr = makeNode(BoolExpr);
 
 	expr->boolop = NOT_EXPR;
 	expr->args = list_make1(notclause);
+	expr->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	expr->location = -1;
 	return (Expr *) expr;
 }
@@ -704,7 +709,7 @@ make_and_qual(Node *qual1, Node *qual2)
 		return qual2;
 	if (qual2 == NULL)
 		return qual1;
-	return (Node *) make_andclause(list_make2(qual1, qual2));
+	return (Node *) make_andclause(list_make2(qual1, qual2), false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 /*
@@ -724,7 +729,7 @@ make_ands_explicit(List *andclauses)
 	else if (list_length(andclauses) == 1)
 		return (Expr *) linitial(andclauses);
 	else
-		return make_andclause(andclauses);
+		return make_andclause(andclauses, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 List *

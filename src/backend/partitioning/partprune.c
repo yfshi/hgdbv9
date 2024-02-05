@@ -2291,7 +2291,7 @@ match_clause_to_partition_key(GeneratePruningStepsContext *context,
 
 			elem_clause = make_opclause(saop_op, BOOLOID, false,
 										leftop, rightop,
-										InvalidOid, saop_coll);
+										InvalidOid, saop_coll, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			elem_clauses = lappend(elem_clauses, elem_clause);
 		}
 
@@ -2300,7 +2300,7 @@ match_clause_to_partition_key(GeneratePruningStepsContext *context,
 		 * of clauses into an OR expression.
 		 */
 		if (saop->useOr && list_length(elem_clauses) > 1)
-			elem_clauses = list_make1(makeBoolExpr(OR_EXPR, elem_clauses, -1));
+			elem_clauses = list_make1(makeBoolExpr(OR_EXPR, elem_clauses, false, -1));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		/* Finally, generate steps */
 		*clause_steps = gen_partprune_steps_internal(context, elem_clauses);
