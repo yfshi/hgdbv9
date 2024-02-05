@@ -1934,7 +1934,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 		{
 			List *ltables = NIL;
 			List *ltables_copy = NIL;
-			Var  *var_has_plus;
+			Var  *var_has_plus = NULL;
 			ListCell *l;
 
 			if (IsA(qual, OpExpr)  && !is_valid_operator(qual))
@@ -1960,7 +1960,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 			}
 
 			/* for:t1.i(+) = t1.j(+) */
-			if (!ltables)
+			if (!ltables || !var_has_plus)
 				return qual;
 
 			/* Do final joins */
