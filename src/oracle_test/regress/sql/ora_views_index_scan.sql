@@ -256,10 +256,14 @@ explain (costs off)
 	select name from v_oct_3
 	where name in (select name from v_oct_2 order by id desc limit 1);
 
+set enable_hashjoin to off;
+set enable_mergejoin to off;
 explain (costs off)
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
 
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+reset enable_hashjoin;
+reset enable_mergejoin;
 
 explain (costs off)
 	select min(id) from v_oct_2 where name in (select name from v_oct_1);
@@ -525,10 +529,14 @@ explain (costs off)
 	select name from v_oct_3
 	where name in (select name from v_oct_2 order by id desc limit 1);
 
+set enable_hashjoin to off;
+set enable_mergejoin to off;
 explain (costs off)
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
 
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
+reset enable_hashjoin;
+reset enable_mergejoin;
 
 explain (costs off)
 	select min(id) from v_oct_2 where name in (select name from v_oct_1);

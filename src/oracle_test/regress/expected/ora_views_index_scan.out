@@ -767,6 +767,8 @@ explain (costs off)
  zzz_DESC
 (2 rows)
 
+set enable_hashjoin to off;
+set enable_mergejoin to off;
 explain (costs off)
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
                                                                   QUERY PLAN                                                                  
@@ -790,6 +792,8 @@ explain (costs off)
  112
 (1 row)
 
+reset enable_hashjoin;
+reset enable_mergejoin;
 explain (costs off)
 	select min(id) from v_oct_2 where name in (select name from v_oct_1);
                                                                QUERY PLAN                                                               
@@ -1743,6 +1747,8 @@ explain (costs off)
  zzz_DESC
 (2 rows)
 
+set enable_hashjoin to off;
+set enable_mergejoin to off;
 explain (costs off)
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
                                                                   QUERY PLAN                                                                  
@@ -1766,6 +1772,8 @@ explain (costs off)
  112
 (1 row)
 
+reset enable_hashjoin;
+reset enable_mergejoin;
 explain (costs off)
 	select min(id) from v_oct_2 where name in (select name from v_oct_1);
                                                                QUERY PLAN                                                               
