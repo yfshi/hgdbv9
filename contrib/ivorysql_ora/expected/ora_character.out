@@ -1967,27 +1967,27 @@ select 'pg-text'::pg_catalog.text || '3.14'::number from dual;
 
 -- pg_catalog.text vs oralce binary_float
 select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
-  ?column?   
--------------
- pg-text3.14
+     ?column?     
+------------------
+ pg-text3.14E+000
 (1 row)
 
 select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
-  ?column?   
--------------
- pg-text3.14
+     ?column?     
+------------------
+ pg-text3.14E+000
 (1 row)
 
 select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
-  ?column?   
--------------
- pg-text3.14
+     ?column?     
+------------------
+ pg-text3.14E+000
 (1 row)
 
 select 'pg-text'::pg_catalog.text || '3.14'::binary_float from dual;
-  ?column?   
--------------
- pg-text3.14
+     ?column?     
+------------------
+ pg-text3.14E+000
 (1 row)
 
 -- pg_catalog.text vs oralce binary_double

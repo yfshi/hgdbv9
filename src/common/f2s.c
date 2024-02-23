@@ -685,6 +685,155 @@ to_chars(const floating_decimal_32 v, const bool sign, char *const result)
 	return index;
 }
 
+
+/* Begin - BUG:Z475 */
+static inline int
+ivory_to_chars(const floating_decimal_32 v, const bool sign, char *const result)
+{
+	/* Step 5: Print the decimal representation. */
+	int			index = 0;
+
+	uint32		output = v.mantissa;
+	uint32		olength = decimalLength(output);
+	int32		exp = v.exponent + olength - 1;
+
+	if (sign)
+		result[index++] = '-';
+
+	/*
+	 * The thresholds for fixed-point output are chosen to match printf
+	 * defaults. Beware that both the code of to_chars_f and the value of
+	 * FLOAT_SHORTEST_DECIMAL_LEN are sensitive to these thresholds.
+	 */
+	/*
+	if (exp >= -4 && exp < 6)
+		return to_chars_f(v, olength, result + index) + sign;
+	*/
+
+	/*
+	 * If v.exponent is exactly 0, we might have reached here via the small
+	 * integer fast path, in which case v.mantissa might contain trailing
+	 * (decimal) zeros. For scientific notation we need to move these zeros
+	 * into the exponent. (For fixed point this doesn't matter, which is why
+	 * we do this here rather than above.)
+	 *
+	 * Since we already calculated the display exponent (exp) above based on
+	 * the old decimal length, that value does not change here. Instead, we
+	 * just reduce the display length for each digit removed.
+	 *
+	 * If we didn't get here via the fast path, the raw exponent will not
+	 * usually be 0, and there will be no trailing zeros, so we pay no more
+	 * than one div10/multiply extra cost. We claw back half of that by
+	 * checking for divisibility by 2 before dividing by 10.
+	 */
+	if (v.exponent == 0)
+	{
+		while ((output & 1) == 0)
+		{
+			const uint32 q = output / 10;
+			const uint32 r = output - 10 * q;
+
+			if (r != 0)
+				break;
+			output = q;
+			--olength;
+		}
+	}
+
+	/*----
+	 * Print the decimal digits.
+	 * The following code is equivalent to:
+	 *
+	 * for (uint32 i = 0; i < olength - 1; ++i) {
+	 *   const uint32 c = output % 10; output /= 10;
+	 *   result[index + olength - i] = (char) ('0' + c);
+	 * }
+	 * result[index] = '0' + output % 10;
+	 */
+	uint32		i = 0;
+
+	while (output >= 10000)
+	{
+		const uint32 c = output - 10000 * (output / 10000);
+		const uint32 c0 = (c % 100) << 1;
+		const uint32 c1 = (c / 100) << 1;
+
+		output /= 10000;
+
+		memcpy(result + index + olength - i - 1, DIGIT_TABLE + c0, 2);
+		memcpy(result + index + olength - i - 3, DIGIT_TABLE + c1, 2);
+		i += 4;
+	}
+	if (output >= 100)
+	{
+		const uint32 c = (output % 100) << 1;
+
+		output /= 100;
+		memcpy(result + index + olength - i - 1, DIGIT_TABLE + c, 2);
+		i += 2;
+	}
+	if (output >= 10)
+	{
+		const uint32 c = output << 1;
+
+		/*
+		 * We can't use memcpy here: the decimal dot goes between these two
+		 * digits.
+		 */
+		result[index + olength - i] = DIGIT_TABLE[c + 1];
+		result[index] = DIGIT_TABLE[c];
+	}
+	else
+	{
+		result[index] = (char) ('0' + output);
+	}
+
+	/* Print decimal point if needed. */
+	if (olength > 1)
+	{
+		result[index + 1] = '.';
+		index += olength + 1;
+	}
+	else
+	{
+		++index;
+	}
+
+	if(index == 1)
+	{
+		result[index++] = '.';
+		result[index++] = '0';
+	}
+
+	/* Print the exponent. */
+	result[index++] = 'E';
+	if (exp < 0)
+	{
+		result[index++] = '-';
+		exp = -exp;
+	}
+	else
+		result[index++] = '+';
+
+	if (exp >= 100)
+	{
+		const int32 c = exp % 10;
+
+		memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
+		result[index + 2] = (char) ('0' + c);
+		index += 3;
+	}
+	else
+	{
+		result[index ++ ] = '0';
+		memcpy(result + index , DIGIT_TABLE + 2 * exp, 2);
+		index += 2;
+	}
+
+	return index;
+}
+/* End - BUG:Z475 */
+
 static inline bool
 f2d_small_int(const uint32 ieeeMantissa,
 			  const uint32 ieeeExponent,
@@ -823,7 +972,9 @@ binary_float_to_shortest_decimal_bufn(float f, char *result)
 		v = f2d(ieeeMantissa, ieeeExponent);
 	}
 
-	return to_chars(v, ieeeSign, result);
+	/* Begin - BUG:Z475 */
+	return ivory_to_chars(v, ieeeSign, result);
+	/* End - BUG:Z475 */
 }
 
 /*
