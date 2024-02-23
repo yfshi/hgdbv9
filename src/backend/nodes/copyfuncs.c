@@ -1477,6 +1477,7 @@ _copyVar(const Var *from)
 	COPY_SCALAR_FIELD(varnosyn);
 	COPY_SCALAR_FIELD(varattnosyn);
 	COPY_LOCATION_FIELD(location);
+	COPY_LOCATION_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	return newnode;
 }
@@ -1765,6 +1766,7 @@ _copyBoolExpr(const BoolExpr *from)
 
 	COPY_SCALAR_FIELD(boolop);
 	COPY_NODE_FIELD(args);
+	COPY_LOCATION_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -2780,6 +2782,7 @@ _copyColumnRef(const ColumnRef *from)
 	ColumnRef  *newnode = makeNode(ColumnRef);
 
 	COPY_NODE_FIELD(fields);
+	COPY_LOCATION_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;

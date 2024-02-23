@@ -708,13 +708,13 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 							((Var *) node)->location = cref->location;
 					}
 					else
-						node = colNameToVar(pstate, colname, false, cref->location);
+						node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 				else
 				/* End - BUG#M0000217 */
 				{
 					/* Try to identify as an unqualified column */
-					node = colNameToVar(pstate, colname, false, cref->location);
+					node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 
 				if (node == NULL)
@@ -788,7 +788,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
+				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
 
 				if (node == NULL)
@@ -858,7 +858,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
+				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
 
 				if (node == NULL)
@@ -941,7 +941,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname,
+				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
 
 				if (node == NULL)
@@ -1168,10 +1168,17 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 		/* Ordinary scalar operator */
 		Node	   *last_srf = pstate->p_last_srf;
 		Oid 		ltypeId = InvalidOid;
+		bool		has_outer_join = false;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		/* Begin - ReqID:SRS-SQL-ROWID */
 		lexpr = transformExprRecurse(pstate, lexpr);
 		ltypeId = exprType(lexpr);
+
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* Check if table columns with (+) in subqueries are referenced by external table */
+		if ((lexpr && hasPlusFlag(lexpr)) && pstate->p_hasref_outer_tbl && pstate->parentParseState)
+			elog(ERROR, "an outer join cannot be specified on a correlation column");
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		if (compatible_db == DB_ORACLE && ltypeId == ROWIDOID && nodeTag(rexpr) != T_TypeCast)
 		{
@@ -1186,11 +1193,24 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 			rexpr = transformExprRecurse(pstate, rexpr);
 		/* End - ReqID:SRS-SQL-ROWID */
 
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* Can not outer join subquery */
+		if ((lexpr && hasPlusFlag(lexpr)) && nodeTag(rexpr) == T_SubLink)
+			elog(ERROR, "a column may not be outer-joined to a subquery");
+
+		if ((lexpr && hasPlusFlag(rexpr)) && pstate->p_hasref_outer_tbl && pstate->parentParseState)
+			elog(ERROR, "an outer join cannot be specified on a correlation column");
+
+		if ((lexpr && hasPlusFlag(lexpr)) || hasPlusFlag(rexpr))
+			has_outer_join = true;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 		result = (Node *) make_op(pstate,
 								  a->name,
 								  lexpr,
 								  rexpr,
 								  last_srf,
+								  has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 								  a->location);
 
 	}
@@ -1272,6 +1292,7 @@ transformAExprDistinct(ParseState *pstate, A_Expr *a)
 	if (a->kind == AEXPR_NOT_DISTINCT)
 		result = (Node *) makeBoolExpr(NOT_EXPR,
 									   list_make1(result),
+									   false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 									   a->location);
 
 	return result;
@@ -1283,12 +1304,19 @@ transformAExprNullIf(ParseState *pstate, A_Expr *a)
 	Node	   *lexpr = transformExprRecurse(pstate, a->lexpr);
 	Node	   *rexpr = transformExprRecurse(pstate, a->rexpr);
 	OpExpr	   *result;
+	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+	bool		has_outer_join = false;
+
+	if (hasPlusFlag(lexpr) || hasPlusFlag(rexpr))
+		has_outer_join = true;
+	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	result = (OpExpr *) make_op(pstate,
 								a->name,
 								lexpr,
 								rexpr,
 								pstate->p_last_srf,
+								has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 								a->location);
 
 	/*
@@ -1329,6 +1357,7 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 	List	   *rnonvars;
 	bool		useOr;
 	ListCell   *l;
+	bool		has_outer_join = false;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/*
 	 * If the operator is <>, combine with AND not OR.
@@ -1354,6 +1383,11 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 	foreach(l, (List *) a->rexpr)
 	{
 		Node	   *rexpr = transformExprRecurse(pstate, lfirst(l));
+
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		if (hasPlusFlag(lexpr) || hasPlusFlag(rexpr))
+			has_outer_join = true;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		rexprs = lappend(rexprs, rexpr);
 		if (contain_vars_of_level(rexpr, 0))
@@ -1462,6 +1496,7 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 								   copyObject(lexpr),
 								   rexpr,
 								   pstate->p_last_srf,
+								   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 								   a->location);
 		}
 
@@ -1471,6 +1506,7 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 		else
 			result = (Node *) makeBoolExpr(useOr ? OR_EXPR : AND_EXPR,
 										   list_make2(result, cmp),
+										   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   a->location);
 	}
 
@@ -1515,7 +1551,7 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			result = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
+			result = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			break;
 		case AEXPR_NOT_BETWEEN:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
@@ -1524,7 +1560,7 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			result = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
+			result = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			break;
 		case AEXPR_BETWEEN_SYM:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, ">=",
@@ -1533,16 +1569,16 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			sub1 = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
+			sub1 = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, ">=",
 											   copyObject(aexpr), copyObject(cexpr),
 											   a->location),
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), copyObject(bexpr),
 											   a->location));
-			sub2 = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
+			sub2 = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			args = list_make2(sub1, sub2);
-			result = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
+			result = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			break;
 		case AEXPR_NOT_BETWEEN_SYM:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
@@ -1551,16 +1587,16 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			sub1 = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
+			sub1 = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
 											   copyObject(aexpr), copyObject(cexpr),
 											   a->location),
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), copyObject(bexpr),
 											   a->location));
-			sub2 = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
+			sub2 = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			args = list_make2(sub1, sub2);
-			result = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
+			result = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 			break;
 		default:
 			elog(ERROR, "unrecognized A_Expr kind: %d", a->kind);
@@ -1577,6 +1613,7 @@ transformBoolExpr(ParseState *pstate, BoolExpr *a)
 	List	   *args = NIL;
 	const char *opname;
 	ListCell   *lc;
+	bool		has_outer_join_lable = false;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	switch (a->boolop)
 	{
@@ -1600,11 +1637,15 @@ transformBoolExpr(ParseState *pstate, BoolExpr *a)
 		Node	   *arg = (Node *) lfirst(lc);
 
 		arg = transformExprRecurse(pstate, arg);
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		if (hasPlusFlag(arg))
+			has_outer_join_lable = true;
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 		arg = coerce_to_boolean(pstate, arg, opname);
 		args = lappend(args, arg);
 	}
 
-	return (Node *) makeBoolExpr(a->boolop, args, a->location);
+	return (Node *) makeBoolExpr(a->boolop, args, has_outer_join_lable, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 static Node *
@@ -2213,7 +2254,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				 *  case when a is null and b is null then true
 				 *  current step: a is null and b is null 
 				 */
-				innerneww->expr =  makeBoolExpr(AND_EXPR, blist, -1);
+				innerneww->expr =  makeBoolExpr(AND_EXPR, blist, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 				/* 
 				 * first step: 
@@ -2277,7 +2318,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				 *  current step: a is not null and b is not null and a = b
 				 */
 				innerneww = makeNode(CaseWhen);
-				innerneww->expr =  makeBoolExpr(AND_EXPR, blist1, -1);
+				innerneww->expr =  makeBoolExpr(AND_EXPR, blist1, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 				/* 
 				 * second step: 
@@ -2578,6 +2619,11 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 			left_list = ((RowExpr *) lefthand)->args;
 		else
 			left_list = list_make1(lefthand);
+
+		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+		if (hasPlusFlag(lefthand))
+			elog(ERROR, "a column may not be outer-joined to a subquery");
+		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		/*
 		 * Build a list of PARAM_SUBLINK nodes representing the output columns
@@ -3483,7 +3529,7 @@ make_row_comparison_op(ParseState *pstate, List *opname,
 		OpExpr	   *cmp;
 
 		cmp = castNode(OpExpr, make_op(pstate, opname, larg, rarg,
-									   pstate->p_last_srf, location));
+									   pstate->p_last_srf, false, location));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 		/*
 		 * We don't use coerce_to_boolean here because we insist on the
@@ -3571,9 +3617,9 @@ make_row_comparison_op(ParseState *pstate, List *opname,
 	 * OR respectively.
 	 */
 	if (rctype == ROWCOMPARE_EQ)
-		return (Node *) makeBoolExpr(AND_EXPR, opexprs, location);
+		return (Node *) makeBoolExpr(AND_EXPR, opexprs, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	if (rctype == ROWCOMPARE_NE)
-		return (Node *) makeBoolExpr(OR_EXPR, opexprs, location);
+		return (Node *) makeBoolExpr(OR_EXPR, opexprs, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 	/*
 	 * Otherwise we need to choose exactly which opfamily to associate with
@@ -3668,7 +3714,7 @@ make_row_distinct_op(ParseState *pstate, List *opname,
 			result = cmp;
 		else
 			result = (Node *) makeBoolExpr(OR_EXPR,
-										   list_make2(result, cmp),
+										   list_make2(result, cmp), false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   location);
 	}
 
@@ -3691,7 +3737,7 @@ make_distinct_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	Expr	   *result;
 
 	result = make_op(pstate, opname, ltree, rtree,
-					 pstate->p_last_srf, location);
+					 pstate->p_last_srf, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	if (((OpExpr *) result)->opresulttype != BOOLOID)
 		ereport(ERROR,
 				(errcode(ERRCODE_DATATYPE_MISMATCH),

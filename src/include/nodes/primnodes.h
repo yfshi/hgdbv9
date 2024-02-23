@@ -198,6 +198,7 @@ typedef struct Var
 								 * levels up */
 	Index		varnosyn;		/* syntactic relation index (0 if unknown) */
 	AttrNumber	varattnosyn;	/* syntactic attribute number */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
 } Var;
 
@@ -361,6 +362,7 @@ typedef struct Aggref
 	AggSplit	aggsplit;		/* expected agg-splitting mode of parent Agg */
 	int			aggno;			/* unique ID within the Agg node */
 	int			aggtransno;		/* unique ID of transition state in the Agg */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
 } Aggref;
 
@@ -553,6 +555,7 @@ typedef struct FuncExpr
 	/* Begin - BUG#M000088 */
 	Oid			pkgoid;			/* package'oid */
 	/* End - BUG#M000088 */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
 } FuncExpr;
 
@@ -598,6 +601,7 @@ typedef struct OpExpr
 	Oid			opcollid;		/* OID of collation of result */
 	Oid			inputcollid;	/* OID of collation that operator should use */
 	List	   *args;			/* arguments to the operator (1 or 2) */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
 } OpExpr;
 
@@ -666,6 +670,7 @@ typedef struct BoolExpr
 	Expr		xpr;
 	BoolExprType boolop;
 	List	   *args;			/* arguments to this expression */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
 } BoolExpr;
 
@@ -1591,6 +1596,7 @@ typedef struct JoinExpr
 	Node	   *quals;			/* qualifiers on join, if any */
 	Alias	   *alias;			/* user-written alias clause, if any */
 	int			rtindex;		/* RT index assigned for join, or 0 */
+	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 } JoinExpr;
 
 /*----------

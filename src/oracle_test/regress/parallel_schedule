@@ -204,3 +204,7 @@ test: ora_force_view
 # Begin - BUG#M0000302
 test: ora_views_index_scan
 # End - BUG#M0000302
+
+#/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+test: plus_outer_join
+#/* End - ReqID:SRS-SQL-OUTERJOIN(+) */

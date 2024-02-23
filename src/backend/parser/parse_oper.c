@@ -704,7 +704,7 @@ op_error(ParseState *pstate, List *op, char oprkind,
  */
 Expr *
 make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
-		Node *last_srf, int location)
+		Node *last_srf, bool has_outer_join, int location)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	Oid			ltypeId,
 				rtypeId;
@@ -794,6 +794,7 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	result->opretset = get_func_retset(opform->oprcode);
 	/* opcollid and inputcollid will be set by parse_collate.c */
 	result->args = args;
+	result->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	result->location = location;
 
 	/* if it returns a set, check that's OK */

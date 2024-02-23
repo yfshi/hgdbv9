@@ -554,6 +554,12 @@ extern pg_nodiscard List *list_concat_copy(const List *list1, const List *list2)
 extern pg_nodiscard List *list_truncate(List *list, int new_size);
 
 extern bool list_member(const List *list, const void *datum);
+/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
+extern bool list_var_member(const List *list, const void *var);
+extern List *list_var_union(const List *list1, const List *list2);
+extern List *list_delete_var(List *list, void *datum);
+
+/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 extern bool list_member_ptr(const List *list, const void *datum);
 extern bool list_member_int(const List *list, int datum);
 extern bool list_member_oid(const List *list, Oid datum);
