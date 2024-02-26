@@ -1735,8 +1735,28 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 			}
 		}
 		if (fargnames != NIL || defaultnumber != NIL)
+		{
+			/* Begin - BUG#M0000307 */
+			ListCell *lc;
+			int i;
+			Oid *newoid;
+			/* End - BUG#M0000307 */
+
 			*fargs = plisql_expand_and_reorder_functionargs(pstate, subprocfunc, best_candidate->nargs,
 									*fargs, defaultnumber, argdefaults);
+			/* Begin - BUG#M0000307 */
+			/* reorder true_types */
+			newoid = palloc(sizeof(Oid) * list_length(subprocfunc->arg));
+			i = 0;
+			foreach(lc, subprocfunc->arg)
+			{
+				PLiSQL_function_argitem *argitem = lfirst(lc);
+
+				newoid[i++] = argitem->type->typoid;
+			}
+			*true_typeids = newoid;
+			/* End - BUG#M0000307 */
+		}
 
 		if (subprocfunc->is_proc)
 			return FUNCDETAIL_PROCEDURE;

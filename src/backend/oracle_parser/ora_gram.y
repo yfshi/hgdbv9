@@ -931,6 +931,9 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
+/* Begin - BUG#M0000307 */
+%nonassoc	DAY_P YEAR_P    /* see param_name */
+/* End - BUG#M0000307 */
 %left		UNION EXCEPT
 %left		INTERSECT
 %left		OR
@@ -9372,8 +9375,15 @@ arg_class:	IN_P								{ $$ = FUNC_PARAM_IN; }
 
 /*
  * Ideally param_name should be ColId, but that causes too many conflicts.
+ *
+ * BUG#M0000307 The interval can be followed by day and year,
+ * which can be used as type names, so when interval is followed by these two,
+ * give it a higher priority.
  */
-param_name:	type_function_name
+param_name:	type_function_name						{ $$ = $1; }
+			/* Begin - BUG#M0000307 */
+			|ConstInterval							{ $$ = pstrdup("interval"); }  %prec SET
+			/* End - BUG#M0000307 */
 		;
 
 func_return:

@@ -788,23 +788,48 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	 * their actual values might change before the query gets run.  The
 	 * planner has to insert the up-to-date values at plan time.
 	 */
-	nargsplusdefs = nargs;
-	foreach(l, argdefaults)
+	/* Begin - BUG#M0000307 */
+	/*
+	 * there, package'func and subproc func
+	 * has reorder fargs, so actual_arg_types should get
+	 * its fargs
+	 */
+	if (function_from ==  FUNC_FROM_PACKAGE ||
+		function_from == FUNC_FROM_SUBPROCFUNC)
 	{
-		Node	   *expr = (Node *) lfirst(l);
+		int i = 0;
 
-		/* probably shouldn't happen ... */
-		if (nargsplusdefs >= FUNC_MAX_ARGS)
-			ereport(ERROR,
-					(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
-					 errmsg_plural("cannot pass more than %d argument to a function",
-								   "cannot pass more than %d arguments to a function",
-								   FUNC_MAX_ARGS,
-								   FUNC_MAX_ARGS),
-					 parser_errposition(pstate, location)));
+		nargsplusdefs = list_length(fargs);
 
-		actual_arg_types[nargsplusdefs++] = exprType(expr);
+		foreach(l, fargs)
+		{
+			Node	   *arg = lfirst(l);
+			Oid			argtype = exprType(arg);
+
+			actual_arg_types[i++] = argtype;
+		}
 	}
+	else
+	{
+		nargsplusdefs = nargs;
+		foreach(l, argdefaults)
+		{
+			Node	   *expr = (Node *) lfirst(l);
+
+			/* probably shouldn't happen ... */
+			if (nargsplusdefs >= FUNC_MAX_ARGS)
+				ereport(ERROR,
+						(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
+						 errmsg_plural("cannot pass more than %d argument to a function",
+									   "cannot pass more than %d arguments to a function",
+									   FUNC_MAX_ARGS,
+									   FUNC_MAX_ARGS),
+						 parser_errposition(pstate, location)));
+
+			actual_arg_types[nargsplusdefs++] = exprType(expr);
+		}
+	}
+	/* End - BUG#M0000307 */
 
 	/*
 	 * enforce consistency with polymorphic argument and return types,
