@@ -95,6 +95,22 @@ foreach my $header (@ARGV)
 		  if ($catalog->{relation_oid});
 		$oidcounts{ $catalog->{rowtype_oid} }++
 		  if ($catalog->{rowtype_oid});
+
+		# Begin - BUG#M0000296
+		if ($compatible_type eq 'oracle' && $catalog->{relation_oid} && $catalog->{relation_oid} >= 9000 && $catalog->{relation_oid} < 9100)
+		{
+			print STDERR "Not allowed OID detected:\n";
+			print STDERR "$catalog->{relation_oid}\n";
+			die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+		}
+
+		if ($compatible_type eq 'oracle' && $catalog->{rowtype_oid} && $catalog->{rowtype_oid} >= 9000 && $catalog->{rowtype_oid} < 9100)
+		{
+			print STDERR "Not allowed OID detected:\n";
+			print STDERR "$catalog->{rowtype_oid}\n";
+			die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+		}
+		# End - BUG#M0000296
 	}
 
 	# Not all catalogs have a data file.
@@ -129,6 +145,33 @@ foreach my $header (@ARGV)
 
 			# Check for duplicated OIDs while we're at it.
 			$oidcounts{ $row->{oid} }++ if defined $row->{oid};
+
+			# Begin - BUG#M0000296
+			# Security check of reserved OIDs for Oracle-compatible data types.
+			if ($compatible_type eq 'oracle')
+			{
+				if ($catname ne 'pg_type')
+				{
+					if (defined $row->{oid} && $row->{oid} >= 9000 && $row->{oid} < 9100)
+					{
+						print STDERR "Not allowed OID detected:\n";
+						print STDERR "$row->{oid}\n";
+						die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+					}
+				}
+				else
+				{
+					# Currently, there is no separate field in pg_type to record whether the data type
+					# is PG, oracle or mysql. Therefore, use SYS schema to detect oracle data types.
+					if (defined $row->{oid} && $row->{oid} >= 9000 && $row->{oid} < 9100 && defined $row->{typnamespace} && $row->{typnamespace} ne 'sys')
+					{
+						print STDERR "Not allowed OID detected:\n";
+						print STDERR "$row->{oid}\n";
+						die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+					}
+				}
+			}
+			# End - BUG#M0000296
 		}
 	}
 
@@ -142,6 +185,22 @@ foreach my $header (@ARGV)
 		  $toast->{parent_table};
 		$oidcounts{ $toast->{toast_oid} }++;
 		$oidcounts{ $toast->{toast_index_oid} }++;
+
+		# Begin - BUG#M0000296
+		if ($compatible_type eq 'oracle' && $toast->{toast_oid} && $toast->{toast_oid} >= 9000 && $toast->{toast_oid} < 9100)
+		{
+			print STDERR "Not allowed OID detected:\n";
+			print STDERR "$toast->{toast_oid}\n";
+			die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+		}
+
+		if ($compatible_type eq 'oracle' && $toast->{toast_index_oid} && $toast->{toast_index_oid} >= 9000 && $toast->{toast_index_oid} < 9100)
+		{
+			print STDERR "Not allowed OID detected:\n";
+			print STDERR "$toast->{toast_index_oid}\n";
+			die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+		}
+		# End - BUG#M0000296
 	}
 	foreach my $index (@{ $catalog->{indexing} })
 	{
@@ -162,6 +221,15 @@ foreach my $header (@ARGV)
 			  $index->{is_pkey} ? "PRIMARY KEY" : "UNIQUE",
 			  $index->{index_name};
 		}
+
+		# Begin - BUG#M0000296
+		if ($compatible_type eq 'oracle' && $index->{index_oid} && $index->{index_oid} >= 9000 && $index->{index_oid} < 9100)
+		{
+			print STDERR "Not allowed OID detected:\n";
+			print STDERR "$index->{index_oid}\n";
+			die "OID(s) [9000-9100) are reserved only for Oracle-compatible data types.\n";
+		}
+		# End - BUG#M0000296
 	}
 }
 
