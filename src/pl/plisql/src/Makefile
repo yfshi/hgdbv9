@@ -36,12 +36,12 @@ OBJS = \
 DATA = plisql.control plisql--1.0.sql
 
 ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB)
-
-REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain \
+# Begin - BUGM0000301
+ORA_REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain \
 	plisql_record plisql_cache plisql_simple plisql_transaction \
 	plisql_trap plisql_trigger plisql_varprops plisql_nested_subproc \
 	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype
-
+# End - BUGM0000301
 # where to find ora_gen_keywordlist.pl and subsidiary files
 TOOLSDIR = $(top_srcdir)/src/tools
 GEN_KEYWORDLIST = $(PERL) -I $(TOOLSDIR) $(TOOLSDIR)/ora_gen_keywordlist.pl
@@ -107,13 +107,13 @@ pl_reserved_kwlist_d.h: pl_reserved_kwlist.h $(GEN_KEYWORDLIST_DEPS)
 pl_unreserved_kwlist_d.h: pl_unreserved_kwlist.h $(GEN_KEYWORDLIST_DEPS)
 	$(GEN_KEYWORDLIST) --varname UnreservedPLKeywords $<
 
-
+# Begin - BUGM0000301
 oracle-check: submake
-	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(REGRESS)
+	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 
 oracle-installcheck: submake
-	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(REGRESS)
-
+	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+# End - BUGM0000301
 .PHONY: submake
 submake:
 	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)

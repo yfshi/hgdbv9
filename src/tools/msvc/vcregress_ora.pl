@@ -385,7 +385,7 @@ sub plcheck
 		}
 		else
 		{
-			next;
+			$lang = $dir;	# BUGM0000301
 		}
 		if ($lang eq 'plpython')
 		{
@@ -415,7 +415,7 @@ sub plcheck
 			use Config;
 			if ($Config{usemultiplicity} eq 'define')
 			{
-				push(@tests, 'plperl_plperlu');
+				push(@tests, 'ivy_plperl_plperlu');		# BUGM0000301
 			}
 		}
 		elsif ($lang eq 'plpythonu' && -d "$topdir/$Config/plpython3")
@@ -510,8 +510,6 @@ sub contribcheck
 		next if ($module eq "uuid-ossp"  && !defined($config->{uuid}));
 		next if ($module eq "sslinfo"    && !defined($config->{openssl}));
 		next if ($module eq "xml2"       && !defined($config->{xml}));
-		next if ($module =~ /_plperl$/   );		# BUGM0000294
-		next if ($module =~ /_plpython$/ );		# BUGM0000294
 		next if ($module eq "sepgsql");
 		next if ($module eq "gb18030_2022");	# BUGM0000294
 
