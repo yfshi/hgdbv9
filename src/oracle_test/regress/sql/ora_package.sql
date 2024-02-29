@@ -7098,3 +7098,202 @@ call test_pkg.test_p(23);
 
 --clean data
 DROP package test_pkg;
+
+
+--bug#M0000307
+create or replace NONEDITIONABLE PACKAGE test_job AUTHID CURRENT_USER IS
+  PROCEDURE submit    ( job       OUT INTEGER,
+                        what      IN  VARCHAR2,
+                        next_date IN  DATE DEFAULT sysdate,
+                        interval  IN  VARCHAR2 DEFAULT 'null',
+                        no_parse  IN  BOOLEAN DEFAULT FALSE,
+                        instance  IN  INTEGER DEFAULT 0,
+                        force     IN  BOOLEAN DEFAULT FALSE );
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_job IS
+PROCEDURE SUBMIT (
+    job OUT INTEGER,
+    what IN VARCHAR2,
+    next_date IN DATE DEFAULT sysdate,
+    interval IN VARCHAR2 DEFAULT 'null',
+    no_parse IN BOOLEAN DEFAULT FALSE,
+    instance IN INTEGER DEFAULT 0,
+    force IN BOOLEAN DEFAULT FALSE
+) IS
+BEGIN
+    RAISE NOTICE 'ivorysql.what= % ', what;
+    RAISE NOTICE 'ivorysql.next_date= % ', next_date;
+    RAISE NOTICE 'ivorysql.interval= % ', interval;
+    RAISE NOTICE 'ivorysql.no_parse= % ', no_parse;
+    RAISE NOTICE 'ivorysql.instance= % ', instance;
+    RAISE NOTICE 'ivorysql.force= % ', force;
+    job :=2;
+END SUBMIT;
+END;
+/
+
+--ok
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)
+  VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-2-26',
+    no_parse  => FALSE
+  );
+  COMMIT;
+END;
+/
+
+---ok
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)
+  VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-2-26',
+    force  => true
+  );
+  COMMIT;
+END;
+/
+
+--ok
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-2-26',
+    "interval"  => 'sysdate+1/1440',
+    no_parse  => FALSE
+  );
+  COMMIT;
+END;
+/
+
+-- NULL
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)
+  VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-2-26',
+    "interval"  => null,
+    no_parse  => FALSE
+  );
+  COMMIT;
+END;
+/
+
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)
+  VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-02-26',
+    INTERVAL  => null,
+    no_parse  => FALSE
+  );
+  COMMIT;
+END;
+/
+
+
+DECLARE
+  job_number INTEGER;
+BEGIN
+  Call test_JOB.submit(
+    job       => job_number,
+    what      => 'INSERT INTO random_data (random_number, insert_currenttime)
+  VALUES (10 , SYSTIMESTAMP);',
+    next_date => '2024-02-26',
+    no_parse  => FALSE
+  );
+  COMMIT;
+END;
+/
+
+--ok
+declare
+  var1 integer;
+  function test_f(id integer, name1 varchar2 default 'abc', id2 integer default 2,
+                 name2 varchar2 default 'cdef') return integer is
+  begin
+     raise info 'id = %,name1=%,id2=%,name2=%',id,name1,id2,name2;
+     return 1;
+  end;
+begin
+  var1 := test_f(1);
+  var1 := test_f(id=>1);
+  var1 := test_f(1,name1=>'abc');
+  var1 := test_f(2,id2=>3);
+  var1 := test_f(3,name2=>'sds');
+  var1 := test_f(4,name1=>'abc',id2=>4);
+  var1 := test_f(5,name1=>'abcd',name2=>'cdefg');
+  var1 := test_f(6,id2=>5,name2=>'sdfsf');
+  var1 := test_f(7,name2=>'abcd',name1=>'sdfsfsf',id2=>7);
+end;
+/
+
+
+
+create or replace package test_pkg is
+  function test_f(id integer, name1 varchar2 default 'abc', id2 integer default 2,
+                 name2 varchar2 default 'cdef') return integer;
+end;
+/
+
+create or replace package body test_pkg is
+  function test_f(id integer, name1 varchar2 default 'abc', id2 integer default 2,
+                 name2 varchar2 default 'cdef') return integer is
+  begin
+     raise info 'id = %,name1=%,id2=%,name2=%',id,name1,id2,name2;
+     return 1;
+  end;
+end;
+/
+
+declare
+  var1 integer;
+begin
+  var1 := test_pkg.test_f(1);
+  var1 := test_pkg.test_f(id=>1);
+  var1 := test_pkg.test_f(1,name1=>'abc');
+  var1 := test_pkg.test_f(2,id2=>3);
+  var1 := test_pkg.test_f(3,name2=>'sds');
+  var1 := test_pkg.test_f(4,name1=>'abc',id2=>4);
+  var1 := test_pkg.test_f(5,name1=>'abcd',name2=>'cdefg');
+  var1 := test_pkg.test_f(6,id2=>5,name2=>'sdfsf');
+  var1 := test_pkg.test_f(7,name2=>'abcd',name1=>'sdfsfsf',id2=>7);
+ end;
+ /
+
+
+ --interval as param_name
+CREATE OR REPLACE FUNCTION test_f(interval integer DEFAULT 1,name varchar2) RETURN integer IS
+BEGIN
+  raise info '%',name;
+  RETURN interval;
+end;
+/
+
+SELECT test_f(2,'abc');
+SELECT test_f(name=>'abc');
+SELECT test_f(name=>'abc',interval=>4);
+
+ --clean data
+ DROP package test_pkg;
+ DROP package test_job;
+ DROP FUNCTION test_f;
