@@ -36,6 +36,9 @@
 #include "pg_config.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - BUG #M0000304 */
+#include "scan_reserved_kwlist.h"
+/* End - BUG #M0000304 */
 
 #include "utils/ora_compatible.h"	/* case sensitive indentify */
 
@@ -127,6 +130,16 @@ static	PLiSQL_expr	*read_cursor_args(PLiSQL_var *cursor,
 										  int until);
 static	List			*read_raise_options(void);
 static	void			check_raise_parameters(PLiSQL_stmt_raise *stmt);
+
+/* Begin - BUG #M0000304 */
+static PLiSQL_stmt *
+	build_call_expr(int firsttoken,const char *str, int location)
+;
+static const ScanKeyword *
+ScanReservedKeywordLookup(const char *text,
+				  const ScanKeyword *keywords,
+				  int num_keywords);
+/* End - BUG #M0000304 */
 
 %}
 
@@ -2780,7 +2793,13 @@ stmt_execsql	: K_IMPORT
 						if (tok == '=' || tok == COLON_EQUALS ||
 							tok == '[' || tok == '.')
 							word_is_not_variable(&($1), @1);
-						$$ = make_execsql_stmt(T_WORD, @1);
+
+						/* Begin - BUG #M0000304 */
+						if (tok == '(' || tok == ';')
+							$$ = build_call_expr(T_WORD, $1.ident, @1);
+						else
+						/* End - BUG #M0000304 */
+							$$ = make_execsql_stmt(T_WORD, @1);
 					}
 				| T_CWORD
 					{
@@ -2791,7 +2810,13 @@ stmt_execsql	: K_IMPORT
 						if (tok == '=' || tok == COLON_EQUALS ||
 							tok == '[' || tok == '.')
 							cword_is_not_variable(&($1), @1);
-						$$ = make_execsql_stmt(T_CWORD, @1);
+
+						/* Begin - BUG #M0000304 */
+						if (tok == '(' || tok == ';')
+							$$ = build_call_expr(T_WORD, NULL, @1);
+						else
+						/* End - BUG #M0000304 */
+							$$ = make_execsql_stmt(T_WORD, @1);
 					}
 				;
 
@@ -5291,3 +5316,306 @@ make_case(int location, PLiSQL_expr *t_expr,
 
 	return (PLiSQL_stmt *) new;
 }
+
+/* Begin - BUG #M0000304 */
+/* this function look like make_execsql_stmt */
+static PLiSQL_stmt *
+build_call_expr(int firsttoken,const char *str, int location)
+{
+	StringInfoData		ds;
+	IdentifierLookup	save_IdentifierLookup;
+	PLiSQL_stmt_execsql *execsql;
+	PLiSQL_expr		*expr;
+	PLiSQL_variable	*target = NULL;
+	int					tok;
+	int					prev_tok = 0;	/* BUG#Z375 */
+	bool				have_into = false;
+	bool				have_strict = false;
+	int					into_start_loc = -1;
+	int					into_end_loc = -1;
+	/* Begin - BUG#Z375 */
+	bool				insert_targetalias_without_as = false;
+	int					prev_prev_tok = 0;
+	int					as_start_loc = -1;
+	/* End - BUG#Z375 */
+
+	int					parenlevel = 0;
+	PLiSQL_CALL				call_process = PLISQL_IS_INVALID;
+	bool is_process = false;
+	PLiSQL_stmt_call *callsql = NULL;
+	bool get_first_tok = true;
+
+	initStringInfo(&ds);
+
+	/* special lookup mode for identifiers within the SQL text */
+	save_IdentifierLookup = plisql_IdentifierLookup;
+	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+
+	/*
+	 * Scan to the end of the SQL command.  Identify any INTO-variables
+	 * clause lurking within it, and parse that via read_into_target().
+	 *
+	 * Because INTO is sometimes used in the main SQL grammar, we have to be
+	 * careful not to take any such usage of INTO as a PL/iSQL INTO clause.
+	 * There are currently three such cases:
+	 *
+	 * 1. SELECT ... INTO.  We don't care, we just override that with the
+	 * PL/iSQL definition.
+	 *
+	 * 2. INSERT INTO.  This is relatively easy to recognize since the words
+	 * must appear adjacently; but we can't assume INSERT starts the command,
+	 * because it can appear in CREATE RULE or WITH.  Unfortunately, INSERT is
+	 * *not* fully reserved, so that means there is a chance of a false match;
+	 * but it's not very likely.
+	 *
+	 * 3. IMPORT FOREIGN SCHEMA ... INTO.  This is not allowed in CREATE RULE
+	 * or WITH, so we just check for IMPORT as the command's first token.
+	 * (If IMPORT FOREIGN SCHEMA returned data someone might wish to capture
+	 * with an INTO-variables clause, we'd have to work much harder here.)
+	 *
+	 * Fortunately, INTO is a fully reserved word in the main grammar, so
+	 * at least we need not worry about it appearing as an identifier.
+	 *
+	 * Any future additional uses of INTO in the main grammar will doubtless
+	 * break this logic again ... beware!
+	 */
+	tok = firsttoken;
+	for (;;)
+	{
+		/* Begin - BUG#Z375 */
+		prev_prev_tok = prev_tok;
+		/* End - BUG#Z375 */
+		prev_tok = tok;
+		tok = yylex();
+
+		if (get_first_tok)
+		{
+			get_first_tok = false;
+			if (tok == ';')
+			{
+				/* if 'str' is reserved keywords, it is not processed */
+				if (str != NULL && ScanReservedKeywordLookup(str,
+										scan_reserved_keywords,
+										num_scan_reserved_keywords) != NULL)
+					call_process = PLISQL_NOT_PROCESS;
+				else
+					call_process = PLISQL_IS_NO_BRACKETS_PROCESS;
+				break;
+			}
+			else if (tok == '(')
+			{
+				/* if 'str' is reserved keywords, it is not processed */
+				if (str != NULL && ScanReservedKeywordLookup(str,
+										scan_reserved_keywords,
+										num_scan_reserved_keywords) != NULL)
+					call_process = PLISQL_NOT_PROCESS;
+				else
+					call_process = PLISQL_IS_MABY_PROCESS;
+			}
+			else
+			{
+				call_process = PLISQL_NOT_PROCESS;
+			}
+		}
+
+		if (tok == '(')
+		{
+			parenlevel++;
+		}
+		else if (tok == ')')
+		{
+			parenlevel--;
+			if (parenlevel < 0)
+				yyerror("mismatched parentheses");
+		}
+
+		if (have_into && into_end_loc < 0)
+			into_end_loc = yylloc;		/* token after the INTO part */
+		if (tok == ';')
+		{
+			if (call_process == PLISQL_IS_MABY_PROCESS && parenlevel == 0 && prev_tok == ')')
+			{
+				call_process = PLISQL_IS_PROCESS;
+			}
+			else if (parenlevel != 0)
+			{
+				call_process = PLISQL_NOT_PROCESS;
+			}
+
+			break;
+		}
+		if (tok == 0)
+			yyerror("unexpected end of function definition");
+
+		/* Begin - BUG#Z375 */
+		if (prev_tok == K_INSERT && tok == K_INTO)
+			as_start_loc = yylloc;
+		/* End - BUG#Z375 */
+
+		if (tok == K_INTO)
+		{
+			if (prev_tok == K_INSERT)
+				continue;		/* INSERT INTO is not an INTO-target */
+			if (firsttoken == K_IMPORT)
+				continue;		/* IMPORT ... INTO is not an INTO-target */
+			if (have_into)
+				yyerror("INTO specified more than once");
+			have_into = true;
+			into_start_loc = yylloc;
+			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+			read_into_target(&target, &have_strict);
+			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+		}
+		/* Begin - BUG#Z375 */
+		else if (tok == K_VALUES && firsttoken == K_INSERT)
+		{
+			if (prev_tok != ')' && prev_prev_tok != K_INTO && prev_prev_tok != K_AS)
+				insert_targetalias_without_as = true;
+		}
+		/* End - BUG#Z375 */
+	}
+
+	plisql_IdentifierLookup = save_IdentifierLookup;
+
+	if (have_into)
+	{
+		/*
+		 * Insert an appropriate number of spaces corresponding to the
+		 * INTO text, so that locations within the redacted SQL statement
+		 * still line up with those in the original source text.
+		 */
+		plisql_append_source_text(&ds, location, into_start_loc);
+		appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
+		plisql_append_source_text(&ds, into_end_loc, yylloc);
+	}
+	/* Begin - BUG#Z375 */
+	else
+	{
+		if (insert_targetalias_without_as && as_start_loc != -1)
+		{
+			plisql_append_source_text(&ds, location + ds.len, location + ds.len + as_start_loc);
+			appendStringInfoString(&ds, " AS");
+			plisql_append_source_text(&ds, location + ds.len - strlen(" AS"), yylloc);
+		}
+		else if (call_process == PLISQL_IS_PROCESS || call_process == PLISQL_IS_MABY_PROCESS
+				|| call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
+		{
+			{
+				appendBinaryStringInfo(&ds, "CALL ", strlen("CALL "));
+				plisql_append_source_text(&ds, location, yylloc);
+
+				/* trim any trailing whitespace, for neatness */
+				while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
+					ds.data[--ds.len] = '\0';
+
+				if (call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
+					appendBinaryStringInfo(&ds, "()", strlen("()"));
+				is_process = true;
+			}
+		}
+		else
+	/* End - BUG#Z375 */
+			plisql_append_source_text(&ds, location, yylloc);
+	/* Begin - BUG#Z375 */
+	}
+	/* End - BUG#Z375 */
+
+	/* trim any trailing whitespace, for neatness */
+	while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
+		ds.data[--ds.len] = '\0';
+
+	expr = palloc0(sizeof(PLiSQL_expr));
+	expr->query			= pstrdup(ds.data);
+	expr->parseMode		= RAW_PARSE_DEFAULT;
+	expr->plan			= NULL;
+	expr->paramnos		= NULL;
+	expr->target_param	= -1;
+	expr->ns			= plisql_ns_top();
+	pfree(ds.data);
+
+	check_sql_expr(expr->query, expr->parseMode, location);
+
+	if (is_process)
+	{
+		callsql = palloc0(sizeof(PLiSQL_stmt_call));
+		callsql->cmd_type = PLISQL_STMT_CALL;
+		callsql->lineno = plisql_location_to_lineno(location);
+		callsql->stmtid = ++plisql_curr_compile->nstatements;
+		callsql->expr = expr;
+		callsql->is_call = true;
+
+		/* Remember we may need a procedure resource owner */
+		plisql_curr_compile->requires_procedure_resowner = true;
+
+		return (PLiSQL_stmt *) callsql;
+	}
+	else
+	{
+		execsql = palloc0(sizeof(PLiSQL_stmt_execsql));
+		execsql->cmd_type = PLISQL_STMT_EXECSQL;
+		execsql->lineno  = plisql_location_to_lineno(location);
+		execsql->stmtid  = ++plisql_curr_compile->nstatements;
+		execsql->sqlstmt = expr;
+		execsql->into	 = have_into;
+		execsql->strict	 = have_strict;
+		execsql->target	 = target;
+
+		return (PLiSQL_stmt *) execsql;
+	}
+
+}
+
+/* scan gram.y 's reserved key word */
+const ScanKeyword *
+ScanReservedKeywordLookup(const char *text,
+				  const ScanKeyword *keywords,
+				  int num_keywords)
+{
+	int			len,
+				i;
+	char		word[NAMEDATALEN];
+	const ScanKeyword *low;
+	const ScanKeyword *high;
+
+	len = strlen(text);
+	/* We assume all keywords are shorter than NAMEDATALEN. */
+	if (len >= NAMEDATALEN)
+		return NULL;
+
+	/*
+	 * Apply an ASCII-only downcasing.  We must not use tolower() since it may
+	 * produce the wrong translation in some locales (eg, Turkish).
+	 */
+	for (i = 0; i < len; i++)
+	{
+		char		ch = text[i];
+
+		if (ch >= 'A' && ch <= 'Z')
+			ch += 'a' - 'A';
+		word[i] = ch;
+	}
+	word[len] = '\0';
+
+	/*
+	 * Now do a binary search using plain strcmp() comparison.
+	 */
+	low = keywords;
+	high = keywords + (num_keywords - 1);
+	while (low <= high)
+	{
+		const ScanKeyword *middle;
+		int			difference;
+
+		middle = low + (high - low) / 2;
+		difference = strcmp(middle->name, word);
+		if (difference == 0)
+			return middle;
+		else if (difference < 0)
+			low = middle + 1;
+		else
+			high = middle - 1;
+	}
+
+	return NULL;
+}
+/* End - BUG #M0000304 */
