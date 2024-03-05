@@ -2081,7 +2081,7 @@ SELECT
 	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
 	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
-	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid AND NOT pg_is_other_temp_schema(c.relnamespace); /* BUG#M0000310 */
 
 /* Begin BUG#Z228 */
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
@@ -2100,7 +2100,7 @@ SELECT
 	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
 	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
-	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid;
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid AND NOT pg_is_other_temp_schema(c.relnamespace); /* BUG#M0000310 */
 
 /* Begin BUG#Z228 */
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
@@ -2119,7 +2119,8 @@ SELECT
 	decode(bitand(s.flags, 16), 16, 'Y', 'N') AS scale_flag,
 	decode(bitand(s.flags, 2048), 2048, 'Y', 'N') AS extend_flag,null AS shared_flag,
 	decode(bitand(s.flags, 64), 64, 'Y', 'N') AS session_flag,null AS keep_value
-	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid and pg_get_userbyid(c.relowner) = current_user;
+	FROM PG_SEQUENCE s,pg_class c where s.seqrelid = c.oid and pg_get_userbyid(c.relowner) = CURRENT_USER
+	AND NOT pg_is_other_temp_schema(c.relnamespace); /* BUG#M0000310 */
 
 /* Begin BUG#Z228 */
 /* GRANT SELECT PRIVILEGE TO PUBLIC */

@@ -797,16 +797,23 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	if (function_from ==  FUNC_FROM_PACKAGE ||
 		function_from == FUNC_FROM_SUBPROCFUNC)
 	{
-		int i = 0;
-
 		nargsplusdefs = list_length(fargs);
 
-		foreach(l, fargs)
+		/*
+		 * only argnames or argdefaults is not null
+		 * we should consider reorder
+		 */
+		if (argnames != NIL || argdefaults != NIL)
 		{
-			Node	   *arg = lfirst(l);
-			Oid			argtype = exprType(arg);
+			int i = 0;
 
-			actual_arg_types[i++] = argtype;
+			foreach(l, fargs)
+			{
+				Node	   *arg = lfirst(l);
+				Oid			argtype = exprType(arg);
+
+				actual_arg_types[i++] = argtype;
+			}
 		}
 	}
 	else
