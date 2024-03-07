@@ -2011,3 +2011,146 @@ reset ivorysql.ora_views_index_scan;
 drop table if exists " AAA_asc";
 drop table if exists "zzz_DESC";
 drop view if exists v_oct_1, v_oct_2, v_oct_3;
+--bug#Z838
+SET ivorysql.identifier_case_switch = interchange;
+create or replace package pkg is
+ var1 integer;
+ procedure test_p(id integer);
+end;
+/
+create or replace package body pkg is
+ var3 integer;
+ procedure test_p(id integer) is
+ begin
+   var3 := 4;
+ end;
+begin
+  var1 := 2;
+end;
+/
+--ok
+select text from all_source where name='PKG' and type='PACKAGE';
+              text              
+--------------------------------
+ PACKAGE PKG IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+select text from dba_source where name='PKG' and type='PACKAGE';
+              text              
+--------------------------------
+ PACKAGE PKG IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+select text from user_source where name='PKG' and type='PACKAGE';
+              text              
+--------------------------------
+ PACKAGE PKG IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+--ok
+select object_name from all_arguments where package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+select object_name from dba_arguments where package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+select object_name from user_arguments where package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='PKG' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ TEST_P         | 1
+(2 rows)
+
+select procedure_name,subprogram_id from all_procedures where object_name='PKG' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ TEST_P         | 1
+(2 rows)
+
+select procedure_name,subprogram_id from user_procedures where object_name='PKG' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ TEST_P         | 1
+(2 rows)
+
+--ok
+select text,type from all_source where name='PKG' ORDER BY type;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE PKG IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY PKG IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+select text,type from dba_source where name='PKG' ORDER BY type;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE PKG IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY PKG IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+select text,type from user_source where name='PKG' ORDER BY type;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE PKG IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY PKG IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+--clean data
+DROP package pkg;
