@@ -52,8 +52,9 @@
 /* This enum lists the priority levels in order */
 enum dbObjectTypePriorities
 {
-	PRIO_NAMESPACE = 1,
-	PRIO_DATABASEROLE,			/* bug:z538 */
+	PRIO_DATABASEROLE = 1,			/* bug:z538 z833*/
+	PRIO_DATABASEROLEMEMBERSHIP,
+	PRIO_NAMESPACE,
 	PRIO_PROCLANG,
 	PRIO_COLLATION,
 	PRIO_TRANSFORM,
@@ -104,8 +105,9 @@ enum dbObjectTypePriorities
 /* This table is indexed by enum DumpableObjectType */
 static const int dbObjectTypePriority[] =
 {
-	PRIO_NAMESPACE,				/* DO_NAMESPACE */
 	PRIO_DATABASEROLE,			/* DO_DATABASEROLE		bug:z538 */
+	PRIO_DATABASEROLEMEMBERSHIP,
+	PRIO_NAMESPACE,				/* DO_NAMESPACE */
 	PRIO_EXTENSION,				/* DO_EXTENSION */
 	PRIO_TYPE,					/* DO_TYPE */
 	PRIO_TYPE,					/* DO_SHELL_TYPE */
@@ -1325,6 +1327,11 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 		case DO_DATABASEROLE:		/* bug:z538 */
 			snprintf(buf, bufsize,
 					 "DATABASEROLE  (ID %d)",
+					 obj->dumpId);
+			return;
+		case DO_DATABASEROLEMEMBERSHIP:		/* bug:z836 */
+			snprintf(buf, bufsize,
+					 "DATABASEROLEMEMBERSHIP  (ID %d)",
 					 obj->dumpId);
 			return;
 		case DO_NAMESPACE:

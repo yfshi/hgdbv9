@@ -37,8 +37,9 @@
 typedef enum
 {
 	/* When modifying this enum, update priority tables in pg_dump_sort.c! */
-	DO_NAMESPACE,
 	DO_DATABASEROLE,
+	DO_DATABASEROLEMEMBERSHIP,
+	DO_NAMESPACE,
 	DO_EXTENSION,
 	DO_TYPE,
 	DO_SHELL_TYPE,
@@ -690,6 +691,17 @@ typedef struct _DatabaseRolesInfo
 	char		   *rolpassword;
 	char		   *rolcomment;
 } DatabaseRolesInfo;
+
+/* Begin - bug:z836*/
+typedef struct DbRolesMembershipInfo
+{
+	DumpableObject dobj;
+	char		   *rolename;
+	char		   *member;
+	char		   *grantor;
+	bool			admin_option;
+} DbRolesMembershipInfo;
+/* End - bug:z836*/
 /* End - ReqID:SRS-MISC-USER */
 
 /*
@@ -780,5 +792,6 @@ extern void getSubscriptions(Archive *fout);
 
 extern TableInfo *getTables(Archive *fout, int *numTables);
 extern DatabaseRolesInfo *getDbRoles(Archive *fout, int *numRoles);
+extern DbRolesMembershipInfo *getDbRoleMembership(Archive *fout, int *numRolesMembership);
 
 #endif							/* PG_DUMP_H */

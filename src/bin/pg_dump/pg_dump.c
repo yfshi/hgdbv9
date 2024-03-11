@@ -331,6 +331,7 @@ static TableInfo *getRootTableInfo(const TableInfo *tbinfo);
 static bool forcePartitionRootLoad(const TableInfo *tbinfo);
 /* Begin - ReqID:SRS-MISC-USER */
 static void dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo);
+static void dumpDbRolesmembership(Archive *fout, const DbRolesMembershipInfo *dbrinfo);
 /* End - ReqID:SRS-MISC-USER */
 
 int
@@ -10773,6 +10774,114 @@ getDbRoles(Archive *fout, int *numRoles)
 	return dbrinfo;
 }
 
+/*
+ * dumpDbRolesmembership  ReqID:SRS-MISC-USE
+ * 
+ * Dump roles member ship
+ */
+static void
+dumpDbRolesmembership(Archive *fout, const DbRolesMembershipInfo *dbrinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer query;
+
+	if (dopt->dataOnly)
+		return;
+
+	if (dbrinfo->rolename)
+	{
+		query = createPQExpBuffer();
+
+		appendPQExpBuffer(query, "GRANT %s", fmtId(dbrinfo->rolename));
+		appendPQExpBuffer(query, " TO %s", fmtId(dbrinfo->member));
+
+		if(dbrinfo->admin_option)
+			appendPQExpBuffer(query, " WITH ADMIN OPTION");
+	
+		if(dbrinfo->grantor)
+			appendPQExpBuffer(query, " GRANTED BY %s", fmtId(dbrinfo->grantor));
+		
+		appendPQExpBuffer(query, ";\n");
+
+		if (dbrinfo->dobj.dump & DUMP_COMPONENT_POLICY)
+			ArchiveEntry(fout, dbrinfo->dobj.catId, dbrinfo->dobj.dumpId,
+						 ARCHIVE_OPTS(.tag = "DATABASEROLEMEMBERSHIP",
+									  .description = "DATABASEROLEMEMBERSHIP",
+									  .section = SECTION_NONE,
+									  .createStmt = query->data));
+
+		destroyPQExpBuffer(query);
+	}
+}
+
+/*
+ * getDbRoleMembership  ReqID:SRS-MISC-USE
+ * 
+ * get roles member ship
+ */
+DbRolesMembershipInfo *
+getDbRoleMembership(Archive *fout, int *numRolesMembership)
+{
+	DbRolesMembershipInfo *dbrinfo;
+	PQExpBuffer buf = createPQExpBuffer();
+	PGresult   *res;
+	int			i,
+				ntups;
+
+	printfPQExpBuffer(buf, "SELECT a.tableoid, ur.rolname AS roleid, "
+					  "um.rolname AS member, "
+					  "a.admin_option, "
+					  "ug.rolname AS grantor, "
+					  "a.roleid AS roleoidoid, "
+					  "a.member AS memberoid, "
+					  "a.grantor AS grantoroid "
+					  "FROM pg_auth_members a "
+					  "LEFT JOIN pg_authid ur on ur.oid = a.roleid "
+					  "LEFT JOIN pg_authid um on um.oid = a.member "
+					  "LEFT JOIN pg_authid ug on ug.oid = a.grantor "
+					  "WHERE NOT (ur.rolname ~ '^pg_' AND um.rolname ~ '^pg_') "
+					  "AND ur.rolowndboid > 0 "
+					  "AND um.rolowndboid > 0 "
+					  "AND ug.rolowndboid > 0 "
+					  "ORDER BY 1,2,3");
+	
+	
+	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
+	ntups = PQntuples(res);
+	*numRolesMembership = ntups;
+
+	dbrinfo = (DbRolesMembershipInfo *) pg_malloc0(ntups * sizeof(DbRolesMembershipInfo));
+
+	for (i = 0; i < ntups; i++)
+	{
+		Oid			tableoid = atooid(PQgetvalue(res, i, 0));
+		char	   *roleid = pg_strdup(PQgetvalue(res, i, 1));
+		char	   *member = pg_strdup(PQgetvalue(res, i, 2));
+		Oid			roleoidoid = atooid(PQgetvalue(res, i, 5));
+
+		dbrinfo[i].dobj.objType = DO_DATABASEROLEMEMBERSHIP;
+		dbrinfo[i].dobj.catId.tableoid = tableoid;
+		dbrinfo[i].dobj.catId.oid = roleoidoid;
+		dbrinfo[i].dobj.name = pg_strdup(roleid);
+		AssignDumpId(&dbrinfo[i].dobj);
+		dbrinfo[i].rolename = pg_strdup(roleid);
+		dbrinfo[i].member = pg_strdup(member);
+
+		if (!PQgetisnull(res, i, 4))
+		{
+			dbrinfo[i].grantor = pg_strdup(PQgetvalue(res, i, 4));
+		}
+		dbrinfo[i].admin_option = (strcmp(PQgetvalue(res, i, 3), "t") == 0);
+
+		/* Decide whether we want to dump it */
+		selectDumpableObject(&(dbrinfo[i].dobj), fout);
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+	return dbrinfo;
+}
+
 
 /*
  * dumpComment --
@@ -11126,6 +11235,11 @@ dumpDumpableObject(Archive *fout, const DumpableObject *dobj)
 			dumpDbRoles(fout, (const DatabaseRolesInfo *) dobj);
 			break;
 		/* End - BUG#Z538 */
+		/* Begin - BUG#Z836  */
+		case DO_DATABASEROLEMEMBERSHIP:
+			dumpDbRolesmembership(fout, (const DbRolesMembershipInfo *) dobj);
+			break;
+		/* End - BUG#Z836 */
 		case DO_EXTENSION:
 			dumpExtension(fout, (const ExtensionInfo *) dobj);
 			break;
@@ -19873,6 +19987,7 @@ addBoundaryDependencies(DumpableObject **dobjs, int numObjs,
 		{
 			case DO_NAMESPACE:
 			case DO_DATABASEROLE:
+			case DO_DATABASEROLEMEMBERSHIP:
 			case DO_EXTENSION:
 			case DO_TYPE:
 			case DO_SHELL_TYPE:

@@ -91,6 +91,7 @@ extern bool haveDatabaseUser(PGconn *conn);		/*  bug#M0000261 */
 
 extern void SetDumptypeMode(PGconn *conn);
 extern void ReSetDumptypeMode(PGconn *conn);
+extern Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
 /* END - ReqID:SRS-MISC-USER */
 
 #endif							/* DUMPUTILS_H */

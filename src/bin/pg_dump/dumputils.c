@@ -1574,3 +1574,34 @@ ReSetDumptypeMode(PGconn *conn)
 		PQclear(res3);
 }
 
+/*
+ * FindUserLevelbyoid  ReqID:SRS-MISC-USE
+ * 
+ */
+Oid 
+FindUserLevelbyoid(PGconn *conn, Oid oid)
+{
+	PGresult	   *res;
+	PQExpBuffer		query_cmd;
+	Oid				userdboid = InvalidOid;
+
+	if (!haveDBuser)			/*  bug#M0000261 */
+		return userdboid;
+
+	query_cmd = createPQExpBuffer();
+	if (OidIsValid(oid))
+	{
+		appendPQExpBuffer(query_cmd, "select dboid from ivory_user where usesysid = %u", oid);
+		res = PQexec(conn, query_cmd->data);
+	}
+	else
+		res = PQexec(conn, "select dboid from ivory_user where usesysid = get_current_userid();");
+
+	if (PQntuples(res))	
+		userdboid = atooid(PQgetvalue(res, 0, 0));
+	PQclear(res);
+	destroyPQExpBuffer(query_cmd);
+	
+	return userdboid;
+}
+
