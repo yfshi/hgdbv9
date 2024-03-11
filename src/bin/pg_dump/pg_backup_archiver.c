@@ -3937,6 +3937,14 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			ahprintf(AH, "%s\n\n", te->defn);
 		}
 	}
+	else if (strcmp(te->desc, "DATABASEROLEMEMBERSHIP") == 0 && (DB_ORACLE == database_mode))
+	{
+		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser && 
+			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))	
+		{
+			ahprintf(AH, "%s\n\n", te->defn);
+		}
+	}
 	else
 	{
 		if (te->defn && strlen(te->defn) > 0)

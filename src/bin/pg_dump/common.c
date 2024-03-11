@@ -67,6 +67,7 @@ static int	numExtensions;
 static int	numPublications;
 /* BEGIN - ReqID:SRS-MISC-USER  BUG:Z538 */
 static int	numRoles;
+static int	numRolesMembership;
 /* END - ReqID:SRS-MISC-USER  BUG:Z538 */
 
 /* This is an array of object identities, not actual DumpableObjects */
@@ -142,7 +143,8 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 		(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))		/* BUG:z680,z538 */
 	{
 		pg_log_info("reading database user");
-		getDbRoles(fout,&numRoles);
+		getDbRoles(fout, &numRoles);
+		getDbRoleMembership(fout, &numRolesMembership);
 	}
 	/* End - ReqID:SRS-MISC-USER  BUG#Z538 */
 
