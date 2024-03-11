@@ -30,6 +30,7 @@
 #include "utils/lsyscache.h"
 #include "utils/ora_compatible.h"
 #include "utils/syscache.h"
+#include "utils/datum.h" /* BUG#Z0000838 */
 
 
 #define SA_OpExpr_args(__nodeptr__) \
@@ -441,18 +442,24 @@ pull_var_update_vardata(Node *clause, Node **lop, Node **rop, Node **inner_var)
 			char   *dataptr = NULL,
 				   *val = NULL,
 				   *newval = NULL;
+			/* Begin - BUG#Z0000838 */
+			Const *c_const = (Const *) *rop;
+			Datum newconstvalue = datumCopy(c_const->constvalue,
+										c_const->constbyval,
+										c_const->constlen);
+			/* End - BUG#Z0000838 */
 
 			if (((Const *) *rop)->constlen == -1)
 			{
 				text    *string = (Datum) 0;
 
-				string = DatumGetTextP(((Const *) *rop)->constvalue);
+				string = DatumGetTextP(newconstvalue); /* BUG#Z0000838 */
 				dataptr = VARDATA_ANY(string);
 				valen = VARSIZE_ANY_EXHDR(string);
 			}
 			else
 			{
-				dataptr = (char *) ((Const *) *rop)->constvalue;
+				dataptr = (char *) newconstvalue; /* BUG#Z0000838 */
 				valen = strlen(dataptr);
 			}
 
@@ -465,6 +472,16 @@ pull_var_update_vardata(Node *clause, Node **lop, Node **rop, Node **inner_var)
 				memcpy(dataptr, newval, valen);
 
 				*lop = *inner_var;
+				/* Begin - BUG#Z0000838 */
+				/*
+				 * there, we shoud use datumCopy to copy a
+				 * constvalue, because mabye others node
+				 * use the same constvalue
+				 * see details in expression_tree_mutator, which
+				 * doesn't copy constvalue
+				 */
+				((Const *) *rop)->constvalue = newconstvalue;
+				/* End - BUG#Z0000838 */
 			}
 
 			pfree(val);
@@ -532,8 +549,14 @@ pull_var_update_vardata(Node *clause, Node **lop, Node **rop, Node **inner_var)
 			int16			elmlen = 0;
 			bool			elmbyval = false;
 			char			elmalign = 0x00;
+			/* Begin - BUG#Z0000838 */
+			Const *c_const = (Const *) *rop;
+			Datum newconstvalue = datumCopy(c_const->constvalue,
+										c_const->constbyval,
+										c_const->constlen);
+			/* End - BUG#Z0000838 */
 
-			arr = DatumGetAnyArrayP(((Const *) *rop)->constvalue);
+			arr = DatumGetAnyArrayP(newconstvalue); /* BUG#Z0000838 */
 			/* iterating this array */
 			array_iter_setup(&iter, arr);
 			numelems = ArrayGetNItems(AARR_NDIM(arr), AARR_DIMS(arr));
@@ -594,6 +617,16 @@ pull_var_update_vardata(Node *clause, Node **lop, Node **rop, Node **inner_var)
 
 					if (*lop != *inner_var)
 						*lop = *inner_var;
+					/* Begin - BUG#Z0000838 */
+					/*
+					 * there, we shoud use datumCopy to copy a
+					 * constvalue, because mabye others node
+					 * use the same constvalue
+					 * see details in expression_tree_mutator, which
+					 * doesn't copy constvalue
+					 */
+					((Const *) *rop)->constvalue = newconstvalue;
+					/* End - BUG#Z0000838 */
 				}
 
 				if (tunpacked && (Datum) tunpacked != elem)
