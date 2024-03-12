@@ -2361,6 +2361,9 @@ main(int argc, char **argv)
 	 * Disallow running as root, to forestall any possible security holes.
 	 */
 #ifndef WIN32
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 	if (geteuid() == 0)
 	{
 		write_stderr(_("%s: cannot be run as root\n"
@@ -2370,6 +2373,9 @@ main(int argc, char **argv)
 					 progname);
 		exit(1);
 	}
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 #endif
 
 	env_wait = getenv("PGCTLTIMEOUT");

@@ -394,6 +394,9 @@ help(const char *progname)
 static void
 check_root(const char *progname)
 {
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 #ifndef WIN32
 	if (geteuid() == 0)
 	{
@@ -429,4 +432,7 @@ check_root(const char *progname)
 		exit(1);
 	}
 #endif							/* WIN32 */
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 }
