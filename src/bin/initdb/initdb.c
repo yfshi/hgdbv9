@@ -654,7 +654,7 @@ get_id(void)
 
 #ifndef WIN32
 /* Begin - Bug#M0000315 */
-#ifndef USE_ROOT || USE_ADMINISTRATOR
+#ifndef USE_ROOT
 /* End - Bug#M0000315 */
 	if (geteuid() == 0)			/* 0 is root's uid */
 	{

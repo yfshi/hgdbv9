@@ -2362,7 +2362,7 @@ main(int argc, char **argv)
 	 */
 #ifndef WIN32
 /* Begin - Bug#M0000315 */
-#ifndef USE_ROOT || USE_ADMINISTRATOR
+#ifndef USE_ROOT
 /* End - Bug#M0000315 */
 	if (geteuid() == 0)
 	{
