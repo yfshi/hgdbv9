@@ -8204,6 +8204,9 @@ fi
 #
 # Enable root user initdb and starting
 #
+#PGAC_ARG_BOOL(enable, root, no, [enable can be run as root user],
+#			  [AC_DEFINE([USE_ROOT], 1,
+#						 [Define to 1 to build with root user. (--enable-root)])])
 
 
 # Check whether --enable-root was given.
@@ -8216,7 +8219,9 @@ $as_echo "#define USE_ROOT 1" >>confdefs.h
 
       ;;
     no)
-      :
+
+$as_echo "#define USE_ADMINISTRATOR 0" >>confdefs.h
+
       ;;
     *)
       as_fn_error $? "no argument expected for --enable-root option" "$LINENO" 5
@@ -8225,6 +8230,8 @@ $as_echo "#define USE_ROOT 1" >>confdefs.h
 
 else
   enable_root=no
+
+$as_echo "#define USE_ADMINISTRATOR 0" >>confdefs.h
 
 fi
 

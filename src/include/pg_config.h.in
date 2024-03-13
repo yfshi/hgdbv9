@@ -913,6 +913,9 @@
 /* Define to 1 if strerror_r() returns int. */
 #undef STRERROR_R_INT
 
+/* Define to 0 to build without administrator user. */
+#undef USE_ADMINISTRATOR
+
 /* Define to 1 to use ARMv8 CRC Extension. */
 #undef USE_ARMV8_CRC32C
 

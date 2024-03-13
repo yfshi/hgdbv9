@@ -395,7 +395,7 @@ static void
 check_root(const char *progname)
 {
 /* Begin - Bug#M0000315 */
-#ifndef USE_ROOT
+#ifndef USE_ROOT || USE_ADMINISTRATOR
 /* End - Bug#M0000315 */
 #ifndef WIN32
 	if (geteuid() == 0)

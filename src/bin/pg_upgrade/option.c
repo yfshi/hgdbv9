@@ -125,7 +125,7 @@ parseCommandLine(int argc, char *argv[])
 	}
 
 /* Begin - Bug#M0000315 */
-#ifndef USE_ROOT
+#ifndef USE_ROOT || USE_ADMINISTRATOR
 /* End - Bug#M0000315 */
 	/* Allow help and version to be run as root, so do the test here. */
 	if (os_user_effective_id == 0)
