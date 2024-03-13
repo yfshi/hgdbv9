@@ -81,7 +81,7 @@ if ($buildwhat)
 else
 {
 	system(
-		"msbuild pgsql.sln /verbosity:normal $msbflags /p:Configuration=$bconf"
+		"msbuild pgsql.sln /verbosity:normal $msbflags /p:Configuration=$bconf /m"
 	);
 }
 

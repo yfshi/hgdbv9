@@ -525,7 +525,12 @@ sub GenerateFiles
 		USE_LDAP                   => $self->{options}->{ldap} ? 1 : undef,
 		# Begin - ReqID:SRS-MISC-LICENSE
 		USE_LICENSE				   => $self->{options}->{license} ? 1 : undef,
+		HAVE_LIBLICENSE			   => $self->{options}->{license} ? 1 : undef,
 		# End - ReqID:SRS-MISC-LICENSE
+		#/* Begin - Bug#M0000315 */
+		USE_ROOT				   => undef,
+		USE_ADMINISTRATOR		   => $self->{options}->{administrator} ? 1 : undef,
+		#/* End - Bug#M0000315 */
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
@@ -1288,6 +1293,9 @@ sub GetFakeConfigure
 	$cfg .= ' --enable-cursor-unname' if ($self->{options}->{cursor_unname});
 	#/* End - ReqID:SRS-SQL-PACKAGE */
 	$cfg .= ' --enable-tap-tests' if ($self->{options}->{tap_tests});
+	#/* Begin - Bug#M0000315 */
+	$cfg .= ' --enable-root' 	 	if ($self->{options}->{administrator});
+	#/* End - Bug#M0000315 */
 	$cfg .= ' --with-ldap'        if ($self->{options}->{ldap});
 	$cfg .= ' --without-zlib' unless ($self->{options}->{zlib});
 	$cfg .= ' --with-extra-version' if ($self->{options}->{extraver});
