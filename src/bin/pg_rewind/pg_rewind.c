@@ -280,6 +280,9 @@ main(int argc, char **argv)
 	 * the data directory.
 	 */
 #ifndef WIN32
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 	if (geteuid() == 0)
 	{
 		pg_log_error("cannot be executed by \"root\"");
@@ -287,6 +290,9 @@ main(int argc, char **argv)
 				progname);
 		exit(1);
 	}
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 #endif
 
 	get_restricted_token();

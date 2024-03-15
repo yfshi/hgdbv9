@@ -836,9 +836,6 @@ PGAC_ARG_BOOL(enable, cassert, no, [enable assertion checks (for debugging)],
 #
 # Enable root user initdb and starting
 #
-#PGAC_ARG_BOOL(enable, root, no, [enable can be run as root user],
-#			  [AC_DEFINE([USE_ROOT], 1,
-#						 [Define to 1 to build with root user. (--enable-root)])])
 PGAC_ARG_BOOL(enable, root, no, [enable can be run as root user],
 			  [AC_DEFINE([USE_ROOT], 1,
 						 [Define to 1 to build with root user. (--enable-root)])],
