@@ -26,6 +26,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - BUG#Z828 */
+#include "parser/parse_type.h"
+/* End - BUG#Z828 */
 
 static bool expression_returns_set_walker(Node *node, void *context);
 static int	leftmostLoc(int loc1, int loc2);
@@ -236,6 +239,14 @@ exprType(const Node *expr)
 				type = BOOLOID;
 			else if (((const XmlExpr *) expr)->op == IS_XMLSERIALIZE)
 				type = TEXTOID;
+			/* Begin - BUG#Z828 */
+			else if (((const XmlExpr *) expr)->op == IS_UPDATEXML)
+			{
+				int32 typmod;
+
+				(void) parseTypeString("XMLTYPE", &type, &typmod, true);
+			}
+			/* End - BUG#Z828 */
 			else
 				type = XMLOID;
 			break;

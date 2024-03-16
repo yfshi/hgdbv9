@@ -144,6 +144,16 @@ SELECT updatexml(data, '/value/text()', '1000') FROM xmltest;
 SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '/b', '1000') FROM dual;
 
 SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '/b[1]/text()', '1000') FROM dual;
+-- Begin - BUG#Z829 
+SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '//b/text()', '1000') FROM dual;
+
+SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '//b[1]/text()', '222') FROM dual;
+-- End - BUG#Z829 
+-- Begin - BUG#Z828
+UPDATE xmltest SET data = UPDATEXML(data, '/value/text()', 'second') WHERE id = 2;
+
+select * from xmltest;
+-- End - BUG#Z828
 
 SELECT updatexml(data, 'soapenv:Envelope/soapenv:Body/web:BBB/typ:EEE/text()',123, 'xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="http://www.def.com" xmlns:web="http://www.abc.com"') from xmlnstest where id = 1;
 
