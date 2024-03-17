@@ -177,9 +177,14 @@ main(int argc, char **argv)
 {
 	Ivyconn    *conn;
 	Ivyresult   *res;
-	char conninfo[100]="user=system dbname=postgres port=";
+	char conninfo[100]="user=system dbname=template1 port="; /* BUG#M0000075: When the license is enabled, the default library is changed from postgres to highgo. */
 	const char *oraport = argv[1];
 
+	if (oraport == NULL)
+	{
+		fprintf(stderr, "The first parameter, which is the port number of an oracle compatible database, is not specified.\n");
+		return -1;
+	}
 	strcat(conninfo, oraport);
 
 	/* make a connection to the database */
