@@ -92,10 +92,11 @@ our @EXPORT = qw(
   $is_msys2
   $use_unix_sockets
   $linux_os
+  $username
 );
 
 our ($windows_os, $is_msys2, $use_unix_sockets, $timeout_default,
-	$tmp_check, $log_path, $test_logfile, $linux_os);
+	$tmp_check, $log_path, $test_logfile, $linux_os, $username);
 
 BEGIN
 {
@@ -167,6 +168,14 @@ BEGIN
 
 	# Begin - fix Bug#M0000315
 	$linux_os = $Config{osname} eq "linux";
+	if ($^O eq 'linux')
+	{
+		$username = $ENV{LOGNAME} || $ENV{USER} || (getpwuid($<))->name;
+	}
+	elsif ($^O eq 'MSWin32' || $^O eq 'msys')
+	{
+		$username = getlogin;
+	}
 	# End - fix Bug#M0000315
 }
 

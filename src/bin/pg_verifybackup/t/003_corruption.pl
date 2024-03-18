@@ -11,11 +11,6 @@ use File::Path qw(rmtree);
 use PostgresNode;
 use TestLib;
 use Test::More tests => 44;
-use Sys::Hostname;	# fix Bug#M0000315
-
-# Begin - fix Bug#M0000315
-my $username = (getpwuid($<))[0];
-# End - fix Bug#M0000315
 
 my $primary = get_new_node('primary');
 $primary->init(allows_streaming => 1);
