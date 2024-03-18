@@ -528,7 +528,6 @@ sub GenerateFiles
 		HAVE_LIBLICENSE			   => $self->{options}->{license} ? 1 : undef,
 		# End - ReqID:SRS-MISC-LICENSE
 		#/* Begin - Bug#M0000315 */
-		USE_ROOT				   => undef,
 		USE_ADMINISTRATOR		   => $self->{options}->{administrator} ? 1 : undef,
 		#/* End - Bug#M0000315 */
 		USE_LLVM                   => undef,

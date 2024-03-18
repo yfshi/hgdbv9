@@ -838,9 +838,7 @@ PGAC_ARG_BOOL(enable, cassert, no, [enable assertion checks (for debugging)],
 #
 PGAC_ARG_BOOL(enable, root, no, [enable can be run as root user],
 			  [AC_DEFINE([USE_ROOT], 1,
-						 [Define to 1 to build with root user. (--enable-root)])],
-			  [AC_DEFINE([USE_ADMINISTRATOR], 0,
-						 [Define to 0 to build without administrator user.])])
+						 [Define to 1 to build with root user. (--enable-root)])])
 ### End - Bug#M0000315 ###
 
 

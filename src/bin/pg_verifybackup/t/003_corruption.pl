@@ -11,6 +11,11 @@ use File::Path qw(rmtree);
 use PostgresNode;
 use TestLib;
 use Test::More tests => 44;
+use Sys::Hostname;	# fix Bug#M0000315
+
+# Begin - fix Bug#M0000315
+my $username = (getpwuid($<))[0];
+# End - fix Bug#M0000315
 
 my $primary = get_new_node('primary');
 $primary->init(allows_streaming => 1);
@@ -79,21 +84,24 @@ my @scenario = (
 		'name'            => 'open_file_fails',
 		'mutilate'        => \&mutilate_open_file_fails,
 		'fails_like'      => qr/could not open file/,
-		'skip_on_windows' => 1
+		'skip_on_windows' => 1,
+		'skip_on_root'	  => 1	# fix Bug#M0000315
 	},
 	{
 		'name'            => 'open_directory_fails',
 		'mutilate'        => \&mutilate_open_directory_fails,
 		'cleanup'         => \&cleanup_open_directory_fails,
 		'fails_like'      => qr/could not open directory/,
-		'skip_on_windows' => 1
+		'skip_on_windows' => 1,
+		'skip_on_root'	  => 1	# fix Bug#M0000315
 	},
 	{
 		'name'            => 'search_directory_fails',
 		'mutilate'        => \&mutilate_search_directory_fails,
 		'cleanup'         => \&cleanup_search_directory_fails,
 		'fails_like'      => qr/could not stat file or directory/,
-		'skip_on_windows' => 1
+		'skip_on_windows' => 1,
+		'skip_on_root'	  => 1	# fix Bug#M0000315
 	});
 
 for my $scenario (@scenario)
@@ -104,6 +112,11 @@ for my $scenario (@scenario)
 	{
 		skip "unix-style permissions not supported on Windows", 4
 		  if $scenario->{'skip_on_windows'} && $windows_os;
+
+		# Begin - fix Bug#M0000315		
+		skip "if the user is root, skip permission check", 4
+		  if $scenario->{'skip_on_root'} && $username eq "root" && $linux_os;
+		# End - fix Bug#M0000315		
 
 		# Take a backup and check that it verifies OK.
 		my $backup_path    = $primary->backup_dir . '/' . $name;

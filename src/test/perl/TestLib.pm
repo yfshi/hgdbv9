@@ -91,10 +91,11 @@ our @EXPORT = qw(
   $windows_os
   $is_msys2
   $use_unix_sockets
+  $linux_os
 );
 
 our ($windows_os, $is_msys2, $use_unix_sockets, $timeout_default,
-	$tmp_check, $log_path, $test_logfile);
+	$tmp_check, $log_path, $test_logfile, $linux_os);
 
 BEGIN
 {
@@ -163,6 +164,10 @@ BEGIN
 	$timeout_default = $ENV{PG_TEST_TIMEOUT_DEFAULT};
 	$timeout_default = 180
 	  if not defined $timeout_default or $timeout_default eq '';
+
+	# Begin - fix Bug#M0000315
+	$linux_os = $Config{osname} eq "linux";
+	# End - fix Bug#M0000315
 }
 
 =pod
