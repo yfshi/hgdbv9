@@ -1474,8 +1474,15 @@ setup_config(void)
 	* replace token in ivorysql to add gb18030_2022 in shared_preload_library
 	*/
 	/* ivorysql.conf */
+	/* Begin - BUG#M0000120 */
+	if (database_mode == DB_ORACLE)
+	{
+		snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
+		conflines = readfile(path);
+	} else
+		conflines = readfile(ivorysql_file);
 
-	conflines = readfile(ivorysql_file);
+	/* End - BUG#M0000120 */
 	if(is_load_gb18030_2022)
 		conflines = replace_token(conflines,
 								  "shared_preload_libraries = 'liboracle_parser, ivorysql_ora'",
