@@ -395,6 +395,9 @@ static void
 check_root(const char *progname)
 {
 #ifndef WIN32
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 	if (geteuid() == 0)
 	{
 		write_stderr("\"root\" execution of the PostgreSQL server is not permitted.\n"
@@ -418,7 +421,13 @@ check_root(const char *progname)
 					 progname);
 		exit(1);
 	}
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 #else							/* WIN32 */
+/* Begin - Bug#M0000315 */
+#ifndef USE_ADMINISTRATOR
+/* End - Bug#M0000315 */
 	if (pgwin32_is_admin())
 	{
 		write_stderr("Execution of PostgreSQL by a user with administrative permissions is not\n"
@@ -428,5 +437,8 @@ check_root(const char *progname)
 					 "more information on how to properly start the server.\n");
 		exit(1);
 	}
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 #endif							/* WIN32 */
 }

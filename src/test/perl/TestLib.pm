@@ -91,10 +91,12 @@ our @EXPORT = qw(
   $windows_os
   $is_msys2
   $use_unix_sockets
+  $linux_os
+  $username
 );
 
 our ($windows_os, $is_msys2, $use_unix_sockets, $timeout_default,
-	$tmp_check, $log_path, $test_logfile);
+	$tmp_check, $log_path, $test_logfile, $linux_os, $username);
 
 BEGIN
 {
@@ -163,6 +165,18 @@ BEGIN
 	$timeout_default = $ENV{PG_TEST_TIMEOUT_DEFAULT};
 	$timeout_default = 180
 	  if not defined $timeout_default or $timeout_default eq '';
+
+	# Begin - fix Bug#M0000315
+	$linux_os = $Config{osname} eq "linux";
+	if ($^O eq 'linux')
+	{
+		$username = $ENV{LOGNAME} || $ENV{USER} || (getpwuid($<))->name;
+	}
+	elsif ($^O eq 'MSWin32' || $^O eq 'msys')
+	{
+		$username = getlogin;
+	}
+	# End - fix Bug#M0000315
 }
 
 =pod

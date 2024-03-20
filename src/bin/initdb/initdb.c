@@ -653,6 +653,9 @@ get_id(void)
 	const char *username;
 
 #ifndef WIN32
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 	if (geteuid() == 0)			/* 0 is root's uid */
 	{
 		pg_log_error("cannot be run as root");
@@ -661,6 +664,9 @@ get_id(void)
 				  "own the server process.\n"));
 		exit(1);
 	}
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 #endif
 
 	username = get_user_name_or_exit(progname);

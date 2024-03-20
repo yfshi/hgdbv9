@@ -7,14 +7,20 @@ use warnings;
 
 our $config = {
 	asserts => 0,    # --enable-cassert
+	#/* Begin - Bug#M0000315 */
+	administrator => 1,		  # --enable-root
+	#/* End - Bug#M0000315 */
 
 	# blocksize => 8,         # --with-blocksize, 8kB by default
 	# wal_blocksize => 8,     # --with-wal-blocksize, 8kB by default
 	# max_funarg => 100,      # --with-max-funarg, 100 by default
 	#/* Begin - ReqID:SRS-SQL-PACKAGE */
-	cursor_unname =>0,		# --enable-cursor-unname
+	cursor_unname => 0,		# --enable-cursor-unname
 	#/* End - ReqID:SRS-SQL-PACKAGE */
 	ldap      => 1,        # --with-ldap
+	#/* Begin - ReqID:SRS-MISC-LICENSE */
+	license   => 0,		   # --with-license
+	#/* End - ReqID:SRS-MISC-LICENSE */
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>
@@ -30,6 +36,7 @@ our $config = {
 	xslt      => undef,    # --with-libxslt=<path>
 	iconv     => undef,    # (not in configure, path to iconv)
 	zlib      => undef     # --with-zlib=<path>
+	
 };
 
 1;

@@ -53,7 +53,6 @@ static void  print_funclist_content(bool is_chinese, bool is_list, bool is_all, 
 static void  print_funclist_title_tail(bool is_chinese, bool is_view);
 
 static void  usage(const char *progname);
-static void  usageCh(const char *progname);
 
 #ifdef WIN32
 static char *lic_win32_langinfo(const char *ctype);
@@ -85,7 +84,7 @@ int main(int argc, char **argv)
 	};
 
 	/* for multiple languages support(zh_CN only for now) */
-	//set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("licchk"));
+	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("licchk"));
 	
 #ifdef WIN32
 	name = setlocale(LC_CTYPE, "");
@@ -104,7 +103,6 @@ int main(int argc, char **argv)
 	else if (pg_strncasecmp(sys, "CP65001", strlen("CP65001")) == 0)
 	{
 		is_chinese = true;
-		// hg_set_encoding("UTF-8");
 	}
 #endif
 	
@@ -141,7 +139,7 @@ int main(int argc, char **argv)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
 		{
-			is_chinese ? usageCh(argv[0]) : usage(argv[0]);
+			usage(argv[0]);
 			exit(0);
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
@@ -356,29 +354,6 @@ usage(const char *progname)
 	printf(_("  -P, --port                obtain the port from the license file.\n"));
 	printf(_("  -V, --version             output version information, then exit\n"));
 	printf(_("  -?, --help                show this help, then exit\n"));
-}
-
-static void 
-usageCh(const char *progname)
-{
-	char buffer[1024 * 4] = { 0 };
-	char trans_buffer[1024 * 4] = { 0 };
-
-	strcat(buffer, "使用方法:\n");
-	sprintf(buffer + strlen(buffer), "  %s [选项]... [DATADIR]\n", progname);
-	strcat(buffer, "\n选项:\n");
-	strcat(buffer, "  -l, --list                列出开启功能项\n");
-	strcat(buffer, "  -a, --all                 列出所有功能项\n");
-	strcat(buffer, "  -v, --view                显示描述信息\n");
-	strcat(buffer, "  -f, --filename=xxx.dat    指定license文件\n");
-	strcat(buffer, "  -c, --check=xxx.txt       查看硬件码序\n");
-	strcat(buffer, "  -U, --username            获取license文件中默认用户名\n");
-	strcat(buffer, "  -P, --port                获取license文件中默认端口号\n");
-	strcat(buffer, "  -V, --version             输出版本信息\n");
-	strcat(buffer, "  -?, --help                显示帮助\n");
-
-	hg_get_convert_string(buffer, trans_buffer);
-	printf("%s", trans_buffer);
 }
 
 #ifdef WIN32

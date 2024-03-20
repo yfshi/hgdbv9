@@ -124,9 +124,15 @@ parseCommandLine(int argc, char *argv[])
 /* End - ReqID:SRS-MISC-LICENSE */
 	}
 
+/* Begin - Bug#M0000315 */
+#ifndef USE_ROOT
+/* End - Bug#M0000315 */
 	/* Allow help and version to be run as root, so do the test here. */
 	if (os_user_effective_id == 0)
 		pg_fatal("%s: cannot be run as root\n", os_info.progname);
+/* Begin - Bug#M0000315 */
+#endif
+/* End - Bug#M0000315 */
 
 	while ((option = getopt_long(argc, argv, "d:D:gb:B:cj:ko:O:p:P:q:Q:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */
 								 long_options, &optindex)) != -1)
