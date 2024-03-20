@@ -67,6 +67,7 @@
 #include "utils/varlena.h"
 #include "miscadmin.h"
 #include "utils/ora_compatible.h"
+#include "utils/guc.h"	/* BUG#Z830 */
 
 
 /* Globally visible state variables */
@@ -1419,8 +1420,7 @@ CreateExtensionInternal(char *extensionName,
 	Oid			extensionOid;
 	ObjectAddress address;
 	ListCell   *lc;
-	bool		modify_flag = false;
-	int			compatible_db_flag = PG_PARSER;
+	volatile bool	modify_flag = false;	/* BUG#Z830 */
 
 	/*
 	 * Read the primary control file.  Note we assume that it does not contain
@@ -1457,8 +1457,7 @@ CreateExtensionInternal(char *extensionName,
 						;
 					else
 					{
-						compatible_db_flag = compatible_db;
-						compatible_db = PG_PARSER;
+						SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
 						modify_flag = true;
 					}
 				}
@@ -1468,8 +1467,7 @@ CreateExtensionInternal(char *extensionName,
 						;
 					else
 					{
-						compatible_db_flag = compatible_db;
-						compatible_db = ORA_PARSER;
+						SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
 						modify_flag = true;
 					}
 				}
@@ -1481,8 +1479,7 @@ CreateExtensionInternal(char *extensionName,
 					;
 				else
 				{
-					compatible_db_flag = compatible_db;
-					compatible_db = PG_PARSER;
+					SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
 					modify_flag = true;
 				}
 			}
@@ -1695,17 +1692,20 @@ CreateExtensionInternal(char *extensionName,
 
 		
 		/* begin - bug:z676,z776 */
-		if(modify_flag)
-		{
-			compatible_db = compatible_db_flag;
-			modify_flag = false;
-		}
+		/* Begin - BUG#Z830 */
 	}
 	PG_FINALLY();
 	{
 		if(modify_flag)
 		{
-			compatible_db = compatible_db_flag;
+			Assert(database_mode == DB_ORACLE || database_mode == DB_PG);
+			if (compatible_db == DB_ORACLE)
+				SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
+			else if (compatible_db == DB_PG)
+				SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+			else
+				; /* Maybe there is another database_mode in the future, we will handle it at here or send an error message right now */
+		/* End - BUG#Z830 */
 			modify_flag = false;
 		}
 	}
