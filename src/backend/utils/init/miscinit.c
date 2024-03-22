@@ -54,6 +54,7 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 #include "utils/ora_compatible.h"
+#include "access/xact.h"
 
 
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
@@ -775,7 +776,15 @@ InitializeSessionUserId(const char *rolename, Oid roleid, Oid dboid)
 
 	AuthenticatedUserId = roleid;
 	AuthenticatedUserIsSuperuser = rform->rolsuper;
-
+/*
+	if (rolename != NULL)
+	{
+		if(rform->rolowndboid)
+			compatible_db = ORA_PARSER;
+		printf("compatible_db:%d\n", compatible_db);
+	}
+	printf("compatible_db:%d\n", compatible_db);
+*/
 	/* This sets OuterUserId/CurrentUserId too */
 	SetSessionUserId(roleid, AuthenticatedUserIsSuperuser);
 

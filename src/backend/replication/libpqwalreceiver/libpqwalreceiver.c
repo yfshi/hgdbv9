@@ -33,6 +33,11 @@
 #include "utils/memutils.h"
 #include "utils/pg_lsn.h"
 #include "utils/tuplestore.h"
+/* BEGIN - bug:z854 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "parser/scansup.h"
+/* END - bug:z854 */
 
 PG_MODULE_MAGIC;
 
@@ -1095,14 +1100,33 @@ stringlist_to_identifierstr(PGconn *conn, List *strings)
 	foreach(lc, strings)
 	{
 		char	   *val = strVal(lfirst(lc));
-		char	   *val_escaped;
+		char	   *val_escaped;;
 
 		if (first)
 			first = false;
 		else
 			appendStringInfoChar(&res, ',');
 
-		val_escaped = PQescapeIdentifier(conn, val, strlen(val));
+		/* BEGIN - bug:z854 */
+		/*
+		 * This block was added because publication was read and converted 
+		 * to uppercase during the logical backup, causing a match failure.
+		 * 
+		 */
+		if (compatible_db == DB_ORACLE && enable_case_switch
+			 && identifier_case_switch == INTERCHANGE)
+		{
+			char	   *casename = NULL;
+			casename = identifier_case_transform(val, strlen(val));
+			val_escaped = PQescapeIdentifier(conn, casename, strlen(casename));
+			pfree(casename);
+		}
+		else
+		{
+			val_escaped = PQescapeIdentifier(conn, val, strlen(val));
+		}
+		/* END - bug:z854 */
+
 		if (!val_escaped)
 		{
 			free(res.data);
