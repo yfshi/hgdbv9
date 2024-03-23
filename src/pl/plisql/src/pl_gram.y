@@ -314,6 +314,7 @@ ScanReservedKeywordLookup(const char *text,
 /* Begin - BUG#M0000201: support question marks as binding variables */ 
 %token			QUESTION_MARK;
 /* End - BUG#M0000201: support question marks as binding variables */	
+%token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /*
  * Other tokens recognized by plisql's lexer interface layer (pl_scanner.c).

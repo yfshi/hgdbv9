@@ -1,3 +1,4 @@
+testlibpq_question_mark
 testlibpq
 testlibpqstmt2
 testlibpqstmt2_call

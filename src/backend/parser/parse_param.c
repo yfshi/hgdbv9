@@ -87,6 +87,13 @@ typedef struct OraParamNumbers
 	bool 			IsDynCallStmt;
 	bool			IsBindByName;
 	bool			IsInitDyn;
+	/* Begin - BUG#M0000316 */
+	bool			HasQuestionMark;
+	int  			questionmark_max;
+	int   			questionmark_count;
+	int				*QuestionMarkNumbers;
+	int				curpos;
+	/* End - BUG#M0000316 */
 	/* End - BUG#M0000264 */
 	struct OraParamNumbers* prev;
 }OraParamNumbers;
@@ -122,6 +129,9 @@ static bool			IsBindByName = false;
 /* Begin - ReqID:SRS-SQL-CALL */
 static bool			IsDynCallStmt = false; /* ORA-06578: output parameter cannot be a duplicate bind */
 /* End - ReqID:SRS-SQL-CALL */
+/* Begin - BUG#M0000316 */
+static bool			HasQuestionMark = false;
+/* End - BUG#M0000316 */
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
 /* Begin - BUG#M0000264 */
@@ -608,6 +618,11 @@ push_oraparam_stack(void)
 	new->param_max = 8;
 	new->mcontext = CurrentMemoryContext;
 
+	/* Begin - BUG#M0000316 */
+	new->QuestionMarkNumbers = palloc0(sizeof(int)* 8);
+	new->questionmark_max = 8;
+	/* End - BUG#M0000316 */
+
 	/* Begin - BUG#M0000264 */
 	if (CurrentOraParamNode == NULL)
 	{
@@ -623,6 +638,10 @@ push_oraparam_stack(void)
 		CurrentOraParamNode->IsDynCallStmt = IsDynCallStmt;
 		CurrentOraParamNode->IsInitDyn = IsInitDyn;
 		CurrentOraParamNode->IsBindByName = IsBindByName;
+		/* Begin - BUG#M0000316 */
+		CurrentOraParamNode->HasQuestionMark = HasQuestionMark;
+		/* End - BUG#M0000316 */
+
 		new->level = CurrentOraParamNode->level + 1;
 	}
 	new->prev = CurrentOraParamNode;
@@ -639,6 +658,9 @@ push_oraparam_stack(void)
 	DoStmtCheckVar = false;
 	IsBindByName = false;
 	/* End - BUG#M0000264 */
+	/* Begin - BUG#M0000316 */
+	HasQuestionMark = false;
+	/* End - BUG#M0000316 */
 
 	return new->level - 1;
 }
@@ -658,6 +680,9 @@ pop_oraparam_stack(int cur)
 		}
 		
 		pfree(CurrentOraParamNode->params);
+		/* Begin - BUG#M0000316 */
+		pfree(CurrentOraParamNode->QuestionMarkNumbers);
+		/* End - BUG#M0000316 */
 		pfree(CurrentOraParamNode);
 
 		CurrentOraParamNode = oraparams;
@@ -671,6 +696,9 @@ pop_oraparam_stack(int cur)
 		IsDynCallStmt = CurrentOraParamNode->IsDynCallStmt;
 		IsInitDyn = CurrentOraParamNode->IsInitDyn;
 		IsBindByName = CurrentOraParamNode->IsBindByName;
+		/* Begin - BUG#M0000316 */
+		HasQuestionMark = CurrentOraParamNode->HasQuestionMark;
+		/* End - BUG#M0000316 */
 	}
 	else
 	{
@@ -682,6 +710,9 @@ pop_oraparam_stack(int cur)
 		IsDynCallStmt = false;
 		IsInitDyn = false;
 		IsBindByName= false;
+		/* Begin - BUG#M0000316 */
+		HasQuestionMark = false;
+		/* End - BUG#M0000316 */
 	}
 }
 
@@ -731,6 +762,74 @@ calculate_oraparamnumber(const char* name)
 	 return number;  
 }
 
+/* Begin - BUG#M0000316 */
+int
+pl_calculate_questionmarknumber(void)
+{
+	int number = 0;
+
+	if (CurrentOraParamNode == NULL)
+		return 0;
+
+	if (HasPgParam)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYSTEM_ERROR),
+				 errmsg("can't use $n and ? bindvar model at the same time")));
+
+	if (CurrentOraParamNode->params != NULL &&
+		CurrentOraParamNode->param_count > 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYSTEM_ERROR),
+				 errmsg("can't use ? and :x bindvar model at the same time")));
+
+	if (CurrentOraParamNode->questionmark_count >= CurrentOraParamNode->questionmark_max)
+	{
+		CurrentOraParamNode->QuestionMarkNumbers = (int *) repalloc(CurrentOraParamNode->QuestionMarkNumbers, sizeof(int)* CurrentOraParamNode->questionmark_max * 2);
+		CurrentOraParamNode->param_max *= 2;
+	}
+
+	number = CurrentOraParamNode->questionmark_count + 1;
+
+	CurrentOraParamNode->QuestionMarkNumbers[CurrentOraParamNode->questionmark_count++] = number;
+
+	return number;
+}
+
+int
+calculate_questionmarknumber(void)
+{
+	int number = 0;
+
+	if (CurrentOraParamNode == NULL)
+		return 0;
+
+	if (HasPgParam)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYSTEM_ERROR),
+				 errmsg("can't use $n and ? bindvar model at the same time")));
+
+	if (CurrentOraParamNode->params != NULL &&
+		CurrentOraParamNode->param_count > 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYSTEM_ERROR),
+				 errmsg("can't use ? and :x bindvar model at the same time")));
+
+	number = CurrentOraParamNode->QuestionMarkNumbers[CurrentOraParamNode->curpos];
+	CurrentOraParamNode->curpos++;
+
+	return number;
+}
+
+void
+reset_oraparam_curpos(void)
+{
+	if (CurrentOraParamNode == NULL)
+	 return;
+
+	CurrentOraParamNode->curpos = 0;
+}
+
+/* End - BUG#M0000316 */
 
 /* Begin - BUG#M0000264 */
 /*
@@ -888,7 +987,10 @@ check_variables_does_match(int variables)
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				errmsg("can't use $n and :x bindvar model at the same time")));
 
-	if (!HasPgParam)
+	if (!HasPgParam
+		/* Begin - BUG#M0000316 */
+		&& !HasQuestionMark)
+		/* End - BUG#M0000316 */
 	{
 		if (CurrentOraParamNode == NULL)
 		{
@@ -906,7 +1008,26 @@ check_variables_does_match(int variables)
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					errmsg("bind variable does not exist")));
 	}
-
+	/* Begin - BUG#M0000316 */
+	else if (HasQuestionMark)
+	{
+		if (CurrentOraParamNode == NULL)
+		{
+			if (variables > 0)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("bind variable does not exist")));
+		}
+		else if (CurrentOraParamNode->questionmark_count > variables)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("not all variables bound")));
+		else if (CurrentOraParamNode->questionmark_count < variables)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("bind variable does not exist")));
+	}
+	/* End - BUG#M0000316 */
 }
 
 /*
@@ -935,6 +1056,17 @@ setdynamic_docheckvar(bool values)
 {
 	DoStmtCheckVar = values;
 }
+
+/* Begin - BUG#M0000316 */
+/*
+ * Anonymous block stmt used, complain placehold ? var
+ */
+void
+setdynamic_hasquestionmark(bool value)
+{
+	HasQuestionMark = value;
+}
+/* End - BUG#M0000316 */
 
 /*
  * set IsBindByName parser status
@@ -975,3 +1107,13 @@ setdynamic_callparser(bool value)
 }
 /* End - ReqID:SRS-SQL-CALL */
 
+/* Begin - BUG#M0000316 */
+/*
+ * get dynamic DoStmt parser status
+ */
+bool
+getdynamic_doparser(void)
+{
+	return IsDynDoStmt;
+}
+/* End - BUG#M0000316 */

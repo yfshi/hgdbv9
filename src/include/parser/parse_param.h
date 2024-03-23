@@ -53,6 +53,11 @@ extern int push_oraparam_stack(void);
 extern void pop_oraparam_stack(int cur); /* BUG#M0000264 */
 
 extern  int calculate_oraparamnumber(const char* name);
+/* Begin - BUG#M0000316 */
+extern int pl_calculate_questionmarknumber(void);
+extern int calculate_questionmarknumber(void);
+extern void reset_oraparam_curpos(void);
+/* End - BUG#M0000316 */
 /* Begin - BUG#M0000264 */
 extern void recalculate_oraparamnumber(List* parsetree_list);
 extern int get_current_oraparam_level(void);
@@ -63,6 +68,10 @@ extern bool getdynamic_parser(void);
 extern void check_variables_does_match(int variables);
 extern void setdynamic_haspgparam(bool value);
 extern void setdynamic_docheckvar(bool values);
+/* Begin - BUG#M0000316 */
+extern void setdynamic_hasquestionmark(bool value);
+extern bool getdynamic_doparser(void);
+/* End - BUG#M0000316 */
 extern bool getdynmaic_docheckvar(void);
 extern void setdynamic_doparser(bool value);
 extern void set_bindbyname(bool value);

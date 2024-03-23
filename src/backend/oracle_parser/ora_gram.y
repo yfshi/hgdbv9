@@ -695,10 +695,10 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
-%token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 /* Begin - BUG#M0000201: support question marks as binding variables */
 %token			QUESTION_MARK;
 /* End - BUG#M0000201: support question marks as binding variables */
+%token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -17929,8 +17929,16 @@ c_expr:		columnref								{ $$ = $1; }
 				{
 					ParamRef *p = makeNode(ParamRef);
 
-					questionmarks_count++;
-					p->number = questionmarks_count;
+					/* Begin - BUG#M0000316 */
+					if (getdynamic_doparser())
+						p->number = calculate_questionmarknumber();
+					else
+					{
+						questionmarks_count++;
+						p->number = questionmarks_count;
+					}
+					/* End - BUG#M0000316 */
+
 					p->location = @1;
 
 					$$ = (Node *) p;
@@ -19987,9 +19995,15 @@ plassign_target: ColId							{ $$ = $1; }
 			/* Begin - BUG#M0000201: support question marks as binding variables */
 			| QUESTION_MARK
 				{
-					questionmarks_count++;
-					$$ = psprintf("$%d", questionmarks_count);
-
+					/* Begin - BUG#M0000316 */
+					if (getdynamic_doparser())
+						$$ = psprintf("$%d", calculate_questionmarknumber());
+					else
+					{
+						questionmarks_count++;
+						$$ = psprintf("$%d", questionmarks_count);
+					}
+					/* End - BUG#M0000316 */
 				}
 			/* End - BUG#M0000201: support question marks as binding variables */
 		;
@@ -20042,8 +20056,16 @@ jdbc_call_function_parameter_el:
 				{
 					ParamRef *p = makeNode(ParamRef);
 
-					questionmarks_count++;
-					p->number = questionmarks_count;
+					/* Begin - BUG#M0000316 */
+					if (getdynamic_doparser())
+						p->number = calculate_questionmarknumber();
+					else
+					{
+						questionmarks_count++;
+						p->number = questionmarks_count;
+					}
+					/* End - BUG#M0000316 */
+
 					p->location = @1;
 
 					$$ = (Node *) p;
