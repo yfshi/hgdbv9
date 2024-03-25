@@ -478,6 +478,10 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
+	/* Begin - BUG#M0000316 */
+	reset_oraparam_curpos();
+	/* End - BUG#M0000316 */
+
 	/* And run the function */
 	PG_TRY();
 	{

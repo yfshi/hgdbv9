@@ -256,7 +256,16 @@ plisql_yylex(void)
 		{
 			char        buf[32];
 
-			sprintf(buf, "$%d", ++questionmarks_count);
+			/* Begin - BUG#M0000316 */
+			int 		num;
+
+			if (getdynamic_doparser())
+				num = pl_calculate_questionmarknumber();
+			else
+				num = ++questionmarks_count;
+
+			sprintf(buf, "$%d", num);
+			/* End - BUG#M0000316 */
 			aux1.lval.str = buf;
 			paramname = buf;
 		}
@@ -467,6 +476,13 @@ internal_yylex(TokenAuxData *auxdata)
 			calculate_oraparamnumber(auxdata->lval.str);
 		}
 		/* End - ReqID:SRS-SQL-ANONYOUT */
+		/* Begin - BUG#M0000316 */
+		else if (token == QUESTION_MARK)
+		{
+			auxdata->lval.str = pstrdup(yytext);
+			setdynamic_hasquestionmark(true);
+		}
+		/* End - BUG#M0000316 */
 	}
 
 	return token;
