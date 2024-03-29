@@ -79,11 +79,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -129,11 +129,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -154,11 +154,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -179,11 +179,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -231,11 +231,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -285,11 +285,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -312,11 +312,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -339,11 +339,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -393,11 +393,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -420,11 +420,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -447,11 +447,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -474,11 +474,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -501,11 +501,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -525,7 +525,7 @@ explain (costs off)
                                                                       QUERY PLAN                                                                      
 ------------------------------------------------------------------------------------------------------------------------------------------------------
  Index Only Scan using pg_class_relname_nsp_index on pg_class
-   Index Cond: (relname = ($0)::text)
+   Index Cond: (relname = $0)
    InitPlan 1 (returns $0)
      ->  Limit
            ->  Sort
@@ -562,9 +562,9 @@ explain (costs off)
                Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
                ->  Append
                      ->  Index Scan using pg_class_relname_nsp_index on pg_class
-                           Index Cond: (relname = ($0)::text)
+                           Index Cond: (relname = $0)
                      ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-                           Index Cond: (proname = ($0)::text)
+                           Index Cond: (proname = $0)
 (14 rows)
 
 	select name from v_oct_2
@@ -597,9 +597,9 @@ explain (costs off)
                Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
                ->  Append
                      ->  Index Scan using pg_class_relname_nsp_index on pg_class
-                           Index Cond: (relname = ($0)::text)
+                           Index Cond: (relname = $0)
                      ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-                           Index Cond: (proname = ($0)::text)
+                           Index Cond: (proname = $0)
 (20 rows)
 
 	select name from v_oct_2
@@ -630,11 +630,11 @@ explain (costs off)
          Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
          ->  Append
                ->  Index Scan using pg_class_relname_nsp_index on pg_class
-                     Index Cond: (relname = ($0)::text)
+                     Index Cond: (relname = $0)
                ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-                     Index Cond: (proname = ($0)::text)
+                     Index Cond: (proname = $0)
                ->  Index Scan using pg_type_typname_nsp_index on pg_type
-                     Index Cond: (typname = ($0)::text)
+                     Index Cond: (typname = $0)
 (20 rows)
 
 	select name from v_oct_3
@@ -663,7 +663,7 @@ explain (costs off)
                                        ->  Seq Scan on pg_class pg_class_1
                                        ->  Seq Scan on pg_proc
    ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
-         Index Cond: (relname = (v_oct_2.name)::text)
+         Index Cond: (relname = v_oct_2.name)
 (14 rows)
 
 	select name from v_oct_1
@@ -783,7 +783,7 @@ explain (costs off)
                            ->  Seq Scan on pg_class pg_class_1
                            ->  Seq Scan on pg_proc
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = (((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text)
+               Index Cond: (relname = ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))
 (11 rows)
 
 	select min(id) from v_oct_1 where name in (select name from v_oct_2);
@@ -800,7 +800,7 @@ explain (costs off)
 ----------------------------------------------------------------------------------------------------------------------------------------
  Aggregate
    ->  Hash Semi Join
-         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         Hash Cond: (((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) = pg_class.relname)
          ->  HashAggregate
                Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
                ->  Append
@@ -883,7 +883,7 @@ explain (costs off)
 ----------------------------------------------------------------------------------------------------------------------------------------
  Aggregate
    ->  Hash Join
-         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         Hash Cond: (((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) = pg_class.relname)
          ->  HashAggregate
                Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
                ->  Append
@@ -907,7 +907,7 @@ explain (costs off)
 ----------------------------------------------------------------------------------------------------------------------------------------
  Aggregate
    ->  Hash Join
-         Hash Cond: ((((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))::text = pg_class.relname)
+         Hash Cond: (((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) = pg_class.relname)
          ->  HashAggregate
                Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
                ->  Append
@@ -993,11 +993,13 @@ explain (costs off)
 -- order by
 explain (costs off)
 	select name from v_oct_1 order by name limit 1;
-                             QUERY PLAN                             
---------------------------------------------------------------------
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
  Limit
-   ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
-(2 rows)
+   ->  Sort
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+         ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(4 rows)
 
 	select name from v_oct_1 order by name limit 1;
    name   
@@ -1008,11 +1010,13 @@ explain (costs off)
 -- order by desc
 explain (costs off)
 	select name from v_oct_1 order by name desc limit 1;
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                                             QUERY PLAN                                             
+----------------------------------------------------------------------------------------------------
  Limit
-   ->  Index Only Scan Backward using pg_class_relname_nsp_index on pg_class
-(2 rows)
+   ->  Sort
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C" DESC
+         ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
+(4 rows)
 
 	select name from v_oct_1 order by name desc limit 1;
    name   
@@ -1059,11 +1063,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1109,11 +1113,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1134,11 +1138,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1159,11 +1163,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = 'pg_class'::text)
+               Index Cond: (relname = 'pg_class'::varchar2)
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = 'pg_class'::text)
+               Index Cond: (proname = 'pg_class'::varchar2)
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = 'pg_class'::text)
+               Index Cond: (typname = 'pg_class'::varchar2)
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1211,11 +1215,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1265,11 +1269,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1292,11 +1296,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1319,11 +1323,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1373,11 +1377,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1400,11 +1404,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1427,11 +1431,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1454,11 +1458,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -1481,11 +1485,11 @@ explain (costs off)
    Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
    ->  Append
          ->  Index Scan using pg_class_relname_nsp_index on pg_class
-               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (relname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_proc_proname_args_nsp_index on pg_proc
-               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (proname = ANY ('{pg_class,pg_proc}'::varchar2[]))
          ->  Index Scan using pg_type_typname_nsp_index on pg_type
-               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::text[]))
+               Index Cond: (typname = ANY ('{pg_class,pg_proc}'::varchar2[]))
 (9 rows)
 
 	select id, name from v_oct_3
@@ -2029,7 +2033,7 @@ begin
 end;
 /
 --ok
-select text from all_source where name='PKG' and type='PACKAGE';
+select text from all_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
@@ -2038,7 +2042,7 @@ select text from all_source where name='PKG' and type='PACKAGE';
  end;
 (4 rows)
 
-select text from dba_source where name='PKG' and type='PACKAGE';
+select text from dba_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
@@ -2047,7 +2051,7 @@ select text from dba_source where name='PKG' and type='PACKAGE';
  end;
 (4 rows)
 
-select text from user_source where name='PKG' and type='PACKAGE';
+select text from user_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
@@ -2076,6 +2080,25 @@ select object_name from user_arguments where package_name='PKG';
 (1 row)
 
 --ok
+select object_name from all_arguments where package_name='PKG' AND package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+select object_name from dba_arguments where package_name='PKG' AND package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+select object_name from user_arguments where package_name='PKG' AND package_name='PKG';
+ object_name 
+-------------
+ TEST_P
+(1 row)
+
+--ok
 select procedure_name,subprogram_id from dba_procedures where object_name='PKG' ORDER BY subprogram_id;
  procedure_name | subprogram_id 
 ----------------+---------------
@@ -2098,7 +2121,7 @@ select procedure_name,subprogram_id from user_procedures where object_name='PKG'
 (2 rows)
 
 --ok
-select text,type from all_source where name='PKG' ORDER BY type;
+select text,type from all_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
@@ -2116,7 +2139,7 @@ select text,type from all_source where name='PKG' ORDER BY type;
  end;                             | PACKAGE BODY
 (13 rows)
 
-select text,type from dba_source where name='PKG' ORDER BY type;
+select text,type from dba_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
@@ -2134,7 +2157,7 @@ select text,type from dba_source where name='PKG' ORDER BY type;
  end;                             | PACKAGE BODY
 (13 rows)
 
-select text,type from user_source where name='PKG' ORDER BY type;
+select text,type from user_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
@@ -2151,6 +2174,532 @@ select text,type from user_source where name='PKG' ORDER BY type;
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
 (13 rows)
+
+CREATE OR REPLACE FUNCTION test_f(id integer,name varchar2) RETURN integer IS
+BEGIN
+  RETURN 1;
+end;
+/
+--ok
+select text from all_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+select text from dba_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+select text from user_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+--ok
+select object_name from all_arguments where object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from dba_arguments where object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from user_arguments where object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+--ok
+select object_name from all_arguments where object_name='TEST_F' AND object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from dba_arguments where object_name='TEST_F' AND object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from user_arguments where object_name='TEST_F' AND object_name='TEST_F';
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+select procedure_name,subprogram_id from all_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+select procedure_name,subprogram_id from user_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+--ok
+select text,type from all_source where name='TEST_F' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
+
+select text,type from dba_source where name='TEST_F' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
+
+select text,type from user_source where name='TEST_F' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
+
+select object_name from all_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' ORDER BY object_name;
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from dba_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' ORDER BY object_name;
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from user_arguments where object_name='TEST_F'OR  OBJECT_NAME = 'PKG' ORDER BY object_name;
+ object_name 
+-------------
+ TEST_F
+ TEST_F
+ TEST_F
+(3 rows)
+
+select object_name from all_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME
+ORDER BY object_name;
+ object_name 
+-------------
+ TEST_F
+(1 row)
+
+select object_name from dba_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME
+ORDER BY object_name;;
+ object_name 
+-------------
+ TEST_F
+(1 row)
+
+select object_name from user_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME ORDER BY object_name;
+ object_name 
+-------------
+ TEST_F
+(1 row)
+
+--again test normal
+set ivorysql.identifier_case_switch = normal;
+--ok
+select text from all_source where name='pkg' and type='PACKAGE' ORDER BY line;
+              text              
+--------------------------------
+ PACKAGE pkg IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+select text from dba_source where name='pkg' and type='PACKAGE' ORDER BY line;
+              text              
+--------------------------------
+ PACKAGE pkg IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+select text from user_source where name='pkg' and type='PACKAGE' ORDER BY line;
+              text              
+--------------------------------
+ PACKAGE pkg IS
+ var1 integer;
+  procedure test_p(id integer);
+ end;
+(4 rows)
+
+--ok
+select object_name from all_arguments where package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+select object_name from dba_arguments where package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+select object_name from user_arguments where package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+--ok
+select object_name from all_arguments where package_name='pkg' AND package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+select object_name from dba_arguments where package_name='pkg' AND package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+select object_name from user_arguments where package_name='pkg' AND package_name='pkg';
+ object_name 
+-------------
+ test_p
+(1 row)
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='pkg' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ test_p         | 1
+(2 rows)
+
+select procedure_name,subprogram_id from all_procedures where object_name='pkg' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ test_p         | 1
+(2 rows)
+
+select procedure_name,subprogram_id from user_procedures where object_name='pkg' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 0
+ test_p         | 1
+(2 rows)
+
+--ok
+select text,type from all_source where name='pkg' ORDER BY type,line;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE pkg IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY pkg IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+select text,type from dba_source where name='pkg' ORDER BY type,line;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE pkg IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY pkg IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+select text,type from user_source where name='pkg' ORDER BY type,line;
+               text               |     type     
+----------------------------------+--------------
+ PACKAGE pkg IS                   | PACKAGE
+ var1 integer;                    | PACKAGE
+  procedure test_p(id integer);   | PACKAGE
+ end;                             | PACKAGE
+ PACKAGE BODY pkg IS              | PACKAGE BODY
+ var3 integer;                    | PACKAGE BODY
+  procedure test_p(id integer) is | PACKAGE BODY
+  begin                           | PACKAGE BODY
+    var3 := 4;                    | PACKAGE BODY
+  end;                            | PACKAGE BODY
+ begin                            | PACKAGE BODY
+   var1 := 2;                     | PACKAGE BODY
+ end;                             | PACKAGE BODY
+(13 rows)
+
+--ok
+select text from all_source where name='test_f' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+select text from dba_source where name='test_f' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+select text from user_source where name='test_f' and type='FUNCTION' ORDER BY line;
+                       text                        
+---------------------------------------------------
+ FUNCTION public.test_f(id integer, name varchar2)
+  RETURN integer
+  AUTHID DEFINER
+ IS 
+ BEGIN
+   RETURN 1;
+ end;
+(7 rows)
+
+--ok
+select object_name from all_arguments where object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from dba_arguments where object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from user_arguments where object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+--ok
+select object_name from all_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' ORDER BY object_name;
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from dba_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' ORDER BY object_name;
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from user_arguments where object_name='test_f' OR  OBJECT_NAME = 'pkg' ORDER BY object_name;
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from all_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME
+ORDER BY object_name;
+ object_name 
+-------------
+ test_f
+(1 row)
+
+select object_name from dba_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME
+ORDER BY object_name;;
+ object_name 
+-------------
+ test_f
+(1 row)
+
+select object_name from user_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME ORDER BY object_name;
+ object_name 
+-------------
+ test_f
+(1 row)
+
+--ok
+select object_name from all_arguments where object_name='test_f' AND object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from dba_arguments where object_name='test_f' AND object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+select object_name from user_arguments where object_name='test_f' AND object_name='test_f';
+ object_name 
+-------------
+ test_f
+ test_f
+ test_f
+(3 rows)
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='test_f' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+select procedure_name,subprogram_id from all_procedures where object_name='test_f' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+select procedure_name,subprogram_id from user_procedures where object_name='test_f' ORDER BY subprogram_id;
+ procedure_name | subprogram_id 
+----------------+---------------
+                | 1
+(1 row)
+
+--ok
+select text,type from all_source where name='test_f' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
+
+select text,type from dba_source where name='test_f' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
+
+select text,type from user_source where name='test_f' ORDER BY type,line;
+                       text                        |   type   
+---------------------------------------------------+----------
+ FUNCTION public.test_f(id integer, name varchar2) | FUNCTION
+  RETURN integer                                   | FUNCTION
+  AUTHID DEFINER                                   | FUNCTION
+ IS                                                | FUNCTION
+ BEGIN                                             | FUNCTION
+   RETURN 1;                                       | FUNCTION
+ end;                                              | FUNCTION
+(7 rows)
 
 --clean data
 DROP package pkg;
+DROP FUNCTION test_f;

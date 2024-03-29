@@ -52,7 +52,6 @@ static Oid opr_left_right_internal(const char *oprname,
 								   Oid oprleft,
 								   Oid oprright);
 static Oid opr_left_right(Node *leftop, Node *rightop, Oid origin_opno);
-static void consttype_varchar2_to_text(Node *node);
 static void pull_var_update_vardata(Node *clause,
 									Node **lop,
 									Node **rop,
@@ -120,107 +119,6 @@ take_oracasetrans_away(Node *clause)
 	return clause;
 }
 
-/*
- * consttype_varchar2_to_text
- *
- * Make Const's consttype from ORAVARCHARBYTEOID / ORAVARCHARCHAROID to TEXTOID,
- * and from ORAVARCHARBYTEARRAYOID / ORAVARCHARCHARARRAYOID to TEXTARRAYOID.
- */
-static void
-consttype_varchar2_to_text(Node *node)
-{
-	if (!IsA(node, Const))
-		return;
-
-	switch (((Const *) node)->consttype)
-	{
-		case ORACHARBYTEOID:
-		case ORACHARCHAROID:
-			{
-				if (false)
-					((Const *) node)->constvalue = DirectFunctionCall1(
-											rtrim1, ((Const *) node)->constvalue);
-				((Const *) node)->consttypmod = -1;
-				((Const *) node)->consttype = TEXTOID;
-			}
-			break;
-
-		/*
-		 * XXX "= ANY(..::char(n)[])" is different with "IN (..::char(n), ...)"
-		 * transformAExprIn() makes an varchar2 array ArrayExpr.
-		 * transformAExprOpAny() makes an char array ArrayCoerceExpr.
-		 */
-		case ORACHARBYTEARRAYOID:
-		case ORACHARCHARARRAYOID:
-			{
-				if (false)
-				{
-					Datum		   *elems = NULL;
-					AnyArrayType   *arr = NULL;
-					array_iter		iter;
-					int				nextelem = 0,
-									numelems = 0,
-									nelems = 0;
-					int16			elmlen = 0;
-					bool			elmbyval = false;
-					char			elmalign = 0x00;
-
-					arr = DatumGetAnyArrayP(((Const *) node)->constvalue);
-					array_iter_setup(&iter, arr);
-					numelems = ArrayGetNItems(AARR_NDIM(arr), AARR_DIMS(arr));
-
-					if (VARATT_IS_EXPANDED_HEADER(arr))
-					{
-						elmlen = arr->xpn.typlen;
-						elmbyval = arr->xpn.typbyval;
-						elmalign = arr->xpn.typalign;
-					}
-					else
-						get_typlenbyvalalign(AARR_ELEMTYPE(arr), &elmlen,
-											 &elmbyval, &elmalign);
-
-					elems = (Datum *) palloc0(sizeof(Datum) * numelems);
-
-					while (nextelem < numelems)
-					{
-						Datum	elem = (Datum) 0;
-						bool	isnull = true;
-
-						elem = array_iter_next(&iter, &isnull, ++nextelem,
-											   elmlen, elmbyval, elmalign);
-
-						if (!isnull)
-							elems[nelems++] = DirectFunctionCall1(rtrim1, elem);
-					}
-
-					((Const *) node)->constvalue = (Datum) construct_array(elems,
-																		   nelems,
-																		   TEXTOID,
-																		   -1,
-																		   false,
-																		   'i');
-				}
-				((Const *) node)->consttypmod = -1;
-				((Const *) node)->consttype = TEXTARRAYOID;
-			}
-			break;
-
-		case ORAVARCHARBYTEOID:
-		case ORAVARCHARCHAROID:
-			((Const *) node)->consttype = TEXTOID;
-			break;
-
-		case ORAVARCHARBYTEARRAYOID:
-		case ORAVARCHARCHARARRAYOID:
-			((Const *) node)->consttype = TEXTARRAYOID;
-			break;
-
-		default:
-			break;
-	}
-
-	return;
-}
 
 /*
  * opr_left_right_internal
@@ -404,32 +302,18 @@ pull_var_update_vardata(Node *clause, Node **lop, Node **rop, Node **inner_var)
 	if (*inner_var == NULL)		/* should not happen */
 		return;
 
-	consttype_varchar2_to_text(*rop);
-
-	if (identifier_case_switch == NORMAL)
+	/* Begin - BUG#Z0000838 */
+	/*
+	 * see details about ora_case_trans
+	 * which only consider identifier_case_switch =
+	 * interchange
+	 */
+	if (identifier_case_switch != INTERCHANGE)
 	{
 		*lop = *inner_var;
-
-		if (IsA(*rop, Param) || IsA(*rop, Var))
-		{
-			if (exprType(*rop) == NAMEOID)
-				*rop = (Node *) makeFuncExpr(F_TEXT_NAME,
-											 TEXTOID,
-											 list_make1(*rop),
-											 InvalidOid,
-											 C_COLLATION_OID,
-											 COERCE_EXPLICIT_CAST);
-			else
-				*rop = (Node *) makeRelabelType((Expr *) *rop,
-												TEXTOID,
-												-1,
-												DEFAULT_COLLATION_OID,
-												COERCE_IMPLICIT_CAST);
-		}
-
 		return;
 	}
-
+	/* End - BUG#Z0000838 */
 	if (IsA(clause, OpExpr))
 	{
 		/*
