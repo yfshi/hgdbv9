@@ -1182,6 +1182,9 @@ _equalAlterTableCmd(const AlterTableCmd *a, const AlterTableCmd *b)
 	COMPARE_SCALAR_FIELD(behavior);
 	COMPARE_SCALAR_FIELD(missing_ok);
 	COMPARE_SCALAR_FIELD(recurse);
+	/* Begin - BUG:M0000325 */
+	COMPARE_SCALAR_FIELD(without_copy);
+	/* End - BUG:M0000325 */
 
 	return true;
 }

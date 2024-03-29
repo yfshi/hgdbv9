@@ -693,3 +693,61 @@ AtEOXact_SMgr(void)
 		smgrclose(rel);
 	}
 }
+
+/* Begin - BUG:M0000325 */
+/*
+ *	smgrdounlinkallsetlog() -- Immediately unlink the init fork of all given relations
+ */
+void
+smgrdounlinkallsetlog(SMgrRelationSetLog *rels, int nrels, bool isRedo)
+{
+	int			i = 0;
+	RelFileNodeBackend *rnodes;
+
+	if (nrels == 0)
+		return;
+
+	/*
+	 * create an array which contains all relations to be dropped, and close
+	 * each relation's init fork at the smgr level while at it
+	 */
+	rnodes = palloc(sizeof(RelFileNodeBackend) * nrels);
+	for (i = 0; i < nrels; i++)
+	{
+		RelFileNodeBackend rnode = rels[i]->smgr->smgr_rnode;
+		int			which = rels[i]->smgr->smgr_which;
+
+		rnodes[i] = rnode;
+
+		/* Close the init fork at smgr level */
+		(*(smgrsw[which].smgr_close)) (rels[i]->smgr, INIT_FORKNUM);
+	}
+
+	for (i = 0; i < nrels; i++)
+		CacheInvalidateSmgr(rnodes[i]);
+
+	/*
+	 * Delete the physical file(s).
+	 *
+	 * Note: smgr_unlink must treat deletion failure as a WARNING, not an
+	 * ERROR, because we've already decided to commit or abort the current
+	 * xact.
+	 */
+
+	for (i = 0; i < nrels; i++)
+	{
+		int			which = rels[i]->smgr->smgr_which;
+
+		//if (!RelFileNodeBackendIsTemp(rnodes[i]))
+		//	register_forget_request(rnodes[i], INIT_FORKNUM, 0 /* first seg */ );
+
+
+		/* Now do the per-fork work */
+		if (smgrsw[which].smgr_exists(rels[i]->smgr, INIT_FORKNUM))
+			(*(smgrsw[which].smgr_unlink)) (rnodes[i], INIT_FORKNUM, isRedo);
+	}
+
+	pfree(rnodes);
+}
+/* End - BUG:M0000325 */
+

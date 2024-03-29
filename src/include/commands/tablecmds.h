@@ -106,5 +106,9 @@ extern bool PartConstraintImpliedByRelConstraint(Relation scanrel,
 extern void check_function_depend_on_relation(Oid relid);
 extern void check_function_depend_on_relation_column(Oid relid, AttrNumber attnum);
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - BUG:M0000325 */
+extern void UpdatePersistence(Oid relid,char relkind, char persistence);
+extern void UpdateIndexPersistence(Oid reloid, char persistence);
+/* End - BUG:M0000325 */
 
 #endif							/* TABLECMDS_H */

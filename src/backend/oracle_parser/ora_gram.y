@@ -2835,8 +2835,22 @@ alter_table_cmd:
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetLogged;
+					/* Begin - BUG:M0000325 */
+					n->without_copy = false;
+					/* End - BUG:M0000325 */
+
 					$$ = (Node *)n;
 				}
+			/* Begin - BUG:M0000325 */
+			/* ALTER TABLE <name> SET LOGGED WITHOUT COPY */
+			| SET LOGGED WITHOUT COPY
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_SetLogged;
+					n->without_copy = true;
+					$$ = (Node *)n;
+				}
+			/* End - BUG:M0000325 */
 			/* ALTER TABLE <name> SET UNLOGGED */
 			| SET UNLOGGED
 				{

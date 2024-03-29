@@ -44,5 +44,8 @@ extern int	smgrGetPendingDeletes(bool forCommit, RelFileNode **ptr);
 extern void AtSubCommit_smgr(void);
 extern void AtSubAbort_smgr(void);
 extern void PostPrepare_smgr(void);
+/* Begin - BUG:M0000325 */
+extern void RelationDropStorageSetLog(Relation rel);
+/* End - BUG:M0000325 */
 
 #endif							/* STORAGE_H */
