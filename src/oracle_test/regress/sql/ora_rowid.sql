@@ -261,3 +261,36 @@ select * from v1;
 
 drop view v1;
 drop table t2;
+
+/* Begin - Bug#Z928 */
+create table tw(a int, b int) with rowid;
+create user test;
+alter table tw owner to test;
+
+-- check if the Owner is consistent
+SELECT
+    CASE
+        WHEN table_owner = rowid_sequence_owner THEN 'true'
+        ELSE 'false'
+    END AS owners_match
+FROM (
+    SELECT
+        relowner AS table_owner
+    FROM
+        pg_class
+    WHERE
+        relname = 'tw'
+) AS tbl,
+(
+    SELECT
+        relowner AS rowid_sequence_owner
+    FROM
+        pg_class
+    WHERE
+        relname = 'tw_rowid_seq'
+) AS seq;
+
+--cleanup
+drop table tw;
+drop user test;
+/* End - Bug#Z928 */

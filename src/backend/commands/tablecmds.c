@@ -564,6 +564,10 @@ static void change_owner_fix_column_acls(Oid relationOid,
 										 Oid oldOwnerId, Oid newOwnerId);
 static void change_owner_recurse_to_sequences(Oid relationOid,
 											  Oid newOwnerId, LOCKMODE lockmode);
+/* Begin - Bug#Z928 */
+static void change_owner_rowid_sequences(char *relname, Oid relnamespace,
+											Oid newOwnerId, LOCKMODE lockmode);
+/* End - Bug#Z928 */
 static ObjectAddress ATExecClusterOn(Relation rel, const char *indexName,
 									 LOCKMODE lockmode);
 static void ATExecDropCluster(Relation rel, LOCKMODE lockmode);
@@ -14494,6 +14498,13 @@ ATExecChangeOwner(Oid relationOid, Oid newOwnerId, bool recursing, LOCKMODE lock
 
 		/* If it has dependent sequences, recurse to change them too */
 		change_owner_recurse_to_sequences(relationOid, newOwnerId, lockmode);
+
+		/* Begin - Bug#Z928 */
+		/* If this table with rowid, we change the dependent sequence too */
+		if (tuple_class->relhasrowid)
+			change_owner_rowid_sequences(NameStr(tuple_class->relname), tuple_class->relnamespace,
+										 newOwnerId, lockmode);
+		/* End - Bug#Z928 */
 	}
 
 	InvokeObjectPostAlterHook(RelationRelationId, relationOid, 0);
@@ -14635,6 +14646,29 @@ change_owner_recurse_to_sequences(Oid relationOid, Oid newOwnerId, LOCKMODE lock
 
 	relation_close(depRel, AccessShareLock);
 }
+
+/* Begin - Bug#Z928 */
+/*
+ * change_owner_rowid_sequences
+ *
+ * Helper function for ATExecChangeOwner. change the rowid sequence owner.
+ */
+static void
+change_owner_rowid_sequences(char *relname, Oid relnamespace, Oid newOwnerId, LOCKMODE lockmode)
+{
+	char	*rowidseq = NULL;
+	Oid		 rseqid = InvalidOid;
+
+	rowidseq = psprintf("%s_%s", relname, "rowid_seq");
+	rseqid = get_relname_relid(rowidseq, relnamespace);
+
+	/* We don't need to close the sequence while we alter it. */
+	if (OidIsValid(rseqid))
+		ATExecChangeOwner(rseqid, newOwnerId, true, lockmode);
+
+	pfree(rowidseq);
+}
+/* End - Bug#Z928 */
 
 /*
  * ALTER TABLE CLUSTER ON

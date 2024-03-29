@@ -18960,6 +18960,11 @@ dumpSequenceData(Archive *fout, const TableDataInfo *tdinfo)
 	bool		called;
 	PQExpBuffer query = createPQExpBuffer();
 
+	/* Begin - Bug#Z928 */
+	if (tbinfo->relhasrowid)
+		return;
+	/* End - Bug#Z928 */
+
 	appendPQExpBuffer(query,
 					  "SELECT last_value, is_called FROM %s",
 					  fmtQualifiedDumpable(tbinfo));
