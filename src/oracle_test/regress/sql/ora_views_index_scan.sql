@@ -622,9 +622,9 @@ end;
 /
 
 --ok
-select text from all_source where name='PKG' and type='PACKAGE';
-select text from dba_source where name='PKG' and type='PACKAGE';
-select text from user_source where name='PKG' and type='PACKAGE';
+select text from all_source where name='PKG' and type='PACKAGE' ORDER BY line;
+select text from dba_source where name='PKG' and type='PACKAGE' ORDER BY line;
+select text from user_source where name='PKG' and type='PACKAGE' ORDER BY line;
 
 --ok
 select object_name from all_arguments where package_name='PKG';
@@ -632,14 +632,132 @@ select object_name from dba_arguments where package_name='PKG';
 select object_name from user_arguments where package_name='PKG';
 
 --ok
+select object_name from all_arguments where package_name='PKG' AND package_name='PKG';
+select object_name from dba_arguments where package_name='PKG' AND package_name='PKG';
+select object_name from user_arguments where package_name='PKG' AND package_name='PKG';
+
+--ok
 select procedure_name,subprogram_id from dba_procedures where object_name='PKG' ORDER BY subprogram_id;
 select procedure_name,subprogram_id from all_procedures where object_name='PKG' ORDER BY subprogram_id;
 select procedure_name,subprogram_id from user_procedures where object_name='PKG' ORDER BY subprogram_id;
 
 --ok
-select text,type from all_source where name='PKG' ORDER BY type;
-select text,type from dba_source where name='PKG' ORDER BY type;
-select text,type from user_source where name='PKG' ORDER BY type;
+select text,type from all_source where name='PKG' ORDER BY type,line;
+select text,type from dba_source where name='PKG' ORDER BY type,line;
+select text,type from user_source where name='PKG' ORDER BY type,line;
+
+CREATE OR REPLACE FUNCTION test_f(id integer,name varchar2) RETURN integer IS
+BEGIN
+  RETURN 1;
+end;
+/
+
+--ok
+select text from all_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+select text from dba_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+select text from user_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
+
+--ok
+select object_name from all_arguments where object_name='TEST_F';
+select object_name from dba_arguments where object_name='TEST_F';
+select object_name from user_arguments where object_name='TEST_F';
+
+
+--ok
+select object_name from all_arguments where object_name='TEST_F' AND object_name='TEST_F';
+select object_name from dba_arguments where object_name='TEST_F' AND object_name='TEST_F';
+select object_name from user_arguments where object_name='TEST_F' AND object_name='TEST_F';
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from all_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from user_procedures where object_name='TEST_F' ORDER BY subprogram_id;
+
+--ok
+select text,type from all_source where name='TEST_F' ORDER BY type,line;
+select text,type from dba_source where name='TEST_F' ORDER BY type,line;
+select text,type from user_source where name='TEST_F' ORDER BY type,line;
+
+
+select object_name from all_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' ORDER BY object_name;
+select object_name from dba_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' ORDER BY object_name;
+select object_name from user_arguments where object_name='TEST_F'OR  OBJECT_NAME = 'PKG' ORDER BY object_name;
+
+select object_name from all_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME
+ORDER BY object_name;
+select object_name from dba_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME
+ORDER BY object_name;;
+select object_name from user_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' GROUP BY OBJECT_NAME ORDER BY object_name;
+
+
+--again test normal
+set ivorysql.identifier_case_switch = normal;
+
+--ok
+select text from all_source where name='pkg' and type='PACKAGE' ORDER BY line;
+select text from dba_source where name='pkg' and type='PACKAGE' ORDER BY line;
+select text from user_source where name='pkg' and type='PACKAGE' ORDER BY line;
+
+--ok
+select object_name from all_arguments where package_name='pkg';
+select object_name from dba_arguments where package_name='pkg';
+select object_name from user_arguments where package_name='pkg';
+
+--ok
+select object_name from all_arguments where package_name='pkg' AND package_name='pkg';
+select object_name from dba_arguments where package_name='pkg' AND package_name='pkg';
+select object_name from user_arguments where package_name='pkg' AND package_name='pkg';
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='pkg' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from all_procedures where object_name='pkg' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from user_procedures where object_name='pkg' ORDER BY subprogram_id;
+
+--ok
+select text,type from all_source where name='pkg' ORDER BY type,line;
+select text,type from dba_source where name='pkg' ORDER BY type,line;
+select text,type from user_source where name='pkg' ORDER BY type,line;
+
+
+--ok
+select text from all_source where name='test_f' and type='FUNCTION' ORDER BY line;
+select text from dba_source where name='test_f' and type='FUNCTION' ORDER BY line;
+select text from user_source where name='test_f' and type='FUNCTION' ORDER BY line;
+
+--ok
+select object_name from all_arguments where object_name='test_f';
+select object_name from dba_arguments where object_name='test_f';
+select object_name from user_arguments where object_name='test_f';
+
+
+--ok
+select object_name from all_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' ORDER BY object_name;
+select object_name from dba_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' ORDER BY object_name;
+select object_name from user_arguments where object_name='test_f' OR  OBJECT_NAME = 'pkg' ORDER BY object_name;
+
+select object_name from all_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME
+ORDER BY object_name;
+select object_name from dba_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME
+ORDER BY object_name;;
+select object_name from user_arguments where object_name='test_f' OR OBJECT_NAME = 'pkg' GROUP BY OBJECT_NAME ORDER BY object_name;
+
+
+--ok
+select object_name from all_arguments where object_name='test_f' AND object_name='test_f';
+select object_name from dba_arguments where object_name='test_f' AND object_name='test_f';
+select object_name from user_arguments where object_name='test_f' AND object_name='test_f';
+
+--ok
+select procedure_name,subprogram_id from dba_procedures where object_name='test_f' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from all_procedures where object_name='test_f' ORDER BY subprogram_id;
+select procedure_name,subprogram_id from user_procedures where object_name='test_f' ORDER BY subprogram_id;
+
+--ok
+select text,type from all_source where name='test_f' ORDER BY type,line;
+select text,type from dba_source where name='test_f' ORDER BY type,line;
+select text,type from user_source where name='test_f' ORDER BY type,line;
+
 
 --clean data
 DROP package pkg;
+DROP FUNCTION test_f;
