@@ -3953,8 +3953,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			if (strcmp(te->desc, "VIEW") == 0)
 			{
 				bool		need_reset = false;
-				char		*ident_case_now = getInstanceIdentifier_case_switch(AH->connection);
-				if (strcmp(ident_case_now, "normal") != 0)
+				/* Begin - BUG#Z932 */
+				if (strcmp(getInstanceIdentifier_case_switch(AH->connection), "normal") == 0)
 				{
 					switch(te->ident_case)
 					{
@@ -3964,7 +3964,6 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 							break;
 						case 'n':
 							need_reset = false;
-							ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");
 							break;
 						case 'l':
 							need_reset = true;
@@ -3979,7 +3978,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					}
 				}
 				ahprintf(AH, "%s\n\n", te->defn);
-
+				/* End - BUG#Z932 */
 				if (need_reset)
 					ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");
 			}
@@ -5815,19 +5814,23 @@ static char *
 getInstanceIdentifier_case_switch(PGconn *conn)
 {
 	PGresult *res;
-	PQExpBuffer cmd = createPQExpBuffer();
+	/* Begin - BUG#Z932 */
+	PQExpBuffer newcmd = createPQExpBuffer();
 	char *identifier_case_switch = NULL;
 
-	appendPQExpBufferStr(cmd, "show ivorysql.identifier_case_switch;");
-	res = PQexec(conn, cmd->data);
+	appendPQExpBufferStr(newcmd, "show ivorysql.identifier_case_switch;");
+	res = PQexec(conn, newcmd->data);
 	if(res)
+	{
 		identifier_case_switch = pg_strdup(PQgetvalue(res, 0, 0));
-	else
-		identifier_case_switch = "normal";
-	PQclear(res);
-	destroyPQExpBuffer(cmd);
+		PQclear(res);
+		destroyPQExpBuffer(newcmd);
 
-	return identifier_case_switch;
+		return identifier_case_switch;
+	}
+	else
+		return "normal";
+	/* End - BUG#Z932 */
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
