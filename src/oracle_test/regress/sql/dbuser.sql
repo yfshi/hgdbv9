@@ -893,6 +893,8 @@ DROP AGGREGATE regtest_user_agg_2(int2);
 DROP CONVERSION regtest_user_conv_2;
 DROP TABLE regtest_user_t2;
 DROP TABLE regtest_user_table_2;
+
+
 --
 -- GRANT xxx ON xxx TO xxx
 -- 
@@ -2345,3 +2347,58 @@ drop user regress_database_test_user;
 drop role regress_databasegroup;
 drop role regress_database_group;
 
+
+--
+------------- begin - bug:925-----------
+--
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+select dbuser_function();
+
+create user iu;
+create database db1;
+--  success test
+GRANT CREATE ON database db1 TO iu;
+--  error test
+GRANT CREATE ON database db1 TO instanceuser iu;
+
+
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+set session authorization system;
+
+
+create user du;
+create database db2;
+
+--  error test
+GRANT CREATE ON database db1 TO du;
+--  error test
+GRANT CREATE ON database db1 TO databaseuser du;
+
+
+set ivorysql.grant_usertype to oracle;
+
+--  error test
+GRANT CREATE ON database db1 TO iu;
+--  success test
+GRANT CREATE ON database db1 TO instanceuser iu;
+--  error test
+GRANT CREATE ON database db1 TO du;
+--  error test
+GRANT CREATE ON database db1 TO databaseuser du;
+
+
+drop user du;
+
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+select dbuser_function();
+
+REVOKE all ON database db1 FROM iu;
+drop user iu;
+drop database db1;
+
+--
+------------- end - bug:925-----------
+--

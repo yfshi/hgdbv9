@@ -521,6 +521,32 @@ ExecuteGrantStmt(GrantStmt *stmt)
 					break;
 			}
 
+			/* BEGIN - bug:z925 */
+			if( (ACL_TARGET_OBJECT == stmt->targtype) && (OBJECT_DATABASE == stmt->objtype))
+			{
+				if (!is_instanceuser(grantee_uid))
+				{
+					ListCell *obj;
+
+					foreach(obj, istmt.objects)
+					{
+						Oid dbid = lfirst_oid(obj);
+
+						/**
+						 * grant XXX on database db1 to database user 
+						 * if ORA_PARSER == compatible_db ,then this user is a database-user,
+						 * so you can't give database-users the privileges of other database.
+						 */
+						if ((DB_ORACLE == database_mode) && (ORA_PARSER == compatible_db))
+						{
+							if (dbid != MyDatabaseId)
+							elog(ERROR, "cannot grant databaseuser to other database");
+						}
+					}
+				}
+			}
+			/* END - bug:z925 */
+
 			istmt.grantees = lappend_oid(istmt.grantees, grantee_uid);
 		}
 		else
@@ -537,6 +563,33 @@ ExecuteGrantStmt(GrantStmt *stmt)
 					grantee_uid = get_rolespec_oid(grantee, false);
 					break;
 			}
+
+			/* BEGIN - bug:z925 */
+			if( (ACL_TARGET_OBJECT == stmt->targtype) && (OBJECT_DATABASE == stmt->objtype))
+			{
+				if (!is_instanceuser(grantee_uid))
+				{
+					ListCell *obj;
+
+					foreach(obj, istmt.objects)
+					{
+						Oid dbid = lfirst_oid(obj);
+
+						/**
+						 * grant XXX on database db1 to database user 
+						 * if ORA_PARSER == compatible_db ,then this user is a database-user,
+						 * so you can't give database-users the privileges of other database.
+						 */
+						if ((DB_ORACLE == database_mode) && (ORA_PARSER == compatible_db))
+						{
+							if (dbid != MyDatabaseId)
+							elog(ERROR, "cannot grant databaseuser to other database");
+						}
+					}
+				}
+			}
+			/* END - bug:z925 */
+
 			istmt.grantees = lappend_oid(istmt.grantees, grantee_uid);
 		}
 		/*
@@ -5935,6 +5988,26 @@ pg_statistics_object_ownercheck(Oid stat_oid, Oid roleid)
 
 	return has_privs_of_role(roleid, ownerId);
 }
+
+bool 
+is_instanceuser(Oid userid)
+{
+	Oid			dboid;
+	HeapTuple	utup;
+
+	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(userid));
+	if (HeapTupleIsValid(utup))
+	{
+		dboid = ((Form_pg_authid) GETSTRUCT(utup))->rolowndboid;
+		ReleaseSysCache(utup);
+
+		if(!OidIsValid(dboid))
+			return true;
+	}
+
+	return false;
+}
+
 
 /*
  * Check whether specified role has CREATEROLE privilege (or is a superuser)

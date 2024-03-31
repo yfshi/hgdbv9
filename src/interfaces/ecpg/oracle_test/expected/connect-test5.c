@@ -43,121 +43,115 @@ main(void)
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
 #line 23 "test5.pgc"
 
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create user regress_ecpg_user2", ECPGt_EOIT, ECPGt_EORT);}
+	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "alter user regress_ecpg_user2 encrypted password 'insecure'", ECPGt_EOIT, ECPGt_EORT);}
 #line 24 "test5.pgc"
 
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create user regress_ecpg_user1", ECPGt_EOIT, ECPGt_EORT);}
+	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "alter user regress_ecpg_user1 encrypted password 'connectpw'", ECPGt_EOIT, ECPGt_EORT);}
 #line 25 "test5.pgc"
 
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "alter user regress_ecpg_user2 encrypted password 'insecure'", ECPGt_EOIT, ECPGt_EORT);}
+	{ ECPGtrans(__LINE__, NULL, "commit");}
 #line 26 "test5.pgc"
 
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "alter user regress_ecpg_user1 encrypted password 'connectpw'", ECPGt_EOIT, ECPGt_EORT);}
-#line 27 "test5.pgc"
-
-	{ ECPGtrans(__LINE__, NULL, "commit");}
-#line 28 "test5.pgc"
-
 	{ ECPGdisconnect(__LINE__, "CURRENT");}
-#line 29 "test5.pgc"
+#line 27 "test5.pgc"
   /* <-- "main" not specified */
 
 	strcpy(db, "ecpg2_regression");
 	strcpy(id, "main");
 	{ ECPGconnect(__LINE__, 0, db , NULL, NULL , id, 0); }
-#line 33 "test5.pgc"
+#line 31 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, id);}
+#line 32 "test5.pgc"
+
+
+	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
 #line 34 "test5.pgc"
 
+	{ ECPGdisconnect(__LINE__, "main");}
+#line 35 "test5.pgc"
+
 
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
-#line 36 "test5.pgc"
-
-	{ ECPGdisconnect(__LINE__, "main");}
 #line 37 "test5.pgc"
 
+	{ ECPGdisconnect(__LINE__, "main");}
+#line 38 "test5.pgc"
+
 
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
-#line 39 "test5.pgc"
-
-	{ ECPGdisconnect(__LINE__, "main");}
 #line 40 "test5.pgc"
 
-
-	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
-#line 42 "test5.pgc"
-
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 43 "test5.pgc"
+#line 41 "test5.pgc"
 
 
 	/* exec sql connect to as main user regress_ecpg_user2/insecure;
 	exec sql disconnect main; */
 
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
-#line 48 "test5.pgc"
+#line 46 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
+#line 47 "test5.pgc"
+
+
+	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/ecpg2_regression" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
 #line 49 "test5.pgc"
 
+	{ ECPGdisconnect(__LINE__, "main");}
+#line 50 "test5.pgc"
+
 
 	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/ecpg2_regression" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
-#line 51 "test5.pgc"
-
-	{ ECPGdisconnect(__LINE__, "main");}
 #line 52 "test5.pgc"
 
-
-	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/ecpg2_regression" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
-#line 54 "test5.pgc"
-
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 55 "test5.pgc"
+#line 53 "test5.pgc"
 
 
 	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/ecpg2_regression" , user , "connectpw" , "main", 0); }
-#line 57 "test5.pgc"
+#line 55 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 58 "test5.pgc"
+#line 56 "test5.pgc"
 
 
 	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/ecpg2_regression?connect_timeout=180 & client_encoding=latin1" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
-#line 60 "test5.pgc"
+#line 58 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 61 "test5.pgc"
+#line 59 "test5.pgc"
 
 
 	{ ECPGconnect(__LINE__, 0, "unix:postgresql://200.46.204.71/ecpg2_regression" , "regress_ecpg_user1" , "connectpw" , "main", 0); }
-#line 63 "test5.pgc"
+#line 61 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 64 "test5.pgc"
+#line 62 "test5.pgc"
 
 
 	{ ECPGconnect(__LINE__, 0, "unix:postgresql://localhost/?gssencmode=disable" , "regress_ecpg_user2" , "insecure" , "main", 0); }
-#line 66 "test5.pgc"
+#line 64 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 67 "test5.pgc"
+#line 65 "test5.pgc"
 
 
 	/* connect twice */
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
-#line 70 "test5.pgc"
+#line 68 "test5.pgc"
 
 	{ ECPGconnect(__LINE__, 0, "ecpg2_regression" , NULL, NULL , "main", 0); }
-#line 71 "test5.pgc"
+#line 69 "test5.pgc"
 
 	{ ECPGdisconnect(__LINE__, "main");}
-#line 72 "test5.pgc"
+#line 70 "test5.pgc"
 
 
 	/* not connected */
 	{ ECPGdisconnect(__LINE__, "nonexistent");}
-#line 75 "test5.pgc"
+#line 73 "test5.pgc"
 
 
 	return 0;

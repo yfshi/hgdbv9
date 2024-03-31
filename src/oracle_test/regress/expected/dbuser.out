@@ -3442,3 +3442,77 @@ drop user databaseu;
 drop user regress_database_test_user;
 drop role regress_databasegroup;
 drop role regress_database_group;
+--
+------------- begin - bug:925-----------
+--
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_function();
+ dbuser_function 
+-----------------
+ 
+(1 row)
+
+create user iu;
+create database db1;
+--  success test
+GRANT CREATE ON database db1 TO iu;
+--  error test
+GRANT CREATE ON database db1 TO instanceuser iu;
+ERROR:  syntax error at or near "iu"
+LINE 1: GRANT CREATE ON database db1 TO instanceuser iu;
+                                                     ^
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ oracle
+(1 row)
+
+set session authorization system;
+create user du;
+create database db2;
+ERROR:  database cannot be created when compatible_db is oracle
+--  error test
+GRANT CREATE ON database db1 TO du;
+ERROR:  cannot grant databaseuser to other database
+--  error test
+GRANT CREATE ON database db1 TO databaseuser du;
+ERROR:  This is used for dump when oracle but Postgresql not support.
+set ivorysql.grant_usertype to oracle;
+--  error test
+GRANT CREATE ON database db1 TO iu;
+ERROR:  role "iu" does not exist
+--  success test
+GRANT CREATE ON database db1 TO instanceuser iu;
+--  error test
+GRANT CREATE ON database db1 TO du;
+ERROR:  cannot grant databaseuser to other database
+--  error test
+GRANT CREATE ON database db1 TO databaseuser du;
+ERROR:  cannot grant databaseuser to other database
+drop user du;
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_function();
+ dbuser_function 
+-----------------
+ 
+(1 row)
+
+REVOKE all ON database db1 FROM iu;
+drop user iu;
+drop database db1;
+--
+------------- end - bug:925-----------
+--

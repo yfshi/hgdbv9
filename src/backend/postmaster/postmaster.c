@@ -6065,11 +6065,12 @@ BackgroundWorkerInitializeConnectionByOid(Oid dboid, Oid useroid, uint32 flags)
 	/*
 	 * Begin - ReqID:SRS-MISC-USER
 	 * mode of a process
+	 * The guc parameter sql_raw_parser cannot be successfully modified by direct assignment
 	 */
 	if(worker->connmode == 'o')
-		compatible_db = ORA_PARSER;
+		SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
 	else
-		compatible_db = PG_PARSER;
+		SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
 	/*
 	 * End - ReqID:SRS-MISC-USER
 	 */
