@@ -2,31 +2,19 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ECPGconnect: opening database ecpg2_regression on <DEFAULT> port <DEFAULT>  
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 24: query: create user regress_ecpg_user2; with 0 parameter(s) on connection main
+[NO_PID]: ecpg_execute on line 24: query: alter user regress_ecpg_user2 encrypted password 'insecure'; with 0 parameter(s) on connection main
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_execute on line 24: using PQexec
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_process_output on line 24: OK: CREATE ROLE
+[NO_PID]: ecpg_process_output on line 24: OK: ALTER ROLE
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 25: query: create user regress_ecpg_user1; with 0 parameter(s) on connection main
+[NO_PID]: ecpg_execute on line 25: query: alter user regress_ecpg_user1 encrypted password 'connectpw'; with 0 parameter(s) on connection main
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_execute on line 25: using PQexec
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_process_output on line 25: OK: CREATE ROLE
+[NO_PID]: ecpg_process_output on line 25: OK: ALTER ROLE
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 26: query: alter user regress_ecpg_user2 encrypted password 'insecure'; with 0 parameter(s) on connection main
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 26: using PQexec
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_process_output on line 26: OK: ALTER ROLE
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 27: query: alter user regress_ecpg_user1 encrypted password 'connectpw'; with 0 parameter(s) on connection main
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_execute on line 27: using PQexec
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_process_output on line 27: OK: ALTER ROLE
-[NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ECPGtrans on line 28: action "commit"; connection "main"
+[NO_PID]: ECPGtrans on line 26: action "commit"; connection "main"
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_finish: connection main closed
 [NO_PID]: sqlca: code: 0, state: 00000
@@ -66,11 +54,11 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_finish: connection main closed
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ECPGconnect: non-localhost access via sockets on line 63
+[NO_PID]: ECPGconnect: non-localhost access via sockets on line 61
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: raising sqlcode -402 on line 63: could not connect to database "ecpg2_regression" on line 63
+[NO_PID]: raising sqlcode -402 on line 61: could not connect to database "ecpg2_regression" on line 61
 [NO_PID]: sqlca: code: -402, state: 08001
-[NO_PID]: raising sqlcode -220 on line 64: connection "main" does not exist on line 64
+[NO_PID]: raising sqlcode -220 on line 62: connection "main" does not exist on line 62
 [NO_PID]: sqlca: code: -220, state: 08003
 [NO_PID]: ECPGconnect: opening database <DEFAULT> on <DEFAULT> port <DEFAULT> with options gssencmode=disable for user regress_ecpg_user2
 [NO_PID]: sqlca: code: 0, state: 00000
@@ -78,9 +66,9 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_finish: connection main closed
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: raising sqlcode -402 on line 66: could not connect to database "<DEFAULT>" on line 66
+[NO_PID]: raising sqlcode -402 on line 64: could not connect to database "<DEFAULT>" on line 64
 [NO_PID]: sqlca: code: -402, state: 08001
-[NO_PID]: raising sqlcode -220 on line 67: connection "main" does not exist on line 67
+[NO_PID]: raising sqlcode -220 on line 65: connection "main" does not exist on line 65
 [NO_PID]: sqlca: code: -220, state: 08003
 [NO_PID]: ECPGconnect: opening database ecpg2_regression on <DEFAULT> port <DEFAULT>  
 [NO_PID]: sqlca: code: 0, state: 00000
@@ -88,5 +76,5 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_finish: connection main closed
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: raising sqlcode -220 on line 75: connection "nonexistent" does not exist on line 75
+[NO_PID]: raising sqlcode -220 on line 73: connection "nonexistent" does not exist on line 73
 [NO_PID]: sqlca: code: -220, state: 08003

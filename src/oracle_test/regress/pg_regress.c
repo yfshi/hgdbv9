@@ -2194,12 +2194,15 @@ static void
 create_role(const char *rolename, const _stringlist *granted_dbs)
 {
 	header(_("creating role \"%s\""), rolename);
+	/* begin - bug:z925 */
 	psql_command("postgres", "CREATE ROLE \"%s\" WITH LOGIN", rolename);
 	for (; granted_dbs != NULL; granted_dbs = granted_dbs->next)
 	{
-		psql_command("postgres", "GRANT ALL ON DATABASE \"%s\" TO \"%s\"",
+		psql_command(granted_dbs->str, "CREATE ROLE \"%s\" WITH LOGIN",  rolename);
+		psql_command(granted_dbs->str, "GRANT ALL ON DATABASE \"%s\" TO \"%s\"",
 					 granted_dbs->str, rolename);
 	}
+	/* end - bug:z925 */
 }
 
 static void

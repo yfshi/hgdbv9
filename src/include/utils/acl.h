@@ -331,5 +331,6 @@ extern bool pg_subscription_ownercheck(Oid sub_oid, Oid roleid);
 extern bool pg_statistics_object_ownercheck(Oid stat_oid, Oid roleid);
 extern bool has_createrole_privilege(Oid roleid);
 extern bool has_bypassrls_privilege(Oid roleid);
+extern bool is_instanceuser(Oid userid);
 
 #endif							/* ACL_H */
