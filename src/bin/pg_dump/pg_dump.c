@@ -10828,6 +10828,11 @@ getDbRoleMembership(Archive *fout, int *numRolesMembership)
 	int			i,
 				ntups;
 
+	/*
+	 * begin - bug:z948
+	 * When backing up, you need to be clear about the name of the current 
+	 * linked database, otherwise it will be repeated
+	 */
 	printfPQExpBuffer(buf, "SELECT a.tableoid, ur.rolname AS roleid, "
 					  "um.rolname AS member, "
 					  "a.admin_option, "
@@ -10835,17 +10840,20 @@ getDbRoleMembership(Archive *fout, int *numRolesMembership)
 					  "a.roleid AS roleoidoid, "
 					  "a.member AS memberoid, "
 					  "a.grantor AS grantoroid "
-					  "FROM pg_auth_members a "
+					  "FROM pg_database d ,pg_auth_members a "
 					  "LEFT JOIN pg_authid ur on ur.oid = a.roleid "
 					  "LEFT JOIN pg_authid um on um.oid = a.member "
 					  "LEFT JOIN pg_authid ug on ug.oid = a.grantor "
 					  "WHERE NOT (ur.rolname ~ '^pg_' AND um.rolname ~ '^pg_') "
-					  "AND ur.rolowndboid > 0 "
-					  "AND um.rolowndboid > 0 "
-					  "AND ug.rolowndboid > 0 "
+					  "AND d.datname = current_database() "
+					  "AND ur.rolowndboid = d.oid "
+					  "AND um.rolowndboid = d.oid "
+					  "AND ug.rolowndboid = d.oid "
 					  "ORDER BY 1,2,3");
-	
-	
+	/*
+	 * end - bug:z948
+	 */
+
 	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
 	ntups = PQntuples(res);
 	*numRolesMembership = ntups;
