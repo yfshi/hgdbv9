@@ -79,11 +79,11 @@ begin
         elements := elements || element;
       end if;
     when 'object' then
-      if element ?@ 'Plan' then --/* BUG#M0000201: support question marks as binding variables */
+      if element ? 'Plan' then
         elements := elements || jsonb_build_array(element->'Plan');
         element := element - 'Plan';
       else
-        if element ?@ 'Plans' then --/* BUG#M0000201: support question marks as binding variables */
+        if element ? 'Plans' then
           elements := elements || jsonb_build_array(element->'Plans');
           element := element - 'Plans';
         end if;

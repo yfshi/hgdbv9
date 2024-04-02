@@ -404,12 +404,13 @@ operator		{op_chars}+
 
 /* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
 /* We treate the single operator ? as question mark, it returns QUESTION_MARK.
- * Others operators including the ? operator, can be jsonb_operator or operator_with_question_mark,
- * if you will add new operator including the ? operator, you can modify operator_with_question_mark.
+ * Others operators including the ? operator, can be operator_with_question_mark1 or operator_with_question_mark2,
+ * if you will add new operator including the ? operator, you can modify operator_with_question_mark1
+ * or operator_with_question_mark2.
  */
-question_mark_as_bind_variable		"?"
-jsonb_operator		[?][@\|\&\|\-\#\>\<\~]+
-operator_with_question_mark		[@\^][?]
+question_mark	"?"
+operator_with_question_mark1	[?][@\|\&\|\-\#\>\<\~]+
+operator_with_question_mark2	[@\^][?]
 /* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
 
 /* we no longer allow unary minus in numbers.
@@ -1192,28 +1193,37 @@ other			.
 					return Op;
 				}
 
-{question_mark_as_bind_variable}	{
-										/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
-										SET_YYLLOC();
-										yylval->str = pstrdup(yytext);
-										return QUESTION_MARK;
-										/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
-									}
+{question_mark}	{
+					/* Begin - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+					SET_YYLLOC();
+					yylval->str = pstrdup(yytext);
+					return QUESTION_MARK;
+					/* End - BUG#M0000292: ? As a binding variable placeholder, support =?, >=? and similar operators */
+				}
 
-{jsonb_operator}				{
-									/* Begin - BUG#M0000292: json operators reutrn Op */
+{operator_with_question_mark1}	{
+									int 		nchars = yyleng;
+
+									/* Begin - BUG#M0000292 */
 									SET_YYLLOC();
-									yylval->str = pstrdup(yytext);
+									/* Begin - BUG#M0000317 */
+									/* we relpace ?@ operator to ? */
+									if (nchars == 2 &&
+										yytext[0] == '?' && yytext[1] == '@')
+										yylval->str = pstrdup("?");
+									else
+									/* End - BUG#M0000317 */
+										yylval->str = pstrdup(yytext);
 									return Op;
-									/* End - BUG#M0000292: json operators reutrn Op */
+									/* End - BUG#M0000292 */
 								}
 
-{operator_with_question_mark}	{
-									/* Begin - BUG#M0000292: other operators contained ? return Op */
+{operator_with_question_mark2}	{
+									/* Begin - BUG#M0000292 */
 									SET_YYLLOC();
 									yylval->str = pstrdup(yytext);
 									return Op;
-									/* End - BUG#M0000292: ? other operators contained ? return Op */
+									/* End - BUG#M0000292 */
 								}
 
 {param}			{
