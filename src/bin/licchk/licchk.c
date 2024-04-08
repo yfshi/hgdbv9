@@ -40,6 +40,9 @@ static char *hardware_code_file = NULL;
 static bool  is_get_name = false;	/* view all features */
 static bool  is_get_port = false;	/* view all features */
 static bool  is_ignore_check_hardware = false;	/* ignore hardware code check */
+/* Begin - fix Bug#M0000321 */
+static bool  is_ignore_md5_checksum = false;	/* ignore md5 checksum value */
+/* End - fix Bug#M0000321 */
 
 static void  printLicenseData(void);
 static void  _printFuncList(void);
@@ -77,7 +80,10 @@ int main(int argc, char **argv)
 		{ "check"   , required_argument, NULL, 'c' },
 		{ "username", no_argument      , NULL, 'U' },
 		{ "port"    , no_argument      , NULL, 'P' },
-		{ "ignore"  , no_argument      , NULL, 'i' },
+		{ "ignore hardware code", no_argument, NULL, 'i' },
+		/* Begin - fix Bug#M0000321 */
+		{ "ignore md5 checksum", no_argument, NULL, 'I' },
+		/* End - fix Bug#M0000321 */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -149,7 +155,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPi", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiI", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -180,7 +186,11 @@ int main(int argc, char **argv)
 			case 'i':
 				is_ignore_check_hardware = true;
 				break;
-
+			/* Begin - fix Bug#M0000321 */
+			case 'I':
+				is_ignore_md5_checksum = true;
+				break;
+			/* End - fix Bug#M0000321 */
 			case 'v':
 				is_view = true;
 				break;
@@ -205,6 +215,9 @@ int main(int argc, char **argv)
 	{
 		hg_set_license_abspath(argv[0]);
 		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
+		/* Begin - fix Bug#M0000321 */
+		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);
+		/* End - fix Bug#M0000321 */
 		hg_load_license(NULL);
 
 		if (is_get_name)
@@ -224,6 +237,9 @@ int main(int argc, char **argv)
 	else if (license_dat != NULL && license_dat[0] != 0)
 	{
 		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
+		/* Begin - fix Bug#M0000321 */
+		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);
+		/* End - fix Bug#M0000321 */
 		iRet = hg_load_license(license_dat);
 		if (iRet != 0)
 		{
