@@ -73,6 +73,7 @@ extern LICENSEEXPORT const char * hg_get_funclist_title_tail(int width);
 
 extern LICENSEEXPORT const char * hg_get_startup_info(int *log_lvl);
 extern LICENSEEXPORT void         hg_set_is_ignore_hardware_check(bool flag);	// is check hardware code
+extern LICENSEEXPORT void         hg_set_is_ignore_md5_checksum(bool flag);		// is check md5 checksum value
 extern LICENSEEXPORT const char * hg_get_mac_string(void);						// get mac string
 extern LICENSEEXPORT const char * hg_get_service_hotline(void);					// get service hotline
 extern LICENSEEXPORT const char * hg_get_technical_support_url(void);			// get technical support
