@@ -65,6 +65,10 @@
 #include "utils/rel.h"
 #include "utils/typcache.h"
 
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+#include "commands/copyfrom_internal.h"
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
 
 static bool tlist_matches_tupdesc(PlanState *ps, List *tlist, Index varno, TupleDesc tupdesc);
 static void ShutdownExprContext(ExprContext *econtext, bool isCommit);
@@ -164,6 +168,22 @@ CreateExecutorState(void)
 
 	estate->es_jit_flags = 0;
 	estate->es_jit = NULL;
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	estate->handle_fk_error = false;
+	estate->handle_fk_error_num = 0;
+	estate->sharding = 0;
+	estate->current_shard = 0;
+	estate->badfile = NULL;
+	estate->badtable = NULL;
+	estate->taskid = NULL;
+	estate->filename = NULL;
+	estate->byte_records = 0;
+	estate->copy_src = COPY_FILE;
+	estate->schema_name = NULL;
+	estate->cur_relname = NULL;
+	estate->delimiter = NULL;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/*
 	 * Return the executor state structure

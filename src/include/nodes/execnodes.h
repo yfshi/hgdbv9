@@ -698,6 +698,29 @@ typedef struct EState
 	List	   *es_resultrelinfo_extra;
 
 	int64	   *count;	/* array store the count number for every countnode */
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	bool	handle_fk_error;
+	uint64	handle_fk_error_num;
+	/*
+	 * info store in CopyFromState cstate
+	 * estate could not get cstate
+	 * so store nessary vars in estate
+	 * refer to cstate new vars for error handling
+	 */
+	int	sharding;
+	int	current_shard;
+	char	*badfile;
+        char	*badtable;
+	char	*taskid;
+        char	*filename;
+	char	*delimiter;
+        int     byte_records;
+        int	copy_src;
+	const char	*schema_name;
+	const char	*cur_relname;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 } EState;
 
 

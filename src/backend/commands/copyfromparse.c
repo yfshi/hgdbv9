@@ -75,6 +75,11 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+#include "executor/spi.h"
+#include "storage/lwlock.h"
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
 #define ISOCTAL(c) (((c) >= '0') && ((c) <= '7'))
 #define OCTVALUE(c) ((c) - '0')
 
@@ -766,10 +771,21 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 			return false;		/* done */
 	}
 
+continue_shard:	/* ReqID:SRS-MISC-BULKLOAD */
+
 	cstate->cur_lineno++;
 
 	/* Actually read the line into memory here */
 	done = CopyReadLine(cstate);
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* CopyReadLine() could consume one line */
+	if ((cstate->opts.sharding > 1) && (cstate->copy_src != COPY_FRONTEND ))
+	{
+		if ((cstate->cur_lineno % cstate->opts.sharding ) != cstate->opts.current_shard )
+			goto continue_shard;
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/*
 	 * EOF at start of line means we're done.  If we see EOF after some
@@ -789,6 +805,103 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 	*nfields = fldct;
 	return true;
 }
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+/*
+ * Insert the bad record to the file or table
+ * bad record include: 
+ * 	parser error
+ * 	InputFunctionCall error (data type convert)
+ * 	Constraints: Check Constraints, Not-Null Constraints, Unique Constraints, Primary Keys
+ *	Index insert error
+ * The output include: 
+ *  	taskid: schema: table: filename: lineno: raw line buffer
+ * If file is not exist, create a new one
+ * If table is not exit, throw out an error, user response for create the table
+ */
+bool
+OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char type)
+{
+	StringInfoData query;
+	FILE *bad_file = NULL;
+	uint64 line_no;
+	char curlineno_str[32];
+	StringInfo linebuf_cut;
+
+	linebuf_cut = makeStringInfo();
+	if (linebuf->len > cstate->byte_records)
+		appendBinaryStringInfo(linebuf_cut,linebuf->data,cstate->byte_records);
+	else
+		appendBinaryStringInfo(linebuf_cut,linebuf->data,linebuf->len);
+
+	/* if frontend filter the data, cal the line number*/
+	if (cstate->copy_src == COPY_FRONTEND && cstate->opts.sharding > 1)
+	{
+		if (cstate->opts.current_shard == 0)
+			line_no = (cstate->opts.sharding) * lineno;
+		else
+			line_no = (cstate->opts.sharding) * (lineno-1) + cstate->opts.current_shard;
+	}
+	else
+	{
+		line_no = lineno;
+	}
+
+	/* refer CopyFromErrorCallback()*/
+	snprintf(curlineno_str, sizeof(curlineno_str), UINT64_FORMAT, line_no);
+
+	if(cstate->opts.badfile != NULL)
+	{
+		if (cstate->opts.sharding > 1)
+			LWLockAcquire(BadfileWriteLock, LW_EXCLUSIVE);
+		/* open file */
+		bad_file = fopen(cstate->opts.badfile, PG_BINARY_A);
+		if( bad_file == NULL)
+			ereport(LOG,
+				(errcode_for_file_access(),
+				errmsg("could not create file \"%s\": %m", cstate->opts.badfile)));
+
+		/* write the error data */
+		fprintf(bad_file,"%s: %s: %s: %s: %c: %s: %s\n",
+			cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
+			cstate->opts.filename, type,
+			curlineno_str, linebuf_cut->data);
+
+		/* close the file */
+		if (fclose(bad_file)!=0)
+			ereport(LOG,
+				(errcode_for_file_access(),
+				errmsg("could not write file \"%s\": %m", cstate->opts.badfile)));
+
+		if (cstate->opts.sharding > 1)
+			LWLockRelease(BadfileWriteLock);
+	}
+	else if (cstate->opts.badtable != NULL)
+	{
+		/* SPI call */
+		initStringInfo(&query);
+		appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+				cstate->opts.badtable,
+				cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
+				cstate->opts.filename, type,
+				line_no, linebuf_cut->data);
+
+		SPI_connect();
+		if (SPI_execute(query.data, false, 0) != SPI_OK_INSERT)
+			ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("invalid query")));
+		SPI_finish();
+	}
+	else
+		ereport(ERROR,
+			(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+			errmsg("no validate output for error when tolerate is true")));
+
+	return true;
+}
+/* End - ReqID:SRS-MISC-BULKLOAD */
+			
 
 /*
  * Read next tuple from file for COPY FROM. Return false if no more tuples.
@@ -969,7 +1082,7 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 		 */
 		Assert(econtext != NULL);
 		Assert(CurrentMemoryContext == econtext->ecxt_per_tuple_memory);
-
+		
 		values[defmap[i]] = ExecEvalExpr(defexprs[i], econtext,
 										 &nulls[defmap[i]]);
 	}

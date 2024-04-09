@@ -297,6 +297,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			PreventCommandIfReadOnly("COPY FROM");
 
 		cstate = BeginCopyFrom(pstate, rel, whereClause,
+
 							   stmt->filename, stmt->is_program,
 							   NULL, stmt->attlist, stmt->options);
 		*processed = CopyFrom(cstate);	/* copy from file to database */
@@ -343,6 +344,10 @@ ProcessCopyOptions(ParseState *pstate,
 	bool		freeze_specified = false;
 	bool		header_specified = false;
 	ListCell   *option;
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	bool		sharding_specified = false;
+	bool		current_shard_specified = false;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/* Support external use for option sanity checking */
 	if (opts_out == NULL)
@@ -519,6 +524,64 @@ ProcessCopyOptions(ParseState *pstate,
 								defel->defname),
 						 parser_errposition(pstate, defel->location)));
 		}
+		else if (strcmp(defel->defname, "badfile") == 0) /* Begin - ReqID:SRS-MISC-BULKLOAD */
+		{
+			if (opts_out->badfile)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->badfile = defGetString(defel);
+			opts_out->tolerate = true;
+		}
+		else if (strcmp(defel->defname, "badtable") == 0)
+		{
+			if (opts_out->badtable)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->badtable = defGetString(defel);
+			opts_out->tolerate = true;
+		}
+		else if (strcmp(defel->defname, "sharding") == 0)
+		{
+			if (opts_out->sharding)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->sharding = defGetInt32(defel);
+			sharding_specified = true;
+		}
+		else if (strcmp(defel->defname, "current_shard") == 0)
+		{
+			if (opts_out->current_shard)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->current_shard = defGetInt32(defel);
+			current_shard_specified = true;
+		}
+		else if (strcmp(defel->defname, "taskid") == 0)
+		{
+			if (opts_out->taskid)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->taskid = defGetString(defel);
+		}
+		else if (strcmp(defel->defname, "filename") == 0)
+		{
+			if (opts_out->filename)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->filename = defGetString(defel);
+		}/* End - ReqID:SRS-MISC-BULKLOAD */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -669,6 +732,49 @@ ProcessCopyOptions(ParseState *pstate,
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("CSV quote character must not appear in the NULL specification")));
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* sharding current_shard occured together */
+	if ( (!sharding_specified && current_shard_specified) ||
+	     (sharding_specified && !current_shard_specified) )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("sharding and current_shard should occured together")));
+
+	/* set sharding = 1 for thers is not passed sharding and current_shard */
+	if (!sharding_specified && opts_out->sharding == 0)
+		opts_out->sharding = 1;
+
+	/* If current_shard should less then sharding */
+	if (opts_out->sharding <= opts_out->current_shard)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("current_shard should less than sharding")));
+
+	/* Don't allow badtable and badfile passed together */
+	if (opts_out->badfile && opts_out->badtable )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("badtable and badfile must not occured together")));
+
+	/* only support bad record output in csv file format */
+	if (!opts_out->csv_mode && (opts_out->badfile || opts_out->badtable) )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Text and Binary file type is not support for tolerate mode")));
+
+	/* only support sharding in csv file format */
+	if (!opts_out->csv_mode && sharding_specified )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Text and Binary file type is not support for sharding"))); 
+
+	/* tolerate mode, task id and filename is necessary opt */
+	if ( (opts_out->tolerate ) && (!opts_out->taskid || !opts_out->filename) )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Tolerate mode, taskid and filename is necessary opts")));	
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 }
 
 /*

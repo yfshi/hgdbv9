@@ -18,6 +18,9 @@
 #include "nodes/execnodes.h"
 #include "nodes/parsenodes.h"
 
+/* ReqID:SRS-MISC-BULKLOAD */
+#include "commands/copy.h"
+
 /*
  * TriggerData is the node type that is passed as fmgr "context" info
  * when a function is called by the trigger manager.
@@ -41,6 +44,9 @@ typedef struct TriggerData
 	Tuplestorestate *tg_oldtable;
 	Tuplestorestate *tg_newtable;
 	const Bitmapset *tg_updatedcols;
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	bool handle_fk;
 } TriggerData;
 
 /*
@@ -196,6 +202,17 @@ extern void ExecARInsertTriggers(EState *estate,
 								 TupleTableSlot *slot,
 								 List *recheckIndexes,
 								 TransitionCaptureState *transition_capture);
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+extern void ExecARInsertTriggers_lineno(EState *estate,
+								 ResultRelInfo *relinfo,
+								 TupleTableSlot *slot,
+								 List *recheckIndexes,
+								 TransitionCaptureState *transition_capture,
+								 uint64 lineno);
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
+
 extern bool ExecIRInsertTriggers(EState *estate,
 								 ResultRelInfo *relinfo,
 								 TupleTableSlot *slot);
@@ -257,7 +274,6 @@ extern void AfterTriggerBeginSubXact(void);
 extern void AfterTriggerEndSubXact(bool isCommit);
 extern void AfterTriggerSetState(ConstraintsSetStmt *stmt);
 extern bool AfterTriggerPendingOnRel(Oid relid);
-
 
 /*
  * in utils/adt/ri_triggers.c

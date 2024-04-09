@@ -164,6 +164,12 @@ typedef struct CopyFromStateData
 #define RAW_BUF_BYTES(cstate) ((cstate)->raw_buf_len - (cstate)->raw_buf_index)
 
 	uint64		bytes_processed;	/* number of bytes processed so far */
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	uint64		error_num;	/* number of records to be rejected */	
+	const char 	*schema_name;	/* schema name for this copy state */
+	int		byte_records;	/* the first byte of the raw buff */
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 } CopyFromStateData;
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
