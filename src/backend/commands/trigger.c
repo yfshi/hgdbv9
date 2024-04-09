@@ -63,6 +63,11 @@
 #include "utils/syscache.h"
 #include "utils/tuplestore.h"
 
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+#include "access/heapam.h"
+#include "executor/spi.h"
+#include "commands/copyfrom_internal.h"
+/* End - ReqID:SRS-MISC-BULKLOAD */
 
 /* GUC variables */
 int			SessionReplicationRole = SESSION_REPLICATION_ROLE_ORIGIN;
@@ -97,6 +102,20 @@ static void AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 								  List *recheckIndexes, Bitmapset *modifiedCols,
 								  TransitionCaptureState *transition_capture,
 								  bool is_crosspart_update);
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+static void AfterTriggerSaveEvent_lineno(EState *estate, ResultRelInfo *relinfo,
+                                                                  ResultRelInfo *src_partinfo,
+                                                                  ResultRelInfo *dst_partinfo,
+                                                                  int event, bool row_trigger,
+                                                                  TupleTableSlot *oldslot, TupleTableSlot *newslot,
+                                                                  List *recheckIndexes, Bitmapset *modifiedCols,
+                                                                  TransitionCaptureState *transition_capture,
+                                                                  bool is_crosspart_update,
+                                        uint64 lineno);
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
+
 static void AfterTriggerEnlargeQueryState(void);
 static bool before_stmt_triggers_fired(Oid relid, CmdType cmdType);
 static Tuplestorestate *GetAfterTriggersTransitionTable(int event,
@@ -109,6 +128,7 @@ static void TransitionTableAddTuple(EState *estate,
 									TupleTableSlot *slot,
 									TupleTableSlot *original_insert_tuple,
 									Tuplestorestate *tuplestore);
+
 /*
  * Create a trigger.  Returns the address of the created trigger.
  *
@@ -2400,6 +2420,27 @@ ExecARInsertTriggers(EState *estate, ResultRelInfo *relinfo,
 							  false);
 }
 
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+void
+ExecARInsertTriggers_lineno(EState *estate, ResultRelInfo *relinfo,
+					TupleTableSlot *slot, List *recheckIndexes,
+					TransitionCaptureState *transition_capture,
+					uint64 lineno)
+{
+	TriggerDesc *trigdesc = relinfo->ri_TrigDesc;
+
+	if ((trigdesc && trigdesc->trig_insert_after_row) ||
+		(transition_capture && transition_capture->tcs_insert_new_table))
+		AfterTriggerSaveEvent_lineno(estate, relinfo, NULL, NULL,
+							TRIGGER_EVENT_INSERT,
+							true, NULL, slot,
+							recheckIndexes, NULL,
+							transition_capture,
+							false,
+							lineno);
+}
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
 bool
 ExecIRInsertTriggers(EState *estate, ResultRelInfo *relinfo,
 					 TupleTableSlot *slot)
@@ -3458,6 +3499,10 @@ typedef struct AfterTriggerEventData *AfterTriggerEvent;
 typedef struct AfterTriggerEventData
 {
 	TriggerFlags ate_flags;		/* status bits and offset to shared data */
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	uint64  line_no;	/* store the line nubmers for copy when handle fk check error */
+
 	ItemPointerData ate_ctid1;	/* inserted, deleted, or old updated tuple */
 	ItemPointerData ate_ctid2;	/* new updated tuple */
 
@@ -3468,12 +3513,17 @@ typedef struct AfterTriggerEventData
 	 */
 	Oid			ate_src_part;
 	Oid			ate_dst_part;
+
 } AfterTriggerEventData;
 
 /* AfterTriggerEventData, minus ate_src_part, ate_dst_part */
 typedef struct AfterTriggerEventDataNoOids
 {
 	TriggerFlags ate_flags;
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	uint64  line_no;        /* store the line nubmers for copy when handle fk check error */
+
 	ItemPointerData ate_ctid1;
 	ItemPointerData ate_ctid2;
 }			AfterTriggerEventDataNoOids;
@@ -3482,6 +3532,10 @@ typedef struct AfterTriggerEventDataNoOids
 typedef struct AfterTriggerEventDataOneCtid
 {
 	TriggerFlags ate_flags;		/* status bits and offset to shared data */
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	uint64  line_no;        /* store the line nubmers for copy when handle fk check error */
+
 	ItemPointerData ate_ctid1;	/* inserted, deleted, or old updated tuple */
 }			AfterTriggerEventDataOneCtid;
 
@@ -3489,6 +3543,10 @@ typedef struct AfterTriggerEventDataOneCtid
 typedef struct AfterTriggerEventDataZeroCtids
 {
 	TriggerFlags ate_flags;		/* status bits and offset to shared data */
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	uint64  line_no;        /* store the line nubmers for copy when handle fk check error */
+
 }			AfterTriggerEventDataZeroCtids;
 
 #define SizeofTriggerEvent(evt) \
@@ -4090,10 +4148,31 @@ AfterTriggerExecute(EState *estate,
 	AfterTriggerShared evtshared = GetTriggerSharedData(event);
 	Oid			tgoid = evtshared->ats_tgoid;
 	TriggerData LocTriggerData = {0};
+
 	HeapTuple	rettuple;
+
 	int			tgindx;
 	bool		should_free_trig = false;
 	bool		should_free_new = false;
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	TupleDesc       tupDesc;
+	int     num_phys_attrs;
+	List    *attnamelist;
+	FmgrInfo   *out_functions;
+	ListCell   *cur;
+	TupleTableSlot *slot;
+	char	*string;
+	StringInfoData  *print_str;
+	StringInfoData  query;
+
+	FILE *bad_file = NULL;
+	uint64 lineno;
+        uint64 line_no;
+        char curlineno_str[32];
+        StringInfo linebuf_cut;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 
 	/*
 	 * Locate trigger in trigdesc.
@@ -4293,11 +4372,164 @@ AfterTriggerExecute(EState *estate,
 	 * Call the trigger and throw away any possibly returned updated tuple.
 	 * (Don't let ExecCallTriggerFunc measure EXPLAIN time.)
 	 */
-	rettuple = ExecCallTriggerFunc(&LocTriggerData,
-								   tgindx,
-								   finfo,
-								   NULL,
-								   per_tuple_context);
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+        if(!estate->handle_fk_error)
+        {
+		LocTriggerData.handle_fk = false;
+		rettuple = ExecCallTriggerFunc(&LocTriggerData,
+					tgindx, finfo,NULL, per_tuple_context);
+	}
+	else
+	{
+		MemoryContext   current_cxt = CurrentMemoryContext;
+
+		LocTriggerData.handle_fk = true;
+		PG_TRY();
+		{
+			rettuple = ExecCallTriggerFunc(&LocTriggerData,
+					tgindx,finfo, NULL, per_tuple_context);
+		}
+		PG_CATCH();
+		{
+			/* flush the error*/
+			MemoryContextSwitchTo(current_cxt);
+			FlushErrorState();
+
+			/* output the error record to file or table */
+			tupDesc = RelationGetDescr(relInfo->ri_RelationDesc);
+			num_phys_attrs = tupDesc->natts;
+			attnamelist = CopyGetAttnums(tupDesc, relInfo->ri_RelationDesc, NIL);
+			out_functions = (FmgrInfo *) palloc( num_phys_attrs * sizeof(FmgrInfo));
+
+			foreach(cur, attnamelist)
+			{
+				bool	isvarlena;
+				int	attnum = lfirst_int(cur);
+				Oid	out_func_oid;
+				Form_pg_attribute attr = TupleDescAttr(tupDesc, attnum - 1);
+				getTypeOutputInfo(attr->atttypid, &out_func_oid, &isvarlena);
+				fmgr_info(out_func_oid,&out_functions[attnum - 1]);
+			}
+
+			slot = table_slot_create(relInfo->ri_RelationDesc, NULL);
+			/* read the tuple to slot */
+			ExecCopySlot(slot,LocTriggerData.tg_trigslot);
+
+			print_str = makeStringInfo();
+
+			/* Deconstruct the tuple ... */
+			slot_getallattrs(slot);
+			foreach(cur, attnamelist)
+			{
+				int	attnum = lfirst_int(cur);
+				Datum	value = slot->tts_values[attnum - 1];
+				bool	isnull = slot->tts_isnull[attnum - 1];
+				if (isnull)
+				{
+					// not append anything
+				}
+				else
+				{
+					string = OutputFunctionCall(&out_functions[attnum - 1], value);
+					appendStringInfoString(print_str, string);
+				}
+				if (attnum < num_phys_attrs)
+					appendStringInfoString(print_str,estate->delimiter);
+			}
+
+			/* Output the record to the file or table */
+			linebuf_cut = makeStringInfo();
+			if (print_str->len > estate->byte_records)
+				appendBinaryStringInfo(linebuf_cut,print_str->data,estate->byte_records);
+			else
+				appendBinaryStringInfo(linebuf_cut,print_str->data,print_str->len);
+
+			lineno = event->line_no;
+
+			/* if frontend filter the data, cal the line number*/
+			if (estate->copy_src == COPY_FRONTEND && estate->sharding > 1)
+			{
+				if (estate->current_shard == 0)
+					line_no = (estate->sharding) * lineno;
+				else
+					line_no = (estate->sharding) * (lineno-1) + estate->current_shard;
+			}
+			else
+			{
+				line_no = lineno;
+			}
+			/* refer CopyFromErrorCallback()*/
+			snprintf(curlineno_str, sizeof(curlineno_str), UINT64_FORMAT, line_no);
+
+			if (estate->badfile != NULL)
+			{
+				if (estate->sharding > 1)
+					LWLockAcquire(BadfileWriteLock, LW_EXCLUSIVE);
+				/* open file */
+				bad_file = fopen(estate->badfile, PG_BINARY_A);
+				if( bad_file == NULL)
+					ereport(LOG,
+						(errcode_for_file_access(),
+						errmsg("could not create file \"%s\": %m", estate->badfile)));
+
+				/* write the error data */
+				fprintf(bad_file,"%s :%s :%s :%s :%c :%s :%s\n",
+					estate->taskid, estate->schema_name, estate->cur_relname,
+					estate->filename, BAD_RECORD_F,
+					curlineno_str, linebuf_cut->data); 
+
+				/* close the file */
+				if (fclose(bad_file)!=0)
+					ereport(LOG,
+						(errcode_for_file_access(),
+						errmsg("could not write file \"%s\": %m", estate->badfile)));
+
+				if (estate->sharding > 1)
+					LWLockRelease(BadfileWriteLock);
+
+			}
+			else if (estate->badtable != NULL)
+			{
+				/* SPI call */
+				initStringInfo(&query);
+				appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+					 estate->badtable,
+					 estate->taskid, estate->schema_name, estate->cur_relname,
+					 estate->filename, BAD_RECORD_F,
+					 line_no,print_str->data);
+
+				SPI_connect();
+				if (SPI_execute(query.data, false, 0) != 7)
+					ereport(ERROR,
+						(errcode(ERRCODE_DATA_EXCEPTION),
+						errmsg("invalid query")));
+				SPI_finish();
+			}
+			else
+				ereport(ERROR,
+					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+					errmsg("no validate output for error when tolerate is true")));
+
+			/* 
+			 * buffer refcount leak
+			 * and TupleDesc reference leak
+			 */
+			ExecDropSingleTupleTableSlot(slot);
+
+			pfree(out_functions);
+
+			/* delete the record by tid */
+			simple_heap_delete(relInfo->ri_RelationDesc,&(event->ate_ctid1));
+			estate->handle_fk_error_num ++;
+
+		}
+		PG_END_TRY();
+
+		rettuple = NULL;
+
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 	if (rettuple != NULL &&
 		rettuple != LocTriggerData.tg_trigtuple &&
 		rettuple != LocTriggerData.tg_newtuple)
@@ -6168,6 +6400,168 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 			tuplestore_puttupleslot(fdw_tuplestore, newslot);
 	}
 }
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+static void
+AfterTriggerSaveEvent_lineno(EState *estate, ResultRelInfo *relinfo,
+				ResultRelInfo *src_partinfo,
+				ResultRelInfo *dst_partinfo,
+				int event, bool row_trigger,
+				TupleTableSlot *oldslot, TupleTableSlot *newslot,
+				List *recheckIndexes, Bitmapset *modifiedCols,
+				TransitionCaptureState *transition_capture,
+				bool is_crosspart_update,
+				uint64 lineno)
+{
+	Relation	rel = relinfo->ri_RelationDesc;
+	TriggerDesc *trigdesc = relinfo->ri_TrigDesc;
+	AfterTriggerEventData new_event;
+	AfterTriggerSharedData new_shared;
+	char	relkind = rel->rd_rel->relkind;
+	int	tgtype_event;
+	int	tgtype_level;
+	int	i;
+	Tuplestorestate *fdw_tuplestore = NULL;
+
+	if (afterTriggers.query_depth < 0)
+		elog(ERROR, "AfterTriggerSaveEvent() called outside of query");
+
+	if (afterTriggers.query_depth >= afterTriggers.maxquerydepth)
+		AfterTriggerEnlargeQueryState();
+
+	/* if (row_trigger && transition_capture != NULL) */
+	Assert(!row_trigger ||
+		rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE ||
+		(is_crosspart_update &&
+		TRIGGER_FIRED_BY_UPDATE(event) &&
+		src_partinfo != NULL && dst_partinfo != NULL));
+
+	switch (event)
+	{
+		case TRIGGER_EVENT_INSERT:
+			tgtype_event = TRIGGER_TYPE_INSERT;
+			if (row_trigger)
+			{
+				Assert(oldslot == NULL);
+				Assert(newslot != NULL);
+				ItemPointerCopy(&(newslot->tts_tid), &(new_event.ate_ctid1));
+				ItemPointerSetInvalid(&(new_event.ate_ctid2));
+				/* ReqID:SRS-MISC-BULKLOAD */
+				new_event.line_no = lineno;
+			}
+			else
+			{
+				Assert(oldslot == NULL);
+				Assert(newslot == NULL);
+				ItemPointerSetInvalid(&(new_event.ate_ctid1));
+				ItemPointerSetInvalid(&(new_event.ate_ctid2));
+				new_event.line_no = 0;
+				cancel_prior_stmt_triggers(RelationGetRelid(rel),
+						CMD_INSERT, event);
+			}
+			break;
+		default:
+			elog(ERROR, "invalid after-trigger event code: %d", event);
+			tgtype_event = 0;       /* keep compiler quiet */
+			break;
+	}
+
+        /* Determine flags */
+        if (!(relkind == RELKIND_FOREIGN_TABLE && row_trigger))
+        {
+                if (row_trigger && event == TRIGGER_EVENT_UPDATE)
+                {
+                        if (relkind == RELKIND_PARTITIONED_TABLE)
+                                new_event.ate_flags = AFTER_TRIGGER_CP_UPDATE;
+                        else
+                                new_event.ate_flags = AFTER_TRIGGER_2CTID;
+                }
+                else
+                        new_event.ate_flags = AFTER_TRIGGER_1CTID;
+        }
+
+	/* else, we'll initialize ate_flags for each trigger */
+	tgtype_level = (row_trigger ? TRIGGER_TYPE_ROW : TRIGGER_TYPE_STATEMENT);
+
+	if (row_trigger && rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+        {
+		TupleTableSlot *rootslot;
+		TupleConversionMap *map;
+
+		rootslot = ExecGetTriggerOldSlot(estate, relinfo);
+		map = ExecGetChildToRootMap(src_partinfo);
+		if (map)
+			oldslot = execute_attr_map_slot(map->attrMap,
+						oldslot,
+						rootslot);
+		else
+			oldslot = ExecCopySlot(rootslot, oldslot);
+		rootslot = ExecGetTriggerNewSlot(estate, relinfo);
+		map = ExecGetChildToRootMap(dst_partinfo);
+		if (map)
+			newslot = execute_attr_map_slot(map->attrMap,
+						newslot,
+						rootslot);
+		else
+			newslot = ExecCopySlot(rootslot, newslot);
+	}
+
+	for (i = 0; i < trigdesc->numtriggers; i++)
+	{
+		Trigger    *trigger = &trigdesc->triggers[i];
+
+		if (!TRIGGER_TYPE_MATCHES(trigger->tgtype,
+				tgtype_level,
+				TRIGGER_TYPE_AFTER,
+				tgtype_event))
+			continue;
+                if (!TriggerEnabled(estate, relinfo, trigger, event,
+                                                        modifiedCols, oldslot, newslot))
+                        continue;
+
+		if (relkind == RELKIND_FOREIGN_TABLE && row_trigger)
+		{
+			if (fdw_tuplestore == NULL)
+			{
+				fdw_tuplestore = GetCurrentFDWTuplestore();
+				new_event.ate_flags = AFTER_TRIGGER_FDW_FETCH;
+			}
+			else
+				/* subsequent event for the same tuple */
+				new_event.ate_flags = AFTER_TRIGGER_FDW_REUSE;
+		}
+
+		/* if (TRIGGER_FIRED_BY_UPDATE(event) || TRIGGER_FIRED_BY_DELETE(event)) */
+
+		if (trigger->tgfoid == F_UNIQUE_KEY_RECHECK)
+		{
+			if (!list_member_oid(recheckIndexes, trigger->tgconstrindid))
+				continue;               /* Uniqueness definitely not violated */
+		}
+
+		new_shared.ats_event =
+			(event & TRIGGER_EVENT_OPMASK) |
+			(row_trigger ? TRIGGER_EVENT_ROW : 0) |
+			(trigger->tgdeferrable ? AFTER_TRIGGER_DEFERRABLE : 0) |
+			(trigger->tginitdeferred ? AFTER_TRIGGER_INITDEFERRED : 0);
+
+		new_shared.ats_tgoid = trigger->tgoid;
+		new_shared.ats_relid = RelationGetRelid(rel);
+		new_shared.ats_firing_id = 0;
+		if ((trigger->tgoldtable || trigger->tgnewtable) &&
+				transition_capture != NULL)
+				new_shared.ats_table = transition_capture->tcs_private;
+		else
+			new_shared.ats_table = NULL;
+		new_shared.ats_modifiedcols = afterTriggerCopyBitmap(modifiedCols);
+
+		afterTriggerAddEvent(&afterTriggers.query_stack[afterTriggers.query_depth].events,
+						&new_event, &new_shared);
+	}
+
+	/* if (fdw_tuplestore)*/
+}
+/* End - ReqID:SRS-MISC-BULKLOAD */
 
 /*
  * Detect whether we already queued BEFORE STATEMENT triggers for the given

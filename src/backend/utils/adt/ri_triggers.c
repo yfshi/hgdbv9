@@ -399,11 +399,36 @@ RI_FKey_check(TriggerData *trigdata)
 	 * referenced side.  The reason is that our snapshot must be fresh in
 	 * order for the hack in find_inheritance_children() to work.
 	 */
-	ri_PerformCheck(riinfo, &qkey, qplan,
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	if (!trigdata->handle_fk)
+	{
+		ri_PerformCheck(riinfo, &qkey, qplan,
 					fk_rel, pk_rel,
 					NULL, newslot,
 					pk_rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE,
 					SPI_OK_SELECT);
+	}
+	else
+	{
+		PG_TRY();
+		{
+			ri_PerformCheck(riinfo, &qkey, qplan,
+					fk_rel, pk_rel,
+					NULL, newslot,
+					pk_rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE,
+					SPI_OK_SELECT);
+		}
+		PG_FINALLY();
+		{
+			if (SPI_finish() != SPI_OK_FINISH)
+				elog(ERROR, "SPI_finish failed");
+			table_close(pk_rel, RowShareLock);
+		}
+		PG_END_TRY();
+		return PointerGetDatum(NULL);
+
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");

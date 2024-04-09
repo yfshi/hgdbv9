@@ -48,6 +48,17 @@ typedef struct CopyFormatOptions
 	bool	   *force_null_flags;	/* per-column CSV FN flags */
 	bool		convert_selectively;	/* do selective binary conversion? */
 	List	   *convert_select; /* list of column names (can be NIL) */
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	bool	   tolerate;            /* continue if error arise */
+	char	   *badfile;            /* log error record to file*/
+	char	   *badtable;           /* log error record to table */
+	int	   sharding;            /* sharding number */
+	int	   current_shard;       /* current shard number*/
+	char	   *taskid;		/* current bulkload task id */
+        char	   *filename;		/* used for error output */
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 } CopyFormatOptions;
 
 /* These are private in commands/copy[from|to].c */
@@ -85,5 +96,18 @@ extern void EndCopyTo(CopyToState cstate);
 extern uint64 DoCopyTo(CopyToState cstate);
 extern List *CopyGetAttnums(TupleDesc tupDesc, Relation rel,
 							List *attnamelist);
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+extern bool OutputBadRecord(CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char type);
+/* used for handle FK checking error */
+#define FK_CHECK_OID 1644
+/* used for cut big record for store and output */
+#define MAX_RECORD_LENGTHS 2000
+/* Bad Record type */
+#define BAD_RECORD_R	'r'	/* read error */
+#define BAD_RECORD_I	'i'	/* index insert error */
+#define BAD_RECORD_F    'f'	/* fk checking error */
+
+/* End - ReqID:SRS-MISC-BULKLOAD */
 
 #endif							/* COPY_H */

@@ -197,6 +197,7 @@ test: ora_like_operator
 #/* Begin - ReqID:SRS-SQL-ROWNUM */
 test: ora_rownum
 #/* End - ReqID:SRS-SQL-ROWNUM */
+
 #/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 test: ora_force_view
 #/* End - ReqID:SRS-SQL-FORCEVIEW */
@@ -208,3 +209,7 @@ test: ora_views_index_scan
 #/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 test: plus_outer_join
 #/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
+#/* Begin - ReqID:SRS-MISC-BULKLOAD */
+test: copyerror
+#/* End - ReqID:SRS-MISC-BULKLOAD */

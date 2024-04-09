@@ -55,3 +55,4 @@ WrapLimitsVacuumLock				46
 NotifyQueueTailLock					47
 FdwXactLock							48
 FdwXactResolverLock					49
+BadfileWriteLock				50

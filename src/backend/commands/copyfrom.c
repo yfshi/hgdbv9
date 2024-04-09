@@ -54,6 +54,11 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+#include "lib/stringinfo.h"
+#include "catalog/pg_trigger.h"
+/* End - ReqID:SRS-MISC-BULKLOAD */
+
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
  *
@@ -83,6 +88,10 @@ typedef struct CopyMultiInsertBuffer
 	int			nused;			/* number of 'slots' containing tuples */
 	uint64		linenos[MAX_BUFFERED_TUPLES];	/* Line # of tuple in copy
 												 * stream */
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	StringInfoData *line_bufs[MAX_BUFFERED_TUPLES];
+	
 } CopyMultiInsertBuffer;
 
 /*
@@ -223,6 +232,16 @@ CopyMultiInsertBufferInit(ResultRelInfo *rri)
 	buffer->bistate = GetBulkInsertState();
 	buffer->nused = 0;
 
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	memset(buffer->line_bufs, 0, sizeof(StringInfoData *) * MAX_BUFFERED_TUPLES);
+	for(int i=0; i<MAX_BUFFERED_TUPLES; i++)
+	{
+		StringInfo tmp = palloc0(sizeof(StringInfoData));
+		initStringInfo(tmp);
+		buffer->line_bufs[i] = tmp;
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 	return buffer;
 }
 
@@ -342,13 +361,67 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 			List	   *recheckIndexes;
 
 			cstate->cur_lineno = buffer->linenos[i];
-			recheckIndexes =
-				ExecInsertIndexTuples(resultRelInfo,
+
+			if (!cstate->opts.tolerate) /* ReqID:SRS-MISC-BULKLOAD */
+			{
+				recheckIndexes =
+					ExecInsertIndexTuples(resultRelInfo,
 									  buffer->slots[i], estate, false, false,
 									  NULL, NIL);
-			ExecARInsertTriggers(estate, resultRelInfo,
+			}
+			else
+			{
+				MemoryContext   current_cxt = CurrentMemoryContext;
+				PG_TRY();
+				{
+					recheckIndexes =
+						ExecInsertIndexTuples(resultRelInfo,
+								buffer->slots[i], estate, false, false,
+								NULL, NIL);
+				}
+				PG_CATCH();
+				{
+
+					/* 
+					 * as the same commandId could not insert tuple and delete tuple
+					 * so ++ the global currentCommandId
+					 * just add one time, not add when error occure
+					 * the check could pass
+					 * the same handling for SINGLE logical
+					 */
+					if ( mycid == GetCurrentCommandId(true) )
+						CommandCounterIncrement();
+
+					/* flush the error */
+					MemoryContextSwitchTo(current_cxt);
+					FlushErrorState();
+
+					/* delete the record by tid */
+					simple_heap_delete(resultRelInfo->ri_RelationDesc, &buffer->slots[i]->tts_tid);
+					cstate->error_num ++;
+
+					/* output the error record to file or table */
+					OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+
+					goto bypass_record;
+				}
+				PG_END_TRY();
+			}
+
+			/* Begin - ReqID:SRS-MISC-BULKLOAD */
+			if (!estate->handle_fk_error)
+				ExecARInsertTriggers(estate, resultRelInfo,
 								 slots[i], recheckIndexes,
 								 cstate->transition_capture);
+
+			else
+				ExecARInsertTriggers_lineno(estate, resultRelInfo,
+						slots[i], recheckIndexes,
+						cstate->transition_capture,
+						cstate->cur_lineno);
+			/* End - ReqID:SRS-MISC-BULKLOAD */
+
+
 			list_free(recheckIndexes);
 		}
 
@@ -361,9 +434,28 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 				  resultRelInfo->ri_TrigDesc->trig_insert_new_table))
 		{
 			cstate->cur_lineno = buffer->linenos[i];
-			ExecARInsertTriggers(estate, resultRelInfo,
+
+			/* Begin - ReqID:SRS-MISC-BULKLOAD */
+			if (!estate->handle_fk_error)
+				ExecARInsertTriggers(estate, resultRelInfo,
 								 slots[i], NIL, cstate->transition_capture);
+			else
+				ExecARInsertTriggers_lineno(estate, resultRelInfo,
+						slots[i], NIL,
+						cstate->transition_capture,
+						cstate->cur_lineno);
+			/* End - ReqID:SRS-MISC-BULKLOAD */
 		}
+
+		/* Begin - ReqID:SRS-MISC-BULKLOAD */
+bypass_record:
+		/* clear the line_buf if used */
+		if (cstate->opts.tolerate)
+		{
+			if(buffer->line_bufs[i]->data)
+				resetStringInfo(buffer->line_bufs[i]);
+		}
+		/* End - ReqID:SRS-MISC-BULKLOAD */
 
 		ExecClearTuple(slots[i]);
 	}
@@ -401,6 +493,18 @@ CopyMultiInsertBufferCleanup(CopyMultiInsertInfo *miinfo,
 
 	table_finish_bulk_insert(buffer->resultRelInfo->ri_RelationDesc,
 							 miinfo->ti_options);
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* clean up the line_bufs */
+	if (miinfo->cstate->opts.tolerate)
+	{
+		for (i = 0; i < MAX_BUFFERED_TUPLES && buffer->line_bufs[i] != NULL; i++)
+		{
+			pfree(buffer->line_bufs[i]->data);
+			pfree(buffer->line_bufs[i]);
+		}
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	pfree(buffer);
 }
@@ -503,6 +607,10 @@ static inline void
 CopyMultiInsertInfoStore(CopyMultiInsertInfo *miinfo, ResultRelInfo *rri,
 						 TupleTableSlot *slot, int tuplen, uint64 lineno)
 {
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	StringInfo tmp;
+
 	CopyMultiInsertBuffer *buffer = rri->ri_CopyMultiInsertBuffer;
 
 	Assert(buffer != NULL);
@@ -511,6 +619,18 @@ CopyMultiInsertInfoStore(CopyMultiInsertInfo *miinfo, ResultRelInfo *rri,
 	/* Store the line number so we can properly report any errors later */
 	buffer->linenos[buffer->nused] = lineno;
 
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* Store the line_bufs into miinfo */
+	if(miinfo->cstate->opts.tolerate)
+	{
+		tmp = buffer->line_bufs[buffer->nused];
+		if (tuplen > miinfo->cstate->byte_records )
+			appendBinaryStringInfo(tmp,miinfo->cstate->line_buf.data,miinfo->cstate->byte_records);
+		else
+			appendBinaryStringInfo(tmp,miinfo->cstate->line_buf.data,tuplen);
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 	/* Record this slot as being used */
 	buffer->nused++;
 
@@ -518,6 +638,53 @@ CopyMultiInsertInfoStore(CopyMultiInsertInfo *miinfo, ResultRelInfo *rri,
 	miinfo->bufferedTuples++;
 	miinfo->bufferedBytes += tuplen;
 }
+
+
+/* Begin - ReqID:SRS-MISC-BULKLOAD */
+static void
+CheckTriggerForTolerate(Relation rel,ResultRelInfo *relinfo,CopyFromState cstate,EState *estate)
+{
+
+        TriggerDesc *trigdesc = relinfo->ri_TrigDesc;
+        for (int i = 0; i < trigdesc->numtriggers; i++)
+        {
+                Trigger    *trigger = &trigdesc->triggers[i];
+                if (TRIGGER_TYPE_MATCHES(trigger->tgtype,
+                                TRIGGER_TYPE_ROW, TRIGGER_TYPE_BEFORE, TRIGGER_TYPE_INSERT)
+                    && (trigger->tgenabled != TRIGGER_DISABLED) )
+                        ereport(ERROR,
+                                (errcode(ERRCODE_WRONG_OBJECT_TYPE),
+                                errmsg("Tolerate mode,not support before insert row trigger for relation \"%s\"",
+                                RelationGetRelationName(rel))));
+
+                if (TRIGGER_TYPE_MATCHES(trigger->tgtype,
+                                TRIGGER_TYPE_ROW,TRIGGER_TYPE_AFTER, TRIGGER_TYPE_INSERT)
+                    && (trigger->tgenabled != TRIGGER_DISABLED) )
+                {
+			if ( trigger->tgfoid != FK_CHECK_OID)
+				ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					errmsg("Tolerate mode,not support after insert row trigger(expect fk check trigger) for relation \"%s\"",
+					RelationGetRelationName(rel))));
+			else
+			{
+				estate->handle_fk_error = true;
+				estate->sharding = cstate->opts.sharding;
+				estate->current_shard = cstate->opts.current_shard;
+				estate->badfile = cstate->opts.badfile;
+				estate->badtable = cstate->opts.badtable;
+				estate->taskid = cstate->opts.taskid;
+				estate->filename = cstate->opts.filename;
+				estate->byte_records = cstate->byte_records;
+				estate->copy_src = cstate->copy_src;
+				estate->schema_name = cstate->schema_name;
+				estate->cur_relname = cstate->cur_relname;
+				estate->delimiter = cstate->opts.delim;
+			}
+		}
+        }
+}
+/* End - ReqID:SRS-MISC-BULKLOAD */
 
 /*
  * Copy FROM file to relation.
@@ -546,6 +713,11 @@ CopyFrom(CopyFromState cstate)
 	bool		has_before_insert_row_trig;
 	bool		has_instead_insert_row_trig;
 	bool		leafpart_use_multi_insert = false;
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	bool    error_flag = false;
+	bool    nextcopyfrom_flag = true;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	Assert(cstate->rel);
 	Assert(list_length(cstate->range_table) == 1);
@@ -583,6 +755,19 @@ CopyFrom(CopyFromState cstate)
 					 errmsg("cannot copy to non-table relation \"%s\"",
 							RelationGetRelationName(cstate->rel))));
 	}
+	
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* check target is base table or partition table */
+	if (cstate->opts.tolerate)
+	{
+		if (cstate->rel->rd_rel->relkind != RELKIND_RELATION &&
+			cstate->rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE )
+			ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				errmsg("tolerate mode,cannot copy to relation \"%s\" as not base or partition table",
+					RelationGetRelationName(cstate->rel))));
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/*
 	 * If the target file is new-in-transaction, we assume that checking FSM
@@ -662,6 +847,16 @@ CopyFrom(CopyFromState cstate)
 
 	/* Check and init global temporary table storage in current backend */
 	init_gtt_storage(CMD_INSERT, resultRelInfo);
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* check there is no insert trigger or disable insert trigger*/
+	if (cstate->opts.tolerate && resultRelInfo->ri_TrigDesc != NULL)
+	{
+		/* check trigger */
+		/* If there have enabled before or after row insert trigger, report error */
+		CheckTriggerForTolerate(cstate->rel,resultRelInfo,cstate,estate);
+	}
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/*
 	 * Set up a ModifyTableState so we can let FDW(s) init themselves for
@@ -825,6 +1020,11 @@ CopyFrom(CopyFromState cstate)
 		TupleTableSlot *myslot;
 		bool		skip_tuple;
 
+		/* Begin - ReqID:SRS-MISC-BULKLOAD */
+		error_flag = false;
+		nextcopyfrom_flag = true;
+		/* End - ReqID:SRS-MISC-BULKLOAD */
+
 		CHECK_FOR_INTERRUPTS();
 
 		/*
@@ -857,8 +1057,37 @@ CopyFrom(CopyFromState cstate)
 		ExecClearTuple(myslot);
 
 		/* Directly store the values/nulls array in the slot */
-		if (!NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
+		if (!cstate->opts.tolerate) /* ReqID:SRS-MISC-BULKLOAD */
+		{
+			if (!NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull))
+				break;
+		}
+		/* Begin - ReqID:SRS-MISC-BULKLOAD */
+		else
+		{
+			MemoryContext   current_cxt = CurrentMemoryContext;
+			PG_TRY();
+			{
+				nextcopyfrom_flag = NextCopyFrom(cstate, econtext, myslot->tts_values, myslot->tts_isnull);
+			}
+			PG_CATCH();
+			{
+				/* flush the error */
+				MemoryContextSwitchTo(current_cxt);
+				FlushErrorState();
+
+				/* output the error record to file or table */
+				OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+				error_flag = true;
+			}
+			PG_END_TRY();
+                        
+		}
+		if (error_flag)
+			continue;
+		if (!nextcopyfrom_flag)
 			break;
+		/* End - ReqID:SRS-MISC-BULKLOAD */
 
 		ExecStoreVirtualTuple(myslot);
 
@@ -897,8 +1126,33 @@ CopyFrom(CopyFromState cstate)
 			 * ExecFindPartition() will raise an error if none can be found or
 			 * if the found partition is not suitable for INSERTs.
 			 */
-			resultRelInfo = ExecFindPartition(mtstate, target_resultRelInfo,
+			/* Begin - ReqID:SRS-MISC-BULKLOAD */
+			if( cstate->opts.tolerate )
+			{
+				MemoryContext   current_cxt = CurrentMemoryContext;
+				PG_TRY();
+				{
+					resultRelInfo = ExecFindPartition(mtstate, target_resultRelInfo,
+										proute, myslot, estate);
+				}
+				PG_CATCH();
+				{
+					MemoryContextSwitchTo(current_cxt);
+					error_flag = true;
+
+					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					error_flag = true;
+				}
+				PG_END_TRY();
+
+				if(error_flag)
+					continue;
+			}
+			else /* End - ReqID:SRS-MISC-BULKLOAD */
+			{
+				resultRelInfo = ExecFindPartition(mtstate, target_resultRelInfo,
 											  proute, myslot, estate);
+			}
 
 			if (prevResultRelInfo != resultRelInfo)
 			{
@@ -908,6 +1162,14 @@ CopyFrom(CopyFromState cstate)
 
 				has_instead_insert_row_trig = (resultRelInfo->ri_TrigDesc &&
 											   resultRelInfo->ri_TrigDesc->trig_insert_instead_row);
+
+				/* Begin - ReqID:SRS-MISC-BULKLOAD */
+				/* check there is no insert trigger or disable insert trigger on this partition */
+				if (cstate->opts.tolerate && resultRelInfo->ri_TrigDesc != NULL)
+				{
+					CheckTriggerForTolerate(cstate->rel,resultRelInfo,cstate,estate);
+				}	
+				/* End - ReqID:SRS-MISC-BULKLOAD */
 
 				/*
 				 * Disable multi-inserts when the partition has BEFORE/INSTEAD
@@ -1024,29 +1286,65 @@ CopyFrom(CopyFromState cstate)
 			}
 			else
 			{
-				/* Compute stored generated columns */
-				if (resultRelInfo->ri_RelationDesc->rd_att->constr &&
-					resultRelInfo->ri_RelationDesc->rd_att->constr->has_generated_stored)
-					ExecComputeStoredGenerated(resultRelInfo, estate, myslot,
+				if( !cstate->opts.tolerate )
+				{
+					/* Compute stored generated columns */
+					if (resultRelInfo->ri_RelationDesc->rd_att->constr &&
+						resultRelInfo->ri_RelationDesc->rd_att->constr->has_generated_stored)
+						ExecComputeStoredGenerated(resultRelInfo, estate, myslot,
 											   CMD_INSERT);
 
-				/*
-				 * If the target is a plain table, check the constraints of
-				 * the tuple.
-				 */
-				if (resultRelInfo->ri_FdwRoutine == NULL &&
-					resultRelInfo->ri_RelationDesc->rd_att->constr)
-					ExecConstraints(resultRelInfo, myslot, estate);
+					/*
+				 	 * If the target is a plain table, check the constraints of
+					 * the tuple.
+					 */
+					if (resultRelInfo->ri_FdwRoutine == NULL &&
+						resultRelInfo->ri_RelationDesc->rd_att->constr)
+						ExecConstraints(resultRelInfo, myslot, estate);
 
-				/*
-				 * Also check the tuple against the partition constraint, if
-				 * there is one; except that if we got here via tuple-routing,
-				 * we don't need to if there's no BR trigger defined on the
-				 * partition.
-				 */
-				if (resultRelInfo->ri_RelationDesc->rd_rel->relispartition &&
-					(proute == NULL || has_before_insert_row_trig))
-					ExecPartitionCheck(resultRelInfo, myslot, estate, true);
+					/*
+					 * Also check the tuple against the partition constraint, if
+					 * there is one; except that if we got here via tuple-routing,
+					 * we don't need to if there's no BR trigger defined on the
+					 * partition.
+					 */
+					if (resultRelInfo->ri_RelationDesc->rd_rel->relispartition &&
+							(proute == NULL || has_before_insert_row_trig))
+						ExecPartitionCheck(resultRelInfo, myslot, estate, true);
+				}
+				else /* Begin - ReqID:SRS-MISC-BULKLOAD */
+				{
+					MemoryContext   current_cxt = CurrentMemoryContext;
+					PG_TRY();
+					{
+						if (resultRelInfo->ri_RelationDesc->rd_att->constr &&
+							resultRelInfo->ri_RelationDesc->rd_att->constr->has_generated_stored)
+							ExecComputeStoredGenerated(resultRelInfo, estate, myslot,
+												CMD_INSERT);
+
+						if (resultRelInfo->ri_FdwRoutine == NULL &&
+							resultRelInfo->ri_RelationDesc->rd_att->constr)
+							ExecConstraints(resultRelInfo, myslot, estate);
+
+						if (resultRelInfo->ri_RelationDesc->rd_rel->relispartition &&
+								(proute == NULL || has_before_insert_row_trig))
+							ExecPartitionCheck(resultRelInfo, myslot, estate, true);
+					}
+					PG_CATCH();
+					{
+						/* flush the error */
+						MemoryContextSwitchTo(current_cxt);
+						FlushErrorState();
+
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+						error_flag = true;
+					}
+					PG_END_TRY();
+
+					if(error_flag)
+						continue;
+				}/* End - ReqID:SRS-MISC-BULKLOAD */
 
 				/* Store the slot in the multi-insert buffer, when enabled. */
 				if (insertMethod == CIM_MULTI || leafpart_use_multi_insert)
@@ -1099,18 +1397,66 @@ CopyFrom(CopyFromState cstate)
 										   myslot, mycid, ti_options, bistate);
 
 						if (resultRelInfo->ri_NumIndices > 0)
-							recheckIndexes = ExecInsertIndexTuples(resultRelInfo,
+						{
+							if( !cstate->opts.tolerate )  /* ReqID:SRS-MISC-BULKLOAD */
+							{
+								recheckIndexes = ExecInsertIndexTuples(resultRelInfo,
 																   myslot,
 																   estate,
 																   false,
 																   false,
 																   NULL,
 																   NIL);
+							}
+							/* Begin - ReqID:SRS-MISC-BULKLOAD */
+							else
+							{
+								MemoryContext   current_cxt = CurrentMemoryContext;
+								PG_TRY();
+								{
+									recheckIndexes = ExecInsertIndexTuples(resultRelInfo, myslot, estate, false, false, NULL, NIL);
+								}
+								PG_CATCH();
+								{
+									if ( mycid == GetCurrentCommandId(true) )
+										CommandCounterIncrement();
+
+									/* flush the error*/
+									MemoryContextSwitchTo(current_cxt);
+									FlushErrorState();
+
+									/* delete the record by tid */
+									simple_heap_delete(resultRelInfo->ri_RelationDesc,&myslot->tts_tid);
+
+									/* output the error record to file or table */
+									OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
+									
+									error_flag = true;
+								}
+								PG_END_TRY();
+
+								if(error_flag)
+									continue;
+							}
+							/* End - ReqID:SRS-MISC-BULKLOAD */
+						}
 					}
 
 					/* AFTER ROW INSERT Triggers */
-					ExecARInsertTriggers(estate, resultRelInfo, myslot,
-										 recheckIndexes, cstate->transition_capture);
+					/* Begin - ReqID:SRS-MISC-BULKLOAD */
+					if (!estate->handle_fk_error)
+					{
+						ExecARInsertTriggers(estate, resultRelInfo, myslot,
+							recheckIndexes, cstate->transition_capture);
+					}
+					/* using new function ExecARInsertTriggers_lineno() for lineno */
+					else 
+					{
+						ExecARInsertTriggers_lineno(estate, resultRelInfo, myslot,
+							 recheckIndexes, cstate->transition_capture,
+							 cstate->cur_lineno);
+					}
+					/* End - ReqID:SRS-MISC-BULKLOAD */
 
 					list_free(recheckIndexes);
 				}
@@ -1147,6 +1493,13 @@ CopyFrom(CopyFromState cstate)
 
 	/* Handle queued AFTER triggers */
 	AfterTriggerEndQuery(estate);
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* Need to minus reject record */
+	if (cstate->opts.tolerate)
+		processed = processed - cstate->error_num - estate->handle_fk_error_num;
+	/* End - ReqID:SRS-MISC-BULKLOAD */
+
 
 	ExecResetTupleTable(estate->es_tupleTable, false);
 
@@ -1238,6 +1591,11 @@ BeginCopyFrom(ParseState *pstate,
 
 	/* Process the target relation */
 	cstate->rel = rel;
+
+	/* Begin - ReqID:SRS-MISC-BULKLOAD */
+	/* Used for output the bad record */
+	cstate->schema_name = get_namespace_name(RelationGetNamespace(cstate->rel));
+	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	tupDesc = RelationGetDescr(cstate->rel);
 
@@ -1561,6 +1919,9 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->max_fields = attr_count;
 		cstate->raw_fields = (char **) palloc(attr_count * sizeof(char *));
 	}
+
+	/* ReqID:SRS-MISC-BULKLOAD */
+	cstate->byte_records = MAX_RECORD_LENGTHS;
 
 	MemoryContextSwitchTo(oldcontext);
 
