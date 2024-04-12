@@ -13,11 +13,11 @@
 #include "postgres_fe.h"
 
 #include "fe_utils/option_utils.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 /*
  * Provide strictly harmonized handling of --help and --version
  * options.
@@ -26,13 +26,6 @@ void
 handle_help_version_opts(int argc, char *argv[],
 						 const char *fixed_progname, help_handler hlp)
 {
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
-
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -45,14 +38,15 @@ handle_help_version_opts(int argc, char *argv[],
 			printf("%s (PostgreSQL) " PG_VERSION "\n", fixed_progname);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("%s %s\n", fixed_progname, hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 }

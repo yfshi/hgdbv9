@@ -27,11 +27,11 @@
 #include "getopt_long.h"		/* pgrminclude ignore */
 #include "pgtime.h"
 #include "storage/block.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 typedef struct PatternInfo
 {
 	const char *pattern;		/* Unaltered pattern from the command line */
@@ -1208,11 +1208,11 @@ help(const char *progname)
 	printf(_("  -P, --progress                  show progress information\n"));
 	printf(_("  -v, --verbose                   write a lot of output\n"));
 	printf(_("  -V, --version                   output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version			output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("      --install-missing           install missing extensions\n"));
 	printf(_("  -?, --help                      show this help, then exit\n"));
 

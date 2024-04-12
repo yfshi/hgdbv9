@@ -25,30 +25,31 @@
 	#define LICENSEEXPORT
 #endif
 
-extern LICENSEEXPORT const char * hg_get_productName(void);			// Product name
-extern LICENSEEXPORT const char * hg_get_majorVersion(void);		// Major version
-extern LICENSEEXPORT const char * hg_get_minVersion(void);			// Min version
-extern LICENSEEXPORT const char * hg_get_productType(void);			// Product type
-extern LICENSEEXPORT const char * hg_get_highgoVersion(void);		// Highgo version
-extern LICENSEEXPORT const char * hg_get_defaultDBname(void);		// Default database name
-extern LICENSEEXPORT const char * hg_get_defaultDBuser(void);		// Default database user
-extern LICENSEEXPORT const char * hg_get_defaultDBport(void);		// Default database port
 
-extern LICENSEEXPORT const char * hg_get_licver(void);				// License version
-extern LICENSEEXPORT const char * hg_get_licSerial(void);			// License serial
-extern LICENSEEXPORT const char * hg_get_authType(void);			// Authorization type
-extern LICENSEEXPORT const char * hg_get_usedType(void);			// Use type
-extern LICENSEEXPORT const char * hg_get_userInfo(void);			// User information
-extern LICENSEEXPORT const char * hg_get_projectInfo(void);			// Project information
-extern LICENSEEXPORT const char * hg_get_createTime(void);			// Create time
-extern LICENSEEXPORT const char * hg_get_finalTime(void);			// Final time
-extern LICENSEEXPORT const char * hg_get_maxConnection(void);		// max_connection
-extern LICENSEEXPORT const char * hg_get_maxCpuCores(void);			// CPU cores
+extern LICENSEEXPORT const char * hg_get_productName(void);		// Product name
+extern LICENSEEXPORT const char * hg_get_majorVersion(void);	// Major version
+extern LICENSEEXPORT const char * hg_get_minVersion(void);		// Min version
+extern LICENSEEXPORT const char * hg_get_productType(void);		// Product type
+extern LICENSEEXPORT const char * hg_get_highgoVersion(void);	// Highgo version
+extern LICENSEEXPORT const char * hg_get_defaultDBname(void);	// Default database name
+extern LICENSEEXPORT const char * hg_get_defaultDBuser(void);	// Default database user
+extern LICENSEEXPORT const char * hg_get_defaultDBport(void);	// Default database port
+
+extern LICENSEEXPORT const char * hg_get_licver(void);			// License version
+extern LICENSEEXPORT const char * hg_get_licSerial(void);		// License serial
+extern LICENSEEXPORT const char * hg_get_authType(void);		// Authorization type
+extern LICENSEEXPORT const char * hg_get_usedType(void);		// Use type
+extern LICENSEEXPORT const char * hg_get_userInfo(void);		// User information
+extern LICENSEEXPORT const char * hg_get_projectInfo(void);		// Project information
+extern LICENSEEXPORT const char * hg_get_createTime(void);		// Create time
+extern LICENSEEXPORT const char * hg_get_finalTime(void);		// Final time
+extern LICENSEEXPORT const char * hg_get_maxConnection(void);	// max_connection
+extern LICENSEEXPORT const char * hg_get_maxCpuCores(void);		// CPU cores
 
 extern LICENSEEXPORT bool     	  hg_get_productBitMapByCode(PRODUCT_FUNC_CODE); // Query function bitmap
-extern LICENSEEXPORT int		  hg_load_license(const char *);	// Load license authorization file
-extern LICENSEEXPORT const char * hg_get_license_status(void);		// Get license file status
-extern LICENSEEXPORT bool		  hg_validate_license_status(void);	// Verify the status of the license file
+extern LICENSEEXPORT int		  hg_load_license(const char *);	    // Load license authorization file
+extern LICENSEEXPORT const char * hg_get_license_status(void);	        // Get license file status
+extern LICENSEEXPORT bool		  hg_validate_license_status(void);		// Verify the status of the license file
 extern LICENSEEXPORT const char * hg_get_calc_hardware_code(void);		// get calculated hardware code
 extern LICENSEEXPORT const char * hg_get_hardware_code_by_macstr(const char *str);
 extern LICENSEEXPORT const char * hg_get_hardware_code(void);			// get hardware code from license file
@@ -73,9 +74,17 @@ extern LICENSEEXPORT const char * hg_get_funclist_title_tail(int width);
 
 extern LICENSEEXPORT const char * hg_get_startup_info(int *log_lvl);
 extern LICENSEEXPORT void         hg_set_is_ignore_hardware_check(bool flag);	// is check hardware code
-extern LICENSEEXPORT void         hg_set_is_ignore_md5_checksum(bool flag);		// is check md5 checksum value
-extern LICENSEEXPORT const char * hg_get_mac_string(void);						// get mac string
-extern LICENSEEXPORT const char * hg_get_service_hotline(void);					// get service hotline
+extern LICENSEEXPORT void         hg_set_is_ignore_md5_checksum(bool flag);	    // is check md5 checksum value
+extern LICENSEEXPORT void         hg_set_is_ignore_datetime_check(bool);		// is check the validity date of the license
+extern LICENSEEXPORT void         hg_set_is_client_dat(bool);                   /* 
+                                                                                 * Decide whether to load the client license file or the server license file. 
+                                                                                 * If not set, the default is the server-side license file. 
+                                                                                 * This setting will affect the selection of which license file (license.dat or license_cli.dat) to read by the hg_load_license() function
+                                                                                */
+extern LICENSEEXPORT const char * hg_get_mac_string(void);					    // get mac string
+extern LICENSEEXPORT const char * hg_get_service_hotline(void);				    // get service hotline
 extern LICENSEEXPORT const char * hg_get_technical_support_url(void);			// get technical support
+extern LICENSEEXPORT int		  hg_load_client_license(const char *);	        // Load client license authorization file
+extern LICENSEEXPORT int		  hg_load_server_license(const char *);	        // Load server license authorization file
 
 #endif // end __LICENSE_H__

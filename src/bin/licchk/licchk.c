@@ -6,13 +6,14 @@
  * 	  licchk tool checks and displays the content of the license.dat file..
  *
  * Copyright:
- * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2024, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		src/bin/licchk/licchk.c
  *
  * Requirement description:
  * 		ReqID:SRS-MISC-LICENSE
+ * 		ReqID:SRS-MISC-LICENSE-ClientTool
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -43,6 +44,10 @@ static bool  is_ignore_check_hardware = false;	/* ignore hardware code check */
 /* Begin - fix Bug#M0000321 */
 static bool  is_ignore_md5_checksum = false;	/* ignore md5 checksum value */
 /* End - fix Bug#M0000321 */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
+static bool	 is_ignore_datetime_check = false;	/* whether check the validity date of the license or not */
+static bool  is_client_dat = false;				/* Is it the file that loads the license_cli.dat */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 
 static void  printLicenseData(void);
 static void  _printFuncList(void);
@@ -80,10 +85,15 @@ int main(int argc, char **argv)
 		{ "check"   , required_argument, NULL, 'c' },
 		{ "username", no_argument      , NULL, 'U' },
 		{ "port"    , no_argument      , NULL, 'P' },
-		{ "ignore hardware code", no_argument, NULL, 'i' },
+		{ "ignore-hardware-code", no_argument, NULL, 'i' },
 		/* Begin - fix Bug#M0000321 */
-		{ "ignore md5 checksum", no_argument, NULL, 'I' },
+		{ "ignore-md5-checksum", no_argument, NULL, 'I' },
 		/* End - fix Bug#M0000321 */
+		/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
+		{ "client-license", no_argument, NULL, 'C' },
+		{ "server-license", no_argument, NULL, 'S' },
+		{ "ignore-datetime-check", no_argument, NULL, 'd' },
+		/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -155,7 +165,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiI", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSd", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -191,6 +201,19 @@ int main(int argc, char **argv)
 				is_ignore_md5_checksum = true;
 				break;
 			/* End - fix Bug#M0000321 */
+			/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
+			case 'C':
+				is_client_dat = true;
+				break;
+
+			case 'S':
+				is_client_dat = false;
+				break;
+
+			case 'd':
+				is_ignore_datetime_check = true;
+				break;
+			/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 			case 'v':
 				is_view = true;
 				break;
@@ -210,15 +233,21 @@ int main(int argc, char **argv)
 		exit(0);
 	}
 
-	/* load license.dat */
+	/* load license.dat or license_cli.dat */
 	if (license_dat == NULL)
 	{
+		hg_set_is_client_dat(is_client_dat); // ReqID:SRS-MISC-LICENSE-ClientTool
 		hg_set_license_abspath(argv[0]);
-		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
-		/* Begin - fix Bug#M0000321 */
-		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);
-		/* End - fix Bug#M0000321 */
-		hg_load_license(NULL);
+		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum); // fix Bug#M0000321
+		hg_set_is_ignore_hardware_check(is_ignore_check_hardware); // ReqID:SRS-MISC-LICENSE-ClientTool
+		hg_set_is_ignore_datetime_check(is_ignore_datetime_check); // ReqID:SRS-MISC-LICENSE-ClientTool
+
+		iRet = hg_load_license(NULL);
+		if (iRet != 0)
+		{
+			printf(_("license validate fail.\n"));
+			return -1;
+		}
 
 		if (is_get_name)
 		{
@@ -236,10 +265,10 @@ int main(int argc, char **argv)
 	}
 	else if (license_dat != NULL && license_dat[0] != 0)
 	{
-		hg_set_is_ignore_hardware_check(is_ignore_check_hardware);
-		/* Begin - fix Bug#M0000321 */
-		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);
-		/* End - fix Bug#M0000321 */
+		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);	// fix Bug#M0000321
+		hg_set_is_ignore_hardware_check(is_ignore_check_hardware); // ReqID:SRS-MISC-LICENSE-ClientTool
+		hg_set_is_ignore_datetime_check(is_ignore_datetime_check); // ReqID:SRS-MISC-LICENSE-ClientTool
+	
 		iRet = hg_load_license(license_dat);
 		if (iRet != 0)
 		{
@@ -361,15 +390,20 @@ usage(const char *progname)
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTION]... [DATADIR]\n"), progname);
 	printf(_("\nOptions:\n"));
-	printf(_("  -l, --list                list enabled function items\n"));
-	printf(_("  -a, --all                 all functional items\n"));
-	printf(_("  -v, --view                show desc information\n"));
-	printf(_("  -f, --filename=xxx.dat    set license filename\n"));
-	printf(_("  -c, --check=xxx.txt       check hardware code, then exit.\n"));
-	printf(_("  -U, --username            obtain the username from the license file.\n"));
-	printf(_("  -P, --port                obtain the port from the license file.\n"));
-	printf(_("  -V, --version             output version information, then exit\n"));
-	printf(_("  -?, --help                show this help, then exit\n"));
+	printf(_("  -l, --list                	list enabled function items\n"));
+	printf(_("  -a, --all                 	all functional items\n"));
+	printf(_("  -v, --view                	show desc information\n"));
+	printf(_("  -f, --filename=xxx.dat    	set license filename\n"));
+	printf(_("  -c, --check=xxx.txt       	check hardware code, then exit.\n"));
+	/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
+	printf(_("  -C, --client-license      	show client license_cli.dat information.\n"));
+	printf(_("  -S, --server-license      	show server license.dat information.\n"));
+	printf(_("  -d, --ignore-datetime-check	ignore validity date of the license.\n"));
+	/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+	printf(_("  -U, --username            	obtain the username from the license file.\n"));
+	printf(_("  -P, --port                	obtain the port from the license file.\n"));
+	printf(_("  -V, --version             	output version information, then exit\n"));
+	printf(_("  -?, --help                	show this help, then exit\n"));
 }
 
 #ifdef WIN32

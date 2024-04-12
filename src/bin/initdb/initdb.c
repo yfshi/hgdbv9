@@ -3229,10 +3229,8 @@ initialize_data_directory(void)
 	/* END - SRS-MISC-GB18030*/
 	load_plpgsql(cmdfd);
 /* Begin - ReqID:SRS-MISC-LICENSE */
-#if 1
 #ifdef USE_LICENSE
 	load_hg_misc(cmdfd);
-#endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
@@ -3331,8 +3329,7 @@ main(int argc, char *argv[])
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
+	hg_load_server_license(argv[0]);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 

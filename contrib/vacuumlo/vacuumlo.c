@@ -28,11 +28,11 @@
 #include "getopt_long.h"
 #include "libpq-fe.h"
 #include "pg_getopt.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 #define BUFSIZE			1024
 
 enum trivalue
@@ -427,11 +427,11 @@ usage(const char *progname)
 	printf("  -n, --dry-run             don't remove large objects, just show what would be done\n");
 	printf("  -v, --verbose             write a lot of progress messages\n");
 	printf("  -V, --version             output version information, then exit\n");
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf("  -G, --highgo-version      output version of highgo information, then exit\n");
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf("  -?, --help                show this help, then exit\n");
 	printf("\nConnection options:\n");
 	printf("  -h, --host=HOSTNAME       database server host or socket directory\n");
@@ -481,12 +481,6 @@ main(int argc, char **argv)
 	param.verbose = 0;
 	param.dry_run = 0;
 	param.transaction_limit = 1000;
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
 
 	/* Process command-line arguments */
 	if (argc > 1)
@@ -501,15 +495,16 @@ main(int argc, char **argv)
 			puts("vacuumlo (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("vacuumlo %s\n", hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	while ((c = getopt_long(argc, argv, "h:l:np:U:vwW", long_options, &optindex)) != -1)
