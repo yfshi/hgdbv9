@@ -16987,7 +16987,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	char	   *storage;
 	int			j,
 				k;
-	char		ident_case = '\0'; /* ReqID:SRS-SQL-FORCEVIEW */
+	char		ident_case = '\0'; /* ReqID:SRS-SQL-FORCEVIEW */	/* BUG#M0000323 */
 
 	/* We had better have loaded per-column details about this table */
 	Assert(tbinfo->interesting);
@@ -17792,7 +17792,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			tbinfo->relkind == RELKIND_MATVIEW)
 			tableam = tbinfo->amname;
 
-		ArchiveEntry2(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,
+		ArchiveEntry(fout, tbinfo->dobj.catId, tbinfo->dobj.dumpId,						/* BUG#M0000323 */
 					 ARCHIVE_OPTS(.tag = tbinfo->dobj.name,
 								  .namespace = tbinfo->dobj.namespace->dobj.name,
 								  .tablespace = (tbinfo->relkind == RELKIND_VIEW) ?
@@ -17803,8 +17803,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 								  .section = tbinfo->postponed_def ?
 								  SECTION_POST_DATA : SECTION_PRE_DATA,
 								  .createStmt = q->data,
-								  .dropStmt = delq->data),
-								  (tbinfo->relkind == RELKIND_VIEW && tbinfo->force_view) ? ident_case : '\0' /* ReqID:SRS-SQL-FORCEVIEW */);
+								  .dropStmt = delq->data,
+								  .ident_case = (tbinfo->relkind == RELKIND_VIEW && tbinfo->force_view) ? ident_case : '\0'));	/* BUG#M0000323 */
 	}
 
 	/* Dump Table Comments */
