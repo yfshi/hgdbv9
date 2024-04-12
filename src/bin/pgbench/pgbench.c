@@ -69,11 +69,11 @@
 #include "pgbench.h"
 #include "port/pg_bitutils.h"
 #include "portability/instr_time.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -705,7 +705,7 @@ pg_time_now_lazy(pg_time_usec_t *now)
 static void
 usage(void)
 {
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf("%s is a benchmarking tool for PostgreSQL.\n\n"
 		   "Usage:\n"
@@ -836,7 +836,7 @@ usage(void)
 		   "%s home page: <%s>\n",
 		   progname, progname, PACKAGE_BUGREPORT, PACKAGE_NAME, PACKAGE_URL);
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */	
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */	
 }
 
 /* return whether str matches "^\s*[-+]?[0-9]+$" */
@@ -5989,12 +5989,7 @@ main(int argc, char **argv)
 
 	pg_logging_init(argv[0]);
 	progname = get_progname(argv[0]);
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
+
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -6007,15 +6002,16 @@ main(int argc, char **argv)
 			puts("pgbench (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("pgbench %s\n", hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	state = (CState *) pg_malloc0(sizeof(CState));

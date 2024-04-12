@@ -10,11 +10,11 @@
 #include "getopt_long.h"
 
 #include "preproc_extern.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 int			ret_value = 0;
 bool		autocommit = false,
 			auto_create_c = false,
@@ -60,11 +60,11 @@ help(const char *progname)
 	printf(_("  --regression   run in regression testing mode\n"));
 	printf(_("  -t             turn on autocommit of transactions\n"));
 	printf(_("  -V, --version  output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -?, --help     show this help, then exit\n"));
 	printf(_("\nIf no output file is specified, the name is formed by adding .c to the\n"
 			 "input file name, after stripping off .pgc if present.\n"));
@@ -150,12 +150,7 @@ main(int argc, char *const argv[])
 		fprintf(stderr, _("%s: could not locate my own executable path\n"), argv[0]);
 		return ILLEGAL_OPTION;
 	}
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
+
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -168,15 +163,16 @@ main(int argc, char *const argv[])
 			printf("ecpg (PostgreSQL) %s\n", PG_VERSION);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("ecpg %s\n", hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	output_filename = NULL;

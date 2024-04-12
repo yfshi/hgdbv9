@@ -29,11 +29,11 @@
 #include "storage/bufpage.h"
 #include "storage/checksum.h"
 #include "storage/checksum_impl.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 
 
 static int64 files = 0;
@@ -90,11 +90,11 @@ usage(void)
 	printf(_("  -P, --progress           show progress information\n"));
 	printf(_("  -v, --verbose            output verbose messages\n"));
 	printf(_("  -V, --version            output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version     output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -?, --help               show this help, then exit\n"));
 	printf(_("\nIf no data directory (DATADIR) is specified, "
 			 "the environment variable PGDATA\nis used.\n\n"));
@@ -481,13 +481,6 @@ main(int argc, char *argv[])
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_checksums"));
 	progname = get_progname(argv[0]);
 
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
-
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -500,15 +493,16 @@ main(int argc, char *argv[])
 			puts("pg_checksums (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("pg_checksums %s\n", hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	while ((c = getopt_long(argc, argv, "cD:deNPf:v", long_options, &option_index)) != -1)

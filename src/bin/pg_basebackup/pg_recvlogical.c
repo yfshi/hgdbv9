@@ -28,11 +28,11 @@
 #include "libpq/pqsignal.h"
 #include "pqexpbuffer.h"
 #include "streamutil.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 /* Time to sleep between reconnection attempts */
 #define RECONNECT_SLEEP_TIME 5
 
@@ -99,11 +99,11 @@ usage(void)
 	printf(_("  -S, --slot=SLOTNAME    name of the logical replication slot\n"));
 	printf(_("  -v, --verbose          output verbose messages\n"));
 	printf(_("  -V, --version          output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version   output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -?, --help             show this help, then exit\n"));
 	printf(_("\nConnection options:\n"));
 	printf(_("  -d, --dbname=DBNAME    database to connect to\n"));
@@ -719,13 +719,6 @@ main(int argc, char **argv)
 	progname = get_progname(argv[0]);
 	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_basebackup"));
 
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
-
 	if (argc > 1)
 	{
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
@@ -739,16 +732,17 @@ main(int argc, char **argv)
 			puts("pg_recvlogical (PostgreSQL) " PG_VERSION);
 			exit(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		else if (strcmp(argv[1], "-G") == 0 ||
 				 strcmp(argv[1], "--highgo-version") == 0)
 		{
+			hg_load_client_license(argv[0]);
 			printf("pg_recvlogical %s\n", hg_get_highgoVersion());
 			exit(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	while ((c = getopt_long(argc, argv, "E:f:F:nvd:h:p:U:wWI:o:P:s:S:",

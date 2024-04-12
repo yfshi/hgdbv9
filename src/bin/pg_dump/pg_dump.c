@@ -73,11 +73,11 @@
 /* Begin - SQL PARSER */
 #include "oracle_fe_utils/ora_string_utils.h"
 /* END - SQL PARSER */
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 
 typedef struct
 {
@@ -445,14 +445,6 @@ main(int argc, char **argv)
 	init_parallel_dump_utils();
 
 	progname = get_progname(argv[0]);
-#if 0
-/* Begin - ReqID:SRS-MISC-LICENSE */
-#ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
-#endif
-#endif
-/* End - ReqID:SRS-MISC-LICENSE */
 
 	if (argc > 1)
 	{
@@ -466,17 +458,16 @@ main(int argc, char **argv)
 			puts("pg_dump (PostgreSQL) " PG_VERSION);
 			exit_nicely(0);
 		}
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
-			hg_set_license_abspath(argv[0]);
-			hg_load_license(NULL);
+			hg_load_client_license(argv[0]);
 			printf("pg_dump %s\n", hg_get_highgoVersion());
 			exit_nicely(0);
 		}
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	}
 
 	InitDumpOptions(&dopt);
@@ -1124,11 +1115,11 @@ help(const char *progname)
 	printf(_("  -j, --jobs=NUM               use this many parallel jobs to dump\n"));
 	printf(_("  -v, --verbose                verbose mode\n"));
 	printf(_("  -V, --version                output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version		 output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -Z, --compress=0-9           compression level for compressed formats\n"));
 	printf(_("  --lock-wait-timeout=TIMEOUT  fail after waiting TIMEOUT for a table lock\n"));
 	printf(_("  --no-sync                    do not wait for changes to be written safely to disk\n"));

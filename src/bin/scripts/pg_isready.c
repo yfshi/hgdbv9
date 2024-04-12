@@ -13,11 +13,11 @@
 #include "common.h"
 #include "common/logging.h"
 #include "fe_utils/option_utils.h"
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 #define DEFAULT_CONNECT_TIMEOUT "3"
 
 static void
@@ -233,11 +233,11 @@ help(const char *progname)
 	printf(_("  -d, --dbname=DBNAME      database name\n"));
 	printf(_("  -q, --quiet              run quietly\n"));
 	printf(_("  -V, --version            output version information, then exit\n"));
-/* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
 	printf(_("  -G, --highgo-version      output version of highgo information, then exit\n"));
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	printf(_("  -?, --help               show this help, then exit\n"));
 
 	printf(_("\nConnection options:\n"));

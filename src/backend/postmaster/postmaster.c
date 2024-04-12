@@ -5334,8 +5334,7 @@ SubPostmasterMain(int argc, char *argv[])
 
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
-	hg_set_license_abspath(argv[0]);
-	hg_load_license(NULL);
+	hg_load_server_license(argv[0]);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
