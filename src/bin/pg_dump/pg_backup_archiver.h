@@ -434,15 +434,12 @@ typedef struct _archiveOpts
 	int			nDeps;
 	DataDumperPtr dumpFn;
 	const void *dumpArg;
+	const char	ident_case;		/* BUG#M0000323 */
 } ArchiveOpts;
 #define ARCHIVE_OPTS(...) &(ArchiveOpts){__VA_ARGS__}
 /* Called to add a TOC entry */
 extern TocEntry *ArchiveEntry(Archive *AHX, CatalogId catalogId,
 							  DumpId dumpId, ArchiveOpts *opts);
-/* Begin - ReqID:SRS-SQL-FORCEVIEW */
-extern TocEntry *ArchiveEntry2(Archive *AHX, CatalogId catalogId,
-							  DumpId dumpId, ArchiveOpts *opts, char ident_case);
-/* End - ReqID:SRS-SQL-FORCEVIEW */
 
 extern void WriteHead(ArchiveHandle *AH);
 extern void ReadHead(ArchiveHandle *AH);
