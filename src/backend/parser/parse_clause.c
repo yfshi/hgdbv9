@@ -4528,6 +4528,11 @@ check_Outerjoin_Opexpr(Node *expr)
 				if (v1->varno == v3->varno && ((hasPlusFlag(v1) && !hasPlusFlag(v3)) ||
 						(!hasPlusFlag(v1) && hasPlusFlag(v3))))
 					elog(ERROR, "two tables cannot be outer-joined to each other");
+				/* Begin BUG#Z956 */
+				/* for t1.i(+) = t1.i(+) */
+				if (v1->varno == v3->varno && (hasPlusFlag(v1) && hasPlusFlag(v3)))
+					ltables = list_delete(ltables, (Node *)v3);
+				/* End BUG#Z956 */
 			}
 		}
 	}

@@ -161,7 +161,6 @@ refnameNamespaceItem(ParseState *pstate,
 		else
 			break;
 
-		pstate->p_hasref_outer_tbl = true;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 		pstate = pstate->parentParseState;
 	}
 	return NULL;

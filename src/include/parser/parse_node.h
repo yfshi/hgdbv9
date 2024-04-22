@@ -259,7 +259,6 @@ struct ParseState
 	/* For (+) outer join */
 	bool	p_hasAnsiJoinType;
 	bool	p_hasOraJoinType;
-	bool	p_hasref_outer_tbl;
 	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 };
 

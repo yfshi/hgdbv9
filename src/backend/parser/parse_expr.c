@@ -1174,12 +1174,6 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 		lexpr = transformExprRecurse(pstate, lexpr);
 		ltypeId = exprType(lexpr);
 
-		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-		/* Check if table columns with (+) in subqueries are referenced by external table */
-		if ((lexpr && hasPlusFlag(lexpr)) && pstate->p_hasref_outer_tbl && pstate->parentParseState)
-			elog(ERROR, "an outer join cannot be specified on a correlation column");
-		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
-
 		if (compatible_db == DB_ORACLE && ltypeId == ROWIDOID && nodeTag(rexpr) != T_TypeCast)
 		{
 			TypeCast   *castnode = makeNode(TypeCast);
@@ -1193,13 +1187,42 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 			rexpr = transformExprRecurse(pstate, rexpr);
 		/* End - ReqID:SRS-SQL-ROWID */
 
+		/* Begin BUG#Z959 */
 		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 		/* Can not outer join subquery */
-		if ((lexpr && hasPlusFlag(lexpr)) && nodeTag(rexpr) == T_SubLink)
-			elog(ERROR, "a column may not be outer-joined to a subquery");
+		if (lexpr != NULL  && rexpr != NULL)
+		{
+			if (hasPlusFlag(lexpr) && nodeTag(rexpr) == T_SubLink)
+				elog(ERROR, "a column may not be outer-joined to a subquery");
 
-		if ((lexpr && hasPlusFlag(rexpr)) && pstate->p_hasref_outer_tbl && pstate->parentParseState)
-			elog(ERROR, "an outer join cannot be specified on a correlation column");
+			/* Check if table columns with (+) in subqueries are referenced by external table */
+			if (hasPlusFlag(lexpr) && pstate->parentParseState && nodeTag(lexpr) == T_Var)
+			{
+				int l_level = 0;
+				int r_level = 0;
+				l_level = ((Var *)lexpr)->varlevelsup;
+				if (nodeTag(rexpr) == T_Var)
+				{
+					r_level = ((Var *)rexpr)->varlevelsup;
+					if (l_level > r_level)
+						elog(ERROR, "an outer join cannot be specified on a correlation column");
+				}
+			}
+
+			if (hasPlusFlag(rexpr) && pstate->parentParseState && nodeTag(rexpr) == T_Var)
+			{
+				int l_level = 0;
+				int r_level = 0;
+				r_level = ((Var *)rexpr)->varlevelsup;
+				if (nodeTag(lexpr) == T_Var)
+				{
+					l_level = ((Var *)lexpr)->varlevelsup;
+					if (l_level < r_level)
+						elog(ERROR, "an outer join cannot be specified on a correlation column");
+				}
+			}
+		}
+		/* End BUG#Z959 */
 
 		if ((lexpr && hasPlusFlag(lexpr)) || hasPlusFlag(rexpr))
 			has_outer_join = true;
