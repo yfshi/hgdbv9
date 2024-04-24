@@ -24,6 +24,7 @@ select * from t1,t2 where t1.i(+) = t1.j(+);--ok
 select * from t1,t2,t3,t4,t5 where t1.i+t2.i(+) = t3.i+t4.i+t5.i;
 select * from t1,t2 where t2.i = t1.i(+)+t2.j;--dedumplicate join t2
 select * from t1 t,t1 tt where t.i(+) = tt.j;
+select * from t1, t2 where t2.i= 1 and t1.i(+) =1 and t2.i(+)=t2.i(+);--bug#z956
 
 --multi AND testcase
 select * from t1,t2,t3,t4,t5 where t1.i(+)+t2.i = t3.i and t4.i(+)= t2.i + t5.i;
@@ -53,6 +54,8 @@ select * from t1, t2, t3 where t1.i = t2.i(+) and t2.j(+)+t3.i is not null;
 select * from t1, t2 where t1.i(+) in (t1.i(+));
 select * from t1, t2 where t1.i in (t2.i(+));
 select * from t1, t2, t3, t4, t5 where t1.i+t3.i in (t2.i(+)+t4.i+t3.j+t5.i);
+select * from t1 where exists(select * from t2 where t1.i=t2.i(+));--bug#z959
+select * from t1 where t1.i in (select t2.i from t2 where t1.i=t2.i(+));--bug#z959
 
 --subquery has (+) outer join
 select * from t1, t2 where t2.i = (select max(t1.i) from t1,t2 where t1.i(+)=t2.i) ;
