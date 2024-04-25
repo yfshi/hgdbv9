@@ -48,6 +48,9 @@ static bool  is_ignore_md5_checksum = false;	/* ignore md5 checksum value */
 static bool	 is_ignore_datetime_check = false;	/* whether check the validity date of the license or not */
 static bool  is_client_dat = false;				/* Is it the file that loads the license_cli.dat */
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* Begin - fix Bug#M0000329 */
+static bool  is_get_max_connections = false;
+/* End - fix Bug#M0000329 */
 
 static void  printLicenseData(void);
 static void  _printFuncList(void);
@@ -94,6 +97,9 @@ int main(int argc, char **argv)
 		{ "server-license", no_argument, NULL, 'S' },
 		{ "ignore-datetime-check", no_argument, NULL, 'd' },
 		/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+		/* Begin - fix Bug#M0000329 */
+		{ "max-connections", no_argument, NULL, 'm' },
+		/* End - fix Bug#M0000329 */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -165,7 +171,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSd", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdm", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -214,6 +220,11 @@ int main(int argc, char **argv)
 				is_ignore_datetime_check = true;
 				break;
 			/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+			/* Begin - fix Bug#M0000329 */
+			case 'm':
+				is_get_max_connections = true;
+				break;
+			/* End - fix Bug#M0000329 */
 			case 'v':
 				is_view = true;
 				break;
@@ -257,6 +268,12 @@ int main(int argc, char **argv)
 		{
 			printf("%s\n", hg_get_defaultDBport());
 		}
+		/* Begin - fix Bug#M0000329 */
+		else if (is_get_max_connections)
+		{
+			printf("%s\n", hg_get_maxConnection());
+		}
+		/* End - fix Bug#M0000329 */
 		else
 		{
 			printLicenseData();
@@ -390,20 +407,21 @@ usage(const char *progname)
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTION]... [DATADIR]\n"), progname);
 	printf(_("\nOptions:\n"));
-	printf(_("  -l, --list                	list enabled function items\n"));
-	printf(_("  -a, --all                 	all functional items\n"));
-	printf(_("  -v, --view                	show desc information\n"));
-	printf(_("  -f, --filename=xxx.dat    	set license filename\n"));
-	printf(_("  -c, --check=xxx.txt       	check hardware code, then exit.\n"));
+	printf(_("  -l, --list                  list enabled function items\n"));
+	printf(_("  -a, --all                   all functional items\n"));
+	printf(_("  -v, --view                  show desc information\n"));
+	printf(_("  -f, --filename=xxx.dat      set license filename\n"));
+	printf(_("  -c, --check=xxx.txt         check hardware code, then exit.\n"));
 	/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
-	printf(_("  -C, --client-license      	show client license_cli.dat information.\n"));
-	printf(_("  -S, --server-license      	show server license.dat information.\n"));
-	printf(_("  -d, --ignore-datetime-check	ignore validity date of the license.\n"));
+	printf(_("  -C, --client-license        show client license_cli.dat information.\n"));
+	printf(_("  -S, --server-license        show server license.dat information.\n"));
+	printf(_("  -d, --ignore-datetime-check ignore validity date of the license.\n"));
 	/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
-	printf(_("  -U, --username            	obtain the username from the license file.\n"));
-	printf(_("  -P, --port                	obtain the port from the license file.\n"));
-	printf(_("  -V, --version             	output version information, then exit\n"));
-	printf(_("  -?, --help                	show this help, then exit\n"));
+	printf(_("  -m, --max-connections       show max connections.\n"));
+	printf(_("  -U, --username              obtain the username from the license file.\n"));
+	printf(_("  -P, --port                  obtain the port from the license file.\n"));
+	printf(_("  -V, --version               output version information, then exit\n"));
+	printf(_("  -?, --help                  show this help, then exit\n"));
 }
 
 #ifdef WIN32
