@@ -18,6 +18,7 @@
 
 #include "dumputils.h"
 #include "fe_utils/string_utils.h"
+#include "oracle_fe_utils/ora_string_utils.h"			/*  BUG: M0000332 */
 
 
 static bool parseAclItem(const char *item, const char *type,
@@ -1389,6 +1390,7 @@ getDatabaseMode(PGconn *conn)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		database_mode = DB_PG;
+		native_PG = true;
 	}
 	else
 	{

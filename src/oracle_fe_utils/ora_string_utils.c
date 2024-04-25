@@ -28,6 +28,7 @@
 
 /* Globals exported by this file */
 DBMode db_mode = DB_PG;
+bool native_PG = false;		/* BUG: M0000332 */
 
 
 /*
@@ -123,7 +124,10 @@ getDbCompatibleMode(PGconn *conn)
 	res = PQexec(conn, "show ivorysql.compatible_mode;");	/* ReqID:SRS-MISC-GUC */
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
 		db_mode = DB_PG;
+		native_PG = true;
+	}
 	else 
 	{
 		db_style = PQgetvalue(res, 0, 0);

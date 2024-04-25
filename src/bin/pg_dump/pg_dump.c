@@ -13226,7 +13226,21 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 	asPart = createPQExpBuffer();
 
 	/* Fetch function-specific details */
-	appendPQExpBufferStr(query,
+	/* BEGIN - BUG: M0000332 */
+	if(native_PG)
+		appendPQExpBufferStr(query,
+						 "SELECT\n"
+						 "proretset,\n"
+						 "prosrc,\n"
+						 "probin,\n"
+						 "provolatile,\n"
+						 "proisstrict,\n"
+						 "0 AS prointisnumber,\n" /* BUG:M0000068 */
+						 "prosecdef,\n"
+						 "lanname,\n");
+	/* END - BUG: M0000332 */
+	else
+		appendPQExpBufferStr(query,
 						 "SELECT\n"
 						 "proretset,\n"
 						 "prosrc,\n"
@@ -18611,7 +18625,20 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	qseqname = pg_strdup(fmtId(tbinfo->dobj.name));
 
-	if (fout->remoteVersion >= 100000)
+	/* BEGIN - BUG: M0000332 */
+	if(native_PG)
+	{
+		appendPQExpBuffer(query,
+						  "SELECT format_type(seqtypid, NULL), "
+						  "seqstart, seqincrement, "
+						  "seqmax, seqmin, "
+						  "seqcache, seqcycle, 0 AS flags "
+						  "FROM pg_catalog.pg_sequence "
+						  "WHERE seqrelid = '%u'::oid",
+						  tbinfo->dobj.catId.oid);	/* ReqID:SRS-SQL-SEQ */
+	}
+	/* END - BUG: M0000332 */
+	else if (fout->remoteVersion >= 100000)
 	{
 		appendPQExpBuffer(query,
 						  "SELECT format_type(seqtypid, NULL), "

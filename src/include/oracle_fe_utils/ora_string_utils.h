@@ -24,6 +24,7 @@
 
 /* Global variables controlling behavior of ora_fmtId() */
 extern DBMode db_mode;
+extern bool native_PG;      /*  BUG: M0000332 */
 extern void getDbCompatibleMode(PGconn *conn);
 
 /* Functions */
