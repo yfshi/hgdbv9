@@ -74,6 +74,16 @@ typedef struct SMgrRelationData
 
 typedef SMgrRelationData *SMgrRelation;
 
+/* Begin - BUG:M0000325 */
+typedef struct SMgrRelationDataSetLog
+{
+	SMgrRelation 	smgr;
+	//bool			setlog;
+} SMgrRelationDataSetLog;
+
+typedef SMgrRelationDataSetLog *SMgrRelationSetLog;
+/* End - BUG:M0000325 */
+
 #define SmgrIsTemp(smgr) \
 	RelFileNodeBackendIsTemp((smgr)->smgr_rnode)
 
@@ -105,4 +115,7 @@ extern void smgrtruncate(SMgrRelation reln, ForkNumber *forknum,
 extern void smgrimmedsync(SMgrRelation reln, ForkNumber forknum);
 extern void AtEOXact_SMgr(void);
 
+/* Begin - BUG:M0000325 */
+extern void smgrdounlinkallsetlog(SMgrRelationSetLog *rels, int nrels, bool isRedo);
+/* End - BUG:M0000325 */
 #endif							/* SMGR_H */

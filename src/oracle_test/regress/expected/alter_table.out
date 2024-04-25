@@ -3533,6 +3533,132 @@ ALTER TABLE unlogged3 SET LOGGED; -- skip self-referencing foreign key
 ALTER TABLE unlogged2 SET LOGGED; -- fails because a foreign key to an unlogged table exists
 ERROR:  could not change table "unlogged2" to logged because it references unlogged table "unlogged1"
 ALTER TABLE unlogged1 SET LOGGED;
+-- bug0000325: ALTER TABLE xxx SET LOGGED WITHOUT COPY
+CREATE TABLE t_0000075(a INT);
+ALTER TABLE t_0000075 SET UNLOGGED;
+ALTER TABLE t_0000075 SET LOGGED WITHOUT COPY;
+DROP TABLE t_0000075;
+CREATE TABLE t1_unlog(id int,name varchar(20));
+create index t1_idx on t1_unlog(id);
+declare
+begin
+  for i in 1 .. 10 loop
+    insert into t1_unlog values(1, 'a' ||i);
+  end loop;
+end;
+/
+ALTER TABLE t1_unlog SET UNLOGGED;
+declare
+begin
+  for i in 1 .. 10 loop
+    insert into t1_unlog values(2, 'b' ||i);
+  end loop;
+end;
+/
+select count(*) from t1_unlog;
+ count 
+-------
+    20
+(1 row)
+
+ALTER TABLE t1_unlog SET LOGGED WITHOUT COPY;
+declare
+begin
+  for i in 1 .. 10 loop
+    insert into t1_unlog values(3, 'c' ||i);
+  end loop;
+end;
+/
+select count(*) from t1_unlog;
+ count 
+-------
+    30
+(1 row)
+
+SET enable_seqscan to off;
+EXPLAIN (COSTS OFF) select * from t1_unlog where id=3;
+             QUERY PLAN              
+-------------------------------------
+ Index Scan using t1_idx on t1_unlog
+   Index Cond: (id = 3)
+(2 rows)
+
+select * from t1_unlog where id=3;
+ id | name 
+----+------
+  3 | c1
+  3 | c2
+  3 | c3
+  3 | c4
+  3 | c5
+  3 | c6
+  3 | c7
+  3 | c8
+  3 | c9
+  3 | c10
+(10 rows)
+
+SET enable_seqscan to default;
+drop table t1_unlog;
+CREATE TABLE my_serial (
+    id SERIAL PRIMARY KEY,
+	name varchar(20)
+);
+insert into my_serial values(1,'a');
+ALTER TABLE my_serial SET UNLOGGED;
+insert into my_serial values(2,'b');
+ALTER TABLE my_serial SET LOGGED WITHOUT COPY;
+SET enable_seqscan to off;
+EXPLAIN (COSTS OFF) select * from my_serial where id=1;
+                  QUERY PLAN                  
+----------------------------------------------
+ Index Scan using my_serial_pkey on my_serial
+   Index Cond: (id = 1)
+(2 rows)
+
+select * from my_serial where id=1;
+ id | name 
+----+------
+  1 | a
+(1 row)
+
+SET enable_seqscan to default;
+select * from my_serial;
+ id | name 
+----+------
+  1 | a
+  2 | b
+(2 rows)
+
+drop table my_serial;
+CREATE TABLE my_toast (
+    id int,
+    my_column TEXT,
+	my_column2 TEXT
+);
+create unique index my_toast_idx on my_toast (id);
+alter table my_toast alter my_column  set storage external;
+alter table my_toast alter my_column2  set storage external;
+ALTER TABLE my_toast SET UNLOGGED;
+insert into my_toast  values (1,repeat('a', 3000), repeat('b', 3000));
+insert into my_toast  values (2,repeat('ca', 3000), repeat('df', 3000));
+ALTER TABLE my_toast SET LOGGED WITHOUT COPY;
+SET enable_seqscan to off;
+EXPLAIN (COSTS OFF) select * from my_toast where id=1;
+                QUERY PLAN                 
+-------------------------------------------
+ Index Scan using my_toast_idx on my_toast
+   Index Cond: (id = 1)
+(2 rows)
+
+select count(*) from my_toast where id=1;
+ count 
+-------
+     1
+(1 row)
+
+SET enable_seqscan to default;
+drop table my_toast;
 -- check relpersistence of an unlogged table after changing to permanent
 SELECT relname, relkind, relpersistence FROM pg_class WHERE relname ~ '^unlogged1'
 UNION ALL

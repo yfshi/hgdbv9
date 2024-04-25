@@ -3792,7 +3792,6 @@ RelationBuildLocalRelation(const char *relname,
 	return rel;
 }
 
-
 /*
  * RelationSetNewRelfilenode
  *

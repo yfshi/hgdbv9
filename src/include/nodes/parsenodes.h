@@ -2075,7 +2075,10 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	bool        is_rowid;		/* ReqID:SRS-SQL-ROWID */
 	bool		isvisible;		/* ReqID:SRS-SQL-INVISIBLECOL */
 	UserType	utype; 			/* ReqID:SRS-MISC-USER */
-
+	/* Begin - BUG:M0000325 */
+	bool		without_copy;	/* set logged without copy or not? */
+								/* Does the new relation do a data copy or not? */
+	/* End - BUG:M0000325 */
 } AlterTableCmd;
 
 

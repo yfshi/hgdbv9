@@ -64,6 +64,9 @@ typedef struct PendingRelDelete
 	BackendId	backend;		/* InvalidBackendId if not a temp rel */
 	Oid			temprelOid;			/* InvalidOid if not a global temporary rel */
 	bool		atCommit;		/* T=delete at commit; F=delete at abort */
+	/* Begin - BUG:M0000325 */
+	bool		setlog;			/* true if it is a set logged without copy command */
+	/* End - BUG:M0000325 */
 	int			nestLevel;		/* xact nesting level of request */
 	struct PendingRelDelete *next;	/* linked-list link */
 } PendingRelDelete;
@@ -163,6 +166,11 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
 	pending->backend = backend;
 	pending->temprelOid = InvalidOid;
 	pending->atCommit = false;	/* delete if abort */
+
+	/* Begin - BUG:M0000325 */
+	pending->setlog = false;
+	/* End - BUG:M0000325 */
+
 	pending->nestLevel = GetCurrentTransactionNestLevel();
 	pending->next = pendingDeletes;
 	pendingDeletes = pending;
@@ -226,6 +234,11 @@ RelationDropStorage(Relation rel)
 	pending->backend = rel->rd_backend;
 	pending->temprelOid = InvalidOid;
 	pending->atCommit = true;	/* delete if commit */
+
+	/* Begin - BUG:M0000325 */
+	pending->setlog = false;
+	/* End - BUG:M0000325 */
+
 	pending->nestLevel = GetCurrentTransactionNestLevel();
 	pending->next = pendingDeletes;
 	pendingDeletes = pending;
@@ -679,6 +692,13 @@ smgrDoPendingDeletes(bool isCommit)
 	SMgrRelation *srels = NULL;
 	Oid			*reloids = NULL;
 
+	/* Begin - BUG:M0000325 */
+	int i = 0;
+	int 		nrels_setlog = 0,
+				maxrels_setlog = 0;
+	SMgrRelationSetLog *srels_setlog = NULL;
+	/* End - BUG:M0000325 */
+
 	prev = NULL;
 	for (pending = pendingDeletes; pending != NULL; pending = next)
 	{
@@ -698,27 +718,58 @@ smgrDoPendingDeletes(bool isCommit)
 			/* do deletion if called for */
 			if (pending->atCommit == isCommit)
 			{
-				SMgrRelation srel;
-
-				srel = smgropen(pending->relnode, pending->backend);
-
-				/* allocate the initial array, or extend it, if needed */
-				if (maxrels == 0)
+				/* Begin - BUG:M0000325 */
+				if (!pending->setlog)
+				/* End - BUG:M0000325 */
 				{
-					maxrels = 8;
-					srels = palloc(sizeof(SMgrRelation) * maxrels);
-					reloids = palloc(sizeof(Oid) * maxrels);
-				}
-				else if (maxrels <= nrels)
-				{
-					maxrels *= 2;
-					srels = repalloc(srels, sizeof(SMgrRelation) * maxrels);
-					reloids = repalloc(reloids, sizeof(Oid) * maxrels);
-				}
+					SMgrRelation srel;
 
-				srels[nrels] = srel;
-				reloids[nrels] = pending->temprelOid;
-				nrels++;
+					srel = smgropen(pending->relnode, pending->backend);
+
+					/* allocate the initial array, or extend it, if needed */
+					if (maxrels == 0)
+					{
+						maxrels = 8;
+						srels = palloc(sizeof(SMgrRelation) * maxrels);
+						reloids = palloc(sizeof(Oid) * maxrels);
+					}
+					else if (maxrels <= nrels)
+					{
+						maxrels *= 2;
+						srels = repalloc(srels, sizeof(SMgrRelation) * maxrels);
+						reloids = repalloc(reloids, sizeof(Oid) * maxrels);
+					}
+
+					srels[nrels] = srel;
+					reloids[nrels] = pending->temprelOid;
+					nrels++;
+				}
+				/* Begin - BUG:M0000325 */
+				else
+				{
+					SMgrRelationSetLog srel_setlog;
+					SMgrRelation srel;
+
+					srel = smgropen(pending->relnode, pending->backend);
+
+					/* allocate the initial array, or extend it, if needed */
+					if (maxrels_setlog == 0)
+					{
+						maxrels_setlog = 8;
+						srels_setlog = palloc(sizeof(SMgrRelationSetLog) * maxrels_setlog);
+					}
+					else if (maxrels_setlog <= nrels_setlog)
+					{
+						maxrels_setlog *= 2;
+						srels_setlog = repalloc(srels_setlog, sizeof(SMgrRelationSetLog) * maxrels_setlog);
+					}
+
+					srel_setlog = palloc(sizeof(SMgrRelation));
+					srel_setlog->smgr = srel;
+
+					srels_setlog[nrels_setlog++] = srel_setlog;
+				}
+				/* End - BUG:M0000325 */
 			}
 			/* must explicitly free the list entry */
 			pfree(pending);
@@ -744,6 +795,21 @@ smgrDoPendingDeletes(bool isCommit)
 		pfree(srels);
 		pfree(reloids);
 	}
+
+	/* Begin - BUG:M0000325 */
+	if (srels_setlog != NULL && nrels_setlog > 0)
+	{
+		smgrdounlinkallsetlog(srels_setlog, nrels_setlog, false);
+
+		for (i = 0; i < nrels_setlog; i++)
+		{
+			smgrclose(srels_setlog[i]->smgr);
+			pfree(srels_setlog[i]);
+		}
+
+		pfree(srels_setlog);
+	}
+	/* End - BUG:M0000325 */
 }
 
 /*
@@ -914,7 +980,14 @@ smgrGetPendingDeletes(bool forCommit, RelFileNode **ptr)
 	{
 		if (pending->nestLevel >= nestLevel && pending->atCommit == forCommit
 			&& pending->backend == InvalidBackendId)
-			nrels++;
+		/* Begin - BUG:M0000325 */
+		{
+			if (!pending->setlog)
+		/* End - BUG:M0000325 */
+				nrels++;
+		/* Begin - BUG:M0000325 */
+		}
+		/* End - BUG:M0000325 */
 	}
 	if (nrels == 0)
 	{
@@ -928,8 +1001,15 @@ smgrGetPendingDeletes(bool forCommit, RelFileNode **ptr)
 		if (pending->nestLevel >= nestLevel && pending->atCommit == forCommit
 			&& pending->backend == InvalidBackendId)
 		{
-			*rptr = pending->relnode;
-			rptr++;
+			/* Begin - BUG:M0000325 */
+			if (!pending->setlog)
+			{
+			/* End - BUG:M0000325 */
+				*rptr = pending->relnode;
+				rptr++;
+			/* Begin - BUG:M0000325 */
+			}
+			/* End - BUG:M0000325 */
 		}
 	}
 	return nrels;
@@ -1097,3 +1177,40 @@ smgr_redo(XLogReaderState *record)
 	else
 		elog(PANIC, "smgr_redo: unknown op code %u", info);
 }
+
+/* Begin - BUG:M0000325 */
+/*
+ * RelationDropStorageSetLog
+ * Schedule unlinking of physical storage at transaction commit for
+ * the command of ALTER TABLE xx SET LOGGED WITHOUT COPY
+ */
+void
+RelationDropStorageSetLog(Relation rel)
+{
+	PendingRelDelete *pending;
+
+	/* Add the relation to the list of stuff to delete at commit */
+	pending = (PendingRelDelete *)
+		MemoryContextAlloc(TopMemoryContext, sizeof(PendingRelDelete));
+	pending->relnode = rel->rd_node;
+	pending->backend = rel->rd_backend;
+	pending->atCommit = true;	/* delete if commit */
+	pending->setlog = true;
+	pending->nestLevel = GetCurrentTransactionNestLevel();
+	pending->next = pendingDeletes;
+	pendingDeletes = pending;
+
+	/*
+	 * NOTE: if the relation was created in this transaction, it will now be
+	 * present in the pending-delete list twice, once with atCommit true and
+	 * once with atCommit false.  Hence, it will be physically deleted at end
+	 * of xact in either case (and the other entry will be ignored by
+	 * smgrDoPendingDeletes, so no error will occur).  We could instead remove
+	 * the existing list entry and delete the physical file immediately, but
+	 * for now I'll keep the logic simple.
+	 */
+
+	RelationCloseSmgr(rel);
+}
+/* End - BUG:M0000325 */
+
