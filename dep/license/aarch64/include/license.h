@@ -79,7 +79,7 @@ extern LICENSEEXPORT void         hg_set_is_ignore_datetime_check(bool);		// is 
 extern LICENSEEXPORT void         hg_set_is_client_dat(bool);                   /* 
                                                                                  * Decide whether to load the client license file or the server license file. 
                                                                                  * If not set, the default is the server-side license file. 
-                                                                                 * This setting will affect the selection of which license file (license.dat or license_cli.dat) to read by the hg_load_license() function
+                                                                                 * This setting will affect the selection of which license file (license.dat or client_info.dat) to read by the hg_load_license() function
                                                                                 */
 extern LICENSEEXPORT const char * hg_get_mac_string(void);					    // get mac string
 extern LICENSEEXPORT const char * hg_get_service_hotline(void);				    // get service hotline
