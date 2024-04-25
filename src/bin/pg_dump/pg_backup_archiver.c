@@ -430,8 +430,13 @@ RestoreArchive(Archive *AHX)
 
 		ConnectDatabase(AHX, &ropt->cparams, false);
 		/* BEGIN - ReqID:SRS-MISC-USER */
-		getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
-		getDatabaseMode(((ArchiveHandle *) AHX)->connection);
+		/* BEGIN - BUG: M0000332 */
+		if(!native_PG)
+		{
+			getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
+			getDatabaseMode(((ArchiveHandle *) AHX)->connection);
+		}
+		/* END - BUG: M0000332 */
 
 		/* BEGIN - BUG:z680,z538 */
 		if (DB_ORACLE == database_mode)
@@ -531,11 +536,16 @@ RestoreArchive(Archive *AHX)
 		}
 	}
 
-	if (AH->connection)
+	/* BEGIN - BUG: M0000332 */
+	if(!native_PG)
 	{
-		getDatabaseMode(AH->connection);
-		haveDatabaseUser(AH->connection);			/*  bug#M0000261 */
+		if (AH->connection)
+		{
+			getDatabaseMode(AH->connection);
+			haveDatabaseUser(AH->connection);			/*  bug#M0000261 */
+		}
 	}
+	/* END - BUG: M0000332 */
 	if ((DB_ORACLE == database_mode) && !iscreatetable)
 	{
 		/* BEGIN - bug#M0000238 */
@@ -2694,10 +2704,15 @@ WriteToc(ArchiveHandle *AH)
 		WriteStr(AH, te->tablespace);
 		WriteStr(AH, te->tableam);
 		/* BEGIN - ReqID:SRS-MISC-USER */
-		if (AH->connection)
-			getDatabaseMode(AH->connection);
-		if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-			get_desc_ownerto(AH, te);
+		/* BEGIN - BUG: M0000332 */
+		if(!native_PG)
+		{
+			if (AH->connection)
+				getDatabaseMode(AH->connection);
+			if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
+				get_desc_ownerto(AH, te);
+		}
+		/* END - BUG: M0000332 */
 		/* END - ReqID:SRS-MISC-USER */
 		WriteStr(AH, te->owner);
 		WriteStr(AH, "false");
@@ -3436,9 +3451,14 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 		initPQExpBuffer(&connectbuf);
 		appendPsqlMetaConnect(&connectbuf, dbname);
 
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		if (AH->connection)
-			getDatabaseMode(AH->connection);
+		/* BEGIN - BUG: M0000332 */
+		if(!native_PG)
+		{
+			/* BEGIN - ReqID:SRS-MISC-USER */
+			if (AH->connection)
+				getDatabaseMode(AH->connection);
+		}
+		/* END - BUG: M0000332 */
 		if ((DB_ORACLE == database_mode))
 		{
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
@@ -3892,32 +3912,39 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			if (strcmp(te->desc, "VIEW") == 0)
 			{
 				bool		need_reset = false;
-				/* Begin - BUG#Z932 */
-				if (strcmp(getInstanceIdentifier_case_switch(AH->connection), "normal") == 0)
+
+				/* BEGIN - BUG: M0000332 */
+				if(!native_PG)
 				{
-					switch(te->ident_case)
+					/* Begin - BUG#Z932 */
+					if (strcmp(getInstanceIdentifier_case_switch(AH->connection), "normal") == 0)
 					{
-						case 'i':
-							need_reset = true;
-							ahprintf(AH, "SET ivorysql.identifier_case_switch = interchange;\n");
-							break;
-						case 'n':
-							need_reset = false;
-							break;
-						case 'l':
-							need_reset = true;
-							ahprintf(AH, "SET ivorysql.identifier_case_switch = lowercase;\n");
-							break;
-						case 'u':
-							need_reset = false;
-							break;
-						default:
-							need_reset = false;
-							break;
+						switch(te->ident_case)
+						{
+							case 'i':
+								need_reset = true;
+								ahprintf(AH, "SET ivorysql.identifier_case_switch = interchange;\n");
+								break;
+							case 'n':
+								need_reset = false;
+								break;
+							case 'l':
+								need_reset = true;
+								ahprintf(AH, "SET ivorysql.identifier_case_switch = lowercase;\n");
+								break;
+							case 'u':
+								need_reset = false;
+								break;
+							default:
+								need_reset = false;
+								break;
+						}
 					}
+					ahprintf(AH, "%s\n\n", te->defn);
+					/* End - BUG#Z932 */
 				}
-				ahprintf(AH, "%s\n\n", te->defn);
-				/* End - BUG#Z932 */
+				/* END - BUG: M0000332 */
+
 				if (need_reset)
 					ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");
 			}
