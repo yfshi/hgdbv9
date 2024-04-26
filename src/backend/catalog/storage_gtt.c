@@ -969,6 +969,11 @@ get_gtt_att_statistic(Oid reloid, int attnum, bool inh)
 	if (max_active_gtt <= 0)
 		return NULL;
 
+	/* Begin - BUG#M0000330 */
+	if (attnum == 0)
+		elog(ERROR, "invalid identifier");
+	/* End - BUG#M0000330 */
+
 	entry = gtt_search_by_relid(reloid, true);
 	if (entry == NULL)
 		return NULL;
@@ -981,7 +986,6 @@ get_gtt_att_statistic(Oid reloid, int attnum, bool inh)
 	{
 		if (gtt_rnode->attnum[i] == attnum)
 		{
-			Assert(gtt_rnode->att_stat_tups[i]);
 			return gtt_rnode->att_stat_tups[i];
 		}
 	}

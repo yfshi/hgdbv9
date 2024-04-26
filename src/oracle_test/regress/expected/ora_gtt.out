@@ -631,3 +631,31 @@ truncate table gtt_create_3_as;
 drop table gtt_create_3;
 drop table gtt_create_3_as;
 /* End BUG#Z376 */
+/* Begin - BUG#M0000330 */
+-- column name and table name are not the same.
+create global temporary table t (a int);
+insert into t values(1);
+select count(*) from t group by t; -- ERROR:  invalid identifier
+ERROR:  invalid identifier
+drop table t;
+-- column name and table are the same.
+create global temporary table t (t int);
+insert into t values(1);
+select count(*) from t group by t;
+ count 
+-------
+(0 rows)
+
+drop table t;
+-- group by with rowid
+create global temporary table t (a int) with rowid;
+insert into t values(1);
+select count(*) from t group by t; -- ERROR:  invalid identifier
+ERROR:  invalid identifier
+select count(*) from t group by rowid;
+ count 
+-------
+(0 rows)
+
+drop table t;
+/* End - BUG#M0000330 */
