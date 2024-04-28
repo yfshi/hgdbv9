@@ -13576,7 +13576,6 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				break;
 
 			case OCLASS_REWRITE:
-				/* XXX someday see if we can cope with revising views */
 				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 				if (ORA_PARSER == compatible_db)
 				{
@@ -13628,6 +13627,10 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 					}
 				}
 				else
+					/*
+				 	 * View/rule bodies have pretty much the same issues as
+				 	 * function bodies.  FIXME someday.
+				 	 */
 					ereport(ERROR,
 							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 							 errmsg("cannot alter type of a column used by a view or rule"),
@@ -13644,9 +13647,9 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				 * specified as an update target, or because the column is
 				 * used in the trigger's WHEN condition.  The first case would
 				 * not require any extra work, but the second case would
-				 * require updating the WHEN expression, which will take a
-				 * significant amount of new code.  Since we can't easily tell
-				 * which case applies, we punt for both.  FIXME someday.
+				 * require updating the WHEN expression, which has the same
+				 * issues as above.  Since we can't easily tell which case
+				 * applies, we punt for both.  FIXME someday.
 				 */
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -13715,13 +13718,21 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				/* End - ReqID:SRS-PLSQL-TYPE */
 				{
 					/*
-					 * We don't expect any of these sorts of objects to depend on
-					 * a column.
-					 */
-					elog(ERROR, "unexpected object depending on column: %s",
-						 getObjectDescription(&foundObject, false));
+				 	 * A new-style SQL function can depend on a column, if that
+				 	 * column is referenced in the parsed function body.  Ideally
+				 	 * we'd automatically update the function by deparsing and
+				 	 * reparsing it, but that's risky and might well fail anyhow.
+				 	 * FIXME someday.
+				 	 */
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot alter type of a column used by a function or procedure"),
+						 errdetail("%s depends on column \"%s\"",
+								   getObjectDescription(&foundObject, false),
+								   colName)));
 				}
 				break;
+
 			case OCLASS_TYPE:
 			case OCLASS_CAST:
 			case OCLASS_COLLATION:
