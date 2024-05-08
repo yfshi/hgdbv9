@@ -301,6 +301,12 @@ int main(int argc, char **argv)
 		{
 			printf("%s\n", hg_get_defaultDBport());
 		}
+		/* Begin - fix Bug#M0000334 */
+		else if (is_get_max_connections)
+		{
+			printf("%s\n", hg_get_maxConnection());
+		}
+		/* End - fix Bug#M0000334 */
 		else
 		{
 			printLicenseData();
@@ -413,7 +419,7 @@ usage(const char *progname)
 	printf(_("  -f, --filename=xxx.dat      set license filename\n"));
 	printf(_("  -c, --check=xxx.txt         check hardware code, then exit.\n"));
 	/* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
-	printf(_("  -C, --client-license        show client license_cli.dat information.\n"));
+	printf(_("  -C, --client-information    show client client_info.dat information.\n"));
 	printf(_("  -S, --server-license        show server license.dat information.\n"));
 	printf(_("  -d, --ignore-datetime-check ignore validity date of the license.\n"));
 	/* End - ReqID:SRS-MISC-LICENSE-ClientTool */
