@@ -1150,6 +1150,13 @@ setup_config(void)
 	snprintf(repltok, sizeof(repltok), "max_connections = %d", n_connections);
 	conflines = replace_token(conflines, "#max_connections = 100", repltok);
 
+	/* Begin - Bug#M0000343 */
+	if(is_load_gb18030_2022 && database_mode == DB_PG)
+		conflines = replace_token(conflines,
+								  "#shared_preload_libraries = ''",
+								  "shared_preload_libraries = 'gb18030_2022'");
+	/* End - Bug#M0000343 */
+
 	if ((n_buffers * (BLCKSZ / 1024)) % 1024 == 0)
 		snprintf(repltok, sizeof(repltok), "shared_buffers = %dMB",
 				 (n_buffers * (BLCKSZ / 1024)) / 1024);
@@ -1346,6 +1353,13 @@ setup_config(void)
 		}
 		/* END - BUG#M0000120 */
 
+		/* Begin - Bug#M0000343 */
+		if(is_load_gb18030_2022)
+		conflines = replace_token(conflines,
+								  "shared_preload_libraries = 'liboracle_parser, ivorysql_ora'",
+								  "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'");
+		/* End - Bug#M0000343 */
+
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
 		{
@@ -1476,35 +1490,6 @@ setup_config(void)
 	}
 
 	free(conflines);
-	/* BEGIN - SRS-MISC-GB18030,
-	* replace token in ivorysql to add gb18030_2022 in shared_preload_library
-	*/
-	/* ivorysql.conf */
-	/* Begin - BUG#M0000120 */
-	if (database_mode == DB_ORACLE)
-	{
-		snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
-		conflines = readfile(path);
-	} else
-		conflines = readfile(ivorysql_file);
-
-	/* End - BUG#M0000120 */
-	if(is_load_gb18030_2022)
-		conflines = replace_token(conflines,
-								  "shared_preload_libraries = 'liboracle_parser, ivorysql_ora'",
-								  "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'");
-
-	snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
-
-	writefile(path, conflines);
-	if (chmod(path, pg_file_create_mode) != 0)
-	{
-		pg_log_error("could not change permissions of \"%s\": %m", path);
-		exit(1);
-	}
-
-	free(conflines);
-	/* END - SRS-MISC-GB18030 */
 
 	check_ok();
 }
