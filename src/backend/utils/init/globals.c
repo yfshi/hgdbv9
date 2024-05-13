@@ -152,3 +152,5 @@ int64		VacuumPageDirty = 0;
 
 int			VacuumCostBalance = 0;	/* working state for vacuum */
 bool		VacuumCostActive = false;
+
+bool            enable_insertparallel = false;     /* ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */

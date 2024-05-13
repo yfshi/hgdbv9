@@ -75,4 +75,8 @@ extern Bitmapset *pull_paramids(Expr *expr);
 extern bool contain_oracompat_expr(Node *clause, OraExprKind oraExprkind);
 /* End - ReqID:SRS-SQL-ROWNUM */
 
+/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+extern bool is_parallel_allowed_for_modify(Query *parse);
+/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+
 #endif							/* CLAUSES_H */

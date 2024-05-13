@@ -69,6 +69,8 @@ extern PGDLLIMPORT bool enable_partition_pruning;
 extern PGDLLIMPORT bool enable_async_append;
 extern PGDLLIMPORT int constraint_exclusion;
 
+extern PGDLLIMPORT bool enable_insertparallel; /* ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+
 extern double index_pages_fetched(double tuples_fetched, BlockNumber pages,
 								  double index_pages, PlannerInfo *root);
 extern void cost_seqscan(Path *path, PlannerInfo *root, RelOptInfo *baserel,

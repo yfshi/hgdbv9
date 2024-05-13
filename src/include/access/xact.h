@@ -480,4 +480,24 @@ extern void EnterParallelMode(void);
 extern void ExitParallelMode(void);
 extern bool IsInParallelMode(void);
 
+
+/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+extern void PrepareParallelModePlanExec(CmdType commandType);
+
+/*
+ * IsModifySupportedInParallelMode
+ *
+ * Indicates whether execution of the specified table-modification command
+ * (INSERT/UPDATE/DELETE) in parallel-mode is supported, subject to certain
+ * parallel-safety conditions.
+ */
+static inline bool
+IsModifySupportedInParallelMode(CmdType commandType)
+{
+        /* Currently only INSERT is supported */
+        return (commandType == CMD_INSERT);
+}
+/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+
+
 #endif							/* XACT_H */
