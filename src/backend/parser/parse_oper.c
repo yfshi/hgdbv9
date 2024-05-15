@@ -19,6 +19,7 @@
 #include "catalog/pg_operator.h"
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
+#include "miscadmin.h"	/* BUG#M0000344 */
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_coerce.h"
 #include "parser/parse_func.h"
@@ -301,7 +302,7 @@ binary_oper_exact(List *opname, Oid arg1, Oid arg2)
 		return result;
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (oracle_datatype_precedence_hook && ORA_PARSER == compatible_db)
+	if (IsNormalProcessingMode() && oracle_datatype_precedence_hook && ORA_PARSER == compatible_db)
 	{	
 		bool	rewrite_args = false;
 		char	*schemaname;
