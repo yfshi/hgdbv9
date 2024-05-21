@@ -5640,6 +5640,18 @@ final_datetime_check(TmFromChar *out)
 	 */
 	if (out->year != 0 && out->mm != 0)
 	{
+		/* Begin - BUG#Z1037 */
+		/*
+		 * When using the oratimestamp type in PG mode, the month value obtained from the
+		 * DCH_from_char function may be an arbitrary value. The following check for a leap
+		 * year may result in an array overflow, so we do a bulletproof here.
+		 */
+		if (out->mm < 1 || out->mm > 12)
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The value of month is invalid.")));
+		/* End - BUG#Z1037 */
+
 		if (out->dd > day_tab[isleap(out->year)][out->mm - 1])
 			ereport(ERROR,
 					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
@@ -5680,6 +5692,14 @@ final_datetime_check_for_conv_func(struct pg_tm *out)
 	 */
 	if (out->tm_year != 0 && out->tm_mon != 0)
 	{
+		/* Begin - BUG#Z1037 */
+		/* Avoid the possibility of day_tab access overflow */
+		if (out->tm_mon < 1 || out->tm_mon > 12)
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				  errmsg("The value of month is invalid.")));
+		/* End - BUG#Z1037 */
+
 		if (out->tm_mday > day_tab[isleap(out->tm_year)][out->tm_mon - 1])
 			ereport(ERROR,
 					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
