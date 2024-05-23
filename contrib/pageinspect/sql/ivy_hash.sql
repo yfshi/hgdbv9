@@ -2,6 +2,9 @@ CREATE TABLE test_hash (a int, b varchar2(1024));
 INSERT INTO test_hash VALUES (1, 'one');
 CREATE INDEX test_hash_a_idx ON test_hash USING hash (a);
 
+CREATE TABLE test_hash_part (a int, b int) PARTITION BY RANGE (a);
+CREATE INDEX test_hash_part_idx ON test_hash_part USING hash(b);
+
 \x
 
 SELECT hash_page_type(get_raw_page('test_hash_a_idx', 0));
@@ -17,6 +20,7 @@ SELECT * FROM hash_bitmap_info('test_hash_a_idx', 1);
 SELECT * FROM hash_bitmap_info('test_hash_a_idx', 2);
 SELECT * FROM hash_bitmap_info('test_hash_a_idx', 3);
 SELECT * FROM hash_bitmap_info('test_hash_a_idx', 4);
+SELECT * FROM hash_bitmap_info('test_hash_part_idx', 1); -- error
 
 
 SELECT magic, version, ntuples, bsize, bmsize, bmshift, maxbucket, highmask,
@@ -84,3 +88,4 @@ SELECT hash_page_stats(decode(repeat('00', :block_size), 'hex'));
 SELECT hash_page_type(decode(repeat('00', :block_size), 'hex'));
 
 DROP TABLE test_hash;
+DROP TABLE test_hash_part;
