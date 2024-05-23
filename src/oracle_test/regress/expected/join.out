@@ -5772,14 +5772,14 @@ select * from
 (24 rows)
 
 -- another case requiring nested PlaceHolderVars
-explain (verbose, costs off) 
-select * from 
+explain (verbose, costs off)
+select * from
   (select 0 as val0) as ss0
-  left join (select 1 as val) as ss1 on true 
+  left join (select 1 as val) as ss1 on true
   left join lateral (select ss1.val as val_filtered where false) as ss2 on true;
-           QUERY PLAN     
+           QUERY PLAN           
 --------------------------------
- Nested Loop Left Join 
+ Nested Loop Left Join
    Output: 0, (1), ((1))
    ->  Result
          Output: 1
@@ -5788,13 +5788,13 @@ select * from
          One-Time Filter: false
 (7 rows)
 
-select * from 
+select * from
   (select 0 as val0) as ss0
-  left join (select 1 as val) as ss1 on true 
+  left join (select 1 as val) as ss1 on true
   left join lateral (select ss1.val as val_filtered where false) as ss2 on true;
  val0 | val | val_filtered 
 ------+-----+--------------
-    0 |   1 |     
+    0 |   1 |             
 (1 row)
 
 -- case that breaks the old ph_may_need optimization
