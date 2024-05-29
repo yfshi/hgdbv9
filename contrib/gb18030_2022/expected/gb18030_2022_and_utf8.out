@@ -948,19 +948,13 @@ select convert('ḿ', 'UTF8', 'GB18030');
  \xa8bc
 (1 row)
 
--- Begin - BUG#M0000343
-show shared_preload_libraries;
- shared_preload_libraries 
---------------------------
- gb18030_2022
+-- Begin - BUG#M0000342
+SELECT count(0)
+FROM pg_settings
+WHERE name = 'shared_preload_libraries' and setting like '%gb18030_2022%';
+ count 
+-------
+     1
 (1 row)
 
-\dx
-                       List of installed extensions
-     Name     | Version |   Schema   |             Description             
---------------+---------+------------+-------------------------------------
- gb18030_2022 | 1.0     | pg_catalog | support gb18030 2022 with extension
- plpgsql      | 1.0     | pg_catalog | PL/pgSQL procedural language
-(2 rows)
-
--- End - BUG#M0000343
+-- End - BUG#M0000342

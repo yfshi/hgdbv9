@@ -169,7 +169,6 @@ static int	encodingid;
 static char *bki_file;
 static char *hba_file;
 static char *ident_file;
-static char *ivorysql_file; /* SRS-MISC-GB18030 */
 static char *conf_file;
 static char *dictionary_file;
 static char *info_schema_file;
@@ -215,7 +214,7 @@ static int	database_mode = DB_ORACLE;
 "# the database superuser.  If you do not trust all your local users,\n" \
 "# use another authentication method.\n"
 static bool authwarning = false;
-static bool is_load_gb18030_2022 = true; /* SRS-MISC-GB18030,estimate if need load gb18030_2022 */
+
 /*
  * Centralized knowledge of switches to pass to backend
  *
@@ -690,22 +689,12 @@ static int
 get_encoding_id(const char *encoding_name)
 {
 	int			enc;
-	char		*encoding_name_modify;	/* SRS-MISC-GB18030 */
-
+	
 	if (encoding_name && *encoding_name)
 	{
-		/* BEGIN - SRS-MISC-GB18030 */
-		encoding_name_modify = pg_strdup(encoding_name);
-		if(pg_strcasecmp(encoding_name,"gb18030_2022") == 0)
-		{
-			encoding_name_modify = pg_strdup("gb18030");
-			is_load_gb18030_2022 =  true;
-		}
-		else if(pg_strcasecmp(encoding_name,"gb18030") == 0)
-			is_load_gb18030_2022 = false;
-		
-		if ((enc = pg_valid_server_encoding((const char *)encoding_name_modify)) >= 0)
-		/* END - SRS-MISC-GB18030 */
+		/* Begin - Bug#M0000342 , load gb18030_2022 at all times */
+		if ((enc = pg_valid_server_encoding(encoding_name)) >= 0)
+		/* End - Bug#M0000342 */
 			return enc;
 	}
 	pg_log_error("\"%s\" is not a valid server encoding name",
@@ -1150,12 +1139,6 @@ setup_config(void)
 	snprintf(repltok, sizeof(repltok), "max_connections = %d", n_connections);
 	conflines = replace_token(conflines, "#max_connections = 100", repltok);
 
-	/* Begin - Bug#M0000343 */
-	if(is_load_gb18030_2022 && database_mode == DB_PG)
-		conflines = replace_token(conflines,
-								  "#shared_preload_libraries = ''",
-								  "shared_preload_libraries = 'gb18030_2022'");
-	/* End - Bug#M0000343 */
 
 	if ((n_buffers * (BLCKSZ / 1024)) % 1024 == 0)
 		snprintf(repltok, sizeof(repltok), "shared_buffers = %dMB",
@@ -1353,12 +1336,6 @@ setup_config(void)
 		}
 		/* END - BUG#M0000120 */
 
-		/* Begin - Bug#M0000343 */
-		if(is_load_gb18030_2022)
-		conflines = replace_token(conflines,
-								  "shared_preload_libraries = 'liboracle_parser, ivorysql_ora'",
-								  "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'");
-		/* End - Bug#M0000343 */
 
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
@@ -2507,11 +2484,6 @@ usage(const char *progname)
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 	printf(_("  -E, --encoding=ENCODING   set default encoding for new databases\n"));
-	/* BEGIN - SRS-MISC-GB18030 */
-	printf(_("	NOTICE: If you set this to gb18030,\n\
-		the database will initilized with gb18030_2000,but not gb18030_2022,\n\
-		if you want to use gb18030_2022,please set this option to gb18030_2022,\n"));
-	/* END - SRS-MISC-GB18030 */
 	printf(_("  -g, --allow-group-access  allow group read/execute on data directory\n"));
 	printf(_("  -k, --data-checksums      use data page checksums\n"));
 	printf(_("      --locale=LOCALE       set default locale for new databases\n"));
@@ -2783,7 +2755,6 @@ setup_data_file_paths(void)
 
 	set_input(&hba_file, "pg_hba.conf.sample");
 	set_input(&ident_file, "pg_ident.conf.sample");
-	set_input(&ivorysql_file, "ivorysql.conf.sample"); /* SRS-MISC-GB18030 */
 	set_input(&conf_file, "postgresql.conf.sample");
 	set_input(&dictionary_file, "snowball_create.sql");
 	set_input(&info_schema_file, "information_schema.sql");
@@ -3209,8 +3180,7 @@ initialize_data_directory(void)
 
 	setup_schema(cmdfd);
 	/* BEGIN - SRS-MISC-GB18030 */
-	if(is_load_gb18030_2022)
-		load_gb18030_2022(cmdfd);
+	load_gb18030_2022(cmdfd);	/* Bug#M0000342 , load gb18030_2022 at all times */
 	/* END - SRS-MISC-GB18030*/
 	load_plpgsql(cmdfd);
 /* Begin - ReqID:SRS-MISC-LICENSE */

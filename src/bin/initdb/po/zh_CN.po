@@ -509,14 +509,6 @@ msgstr "  -D, --pgdata=DATADIR      当前数据库簇的位置\n"
 msgid "  -E, --encoding=ENCODING   set default encoding for new databases\n"
 msgstr "  -E, --encoding=ENCODING   为新数据库设置默认编码\n"
 
-#: initdb.c:2521
-#, c-format
-msgid "	NOTICE: If you set this to gb18030,\n\
-		the database will initilized with gb18030_2000,but not gb18030_2022,\n\
-		if you want to use gb18030_2022,please set this option to gb18030_2022,\n"
-msgstr "    注意: 如果你设置了这个参数为gb18030,数据库会以gb18030 2000标准进行初始化,\n\
-        如果您想要使用gb18030 2022标准,将此选项设置为gb18030_2022\n"
-
 #: initdb.c:2253
 #, c-format
 msgid "  -g, --allow-group-access  allow group read/execute on data directory\n"
