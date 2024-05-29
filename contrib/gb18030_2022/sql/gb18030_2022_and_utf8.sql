@@ -366,7 +366,8 @@ select convert('中国', 'UTF8', 'GB18030');
  
 select convert('ḿ', 'UTF8', 'GB18030');
 
--- Begin - BUG#M0000343
-show shared_preload_libraries;
-\dx
--- End - BUG#M0000343
+-- Begin - BUG#M0000342
+SELECT count(0)
+FROM pg_settings
+WHERE name = 'shared_preload_libraries' and setting like '%gb18030_2022%';
+-- End - BUG#M0000342
