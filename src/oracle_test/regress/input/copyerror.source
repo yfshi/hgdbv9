@@ -561,6 +561,21 @@ COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknull' filename '
 SELECT * FROM fk_length_2000 where id>=1000;
 SELECT * FROM x_bad where taskid='fknull' order by lineno;
 
+-- Beign - BUG:M0000348
+TRUNCATE x;
+TRUNCATE x_bad;
+
+COPY x FROM '@abs_srcdir@/data/copy_split.data' with csv delimiter ',' taskid 'copy_split' filename 'copy_split.data' badtable 'x_bad' sharding 5 current_shard 0;
+SELECT * FROM x;
+SELECT * FROM x_bad;
+
+-- one line more than 65536
+CREATE TABLE copy_split_80002(id int,name text);
+COPY copy_split_80002 FROM '@abs_srcdir@/data/copy_split_80002.data' with csv delimiter ',' taskid 'copy_split_80002' sharding 2 current_shard 0;
+SELECT CHAR_LENGTH(name) from copy_split_80002;
+
+-- End - BUG:M0000348
+
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;
@@ -577,4 +592,5 @@ DROP TABLE error;
 DROP TABLE length_2000;
 DROP TABLE fk_t,fk_t_u,fk_t_2fk,fk_t_2fk_2pk,fk_parti,fk_length_2000,fk_parti_son;
 DROP TABLE pk_t,pk_t_u,pk_t2;
+DROP TABLE copy_split_80002;
 reset ivorysql.enable_emptystring_to_null;

@@ -170,6 +170,65 @@ static inline bool CopyGetInt16(CopyFromState cstate, int16 *val);
 static void CopyLoadInputBuf(CopyFromState cstate);
 static int	CopyReadBinaryData(CopyFromState cstate, char *dest, int nbytes);
 
+/* Begin - BUG:M0000348 */
+/* 
+ * as there is no getline() on windows
+ * use fgets() + check LF to finding a new line
+ */
+#ifdef WIN32
+static ssize_t
+getline(char **str, size_t *len, FILE *fp)
+{
+#define READ_DATA_LEN 256
+	StringInfoData data;
+	char	read_data[READ_DATA_LEN];
+	int		i;
+	bool	has_quote = false;
+	bool	reach_end_line = false;
+
+	initStringInfo(&data);
+
+	memset(read_data, 0x00, READ_DATA_LEN);
+
+	while (fgets(read_data, READ_DATA_LEN, fp) != NULL)
+	{
+		appendStringInfoString(&data, read_data);
+
+		/* check line end */
+		for (i = 0; i < READ_DATA_LEN; i++)
+		{
+			if (read_data[i] == '\'' || read_data[i] == '"')
+			{
+				if (has_quote)
+					has_quote = true;
+				else
+					has_quote = false;
+			}
+			/* check \n */
+			if (read_data[i] == '\n' && !has_quote)
+				reach_end_line = true;
+
+			/* chec \r\n */
+			if (read_data[i] == '\r' &&
+				!has_quote &&
+				i < READ_DATA_LEN - 1 &&
+				read_data[i + 1] == '\n')
+				reach_end_line = true;
+			if (read_data[i] == '\0')
+				break;
+		}
+		if (reach_end_line)
+			break;
+		memset(read_data, 0x00, READ_DATA_LEN);
+	}
+
+	*str = data.data;
+	return data.len == 0 ? -1 : data.len;
+}
+#endif
+
+/* End - BUG:M0000348 */
+
 void
 ReceiveCopyBegin(CopyFromState cstate)
 {
@@ -250,14 +309,110 @@ CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
 {
 	int			bytesread = 0;
 
+	/* Being - BUG:M0000348 */
+	char *tmp_line = NULL;
+        size_t tmp_line_len=0;
+        int tmp_sharding;
+        int tmp_current_shard;
+        bool load_more = true;
+	char *tmp = NULL;
+        char *tmp_databuf = (char *)databuf;
+        tmp_sharding = cstate->opts.sharding;
+        tmp_current_shard = cstate->opts.current_shard;
+	/* End - BUG:M0000348 */
+
+
 	switch (cstate->copy_src)
 	{
 		case COPY_FILE:
-			bytesread = fread(databuf, 1, maxread, cstate->copy_file);
-			if (ferror(cstate->copy_file))
-				ereport(ERROR,
+			/* Begin - BUG:M0000348 */
+ 			/* 
+			 * For normal case, the data flow is:
+ 			 * [data source] --> raw_buf --> input_buf --> line_buf --> attribute_buf
+ 			 * the following logical used to split file in [data source] --> raw_buf.
+			 * 1. read the new line by getline()
+			 * 2. if we need handle this line, add it to the databuf(raw_buf)
+			 * 3. if databuf(raw_buf) cannot store the line as not enough space left,
+			 *    store this line cstate->tmp_line_buf.
+			 *    and store global line number in cstate->g_lineno.
+			 * 4. when next loading data,
+			 *    first copy cstate->tmp_line_buf to databuf(raw_buf),
+			 *    then loading data follow 1,2 untill databuf(raw_buf) is full.
+			 */
+			if (cstate->opts.sharding>1)
+			{
+				if (cstate->have_loading_data)
+				{
+					if (cstate->tmp_line_buf.len < maxread)
+					{
+						memcpy(tmp_databuf+bytesread,cstate->tmp_line_buf.data,cstate->tmp_line_buf.len);
+						bytesread += cstate->tmp_line_buf.len;
+						cstate->have_loading_data = false;
+					}
+					else
+					{
+						memcpy(tmp_databuf+bytesread,cstate->tmp_line_buf.data,maxread);
+						bytesread += maxread;
+
+						/*
+						 * handle resting data in cstate->tmp_line_buf.data
+						 * as maxread space could not store cstate->tmp_line_buf
+						 */
+						tmp = (char *) palloc(cstate->tmp_line_buf.len - maxread + 1);
+						memcpy(tmp,cstate->tmp_line_buf.data+maxread,cstate->tmp_line_buf.len - maxread);
+						resetStringInfo(&cstate->tmp_line_buf);
+						appendStringInfoString(&cstate->tmp_line_buf,tmp);
+						free(tmp);
+						goto have_loading_data_rest;
+					}
+                                }
+				do
+				{
+					ssize_t read;
+					int rest_read_len;
+					cstate->g_lineno ++;
+					if ((read = getline(&tmp_line, &tmp_line_len, cstate->copy_file)) != -1)
+					{
+						if(cstate->g_lineno % tmp_sharding == tmp_current_shard)
+						{
+							if (bytesread+read < maxread)
+							{
+								memcpy(tmp_databuf+bytesread,tmp_line,read);
+								bytesread += read;
+							}
+							else
+							{
+								rest_read_len = maxread-bytesread;
+								memcpy(tmp_databuf+bytesread, tmp_line, rest_read_len);
+								bytesread += rest_read_len;
+
+								resetStringInfo(&cstate->tmp_line_buf);
+								appendBinaryStringInfo(&cstate->tmp_line_buf, tmp_line+rest_read_len, read-rest_read_len);
+								cstate->tmp_line_buf.len = read - rest_read_len;
+								cstate->have_loading_data = true;
+								load_more = false;
+							}
+						}
+					}
+					else
+						load_more = false;
+				}while(load_more);
+
+				if (ferror(cstate->copy_file))
+					ereport(ERROR,
+						(errcode_for_file_access(),
+						errmsg("could not read from COPY file: %m")));
+			}
+			/* End - BUG:M0000348 */
+			else
+			{
+				bytesread = fread(databuf, 1, maxread, cstate->copy_file);
+				if (ferror(cstate->copy_file))
+					ereport(ERROR,
 						(errcode_for_file_access(),
 						 errmsg("could not read from COPY file: %m")));
+			}
+have_loading_data_rest:
 			if (bytesread == 0)
 				cstate->raw_reached_eof = true;
 			break;
@@ -771,21 +926,10 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 			return false;		/* done */
 	}
 
-continue_shard:	/* ReqID:SRS-MISC-BULKLOAD */
-
 	cstate->cur_lineno++;
 
 	/* Actually read the line into memory here */
 	done = CopyReadLine(cstate);
-
-	/* Begin - ReqID:SRS-MISC-BULKLOAD */
-	/* CopyReadLine() could consume one line */
-	if ((cstate->opts.sharding > 1) && (cstate->copy_src != COPY_FRONTEND ))
-	{
-		if ((cstate->cur_lineno % cstate->opts.sharding ) != cstate->opts.current_shard )
-			goto continue_shard;
-	}
-	/* End - ReqID:SRS-MISC-BULKLOAD */
 
 	/*
 	 * EOF at start of line means we're done.  If we see EOF after some
@@ -835,7 +979,7 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 		appendBinaryStringInfo(linebuf_cut,linebuf->data,linebuf->len);
 
 	/* if frontend filter the data, cal the line number*/
-	if (cstate->copy_src == COPY_FRONTEND && cstate->opts.sharding > 1)
+	if (cstate->opts.sharding > 1) /* BUG:M0000348 */
 	{
 		if (cstate->opts.current_shard == 0)
 			line_no = (cstate->opts.sharding) * lineno;
