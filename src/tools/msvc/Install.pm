@@ -102,6 +102,10 @@ sub Install
 		EnsureDirectories($target, @all_dirs);
 	}
 
+	#BEGIN - SRS-MISC-LICENSE-ClientTool
+	EnsureDirectories($target, 'license') if $config->{license};
+	#END - 	SRS-MISC-LICENSE-ClientTool
+
 	CopySolutionOutput($conf, $target);
 	my $sample_files = [];
 	my @top_dir      = ("src");
@@ -192,6 +196,12 @@ sub Install
 		CopySetOfFiles('PL Extension files',
 			$pl_extension_files, $target . '/share/extension/');
 	}
+
+	#BEGIN - SRS-MISC-LICENSE-ClientTool
+	CopyFiles(
+		'client information', $target . '/license/',
+		'dep/license/client_info/', 'client_info.dat') if $config->{license};
+	#END - SRS-MISC-LICENSE-ClientTool
 
 	GenerateNLSFiles($target, $config->{nls}, $majorver) if ($config->{nls});
 
