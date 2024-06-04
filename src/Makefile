@@ -44,6 +44,7 @@ endif
 
 ifeq ($(with_license), yes)
 SUBDIRS += $(LICENSE_DIR)
+SUBDIRS += ../dep/license/client_info
 endif
 
 # There are too many interdependencies between the subdirectories, so
