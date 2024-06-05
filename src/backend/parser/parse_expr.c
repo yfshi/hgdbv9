@@ -828,12 +828,23 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 							!pg_strcasecmp(strVal(field3), "currval")))
 					{
 						FuncCall *seq_func = NULL;
+						/* Begin - Bug#m351 */
+						Oid 	 nspoid;
+						char	 nextvalarg[MAXPGPATH];
+						/* End - Bug#m351 */
 						A_Const *n = makeNode(A_Const);
 
 						n->val.type = T_String;
-						n->val.val.str = strVal(field2);
+						/* Begin - Bug#m351 */
+						sprintf(nextvalarg, "%s.%s", nspname, strVal(field2));
+						n->val.val.str = nextvalarg;
+						/* End - Bug#m351 */
 						n->location = cref->location;
-
+						/* Begin - Bug#m351 */
+						nspoid = LookupExplicitNamespace(nspname, true);
+						if (!OidIsValid(nspoid))
+							elog(ERROR, "sequence does not exist");
+						/* End - Bug#m351 */
 						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
 							makeString(strVal(field3))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
 						return transformFuncCall(pstate, seq_func);
@@ -896,25 +907,41 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				 */
 				if (strcmp(catname, get_database_name(MyDatabaseId)) != 0)
 				{
-					/* Begin - ReqID:SRS-SQL-SEQ */
+					/* Begin - Bug#m351 */
 					if(IsA(field4, String) && (!pg_strcasecmp(strVal(field4), "nextval") ||
 							!pg_strcasecmp(strVal(field4), "currval")))
-					{
-						FuncCall *seq_func = NULL;
-						A_Const *n = makeNode(A_Const);
-
-						n->val.type = T_String;
-						n->val.val.str = strVal(field3);
-						n->location = cref->location;
-
-						seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
-							makeString(strVal(field4))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
-						return transformFuncCall(pstate, seq_func);
-					}
-					/* End - ReqID:SRS-SQL-SEQ */
+						elog(ERROR, "sequence does not exist");
+					/* End - Bug#m351 */
 					crerr = CRERR_WRONG_DB;
 					break;
 				}
+				/* Begin - Bug#m351 */
+				/* Begin - ReqID:SRS-SQL-SEQ */
+				if(IsA(field4, String) && (!pg_strcasecmp(strVal(field4), "nextval") ||
+						!pg_strcasecmp(strVal(field4), "currval")))
+				{
+					FuncCall *seq_func = NULL;
+					/* Begin - Bug#m351 */
+					Oid 	 nspoid;
+					char	 nextvalarg[MAXPGPATH];
+					/* End - Bug#m351 */
+					A_Const *n = makeNode(A_Const);
+
+					n->val.type = T_String;
+					sprintf(nextvalarg, "%s.%s.%s", catname, nspname, relname);	/* Bug#m351 */
+					n->val.val.str = nextvalarg;
+					n->location = cref->location;
+					/* Begin - Bug#m351 */
+					nspoid = LookupExplicitNamespace(nspname, true);
+					if (!OidIsValid(nspoid))
+						elog(ERROR, "sequence does not exist");
+					/* End - Bug#m351 */
+					seq_func = makeFuncCall(list_make2(makeString("pg_catalog"),
+						makeString(strVal(field4))), list_make1(n), COERCE_EXPLICIT_CALL, cref->location);
+					return transformFuncCall(pstate, seq_func);
+				}
+				/* End - ReqID:SRS-SQL-SEQ */
+				/* End - Bug#m351 */
 
 				/* Locate the referenced nsitem */
 				nsitem = refnameNamespaceItem(pstate, nspname, relname,
