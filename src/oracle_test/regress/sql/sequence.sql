@@ -606,5 +606,13 @@ DROP SEQUENCE seq_scale2;
 -- Begin BUG#Z250
 create sequence seq_restart3 increment by 1 start with 32 minvalue 10 maxvalue 50;
 alter sequence seq_restart3 start with 20;
+drop sequence seq_restart3;
 -- End  BUG#Z250
+
+-- Begin bug#m351
+create sequence seq;
+select a.seq.nextval from dual;
+select a.b.seq.nextval from dual;
+drop sequence seq;
+-- End bug#m351
 SET ivorysql.enable_seq_scale_fixed = FALSE;
