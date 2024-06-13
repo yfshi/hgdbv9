@@ -754,8 +754,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (nsitem == NULL)
 				{
 					/* Begin - ReqID:SRS-SQL-SEQ */
-					if(IsA(field2, String) && (!pg_strcasecmp(strVal(field2), "nextval") ||
-							!pg_strcasecmp(strVal(field2), "currval")))
+					if(ORA_PARSER == compatible_db && IsA(field2, String) &&
+						(!pg_strcasecmp(strVal(field2), "nextval") || !pg_strcasecmp(strVal(field2), "currval")))	/* Bug#m353 */
 					{
 						FuncCall *seq_func = NULL;
 						A_Const *n = makeNode(A_Const);
@@ -824,8 +824,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (nsitem == NULL)
 				{
 					/* Begin - ReqID:SRS-SQL-SEQ */
-					if(IsA(field3, String) && (!pg_strcasecmp(strVal(field3), "nextval") ||
-							!pg_strcasecmp(strVal(field3), "currval")))
+					if(ORA_PARSER == compatible_db && IsA(field3, String) &&
+						(!pg_strcasecmp(strVal(field3), "nextval") || !pg_strcasecmp(strVal(field3), "currval")))	/* Bug#m353 */
 					{
 						FuncCall *seq_func = NULL;
 						/* Begin - Bug#m351 */
@@ -908,8 +908,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				if (strcmp(catname, get_database_name(MyDatabaseId)) != 0)
 				{
 					/* Begin - Bug#m351 */
-					if(IsA(field4, String) && (!pg_strcasecmp(strVal(field4), "nextval") ||
-							!pg_strcasecmp(strVal(field4), "currval")))
+					if(ORA_PARSER == compatible_db && IsA(field4, String) &&
+						(!pg_strcasecmp(strVal(field4), "nextval") || !pg_strcasecmp(strVal(field4), "currval")))	/* Bug#m353 */
 						elog(ERROR, "sequence does not exist");
 					/* End - Bug#m351 */
 					crerr = CRERR_WRONG_DB;
@@ -917,8 +917,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				}
 				/* Begin - Bug#m351 */
 				/* Begin - ReqID:SRS-SQL-SEQ */
-				if(IsA(field4, String) && (!pg_strcasecmp(strVal(field4), "nextval") ||
-						!pg_strcasecmp(strVal(field4), "currval")))
+				if(ORA_PARSER == compatible_db && IsA(field4, String) &&
+					(!pg_strcasecmp(strVal(field4), "nextval") || !pg_strcasecmp(strVal(field4), "currval")))	/* Bug#m353 */
 				{
 					FuncCall *seq_func = NULL;
 					/* Begin - Bug#m351 */
