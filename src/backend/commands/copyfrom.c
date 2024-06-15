@@ -1746,6 +1746,7 @@ BeginCopyFrom(ParseState *pstate,
 		cstate->input_reached_eof = false;
 
 		initStringInfo(&cstate->line_buf);
+		initStringInfo(&cstate->tmp_line_buf); /* BUG:M0000348 */
 	}
 
 	initStringInfo(&cstate->attribute_buf);

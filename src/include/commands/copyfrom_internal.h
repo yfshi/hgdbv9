@@ -170,6 +170,12 @@ typedef struct CopyFromStateData
 	const char 	*schema_name;	/* schema name for this copy state */
 	int		byte_records;	/* the first byte of the raw buff */
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	/* Begin - BUG:M0000348 */
+	StringInfoData tmp_line_buf;	/* used to store data already read from file */
+	bool have_loading_data;		/* if there have stored data need handle */
+	uint64 g_lineno;		/* global line number used to split file */
+	/* End - BUG:M0000348 */
+
 } CopyFromStateData;
 
 extern void ReceiveCopyBegin(CopyFromState cstate);
