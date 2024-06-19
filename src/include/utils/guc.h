@@ -346,6 +346,7 @@ extern PGDLLIMPORT bool	seq_scale_fixed;
 /* End - ReqID:SRS-SQL-SEQ */
 extern PGDLLIMPORT bool internal_warning; /* BUG#Z230 */
 
+
 extern PGDLLIMPORT bool	visibility_switch;	/* ReqID:SRS-SQL-INVISIBLECOL */
 /* Begin - ReqID:SRS-SQL-GTT */
 extern int max_active_gtt;
@@ -376,6 +377,13 @@ extern PGDLLIMPORT bool compile_plisql_use_owner;
 /* Begin - SRS-MISC-COMPATDM-SQL */
 extern PGDLLIMPORT bool enable_blankspace_compare;
 /* End - SRS-MISC-COMPATDM-SQL */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern PGDLLIMPORT bool check_strong_cursor_assign;
+extern int	open_cursors;
+extern bool enable_cursor_as_column_type;
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

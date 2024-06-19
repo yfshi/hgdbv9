@@ -61,6 +61,11 @@ NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+orarefcursor_funcs_call orarefcursor_funcs = {NULL, NULL, NULL, NULL, NULL, UNLOADED};
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 
 static void shutdown_MultiFuncCall(Datum arg);
 static TypeFuncClass internal_get_result_type(Oid funcid,

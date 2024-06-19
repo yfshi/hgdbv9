@@ -3050,13 +3050,16 @@ declare
 BEGIN
 	trigger := 1;
 end; $$ language plisql;
---oracle failed,but we sucess
+--oracle failed
 do $$
 DECLARE
 	type integer;
 begin
 	type := 1;
 end; $$ language plisql;
+ERROR:  syntax error at or near ";"
+LINE 3:  type integer;
+                     ^
 ---
 --ok and print two test_f
 do $$

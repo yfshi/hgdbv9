@@ -31,7 +31,8 @@ OBJS = \
 	pl_handler.o \
 	pl_scanner.o \
 	pl_subproc_function.o \
-	pl_package.o
+	pl_package.o \
+	pl_udt_type.o
 
 DATA = plisql.control plisql--1.0.sql
 
@@ -40,8 +41,10 @@ ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB)
 ORA_REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain \
 	plisql_record plisql_cache plisql_simple plisql_transaction \
 	plisql_trap plisql_trigger plisql_varprops plisql_nested_subproc \
-	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype
+	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype \
+	plisql_ora_cursor plisql_ora_cursor2
 # End - BUGM0000301
+
 # where to find ora_gen_keywordlist.pl and subsidiary files
 TOOLSDIR = $(top_srcdir)/src/tools
 GEN_KEYWORDLIST = $(PERL) -I $(TOOLSDIR) $(TOOLSDIR)/ora_gen_keywordlist.pl
@@ -74,6 +77,7 @@ install-headers: installdirs
 	$(INSTALL_DATA) '$(srcdir)/plisql.h' '$(DESTDIR)$(includedir_server)'
 	$(INSTALL_DATA) '$(srcdir)/pl_subproc_function.h' '$(DESTDIR)$(includedir_server)'
 	$(INSTALL_DATA) '$(srcdir)/pl_package.h' '$(DESTDIR)$(includedir_server)'
+	$(INSTALL_DATA) '$(srcdir)/pl_udt_type.h' '$(DESTDIR)$(includedir_server)'
 
 uninstall-data:
 	rm -f $(addprefix '$(DESTDIR)$(datadir)/extension'/, $(notdir $(DATA)))
@@ -82,12 +86,13 @@ uninstall-headers:
 	rm -f '$(DESTDIR)$(includedir_server)/plisql.h'
 	rm -f '$(DESTDIR)$(includedir_server)/pl_subproc_function.h'
 	rm -f '$(DESTDIR)$(includedir_server)/pl_package.h'
+	rm -f '$(DESTDIR)$(includedir_server)/pl_udt_type.h'
 
 .PHONY: install-data install-headers uninstall-data uninstall-headers
 
 
 # Force these dependencies to be known even without dependency info built:
-pl_gram.o pl_handler.o pl_comp.o pl_exec.o pl_funcs.o pl_scanner.o: plisql.h pl_gram.h plerrcodes.h pl_subproc_function.h pl_package.h
+pl_gram.o pl_handler.o pl_comp.o pl_exec.o pl_funcs.o pl_scanner.o: plisql.h pl_gram.h plerrcodes.h pl_subproc_function.h pl_package.h pl_udt_type.h
 pl_scanner.o: pl_reserved_kwlist_d.h pl_unreserved_kwlist_d.h
 
 # See notes in src/backend/parser/Makefile about the following two rules

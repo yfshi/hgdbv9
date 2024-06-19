@@ -21,6 +21,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "pl_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #include "utils/memutils.h"
 
 /* ----------
@@ -117,6 +120,9 @@ plisql_ns_additem(PLiSQL_nsitem_type itemtype, int itemno, const char *name)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	nse->subprocfunc = NIL;
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	nse->typoid = InvalidOid;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	nse->prev = ns_top;
 	strcpy(nse->name, name);
 	ns_top = nse;
@@ -161,7 +167,10 @@ plisql_ns_lookup(PLiSQL_nsitem *ns_cur, bool localmode,
 			if (strcmp(nsitem->name, name1) == 0)
 			{
 				if (name2 == NULL ||
-					nsitem->itemtype != PLISQL_NSTYPE_VAR)
+					nsitem->itemtype != PLISQL_NSTYPE_VAR ||
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					ISORACURSOROID(nsitem->typoid))
+					/* End - ReqID:SRS-PLSQL-CURSOR */
 				{
 					if (names_used)
 						*names_used = 1;
@@ -181,7 +190,10 @@ plisql_ns_lookup(PLiSQL_nsitem *ns_cur, bool localmode,
 				if (strcmp(nsitem->name, name2) == 0)
 				{
 					if (name3 == NULL ||
-						nsitem->itemtype != PLISQL_NSTYPE_VAR)
+						nsitem->itemtype != PLISQL_NSTYPE_VAR ||
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						ISORACURSOROID(nsitem->typoid))
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 					{
 						if (names_used)
 							*names_used = 2;
@@ -765,11 +777,18 @@ plisql_free_function_memory(PLiSQL_function *func,
 
 					free_expr(var->default_val);
 					free_expr(var->cursor_explicit_expr);
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					if (var->cursor_resulttupdesc != NULL)
+						FreeTupleDesc(var->cursor_resulttupdesc);
+					if (var->is_explicit_cursor &&
+						var->cursor_rettype_tupledesc)
+						FreeTupleDesc(var->cursor_rettype_tupledesc);
+					/* End - ReqID:SRS-PLSQL-CURSOR */
 					/* Begin - ReqID:SRS-SQL-PACKAGE */
 					/* we should close package explicit cursor */
 					if (OidIsValid(var->pkgoid) &&
-						var->datatype->typoid == REFCURSOROID &&
-						plisql_cursor_is_open(var))
+						ISCURSOROID(var->datatype->typoid) && /* ReqID:SRS-PLSQL-CURSOR */
+						cursor_is_open(NULL, var, false))
 						plisql_close_package_cursorvar(var);
 					/* End - ReqID:SRS-SQL-PACKAGE */
 				}
@@ -789,6 +808,12 @@ plisql_free_function_memory(PLiSQL_function *func,
 			case PLISQL_DTYPE_PACKAGE_DATUM:
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				break;
+			case PLISQL_DTYPE_TYPE:
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			default:
 				elog(ERROR, "unrecognized data type: %d", d->dtype);
 		}
@@ -1774,6 +1799,23 @@ plisql_dumptree(PLiSQL_function *func, int start_datum, int start_subprocfunc) /
 				}
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_TYPE:
+				{
+					PLiSQL_datum_udt_type *datum_type = (PLiSQL_datum_udt_type *) d;
+
+					printf("UDT TYPE %s oid %u\n", datum_type->udt_type->typname,
+						datum_type->udt_type->typoid);
+				}
+				break;
+			case PLISQL_DTYPE_ATTRIBUTE:
+				{
+					PLiSQL_attribute *attribute = (PLiSQL_attribute *) d;
+
+					printf("Attribute  \"%s\"\n", attribute->fieldname);
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			default:
 				printf("??? unknown data type %d\n", d->dtype);
 		}

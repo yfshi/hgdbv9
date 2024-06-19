@@ -65,7 +65,9 @@ static List *ExpandSingleTable(ParseState *pstate, ParseNamespaceItem *nsitem,
 static List *ExpandRowReference(ParseState *pstate, Node *expr,
 								bool make_target_entry);
 static int	FigureColnameInternal(Node *node, char **name);
-
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+static TupleDesc expandParamRecordVariable(ParseState *pstate, Param *param);
+/* End - ReqID:SRS-PLSQL-CURSOR */
 
 /*
  * transformTargetEntry()
@@ -1481,6 +1483,11 @@ ExpandRowReference(ParseState *pstate, Node *expr,
 	if (IsA(expr, Var) &&
 		((Var *) expr)->vartype == RECORDOID)
 		tupleDesc = expandRecordVariable(pstate, (Var *) expr, 0);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	else if (IsA(expr, Param) &&
+		((Param *) expr)->paramtype == RECORDOID)
+		tupleDesc = expandParamRecordVariable(pstate, (Param *) expr);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	else
 		tupleDesc = get_expr_result_tupdesc(expr, false);
 	Assert(tupleDesc);
@@ -2018,6 +2025,29 @@ FigureColnameInternal(Node *node, char **name)
 
 	return strength;
 }
+
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * maybe param comes from a cursor%rowtype
+ * which has tupdesc, so we use this function
+ * to get its tupdesc
+ */
+static TupleDesc
+expandParamRecordVariable(ParseState *pstate, Param *param)
+{
+	TupleDesc tupdesc = NULL;
+
+	if (pstate->p_param_tupdesc_hook != NULL)
+		tupdesc = pstate->p_param_tupdesc_hook(pstate, param);
+	if (tupdesc != NULL)
+		return tupdesc;
+	tupdesc = get_expr_result_tupdesc((Node *) param, false);
+
+	return tupdesc;
+}
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 /*

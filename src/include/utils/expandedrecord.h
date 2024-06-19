@@ -193,6 +193,9 @@ extern void expanded_record_set_field_internal(ExpandedRecordHeader *erh,
 extern void expanded_record_set_fields(ExpandedRecordHeader *erh,
 									   const Datum *newValues, const bool *isnulls,
 									   bool expand_external);
+/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+extern ExpandedObjectMethods *GetExpandedObjectMethods(void);
+/* End - ReqID:SRS-PLSQL-SUBPROC */
 
 /* outside code should never call expanded_record_set_field_internal as such */
 #define expanded_record_set_field(erh, fnumber, newValue, isnull, expand_external) \

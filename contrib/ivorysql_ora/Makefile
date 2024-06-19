@@ -28,7 +28,8 @@ OBJS = \
 	src/insert/insert_alias.o \
 	src/merge/ora_merge.o \
 	src/sysview/sysview_functions.o \
-	src/xml_functions/ora_xml_functions.o
+	src/xml_functions/ora_xml_functions.o \
+	src/orarefcursor/orarefcursor.o
 
 EXTENSION = ivorysql_ora
 
@@ -75,7 +76,8 @@ ORA_REGRESS = \
 	datatype_and_func_bugs \
 	ora_sysview \
 	ora_xml_functions \
-	ora_to_number
+	ora_to_number \
+	orarefcursor
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

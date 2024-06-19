@@ -222,4 +222,8 @@ extern MemoryContext SPI_get_proccxt(int level);
 extern MemoryContext Ora_spi_saved_memorycontext(void);
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern bool SPI_is_first_plisql(void);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 #endif							/* SPI_H */

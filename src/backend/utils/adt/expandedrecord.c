@@ -1365,6 +1365,18 @@ expanded_record_set_fields(ExpandedRecordHeader *erh,
 	MemoryContextSwitchTo(oldcxt);
 }
 
+/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+/*
+ * get expandedObjectMethods pointer
+ */
+ExpandedObjectMethods*
+GetExpandedObjectMethods(void)
+{
+	return (ExpandedObjectMethods *) &ER_methods;
+}
+/* End - ReqID:SRS-PLSQL-SUBPROC */
+
+
 /*
  * Construct (or reset) working memory context for short-term operations.
  *

@@ -152,4 +152,8 @@ extern TupleDesc BuildDescForRelation(List *schema);
 
 extern TupleDesc BuildDescFromLists(List *names, List *types, List *typmods, List *collations);
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern bool ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_error);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 #endif							/* TUPDESC_H */

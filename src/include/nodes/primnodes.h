@@ -293,6 +293,9 @@ typedef struct Param
 	int32		paramtypmod;	/* typmod value, if known */
 	Oid			paramcollid;	/* OID of collation, or InvalidOid if none */
 	int			location;		/* token location, or -1 if unknown */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	void		*type;			/* PLiSQL_type address */
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 } Param;
 
 /*

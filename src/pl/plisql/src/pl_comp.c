@@ -31,6 +31,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "pl_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
@@ -680,11 +683,25 @@ do_compile(FunctionCallInfo fcinfo,
 
 				/* Add to namespace under the $n name */
 				add_parameter_name(argitemtype, argvariable->dno, buf);
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				if (ISORACURSOROID(argdtype->typoid))
+				{
+					set_plisql_cursorvar_nsitem_typoid(argvariable, true);
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 
 				/* If there's a name for the argument, make an alias */
 				if (argnames && argnames[i][0] != '\0')
+				{
 					add_parameter_name(argitemtype, argvariable->dno,
 									   argnames[i]);
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					if (ISORACURSOROID(argdtype->typoid))
+					{
+						set_plisql_cursorvar_nsitem_typoid(argvariable, false);
+					}
+					/* End - ReqID:SRS-PLSQL-CURSOR */
+				}
 			}
 
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -1139,6 +1156,19 @@ do_compile(FunctionCallInfo fcinfo,
 								 true);
 	function->found_varno = var->dno;
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * build sql variable
+	 */
+	var = plisql_build_variable("sql", 0,
+								plisql_build_datatype(SYS_REFCURSOROID,
+													-1,
+													InvalidOid,
+													NULL),
+								true);
+	function->sql_varno = var->dno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	PG_TRY();
 	{
@@ -1541,7 +1571,8 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			/* (note we already replaced polymorphic types) */
 			/* (build_variable would do this, but wrong message) */
 			if (argdtype->ttype != PLISQL_TTYPE_SCALAR &&
-				argdtype->ttype != PLISQL_TTYPE_REC)
+				argdtype->ttype != PLISQL_TTYPE_REC &&
+				argdtype->ttype != PLISQL_TTYPE_UDT_REF_CURSOR) /* ReqID:SRS-PLSQL-CURSOR */
 				ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				errmsg("PLI/SQL functions cannot accept type %s",
@@ -1569,6 +1600,12 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 
 			/* Add to namespace under the $n name */
 			add_parameter_name(argitemtype, argvariable->dno, buf);
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			if (ISORACURSOROID(argdtype->typoid))
+			{
+				set_plisql_cursorvar_nsitem_typoid(argvariable, true);
+			}
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			function->fn_argvarnos[i] = argvariable->dno;
 		}
 		if (inparams->numParams> 0)
@@ -1586,6 +1623,19 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 														NULL),
 								 true);
 	function->found_varno = var->dno;
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/*
+	 * build sql variable
+	 */
+	var = plisql_build_variable("sql", 0,
+								plisql_build_datatype(SYS_REFCURSOROID,
+													-1,
+													InvalidOid,
+													NULL),
+								true);
+	function->sql_varno = var->dno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * Now parse the function's text
@@ -1758,6 +1808,9 @@ plisql_parser_setup(struct ParseState *pstate, PLiSQL_expr *expr)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	pstate->p_subprocfunc_hook = plisql_subprocfunc_ref;
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	pstate->p_param_tupdesc_hook = plisql_param_tupdesc_ref;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 	/* no need to use p_coerce_param_hook */
 	pstate->p_ref_hook_state = (void *) expr;
 }
@@ -2000,6 +2053,40 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 		case PLISQL_NSTYPE_VAR:
 			if (nnames == nnames_scalar)
 				return make_datum_param(expr, nse->itemno, cref->location);
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			else if (nnames == nnames_field &&
+				is_oracursor_datum(estate->datums[nse->itemno]))
+			{
+				/* maybe a cursor attribute */
+				PLiSQL_var *cursor= (PLiSQL_var *) estate->datums[nse->itemno];
+				int			i;
+
+				for (i = 0; i <= PLISQL_SUPPORT_ATTRIBUTE_NUM; i++)
+				{
+					PLiSQL_attribute *attr;
+
+					attr = (PLiSQL_attribute *) estate->datums[cursor->firstattribute + i];
+
+					Assert(attr->dtype == PLISQL_DTYPE_ATTRIBUTE &&
+						   attr->attributeparentno == nse->itemno);
+					if (strcmp(attr->fieldname, colname) == 0)
+					{
+						return make_datum_param(expr, i + cursor->firstattribute,
+									cref->location);
+					}
+				}
+				/*
+				 * no attribute found
+				 */
+				if (error_if_no_field)
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("cursor \"%s\" has no attribute \"%s\"",
+									(nnames_field == 1) ? name1 : name2,
+									colname),
+							 parser_errposition(pstate, cref->location)));
+			}
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			break;
 		case PLISQL_NSTYPE_REC:
 			if (nnames == nnames_wholerow)
@@ -2084,7 +2171,8 @@ make_datum_param(PLiSQL_expr *expr, int dno, int location)
 									 datum,
 									 &param->paramtype,
 									 &param->paramtypmod,
-									 &param->paramcollid);
+									 &param->paramcollid,
+									 &param->type); /* ReqID:SRS-PLSQL-CURSOR */
 	param->location = location;
 
 	return (Node *) param;
@@ -2823,6 +2911,13 @@ plisql_parse_wordrowtype(char *ident)
 	TypeName	*typeName;
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* look locale cursor%rowtype */
+	result = plisql_parse_udt_rowtype(ident, true);
+	if (result != NULL)
+		return result;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	typname = typeStringToTypeName(ident);
 	if (list_length(typname->names) < 2 &&
@@ -2914,6 +3009,26 @@ plisql_parse_cwordrowtype(List *idents)
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	TypeName	*typeName;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	StringInfoData	refname;
+	ListCell	*lc;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* lookup cursor%rowtype */
+	initStringInfo(&refname);
+	foreach(lc, idents)
+		appendStringInfo(&refname, "%s.", strVal(lfirst(lc)));
+	refname.data[refname.len - 1] = '\0';
+
+	result = plisql_parse_udt_rowtype(refname.data, true);
+	if (result != NULL)
+	{
+		pfree(refname.data);
+		return result;
+	}
+	pfree(refname.data);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	result = plisql_parse_package_type(makeTypeNameFromNameList(idents),
@@ -2995,6 +3110,7 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 
 	switch (dtype->ttype)
 	{
+		case PLISQL_TTYPE_UDT_REF_CURSOR: /* ReqID:SRS-PLSQL-CURSOR */
 		case PLISQL_TTYPE_SCALAR:
 			{
 				/* Ordinary scalar datatype */
@@ -3016,10 +3132,38 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 				/* End - ReqID:SRS-SQL-PACKAGE */
 
 				plisql_adddatum((PLiSQL_datum *) var);
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				if (ISORACURSOROID(dtype->typoid))
+					plisql_build_cursor_attribute(var);
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				if (add2namespace)
+				{
 					plisql_ns_additem(PLISQL_NSTYPE_VAR,
 									   var->dno,
 									   refname);
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					/*
+					 * record oid to namespace, so that
+					 * plisql_ns_lookup can found cursorvar
+					 * attribute
+					 */
+					if (ISORACURSOROID(dtype->typoid))
+					{
+						PLiSQL_nsitem *nse;
+
+						nse = plisql_ns_top();
+						nse->typoid = dtype->typoid;
+					}
+					/* End - ReqID:SRS-PLSQL-CURSOR */
+				}
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				if (dtype->ttype == PLISQL_TTYPE_UDT_REF_CURSOR)
+				{
+					PLiSQL_ref_cursor_type *cursor_type = (PLiSQL_ref_cursor_type *) dtype;
+
+					var->cursor_rettype_tupledesc = cursor_type->rettype_tupdesc;
+				}
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 				result = (PLiSQL_variable *) var;
 				break;
 			}
@@ -3041,6 +3185,18 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 							refname, format_type_be(dtype->typoid))));
 			result = NULL;		/* keep compiler quiet */
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_TTYPE_EXPLICIT_CURSOR:
+			{
+				/* Composite type -- build a record variable */
+				PLiSQL_rec *rec;
+
+				rec = plisql_build_record_for_cursorrowtype(refname, lineno,
+															dtype, add2namespace);
+				result = (PLiSQL_variable *) rec;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		default:
 			elog(ERROR, "unrecognized ttype: %d", dtype->ttype);
 			result = NULL;		/* keep compiler quiet */
@@ -3569,6 +3725,11 @@ plisql_finish_datums(PLiSQL_function *function)
 			case PLISQL_DTYPE_REC:
 				copiable_size += MAXALIGN(sizeof(PLiSQL_rec));
 				break;
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				copiable_size += MAXALIGN(sizeof(PLiSQL_attribute));
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			default:
 				break;
 		}
@@ -3605,11 +3766,13 @@ plisql_add_initdatums(int **varnos)
 	{
 		switch (plisql_Datums[i]->dtype)
 		{
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+			/* End - ReqID:SRS-PLSQL-CURSOR */
 			case PLISQL_DTYPE_VAR:
 			case PLISQL_DTYPE_REC:
 				n++;
 				break;
-
 			default:
 				break;
 		}
@@ -3626,6 +3789,9 @@ plisql_add_initdatums(int **varnos)
 			{
 				switch (plisql_Datums[i]->dtype)
 				{
+					/* Begin - ReqID:SRS-PLSQL-CURSOR */
+					case PLISQL_DTYPE_ATTRIBUTE:
+					/* End - ReqID:SRS-PLSQL-CURSOR */
 					case PLISQL_DTYPE_VAR:
 					case PLISQL_DTYPE_REC:
 						(*varnos)[n++] = plisql_Datums[i]->dno;
@@ -4116,6 +4282,12 @@ dynamic_build_func_vars(PLiSQL_function **function)
 
 	/* Add to namespace under the $n name */
 	add_parameter_name(argitemtype, argvariable->dno, buf);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (ISORACURSOROID(argdtype->typoid))
+	{
+		set_plisql_cursorvar_nsitem_typoid(argvariable, true);
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 }
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 

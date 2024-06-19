@@ -188,11 +188,13 @@ Illegal variable name "a"b""
 variable a ?
 Usage: VAR[IABLE] [ <variable> [ NUMBER | CHAR | CHAR (n [CHAR|BYTE]) |
 			 VARCHAR2 (n [CHAR|BYTE]) | NCHAR | NCHAR (n) |
-			 NVARCHAR2 (n) | BINARY_FLOAT | BINARY_DOUBLE ] ]
+			 NVARCHAR2 (n) 
+REFCURSOR | BINARY_FLOAT | BINARY_DOUBLE ] ]
 variable a a
 Usage: VAR[IABLE] [ <variable> [ NUMBER | CHAR | CHAR (n [CHAR|BYTE]) |
 			 VARCHAR2 (n [CHAR|BYTE]) | NCHAR | NCHAR (n) |
-			 NVARCHAR2 (n) | BINARY_FLOAT | BINARY_DOUBLE ] ]
+			 NVARCHAR2 (n) 
+REFCURSOR | BINARY_FLOAT | BINARY_DOUBLE ] ]
 -- allow preceding comments
 -- ok
 /*123*/variable comment number=123

@@ -2895,7 +2895,7 @@ BEGIN
 	trigger := 1;
 end; $$ language plisql;
 
---oracle failed,but we sucess
+--oracle failed
 do $$
 DECLARE
 	type integer;

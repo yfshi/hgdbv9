@@ -694,7 +694,8 @@ psqlplus_next:
 					else
 						pg_log_error("Usage: VAR[IABLE] [ <variable> [ NUMBER | CHAR | CHAR (n [CHAR|BYTE]) |\n"
 							"\t\t\t VARCHAR2 (n [CHAR|BYTE]) | NCHAR | NCHAR (n) |\n"
-							"\t\t\t NVARCHAR2 (n) | BINARY_FLOAT | BINARY_DOUBLE ] ]");
+							"\t\t\t NVARCHAR2 (n) \n"
+							"REFCURSOR | BINARY_FLOAT | BINARY_DOUBLE ] ]"); /* ReqID:SRS-PLSQL-CURSOR */
 				}
 				else if (token && pg_strcasecmp(token, "print") == 0)
 				{

@@ -13,3 +13,4 @@ testlibpq_binary_double
 testlibpq_binary_float
 testlibpq_interval
 testlibpq_number
+testlibpq_refcursor_out_ora

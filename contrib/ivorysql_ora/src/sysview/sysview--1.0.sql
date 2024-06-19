@@ -2232,3 +2232,21 @@ CREATE OR REPLACE VIEW SYS.USER_VIEWS AS
 		AND PG_GET_USERBYID(C.RELOWNER) = CURRENT_USER;
 GRANT SELECT ON SYS.USER_VIEWS TO PUBLIC;
 /* End - ReqID:SRS-SQL-FORCEVIEW */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+CREATE VIEW sys.v$open_cursor AS
+ SELECT saddr::raw(8) AS saddr,
+ sid::number AS sid,
+ SYS.ORA_CASE_TRANS(user_name)::varchar2(128) AS user_name,
+ address::raw(8) AS address,
+ hash_value::number AS hash_value,
+ sql_id::varchar2(13) AS sql_id,
+ sql_text::varchar2(60) AS sql_text,
+ last_sql_active_time::DATE AS last_sql_active_time,
+ sql_exec_id::number AS sql_exec_id,
+ cursor_type::varchar2(64),
+ child_address::raw(8) AS child_address,
+ con_id::number AS con_id
+ FROM ora_open_cursors();
+GRANT SELECT ON sys.v$open_cursor TO public;
+/* End - ReqID:SRS-PLSQL-CURSOR */

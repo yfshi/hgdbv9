@@ -54,6 +54,13 @@ typedef struct PsqlScanKeyword
 #define NUMBEROID			9020
 #define BINARY_FLOATOID		9022
 #define BINARY_DOUBLEOID	9024
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#define SYS_REFCURSOROID	9043
+
+#define NAMEDATALEN 64
+#define MAX_PORTALNAME_LEN		NAMEDATALEN
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /* Maxsize of char and varchar2 within Oracle */
 #define MaxOraCharLen 2000

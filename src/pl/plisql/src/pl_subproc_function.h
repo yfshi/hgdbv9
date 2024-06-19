@@ -259,5 +259,12 @@ extern PLiSQL_function* plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 extern PLiSQL_function *get_parent_func(FuncExpr *expr);
 /* End - BUG#M000088 */
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+extern int get_plisql_function_lgv(PLiSQL_execstate *estate,
+											FunctionCallInfo fcinfo,
+											char function_from);
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 #endif   /* PL_SUBPROC_FUNCTION_H */
 

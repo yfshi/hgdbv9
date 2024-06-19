@@ -24,6 +24,7 @@
 #include "miscadmin.h" /* BUG#M0000227 */
 #include "plisql.h"
 #include "pl_package.h"
+#include "pl_udt_type.h" /* ReqID:SRS-PLSQL-CURSOR */
 #include "parser/parse_type.h"
 #include "catalog/pg_package.h"
 #include "catalog/pg_package_body.h"
@@ -91,8 +92,6 @@ static PLiSQL_variable *plisql_build_package_local_variable(const char *refname,
 					List *idents,
 					bool add2namespace,
 					bool missing_ok);
-static void plisql_push_compile_global_proper(void);
-static void plisql_pop_compile_global_proper(void);
 
 
 /*
@@ -121,7 +120,8 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 							Oid **true_typeids, /* return value */
 							List **argdefaults, /* return value */
 							void **pfunc,		/* return value */
-							bool missing_ok)
+							bool missing_ok,
+							bool *is_explicit_cursor) /* ReqID:SRS-PLSQL-CURSOR */
 {
 	int list_size;
 	char *parse_first_name;
@@ -149,24 +149,8 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 		return value;
 	}
 
-	/* support cursor%isopen notfound found rowcount */
-	if (nse->itemtype == PLISQL_NSTYPE_VAR && list_size != name_start + 1)
-	{
-		PLiSQL_var *var = (PLiSQL_var *) psource->source.datums[nse->itemno];
-		char *lastname = strVal(list_nth(names, list_size - 1));
-
-		if (flags == PACKAGE_PARSE_VAR && list_size == name_start + 2 &&
-			(var->datatype->typoid == REFCURSOROID) &&
-			(strcmp(lastname, "isopen") == 0 ||
-			strcmp(lastname, "found") == 0 ||
-			strcmp(lastname, "notfound") == 0 ||
-			strcmp(lastname, "rowcount") == 0))
-			return var;
-
-		elog(ERROR, "\"%s\" is scalar variable", parse_first_name);
-	}
 	/* only row or record, cursorvar, then name doesn't match */
-	else if (nse->itemtype != PLISQL_NSTYPE_REC &&
+	if (nse->itemtype != PLISQL_NSTYPE_REC &&
 		list_size != name_start + 1)
 		elog(ERROR, "\"%s\" is not a row var", parse_first_name);
 
@@ -208,6 +192,10 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 					value = (void *) var;
 					*entry_type = PKG_VAR;
 				}
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				if (is_explicit_cursor != NULL)
+					*is_explicit_cursor = var->is_explicit_cursor;
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 			}
 			break;
 		case PLISQL_NSTYPE_REC:
@@ -278,6 +266,23 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 				}
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_NSTYPE_TYPE:
+			{
+				PLiSQL_datum_udt_type *type_datum;
+
+				if (flags == PACKAGE_PARSE_ENTRY)
+					*entry_type = PKG_TYPE;
+				else if (flags != PACKAGE_PARSE_TYPE)
+					elog(ERROR, "\"%s\" is a udt type", parse_first_name);
+				Assert(nse->itemno < psource->source.ndatums);
+				type_datum = (PLiSQL_datum_udt_type *) psource->source.datums[nse->itemno];
+				if (basetypeid != NULL)
+					*basetypeid = type_datum->udt_type->typoid;
+				value = (void *) type_datum->udt_type;
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		default:
 			elog(ERROR, "package doesn't support this nstype :%u", nse->itemtype);
 			break;
@@ -345,6 +350,24 @@ plisql_get_package_datum_rowtype(const char *typename, PLiSQL_function *func,
 
 				if (flag == parse_by_var_type)
 					return var->datatype;
+
+				/* Begin - ReqID:SRS-PLSQL-CURSOR */
+				/* maybe a cursor%rowtype */
+				if (ISORACURSOROID(var->datatype->typoid))
+				{
+					if (var->is_explicit_cursor)
+					{
+						if (var->cursor_resulttupdesc == NULL)
+							elog(ERROR, "cursor \"%s\" has not been assigned query",
+								var->refname);
+						return (PLiSQL_type *) plisql_build_explicit_cursor_type(var->cursor_resulttupdesc);
+					}
+					else
+						return plisql_return_ref_cursor_rowtype(var->datatype);
+				}
+				else
+					elog(ERROR, "\"%s\" is not a cursor var", var->refname);
+				/* End - ReqID:SRS-PLSQL-CURSOR */
 			}
 			break;
 		case PLISQL_DTYPE_REC:
@@ -1032,6 +1055,9 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 	plisql_finish_datums(function);
 	plisql_finish_subproc_func(function);
 	plisql_check_subproc_define(function);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	plisql_check_package_explicit_cursor_define(psource);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	plisql_scanner_finish();
 	pfree(body_source);
@@ -1224,6 +1250,16 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 														NULL),
 								 true);
 	function->found_varno = var->dno;
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	var = plisql_build_variable("sql", 0,
+								plisql_build_datatype(SYS_REFCURSOROID,
+													-1,
+													InvalidOid,
+													NULL),
+								true);
+	function->sql_varno = var->dno;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	PG_TRY();
 	{
@@ -1664,6 +1700,11 @@ plisql_exec_package_init(FunctionCallInfo fcinfo, PLiSQL_function *func)
 	SPI_remember_func(func);
 	/* End - SRS-PLSQL-SUBPROC */
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (SPI_is_first_plisql())
+		plisql_init_sql_cursor();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* Begin - BUG#M0000227 */
 	/*
 	 * check wether invoke define, we should
@@ -2033,6 +2074,22 @@ plisql_build_package_local_variable(const char *refname, int lineno,
 							pkg_datum->dno,
 							refname);
 
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* if cursor, we shoul build its attribute local dno */
+	if (pkg_datum->pkgvar->dtype == PLISQL_DTYPE_VAR)
+	{
+		PLiSQL_var *pkg_var = (PLiSQL_var *) pkg_datum->pkgvar;
+
+		if (ISORACURSOROID(pkg_var->datatype->typoid))
+		{
+			plisql_build_package_local_cursor_attribute(pkg_var,
+										add2namespace,
+										refname,
+										lineno);
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/* record reference to first level function */
 	plisql_addpackage_references(plisql_saved_compile[0],
 								pkgvar->item);
@@ -2051,7 +2108,7 @@ plisql_build_package_local_variable(const char *refname, int lineno,
  * so we saved some global inforamtions, after we compile, we use
  * pop function to recover
  */
-static void
+void
 plisql_push_compile_global_proper(void)
 {
 	int i;
@@ -2146,7 +2203,7 @@ plisql_push_compile_global_proper(void)
 /*
  * pop global compile informations
  */
-static void
+void
 plisql_pop_compile_global_proper()
 {
 	int i;
@@ -2210,6 +2267,59 @@ plisql_pop_compile_global_proper()
 	plisql_set_ns(plisql_saved_compile_proper[plisql_curr_global_proper_level].ns_top);
 
 	return;
+}
+
+
+
+/*
+ * check package explicit cursor has a define query
+ */
+void
+plisql_check_package_explicit_cursor_define(PLiSQL_package *psource)
+{
+	int i;
+
+	for (i = 0; i < psource->last_globaldno; i++)
+	{
+		PLiSQL_var *var = (PLiSQL_var *) psource->source.datums[i];
+
+		if (var->dtype != PLISQL_DTYPE_VAR)
+			continue;
+
+		if (ISORACURSOROID(var->datatype->typoid) &&
+			var->is_explicit_cursor &&
+			var->cursor_explicit_expr == NULL)
+			elog(ERROR, "cursor \"%s\" is declared in a package "
+				"specification and must be defined in the package body",
+				var->refname);
+	}
+}
+
+
+/*
+ * handle package'explicit cursor result tupledesc
+ * mabye it can be used in out of package like
+ * pkg.var1%rowtype
+ */
+void
+plisql_handle_package_explicit_cursor_retdesc(int globdno)
+{
+	int i;
+
+	for (i = 0; i <= globdno; i++)
+	{
+		PLiSQL_var *var = (PLiSQL_var *) plisql_Datums[i];
+
+		if (var->dtype != PLISQL_DTYPE_VAR)
+			continue;
+
+		if (ISORACURSOROID(var->datatype->typoid) &&
+			var->is_explicit_cursor &&
+			var->cursor_explicit_expr != NULL &&
+			var->cursor_resulttupdesc == NULL)
+			var->cursor_resulttupdesc = plisql_get_cursor_tupdesc_incompile(var->cursor_explicit_expr,
+																		var->cursor_options);
+	}
 }
 
 
@@ -2312,6 +2422,21 @@ plisql_parse_package_entry(const char *refname, int lineno,
 		plisql_ns_additem(PLISQL_NSTYPE_VAR,
 							pkg_datum->dno,
 							refname);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* if cursor, we shoul build its attribute local dno */
+	if (pkg_datum->pkgvar->dtype == PLISQL_DTYPE_VAR)
+	{
+		PLiSQL_var *pkg_var = (PLiSQL_var *) pkg_datum->pkgvar;
+
+		if (ISORACURSOROID(pkg_var->datatype->typoid))
+		{
+			plisql_build_package_local_cursor_attribute(pkg_var,
+										add2namespace,
+										refname,
+										lineno);
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* record reference to first level function */
 	plisql_addpackage_references(plisql_saved_compile[0],
@@ -2619,7 +2744,8 @@ plisql_check_package_refcursor_var(int sqlvarno)
 		if (var->dtype != PLISQL_DTYPE_VAR)
 			continue;
 
-		if (var->datatype->typoid == REFCURSOROID && var->cursor_explicit_expr == NULL)
+		if (ISCURSOROID(var->datatype->typoid) && /* ReqID:SRS-PLSQL-CURSOR */
+			!var->is_explicit_cursor)
 		{
 			/*
 			 * there may be change in further
@@ -2749,9 +2875,7 @@ plisql_close_package_cursorvar(PLiSQL_var *var)
 	Portal		portal;
 	char	   *curname;
 
-	Assert(var->datatype->typoid == REFCURSOROID);
-
-	curname = plisql_get_portal_from_var(var);
+	curname = plisql_get_portal_name(NULL, var);
 	portal = SPI_cursor_find(curname);
 
 	if (portal == NULL)
@@ -3013,29 +3137,6 @@ plisql_package_handle(Oid objectid, bool is_body)
 }
 
 
-/*
- * cursor var is open
- */
-bool
-plisql_cursor_is_open(PLiSQL_var *var)
-{
-	bool isopen = false;
-
-	if (var->datatype->typoid == REFCURSOROID)
-		isopen = !var->isnull;
-
-	return isopen;
-}
-
-
-/*
- * get portal name from cursor var
- */
-char *
-plisql_get_portal_from_var(PLiSQL_var *var)
-{
-	return TextDatumGetCString(var->value);
-}
 
 /*
  * get package datum
@@ -3063,6 +3164,10 @@ PLiSQL_datum *
 get_package_datum_bydno(PLiSQL_execstate *estate,
 								Oid pkgoid, int dno)
 {
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	PLiSQL_datum *retdatum = NULL;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+
 	/*
 	 * there maybe a package function which has polymorphic
 	 * arguments type, its datum dno maybe not in psource
@@ -3072,7 +3177,7 @@ get_package_datum_bydno(PLiSQL_execstate *estate,
 		estate->func->item->pkey == pkgoid)
 	{
 		Assert(dno < estate->func->ndatums);
-		return estate->func->datums[dno];
+		retdatum =  estate->func->datums[dno]; /* ReqID:SRS-PLSQL-CURSOR */
 	}
 	else
 	{
@@ -3087,8 +3192,13 @@ get_package_datum_bydno(PLiSQL_execstate *estate,
 		psource = (PLiSQL_package *) item->source;
 		Assert(dno < psource->source.ndatums);
 
-		return psource->source.datums[dno];
+		retdatum =  psource->source.datums[dno]; /* ReqID:SRS-PLSQL-CURSOR */
 	}
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (!is_package_global_var((PLiSQL_variable *) retdatum))
+		elog(ERROR, "not global var use get_package_datum_bydno func");
+	/* End - ReqID:SRS-PLSQL-CURSOR */
+	return retdatum;
 }
 
 
@@ -3148,6 +3258,15 @@ is_package_global_var(PLiSQL_variable *var)
 				ret = (rfield->recparentno <= psource->last_globaldno ? true : false);
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			{
+				PLiSQL_attribute *attr = (PLiSQL_attribute *) var;
+
+				ret = (attr->attributeparentno <= psource->last_globaldno ? true : false);
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		default:
 			ret = (var->dno <= psource->last_globaldno ? true : false);
 			break;
@@ -3210,6 +3329,11 @@ is_const_datum(PLiSQL_execstate *estate, PLiSQL_datum *datum)
 				isconst = is_const_datum(estate, pkgdatum->pkgvar);
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			isconst = false;
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 			break;

@@ -37,6 +37,12 @@
 #include "include/guc.h"
 #include "include/ivorysql_ora.h"
 
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "funcapi.h"
+#include "include/orarefcursor.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
+
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
 
@@ -98,6 +104,9 @@ _PG_init(void)
 	pre_ora_updatexml_hook = ora_updatexml_hook;
 	ora_updatexml_hook = updatexml;
 	/* End - ReqID:SRS-SQL-XML */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	orarefcursor_init_internal();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 }
 
 /*
@@ -125,4 +134,7 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-SQL-XML */
 	ora_updatexml_hook = pre_ora_updatexml_hook;
 	/* End - ReqID:SRS-SQL-XML */
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	orarefcursor_funcs.loadstate = UNLOADED;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 }

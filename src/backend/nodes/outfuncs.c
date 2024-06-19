@@ -1194,6 +1194,9 @@ _outParam(StringInfo str, const Param *node)
 	WRITE_INT_FIELD(paramtypmod);
 	WRITE_OID_FIELD(paramcollid);
 	WRITE_LOCATION_FIELD(location);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	WRITE_VOID_FIELD(type);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 }
 
 static void

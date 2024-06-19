@@ -201,7 +201,8 @@ typedef struct
 							Oid **true_typeids, /* return value */
 							List **argdefaults, /* return value */
 							void **pfunc,		/* return value */
-							bool missing_ok);
+							bool missing_ok,
+							bool *is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
 	void (*package_free) (PackageCacheItem *item);
 	void (*package_free_list) (List *pkglist);
 	Oid (*get_top_function_id) (FuncExpr *expr, bool *is_package);
@@ -229,6 +230,33 @@ typedef struct
 extern PGDLLIMPORT PLiSQL_funcs_call plisql_internal_funcs;
 
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+/*
+ * function come from ivorysql_ora/src/orarefcursor
+ * but it can be used in plisql so we add there
+ */
+typedef enum UdtExtensionLoadState
+{
+	UNLOADED,			/* not loaded */
+	LOADED, 			/* loaded */
+	LOAD_FAILED 		/* failure */
+} UdtExtensionLoadState;
+
+typedef struct
+{
+	char*  (*DatumGetOraRefCursorPortal) (Datum datum);
+	bool (*OraRefcursorIsnull) (Datum datum);
+	void* (*DatumGetOraRefCursorType) (Datum datum);
+	Datum (*init_orarefcursor_value) (void *type, const char *name);
+	void (*OraRefcursorSetType) (void *type, Datum datum);
+
+	UdtExtensionLoadState loadstate;	/* orarefcursor datatype functions loading state */
+} orarefcursor_funcs_call;
+
+extern PGDLLIMPORT orarefcursor_funcs_call orarefcursor_funcs;
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 
 extern TypeFuncClass get_call_result_type(FunctionCallInfo fcinfo,

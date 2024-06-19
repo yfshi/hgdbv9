@@ -179,7 +179,8 @@ parse_package_type(List *names, PackageCacheKey *pkey,
 							 NULL, NULL, 0, NULL, false, false,
 							 NULL, NULL, NULL, NULL, NULL, NULL,
 							 NULL, NULL,
-							 missing_ok);
+							 missing_ok,
+							 NULL); /* ReqID:SRS-PLSQL-CURSOR */
 	if (type == NULL)
 		return NULL;
 
@@ -208,6 +209,9 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 	PackageCacheItem *item;
 	void *var;
 	PkgVar *pkgvar;
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	bool	is_explicit_cursor = false;
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 
 	if (PackageCacheIsValid(pkey, false))
@@ -223,9 +227,32 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 									 NULL, NULL, 0, NULL, false, false,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
-									 missing_ok);
+									 missing_ok,
+									 &is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
 	if (var == NULL)
 		return NULL;
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	/* explicit cursor rely on package'body */
+	if (is_explicit_cursor &&
+		!PackageCacheIsValid(pkey, true))
+	{
+		Oid bodyid = get_package_bodyid(*pkey, true);
+
+		if (OidIsValid(bodyid))
+		{
+			item = PackageHandle(bodyid, true);
+			var = plisql_internal_funcs.package_parse(NULL, item, names, varname_startloc,
+									 PACKAGE_PARSE_VAR, NULL,
+									 NULL/* ReqID:SRS-PLSQL-TYPE */, NULL,
+									 NULL, NULL, 0, NULL, false, false,
+									 NULL, NULL, NULL, NULL, NULL, NULL,
+									 NULL, NULL,
+									 missing_ok,
+									 NULL);
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	pkgvar = palloc(sizeof(PkgVar));
 	pkgvar->pkgoid = *pkey;
@@ -261,7 +288,8 @@ parse_package_entry(List *names, PackageCacheKey *pkey,
 									 NULL, NULL, 0, NULL, false, false,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
-									 missing_ok);
+									 missing_ok,
+									 NULL); /* ReqID:SRS-PLSQL-CURSOR */
 
 	if (value == NULL)
 		return NULL;
@@ -336,7 +364,8 @@ parse_package_func(ParseState *pstate, PackageCacheKey *pkey,
 										true_typeids, /* return value */
 										argdefaults, /* return value */
 										pfunc,		/* return value */
-										missing_ok);
+										missing_ok,
+										NULL); /* ReqID:SRS-PLSQL-CURSOR */
 
 	return result;
 }

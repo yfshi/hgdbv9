@@ -154,6 +154,11 @@ typedef struct TypeCacheEntry
 /* This value will not equal any valid tupledesc identifier, nor 0 */
 #define INVALID_TUPLEDESC_IDENTIFIER ((uint64) 1)
 
+/* Begin - ReqID:SRS-PLSQL-SUBPROC */
+#define CURSOR_ROWTYPE_TUPLDESC_IDENTIFIER ((uint64) 2)
+/* End - ReqID:SRS-PLSQL-SUBPROC */
+
+
 /*
  * Callers wishing to maintain a long-lived reference to a domain's constraint
  * set must store it in one of these.  Use InitDomainConstraintRef() and

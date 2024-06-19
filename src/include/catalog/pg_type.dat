@@ -834,6 +834,24 @@
   typtypmod => '-1', typndims => '0', typcollation => '0'},
 
 # End - ReqID:SRS-GKC-DATATYPE_001
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+{ oid => '9043', array_type_oid => '9044',
+  descr => 'reference to oracle cursor (portal name)',
+  typname => 'sys_refcursor', typnamespace => 'sys', typlen => '-1', typbyval => 'f', typcategory => 'U',
+  typinput => '-', typoutput => '-', typreceive => '-',
+  typmodin => '-', typmodout => '-',
+  typsend => '-', typalign => 'i', typstorage => 'x', typcollation => 'default' },
+{ oid => '9045', array_type_oid => '9046',
+  descr => 'other oracle cursor type (portal name and type address)',
+  typname => 'orarefcursor', typnamespace => 'sys', typlen => '-1', typbyval => 'f',
+  typcategory => 'S', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage => 'x', typcollation => 'default' },
+
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 /*END Oracle Compatibility Metadatas*/
 
 ]

@@ -28,6 +28,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "pl_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-CURSOR */
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
@@ -67,6 +70,12 @@ char	   *plisql_extra_warnings_string = NULL;
 char	   *plisql_extra_errors_string = NULL;
 int			plisql_extra_warnings;
 int			plisql_extra_errors;
+
+/* Begin - ReqID:SRS-PLSQL-CURSOR */
+bool		plisql_close_unused_cursor = true;
+bool		plisql_cursor_name_exclude_oid = false;
+/* End - ReqID:SRS-PLSQL-CURSOR */
+
 
 /* Hook for plugins */
 PLiSQL_plugin **plisql_plugin_ptr = NULL;
@@ -212,6 +221,22 @@ _PG_init(void)
 							   plisql_extra_checks_check_hook,
 							   plisql_extra_errors_assign_hook,
 							   NULL);
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	DefineCustomBoolVariable("plisql.auto_close_unused_cursor",
+							 gettext_noop("Wether close unused cursor after exec function."),
+							 NULL,
+							 &plisql_close_unused_cursor,
+							 true,
+							 PGC_USERSET, 0,
+							 NULL, NULL, NULL);
+	DefineCustomBoolVariable("plisql.plisql_cursor_name_exclude_oid",
+							 gettext_noop("Wether cursor default value exclude its oid."),
+							 NULL,
+							 &plisql_cursor_name_exclude_oid,
+							 false,
+							 PGC_USERSET, 0,
+							 NULL, NULL, NULL);
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	EmitWarningsOnPlaceholders("plisql");
 
@@ -222,6 +247,10 @@ _PG_init(void)
 	/* Begin - SRS-PLSQL-SUBPROC */
 	plisql_register_internal_func();
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	plisql_register_orarefcursor_func();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Set up a rendezvous point with optional instrumentation plugin */
 	plisql_plugin_ptr = (PLiSQL_plugin **) find_rendezvous_variable("PLiSQL_plugin");
@@ -291,6 +320,11 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	/* rember current func in SPI */
 	SPI_remember_func(func);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (SPI_is_first_plisql())
+		plisql_init_sql_cursor();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Must save and restore prior value of cur_estate */
 	save_cur_estate = func->cur_estate;
@@ -404,6 +438,11 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	/* rember current func in SPI */
 	SPI_remember_func(func);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID:SRS-PLSQL-CURSOR */
+	if (SPI_is_first_plisql())
+		plisql_init_sql_cursor();
+	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
 	/* check bound variables */
