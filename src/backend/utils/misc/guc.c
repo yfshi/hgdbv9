@@ -120,6 +120,10 @@
 #include "parser/parse_merge.h"
 /* End - ReqID:SRS-SQL-MERGE */
 
+/* Begin - ReqID:SRS-SQL-Object */
+#include "parser/pg_object_hook.h"
+/* End - ReqID:SRS-SQL-Object */
+
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_VAR_DEFINE
 #include "ivy_guc.c"

@@ -299,6 +299,9 @@ static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 static void load_hg_misc(FILE *cmdfd);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-SQL-Object */
+static void load_ivorysql_base(FILE *cmdfd);
+/* End - ReqID:SRS-SQL-Object */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -2089,6 +2092,14 @@ load_ivorysql_ora(FILE *cmdfd)
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
+/* Begin - ReqID:SRS-SQL-Object */
+static void
+load_ivorysql_base(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION pg_object;\n\n");
+}
+/* End - ReqID:SRS-SQL-Object */
+
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 static void
@@ -3188,6 +3199,11 @@ initialize_data_directory(void)
 	load_hg_misc(cmdfd);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+
+/* Begin - ReqID:SRS-SQL-Object */
+	load_ivorysql_base(cmdfd);
+/* END - ReqID:SRS-SQL-Object */
+
 
 /* BEGIN - SQL PARSER */
   /* load oracle compatible objects and plisql language */

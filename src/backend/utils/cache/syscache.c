@@ -78,6 +78,8 @@
 #include "catalog/pg_package.h"
 #include "catalog/pg_package_body.h"
 /* End - SRS-SQL-PACKAGE */
+#include "catalog/pg_object.h"	/* ReqID:SRS-SQL-Object */
+
 #include "lib/qunique.h"
 #include "utils/catcache.h"
 #include "utils/rel.h"
@@ -560,6 +562,19 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		16
 	},
+	/* Begin - ReqID:SRS-SQL-Object */
+	{ObjectRelationId,		/* OBJECTREFCLASSIDOIDSUBID */
+		ObjectRefidOidSubidIndexId,
+		3,
+		{
+			Anum_pg_object_refclassid,
+			Anum_pg_object_obj_oid,
+			Anum_pg_object_objsubid,
+			0
+		},
+		128
+	},
+	/* End - ReqID:SRS-SQL-Object */
 	{OperatorRelationId,		/* OPERNAMENSP */
 		OperatorNameNspIndexId,
 		4,

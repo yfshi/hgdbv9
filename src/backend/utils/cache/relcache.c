@@ -88,6 +88,9 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "access/heapam.h"	/* ReqID:SRS-SQL-ROWID */
+#include "parser/pg_object_hook.h"	/* ReqID:SRS-SQL-Object */
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-Object */
+
 
 #define RELCACHE_INIT_FILEMAGIC		0x573266	/* version ID value */
 
@@ -1247,6 +1250,17 @@ retry:
 	 */
 	RelationBuildTupleDesc(relation);
 
+	/* Begin - ReqID:SRS-SQL-Object */
+	if (pg_object_bulid_relcache)
+	{
+		MemoryContext tmpcxt = NULL;
+
+		tmpcxt = MemoryContextSwitchTo(CacheMemoryContext);
+		(*pg_object_bulid_relcache)(relation);
+		MemoryContextSwitchTo(tmpcxt);
+	}
+	/* End - ReqID:SRS-SQL-Object */
+
 	/*
 	 * Fetch rules and triggers that affect this relation
 	 */
@@ -2208,6 +2222,7 @@ RelationIdGetRelation(Oid relationId)
 	 * it.
 	 */
 	rd = RelationBuildDesc(relationId, true);
+
 	if (RelationIsValid(rd))
 		RelationIncrementReferenceCount(rd);
 	return rd;

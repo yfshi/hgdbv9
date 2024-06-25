@@ -13,7 +13,7 @@ subdir =
 top_builddir = .
 include $(top_builddir)/src/Makefile.global
 
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora)	# SRS-MISC-GB18030	# BUGM0000266
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora  contrib/pg_object)	# SRS-MISC-GB18030	# BUGM0000266
 
 docs:
 	$(MAKE) -C doc all
