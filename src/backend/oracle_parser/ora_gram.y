@@ -20161,7 +20161,7 @@ ColLabel:	IDENT									{ $$ = $1; }
 					if (strcmp($1, "rownum") == 0)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("ROWNUM cannot be used as an alias"),
+								 errmsg("syntax error at or near \"rownum\""), /* BUG#Z1079, BUG#Z1080 */
 									parser_errposition(@1)));
 					$$ = pstrdup($1);
 				/* End - ReqID:SRS-SQL-ROWNUM */

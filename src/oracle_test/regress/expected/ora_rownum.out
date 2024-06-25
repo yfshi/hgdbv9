@@ -148,7 +148,7 @@ ERROR:  syntax error at or near "rownum"
 LINE 1: select empno, ename, job rownum from eemp;
                                  ^
 select empno, ename, job as rownum from eemp; -- error
-ERROR:  ROWNUM cannot be used as an alias
+ERROR:  syntax error at or near "rownum"
 LINE 1: select empno, ename, job as rownum from eemp;
                                     ^
 select * from eemp where rownum <= 5 order by sal desc;
