@@ -894,6 +894,11 @@ assign_compatible_mode(int newval, void *extra)
 			pg_transform_merge_stmt_hook = ora_transform_merge_stmt_hook;
 			pg_exec_merge_matched_hook = ora_exec_merge_matched_hook;
 			/* End - ReqID:SRS-SQL-MERGE */
+
+			/* Begin - ReqID:SRS-SQL-Object */
+			pg_object_bulid_relcache = NULL;
+			/* End - ReqID:SRS-SQL-Object */
+
 			/* update the search_path */
 			assign_search_path(NULL, NULL);
 		}
@@ -905,6 +910,11 @@ assign_compatible_mode(int newval, void *extra)
 			pg_transform_merge_stmt_hook = transformMergeStmt;
 			pg_exec_merge_matched_hook = ExecMergeMatched;
 			/* End - ReqID:SRS-SQL-MERGE */
+
+			/* Begin - ReqID:SRS-SQL-Object */
+			pg_object_bulid_relcache = NULL;
+			/* End - ReqID:SRS-SQL-Object */
+
 			/* update the search_path */
 			assign_search_path(NULL, NULL);
 		}

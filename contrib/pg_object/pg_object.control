@@ -1,0 +1,7 @@
+# pg_object extension
+comment = 'pg_object system table extenison on Postgres Database'
+default_version = '1.0'
+module_pathname = '$libdir/pg_object'
+superuser = true
+relocatable = false
+schema = pg_catalog

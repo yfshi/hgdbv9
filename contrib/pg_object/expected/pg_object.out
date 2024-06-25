@@ -1,0 +1,665 @@
+/*
+ * This sql file is a test of the system table pg_object, 
+ * storing, modifying and deleting operations.
+ */
+set datestyle to 'ISO, YMD';
+set pg_object.enable to on;
+/* Test tables and views */
+set timezone to prc;
+/*
+ * test 1:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16387 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16387 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(2 rows)
+
+/*
+ * test 1:
+ *		step 2
+ * create view and query the pg_object table.
+ */
+drop table test cascade;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode | created | modified | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------+----------+--------
+(0 rows)
+
+/*
+ * test 2:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16390 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16390 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(2 rows)
+
+/*
+ * test 2:
+ *		step 2
+ * alter table name and query the pg_object table.
+ */
+alter table test rename to newtest;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16390 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16390 |        0 | newtest |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(2 rows)
+
+/*
+ * test 2:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table newtest;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode | created | modified | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------+----------+--------
+(0 rows)
+
+/*
+ * test 3:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int, name text, addr text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16393 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16393 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16393 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16393 |        3 | addr    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/*
+ * test 3:
+ *		step 2
+ * alter table schema and query the pg_object table.
+ */
+create schema mysql;
+alter table test set schema mysql ;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16393 |        0 | test    |       1259 |     16398 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16393 |        1 | id      |       1249 |     16398 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16393 |        2 | name    |       1249 |     16398 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16393 |        3 | addr    |       1249 |     16398 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(5 rows)
+
+/*
+ * test 3:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table mysql.test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/*
+ * test 4:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(3 rows)
+
+/*
+ * test 4:
+ *		step 2
+ * create view and query the pg_object table.
+ */
+create view vtest as select * from test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16402 |        0 | vtest   |       1259 |      2200 | v       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16402 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(5 rows)
+
+/*
+ * test 4:
+ *		step 3
+ * alter view name and query the pg_object table.
+ */
+alter view vtest rename to newvtest;
+select * from pg_object;
+ obj_oid | objsubid | objname  | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+----------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql    |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        0 | test     |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        1 | id       |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16402 |        1 | id       |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16402 |        0 | newvtest |       1259 |      2200 | v       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(5 rows)
+
+/*
+ * test 4:
+ *		step 4
+ * alter view schema and query the pg_object table.
+ */
+alter view newvtest set schema mysql;
+select * from pg_object;
+ obj_oid | objsubid | objname  | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+----------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql    |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        0 | test     |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        1 | id       |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16402 |        0 | newvtest |       1259 |     16398 | v       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16402 |        1 | id       |       1249 |     16398 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(5 rows)
+
+/*
+ * test 4:
+ *		step 5
+ * drop view and query the pg_object table.
+ */
+drop view mysql.newvtest;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16399 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(3 rows)
+
+/*
+ * test 4:
+ *		step 6
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/*
+ * test 5:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16406 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16406 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(3 rows)
+
+/*
+ * test 5:
+ *		step 2
+ * create view and query the pg_object table.
+ */
+create view vtest as select * from test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16406 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16406 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16409 |        0 | vtest   |       1259 |      2200 | v       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16409 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(5 rows)
+
+/*
+ * test 5:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table test cascade;
+NOTICE:  drop cascades to view vtest
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* Test functions and stored procedures below */
+/*
+ * test 1:
+ *		step 1
+ * create function and query the pg_object table.
+ */
+CREATE OR REPLACE FUNCTION testfunc(num INT)
+RETURNS INT
+as $$
+DECLARE
+i int;
+a text;
+BEGIN
+	i = 0;
+	num = num +1;
+	a = function1(112);
+	i = function2(num);
+	return i;
+END;
+$$ LANGUAGE plpgsql;
+/
+select * from pg_object;
+ obj_oid | objsubid | objname  | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |                         option                          
+---------+----------+----------+------------+-----------+---------+-----------------+---------------------+---------------------+---------------------------------------------------------
+   16398 |        0 | mysql    |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16413 |        0 | testfunc |       1255 |      2200 | f       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"MYS PROC": "DETERMINISTIC LANGUAGE SQL SQL SECURITY"}
+(2 rows)
+
+/*
+ * test 1:
+ *		step 2
+ * alter function schema and query the pg_object table.
+ */
+alter function testfunc set schema mysql;
+select * from pg_object;
+ obj_oid | objsubid | objname  | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |                         option                          
+---------+----------+----------+------------+-----------+---------+-----------------+---------------------+---------------------+---------------------------------------------------------
+   16398 |        0 | mysql    |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16413 |        0 | testfunc |       1255 |      2200 | f       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"MYS PROC": "DETERMINISTIC LANGUAGE SQL SQL SECURITY"}
+(2 rows)
+
+/*
+ * test 1:
+ *		step 3
+ * alter function name and query the pg_object table.
+ */
+alter function mysql.testfunc rename to newtestfunc;
+select * from pg_object;
+ obj_oid | objsubid |   objname   | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |                         option                          
+---------+----------+-------------+------------+-----------+---------+-----------------+---------------------+---------------------+---------------------------------------------------------
+   16398 |        0 | mysql       |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16413 |        0 | newtestfunc |       1255 |      2200 | f       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"MYS PROC": "DETERMINISTIC LANGUAGE SQL SQL SECURITY"}
+(2 rows)
+
+/*
+ * test 1:
+ *		step 4
+ * drop function and query the pg_object table.
+ */
+drop function mysql.newtestfunc ;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/*
+ * test 2:
+ *		step 1
+ * create procedure and query the pg_object table.
+ */
+CREATE OR REPLACE PROCEDURE testproc(num INT)
+as $$
+DECLARE
+i int;
+a text;
+BEGIN
+	i = 0;
+	num = num +1;
+	a = function1(112);
+	i = function2(num);
+	raise notice ' i = %', i;
+END;
+$$ LANGUAGE plpgsql;
+/
+/*
+ * test 2:
+ *		step 2
+ * alter procedure schema and query the pg_object table.
+ */
+alter procedure testproc set schema mysql;
+select * from pg_object;
+ obj_oid | objsubid | objname  | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |                         option                          
+---------+----------+----------+------------+-----------+---------+-----------------+---------------------+---------------------+---------------------------------------------------------
+   16398 |        0 | mysql    |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16414 |        0 | testproc |       1255 |      2200 | p       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"MYS PROC": "DETERMINISTIC LANGUAGE SQL SQL SECURITY"}
+(2 rows)
+
+/*
+ * test 2:
+ *		step 3
+ * alter procedure name and query the pg_object table.
+ */
+alter procedure mysql.testproc rename to newtestproc;
+select * from pg_object;
+ obj_oid | objsubid |   objname   | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |                         option                          
+---------+----------+-------------+------------+-----------+---------+-----------------+---------------------+---------------------+---------------------------------------------------------
+   16398 |        0 | mysql       |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16414 |        0 | newtestproc |       1255 |      2200 | p       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"MYS PROC": "DETERMINISTIC LANGUAGE SQL SQL SECURITY"}
+(2 rows)
+
+/*
+ * test 2:
+ *		step 4
+ * drop procedure and query the pg_object table.
+ */
+drop procedure mysql.newtestproc ;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* Test database below */
+set ivorysql.compatible_mode to pg;
+/*
+ * test 1:
+ *		step 1
+ * create database and query the pg_object table.
+ */
+create database test;
+ERROR:  database should be created by instance-level user
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/*
+ * test 1:
+ *		step 2
+ * drop database and query the pg_object table.
+ */
+drop database test;
+ERROR:  database "test" does not exist
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+set ivorysql.compatible_mode to oracle;
+/* The following tests are all operations on columns. */
+/*
+ * test 1:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int, name text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16415 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16415 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16415 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/* 
+ *test 1:
+ *		step 2
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/*
+ * test 2:
+ *		step 1
+ *create table and query the pg_object table.
+ */
+create table test(id int, name text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16420 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16420 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16420 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/*
+ * test 2:
+ *		step 2
+ * Modify the test table column name and query the pg_object table.
+ */
+alter table test rename column id to idd;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16420 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16420 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16420 |        1 | idd     |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/*
+ * test 2:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* 
+ * test 3:
+ *		step 1
+ *create table and query the pg_object table.
+ */
+create table test(id int, name text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16425 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16425 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16425 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/* 
+ * test 3:
+ *		step 2
+ * Add columns to the test table and query the pg_object table.
+ */
+alter table test add column addr text, add column mflag bool;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16425 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16425 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16425 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16425 |        3 | addr    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16425 |        4 | mflag   |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(6 rows)
+
+/*
+ * test 3:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* 
+ * test 4:
+ *		step 1
+ *create table and query the pg_object table.
+ */
+create table test(id int, name text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16430 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/* 
+ * test 4:
+ *		step 2
+ * drop columns to the test table and query the pg_object table.
+ */
+alter table test drop column name;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(3 rows)
+
+/* 
+ * test 4:
+ *		step 3
+ * Add columns to the test table and query the pg_object table.
+ */
+alter table test add column name text, add column addr text, add column mflag bool;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        3 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16430 |        4 | addr    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16430 |        5 | mflag   |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16430 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(6 rows)
+
+/* 
+ * test 4:
+ *		step 4
+ * drop columns to the test table and query the pg_object table.
+ */
+alter table test drop column name, drop column mflag;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        4 | addr    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16430 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16430 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/*
+ * test 4:
+ *		step 5
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* 
+ * test 5:
+ *		step 1
+ * create table and query the pg_object table.
+ */
+create table test(id int, name text);
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16435 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16435 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16435 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/* 
+ * test 5:
+ *		step 2
+ * change cloumn data type and query the pg_object table.
+ */
+alter table test alter column id set data type numeric;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       |      option      
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+------------------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16435 |        0 | test    |       1259 |      2200 | r       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16435 |        1 | id      |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+   16435 |        2 | name    |       1249 |      2200 | c       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | {"fill zeor": 5}
+(4 rows)
+
+/*
+ * test 5:
+ *		step 3
+ * drop table and query the pg_object table.
+ */
+drop table test;
+select * from pg_object;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(1 row)
+
+/* The following tests are all schema. */
+/*
+ * test 1:
+ *		step 1
+ * create chema and query the pg_object table
+ */
+create schema aa;
+select * from pg_object ;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16445 |        0 | aa      |       2615 |     16445 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(2 rows)
+
+/*
+ * test 1:
+ *		step 2
+ * rename schema and query the pg_object table
+ */
+alter schema aa rename to bb;
+select * from pg_object ;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode |       created       |      modified       | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------------------+---------------------+--------
+   16398 |        0 | mysql   |       2615 |     16398 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+   16445 |        0 | bb      |       2615 |     16445 | s       | o               | 2024-05-29 09:00:27 | 2024-05-29 09:00:27 | 
+(2 rows)
+
+/*
+ * test 1:
+ *		step 3
+ * drop chema and query the pg_object table
+ */
+drop schema bb;
+drop schema mysql;
+select * from pg_object ;
+ obj_oid | objsubid | objname | refclassid | schemaoid | objkind | compatible_mode | created | modified | option 
+---------+----------+---------+------------+-----------+---------+-----------------+---------+----------+--------
+(0 rows)
+
+set pg_object.enable to on;

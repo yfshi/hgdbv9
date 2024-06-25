@@ -47,6 +47,29 @@ typedef struct LockInfoData
 
 typedef LockInfoData *LockInfo;
 
+/* Begin - ReqID:SRS-SQL-Object */
+typedef struct ObjectAttribute
+{
+	int			objSubid;
+	NameData	objname;
+	char		objkind;
+	char		compatible_mode;
+	Datum		optionval;
+} ObjectAttribute;
+
+typedef ObjectAttribute *objattribute;
+
+typedef struct RelinfofromObject
+{
+	objattribute relinfo;
+	objattribute attrinfo;
+}RelinffromObject;
+
+typedef RelinffromObject *RelAttrinfo;
+
+/* End - ReqID:SRS-SQL-Object */
+
+
 /*
  * Here are the contents of a relation cache entry.
  */
@@ -248,6 +271,8 @@ typedef struct RelationData
 
 	/* use "struct" here to avoid needing to include pgstat.h: */
 	struct PgStat_TableStatus *pgstat_info; /* statistics collection area */
+
+	RelAttrinfo		relattrinfo;	/* ReqID:SRS-SQL-Object */
 } RelationData;
 
 
