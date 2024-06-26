@@ -2291,7 +2291,7 @@ match_clause_to_partition_key(GeneratePruningStepsContext *context,
 
 			elem_clause = make_opclause(saop_op, BOOLOID, false,
 										leftop, rightop,
-										InvalidOid, saop_coll, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+										InvalidOid, saop_coll);
 			elem_clauses = lappend(elem_clauses, elem_clause);
 		}
 

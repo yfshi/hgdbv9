@@ -622,7 +622,7 @@ makeFuncCall(List *name, List *args, CoercionForm funcformat, int location)
 Expr *
 make_opclause(Oid opno, Oid opresulttype, bool opretset,
 			  Expr *leftop, Expr *rightop,
-			  Oid opcollid, Oid inputcollid, bool has_outer_join)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			  Oid opcollid, Oid inputcollid)
 {
 	OpExpr	   *expr = makeNode(OpExpr);
 
@@ -632,7 +632,7 @@ make_opclause(Oid opno, Oid opresulttype, bool opretset,
 	expr->opretset = opretset;
 	expr->opcollid = opcollid;
 	expr->inputcollid = inputcollid;
-	expr->has_outer_join = has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	expr->has_outer_join = false;	/* Bug#m356 */
 	if (rightop)
 		expr->args = list_make2(leftop, rightop);
 	else

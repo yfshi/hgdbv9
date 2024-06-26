@@ -1826,7 +1826,7 @@ convert_EXISTS_to_ANY(PlannerInfo *root, Query *subselect,
 		testlist = lappend(testlist,
 						   make_opclause(opid, BOOLOID, false,
 										 (Expr *) leftarg, (Expr *) param,
-										 InvalidOid, opcollation, false));
+										 InvalidOid, opcollation));
 		paramids = lappend_int(paramids, param->paramid);
 	}
 

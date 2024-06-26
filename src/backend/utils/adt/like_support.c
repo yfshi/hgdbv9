@@ -404,7 +404,7 @@ match_pattern_prefix(Node *leftop,
 			return NIL;
 		expr = make_opclause(eqopr, BOOLOID, false,
 							 (Expr *) leftop, (Expr *) prefix,
-							 InvalidOid, indexcollation, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+							 InvalidOid, indexcollation);
 		result = list_make1(expr);
 		return result;
 	}
@@ -418,7 +418,7 @@ match_pattern_prefix(Node *leftop,
 		return NIL;
 	expr = make_opclause(geopr, BOOLOID, false,
 						 (Expr *) leftop, (Expr *) prefix,
-						 InvalidOid, indexcollation, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						 InvalidOid, indexcollation);
 	result = list_make1(expr);
 
 	/*-------
@@ -437,7 +437,7 @@ match_pattern_prefix(Node *leftop,
 	{
 		expr = make_opclause(ltopr, BOOLOID, false,
 							 (Expr *) leftop, (Expr *) greaterstr,
-							 InvalidOid, indexcollation, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+							 InvalidOid, indexcollation);
 		result = lappend(result, expr);
 	}
 
