@@ -43,6 +43,10 @@
 #include "utils/rel.h"
 #include "utils/regproc.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "utils/syscache.h"
+/* BEGIN - BUGM354 */
+#include "parser/pg_object_hook.h"
+#include "catalog/pg_object.h"
+/* END - BUGM354 */
 
 static void checkViewTupleDesc(TupleDesc newdesc, TupleDesc olddesc);
 
@@ -1227,7 +1231,10 @@ make_view_invalid(Oid viewid)
 	 * Create or replace force view maybe change targetlist of view.
 	 */
 	DeleteAttributeTuples(viewid);
-
+	/* BEGIN - BUGM354 */
+	if(pg_object_drop_obj_hook_type)
+		DeleteForceViewAttinPgobject(viewid);
+	/* END - BUGM354 */
 	/*
 	 *  2.pg_class
 	 * Update the relhasrules and relnatts of pg_class.
