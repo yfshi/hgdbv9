@@ -854,6 +854,7 @@ pgfdw_report_error(int elevel, PGresult *res, PGconn *conn,
 	PG_END_TRY();
 }
 
+#if 0
 /*
  * pgfdw_xact_callback --- cleanup at main-transaction end.
  *
@@ -1059,6 +1060,7 @@ pgfdw_xact_callback(XactEvent event, void *arg)
 	/* Also reset cursor numbering for next transaction */
 	cursor_number = 0;
 }
+#endif
 
 /*
  * pgfdw_subxact_callback --- cleanup at subtransaction end.
@@ -1895,6 +1897,17 @@ pgfdw_cleanup_after_transaction(ConnCacheEntry *entry)
 	entry->have_error = false;
 
 	/*
+	 * If pendingAreq of the per-connection state is not
+	 * NULL, it means that an asynchronous fetch begun by
+	 * fetch_more_data_begin() was not done successfully
+	 * and thus the per-connection state was not reset in
+	 * fetch_more_data(); in that case reset the
+	 * per-connection state here.
+	 */
+	if (entry->state.pendingAreq)
+		memset(&entry->state, 0, sizeof(entry->state));
+
+	/*
 	 * If the connection isn't in a good idle state, discard it to
 	 * recover. Next GetConnection will open a new connection.
 	 */
@@ -1912,7 +1925,7 @@ pgfdw_cleanup_after_transaction(ConnCacheEntry *entry)
 	 * Regardless of the event type, we can now mark ourselves as out of the
 	 * transaction.
 	 */
-   xact_got_connection = false;
+	xact_got_connection = false;
 
 	/* Also reset cursor numbering for next transaction */
 	cursor_number = 0;
