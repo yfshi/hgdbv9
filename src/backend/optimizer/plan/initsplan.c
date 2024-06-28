@@ -2346,8 +2346,7 @@ process_implied_equality(PlannerInfo *root,
 									copyObject(item1),
 									copyObject(item2),
 									InvalidOid,
-									collation,
-									false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									collation);
 
 	/* If both constant, try to reduce to a boolean constant. */
 	if (both_const)
@@ -2493,8 +2492,7 @@ build_implied_join_equality(PlannerInfo *root,
 						   copyObject(item1),
 						   copyObject(item2),
 						   InvalidOid,
-						   collation,
-						   false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						   collation);
 
 	/*
 	 * Build the RestrictInfo node itself.

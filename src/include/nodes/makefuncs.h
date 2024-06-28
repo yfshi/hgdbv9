@@ -84,7 +84,7 @@ extern FuncCall *makeFuncCall(List *name, List *args,
 
 extern Expr *make_opclause(Oid opno, Oid opresulttype, bool opretset,
 						   Expr *leftop, Expr *rightop,
-						   Oid opcollid, Oid inputcollid, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						   Oid opcollid, Oid inputcollid);
 
 extern Expr *make_andclause(List *andclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 extern Expr *make_orclause(List *orclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */

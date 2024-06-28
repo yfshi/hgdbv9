@@ -475,8 +475,7 @@ rewriteSearchAndCycle(CommonTableExpr *cte)
 											  cte->cycle_clause->cycle_mark_collation, 0),
 							 (Expr *) cte->cycle_clause->cycle_mark_value,
 							 InvalidOid,
-							 cte->cycle_clause->cycle_mark_collation,
-							 false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+							 cte->cycle_clause->cycle_mark_collation);
 
 		newq2->jointree = makeFromExpr(list_make1(rtr), (Node *) expr);
 	}

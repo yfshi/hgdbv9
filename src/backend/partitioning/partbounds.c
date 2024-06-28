@@ -3848,8 +3848,7 @@ make_partition_op_expr(PartitionKey key, int keynum,
 											   false,
 											   arg1, elem,
 											   InvalidOid,
-											   key->partcollation[keynum],
-											   false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+											   key->partcollation[keynum]);
 						elemops = lappend(elemops, elemop);
 					}
 
@@ -3864,8 +3863,7 @@ make_partition_op_expr(PartitionKey key, int keynum,
 								   false,
 								   arg1, arg2,
 								   InvalidOid,
-								   key->partcollation[keynum],
-								   false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+								   key->partcollation[keynum]);
 			break;
 
 		default:

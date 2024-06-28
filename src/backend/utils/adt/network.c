@@ -1156,7 +1156,7 @@ match_network_subset(Node *leftop,
 											InvalidOid, /* not collatable */
 											-1, opr1right,
 											false, false),
-						 InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						 InvalidOid, InvalidOid);
 	result = list_make1(expr);
 
 	/* create clause "key <= network_scan_last( rightopval )" */
@@ -1174,7 +1174,7 @@ match_network_subset(Node *leftop,
 											InvalidOid, /* not collatable */
 											-1, opr2right,
 											false, false),
-						 InvalidOid, InvalidOid, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						 InvalidOid, InvalidOid);
 	result = lappend(result, expr);
 
 	return result;
