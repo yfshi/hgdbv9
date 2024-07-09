@@ -187,7 +187,7 @@ exec_prepare(Ivyconn *conn)
 
 	if (IvybindOutParameterByPos(stmthandle,
 								&bindinfo[7],
-								9,
+								8,
 								(void *) &prestmt_bool,
 								sizeof(bool),
 								&prestmt_indp[7],
@@ -255,7 +255,7 @@ exec_prepare(Ivyconn *conn)
 		exit_nicely(conn);
 	}
 
-    printf("anonymous: %d,%d,%s,%d,%s,%d,%s,%s,%d\n", prestmt_integer1, prestmt_integer2, prestmt_char1, prestmt_integer3, prestmt_char2, prestmt_integer4, prestmt_char3, prestmt_bool ? "true" : "false", prestmt_integer5);
+    printf("anonymous: %d,%d,%s,%d,%s,%d,%s,%s,%d\n", prestmt_integer1, prestmt_integer2, prestmt_char1, prestmt_integer3, prestmt_char2, prestmt_integer4, prestmt_char3, prestmt_bool ? "false" : "true", prestmt_integer5);
 	Ivyclear(res);
 	IvyFreePreparedStatement(stmthandle);
 	return;

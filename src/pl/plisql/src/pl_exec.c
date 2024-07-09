@@ -488,6 +488,12 @@ static void check_row(PLiSQL_row *row, TupleDesc tupdesc,
 static void exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row);
 /* End - ReqID:SRS-PLSQL-RECORD */
 
+/* Begin - BUG#M0000376 */
+static void copy_plisql_datums_for_compile(PLiSQL_execstate *estate,
+							PLiSQL_datum **indatums,
+							Size	copiable_size);
+/* End - BUG#M0000376 */
+
 /* ----------
  * plisql_exec_function	Called by the call handler for
  *				function execution.
@@ -11298,7 +11304,6 @@ plisql_anonymous_return_out_parameter(PLiSQL_execstate *estate, PLiSQL_function 
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
-
 /* Begin - ReqID:SRS-PLSQL-RECORD */
 /*
  * check if the row's rowtupdesc is matched with tupdesc
@@ -11404,3 +11409,179 @@ exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row)
 	}
 }
 /* End - ReqID:SRS-PLSQL-RECORD */
+
+/* Begin - BUG#M0000376 */
+/* ----------
+ * Support function for initializing local execution variables.
+ * copy_plisql_datums_for_compile function is similar to copy_plisql_datums function,
+ * the difference is in the copy_plisql_datums, get the indatums from func,
+ * in copy_plisql_datums_for_compile, get the indatums from the second argument.
+ * ----------
+ */
+static void
+copy_plisql_datums_for_compile(PLiSQL_execstate *estate,
+					PLiSQL_datum **indatums,
+					Size	copiable_size)
+{
+	int			ndatums = estate->ndatums;
+	PLiSQL_datum **outdatums;
+	char	   *workspace;
+	char	   *ws_next;
+	int			i;
+
+	/* Allocate local datum-pointer array */
+	estate->datums = (PLiSQL_datum **)
+		palloc(sizeof(PLiSQL_datum *) * ndatums);
+
+	/*
+	 * To reduce palloc overhead, we make a single palloc request for all the
+	 * space needed for locally-instantiated datums.
+	 */
+	workspace = palloc(copiable_size);
+	ws_next = workspace;
+
+	/* Fill datum-pointer array, copying datums into workspace as needed */
+	outdatums = estate->datums;
+	for (i = 0; i < ndatums; i++)
+	{
+		PLiSQL_datum *indatum = indatums[i];
+		PLiSQL_datum *outdatum;
+
+		/* This must agree with plisql_finish_datums on what is copiable */
+		switch (indatum->dtype)
+		{
+			case PLISQL_DTYPE_VAR:
+			case PLISQL_DTYPE_PROMISE:
+				outdatum = (PLiSQL_datum *) ws_next;
+				memcpy(outdatum, indatum, sizeof(PLiSQL_var));
+				ws_next += MAXALIGN(sizeof(PLiSQL_var));
+				break;
+
+			case PLISQL_DTYPE_REC:
+				outdatum = (PLiSQL_datum *) ws_next;
+				memcpy(outdatum, indatum, sizeof(PLiSQL_rec));
+				ws_next += MAXALIGN(sizeof(PLiSQL_rec));
+				break;
+
+			case PLISQL_DTYPE_ROW:
+			case PLISQL_DTYPE_RECFIELD:
+
+				/*
+				 * These datum records are read-only at runtime, so no need to
+				 * copy them (well, RECFIELD contains cached data, but we'd
+				 * just as soon centralize the caching anyway).
+				 */
+				outdatum = indatum;
+				break;
+
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			case PLISQL_DTYPE_PACKAGE_DATUM:
+				/*
+				 * package is a reference, so we don't copy it
+				 */
+				outdatum = indatum;
+				break;
+			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_TYPE:
+				/* type are read-only at runtime, no need to copy */
+				outdatum = indatum;
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				outdatum = (PLiSQL_datum *) ws_next;
+				memcpy(outdatum, indatum, sizeof(PLiSQL_attribute));
+				ws_next += MAXALIGN(sizeof(PLiSQL_attribute));
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+			default:
+				elog(ERROR, "unrecognized dtype: %d", indatum->dtype);
+				outdatum = NULL;	/* keep compiler quiet */
+				break;
+		}
+
+		outdatums[i] = outdatum;
+	}
+
+	Assert(ws_next == workspace + copiable_size);
+}
+
+/* ----------
+ * Do transform the expr to get the placeholder mode.
+ * e.g., id = func(:x, :y); the :x and :y are placeholder,
+ * to get the mode, must transform the function func.
+ * ----------
+ */
+void
+do_transform_for_anonyblock_expr(PLiSQL_expr *expr)
+{
+	PLiSQL_execstate estate;
+	ResourceOwner procedure_resowner;
+	PLiSQL_function *func = plisql_curr_compile;
+	int		i;
+	Size	copiable_size = 0;
+	MemoryContext oldcxt = CurrentMemoryContext;
+
+	procedure_resowner =
+		(func ->requires_procedure_resowner) ?
+		ResourceOwnerCreate(NULL, "PL/iSQL procedure resources") : NULL;
+
+	/* Make copies of all the subprocfuncs */
+	plisql_curr_compile->nsubprocfuncs = plisql_nsubprocFuncs;
+	if (plisql_nsubprocFuncs > 0)
+	{
+		plisql_curr_compile->subprocfuncs = palloc(sizeof(PLiSQL_subproc_function *) * plisql_nsubprocFuncs);
+		for (i = 0; i < plisql_nsubprocFuncs; i++)
+			plisql_curr_compile->subprocfuncs[i] = plisql_subprocFuncs[i];
+	}
+
+	/*
+	 * Setup the execution state
+	 */
+	plisql_estate_setup(&estate, plisql_curr_compile, NULL,
+						NULL, procedure_resowner);
+	estate.procedure_resowner = procedure_resowner;
+	estate.ndatums = plisql_nDatums;
+
+	/*
+	 * Make local execution copies of all the datums
+	 */
+	estate.err_text = gettext_noop("during initialization of transform an anonymous block execution state");
+
+	for (i = 0; i < plisql_nDatums; i++)
+	{
+		/* This must agree with copy_plisql_datums_for_compile on what is copiable */
+		switch (plisql_Datums[i]->dtype)
+		{
+			case PLISQL_DTYPE_VAR:
+			case PLISQL_DTYPE_PROMISE:
+				copiable_size += MAXALIGN(sizeof(PLiSQL_var));
+				break;
+			case PLISQL_DTYPE_REC:
+				copiable_size += MAXALIGN(sizeof(PLiSQL_rec));
+				break;
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			case PLISQL_DTYPE_ATTRIBUTE:
+				copiable_size += MAXALIGN(sizeof(PLiSQL_attribute));
+				break;
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+			default:
+				break;
+		}
+	}
+
+	copy_plisql_datums_for_compile(&estate, plisql_Datums, copiable_size);
+
+	estate.err_text = gettext_noop("while create a plan for this expression when do transform an anonymous block");
+
+	/* create a plan for this expression */
+	exec_prepare_plan(&estate, expr, 0);
+
+	MemoryContextSwitchTo(oldcxt);
+
+	return;
+}
+/* End - BUG#M0000376 */

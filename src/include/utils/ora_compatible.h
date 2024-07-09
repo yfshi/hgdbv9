@@ -94,7 +94,8 @@ typedef enum
 	FROM_JDBC,
 	FROM_C,
 	FROM_OCI,
-	FROM_LIBPQ
+	FROM_LIBPQ,
+	FROM_ODBC	/* BUG#M0000346 */
 } WhereFrom;
 /* End - BUG#M0000201: support question marks as binding variables */
 

@@ -43,6 +43,10 @@ extern bool query_contains_extern_params(Query *query);
 #define SetModeIn(typeoid) ((typeoid) |= 0x40000000)
 #define UnSetModeOut(typeoid) ((typeoid) &= 0x3FFFFFFF)
 
+/* Begin - BUG#M0000376 */
+#define PROARGMODE_NOT_SET		' '
+/* End - BUG#M0000376 */
+
 extern Node *ParseParamVariable(Node *arg);
 extern char *GetParamMode(Oid *paramTypes, int numParams); /* BUG:M0000083 */
 extern void ParseVarParamState(void *arg, Node *param,
@@ -61,7 +65,10 @@ extern void reset_oraparam_curpos(void);
 /* Begin - BUG#M0000264 */
 extern void recalculate_oraparamnumber(List* parsetree_list);
 extern int get_current_oraparam_level(void);
-extern int recalculate_oraparamname_position(char ***paramnames);
+extern int recalculate_oraparamname_position(char ***paramnames,
+										/* Begin - BUG#M0000376 */
+										char **parammodes);
+										/* End - BUG#M0000376 */
 /* End - BUG#M0000264 */
 extern void setdynamic_parser(bool value);
 extern bool getdynamic_parser(void);
@@ -78,5 +85,7 @@ extern void set_bindbyname(bool value);
 extern bool get_bindbyname(void);
 /* End - ReqID:SRS-SQL-ANONYOUT */
 extern void setdynamic_callparser(bool value); /* ReqID:SRS-SQL-CALL */
-
+/* Begin - BUG#M0000376 */
+extern void set_oraparam_mode(char *refname, char setmode);
+/* End - BUG#M0000376 */
 #endif							/* PARSE_PARAM_H */

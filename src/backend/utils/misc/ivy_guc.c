@@ -164,6 +164,11 @@ bool	check_strong_cursor_assign = true;
 int		open_cursors = 50;
 bool	enable_cursor_as_column_type = false;
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/* Begin - BUG#M0000376 */
+bool	enable_get_oraparam_mode = false;
+/* End - BUG#M0000376 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -195,11 +200,13 @@ static const struct config_enum_entry where_from_options[] = {
 	{"c", FROM_C, false},
 	{"oci", FROM_OCI, false},
 	{"libpq", FROM_LIBPQ, false},
+	{"odbc", FROM_ODBC, false},	/* BUG#M0000346 */
 	{"0", FROM_UNKNOWN, false},
 	{"1", FROM_JDBC, false},
 	{"2", FROM_C, false},
 	{"3", FROM_OCI, false},
 	{"4", FROM_LIBPQ, false},
+	{"5", FROM_ODBC, false},	/* BUG#M0000346 */
 	{NULL, 0, false}
 };
 /* End - BUG#M0000201: support question marks as binding variables */
@@ -629,6 +636,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - BUG#M0000376 */
+	{
+		{"ivorysql.enable_get_oraparam_mode", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("get the oracle bind params' mode  in an anonymous block"),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_get_oraparam_mode,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000376 */
 #endif
 #if 0
 	/* End-of-list marker */

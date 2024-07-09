@@ -39,7 +39,9 @@
 #include "utils/syscache.h"
 #include "commands/extension.h"
 /* End - ReqID:SRS-SQL-LIBPQOUT */
-
+/* Begin - BUG#M0000376 */
+#include "parser/parse_func.h"
+/* End - BUG#M0000376 */
 
 /*
  * structure to cache metadata needed for record I/O
@@ -85,6 +87,9 @@ typedef struct OraParamExtralData
 	int		next_params;
 	int		total_params;
 	char	**paramnames;
+	/* Begin - BUG#M0000376 */
+	char	*paramodes;
+	/* End - BUG#M0000376 */
 } OraParamExtralData;
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 
@@ -2122,6 +2127,9 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		OraParamExtralData		*extral;
 		const char						*cmdtag;
 		char							*callintoexpr;
+		/* Begin - BUG#M0000376 */
+		bool					is_do_using_stmt;
+		/* End - BUG#M0000376 */
 	} outparam_fctx;
 	/* End - ReqID:SRS-SQL-CALL */
 	FuncCallContext *funcctx;
@@ -2135,6 +2143,10 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		List		*parsetree;
 		int			nparams = 0;
 		char		**paramnames = NULL;
+		/* Begin - BUG#M0000376 */
+		char		*paramodes = NULL;
+		bool		is_do_using = false;
+		/* End - BUG#M0000376 */
 		MemoryContext	oldcxt;
 		int oraparam_cur_level;
 
@@ -2160,7 +2172,135 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 			elog(ERROR, "we only support one parse tree");
 		}
 
-		nparams = recalculate_oraparamname_position(&paramnames);
+		/* Begin - BUG#M0000376 */
+		PG_TRY();
+		{
+			/*
+			 * If the query is a DO anonymous block,
+			 * no bind variables are obtained after called raw_parser.
+			 * Call plisql_validator_inline try to compile the DO anonymous block,
+			 * and then can get the bind variables and its mode.
+			 */
+			if (enable_get_oraparam_mode &&
+				nodeTag(linitial(parsetree)) == T_RawStmt &&
+				nodeTag(((RawStmt *)linitial(parsetree))->stmt) == T_DoStmt)
+			{
+				ParamListInfo params;
+				DoStmt 		*dostmt;
+				int 		numParamsMode;
+				int 		numParamsType;
+
+				dostmt = (DoStmt *)(((RawStmt *)linitial(parsetree))->stmt);
+				numParamsMode = list_length(dostmt->paramsmode);
+				numParamsType = list_length(dostmt->paramstype);
+
+				if (numParamsType != numParamsMode)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("The number of parameter modes does not match the number of parameter types")));
+
+				if (numParamsMode > 0)
+				{
+					int 		paramno;
+					InlineCodeBlock *codeblock = makeNode(InlineCodeBlock);
+					ListCell   *arg;
+					DefElem    *as_item = NULL;
+					DefElem    *language_item = NULL;
+					Oid 		argList[1];
+					Oid 		funoid;
+
+					/* Process options we got from ora_gram.y */
+					foreach(arg, dostmt->args)
+					{
+						DefElem    *defel = (DefElem *) lfirst(arg);
+
+						if (strcmp(defel->defname, "as") == 0)
+						{
+							if (as_item)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("conflicting or redundant options")));
+							as_item = defel;
+						}
+						else if (strcmp(defel->defname, "language") == 0)
+						{
+							if (language_item)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("conflicting or redundant options")));
+							/* Begin - BUG:M0000079 */
+							if (PG_PARSER == compatible_db &&
+								!pg_strcasecmp(strVal(defel->arg), "plisql"))
+								ereport(ERROR,
+										(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										 errmsg("when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function")));
+							/* End - BUG:M0000079 */
+							language_item = defel;
+						}
+						else
+							elog(ERROR, "option \"%s\" not recognized",
+								 defel->defname);
+					}
+					if (as_item)
+						codeblock->source_text = strVal(as_item->arg);
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("no inline code specified")));
+
+					params = makeParamList(numParamsMode);
+					params->paramnames = palloc0(sizeof(char *) * numParamsMode);
+					for (paramno = 0; paramno < numParamsMode; paramno++)
+					{
+						Oid 		ptype = intVal((Value *)list_nth(dostmt->paramstype, paramno));
+
+						params->params[paramno].value = (Datum) 0;
+						params->params[paramno].isnull = true;
+						params->params[paramno].pflags |=  PARAM_FLAG_CONST | PARAM_FLAG_OUT;
+						params->params[paramno].ptype = ptype;
+						params->params[paramno].pmode = PROARGMODE_NOT_SET;
+
+						params->paramnames[paramno] = pstrdup(((DefElem *)list_nth(dostmt->paramsmode, paramno))->defname);
+					}
+
+					codeblock->params = params;
+					set_bindbyname(true);
+
+					/*
+					 * Find the plisql_validator_inline function oid,
+					 * and then call the plisql_validator_inline to
+					 * compile the inline function.
+					 */
+					argList[0] = INTERNALOID;
+					funoid = LookupFuncName(list_make1(makeString("plisql_validator_inline")), 1, argList, true);
+
+					PG_TRY();
+					{
+						OidFunctionCall1(funoid, PointerGetDatum(codeblock));
+					}
+					PG_CATCH();
+					{
+						pop_oraparam_stack(oraparam_cur_level);
+						set_bindbyname(false);
+						PG_RE_THROW();
+					}
+					PG_END_TRY();
+
+					is_do_using = true;
+					set_bindbyname(false);
+				}
+			}
+			/* End - BUG#M0000376 */
+
+			nparams = recalculate_oraparamname_position(&paramnames, &paramodes);
+		}
+		PG_CATCH();
+		{
+			pop_oraparam_stack(oraparam_cur_level);
+			PG_RE_THROW();
+		}
+		PG_END_TRY();
+
 		pop_oraparam_stack(oraparam_cur_level);
 		/* End - BUG#M0000264 */
 
@@ -2168,7 +2308,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		 * build tupdesc for result tuples (matches out parameters in pg_proc
 		 * entry)
 		 */
-		tupdesc = CreateTemplateTupleDesc(3, false);
+		tupdesc = CreateTemplateTupleDesc(4, false);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
 					   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",
@@ -2177,6 +2317,10 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "hint",
 					   TEXTOID, -1, 0);
 		/* End - ReqID:SRS-SQL-CALL */
+		/* Begin - BUG#M0000376 */
+		TupleDescInitEntry(tupdesc, (AttrNumber) 4, "mode",
+					   CHAROID, -1, 0);
+		/* End - BUG#M0000376 */
 
 		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
 
@@ -2193,11 +2337,17 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 			user_fctx->callintoexpr = stmt->callinto ? pstrdup(stmt->callinto) : NULL;
 		}
 		/* End - ReqID:SRS-SQL-CALL */
+		/* Begin - BUG#M0000376 */
+		user_fctx->is_do_using_stmt = is_do_using;
+		/* End - BUG#M0000376 */
 		user_fctx->extral = (OraParamExtralData *) palloc(sizeof(OraParamExtralData));
 		user_fctx->extral->next_params = 0;
 		user_fctx->extral->total_params = nparams;
 		user_fctx->extral->paramnames = paramnames;
 		/* End - ReqID:SRS-SQL-CALL */
+		/* Begin - BUG#M0000376 */
+		user_fctx->extral->paramodes = paramodes;
+		/* End - BUG#M0000376 */
 
 		MemoryContextSwitchTo(oldcxt);
 		funcctx->user_fctx  = (void *) user_fctx; /* ReqID:SRS-SQL-CALL */
@@ -2209,8 +2359,8 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 	if (user_fctx->extral->next_params <= user_fctx->extral->total_params)
 	{
 		Datum		result;
-		Datum		values[3];
-		bool		nulls[3];
+		Datum		values[4];
+		bool		nulls[4];
 		HeapTuple	tuple;
 
 		MemSet(nulls, 0, sizeof(nulls));
@@ -2226,12 +2376,21 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 			else
 				nulls[2] = true;
 			/* End - ReqID:SRS-SQL-CALL */
+			/* Begin - BUG#M0000376 */
+			nulls[3] = true;
+			/* End - BUG#M0000376 */
 		}
 		else
 		{
 			values[0] = CStringGetTextDatum(user_fctx->extral->paramnames[user_fctx->extral->next_params]);
 			values[1] = Int32GetDatum(user_fctx->extral->next_params);
 			nulls[2] = true; /* ReqID:SRS-SQL-CALL */
+			/* Begin - BUG#M0000376 */
+			if (enable_get_oraparam_mode && user_fctx->is_do_using_stmt)
+				values[3] = CharGetDatum(user_fctx->extral->paramodes[user_fctx->extral->next_params]);
+			else
+				nulls[3] = true;
+			/* End - BUG#M0000376 */
 		}
 
 		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);

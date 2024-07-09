@@ -421,6 +421,9 @@ typedef struct FuncCall
 	bool		func_variadic;	/* last argument was labeled VARIADIC */
 	CoercionForm funcformat;	/* how to display this node */
 	int			location;		/* token location, or -1 if unknown */
+	/* Begin - BUG#M0000376 */
+	List		*rawargs;		/* the arguments (list of exprs), not ne transformed */
+	/* End - BUG#M0000376 */
 } FuncCall;
 
 /*
@@ -3221,6 +3224,9 @@ typedef struct DoStmt
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	List		*paramslen;		/* List of length for parameter datatypes */	/* ReqID:SRS-CMD-PSQL */
 	bool		do_from_call;	/* T if DoStmt is come from CallStmt */			/* ReqID:SRS-SQL-CALL */
+	/* Begin - BUG#M0000376 */
+	List		*paramstype;	/* List of typeOid for parameter datatypes */
+	/* End - BUG#M0000376 */
 } DoStmt;
 
 typedef struct InlineCodeBlock

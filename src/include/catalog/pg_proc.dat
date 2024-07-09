@@ -11713,8 +11713,8 @@
   proname => 'get_parameter_descr', prorows => '8',
   proretset => 't', provolatile => 's', prorettype => 'record',
   proargtypes => 'text',
-  proallargtypes => '{text,text,int4,text}', proargmodes => '{i,o,o,o}',
-  proargnames => '{query,name,position,hint}',
+  proallargtypes => '{text,text,int4,text,char}', proargmodes => '{i,o,o,o,o}',
+  proargnames => '{query,name,position,hint,mode}',
   prosrc => 'get_parameter_descr' },
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 
@@ -11761,6 +11761,12 @@
   proname => 'plisql_validator', prolang => 'c',
   provolatile => 'v',prorettype => 'void', proargtypes => 'oid',
   prosrc => 'plisql_validator', probin => '$libdir/plisql' },
+#/* Begin - BUG#M0000376 */
+{ oid => '9104', descr => '"attempts to compile a PL/iSQL anonymous block',
+  proname => 'plisql_validator_inline', prolang => 'c',
+  provolatile => 'v',prorettype => 'void', proargtypes => 'internal',
+  prosrc => 'plisql_validator_inline', probin => '$libdir/plisql' },
+#/* End - BUG#M0000376 */
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 #/* Begin - ReqID:SRS-SQL-PACKAGE */

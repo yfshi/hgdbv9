@@ -53,7 +53,7 @@ typedef struct IvyBindOutInfo
 	void *var;			/* the address to save out parameters return value */
 	int *indp;			/* index the value copy status */
 	size_t val_size;	/* the size of var */
-	int		dtype;		/* the type of parameter */
+	unsigned int		dtype;		/* the type of parameter */
 
 	/*
 	 * these parameter copy from OCI,
@@ -85,7 +85,9 @@ typedef struct IvyBindOutNameInfo
 	char			*name;			/* placeholdvar name */
 	size_t			name_len;		/* placeholdvar name len */
 	int				replace;		/* has replace to position */
-	int		dtype;					/* the type of parameter */
+	/* Begin - BUG:M0000346 */
+	unsigned int	dtype;			/* the type of parameter */
+	/* End - BUG:M0000346 */
 	/*
 	 * these parameter copy from OCI
 	 * it maybe used in further
@@ -206,7 +208,7 @@ extern int IvyBindByPos(IvyPreparedStatement *stmtHandle,
 									int	position,
 									void *valuep,
 									size_t	value_sz,
-									int		dty,
+									unsigned int dty, /* BUG#M0000346 */
 									int *indp,
 									char *alenp,
 									char *recodep,
@@ -220,7 +222,7 @@ extern int IvyBindByName(IvyPreparedStatement *stmtHandle,
 									size_t name_len,
 									void *var,
 									size_t	val_size,
-									int		dty,
+									unsigned int dty, /* BUG#M0000346 */
 									int *indp,
 									char *alenp,
 									char *recodep,

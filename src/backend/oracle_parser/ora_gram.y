@@ -670,6 +670,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* End - ReqID:SRS-SQL-CALL */
 %type <typnam> virtual_type	/* ReqID:SRS-SQL-VIRTUALCOL */
 
+%type <list> params_type_list	/* BUG#M0000376 */
+
 /* Begin - BUG#M0000201: support question marks as binding variables */
 %type <node> jdbc_call_function
 %type <node> jdbc_call_function_parameter_el
@@ -861,6 +863,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* Begin - ReqID:SRS-CMD-PSQL */
 %token <keyword> PARAMSLENGTH
 /* End - ReqID:SRS-CMD-PSQL */
+
+%token <keyword> PARAMSTYPE	/* BUG#M0000376 */
 
 /* Begin - ReqID:SRS-SQL-PACKAGE  */
 %type <node> CreatePackageStmt CreatePackageBodyStmt AlterPackageStmt
@@ -10776,6 +10780,7 @@ DoStmt: DO dostmt_opt_list
 					n->args = $2;
 					n->paramsmode = $4;
 					n->paramslen = NIL;	/* ReqID:SRS-CMD-PSQL */
+					n->do_from_call = false; /* ReqID:SRS-SQL-CALL */
 					determineLanguage(n->args);
 					$$ = (Node *)n;
 				}
@@ -10793,6 +10798,19 @@ DoStmt: DO dostmt_opt_list
 					$$ = (Node *)n;
 				}
 		/* End - ReqID:SRS-CMD-PSQL */
+		/* Begin - BUG#M0000376 */
+		| DO dostmt_opt_list USING params_mode_list PARAMSTYPE params_type_list
+				{
+					DoStmt *n = makeNode(DoStmt);
+					n->args = $2;
+					n->paramsmode = $4;
+					n->paramslen = NIL;	/* ReqID:SRS-CMD-PSQL */
+					n->do_from_call = false; /* ReqID:SRS-SQL-CALL */
+					determineLanguage(n->args);
+					n->paramstype = $6;
+					$$ = (Node *)n;
+				}
+		/* End - BUG#M0000376 */
 		;
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -10881,6 +10899,19 @@ opt_do_from_where:
 			| /*EMPTY*/					{ $$ = false; }
 		;
 /* End - ReqID:SRS-SQL-CALL */
+
+/* Begin - BUG#M0000376 */
+params_type_list:
+			Iconst
+				{
+					$$ = list_make1(makeInteger($1));
+				}
+			| params_type_list ',' Iconst
+				{
+					$$ = lappend($1, makeInteger($3));
+				}
+		;
+/* End - BUG#M0000376 */
 
 /*****************************************************************************
  *
@@ -20847,6 +20878,7 @@ unreserved_keyword:
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARAMETER_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
+			| PARAMSTYPE	/* BUG#M0000376 */
 			| PARSER
 			| PARTIAL
 			| PARTITION
@@ -21534,6 +21566,7 @@ bare_label_keyword:
 			| PARALLEL_ENABLE /* ReqID:SRS-SQL-PROC */
 			| PARAMETER_P	/* ReqID:SRS-SQL-SYSFUNC */
 			| PARAMSLENGTH	/* ReqID:SRS-CMD-PSQL */
+			| PARAMSTYPE	/* Begin - BUG#M0000376 */
 			| PARSER
 			| PARTIAL
 			| PARTITION

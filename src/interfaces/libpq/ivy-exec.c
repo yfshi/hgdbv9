@@ -52,7 +52,8 @@ typedef enum IVY_VALUE_TYPE
 	IVY_VALUE_FLOAT,
 	IVY_VALUE_INTEGER,
 	IVY_VALUE_BIGINTEGER,
-	IVY_VALUE_BYTE
+	IVY_VALUE_BYTE,
+	IVY_VALUE_BOOL
 } ivy_value_type;
 
 static void	IvyassignOutParameters2(const Ivyresult *res,
@@ -61,8 +62,9 @@ static void IvyAssignPLISQLOutParameter(const Ivyresult *res,
 											IvyPreparedStatement *stmtHandle);
 static void assign_value_internel(PGresult *res, char *column,
 								int *indp, void *bindvar,
-								size_t bindvar_size, int dtype);
-static ivy_value_type get_paramvalue_type(int type);
+								size_t bindvar_size,
+								unsigned int dtype /* BUG:M0000346 */);
+static ivy_value_type get_paramvalue_type(unsigned int type/* BUG:M0000346 */);
 static int IvyhandleParamsValues(IvyPreparedStatement *stmtHandle,
 								char  ***paramValuesp,
 								int **paramLengthsp,
@@ -100,7 +102,7 @@ static int IvyBindByPosInternel(IvyPreparedStatement *stmtHandle,
 						int	position,
 						void *valuep,
 						size_t	value_sz,
-						int		dty,
+						unsigned int dty,/* BUG#M0000346 */
 						int *indp,
 						char *alenp,
 						char *recodep,
@@ -1439,7 +1441,7 @@ IvyBindByPosInternel(IvyPreparedStatement *stmtHandle,
 						int	position,
 						void *valuep,
 						size_t	value_sz,
-						int		dty,
+						unsigned int dty,/* BUG#M0000346 */
 						int *indp,
 						char *alenp,
 						char *recodep,
@@ -1757,7 +1759,7 @@ IvyHandleDostmt(Ivyconn *tconn,
 			IvyBindNameInfo *nameinfo = stmtHandle->namebind;
 
 			/*
-			 * we assum all parameter are inout
+			 * we assume all the parameters modes are inout
 			 */
 			for(; nameinfo != NULL; nameinfo = nameinfo->next)
 			{
@@ -1828,7 +1830,7 @@ IvyHandleDostmt(Ivyconn *tconn,
 			IvyBindInfo *info = stmtHandle->outbind;
 
 			/*
-			 * assume all parameter are inout
+			 * we assume all the parameters modes are inout
 			 */
 			for(; info != NULL; info = info->next)
 			{
@@ -1996,7 +1998,7 @@ IvyBindByPos(IvyPreparedStatement *stmtHandle,
 				int	position,
 				void *valuep,
 				size_t	value_sz,
-				int		dty,
+				unsigned int dty, /* BUG#M0000346 */
 				int *indp,
 				char *alenp,
 				char *recodep,
@@ -2032,7 +2034,7 @@ IvyBindByName(IvyPreparedStatement *stmtHandle,
 				size_t name_len,
 				void *var,
 				size_t	val_size,
-				int		dty,
+				unsigned int dty, /* BUG#M0000346 */
 				int *indp,
 				char *alenp,
 				char *recodep,
@@ -3224,7 +3226,7 @@ IvyAssignPLISQLOutParameter(const Ivyresult *tres,
  * get bind variable value type
  */
 static ivy_value_type
-get_paramvalue_type(int type)
+get_paramvalue_type(unsigned int type/* BUG:M0000346 */)
 {
 	ivy_value_type ret = IVY_VALUE_BYTE;
 
@@ -3273,7 +3275,7 @@ get_paramvalue_type(int type)
 			ret = IVY_VALUE_BYTE;
 			break;
 		case 16:		//BOOL
-			ret = IVY_VALUE_INTEGER;
+			ret = IVY_VALUE_BOOL;
 			break;
 		case 1000:	//BOOL_ARRAY
 			ret = IVY_VALUE_BYTE;
@@ -3375,7 +3377,8 @@ get_paramvalue_type(int type)
 static void
 assign_value_internel(PGresult *res, char *column,
 								int *indp, void *bindvar,
-								size_t bindvar_size, int dtype)
+								size_t bindvar_size,
+								unsigned int dtype /* BUG:M0000346 */)
 {
 	/* position is not right */
 	int resultcolumno = -1;
@@ -3455,6 +3458,18 @@ assign_value_internel(PGresult *res, char *column,
 					if (indp != NULL)
 						*indp = diff;
 					*((float *) bindvar) = float_value;
+				}
+				break;
+			case IVY_VALUE_BOOL:
+				{
+					bool bool_value;
+					unsigned int diff = sizeof(bool) - bindvar_size;
+			
+					bool_value = atoi(attrvalue->value);
+					if (indp != NULL)
+						*indp = diff;
+
+					*((bool *) bindvar) = bool_value;
 				}
 				break;
 			default:
@@ -3554,6 +3569,14 @@ IvyhandleParamsValues(IvyPreparedStatement *stmtHandle,
 						goto ERROR_HANDLE;
 					memset((*paramValuesp)[i], 0x00, len + 1);
 					memcpy((*paramValuesp)[i], tmp->var, len);
+					break;
+				case IVY_VALUE_BOOL:
+					len = snprintf(buf, 256, "%d", *((bool *) tmp->var));
+					(*paramValuesp)[i] = (char *) malloc(len + 1);
+					if ((*paramValuesp)[i] == NULL)
+						goto ERROR_HANDLE;
+					memset((*paramValuesp)[i], 0x00, len + 1);
+					memcpy((*paramValuesp)[i], buf, len);
 					break;
 				default:
 					goto ERROR_HANDLE;
@@ -3717,7 +3740,8 @@ Ivyreplacenamebindtoposition(Ivyconn *tconn,
 		n_tuples = Ivyntuples(res);
 
 		/* check failed */
-		if (n_fields != 3 || n_tuples < 1) /* ReqID:SRS-SQL-CALL */
+		/* n_fields must be equal to the number of out columns in get_parameter_descr function */
+		if (n_fields != 4 || n_tuples < 1) /* ReqID:SRS-SQL-CALL */
 		{
 			snprintf(errmsg, size_error_buf, "%s", "get_parameter_descr return wrong fields");
 			Ivyclear(res);
@@ -3992,7 +4016,8 @@ Ivyreplacenamebindtoposition2(Ivyconn *tconn,
 		n_tuples = Ivyntuples(res);
 
 		/* params doesn't match */
-		if (n_fields != 3 || n_tuples < 1) /* ReqID:SRS-SQL-CALL */
+		/* n_fields must be equal to the number of out columns in get_parameter_descr function */
+		if (n_fields != 4 || n_tuples < 1) /* ReqID:SRS-SQL-CALL */
 		{
 			snprintf(errhp->error_msg, errhp->err_buf_size, "%s", "get_parameter_descr return wrong fields");
 			Ivyclear(res);

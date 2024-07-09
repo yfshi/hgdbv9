@@ -3166,6 +3166,44 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 	bool		isNull;
 	List	   *outargs = NIL;
 	Query	   *result;
+	/* Begin - BUG#M0000376 */
+	bool		need_reset_p_oraparammode = false;
+
+	if (enable_get_oraparam_mode && stmt->funccall->args != NIL)
+	{
+		/*
+		 * To get the placeholder mode, we do transform the FuncCall expr.
+		 *
+		 * If enable_get_oraparam_mode is on, copy stmt->funccall->args to stmt->funccall->rawargs.
+		 * stmt->funccall->rawargs are the list of arguments without doing transform.
+		 * because only after find the procedure and get the arguments mode,
+		 * we can get parameters by doing transform stmt->funccall->rawargs.
+		 *
+		 * IF in a nested procedure call, a procedure argument is another function call,
+		 * e.g., proc1(func1(:x), :y); the :x and :y are placeholder,
+		 * when transform func1, we already set argument modes for the function func1,
+		 * then transform proc1, we don't need to transform func1.
+		 *
+		 * If there aren't nested procedure call, just do tranform.
+		 */
+		if (pstate->p_not_set_oraparammode &&
+			pstate->p_oraparammode != ' ')
+		{
+			pstate->p_not_transform_funcCall = true;
+		}
+		else
+		{
+			stmt->funccall->rawargs = list_copy_deep(stmt->funccall->args);
+			if (!pstate->p_not_set_oraparammode)
+			{
+				pstate->p_not_set_oraparammode = true;
+				pstate->p_oraparammode = ' ';
+				need_reset_p_oraparammode = true;
+			}
+		}
+	}
+
+	/* End - BUG#M0000376 */
 
 	/*
 	 * First, do standard parse analysis on the procedure call and its
@@ -3179,13 +3217,43 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 											 EXPR_KIND_CALL_ARGUMENT));
 	}
 
-	node = ParseFuncOrColumn(pstate,
-							 stmt->funccall->funcname,
-							 targs,
-							 pstate->p_last_srf,
-							 stmt->funccall,
-							 true,
-							 stmt->funccall->location);
+	PG_TRY();
+	{
+		node = ParseFuncOrColumn(pstate,
+								 stmt->funccall->funcname,
+								 targs,
+								 pstate->p_last_srf,
+								 stmt->funccall,
+								 true,
+								 stmt->funccall->location);
+	}
+	/* Begin - BUG#M0000376 */
+	PG_CATCH();
+	{
+		if (enable_get_oraparam_mode && stmt->funccall->args != NIL)
+		{
+			pstate->p_not_set_oraparammode = false;
+			pstate->p_oraparammode = ' ';
+			list_free_deep(stmt->funccall->rawargs);
+			stmt->funccall->rawargs = NIL;
+			pstate->p_not_transform_funcCall = false;
+		}
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	if (enable_get_oraparam_mode
+		&& stmt->funccall->args != NIL)
+	{
+		list_free_deep(stmt->funccall->rawargs);
+		stmt->funccall->rawargs = NIL;
+		pstate->p_oraparammode = ' ';
+		pstate->p_not_transform_funcCall = false;
+
+		if (need_reset_p_oraparammode)
+			pstate->p_not_set_oraparammode = false;
+	}
+	/* End - BUG#M0000376 */
 
 	assign_expr_collations(pstate, node);
 

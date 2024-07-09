@@ -140,7 +140,7 @@ main(int argc, char **argv)
 	bindinfos[1].val_size = 256;
 
 	/* third out parameter */
-	bindinfos[2].next = &bindinfos[3];;
+	bindinfos[2].next = &bindinfos[3];
 	bindinfos[2].position = 4;
 	bindinfos[2].resultcolumnno = 2;
 	bindinfos[2].var = &third_parameter;
@@ -212,7 +212,7 @@ run_stmt(Ivyconn *tconn,IvyPreparedStatement *stmt, IvyBindOutInfo *bindinfos)
 
 	res = IvyexecPreparedStatement2(tconn, stmt, 5, param_values, param_lengths,
 									param_formats, argmodes,
-									bindinfos, 1, errmsg, 256);
+									bindinfos, 0, errmsg, 256);
 
 	Ivyclear(res);
 	return;

@@ -47,6 +47,9 @@
 
 
 #include "utils/ora_compatible.h"	/* case sensitive indentify */
+/* Begin - BUG#M0000376 */
+#include "parser/parse_param.h"
+/* End - BUG#M0000376 */
 
 /* Location tracking support --- simpler than bison's default */
 #define YYLLOC_DEFAULT(Current, Rhs, N) \
@@ -147,6 +150,11 @@ ScanReservedKeywordLookup(const char *text,
 				  const ScanKeyword *keywords,
 				  int num_keywords);
 /* End - BUG #M0000304 */
+
+/* Begin - BUG#M0000376 */
+static void check_oraparam_mode(PLiSQL_datum *datum, int location, char mode);
+static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int location, char mode);
+/* End - BUG#M0000376 */
 
 %}
 
@@ -1986,6 +1994,11 @@ stmt_assign		: T_DATUM
 						}
 
 						check_assignable($1.datum, @1);
+
+						/* Begin - BUG#M0000376 */
+						check_oraparam_mode($1.datum, @1, PROARGMODE_OUT);
+						/* End - BUG#M0000376 */
+
 						new = palloc0(sizeof(PLiSQL_stmt_assign));
 						new->cmd_type = PLISQL_STMT_ASSIGN;
 						new->lineno   = plisql_location_to_lineno(@1);
@@ -1997,7 +2010,6 @@ stmt_assign		: T_DATUM
 													   pmode,
 													   false, true, true,
 													   NULL, NULL);
-
 						$$ = (PLiSQL_stmt *)new;
 					}
 				;
@@ -2383,6 +2395,10 @@ for_control		: for_variable K_IN
 							int tok1;
 							YYSTYPE lval;
 
+							/* Begin - BUG#M0000376 */
+							check_oraparam_mode(plisql_yylval.wdatum.datum, yylloc, PROARGMODE_IN);
+							/* End - BUG#M0000376 */
+
 							lval = yylval;
 							tok1 = yylex();
 
@@ -2467,6 +2483,10 @@ for_control		: for_variable K_IN
 							/* It's FOR var IN cursor */
 							PLiSQL_stmt_forc	*new;
 							PLiSQL_var			*cursor = (PLiSQL_var *) yylval.wdatum.datum;
+
+							/* Begin - BUG#M0000376 */
+							check_oraparam_mode(yylval.wdatum.datum, yylloc, PROARGMODE_IN);
+							/* End - BUG#M0000376 */
 
 							new = (PLiSQL_stmt_forc *) palloc0(sizeof(PLiSQL_stmt_forc));
 							new->cmd_type = PLISQL_STMT_FORC;
@@ -2694,6 +2714,9 @@ for_variable	: T_DATUM
 														  $$.scalar,
 														  @1);
 						}
+						/* Begin - BUG#M0000376 */
+						check_oraparam_mode($1.datum, @1, PROARGMODE_IN);
+						/* End - BUG#M0000376 */
 					}
 				| T_WORD
 					{
@@ -2738,6 +2761,9 @@ stmt_foreach_a	: opt_loop_label K_FOREACH for_variable foreach_slice K_IN K_ARRA
 						{
 							new->varno = $3.scalar->dno;
 							check_assignable($3.scalar, @3);
+							/* Begin - BUG#M0000376 */
+							check_oraparam_mode($3.scalar, @3, PROARGMODE_IN);
+							/* End - BUG#M0000376 */
 						}
 						else
 						{
@@ -3439,6 +3465,10 @@ cursor_variable	: T_DATUM
 									(errcode(ERRCODE_DATATYPE_MISMATCH),
 									 errmsg("cursor variable must be a simple variable"),
 									 parser_errposition(@1)));
+
+						/* Begin - BUG#M0000376 */
+						check_oraparam_mode($1.datum, @1, PROARGMODE_IN);
+						/* End - BUG#M0000376 */
 
 						/* Begin - ReqID:SRS-SQL-PACKAGE */
 						if ($1.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
@@ -4175,6 +4205,20 @@ read_sql_construct(int until,
 	if (valid_sql)
 		check_sql_expr(expr->query, expr->parseMode, startlocation);
 
+	/* Begin - BUG#M0000376 */
+	/*
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * do transform the expr to get the placeholder mode.
+	 * e.g., id = func(:x, :y); the :x and :y are placeholder,
+	 * to get the mode, must transform the function func.
+	 */
+	if (enable_get_oraparam_mode &&
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+	{
+		do_transform_for_anonyblock_expr(expr);
+	}
+	/* End - BUG#M0000376 */
+
 	return expr;
 }
 
@@ -4436,6 +4480,20 @@ make_execsql_stmt(int firsttoken, int location)
 	execsql->into	 = have_into;
 	execsql->strict	 = have_strict;
 	execsql->target	 = target;
+
+	/* Begin - BUG#M0000376 */
+	/*
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * do transform the expr to get the placeholder mode.
+	 * e.g., id = func(:x, :y); the :x and :y are placeholder,
+	 * to get the mode, must transform the function func.
+	 */
+	if (enable_get_oraparam_mode &&
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+	{
+		do_transform_for_anonyblock_expr(expr);
+	}
+	/* End - BUG#M0000376 */
 
 	return (PLiSQL_stmt *) execsql;
 }
@@ -5026,6 +5084,9 @@ read_into_target(PLiSQL_variable **target, bool *strict)
 			{
 				check_assignable(yylval.wdatum.datum, yylloc);
 				*target = (PLiSQL_variable *) yylval.wdatum.datum;
+				/* Begin - BUG#M0000376 */
+				check_oraparam_mode(yylval.wdatum.datum, yylloc, PROARGMODE_OUT);
+				/* End - BUG#M0000376 */
 
 				if ((tok = yylex()) == ',')
 					ereport(ERROR,
@@ -5066,6 +5127,9 @@ read_into_scalar_list(char *initial_name,
 	int				 tok;
 
 	check_assignable(initial_datum, initial_location);
+	/* Begin - BUG#M0000376 */
+	check_oraparam_mode(initial_datum, initial_location, PROARGMODE_OUT);
+	/* End - BUG#M0000376 */
 	fieldnames[0] = initial_name;
 	varnos[0]	  = initial_datum->dno;
 	nfields		  = 1;
@@ -5084,6 +5148,9 @@ read_into_scalar_list(char *initial_name,
 		{
 			case T_DATUM:
 				check_assignable(yylval.wdatum.datum, yylloc);
+				/* Begin - BUG#M0000376 */
+				check_oraparam_mode(yylval.wdatum.datum, yylloc, PROARGMODE_OUT);
+				/* End - BUG#M0000376 */
 				if (is_row_record_datum(yylval.wdatum.datum)) /* ReqID:SRS-SQL-PACKAGE */
 					ereport(ERROR,
 							(errcode(ERRCODE_SYNTAX_ERROR),
@@ -6066,6 +6133,20 @@ build_call_expr(int firsttoken,const char *str, int location)
 
 	check_sql_expr(expr->query, expr->parseMode, location);
 
+	/* Begin - BUG#M0000376 */
+	/*
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * do transform the expr to get the placeholder mode.
+	 * e.g., proc(:x, :y); the :x and :y are placeholder,
+	 * to get the mode, must transform the procedure proc.
+	 */
+	if (enable_get_oraparam_mode &&
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+	{
+		do_transform_for_anonyblock_expr(expr);
+	}
+	/* End - BUG#M0000376 */
+
 	if (is_process)
 	{
 		callsql = palloc0(sizeof(PLiSQL_stmt_call));
@@ -6150,3 +6231,194 @@ ScanReservedKeywordLookup(const char *text,
 	return NULL;
 }
 /* End - BUG #M0000304 */
+
+/* Begin - BUG#M0000376 */
+/*
+ * check_oraparam_mode
+ * if the current compiled function is an anonymous block,
+ * the variable is a placeholder, such as :id,
+ * set the mode.
+ */
+static void
+check_oraparam_mode(PLiSQL_datum *datum, int location, char mode)
+{
+	if (!enable_get_oraparam_mode &&
+		plisql_curr_compile->fn_prokind != PROKIND_ANONYMOUS_BLOCK)
+		return;
+
+	switch (datum->dtype)
+	{
+		case PLISQL_DTYPE_VAR:
+		case PLISQL_DTYPE_PROMISE:
+		case PLISQL_DTYPE_REC:
+			if (((PLiSQL_variable *) datum)->isconst)
+				ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is declared CONSTANT",
+								((PLiSQL_variable *) datum)->refname),
+						 parser_errposition(location)));
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			if (datum->dtype == PLISQL_DTYPE_VAR)
+			{
+				PLiSQL_var *var = (PLiSQL_var *) datum;
+
+				if (var->info == PROARGMODE_IN)
+					ereport(ERROR,
+							(errcode(ERRCODE_PLPGSQL_ERROR),
+							 errmsg("expression \"%s\" cannot be used as an assignment target",
+									var->refname)));
+
+				/*
+				 * if the current compiled function is an anonymous block,
+				 * the variable is a placeholder, such as :id,
+				 * set the mode.
+				 */
+				set_oraparam_mode(var->refname, mode);
+			}
+			else if (datum->dtype ==  PLISQL_DTYPE_REC)
+			{
+				/*
+				 * Target is a record variable
+				 */
+				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
+
+				if (rec->info == PROARGMODE_IN)
+					ereport(ERROR,
+							(errcode(ERRCODE_PLPGSQL_ERROR),
+							 errmsg("expression \"%s\" cannot be used as an assignment target",
+									rec->refname)));
+
+				/*
+				 * if the current compiled function is an anonymous block,
+				 * the variable is a placeholder, such as :id,
+				 * set the mode.
+				 */
+				set_oraparam_mode(rec->refname, mode);
+			}
+			/* End - ReqID:SRS-SQL-FUNCOUT */
+			break;
+		case PLISQL_DTYPE_ROW:
+			/* always assignable; member vars were checked at compile time */
+			break;
+		case PLISQL_DTYPE_RECFIELD:
+			/* assignable if parent record is */
+			check_assignable(plisql_Datums[((PLiSQL_recfield *) datum)->recparentno],
+							 location);
+			check_oraparam_mode(plisql_Datums[((PLiSQL_recfield *) datum)->recparentno],
+							 location, mode);
+			break;
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			check_packagedatum_assignable((PLiSQL_pkg_datum *) datum, location);
+			check_package_oraparam_mode((PLiSQL_pkg_datum *) datum, location, mode);
+			break;
+		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is a cursor attribute",
+								((PLiSQL_attribute *) datum)->fieldname),
+						 parser_errposition(location)));
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+
+		default:
+			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
+			break;
+	}
+}
+
+static void
+check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int location, char mode)
+{
+	PLiSQL_datum *datum = pkg_datum->pkgvar;
+	PackageCacheItem *item = pkg_datum->item;
+	PLiSQL_package *psource = (PLiSQL_package *) item->source;
+	PLiSQL_function *func = (PLiSQL_function *) &psource->source;
+
+	switch (datum->dtype)
+	{
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				PLiSQL_pkg_datum *pkg1_datum = (PLiSQL_pkg_datum *) datum;
+
+				check_package_oraparam_mode(pkg1_datum, location, mode);
+			}
+			break;
+		case PLISQL_DTYPE_VAR:
+		case PLISQL_DTYPE_PROMISE:
+		case PLISQL_DTYPE_REC:
+			if (((PLiSQL_variable *) datum)->isconst)
+				ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is declared CONSTANT",
+								((PLiSQL_variable *) datum)->refname),
+						 parser_errposition(location)));
+			/* Begin - ReqID:SRS-SQL-FUNCOUT */
+			if (datum->dtype == PLISQL_DTYPE_VAR)
+			{
+				PLiSQL_var *var = (PLiSQL_var *) datum;
+
+				if (var->info == PROARGMODE_IN)
+					ereport(ERROR,
+							(errcode(ERRCODE_PLPGSQL_ERROR),
+							 errmsg("expression \"%s\" cannot be used as an assignment target",
+									var->refname)));
+				/*
+				 * if the current compiled function is an anonymous block,
+				 * the variable is a placeholder, such as :id,
+				 * set the mode.
+				 */
+				set_oraparam_mode(var->refname, mode);
+			}
+			else if (datum->dtype == PLISQL_DTYPE_REC)
+			{
+				/*
+				 * Target is a record variable
+				 */
+				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
+
+				if (rec->info == PROARGMODE_IN)
+					ereport(ERROR,
+							(errcode(ERRCODE_PLPGSQL_ERROR),
+							 errmsg("expression \"%s\" cannot be used as an assignment target",
+									rec->refname)));
+
+				/*
+				 * if the current compiled function is an anonymous block,
+				 * the variable is a placeholder, such as :id,
+				 * set the mode.
+				 */
+				set_oraparam_mode(rec->refname, mode);
+			}
+			/* End - ReqID:SRS-SQL-FUNCOUT */
+			break;
+		case PLISQL_DTYPE_ROW:
+			/* always assignable; member vars were checked at compile time */
+			break;
+		case PLISQL_DTYPE_RECFIELD:
+			/* assignable if parent record is */
+			check_assignable(func->datums[((PLiSQL_recfield *) datum)->recparentno],
+							 location);
+			check_oraparam_mode(func->datums[((PLiSQL_recfield *) datum)->recparentno],
+							 location,
+							 mode);
+
+			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			ereport(ERROR,
+						(errcode(ERRCODE_ERROR_IN_ASSIGNMENT),
+						 errmsg("variable \"%s\" is a cursor attribute",
+								((PLiSQL_attribute *) datum)->fieldname),
+						 parser_errposition(location)));
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+		default:
+			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
+			break;
+	}
+}
+/* End - BUG#M0000376 */

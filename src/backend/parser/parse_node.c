@@ -74,6 +74,10 @@ make_parsestate(ParseState *parentParseState)
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		pstate->p_isVarParamState = parentParseState->p_isVarParamState;
 		/* End - ReqID:SRS-SQL-FUNCOUT */
+		/* Begin - BUG#M0000376 */
+		pstate->p_not_set_oraparammode = parentParseState->p_not_set_oraparammode;
+		pstate->p_not_transform_funcCall = parentParseState->p_not_transform_funcCall;
+		/* End - BUG#M0000376 */
 	}
 
 	return pstate;
