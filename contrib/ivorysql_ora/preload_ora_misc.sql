@@ -17,3 +17,8 @@ CREATE TYPE sys.urowid AS(rowoid OID, rowno bigint);
 CREATE CAST (sys.rowid AS sys.urowid) WITH INOUT AS IMPLICIT;
 CREATE CAST (sys.urowid AS sys.rowid) WITH INOUT AS IMPLICIT;
 /* End - BUG#M0000195 */
+
+--
+-- Extensions that INITDB need to load.
+--
+CREATE EXTENSION "uuid-ossp";	/* BUG#M0000359 */

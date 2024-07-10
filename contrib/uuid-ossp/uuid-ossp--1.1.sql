@@ -52,3 +52,10 @@ CREATE FUNCTION pg_catalog.uuid_generate_v5(namespace uuid, name text)
 RETURNS uuid
 AS 'MODULE_PATHNAME', 'uuid_generate_v5'
 IMMUTABLE STRICT LANGUAGE C PARALLEL SAFE;
+
+/* Begin - BUG#M0000359 */
+CREATE FUNCTION pg_catalog.sys_guid()
+RETURNS bytea
+AS 'MODULE_PATHNAME', 'ora_sys_guid'
+VOLATILE STRICT LANGUAGE C;
+/* End - BUG#M0000359 */

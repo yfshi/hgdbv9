@@ -114,6 +114,10 @@ PG_FUNCTION_INFO_V1(uuid_generate_v1mc);
 PG_FUNCTION_INFO_V1(uuid_generate_v3);
 PG_FUNCTION_INFO_V1(uuid_generate_v4);
 PG_FUNCTION_INFO_V1(uuid_generate_v5);
+/* Begin - BUG#M0000359 */
+PG_FUNCTION_INFO_V1(ora_sys_guid);
+#define SYS_GUID_LENGTH 16
+/* End - BUG#M0000359 */
 
 #ifdef HAVE_UUID_OSSP
 
@@ -226,6 +230,25 @@ uuid_generate_internal(int mode, const uuid_t *ns, const char *name, int len)
 	return DirectFunctionCall1(uuid_in, CStringGetDatum(str));
 }
 
+/* Begin - BUG#M0000359 */
+Datum
+ora_sys_guid(PG_FUNCTION_ARGS)
+{
+	uuid_t	   *uuid = get_cached_uuid_t(0);
+	uuid_rc_t	rc;
+	bytea	   *res = NULL;
+
+	rc = uuid_make(uuid, 4, NULL, NULL);
+	if (rc != UUID_RC_OK)
+		pguuid_complain(rc);
+
+	res = (bytea *) palloc(SYS_GUID_LENGTH + VARHDRSZ);
+	SET_VARSIZE(res, SYS_GUID_LENGTH + VARHDRSZ);
+	memcpy(VARDATA(res), (void *)uuid, SYS_GUID_LENGTH);
+
+	PG_RETURN_BYTEA_P(res);
+}
+/* End - BUG#M0000359 */
 
 static Datum
 uuid_generate_v35_internal(int mode, pg_uuid_t *ns, text *name)
@@ -408,6 +431,32 @@ uuid_generate_internal(int v, unsigned char *ns, const char *ptr, int len)
 
 	return DirectFunctionCall1(uuid_in, CStringGetDatum(strbuf));
 }
+
+/* Begin - BUG#M0000359 */
+Datum
+ora_sys_guid(PG_FUNCTION_ARGS)
+{
+	bytea	   *res = NULL;
+
+	#ifdef HAVE_UUID_E2FS
+				uuid_t		uu;
+				res = (bytea *) palloc(SYS_GUID_LENGTH + VARHDRSZ);
+				SET_VARSIZE(res, SYS_GUID_LENGTH + VARHDRSZ);
+				uuid_generate_random(uu);
+				memcpy(VARDATA(res), (void *)&uu, SYS_GUID_LENGTH);
+	#else							/* BSD */
+				uint32		strbuf[4];
+				int i = 0;
+				res = (bytea *) palloc(SYS_GUID_LENGTH + VARHDRSZ);
+				SET_VARSIZE(res, SYS_GUID_LENGTH + VARHDRSZ);
+				for(; i< 4; i++)
+					strbuf[i] = (uint8)arc4random();
+				memcpy(VARDATA(res), (void *)strbuf, SYS_GUID_LENGTH);
+	#endif
+
+	PG_RETURN_BYTEA_P(res);
+}
+/* End - BUG#M0000359 */
 
 #endif							/* HAVE_UUID_OSSP */
 
