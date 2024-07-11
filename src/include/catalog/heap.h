@@ -161,5 +161,6 @@ extern void StorePartitionKey(Relation rel,
 extern void RemovePartitionKeyByRelId(Oid relid);
 extern void StorePartitionBound(Relation rel, Relation parent,
 								PartitionBoundSpec *bound);
+extern void DeleteForceViewAttinPgobject(Oid viewid);	/* BUGM354 */
 
 #endif							/* HEAP_H */

@@ -89,6 +89,10 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-ROWID */
+/* BEGIN - BUGM354 */
+#include "catalog/pg_object.h"
+#include "parser/pg_object_hook.h"
+/* END - BUGM354 */
 
 
 /* Potentially set by pg_upgrade_support functions */
@@ -4019,3 +4023,38 @@ StorePartitionBound(Relation rel, Relation parent, PartitionBoundSpec *bound)
 
 	CacheInvalidateRelcache(parent);
 }
+
+/* Begin - BUGM354 */
+void
+DeleteForceViewAttinPgobject(Oid viewid)
+{
+	Relation attrel;
+	SysScanDesc	scan;
+	ScanKeyData	key[3];
+	HeapTuple	atttup;
+
+	attrel = table_open(ObjectRelationId, RowExclusiveLock);
+
+	ScanKeyInit(&key[0],
+				Anum_pg_object_refclassid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(AttributeRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_object_obj_oid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(viewid));
+	ScanKeyInit(&key[2],
+				Anum_pg_object_objsubid,
+				BTGreaterStrategyNumber, F_INT4GT,
+				Int32GetDatum(0));
+
+	scan = systable_beginscan(attrel, ObjectRefidOidSubidIndexId, true,
+								NULL, 1, key);
+
+	while ((atttup = systable_getnext(scan)) != NULL)
+		CatalogTupleDelete(attrel, &atttup->t_self);
+
+	systable_endscan(scan);
+	table_close(attrel, RowExclusiveLock);
+}
+/* End - BUGM354 */
