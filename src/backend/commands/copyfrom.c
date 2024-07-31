@@ -402,6 +402,7 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 
 					/* output the error record to file or table */
 					OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+					cstate->num_errors++; /* BUG#Z1087 */
 
 					goto bypass_record;
 				}
@@ -760,8 +761,10 @@ CopyFrom(CopyFromState cstate)
 	/* check target is base table or partition table */
 	if (cstate->opts.tolerate)
 	{
-		if (cstate->rel->rd_rel->relkind != RELKIND_RELATION &&
-			cstate->rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE )
+		if ( (cstate->rel->rd_rel->relkind != RELKIND_RELATION &&
+		      cstate->rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE ) ||
+		     	cstate->rel->rd_rel->relpersistence == RELPERSISTENCE_TEMP ||		/* BUG#Z1086 */
+			cstate->rel->rd_rel->relpersistence == RELPERSISTENCE_GLOBAL_TEMP )	/* BUG#Z1086 */
 			ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				errmsg("tolerate mode,cannot copy to relation \"%s\" as not base or partition table",
@@ -1079,6 +1082,8 @@ CopyFrom(CopyFromState cstate)
 				/* output the error record to file or table */
 				OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
 				error_flag = true;
+
+				cstate->num_errors++; /* BUG#Z1087 */
 			}
 			PG_END_TRY();
                         
@@ -1138,10 +1143,12 @@ CopyFrom(CopyFromState cstate)
 				PG_CATCH();
 				{
 					MemoryContextSwitchTo(current_cxt);
-					error_flag = true;
 
 					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
 					error_flag = true;
+
+					cstate->num_errors++; /* BUG#Z1087 */
+			
 				}
 				PG_END_TRY();
 
@@ -1339,6 +1346,7 @@ CopyFrom(CopyFromState cstate)
 						/* output the error record to file or table */
 						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
 						error_flag = true;
+						cstate->num_errors++; /* BUG#Z1087 */
 					}
 					PG_END_TRY();
 
@@ -1432,6 +1440,7 @@ CopyFrom(CopyFromState cstate)
 									OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
 									
 									error_flag = true;
+									cstate->num_errors++; /* BUG#Z1087 */
 								}
 								PG_END_TRY();
 
@@ -1499,6 +1508,26 @@ CopyFrom(CopyFromState cstate)
 	if (cstate->opts.tolerate)
 		processed = processed - cstate->error_num - estate->handle_fk_error_num;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+
+	/* Begin - BUG#Z1087 */
+	/*
+ 	 * if need send the error number to the client
+ 	 * using notice message taking the info
+ 	 */ 
+	if (cstate->opts.tolerate && cstate->opts.log_bad && 
+			(cstate->num_errors > 0 || estate->handle_fk_error_num > 0) )  /* BUG#Z1087 */
+		ereport(NOTICE,
+			(errmsg("%s-%s-%s-%s-%d-%d: %llu rows were skipped",
+				cstate->opts.taskid, 
+				cstate->schema_name,
+				cstate->cur_relname,
+				cstate->opts.filename,
+				cstate->opts.sharding,
+				cstate->opts.current_shard,
+				(unsigned long long) (cstate->num_errors + estate->handle_fk_error_num))));
+					
+
+	/* End - BUG#Z1087 */
 
 
 	ExecResetTupleTable(estate->es_tupleTable, false);

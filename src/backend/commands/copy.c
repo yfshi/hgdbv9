@@ -582,6 +582,26 @@ ProcessCopyOptions(ParseState *pstate,
 						parser_errposition(pstate, defel->location)));
 			opts_out->filename = defGetString(defel);
 		}/* End - ReqID:SRS-MISC-BULKLOAD */
+		/* Begin - BUG#Z1087 */
+		else if (strcmp(defel->defname, "logbad") == 0)
+		{
+			if (opts_out->logbad)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->logbad = defGetString(defel);
+			if (strlen(opts_out->logbad)==4 && strncmp(opts_out->logbad,"true",4)==0)
+				opts_out->log_bad = true;
+			else if (strlen(opts_out->logbad)==5 && strncmp(opts_out->logbad,"false",5)==0)
+				opts_out->log_bad = false;
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+		}
+		/* End - BUG#Z1087 */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -775,6 +795,12 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Tolerate mode, taskid and filename is necessary opts")));	
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	/* Begin - BUG#Z1087 */
+	if ( (!opts_out->tolerate) && opts_out->log_bad )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Feature logbad only support under Tolerate mode")));
+	/* End - BUG#Z1087 */
 }
 
 /*

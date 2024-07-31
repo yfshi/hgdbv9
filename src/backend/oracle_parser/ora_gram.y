@@ -760,7 +760,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LINK LIKE LIMIT LISTEN LOAD LOCAL
-	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
+	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGBAD /* BUG#Z1087 */  LOGGED
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE /* ReqID:SRS-SQL-MERGE */
 	METHOD MINUTE_P MINVALUE MODE MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
@@ -3835,6 +3835,12 @@ copy_opt_item:
 					$$ = makeDefElem("filename", (Node *)makeString($2), @1);
 				}
 			/* End - ReqID:SRS-MISC-BULKLOAD */
+			/* Begin - BUG#Z1087 */
+			| LOGBAD Sconst
+				{
+					$$ = makeDefElem("logbad", (Node *)makeString($2), @1);
+				}
+			/* End - BUG#Z1087 */
 		;
 
 /* The following exist for backward compatibility with very old versions */
@@ -20779,6 +20785,7 @@ unreserved_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
 			| LOOP_P /* SRS-PLSQL-SUBPROC */
@@ -21448,6 +21455,7 @@ bare_label_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
 			| LOOP_P /* SRS-PLSQL-SUBPROC */

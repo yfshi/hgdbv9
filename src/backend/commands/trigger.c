@@ -4473,7 +4473,7 @@ AfterTriggerExecute(EState *estate,
 						errmsg("could not create file \"%s\": %m", estate->badfile)));
 
 				/* write the error data */
-				fprintf(bad_file,"%s :%s :%s :%s :%c :%s :%s\n",
+				fprintf(bad_file,"%s: %s: %s: %s: %c: %s: %s\n",	/* BUG#Z1149 */
 					estate->taskid, estate->schema_name, estate->cur_relname,
 					estate->filename, BAD_RECORD_F,
 					curlineno_str, linebuf_cut->data); 
