@@ -93,6 +93,7 @@ extern bool comparison_ops_are_compatible(Oid opno1, Oid opno2);
 extern Oid	get_opfamily_proc(Oid opfamily, Oid lefttype, Oid righttype,
 							  int16 procnum);
 extern char *get_attname(Oid relid, AttrNumber attnum, bool missing_ok);
+extern int get_atttypmod(Oid relid, AttrNumber attnum);
 extern AttrNumber get_attnum(Oid relid, const char *attname);
 extern int	get_attstattarget(Oid relid, AttrNumber attnum);
 extern char get_attgenerated(Oid relid, AttrNumber attnum);
@@ -101,6 +102,9 @@ extern void get_atttypetypmodcoll(Oid relid, AttrNumber attnum,
 								  Oid *typid, int32 *typmod, Oid *collid);
 extern Datum get_attoptions(Oid relid, int16 attnum);
 extern Oid	get_cast_oid(Oid sourcetypeid, Oid targettypeid, bool missing_ok);
+/* Begin - SRS-SQL-NLSSORT */
+extern char get_collation_provider(Oid colloid);
+/* End - SRS-SQL-NLSSORT */
 extern char *get_collation_name(Oid colloid);
 extern bool get_collation_isdeterministic(Oid colloid);
 extern char *get_constraint_name(Oid conoid);

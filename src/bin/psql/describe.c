@@ -18,6 +18,7 @@
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_cast_d.h"
 #include "catalog/pg_class_d.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_default_acl_d.h"
 #include "common.h"
 #include "common/logging.h"
@@ -2102,8 +2103,14 @@ describeOneTableDetails(const char *schemaname,
 		attrdef_col = cols++;
 		attnotnull_col = cols++;
 		if (pset.sversion >= 90100)
+		{
+			#if 0 /* Req: SRS-SQL-NLSSORT */
 			appendPQExpBufferStr(&buf, ",\n  (SELECT c.collname FROM pg_catalog.pg_collation c, pg_catalog.pg_type t\n"
-								 "   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation) AS attcollation");
+								 "   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation) AS attcollation");				
+			#endif 
+			appendPQExpBuffer(&buf, ",\n  (SELECT c.collname FROM pg_catalog.pg_collation c, pg_catalog.pg_type t\n"
+								 "   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation AND a.attcollation <> %d) AS attcollation", ORA_COLL_OID(USING_NLS_COMP));
+		}
 		else
 			appendPQExpBufferStr(&buf, ",\n  NULL AS attcollation");
 		attcoll_col = cols++;

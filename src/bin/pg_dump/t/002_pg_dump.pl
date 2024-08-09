@@ -2436,9 +2436,9 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE TABLE dump_test.test_table (\E\n
 			\s+\Qcol1 integer NOT NULL,\E\n
-			\s+\Qcol2 text,\E\n
-			\s+\Qcol3 text,\E\n
-			\s+\Qcol4 text,\E\n
+			\s+\Qcol2 text COLLATE pg_catalog."default",\E\n
+			\s+\Qcol3 text COLLATE pg_catalog."default",\E\n
+			\s+\Qcol4 text COLLATE pg_catalog."default",\E\n
 			\s+\QCONSTRAINT test_table_col1_check CHECK ((col1 <= 1000))\E\n
 			\Q)\E\n
 			\QWITH (autovacuum_enabled='false', fillfactor='80');\E\n/xm,
@@ -2478,7 +2478,7 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE TABLE dump_test.test_second_table (\E
 			\n\s+\Qcol1 integer,\E
-			\n\s+\Qcol2 text\E
+			\n\s+\Qcol2 text COLLATE pg_catalog."default"\E
 			\n\);
 			/xm,
 		like =>
@@ -2495,7 +2495,7 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE TABLE dump_test.test_compression (\E\n
 			\s+\Qcol1 integer,\E\n
-			\s+\Qcol2 text\E\n
+			\s+\Qcol2 text COLLATE pg_catalog."default"\E\n
 			\);\n
 			.*
 			\QALTER TABLE ONLY dump_test.test_compression ALTER COLUMN col2 SET COMPRESSION lz4;\E\n
@@ -2710,7 +2710,7 @@ my %tests = (
 		regexp => qr/^
 			\QCREATE TABLE dump_test.test_table_identity (\E\n
 			\s+\Qcol1 integer NOT NULL,\E\n
-			\s+\Qcol2 text\E\n
+			\s+\Qcol2 text COLLATE pg_catalog."default"\E\n
 			\);
 			.*
 			\QALTER TABLE dump_test.test_table_identity ALTER COLUMN col1 ADD GENERATED ALWAYS AS IDENTITY (\E\n

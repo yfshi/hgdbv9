@@ -1,0 +1,30 @@
+-- TEST CREATE DATABASE
+create database utf8_enc encoding='utf8' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+\c utf8_enc
+load 'gb18030_2022';
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+-- insert into UTF8 data whose gbk encoding greater than 0xfe50
+create table utf8_to_gbk_test(x text);
+insert into utf8_to_gbk_test values('î •î ™î šî ›î œî î Ÿî  î ¡î ¢î £î ¤î ¥î §î ¨î ©î ªî ­î ®î ¯î °î ³î ´î µî ¶î ·î ¸î ¹î ºî ¼î ½î ¾î ¿î¡€î¡î¡‚î¡„î¡…î¡†î¡‡î¡ˆî¡‰î¡Šî¡‹î¡Œî¡î¡î¡î¡î¡‘î¡’î¡“î¡–î¡—î¡˜î¡™î¡šî¡›î¡œî¡î¡î¡Ÿî¡ î¡¡î¡¢î¡£');
+-- test UTF8 to GBK
+set client_encoding = 'GBK';
+show client_encoding;
+ client_encoding 
+-----------------
+ GBK
+(1 row)
+
+select * from utf8_to_gbk_test;
+                                                                  x                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------
+ şPşTşUşVşWşXşZş[ş\ş]ş^ş_ş`şbşcşdşeşhşişjşkşnşoşpşqşrşsştşuşwşxşyşzş{ş|ş}ş€şş‚şƒş„ş…ş†ş‡şˆş‰şŠş‹şŒşşşş’ş“ş”ş•ş–ş—ş˜ş™şšş›şœşşşŸ
+(1 row)
+
+-- finish
+\c postgres;
+drop database utf8_enc;

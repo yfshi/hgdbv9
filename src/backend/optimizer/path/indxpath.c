@@ -20,6 +20,7 @@
 #include "access/stratnum.h"
 #include "access/sysattr.h"
 #include "catalog/pg_am.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
 #include "catalog/pg_type.h"
@@ -38,7 +39,7 @@
 
 /* XXX see PartCollMatchesExprColl */
 #define IndexCollMatchesExprColl(idxcollation, exprcollation) \
-	((idxcollation) == InvalidOid || (idxcollation) == (exprcollation))
+	((idxcollation) == InvalidOid || (idxcollation) == IndexCollationPersistent(exprcollation))
 
 /* Whether we are looking for plain indexscan, bitmap scan, or either */
 typedef enum
@@ -2508,6 +2509,13 @@ match_opclause_to_indexcol(PlannerInfo *root,
 		if (IndexCollMatchesExprColl(idxcollation, expr_coll) &&
 			op_in_opfamily(expr_op, opfamily))
 		{
+			/**
+			 * Req: SRS-SQL-NLSSORT
+			 * Reset OpExpr's inputcollation, make it consistent with index's collation
+			 * when we use pseudo-collation in oracle mode
+			 */
+			exprSetInputCollation((Node *) clause, idxcollation);
+
 			iclause = makeNode(IndexClause);
 			iclause->rinfo = rinfo;
 			iclause->indexquals = list_make1(rinfo);
@@ -2545,6 +2553,13 @@ match_opclause_to_indexcol(PlannerInfo *root,
 
 				/* Build a commuted OpExpr and RestrictInfo */
 				commrinfo = commute_restrictinfo(rinfo, comm_op);
+
+				/**
+				 * Req: SRS-SQL-NLSSORT
+				 * Reset OpExpr's inputcollation, make it consistent with index's collation
+				 * when we use pseudo-collation in oracle mode
+				 */
+				exprSetInputCollation((Node *) clause, idxcollation);
 
 				/* Make an IndexClause showing that as a derived qual */
 				iclause = makeNode(IndexClause);
@@ -2735,6 +2750,13 @@ match_saopclause_to_indexcol(PlannerInfo *root,
 			op_in_opfamily(expr_op, opfamily))
 		{
 			IndexClause *iclause = makeNode(IndexClause);
+
+			/**
+			 * Req: SRS-SQL-NLSSORT
+			 * Reset OpExpr's inputcollation, make it consistent with index's collation
+			 * when we use pseudo-collation in oracle mode
+			 */
+			exprSetInputCollation((Node *) saop, idxcollation);
 
 			iclause->rinfo = rinfo;
 			iclause->indexquals = list_make1(rinfo);

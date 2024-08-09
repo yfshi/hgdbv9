@@ -853,6 +853,24 @@ get_attname(Oid relid, AttrNumber attnum, bool missing_ok)
 	return NULL;
 }
 
+int
+get_atttypmod(Oid relid, AttrNumber attnum)
+{
+	HeapTuple			tp;
+	int 				result;
+
+	tp = SearchSysCache2(ATTNUM, ObjectIdGetDatum(relid), Int16GetDatum(attnum));
+	if (!HeapTupleIsValid(tp))	
+		elog(ERROR, "cache lookup failed for attribute %d of relation %u",
+			 attnum, relid);
+
+	result = ((Form_pg_attribute) GETSTRUCT(tp))->atttypmod;
+
+	ReleaseSysCache(tp);
+
+	return result;
+}
+
 /*
  * get_attnum
  *
@@ -1055,6 +1073,24 @@ get_cast_oid(Oid sourcetypeid, Oid targettypeid, bool missing_ok)
 }
 
 /*				---------- COLLATION CACHE ----------					 */
+
+/* Begin - SRS-SQL-NLSSORT */
+char
+get_collation_provider(Oid colloid)
+{
+	HeapTuple	tp;
+	Form_pg_collation colltup;
+	char		result;
+
+	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(colloid));
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, "cache lookup failed for collation %u", colloid);
+	colltup = (Form_pg_collation) GETSTRUCT(tp);
+	result = colltup->collprovider;
+	ReleaseSysCache(tp);
+	return result;
+}
+/* End - SRS-SQL-NLSSORT */
 
 /*
  * get_collation_name

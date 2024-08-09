@@ -377,6 +377,24 @@ extern PGDLLIMPORT bool compile_plisql_use_owner;
 /* Begin - SRS-MISC-COMPATDM-SQL */
 extern PGDLLIMPORT bool enable_blankspace_compare;
 /* End - SRS-MISC-COMPATDM-SQL */
+/* Begin - SRS-SQL-NLSSORT */
+enum
+{
+	NLS_COMP_BINARY,
+	NLS_COMP_LINGUISTIC,
+	NLS_COMP_ANSI
+};
+
+extern PGDLLIMPORT bool enable_ora_default_collation;
+extern PGDLLIMPORT bool enable_partitionwise_qual_force_pushdown;
+extern PGDLLIMPORT bool default_collation_is_c;
+extern PGDLLIMPORT int	max_string_size;
+extern PGDLLIMPORT int	nls_comp_option;
+extern PGDLLIMPORT char	*nls_sort_str;
+extern PGDLLIMPORT Oid	nls_sort_oid;
+extern PGDLLIMPORT Oid	default_collation_oid;
+/* End - SRS-SQL-NLSSORT */
+
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 extern PGDLLIMPORT bool check_strong_cursor_assign;

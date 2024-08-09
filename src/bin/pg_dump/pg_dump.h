@@ -361,6 +361,8 @@ typedef struct _tableInfo
 	struct _tableDataInfo *dataObj; /* TableDataInfo, if dumping its data */
 	int			numTriggers;	/* number of triggers for table */
 	struct _triggerInfo *triggers;	/* array of TriggerInfo structs */
+	char		*oncommit;		/* Req: SRS-SQL-NLSSORT */
+	char		*default_collation; /* Req: SRS-SQL-NLSSORT */
 } TableInfo;
 
 typedef struct _tableAttachInfo

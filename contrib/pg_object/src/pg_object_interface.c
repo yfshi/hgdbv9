@@ -20,39 +20,38 @@
  *-------------------------------------------------------------------------
  */
 
-#include "postgres.h"
 #include "c.h"
+#include "postgres.h"
 
-#include "access/xact.h"
-#include "access/table.h"
 #include "access/heapam.h"
+#include "access/genam.h"
+#include "access/table.h"
+#include "access/xact.h"
 #include "catalog/dependency.h"
-#include "catalog/objectaccess.h"
-#include "catalog/pg_object.h"
-#include "catalog/pg_proc.h"
 #include "catalog/indexing.h"
 #include "catalog/namespace.h"
-#include "catalog/pg_namespace.h"
-#include "catalog/pg_database.h"
+#include "catalog/objectaccess.h"
 #include "catalog/pg_attribute.h"
-#include "utils/guc.h"
-#include "utils/builtins.h"
-#include "utils/catcache.h"
-#include "utils/ora_compatible.h"
-#include "utils/syscache.h"
-#include "utils/timestamp.h"
-#include "utils/rel.h"
-#include "utils/lsyscache.h"
-#include "parser/scansup.h"
+#include "catalog/pg_database.h"
+#include "catalog/pg_namespace.h"
+#include "catalog/pg_object.h"
+#include "catalog/pg_proc.h"
 #include "nodes/parsenodes.h"
 #include "nodes/pg_list.h"
 #include "nodes/value.h"
-#include "pg_object_interface.h"
 #include "parser/pg_object_hook.h"
-#include "utils/jsonb.h"
+#include "parser/scansup.h"
+#include "pg_object_interface.h"
+#include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/fmgroids.h"
-
-#include "access/genam.h"
+#include "utils/guc.h"
+#include "utils/jsonb.h"
+#include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
+#include "utils/rel.h"
+#include "utils/syscache.h"
+#include "utils/timestamp.h"
 
 static Timestamp timestamptz2timestamp(TimestampTz timestamp);
 
@@ -116,7 +115,7 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 	MemSet(replaces, true, sizeof(replaces));
 
 	if (attr == NULL)
-		nulls[Anum_pg_object_option -1] = true;
+		nulls[Anum_pg_object_option - 1] = true;
 
 	/* Objects created in that compatibility mode */
 	if (compatible_db == ORA_PARSER)

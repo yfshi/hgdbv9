@@ -279,6 +279,11 @@ get_altertable_subcmdtypes(PG_FUNCTION_ARGS)
 			case AT_GenericOptions:
 				strtype = "SET OPTIONS";
 				break;
+			/* Begin - ReqID:SRS-SQL-NLSSORT */
+			case AT_DefaultCollation:
+				strtype = "SET DEFAULT COLLATION";
+				break;
+			/* End - ReqID:SRS-SQL-NLSSORT */
 			default:
 				strtype = "unrecognized";
 				break;

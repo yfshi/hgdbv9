@@ -51,6 +51,7 @@
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_cast_d.h"
 #include "catalog/pg_class_d.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_default_acl_d.h"
 #include "catalog/pg_largeobject_d.h"
 #include "catalog/pg_largeobject_metadata_d.h"
@@ -5233,6 +5234,44 @@ get_force_view_ident_case(Archive *AHX, Oid viewOid)
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
+/* Begin - Req: SRS-SQL-NLSSORT */
+static char *
+get_table_default_collation(Archive *fout, Oid relid)
+{
+	PQExpBuffer  query;
+	PGresult   	*res;
+	char 		*result = NULL;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT\n"
+								"collname\n"
+							"FROM\n"
+								"PG_COLLATION\n"
+							"WHERE\n"
+								"oid = (\n"
+									"SELECT\n"
+										"(option->>'collation')::OID\n"
+									"FROM\n"
+										"pg_object\n"
+									"WHERE\n"
+										"obj_oid = %u    AND\n"
+										"refclassid = %u AND\n"
+										"objsubid = 0	 AND\n"
+										"objkind = 'r'  AND\n"
+										"compatible_mode = 'o');", relid, RelationRelationId);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	if (PQntuples(res) == 1)
+		result = pg_strdup(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	return result;
+}
+/* End - Req: SRS-SQL-NLSSORT */
+
 /*
  * getExtensions:
  *	  read all extensions in the system catalogs and return them in the
@@ -6578,6 +6617,88 @@ getPackages(Archive *fout, int *numPkgs)
 
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin BUG#Z378 */
+static char *
+reloptions_on_commit_parse(char *reloptions, char **on_commit)
+{
+	char	**options = NULL;
+	int		noptions;
+	char	*pos = NULL;
+	const char* on_commit_key = "on_commit_delete_rows";
+
+	if (strlen(reloptions) == 0)
+	{
+		*on_commit = "";
+		return reloptions;
+	}
+
+	if (strstr(reloptions, on_commit_key) == NULL ||
+		!parsePGArray(reloptions, &options, &noptions))
+	{
+		if (options)
+			free(options);
+
+		*on_commit = "";
+		return reloptions;
+	}
+
+	pos = reloptions;
+	*(pos++) = '{';
+
+	for (int i = 0; i < noptions; i++)
+	{
+		char	   *option = options[i];
+		char	   *key;
+		char	   *separator;
+		char	   *value;
+		int			keylen,
+					vallen;
+
+		key = option;
+
+		separator = strchr(option, '=');
+		if (separator)
+		{
+			*separator = '\0';
+			value = separator + 1;
+		}
+		else
+			value = "";
+
+		keylen = strlen(key);
+		vallen = strlen(value);
+		
+		if (strcmp(key, on_commit_key))
+		{
+			if (pos != reloptions + 1)
+				*(pos++) = ',';
+			
+			memcpy(pos, key, keylen);
+			pos += keylen;
+
+			if (vallen)
+			{
+				*(pos++) = '=';
+				memcpy(pos, value, vallen);
+				pos += vallen;
+			}
+		}
+		else
+			*on_commit = pstrdup(value);
+
+		if (noptions == 1)
+			return "";
+	}
+
+	*(pos++) = '}';
+	*pos = '\0';
+
+	if (options)
+		free(options);
+
+	return reloptions;
+}
+/* End BUG#Z378 */
 
 /*
  * getTables
@@ -7445,6 +7566,8 @@ getTables(Archive *fout, int *numTables)
 
 	for (i = 0; i < ntups; i++)
 	{
+		char *reloptions = NULL; /* BUG#Z378 */
+		
 		tblinfo[i].dobj.objType = DO_TABLE;
 		tblinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_reltableoid));
 		tblinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_reloid));
@@ -7493,7 +7616,12 @@ getTables(Archive *fout, int *numTables)
 			tblinfo[i].owning_col = atoi(PQgetvalue(res, i, i_owning_col));
 		}
 		tblinfo[i].reltablespace = pg_strdup(PQgetvalue(res, i, i_reltablespace));
-		tblinfo[i].reloptions = pg_strdup(PQgetvalue(res, i, i_reloptions));
+
+		/* Begin BUG#Z378 */
+		reloptions = pg_strdup(PQgetvalue(res, i, i_reloptions));
+		tblinfo[i].reloptions = reloptions_on_commit_parse(reloptions, &tblinfo[i].oncommit);
+		/* End BUG#Z378 */
+
 		if (i_checkoption == -1 || PQgetisnull(res, i, i_checkoption))
 			tblinfo[i].checkoption = NULL;
 		else
@@ -7541,6 +7669,10 @@ getTables(Archive *fout, int *numTables)
 
 		/* foreign server */
 		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
+
+		/* Begin - Req:SRS-SQL-NLSSORT */
+		tblinfo[i].default_collation = get_table_default_collation(fout, tblinfo[i].dobj.catId.oid);
+		/* End - Req:SRS-SQL-NLSSORT */
 
 		/*
 		 * Read-lock target tables to make sure they aren't DROPPED or altered
@@ -9367,9 +9499,12 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			 * collation is different from their type's default, we use a CASE
 			 * here to suppress uninteresting attcollations cheaply.
 			 */
+			#if 0 /* Req - SRS-SQL-NLSSORT */
 			appendPQExpBufferStr(q,
 								 "CASE WHEN a.attcollation <> t.typcollation "
 								 "THEN a.attcollation ELSE 0 END AS attcollation,\n");
+			#endif
+			appendPQExpBufferStr(q, "a.attcollation AS attcollation,\n");
 		}
 		else
 			appendPQExpBufferStr(q,
@@ -17377,32 +17512,46 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		{
 			bool		addcomma = false;
 
-			/* Begin BUG#Z378 */
-			if (tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+			appendPQExpBufferStr(q, "\nWITH (");
+			if (nonemptyReloptions(tbinfo->reloptions))
 			{
-				if (strstr(tbinfo->reloptions, "false"))
-					appendPQExpBuffer(q, " ON COMMIT PRESERVE ROWS");
-				else if (strstr(tbinfo->reloptions, "true"))
-					appendPQExpBuffer(q, " ON COMMIT DELETE ROWS");
-			} /* End BUG#Z378 */
-			else
-			{
-				appendPQExpBufferStr(q, "\nWITH (");
-				if (nonemptyReloptions(tbinfo->reloptions))
-				{
-					addcomma = true;
-					appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
-				}
-				if (nonemptyReloptions(tbinfo->toast_reloptions))
-				{
-					if (addcomma)
-						appendPQExpBufferStr(q, ", ");
-					appendReloptionsArrayAH(q, tbinfo->toast_reloptions, "toast.",
-											fout);
-				}
-				appendPQExpBufferChar(q, ')');
+				addcomma = true;
+				appendReloptionsArrayAH(q, tbinfo->reloptions, "", fout);
 			}
+			if (nonemptyReloptions(tbinfo->toast_reloptions))
+			{
+				if (addcomma)
+					appendPQExpBufferStr(q, ", ");
+				appendReloptionsArrayAH(q, tbinfo->toast_reloptions, "toast.",
+										fout);
+			}
+			appendPQExpBufferChar(q, ')');
 		}
+
+#if 0
+		/* Begin - Req:SRS-SQL-NLSSORT */
+		if (strcmp(reltypename, "TABLE") == 0 && 
+			tbinfo->default_collation)
+		{
+			appendPQExpBuffer(q, "\nDEFAULT COLLATION \"%s\" ", tbinfo->default_collation);
+		}
+		/* End - Req:SRS-SQL-NLSSORT */
+#endif
+
+		/* Begin BUG#Z378 */
+		if (tbinfo->relpersistence == RELPERSISTENCE_TEMP ||
+			tbinfo->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+		{
+			appendPQExpBuffer(q, "\nON COMMIT ");
+			
+			if (strcmp(tbinfo->oncommit, "true"))
+				appendPQExpBuffer(q, "PRESERVE ROWS");
+			else if (strcmp(tbinfo->oncommit, "false"))
+				appendPQExpBuffer(q, "DELETE ROWS");
+			else
+				appendPQExpBuffer(q, "DROP");
+		}
+		/* End BUG#Z378 */
 
 		/* Dump generic options if any */
 		if (ftoptions && ftoptions[0])
@@ -20329,5 +20478,3 @@ appendReloptionsArrayAH(PQExpBuffer buffer, const char *reloptions,
 	if (!res)
 		pg_log_warning("could not parse reloptions array");
 }
-
-

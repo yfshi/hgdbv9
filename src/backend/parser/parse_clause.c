@@ -59,7 +59,15 @@
 #include "parser/parse_param.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
-
+/* Begin - ReqID:SRS-SQL-NLSSORT */
+typedef struct 
+{
+	ParseState 		*pstate;
+	Node			*base;
+	Oid				 targetcoll;
+	ParseExprKind 	 exprKind;
+} pseudo_collation_replace_context;
+/* End - ReqID:SRS-SQL-NLSSORT */
 
 static int	extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,
 									List *src_colnames,
@@ -116,7 +124,11 @@ static JoinExpr *outer_join_Recurse(ParseState *pstate, List **multi_outer_joins
 static void make_one_outerjoin(ParseState *pstate, List *innerjoin_list, Var *plus_var, Node *qual);
 static void parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_joins, List **return_args);
 static void dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType boolop);
-
+/* Begin - ReqID:SRS-SQL-NLSSORT */
+static Node *makePseudoCollationReplaceNode(Node *expr, Oid targetcoll);
+static void pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll, ParseExprKind exprKind);
+static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context);
+/* End - ReqID:SRS-SQL-NLSSORT */
 
 #define is_valid_operator(expr) \
 	(!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "=") || \
@@ -129,6 +141,13 @@ static void dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType b
 	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "!~~"))
 
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
+/* Begin - Req:SRS-SQL-NLSSORT */
+#define ENABLE_PSEUDO_COLLATION_REPLACE(expr) (( \
+							  ORA_PARSER == compatible_db && \
+							  enable_ora_default_collation && \
+							  IsPseudoCollation(exprCollation(expr))))
+/* End - Req:SRS-SQL-NLSSORT */
 
 /*
  * transformFromClause -
@@ -1910,8 +1929,33 @@ transformWhereClause(ParseState *pstate, Node *clause,
 
 	qual = transformExpr(pstate, clause, exprKind);
 
+	/* 
+	 * Begin - SRS: SQL-SQL-NLSSORT 
+	 * having clause also do parseCheckAggregates() check,
+	 * so we replace Pseudo-collation-Var occured in having clause.
+	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation &&
+		exprKind == EXPR_KIND_HAVING)
+	{
+		ListCell *lc;
+
+		if (nodeTag(qual) == T_OpExpr)
+		{
+			foreach(lc, ((OpExpr *)qual)->args)
+			{
+				Node *node = (Node *) lfirst(lc);
+
+				if (IsPseudoCollation(exprCollation(node)))
+					lfirst(lc) = makePseudoCollationReplaceNode((Node *) node, 
+																PseudoCollationReplace1(exprCollation(node)));
+			}
+		}
+	}
+	/* End - SRS: SQL-SQL-NLSSORT */
+
 	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-	if (compatible_db == ORA_PARSER  && hasPlusFlag(qual))
+	if (compatible_db == ORA_PARSER && hasPlusFlag(qual))
 	{
 		/* Resolve the NOT expression in advance */
 		if (is_notclause(qual))
@@ -2315,6 +2359,14 @@ checkTargetlistEntrySQL92(ParseState *pstate, TargetEntry *tle,
 		case EXPR_KIND_DISTINCT_ON:
 			/* no extra checks needed */
 			break;
+		/* Begin: Req:SRS-SQL-NLSSORT */
+		case EXPR_KIND_DISTINCT_ORDER:
+			/* no extra checks needed */
+			break;
+		case EXPR_KIND_SET_ORDER:
+			/* no extra checks needed */
+			break;
+		/* End: Req:SRS-SQL-NLSSORT */
 		default:
 			elog(ERROR, "unexpected exprKind in checkTargetlistEntrySQL92");
 			break;
@@ -2442,8 +2494,21 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			}
 			if (target_result != NULL)
 			{
+				/* Begin - Req: SRS-SQL-NLSSORT */
+				Node *copy = copyObject((Node *) target_result->expr);
+				assign_expr_collations(pstate, copy);
+				/* End - Req: SRS-SQL-NLSSORT */
+				
 				/* return the first match, after suitable validation */
 				checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+
+				/* Begin - Req: SRS-SQL-NLSSORT */
+				if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+				{
+					pfree(copy);
+					return findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
+				}
+				/* End - Req: SRS-SQL-NLSSORT */
 				return target_result;
 			}
 		}
@@ -2510,8 +2575,21 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			}
 			if (target_result != NULL)
 			{
+				/* Begin - Req: SRS-SQL-NLSSORT */
+				Node *copy = copyObject((Node *) target_result->expr);
+				assign_expr_collations(pstate, copy);
+				/* End - Req: SRS-SQL-NLSSORT */
+				
 				/* return the first match, after suitable validation */
 				checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+
+				/* Begin - Req: SRS-SQL-NLSSORT */
+				if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+				{
+					pfree(copy);
+					return findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
+				}
+				/* End - Req: SRS-SQL-NLSSORT */
 				return target_result;
 			}
 		}
@@ -2524,6 +2602,15 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 		int			location = ((A_Const *) node)->location;
 		int			targetlist_pos = 0;
 		int			target_pos;
+
+		/* 
+		 * Begin - SRS-SQL-NLSSORT 
+		 * for Oracle's `ORDER BY NULL`
+		 */
+		if(IsA(val, Null)) {
+			return NULL;
+		}
+		/* End - SRS-SQL-NLSSORT */
 
 		if (!IsA(val, Integer))
 			ereport(ERROR,
@@ -2542,8 +2629,21 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			{
 				if (++targetlist_pos == target_pos)
 				{
+					/* Begin - Req: SRS-SQL-NLSSORT */
+					Node *copy = copyObject((Node *) tle->expr);
+					assign_expr_collations(pstate, copy);
+					/* End - Req: SRS-SQL-NLSSORT */
+					
 					/* return the unique match, after suitable validation */
 					checkTargetlistEntrySQL92(pstate, tle, exprKind);
+					
+					/* Begin - Req: SRS-SQL-NLSSORT */
+					if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+					{
+						pfree(copy);
+						return findTargetlistEntrySQL99(pstate, (Node *) tle, tlist, exprKind);
+					}
+					/* End - Req: SRS-SQL-NLSSORT */
 					return tle;
 				}
 			}
@@ -2557,7 +2657,9 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 	}
 
 	/* Begin - BUG#M0000217 */
-	if (exprKind == EXPR_KIND_ORDER_BY)
+	if (exprKind == EXPR_KIND_ORDER_BY || 
+		exprKind == EXPR_KIND_DISTINCT_ORDER ||
+		exprKind == EXPR_KIND_SET_ORDER)
 		pstate->p_targetlist = tlist;
 	/* End - BUG#M0000217 */
 
@@ -2565,6 +2667,202 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 	 * Otherwise, we have an expression, so process it per SQL99 rules.
 	 */
 	return findTargetlistEntrySQL99(pstate, node, tlist, exprKind);
+}
+
+static Node *
+makePseudoCollationReplaceNode(Node *expr, Oid targetcoll)
+{
+	CollateExpr *newc = makeNode(CollateExpr);
+	newc->arg = (Expr *) expr;
+	newc->collOid = targetcoll;
+	newc->location = exprLocation(expr);
+
+	return (Node *) newc;
+}
+
+static inline void 
+pseudo_collation_replace_WindowFunc(WindowFunc *wfunc, pseudo_collation_replace_context *context)
+{
+	if (equal(wfunc->aggfilter, context->base))
+		wfunc->aggfilter = (Expr *) makePseudoCollationReplaceNode((Node *) wfunc->aggfilter, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) wfunc->aggfilter, context);
+
+	pseudo_collation_replace_walker((Node *) wfunc->args, context);
+}
+
+static inline void 
+pseudo_collation_replace_FuncExpr(FuncExpr *func, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) func->args, context);
+}
+
+static inline void 
+pseudo_collation_replace_OpExpr(OpExpr *op, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) op->args, context);
+}
+
+static inline void 
+pseudo_collation_replace_RelabelType(RelabelType *relab, pseudo_collation_replace_context *context)
+{
+	RelabelType *target = (RelabelType *) context->base;
+
+	if (equal(relab->arg, target))
+		relab->arg = (Expr *) makePseudoCollationReplaceNode((Node *) relab->arg, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) relab->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_CoerceViaIO(CoerceViaIO *iocoerce, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) iocoerce->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_ArrayCoerceExpr(ArrayCoerceExpr *acoerce, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) acoerce->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_ConvertRowtypeExpr(ConvertRowtypeExpr *cvt, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) cvt->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_CollateExpr(CollateExpr *coll, pseudo_collation_replace_context *context)
+{
+	if (equal(coll->arg, context->base))
+	{
+		if (coll->collOid == context->targetcoll)
+			return;
+		
+		coll->arg = (Expr *) makePseudoCollationReplaceNode((Node *) coll->arg, context->targetcoll);
+	}
+	else
+		pseudo_collation_replace_walker((Node *) coll->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_CoerceToDomain(CoerceToDomain *cd, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) cd->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_TargetEntry(TargetEntry *tle, pseudo_collation_replace_context *context)
+{
+	Node *texpr = strip_implicit_coercions((Node *) tle->expr);
+
+	if (equal(texpr, context->base) &&
+		equal(tle->expr, context->base))
+		tle->expr = (Expr *) makePseudoCollationReplaceNode((Node *) tle->expr, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *)tle->expr, context);
+	
+}
+
+static inline void 
+pseudo_collation_replace_List(List *list, pseudo_collation_replace_context *context)
+{
+	ListCell *lc;
+	
+	foreach(lc, list)
+	{
+		Node *node = (Node *) lfirst(lc);
+		
+		if (equal(node, context->base))
+			lfirst(lc) = makePseudoCollationReplaceNode((Node *) node, context->targetcoll);
+		else
+			pseudo_collation_replace_walker(node, context);
+	}
+}
+
+static bool 
+pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context)
+{	
+	if (node == NULL)
+		return false;
+
+	check_stack_depth();
+
+	switch (nodeTag(node))
+	{		
+		case T_Aggref:
+			// do nothing, Aggref->aggfilter need not replace
+			break;
+			
+		case T_WindowFunc:
+			/*
+			 * for aggfunc(...) FILTER (WHERE ...) OVER (...)
+			 * we need check & replace object in WindowFunc->args and WindowFunc->aggfilte
+			 */
+			pseudo_collation_replace_WindowFunc((WindowFunc *) node, context);
+			break;
+		
+		case T_FuncExpr:
+			pseudo_collation_replace_FuncExpr((FuncExpr *) node, context);
+			break;
+
+		case T_OpExpr:
+		case T_DistinctExpr:
+		case T_NullIfExpr:
+			pseudo_collation_replace_OpExpr((OpExpr *) node, context);
+			break;
+		
+		case T_RelabelType:
+			pseudo_collation_replace_RelabelType((RelabelType *) node, context);
+			break;
+		
+		case T_CoerceViaIO:
+			pseudo_collation_replace_CoerceViaIO((CoerceViaIO *) node, context);
+			break;
+
+		case T_ArrayCoerceExpr:
+			pseudo_collation_replace_ArrayCoerceExpr((ArrayCoerceExpr *) node, context);
+			break;
+
+		case T_ConvertRowtypeExpr:
+			pseudo_collation_replace_ConvertRowtypeExpr((ConvertRowtypeExpr *) node, context);
+			break;
+			
+		case T_CollateExpr:
+			pseudo_collation_replace_CollateExpr((CollateExpr *) node, context);
+			break;
+
+		case T_CoerceToDomain:
+			pseudo_collation_replace_CoerceToDomain((CoerceToDomain *) node, context);
+			break;
+			
+		case T_TargetEntry:
+			pseudo_collation_replace_TargetEntry((TargetEntry *) node, context);
+			break;
+
+		case T_List:
+			pseudo_collation_replace_List((List *) node, context);
+			break;
+		
+		default:
+			break;
+	}
+
+	return false;
+}
+
+static void
+pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll, ParseExprKind exprKind)
+{
+	pseudo_collation_replace_context context;
+	context.pstate = pstate;
+	context.base = base;
+	context.exprKind = exprKind;
+	context.targetcoll = targetcoll;
+
+	// start with TargetEntry List
+	pseudo_collation_replace_walker(node, &context);
 }
 
 /*
@@ -2585,8 +2883,8 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 						 ParseExprKind exprKind)
 {
 	TargetEntry *target_result;
-	ListCell   *tl;
-	Node	   *expr;
+	ListCell	*tl;
+	Node		*expr;
 
 	/*
 	 * Convert the untransformed node to a transformed expression, and search
@@ -2595,7 +2893,66 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 	 * resjunk target here, though the SQL92 cases above must ignore resjunk
 	 * targets.
 	 */
-	expr = transformExpr(pstate, node, exprKind);
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	if (nodeTag(node) == T_TargetEntry)
+		expr = (Node *) ((TargetEntry *)node)->expr;
+	/* End - Req: SRS-SQL-NLSSORT */
+	else
+		expr = transformExpr(pstate, node, exprKind);
+
+	/* Begin - Req: SRS-SQL-NLSSORT
+	 * we dont know expr's real collation in here, if expr is not Var,
+	 * because targetlist will assign collation in assign_query_collations(), 
+	 * which called at end of transformSelectStmt. 
+	 * We assgin collation on expr's copy to check whether it is pseudo collation,
+	 * meanwhile do not change expr's value.
+	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation)
+	{
+		Node *copy = copyObject(expr);
+		assign_expr_collations(pstate, copy);
+	
+		if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+		{
+			if (exprKind == EXPR_KIND_ORDER_BY ||
+				exprKind == EXPR_KIND_WINDOW_ORDER)
+			{
+				expr = makePseudoCollationReplaceNode(expr, PseudoCollationReplace2(exprCollation(copy)));
+			}
+			else if (exprKind == EXPR_KIND_SET_ORDER)
+			{
+				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				expr = makePseudoCollationReplaceNode(expr, targetcoll);
+			}
+			else if (exprKind == EXPR_KIND_DISTINCT_ORDER)
+			{
+				/*
+				 * Replace rule is the same as EXPR_KIND_ORER_BY,
+				 * but need recurse to do deep replace.
+				 */ 
+				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				expr = makePseudoCollationReplaceNode(expr, targetcoll);
+			}		
+			else if (exprKind == EXPR_KIND_GROUP_BY)
+			{
+				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				expr = makePseudoCollationReplaceNode(expr, targetcoll);
+			}
+			else if (exprKind == EXPR_KIND_WINDOW_PARTITION)
+			{
+				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				expr = makePseudoCollationReplaceNode(expr, targetcoll);
+			}
+		}
+
+		pfree(copy);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
 
 	foreach(tl, *tlist)
 	{
@@ -2790,6 +3147,14 @@ transformGroupClauseExpr(List **flatresult, Bitmapset *seen_local,
 	else
 		tle = findTargetlistEntrySQL92(pstate, gexpr,
 									   targetlist, exprKind);
+
+	/* 
+	 * Begin - Req:SRS-SQL-NLSSORT 
+	 * for Oracle's `GROUP BY NULL`
+	 */
+	if(tle == NULL)
+		return 0;
+	/* End - SRS-SQL-NLSSORT */
 
 	if (tle->ressortgroupref > 0)
 	{
@@ -3161,6 +3526,13 @@ transformSortClause(ParseState *pstate,
 		else
 			tle = findTargetlistEntrySQL92(pstate, sortby->node,
 										   targetlist, exprKind);
+		/* 
+		 * Begin - SRS-SQL-NLSSORT 
+		 * for Oracle's `ORDER BY NULL`
+		 */
+		if(tle == NULL)
+			continue;
+		/* End - SRS-SQL-NLSSORT */
 
 		sortlist = addTargetToSortList(pstate, tle,
 									   sortlist, *targetlist, sortby);

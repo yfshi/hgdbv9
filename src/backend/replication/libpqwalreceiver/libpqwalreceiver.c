@@ -1100,7 +1100,7 @@ stringlist_to_identifierstr(PGconn *conn, List *strings)
 	foreach(lc, strings)
 	{
 		char	   *val = strVal(lfirst(lc));
-		char	   *val_escaped;;
+		char	   *val_escaped;
 
 		if (first)
 			first = false;

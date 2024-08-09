@@ -4339,8 +4339,8 @@ select 1 from
   left join text_tbl as tt4 on (tt3.f1 = tt4.f1),
   lateral (select tt4.f1 as c0 from text_tbl as tt5 limit 1) as ss1
 where tt1.f1 = ss1.c0;
-                        QUERY PLAN                        
-----------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Nested Loop
    Output: 1
    ->  Nested Loop Left Join
@@ -4349,7 +4349,7 @@ where tt1.f1 = ss1.c0;
                Output: tt1.f1
                ->  Seq Scan on public.text_tbl tt1
                      Output: tt1.f1
-                     Filter: (tt1.f1 = 'foo'::text)
+                     Filter: (tt1.f1 = 'foo'::text COLLATE using_nls_comp)
                ->  Seq Scan on public.text_tbl tt2
                      Output: tt2.f1
          ->  Materialize
@@ -4362,14 +4362,14 @@ where tt1.f1 = ss1.c0;
                            Filter: (tt3.f1 = 'foo'::text)
                      ->  Seq Scan on public.text_tbl tt4
                            Output: tt4.f1
-                           Filter: (tt4.f1 = 'foo'::text)
+                           Filter: (tt4.f1 = 'foo'::text COLLATE using_nls_comp)
    ->  Memoize
          Output: ss1.c0
          Cache Key: tt4.f1
          Cache Mode: binary
          ->  Subquery Scan on ss1
                Output: ss1.c0
-               Filter: (ss1.c0 = 'foo'::text)
+               Filter: (ss1.c0 = 'foo'::text COLLATE using_nls_comp)
                ->  Limit
                      Output: (tt4.f1)
                      ->  Seq Scan on public.text_tbl tt5
@@ -4832,7 +4832,7 @@ where ss.stringu2 !~* ss.case1;
                                          QUERY PLAN                                         
 --------------------------------------------------------------------------------------------
  Nested Loop
-   Join Filter: (CASE t1.ten WHEN 0 THEN 'doh!'::text ELSE NULL::text END = t0.f1)
+   Join Filter: ((CASE t1.ten WHEN 0 THEN 'doh!'::text ELSE NULL::text END)::text = t0.f1)
    ->  Nested Loop
          ->  Seq Scan on int4_tbl i4
          ->  Index Scan using tenk1_unique2 on tenk1 t1

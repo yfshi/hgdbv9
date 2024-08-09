@@ -67,6 +67,17 @@ DECLARE_UNIQUE_INDEX_PKEY(pg_collation_oid_index, 3085, on pg_collation using bt
 #define COLLPROVIDER_DEFAULT	'd'
 #define COLLPROVIDER_ICU		'i'
 #define COLLPROVIDER_LIBC		'c'
+#define COLLPROVIDER_ORACLE		'o'
+
+/* Begin: ReqID:SRS-SQL-NLSSORT */
+#define ORA_COLL_OID(COLL)	ORA_COLLATION_##COLL##_OID // defined in pg_collation.dat
+#define ORA_COLL_NAME(COLL) #COLL
+#define IsPseudoCollation(coll)   ((coll == ORA_COLL_OID(USING_NLS_COMP)    || \
+									coll == ORA_COLL_OID(USING_NLS_SORT)    || \
+									coll == ORA_COLL_OID(USING_NLS_SORT_AI) || \
+									coll == ORA_COLL_OID(USING_NLS_SORT_CI) || \
+									coll == ORA_COLL_OID(USING_NLS_SORT_CS)))
+/* End: ReqID:SRS-SQL-NLSSORT */
 
 #endif							/* EXPOSE_TO_CLIENT_CODE */
 

@@ -2039,7 +2039,10 @@ typedef enum AlterTableType
 	AT_ReAddStatistics,			/* internal to commands/tablecmds.c */
 	AT_SetVirtualColumn,		/* Modify virtual columns */	/* ReqID:SRS-SQL-VIRTUALCOL */
 	AT_SetVisibility,			/* Modify column visibility */	/* ReqID:SRS-SQL-INVISIBLECOL */
-	AT_ForceViewCompile			/* Compile view */ /* ReqID:SRS-SQL-FORCEVIEW */
+	AT_ForceViewCompile,		/* Compile view */ /* ReqID:SRS-SQL-FORCEVIEW */
+	/* Begin: ReqID:SRS-SQL-NLSSORT */
+	AT_DefaultCollation,		/* Table's default collation */
+	/* End: ReqID:SRS-SQL-NLSSORT */
 } AlterTableType;
 
 /* BEGIN - ReqID:SRS-MISC-USER */
@@ -2075,10 +2078,12 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	bool        is_rowid;		/* ReqID:SRS-SQL-ROWID */
 	bool		isvisible;		/* ReqID:SRS-SQL-INVISIBLECOL */
 	UserType	utype; 			/* ReqID:SRS-MISC-USER */
-	/* Begin - BUG:M0000325 */
-	bool		without_copy;	/* set logged without copy or not? */
-								/* Does the new relation do a data copy or not? */
-	/* End - BUG:M0000325 */
+	/* BUG:M0000325
+	 * set logged without copy or not?
+	 * Does the new relation do a data copy or not?
+	 */
+	bool		without_copy;
+	bool		is_create;		/* ReqID:SRS-SQL-NLSSORT */
 } AlterTableCmd;
 
 
@@ -2307,6 +2312,7 @@ typedef struct CreateStmt
 	char	   *accessMethod;	/* table access method */
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	bool		with_rowid_seq;
+	char	   *collname;		/* ReqID:SRS-SQL-NLSSORT, table's default collation for Oracle, filled by grammer */
 } CreateStmt;
 
 /* ----------

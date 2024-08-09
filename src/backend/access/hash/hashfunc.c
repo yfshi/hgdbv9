@@ -32,6 +32,8 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "utils/pg_locale.h"
+#include "utils/lsyscache.h"
+#include "utils/varlena.h"
 
 /*
  * Datatype-specific hash functions.
@@ -47,12 +49,52 @@
 Datum
 hashchar(PG_FUNCTION_ARGS)
 {
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	Oid		collid = PG_GET_COLLATION();
+
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		char	 chr = PG_GETARG_CHAR(0);
+		char 	*key = &chr;
+		int 	 len = 1;
+		bytea 	*k = nlssort_hook(key, len, collid, false);
+
+		key = VARDATA_ANY(k);
+		len = VARSIZE_ANY_EXHDR(k);
+
+		return hash_any((unsigned char *) key, len);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
 	return hash_uint32((int32) PG_GETARG_CHAR(0));
 }
 
 Datum
 hashcharextended(PG_FUNCTION_ARGS)
 {
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	Oid		collid = PG_GET_COLLATION();
+
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		char	 chr = PG_GETARG_CHAR(0);
+		char 	*key = &chr;
+		int 	 len = 1;
+		bytea 	*k = nlssort_hook(key, len, collid, false);
+
+		key = VARDATA_ANY(k);
+		len = VARSIZE_ANY_EXHDR(k);
+
+		return hash_any_extended((unsigned char *) key, len, PG_GETARG_INT64(1));
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
 	return hash_uint32_extended((int32) PG_GETARG_CHAR(0), PG_GETARG_INT64(1));
 }
 
@@ -252,7 +294,23 @@ hashname(PG_FUNCTION_ARGS)
 {
 	char	   *key = NameStr(*PG_GETARG_NAME(0));
 
-	return hash_any((unsigned char *) key, strlen(key));
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	int			len = strlen(key);
+	Oid			collid = PG_GET_COLLATION();
+	
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		bytea *k = nlssort_hook(key, len, collid, false);
+
+		key = VARDATA_ANY(k);
+		len = VARSIZE_ANY_EXHDR(k);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
+	return hash_any((unsigned char *) key, len);
 }
 
 Datum
@@ -260,7 +318,23 @@ hashnameextended(PG_FUNCTION_ARGS)
 {
 	char	   *key = NameStr(*PG_GETARG_NAME(0));
 
-	return hash_any_extended((unsigned char *) key, strlen(key),
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	int			len = strlen(key);
+	Oid			collid = PG_GET_COLLATION();
+
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		bytea *k = nlssort_hook(key, len, collid, false);
+
+		key = VARDATA_ANY(k);
+		len = VARSIZE_ANY_EXHDR(k);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
+	return hash_any_extended((unsigned char *) key, len,
 							 PG_GETARG_INT64(1));
 }
 
@@ -283,8 +357,25 @@ hashtext(PG_FUNCTION_ARGS)
 
 	if (!mylocale || mylocale->deterministic)
 	{
-		result = hash_any((unsigned char *) VARDATA_ANY(key),
-						  VARSIZE_ANY_EXHDR(key));
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		char	   *keydata;
+		int			keylen;
+		
+		keydata = VARDATA_ANY(key);
+		keylen = VARSIZE_ANY_EXHDR(key);
+
+		if (nlssort_hook && 
+			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		{
+			bytea *k = nlssort_hook(keydata, keylen, collid, false);
+
+			keydata = VARDATA_ANY(k);
+			keylen = VARSIZE_ANY_EXHDR(k);
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
+
+		result = hash_any((unsigned char *) keydata, keylen);
 	}
 	else
 	{
@@ -340,8 +431,26 @@ hashtextextended(PG_FUNCTION_ARGS)
 
 	if (!mylocale || mylocale->deterministic)
 	{
-		result = hash_any_extended((unsigned char *) VARDATA_ANY(key),
-								   VARSIZE_ANY_EXHDR(key),
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		char	   *keydata;
+		int			keylen;
+
+		keydata = VARDATA_ANY(key);
+		keylen = VARSIZE_ANY_EXHDR(key);
+
+		if (nlssort_hook && 
+			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		{
+			bytea *k = nlssort_hook(keydata, keylen, collid, false);
+
+			keydata = VARDATA_ANY(k);
+			keylen = VARSIZE_ANY_EXHDR(k);
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
+		
+		result = hash_any_extended((unsigned char *) keydata,
+								   keylen,
 								   PG_GETARG_INT64(1));
 	}
 	else
@@ -388,8 +497,25 @@ hashvarlena(PG_FUNCTION_ARGS)
 	struct varlena *key = PG_GETARG_VARLENA_PP(0);
 	Datum		result;
 
-	result = hash_any((unsigned char *) VARDATA_ANY(key),
-					  VARSIZE_ANY_EXHDR(key));
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	char	   *keydata = VARDATA_ANY(key);
+	int			keylen = VARSIZE_ANY_EXHDR(key);
+	Oid			collid = PG_GET_COLLATION();
+	
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		bytea *k = nlssort_hook(keydata, keylen, collid, false);
+
+		keydata = VARDATA_ANY(k);
+		keylen = VARSIZE_ANY_EXHDR(k);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
+	result = hash_any((unsigned char *) keydata,
+					  keylen);
 
 	/* Avoid leaking memory for toasted inputs */
 	PG_FREE_IF_COPY(key, 0);
@@ -403,8 +529,25 @@ hashvarlenaextended(PG_FUNCTION_ARGS)
 	struct varlena *key = PG_GETARG_VARLENA_PP(0);
 	Datum		result;
 
-	result = hash_any_extended((unsigned char *) VARDATA_ANY(key),
-							   VARSIZE_ANY_EXHDR(key),
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	char	   *keydata = VARDATA_ANY(key);
+	int			keylen = VARSIZE_ANY_EXHDR(key);
+	Oid			collid = PG_GET_COLLATION();
+	
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		bytea *k = nlssort_hook(keydata, keylen, collid, false);
+
+		keydata = VARDATA_ANY(k);
+		keylen = VARSIZE_ANY_EXHDR(k);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+
+	result = hash_any_extended((unsigned char *) keydata,
+							   keylen,
 							   PG_GETARG_INT64(1));
 
 	PG_FREE_IF_COPY(key, 0);

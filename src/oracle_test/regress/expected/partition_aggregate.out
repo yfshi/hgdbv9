@@ -25,21 +25,21 @@ ANALYZE pagg_tab;
 -- When GROUP BY clause matches; full aggregation is performed for each partition.
 EXPLAIN (COSTS OFF)
 SELECT c, sum(a), avg(b), count(*), min(a), max(b) FROM pagg_tab GROUP BY c HAVING avg(d) < 15 ORDER BY 1, 2, 3;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab.c, (sum(pagg_tab.a)), (avg(pagg_tab.b))
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary", (sum(pagg_tab.a)), (avg(pagg_tab.b))
    ->  Append
          ->  HashAggregate
-               Group Key: pagg_tab.c
+               Group Key: (pagg_tab.c)::text
                Filter: (avg(pagg_tab.d) < '15'::numeric)
                ->  Seq Scan on pagg_tab_p1 pagg_tab
          ->  HashAggregate
-               Group Key: pagg_tab_1.c
+               Group Key: (pagg_tab_1.c)::text
                Filter: (avg(pagg_tab_1.d) < '15'::numeric)
                ->  Seq Scan on pagg_tab_p2 pagg_tab_1
          ->  HashAggregate
-               Group Key: pagg_tab_2.c
+               Group Key: (pagg_tab_2.c)::text
                Filter: (avg(pagg_tab_2.d) < '15'::numeric)
                ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (15 rows)
@@ -95,51 +95,51 @@ SELECT a, sum(b), avg(b), count(*), min(a), max(b) FROM pagg_tab GROUP BY a HAVI
 -- Check with multiple columns in GROUP BY
 EXPLAIN (COSTS OFF)
 SELECT a, c, count(*) FROM pagg_tab GROUP BY a, c;
-                   QUERY PLAN                   
-------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Append
    ->  HashAggregate
-         Group Key: pagg_tab.a, pagg_tab.c
+         Group Key: pagg_tab.a, (pagg_tab.c)::text
          ->  Seq Scan on pagg_tab_p1 pagg_tab
    ->  HashAggregate
-         Group Key: pagg_tab_1.a, pagg_tab_1.c
+         Group Key: pagg_tab_1.a, (pagg_tab_1.c)::text
          ->  Seq Scan on pagg_tab_p2 pagg_tab_1
    ->  HashAggregate
-         Group Key: pagg_tab_2.a, pagg_tab_2.c
+         Group Key: pagg_tab_2.a, (pagg_tab_2.c)::text
          ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (10 rows)
 
 -- Check with multiple columns in GROUP BY, order in GROUP BY is reversed
 EXPLAIN (COSTS OFF)
 SELECT a, c, count(*) FROM pagg_tab GROUP BY c, a;
-                   QUERY PLAN                   
-------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Append
    ->  HashAggregate
-         Group Key: pagg_tab.c, pagg_tab.a
+         Group Key: (pagg_tab.c)::text, pagg_tab.a
          ->  Seq Scan on pagg_tab_p1 pagg_tab
    ->  HashAggregate
-         Group Key: pagg_tab_1.c, pagg_tab_1.a
+         Group Key: (pagg_tab_1.c)::text, pagg_tab_1.a
          ->  Seq Scan on pagg_tab_p2 pagg_tab_1
    ->  HashAggregate
-         Group Key: pagg_tab_2.c, pagg_tab_2.a
+         Group Key: (pagg_tab_2.c)::text, pagg_tab_2.a
          ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (10 rows)
 
 -- Check with multiple columns in GROUP BY, order in target-list is reversed
 EXPLAIN (COSTS OFF)
 SELECT c, a, count(*) FROM pagg_tab GROUP BY a, c;
-                   QUERY PLAN                   
-------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Append
    ->  HashAggregate
-         Group Key: pagg_tab.a, pagg_tab.c
+         Group Key: pagg_tab.a, (pagg_tab.c)::text
          ->  Seq Scan on pagg_tab_p1 pagg_tab
    ->  HashAggregate
-         Group Key: pagg_tab_1.a, pagg_tab_1.c
+         Group Key: pagg_tab_1.a, (pagg_tab_1.c)::text
          ->  Seq Scan on pagg_tab_p2 pagg_tab_1
    ->  HashAggregate
-         Group Key: pagg_tab_2.a, pagg_tab_2.c
+         Group Key: pagg_tab_2.a, (pagg_tab_2.c)::text
          ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (10 rows)
 
@@ -149,7 +149,7 @@ SELECT c, sum(a) FROM pagg_tab WHERE 1 = 2 GROUP BY c;
            QUERY PLAN           
 --------------------------------
  HashAggregate
-   Group Key: c
+   Group Key: (c)::text
    ->  Result
          One-Time Filter: false
 (4 rows)
@@ -163,8 +163,8 @@ EXPLAIN (COSTS OFF)
 SELECT c, sum(a) FROM pagg_tab WHERE c = 'x' GROUP BY c;
            QUERY PLAN           
 --------------------------------
- GroupAggregate
-   Group Key: c
+ HashAggregate
+   Group Key: (c)::text
    ->  Result
          One-Time Filter: false
 (4 rows)
@@ -179,28 +179,28 @@ SET enable_hashagg TO false;
 -- When GROUP BY clause matches full aggregation is performed for each partition.
 EXPLAIN (COSTS OFF)
 SELECT c, sum(a), avg(b), count(*) FROM pagg_tab GROUP BY 1 HAVING avg(d) < 15 ORDER BY 1, 2, 3;
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab.c, (sum(pagg_tab.a)), (avg(pagg_tab.b))
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary", (sum(pagg_tab.a)), (avg(pagg_tab.b))
    ->  Append
          ->  GroupAggregate
-               Group Key: pagg_tab.c
+               Group Key: ((pagg_tab.c)::text)
                Filter: (avg(pagg_tab.d) < '15'::numeric)
                ->  Sort
-                     Sort Key: pagg_tab.c
+                     Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p1 pagg_tab
          ->  GroupAggregate
-               Group Key: pagg_tab_1.c
+               Group Key: ((pagg_tab_1.c)::text)
                Filter: (avg(pagg_tab_1.d) < '15'::numeric)
                ->  Sort
-                     Sort Key: pagg_tab_1.c
+                     Sort Key: ((pagg_tab_1.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p2 pagg_tab_1
          ->  GroupAggregate
-               Group Key: pagg_tab_2.c
+               Group Key: ((pagg_tab_2.c)::text)
                Filter: (avg(pagg_tab_2.d) < '15'::numeric)
                ->  Sort
-                     Sort Key: pagg_tab_2.c
+                     Sort Key: ((pagg_tab_2.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (21 rows)
 
@@ -262,24 +262,24 @@ SELECT a, sum(b), avg(b), count(*) FROM pagg_tab GROUP BY 1 HAVING avg(d) < 15 O
 -- Test partitionwise grouping without any aggregates
 EXPLAIN (COSTS OFF)
 SELECT c FROM pagg_tab GROUP BY c ORDER BY 1;
-                      QUERY PLAN                      
-------------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Merge Append
-   Sort Key: pagg_tab.c
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
    ->  Group
-         Group Key: pagg_tab.c
+         Group Key: ((pagg_tab.c)::text)
          ->  Sort
-               Sort Key: pagg_tab.c
+               Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
                ->  Seq Scan on pagg_tab_p1 pagg_tab
    ->  Group
-         Group Key: pagg_tab_1.c
+         Group Key: ((pagg_tab_1.c)::text)
          ->  Sort
-               Sort Key: pagg_tab_1.c
+               Sort Key: ((pagg_tab_1.c)::text) COLLATE "binary"
                ->  Seq Scan on pagg_tab_p2 pagg_tab_1
    ->  Group
-         Group Key: pagg_tab_2.c
+         Group Key: ((pagg_tab_2.c)::text)
          ->  Sort
-               Sort Key: pagg_tab_2.c
+               Sort Key: ((pagg_tab_2.c)::text) COLLATE "binary"
                ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (17 rows)
 
@@ -340,12 +340,12 @@ RESET enable_hashagg;
 -- ROLLUP, partitionwise aggregation does not apply
 EXPLAIN (COSTS OFF)
 SELECT c, sum(a) FROM pagg_tab GROUP BY rollup(c) ORDER BY 1, 2;
-                      QUERY PLAN                      
-------------------------------------------------------
+                              QUERY PLAN                              
+----------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab.c, (sum(pagg_tab.a))
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary", (sum(pagg_tab.a))
    ->  MixedAggregate
-         Hash Key: pagg_tab.c
+         Hash Key: ((pagg_tab.c)::text)
          Group Key: ()
          ->  Append
                ->  Seq Scan on pagg_tab_p1 pagg_tab_1
@@ -359,25 +359,25 @@ SELECT c, sum(a) FROM pagg_tab GROUP BY rollup(c) ORDER BY 1, 2;
 -- make any difference.
 EXPLAIN (COSTS OFF)
 SELECT c, sum(b order by a) FROM pagg_tab GROUP BY c ORDER BY 1, 2;
-                          QUERY PLAN                           
----------------------------------------------------------------
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab.c, (sum(pagg_tab.b ORDER BY pagg_tab.a))
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary", (sum(pagg_tab.b ORDER BY pagg_tab.a))
    ->  Append
          ->  GroupAggregate
-               Group Key: pagg_tab.c
+               Group Key: ((pagg_tab.c)::text)
                ->  Sort
-                     Sort Key: pagg_tab.c
+                     Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p1 pagg_tab
          ->  GroupAggregate
-               Group Key: pagg_tab_1.c
+               Group Key: ((pagg_tab_1.c)::text)
                ->  Sort
-                     Sort Key: pagg_tab_1.c
+                     Sort Key: ((pagg_tab_1.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p2 pagg_tab_1
          ->  GroupAggregate
-               Group Key: pagg_tab_2.c
+               Group Key: ((pagg_tab_2.c)::text)
                ->  Sort
-                     Sort Key: pagg_tab_2.c
+                     Sort Key: ((pagg_tab_2.c)::text) COLLATE "binary"
                      ->  Seq Scan on pagg_tab_p3 pagg_tab_2
 (18 rows)
 
@@ -948,10 +948,10 @@ SET max_parallel_workers_per_gather TO 2;
 -- is not partial agg safe.
 EXPLAIN (COSTS OFF)
 SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HAVING avg(b) < 3 ORDER BY 1, 2, 3;
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(DISTINCT pagg_tab_ml.c))
+   Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(DISTINCT pagg_tab_ml.c)) COLLATE "binary"
    ->  Gather
          Workers Planned: 2
          ->  Parallel Append
@@ -1122,29 +1122,29 @@ SELECT b, sum(a), count(*) FROM pagg_tab_ml GROUP BY b HAVING avg(a) < 15 ORDER 
 -- Full aggregation at all levels as GROUP BY clause matches with PARTITION KEY
 EXPLAIN (COSTS OFF)
 SELECT a, sum(b), count(*) FROM pagg_tab_ml GROUP BY a, b, c HAVING avg(b) > 7 ORDER BY 1, 2, 3;
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Sort
    Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (count(*))
    ->  Append
          ->  HashAggregate
-               Group Key: pagg_tab_ml.a, pagg_tab_ml.b, pagg_tab_ml.c
+               Group Key: pagg_tab_ml.a, pagg_tab_ml.b, (pagg_tab_ml.c)::text
                Filter: (avg(pagg_tab_ml.b) > '7'::numeric)
                ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml
          ->  HashAggregate
-               Group Key: pagg_tab_ml_1.a, pagg_tab_ml_1.b, pagg_tab_ml_1.c
+               Group Key: pagg_tab_ml_1.a, pagg_tab_ml_1.b, (pagg_tab_ml_1.c)::text
                Filter: (avg(pagg_tab_ml_1.b) > '7'::numeric)
                ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_1
          ->  HashAggregate
-               Group Key: pagg_tab_ml_2.a, pagg_tab_ml_2.b, pagg_tab_ml_2.c
+               Group Key: pagg_tab_ml_2.a, pagg_tab_ml_2.b, (pagg_tab_ml_2.c)::text
                Filter: (avg(pagg_tab_ml_2.b) > '7'::numeric)
                ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_2
          ->  HashAggregate
-               Group Key: pagg_tab_ml_3.a, pagg_tab_ml_3.b, pagg_tab_ml_3.c
+               Group Key: pagg_tab_ml_3.a, pagg_tab_ml_3.b, (pagg_tab_ml_3.c)::text
                Filter: (avg(pagg_tab_ml_3.b) > '7'::numeric)
                ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_3
          ->  HashAggregate
-               Group Key: pagg_tab_ml_4.a, pagg_tab_ml_4.b, pagg_tab_ml_4.c
+               Group Key: pagg_tab_ml_4.a, pagg_tab_ml_4.b, (pagg_tab_ml_4.c)::text
                Filter: (avg(pagg_tab_ml_4.b) > '7'::numeric)
                ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_4
 (23 rows)
@@ -1278,31 +1278,31 @@ SELECT b, sum(a), count(*) FROM pagg_tab_ml GROUP BY b HAVING avg(a) < 15 ORDER 
 -- Full aggregation at all levels as GROUP BY clause matches with PARTITION KEY
 EXPLAIN (COSTS OFF)
 SELECT a, sum(b), count(*) FROM pagg_tab_ml GROUP BY a, b, c HAVING avg(b) > 7 ORDER BY 1, 2, 3;
-                                    QUERY PLAN                                    
-----------------------------------------------------------------------------------
+                                        QUERY PLAN                                        
+------------------------------------------------------------------------------------------
  Gather Merge
    Workers Planned: 2
    ->  Sort
          Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (count(*))
          ->  Parallel Append
                ->  HashAggregate
-                     Group Key: pagg_tab_ml.a, pagg_tab_ml.b, pagg_tab_ml.c
+                     Group Key: pagg_tab_ml.a, pagg_tab_ml.b, (pagg_tab_ml.c)::text
                      Filter: (avg(pagg_tab_ml.b) > '7'::numeric)
                      ->  Seq Scan on pagg_tab_ml_p1 pagg_tab_ml
                ->  HashAggregate
-                     Group Key: pagg_tab_ml_3.a, pagg_tab_ml_3.b, pagg_tab_ml_3.c
+                     Group Key: pagg_tab_ml_3.a, pagg_tab_ml_3.b, (pagg_tab_ml_3.c)::text
                      Filter: (avg(pagg_tab_ml_3.b) > '7'::numeric)
                      ->  Seq Scan on pagg_tab_ml_p3_s1 pagg_tab_ml_3
                ->  HashAggregate
-                     Group Key: pagg_tab_ml_1.a, pagg_tab_ml_1.b, pagg_tab_ml_1.c
+                     Group Key: pagg_tab_ml_1.a, pagg_tab_ml_1.b, (pagg_tab_ml_1.c)::text
                      Filter: (avg(pagg_tab_ml_1.b) > '7'::numeric)
                      ->  Seq Scan on pagg_tab_ml_p2_s1 pagg_tab_ml_1
                ->  HashAggregate
-                     Group Key: pagg_tab_ml_4.a, pagg_tab_ml_4.b, pagg_tab_ml_4.c
+                     Group Key: pagg_tab_ml_4.a, pagg_tab_ml_4.b, (pagg_tab_ml_4.c)::text
                      Filter: (avg(pagg_tab_ml_4.b) > '7'::numeric)
                      ->  Seq Scan on pagg_tab_ml_p3_s2 pagg_tab_ml_4
                ->  HashAggregate
-                     Group Key: pagg_tab_ml_2.a, pagg_tab_ml_2.b, pagg_tab_ml_2.c
+                     Group Key: pagg_tab_ml_2.a, pagg_tab_ml_2.b, (pagg_tab_ml_2.c)::text
                      Filter: (avg(pagg_tab_ml_2.b) > '7'::numeric)
                      ->  Seq Scan on pagg_tab_ml_p2_s2 pagg_tab_ml_2
 (25 rows)

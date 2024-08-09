@@ -476,7 +476,7 @@ from hash_parted order by part;
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
-Partition key: LIST (lower(a))
+Partition key: LIST (lower(a) COLLATE "binary")
 Partitions: part_aa_bb FOR VALUES IN ('aa', 'bb'),
             part_cc_dd FOR VALUES IN ('cc', 'dd'),
             part_ee_ff FOR VALUES IN ('ee', 'ff'), PARTITIONED,
@@ -885,7 +885,7 @@ create table mcrparted8_ge_d partition of mcrparted for values from ('d', minval
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
-Partition key: RANGE (a, b)
+Partition key: RANGE (a COLLATE "binary", b)
 Partitions: mcrparted1_lt_b FOR VALUES FROM (MINVALUE, MINVALUE) TO ('b', MINVALUE),
             mcrparted2_b FOR VALUES FROM ('b', MINVALUE) TO ('c', MINVALUE),
             mcrparted3_c_to_common FOR VALUES FROM ('c', MINVALUE) TO ('common', MINVALUE),
@@ -902,7 +902,7 @@ Partitions: mcrparted1_lt_b FOR VALUES FROM (MINVALUE, MINVALUE) TO ('b', MINVAL
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM (MINVALUE, MINVALUE) TO ('b', MINVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a < 'b'::text))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text < 'b'::text COLLATE "binary"))
 
 \d+ mcrparted2_b
                                 Table "public.mcrparted2_b"
@@ -911,7 +911,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a < 'b'::text))
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('b', MINVALUE) TO ('c', MINVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a >= 'b'::text) AND (a < 'c'::text))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text >= 'b'::text COLLATE "binary") AND ((a)::text < 'c'::text COLLATE "binary"))
 
 \d+ mcrparted3_c_to_common
                            Table "public.mcrparted3_c_to_common"
@@ -920,7 +920,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a >= 'b'::text) 
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('c', MINVALUE) TO ('common', MINVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a >= 'c'::text) AND (a < 'common'::text))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text >= 'c'::text COLLATE "binary") AND ((a)::text < 'common'::text COLLATE "binary"))
 
 \d+ mcrparted4_common_lt_0
                            Table "public.mcrparted4_common_lt_0"
@@ -929,7 +929,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a >= 'c'::text) 
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('common', MINVALUE) TO ('common', 0)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::text) AND (b < 0))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text = 'common'::text COLLATE "binary") AND (b < 0))
 
 \d+ mcrparted5_common_0_to_10
                          Table "public.mcrparted5_common_0_to_10"
@@ -938,7 +938,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::te
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('common', 0) TO ('common', 10)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::text) AND (b >= 0) AND (b < 10))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text = 'common'::text COLLATE "binary") AND (b >= 0) AND (b < 10))
 
 \d+ mcrparted6_common_ge_10
                           Table "public.mcrparted6_common_ge_10"
@@ -947,7 +947,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::te
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('common', 10) TO ('common', MAXVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::text) AND (b >= 10))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text = 'common'::text COLLATE "binary") AND (b >= 10))
 
 \d+ mcrparted7_gt_common_lt_d
                          Table "public.mcrparted7_gt_common_lt_d"
@@ -956,7 +956,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a = 'common'::te
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('common', MAXVALUE) TO ('d', MINVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a > 'common'::text) AND (a < 'd'::text))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text > 'common'::text COLLATE "binary") AND ((a)::text < 'd'::text COLLATE "binary"))
 
 \d+ mcrparted8_ge_d
                               Table "public.mcrparted8_ge_d"
@@ -965,7 +965,7 @@ Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a > 'common'::te
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
 Partition of: mcrparted FOR VALUES FROM ('d', MINVALUE) TO (MAXVALUE, MAXVALUE)
-Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND (a >= 'd'::text))
+Partition constraint: ((a IS NOT NULL) AND (b IS NOT NULL) AND ((a)::text >= 'd'::text COLLATE "binary"))
 
 insert into mcrparted values ('aaa', 0), ('b', 0), ('bz', 10), ('c', -10),
     ('comm', -10), ('common', -10), ('common', 0), ('common', 10),

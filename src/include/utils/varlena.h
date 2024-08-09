@@ -16,6 +16,11 @@
 #include "nodes/pg_list.h"
 #include "utils/sortsupport.h"
 
+/* Begin - Req: SRS-SQL-NLSSORT */
+typedef bytea * (*nlssort_hook_type)(const char *src, int32_t len, Oid collid, bool trim);
+extern PGDLLIMPORT nlssort_hook_type nlssort_hook;
+/* End - Req: SRS-SQL-NLSSORT */
+
 extern int	varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid);
 extern void varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid);
 extern int	varstr_levenshtein(const char *source, int slen,

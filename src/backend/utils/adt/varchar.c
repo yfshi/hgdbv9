@@ -25,6 +25,7 @@
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
 #include "utils/varlena.h"
 
@@ -743,15 +744,17 @@ bpchareq(PG_FUNCTION_ARGS)
 				len2;
 	bool		result;
 	Oid			collid = PG_GET_COLLATION();
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
+
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
 
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (locale && locale->deterministic)
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -783,15 +786,17 @@ bpcharne(PG_FUNCTION_ARGS)
 				len2;
 	bool		result;
 	Oid			collid = PG_GET_COLLATION();
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
+
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
 
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (locale && locale->deterministic)
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -1001,6 +1006,18 @@ hashbpchar(PG_FUNCTION_ARGS)
 
 	if (!mylocale || mylocale->deterministic)
 	{
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		if (nlssort_hook &&
+			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		{
+			bytea *k = nlssort_hook(keydata, keylen, collid, true);
+
+			keydata = VARDATA_ANY(k);
+			keylen = VARSIZE_ANY_EXHDR(k);
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
+
 		result = hash_any((unsigned char *) keydata, keylen);
 	}
 	else
@@ -1062,6 +1079,18 @@ hashbpcharextended(PG_FUNCTION_ARGS)
 
 	if (!mylocale || mylocale->deterministic)
 	{
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		if (nlssort_hook &&
+			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		{
+			bytea *k = nlssort_hook(keydata, keylen, collid, true);
+
+			keydata = VARDATA_ANY(k);
+			keylen = VARSIZE_ANY_EXHDR(k);
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
+		
 		result = hash_any_extended((unsigned char *) keydata, keylen,
 								   PG_GETARG_INT64(1));
 	}

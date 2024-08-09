@@ -18,19 +18,20 @@
 
 #include "postgres.h"
 
-#include "access/hash.h"
 #include "access/detoast.h"
+#include "access/hash.h"
 #include "catalog/pg_collation.h"
+#include "fmgr.h"
 #include "libpq/pqformat.h"
+#include "mb/pg_wchar.h"
 #include "nodes/nodeFuncs.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h"
 #include "utils/ora_compatible.h" /* BUG#Z091 */
 #include "utils/pg_locale.h"
 #include "utils/varlena.h"
-#include "mb/pg_wchar.h"
-#include "fmgr.h"
 
 #include "../include/common_datatypes.h"
 
@@ -540,6 +541,12 @@ check_collation_set(Oid collid)
 {
 	if (!OidIsValid(collid))
 	{
+		/**
+		 * SRS-SQL-NLSSORT
+		 * Oracle type do not require this error message,
+		 * just annotate it.
+		 */
+		#if 0
 		/*
 		 * This typically means that the parser could not resolve a conflict
 		 * of implicit collations, so report it that way.
@@ -548,6 +555,11 @@ check_collation_set(Oid collid)
 				(errcode(ERRCODE_INDETERMINATE_COLLATION),
 				 errmsg("could not determine which collation to use for string comparison"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
+		#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INDETERMINATE_COLLATION),
+				 errmsg("IVY-43915: unable to determine collation: arguments have conflicting collations")));
+		#endif
 	}
 }
 
@@ -560,15 +572,17 @@ oracharchareq(PG_FUNCTION_ARGS)
 				len2;
 	bool		result;
 	Oid			collid = PG_GET_COLLATION();
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
+
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
 
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (locale && locale->deterministic)
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -598,15 +612,17 @@ oracharcharne(PG_FUNCTION_ARGS)
 				len2;
 	bool		result;
 	Oid			collid = PG_GET_COLLATION();
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
+
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
 
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (locale && locale->deterministic)
 	{
 		/*
 		 * Since we only care about equality or not-equality, we can avoid all
@@ -941,6 +957,18 @@ oracharcharhash(PG_FUNCTION_ARGS)
 
 	if (!mylocale || mylocale->deterministic)
 	{
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		if (nlssort_hook && 
+			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		{
+			bytea *k = nlssort_hook(keydata, keylen, collid, true);
+
+			keydata = VARDATA_ANY(k);
+			keylen = VARSIZE_ANY_EXHDR(k);
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
+
 		result = hash_any((unsigned char *) keydata, keylen);
 	}
 	else

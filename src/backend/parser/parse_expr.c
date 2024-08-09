@@ -611,6 +611,10 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		case EXPR_KIND_COPY_WHERE:
 		case EXPR_KIND_GENERATED_COLUMN:
 		case EXPR_KIND_CYCLE_MARK:
+		/* Begin: Req:SRS-SQL-NLSSORT */
+		case EXPR_KIND_DISTINCT_ORDER:
+		case EXPR_KIND_SET_ORDER:
+		/* End: Req:SRS-SQL-NLSSORT */
 			/* okay */
 			break;
 
@@ -683,7 +687,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				/* Begin - BUG#M0000217 */
 				if (compatible_db == ORA_PARSER &&
-					pstate->p_expr_kind == EXPR_KIND_ORDER_BY &&
+					(pstate->p_expr_kind == EXPR_KIND_ORDER_BY ||
+					 pstate->p_expr_kind == EXPR_KIND_DISTINCT_ORDER ||
+					 pstate->p_expr_kind == EXPR_KIND_SET_ORDER) &&
 					pstate->p_targetlist)
 				{
 					ListCell	*tl;
@@ -2558,6 +2564,10 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		case EXPR_KIND_VALUES:
 		case EXPR_KIND_VALUES_SINGLE:
 		case EXPR_KIND_CYCLE_MARK:
+		/* Begin: Req:SRS-SQL-NLSSORT */
+		case EXPR_KIND_DISTINCT_ORDER:
+		case EXPR_KIND_SET_ORDER:
+		/* End: Req:SRS-SQL-NLSSORT */
 			/* okay */
 			break;
 		case EXPR_KIND_CHECK_CONSTRAINT:
@@ -3947,7 +3957,12 @@ ParseExprKindName(ParseExprKind exprKind)
 			return "GENERATED AS";
 		case EXPR_KIND_CYCLE_MARK:
 			return "CYCLE";
-
+		/* Begin: Req:SRS-SQL-NLSSORT */
+		case EXPR_KIND_DISTINCT_ORDER:
+			return "distinct ORDER BY";
+		case EXPR_KIND_SET_ORDER:
+			return "set operator ORDER BY";
+		/* End: Req:SRS-SQL-NLSSORT */
 			/*
 			 * There is intentionally no default: case here, so that the
 			 * compiler will warn if we add a new ParseExprKind without

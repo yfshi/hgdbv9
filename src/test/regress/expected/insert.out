@@ -474,7 +474,7 @@ from hash_parted order by part;
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
-Partition key: LIST (lower(a))
+Partition key: LIST (lower(a) COLLATE "default")
 Partitions: part_aa_bb FOR VALUES IN ('aa', 'bb'),
             part_cc_dd FOR VALUES IN ('cc', 'dd'),
             part_ee_ff FOR VALUES IN ('ee', 'ff'), PARTITIONED,
@@ -879,7 +879,7 @@ create table mcrparted8_ge_d partition of mcrparted for values from ('d', minval
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | text    |           |          |         | extended |              | 
  b      | integer |           |          |         | plain    |              | 
-Partition key: RANGE (a, b)
+Partition key: RANGE (a COLLATE "default", b)
 Partitions: mcrparted1_lt_b FOR VALUES FROM (MINVALUE, MINVALUE) TO ('b', MINVALUE),
             mcrparted2_b FOR VALUES FROM ('b', MINVALUE) TO ('c', MINVALUE),
             mcrparted3_c_to_common FOR VALUES FROM ('c', MINVALUE) TO ('common', MINVALUE),
