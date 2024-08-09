@@ -11,6 +11,7 @@ SELECT relname, relhasindex
    FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = relnamespace
    WHERE relkind IN ('r', 'p') AND (nspname ~ '^pg_temp_') IS NOT TRUE
    ORDER BY relname;
+_ivorysql_ora_exception_map|t
 a|f
 a_star|f
 aggtest|f

@@ -31,6 +31,9 @@
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 #include "pl_udt_type.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#include "pl_udt_exception.h"
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
@@ -75,6 +78,13 @@ int			plisql_extra_errors;
 bool		plisql_close_unused_cursor = true;
 bool		plisql_cursor_name_exclude_oid = false;
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+bool		plisql_sqlerrm_use_oracle = true;
+bool		plisql_name_composite_type_var_assign_check = true;
+bool		plisql_default_into_strict = true;
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 
 /* Hook for plugins */
@@ -237,7 +247,29 @@ _PG_init(void)
 							 PGC_USERSET, 0,
 							 NULL, NULL, NULL);
 	/* End - ReqID:SRS-PLSQL-CURSOR */
-
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	DefineCustomBoolVariable("plisql.plisql_sqlerrm_use_oracle",
+							 gettext_noop("Wether sqlerrm use message like oracle."),
+							 NULL,
+							 &plisql_sqlerrm_use_oracle,
+							 true,
+							 PGC_USERSET, 0,
+							 NULL, NULL, NULL);
+	DefineCustomBoolVariable("plisql.plisql_name_composite_type_var_assign_check",
+							 gettext_noop("Wether allow variables of composite types to be checked within variables."),
+							 NULL,
+							 &plisql_name_composite_type_var_assign_check,
+							 true,
+							 PGC_USERSET, 0,
+							 NULL, NULL, NULL);
+	DefineCustomBoolVariable("plisql.plisql_default_into_strict",
+							 gettext_noop("Default into followed strict."),
+							 NULL,
+							 &plisql_default_into_strict,
+							 true,
+							 PGC_USERSET, 0,
+							 NULL, NULL, NULL);
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	EmitWarningsOnPlaceholders("plisql");
 
 	plisql_HashTableInit();
@@ -323,7 +355,12 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	if (SPI_is_first_plisql())
+	{
 		plisql_init_sql_cursor();
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		init_plisql_error_stack();
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+	}
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Must save and restore prior value of cur_estate */
@@ -441,7 +478,12 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	if (SPI_is_first_plisql())
+	{
 		plisql_init_sql_cursor();
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		init_plisql_error_stack();
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+	}
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Begin - ReqID:SRS-SQL-ANONYOUT */
@@ -783,6 +825,7 @@ plisql_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+
 /* Begin - BUG#M0000376 */
 /* ----------
  * plisql_validator_inline
@@ -814,3 +857,104 @@ plisql_validator_inline(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 /* End - BUG#M0000346 */
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * support sqlcode and sqlerrm are used out of exception block
+ */
+PG_FUNCTION_INFO_V1(plisql_sqlcode);
+
+Datum
+plisql_sqlcode(PG_FUNCTION_ARGS)
+{
+	int 	sqlcode;
+
+	sqlcode = get_current_sqlcode_sqlerrm(NULL);
+
+	PG_RETURN_INT32(sqlcode);
+
+}
+
+
+PG_FUNCTION_INFO_V1(plisql_sqlerrm);
+
+Datum
+plisql_sqlerrm(PG_FUNCTION_ARGS)
+{
+	int 	sqlcode;
+	char 	*sqlerrm = NULL;
+
+	sqlcode = get_current_sqlcode_sqlerrm(&sqlerrm);
+
+	if (sqlcode == 0)
+		PG_RETURN_TEXT_P(cstring_to_text("IVY-0000: normal, successful completion"));
+	else if (sqlerrm != NULL)
+		PG_RETURN_TEXT_P(cstring_to_text(sqlerrm));
+	else
+	{
+		PG_RETURN_TEXT_P(cstring_to_text(plisql_recognize_err_message_int(sqlcode)));
+	}
+}
+
+PG_FUNCTION_INFO_V1(plisql_sqlerrm_int4);
+
+Datum
+plisql_sqlerrm_int4(PG_FUNCTION_ARGS)
+{
+	int		sqlcode;
+
+	sqlcode = (int)PG_GETARG_INT32(0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(plisql_recognize_err_message_int(sqlcode)));
+}
+
+PG_FUNCTION_INFO_V1(plisql_raise_application_error);
+
+
+PG_FUNCTION_INFO_V1(plisql_error_stack);
+
+Datum
+plisql_error_stack(PG_FUNCTION_ARGS)
+{
+	char *errmsg;
+
+	errmsg = format_error_stack_msg();
+
+	if (errmsg == NULL)
+		PG_RETURN_NULL();
+	else
+		PG_RETURN_TEXT_P(cstring_to_text(errmsg));
+}
+
+
+Datum
+plisql_raise_application_error(PG_FUNCTION_ARGS)
+{
+	int	sqlcode;
+	text	*msg;
+	StringInfoData data;
+	int	pgsqlcode;
+	char *errmsg;
+	bool keeperrorstack;
+
+	sqlcode = (int)PG_GETARG_INT32(0);
+	msg = PG_GETARG_TEXT_P(1);
+	keeperrorstack = PG_GETARG_BOOL(2);
+	errmsg = TextDatumGetCString(msg);
+
+	pgsqlcode = plisql_get_exception_pgerrcode(CurrentMemoryContext,
+									sqlcode,
+									NULL);
+	initStringInfo(&data);
+	appendStringInfo(&data, "IVY%d: %s", sqlcode, errmsg);
+	pfree(errmsg);
+
+	/* raise error */
+	ereport(ERROR,
+			(errcode(pgsqlcode),
+			 errmsg_internal("%s", data.data),
+			 err_generic_nokeeperrorstack(keeperrorstack)));
+	return (Datum) 0;
+}
+/* End - ReqID:SRS-PLSQL-EXCEPTION */

@@ -1,6 +1,8 @@
 --
 -- visibility column test
 --
+SET plisql.plisql_name_composite_type_var_assign_check = false;
+
 CREATE TABLE tab1 (id NUMBER,description VARCHAR2(50) INVISIBLE);
 \d tab1
 INSERT INTO tab1 VALUES (1);

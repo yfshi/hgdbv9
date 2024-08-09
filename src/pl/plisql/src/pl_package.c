@@ -25,6 +25,9 @@
 #include "plisql.h"
 #include "pl_package.h"
 #include "pl_udt_type.h" /* ReqID:SRS-PLSQL-CURSOR */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#include "pl_udt_exception.h"
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #include "parser/parse_type.h"
 #include "catalog/pg_package.h"
 #include "catalog/pg_package_body.h"
@@ -85,7 +88,6 @@ static void plisql_check_package_status(PLiSQL_execstate *estate,
 											PLiSQL_pkg_datum *pkgdatum);
 
 static void plisql_check_subproc_define_recurse(PLiSQL_function *function, List **already_checks);
-static TupleDesc get_plisql_rec_tupdesc(PLiSQL_rec *rec);
 static void plisql_addpackage_references(PLiSQL_function *func, PackageCacheItem *item);
 static PLiSQL_variable *plisql_build_package_local_variable(const char *refname,
 					int lineno,
@@ -1772,7 +1774,12 @@ plisql_exec_package_init(FunctionCallInfo fcinfo, PLiSQL_function *func)
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	if (SPI_is_first_plisql())
+	{
 		plisql_init_sql_cursor();
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		init_plisql_error_stack();
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+	}
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* Begin - BUG#M0000227 */
@@ -1988,7 +1995,7 @@ plisql_check_subproc_define_recurse(PLiSQL_function *function, List **already_ch
 /*
  * get Tupdesc for record variable
  */
-static TupleDesc
+TupleDesc
 get_plisql_rec_tupdesc(PLiSQL_rec *rec)
 {
 	TypeCacheEntry *typentry;
@@ -3553,6 +3560,25 @@ is_compile_standard_package(void)
 	else
 		return false;
 }
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * is compile dbms_standard package ?
+ * dbms_standard package is speical, which can be referenced without
+ * package'name
+ */
+bool
+is_compile_dbms_standard_package(void)
+{
+	if (plisql_saved_compile[0]->item != NULL &&
+		strcmp(plisql_saved_compile[0]->fn_signature, "dbms_standard") == 0)
+		return true;
+	else
+		return false;
+}
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 /*
  * get package specification subprocs

@@ -1,5 +1,6 @@
 --test implicit cursor
 --ok
+SET plisql.plisql_default_into_strict = false;
 SET plisql.plisql_cursor_name_exclude_oid = true;
 CREATE TABLE departments(department_id integer,
 department_name varchar2(256),location_id number(38, 0));

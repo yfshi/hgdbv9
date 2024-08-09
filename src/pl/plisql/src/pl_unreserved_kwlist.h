@@ -80,6 +80,9 @@ PG_KEYWORD("elsif", K_ELSIF)
 PG_KEYWORD("errcode", K_ERRCODE)
 PG_KEYWORD("error", K_ERROR)
 PG_KEYWORD("exception", K_EXCEPTION)
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+PG_KEYWORD("exception_init", K_EXCEPTION_INIT)
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 PG_KEYWORD("exit", K_EXIT)
 PG_KEYWORD("fetch", K_FETCH)
 PG_KEYWORD("first", K_FIRST)
@@ -117,6 +120,9 @@ PG_KEYWORD("pg_exception_hint", K_PG_EXCEPTION_HINT)
 /* Begin - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("pipelined", K_PIPELINED)
 /* End - SRS-PLSQL-SUBPROC */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+PG_KEYWORD("pragma", K_PRAGMA)
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 PG_KEYWORD("print_strict_params", K_PRINT_STRICT_PARAMS)
 PG_KEYWORD("prior", K_PRIOR)
 PG_KEYWORD("query", K_QUERY)

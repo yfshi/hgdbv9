@@ -12,25 +12,6 @@ $$ language plisql;
 
 SET ivorysql.allow_out_parameter_const = true;
 
---test sys.standard package
-CREATE OR REPLACE package sys.standard IS
-BINARY_FLOAT_NAN constant BINARY_FLOAT;
-  BINARY_FLOAT_INFINITY constant BINARY_FLOAT;
-  BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT;
-  BINARY_DOUBLE_NAN constant BINARY_DOUBLE;
-  BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE;
-end;
-/
-
-GRANT EXECUTE ON package sys.standard TO public;
-
 --ok
 create or replace package test_pkg is
   var1 integer;
@@ -3471,6 +3452,7 @@ create or replace package body dwdai_pkg is
  end;
 end;
 /
+SET plisql.plisql_default_into_strict = false;
 
 begin
   call dwdai_pkg.test(23);
@@ -5308,22 +5290,6 @@ CREATE OR REPLACE package test_schema.standard IS
 end;
 /
 
---success
-CREATE OR REPLACE package sys.standard IS
-  standard_var1 integer;
-  FUNCTION test_f(id integer) RETURN integer;
-end;
-/
-
-CREATE OR REPLACE package body sys.standard IS
-  var2 integer;
-  FUNCTION test_f(id integer) RETURN integer IS
-  BEGIN
-     raise info 'standard func';
-	 RETURN 23;
-  end;
-end;
-/
 
 --rename failed
 ALTER package sys.standard rename TO pkg;
@@ -5331,33 +5297,38 @@ ALTER package sys.standard rename TO pkg;
 --set scheam failed
 ALTER package sys.standard SET schema test_schema;
 
---ok
-DECLARE
-  var2 integer;
 BEGIN
-  standard_var1 := 23;
-  raise info '%', standard_var1;
+	raise info '%',BINARY_FLOAT_NAN;
+	raise info '%',BINARY_FLOAT_INFINITY;
+	raise info '%',BINARY_FLOAT_MAX_NORMAL;
+	raise info '%',BINARY_FLOAT_MIN_NORMAL;
+	raise info '%',BINARY_FLOAT_MAX_SUBNORMAL;
+	raise info '%',BINARY_FLOAT_MIN_SUBNORMAL;
+	raise info '%',BINARY_DOUBLE_NAN;
+	raise info '%',BINARY_DOUBLE_INFINITY;
+	raise info '%',BINARY_DOUBLE_MAX_NORMAL;
+	raise info '%',BINARY_DOUBLE_MAX_SUBNORMAL;
+	raise info '%',BINARY_DOUBLE_MIN_NORMAL;
+	raise info '%',BINARY_DOUBLE_MIN_SUBNORMAL;
 end;
 /
 
-
---ok
 BEGIN
-  raise info '%', standard_var1;
+	raise info '%',standard.BINARY_FLOAT_NAN;
+	raise info '%',standard.BINARY_FLOAT_INFINITY;
+	raise info '%',standard.BINARY_FLOAT_MAX_NORMAL;
+	raise info '%',standard.BINARY_FLOAT_MIN_NORMAL;
+	raise info '%',standard.BINARY_FLOAT_MAX_SUBNORMAL;
+	raise info '%',standard.BINARY_FLOAT_MIN_SUBNORMAL;
+	raise info '%',standard.BINARY_DOUBLE_NAN;
+	raise info '%',standard.BINARY_DOUBLE_INFINITY;
+	raise info '%',standard.BINARY_DOUBLE_MAX_NORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MAX_SUBNORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MIN_NORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MIN_SUBNORMAL;
 end;
 /
 
-DECLARE
- var1 integer;
-BEGIN
-  var1 := sys.standard.test_f(23);
-  var1 := standard.test_f(23);
-  var1 := test_f(23);
-end;
-/
-
---drop
-DROP package sys.standard;
 DROP SCHEMA test_schema;
 
 --test #option dump

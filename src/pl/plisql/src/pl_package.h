@@ -206,6 +206,10 @@ extern void plisql_compile_package_error_callback(void *arg);
 extern Datum package_datumTransfer(Datum value, bool typByVal,
 							int typLen, bool isnull);
 extern bool is_compile_standard_package(void);
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern bool is_compile_dbms_standard_package(void);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 extern void plisql_get_subprocs_from_package(Oid pkgoid, TupleDesc tupdesc,
 											Tuplestorestate *tupstore);
 extern int plisql_get_subproc_arg_info (FuncExpr *fexpr,
@@ -233,6 +237,10 @@ extern void plisql_pop_compile_global_proper(void);
 extern void plisql_check_package_explicit_cursor_define(PLiSQL_package *psource);
 extern void plisql_handle_package_explicit_cursor_retdesc(int globdno);
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern TupleDesc get_plisql_rec_tupdesc(PLiSQL_rec *rec);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 #endif
 

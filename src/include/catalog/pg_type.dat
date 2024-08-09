@@ -877,6 +877,15 @@
   typtypmod => '-1', typndims => '0', typcollation => '0'},
  /* Begin - ReqID:SRS-PLSQL-RECORD */
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+ { oid => '9050', array_type_oid => '9051',
+  descr => 'compatible with oracle plsql exception',
+  typname => 'exception', typnamespace => 'sys', typlen => '4', typbyval => 't',
+  typcategory => 'N', typinput => 'int4in', typoutput => 'int4out',
+  typreceive => 'int4recv', typsend => 'int4send',
+  typalign => 'i' },
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 /*END Oracle Compatibility Metadatas*/
 
 ]

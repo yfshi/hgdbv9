@@ -24,6 +24,7 @@
 #include "access/tupconvert.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "catalog/heap.h" /* ReqID:SRS-PLSQL-EXCEPTION */
 #include "commands/defrem.h"
 #include "executor/execExpr.h"
 #include "executor/spi.h"
@@ -44,6 +45,9 @@
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 #include "pl_udt_type.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#include "pl_udt_exception.h"
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #include "storage/proc.h"
 #include "tcop/cmdtag.h"
 #include "tcop/pquery.h"
@@ -493,6 +497,13 @@ static void copy_plisql_datums_for_compile(PLiSQL_execstate *estate,
 							PLiSQL_datum **indatums,
 							Size	copiable_size);
 /* End - BUG#M0000376 */
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+static bool errorcode_matches_codelist(int errcode, List *errcodelist);
+static TupleDesc plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
+								PLiSQL_variable *variable);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -1883,12 +1894,47 @@ pop_stmt_mcontext(PLiSQL_execstate *estate)
  * match the current exception?
  */
 static bool
-exception_matches_conditions(ErrorData *edata, PLiSQL_condition *cond)
+exception_matches_conditions(PLiSQL_execstate *estate,
+								ErrorData *edata, PLiSQL_condition *cond)
 {
 	for (; cond != NULL; cond = cond->next)
 	{
 		int			sqlerrstate = cond->sqlerrstate;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		List		*pgerrcoes = NIL;
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		/* match udt exception */
+		if (cond->excepdno != -1)
+		{
+			PLiSQL_datum *datum = estate->datums[cond->excepdno];
+			PLiSQL_datum *func_datum;
+			PLiSQL_var *udt_exception;
+
+			if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+			{
+				PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *) datum;
+				PLiSQL_package *p_source = pkg_datum->item->source;
+
+				udt_exception = (PLiSQL_var *) pkg_datum->pkgvar;
+				Assert(udt_exception->dno < p_source->source.ndatums);
+				func_datum = p_source->source.datums[udt_exception->dno];
+			}
+			else
+			{
+				udt_exception = (PLiSQL_var *) datum;
+				func_datum = estate->func->datums[udt_exception->dno];
+			}
+
+			if (func_datum == edata->excep_datum)
+				return true;
+			if (udt_exception->self_define)
+				continue;
+			sqlerrstate = DatumGetInt32(udt_exception->value);
+			pgerrcoes = udt_exception->pgerrcodes;
+		}
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		/*
 		 * OTHERS matches everything *except* query-canceled and
 		 * assert-failure.  If you're foolish enough, you can match those
@@ -1907,6 +1953,10 @@ exception_matches_conditions(ErrorData *edata, PLiSQL_condition *cond)
 		else if (ERRCODE_IS_CATEGORY(sqlerrstate) &&
 				 ERRCODE_TO_CATEGORY(edata->sqlerrcode) == sqlerrstate)
 			return true;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		else if (errorcode_matches_codelist(edata->sqlerrcode, pgerrcoes))
+			return true;
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	}
 	return false;
 }
@@ -1978,6 +2028,12 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			case PLISQL_DTYPE_VAR:
 				{
 					PLiSQL_var *var = (PLiSQL_var *) datum;
+
+					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+					/* exception doesn't need init */
+					if (ISEXCEPTIONOID(var->datatype->typoid))
+						break;
+					/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 					/*
 					 * Free any old value, in case re-entering block, and
@@ -2103,6 +2159,9 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 		ExprContext *old_eval_econtext = estate->eval_econtext;
 		ErrorData  *save_cur_error = estate->cur_error;
 		MemoryContext stmt_mcontext;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		int			current_error_deep = get_current_error_stack_deep();
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 		estate->err_text = gettext_noop("during statement block entry");
 
@@ -2223,7 +2282,9 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 			{
 				PLiSQL_exception *exception = (PLiSQL_exception *) lfirst(e);
 
-				if (exception_matches_conditions(edata, exception->conditions))
+				if (exception_matches_conditions(estate, /* ReqID:SRS-PLSQL-EXCEPTION */
+												edata,
+												exception->conditions))
 				{
 					/*
 					 * Initialize the magic SQLSTATE and SQLERRM variables for
@@ -2233,6 +2294,12 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 					 */
 					PLiSQL_var *state_var;
 					PLiSQL_var *errm_var;
+					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+					char		*err_msg = NULL;
+					int			sql_code = -1;
+					char		*save_errmsg = NULL;
+					int			saved_sqlcode = -1;
+					/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 					state_var = (PLiSQL_var *)
 						estate->datums[block->exceptions->sqlstate_varno];
@@ -2241,7 +2308,43 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 
 					assign_text_var(estate, state_var,
 									unpack_sql_state(edata->sqlerrcode));
-					assign_text_var(estate, errm_var, edata->message);
+
+					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+					if (plisql_sqlerrm_use_oracle)
+					{
+						if (edata->excep_datum != NULL)
+						{
+							PLiSQL_var *except_datum = (PLiSQL_var *) edata->excep_datum;
+
+							err_msg = except_datum->errormsg;
+							sql_code = except_datum->oraerrcode;
+						}
+						else
+							sql_code = plisql_get_exception_oraerrcode(get_stmt_mcontext(estate),
+																		edata->sqlerrcode,
+																		edata->message,
+																		&err_msg);
+					}
+					else
+					{
+						err_msg = edata->message;
+						sql_code = plisql_get_exception_oraerrcode(get_stmt_mcontext(estate),
+																edata->sqlerrcode,
+																edata->message, NULL);
+					}
+
+					assign_text_var(estate, errm_var, err_msg);
+					pop_error_stack_bydeep(current_error_deep);
+					if (edata->nokeeperrorstack)
+						set_current_error_stack(sql_code,
+									err_msg,
+									&saved_sqlcode,
+									&save_errmsg,
+									false,
+									true);
+					else
+						push_error_stack(sql_code, err_msg);
+					/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 					/*
 					 * Also set up cur_error so the error data is accessible
@@ -2252,6 +2355,16 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 					estate->err_text = NULL;
 
 					rc = exec_stmts(estate, exception->action);
+
+					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+					if (edata->nokeeperrorstack)
+						set_current_error_stack(saved_sqlcode, save_errmsg,
+									NULL, NULL, true, false);
+					else
+						pop_error_stack();
+					if (save_errmsg != NULL)
+						pfree(save_errmsg);
+					/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 					break;
 				}
@@ -4269,6 +4382,65 @@ exec_stmt_raise(PLiSQL_execstate *estate, PLiSQL_stmt_raise *stmt)
 	MemoryContext stmt_mcontext;
 	ListCell   *lc;
 
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	/*
+	 * raise udt exception
+	 */
+	if (stmt->excepdno != -1)
+	{
+		PLiSQL_datum *datum = estate->datums[stmt->excepdno];
+		PLiSQL_var *excep_var;
+		PLiSQL_datum *func_datum;
+
+		/* We'll need to accumulate the various strings in stmt_mcontext */
+		stmt_mcontext = get_stmt_mcontext(estate);
+
+		/* maybe a package datum */
+		/*
+		 * we should use func_datum to map address, because
+		 * it not change during exec
+		 */
+		if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+		{
+			PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *) datum;
+			PLiSQL_package *pkg_source = pkg_datum->item->source;
+
+			excep_var = (PLiSQL_var *) pkg_datum->pkgvar;
+			Assert(excep_var->dno < pkg_source->source.ndatums);
+
+			func_datum = pkg_source->source.datums[excep_var->dno];
+		}
+		else
+		{
+			excep_var = (PLiSQL_var *) datum;
+			func_datum = estate->func->datums[excep_var->dno];
+		}
+
+		/*
+		 * self define use oraerrcode, others
+		 * use pg errcode
+		 */
+		if (excep_var->self_define)
+			err_code = excep_var->oraerrcode;
+		else
+			err_code = DatumGetInt32(excep_var->value);
+
+		Assert(excep_var->errormsg != NULL);
+
+		err_message = MemoryContextStrdup(stmt_mcontext, excep_var->errormsg);
+		ereport(stmt->elog_level,
+			(err_code ? errcode(err_code) : 0,
+			errmsg_internal("%s", err_message),
+			err_generic_exception_datum((void *) func_datum),
+			errcontext("PLi/SQL function %s line %d",
+			estate->func->fn_signature,
+			stmt->lineno)));
+
+		MemoryContextReset(stmt_mcontext);
+		return PLISQL_RC_OK;
+	}
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 	/* RAISE with no parameters: re-throw current exception */
 	if (stmt->condname == NULL && stmt->message == NULL &&
 		stmt->options == NIL)
@@ -5518,6 +5690,7 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 		tuptab = SPI_tuptable;
 		n = SPI_processed;
 
+
 		/* ----------
 		 * Set the target appropriately.
 		 * ----------
@@ -5525,6 +5698,25 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		target = (PLiSQL_variable *) plisql_get_datum(estate,
 							estate->datums[stmt->target->dno]);
+
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		/*
+		 * check target match, doesn't consider pg record
+		 */
+		if (tuptab->tupdesc != NULL &&
+			(target->dtype != PLISQL_DTYPE_REC ||
+			is_plisql_rowtype_record((PLiSQL_rec *) target)))
+		{
+			TupleDesc target_desc;
+
+			oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+			target_desc = plisql_get_tupledesc_fromvar(estate, target);
+			MemoryContextSwitchTo(oldcontext);
+			if (target_desc != NULL)
+				ora_test_tupdesc_match(tuptab->tupdesc, target_desc, true);
+		}
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 		/* End - ReqID:SRS-SQL-PACKAGE */
 		/* Begin - ReqID:SRS-PLSQL-CURSOR */
 		/*
@@ -11410,6 +11602,7 @@ exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row)
 }
 /* End - ReqID:SRS-PLSQL-RECORD */
 
+
 /* Begin - BUG#M0000376 */
 /* ----------
  * Support function for initializing local execution variables.
@@ -11585,3 +11778,173 @@ do_transform_for_anonyblock_expr(PLiSQL_expr *expr)
 	return;
 }
 /* End - BUG#M0000376 */
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * wether errcode mathes errcodelist
+ */
+static bool
+errorcode_matches_codelist(int errcode, List *errcodelist)
+{
+	ListCell *lc;
+
+	foreach (lc, errcodelist)
+	{
+		int sqlerrstate = lfirst_int(lc);
+
+		if (sqlerrstate == 0)
+		{
+			if (errcode != ERRCODE_QUERY_CANCELED &&
+				errcode != ERRCODE_ASSERT_FAILURE)
+				return true;
+		}
+		/* Exact match? */
+		else if (errcode == sqlerrstate)
+			return true;
+		/* Category match? */
+		else if (ERRCODE_IS_CATEGORY(sqlerrstate) &&
+				 ERRCODE_TO_CATEGORY(errcode) == sqlerrstate)
+			return true;
+	}
+
+	return false;
+}
+
+
+/*
+ * get tuple desc from variable
+ */
+static TupleDesc
+plisql_get_tupledesc_fromvar(PLiSQL_execstate *estate,
+							PLiSQL_variable *variable)
+{
+	TupleDesc retdesc = NULL;
+
+	switch (variable->dtype)
+	{
+		case PLISQL_DTYPE_REC:
+			{
+				PLiSQL_rec *rec = (PLiSQL_rec *) variable;
+
+				if (rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+				{
+					PLiSQL_explicit_cursor_type *cursor_type;
+
+					cursor_type = (PLiSQL_explicit_cursor_type *) rec->datatype;
+					retdesc = cursor_type->retdesc;
+				}
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				else if (rec->erh != NULL)
+					retdesc = expanded_record_get_tupdesc(rec->erh);
+				else
+					retdesc = get_plisql_rec_tupdesc(rec);
+				/* End - ReqID:SRS-PLSQL-RECORD */
+			}
+			break;
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *) variable;
+
+				return plisql_get_tupledesc_fromvar(estate,
+								(PLiSQL_variable *) pkg_datum->pkgvar);
+			}
+			break;
+		case PLISQL_DTYPE_ORA_RECORD:
+		case PLISQL_DTYPE_ROW:
+			{
+				PLiSQL_row *row = (PLiSQL_row *) variable;
+
+				return row->rowtupdesc;
+			}
+			break;
+		case PLISQL_DTYPE_RECFIELD:
+			{
+				PLiSQL_recfield *recfield = (PLiSQL_recfield *) variable;
+				PLiSQL_rec *rec;
+				TupleDesc rectupdesc = NULL;
+
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				if (is_package_global_var((PLiSQL_variable *)recfield))
+					rec = (PLiSQL_rec *) get_package_datum_bydno(estate,
+												recfield->pkgoid,
+												recfield->recparentno);
+				else
+					rec = (PLiSQL_rec *) (estate->datums[recfield->recparentno]);
+				if (rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+				{
+					PLiSQL_explicit_cursor_type *cursor_type;
+
+					cursor_type = (PLiSQL_explicit_cursor_type *) rec->datatype;
+					rectupdesc = cursor_type->retdesc;
+				}
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				else if (rec->erh != NULL)
+					rectupdesc = expanded_record_get_tupdesc(rec->erh);
+				else
+					rectupdesc = get_plisql_rec_tupdesc(rec);
+				if (rectupdesc != NULL)
+				{
+					int fno;
+					Oid typeid = InvalidOid;
+
+					/* First, check user-defined attributes */
+					for (fno = 0; fno < rectupdesc->natts; fno++)
+					{
+						Form_pg_attribute attr;
+
+						attr = TupleDescAttr(rectupdesc, fno);
+						if (namestrcmp(&attr->attname, recfield->fieldname) == 0 &&
+							!attr->attisdropped && attr->attisvisible)	/* ReqID:SRS-SQL-INVISIBLECOL */
+						{
+							typeid = attr->atttypid;
+							break;
+						}
+					}
+
+					/* How about system attributes? */
+					if (typeid == InvalidOid)
+					{
+						const FormData_pg_attribute *sysattr;
+
+						sysattr = SystemAttributeByName(recfield->fieldname);
+						if (sysattr != NULL)
+							typeid = sysattr->atttypid;
+					}
+					if (OidIsValid(typeid))
+					{
+						TypeCacheEntry *typentry;
+
+						/* doesn't consider recordoid and invalidoid */
+						if (typeid == RECORDOID)
+							return NULL;
+
+						/*
+						 * Consult the typcache to see if it's a domain over composite, and in
+						 * any case to get the tupdesc and tupdesc identifier.
+						 */
+						typentry = lookup_type_cache(typeid,
+														 TYPECACHE_TUPDESC |
+														 TYPECACHE_DOMAIN_BASE_INFO);
+						if (typentry->typtype == TYPTYPE_DOMAIN)
+						{
+							typentry = lookup_type_cache(typentry->domainBaseType,
+														 TYPECACHE_TUPDESC);
+						}
+						if (typentry->tupDesc == NULL)
+							ereport(ERROR,
+									(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+									 errmsg("type %s is not composite",
+											format_type_be(rec->rectypeid))));
+						return typentry->tupDesc;
+					}
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
+	return retdesc;
+}
+/* End - ReqID:SRS-PLSQL-EXCEPTION */

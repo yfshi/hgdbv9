@@ -3552,6 +3552,10 @@ _outValue(StringInfo str, const Value *value)
 		case T_Integer:
 			appendStringInfo(str, "%d", value->val.ival);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_BFloat: /* BUG:Z093 */
+		case T_BDouble: /* BUG:Z093 */
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		case T_Float:
 
 			/*

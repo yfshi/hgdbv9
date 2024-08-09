@@ -2,6 +2,8 @@
 -- Tests for PL/iSQL handling of composite (record) variables
 --
 
+SET plisql.plisql_name_composite_type_var_assign_check = false;
+
 create type two_int4s as (f1 int4, f2 int4);
 create type two_int8s as (q1 int8, q2 int8);
 create type nested_int8s as (c1 two_int8s, c2 two_int8s);

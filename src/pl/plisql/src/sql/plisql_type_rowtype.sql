@@ -2592,6 +2592,8 @@ insert into tb1 values(1,'sam',20);
 insert into tb1 values(2,'amy',30);
 create table tb2(id int,name varchar(5));
 
+SET plisql.plisql_name_composite_type_var_assign_check = false;
+
 --successfully
 declare
   var1 tb2%rowtype;

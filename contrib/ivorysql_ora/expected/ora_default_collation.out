@@ -1,4 +1,5 @@
 -- 1
+set plisql.plisql_default_into_strict = false;
 CREATE OR REPLACE FUNCTION check_column_collation(tablename varchar2(1024), colname varchar2(1024)) 
 RETURN varchar2(1024)
 IS

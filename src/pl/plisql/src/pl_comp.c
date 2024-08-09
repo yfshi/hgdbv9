@@ -34,6 +34,9 @@
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 #include "pl_udt_type.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#include "pl_udt_exception.h"
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
@@ -2342,13 +2345,115 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 			}
 		}
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		else if (!is_compile_standard_package())
+		else
 		{
-			/*
-			 * handle var come from standard.xxx
-			 * maybe a udt type construct func like udt_type(xx)
-			 * so we should parse package entry
-			 */
+			/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+			if (!is_compile_standard_package())
+			{
+				/*
+				 * handle var come from standard.xxx
+				 * maybe a udt type construct func like udt_type(xx)
+				 * so we should parse package entry
+				 */
+				PkgEntry *entry;
+				size_t len = 8 + strlen(word1) + 2;
+				char *refname = (char *) palloc0(len);
+				List *idents =  list_make2(makeString("standard"),
+							makeString(word1));
+
+				snprintf(refname, len, "standard.%s", word1);
+
+				entry = plisql_parse_package_entry(refname, -1, idents, true, true);
+				pfree(refname);
+				if (entry != NULL)
+				{
+					switch (entry->type)
+					{
+						case PKG_VAR:
+							wdatum->datum = (PLiSQL_datum *) entry->value;
+							wdatum->ident = word1;
+							wdatum->quoted = false;
+							wdatum->idents = NIL;
+							wdatum->nname_used = 1;
+							/* add namespace */
+							if (plisql_ns_lookup(plisql_ns_top(), true,
+								word1, NULL, NULL,
+								NULL) == NULL)
+								add_parameter_name(PLISQL_NSTYPE_VAR, wdatum->datum->dno, word1);
+							return true;
+							break;
+						case PKG_TYPE:
+							break;
+						default:
+							break;
+					}
+					pfree(entry);
+				}
+			}
+			if (!is_compile_dbms_standard_package())
+			{
+				/*
+				 * handle var come from dbms_standard.xxx
+				 * maybe a udt type construct func like udt_type(xx)
+				 * so we should parse package entry
+				 */
+				PkgEntry *entry;
+				size_t len = 13 + strlen(word1) + 2;
+				char *refname = (char *) palloc0(len);
+				List *idents =  list_make2(makeString("dbms_standard"),
+							makeString(word1));
+
+				snprintf(refname, len, "dbms_standard.%s", word1);
+
+				entry = plisql_parse_package_entry(refname, -1, idents, true, true);
+				pfree(refname);
+				if (entry != NULL)
+				{
+					switch (entry->type)
+					{
+						case PKG_VAR:
+							wdatum->datum = (PLiSQL_datum *) entry->value;
+							wdatum->ident = word1;
+							wdatum->quoted = false;
+							wdatum->idents = NIL;
+							wdatum->nname_used = 1;
+							/* add namespace */
+							if (plisql_ns_lookup(plisql_ns_top(), true,
+								word1, NULL, NULL,
+								NULL) == NULL)
+								add_parameter_name(PLISQL_NSTYPE_VAR, wdatum->datum->dno, word1);
+							return true;
+							break;
+						case PKG_TYPE:
+							break;
+						default:
+							break;
+					}
+					pfree(entry);
+				}
+			}
+			/* End - ReqID:SRS-PLSQL-EXCEPTION */
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
+	}
+
+	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/*
+	 * there, make sure the local namespace has not found or
+	 * we lookup standard'package first than local, which will
+	 * result mistake.
+	 * for example: exit when not found which then found, we
+	 * mustn't use standard'found
+	 */
+	if (lookup &&
+		plisql_IdentifierLookup != IDENTIFIER_LOOKUP_DECLARE &&
+		plisql_ns_lookup(plisql_ns_top(), false,
+							   word1, NULL, NULL,
+							   NULL) == NULL)
+	{
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		if (!is_compile_standard_package())
+		{
 			PkgEntry *entry;
 			size_t len = 8 + strlen(word1) + 2;
 			char *refname = (char *) palloc0(len);
@@ -2373,7 +2478,9 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 						if (plisql_ns_lookup(plisql_ns_top(), true,
 							word1, NULL, NULL,
 							NULL) == NULL)
-							add_parameter_name(PLISQL_NSTYPE_VAR, wdatum->datum->dno, word1);
+							add_parameter_name(PLISQL_NSTYPE_VAR,
+											wdatum->datum->dno,
+											word1);
 						return true;
 						break;
 					case PKG_TYPE:
@@ -2384,60 +2491,46 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 				pfree(entry);
 			}
 		}
-		/* End - ReqID:SRS-SQL-PACKAGE */
-	}
-
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	/*
-	 * there, make sure the local namespace has not found or
-	 * we lookup standard'package first than local, which will
-	 * result mistake.
-	 * for example: exit when not found which then found, we
-	 * mustn't use standard'found
-	 */
-	if (lookup &&
-		plisql_IdentifierLookup != IDENTIFIER_LOOKUP_DECLARE &&
-		!is_compile_standard_package() &&
-		plisql_ns_lookup(plisql_ns_top(), false,
-							   word1, NULL, NULL,
-							   NULL) == NULL)
-	{
-		PkgEntry *entry;
-		size_t len = 8 + strlen(word1) + 2;
-		char *refname = (char *) palloc0(len);
-		List *idents =  list_make2(makeString("standard"),
-					makeString(word1));
-
-		snprintf(refname, len, "standard.%s", word1);
-
-		entry = plisql_parse_package_entry(refname, -1, idents, true, true);
-		pfree(refname);
-		if (entry != NULL)
+		if (!is_compile_dbms_standard_package())
 		{
-			switch (entry->type)
+			PkgEntry *entry;
+			size_t len = 13 + strlen(word1) + 2;
+			char *refname = (char *) palloc0(len);
+			List *idents =  list_make2(makeString("dbms_standard"),
+						makeString(word1));
+
+			snprintf(refname, len, "dbms_standard.%s", word1);
+
+			entry = plisql_parse_package_entry(refname, -1, idents, true, true);
+			pfree(refname);
+			if (entry != NULL)
 			{
-				case PKG_VAR:
-					wdatum->datum = (PLiSQL_datum *) entry->value;
-					wdatum->ident = word1;
-					wdatum->quoted = false;
-					wdatum->idents = NIL;
-					wdatum->nname_used = 1;
-					/* add namespace */
-					if (plisql_ns_lookup(plisql_ns_top(), true,
-						word1, NULL, NULL,
-						NULL) == NULL)
-						add_parameter_name(PLISQL_NSTYPE_VAR,
-										wdatum->datum->dno,
-										word1);
-					return true;
-					break;
-				case PKG_TYPE:
-					break;
-				default:
-					break;
+				switch (entry->type)
+				{
+					case PKG_VAR:
+						wdatum->datum = (PLiSQL_datum *) entry->value;
+						wdatum->ident = word1;
+						wdatum->quoted = false;
+						wdatum->idents = NIL;
+						wdatum->nname_used = 1;
+						/* add namespace */
+						if (plisql_ns_lookup(plisql_ns_top(), true,
+							word1, NULL, NULL,
+							NULL) == NULL)
+							add_parameter_name(PLISQL_NSTYPE_VAR,
+											wdatum->datum->dno,
+											word1);
+						return true;
+						break;
+					case PKG_TYPE:
+						break;
+					default:
+						break;
+				}
+				pfree(entry);
 			}
-			pfree(entry);
 		}
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
@@ -3191,6 +3284,22 @@ plisql_parse_wordtype(char *ident)
 		list_free(idents);
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	/*
+	 * maybe type comes from dbms_standard pacakge
+	 */
+	if (!is_compile_dbms_standard_package())
+	{
+		idents = list_make2(makeString("dbms_standard"), makeString(ident));
+		if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+				parse_by_var_type, true)) != NULL)
+		{
+			list_free(idents);
+			return dtype;
+		}
+		list_free(idents);
+	}
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 	/*
 	 * Word wasn't found in the namespace stack. Try to find a data type with
@@ -3486,25 +3595,46 @@ plisql_parse_wordrowtype(char *ident)
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	typname = typeStringToTypeName(ident);
-	if (list_length(typname->names) < 2 &&
-		!is_compile_standard_package())
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	if (list_length(typname->names) < 2)
 	{
-		/* may be a standard.type */
-		size_t len = 8 + strlen(ident) + 2;
-		char *refname = (char *) palloc0(len);
-
-		snprintf(refname, len, "standard.%s", ident);
 		pfree(typname);
-		typname = typeStringToTypeName(refname);
-		pfree(refname);
-		missing_ok = true;
+		if (!is_compile_standard_package())
+		{
+			/* may be a standard.type */
+			size_t len = 8 + strlen(ident) + 2;
+			char *refname = (char *) palloc0(len);
+
+			snprintf(refname, len, "standard.%s", ident);
+			typname = typeStringToTypeName(refname);
+			pfree(refname);
+			missing_ok = true;
+			result = plisql_parse_package_type(typname, parse_by_var_rowtype, missing_ok);
+			pfree(typname);
+			if (result != NULL)
+				return result;
+		}
+
+		/* lookup dbms_standard package */
+		if (!is_compile_dbms_standard_package())
+		{
+			/* may be a standard.type */
+			size_t len = 13 + strlen(ident) + 2;
+			char *refname = (char *) palloc0(len);
+
+			snprintf(refname, len, "dbms_standard.%s", ident);
+			typname = typeStringToTypeName(refname);
+			pfree(refname);
+			missing_ok = true;
+			result = plisql_parse_package_type(typname, parse_by_var_rowtype, missing_ok);
+			pfree(typname);
+			if (result != NULL)
+				return result;
+		}
 	}
-	result = plisql_parse_package_type(typname, parse_by_var_rowtype, missing_ok);
-	if (result != NULL)
-	{	pfree(typname);
-		return result;
-	}
-	pfree(typname);
+	else
+		pfree(typname);
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/*
@@ -3730,6 +3860,16 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 					var->cursor_rettype_tupledesc = cursor_type->rettype_tupdesc;
 				}
 				/* End - ReqID:SRS-PLSQL-CURSOR */
+				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+				if (ISEXCEPTIONOID(dtype->typoid))
+				{
+					var->self_define = true;
+					var->errormsg = pstrdup(PLISQL_UDT_EXCEPTION_DEFAULT_ERRMSG);
+					var->value = Int32GetDatum(PLISQL_UDT_EXCEPTION_DEFAULT_SQLCODE);
+					var->oraerrcode = PLISQL_UDT_EXCEPTION_DEFAULT_SQLCODE;
+					var->isnull = false;
+				}
+				/* End - ReqID:SRS-PLSQL-EXCEPTION */
 				result = (PLiSQL_variable *) var;
 				break;
 			}
@@ -4189,6 +4329,9 @@ plisql_parse_err_condition(char *condname)
 		new->sqlerrstate = 0;
 		new->condname = condname;
 		new->next = NULL;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		new->excepdno = -1;
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		return new;
 	}
 
@@ -4201,6 +4344,9 @@ plisql_parse_err_condition(char *condname)
 			new->sqlerrstate = exception_label_map[i].sqlerrstate;
 			new->condname = condname;
 			new->next = prev;
+			/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+			new->excepdno = -1;
+			/* End - ReqID:SRS-PLSQL-EXCEPTION */
 			prev = new;
 		}
 	}
@@ -5123,3 +5269,86 @@ plisql_add_type_referenced_objects(TypeName *typeName)
 }
 
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * get errcode match errormsg
+ */
+const char *
+plisql_recognize_err_message_int(int oraerrcode)
+{
+	char *errmsg = NULL;
+	int i;
+
+	if (oraerrcode == PLISQL_UDT_EXCEPTION_DEFAULT_SQLCODE)
+		return PLISQL_UDT_EXCEPTION_DEFAULT_ERRMSG;
+	else if (oraerrcode == 0)
+		return "IVY-0000: normal, successful completion";
+
+	plisql_get_exception_pgerrcode(CurrentMemoryContext,
+												oraerrcode,
+												&errmsg);
+	if (errmsg != NULL)
+		return errmsg;
+
+	/* doesn't found, should map pg message */
+	for (i = 0; exception_label_map[i].label != NULL; i++)
+	{
+		if (exception_label_map[i].sqlerrstate == oraerrcode)
+			return exception_label_map[i].label;
+	}
+
+	/* not map, we report oracle error msg */
+	if (oraerrcode == 100)
+		return pstrdup("IVY-01403: no data found");
+	else if (oraerrcode > 0)
+	{
+		StringInfoData data;
+
+		initStringInfo(&data);
+		appendStringInfo(&data, "-%d:non-IVORYSQL exception", oraerrcode);
+
+		errmsg = data.data;
+	}
+	/* -20999 ~ -20000 */
+	else if (oraerrcode <= -20000 && oraerrcode >= -20999)
+	{
+		int sqlcode;
+		char *sqlerrm;
+
+		/*
+		 * raise_application_error may be has invoke, so we
+		 * get current statck error message
+		 */
+		sqlcode = get_current_sqlcode_sqlerrm(&sqlerrm);
+		if (sqlcode == oraerrcode && sqlerrm != NULL)
+			errmsg = sqlerrm;
+		else
+		{
+			StringInfoData data;
+
+			initStringInfo(&data);
+			appendStringInfo(&data, "IVY%d:",
+					oraerrcode);
+
+			errmsg = data.data;
+		}
+	}
+	else
+	{
+		StringInfoData data;
+
+		initStringInfo(&data);
+		appendStringInfo(&data, "IVY%d: Message %d not found"
+				";product=RDBMS;facility=IVY",
+				oraerrcode,
+				0 - oraerrcode);
+
+		errmsg = data.data;
+	}
+
+	return errmsg;
+}
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+

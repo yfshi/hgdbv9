@@ -358,6 +358,11 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 	oid == REFCURSOROID)
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#define ISEXCEPTIONOID(oid) (oid == EXCEPTIONOID)
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+
 /*
  * Backwards compatibility for ancient random spellings of pg_type OID macros.
  * Don't use these names in new code.

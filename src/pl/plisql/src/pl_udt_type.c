@@ -164,6 +164,11 @@ is_plisql_rowtype_record(PLiSQL_rec *rec)
 		rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
 		return true;
 
+	/* table%rowtype */
+	if (plisql_name_composite_type_var_assign_check &&
+		rec->rectypeid != RECORDOID)
+		return true;
+
 	return false;
 }
 

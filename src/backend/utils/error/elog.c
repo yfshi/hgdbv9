@@ -1380,6 +1380,44 @@ err_generic_string(int field, const char *str)
 	return 0;					/* return value does not matter */
 }
 
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * set udt_exception var address
+ */
+int
+err_generic_exception_datum(void *excepdatum)
+{
+	ErrorData  *edata = &errordata[errordata_stack_depth];
+
+	/* we don't bother incrementing recursion_depth */
+	CHECK_STACK_DEPTH();
+
+	edata->excep_datum = excepdatum;
+
+	return 0;
+}
+
+
+/*
+ * set nokeeperrorstack
+ */
+int
+err_generic_nokeeperrorstack(bool keeperrorstack)
+{
+	ErrorData  *edata = &errordata[errordata_stack_depth];
+
+	/* we don't bother incrementing recursion_depth */
+	CHECK_STACK_DEPTH();
+
+	edata->nokeeperrorstack = !keeperrorstack;
+
+	return 0;
+}
+
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+
 /*
  * set_errdata_field --- set an ErrorData string field
  */

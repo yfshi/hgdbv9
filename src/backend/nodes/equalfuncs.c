@@ -3352,6 +3352,10 @@ _equalValue(const Value *a, const Value *b)
 		case T_Float:
 		case T_String:
 		case T_BitString:
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_BFloat: /* BUG:Z093 */
+		case T_BDouble: /* BUG:Z093 */
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 			COMPARE_STRING_FIELD(val.str);
 			break;
 		case T_Null:
@@ -3612,6 +3616,10 @@ equal(const void *a, const void *b)
 		case T_String:
 		case T_BitString:
 		case T_Null:
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_BFloat: /* BUG:Z093 */
+		case T_BDouble: /* BUG:Z093 */
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 			retval = _equalValue(a, b);
 			break;
 

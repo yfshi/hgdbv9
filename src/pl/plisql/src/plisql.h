@@ -382,6 +382,13 @@ typedef struct PLiSQL_var
 	bool		is_explicit_cursor;			/* is a explicit cursor ? */
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	int			oraerrcode; 		/* oracle errcode */
+	char		*errormsg; 			/* error message */
+	bool		self_define;		/* is user define exception */
+	List		*pgerrcodes;		/* oracle errcode map more than one pg errcode */
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	char		info; /* Build the variable for the function argument,
 					   * record the argument mode which may be IN, OUT or IN OUT.
@@ -560,6 +567,9 @@ typedef struct PLiSQL_condition
 {
 	int			sqlerrstate;	/* SQLSTATE code */
 	char	   *condname;		/* condition name (for debugging) */
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	int			excepdno;		/* exception datum'dno */
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	struct PLiSQL_condition *next;
 } PLiSQL_condition;
 
@@ -958,6 +968,9 @@ typedef struct PLiSQL_stmt_raise
 	char	   *message;		/* old-style message format literal, or NULL */
 	List	   *params;			/* list of expressions for old-style message */
 	List	   *options;		/* list of PLiSQL_raise_option */
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	int			excepdno;		/* raise user define exception */
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 } PLiSQL_stmt_raise;
 
 /*
@@ -1339,6 +1352,13 @@ extern bool	plisql_close_unused_cursor;
 extern bool plisql_cursor_name_exclude_oid;
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern bool	plisql_sqlerrm_use_oracle;
+extern bool plisql_name_composite_type_var_assign_check;
+extern bool plisql_default_into_strict;
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+
 
 /* extra compile-time and run-time checks */
 #define PLISQL_XCHECK_NONE						0
@@ -1443,6 +1463,11 @@ extern void plisql_start_datums(void);
 extern void plisql_compile_error_callback(void *arg);
 extern void plisql_finish_datums(PLiSQL_function *function);
 /* End - SRS-PLSQL-SUBPROC */
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern const char * plisql_recognize_err_message_int(int oraerrcode);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */

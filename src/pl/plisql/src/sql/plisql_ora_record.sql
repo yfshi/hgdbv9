@@ -1,4 +1,5 @@
 --create table
+SET plisql.plisql_default_into_strict = false;
 create table employees(employee_id integer, first_name varchar(256),last_name varchar(256),salary integer,job_id integer);
 insert into employees values(1,'zhang','san',200000,1);
 insert into employees values(2,'wang','wu',4000000,2);

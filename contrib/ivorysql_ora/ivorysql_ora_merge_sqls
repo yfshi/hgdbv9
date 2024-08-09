@@ -4,3 +4,6 @@ src/sysview/sysview
 src/xml_functions/xml_functions
 src/nlssort/nlssort
 src/orarefcursor/orarefcursor
+src/ora_exception/ora_exception
+src/builtin_packages/standard/standard
+src/builtin_packages/dbms_standard/dbms_standard
