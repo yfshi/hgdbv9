@@ -755,7 +755,7 @@ create table part_def partition of range_parted default;
  d      | integer        |           |          |         | plain    |              | 
  e      | varchar2(4000) |           |          |         | extended |              | 
 Partition of: range_parted DEFAULT
-Partition constraint: (NOT ((a IS NOT NULL) AND (b IS NOT NULL) AND (((a = 'a'::text) AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR ((a = 'a'::text) AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR ((a = 'b'::text) AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR ((a = 'b'::text) AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR ((a = 'b'::text) AND (b >= '20'::bigint) AND (b < '30'::bigint)))))
+Partition constraint: (NOT ((a IS NOT NULL) AND (b IS NOT NULL) AND ((((a)::text = 'a'::text COLLATE "binary") AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR (((a)::text = 'a'::text COLLATE "binary") AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '20'::bigint) AND (b < '30'::bigint)))))
 
 insert into range_parted values ('c', 9);
 -- ok

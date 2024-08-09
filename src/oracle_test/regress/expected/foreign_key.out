@@ -1130,6 +1130,7 @@ DETAIL:  Key columns "x3" and "id1" are of incompatible types: real and integer.
 -- int4 does not promote to text
 ALTER TABLE fktable ADD CONSTRAINT fk_1_2
 FOREIGN KEY (x1) REFERENCES pktable(id2);
+ERROR:  IVY-02267: column type incompatible with referenced column type
 -- should succeed
 -- int4 promotes to real
 ALTER TABLE fktable ADD CONSTRAINT fk_1_3

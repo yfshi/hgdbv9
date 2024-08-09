@@ -2904,15 +2904,15 @@ SELECT * FROM
           min(salary) OVER (PARTITION BY depname || 'A', depname) depminsalary
    FROM empsalary) emp
 WHERE depname = 'sales';
-                                    QUERY PLAN                                    
-----------------------------------------------------------------------------------
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
  Subquery Scan on emp
    ->  WindowAgg
          ->  WindowAgg
                ->  Sort
-                     Sort Key: (((empsalary.depname)::varchar2 || 'A'::varchar2))
+                     Sort Key: (((empsalary.depname)::varchar2 || 'A'::varchar2)) COLLATE "binary"
                      ->  Seq Scan on empsalary
-                           Filter: (depname = 'sales'::varchar2)
+                           Filter: ((depname)::varchar2(4000) = 'sales'::varchar2)
 (7 rows)
 
 -- pushdown is unsafe because there's a PARTITION BY clause without depname:
@@ -2923,8 +2923,8 @@ SELECT * FROM
           min(salary) OVER (PARTITION BY depname) depminsalary
    FROM empsalary) emp
 WHERE depname = 'sales';
-                      QUERY PLAN                       
--------------------------------------------------------
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
  Subquery Scan on emp
    Filter: (emp.depname = 'sales'::varchar2)
    ->  WindowAgg
@@ -2932,7 +2932,7 @@ WHERE depname = 'sales';
                Sort Key: empsalary.enroll_date
                ->  WindowAgg
                      ->  Sort
-                           Sort Key: empsalary.depname
+                           Sort Key: ((empsalary.depname)::varchar2(4000)) COLLATE "binary"
                            ->  Seq Scan on empsalary
 (9 rows)
 
@@ -2944,15 +2944,15 @@ SELECT * FROM
           min(salary) OVER (PARTITION BY depname, empno order by enroll_date) depminsalary
    FROM empsalary) emp
 WHERE depname = 'sales';
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
  Subquery Scan on emp
    ->  WindowAgg
          ->  WindowAgg
                ->  Sort
                      Sort Key: empsalary.empno, empsalary.enroll_date
                      ->  Seq Scan on empsalary
-                           Filter: (depname = 'sales'::varchar2)
+                           Filter: ((depname)::varchar2(4000) = 'sales'::varchar2)
 (7 rows)
 
 -- Test Sort node reordering
@@ -2961,12 +2961,12 @@ SELECT
   lead(1) OVER (PARTITION BY depname ORDER BY salary, enroll_date),
   lag(1) OVER (PARTITION BY depname ORDER BY salary,enroll_date,empno)
 FROM empsalary;
-                         QUERY PLAN                          
--------------------------------------------------------------
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
  WindowAgg
    ->  WindowAgg
          ->  Sort
-               Sort Key: depname, salary, enroll_date, empno
+               Sort Key: ((depname)::varchar2(4000)) COLLATE "binary", salary, enroll_date, empno
                ->  Seq Scan on empsalary
 (5 rows)
 
@@ -2981,17 +2981,17 @@ SELECT * FROM
           row_number() OVER (PARTITION BY depname ORDER BY enroll_date DESC) AS last_emp
    FROM empsalary) emp
 WHERE first_emp = 1 OR last_emp = 1;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                     
+-------------------------------------------------------------------------------------------------------------------
  Subquery Scan on emp
    Filter: ((emp.first_emp = 1) OR (emp.last_emp = 1))
    ->  WindowAgg
          ->  Incremental Sort
-               Sort Key: empsalary.depname, empsalary.enroll_date DESC
-               Presorted Key: empsalary.depname
+               Sort Key: ((empsalary.depname)::varchar2(4000)) COLLATE "binary", empsalary.enroll_date DESC
+               Presorted Key: ((empsalary.depname)::varchar2(4000))
                ->  WindowAgg
                      ->  Sort
-                           Sort Key: empsalary.depname, empsalary.enroll_date
+                           Sort Key: ((empsalary.depname)::varchar2(4000)) COLLATE "binary", empsalary.enroll_date
                            ->  Seq Scan on empsalary
 (10 rows)
 

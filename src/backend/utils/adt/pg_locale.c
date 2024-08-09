@@ -60,9 +60,11 @@
 #include "mb/pg_wchar.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
+#include "utils/guc.h"
 #include "utils/hsearch.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
 #include "utils/syscache.h"
 
@@ -1336,6 +1338,12 @@ lc_collate_is_c(Oid collation)
 		static int	result = -1;
 		char	   *localeptr;
 
+		/* Begin: SRS-SQL-NLSSORT */
+		if (ORA_PARSER == compatible_db &&
+			default_collation_is_c)
+			return true;
+		/* End: SRS-SQL-NLSSORT */
+
 		if (result >= 0)
 			return (bool) result;
 		localeptr = setlocale(LC_COLLATE, NULL);
@@ -1589,6 +1597,13 @@ pg_newlocale_from_collation(Oid collid)
 					 errhint("You need to rebuild PostgreSQL using %s.", "--with-icu")));
 #endif							/* not USE_ICU */
 		}
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		else if(collform->collprovider == COLLPROVIDER_ORACLE)
+		{
+			ReleaseSysCache(tp);
+			return (pg_locale_t) 0;
+		}
+		/* End - Req: SRS-SQL-NLSSORT */
 
 		collversion = SysCacheGetAttr(COLLOID, tp, Anum_pg_collation_collversion,
 									  &isnull);

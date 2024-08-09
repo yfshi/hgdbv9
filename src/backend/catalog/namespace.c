@@ -19,6 +19,8 @@
  */
 #include "postgres.h"
 
+#include <assert.h>
+
 #include "access/htup_details.h"
 #include "access/parallel.h"
 #include "access/xact.h"
@@ -2284,7 +2286,7 @@ OpfamilyIsVisible(Oid opfid)
  *		with the given encoding, return its OID.  Else return InvalidOid.
  */
 static Oid
-lookup_collation(const char *collname, Oid collnamespace, int32 encoding)
+lookup_collation(const char *collname, Oid collnamespace, int32 encoding, bool recurse)
 {
 	Oid			collid;
 	HeapTuple	colltup;
@@ -2309,7 +2311,26 @@ lookup_collation(const char *collname, Oid collnamespace, int32 encoding)
 							  Int32GetDatum(-1),
 							  ObjectIdGetDatum(collnamespace));
 	if (!HeapTupleIsValid(colltup))
+	{
+		/*
+		 * Begin - Req:SRS-SQL-NLSSORT 
+		 * First, oracle can use uppercase, lowercase or mixed case when assign a collation name.
+		 * Second, if identifier_case_switch == INTERCHANGE, ivorysql will trans UPPER string to LOWER, 
+		 * and trans LOWER string to UPPER, if identify name quoted.
+		 */
+		if (ORA_PARSER == compatible_db && recurse)
+		{
+			if(!is_all_lower(collname, strlen(collname)))
+				return lookup_collation(down_character(collname, strlen(collname)), collnamespace, encoding, false);
+			
+			if (!is_all_upper(collname, strlen(collname)))
+				return lookup_collation(upper_character(collname, strlen(collname)), collnamespace, encoding, false);
+		}
+		/* End - Req:SRS-SQL-NLSSORT */
+
 		return InvalidOid;
+	}
+	
 	collform = (Form_pg_collation) GETSTRUCT(colltup);
 	if (collform->collprovider == COLLPROVIDER_ICU)
 	{
@@ -2350,7 +2371,7 @@ CollationGetCollid(const char *collname)
 		if (namespaceId == myTempNamespace)
 			continue;			/* do not look in temp namespace */
 
-		collid = lookup_collation(collname, namespaceId, dbencoding);
+		collid = lookup_collation(collname, namespaceId, dbencoding, true);
 		if (OidIsValid(collid))
 			return collid;
 	}
@@ -4002,7 +4023,7 @@ get_collation_oid(List *name, bool missing_ok)
 		if (missing_ok && !OidIsValid(namespaceId))
 			return InvalidOid;
 
-		colloid = lookup_collation(collation_name, namespaceId, dbencoding);
+		colloid = lookup_collation(collation_name, namespaceId, dbencoding, true);
 		if (OidIsValid(colloid))
 			return colloid;
 	}
@@ -4018,7 +4039,7 @@ get_collation_oid(List *name, bool missing_ok)
 			if (namespaceId == myTempNamespace)
 				continue;		/* do not look in temp namespace */
 
-			colloid = lookup_collation(collation_name, namespaceId, dbencoding);
+			colloid = lookup_collation(collation_name, namespaceId, dbencoding, true);
 			if (OidIsValid(colloid))
 				return colloid;
 		}
@@ -5073,3 +5094,207 @@ get_nondefvalargnumbers(HeapTuple proctup, int pronargs)
 	return nondefargnumbers;
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
+
+/**
+ * Req:SRS-SQL-NLSSORT
+ * 
+ * Transform pseudo-collation to named-collation
+ * 
+ *  ------------------------------------------------------------
+ * | Collation Group |  Key Column Collation  |  Collation Used |
+ * |------------------------------------------------------------|
+ * |                 |  USING_NLS_COMP        |                 |
+ * |  Group 1        |  USING_NLS_SORT        |  BINARY         |
+ * |                 |  USING_NLS_SORT_CS     |                 |
+ * |------------------------------------------------------------|
+ * |  Group 2        |  USING_NLS_SORT_CI     |  BINARY_CI      |
+ * |------------------------------------------------------------|
+ * |  Group 3        |  USING_NLS_SORT_AI     |  BINARY_AI      |
+ *  ------------------------------------------------------------
+ */
+Oid
+IndexCollationPersistent(Oid collid)
+{
+	Oid		realcoll;
+
+	if (ORA_PARSER != compatible_db ||
+		!enable_ora_default_collation)
+	{
+		if (IsPseudoCollation(collid))
+			elog(NOTICE, "do not use pseudo-collation in persistent object");
+
+		return collid;
+	}
+
+	switch(collid) {
+		case ORA_COLL_OID(USING_NLS_COMP):
+		case ORA_COLL_OID(USING_NLS_SORT):
+		case ORA_COLL_OID(USING_NLS_SORT_CS):
+			realcoll = ORA_COLL_OID(BINARY);
+			break;
+		case ORA_COLL_OID(USING_NLS_SORT_AI):
+			realcoll = ORA_COLL_OID(BINARY_AI);
+			break;
+		case ORA_COLL_OID(USING_NLS_SORT_CI):
+			realcoll = ORA_COLL_OID(BINARY_CI);
+			break;
+		default: // other named-collation & pg-collation
+			realcoll = collid;
+			break;
+	}
+
+	return realcoll;
+}
+
+static inline bool
+CollationNameEndWith(const char *collname, const char *suffix) {
+    int32_t clen = strlen(collname);
+    int32_t slen = strlen(suffix);
+
+    for(int32_t i = 0; i < slen; ++i) {
+        if(tolower(collname[clen - 1 - i]) != tolower(suffix[slen - 1 - i]))
+            return false;
+    }
+
+    return true;
+}
+
+/*
+ * If the pseudo-collation is USING_NLS_SORT_CI and the value of NLS_SORT does not end in _CI or _AI, 
+ * then the name of collation to apply is constructed by appending _CI to the value of NLS_SORT. 
+ * 
+ * If the pseudo-collation is USING_NLS_SORT_AI and the value of NLS_SORT does not end in _CI or _AI, 
+ * then the name of collation to apply is constructed by appending _AI to the value of NLS_SORT. If 
+ * the value of NLS_SORT ends in _CI, then the suffix _CI is changed to _AI.
+ * 
+ * If the pseudo-collation is USING_NLS_SORT_CS and the value of NLS_SORT ends in _CI or _AI, then 
+ * the name of collation to apply is constructed by stripping this suffix from the NLS_SORT value.
+ * 
+ * Otherwise, the name of collation to apply is the value of NLS_SORT.
+ */
+static inline Oid 
+OtherPseudoCollationReplace(Oid collid)
+{
+	Oid 	realcoll;
+	int		colllen;
+	char    collname[64];
+
+	assert(collid != ORA_COLL_OID(USING_NLS_COMP));
+
+	switch (collid)
+    {    
+        case ORA_COLL_OID(USING_NLS_SORT):
+            realcoll = nls_sort_oid;
+            break;
+
+        case ORA_COLL_OID(USING_NLS_SORT_CI):
+            strcpy(collname, nls_sort_str);
+
+            /*
+             * If collation name is not end with '_AI' or '_CI', 
+             * then append '_CI' after collation name.
+             */
+            if (!CollationNameEndWith(collname, "_ai") && !CollationNameEndWith(collname, "_ci"))
+                strcat(collname, "_ci");
+            
+            realcoll = CollationGetCollid(collname);
+            break;
+
+        case ORA_COLL_OID(USING_NLS_SORT_AI):
+            strcpy(collname, nls_sort_str);
+
+            colllen = strlen(collname);
+
+            /*
+             * If collation name is end with '_CI',
+             *  then replace '_CI' to '_AI';
+             * If collation name is not end with '_AI' or '_CI', 
+             *  then append '_AI' after collation name;
+             */
+            if(CollationNameEndWith(collname, "_ai")) {
+                
+            } else if (CollationNameEndWith(collname, "_ci")) {
+                collname[colllen - 2] -= 2; //'c' to 'a' and 'C' to 'A'
+            } else {
+                strcat(collname, "_ai");
+            }
+
+            realcoll = CollationGetCollid(collname);
+            break;
+
+        case ORA_COLL_OID(USING_NLS_SORT_CS):
+            strcpy(collname, nls_sort_str);
+
+            colllen = strlen(collname);
+
+            /*
+             * If collation name is end with '_CI' or '_AI',
+             * then delete the suffix.
+             */
+            if (CollationNameEndWith(collname, "_ai") || CollationNameEndWith(collname, "_ci")) 
+                collname[colllen - 3] = '\0';
+
+            realcoll = CollationGetCollid(collname);
+            break;
+
+        default:
+            realcoll = collid;
+            break;
+    }
+
+	if (collid && realcoll == InvalidOid)
+		ereport(ERROR,
+				errmsg("IVY-12702: invalid NLS parameter string used in SQL function"));
+
+	return realcoll;
+}
+
+/*
+ * If NLS_COMP is:
+ * 	 BINARY: 		return with BINARY collation;
+ * 	 LINGUISTIC:	return with NLS_SORT;
+ *   ANSI:			return with BINARY collation.
+ * Such as GROUP BY, CASE, UNIQUE, LIKE, UNION, INTERSECT, MINUS
+ */
+Oid
+PseudoCollationReplace1(Oid collid)
+{
+	if (collid != ORA_COLL_OID(USING_NLS_COMP))
+		return OtherPseudoCollationReplace(collid);
+	
+	if (nls_comp_option == NLS_COMP_LINGUISTIC)
+		return nls_sort_oid;
+	
+	return ORA_COLL_OID(BINARY);
+}
+
+/*
+ * No matter what NLS_COMP value is, just set collation to NLS_SORT.
+ * Such as ORDER BY, DISTINCT, OVER(ORDER BY), OVER(PARTITION BY)
+ */
+Oid
+PseudoCollationReplace2(Oid collid)
+{
+	if (collid != ORA_COLL_OID(USING_NLS_COMP))
+		return OtherPseudoCollationReplace(collid);
+		
+	return nls_sort_oid;
+}
+
+/*
+ * If NLS_COMP is:
+ * 	 BINARY: 		return with BINARY collation;
+ * 	 LINGUISTIC:	return with NLS_SORT;
+ *   ANSI:			return with NLS_SORT.
+ */
+Oid
+PseudoCollationReplace3(Oid collid)
+{
+	if (collid != ORA_COLL_OID(USING_NLS_COMP))
+		return OtherPseudoCollationReplace(collid);
+
+	if (nls_comp_option == NLS_COMP_BINARY)
+		return ORA_COLL_OID(BINARY);
+		
+	return nls_sort_oid;
+}

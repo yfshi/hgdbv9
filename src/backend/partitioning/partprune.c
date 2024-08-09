@@ -37,6 +37,7 @@
 
 #include "access/hash.h"
 #include "access/nbtree.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
 #include "catalog/pg_proc.h"
@@ -1754,7 +1755,7 @@ gen_prune_steps_from_opexps(GeneratePruningStepsContext *context,
  * See also IndexCollMatchesExprColl.
  */
 #define PartCollMatchesExprColl(partcoll, exprcoll) \
-	((partcoll) == InvalidOid || (partcoll) == (exprcoll))
+	((partcoll) == InvalidOid || (partcoll) == IndexCollationPersistent(exprcoll))
 
 /*
  * match_clause_to_partition_key

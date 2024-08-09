@@ -3489,7 +3489,7 @@ _copyAlterTableCmd(const AlterTableCmd *from)
 	/* Begin - BUG:M0000325 */
 	COPY_SCALAR_FIELD(without_copy);
 	/* End - BUG:M0000325 */
-
+	COPY_SCALAR_FIELD(is_create);	/* ReqID:SRS-SQL-NLSSORT */
 
 	return newnode;
 }
@@ -3675,6 +3675,7 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_STRING_FIELD(tablespacename);
 	COPY_STRING_FIELD(accessMethod);
 	COPY_SCALAR_FIELD(if_not_exists);
+	COPY_STRING_FIELD(collname); /* ReqID:SRS-SQL-NLSSORT */
 }
 
 static CreateStmt *

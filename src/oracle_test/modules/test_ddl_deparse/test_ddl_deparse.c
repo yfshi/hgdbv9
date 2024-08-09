@@ -287,6 +287,11 @@ get_altertable_subcmdtypes(PG_FUNCTION_ARGS)
 				strtype = "COMPILE FOIRCE VIEW";
 				break;
 			/* End - ReqID:SRS-SQL-FORCEVIEW */
+			/* Begin - ReqID:SRS-SQL-NLSSORT */
+			case AT_DefaultCollation:
+				strtype = "SET DEFAULT COLLATION";
+				break;
+			/* End - ReqID:SRS-SQL-NLSSORT */
 			default:
 				strtype = "unrecognized";
 				break;

@@ -345,15 +345,15 @@ SELECT * FROM T ORDER BY c_bigint, c_text, pk LIMIT 10;
 
 EXPLAIN (VERBOSE TRUE, COSTS FALSE)
 SELECT * FROM T ORDER BY c_bigint, c_text, pk LIMIT 10;
-                  QUERY PLAN                  
-----------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Limit
-   Output: pk, c_bigint, c_text
+   Output: pk, c_bigint, c_text, ((c_text)::text)
    ->  Sort
-         Output: pk, c_bigint, c_text
-         Sort Key: t.c_bigint, t.c_text, t.pk
+         Output: pk, c_bigint, c_text, ((c_text)::text)
+         Sort Key: t.c_bigint, t.c_text COLLATE "binary", t.pk
          ->  Seq Scan on fast_default.t
-               Output: pk, c_bigint, c_text
+               Output: pk, c_bigint, c_text, c_text
 (7 rows)
 
 -- LIMIT
@@ -374,15 +374,15 @@ SELECT * FROM T WHERE c_bigint > -1 ORDER BY c_bigint, c_text, pk LIMIT 10;
 
 EXPLAIN (VERBOSE TRUE, COSTS FALSE)
 SELECT * FROM T WHERE c_bigint > -1 ORDER BY c_bigint, c_text, pk LIMIT 10;
-                     QUERY PLAN                     
-----------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Limit
-   Output: pk, c_bigint, c_text
+   Output: pk, c_bigint, c_text, ((c_text)::text)
    ->  Sort
-         Output: pk, c_bigint, c_text
-         Sort Key: t.c_bigint, t.c_text, t.pk
+         Output: pk, c_bigint, c_text, ((c_text)::text)
+         Sort Key: t.c_bigint, t.c_text COLLATE "binary", t.pk
          ->  Seq Scan on fast_default.t
-               Output: pk, c_bigint, c_text
+               Output: pk, c_bigint, c_text, c_text
                Filter: (t.c_bigint > '-1'::integer)
 (8 rows)
 

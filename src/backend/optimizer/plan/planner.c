@@ -7337,7 +7337,37 @@ group_by_has_partkey(RelOptInfo *input_rel,
 		{
 			Expr	   *partexpr = lfirst(lc);
 
-			if (list_member(groupexprs, partexpr))
+			/* Begin - Req:SRS-SQL-NLSSORT */
+			if (enable_partitionwise_qual_force_pushdown)
+			{
+				ListCell   *lg;
+				Oid			partcoll = input_rel->part_scheme->partcollation[cnt];
+
+				foreach (lg, groupexprs)
+				{
+					Expr *groupexpr = lfirst(lg);
+					Oid   groupcoll = exprCollation((Node *) groupexpr);
+
+					/*
+					 * GROUP BY xx COLLATE xxx
+					 * Set collation in group by clause using COLLATE syntax,
+					 * AND the collation IS NOT equal to column's default collation.
+					 */
+					if (IsA(groupexpr, RelabelType))
+						groupexpr = ((RelabelType *) groupexpr)->arg;
+
+					if (equal(groupexpr, partexpr) && partcoll == groupcoll)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (found)
+					break;
+			}
+			/* End - Req:SRS-SQL-NLSSORT */
+			else if (list_member(groupexprs, partexpr))
 			{
 				found = true;
 				break;

@@ -498,7 +498,7 @@ ERROR:  cannot inherit from partitioned table "partitioned2"
  b      | integer |           |          | 
  c      | text    |           |          | 
  d      | text    |           |          | 
-Partition key: RANGE (a oid_ops, plusone(b), c, d COLLATE "C")
+Partition key: RANGE (a oid_ops, plusone(b), c COLLATE "default", d COLLATE "C")
 Number of partitions: 0
 
 \d+ partitioned2
@@ -507,7 +507,7 @@ Number of partitions: 0
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | integer |           |          |         | plain    |              | 
  b      | text    |           |          |         | extended |              | 
-Partition key: RANGE (((a + 1)), substr(b, 1, 5))
+Partition key: RANGE (((a + 1)), substr(b, 1, 5) COLLATE "binary")
 Number of partitions: 0
 
 INSERT INTO partitioned2 VALUES (1, 'hello');
@@ -521,7 +521,7 @@ CREATE TABLE part2_1 PARTITION OF partitioned2 FOR VALUES FROM (-1, 'aaaaa') TO 
  a      | integer |           |          |         | plain    |              | 
  b      | text    |           |          |         | extended |              | 
 Partition of: partitioned2 FOR VALUES FROM ('-1', 'aaaaa') TO (100, 'ccccc')
-Partition constraint: (((a + 1) IS NOT NULL) AND (substr(b, 1, 5) IS NOT NULL) AND (((a + 1) > '-1'::integer) OR (((a + 1) = '-1'::integer) AND (substr(b, 1, 5) >= 'aaaaa'::varchar2))) AND (((a + 1) < 100) OR (((a + 1) = 100) AND (substr(b, 1, 5) < 'ccccc'::varchar2))))
+Partition constraint: (((a + 1) IS NOT NULL) AND (substr(b, 1, 5) IS NOT NULL) AND (((a + 1) > '-1'::integer) OR (((a + 1) = '-1'::integer) AND ((substr(b, 1, 5))::varchar2 >= 'aaaaa'::varchar2 COLLATE "binary"))) AND (((a + 1) < 100) OR (((a + 1) = 100) AND ((substr(b, 1, 5))::varchar2 < 'ccccc'::varchar2 COLLATE "binary"))))
 
 DROP TABLE partitioned, partitioned2;
 -- check reference to partitioned table's rowtype in partition descriptor
@@ -1067,7 +1067,7 @@ drop table test_part_coll_posix;
  a      | text    |           |          |         | extended |              | 
  b      | integer |           | not null | 1       | plain    |              | 
 Partition of: parted FOR VALUES IN ('b')
-Partition constraint: ((a IS NOT NULL) AND (a = 'b'::text))
+Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'b'::text COLLATE "binary"))
 
 -- Both partition bound and partition key in describe output
 \d+ part_c
@@ -1077,7 +1077,7 @@ Partition constraint: ((a IS NOT NULL) AND (a = 'b'::text))
  a      | text    |           |          |         | extended |              | 
  b      | integer |           | not null | 0       | plain    |              | 
 Partition of: parted FOR VALUES IN ('c')
-Partition constraint: ((a IS NOT NULL) AND (a = 'c'::text))
+Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'c'::text COLLATE "binary"))
 Partition key: RANGE (b)
 Partitions: part_c_1_10 FOR VALUES FROM (1) TO (10)
 
@@ -1089,7 +1089,7 @@ Partitions: part_c_1_10 FOR VALUES FROM (1) TO (10)
  a      | text    |           |          |         | extended |              | 
  b      | integer |           | not null | 0       | plain    |              | 
 Partition of: part_c FOR VALUES FROM (1) TO (10)
-Partition constraint: ((a IS NOT NULL) AND (a = 'c'::text) AND (b IS NOT NULL) AND (b >= 1) AND (b < 10))
+Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'c'::text COLLATE "binary") AND (b IS NOT NULL) AND (b >= 1) AND (b < 10))
 
 -- Show partition count in the parent's describe output
 -- Tempted to include \d+ output listing partitions with bound info but
@@ -1101,7 +1101,7 @@ Partition constraint: ((a IS NOT NULL) AND (a = 'c'::text) AND (b IS NOT NULL) A
 --------+---------+-----------+----------+---------
  a      | text    |           |          | 
  b      | integer |           | not null | 0
-Partition key: LIST (a)
+Partition key: LIST (a COLLATE "binary")
 Number of partitions: 3 (Use \d+ to list them.)
 
 \d hash_parted

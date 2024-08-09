@@ -78,6 +78,7 @@
 #include "parser/parse_type.h"
 #include "parser/parse_utilcmd.h"
 #include "parser/parser.h"
+#include "parser/pg_object_hook.h"
 #include "partitioning/partbounds.h"
 #include "partitioning/partdesc.h"
 #include "pgstat.h"
@@ -390,10 +391,10 @@ static ObjectAddress ATExecValidateConstraint(List **wqueue,
 											  Relation rel, char *constrName,
 											  bool recurse, bool recursing, LOCKMODE lockmode);
 static int	transformColumnNameList(Oid relId, List *colList,
-									int16 *attnums, Oid *atttypids);
+									int16 *attnums, Oid *atttypids, Oid *attcolls);
 static int	transformFkeyGetPrimaryKey(Relation pkrel, Oid *indexOid,
 									   List **attnamelist,
-									   int16 *attnums, Oid *atttypids,
+									   int16 *attnums, Oid *atttypids, Oid *attcolls, 
 									   Oid *opclasses);
 static Oid	transformFkeyCheckAttrs(Relation pkrel,
 									int numattrs, int16 *attnums,
@@ -495,7 +496,7 @@ static ObjectAddress ATExecAddStatistics(AlteredTableInfo *tab, Relation rel,
 static ObjectAddress ATExecAddConstraint(List **wqueue,
 										 AlteredTableInfo *tab, Relation rel,
 										 Constraint *newConstraint, bool recurse, bool is_readd,
-										 LOCKMODE lockmode);
+										 LOCKMODE lockmode, bool is_create);
 static char *ChooseForeignKeyConstraintNameAddition(List *colnames);
 static ObjectAddress ATExecAddIndexConstraint(AlteredTableInfo *tab, Relation rel,
 											  IndexStmt *stmt, LOCKMODE lockmode);
@@ -507,7 +508,7 @@ static ObjectAddress ATAddCheckConstraint(List **wqueue,
 static ObjectAddress ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab,
 											   Relation rel, Constraint *fkconstraint,
 											   bool recurse, bool recursing,
-											   LOCKMODE lockmode);
+											   LOCKMODE lockmode, bool is_create);
 static ObjectAddress addFkRecurseReferenced(List **wqueue, Constraint *fkconstraint,
 											Relation rel, Relation pkrel, Oid indexOid, Oid parentConstr,
 											int numfks, int16 *pkattnum, int16 *fkattnum,
@@ -648,7 +649,9 @@ static char GetAttributeCompression(Oid atttypid, char *compression);
 static void check_function_dependency_internal(Relation	depRel, SysScanDesc scan);
 /* End - ReqID:SRS-PLSQL-TYPE */
 static OnCommitAction gtt_oncommit_option(List *options);	/* ReqID:SRS-SQL-GTT */
-
+/* Begin - ReqID:SRS-SQL-NLSSORT */
+static ObjectAddress ATExecDefaultCollation(Relation relation, char *collname);
+/* End - ReqID:SRS-SQL-NLSSORT */
 
 /* ----------------------------------------------------------------
  *		DefineRelation
@@ -1432,6 +1435,29 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 								  true, true, false, queryString);
 
 	ObjectAddressSet(address, RelationRelationId, relationId);
+	
+	/* 
+	 * ReqID:SRS-SQL-NLSSORT
+ 	 * Set table's collation, or inherit from Effective Schema Default Collation,
+	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
+ 	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation)
+	{
+		Oid	relColl;		
+
+		if(stmt->collname)
+		{
+			relColl = CollationGetCollid(stmt->collname);
+			if (!OidIsValid(relColl))
+				ereport(ERROR,
+						errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
+		} 
+		else
+			relColl = GetNamespaceCollation(namespaceId);
+
+		SetRelationCollation(relname, namespaceId, relColl, address);
+	}
 
 	/*
 	 * Clean up.  We keep lock on new relation (although it shouldn't be
@@ -1708,6 +1734,11 @@ RemoveRelations(DropStmt *drop)
 		obj.classId = RelationRelationId;
 		obj.objectId = relOid;
 		obj.objectSubId = 0;
+
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		if (pg_object_drop_obj_hook_type)
+			pg_object_drop_obj_hook_type(obj);
+		/* End - Req: SRS-SQL-NLSSORT */
 
 		add_exact_object_address(&obj, objects);
 	}
@@ -4690,7 +4721,11 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 			/* End - ReqID:SRS-SQL-FORCEVIEW */
-
+			/* Begin - ReqID:SRS-SQL-NLSSORT */
+			case AT_DefaultCollation:
+				cmd_lockmode = AccessShareLock; // there is not operator on user table, just update PG_OBJECT
+				break;
+			/* End - ReqID:SRS-SQL-NLSSORT */
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -5149,6 +5184,12 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = AT_PASS_MISC;
 			break;
 		/* End - ReqID:SRS-SQL-FORCEVIEW */
+		/* Begin - ReqID:SRS-SQL-NLSSORT */
+			case AT_DefaultCollation:
+				ATSimplePermissions(rel, ATT_TABLE);
+				pass = AT_PASS_MISC;
+				break;
+		/* End - ReqID:SRS-SQL-NLSSORT */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -5358,7 +5399,7 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 				address =
 					ATExecAddConstraint(wqueue, tab, rel,
 										(Constraint *) cmd->def,
-										false, false, lockmode);
+										false, false, lockmode, cmd->is_create);
 			break;
 		case AT_AddConstraintRecurse:	/* ADD CONSTRAINT with recursion */
 			/* Transform the command only during initial examination */
@@ -5371,12 +5412,12 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 				address =
 					ATExecAddConstraint(wqueue, tab, rel,
 										(Constraint *) cmd->def,
-										true, false, lockmode);
+										true, false, lockmode, cmd->is_create);
 			break;
 		case AT_ReAddConstraint:	/* Re-add pre-existing check constraint */
 			address =
 				ATExecAddConstraint(wqueue, tab, rel, (Constraint *) cmd->def,
-									true, true, lockmode);
+									true, true, lockmode, cmd->is_create);
 			break;
 		case AT_ReAddDomainConstraint:	/* Re-add pre-existing domain check
 										 * constraint */
@@ -5636,6 +5677,11 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 				elog(WARNING, "View altered with compilation errors");
 			break;
 		/* End - ReqID:SRS-SQL-FORCEVIEW */
+		/* Begin - ReqID:SRS-SQL-NLSSORT */
+			case AT_DefaultCollation:
+				ATExecDefaultCollation(rel, cmd->name);
+				break;
+		/* End - ReqID:SRS-SQL-NLSSORT */
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -5743,7 +5789,10 @@ ATParseTransformCmd(List **wqueue, AlteredTableInfo *tab, Relation rel,
 			case AT_AddConstraint:
 				/* Recursion occurs during execution phase */
 				if (recurse)
+				{
 					cmd2->subtype = AT_AddConstraintRecurse;
+					cmd2->is_create = cmd->is_create; /* Req: SRS-SQL-NLSSORT */
+				}
 				switch (castNode(Constraint, cmd2->def)->contype)
 				{
 					case CONSTR_PRIMARY:
@@ -9516,7 +9565,7 @@ ATExecAddIndexConstraint(AlteredTableInfo *tab, Relation rel,
 static ObjectAddress
 ATExecAddConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 					Constraint *newConstraint, bool recurse, bool is_readd,
-					LOCKMODE lockmode)
+					LOCKMODE lockmode, bool is_create)
 {
 	ObjectAddress address = InvalidObjectAddress;
 
@@ -9563,7 +9612,7 @@ ATExecAddConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 			address = ATAddForeignKeyConstraint(wqueue, tab, rel,
 												newConstraint,
 												recurse, false,
-												lockmode);
+												lockmode, is_create);
 			break;
 
 		default:
@@ -9768,13 +9817,15 @@ ATAddCheckConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 static ObjectAddress
 ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 						  Constraint *fkconstraint,
-						  bool recurse, bool recursing, LOCKMODE lockmode)
+						  bool recurse, bool recursing, LOCKMODE lockmode, bool is_create)
 {
 	Relation	pkrel;
 	int16		pkattnum[INDEX_MAX_KEYS];
 	int16		fkattnum[INDEX_MAX_KEYS];
 	Oid			pktypoid[INDEX_MAX_KEYS];
 	Oid			fktypoid[INDEX_MAX_KEYS];
+	Oid			pkattcoll[INDEX_MAX_KEYS]; /* Req:SRS-SQL-NLSSORT */
+	Oid			fkattcoll[INDEX_MAX_KEYS]; /* Req:SRS-SQL-NLSSORT */
 	Oid			opclasses[INDEX_MAX_KEYS];
 	Oid			pfeqoperators[INDEX_MAX_KEYS];
 	Oid			ppeqoperators[INDEX_MAX_KEYS];
@@ -9886,6 +9937,8 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	MemSet(fkattnum, 0, sizeof(fkattnum));
 	MemSet(pktypoid, 0, sizeof(pktypoid));
 	MemSet(fktypoid, 0, sizeof(fktypoid));
+	MemSet(pkattcoll, 0, sizeof(pkattcoll));
+	MemSet(fkattcoll, 0, sizeof(fkattcoll));
 	MemSet(opclasses, 0, sizeof(opclasses));
 	MemSet(pfeqoperators, 0, sizeof(pfeqoperators));
 	MemSet(ppeqoperators, 0, sizeof(ppeqoperators));
@@ -9893,7 +9946,7 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	numfks = transformColumnNameList(RelationGetRelid(rel),
 									 fkconstraint->fk_attrs,
-									 fkattnum, fktypoid);
+									 fkattnum, fktypoid, fkattcoll);
 
 	/*
 	 * If the attribute list for the referenced table was omitted, lookup the
@@ -9905,14 +9958,14 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	{
 		numpks = transformFkeyGetPrimaryKey(pkrel, &indexOid,
 											&fkconstraint->pk_attrs,
-											pkattnum, pktypoid,
+											pkattnum, pktypoid, pkattcoll,
 											opclasses);
 	}
 	else
 	{
 		numpks = transformColumnNameList(RelationGetRelid(pkrel),
 										 fkconstraint->pk_attrs,
-										 pkattnum, pktypoid);
+										 pkattnum, pktypoid, pkattcoll);
 		/* Look for an index matching the column list */
 		indexOid = transformFkeyCheckAttrs(pkrel, numpks, pkattnum,
 										   opclasses);
@@ -10154,6 +10207,64 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		pfeqoperators[i] = pfeqop;
 		ppeqoperators[i] = ppeqop;
 		ffeqoperators[i] = ffeqop;
+	}
+
+	/* 
+	 * Begin - ReqID:SRS-SQL-NLSSORT
+	 * If a column belongs to a foreign key, its explicit collation specification must specify 
+	 * the same collation that is declared for the corresponding column of the referenced primary 
+	 * key or unique constraint. 
+	 * 
+	 * If a column belongs to a foreign key and has no explicit collation specification, its collation 
+	 * is assigned from the corresponding column of the referenced primary key or unique constraint. 
+	 * 
+	 * If a column belongs to two or more foreign key constraints referencing primary key or unique 
+	 * constraints with different collation specifications, an error is reported.
+	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation)
+	{
+		Form_pg_attribute 	att;
+		bool 				multi_col_fk = numfks > 1;
+		bool 				self_reference = (RelationGetRelid(rel) == RelationGetRelid(pkrel));
+		Oid					fk_default_collation = GetRelationCollation(rel);
+
+		for (i = 0; i < numfks; i++)
+		{
+			att = TupleDescAttr(RelationGetDescr(rel), fkattnum[i] - 1);
+
+			if (fkattcoll[i] != pkattcoll[i])
+			{
+				HeapTuple			heapTup;
+				Relation			attrelation;
+				Form_pg_attribute 	attTup;
+				AttrNumber			attnum;
+
+				if (!is_create || self_reference)
+					ereport(ERROR,
+							errmsg("IVY-02267: column type incompatible with referenced column type"));
+
+				if (fkattcoll[i] != fk_default_collation && multi_col_fk)
+					ereport(ERROR,
+							errmsg("IVY-02267: column type incompatible with referenced column type"));
+
+				heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), NameStr(att->attname));
+
+				attTup = ((Form_pg_attribute) GETSTRUCT(heapTup));
+				attnum = attTup->attnum;
+				attTup->attcollation = pkattcoll[i];
+
+				attrelation = table_open(AttributeRelationId, RowExclusiveLock);
+				CatalogTupleUpdate(attrelation, &heapTup->t_self, heapTup);
+				table_close(attrelation, RowExclusiveLock);
+
+				add_column_collation_dependency(RelationGetRelid(rel), attnum, pkattcoll[i]);
+
+				RemoveStatistics(RelationGetRelid(rel), attnum);
+
+				heap_freetuple(heapTup);
+			}
+		}
 	}
 
 	/*
@@ -11662,7 +11773,7 @@ ATExecValidateConstraint(List **wqueue, Relation rel, char *constrName,
  */
 static int
 transformColumnNameList(Oid relId, List *colList,
-						int16 *attnums, Oid *atttypids)
+						int16 *attnums, Oid *atttypids, Oid *attcolls)
 {
 	ListCell   *l;
 	int			attnum;
@@ -11692,6 +11803,7 @@ transformColumnNameList(Oid relId, List *colList,
 							INDEX_MAX_KEYS)));
 		attnums[attnum] = attform->attnum;
 		atttypids[attnum] = attform->atttypid;
+		attcolls[attnum] = attform->attcollation; /* Req: SRS-SQL-NLSSORT */
 		ReleaseSysCache(atttuple);
 		attnum++;
 	}
@@ -11714,7 +11826,7 @@ transformColumnNameList(Oid relId, List *colList,
 static int
 transformFkeyGetPrimaryKey(Relation pkrel, Oid *indexOid,
 						   List **attnamelist,
-						   int16 *attnums, Oid *atttypids,
+						   int16 *attnums, Oid *atttypids, Oid *attcolls,
 						   Oid *opclasses)
 {
 	List	   *indexoidlist;
@@ -11790,6 +11902,7 @@ transformFkeyGetPrimaryKey(Relation pkrel, Oid *indexOid,
 
 		attnums[i] = pkattno;
 		atttypids[i] = attnumTypeId(pkrel, pkattno);
+		attcolls[i] = attnumCollationId(pkrel, pkattno); /* Req: SRS-SQL-NLSSORT */
 		opclasses[i] = indclass->values[i];
 		*attnamelist = lappend(*attnamelist,
 							   makeString(pstrdup(NameStr(*attnumAttName(pkrel, pkattno)))));
@@ -12872,6 +12985,158 @@ ATColumnChangeRequiresRewrite(Node *expr, AttrNumber varattno)
 	}
 }
 
+/**
+ * The collation of a partitioning key column can be changed with the ALTER TABLE MODIFY 
+ * statement only among the collations of the same group described in the section "Persistent Objects". 
+ */
+static void
+ModifyCheckPartitionKey(Relation relation, AttrNumber targetAttnum, Oid oldcoll, Oid newcoll)
+{
+	PartitionKey key;
+	
+	// if relation is partition table
+	if (relation->rd_rel->relispartition)
+		ereport(ERROR,
+				errmsg("IVY-00942: table or view does not exist"));
+
+	// if target attnum is partition key
+	key = RelationGetPartitionKey(relation);
+
+	if(key)
+	{
+		for (int i = 0; i < key->partnatts; ++i)
+		{
+			if (key->partattrs[i] == targetAttnum &&
+				IndexCollationPersistent(oldcoll) != IndexCollationPersistent(newcoll))
+				ereport(ERROR,
+						errmsg("IVY-43923: The column cannot be modified to the specified collation."));
+		}
+	}
+}
+
+/**
+ * The collation of a primary or a unique key column can be changed with 
+ * the ALTER TABLE MODIFY statement only among collations of the same group 
+ * as defined in the section and only if no foreign key constraint references 
+ * the primary or unique key. To change the collation to another value, the 
+ * constraint must be dropped first.
+ * 
+ * Foreign key constraints use the collation of the referenced primary or unique 
+ * key columns when comparing key values. The comparison between a foreign key 
+ * value and a referenced primary key value is not necessarily binary. Foreign 
+ * constraints on columns declared with any of the pseudo-collations use a variant 
+ * of the binary collation as described in the section "Persistent Objects". 
+ * The collation of a foreign key column cannot be changed with the ALTER TABLE MODIFY statement. 
+ * To change the collation, the constraint must be dropped first.
+ */
+static void
+ModifyCheckForeignKey(Relation relation, AttrNumber targetAttnum)
+{
+	List	   *cachedfkeys;
+	ListCell   *lc;
+
+	cachedfkeys = RelationGetFKeyList(relation);
+
+	foreach(lc, cachedfkeys)
+	{
+		ForeignKeyCacheInfo *cachedfk = (ForeignKeyCacheInfo *) lfirst(lc);
+
+		for (int i = 0; i < cachedfk->nkeys; i++)
+		{
+			if(targetAttnum == cachedfk->conkey[i])
+				ereport(ERROR,
+						errmsg("IVY-43922: Collation of the column cannot be modified."));
+		}
+	}
+}
+
+/**
+ * The collation of a unique key column can be changed with the ALTER TABLE MODIFY statement 
+ * only among collations of the same group as defined in the section and only if no foreign 
+ * key constraint references the unique key. To change the collation to another value, the 
+ * constraint must be dropped first.
+ * 
+ * You can change the collation of an index key column with the ALTER TABLE MODIFY 
+ * statement only among collations of the same group as defined in the section "Persistent Objects". 
+ * For example, you can change the collation BINARY to USING_NLS_SORT, but not to 
+ * USING_NLS_SORT_CI or to any other named collation. To change the collation to 
+ * another value, the index must be dropped first.
+ */
+static void
+ModifyCheckUniqueOrIndexKey(Relation relation, AttrNumber targetAttnum, Oid oldcoll, Oid newcoll)
+{
+	int			i;
+	Bitmapset  *idkey;
+	
+	idkey = RelationGetIndexAttrBitmap(relation, INDEX_ATTR_BITMAP_ALL);
+
+	i = -1;
+	while ((i = bms_next_member(idkey, i)) >= 0)
+	{
+		int	attnum = i + FirstLowInvalidHeapAttributeNumber;
+
+		if (attnum == targetAttnum && 
+			IndexCollationPersistent(oldcoll) != IndexCollationPersistent(newcoll))
+		{
+			ereport(ERROR,
+					errmsg("IVY-43923: The column cannot be modified to the specified collation."));
+		}
+	}
+}
+
+/**
+ * The collation of a primary column can be changed with the ALTER TABLE MODIFY statement 
+ * only among collations of the same group as defined in the section and only if no foreign key constraint 
+ * references the primary. To change the collation to another value, the constraint must be 
+ * dropped first. 
+ */
+static void
+ModifyCheckPrimaryKey(Relation relation, AttrNumber targetAttnum, Oid oldcoll, Oid newcoll)
+{
+	int			i;
+	Bitmapset  *idkey;
+	
+	idkey = RelationGetIndexAttrBitmap(relation, INDEX_ATTR_BITMAP_PRIMARY_KEY);
+
+	i = -1;
+	while ((i = bms_next_member(idkey, i)) >= 0)
+	{
+		int	attnum = i + FirstLowInvalidHeapAttributeNumber;
+
+		if (attnum == targetAttnum ) 
+		{
+			Relation	pg_constraint;
+			HeapTuple	ptuple;
+			SysScanDesc pscan;
+			ScanKeyData pskey[2];
+
+			pg_constraint = table_open(ConstraintRelationId, AccessShareLock);
+
+			ScanKeyInit(&pskey[0],
+						Anum_pg_constraint_confrelid,
+						BTEqualStrategyNumber, F_OIDEQ,
+						ObjectIdGetDatum(RelationGetRelid(relation)));
+
+			ScanKeyInit(&pskey[1],
+						Anum_pg_constraint_contype, BTEqualStrategyNumber,
+						F_CHAREQ, CharGetDatum(CONSTRAINT_FOREIGN));
+			
+			pscan = systable_beginscan(pg_constraint, InvalidOid, true,
+									   NULL, 2, pskey);
+
+			if(HeapTupleIsValid(ptuple = systable_getnext(pscan)))
+				ereport(ERROR,
+						errmsg("IVY-43922: Collation of the column cannot be modified."));
+			else if(IndexCollationPersistent(oldcoll) != IndexCollationPersistent(newcoll))
+				ereport(ERROR,
+						errmsg("IVY-43923: The column cannot be modified to the specified collation."));
+
+			systable_endscan(pscan);
+			table_close(pg_constraint, AccessShareLock);
+		}
+	}
+}
+
 /*
  * ALTER COLUMN .. SET DATA TYPE
  *
@@ -12892,7 +13157,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	Form_pg_type tform;
 	Oid			targettype;
 	int32		targettypmod;
-	Oid			targetcollid;
+	Oid			targetcollid = InvalidOid;
 	Node	   *defaultexpr;
 	Relation	attrelation;
 	Relation	depRel;
@@ -12926,10 +13191,19 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	/* Look up the target column */
 	heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), colName);
 	if (!HeapTupleIsValid(heapTup)) /* shouldn't happen */
-		ereport(ERROR,
+	{
+		/* Req: SRS-SQL-NLSSORT */
+		if (ORA_PARSER == compatible_db)
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_COLUMN),
+					errmsg("IVY-00904: \"%s\": invalid identifier", colName)));
+		else
+			ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_COLUMN),
 				 errmsg("column \"%s\" of relation \"%s\" does not exist",
 						colName, RelationGetRelationName(rel))));
+	}
+
 	attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
 	attnum = attTup->attnum;
 	attOldTup = TupleDescAttr(tab->oldDesc, attnum - 1);
@@ -12946,8 +13220,41 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	typeTuple = typenameType(NULL, typeName, &targettypmod);
 	tform = (Form_pg_type) GETSTRUCT(typeTuple);
 	targettype = tform->oid;
-	/* And the collation */
-	targetcollid = GetColumnDefCollation(NULL, def, targettype);
+	/*
+	 * Begin - Req: SRS-SQL-NLSSORT
+	 * And the collation 
+	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation)
+	{		
+		if (def->collClause)
+		{
+			Oid oldcollid = attTup->attcollation;
+			
+			if (!OidIsValid(tform->typcollation))
+				ereport(ERROR,
+						errmsg("IVY-43911: cannot specify collation for non-character columns"));
+
+			targetcollid = GetColumnDefCollation(NULL, def, targettype);
+
+			if (!OidIsValid(targetcollid))
+				ereport(ERROR,
+						errmsg("IVY-12746: unrecognized collation name \"%s\"", NameListToString(def->collClause->collname)));
+			
+			ModifyCheckForeignKey(rel, attnum);
+
+			ModifyCheckPrimaryKey(rel, attnum, oldcollid, targetcollid);
+
+			ModifyCheckUniqueOrIndexKey(rel, attnum, oldcollid, targetcollid); // must be checked after primary key
+
+			ModifyCheckPartitionKey(rel, attnum, oldcollid, targetcollid);
+		}
+		else if (OidIsValid(tform->typcollation))
+			targetcollid = GetRelationCollation(rel);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
+	else
+		targetcollid = GetColumnDefCollation(NULL, def, targettype);
 
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	if (ORA_PARSER == compatible_db &&
@@ -16413,7 +16720,8 @@ ATExecAddOf(Relation rel, const TypeName *ofTypename, LOCKMODE lockmode)
 		/* Compare type. */
 		if (table_attr->atttypid != type_attr->atttypid ||
 			table_attr->atttypmod != type_attr->atttypmod ||
-			table_attr->attcollation != type_attr->attcollation)
+			(table_attr->attcollation != type_attr->attcollation &&
+			 ORA_PARSER != compatible_db))
 			ereport(ERROR,
 					(errcode(ERRCODE_DATATYPE_MISMATCH),
 					 errmsg("table \"%s\" has different type for column \"%s\"",
@@ -18107,7 +18415,7 @@ ComputePartitionAttrs(ParseState *pstate, Relation rel, List *partParams, AttrNu
 								format_type_be(atttype))));
 		}
 
-		partcollation[attn] = attcollation;
+		partcollation[attn] = IndexCollationPersistent(attcollation); /* Req: SRS-SQL-NLSSORT */
 
 		/*
 		 * Identify the appropriate operator class.  For list and range
@@ -19708,6 +20016,33 @@ ATExecAttachPartitionIdx(List **wqueue, Relation parentIdx, RangeVar *name)
 
 	return address;
 }
+
+/* Begin - ReqID:SRS-SQL-NLSSORT */
+static ObjectAddress
+ATExecDefaultCollation(Relation relation, char *collname)
+{
+	Oid				newColl;
+	Oid				oldColl;
+	ObjectAddress 	address = InvalidObjectAddress;
+
+	newColl = CollationGetCollid(collname);
+	if (!OidIsValid(newColl))
+		ereport(ERROR,
+				errmsg("IVY-12746: unrecognized collation name \"%s\"", collname));
+
+	ObjectAddressSet(address, RelationRelationId, RelationGetRelid(relation));
+
+	oldColl = GetRelationCollation(relation);
+
+	if(newColl != oldColl)
+		UpdateRelationCollation(RelationGetRelationName(relation), 
+								RelationGetNamespace(relation), 
+								newColl, 
+								address);
+
+	return address;
+}
+/* End - ReqID:SRS-SQL-NLSSORT */
 
 /*
  * Verify whether the given partition already contains an index attached

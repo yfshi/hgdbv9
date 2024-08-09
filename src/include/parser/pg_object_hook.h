@@ -70,4 +70,11 @@ extern PGDLLIMPORT Pg_object_get_ori_infor_hook_type pg_object_get_ori_infor_hoo
 extern PGDLLIMPORT Pg_object_bulid_cache_obj_hook_type pg_object_bulid_cache_obj_hook_type;
 extern PGDLLIMPORT Pg_object_bulid_cache_obj_hook_type pg_object_bulid_relcache;
 
+/* Begin - Req:SRS-SQL-NLSSORT */
+extern Oid  GetNamespaceCollation(Oid namespaceId);
+extern void SetNamespaceCollation(char *namespaceName, Oid namespaceId, Oid coll, ObjectAddress address);
+extern Oid  GetRelationCollation(Relation relation);
+extern void SetRelationCollation(char *relname, Oid namespaceId, Oid coll, ObjectAddress address);
+extern void UpdateRelationCollation(char *relname, Oid namespaceId, Oid coll, ObjectAddress address);
+/* End - Req:SRS-SQL-NLSSORT */
 #endif

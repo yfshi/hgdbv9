@@ -14,6 +14,7 @@
  */
 #include "postgres.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <limits.h>
 
@@ -41,6 +42,7 @@
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
 
+PGDLLIMPORT nlssort_hook_type nlssort_hook;
 
 /* GUC variable */
 int			bytea_output = BYTEA_OUTPUT_HEX;
@@ -122,6 +124,10 @@ typedef struct
 #define DatumGetVarStringP(X)		((VarString *) PG_DETOAST_DATUM(X))
 #define DatumGetVarStringPP(X)		((VarString *) PG_DETOAST_DATUM_PACKED(X))
 
+static int  nlssortfastcmp_internal_with_collid(const char *a1, int32_t len1, const char *a2, int32_t len2, Oid collid, bool trim);
+static int	bpcharfastcmp_nlssort(Datum x, Datum y, SortSupport ssup);
+static int	varlenafastcmp_nlssort(Datum x, Datum y, SortSupport ssup);
+static int	namefastcmp_nlssort(Datum x, Datum y, SortSupport ssup);
 static int	varstrfastcmp_c(Datum x, Datum y, SortSupport ssup);
 static int	bpcharfastcmp_c(Datum x, Datum y, SortSupport ssup);
 static int	namefastcmp_c(Datum x, Datum y, SortSupport ssup);
@@ -1562,8 +1568,11 @@ int
 varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 {
 	int			result;
+	char		provider;
 
 	check_collation_set(collid);
+
+	provider = get_collation_provider(collid);
 
 	/*
 	 * Unfortunately, there is no strncoll(), so in the non-C locale case we
@@ -1577,6 +1586,12 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 		if ((result == 0) && (len1 != len2))
 			result = (len1 < len2) ? -1 : 1;
 	}
+	/* Begin - SRS-SQL-NLSSORT */
+	else if(compatible_db == ORA_PARSER && nlssort_hook && provider == COLLPROVIDER_ORACLE)
+	{
+		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
+	}
+	/* End - SRS-SQL-NLSSORT */
 	else
 	{
 		char		a1buf[TEXTBUFLEN];
@@ -1804,12 +1819,14 @@ texteq(PG_FUNCTION_ARGS)
 {
 	Oid			collid = PG_GET_COLLATION();
 	bool		result;
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
+
+	if (locale && locale->deterministic)
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -1858,12 +1875,14 @@ textne(PG_FUNCTION_ARGS)
 {
 	Oid			collid = PG_GET_COLLATION();
 	bool		result;
+	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
 
-	if (lc_collate_is_c(collid) ||
-		collid == DEFAULT_COLLATION_OID ||
-		pg_newlocale_from_collation(collid)->deterministic)
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
+
+	if (locale && locale->deterministic)
 	{
 		Datum		arg1 = PG_GETARG_DATUM(0);
 		Datum		arg2 = PG_GETARG_DATUM(1);
@@ -2050,8 +2069,11 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 	bool		collate_c = false;
 	VarStringSortSupport *sss;
 	pg_locale_t locale = 0;
+	char		provider;
 
 	check_collation_set(collid);
+
+	provider = get_collation_provider(collid);
 
 	/*
 	 * If possible, set ssup->comparator to a function which can be used to
@@ -2082,6 +2104,20 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 
 		collate_c = true;
 	}
+	/* Begin - SRS-SQL-NLSSORT */
+	else if(compatible_db == ORA_PARSER && nlssort_hook && provider == COLLPROVIDER_ORACLE)
+	{
+		if (typid == NAMEOID)
+			ssup->comparator = namefastcmp_nlssort;
+		else if (typid == BPCHAROID)
+			ssup->comparator = bpcharfastcmp_nlssort;
+		else
+			ssup->comparator = varlenafastcmp_nlssort;	
+
+		abbreviate = false;
+		collate_c = true;
+	}
+	/* End - SRS-SQL-NLSSORT */
 	else
 	{
 		/*
@@ -2202,6 +2238,104 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		}
 	}
 }
+
+/* Begin - SRS-SQL-NLSSORT */
+static int
+nlssortfastcmp_internal_with_collid(const char *arg1, int32_t len1, const char *arg2, int32_t len2, Oid collid, bool trim)
+{
+	bytea 	   *k1, *k2;
+	char	   *parg1,
+			   *parg2;
+	int32_t 	plen1,
+				plen2;
+	int32_t		result;
+
+	assert(nlssort_hook != NULL);
+
+	k1 = nlssort_hook(arg1, len1, collid, trim);
+	k2 = nlssort_hook(arg2, len2, collid, trim);
+
+	parg1 = VARDATA_ANY(k1);
+	parg2 = VARDATA_ANY(k2);
+	plen1 = VARSIZE_ANY_EXHDR(k1);
+	plen2 = VARSIZE_ANY_EXHDR(k2);
+
+	result = memcmp(parg1, parg2, Min(plen1, plen2));
+	if (result == 0 && plen1 != plen2)
+		result = (plen1 < plen2) ? -1 : 1;
+
+	return result;
+}
+
+static int32_t
+nlssortfastcmp_internal(char *arg1, int32_t len1, char *arg2, int32_t len2, SortSupport ssup, bool trim)
+{
+	return nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, ssup->ssup_collation, trim);
+}
+
+static int
+bpcharfastcmp_nlssort(Datum x, Datum y, SortSupport ssup)
+{
+	BpChar	   *arg1 = DatumGetBpCharPP(x);
+	BpChar	   *arg2 = DatumGetBpCharPP(y);
+	char	   *a1p,
+			   *a2p;
+	int			len1,
+				len2,
+				result;
+
+	a1p = VARDATA_ANY(arg1);
+	a2p = VARDATA_ANY(arg2);
+
+	len1 = bpchartruelen(a1p, VARSIZE_ANY_EXHDR(arg1));
+	len2 = bpchartruelen(a2p, VARSIZE_ANY_EXHDR(arg2));
+
+	result = nlssortfastcmp_internal(a1p, len1, a2p, len2, ssup, true);
+
+	if (PointerGetDatum(arg1) != x)
+		pfree(arg1);
+	if (PointerGetDatum(arg2) != y)
+		pfree(arg2);
+
+	return result;
+}
+
+static int
+varlenafastcmp_nlssort(Datum x, Datum y, SortSupport ssup)
+{
+	VarString  *arg1 = DatumGetVarStringPP(x);
+	VarString  *arg2 = DatumGetVarStringPP(y);
+	char	   *a1p,
+			   *a2p;
+	int			len1,
+				len2,
+				result;
+
+	a1p = VARDATA_ANY(arg1);
+	a2p = VARDATA_ANY(arg2);
+
+	len1 = VARSIZE_ANY_EXHDR(arg1);
+	len2 = VARSIZE_ANY_EXHDR(arg2);
+
+	result = nlssortfastcmp_internal(a1p, len1, a2p, len2, ssup, false);
+
+	if (PointerGetDatum(arg1) != x)
+		pfree(arg1);
+	if (PointerGetDatum(arg2) != y)
+		pfree(arg2);
+
+	return result;
+}
+
+static int
+namefastcmp_nlssort(Datum x, Datum y, SortSupport ssup)
+{
+	Name		arg1 = DatumGetName(x);
+	Name		arg2 = DatumGetName(y);
+
+	return nlssortfastcmp_internal(NameStr(*arg1), NAMEDATALEN, NameStr(*arg2), NAMEDATALEN, ssup, false);
+}
+/* End - SRS-SQL-NLSSORT */
 
 /*
  * sortsupport comparison func (for C locale case)

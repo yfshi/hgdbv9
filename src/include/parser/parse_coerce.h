@@ -14,8 +14,14 @@
 #ifndef PARSE_COERCE_H
 #define PARSE_COERCE_H
 
+#include "fmgr.h"
 #include "parser/parse_node.h"
 
+/* START BUG#M0000285 */
+typedef Datum (* ora_raw_input_hook_type)(PG_FUNCTION_ARGS);
+/* END BUG#M0000285 */
+
+extern PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
 
 /* Type categories (see TYPCATEGORY_xxx symbols in catalog/pg_type.h) */
 typedef char TYPCATEGORY;

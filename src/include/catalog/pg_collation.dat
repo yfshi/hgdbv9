@@ -25,4 +25,98 @@
   collname => 'POSIX', collprovider => 'c', collencoding => '-1',
   collcollate => 'POSIX', collctype => 'POSIX' },
 
+# Begin - Req: SRS-SQL-NLSSORT
+{ oid => '4544', oid_symbol => 'ORA_COLLATION_USING_NLS_COMP_OID',
+  descr => 'oracle USING_NLS_COMP collation',
+  collname => 'using_nls_comp', collprovider => 'o', collencoding => '-1',
+  collcollate => 'USING_NLS_COMP', collctype => 'USING_NLS_COMP' },
+
+{ oid => '4545', oid_symbol => 'ORA_COLLATION_USING_NLS_SORT_OID',
+  descr => 'oracle USING_NLS_SORT collation',
+  collname => 'using_nls_sort', collprovider => 'o', collencoding => '-1',
+  collcollate => 'USING_NLS_SORT', collctype => 'USING_NLS_SORT' },
+
+{ oid => '4546', oid_symbol => 'ORA_COLLATION_USING_NLS_SORT_AI_OID',
+  descr => 'oracle USING_NLS_SORT_AI collation',
+  collname => 'using_nls_sort_ai', collprovider => 'o', collencoding => '-1',
+  collcollate => 'USING_NLS_SORT_AI', collctype => 'USING_NLS_SORT_AI' },
+
+{ oid => '4547', oid_symbol => 'ORA_COLLATION_USING_NLS_SORT_CI_OID',
+  descr => 'oracle USING_NLS_SORT_CI collation',
+  collname => 'using_nls_sort_ci', collprovider => 'o', collencoding => '-1',
+  collcollate => 'USING_NLS_SORT_CI', collctype => 'USING_NLS_SORT_CI' },
+
+{ oid => '4548', oid_symbol => 'ORA_COLLATION_USING_NLS_SORT_CS_OID',
+  descr => 'oracle USING_NLS_SORT_CS collation',
+  collname => 'using_nls_sort_cs', collprovider => 'o', collencoding => '-1',
+  collcollate => 'USING_NLS_SORT_CS', collctype => 'USING_NLS_SORT_CS' },
+
+{ oid => '4549', oid_symbol => 'ORA_COLLATION_BINARY_OID',
+  descr => 'oracle BINARY collation',
+  collname => 'binary', collprovider => 'o', collencoding => '-1',
+  collcollate => 'C', collctype => 'BINARY' },
+
+{ oid => '4550', oid_symbol => 'ORA_COLLATION_BINARY_AI_OID',
+  descr => 'oracle BINARY_AI collation',
+  collname => 'binary_ai', collprovider => 'o', collencoding => '-1',
+  collcollate => 'BINARY_AI', collctype => 'BINARY_AI' },
+
+{ oid => '4551', oid_symbol => 'ORA_COLLATION_BINARY_CI_OID',
+  descr => 'oracle BINARY_CI collation',
+  collname => 'binary_ci', collprovider => 'o', collencoding => '-1',
+  collcollate => 'BINARY_CI', collctype => 'BINARY_CI' },
+
+{ oid => '4552', oid_symbol => 'ORA_COLLATION_GENERIC_M_CI_OID',
+  descr => 'oracle GENERIC_M_CI collation',
+  collname => 'generic_m_ci', collprovider => 'o', collencoding => '-1',
+  collcollate => 'GENERIC_M_CI', collctype => 'GENERIC_M_CI' },
+
+{ oid => '4553', oid_symbol => 'ORA_COLLATION_SCHINESE_PINYIN_M_OID',
+  descr => 'oracle SCHINESE_PINYIN_M collation',
+  collname => 'schinese_pinyin_m', collprovider => 'o', collencoding => '-1',
+  collcollate => 'SCHINESE_PINYIN_M', collctype => 'SCHINESE_PINYIN_M' },
+
+{ oid => '4554', oid_symbol => 'ORA_COLLATION_SCHINESE_STROKE_M_OID',
+  descr => 'oracle SCHINESE_STROKE_M collation',
+  collname => 'schinese_stroke_m', collprovider => 'o', collencoding => '-1',
+  collcollate => 'SCHINESE_STROKE_M', collctype => 'SCHINESE_STROKE_M' },
+
+{ oid => '4555', oid_symbol => 'ORA_COLLATION_SCHINESE_RADICAL_M_OID',
+  descr => 'oracle SCHINESE_RADICAL_M collation',
+  collname => 'schinese_radical_m', collprovider => 'o', collencoding => '-1',
+  collcollate => 'SCHINESE_RADICAL_M', collctype => 'SCHINESE_RADICAL_M' },
+
+{ oid => '4556', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE_OID',
+  descr => 'oracle UCA0700_SCHINESE collation',
+  collname => 'uca0700_schinese', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE', collctype => 'UCA0700_SCHINESE' },
+
+{ oid => '4557', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE1_OID',
+  descr => 'oracle UCA0700_SCHINESE1 collation',
+  collname => 'uca0700_schinese1', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE1', collctype => 'UCA0700_SCHINESE1' },
+
+{ oid => '4558', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE2_OID',
+  descr => 'oracle UCA0700_SCHINESE2 collation',
+  collname => 'uca0700_schinese2', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE2', collctype => 'UCA0700_SCHINESE2' },
+
+# alias of UCA0700_SCHINESE
+{ oid => '4559', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE_S4_VS_BN_NY_EN_FN_HN_DN_MN_OID',
+  descr => 'oracle UCA0700_SCHINESE collation',
+  collname => 'uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE', collctype => 'UCA0700_SCHINESE' },
+
+# alias of UCA0700_SCHINESE1
+{ oid => '4560', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE1_S4_VS_BN_NY_EN_FN_HN_DN_MN_OID',
+  descr => 'oracle UCA0700_SCHINESE1 collation',
+  collname => 'uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE1', collctype => 'UCA0700_SCHINESE1' },
+
+# alias of UCA0700_SCHINESE2
+{ oid => '4561', oid_symbol => 'ORA_COLLATION_UCA0700_SCHINESE2_S4_VS_BN_NY_EN_FN_HN_DN_MN_OID',
+  descr => 'oracle UCA0700_SCHINESE2 collation',
+  collname => 'uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn', collprovider => 'o', collencoding => '-1',
+  collcollate => 'UCA0700_SCHINESE2', collctype => 'UCA0700_SCHINESE2' },
+# End - Req: SRS-SQL-NLSSORT
 ]

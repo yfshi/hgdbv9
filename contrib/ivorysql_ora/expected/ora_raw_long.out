@@ -112,7 +112,7 @@ HINT:  No operator matches the given name and argument types. You might need to 
 select '123'::raw = '123'::bytea;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 select '123'::raw(2) = '123'::bytea;

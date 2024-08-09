@@ -1383,7 +1383,18 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	 * that these functions can also change the targetList, so it's passed to
 	 * them by reference.
 	 */
-	qry->sortClause = transformSortClause(pstate,
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation) 
+		qry->sortClause = transformSortClause(pstate,
+										  stmt->sortClause,
+										  &qry->targetList,
+										  (stmt->distinctClause == NIL || linitial(stmt->distinctClause) != NULL) ? 
+											EXPR_KIND_ORDER_BY : EXPR_KIND_DISTINCT_ORDER,
+										  false /* allow SQL92 rules */ );
+	/* End - Req: SRS-SQL-NLSSORT */
+	else
+		qry->sortClause = transformSortClause(pstate,
 										  stmt->sortClause,
 										  &qry->targetList,
 										  EXPR_KIND_ORDER_BY,
@@ -1898,7 +1909,7 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	qry->sortClause = transformSortClause(pstate,
 										  sortClause,
 										  &qry->targetList,
-										  EXPR_KIND_ORDER_BY,
+										  EXPR_KIND_SET_ORDER, /* Req: SRS-SQL-NLSSORT */
 										  false /* allow SQL92 rules */ );
 
 	/* restore namespace, remove join RTE from rtable */

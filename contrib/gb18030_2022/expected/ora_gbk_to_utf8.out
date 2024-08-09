@@ -1,0 +1,31 @@
+-- THIS FILE ENCODING WITH GBK !!!
+-- create database with gbk encoding
+CREATE DATABASE ora_gbk ENCODING='GBK' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE='template0';
+\c ora_gbk;
+load 'gb18030_2022';
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+-- insert gbk data (> 0xfe50)
+create table gbk_to_utf8_test(x text);
+insert into gbk_to_utf8_test values('şPşQşRşSşTşUşVşWşXşYşZş[ş\ş]ş^ş_ş`şaşbşcşdşeşfşgşhşişjşkşlşmşnşoşpşqşrşsştşuşvşwşxşyşzş{ş|ş}ş~ş€şş‚şƒş„ş…ş†ş‡şˆş‰şŠş‹şŒşşşşş‘ş’ş“ş”ş•ş–ş—ş˜ş™şšş›şœşşşŸş ');
+-- test GBK to UTF8
+set client_encoding = 'UTF8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+select * from gbk_to_utf8_test;
+                                                                         x                                                                          
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ âºî –î —î ˜âº„ã‘³ã‘‡âºˆâº‹î ã–ã˜šã˜âºŒâº—ã¥®ã¤˜î ¦ã§ã§Ÿã©³ã§î «î ¬ã­ã±®ã³ âº§î ±î ²âºªä–ä…Ÿâº®äŒ·âº³âº¶âº·î »ä±ä¬âº»ää“–ä™¡ä™Œî¡ƒäœ£äœ©ä¼äâ»Šä¥‡ä¥ºä¥½ä¦‚ä¦ƒä¦…ä¦†ä¦Ÿä¦›ä¦·ä¦¶î¡”î¡•ä²£ä²Ÿä² ä²¡ä±·ä²¢ä´“ä´”ä´•ä´–ä´—ä´˜ä´™ä¶®î¡¤
+(1 row)
+
+-- finish
+\c postgres
+drop database ora_gbk

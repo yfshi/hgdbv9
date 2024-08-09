@@ -18,6 +18,7 @@
 
 #include "access/detoast.h"
 #include "access/htup_details.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
 #include "funcapi.h"
@@ -973,8 +974,33 @@ record_cmp(FunctionCallInfo fcinfo)
 		 * comparison function might.
 		 */
 		collation = att1->attcollation;
-		if (collation != att2->attcollation)
-			collation = InvalidOid;
+		if (collation != att2->attcollation) 
+		{
+			/* 
+			 * Req:SRS-SQL-NLSSORT 
+			 * for INSERT INTO ... ON CONFILCT ... DO UPDATE ...
+			 * if att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
+			 * we use oracle's collation.
+			 */
+			if (ORA_PARSER == compatible_db &&
+				enable_ora_default_collation)
+			{
+				if (att1->attcollation == DEFAULT_COLLATION_OID &&
+					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)
+				{
+					collation = att2->attcollation;
+				}
+				else if (att2->attcollation == DEFAULT_COLLATION_OID &&
+						 get_collation_provider(att1->attcollation) == COLLPROVIDER_ORACLE)
+				{
+					collation = att1->attcollation;
+				}
+				else
+					collation = InvalidOid;
+			}
+			else
+				collation = InvalidOid;
+		}
 
 		/*
 		 * Lookup the comparison function if not done already
@@ -1219,8 +1245,34 @@ record_eq(PG_FUNCTION_ARGS)
 		 * equality function might.
 		 */
 		collation = att1->attcollation;
-		if (collation != att2->attcollation)
-			collation = InvalidOid;
+		if (collation != att2->attcollation) 
+		{
+			/* 
+			 * Req:SRS-SQL-NLSSORT 
+			 * ExecTypeFromExprList() will make template tupdesc when do compare, and set attr's 
+			 * collation according to it's TYPE.
+			 * If att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
+			 * we use oracle's collation.
+			 */
+			if (ORA_PARSER == compatible_db &&
+				enable_ora_default_collation)
+			{
+				if (att1->attcollation == DEFAULT_COLLATION_OID &&
+					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)
+				{
+					collation = att2->attcollation;
+				}
+				else if (att2->attcollation == DEFAULT_COLLATION_OID &&
+						 get_collation_provider(att1->attcollation) == COLLPROVIDER_ORACLE)
+				{
+					collation = att1->attcollation;
+				}
+				else
+					collation = InvalidOid;
+			}
+			else
+				collation = InvalidOid;
+		}
 
 		/*
 		 * Lookup the equality function if not done already

@@ -1,0 +1,37 @@
+#ifndef NLSSORT_BINARY_CI_COLLATION
+#define NLSSORT_BINARY_CI_COLLATION
+
+#define binary_ci_empty_data NULL
+
+static nlssort_mp_t binary_ci_utf8 = {
+    .base = PG_UTF8,
+    .size = sizeof(binary_ci_empty_data) / sizeof(nlssort_binary_mp_data_t),
+    .sec_size = sizeof(nlssort_binary_mp_data_t),
+    .mp_find = nls_bsearch_find,
+    .mp_format = binary_format,
+    .normalize = binary_case_insensitive_normalize,
+    .data = (nlssort_mp_data_t *)binary_ci_empty_data
+};
+
+// result of BINARY_CI is the same as BINARY in GBK and GB18030 environment
+static nlssort_mp_t binary_ci_gbk = {
+    .base = PG_GBK,
+    .size = sizeof(binary_ci_empty_data) / sizeof(nlssort_binary_mp_data_t),
+    .sec_size = sizeof(nlssort_binary_mp_data_t),
+    .mp_find = nls_bsearch_find,
+    .mp_format = binary_format,
+    .normalize = binary_normalize,
+    .data = (nlssort_mp_data_t *)binary_ci_empty_data
+};
+
+static nlssort_mp_t binary_ci_gb18030 = {
+    .base = PG_GB18030,
+    .size = sizeof(binary_ci_empty_data) / sizeof(nlssort_binary_mp_data_t),
+    .sec_size = sizeof(nlssort_binary_mp_data_t),
+    .mp_find = nls_bsearch_find,
+    .mp_format = binary_format,
+    .normalize = binary_normalize,
+    .data = (nlssort_mp_data_t *)binary_ci_empty_data
+};
+
+#endif

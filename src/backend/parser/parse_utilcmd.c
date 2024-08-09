@@ -22,6 +22,9 @@
 
 #include "postgres.h"
 
+#include <assert.h>
+#include <math.h>      /* BUG#Z029 */
+
 #include "access/amapi.h"
 #include "access/htup_details.h"
 #include "access/relation.h"
@@ -37,6 +40,7 @@
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
+#include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_type.h"
 #include "commands/comment.h"
@@ -44,6 +48,7 @@
 #include "commands/sequence.h"
 #include "commands/tablecmds.h"
 #include "commands/tablespace.h"
+#include "funcapi.h"			/* ReqID:SRS-SQL-INVISIBLECOL */
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -58,22 +63,18 @@
 #include "parser/parse_type.h"
 #include "parser/parse_utilcmd.h"
 #include "parser/parser.h"
+#include "parser/pg_object_hook.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
 #include "utils/partcache.h"
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
-#include <math.h>      /* BUG#Z029 */
-/* Begin - BUG:M0000062 */
-#include "utils/guc.h"
-#include "utils/ora_compatible.h"
-/* End - BUG:M0000062 */
-#include "catalog/pg_proc.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
-#include "funcapi.h"			/* ReqID:SRS-SQL-INVISIBLECOL */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -101,6 +102,7 @@ typedef struct
 	bool		ispartitioned;	/* true if table is partitioned */
 	PartitionBoundSpec *partbound;	/* transformed FOR VALUES */
 	bool		ofType;			/* true if statement contains OF typename */
+	Oid			collOid;		/* ReqID:SRS-SQL-NLSSORT, record table's collation */
 } CreateStmtContext;
 
 /* State shared by transformCreateSchemaStmtElements and its subroutines */
@@ -298,6 +300,30 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 		}
 	}
 	/* End - ReqID:SRS-SQL-ROWID */
+
+	/* 
+	 * Begin - Req: SRS-SQL-NLSSORT
+ 	 * Set table's collation, or inherit from Effective Schema Default Collation,
+	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
+ 	 */
+	if (ORA_PARSER == compatible_db && 
+		enable_ora_default_collation)
+	{
+		Oid	relColl;		
+
+		if(stmt->collname)
+		{
+			relColl = CollationGetCollid(stmt->collname);
+			if (!OidIsValid(relColl))
+				ereport(ERROR,
+						errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
+		} 
+		else
+			relColl = GetNamespaceCollation(namespaceid);
+
+		cxt.collOid = relColl;
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
 
 	/*
 	 * Run through each primary element in the table creation clause. Separate
@@ -2620,7 +2646,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				defopclass = GetDefaultOpClass(attform->atttypid,
 											   index_rel->rd_rel->relam);
 				if (indclass->values[i] != defopclass ||
-					attform->attcollation != index_rel->rd_indcollation[i] ||
+					IndexCollationPersistent(attform->attcollation) != index_rel->rd_indcollation[i] ||
 					attoptions != (Datum) 0 ||
 					index_rel->rd_indoption[i] != 0)
 					ereport(ERROR,
@@ -3041,6 +3067,7 @@ transformFKConstraints(CreateStmtContext *cxt,
 			altercmd->subtype = AT_AddConstraint;
 			altercmd->name = NULL;
 			altercmd->def = (Node *) constraint;
+			altercmd->is_create = true; /* Req: SRS-SQL-NLSSORT */
 			alterstmt->cmds = lappend(alterstmt->cmds, altercmd);
 		}
 
@@ -3749,10 +3776,24 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					 */
 					attnum = get_attnum(relid, cmd->name);
 					if (attnum == InvalidAttrNumber)
-						ereport(ERROR,
+					{
+						/* Req: SRS-SQL-NLSSORT */
+						if (ORA_PARSER == compatible_db)
+							ereport(ERROR,
+									errmsg("IVY-00904: \"%s\": invalid identifier", cmd->name));
+						else
+							ereport(ERROR,
 								(errcode(ERRCODE_UNDEFINED_COLUMN),
 								 errmsg("column \"%s\" of relation \"%s\" does not exist",
 										cmd->name, RelationGetRelationName(rel))));
+					}
+
+					/* 
+					 * Req: SRS-SQL-NLSSORT
+					 * ALTER TABLE xxx MODIFY [ datatype ] [ COLLATE collation ]
+					 */
+					if (def->typeName == NULL)
+						def->typeName = makeTypeNameFromOid(get_atttype(relid, attnum), get_atttypmod(relid, attnum));
 
 					/* Begin - BUG:M0000062 */
 					/*
@@ -4127,6 +4168,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 	 * including any collation spec that might be present.
 	 */
 	Type		ctype = typenameType(cxt->pstate, column->typeName, &typmod);	/* BUG:M0000068 */
+	Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
 
 	/* Begin - BUG:M0000068 */
 	/*
@@ -4136,8 +4178,6 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 	 */
 	if (ORA_PARSER == compatible_db && typmod == -1)
 	{
-		Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
-
 		if (typtup->oid == ORAVARCHARCHAROID ||
 			typtup->oid == ORAVARCHARBYTEOID)
 			elog(ERROR, "missing left parenthesis");
@@ -4146,9 +4186,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 
 	if (column->collClause)
 	{
-		Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
-
-		LookupCollation(cxt->pstate,
+		Oid	colColl = LookupCollation(cxt->pstate,
 						column->collClause->collname,
 						column->collClause->location);
 		/* Complain if COLLATE is applied to an uncollatable type */
@@ -4159,7 +4197,51 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 							format_type_be(typtup->oid)),
 					 parser_errposition(cxt->pstate,
 										column->collClause->location)));
+
+		/*
+		 * Begin - ReqID:SRS-SQL-NLSSORT
+		 * If a column has the data type of CLOB or NCLOB, then its specified 
+		 * collation must be USING_NLS_COMP. The default collation of CLOB and 
+		 * NCLOB columns is always USING_NLS_COMP and it does not depend on 
+		 * the table default collation.
+		 */
+		if (ORA_PARSER == compatible_db &&
+			enable_ora_default_collation)
+		{
+			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID) 
+			{
+				if(colColl != ORA_COLL_OID(USING_NLS_COMP)) 
+					ereport(ERROR,
+							errmsg("IVY-43912: invalid collation specified for a CLOB or NCLOB value"));
+			}
+		}
+		/* End - ReqID:SRS-SQL-NLSSORT */
 	}
+	/* Begin - ReqID:SRS-SQL-NLSSORT */
+	else if (OidIsValid(typtup->typcollation))
+	{
+		/*
+		 * If not set COLLATE, inherit from table's collation;
+		 *
+		 * CLOB & NCLOB type must only be USING_NLS_COMP;
+		 * 
+		 * The `column->collOid` may be COVERED if the column has foreign key 
+		 * constraints at transformFKConstraintsCollation();
+		 */
+		if (ORA_PARSER == compatible_db &&
+			enable_ora_default_collation) 
+		{
+			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID)
+				column->collOid = ORA_COLL_OID(USING_NLS_COMP);
+			else if (typtup->oid == NAMEOID)
+				column->collOid = C_COLLATION_OID;
+			else if(cxt->rel) // for cmd `ALTER TABLE ADD`
+				column->collOid = GetRelationCollation(cxt->rel);
+			else
+				column->collOid = cxt->collOid;
+		}
+	}
+	/* End - ReqID:SRS-SQL-NLSSORT */
 
 	ReleaseSysCache(ctype);
 }

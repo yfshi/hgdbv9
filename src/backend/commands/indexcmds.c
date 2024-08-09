@@ -26,6 +26,7 @@
 #include "catalog/index.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_am.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_opclass.h"
@@ -60,6 +61,7 @@
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"
 #include "utils/partcache.h"
 #include "utils/pg_rusage.h"
 #include "utils/regproc.h"
@@ -2006,7 +2008,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 								format_type_be(atttype))));
 		}
 
-		collationOidP[attn] = attcollation;
+		collationOidP[attn] = IndexCollationPersistent(attcollation); /* Req: SRS-SQL-NLSSORT */
 
 		/*
 		 * Identify the opclass to use.  Use of ddl_userid is necessary due to

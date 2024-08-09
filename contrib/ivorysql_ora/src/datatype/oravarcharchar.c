@@ -16,19 +16,22 @@
  *------------------------------------------------------------------
  */
 #include "postgres.h"
+
 #include "access/hash.h"
 #include "access/detoast.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
+#include "fmgr.h"
 #include "libpq/pqformat.h"
+#include "mb/pg_wchar.h"
 #include "nodes/nodeFuncs.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h"
 #include "utils/ora_compatible.h" /* BUG#Z091 */
-#include "mb/pg_wchar.h"
+#include "utils/pg_locale.h"
 #include "utils/varlena.h"
-#include "fmgr.h"
-#include "catalog/namespace.h"
 #include "utils/xml.h"
 
 #define MaxVarcharSize 32767	/*BUG:000116*/
@@ -339,29 +342,78 @@ oravarcharchar_cmp(VarChar *arg1, VarChar *arg2, Oid collid)
 	return varstr_cmp(a1p, len1, a2p, len2, collid);
 }
 
+static void
+check_collation_set(Oid collid)
+{
+	if (!OidIsValid(collid))
+	{
+		/**
+		 * SRS-SQL-NLSSORT
+		 * Oracle type do not require this error message,
+		 * just annotate it.
+		 */
+		#if 0
+		/*
+		 * This typically means that the parser could not resolve a conflict
+		 * of implicit collations, so report it that way.
+		 */
+		ereport(ERROR,
+				(errcode(ERRCODE_INDETERMINATE_COLLATION),
+				 errmsg("could not determine which collation to use for string comparison"),
+				 errhint("Use the COLLATE clause to set the collation explicitly.")));
+		#else
+		ereport(ERROR,
+				(errcode(ERRCODE_INDETERMINATE_COLLATION),
+				 errmsg("IVY-43915: unable to determine collation: arguments have conflicting collations")));
+		#endif
+	}
+}
+
 Datum
 oravarchareq(PG_FUNCTION_ARGS)
 {
+	Oid 		collid = PG_GET_COLLATION();
 	Datum		arg1 = PG_GETARG_DATUM(0);
 	Datum		arg2 = PG_GETARG_DATUM(1);
 	bool		result;
 	Size		len1,
-				len2;
-				
-	len1 = toast_raw_datum_size(arg1);
-	len2 = toast_raw_datum_size(arg2);
-	if (len1 != len2)
-		result = false;
+				len2;				
+	pg_locale_t locale = 0;
+	
+	check_collation_set(collid);
+	
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
+	
+	if (locale && locale->deterministic)
+	{				
+		len1 = toast_raw_datum_size(arg1);
+		len2 = toast_raw_datum_size(arg2);
+		if (len1 != len2)
+			result = false;
+		else
+		{
+			VarChar	   *targ1 = DatumGetVarCharPP(arg1);
+			VarChar	   *targ2 = DatumGetVarCharPP(arg2);
+
+			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
+							 len1 - VARHDRSZ) == 0);
+
+			PG_FREE_IF_COPY(targ1, 0);
+			PG_FREE_IF_COPY(targ2, 1);
+		}
+	}
 	else
 	{
-		VarChar	   *targ1 = DatumGetVarCharPP(arg1);
-		VarChar	   *targ2 = DatumGetVarCharPP(arg2);
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		VarChar	   *arg1 = PG_GETARG_VARCHAR_PP(0);
+		VarChar    *arg2 = PG_GETARG_VARCHAR_PP(1);
 
-		result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-						 len1 - VARHDRSZ) == 0);
+		result = (oravarcharchar_cmp(arg1, arg2, collid) == 0);
 
-		PG_FREE_IF_COPY(targ1, 0);
-		PG_FREE_IF_COPY(targ2, 1);
+		PG_FREE_IF_COPY(arg1, 0);
+		PG_FREE_IF_COPY(arg2, 1);
+		/* End - Req: SRS-SQL-NLSSORT */
 	}
 
 	PG_RETURN_BOOL(result);
@@ -370,26 +422,48 @@ oravarchareq(PG_FUNCTION_ARGS)
 Datum
 oravarcharne(PG_FUNCTION_ARGS)
 {
+	Oid 		collid = PG_GET_COLLATION();
 	Datum		arg1 = PG_GETARG_DATUM(0);
 	Datum		arg2 = PG_GETARG_DATUM(1);
 	bool		result;
 	Size		len1,
 				len2;
+	pg_locale_t locale = 0;
+	
+	check_collation_set(collid);
+	
+	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+		locale = pg_newlocale_from_collation(collid);
 
-	len1 = toast_raw_datum_size(arg1);
-	len2 = toast_raw_datum_size(arg2);
-	if (len1 != len2)
-		result = true;
+	if (locale && locale->deterministic)
+	{
+		len1 = toast_raw_datum_size(arg1);
+		len2 = toast_raw_datum_size(arg2);
+		if (len1 != len2)
+			result = true;
+		else
+		{
+			VarChar	   *targ1 = DatumGetVarCharPP(arg1);
+			VarChar	   *targ2 = DatumGetVarCharPP(arg2);
+
+			result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
+							len1 - VARHDRSZ) != 0);
+
+			PG_FREE_IF_COPY(targ1, 0);
+			PG_FREE_IF_COPY(targ2, 1);
+		}
+	}
 	else
 	{
-		VarChar	   *targ1 = DatumGetVarCharPP(arg1);
-		VarChar	   *targ2 = DatumGetVarCharPP(arg2);
+		/* Begin - Req: SRS-SQL-NLSSORT */
+		VarChar	   *arg1 = PG_GETARG_VARCHAR_PP(0);
+		VarChar    *arg2 = PG_GETARG_VARCHAR_PP(1);
 
-		result = (memcmp(VARDATA_ANY(targ1), VARDATA_ANY(targ2),
-						 len1 - VARHDRSZ) != 0);
+		result = (oravarcharchar_cmp(arg1, arg2, collid) != 0);
 
-		PG_FREE_IF_COPY(targ1, 0);
-		PG_FREE_IF_COPY(targ2, 1);
+		PG_FREE_IF_COPY(arg1, 0);
+		PG_FREE_IF_COPY(arg2, 1);
+		/* End - Req: SRS-SQL-NLSSORT */
 	}
 
 	PG_RETURN_BOOL(result);
@@ -602,9 +676,23 @@ hashoravarchar(PG_FUNCTION_ARGS)
 	char	   *keydata; /* BUG#M0000262 */
 	int			keylen;  /* BUG#M0000262 */
 	Datum		result;
+	Oid			collid = PG_GET_COLLATION(); /* Req: SRS-SQL-NLSSORT */
 
 	keydata = VARDATA_ANY(key);     /* BUG#M0000262 */
 	keylen = varchar2_Truelen(key); /* BUG#M0000262 */
+
+	/* Begin - Req: SRS-SQL-NLSSORT */
+	if (OidIsValid(collid) && 
+		nlssort_hook &&
+		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	{
+		bytea *k = nlssort_hook(keydata, keylen, collid, false);
+
+		keydata = VARDATA_ANY(k);
+		keylen = VARSIZE_ANY_EXHDR(k);
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
 
 	/*
 	 * Note: this is currently identical in behavior to hashvarlena, but keep

@@ -336,7 +336,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 %type <node>	alter_table_cmd alter_type_cmd opt_collate_clause
 	   replica_identity partition_cmd index_partition_cmd
-%type <list>	alter_table_cmds alter_type_cmds
+%type <list>	alter_table_cmds alter_type_cmds alter_table_modify_cmds
 %type <list>    alter_identity_column_option_list
 %type <defelt>  alter_identity_column_option
 
@@ -578,6 +578,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 				OracleCharacter /* ReqID:SRS-GKC-DATATYPE_001 */
 				Datetime /* ReqID:SRS-GKC-DATATYPE_001 */
 				LongTypename	/*BUGID:0000649*/	
+				modify_typename_optional /* SRS-SQL-NLSSORT */
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_timezone opt_no_inherit
@@ -817,17 +818,17 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 				opt_ora_procedure_source_clause_list ora_procedure_source_clause_list
 				opt_ora_createfunc_opt_list compiler_parameters_clause compiler_parameters_list
 %type <defelt>	ora_createfunc_opt_item ora_function_source_clause_item ora_invoker_rights_clause
-				ora_accessible_by_clause ora_default_collation_clause ora_result_cache_clause
+				ora_accessible_by_clause ora_result_cache_clause
 				ora_sql_macro_clause ora_pipelined_clause ora_parallel_enable_clause
 				ora_procedure_source_clause_item
 %type <ival>	opt_unit_kind
-%type <str>		any_identifier
+%type <str>		any_identifier default_collation_option default_collation_clause
 %type <node>	ivy_routine_body accessor_item sql_macro_options implementation_package_type
 				ora_streaming_type opt_parallel_enable_partiton_clause
 				ora_parallel_enable_partiton_by_elem ora_parallel_enable_partiton_type
 				opt_streaming_clause compiler_parameter_item
 %token <keyword> EDITIONABLE NONEDITIONABLE IVYSQL NOCOPY SHARING METADATA AUTHID ACCESSIBLE
-				 PACKAGE DETERMINISTIC RESULT_CACHE RELIES_ON USING_NLS_COMP SQL_MACRO SCALAR
+				 PACKAGE DETERMINISTIC RESULT_CACHE RELIES_ON SQL_MACRO SCALAR
 				 PIPELINED POLYMORPHIC PARALLEL_ENABLE HASH_P COMPILE DEBUG_P REUSE SETTINGS
 /* End - ReqID:SRS-SQL-PROC */
 
@@ -874,8 +875,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 /* Begin - ReqID:SRS-SQL-INVISIBLECOL */
 %type <boolean> Opt_visibility opt_out_join	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-%type <list> modify_col_visibilitys
-%type <node> modify_col_visibility
+%type <list> modify_col_visibilitys modify_column_clauses modify_col_properties
+%type <node> modify_col_visibility modify_col_property
 /* End - ReqID:SRS-SQL-INVISIBLECOL */
 
 /* Begin - ReqID:SRS-SQL-SYSFUNC */
@@ -889,8 +890,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 				ora_to_number_expr_fmt_nls
 /* End - ReqID:SRS-SQL-SYSFUNC */
 /* Begin - Bug#Z485 */
-%type <node> virtual_clause add_column
-%type <list> virtual_clauses add_columns
+%type <node> modify_virtcol_property add_column
+%type <list> modify_virtcol_properties add_columns
 /* End - Bug#Z485 */
 
 /* Begin - ReqID:SRS-SQL-FORCEVIEW */
@@ -909,7 +910,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P INVISIBLE_AS VISIBLE_AS/* BUG#Z375 */ /* Bug#Z485 */
+%token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P/* BUG#Z375 */ /* Bug#Z485 */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -2392,15 +2393,51 @@ AlterTableStmt:
 				}
 		;
 
+modify_typename_optional:
+	 Typename			{ $$ = $1; }
+	| /* EMPTY */		{ $$ = NULL; }
+
+modify_col_property:
+			ColId modify_typename_optional opt_collate_clause
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					ColumnDef *def = makeNode(ColumnDef);
+					def->typeName = $2;
+					def->collClause = (CollateClause *) $3;
+					def->raw_default = NULL;
+					def->location = @1;
+
+					n->subtype = AT_AlterColumnType;
+					n->name = $1;
+					n->def = (Node *) def;					
+					$$ = (Node *)n;
+				}
+		;
+
+modify_col_properties:
+				modify_col_property								{ $$ = list_make1($1); }
+			|	modify_col_properties ',' modify_col_property	{ $$ = lappend($1, $3); }
+			;
+
+modify_column_clauses:
+				modify_col_visibility			{ $$ = list_make1($1); }	/* ReqID:SRS-SQL-INVISIBLECOL */
+			|	'(' modify_col_visibilitys ')'	{ $$ = $2; }				/* ReqID:SRS-SQL-INVISIBLECOL */
+			| 	modify_col_property				{ $$ = list_make1($1); }
+			|	'(' modify_col_properties ')'	{ $$ = $2; }
+		;
+
+alter_table_modify_cmds:
+				MODIFY modify_column_clauses				{ $$ = $2; }
+			| 	MODIFY modify_virtcol_property				{ $$ = list_make1($2); }	/* Bug#Z485 */
+			| 	MODIFY '(' modify_virtcol_properties ')'	{ $$ = $3; }				/* Bug#Z485 */
+			| 	MODIFY identity_clause						{ $$ = $2; }				/* Bug#m0000070 */
+		;
+
 alter_table_cmds:
 			alter_table_cmd							{ $$ = list_make1($1); }
 			| alter_table_cmds ',' alter_table_cmd	{ $$ = lappend($1, $3); }
-			| ADD_P '(' add_columns ')'				{ $$ = $3; }	/* Bug#Z485 */
-			| MODIFY virtual_clause					{ $$ = list_make1($2); }	/* Bug#Z485 */
-			| MODIFY '(' virtual_clauses ')'		{ $$ = $3; }	/* Bug#Z485 */
-			| MODIFY identity_clause				{ $$ = $2; }	/* Bug#m0000070 */
-			| MODIFY modify_col_visibility			{ $$ = list_make1($2); }	/* ReqID:SRS-SQL-INVISIBLECOL */
-			| MODIFY '(' modify_col_visibilitys ')'	{ $$ = $3; }	/* ReqID:SRS-SQL-INVISIBLECOL */
+			| ADD_P '(' add_columns ')'				{ $$ = $3; }				/* Bug#Z485 */						
+			| alter_table_modify_cmds				{ $$ = $1; }				/* ReqID:SRS-SQL-NLSSORT */
 		;
 
 /* Begin - ReqID:SRS-SQL-FORCEVIEW */
@@ -3080,6 +3117,15 @@ alter_table_cmd:
 					n->def = (Node *)$1;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-NLSSORT */
+			| default_collation_clause	
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DefaultCollation;
+					n->name = $1;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-NLSSORT */
 		;
 
 alter_column_default:
@@ -3237,12 +3283,12 @@ add_column:
 			}
 ;
 
-virtual_clauses:
-			virtual_clause							{ $$ = list_make1($1); }
-			| virtual_clauses ',' virtual_clause	{ $$ = lappend($1, $3);}
+modify_virtcol_properties:
+			modify_virtcol_property									{ $$ = list_make1($1); }
+			| modify_virtcol_properties ',' modify_virtcol_property	{ $$ = lappend($1, $3);}
 		;
 
-virtual_clause:
+modify_virtcol_property:
 			ColId Typename GENERATED generated_when AS '(' a_expr ')' opt_virtual_or_stored virtual_node
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
@@ -3837,6 +3883,15 @@ copy_generic_opt_arg_list_item:
 			opt_boolean_or_string	{ $$ = (Node *) makeString($1); }
 		;
 
+default_collation_option:
+		default_collation_clause
+			{
+				$$ = $1;
+			}
+	|
+			{ 
+				$$ = NULL;
+			}
 
 /*****************************************************************************
  *
@@ -3847,7 +3902,7 @@ copy_generic_opt_arg_list_item:
 
 CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OptPartitionSpec table_access_method_clause OptWith
-			OnCommitOption OptTableSpace
+			default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -3859,18 +3914,21 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $10;
 					n->options = $11;
-					n->oncommit = $12;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $12;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $13;
 					/* Begin - ReqID:SRS-SQL-GTT */
 					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					/* End - ReqID:SRS-SQL-GTT */
-					n->tablespacename = $13;
+					n->tablespacename = $14;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
 			OptTableElementList ')' OptInherit OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$7->relpersistence = $2;
@@ -3882,18 +3940,21 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $13;
 					n->options = $14;
-					n->oncommit = $15;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $15;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $16;
 					/* Begin - ReqID:SRS-SQL-GTT */
 					if (n->oncommit == ONCOMMIT_NOOP && $7->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					/* End - ReqID:SRS-SQL-GTT */
-					n->tablespacename = $16;
+					n->tablespacename = $17;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -3906,18 +3967,21 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $9;
 					n->options = $10;
-					n->oncommit = $11;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $11;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $12;
 					/* Begin - ReqID:SRS-SQL-GTT */
 					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					/* End - ReqID:SRS-SQL-GTT */
-					n->tablespacename = $12;
+					n->tablespacename = $13;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$7->relpersistence = $2;
@@ -3930,18 +3994,21 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $12;
 					n->options = $13;
-					n->oncommit = $14;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $14;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $15;
 					/* Begin - ReqID:SRS-SQL-GTT */
 					if (n->oncommit == ONCOMMIT_NOOP && $7->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					/* End - ReqID:SRS-SQL-GTT */
-					n->tablespacename = $15;
+					n->tablespacename = $16;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name
 			OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
-			table_access_method_clause OptWith OnCommitOption OptTableSpace
+			table_access_method_clause OptWith default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -3954,14 +4021,17 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $11;
 					n->options = $12;
-					n->oncommit = $13;
-					n->tablespacename = $14;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $13;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $14;
+					n->tablespacename = $15;
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name PARTITION OF
 			qualified_name OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
-			table_access_method_clause OptWith OnCommitOption OptTableSpace
+			table_access_method_clause OptWith default_collation_option OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$7->relpersistence = $2;
@@ -3974,8 +4044,11 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->constraints = NIL;
 					n->accessMethod = $14;
 					n->options = $15;
-					n->oncommit = $16;
-					n->tablespacename = $17;
+					/* Begin - ReqID:SRS-SQL-NLSSORT */
+					n->collname = $16;
+					/* End - ReqID:SRS-SQL-NLSSORT */
+					n->oncommit = $17;
+					n->tablespacename = $18;
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
@@ -4141,7 +4214,7 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					$$ = (Node *)n;
 				}
 			/* Begin - Bug#Z485 */
-			| ColId INVISIBLE_AS AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+			| ColId INVISIBLE AS '(' a_expr ')' opt_virtual_or_stored virtual_node
 				{
 					ColumnDef *n = makeNode(ColumnDef);
 					Constraint *c = makeNode(Constraint);
@@ -4159,7 +4232,7 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					n->generated = ATTRIBUTE_GENERATED_VIRTUAL;
 					$$ = (Node *)n;
 				}
-			| ColId VISIBLE_AS AS '(' a_expr ')' opt_virtual_or_stored virtual_node
+			| ColId VISIBLE AS '(' a_expr ')' opt_virtual_or_stored virtual_node
 				{
 					ColumnDef *n = makeNode(ColumnDef);
 					Constraint *c = makeNode(Constraint);
@@ -7348,6 +7421,7 @@ any_name_list:
 
 any_name:	ColId						{ $$ = list_make1(makeString($1)); }
 			| ColId attrs				{ $$ = lcons(makeString($1), $2); }
+			| BINARY					{ $$ = list_make1(makeString("binary")); }/* SRS-SQL-NLSSORT */
 		;
 
 attrs:		'.' attr_name
@@ -8968,9 +9042,9 @@ ora_procedure_source_clause_item:
 				{
 					$$ = $1;
 				}
-			| ora_default_collation_clause
+			| default_collation_clause
 				{
-					$$ = $1;
+					$$ = makeDefElem("collation", NULL, @1);
 				}
 		;
 
@@ -8993,9 +9067,9 @@ ora_function_source_clause_item:
 				{
 					$$ = $1;
 				}
-			| ora_default_collation_clause
+			| default_collation_clause
 				{
-					$$ = $1;
+					$$ = makeDefElem("collation", NULL, @1);
 				}
 			/* deterministic_clause */
 			| DETERMINISTIC
@@ -9081,15 +9155,20 @@ opt_unit_kind:
 		| TYPE_P		{ $$ = ACCESSOR_TYPE; }
 	;
 
-ora_default_collation_clause:
-		DEFAULT COLLATION USING_NLS_COMP
+default_collation_clause:
+		DEFAULT COLLATION any_name
 			{
-				/*
-				 * Only syntax compatibility, currently we don't care about 
-				 * the value of DefElem so just pass NULL, note that it may
-				 * change in the future.
-				 */
-				$$ = makeDefElem("collation", NULL, @1);
+				/* Begin - ReqID:SRS-SQL-NLSSORT */
+				char *collname = strVal(linitial($3));
+
+				if(ORA_PARSER == compatible_db) {
+					if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) {
+						elog(ERROR, "ORA-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.");
+					}
+				}
+				/* End - ReqID:SRS-SQL-NLSSORT */
+
+				$$ = collname;
 			}
 	;
 
@@ -10225,9 +10304,9 @@ package_proper_item:
 				{
 					$$ = (Node *) $1;
 				}
-			|ora_default_collation_clause
+			|default_collation_clause
 				{
-					$$ = (Node *) $1;
+					$$ = (Node *) makeDefElem("collation", NULL, @1);
 				}
 			;
 
@@ -19672,7 +19751,6 @@ func_name:	type_function_name
  */
 ora_func_name:	type_function_name
 					{ $$ = list_make1(makeString($1)); }
-					
 			| IDENT indirection
 					{
 						$$ = check_func_name(lcons(makeString($1), $2),
@@ -19683,6 +19761,7 @@ ora_func_name:	type_function_name
 						$$ = check_func_name(lcons(makeString(pstrdup($1)), $2),
 											 yyscanner);
 					}
+			| col_name_keyword	{ $$ = list_make1(makeString(pstrdup($1))); }
 			| col_name_keyword indirection
 					{
 						$$ = check_func_name(lcons(makeString(pstrdup($1)), $2),
@@ -20332,7 +20411,6 @@ unreserved_keyword:
 			| INSENSITIVE
 			| INSERT
 			| INSTEAD
-			| INVISIBLE	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| INVOKER
 			| ISOLATION
 			| IVYSQL /* ReqID:SRS-SQL-PROC */
@@ -20536,7 +20614,6 @@ unreserved_keyword:
 			| UNLOGGED
 			| UNTIL
 			| UPDATE
-			| USING_NLS_COMP	/* ReqID:SRS-SQL-PROC */
 			| VACUUM
 			| VALID
 			| VALIDATE
@@ -20547,7 +20624,6 @@ unreserved_keyword:
 			| VIEW
 			| VIEWS
 			| VIRTUAL			/* ReqID:SRS-SQL-VIRTUALCOL */
-			| VISIBLE			/* ReqID:SRS-SQL-INVISIBLECOL */
 			| VOLATILE
 			| WHITESPACE_P
 			| WITHIN
@@ -20594,6 +20670,7 @@ col_name_keyword:
 			| INT_P
 			| INTEGER
 			| INTERVAL
+			| INVISIBLE	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| LEAST
 			| NATIONAL
 			| NCHAR
@@ -20624,6 +20701,7 @@ col_name_keyword:
 			| USERENV	/* BUG:0000830 */
 			| VARCHAR
 			| VARCHAR2		/* ReqID:SRS-GKC-DATATYPE_001 */
+			| VISIBLE			/* ReqID:SRS-SQL-INVISIBLECOL */
 			| XMLATTRIBUTES
 			| XMLCONCAT
 			| XMLELEMENT
@@ -21244,7 +21322,6 @@ bare_label_keyword:
 			| USER
 			| USERENV	/* BUG:0000830 */
 			| USING
-			| USING_NLS_COMP	/* ReqID:SRS-SQL-PROC */
 			| VACUUM
 			| VALID
 			| VALIDATE
@@ -21663,6 +21740,47 @@ makeOrderedSetArgs(List *directargs, List *orderedargs,
 					  ndirectargs);
 }
 
+/** 
+ * Begin - SRS-SQL-NLSSORT
+ * 
+ * Call `nlssort` in `order by` statement would not trriger `ORA-00938` exception
+ * we will add `NULL` argument to `NLSSORT` FuncCall Node, whose argument's number is zero in order by statement:
+ * 
+ * ORDER BY NLSSORT() -> ORDER BY NLSSORT(NULL)
+ * ORDER BY LENGTH(NLSSORT()) -> ORDER BY LENGTH(NLSSORT(NULL))
+ */
+static void
+sortClause_filter(List *l) {
+	ListCell 	*cell;
+	
+	if(l == NULL)
+		return;
+
+	foreach(cell, l) {
+		FuncCall 	*fn = NULL;
+		Node 		*node = lfirst(cell);
+	
+		if(nodeTag(node) == T_SortBy) {
+			node = ((SortBy *)node)->node;
+		} 
+
+		if(nodeTag(node) == T_FuncCall) {
+			fn = (FuncCall *)node;
+		}
+
+		if(fn) {
+			char *funcname = strVal(linitial(fn->funcname));
+
+			if(!pg_strcasecmp(funcname, "NLSSORT") && list_length(fn->args) == 0) {
+				fn->args = lappend(fn->args, makeNullAConst(-1));
+			} else {
+				sortClause_filter(fn->args);
+			}
+		}
+	}
+}
+/* End - SRS-SQL-NLSSORT */
+
 /* insertSelectOptions()
  * Insert ORDER BY, etc into an already-constructed SelectStmt.
  *
@@ -21688,6 +21806,7 @@ insertSelectOptions(SelectStmt *stmt,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg("multiple ORDER BY clauses not allowed"),
 					 parser_errposition(exprLocation((Node *) sortClause))));
+		sortClause_filter(sortClause);
 		stmt->sortClause = sortClause;
 	}
 	/* We can handle multiple locking clauses, though */
@@ -22049,6 +22168,14 @@ SplitColQualList(List *qualList,
 		if (IsA(n, CollateClause))
 		{
 			CollateClause *c = (CollateClause *) n;
+
+			/* Begin - ReqID:SRS-SQL-NLSSORT */
+			if(ORA_PARSER == compatible_db) {
+				if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) {
+					elog(ERROR, "ORA-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.");
+				}
+			}
+			/* End - ReqID:SRS-SQL-NLSSORT */
 
 			if (*collClause)
 				ereport(ERROR,

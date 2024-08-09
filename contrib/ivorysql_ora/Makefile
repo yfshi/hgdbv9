@@ -29,6 +29,7 @@ OBJS = \
 	src/merge/ora_merge.o \
 	src/sysview/sysview_functions.o \
 	src/xml_functions/ora_xml_functions.o \
+	src/nlssort/nlssort.o \
 	src/orarefcursor/orarefcursor.o
 
 EXTENSION = ivorysql_ora
@@ -77,6 +78,12 @@ ORA_REGRESS = \
 	ora_sysview \
 	ora_xml_functions \
 	ora_to_number \
+	ora_order_by_null \
+	ora_nlssort \
+	ora_nlssort_utf8 \
+	ora_nlssort_gbk \
+	ora_nlssort_gb18030 \
+	ora_default_collation \
 	orarefcursor
 
 ifdef USE_PGXS

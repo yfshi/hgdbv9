@@ -640,17 +640,23 @@ GetColumnDefCollation(ParseState *pstate, ColumnDef *coldef, Oid typeOid)
 	Oid			typcollation = get_typcollation(typeOid);
 	int			location = coldef->location;
 
-	if (coldef->collClause)
+	/**
+	 * ReqID:SRS-SQL-NLSSORT
+	 * coldef->collClause is setted in grammer.
+	 * coldef->collOid  is setted in transformer.
+	 * So, `coldef->collOid` has a higher priority than `coldef->collClause`
+	 */
+	if (OidIsValid(coldef->collOid))
+	{
+		/* Precooked collation spec, use that */
+		result = coldef->collOid;
+	}
+	else if (coldef->collClause)
 	{
 		/* We have a raw COLLATE clause, so look up the collation */
 		location = coldef->collClause->location;
 		result = LookupCollation(pstate, coldef->collClause->collname,
 								 location);
-	}
-	else if (OidIsValid(coldef->collOid))
-	{
-		/* Precooked collation spec, use that */
-		result = coldef->collOid;
 	}
 	else
 	{

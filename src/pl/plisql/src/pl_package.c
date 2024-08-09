@@ -2662,7 +2662,7 @@ plisql_get_package_func(FunctionCallInfo fcinfo, bool forValidator)
 		hashkey.trigOid = InvalidOid;
 
 		/* get input collation, if known */
-		hashkey.inputCollation = fcinfo->fncollation;;
+		hashkey.inputCollation = fcinfo->fncollation;
 
 		memcpy(hashkey.argtypes, argtypes,
 				   nargs * sizeof(Oid));

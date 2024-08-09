@@ -3304,8 +3304,8 @@ INFO:  Name = min, Job = ST_CLERK
 INFO:  Name = san, Job = neihe
 INFO:  Name = si, Job = kehu
 INFO:  Name = xiangru, Job = meigong
-INFO:  Name = xing, Job = meigong
 INFO:  Name = xing, Job = ST_CLERK
+INFO:  Name = xing, Job = meigong
 --explicit cursor for loop
 --ok
 DECLARE
@@ -3328,8 +3328,8 @@ INFO:  Name = min, Job = ST_CLERK
 INFO:  Name = san, Job = neihe
 INFO:  Name = si, Job = kehu
 INFO:  Name = xiangru, Job = meigong
-INFO:  Name = xing, Job = meigong
 INFO:  Name = xing, Job = ST_CLERK
+INFO:  Name = xing, Job = meigong
 --for loop explicit cursor which include paramter
 --ok
 DECLARE

@@ -1324,10 +1324,10 @@ key_dependent_view|CREATE FORCE VIEW public.key_dependent_view AS
     view_base_table.data
    FROM view_base_table
   GROUP BY view_base_table.key;
-mvtest_tv| SELECT mvtest_t.type,
+mvtest_tv| SELECT (mvtest_t.type COLLATE "binary") AS type,
     sum(mvtest_t.amt) AS totamt
    FROM mvtest_t
-  GROUP BY mvtest_t.type;
+  GROUP BY (mvtest_t.type COLLATE "binary");
 mvtest_tvv| SELECT sum(mvtest_tv.totamt) AS grandtot
    FROM mvtest_tv;
 mvtest_tvvmv| SELECT mvtest_tvvm.grandtot
@@ -2718,12 +2718,12 @@ rtest_vview3| SELECT x.a,
            FROM rtest_view2 y
           WHERE (y.a = x.a)));
 rtest_vview4| SELECT x.a,
-    x.b,
+    (x.b COLLATE "binary") AS b,
     count(y.a) AS refcount
    FROM rtest_view1 x,
     rtest_view2 y
   WHERE (x.a = y.a)
-  GROUP BY x.a, x.b;
+  GROUP BY x.a, (x.b COLLATE "binary");
 rtest_vview5| SELECT rtest_view1.a,
     rtest_view1.b,
     rtest_viewfunc1(rtest_view1.a) AS refcount

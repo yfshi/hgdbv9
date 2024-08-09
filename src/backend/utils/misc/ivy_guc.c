@@ -55,6 +55,21 @@ char	   *nls_dual_currency = "";
 char	   *nls_numeric_characters = "";
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
+/* Begin - SRS-SQL-NLSSORT */
+bool		 enable_ora_default_collation = true;
+bool		 enable_partitionwise_qual_force_pushdown = true;
+bool		 default_collation_is_c = true;
+char		*nls_sort_str;
+char		*nls_comp_str;
+char		*default_collation_str;
+
+int			max_string_size;
+int	 		nls_comp_option = NLS_COMP_BINARY;
+
+Oid			nls_sort_oid = ORA_COLL_OID(BINARY);
+Oid			default_collation_oid = InvalidOid;
+/* End - SRS-SQL-NLSSORT */
+
 /* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 bool			enable_emptystring_to_NULL = false;
 /* End - ReqID:EMPTY_STIRNG_TO_NULL */
@@ -228,6 +243,20 @@ static const struct config_enum_entry ora_merge_tuning[] = {
 	{NULL, 0, false}
 };
 /* End - ReqID:SRS-SQL-MERGE */
+
+/* Begin - SRS-SQL-NLSSORT */
+static const struct config_enum_entry max_string_size_options[] = {
+	{"standard", ORA_MAX_STRING_SIZE_STANDARD, false},
+	{"extended", ORA_MAX_STRING_SIZE_EXTENDED, false},
+	{NULL, 0, false}
+};
+static const struct config_enum_entry nls_comp_options[] = {
+	{"binary", NLS_COMP_BINARY, false},
+	{"linguistic", NLS_COMP_LINGUISTIC, false},
+	{"ansi", NLS_COMP_ANSI, false},
+	{NULL, 0, false}
+};
+/* End - SRS-SQL-NLSSORT */
 #endif
 
 #ifdef IVY_GUC_FUNC_DECLARE
@@ -246,6 +275,16 @@ static bool nls_numeric_characters_check(char **newval, void **extra,
 static bool check_dump_pgtype(int *newval, void **extra, GucSource source);
 static bool check_grant_usertype(int *newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SQL-SYSFUNC */
+
+/* Begin - SRS-SQL-NLSSORT */
+static bool nls_comp_check(char **newval, void **extra, GucSource source);
+static void nls_comp_assign(const char *newval, void *extra);
+static bool nls_sort_check(char **newval, void **extra, GucSource source);
+static void nls_sort_assign(const char *newval, void *extra);
+static bool default_collation_check(char **newval, void **extra, GucSource source);
+static void default_collation_assign(const char *newval, void *extra);
+static bool max_string_size_check(int *newval, void **extra, GucSource source);
+/* End - SRS-SQL-NLSSORT */
 #endif
 
 #if 0
@@ -526,6 +565,38 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* BEGIN - SRS-SQL-NLSSORT */
+	{
+		{"ivorysql.enable_partitionwise_qual_force_pushdown", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("whether allow to force push down qual when do wise partition aggerate in oracle compatible mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&enable_partitionwise_qual_force_pushdown,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.enable_ora_default_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("whether allow to set default collation in oracle compatible mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&enable_ora_default_collation,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.default_collation_is_c", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("whether the default collation(100) is C collation in oracle compatible mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&default_collation_is_c,
+		true,
+		NULL, NULL, NULL
+	},
+	/* END - SRS-SQL-NLSSORT */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -720,6 +791,36 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		nls_numeric_characters_check, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-SYSFUNC */
+	
+	/* Begin - SRS-SQL-NLSSORT */
+	{
+		{"nls_comp", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_COMP"),
+			NULL
+		},
+		&nls_comp_str,
+		"binary",
+		nls_comp_check, nls_comp_assign, NULL
+	},
+	{
+		{"nls_sort", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle NLS parameter for NLS_SORT."),
+			NULL
+		},
+		&nls_sort_str,
+		"binary",
+		nls_sort_check, nls_sort_assign, NULL
+	},
+	{
+		{"default_collation", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle Session parameter for DEFAULT_COLLATION."),
+			NULL
+		},
+		&default_collation_str,
+		"",
+		default_collation_check, default_collation_assign, NULL
+	},
+	/* End - SRS-SQL-NLSSORT */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -847,6 +948,17 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 	},
 	/* END - ReqID:SRS-MISC-USER */
 
+	/* Begin - SRS-SQL-NLSSORT */
+	{
+		{"max_string_size", PGC_SU_BACKEND, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle system parameter for MAX_STRING_SIZE."),
+			NULL
+		},
+		&max_string_size,
+		ORA_MAX_STRING_SIZE_EXTENDED, max_string_size_options,
+		max_string_size_check, NULL, NULL
+	},
+	/* End - SRS-SQL-NLSSORT */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -1152,4 +1264,103 @@ nls_territory_check(char **newval, void **extra, GucSource source)
 	return true;
 }
 /* End - ReqID:SRS-SQL-SYSFUNC */
+
+/* Begin - SRS-SQL-NLSSORT */
+static bool
+nls_comp_check(char **newval, void **extra, GucSource source)
+{
+	return true;
+}
+
+static void
+nls_comp_assign(const char *newval, void *extra)
+{
+	if (DB_ORACLE == database_mode && 
+		(IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		int i = 0;
+		char *options[] = { "BINARY", "LINGUISTIC", "ANSI", NULL };
+
+		for (i = 0; i < 3 && pg_strcasecmp(newval, options[i]); i++) {}
+
+		if (i != 3)
+			nls_comp_option = i;
+		else
+			ereport(ERROR, (errmsg("IVY-12705: Cannot access NLS data files or invalid environment specified")));
+	}
+}
+
+static bool
+nls_sort_check(char **newval, void **extra, GucSource source)
+{
+	if (DB_ORACLE == database_mode && 
+	   (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		Oid coll = CollationGetCollid(*newval);
+		if (!OidIsValid(coll) || 
+			get_collation_provider(coll) != COLLPROVIDER_ORACLE ||
+			IsPseudoCollation(coll))
+		{
+			ereport(ERROR, (errmsg("IVY-12705: Cannot access NLS data files or invalid environment specified")));
+		}
+	}
+
+	return true;
+}
+
+static void
+nls_sort_assign(const char *newval, void *extra)
+{
+	if (DB_ORACLE == database_mode && 
+	   (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		nls_sort_oid = CollationGetCollid(newval);
+	}
+}
+
+static bool
+default_collation_check(char **newval, void **extra, GucSource source)
+{
+	if (DB_ORACLE == database_mode && 
+		(IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		Oid coll = InvalidOid;
+		
+		if (max_string_size != ORA_MAX_STRING_SIZE_EXTENDED)
+			ereport(ERROR, (errmsg("IVY-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.")));
+
+		if (strlen(*newval))
+		{
+			coll = CollationGetCollid(*newval);
+			if (!OidIsValid(coll) || get_collation_provider(coll) != COLLPROVIDER_ORACLE)
+				ereport(ERROR, (errmsg("IVY-12705: Cannot access NLS data files or invalid environment specified")));
+		}
+
+		default_collation_oid = coll;
+	}
+
+	return true;
+}
+
+static void
+default_collation_assign(const char *newval, void *extra)
+{
+	if (strlen(newval))
+		default_collation_oid = CollationGetCollid(newval);
+}
+
+static bool
+max_string_size_check(int *newval, void **extra, GucSource source)
+{
+	int new_val = *newval;
+
+	if (new_val != ORA_MAX_STRING_SIZE_STANDARD && new_val != ORA_MAX_STRING_SIZE_EXTENDED)
+		ereport(ERROR, (errmsg("IVY-00096: invalid value EXTENDDED for parameter max_string_size, must be from among EXTENDED, STANDARD")));
+		
+	if (max_string_size == ORA_MAX_STRING_SIZE_EXTENDED && new_val == ORA_MAX_STRING_SIZE_STANDARD)
+		ereport(ERROR, (errmsg("cannot set MAX_STRING_SIZE from EXTENDED to STANDARD")));
+
+	return true;
+}
+/* End - SRS-SQL-NLSSORT */
 #endif

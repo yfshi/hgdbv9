@@ -91,6 +91,14 @@ typedef enum
 } WhereFrom;
 /* End - BUG#M0000201: support question marks as binding variables */
 
+/* Begin - SRS-SQL-NLSSORT */
+typedef enum
+{
+	ORA_MAX_STRING_SIZE_STANDARD,
+	ORA_MAX_STRING_SIZE_EXTENDED
+} MaxStringSize;
+/* End - SRS-SQL-NLSSORT */
+
 extern bool ora_strtoint64(const char *num, const char *dtype, int64 *retval);	/* BUG#M0000194 */
 
 #endif							/* ORA_COMPATIBLE_H */

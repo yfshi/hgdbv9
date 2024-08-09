@@ -3066,6 +3066,16 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 			 * runtime, the behavior will be the same as for EXPR_KIND_OTHER,
 			 * which is sane anyway.
 			 */
+		/* Begin: Req:SRS-SQL-NLSSORT */
+		case EXPR_KIND_DISTINCT_ORDER:
+			/* okay */
+			pstate->p_hasTargetSRFs = true;
+			break;
+		case EXPR_KIND_SET_ORDER:
+			/* okay */
+			pstate->p_hasTargetSRFs = true;
+			break;
+		/* End: Req:SRS-SQL-NLSSORT */
 	}
 	if (err)
 		ereport(ERROR,

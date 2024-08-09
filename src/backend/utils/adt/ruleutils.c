@@ -1468,10 +1468,10 @@ pg_get_indexdef_worker(Oid indexrelid, int colno,
 			bool		has_options = attoptions != (Datum) 0;
 
 			/* Add collation, if not default for column */
-			if (OidIsValid(indcoll) && indcoll != keycolcollation)
+			if (OidIsValid(indcoll) && indcoll != IndexCollationPersistent(keycolcollation))
 				appendStringInfo(&buf, " COLLATE %s",
 								 generate_collation_name((indcoll)));
-
+			
 			/* Add the operator class name, if not default */
 			get_opclass_name(indclass->values[keyno],
 							 has_options ? InvalidOid : keycoltype, &buf);
@@ -2058,7 +2058,7 @@ pg_get_partkeydef_worker(Oid relid, int prettyFlags,
 
 		/* Add collation, if not default for column */
 		partcoll = partcollation->values[keyno];
-		if (!attrsOnly && OidIsValid(partcoll) && partcoll != keycolcollation)
+		if (!attrsOnly && OidIsValid(partcoll))
 			appendStringInfo(&buf, " COLLATE %s",
 							 generate_collation_name((partcoll)));
 

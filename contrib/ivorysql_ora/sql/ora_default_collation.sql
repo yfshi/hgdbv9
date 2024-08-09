@@ -1,0 +1,735 @@
+-- 1
+CREATE OR REPLACE FUNCTION check_column_collation(tablename varchar2(1024), colname varchar2(1024)) 
+RETURN varchar2(1024)
+IS
+    ret varchar2(1024);
+    select_stmt varchar2(1024);
+BEGIN 
+    select_stmt := 'select collname from pg_collation where oid = (
+                        select attcollation from pg_attribute where attrelid = (
+                            select oid from pg_class where relname = ''' || tablename || ''') 
+                        and 
+                            attname = ''' || colname || ''');';
+    EXECUTE select_stmt into ret;
+    return ret;
+END;
+/
+
+-- 2
+CREATE OR REPLACE FUNCTION table_collation_test(coll varchar2(1024)) 
+RETURN VARCHAR2
+IS
+    ret VARCHAR2(64);
+    create_stmt varchar2(1024);
+BEGIN 
+    create_stmt := 'create table test (val varchar2(1024)) default collation ' || coll || ';';
+    EXECUTE create_stmt;
+    select check_column_collation('test', 'val') into ret;
+    drop table test;
+    return ret;
+END;
+/
+
+-- test table's default collation, inherited from SCHEMA
+-- 1
+create table test (val varchar2(1024));          -- table's   collation is USING_NLS_COMP, inherited from SCHEMA
+select check_column_collation('test', 'val');  -- column's  collation is USING_NLS_COMP, inherited from TABLE
+drop table test;
+
+-- 2
+---- ORA-12746: unrecognized collation name "XXX"
+create table test (val varchar2(1024)) default collation XXX;
+
+-- Begin: test table's collation
+select table_collation_test('USING_NLS_SORT_CS')    from dual;
+select table_collation_test('USING_NLS_SORT_AI')    from dual;
+select table_collation_test('USING_NLS_SORT_CI')    from dual;
+select table_collation_test('USING_NLS_SORT')       from dual;
+select table_collation_test('USING_NLS_COMP')       from dual;
+select table_collation_test('BINARY')               from dual;
+select table_collation_test('BINARY_AI')            from dual;
+select table_collation_test('BINARY_CI')            from dual;
+select table_collation_test('GENERIC_M_CI')         from dual;
+select table_collation_test('SCHINESE_PINYIN_M')    from dual;
+select table_collation_test('SCHINESE_STROKE_M')    from dual;
+select table_collation_test('SCHINESE_RADICAL_M')   from dual;
+select table_collation_test('UCA0700_SCHINESE')     from dual;
+select table_collation_test('UCA0700_SCHINESE1')    from dual;
+select table_collation_test('UCA0700_SCHINESE2')    from dual;
+select table_collation_test('UCA0700_SCHINESE_S4_VS_BN_NY_EN_FN_HN_DN_MN')  from dual;
+select table_collation_test('UCA0700_SCHINESE1_S4_VS_BN_NY_EN_FN_HN_DN_MN') from dual;
+select table_collation_test('UCA0700_SCHINESE2_S4_VS_BN_NY_EN_FN_HN_DN_MN') from dual;
+-- End: test table's collation
+
+
+-- Begin: test column's collation
+CREATE OR REPLACE FUNCTION column_collation_test(coll varchar2(1024)) 
+RETURN VARCHAR2
+IS
+    ret VARCHAR2(64);
+    create_stmt varchar2(1024);
+BEGIN 
+    create_stmt := 'create table test (val varchar2(1024) collate ' || coll ||  ');';
+    EXECUTE create_stmt;
+    select check_column_collation('test', 'val') into ret;
+    drop table test;
+
+    return ret;
+END;
+/
+
+select column_collation_test('USING_NLS_SORT_CS')    from dual;
+select column_collation_test('USING_NLS_SORT_AI')    from dual;
+select column_collation_test('USING_NLS_SORT_CI')    from dual;
+select column_collation_test('USING_NLS_SORT')       from dual;
+select column_collation_test('USING_NLS_COMP')       from dual;
+select column_collation_test('BINARY')               from dual;
+select column_collation_test('BINARY_AI')            from dual;
+select column_collation_test('BINARY_CI')            from dual;
+select column_collation_test('GENERIC_M_CI')         from dual;
+select column_collation_test('SCHINESE_PINYIN_M')    from dual;
+select column_collation_test('SCHINESE_STROKE_M')    from dual;
+select column_collation_test('SCHINESE_RADICAL_M')   from dual;
+select column_collation_test('UCA0700_SCHINESE')     from dual;
+select column_collation_test('UCA0700_SCHINESE1')    from dual;
+select column_collation_test('UCA0700_SCHINESE2')    from dual;
+select column_collation_test('UCA0700_SCHINESE_S4_VS_BN_NY_EN_FN_HN_DN_MN')  from dual;
+select column_collation_test('UCA0700_SCHINESE1_S4_VS_BN_NY_EN_FN_HN_DN_MN') from dual;
+select column_collation_test('UCA0700_SCHINESE2_S4_VS_BN_NY_EN_FN_HN_DN_MN') from dual;
+-- End: test column's collation
+
+
+-- test CLOB/NCLOB column's collation
+---- 1
+create table test (val CLOB);
+select check_column_collation('test', 'val');
+drop table test;
+
+---- 2
+------ ORA-43912: invalid collation specified for a CLOB or NCLOB value
+create table test (val CLOB collate BINARY);
+
+---- 3
+------ USING_NLS_COMP
+create table test (val CLOB) default collation BINARY;
+select check_column_collation('test', 'val');
+drop table test;
+
+---- 4
+------ USING_NLS_COMP
+create table test (val CLOB) default collation USING_NLS_COMP;
+select check_column_collation('test', 'val');
+drop table test;
+
+-- foreign key collation check
+---- 1. herited from primary table
+create table test1(val varchar2(64) primary key);
+create table test2(val varchar2(64) REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 2. ignore BINARY_AI, set foreign key's collation to USING_NLS_COMP
+create table test1(val varchar2(64) primary key);
+create table test2(val varchar2(64) collate BINARY_AI REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 3. ignore BINARY_AI, set foreign key's collation to BINARY_CI
+create table test1(val varchar2(64) collate BINARY_CI primary key);
+create table test2(val varchar2(64) collate BINARY_AI REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+create table test1(val varchar2(64) collate BINARY_CI primary key);
+create table test2(val varchar2(64) collate BINARY REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 4.
+create table test1(val varchar2(64) primary key);
+create table test2(val varchar2(64) collate USING_NLS_COMP REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 5.
+create table test1(val varchar2(64) collate BINARY primary key);
+create table test2(val varchar2(64) collate BINARY REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 6.
+create table test1(val varchar2(64) collate SCHINESE_PINYIN_M primary key);
+create table test2(val varchar2(64) REFERENCES test1(val));
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 7. shorten foreign key
+create table test1(val varchar2(64) collate SCHINESE_PINYIN_M primary key);
+create table test2(val varchar2(64) REFERENCES test1);
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 8. table level foreign key constrain
+create table test1(val varchar2(64) collate BINARY primary key);
+create table test2(
+    val varchar2(64),
+    FOREIGN KEY (val) REFERENCES test1(val)
+);
+select check_column_collation('test1', 'val') from dual;
+select check_column_collation('test2', 'val') from dual;
+select check_column_collation('test1', 'val') = check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+---- 9. multi column foreign key
+create table test1(
+    val1 varchar2(64) collate BINARY,
+    val2 varchar2(64) collate BINARY_AI,
+    PRIMARY KEY(val1, val2)
+);
+
+create table test2(
+    val1 varchar2(64),
+    val2 varchar2(64),
+    FOREIGN KEY (val1, val2) REFERENCES test1(val1, val2)
+);
+select check_column_collation('test1', 'val1') from dual;
+select check_column_collation('test1', 'val2') from dual;
+select check_column_collation('test2', 'val1') from dual;
+select check_column_collation('test2', 'val2') from dual;
+select check_column_collation('test1', 'val1') = check_column_collation('test2', 'val1') from dual; -- must be equal
+select check_column_collation('test1', 'val2') = check_column_collation('test2', 'val2') from dual; -- must be equal
+drop table test2;
+drop table test1;
+
+---- 10. multi column foreign key, but collation not match, report error
+create table test1 (
+    val1 varchar2(10) collate binary, 
+    val2 varchar2(10) collate binary_ai,
+    CONSTRAINT pk1 PRIMARY KEY (val1, val2)
+);
+
+create table test2 (   
+    val1 varchar2(10),
+    val2 varchar2(10),
+    constraint fk2 foreign key (val1, val2) references test1(val1, val2)
+);
+drop table test2;
+drop table test1;
+
+
+
+create table test1 (
+    val1 varchar2(10) collate binary, 
+    val2 varchar2(10) collate binary_ai,
+    CONSTRAINT pk1 PRIMARY KEY (val1, val2)
+);
+
+ -- ORA-02267: column type incompatible with referenced column type
+create table test2 (   
+    val1 varchar2(10) collate binary_ci, 
+    val2 varchar2(10) collate binary_ai,
+    constraint fk2 foreign key (val1, val2) references test1(val1, val2)
+);
+
+drop table test1;
+
+---- 11. self reference
+------ 11.1
+CREATE TABLE test (
+    a int REFERENCES test,
+    b int PRIMARY KEY
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test;
+
+CREATE TABLE test (
+    a varchar2(1024) REFERENCES test,
+    b varchar2(1024) PRIMARY KEY
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test;
+
+------ 11.2, ORA-02267: column type incompatible with referenced column type
+CREATE TABLE test (
+    a varchar2(1024) collate SCHINESE_PINYIN_M REFERENCES test,
+    b varchar2(1024) PRIMARY KEY
+);
+
+------ 11.3, ORA-02267: column type incompatible with referenced column type
+CREATE TABLE test (
+  a varchar2(1024) collate SCHINESE_PINYIN_M,
+  b varchar2(1024) collate SCHINESE_RADICAL_M,
+  c varchar2(1024),
+  d varchar2(1024),
+  PRIMARY KEY (a, b),
+  FOREIGN KEY (c, d) REFERENCES test (a, b)
+);
+
+------ 11.4
+CREATE TABLE test (
+  a integer,
+  b integer,
+  c integer,
+  d integer,
+  PRIMARY KEY (a, b),
+  FOREIGN KEY (c, d) REFERENCES test (a, b)
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test;
+
+------ 11.5, ORA-02267: column type incompatible with referenced column type
+CREATE TABLE test (
+  a varchar2(1024) collate SCHINESE_PINYIN_M,
+  b varchar2(1024) collate SCHINESE_RADICAL_M,
+  c varchar2(1024),
+  d varchar2(1024),
+  PRIMARY KEY (a, b),
+  FOREIGN KEY (c, d) REFERENCES test
+);
+
+------ 11.6
+CREATE TABLE test (
+  a integer,
+  b integer,
+  c integer,
+  d integer,
+  PRIMARY KEY (a, b),
+  FOREIGN KEY (c, d) REFERENCES test
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test;
+
+------ 11.7
+CREATE TABLE test(id int, ref_id int);
+ALTER TABLE test
+  ADD PRIMARY KEY (id),
+  ADD FOREIGN KEY (ref_id) REFERENCES test;
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+DROP TABLE test;
+
+------ 11.8
+CREATE TABLE test(id int, ref_id int);
+ALTER TABLE test
+  ADD FOREIGN KEY (ref_id) REFERENCES test,
+  ADD PRIMARY KEY (id);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+DROP TABLE test;
+
+------ 11.9
+create table test1 (
+    a varchar2(10) collate schinese_pinyin_m primary key
+);
+create table test2 (
+    a varchar2(10) collate schinese_stroke_m references test1
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test2;
+drop table test1;
+
+------ 11.10
+create table test1 (
+    a varchar2(10) primary key
+);
+create table test2 (
+    a varchar2(10)
+);
+ALTER TABLE test2 ADD CONSTRAINT ttt FOREIGN KEY(a) REFERENCES test1(a);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test2;
+drop table test1;
+
+------ 11.11
+create table test1 (
+    a varchar2(10) collate schinese_pinyin_m primary key
+);
+create table test2 (
+    a varchar2(10)
+);
+-------- ORA-02267: column type incompatible with referenced column type
+ALTER TABLE test2 ADD CONSTRAINT ttt FOREIGN KEY(a) REFERENCES test1(a);
+drop table test2;
+drop table test1;
+
+
+create table test1 (
+    a varchar2(10) collate USING_NLS_COMP primary key
+);
+create table test2 (
+    a varchar2(10) collate binary
+);
+-------- ORA-02267: column type incompatible with referenced column type
+ALTER TABLE test2 ADD CONSTRAINT ttt FOREIGN KEY(a) REFERENCES test1(a);
+drop table test2;
+drop table test1;
+
+
+create table test1 (
+    a varchar2(10) collate schinese_pinyin_m primary key
+);
+create table test2 (
+    a varchar2(10) collate schinese_stroke_m
+);
+-------- ORA-02267: column type incompatible with referenced column type
+ALTER TABLE test2 ADD CONSTRAINT ttt FOREIGN KEY(a) REFERENCES test1(a);
+drop table test2;
+drop table test1;
+
+
+------ 11.12
+create table test1 (
+    a varchar2(1024) primary key
+);
+create table test2 (
+    a varchar2(1024) references test1
+);
+-- SELECT table_name, column_name, collation FROM   user_tab_columns WHERE  table_name like 'TEST%'; -- USING_NLS_COMP
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test2;
+drop table test1;
+
+------ 11.13
+create table test1 (
+    a varchar2(10) collate BINARY_AI primary key
+);
+create table test2 (
+    a varchar2(10) references test1
+);
+-- SELECT table_name, column_name, collation FROM   user_tab_columns WHERE  table_name like 'TEST%'; -- BINARY_AI
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+drop table test2;
+drop table test1;
+
+------ 11.14
+create table test1 (
+    a varchar2(10) primary key
+);
+create table test2 (
+    a varchar2(10) collate BINARY_AI references test1
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test1');
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test2');
+drop table test2;
+drop table test1;
+
+------ 11.15
+create table test1 (
+    a varchar2(10) collate BINARY primary key
+);
+create table test2 (
+    a varchar2(10) collate BINARY_AI references test1
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test1');
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test2');
+drop table test2;
+drop table test1;
+
+------ 11.16
+create table test1(
+    val1 varchar2(64) collate BINARY,
+    val2 varchar2(64) collate BINARY_AI,
+    PRIMARY KEY(val1, val2)
+);
+create table test2(
+    val1 varchar2(64),
+    val2 varchar2(64),
+    FOREIGN KEY (val1, val2) REFERENCES test1(val1, val2)
+);
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test1');
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test2');
+drop table test2;
+drop table test1;
+
+------ 11.17, ORA-02267: column type incompatible with referenced column type
+create table test1(
+    val1 varchar2(64),
+    val2 varchar2(64),
+    PRIMARY KEY(val1, val2)
+);
+create table test2(
+    val1 varchar2(64) collate BINARY,
+    val2 varchar2(64) collate BINARY_AI,
+    FOREIGN KEY (val1, val2) REFERENCES test1(val1, val2)
+);
+drop table test1;
+
+------ 11.18
+CREATE TABLE test(id int primary key, ref_id int);
+ALTER TABLE test
+  ADD FOREIGN KEY (ref_id) REFERENCES test;
+select attname, attcollation from pg_attribute where attrelid = (select oid from pg_class where relname = 'test');
+DROP TABLE test;
+
+------ 11.19
+CREATE TABLE test(
+  id varchar2(20) primary key, 
+  ref_id varchar2(20) collate binary
+);
+-- ORA-02267: column type incompatible with referenced column type
+ALTER TABLE test
+  ADD FOREIGN KEY (ref_id) REFERENCES test;
+DROP TABLE test;
+
+------ 11.20
+CREATE TABLE test(
+  id varchar2(20) primary key, 
+  ref_id varchar2(20) collate binary_ai
+);
+-- ORA-02267: column type incompatible with referenced column type
+ALTER TABLE test
+  ADD FOREIGN KEY (ref_id) REFERENCES test;
+DROP TABLE test;
+
+
+-- alter table modify
+---- 1. change USING_NLS_COMP to USING_NLS_COMP
+create table test(val varchar2(10));
+select check_column_collation('test', 'val') from dual;
+alter table test modify val collate USING_NLS_COMP;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+---- 2. change USING_NLS_COMP TO BINARY
+create table test(val varchar2(10));
+select check_column_collation('test', 'val') from dual;
+alter table test modify val collate BINARY;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+---- 3. change BINARY to BINARY_AI
+create table test(val varchar2(10) collate BINARY);
+select check_column_collation('test', 'val') from dual;
+alter table test modify val collate BINARY_AI;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+---- 4. column error
+create table test(val varchar2(10) collate BINARY);
+------ ORA-00904: "XXX": invalid identifier
+alter table test modify xxx collate BINARY_AI;
+drop table test;
+
+---- 5. collation error
+create table test(val varchar2(10) collate BINARY);
+alter table test modify val collate XXX;
+drop table test;
+
+---- 6. collatable column
+create table test(val int);
+-- error
+alter table test modify val collate BINARY;
+-- error
+alter table test modify cmin collate BINARY;
+drop table test;
+
+---- 7. Target column is primay key without reference
+create table test1(x int, val varchar2(64) collate BINARY primary key);
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test1 modify val collate BINARY_AI; 
+drop table test1;
+
+---- same group collation can modify
+create table test1(x int, val varchar2(64) collate BINARY primary key);
+alter table test1 modify val collate USING_NLS_COMP;
+drop table test1;
+
+
+---- 8. Target column is primay key with reference
+create table test1(x int, val varchar2(64) collate BINARY primary key);
+create table test2(val varchar2(64) REFERENCES test1);
+-- ORA-43922: Collation of the column cannot be modified.
+alter table test1 modify val collate BINARY_AI;
+drop table test2;
+drop table test1;
+
+create table test1(x int, val varchar2(64) collate BINARY primary key);
+create table test2(val varchar2(64) REFERENCES test1);
+-- ORA-43922: Collation of the column cannot be modified.
+alter table test1 modify val collate BINARY;
+drop table test2;
+drop table test1;
+
+
+---- 9. Target column is unique key
+create table test1(val varchar2(64) collate BINARY UNIQUE);
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test1 modify val collate BINARY_AI;
+drop table test1;
+
+create table test1(val varchar2(64) collate USING_NLS_COMP UNIQUE);
+alter table test1 modify val collate BINARY;
+drop table test1;
+
+
+---- 10. Target column is foreign key
+create table test1(x int, val varchar2(64) collate BINARY primary key);
+create table test2(val varchar2(64) REFERENCES test1);
+-- ORA-43922: Collation of the column cannot be modified.
+alter table test2 modify val collate BINARY_AI;
+drop table test2;
+drop table test1;
+
+---- 11. Target column is index key with data
+create table test(x int, val varchar2(64) collate USING_NLS_COMP);
+insert into test(val) values('1');
+insert into test(val) values('2');
+create index idx_test on test(x, val);
+alter table test modify val collate BINARY;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate BINARY_AI;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate SCHINESE_PINYIN_M;
+drop table test;
+
+create table test(x int, val varchar2(64) collate USING_NLS_SORT);
+insert into test(val) values('1');
+insert into test(val) values('2');
+create index idx_test on test(x, val);
+alter table test modify val collate BINARY;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate BINARY_AI;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate SCHINESE_PINYIN_M;
+drop table test;
+
+create table test(x int, val varchar2(64) collate USING_NLS_SORT_AI);
+insert into test(val) values('1');
+insert into test(val) values('2');
+create index idx_test on test(x, val);
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate BINARY;
+alter table test modify val collate BINARY_AI;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate SCHINESE_PINYIN_M;
+drop table test;
+
+create table test(x int, val varchar2(64) collate USING_NLS_SORT_CI);
+insert into test(val) values('1');
+insert into test(val) values('2');
+create index idx_test on test(x, val);
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate BINARY;
+alter table test modify val collate BINARY_CI;
+-- ORA-43923: The column cannot be modified to the specified collation.
+alter table test modify val collate SCHINESE_PINYIN_M;
+drop table test;
+
+create table test(x int, val varchar2(64) collate BINARY);
+insert into test(val) values('1');
+insert into test(val) values('2');
+create index idx_test on test(x, val);
+alter table test modify val collate USING_NLS_COMP; 
+drop table test;
+
+---- 12. Target column is partition key
+CREATE TABLE test (
+    x   int,
+    val varchar2(128) collate BINARY
+) PARTITION BY RANGE(val);
+CREATE TABLE test_1 PARTITION OF test FOR VALUES FROM ('0') TO ('3');
+CREATE TABLE test_2 PARTITION OF test FOR VALUES FROM ('4') TO ('7');
+CREATE TABLE test_3 PARTITION OF test FOR VALUES FROM ('8') TO ('9');
+-- error
+alter table test   modify val collate BINARY_AI;
+-- error
+alter table test_1 modify val collate BINARY_AI;
+drop table test;
+
+
+CREATE TABLE test (
+    x   int,
+    val varchar2(128) collate USING_NLS_COMP
+) PARTITION BY RANGE(val);
+CREATE TABLE test_1 PARTITION OF test FOR VALUES FROM ('0') TO ('3');
+CREATE TABLE test_2 PARTITION OF test FOR VALUES FROM ('4') TO ('7');
+CREATE TABLE test_3 PARTITION OF test FOR VALUES FROM ('8') TO ('9');
+alter table test   modify val collate BINARY;
+-- error
+alter table test_1 modify val collate BINARY;
+drop table test;
+
+-- test alter table add column
+create table test(x int);
+alter table test add column val VARCHAR(26);
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create table test(x int) default collation BINARY;
+alter table test add column val VARCHAR(26);
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create table test(x int);
+alter table test add column val VARCHAR(26) collate BINARY;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create table test(x int) default collation BINARY;
+alter table test add column val VARCHAR(26) collate BINARY_AI;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+
+-- Add foreign key column
+create table test1(val varchar2(64) primary key);
+create table test2(x int);
+alter table test2 add val varchar2(64) references test1(val);
+select check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+create table test1(val varchar2(64) collate BINARY primary key);
+create table test2(x int);
+alter table test2 add val varchar2(64) references test1(val);
+select check_column_collation('test2', 'val') from dual;
+drop table test2;
+drop table test1;
+
+-- template table
+create temp table test(val varchar2(64));
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create temp table test(val varchar2(64) collate BINARY);
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create temp table test(val varchar2(64)) default collation BINARY;
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create global temp table test(val varchar2(64));
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create global temp table test(val varchar2(64) collate BINARY);
+select check_column_collation('test', 'val') from dual;
+drop table test;
+
+create global temp table test(val varchar2(64)) default collation BINARY;
+select check_column_collation('test', 'val') from dual;
+drop table test;

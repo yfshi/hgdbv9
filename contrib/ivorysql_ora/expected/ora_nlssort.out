@@ -1,0 +1,776 @@
+-- pg_collation
+select * from pg_collation where collprovider='o';
+ oid  |                   collname                   | collnamespace | collowner | collprovider | collisdeterministic | collencoding |    collcollate     |     collctype      | collversion 
+------+----------------------------------------------+---------------+-----------+--------------+---------------------+--------------+--------------------+--------------------+-------------
+ 4544 | using_nls_comp                               |            11 |        10 | o            | t                   |           -1 | USING_NLS_COMP     | USING_NLS_COMP     | 
+ 4545 | using_nls_sort                               |            11 |        10 | o            | t                   |           -1 | USING_NLS_SORT     | USING_NLS_SORT     | 
+ 4546 | using_nls_sort_ai                            |            11 |        10 | o            | t                   |           -1 | USING_NLS_SORT_AI  | USING_NLS_SORT_AI  | 
+ 4547 | using_nls_sort_ci                            |            11 |        10 | o            | t                   |           -1 | USING_NLS_SORT_CI  | USING_NLS_SORT_CI  | 
+ 4548 | using_nls_sort_cs                            |            11 |        10 | o            | t                   |           -1 | USING_NLS_SORT_CS  | USING_NLS_SORT_CS  | 
+ 4549 | binary                                       |            11 |        10 | o            | t                   |           -1 | C                  | BINARY             | 
+ 4550 | binary_ai                                    |            11 |        10 | o            | t                   |           -1 | BINARY_AI          | BINARY_AI          | 
+ 4551 | binary_ci                                    |            11 |        10 | o            | t                   |           -1 | BINARY_CI          | BINARY_CI          | 
+ 4552 | generic_m_ci                                 |            11 |        10 | o            | t                   |           -1 | GENERIC_M_CI       | GENERIC_M_CI       | 
+ 4553 | schinese_pinyin_m                            |            11 |        10 | o            | t                   |           -1 | SCHINESE_PINYIN_M  | SCHINESE_PINYIN_M  | 
+ 4554 | schinese_stroke_m                            |            11 |        10 | o            | t                   |           -1 | SCHINESE_STROKE_M  | SCHINESE_STROKE_M  | 
+ 4555 | schinese_radical_m                           |            11 |        10 | o            | t                   |           -1 | SCHINESE_RADICAL_M | SCHINESE_RADICAL_M | 
+ 4556 | uca0700_schinese                             |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE   | UCA0700_SCHINESE   | 
+ 4557 | uca0700_schinese1                            |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE1  | UCA0700_SCHINESE1  | 
+ 4558 | uca0700_schinese2                            |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE2  | UCA0700_SCHINESE2  | 
+ 4559 | uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn  |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE   | UCA0700_SCHINESE   | 
+ 4560 | uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE1  | UCA0700_SCHINESE1  | 
+ 4561 | uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn |            11 |        10 | o            | t                   |           -1 | UCA0700_SCHINESE2  | UCA0700_SCHINESE2  | 
+(18 rows)
+
+-- collation id and name
+select nls_collation_id('using_nls_comp')       from dual; -- 16382
+ nls_collation_id 
+------------------
+            16382
+(1 row)
+
+select nls_collation_id('using_nls_sort')       from dual; -- 16381
+ nls_collation_id 
+------------------
+            16381
+(1 row)
+
+select nls_collation_id('using_nls_sort_ai')    from dual; -- 16379
+ nls_collation_id 
+------------------
+            16379
+(1 row)
+
+select nls_collation_id('using_nls_sort_ci')    from dual; -- 16380
+ nls_collation_id 
+------------------
+            16380
+(1 row)
+
+select nls_collation_id('using_nls_sort_cs')    from dual; -- 16378
+ nls_collation_id 
+------------------
+            16378
+(1 row)
+
+select nls_collation_id('binary')               from dual; -- 16383
+ nls_collation_id 
+------------------
+            16383
+(1 row)
+
+select nls_collation_id('binary_ai')            from dual; -- 81919
+ nls_collation_id 
+------------------
+            81919
+(1 row)
+
+select nls_collation_id('binary_ci')            from dual; -- 147455
+ nls_collation_id 
+------------------
+           147455
+(1 row)
+
+select nls_collation_id('generic_m_ci')         from dual; -- 135169
+ nls_collation_id 
+------------------
+           135169
+(1 row)
+
+select nls_collation_id('schinese_pinyin_m')    from dual; -- 4160
+ nls_collation_id 
+------------------
+             4160
+(1 row)
+
+select nls_collation_id('schinese_radical_m')   from dual; -- 4163
+ nls_collation_id 
+------------------
+             4163
+(1 row)
+
+select nls_collation_id('schinese_stroke_m')    from dual; -- 4161
+ nls_collation_id 
+------------------
+             4161
+(1 row)
+
+select nls_collation_id('uca0700_schinese')     from dual; -- 208941
+ nls_collation_id 
+------------------
+           208941
+(1 row)
+
+select nls_collation_id('uca0700_schinese1')    from dual; -- 208942
+ nls_collation_id 
+------------------
+           208942
+(1 row)
+
+select nls_collation_id('uca0700_schinese2')    from dual; -- 208943
+ nls_collation_id 
+------------------
+           208943
+(1 row)
+
+select nls_collation_id('uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn')     from dual; -- 208941
+ nls_collation_id 
+------------------
+           208941
+(1 row)
+
+select nls_collation_id('uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn')    from dual; -- 208942
+ nls_collation_id 
+------------------
+           208942
+(1 row)
+
+select nls_collation_id('uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn')    from dual; -- 208943
+ nls_collation_id 
+------------------
+           208943
+(1 row)
+
+select nls_collation_name(16382)  from dual; -- using_nls_comp
+ nls_collation_name 
+--------------------
+ USING_NLS_COMP
+(1 row)
+
+select nls_collation_name(16381)  from dual; -- using_nls_sort
+ nls_collation_name 
+--------------------
+ USING_NLS_SORT
+(1 row)
+
+select nls_collation_name(16379)  from dual; -- using_nls_sort_ai
+ nls_collation_name 
+--------------------
+ USING_NLS_SORT_AI
+(1 row)
+
+select nls_collation_name(16380)  from dual; -- using_nls_sort_ci
+ nls_collation_name 
+--------------------
+ USING_NLS_SORT_CI
+(1 row)
+
+select nls_collation_name(16378)  from dual; -- using_nls_sort_cs
+ nls_collation_name 
+--------------------
+ USING_NLS_SORT_CS
+(1 row)
+
+select nls_collation_name(16383)  from dual; -- binary
+ nls_collation_name 
+--------------------
+ BINARY
+(1 row)
+
+select nls_collation_name(81919)  from dual; -- binary_ai
+ nls_collation_name 
+--------------------
+ BINARY_AI
+(1 row)
+
+select nls_collation_name(147455) from dual; -- binary_ci
+ nls_collation_name 
+--------------------
+ BINARY_CI
+(1 row)
+
+select nls_collation_name(135169) from dual; -- generic_m_ci
+ nls_collation_name 
+--------------------
+ GENERIC_M_CI
+(1 row)
+
+select nls_collation_name(4160)   from dual; -- schinese_pinyin_m
+ nls_collation_name 
+--------------------
+ SCHINESE_PINYIN_M
+(1 row)
+
+select nls_collation_name(4163)   from dual; -- schinese_radical_m
+ nls_collation_name 
+--------------------
+ SCHINESE_RADICAL_M
+(1 row)
+
+select nls_collation_name(4161)   from dual; -- schinese_stroke_m
+ nls_collation_name 
+--------------------
+ SCHINESE_STROKE_M
+(1 row)
+
+select nls_collation_name(208941) from dual; -- uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn
+             nls_collation_name              
+---------------------------------------------
+ UCA0700_SCHINESE_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select nls_collation_name(208942) from dual; -- uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn
+              nls_collation_name              
+----------------------------------------------
+ UCA0700_SCHINESE1_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select nls_collation_name(208943) from dual; -- uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn
+              nls_collation_name              
+----------------------------------------------
+ UCA0700_SCHINESE2_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select nls_collation_name(208941, 's') from dual; -- uca0700_schinese
+ nls_collation_name 
+--------------------
+ UCA0700_SCHINESE
+(1 row)
+
+select nls_collation_name(208942, 's') from dual; -- uca0700_schinese1
+ nls_collation_name 
+--------------------
+ UCA0700_SCHINESE1
+(1 row)
+
+select nls_collation_name(208943, 's') from dual; -- uca0700_schinese2
+ nls_collation_name 
+--------------------
+ UCA0700_SCHINESE2
+(1 row)
+
+select nls_collation_name(208941, 'l') from dual; -- uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn
+             nls_collation_name              
+---------------------------------------------
+ UCA0700_SCHINESE_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select nls_collation_name(208942, 'l') from dual; -- uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn
+              nls_collation_name              
+----------------------------------------------
+ UCA0700_SCHINESE1_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select nls_collation_name(208943, 'l') from dual; -- uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn
+              nls_collation_name              
+----------------------------------------------
+ UCA0700_SCHINESE2_S4_VS_BN_NY_EN_FN_HN_DN_MN
+(1 row)
+
+select '1' as aaa from dual order by aaa collate uca0700_schinese_s4_vs_bn_ny_en_fn_hn_dn_mn;  -- test alias
+ aaa 
+-----
+ 1
+(1 row)
+
+select '1' as aaa from dual order by aaa collate uca0700_schinese1_s4_vs_bn_ny_en_fn_hn_dn_mn; -- test alias
+ aaa 
+-----
+ 1
+(1 row)
+
+select '1' as aaa from dual order by aaa collate uca0700_schinese2_s4_vs_bn_ny_en_fn_hn_dn_mn; -- test alias
+ aaa 
+-----
+ 1
+(1 row)
+
+-- test 0 argument
+select nlssort() from dual; -- error
+ERROR:  IVY-00938: not enough arguments for function
+-- test pseudo-collation in NLSSORT() function
+select nlssort('highgo', 'NLS_SORT=USING_NLS_COMP') from dual;    -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+select nlssort('highgo', 'NLS_SORT=USING_NLS_SORT') from dual;    -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+select nlssort('highgo', 'NLS_SORT=USING_NLS_SORT_AI') from dual; -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+select nlssort('highgo', 'NLS_SORT=USING_NLS_SORT_CI') from dual; -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+select nlssort('highgo', 'NLS_SORT=USING_NLS_SORT_CS') from dual; -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+-- test string
+select nlssort('highgo') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'NLS_SORT=BINARY') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'nls_sort=BINARY') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'nls_sort=binary') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'nls_lang=US')  from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'nls_lang=ZHS') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort('highgo', 'nls_language=AMERICAN') from dual;
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+--  test space trim
+select nlssort('')                              from dual; -- null
+ nlssort 
+---------
+ 
+(1 row)
+
+select nlssort(' ')                             from dual; -- 0x20
+ nlssort 
+---------
+ \x2000
+(1 row)
+
+select nlssort(' highgo ')                      from dual; -- trim
+      nlssort       
+--------------------
+ \x2068696768676f00
+(1 row)
+
+select nlssort('highgo  ')                      from dual; -- trim
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort(CAST('highgo ' as char(20)))     from dual; -- trim
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort(CAST('highgo ' as varchar(20)))  from dual; -- no trim
+      nlssort       
+--------------------
+ \x68696768676f2000
+(1 row)
+
+select nlssort(CAST('highgo ' as varchar2(20))) from dual; -- no trim
+      nlssort       
+--------------------
+ \x68696768676f2000
+(1 row)
+
+select nlssort('',         'nls_sort=binary')                      from dual; -- null
+ nlssort 
+---------
+ 
+(1 row)
+
+select nlssort(' ',        'nls_sort=binary')                      from dual; -- 0x20
+ nlssort 
+---------
+ \x2000
+(1 row)
+
+select nlssort(' highgo ', 'nls_sort=binary')                      from dual; -- trim
+      nlssort       
+--------------------
+ \x2068696768676f00
+(1 row)
+
+select nlssort('highgo  ', 'nls_sort=binary')                      from dual; -- trim
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort(CAST('highgo ' as char(20)),     'nls_sort=binary') from dual; -- trim
+     nlssort      
+------------------
+ \x68696768676f00
+(1 row)
+
+select nlssort(CAST('highgo ' as varchar(20)),  'nls_sort=binary') from dual; -- no trim
+      nlssort       
+--------------------
+ \x68696768676f2000
+(1 row)
+
+select nlssort(CAST('highgo ' as varchar2(20)), 'nls_sort=binary') from dual; -- no trim
+      nlssort       
+--------------------
+ \x68696768676f2000
+(1 row)
+
+select 1 from  dual where nlssort('highgo  ') = nlssort('highgo        '); -- true
+ ?column? 
+----------
+        1
+(1 row)
+
+select 1 from  dual where nlssort('highgo  ') = nlssort('highgo        ', 'nls_sort=binary'); -- true
+ ?column? 
+----------
+        1
+(1 row)
+
+select 1 from  dual where nlssort('highgo  ', 'nls_sort=binary') = nlssort('highgo        '); -- true
+ ?column? 
+----------
+        1
+(1 row)
+
+select 1 from  dual where nlssort('highgo  ', 'nls_sort=binary') = nlssort('highgo        ', 'nls_sort=binary'); -- true
+ ?column? 
+----------
+        1
+(1 row)
+
+create table nlssort_space_test(v_char char(64), v_varchar varchar(64), v_varchar2 varchar2(64), v_raw raw(64), v_blob blob);
+insert into nlssort_space_test values ('highgo  ', 'highgo  ', 'highgo  ', '2020', '2020');
+select  nlssort(v_char),     -- trim
+        nlssort(v_varchar),  -- no trim
+        nlssort(v_varchar2), -- no trim
+        nlssort(v_blob),     -- no trim
+        nlssort(v_raw)       -- no trim
+        from nlssort_space_test;
+     nlssort      |       nlssort        |       nlssort        | nlssort  |   nlssort    
+------------------+----------------------+----------------------+----------+--------------
+ \x68696768676f00 | \x68696768676f202000 | \x68696768676f202000 | \x202000 | \x3230323000
+(1 row)
+
+select  nlssort(v_char,     'nls_sort=binary'),     -- trim
+        nlssort(v_varchar,  'nls_sort=binary'),     -- no trim
+        nlssort(v_varchar2, 'nls_sort=binary'),     -- no trim
+        nlssort(v_blob,     'nls_sort=binary'),     -- no trim
+        nlssort(v_raw,      'nls_sort=binary')      -- no trim
+        from nlssort_space_test;
+     nlssort      |       nlssort        |       nlssort        | nlssort  |   nlssort    
+------------------+----------------------+----------------------+----------+--------------
+ \x68696768676f00 | \x68696768676f202000 | \x68696768676f202000 | \x202000 | \x3230323000
+(1 row)
+
+drop table nlssort_space_test;
+-- test exception
+select nlssort('highgo', 'xxx') from dual;          -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+select nlssort('highgo', 'nls_sort=xxx') from dual; -- error
+ERROR:  IVY-12702: invalid NLS parameter string used in SQL function
+-- BEGIN test environment variable NLS_COMP & NLS_SORT
+-- arguments available check
+set nls_comp=binary;
+set nls_comp=linguistic;
+set nls_comp=ansi;
+set nls_comp=xxx; -- error
+ERROR:  IVY-12705: Cannot access NLS data files or invalid environment specified
+set nls_sort=binary;
+set nls_sort=schinese_pinyin_m;
+set nls_sort=schinese_stroke_m;
+set nls_sort=schinese_radical_m;
+set nls_sort=generic_m_ci;
+set nls_sort=uca0700_schinese;
+set nls_sort=uca0700_schinese1;
+set nls_sort=uca0700_schinese2;
+set nls_sort=xxx; -- error
+ERROR:  IVY-12705: Cannot access NLS data files or invalid environment specified
+-- binary + x = binary
+set nls_comp=binary;
+set nls_sort=binary;
+select nlssort('毛') from dual;
+  nlssort   
+------------
+ \xe6af9b00
+(1 row)
+
+set nls_sort=schinese_pinyin_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x7dae0000010001
+(1 row)
+
+set nls_sort=schinese_stroke_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x3cf00000010001
+(1 row)
+
+set nls_sort=schinese_radical_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x71390000010001
+(1 row)
+
+set nls_sort=generic_m_ci;
+select nlssort('毛') from dual;
+    nlssort     
+----------------
+ \xffff6bdb0000
+(1 row)
+
+set nls_sort=uca0700_schinese;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x94130000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese1;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x703e0000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese2;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x49070000000100000200ffff
+(1 row)
+
+-- linguistic + x = x
+set nls_comp=linguistic;
+set nls_sort=binary;
+select nlssort('毛') from dual;
+  nlssort   
+------------
+ \xe6af9b00
+(1 row)
+
+set nls_sort=schinese_pinyin_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x7dae0000010001
+(1 row)
+
+set nls_sort=schinese_stroke_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x3cf00000010001
+(1 row)
+
+set nls_sort=schinese_radical_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x71390000010001
+(1 row)
+
+set nls_sort=generic_m_ci;
+select nlssort('毛') from dual;
+    nlssort     
+----------------
+ \xffff6bdb0000
+(1 row)
+
+set nls_sort=uca0700_schinese;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x94130000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese毛;
+ERROR:  IVY-12705: Cannot access NLS data files or invalid environment specified
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x94130000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese2;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x49070000000100000200ffff
+(1 row)
+
+-- ansi + x = x
+set nls_comp=ansi;
+set nls_sort=binary;
+select nlssort('毛') from dual;
+  nlssort   
+------------
+ \xe6af9b00
+(1 row)
+
+set nls_sort=schinese_pinyin_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x7dae0000010001
+(1 row)
+
+set nls_sort=schinese_stroke_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x3cf00000010001
+(1 row)
+
+set nls_sort=schinese_radical_m;
+select nlssort('毛') from dual;
+     nlssort      
+------------------
+ \x71390000010001
+(1 row)
+
+set nls_sort=generic_m_ci;
+select nlssort('毛') from dual;
+    nlssort     
+----------------
+ \xffff6bdb0000
+(1 row)
+
+set nls_sort=uca0700_schinese;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x94130000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese毛;
+ERROR:  IVY-12705: Cannot access NLS data files or invalid environment specified
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x94130000000100000200ffff
+(1 row)
+
+set nls_sort=uca0700_schinese2;
+select nlssort('毛') from dual;
+          nlssort           
+----------------------------
+ \x49070000000100000200ffff
+(1 row)
+
+-- END
+-- test return value's truncate
+select nlssort('北国风光，千里冰封，万里雪飘。望长城内外，惟余莽莽；大河上下，顿失滔滔。山舞银蛇，原驰蜡象，欲与天公试比高。须晴日，看红装素裹，分外妖娆。江山如此多娇，引无数英雄竞折腰。惜秦皇汉武，略输文采；唐宗宋祖，稍逊风骚。一代天骄，成吉思汗，只识弯弓射大雕。俱往矣，数风流人物，还看今朝。', 'nls_sort=SCHINESE_PINYIN_M') from dual;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             nlssort                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x3e2a5c81552a5b60ffffff0c8b627529411c5539ffffff0ca2607529ae618841ffff3002a2b845024681832ea1f2ffffff0ca310b8dc7d9c7d9cffffff1b4bfa5e3d94e6a7e4ffffff0c517e96609d729d72ffff30029429a571b60e953effffff0cbae04708724ea9b8ffffff0cb9f2b9799e85595c971e3ef25832ffff3002acc98e26918effffff0c6ef25f22c4d19a5c5caaffffff0c54b4a1f2b1b19112ffff300267f99429921d4a30518e686dffffff0cb638a518985ab688ac5c6b39bf95b1bdffff3002a6188da961de5d4da55affffff0c7c8897e2a428429dffffff1b9cf9c64c99e8c70affffff0c94faaf08552a9372ffff3002b3104c0a9e856874ffffff0c467464a499245d52ffffff0cc1aa96ada1f9595a954d4bfa4f08ffff30026cdca291b3eaffffff0c985a552a79109121a598ffffff0c61456ef26a1c456dffff3002000001010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010100010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101
+(1 row)
+
+-- test RAW type data
+create table raw_test(val  raw(64));
+insert into  raw_test(val) values('0');
+insert into  raw_test(val) values('1');
+insert into  raw_test(val) values('2');
+insert into  raw_test(val) values('3');
+insert into  raw_test(val) values('4');
+insert into  raw_test(val) values('5');
+insert into  raw_test(val) values('6');
+insert into  raw_test(val) values('7');
+insert into  raw_test(val) values('8');
+insert into  raw_test(val) values('9');
+insert into  raw_test(val) values('a');
+insert into  raw_test(val) values('b');
+insert into  raw_test(val) values('c');
+insert into  raw_test(val) values('d');
+insert into  raw_test(val) values('e');
+insert into  raw_test(val) values('f');
+insert into  raw_test(val) values('g'); -- error
+ERROR:  IVY-01465: invalid hex number
+LINE 1: insert into  raw_test(val) values('g');
+                                          ^
+insert into  raw_test(val) values('20');
+insert into  raw_test(val) values('ff20');
+insert into  raw_test(val) values('ff2020');
+select       nlssort(val)  from raw_test;
+                                             nlssort                                              
+--------------------------------------------------------------------------------------------------
+ \x170517050000000100010000020200ffffffff
+ \x170517060000000100010000020200ffffffff
+ \x170517070000000100010000020200ffffffff
+ \x170517080000000100010000020200ffffffff
+ \x170517090000000100010000020200ffffffff
+ \x1705170a0000000100010000020200ffffffff
+ \x1705170b0000000100010000020200ffffffff
+ \x1705170c0000000100010000020200ffffffff
+ \x1705170d0000000100010000020200ffffffff
+ \x1705170e0000000100010000020200ffffffff
+ \x1705170f0000000100010000020800ffffffff
+ \x1705171c0000000100010000020800ffffffff
+ \x170517260000000100010000020800ffffffff
+ \x1705172f0000000100010000020800ffffffff
+ \x1705173b0000000100010000020800ffffffff
+ \x170517520000000100010000020800ffffffff
+ \x170717050000000100010000020200ffffffff
+ \x17521752170717050000000100010001000100000808020200ffffffffffffffff
+ \x1752175217071705170717050000000100010001000100010001000008080202020200ffffffffffffffffffffffff
+(19 rows)
+
+drop   table raw_test;
+-- test BLOB type data
+create table blob_test(val  raw(64));
+insert into  blob_test(val) values('0');
+insert into  blob_test(val) values('1');
+insert into  blob_test(val) values('2');
+insert into  blob_test(val) values('3');
+insert into  blob_test(val) values('4');
+insert into  blob_test(val) values('5');
+insert into  blob_test(val) values('6');
+insert into  blob_test(val) values('7');
+insert into  blob_test(val) values('8');
+insert into  blob_test(val) values('9');
+insert into  blob_test(val) values('a');
+insert into  blob_test(val) values('b');
+insert into  blob_test(val) values('c');
+insert into  blob_test(val) values('d');
+insert into  blob_test(val) values('e');
+insert into  blob_test(val) values('f');
+insert into  blob_test(val) values('g'); -- error
+ERROR:  IVY-01465: invalid hex number
+LINE 1: insert into  blob_test(val) values('g');
+                                           ^
+insert into  blob_test(val) values('20');
+insert into  blob_test(val) values('ff20');
+insert into  blob_test(val) values('ff2020');
+insert into  blob_test(val) values('ff200020');
+select       nlssort(val)   from blob_test;
+                                                           nlssort                                                            
+------------------------------------------------------------------------------------------------------------------------------
+ \x170517050000000100010000020200ffffffff
+ \x170517060000000100010000020200ffffffff
+ \x170517070000000100010000020200ffffffff
+ \x170517080000000100010000020200ffffffff
+ \x170517090000000100010000020200ffffffff
+ \x1705170a0000000100010000020200ffffffff
+ \x1705170b0000000100010000020200ffffffff
+ \x1705170c0000000100010000020200ffffffff
+ \x1705170d0000000100010000020200ffffffff
+ \x1705170e0000000100010000020200ffffffff
+ \x1705170f0000000100010000020800ffffffff
+ \x1705171c0000000100010000020800ffffffff
+ \x170517260000000100010000020800ffffffff
+ \x1705172f0000000100010000020800ffffffff
+ \x1705173b0000000100010000020800ffffffff
+ \x170517520000000100010000020800ffffffff
+ \x170717050000000100010000020200ffffffff
+ \x17521752170717050000000100010001000100000808020200ffffffffffffffff
+ \x1752175217071705170717050000000100010001000100010001000008080202020200ffffffffffffffffffffffff
+ \x175217521707170517051705170717050000000100010001000100010001000100010000080802020202020200ffffffffffffffffffffffffffffffff
+(20 rows)
+
+drop table   blob_test;

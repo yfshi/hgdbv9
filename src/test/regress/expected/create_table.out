@@ -494,7 +494,7 @@ ERROR:  cannot inherit from partitioned table "partitioned2"
  b      | integer |           |          | 
  c      | text    |           |          | 
  d      | text    |           |          | 
-Partition key: RANGE (a oid_ops, plusone(b), c, d COLLATE "C")
+Partition key: RANGE (a oid_ops, plusone(b), c COLLATE "default", d COLLATE "C")
 Number of partitions: 0
 
 \d+ partitioned2
@@ -503,7 +503,7 @@ Number of partitions: 0
 --------+---------+-----------+----------+---------+----------+--------------+-------------
  a      | integer |           |          |         | plain    |              | 
  b      | text    |           |          |         | extended |              | 
-Partition key: RANGE (((a + 1)), substr(b, 1, 5))
+Partition key: RANGE (((a + 1)), substr(b, 1, 5) COLLATE "default")
 Number of partitions: 0
 
 INSERT INTO partitioned2 VALUES (1, 'hello');
@@ -1097,7 +1097,7 @@ Partition constraint: ((a IS NOT NULL) AND (a = 'c'::text) AND (b IS NOT NULL) A
 --------+---------+-----------+----------+---------
  a      | text    |           |          | 
  b      | integer |           | not null | 0
-Partition key: LIST (a)
+Partition key: LIST (a COLLATE "default")
 Number of partitions: 3 (Use \d+ to list them.)
 
 \d hash_parted
