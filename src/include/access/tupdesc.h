@@ -151,6 +151,11 @@ extern void TupleDescInitEntryCollation(TupleDesc desc,
 extern TupleDesc BuildDescForRelation(List *schema);
 
 extern TupleDesc BuildDescFromLists(List *names, List *types, List *typmods, List *collations);
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern bool ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc,
+			bool raise_error);
+extern bool tupledesc_has_udt_type(TupleDesc desc);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 extern bool ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_error);

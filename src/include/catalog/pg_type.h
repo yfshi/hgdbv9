@@ -279,6 +279,9 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 #define  TYPTYPE_MULTIRANGE	'm' /* multirange type */
 #define  TYPTYPE_PSEUDO		'p' /* pseudo-type */
 #define  TYPTYPE_RANGE		'r' /* range type */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#define	 TYPTYPE_ORA_RECORD	   'o'	/* Oracle compatible record type */
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 #define  TYPCATEGORY_INVALID	'\0'	/* not an allowed category */
 #define  TYPCATEGORY_ARRAY		'A'

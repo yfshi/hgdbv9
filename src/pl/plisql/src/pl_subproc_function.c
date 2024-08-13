@@ -31,6 +31,9 @@
 #include "parser/parse_coerce.h"
 #include "parser/parse_target.h"
 #include "parser/parse_expr.h"
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#include "parser/parse_type.h"
+/* End - ReqID:SRS-PLSQL-RECORD */
 #include "nodes/nodeFuncs.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
@@ -364,6 +367,9 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 	Form_pg_type typeStruct;
 	char	*detailmsg;
 	Oid origargtypes[FUNC_MAX_ARGS];
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	bool		has_udt_type = false;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	if (args == NIL)
 		goto no_argument;
@@ -455,6 +461,29 @@ plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool f
 				((PLiSQL_var *)argvariable)->info = PROARGMODE_IN;
 			/* End - ReqID:SRS-SQL-PACKAGE */
 		}
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		else if (argvariable->dtype == PLISQL_DTYPE_ORA_RECORD)
+		{
+			argitemtype = PLISQL_NSTYPE_ORA_RECORD;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			/*
+			 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode,
+			 * IN mode variable is not allowned to assign value.
+			 */
+			if (argmode == PROARGMODE_IN ||
+				argmode == PROARGMODE_OUT ||
+				argmode == PROARGMODE_INOUT)
+				((PLiSQL_row *)argvariable)->info = argmode;
+			else
+				((PLiSQL_row *)argvariable)->info = PROARGMODE_IN;
+
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			if (argmode == PROARGMODE_OUT ||
+				argmode == PROARGMODE_INOUT)
+				has_udt_type = true;
+			/* End - ReqID:SRS-PLSQL-RECORD */
+		}
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		else
 		{
 			Assert(argvariable->dtype == PLISQL_DTYPE_REC);
@@ -686,7 +715,10 @@ no_argument:
 	if (typeStruct->typtype == TYPTYPE_PSEUDO)
 	{
 		if (rettypeid == VOIDOID ||
-			rettypeid == RECORDOID)
+			rettypeid == RECORDOID ||
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			rettypeid == ORARECORDOID)
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			 /* okay */ ;
 		else if (rettypeid == TRIGGEROID || rettypeid == EVENT_TRIGGEROID)
 			ereport(ERROR,
@@ -703,6 +735,10 @@ no_argument:
 	function->fn_retisdomain = (typeStruct->typtype == TYPTYPE_DOMAIN);
 	function->fn_retbyval = typeStruct->typbyval;
 	function->fn_rettyplen = typeStruct->typlen;
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	function->fn_hasudtype = has_udt_type;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * install $0 reference, but only for polymorphic return types,
@@ -1492,6 +1528,12 @@ plisql_init_subprocfunc_globalvar(PLiSQL_execstate *estate, FunctionCallInfo fci
 		if (estate->datums[i]->dtype == PLISQL_DTYPE_RECFIELD)
 			continue;
 
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_TYPE ||
+			estate->datums[i]->dtype == PLISQL_DTYPE_ORA_RECORD)
+			continue;
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
 		/*
 		 * maybe i is another parent'var like var2, which
 		 * is not the test_f1'datums
@@ -1601,6 +1643,12 @@ plisql_assign_out_subprocfunc_globalvar(PLiSQL_execstate *estate,
 			continue;
 		/* End - ReqID:SRS-PLSQL-CURSOR */
 
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (estate->datums[i]->dtype == PLISQL_DTYPE_TYPE ||
+			estate->datums[i]->dtype == PLISQL_DTYPE_ORA_RECORD)
+			continue;
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
 		if (i < parestate->ndatums &&
 			parestate->func != NULL &&
 			parestate->func->datums[i] == estate->func->datums[i]) /* BUG#M0000168 */
@@ -1658,16 +1706,15 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 											int *nvargs,	/* return value */
 											Oid *vatype,	/* return value */
 											Oid **true_typeids, /* return value */
-											List **argdefaults) /* return value */
+											List **argdefaults, /* return value */
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											bool has_udt_type)
+											/* End - ReqID:SRS-PLSQL-RECORD */
 {
 	subprocFuncCandidateList raw_candidates;
 	subprocFuncCandidateList best_candidate = NULL;
 	subprocFuncCandidateList tmp_candidate;
 	int						nbest;
-	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	int i;
-	bool has_udt_type = false;
-	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/* initialize output arguments to silence compiler warnings */
 	*funcid = InvalidOid;
@@ -1681,25 +1728,14 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 
 	raw_candidates = plisql_getFuncCandidateListFromFunname(funcname, pfunc, nse, nargs, fargnames, proc_call);
 
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	if (has_udt_type && raw_candidates != NULL)
+		raw_candidates = plisql_func_select_candidate_forudttype(pfunc, *fargs, nargs,
+															argtypes, raw_candidates);
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	if (raw_candidates == NULL)
 		return FUNCDETAIL_NOTFOUND;
-
-	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	/*
-	 * check udt type
-	 */
-	for (i = 0; i < nargs; i++)
-	{
-		if (argtypes[i] == ORAREFCURSOROID ||
-			argtypes[i] == SYS_REFCURSOROID)
-		{
-			has_udt_type = true;
-			break;
-		}
-	}
-	if (has_udt_type)
-		raw_candidates = plisql_func_select_candidate_forudttype(pfunc, *fargs, nargs, argtypes, raw_candidates);
-	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	/*
 	 * Quickly check if there is an exact match to the input datatypes (there
@@ -1915,6 +1951,13 @@ plisql_check_function_canreload(List *args,
 			/* compare type oid */
 			if (srcitem->type->typoid != dstitem->type->typoid)
 				canreload = true;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			/* different Oracle record type have different type address */
+			else if (srcitem->type->ttype == PLISQL_TTYPE_ORARECORD_TYPE &&
+				dstitem->type->ttype == PLISQL_TTYPE_ORARECORD_TYPE &&
+				srcitem->type != dstitem->type)
+				canreload = true;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			/* Begin - ReqID:SRS-PLSQL-TYPE */
 			else
 			{
@@ -2043,6 +2086,10 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	function->paramnames = NULL;
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	function->rettype = rettype;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * when parse a package function
@@ -2388,7 +2435,9 @@ plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
 	for (i = 0; i < nargs; i++)
 	{
 		if (argtypes[i] == ORAREFCURSOROID ||
-			argtypes[i] == SYS_REFCURSOROID)
+			argtypes[i] == SYS_REFCURSOROID ||
+			argtypes[i] == RECORDOID ||
+			argtypes[i] == ORARECORDOID) /* ReqID:SRS-PLSQL-RECORD */
 		{
 			Node *arg = list_nth(fargs, i);
 
@@ -2442,6 +2491,17 @@ plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
 								match = false;
 						}
 						break;
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					case PLISQL_TTYPE_ORARECORD_TYPE:
+						{
+							if (argitem->type != type[i])
+							{
+								match = false;
+								break;
+							}
+						}
+						break;
+					/* End - ReqID:SRS-PLSQL-RECORD */
 					default:
 						break;
 				}
@@ -2990,6 +3050,9 @@ internal_get_subprocfunc_result_type(PLiSQL_subproc_function *subprocfunc,
 										call_expr))
 		{
 			if (tupdesc->tdtypeid == RECORDOID &&
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				tupdesc->tdtypeid == ORARECORDOID &&
+				/* End - ReqID:SRS-PLSQL-RECORD */
 				tupdesc->tdtypmod < 0)
 				assign_record_type_typmod(tupdesc);
 			if (resultTupleDesc)
@@ -3037,7 +3100,14 @@ internal_get_subprocfunc_result_type(PLiSQL_subproc_function *subprocfunc,
 		case TYPEFUNC_COMPOSITE:
 		case TYPEFUNC_COMPOSITE_DOMAIN:
 			if (resultTupleDesc)
-				*resultTupleDesc = lookup_rowtype_tupdesc_copy(base_rettype, -1);
+			{
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				if (subprocfunc->rettype->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+					*resultTupleDesc = plisql_build_tupdesc_from_recordtype((PLiSQL_ora_record_type *) subprocfunc->rettype);
+				else
+				/* End - ReqID:SRS-PLSQL-RECORD */
+					*resultTupleDesc = lookup_rowtype_tupdesc_copy(base_rettype, -1);
+			}
 			/* Named composite types can't have any polymorphic columns */
 			break;
 		case TYPEFUNC_SCALAR:
@@ -3620,7 +3690,10 @@ plisql_subprocfunc_ref(ParseState *pstate, List *funcname,
 				Oid *vatype,	/* return value */
 				Oid **true_typeids, /* return value */
 				List **argdefaults, /* return value */
-				void **pfunc) /* return value */
+				void **pfunc,   /* return value */
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				bool has_udt_type)	/* argument have Oracle record type or other udt type? */
+				/* End - ReqID:SRS-PLSQL-RECORD */
 {
 	PLiSQL_expr *expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
 	PLiSQL_nsitem *nse = NULL;
@@ -3675,7 +3748,10 @@ plisql_subprocfunc_ref(ParseState *pstate, List *funcname,
 											nvargs,	/* return value */
 											vatype,	/* return value */
 											true_typeids, /* return value */
-											argdefaults); /* return value */
+											argdefaults,  /* return value */
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											has_udt_type);
+											/* End - ReqID:SRS-PLSQL-RECORD */
 	if (detail != FUNCDETAIL_NORMAL &&
 		detail != FUNCDETAIL_PROCEDURE)
 		elog(ERROR, "wrong number or types of arguments in call to \"%s\"", func_name);

@@ -112,8 +112,16 @@ typedef int (*ParseSubprocFuncHook) (ParseState *pstate, List *funcname,
 				Oid *vatype,	/* return value */
 				Oid **true_typeids, /* return value */
 				List **argdefaults, /* return value */
-				void **pfunc);		/* return value */
+				void **pfunc,		/* return value */
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				bool has_udt_type);	/* argument have Oracle record type or other udt type? */
+				/* End - ReqID:SRS-PLSQL-RECORD */
+
 /* End - SRS-PLSQL-SUBPROC */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+typedef Node * (*ParseOraRecordConstructHook) (ParseState *pstate, List *recname, List *fargs,
+				  FuncCall *fn, int location);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 typedef TupleDesc (*ParseParamTupleDescHook) (ParseState *pstate, Param *param);
@@ -255,6 +263,9 @@ struct ParseState
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	ParseParamTupleDescHook p_param_tupdesc_hook;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	ParseOraRecordConstructHook p_orarecordconstruct_hook;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 	void	   *p_ref_hook_state;	/* common passthrough link for above */
 	/* Begin - Bug#Z167 */
 	uint16	    merge_on_attr_size;

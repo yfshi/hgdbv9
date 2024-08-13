@@ -49,6 +49,10 @@
 #include "utils/builtins.h"
 #include "utils/datum.h"
 #include "utils/expandeddatum.h"
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#include "../pl/plisql/src/plisql.h"
+#include "../pl/plisql/src/pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 
 /*-------------------------------------------------------------------------
@@ -552,3 +556,209 @@ datumRestore(char **start_address, bool *isnull)
 	*start_address += header;
 	return PointerGetDatum(d);
 }
+
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * copy oracle record tuple,
+ * because the first column is record type address.
+ */
+HeapTuple
+heap_copy_orarec_tuple_as_datum(HeapTuple tuple, TupleDesc tupleDesc)
+{
+	bool 	isnull;
+	int		i;
+	Datum		src_value;
+	Datum		*values;
+	bool		*nulls;
+	bool		*replaces;
+	int 		natts;
+	HeapTuple	newtup = NULL;
+	Datum		firstOid;
+
+	natts = tupleDesc->natts;
+	values = palloc(sizeof(Datum) * natts);
+	nulls = palloc(sizeof(bool) * natts);
+	replaces = palloc(sizeof(bool) * natts);
+	memset(nulls, false, sizeof(bool) * natts);
+	memset(replaces, false, sizeof(bool) * natts);
+
+	/* get the first column oid */
+	firstOid = SPI_gettypeid(tupleDesc, 1);
+
+	if (firstOid == UDTPOINTEROID)
+	{
+		/* it is a Oracle record*/
+		PLiSQL_ora_record_type   *ora_rec_type;
+		PLiSQL_ora_record_argitem *argitem;
+		ListCell        *lc;
+		PLiSQL_type *type;
+
+		type = (PLiSQL_type *) PointerGetDatum(SPI_getbinval(tuple, tupleDesc, 1, &isnull));
+
+		/*
+		 * we only compare its address to decide
+		 * Orace record can be assignable, so we
+		 * doesn't need to construct a new one
+		 * NB: its maybe freed, and must not
+		 * reference its contents.
+		 */
+		values[0] = PointerGetDatum(type);
+
+		if (type == NULL)
+		{
+			replaces[0] = false;
+			nulls[0] = true;
+		}
+		else
+		{
+			replaces[0] = false;
+			nulls[0] = false;
+		}
+		i = 1;
+
+		if (type != NULL && type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+		{
+			ora_rec_type = (PLiSQL_ora_record_type *) type;
+
+			foreach(lc, ora_rec_type->args)
+			{
+				argitem = (PLiSQL_ora_record_argitem *) lfirst(lc);
+				src_value = SPI_getbinval(tuple, tupleDesc, i + 1, &isnull);
+				copy_tupleAttrsValues(src_value,
+									isnull,
+									argitem->type->typoid,
+									((PLiSQL_type *)(argitem->type))->typbyval,
+									((PLiSQL_type *)(argitem->type))->typlen,
+									&(values[i]));
+				replaces[i] = true;
+				nulls[i] = isnull;
+				i++;
+			}
+		}
+		else
+		{
+			Oid		oid;
+			for (i = 1; i < tupleDesc->natts; i++)
+			{
+				oid = SPI_gettypeid(tupleDesc, i + 1);
+				src_value = SPI_getbinval(tuple, tupleDesc, i + 1, &isnull);
+
+				copy_tupleAttrsValues(src_value,
+								isnull,
+								oid,
+								tupleDesc->attrs[i].attbyval,
+								tupleDesc->attrs[i].attlen,
+								&(values[i]));
+				replaces[i] = true;
+				nulls[i] = isnull;
+			}
+		}
+
+	}
+	else
+	{
+		Oid             oid;
+		for (i = 0; i < tupleDesc->natts; i++)
+		{
+			oid = SPI_gettypeid(tupleDesc, i + 1);
+			src_value = SPI_getbinval(tuple, tupleDesc, i + 1, &isnull);
+
+			copy_tupleAttrsValues(src_value,
+							isnull,
+							oid,
+							tupleDesc->attrs[i].attbyval,
+							tupleDesc->attrs[i].attlen,
+							&(values[i]));
+			replaces[i] = true;
+			nulls[i] = isnull;
+		}
+	}
+
+	/* Now call heap_modify_tuple() to create a new tuple that
+	 * replaces the old one in the record.
+	 */
+	newtup = heap_modify_tuple(tuple, tupleDesc,
+							   values, nulls, replaces);
+
+	pfree(values);
+	pfree(nulls);
+	pfree(replaces);
+
+	return newtup;
+}
+
+/*
+ * copy the tuple attributes, if the column type is Oracle record,
+ * call rowDatumCopy to do the copy.
+ */
+void
+copy_tupleAttrsValues(Datum src_value,
+					bool isnull,
+					Oid oid,
+					bool typbyval,
+					int16 typlen,
+					Datum *values)
+{
+	if (isnull || src_value == (Datum) 0)
+	{
+		/* the src values is null, the dest values is 0 */
+		*values = (Datum) 0;
+		return;
+	}
+
+	/* the datatype of record field is Oracle record type */
+	if (oid == ORARECORDOID)
+		*values = rowDatumCopy(src_value, isnull);
+	else
+	{
+		if (!isnull)
+			*values = datumCopy(src_value, typbyval, typlen);
+		else
+			*values = (Datum) 0;
+	}
+
+	return;
+}
+
+Datum
+rowDatumCopy(Datum value, bool isnull)
+{
+	HeapTupleHeader td = DatumGetHeapTupleHeader(value);
+	Oid 			tupType;
+	int32			tupTypmod;
+	HeapTupleData	tmptup;
+	HeapTuple		tup;
+	TupleDesc	rowtupdesc;
+	TupleDesc	newrowtupdes;
+	Datum		res = (Datum) 0;
+
+	/* Extract rowtype info and find a tupdesc */
+	tupType = HeapTupleHeaderGetTypeId(td);
+	tupTypmod = HeapTupleHeaderGetTypMod(td);
+	rowtupdesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
+
+	if (rowtupdesc == NULL)
+		ereport(ERROR,
+			(errcode(ERRCODE_SYNTAX_ERROR),
+			errmsg("can not get the tupdesc")));
+
+	newrowtupdes = CreateTupleDescCopy(rowtupdesc);
+	if (!isnull)
+	{
+		/* Build a temporary HeapTuple control structure */
+		tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+		ItemPointerSetInvalid(&(tmptup.t_self));
+		tmptup.t_tableOid = InvalidOid;
+		tmptup.t_data = td;
+		tup = &tmptup;
+
+		if (tupType == ORARECORDOID || tupType == RECORDOID)
+		{
+			res = HeapTupleGetDatum(heap_copy_orarec_tuple_as_datum(tup, newrowtupdes));
+		}
+	}
+	ReleaseTupleDesc(rowtupdesc);
+
+	return res;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */

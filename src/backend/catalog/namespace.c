@@ -1309,6 +1309,10 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 		newResult->nargs = effective_nargs;
 		newResult->argnumbers = argnumbers;
 		newResult->prointisnumber = procform->prointisnumber;	/* BUG:M0000068 */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		newResult->argnames = NULL;
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* maybe argtype from a package */
 		if (ORA_PARSER == compatible_db)
@@ -1333,6 +1337,9 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 				argtypenames = (char **) palloc(sizeof(char *) * nelems);
 				for (i = 0; i < nelems; i++)
 					argtypenames[i] = TextDatumGetCString(elems[i]);
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				newResult->argnames = (char **) palloc(sizeof(char *) * nelems);
+				/* End - ReqID:SRS-PLSQL-RECORD */
 			}
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
@@ -1345,6 +1352,11 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			for (i = 0; i < pronargs; i++)
 			{
 				newResult->args[i] = proargtypes[argnumbers[i]];
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				if (ORA_PARSER == compatible_db &&
+					newResult->argnames != NULL)
+					newResult->argnames[i] = pstrdup(argtypenames[argnumbers[i]]);
+				/* End - ReqID:SRS-PLSQL-RECORD */
 
 				/* Begin - ReqID:SRS-SQL-PACKAGE */
 				if (argtypenames != NULL && strcmp(argtypenames[argnumbers[i]], "") != 0)
@@ -1395,6 +1407,10 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 				for (i = 0; i < pronargs; i++)
 				{
 					newResult->args[i] = proargtypes[i];
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					if (ORA_PARSER == compatible_db)
+						newResult->argnames[i] = pstrdup(argtypenames[i]);
+					/* End - ReqID:SRS-PLSQL-RECORD */
 
 					if (strcmp(argtypenames[i], "") != 0)
 					{
@@ -1602,6 +1618,112 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 
 	return resultList;
 }
+
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * If the function's argument type references the package udt type,
+ * because all the udt types' oid are the same,
+ * so we compare the address of the udt type.
+ * We shoud remove these functions which
+ * udt type addresss doesn't match the package type address.
+ *
+ */
+FuncCandidateList
+PackageTypeSelectCandidates(FuncCandidateList candidates,
+							List *fargs, int nargs, Oid *argtypes)
+{
+	FuncCandidateList current_candidate = NULL;
+	FuncCandidateList tmp_candidate;
+	FuncCandidateList raw_candidate = NULL;
+	int 	i;
+	void 	**type;
+
+	/* no arguments */
+	if (nargs <= 0)
+		return candidates;
+
+	if (fargs == NIL)
+		return candidates;
+
+	if (ORA_PARSER != compatible_db)
+		return candidates;
+
+	type = (void **) palloc0(sizeof(void *) * nargs);
+	for (i = 0; i < nargs; i++)
+	{
+		if (argtypes[i] == RECORDOID || argtypes[i] == ORARECORDOID)
+		{
+			Node *arg = list_nth(fargs, i);
+
+			if (IsA(arg, CoerceViaIO))
+				arg = (Node *) ((CoerceViaIO *) arg)->arg;
+			else if (nodeTag(arg) == T_FuncExpr)
+			{
+				FuncExpr *func = (FuncExpr *) arg;
+
+				if (list_length(func->args) == 1 &&
+					nodeTag(linitial(func->args)) == T_FuncExpr)
+					arg = (Node *) linitial(func->args);
+			}
+			else if (IsA(arg, NamedArgExpr))
+				arg = (Node *)(((NamedArgExpr *)arg)->arg);
+
+			if (IsA(arg, Param))
+			{
+				Param *pm = (Param *) arg;
+				type[i] = pm->type;
+			}
+		}
+	}
+
+	for (tmp_candidate = candidates; tmp_candidate != NULL; tmp_candidate = tmp_candidate->next)
+	{
+		bool match = true;
+
+		for (i = 0; i < nargs; i++)
+		{
+			if (type[i] != NULL)
+			{
+				PkgType *pkgtype;
+				TypeName *tname;
+
+				Assert(strcmp(tmp_candidate->argnames[i], "") != 0);
+
+				tname = (TypeName *) stringToNode(tmp_candidate->argnames[i]);
+				pkgtype = LookupPkgTypeByTypename(tname->names, false);
+				pfree(tname);
+
+				/*
+				 * we only consider the type which comes from a package
+				 */
+				if (pkgtype != NULL && pkgtype->value != type[i])
+				{
+					match = false;
+					break;
+				}
+			}
+		}
+		if (match)
+		{
+			if (raw_candidate == NULL)
+			{
+				raw_candidate = tmp_candidate;
+				current_candidate = tmp_candidate;
+			}
+			else
+			{
+				current_candidate->next = tmp_candidate;
+				current_candidate = tmp_candidate;
+			}
+		}
+	}
+	pfree(type);
+	if (current_candidate != NULL)
+		current_candidate->next = NULL;
+
+	return raw_candidate;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /*
  * MatchNamedCall

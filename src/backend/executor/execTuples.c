@@ -65,6 +65,7 @@
 #include "nodes/nodeFuncs.h"
 #include "storage/bufmgr.h"
 #include "utils/builtins.h"
+#include "utils/datum.h"	/* SRS-PLSQL-RECORD */
 #include "utils/expandeddatum.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
@@ -436,7 +437,16 @@ tts_heap_copy_heap_tuple(TupleTableSlot *slot)
 	if (!hslot->tuple)
 		tts_heap_materialize(slot);
 
-	return heap_copytuple(hslot->tuple);
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	/*
+	 * if the tupdesc column contains Oracle record type,
+	 * use heap_copy_orarec_tuple_as_datum to copy the tuple.
+	 */
+	if (tupledesc_has_udt_type(slot->tts_tupleDescriptor))
+		return heap_copy_orarec_tuple_as_datum(hslot->tuple, slot->tts_tupleDescriptor);
+	else
+	/* End - ReqID:SRS-PLSQL-RECORD */
+		return heap_copytuple(hslot->tuple);
 }
 
 static MinimalTuple
@@ -2182,7 +2192,7 @@ ExecTypeSetColNames(TupleDesc typeInfo, List *namesList)
 TupleDesc
 BlessTupleDesc(TupleDesc tupdesc)
 {
-	if (tupdesc->tdtypeid == RECORDOID &&
+	if ((tupdesc->tdtypeid == RECORDOID|| tupdesc->tdtypeid == ORARECORDOID/* SRS-PLSQL-RECORD */) &&
 		tupdesc->tdtypmod < 0)
 		assign_record_type_typmod(tupdesc);
 

@@ -236,6 +236,9 @@ fixed_paramref_hook(ParseState *pstate, ParamRef *pref)
 	param->paramtypmod = -1;
 	param->paramcollid = get_typcollation(param->paramtype);
 	param->location = pref->location;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	param->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return (Node *) param;
 }
@@ -315,6 +318,9 @@ variable_paramref_hook(ParseState *pstate, ParamRef *pref)
 	param->paramtypmod = -1;
 	param->paramcollid = get_typcollation(param->paramtype);
 	param->location = pref->location;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	param->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return (Node *) param;
 }

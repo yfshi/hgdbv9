@@ -199,7 +199,7 @@ set_plisql_cursorvar_nsitem_typoid(PLiSQL_variable *variable, bool set_retype)
 
 
 /*
- * get Param tupdesc if param is a cursor%rowtype
+ * get Param tupdesc if param is a cursor%rowtype or a Oracle record
  */
 TupleDesc
 plisql_param_tupdesc_ref(ParseState *pstate, Param *param)
@@ -230,8 +230,21 @@ plisql_param_tupdesc_ref(ParseState *pstate, Param *param)
 					cursor_type = (PLiSQL_explicit_cursor_type *) rec->datatype;
 					tupdesc = cursor_type->retdesc;
 				}
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				else if (rec->erh != NULL)
+					tupdesc = expanded_record_get_tupdesc(rec->erh);
+				/* End - ReqID:SRS-PLSQL-RECORD */
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *row = (PLiSQL_row*) datum;
+
+				tupdesc = row->rowtupdesc;
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			break;
 	}

@@ -685,6 +685,9 @@ plisql_validator(PG_FUNCTION_ARGS)
 		else if (proc->prorettype == EVENT_TRIGGEROID)
 			is_event_trigger = true;
 		else if (proc->prorettype != RECORDOID &&
+				 /* Begin - ReqID:SRS-PLSQL-RECORD */
+				 proc->prorettype !=ORARECORDOID &&
+				 /* End - ReqID:SRS-PLSQL-RECORD */
 				 proc->prorettype != VOIDOID &&
 				 !IsPolymorphicType(proc->prorettype))
 			ereport(ERROR,
@@ -702,6 +705,9 @@ plisql_validator(PG_FUNCTION_ARGS)
 		if (get_typtype(argtypes[i]) == TYPTYPE_PSEUDO)
 		{
 			if (argtypes[i] != RECORDOID &&
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				argtypes[i] != ORARECORDOID &&
+				/* End - ReqID:SRS-PLSQL-RECORD */
 				!IsPolymorphicType(argtypes[i]))
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),

@@ -852,6 +852,31 @@
 
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+{ oid => '9047', descr => 'Compatible Oracle record type',
+  typname => 'orarecord', typnamespace => 'sys', typlen => 'SIZEOF_POINTER', typbyval => 't', typtype => 'p',
+  typcategory => 'U', typdelim => ',', typrelid => '0',
+  typsubscript => '-', typelem => '0', typarray => '0', typinput => 'record_in',
+  typoutput => 'record_out', typreceive => '-', typsend => '-', typmodin => '-', typmodout => '-',
+  typanalyze => '-', typalign => 'd', typstorage => 'x',  typnotnull => 'f', typbasetype => '0',
+  typtypmod => '-1', typndims => '0', typcollation => '0'},
+
+{ oid => '9048', descr => 'udt type pointer',
+  typname => 'udtpointer', typnamespace => 'sys', typlen => 'SIZEOF_POINTER', typbyval => 't', typtype => 'p',
+  typcategory => 'P', typdelim => ',', typrelid => '0',
+  typsubscript => '-', typelem => '0', typarray => '0', typinput => '-',
+  typoutput => '-', typreceive => '-', typsend => '-', typmodin => '-', typmodout => '-',
+  typanalyze => '-', typalign => 'd', typstorage => 'p',  typnotnull => 'f', typbasetype => '0',
+  typtypmod => '-1', typndims => '0', typcollation => '0'},
+{ oid => '9049', descr => 'row type pointer',
+  typname => 'rowpointer', typnamespace => 'sys', typlen => 'SIZEOF_POINTER', typbyval => 't', typtype => 'p',
+  typcategory => 'P', typdelim => ',', typrelid => '0',
+  typsubscript => '-', typelem => '0', typarray => '0', typinput => 'record_in',
+  typoutput => 'record_out', typreceive => 'record_recv', typsend => 'record_send', typmodin => '-', typmodout => '-',
+  typanalyze => '-', typalign => 'd', typstorage => 'p',  typnotnull => 'f', typbasetype => '0',
+  typtypmod => '-1', typndims => '0', typcollation => '0'},
+ /* Begin - ReqID:SRS-PLSQL-RECORD */
+
 /*END Oracle Compatibility Metadatas*/
 
 ]

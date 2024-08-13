@@ -17,6 +17,11 @@
  */
 #ifndef DATUM_H
 #define DATUM_H
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#include "funcapi.h"
+#include "access/htup.h"
+#include "access/tupdesc.h"
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /*
  * datumGetSize - find the "real" length of a datum
@@ -72,5 +77,14 @@ extern Size datumEstimateSpace(Datum value, bool isnull, bool typByVal,
 extern void datumSerialize(Datum value, bool isnull, bool typByVal,
 						   int typLen, char **start_address);
 extern Datum datumRestore(char **start_address, bool *isnull);
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern HeapTuple heap_copy_orarec_tuple_as_datum(HeapTuple tuple, TupleDesc tupleDesc);
+extern void copy_tupleAttrsValues(Datum src_value,
+					bool isnull,
+					Oid oid,
+					bool typbyval,
+					int16 typlen,
+					Datum *values);
+extern Datum rowDatumCopy(Datum value, bool isnull);
 
 #endif							/* DATUM_H */

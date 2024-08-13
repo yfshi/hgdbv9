@@ -160,6 +160,10 @@ extern CachedPlan *SPI_plan_get_cached_plan(SPIPlanPtr plan);
 
 extern HeapTuple SPI_copytuple(HeapTuple tuple);
 extern HeapTupleHeader SPI_returntuple(HeapTuple tuple, TupleDesc tupdesc);
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern Datum SPI_return_udtinrec_tuple(HeapTuple tuple, TupleDesc tupdesc);
+/* End - ReqID:SRS-PLSQL-RECORD */
+
 extern HeapTuple SPI_modifytuple(Relation rel, HeapTuple tuple, int natts,
 								 int *attnum, Datum *Values, const char *Nulls);
 extern int	SPI_fnumber(TupleDesc tupdesc, const char *fname);

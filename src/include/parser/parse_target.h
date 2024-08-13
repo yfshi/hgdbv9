@@ -62,7 +62,8 @@ extern PGDLLIMPORT OraGetAttrnoHooktype OraGetAttrnoHook;
 
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 List *transformRowExpression(ParseState *pstate, List *exprlist,
-					ParseExprKind exprKind, bool allowDefault);
+					ParseExprKind exprKind, bool allowDefault,
+					List *cols /* ReqID:SRS-PLSQL-RECORD */);
 List *transformRowTargetList(ParseState *pstate, List *targetlist,
 					ParseExprKind exprKind);
 /* End - ReqID:SRS-PLSQL-TYPE */

@@ -210,6 +210,15 @@ get_sort_group_operators(Oid argtype,
 	Oid			gt_opr;
 	bool		hashable;
 
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	/* Records cannot be tested natively for nullity, equality, or inequality */
+	if (DB_ORACLE == database_mode &&
+		argtype == ORARECORDOID)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("unimplemented feature")));
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	/*
 	 * Look up the operators using the type cache.
 	 *
@@ -422,6 +431,17 @@ oper(ParseState *pstate, List *opname, Oid ltypeId, Oid rtypeId,
 	bool		key_ok;
 	FuncDetailCode fdresult = FUNCDETAIL_NOTFOUND;
 	HeapTuple	tup = NULL;
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	/* Records cannot be tested natively for nullity, equality, or inequality */
+	if (DB_ORACLE == database_mode &&
+		(ltypeId == ORARECORDOID ||
+		rtypeId == ORARECORDOID))
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("unimplemented feature"),
+				parser_errposition(pstate, location)));
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * Try to find the mapping in the lookaside cache.

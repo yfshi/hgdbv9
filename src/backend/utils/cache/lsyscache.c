@@ -2931,7 +2931,10 @@ get_typtype(Oid typid)
 bool
 type_is_rowtype(Oid typid)
 {
-	if (typid == RECORDOID)
+	if (typid == RECORDOID
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		|| typid == ORARECORDOID)
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		return true;			/* easy case */
 	switch (get_typtype(typid))
 	{

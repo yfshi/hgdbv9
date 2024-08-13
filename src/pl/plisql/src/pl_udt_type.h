@@ -79,6 +79,25 @@ typedef enum PLiSQL_attribute_type
 
 #define PLISQL_SUPPORT_ATTRIBUTE_NUM 	PLISQL_ATTRIBUTE_ROWCOUNT
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * User defined record type.
+ */
+typedef struct PLiSQL_ora_record_argitem
+{
+	char		*argname;
+	PLiSQL_type	*type;
+	bool		notnull;
+	PLiSQL_expr	*defexpr;
+} PLiSQL_ora_record_argitem;
+
+typedef struct PLiSQL_ora_record_type
+{
+	PLiSQL_type type;	/* type base type */
+	List		*args;	/* ora record argtype, a list of PLSQL_ora_record_argitem */
+} PLiSQL_ora_record_type;
+/* End - ReqID:SRS-PLSQL-RECORD */
+
 extern int plisql_check_cursor_define(PLiSQL_var *var,
 							PLiSQL_type *rettype,
 							List *arglist);
@@ -124,5 +143,19 @@ extern bool is_plisql_rowtype_record(PLiSQL_rec *rec);
 extern void set_plisql_cursorvar_nsitem_typoid(PLiSQL_variable *variable,
 											bool set_retype);
 extern TupleDesc plisql_param_tupdesc_ref(ParseState *pstate, Param *param);
+
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern PLiSQL_type *plisql_build_ora_rec_type(char *refname, int lineno, List *args);
+extern PLiSQL_row * plisql_build_row_for_ora_record(const char *refname, int lineno,
+					 PLiSQL_ora_record_type *dtype,
+					 bool add2namespace);
+extern PLiSQL_datum *plisql_parse_ora_rec_var(PLiSQL_datum **datums,
+					PLiSQL_row *ora_rec, List *names,
+					int match_start_loc, bool noError);
+extern Node *plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
+				  FuncCall *fn, int location);
+extern TupleDesc plisql_build_tupdesc_from_recordtype(PLiSQL_ora_record_type *ora_rec_type);
+/* End - ReqID:SRS-PLSQL-RECORD */
+
 #endif
 

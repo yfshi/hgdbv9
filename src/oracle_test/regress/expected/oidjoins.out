@@ -63,7 +63,9 @@ NOTICE:  checking pg_type {typsubscript} => pg_proc {oid}
 NOTICE:  checking pg_type {typelem} => pg_type {oid}
 NOTICE:  checking pg_type {typarray} => pg_type {oid}
 NOTICE:  checking pg_type {typinput} => pg_proc {oid}
+WARNING:  FK VIOLATION IN pg_type({typinput}): ("(3,8)",-)
 NOTICE:  checking pg_type {typoutput} => pg_proc {oid}
+WARNING:  FK VIOLATION IN pg_type({typoutput}): ("(3,8)",-)
 NOTICE:  checking pg_type {typreceive} => pg_proc {oid}
 NOTICE:  checking pg_type {typsend} => pg_proc {oid}
 NOTICE:  checking pg_type {typmodin} => pg_proc {oid}

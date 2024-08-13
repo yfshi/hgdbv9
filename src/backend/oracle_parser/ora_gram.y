@@ -930,6 +930,9 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %token		MODE_PLISQL_ASSIGN1
 %token		MODE_PLISQL_ASSIGN2
 %token		MODE_PLISQL_ASSIGN3
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+%token		MODE_PLISQL_ASSIGNN
+/* End - ReqID:SRS-PLSQL-RECORD */
 /* End - BUG:M0000079 */
 
 
@@ -1073,6 +1076,15 @@ parse_toplevel:
 				pg_yyget_extra(yyscanner)->parsetree =
 					list_make1(makeRawStmt((Node *) n, 0));
 			}
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			| MODE_PLISQL_ASSIGNN PLAssignStmt
+			{
+				PLAssignStmt *n = (PLAssignStmt *) $2;
+				n->nnames = list_length(n->indirection) + 1;
+				pg_yyget_extra(yyscanner)->parsetree =
+					list_make1(makeRawStmt((Node *) n, 0));
+			}
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			/* End - BUG:M0000079 */
 		;
 

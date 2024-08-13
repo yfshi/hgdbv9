@@ -121,6 +121,9 @@ PG_KEYWORD("print_strict_params", K_PRINT_STRICT_PARAMS)
 PG_KEYWORD("prior", K_PRIOR)
 PG_KEYWORD("query", K_QUERY)
 PG_KEYWORD("raise", K_RAISE)
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+PG_KEYWORD("record", K_RECORD)
+/* End - ReqID:SRS-PLSQL-RECORD */
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 PG_KEYWORD("ref", K_REF)
 /* End - ReqID:SRS-PLSQL-CURSOR */

@@ -133,6 +133,9 @@ replace_outer_var(PlannerInfo *root, Var *var)
 	retval->paramtypmod = var->vartypmod;
 	retval->paramcollid = var->varcollid;
 	retval->location = var->location;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	retval->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return retval;
 }
@@ -210,6 +213,9 @@ replace_outer_placeholdervar(PlannerInfo *root, PlaceHolderVar *phv)
 	retval->paramtypmod = exprTypmod((Node *) phv->phexpr);
 	retval->paramcollid = exprCollation((Node *) phv->phexpr);
 	retval->location = -1;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	retval->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return retval;
 }
@@ -255,6 +261,9 @@ replace_outer_agg(PlannerInfo *root, Aggref *agg)
 	retval->paramtypmod = -1;
 	retval->paramcollid = agg->aggcollid;
 	retval->location = agg->location;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	retval->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return retval;
 }
@@ -302,6 +311,9 @@ replace_outer_grouping(PlannerInfo *root, GroupingFunc *grp)
 	retval->paramtypmod = -1;
 	retval->paramcollid = InvalidOid;
 	retval->location = grp->location;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	retval->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return retval;
 }
@@ -332,6 +344,9 @@ replace_nestloop_param_var(PlannerInfo *root, Var *var)
 			param->paramtypmod = var->vartypmod;
 			param->paramcollid = var->varcollid;
 			param->location = var->location;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			param->type = NULL;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			return param;
 		}
 	}
@@ -381,6 +396,9 @@ replace_nestloop_param_placeholdervar(PlannerInfo *root, PlaceHolderVar *phv)
 			param->paramtypmod = exprTypmod((Node *) phv->phexpr);
 			param->paramcollid = exprCollation((Node *) phv->phexpr);
 			param->location = -1;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			param->type = NULL;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			return param;
 		}
 	}
@@ -568,6 +586,9 @@ generate_new_exec_param(PlannerInfo *root, Oid paramtype, int32 paramtypmod,
 	retval->paramtypmod = paramtypmod;
 	retval->paramcollid = paramcollation;
 	retval->location = -1;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	retval->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	return retval;
 }

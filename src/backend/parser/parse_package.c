@@ -56,7 +56,10 @@ static FuncDetailCode parse_package_func(ParseState *pstate, PackageCacheKey *pk
 										 Oid **true_typeids, /* return value */
 										 List **argdefaults, /* return value */
 										 void **pfunc,
-										 bool missing_ok);
+										 bool missing_ok,
+										 /* Begin - ReqID:SRS-PLSQL-RECORD */
+										 bool has_udt_type);
+										 /* End - ReqID:SRS-PLSQL-RECORD */
 
 
 /*
@@ -180,7 +183,8 @@ parse_package_type(List *names, PackageCacheKey *pkey,
 							 NULL, NULL, NULL, NULL, NULL, NULL,
 							 NULL, NULL,
 							 missing_ok,
-							 NULL); /* ReqID:SRS-PLSQL-CURSOR */
+							 NULL, /* ReqID:SRS-PLSQL-CURSOR */
+							 false/* SRS-PLSQL-RECORD */);
 	if (type == NULL)
 		return NULL;
 
@@ -228,7 +232,8 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
 									 missing_ok,
-									 &is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
+									 &is_explicit_cursor, /* ReqID:SRS-PLSQL-CURSOR */
+									 false/* SRS-PLSQL-RECORD */);
 	if (var == NULL)
 		return NULL;
 
@@ -249,7 +254,8 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
 									 missing_ok,
-									 NULL);
+									 NULL,
+									 false/* SRS-PLSQL-RECORD */);
 		}
 	}
 	/* End - ReqID:SRS-PLSQL-CURSOR */
@@ -289,7 +295,8 @@ parse_package_entry(List *names, PackageCacheKey *pkey,
 									 NULL, NULL, NULL, NULL, NULL, NULL,
 									 NULL, NULL,
 									 missing_ok,
-									 NULL); /* ReqID:SRS-PLSQL-CURSOR */
+									 NULL, /* ReqID:SRS-PLSQL-CURSOR */
+									 false/* SRS-PLSQL-RECORD */);
 
 	if (value == NULL)
 		return NULL;
@@ -326,7 +333,10 @@ parse_package_func(ParseState *pstate, PackageCacheKey *pkey,
 						Oid **true_typeids, /* return value */
 						List **argdefaults, /* return value */
 						void **pfunc,		/* return value */
-						bool missing_ok)
+						bool missing_ok,
+						/* Begin - ReqID:SRS-PLSQL-RECORD */
+						bool has_udt_type)
+						/* End - ReqID:SRS-PLSQL-RECORD */
 {
 	PackageCacheItem *item;
 	FuncDetailCode result;
@@ -365,7 +375,8 @@ parse_package_func(ParseState *pstate, PackageCacheKey *pkey,
 										argdefaults, /* return value */
 										pfunc,		/* return value */
 										missing_ok,
-										NULL); /* ReqID:SRS-PLSQL-CURSOR */
+										NULL, /* ReqID:SRS-PLSQL-CURSOR */
+										has_udt_type/* SRS-PLSQL-RECORD */);
 
 	return result;
 }
@@ -479,8 +490,10 @@ LookupPkgFunc(ParseState *pstate, List *funcname,
 					List **argdefaults, /* return value */
 					void **pfunc,		/* return value */
 					Oid *pkgoid,		/* return value */
-					bool missing_ok)
-
+					bool missing_ok,
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					bool has_udt_type)
+					/* End - ReqID:SRS-PLSQL-RECORD */
 {
 	PackageCacheKey pkey;
 	int funcname_startloc;
@@ -504,5 +517,8 @@ LookupPkgFunc(ParseState *pstate, List *funcname,
 			 argtypes, expand_variadic, expand_defaults,
 			 proc_call, funcid, rettype, retset,
 			 nvargs, vatype, true_typeids, argdefaults,
-			 pfunc, missing_ok);
+			 pfunc, missing_ok,
+			 /* Begin - ReqID:SRS-PLSQL-RECORD */
+			 has_udt_type);
+			 /* End - ReqID:SRS-PLSQL-RECORD */
 }

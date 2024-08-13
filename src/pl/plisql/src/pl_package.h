@@ -171,7 +171,9 @@ extern void *plisql_package_parse(ParseState *parsestate, PackageCacheItem *item
 									List **argdefaults, /* return value */
 									void **pfunc,		/* return value */
 									bool missing_ok,
-									bool *is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
+									bool *is_explicit_cursor, /* ReqID:SRS-PLSQL-CURSOR */
+									bool has_udt_type);	/* ReqID:SRS-PLSQL-RECORD */
+
 extern void plisql_free_package_function(PackageCacheItem *item);
 extern void plisql_free_packagelist(List *pkglist);
 extern PkgEntry *plisql_parse_package_entry(const char *refname, int lineno,
