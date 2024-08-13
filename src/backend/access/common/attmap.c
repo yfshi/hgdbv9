@@ -25,6 +25,7 @@
 #include "access/attmap.h"
 #include "access/htup_details.h"
 #include "utils/builtins.h"
+#include "utils/lsyscache.h"	/* SRS-PLSQL-RECORD */
 
 
 static bool check_attrmap_match(TupleDesc indesc,
@@ -93,9 +94,18 @@ build_attrmap_by_position(TupleDesc indesc,
 	attrMap = make_attrmap(n);
 
 	j = 0;						/* j is next physical input attribute */
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	i = 0;
+	if (indesc->tdtypeid == ORARECORDOID)
+		j = 1;
+	if (outdesc->tdtypeid == ORARECORDOID)
+		i = 1;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	nincols = noutcols = 0;		/* these count non-dropped attributes */
 	same = true;
-	for (i = 0; i < n; i++)
+	for (; i < n; i++)
 	{
 		Form_pg_attribute att = TupleDescAttr(outdesc, i);
 		Oid			atttypid;
@@ -114,7 +124,17 @@ build_attrmap_by_position(TupleDesc indesc,
 			nincols++;
 
 			/* Found matching column, now check type */
-			if (atttypid != att->atttypid ||
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			if (att->atttypid == ROWPOINTEROID)
+			{
+				if (!type_is_rowtype(atttypid))
+					ereport(ERROR,
+						(errcode(ERRCODE_DATATYPE_MISMATCH),
+						 errmsg_internal("%s", _(msg)),
+						 errdetail("Returned type does not match expected type")));
+			}
+			/* End - ReqID:SRS-PLSQL-RECORD */
+			else if (atttypid != att->atttypid ||
 				(atttypmod != att->atttypmod && atttypmod >= 0))
 				ereport(ERROR,
 						(errcode(ERRCODE_DATATYPE_MISMATCH),
@@ -292,7 +312,14 @@ check_attrmap_match(TupleDesc indesc,
 	if (indesc->natts != outdesc->natts)
 		return false;
 
-	for (i = 0; i < attrMap->maplen; i++)
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	if (indesc->tdtypeid == ORARECORDOID)
+		i = 1;
+	else
+		i = 0;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
+	for (; i < attrMap->maplen; i++)
 	{
 		Form_pg_attribute inatt = TupleDescAttr(indesc, i);
 		Form_pg_attribute outatt = TupleDescAttr(outdesc, i);

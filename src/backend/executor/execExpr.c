@@ -1933,7 +1933,10 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				ListCell   *l;
 
 				/* Build tupdesc to describe result tuples */
-				if (rowexpr->row_typeid == RECORDOID)
+				if (rowexpr->row_typeid == RECORDOID ||
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					rowexpr->row_typeid == ORARECORDOID)
+					/* End - ReqID:SRS-PLSQL-RECORD */
 				{
 					/* generic record, use types of given expressions */
 					tupdesc = ExecTypeFromExprList(rowexpr->args);

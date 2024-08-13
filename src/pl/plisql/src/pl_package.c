@@ -121,7 +121,8 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 							List **argdefaults, /* return value */
 							void **pfunc,		/* return value */
 							bool missing_ok,
-							bool *is_explicit_cursor) /* ReqID:SRS-PLSQL-CURSOR */
+							bool *is_explicit_cursor, /* ReqID:SRS-PLSQL-CURSOR */
+							bool has_udt_type)	/* ReqID:SRS-PLSQL-RECORD */
 {
 	int list_size;
 	char *parse_first_name;
@@ -149,8 +150,29 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 		return value;
 	}
 
+	/* support cursor%isopen notfound found rowcount */
+	if (nse->itemtype == PLISQL_NSTYPE_VAR && list_size != name_start + 1)
+	{
+		PLiSQL_var *var = (PLiSQL_var *) psource->source.datums[nse->itemno];
+		char *lastname = strVal(list_nth(names, list_size - 1));
+
+		if (flags == PACKAGE_PARSE_VAR && list_size == name_start + 2 &&
+			(var->datatype->typoid == REFCURSOROID) &&
+			(strcmp(lastname, "isopen") == 0 ||
+			strcmp(lastname, "found") == 0 ||
+			strcmp(lastname, "notfound") == 0 ||
+			strcmp(lastname, "rowcount") == 0))
+			return var;
+
+		elog(ERROR, "\"%s\" is scalar variable", parse_first_name);
+	}
 	/* only row or record, cursorvar, then name doesn't match */
 	if (nse->itemtype != PLISQL_NSTYPE_REC &&
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		nse->itemtype != PLISQL_NSTYPE_ORA_RECORD &&
+		nse->itemtype != PLISQL_NSTYPE_SUBPROC_FUNC &&
+		nse->itemtype != PLISQL_NSTYPE_SUBPROC_PROC &&
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		list_size != name_start + 1)
 		elog(ERROR, "\"%s\" is not a row var", parse_first_name);
 
@@ -255,7 +277,10 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 														nvargs,	/* return value */
 														vatype,	/* return value */
 														true_typeids, /* return value */
-														argdefaults); /* return value */
+														argdefaults,  /* return value */
+														/* Begin - ReqID:SRS-PLSQL-RECORD */
+														has_udt_type);
+														/* Begin - ReqID:SRS-PLSQL-RECORD */
 
 					if (detail != FUNCDETAIL_NORMAL &&
 						detail != FUNCDETAIL_PROCEDURE)
@@ -283,6 +308,39 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 			}
 			break;
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_NSTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *ora_rec = (PLiSQL_row *) psource->source.datums[nse->itemno];
+
+				if (flags == PACKAGE_PARSE_VAR || flags == PACKAGE_PARSE_ENTRY)
+				{
+					if (name_start == list_size - 1)
+						value = (void *) ora_rec;
+					else
+						value = (void *) plisql_parse_ora_rec_var(psource->source.datums, ora_rec,
+											names, name_start + 1, true);
+
+					/* Report variable's declared type */
+					if (basetypeid != NULL)
+						*basetypeid = ((PLiSQL_type *)value)->typoid;
+
+					if (flags == PACKAGE_PARSE_ENTRY)
+						*entry_type = PKG_VAR;
+				}
+				else if (flags == PACKAGE_PARSE_TYPE)
+				{
+					if (basetypeid != NULL)
+						*basetypeid = ora_rec->datatype->typoid;
+					if (basetypmod != NULL)
+						*basetypmod = ora_rec->datatype->atttypmod;
+
+					value = (void *) ora_rec->datatype;
+				}
+				else
+					elog(ERROR, "\"%s\" is a oracle record", parse_first_name);
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			elog(ERROR, "package doesn't support this nstype :%u", nse->itemtype);
 			break;
@@ -421,6 +479,18 @@ plisql_get_package_datum_rowtype(const char *typename, PLiSQL_function *func,
 							rec->refname, recfield->fieldname);
 			}
 			break;
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *orarec = (PLiSQL_row *) datum;
+
+				if (orarec->datatype != NULL)
+					return orarec->datatype;
+				else
+					elog(ERROR, "\"%s\" is a record", typename);
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			elog(ERROR, "unrecognized data type: %d", datum->dtype);
 			break;
@@ -2355,11 +2425,21 @@ plisql_parse_package_entry(const char *refname, int lineno,
 		/* compare its refname */
 		if (strcmp(tmp_pkg_datum->refname, refname) == 0)
 		{
-			pkgentry = palloc0(sizeof(PkgEntry));
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			PLiSQL_nsitem *ns;
 
-			pkgentry->type = PKG_VAR;
-			pkgentry->value = (void *) tmp_pkg_datum;
-			return	pkgentry;
+			ns = plisql_ns_lookup_wordlist(plisql_ns_top(), false,
+											idents,
+											NULL);
+			if (ns != NULL)
+			/* End - ReqID:SRS-PLSQL-RECORD */
+			{
+				pkgentry = palloc0(sizeof(PkgEntry));
+
+				pkgentry->type = PKG_VAR;
+				pkgentry->value = (void *) tmp_pkg_datum;
+				return	pkgentry;
+			}
 		}
 	}
 
@@ -2771,7 +2851,10 @@ plisql_get_package_last_globaldno(int sqlstate_dno, int sqlerrm_dno)
 	{
 		/* we only consider variable */
 		if (nse->itemtype != PLISQL_NSTYPE_VAR &&
-			nse->itemtype != PLISQL_NSTYPE_REC)
+			nse->itemtype != PLISQL_NSTYPE_REC &&
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			nse->itemtype != PLISQL_NSTYPE_ORA_RECORD)
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			continue;
 
 		/* ignore some special var */
@@ -2816,6 +2899,27 @@ plisql_get_package_last_globaldno(int sqlstate_dno, int sqlerrm_dno)
 		}
 	}
 	/* End - BUG#M0000167 */
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	/*
+	 * PLiSQL_rec variable, we should include its
+	 * rec_filed dno
+	 */
+	if (plisql_Datums[lastdno]->dtype == PLISQL_DTYPE_ORA_RECORD)
+	{
+		int 		i;
+		PLiSQL_row *ora_rec = (PLiSQL_row *) plisql_Datums[lastdno];
+
+		for (i = 0; i < ora_rec->nfields; i++)
+		{
+			PLiSQL_datum 	*datum = plisql_Datums[ora_rec->varnos[i]];
+
+			if (datum->dno > lastdno)
+				lastdno = datum->dno;
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	return lastdno;
 }
 
@@ -3334,6 +3438,18 @@ is_const_datum(PLiSQL_execstate *estate, PLiSQL_datum *datum)
 			isconst = false;
 			break;
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_TYPE:
+			isconst = false;
+			break;
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *ora_rec = (PLiSQL_row *) datum;
+
+				isconst = ora_rec->isconst;
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 			break;
@@ -3939,7 +4055,10 @@ is_row_record_datum(PLiSQL_datum * datum)
 		real_datum = ((PLiSQL_pkg_datum *) datum)->pkgvar;
 
 	if (real_datum->dtype == PLISQL_DTYPE_ROW ||
-		real_datum->dtype == PLISQL_DTYPE_REC)
+		real_datum->dtype == PLISQL_DTYPE_REC ||
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		real_datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		return true;
 	else
 		return false;

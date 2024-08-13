@@ -1737,7 +1737,10 @@ ensure_record_cache_typmod_slot_exists(int32 typmod)
 static TupleDesc
 lookup_rowtype_tupdesc_internal(Oid type_id, int32 typmod, bool noError)
 {
-	if (type_id != RECORDOID)
+	if (type_id != RECORDOID
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		&& type_id != ORARECORDOID)
+		/* End - ReqID:SRS-PLSQL-RECORD */
 	{
 		/*
 		 * It's a named composite type, so use the regular typcache.
@@ -1953,7 +1956,10 @@ assign_record_type_typmod(TupleDesc tupDesc)
 	bool		found;
 	MemoryContext oldcxt;
 
-	Assert(tupDesc->tdtypeid == RECORDOID);
+	Assert(tupDesc->tdtypeid == RECORDOID
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		|| tupDesc->tdtypeid == ORARECORDOID);
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 	if (RecordCacheHash == NULL)
 	{

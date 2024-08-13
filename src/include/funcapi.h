@@ -202,7 +202,8 @@ typedef struct
 							List **argdefaults, /* return value */
 							void **pfunc,		/* return value */
 							bool missing_ok,
-							bool *is_explicit_cursor); /* ReqID:SRS-PLSQL-CURSOR */
+							bool *is_explicit_cursor, /* ReqID:SRS-PLSQL-CURSOR */
+							bool has_udt_type);/* ReqID:SRS-PLSQL-RECORD */
 	void (*package_free) (PackageCacheItem *item);
 	void (*package_free_list) (List *pkglist);
 	Oid (*get_top_function_id) (FuncExpr *expr, bool *is_package);

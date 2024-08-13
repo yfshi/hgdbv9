@@ -2203,5 +2203,8 @@ make_agg_arg(Oid argtype, Oid argcollation)
 	argp->paramtypmod = -1;
 	argp->paramcollid = argcollation;
 	argp->location = -1;
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	argp->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 	return (Node *) argp;
 }

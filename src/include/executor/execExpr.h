@@ -395,6 +395,9 @@ typedef struct ExprEvalStep
 		{
 			int			paramid;	/* numeric ID for parameter */
 			Oid			paramtype;	/* OID of parameter's datatype */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			void 		*type;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 		}			param;
 
 		/* for EEOP_PARAM_CALLBACK */
@@ -407,6 +410,9 @@ typedef struct ExprEvalStep
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			Oid			pkgoid;		/* param comes from a package'var */
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			void 		*type;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 		}			cparam;
 
 		/* for EEOP_CASE_TESTVAL/DOMAIN_TESTVAL */

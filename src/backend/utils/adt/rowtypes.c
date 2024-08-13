@@ -119,7 +119,7 @@ record_in(PG_FUNCTION_ARGS)
 	 * the SQL level, and thus must fail for RECORD.  However some callers can
 	 * supply a valid typmod, and then we can do something useful for RECORD.
 	 */
-	if (tupType == RECORDOID && tupTypmod < 0)
+	if ((tupType == RECORDOID || tupType == ORARECORDOID/* SRS-PLSQL-RECORD */)&& tupTypmod < 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("input of anonymous composite types is not implemented")));
@@ -388,7 +388,13 @@ record_out(PG_FUNCTION_ARGS)
 
 	appendStringInfoChar(&buf, '(');
 
-	for (i = 0; i < ncolumns; i++)
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	i = 0;
+	if (tupType == ORARECORDOID)
+		i = 1;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
+	for (; i < ncolumns; i++)
 	{
 		Form_pg_attribute att = TupleDescAttr(tupdesc, i);
 		ColumnIOData *column_info = &my_extra->columns[i];

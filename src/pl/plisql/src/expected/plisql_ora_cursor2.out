@@ -8896,7 +8896,7 @@ begin
  close c1;
 end;
 /
---error
+--ok
 declare
  cursor c1 is select * from tb1;
  type c2 is ref cursor return c1%rowtype;
@@ -8915,9 +8915,6 @@ begin
  close c1;
 end;
 /
-ERROR:  record type has not been registered
-CONTEXT:  SQL statement "insert into tb2 values tab1"
-PL/iSQL function inline_code_block line 13 at SQL statement
 --clean data
 DROP TABLE tb1;
 DROP TABLE tb2;

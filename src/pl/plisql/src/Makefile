@@ -32,7 +32,8 @@ OBJS = \
 	pl_scanner.o \
 	pl_subproc_function.o \
 	pl_package.o \
-	pl_udt_type.o
+	pl_udt_type.o \
+	pl_ora_record.o
 
 DATA = plisql.control plisql--1.0.sql
 
@@ -42,7 +43,7 @@ ORA_REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain 
 	plisql_record plisql_cache plisql_simple plisql_transaction \
 	plisql_trap plisql_trigger plisql_varprops plisql_nested_subproc \
 	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype \
-	plisql_ora_cursor plisql_ora_cursor2
+	plisql_ora_cursor plisql_ora_cursor2 plisql_ora_record
 # End - BUGM0000301
 
 # where to find ora_gen_keywordlist.pl and subsidiary files

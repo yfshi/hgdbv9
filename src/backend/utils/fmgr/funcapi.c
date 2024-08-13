@@ -537,7 +537,10 @@ get_expr_result_tupdesc(Node *expr, bool noError)
 	{
 		Oid			exprTypeId = exprType(expr);
 
-		if (exprTypeId != RECORDOID)
+		if (exprTypeId != RECORDOID
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			&& exprTypeId != ORARECORDOID)
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			ereport(ERROR,
 					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 					 errmsg("type %s is not composite",
@@ -1321,6 +1324,10 @@ get_type_func_class(Oid typid, Oid *base_typeid)
 		case TYPTYPE_PSEUDO:
 			if (typid == RECORDOID)
 				return TYPEFUNC_RECORD;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			else if (typid == ORARECORDOID)
+				return TYPEFUNC_RECORD;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			/*
 			 * We treat VOID and CSTRING as legitimate scalar datatypes,

@@ -495,7 +495,6 @@ set_pkgtype_from_funcexpr(FuncExpr *expr)
 		char 		*func_name = get_func_name(expr->funcid);
 		char		*chema_name = get_namespace_name(get_func_namespace(expr->funcid));
 		Oid			funcrettype;
-		TupleDesc	tupdesc;
 		char		f_kind = get_func_prokind(expr->funcid);
 
 		fn = makeNode(FuncCall);
@@ -518,7 +517,7 @@ set_pkgtype_from_funcexpr(FuncExpr *expr)
 		 */
 		get_expr_result_type((Node *)funcexpr,
 							&funcrettype,
-							&tupdesc);
+							NULL /*SRS-PLSQL-RECORD */);
 		expr->funcresulttype = funcexpr->funcresulttype;
 		expr->funcvariadic = funcexpr->funcvariadic;
 		list_free(fn->funcname);

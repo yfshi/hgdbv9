@@ -223,6 +223,9 @@ ScanReservedKeywordLookup(const char *text,
 			bool oracursor;
 		}	cursor_heading_info;
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		PLiSQL_ora_record_argitem	*recorditem;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 }
 
 %type <declhdr> decl_sect
@@ -314,6 +317,10 @@ ScanReservedKeywordLookup(const char *text,
 %type <list>	decl_cursor_args
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+%type <list>		record_args_list
+%type <recorditem>	record_arg_item
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 
 /*
@@ -466,6 +473,9 @@ ScanReservedKeywordLookup(const char *text,
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_QUERY
 %token <keyword>	K_RAISE
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+%token <keyword>	K_RECORD
+/* End - ReqID:SRS-PLSQL-RECORD */
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 %token <keyword>	K_REF
 /* End - ReqID:SRS-PLSQL-CURSOR */
@@ -1195,6 +1205,12 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
 					}
 				/* End - SRS-PLSQL-SUBPROC */
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				| K_TYPE decl_varname K_IS K_RECORD '(' record_args_list ')' ';'
+					{
+						plisql_build_ora_rec_type($2.name, $2.lineno, $6);
+					}
+				/* End - ReqID:SRS-PLSQL-RECORD */
 				;
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
@@ -1774,6 +1790,30 @@ arg_decl_defval:	decl_defkey
 
 /* End - SRS-PLSQL-SUBPROC */
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+record_args_list : record_arg_item
+						{
+							$$ = list_make1($1);
+						}
+					| record_args_list ',' record_arg_item
+						{
+							$$ = lappend($1, $3);
+						}
+					;
+
+record_arg_item: decl_varname decl_datatype decl_notnull arg_decl_defval
+						{
+							PLiSQL_ora_record_argitem *new = NULL;
+
+							new = (PLiSQL_ora_record_argitem *) palloc0(sizeof(PLiSQL_ora_record_argitem));
+							new->argname = pstrdup($1.name);
+							new->type = $2;
+							new->notnull = $3;
+							new->defexpr = $4;
+							$$ = new;
+						}
+					;
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /*
  * Ada-based PL/iSQL uses := for assignment and variable defaults, while
@@ -1939,8 +1979,10 @@ stmt_assign		: T_DATUM
 								pmode = RAW_PARSE_PLISQL_ASSIGN3; /* BUG:M0000079 */
 								break;
 							default:
-								elog(ERROR, "unexpected number of names");
-								pmode = 0; /* keep compiler quiet */
+								/* Begin - ReqID:SRS-PLSQL-RECORD */
+								pmode = RAW_PARSE_PLISQL_ASSIGNN; /* BUG:M0000079 */
+								break;
+								/* End - ReqID:SRS-PLSQL-RECORD */
 						}
 
 						check_assignable($1.datum, @1);
@@ -4292,11 +4334,6 @@ make_execsql_stmt(int firsttoken, int location)
 	bool				have_strict = false;
 	int					into_start_loc = -1;
 	int					into_end_loc = -1;
-	/* Begin - BUG#Z375 */
-	bool				insert_targetalias_without_as = false;
-	int					prev_prev_tok = 0;
-	int					as_start_loc = -1;
-	/* End - BUG#Z375 */
 
 	initStringInfo(&ds);
 
@@ -4335,9 +4372,6 @@ make_execsql_stmt(int firsttoken, int location)
 	tok = firsttoken;
 	for (;;)
 	{
-		/* Begin - BUG#Z375 */
-		prev_prev_tok = prev_tok;
-		/* End - BUG#Z375 */
 		prev_tok = tok;
 		tok = yylex();
 		if (have_into && into_end_loc < 0)
@@ -4346,11 +4380,6 @@ make_execsql_stmt(int firsttoken, int location)
 			break;
 		if (tok == 0)
 			yyerror("unexpected end of function definition");
-
-		/* Begin - BUG#Z375 */
-		if (prev_tok == K_INSERT && tok == K_INTO)
-			as_start_loc = yylloc;
-		/* End - BUG#Z375 */
 
 		if (tok == K_INTO)
 		{
@@ -4366,13 +4395,6 @@ make_execsql_stmt(int firsttoken, int location)
 			read_into_target(&target, &have_strict);
 			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
 		}
-		/* Begin - BUG#Z375 */
-		else if (tok == K_VALUES && firsttoken == K_INSERT)
-		{
-			if (prev_tok != ')' && prev_prev_tok != K_INTO && prev_prev_tok != K_AS)
-				insert_targetalias_without_as = true;
-		}
-		/* End - BUG#Z375 */
 	}
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
@@ -4388,21 +4410,8 @@ make_execsql_stmt(int firsttoken, int location)
 		appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
 		plisql_append_source_text(&ds, into_end_loc, yylloc);
 	}
-	/* Begin - BUG#Z375 */
 	else
-	{
-		if (insert_targetalias_without_as && as_start_loc != -1)
-		{
-			plisql_append_source_text(&ds, location + ds.len, location + ds.len + as_start_loc);
-			appendStringInfoString(&ds, " AS");
-			plisql_append_source_text(&ds, location + ds.len - strlen(" AS"), yylloc);
-		}
-		else
-	/* End - BUG#Z375 */
-			plisql_append_source_text(&ds, location, yylloc);
-	/* Begin - BUG#Z375 */
-	}
-	/* End - BUG#Z375 */
+		plisql_append_source_text(&ds, location, yylloc);
 
 	/* trim any trailing whitespace, for neatness */
 	while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
@@ -4875,6 +4884,11 @@ check_assignable(PLiSQL_datum *datum, int location)
 			check_packagedatum_assignable((PLiSQL_pkg_datum *) datum, location);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			/* always assignable; member vars were checked at compile time */
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		/* Begin - ReqID:SRS-PLSQL-CURSOR */
 		case PLISQL_DTYPE_ATTRIBUTE:
@@ -4950,6 +4964,9 @@ check_packagedatum_assignable(PLiSQL_pkg_datum *pkg_datum, int location)
 			/* End - ReqID:SRS-SQL-FUNCOUT */
 			break;
 		case PLISQL_DTYPE_ROW:
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+		/* End - ReqID:SRS-PLSQL-RECORD */
 			/* always assignable; member vars were checked at compile time */
 			break;
 		case PLISQL_DTYPE_RECFIELD:

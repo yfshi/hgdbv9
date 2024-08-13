@@ -2027,7 +2027,8 @@ get_cached_rowtype(Oid type_id, int32 typmod,
 				   ExprEvalRowtypeCache *rowcache,
 				   bool *changed)
 {
-	if (type_id != RECORDOID)
+	if (type_id != RECORDOID &&
+		type_id != ORARECORDOID	/* ReqID:SRS-PLSQL-RECORD */)
 	{
 		/*
 		 * It's a named composite type, so use the regular typcache.  Do a

@@ -1467,6 +1467,8 @@ ExpandRowReference(ParseState *pstate, Node *expr,
 		return ExpandSingleTable(pstate, nsitem, var->varlevelsup, var->location, make_target_entry);
 	}
 
+	i = 0;
+
 	/*
 	 * Otherwise we have to do it the hard way.  Our current implementation is
 	 * to generate multiple copies of the expression and do FieldSelects.
@@ -1488,13 +1490,26 @@ ExpandRowReference(ParseState *pstate, Node *expr,
 		((Param *) expr)->paramtype == RECORDOID)
 		tupleDesc = expandParamRecordVariable(pstate, (Param *) expr);
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	else if (IsA(expr, Param) &&
+		((Param *) expr)->paramtype == ORARECORDOID)
+	{
+		tupleDesc = expandParamRecordVariable(pstate, (Param *) expr);
+
+		/*
+		 * The first column of tupdesc is the record type,
+		 * the actual column starts at 1.
+		 */
+		i = 1;
+	}
+	/* End - ReqID:SRS-PLSQL-RECORD */
 	else
 		tupleDesc = get_expr_result_tupdesc(expr, false);
 	Assert(tupleDesc);
 
 	/* Generate a list of references to the individual fields */
 	numAttrs = tupleDesc->natts;
-	for (i = 0; i < numAttrs; i++)
+	for (; i < numAttrs; i++)
 	{
 		Form_pg_attribute att = TupleDescAttr(tupleDesc, i);
 		FieldSelect *fselect;
@@ -2059,7 +2074,8 @@ expandParamRecordVariable(ParseState *pstate, Param *param)
  */
 List *
 transformRowExpression(ParseState *pstate, List *exprlist,
-					ParseExprKind exprKind, bool allowDefault)
+					ParseExprKind exprKind, bool allowDefault,
+					List *cols /* ReqID:SRS-PLSQL-RECORD */)
 {
 	List	   *result = NIL;
 	ListCell   *lc;
@@ -2116,6 +2132,18 @@ transformRowExpression(ParseState *pstate, List *exprlist,
 													 		  0)))));
 		/* And transform that */
 		e = transformExpr(pstate, e, exprKind);
+
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (cols != NIL &&
+			IsA(e, Param) &&
+			((Param *) e)->paramtype == ORARECORDOID)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("unimplemented feature"),
+					 parser_errposition(pstate,
+										exprLocation(list_nth(exprlist,
+																0)))));
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		/* Expand the rowtype expression into individual fields */
 		result = list_concat(result,

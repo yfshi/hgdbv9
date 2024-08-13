@@ -139,6 +139,9 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	Oid pkgoid = InvalidOid;
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	bool		hasplus_outer_join = false;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	bool		has_udt_type = false;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * If there's an aggregate filter, transform it using transformWhereClause
@@ -218,6 +221,16 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			fargs = foreach_delete_current(fargs, l);
 			continue;
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (!has_udt_type &&
+			(argtype == RECORDOID ||
+			argtype == ORARECORDOID ||
+			argtype == ORAREFCURSOROID ||
+			argtype == SYS_REFCURSOROID))
+		/*  End - ReqID: SRS-GKC-PLSQL-NESTEDCOLLRECORD_217 */
+			has_udt_type = true;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		actual_arg_types[nargs++] = argtype;
 	}
@@ -326,7 +339,10 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 											!func_variadic, true, proc_call,
 											&funcid, &rettype, &retset,
 											&nvargs, &vatype,
-											&declared_arg_types, &argdefaults, &pfunc);
+											&declared_arg_types, &argdefaults, &pfunc,
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											has_udt_type);
+											/* End - ReqID:SRS-PLSQL-RECORD */
 		if (fdresult != FUNCDETAIL_NOTFOUND)
 			function_from = FUNC_FROM_SUBPROCFUNC;
 		else if (list_length(funcname) == 1)
@@ -341,7 +357,10 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 											&nvargs, &vatype,
 											&declared_arg_types, &argdefaults,
 											&pfunc, &pkgoid,
-											true);
+											true,
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											has_udt_type);
+											/* End - ReqID:SRS-PLSQL-RECORD */
 			list_free(new_funcname);
 			if (fdresult != FUNCDETAIL_NOTFOUND)
 				function_from = FUNC_FROM_PACKAGE;
@@ -357,7 +376,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 											&nvargs, &vatype,
 											&declared_arg_types, &argdefaults,
 											&pfunc, &pkgoid,
-											false);
+											false,
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											has_udt_type);
+											/* End - ReqID:SRS-PLSQL-RECORD */
+
 		if (fdresult != FUNCDETAIL_NOTFOUND)
 			function_from = FUNC_FROM_PACKAGE;
 	}
@@ -1763,6 +1786,11 @@ func_get_detail(List *funcname,
 		}
 	}
 	/* End - BUG:M0000068 */
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	raw_candidates = PackageTypeSelectCandidates(raw_candidates, fargs, nargs, argtypes);
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	/*
 	 * Quickly check if there is an exact match to the input datatypes (there
 	 * can be only one)
@@ -1848,6 +1876,9 @@ func_get_detail(List *funcname,
 							break;
 						case COERCION_PATH_COERCEVIAIO:
 							if ((sourceType == RECORDOID ||
+								 /* Begin - ReqID:SRS-PLSQL-RECORD */
+								 sourceType == ORARECORDOID ||
+								 /* End - ReqID:SRS-PLSQL-RECORD */
 								 ISCOMPLEX(sourceType)) &&
 								TypeCategory(targetType) == TYPCATEGORY_STRING)
 								iscoercion = false;

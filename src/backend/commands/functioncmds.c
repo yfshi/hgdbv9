@@ -74,6 +74,9 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#include "utils/datum.h"
+/* End - ReqID:SRS-PLSQL-RECORD */
 #include "utils/fmgroids.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
@@ -3258,6 +3261,11 @@ SKIP_PG_PROC_CHECK:
 		HeapTupleData rettupdata;
 		TupOutputState *tstate;
 		TupleTableSlot *slot;
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		HeapTupleHeader newtd;
+		HeapTupleData	newrettupdata;
+		Datum		newretvalue;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		if (fcinfo->isnull)
 			elog(ERROR, "procedure returned null record");
@@ -3289,7 +3297,21 @@ SKIP_PG_PROC_CHECK:
 		rettupdata.t_tableOid = InvalidOid;
 		rettupdata.t_data = td;
 
-		slot = ExecStoreHeapTuple(&rettupdata, tstate->slot, false);
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (tupledesc_has_udt_type(retdesc))
+		{
+			newretvalue = rowDatumCopy(HeapTupleGetDatum(&rettupdata), false);
+
+			newtd = DatumGetHeapTupleHeader(newretvalue);
+			newrettupdata.t_len = HeapTupleHeaderGetDatumLength(newtd);
+			newrettupdata.t_tableOid = InvalidOid;
+			newrettupdata.t_data = newtd;
+
+			slot = ExecStoreHeapTuple(&newrettupdata, tstate->slot, false);
+		}
+		else
+		/* End - ReqID:SRS-PLSQL-RECORD */
+			slot = ExecStoreHeapTuple(&rettupdata, tstate->slot, false);
 		tstate->dest->receiveSlot(slot, tstate->dest);
 
 		end_tup_output(tstate);

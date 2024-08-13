@@ -1760,6 +1760,29 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 		}
 	}
 
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	if (DB_ORACLE == database_mode &&
+		fn && last_srf == NULL &&
+		fn->agg_filter == NULL &&
+		fn->over == NULL &&
+		!fn->agg_within_group &&
+		!fn->agg_star &&
+		!fn->agg_distinct &&
+		!fn->func_variadic &&
+		pstate->p_orarecordconstruct_hook != NULL)
+	{
+		/* check whether it is Oracle record's constructor */
+		Node *node = pstate->p_orarecordconstruct_hook(pstate,
+											 fn->funcname,
+											 targs,
+											 fn,
+											 fn->location);
+
+		if (node != NULL)
+			return node;
+	}
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	/* ... and hand off to ParseFuncOrColumn */
 	return ParseFuncOrColumn(pstate,
 							 fn->funcname,
@@ -1964,6 +1987,9 @@ transformMultiAssignRef(ParseState *pstate, MultiAssignRef *maref)
 		param->paramtypmod = exprTypmod((Node *) tle->expr);
 		param->paramcollid = exprCollation((Node *) tle->expr);
 		param->location = exprLocation((Node *) tle->expr);
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		param->type = NULL;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		return (Node *) param;
 	}
@@ -2726,6 +2752,9 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 			param->paramtypmod = exprTypmod((Node *) tent->expr);
 			param->paramcollid = exprCollation((Node *) tent->expr);
 			param->location = -1;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			param->type = NULL;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			right_list = lappend(right_list, param);
 		}

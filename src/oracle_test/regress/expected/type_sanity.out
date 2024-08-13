@@ -42,9 +42,10 @@ SELECT p1.oid, p1.typname
 FROM pg_type as p1
 WHERE p1.typstorage != 'p' AND
     (p1.typbyval OR p1.typlen != -1);
- oid | typname 
------+---------
-(0 rows)
+ oid  |  typname  
+------+-----------
+ 9047 | orarecord
+(1 row)
 
 -- Look for complex types that do not have a typrelid entry,
 -- or basic types that do.
@@ -114,9 +115,10 @@ WHERE p1.typtype = 'r' AND
 SELECT p1.oid, p1.typname
 FROM pg_type as p1
 WHERE (p1.typinput = 0 OR p1.typoutput = 0);
- oid | typname 
------+---------
-(0 rows)
+ oid  |  typname   
+------+------------
+ 9048 | udtpointer
+(1 row)
 
 -- Check for bogus typinput routines
 SELECT p1.oid, p1.typname, p2.oid, p2.proname
@@ -171,10 +173,12 @@ WHERE p1.typinput = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p1.typelem != 0 AND p1.typlen < 0) AND NOT
     (p2.prorettype = p1.oid AND NOT p2.proretset)
 ORDER BY 1;
- oid  |  typname  | oid | proname 
-------+-----------+-----+---------
- 1790 | refcursor |  46 | textin
-(1 row)
+ oid  |  typname   | oid  |  proname  
+------+------------+------+-----------
+ 1790 | refcursor  |   46 | textin
+ 9047 | orarecord  | 2290 | record_in
+ 9049 | rowpointer | 2290 | record_in
+(3 rows)
 
 -- Varlena array types will point to array_in
 -- Exception as of 8.1: int2vector and oidvector have their own I/O routines
@@ -223,10 +227,12 @@ WHERE p1.typoutput = p2.oid AND p1.typtype in ('b', 'p') AND NOT
       (p2.oid = 'array_out'::regproc AND
        p1.typelem != 0 AND p1.typlen = -1)))
 ORDER BY 1;
- oid  |  typname  | oid | proname 
-------+-----------+-----+---------
- 1790 | refcursor |  47 | textout
-(1 row)
+ oid  |  typname   | oid  |  proname   
+------+------------+------+------------
+ 1790 | refcursor  |   47 | textout
+ 9047 | orarecord  | 2291 | record_out
+ 9049 | rowpointer | 2291 | record_out
+(3 rows)
 
 SELECT p1.oid, p1.typname, p2.oid, p2.proname
 FROM pg_type AS p1, pg_proc AS p2
@@ -287,10 +293,11 @@ WHERE p1.typreceive = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p1.typelem != 0 AND p1.typlen < 0) AND NOT
     (p2.prorettype = p1.oid AND NOT p2.proretset)
 ORDER BY 1;
- oid  |  typname  | oid  | proname  
-------+-----------+------+----------
- 1790 | refcursor | 2414 | textrecv
-(1 row)
+ oid  |  typname   | oid  |   proname   
+------+------------+------+-------------
+ 1790 | refcursor  | 2414 | textrecv
+ 9049 | rowpointer | 2402 | record_recv
+(2 rows)
 
 -- Varlena array types will point to array_recv
 -- Exception as of 8.1: int2vector and oidvector have their own I/O routines
@@ -348,10 +355,11 @@ WHERE p1.typsend = p2.oid AND p1.typtype in ('b', 'p') AND NOT
       (p2.oid = 'array_send'::regproc AND
        p1.typelem != 0 AND p1.typlen = -1)))
 ORDER BY 1;
- oid  |  typname  | oid  | proname  
-------+-----------+------+----------
- 1790 | refcursor | 2415 | textsend
-(1 row)
+ oid  |  typname   | oid  |   proname   
+------+------------+------+-------------
+ 1790 | refcursor  | 2415 | textsend
+ 9049 | rowpointer | 2403 | record_send
+(2 rows)
 
 SELECT p1.oid, p1.typname, p2.oid, p2.proname
 FROM pg_type AS p1, pg_proc AS p2

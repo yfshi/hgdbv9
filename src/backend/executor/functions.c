@@ -430,6 +430,10 @@ sql_fn_make_param(SQLFunctionParseInfoPtr pinfo,
 	if (OidIsValid(pinfo->collation) && OidIsValid(param->paramcollid))
 		param->paramcollid = pinfo->collation;
 
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	param->type = NULL;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	return (Node *) param;
 }
 

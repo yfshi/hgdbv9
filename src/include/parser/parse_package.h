@@ -84,6 +84,9 @@ extern FuncDetailCode LookupPkgFunc(ParseState *pstate, List *funcname,
 				List **argdefaults, /* return value */
 				void **pfunc,		/* return value */
 				Oid *pkgoid,		/* return value */
-				bool missing_ok);
+				bool missing_ok,
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				bool has_udt_type);
+				/* End - ReqID:SRS-PLSQL-RECORD */
 #endif
 

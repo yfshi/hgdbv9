@@ -229,7 +229,8 @@ extern int plisql_subprocfunc_ref(ParseState *pstate, List *funcname,
 				Oid *vatype,	/* return value */
 				Oid **true_typeids, /* return value */
 				List **argdefaults,	/* return value */
-				void **pfunc);	/* return value */
+				void **pfunc,	/* return value */
+				bool has_udt_type);	/* argument have Oracle record type or other udt type? */
 
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 extern FuncDetailCode plisql_get_subprocfunc_detail(ParseState *pstate,
@@ -246,7 +247,11 @@ extern FuncDetailCode plisql_get_subprocfunc_detail(ParseState *pstate,
 											int *nvargs,	/* return value */
 											Oid *vatype,	/* return value */
 											Oid **true_typeids, /* return value */
-											List **argdefaults);
+											List **argdefaults,
+											/* Begin - ReqID:SRS-PLSQL-RECORD */
+											bool has_udt_type);
+											/* End - ReqID:SRS-PLSQL-RECORD */
+
 extern int get_subprocfunc_arg_info_from_arguments(List *args, Oid **p_argtypes,
 								char ***p_argnames, char **p_argmodes);
 extern PLiSQL_function *plisql_subprocfunc_HashTableLookup(HTAB *hashp,

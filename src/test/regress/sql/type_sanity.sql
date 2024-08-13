@@ -40,7 +40,7 @@ WHERE p1.typbyval AND
 SELECT p1.oid, p1.typname
 FROM pg_type as p1
 WHERE p1.typstorage != 'p' AND
-    (p1.typbyval OR p1.typlen != -1);
+    (p1.typbyval OR p1.typlen != -1) AND p1.typnamespace != 9900;
 
 -- Look for complex types that do not have a typrelid entry,
 -- or basic types that do.
@@ -91,7 +91,7 @@ WHERE p1.typtype = 'r' AND
 
 SELECT p1.oid, p1.typname
 FROM pg_type as p1
-WHERE (p1.typinput = 0 OR p1.typoutput = 0);
+WHERE (p1.typinput = 0 OR p1.typoutput = 0) AND p1.typnamespace != 9900;
 
 -- Check for bogus typinput routines
 
@@ -137,7 +137,7 @@ SELECT p1.oid, p1.typname, p2.oid, p2.proname
 FROM pg_type AS p1, pg_proc AS p2
 WHERE p1.typinput = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p1.typelem != 0 AND p1.typlen < 0) AND NOT
-    (p2.prorettype = p1.oid AND NOT p2.proretset)
+    (p2.prorettype = p1.oid AND NOT p2.proretset) AND p1.typnamespace != 9900
 ORDER BY 1;
 
 -- Varlena array types will point to array_in
@@ -170,7 +170,7 @@ WHERE p1.typoutput = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p2.pronargs = 1 AND
      (p2.proargtypes[0] = p1.oid OR
       (p2.oid = 'array_out'::regproc AND
-       p1.typelem != 0 AND p1.typlen = -1)))
+       p1.typelem != 0 AND p1.typlen = -1))) AND p1.typnamespace != 9900
 ORDER BY 1;
 
 SELECT p1.oid, p1.typname, p2.oid, p2.proname
@@ -212,7 +212,7 @@ SELECT p1.oid, p1.typname, p2.oid, p2.proname
 FROM pg_type AS p1, pg_proc AS p2
 WHERE p1.typreceive = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p1.typelem != 0 AND p1.typlen < 0) AND NOT
-    (p2.prorettype = p1.oid AND NOT p2.proretset)
+    (p2.prorettype = p1.oid AND NOT p2.proretset) AND p1.typnamespace != 9900
 ORDER BY 1;
 
 -- Varlena array types will point to array_recv
@@ -251,7 +251,7 @@ WHERE p1.typsend = p2.oid AND p1.typtype in ('b', 'p') AND NOT
     (p2.pronargs = 1 AND
      (p2.proargtypes[0] = p1.oid OR
       (p2.oid = 'array_send'::regproc AND
-       p1.typelem != 0 AND p1.typlen = -1)))
+       p1.typelem != 0 AND p1.typlen = -1))) AND p1.typnamespace != 9900
 ORDER BY 1;
 
 SELECT p1.oid, p1.typname, p2.oid, p2.proname

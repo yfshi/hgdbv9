@@ -7999,7 +7999,7 @@ begin
 end;
 /
 
---error
+--ok
 declare
  cursor c1 is select * from tb1;
  type c2 is ref cursor return c1%rowtype;

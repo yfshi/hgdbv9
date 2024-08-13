@@ -907,7 +907,8 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 			exprList = transformRowExpression(pstate,
 											  (List *) linitial(valuesLists),
 											  EXPR_KIND_VALUES_SINGLE,
-											  true);
+											  true,
+											  stmt->cols /* ReqID:SRS-PLSQL-RECORD */);
 			nattrs = list_length(icolumns);
 			nvalues = list_length(exprList);
 			if (nattrs > nvalues)

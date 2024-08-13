@@ -170,7 +170,7 @@ LINE 1: b.c.c2.x = 1
 QUERY:  b.c.c2.x = 1
 CONTEXT:  PL/iSQL function inline_code_block line 1 at assignment
 do $$ <<b>> declare c nested_int8s; begin b.d.c2.x = 1; end $$;
-ERROR:  "b.d.c2" is not a known variable
+ERROR:  "b.d.c2.x" is not a known variable
 LINE 1: do $$ <<b>> declare c nested_int8s; begin b.d.c2.x = 1; end ...
                                                   ^
 -- check passing composite result to another function

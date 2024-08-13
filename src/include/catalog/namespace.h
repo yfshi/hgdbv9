@@ -36,6 +36,9 @@ typedef struct _FuncCandidateList
 	int			ndargs;			/* number of defaulted args */
 	bool		prointisnumber;	/* BUG:M0000068 */
 	int		   *argnumbers;		/* args' positional indexes, if named call */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	char		**argnames;		/* arg types' names */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 	Oid			args[FLEXIBLE_ARRAY_MEMBER];	/* arg types */
 }		   *FuncCandidateList;
 
@@ -109,6 +112,10 @@ extern FuncCandidateList FuncnameGetCandidates(List *names,
 											   bool include_out_arguments,
 											   bool missing_ok);
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+FuncCandidateList PackageTypeSelectCandidates(FuncCandidateList candidates,
+							List *fargs, int nargs, Oid *argtypes);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 extern bool FunctionIsVisible(Oid funcid);
 

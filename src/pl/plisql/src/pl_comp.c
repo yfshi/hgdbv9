@@ -352,6 +352,9 @@ do_compile(FunctionCallInfo fcinfo,
 	int 		save_sec_context;
 	Oid			current_user = GetUserId();
 	/* End - BUG#M0000227 */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	bool		has_udt_type = false;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * Setup the scanner input and error info.  We assume that this function
@@ -650,21 +653,48 @@ do_compile(FunctionCallInfo fcinfo,
 				}
 				else
 				{
-					Assert(argvariable->dtype == PLISQL_DTYPE_REC);
-					argitemtype = PLISQL_NSTYPE_REC;
+					Assert(argvariable->dtype == PLISQL_DTYPE_REC ||
+						argvariable->dtype == PLISQL_DTYPE_ORA_RECORD/* SRS-PLSQL-RECORD */);
 
-					/* Begin - ReqID:SRS-SQL-FUNCOUT */
-					/* 
-					 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode, 
-					 * IN mode variable is not allowned to assign value.
-					 */
-					if (argmode == PROARGMODE_IN ||
-						argmode == PROARGMODE_OUT ||
-						argmode == PROARGMODE_INOUT)
-						((PLiSQL_rec *)argvariable)->info = argmode;
+					if (argvariable->dtype == PLISQL_DTYPE_REC)
+					{
+						argitemtype = PLISQL_NSTYPE_REC;
+
+						/* Begin - ReqID:SRS-SQL-FUNCOUT */
+						/*
+						 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode,
+						 * IN mode variable is not allowned to assign value.
+						 */
+						if (argmode == PROARGMODE_IN ||
+							argmode == PROARGMODE_OUT ||
+							argmode == PROARGMODE_INOUT)
+							((PLiSQL_rec *)argvariable)->info = argmode;
+						else
+							((PLiSQL_rec *)argvariable)->info = PROARGMODE_IN;
+						/* End - ReqID:SRS-SQL-FUNCOUT */
+					}
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
 					else
-						((PLiSQL_rec *)argvariable)->info = PROARGMODE_IN;
-					/* End - ReqID:SRS-SQL-FUNCOUT */
+					{
+						argitemtype = PLISQL_NSTYPE_ORA_RECORD;
+
+						/*
+						 * Use this info field to distinguish the variable' IN, OUT, IN OUT mode,
+						 * IN mode variable is not allowned to assign value.
+						 */
+						if (argmode == PROARGMODE_IN ||
+							argmode == PROARGMODE_OUT ||
+							argmode == PROARGMODE_INOUT)
+							((PLiSQL_row *)argvariable)->info = argmode;
+						else
+							((PLiSQL_row *)argvariable)->info = PROARGMODE_IN;
+
+						if (argmode == PROARGMODE_OUT ||
+							argmode == PROARGMODE_INOUT)
+							has_udt_type = true;
+					}
+					/* End - ReqID:SRS-PLSQL-RECORD */
+
 				}
 
 				/* Remember arguments in appropriate arrays */
@@ -742,6 +772,10 @@ do_compile(FunctionCallInfo fcinfo,
 				}
 				else
 					rettypeid = rettype->typoid;
+
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				function->rettype = rettype;
+				/* End - ReqID:SRS-PLSQL-RECORD */
 
 				pfree(tname);
 			}
@@ -927,7 +961,10 @@ do_compile(FunctionCallInfo fcinfo,
 			if (typeStruct->typtype == TYPTYPE_PSEUDO)
 			{
 				if (rettypeid == VOIDOID ||
-					rettypeid == RECORDOID)
+					rettypeid == RECORDOID ||
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					rettypeid == ORARECORDOID)
+					/* End - ReqID:SRS-PLSQL-RECORD */
 					 /* okay */ ;
 				else if (rettypeid == TRIGGEROID || rettypeid == EVENT_TRIGGEROID)
 					ereport(ERROR,
@@ -944,6 +981,9 @@ do_compile(FunctionCallInfo fcinfo,
 			function->fn_retisdomain = (typeStruct->typtype == TYPTYPE_DOMAIN);
 			function->fn_retbyval = typeStruct->typbyval;
 			function->fn_rettyplen = typeStruct->typlen;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			function->fn_hasudtype = has_udt_type;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			/*
 			 * install $0 reference, but only for polymorphic return types,
@@ -1522,6 +1562,9 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	/* a bit of hardwired knowledge about type VOID here */
 	function->fn_retbyval = true;
 	function->fn_rettyplen = sizeof(int32);
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	function->fn_hasudtype = false;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * Remember if function is STABLE/IMMUTABLE.  XXX would it be better to
@@ -1811,6 +1854,9 @@ plisql_parser_setup(struct ParseState *pstate, PLiSQL_expr *expr)
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	pstate->p_param_tupdesc_hook = plisql_param_tupdesc_ref;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	pstate->p_orarecordconstruct_hook = plisql_ora_record_construct_ref;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* no need to use p_coerce_param_hook */
 	pstate->p_ref_hook_state = (void *) expr;
 }
@@ -2017,8 +2063,17 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 				break;
 			}
 		default:
-			/* too many names, ignore */
-			return NULL;
+			/*
+			 * May be nested Oracle record variable, var.field1.field2...
+			 */
+			nnames_scalar = list_length(cref->fields);
+			colname = strVal(list_nth(cref->fields, nnames_scalar - 1));
+			nnames_field = nnames_scalar - 1;
+			nnames_wholerow = nnames_scalar;
+			name1 = strVal(list_nth(cref->fields, 0));
+			name2 = strVal(list_nth(cref->fields, 1));;
+			break;
+
 	}
 
 	nse = plisql_ns_lookup(expr->ns, false,
@@ -2132,6 +2187,30 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 		case PLISQL_NSTYPE_SUBPROC_PROC:
 			break;
 		/* End - SRS-PLSQL-SUBPROC */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_NSTYPE_ORA_RECORD:
+			if (nnames == nnames_wholerow)
+				return make_datum_param(expr, nse->itemno, cref->location);
+			else if (nnames <= nnames_field)
+			{
+				/* colname could be a field in this Oralce record */
+				PLiSQL_row *ora_rec = (PLiSQL_row *) estate->datums[nse->itemno];
+				PLiSQL_datum *datum = NULL;
+
+				if ((datum = plisql_parse_ora_rec_var(estate->datums, ora_rec, cref->fields, nnames, false)) != NULL)
+					return make_datum_param(expr, datum->dno, cref->location);
+
+				/* Not found, so throw error or return NULL */
+				if (error_if_no_field)
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("record \"%s\" has no field \"%s\"",
+									(nnames_field == 1) ? name1 : name2,
+									colname),
+							 parser_errposition(pstate, cref->location)));
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			elog(ERROR, "unrecognized plisql itemtype: %d", nse->itemtype);
 	}
@@ -2224,6 +2303,10 @@ plisql_parse_word(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, const
 			{
 				case PLISQL_NSTYPE_VAR:
 				case PLISQL_NSTYPE_REC:
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				case PLISQL_NSTYPE_TYPE:
+				case PLISQL_NSTYPE_ORA_RECORD:
+				/* End - ReqID:SRS-PLSQL-RECORD */
 					wdatum->datum = plisql_Datums[ns->itemno];
 					wdatum->ident = word1;
 					wdatum->quoted = (yytxt[0] == '"');
@@ -2428,6 +2511,50 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 					/* End - ReqID:SRS-SQL-PACKAGE */
 					return true;
 
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				case PLISQL_NSTYPE_ORA_RECORD:
+					if (nnames == 1)
+					{
+						/*
+						 * First word is a Oracle record name, so second word could
+						 * be a field in this record.  We build a
+						 * datum if it is.
+						 */
+						PLiSQL_row	*ora_rec;
+						int 		i;
+
+						ora_rec = (PLiSQL_row *) (plisql_Datums[ns->itemno]);
+						for (i = 0; i < ora_rec->nfields; i++)
+						{
+							if (ora_rec->fieldnames[i] &&
+								pg_strcasecmp(ora_rec->fieldnames[i], word2) == 0)
+							{
+								wdatum->datum = plisql_Datums[ora_rec->varnos[i]];
+								wdatum->ident = NULL;
+								wdatum->quoted = false; /* not used */
+								wdatum->idents = idents;
+								/* Begin - ReqID:SRS-SQL-PACKAGE */
+								wdatum->nname_used = nnames;
+								/* End - ReqID:SRS-SQL-PACKAGE */
+								return true;
+							}
+						}
+					}
+					else
+					{
+						/* Block-qualified reference to oracle record variable. */
+						wdatum->datum = plisql_Datums[ns->itemno];
+					}
+
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					/* Begin - ReqID:SRS-SQL-PACKAGE */
+					wdatum->nname_used = nnames;
+					/* End - ReqID:SRS-SQL-PACKAGE */
+					return true;
+				/* End - ReqID:SRS-PLSQL-RECORD */
+
 				default:
 					break;
 			}
@@ -2547,6 +2674,139 @@ plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, 
 						return true;
 					}
 
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				case PLISQL_NSTYPE_ORA_RECORD:
+					{
+						PLiSQL_row	*ora_rec;
+						int 		i;
+
+						ora_rec = (PLiSQL_row *) (plisql_Datums[ns->itemno]);
+						if (nnames == 1)
+						{
+							/*
+							 * First word is a Oracle record name, so second word
+							 * could be a field in this record (and the third,
+							 * a sub-field). We build a filed
+							 * datum if it is.
+							 */
+							for (i = 0; i < ora_rec->nfields; i++)
+							{
+								if (ora_rec->fieldnames[i] &&
+									pg_strcasecmp(ora_rec->fieldnames[i], word2) == 0)
+								{
+
+									PLiSQL_row	*ora_rec2;
+									PLiSQL_datum 	*datum;
+
+									datum = plisql_Datums[ora_rec->varnos[i]];
+									if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+									{
+										int		j;
+
+										ora_rec2 = (PLiSQL_row *) datum;
+										for (j = 0; j < ora_rec2->nfields; j++)
+										{
+											if (ora_rec2->fieldnames[j] &&
+												pg_strcasecmp(ora_rec2->fieldnames[j], word3) == 0 &&
+												plisql_peek() != '.')
+											{
+												idents = list_make3(makeString(word1),
+																	makeString(word2),
+																	makeString(word3));
+
+												wdatum->datum = plisql_Datums[ora_rec2->varnos[j]];
+												wdatum->ident = NULL;
+												wdatum->quoted = false; /* not used */
+												wdatum->idents = idents;
+												/* Begin - ReqID:SRS-SQL-PACKAGE */
+												wdatum->nname_used = nnames;
+												/* End - ReqID:SRS-SQL-PACKAGE */
+												return true;
+											}
+										}
+									}
+									else if (datum->dtype == PLISQL_DTYPE_REC)
+									{
+										PLiSQL_rec *rec;
+										PLiSQL_recfield *new;
+
+										rec = (PLiSQL_rec *) datum;
+
+										/*
+										 * Block-qualified reference to record variable.
+										 * First word is oracle record, the seond word is a record name,
+										 * so second word could be a field in this record (and the third,
+										 * a sub-field).  We build a RECFIELD datum
+										 * whether it is or not --- any error will be
+										 * detected later.
+										 */
+										new = plisql_build_recfield(rec, word3);
+										idents = list_make3(makeString(word1),
+															makeString(word2),
+															makeString(word3));
+
+										wdatum->datum = (PLiSQL_datum *) new;
+										wdatum->ident = NULL;
+										wdatum->quoted = false; /* not used */
+										wdatum->idents = idents;
+										/* Begin - ReqID:SRS-SQL-PACKAGE */
+										wdatum->nname_used = nnames;
+										/* End - ReqID:SRS-SQL-PACKAGE */
+										return true;
+									}
+								}
+							}
+						}
+						else if (nnames == 2)
+						{
+							/*
+							 * Block-qualified reference to Oracle record variable.
+							 * First word is Block-qualified reference,
+							 * second word is a Oralce record name, so third word could
+							 * be a field in this record. We build a filed
+							 * datum if it is.
+							 */
+							for (i = 0; i < ora_rec->nfields; i++)
+							{
+								if (ora_rec->fieldnames[i] &&
+									pg_strcasecmp(ora_rec->fieldnames[i], word3) == 0 &&
+									plisql_peek() != '.')
+								{
+									idents = list_make3(makeString(word1),
+														makeString(word2),
+														makeString(word3));
+
+									wdatum->datum = plisql_Datums[ora_rec->varnos[i]];
+									wdatum->ident = NULL;
+									wdatum->quoted = false; /* not used */
+									wdatum->idents = idents;
+									/* Begin - ReqID:SRS-SQL-PACKAGE */
+									wdatum->nname_used = nnames;
+									/* End - ReqID:SRS-SQL-PACKAGE */
+									return true;
+								}
+							}
+						}
+						else if (nnames == 3)
+						{
+							/* Block-qualified reference to Oracle record variable. */
+							idents = list_make3(makeString(word1),
+												makeString(word2),
+												makeString(word3));
+
+							wdatum->datum = plisql_Datums[ns->itemno];
+							wdatum->ident = NULL;
+							wdatum->quoted = false; /* not used */
+							wdatum->idents = idents;
+							/*  Begin - ReqID:SRS-GKC-PACKAGE_214 */
+							wdatum->nname_used = nnames;
+							/*  End - ReqID:SRS-GKC-PACKAGE_214 */
+							return true;
+						}
+					}
+					break;
+				/* End - ReqID:SRS-PLSQL-RECORD */
+
 				default:
 					break;
 			}
@@ -2600,6 +2860,248 @@ plisql_parse_tripword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */, char *word1, 
 	return false;
 }
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * like plisql_parse_tripword
+ * but support more than three words
+ */
+bool
+plisql_parse_moreword(List *idents, PLwdatum *wdatum,
+					PLcword *cword, int pre_last_tok,
+					int lloc, int *nnames)
+{
+	PLiSQL_nsitem *ns = NULL;
+	int			list_size;
+	char		*last_name;
+
+	list_size = list_length(idents);
+	last_name = strVal(list_nth(idents, list_size - 1));
+
+	if (plisql_IdentifierLookup != IDENTIFIER_LOOKUP_DECLARE)
+	{
+		/*
+		 * According to the token, do a lookup in the current namespace stack.
+		 * Must find a qualified reference, else ignore.
+		 */
+		if (pre_last_tok == '.')
+			ns = plisql_ns_lookup_wordlist(plisql_ns_top(), false,
+											idents,
+											nnames);
+		else if (pre_last_tok == '%')
+		{
+			ns = plisql_ns_lookup_wordlist(plisql_ns_top(), false,
+									idents,
+									nnames);
+
+			if (*nnames != list_size - 1)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("identifier \'%s\' must be declared", last_name),
+					plisql_scanner_errposition(lloc)));
+
+			if (strcmp(last_name, "isopen") != 0 &&
+				strcmp(last_name, "found") != 0 &&
+				strcmp(last_name, "notfound") != 0 &&
+				strcmp(last_name, "rowcount") != 0)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("identifier \'%s\' is not a legal cursor attribute", last_name),
+					plisql_scanner_errposition(lloc)));
+		}
+
+		if (ns != NULL && *nnames == list_size - 1)
+		{
+			switch (ns->itemtype)
+			{
+				case PLISQL_NSTYPE_REC:
+					{
+						PLiSQL_rec *rec;
+						PLiSQL_recfield *new;
+
+						rec = (PLiSQL_rec *) (plisql_Datums[ns->itemno]);
+						if (*nnames == 1)
+						{
+							/*
+							 * First word is a record name, so second word
+							 * could be a field in this record (and the third,
+							 * a sub-field).  We build a RECFIELD datum
+							 * whether it is or not --- any error will be
+							 * detected later.
+							 */
+							new = plisql_build_recfield(rec, strVal(list_nth(idents, 1)));
+						}
+						else
+						{
+							/* Block-qualified reference to record variable. */
+							new = plisql_build_recfield(rec, strVal(list_nth(idents, 1)));
+							idents = list_make3(list_nth(idents, 0),
+												list_nth(idents, 1),
+												list_nth(idents, 2));
+
+						}
+						wdatum->datum = (PLiSQL_datum *) new;
+						wdatum->ident = NULL;
+						wdatum->quoted = false; /* not used */
+						wdatum->idents = idents;
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						wdatum->nname_used = *nnames;
+						/* End - ReqID:SRS-SQL-PACKAGE */
+						return true;
+					}
+					break;
+				case PLISQL_NSTYPE_ORA_RECORD:
+					{
+						/*
+						 * The penultimate word is a Oracle record name,
+						 * so the last word
+						 * could be a field in this record.
+						 */
+						PLiSQL_row 	*ora_rec = (PLiSQL_row *)plisql_Datums[ns->itemno];
+						int		i;
+
+						for (i = 0; i < ora_rec->nfields; i++)
+						{
+							if (ora_rec->varnos[i] < 0)
+								continue;
+							if (strcmp(ora_rec->fieldnames[i], last_name) == 0)
+							{
+								PLiSQL_datum	*datum = plisql_Datums[ora_rec->varnos[i]];
+
+								wdatum->datum = datum;
+								wdatum->ident = NULL;
+								wdatum->quoted = false; /* not used */
+								wdatum->idents = idents;
+								wdatum->nname_used = *nnames;
+
+								return true;
+							}
+						}
+
+						elog(ERROR, "\"%s\" doesn't in record variable\"%s\"", last_name,
+												ora_rec->refname);
+					}
+					break;
+
+				case PLISQL_NSTYPE_SUBPROC_FUNC:
+				case PLISQL_NSTYPE_SUBPROC_PROC:
+					break;
+				default:
+					break;
+			}
+		}
+		else if (ns != NULL && ns->itemtype == PLISQL_NSTYPE_ORA_RECORD)
+		{
+			wdatum->datum = plisql_Datums[ns->itemno];
+			wdatum->ident = NULL;
+			wdatum->quoted = false;	/* not used */
+			wdatum->idents = idents;
+			wdatum->nname_used = *nnames;
+
+			return true;
+		}
+		else if (ns != NULL && *nnames == list_size &&
+			(ns->itemtype == PLISQL_NSTYPE_VAR || ns->itemtype == PLISQL_NSTYPE_REC))
+		{
+			wdatum->datum = plisql_Datums[ns->itemno];
+			wdatum->ident = NULL;
+			wdatum->quoted = false;	/* not used */
+			wdatum->idents = idents;
+			wdatum->nname_used = *nnames;
+
+			return true;
+		}
+		else if (ns != NULL && ns->itemtype == PLISQL_NSTYPE_REC)
+		{
+			PLiSQL_rec *rec;
+			PLiSQL_recfield *new;
+
+			rec = (PLiSQL_rec *) (plisql_Datums[ns->itemno]);
+			if (*nnames == 1)
+			{
+				/*
+				 * First word is a record name, so second word
+				 * could be a field in this record (and the third,
+				 * a sub-field).  We build a RECFIELD datum
+				 * whether it is or not --- any error will be
+				 * detected later.
+				 */
+				new = plisql_build_recfield(rec, strVal(list_nth(idents, *nnames)));
+			}
+			else
+			{
+				/* Block-qualified reference to record variable. */
+				new = plisql_build_recfield(rec, strVal(list_nth(idents, *nnames)));
+				idents = list_delete_nth_cell(idents, list_length(idents) - 1);
+
+			}
+			wdatum->datum = (PLiSQL_datum *) new;
+			wdatum->ident = NULL;
+			wdatum->quoted = false; /* not used */
+			wdatum->idents = idents;
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			wdatum->nname_used = *nnames;
+			/* End - ReqID:SRS-SQL-PACKAGE */
+			return true;
+		}
+		/* Begin - ReqID:SRS-SQL-PACKAGE */
+		else if (ns == NULL)
+		{
+			/*
+			 * handle var that comes from a package
+			 * maybe it is udt_type constructor func
+			 * so we should parse package entry
+			 */
+			PkgEntry 		*entry;
+			size_t len 		= list_length(idents);
+			ListCell 		*lc;
+			int				i;
+			StringInfoData	ds_refname;
+
+			initStringInfo(&ds_refname);
+			i = 0;
+			foreach(lc, idents)
+			{
+				if (i == 0)
+					appendStringInfoString(&ds_refname, strVal((Value *)lfirst(lc)));
+				else
+				{
+					appendStringInfoString(&ds_refname, ".");
+					appendStringInfoString(&ds_refname, strVal((Value *)lfirst(lc)));
+				}
+				i++;
+			}
+
+			entry = plisql_parse_package_entry(ds_refname.data, -1, idents, true, false);
+			pfree(ds_refname.data);
+			if (entry != NULL)
+			{
+				switch (entry->type)
+				{
+					case PKG_VAR:
+						wdatum->datum = (PLiSQL_datum *) entry->value;
+						wdatum->ident = NULL;
+						wdatum->quoted = false; /* not used */
+						wdatum->idents = idents;
+						wdatum->nname_used = len;
+						break;
+					case PKG_TYPE:
+						break;
+					default:
+						break;
+				}
+				pfree(entry);
+				return true;
+			}
+		}
+		/* End - ReqID:SRS-SQL-PACKAGE */
+
+	}
+
+	/* Nothing found */
+	cword->idents = idents;
+	return false;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* ----------
  * plisql_parse_wordtype	The scanner found word%TYPE. word can be
@@ -2651,6 +3153,10 @@ plisql_parse_wordtype(char *ident)
 			case PLISQL_NSTYPE_REC:
 				return ((PLiSQL_rec *) (plisql_Datums[nse->itemno]))->datatype;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_NSTYPE_ORA_RECORD:
+				return ((PLiSQL_row *)(plisql_Datums[nse->itemno]))->datatype;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			default:
 				return NULL;
@@ -2764,6 +3270,13 @@ plisql_parse_cwordtype(List *idents)
 
 			goto done;
 		}
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		else if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_ORA_RECORD)
+		{
+			dtype = ((PLiSQL_row *) (plisql_Datums[nse->itemno]))->datatype;
+			goto done;
+		}
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_REC)
@@ -2787,29 +3300,67 @@ plisql_parse_cwordtype(List *idents)
 			goto done;
 		fldname = strVal(lsecond(idents));
 	}
-	else if (list_length(idents) == 3)
+	else
 	{
-		RangeVar   *relvar;
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		int			nnames;
 
-		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
-							parse_by_var_type, false)) != NULL)
+		/* support label1.label2.xxx.xxx%type */
+		nse = plisql_ns_lookup_wordlist(plisql_ns_top(), false,
+										idents,
+										&nnames);
+		if (nse != NULL)
 		{
+			if (nse->itemtype == PLISQL_NSTYPE_VAR)
+			{
+				dtype = ((PLiSQL_var *) (plisql_Datums[nse->itemno]))->datatype;
+			}
+			else if (nse->itemtype == PLISQL_NSTYPE_ORA_RECORD)
+			{
+				PLiSQL_row *row = (PLiSQL_row *) (plisql_Datums[nse->itemno]);
+
+				if (nnames == list_length(idents))
+				{
+					/* maybe a rowvar%type */
+					if (row->datatype != NULL)
+					{
+						dtype = row->datatype;
+					}
+					else if (row->rowtupdesc != NULL &&
+						row->rowtupdesc->tdtypeid != InvalidOid)
+					{
+						dtype = plisql_build_datatype(row->rowtupdesc->tdtypeid, -1,
+										InvalidOid, false);
+					}
+					else
+						elog(ERROR, "variable type is not a record or rowvar");
+				}
+			}
 			goto done;
 		}
-		/* End - ReqID:SRS-SQL-PACKAGE */
+		else
+		{
+		/* End - ReqID:SRS-PLSQL-RECORD */
+			RangeVar   *relvar;
 
-		relvar = makeRangeVar(strVal(linitial(idents)),
-							  strVal(lsecond(idents)),
-							  -1);
-		/* Can't lock relation - we might not have privileges. */
-		classOid = RangeVarGetRelid(relvar, NoLock, true);
-		if (!OidIsValid(classOid))
-			goto done;
-		fldname = strVal(lthird(idents));
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			if ((dtype = plisql_parse_package_type(makeTypeNameFromNameList(idents),
+								parse_by_var_type, false)) != NULL)
+			{
+				goto done;
+			}
+			/* End - ReqID:SRS-SQL-PACKAGE */
+
+			relvar = makeRangeVar(strVal(linitial(idents)),
+								  strVal(lsecond(idents)),
+								  -1);
+			/* Can't lock relation - we might not have privileges. */
+			classOid = RangeVarGetRelid(relvar, NoLock, true);
+			if (!OidIsValid(classOid))
+				goto done;
+			fldname = strVal(lthird(idents));
+		}
 	}
-	else
-		goto done;
 
 	classtup = SearchSysCache1(RELOID, ObjectIdGetDatum(classOid));
 	if (!HeapTupleIsValid(classtup))
@@ -3175,6 +3726,10 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 				rec = plisql_build_record(refname, lineno,
 										   dtype, dtype->typoid,
 										   add2namespace);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				rec->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+				/* End - ReqID:SRS-SQL-PACKAGE */
+
 				result = (PLiSQL_variable *) rec;
 				break;
 			}
@@ -3197,6 +3752,23 @@ plisql_build_variable(const char *refname, int lineno, PLiSQL_type *dtype,
 				break;
 			}
 		/* End - ReqID:SRS-PLSQL-CURSOR */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_TTYPE_ORARECORD_TYPE:
+			{
+				/* Oracle compatible record type, -- build a row variable */
+				PLiSQL_row *row;
+
+				row = plisql_build_row_for_ora_record(refname, lineno,
+												(PLiSQL_ora_record_type *)dtype,
+												add2namespace);
+				/* Begin - ReqID:SRS-SQL-PACKAGE */
+				row->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
+				/* End - ReqID:SRS-SQL-PACKAGE */
+
+				result = (PLiSQL_variable *) row;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		default:
 			elog(ERROR, "unrecognized ttype: %d", dtype->ttype);
 			result = NULL;		/* keep compiler quiet */
@@ -3260,9 +3832,9 @@ build_row_from_vars(PLiSQL_variable **vars, int numvars)
 	for (i = 0; i < numvars; i++)
 	{
 		PLiSQL_variable *var = vars[i];
-		Oid			typoid;
-		int32		typmod;
-		Oid			typcoll;
+		Oid			typoid = InvalidOid;
+		int32		typmod = 0;
+		Oid			typcoll = InvalidOid;
 
 		/* Member vars of a row should never be const */
 		Assert(!var->isconst);
@@ -3282,6 +3854,17 @@ build_row_from_vars(PLiSQL_variable **vars, int numvars)
 				typmod = -1;	/* don't know typmod, if it's used at all */
 				typcoll = InvalidOid;	/* composite types have no collation */
 				break;
+
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_ORA_RECORD:
+				if (((PLiSQL_row *) var)->rowtupdesc)
+				{
+					typoid = ORARECORDOID;
+					typmod = ((PLiSQL_row *) var)->rowtupdesc->tdtypmod;
+					/* composite types have no collation */
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			default:
 				elog(ERROR, "unrecognized dtype: %d", var->dtype);
@@ -3438,6 +4021,10 @@ build_datatype(HeapTuple typeTup, int32 typmod,
 		case TYPTYPE_PSEUDO:
 			if (typ->typoid == RECORDOID)
 				typ->ttype = PLISQL_TTYPE_REC;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			else if (typ->typoid == ORARECORDOID)
+				typ->ttype = PLISQL_TTYPE_ORARECORD_TYPE;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			else
 				typ->ttype = PLISQL_TTYPE_PSEUDO;
 			break;
@@ -3730,6 +4317,13 @@ plisql_finish_datums(PLiSQL_function *function)
 				copiable_size += MAXALIGN(sizeof(PLiSQL_attribute));
 				break;
 			/* End - ReqID:SRS-PLSQL-CURSOR */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_TYPE:
+				break;
+			case PLISQL_DTYPE_ORA_RECORD:
+				copiable_size += MAXALIGN(sizeof(PLiSQL_row));
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			default:
 				break;
 		}
@@ -3771,6 +4365,12 @@ plisql_add_initdatums(int **varnos)
 			/* End - ReqID:SRS-PLSQL-CURSOR */
 			case PLISQL_DTYPE_VAR:
 			case PLISQL_DTYPE_REC:
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_TYPE:
+			case PLISQL_DTYPE_ORA_RECORD:
+			case PLISQL_DTYPE_ROW:
+			case PLISQL_DTYPE_PACKAGE_DATUM:
+			/* End - ReqID:SRS-PLSQL-RECORD */
 				n++;
 				break;
 			default:
@@ -3794,6 +4394,11 @@ plisql_add_initdatums(int **varnos)
 					/* End - ReqID:SRS-PLSQL-CURSOR */
 					case PLISQL_DTYPE_VAR:
 					case PLISQL_DTYPE_REC:
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					case PLISQL_DTYPE_TYPE:
+					case PLISQL_DTYPE_ORA_RECORD:
+					case PLISQL_DTYPE_ROW:
+					/* End - ReqID:SRS-PLSQL-RECORD */
 						(*varnos)[n++] = plisql_Datums[i]->dno;
 
 					default:
@@ -4182,6 +4787,9 @@ plisql_compile_inline_internal(char *proc_source)
 	/* a bit of hardwired knowledge about type VOID here */
 	function->fn_retbyval = true;
 	function->fn_rettyplen = sizeof(int32);
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	function->fn_hasudtype = false;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * Remember if function is STABLE/IMMUTABLE.  XXX would it be better to
@@ -4331,6 +4939,9 @@ plisql_free_function(Oid funcOid)
 		else if (proc->prorettype == EVENT_TRIGGEROID)
 			is_event_trigger = true;
 		else if (proc->prorettype != RECORDOID &&
+				 /* Begin - ReqID:SRS-PLSQL-RECORD */
+				 proc->prorettype != ORARECORDOID &&
+				 /* End - ReqID:SRS-PLSQL-RECORD */
 				 proc->prorettype != VOIDOID &&
 				 !IsPolymorphicType(proc->prorettype))
 			ereport(ERROR,

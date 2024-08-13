@@ -766,20 +766,49 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 		return result;
 	}
-	if (inputTypeId == RECORDOID &&
+	if ((inputTypeId == RECORDOID ||
+		inputTypeId == ORARECORDOID) &&
 		ISCOMPLEX(targetTypeId))
 	{
-		/* Coerce a RECORD to a specific complex type */
-		return coerce_record_to_complex(pstate, node, targetTypeId,
-										ccontext, cformat, location);
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		/*
+		 * because coerce_record_to_complex only support RowExprs or whole-row
+		 * so if we pass it a Param or a FuncExpr, we only return node, we corece later
+		 */
+		if (compatible_db == DB_ORACLE &&
+			node && (IsA(node, Param)
+			|| IsA(node, FuncExpr)))
+			return node;
+		else
+		/* End - ReqID:SRS-PLSQL-RECORD */
+		{
+			/* Coerce a RECORD to a specific complex type */
+			return coerce_record_to_complex(pstate, node, targetTypeId,
+											ccontext, cformat, location);
+		}
 	}
-	if (targetTypeId == RECORDOID &&
+	if ((targetTypeId == RECORDOID ||
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		targetTypeId == ORARECORDOID) &&
+		/* End - ReqID:SRS-PLSQL-RECORD */
 		ISCOMPLEX(inputTypeId))
 	{
 		/* Coerce a specific complex type to RECORD */
 		/* NB: we do NOT want a RelabelType here */
 		return node;
 	}
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	if ((targetTypeId == RECORDOID &&
+		inputTypeId == ORARECORDOID) ||
+		(inputTypeId == RECORDOID &&
+		targetTypeId == ORARECORDOID))
+	{
+		/* Coerce a RECORD type to Oracle RECORD(ORARECORDOID) */
+		/* NB: we do NOT want a RelabelType here */
+		return node;
+	}
+	/* End - ReqID:SRS-PLSQL-RECORD */
 #ifdef NOT_USED
 	if (inputTypeId == RECORDARRAYOID &&
 		is_complex_array(targetTypeId))
@@ -892,17 +921,31 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 		 * If input is RECORD and target is a composite type, assume we can
 		 * coerce (may need tighter checking here)
 		 */
-		if (inputTypeId == RECORDOID &&
+		if ((inputTypeId == RECORDOID ||
+			inputTypeId == ORARECORDOID)&&
 			ISCOMPLEX(targetTypeId))
 			continue;
 
 		/*
 		 * If input is a composite type and target is RECORD, accept
 		 */
-		if (targetTypeId == RECORDOID &&
+		if ((targetTypeId == RECORDOID ||
+			targetTypeId == ORARECORDOID) &&
 			ISCOMPLEX(inputTypeId))
 			continue;
 
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		/*
+		 * If input is RECORD and target is Oracle RECORD or input is Oracle RECORD
+		 * and target is RECORD, assume we can
+		 * coerce (may need tighter checking here).
+		 */
+		if ((targetTypeId == RECORDOID &&
+			inputTypeId == ORARECORDOID) ||
+			(inputTypeId == RECORDOID &&
+			targetTypeId == ORARECORDOID))
+			continue;
+		/* End - ReqID:SRS-PLSQL-RECORD */
 #ifdef NOT_USED					/* not implemented yet */
 
 		/*
@@ -3411,7 +3454,7 @@ IsBinaryCoercible(Oid srctype, Oid targettype)
 			return true;
 
 	/* Also accept any composite type as coercible to RECORD */
-	if (targettype == RECORDOID)
+	if (targettype == RECORDOID || targettype == ORARECORDOID)
 		if (ISCOMPLEX(srctype))
 			return true;
 
@@ -3599,7 +3642,16 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 	 */
 	if (result == COERCION_PATH_NONE &&
 		ccontext == COERCION_PLPGSQL)
-		result = COERCION_PATH_COERCEVIAIO;
+	{
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (DB_ORACLE == database_mode &&
+			((targetTypeId == ORARECORDOID && (sourceTypeId == RECORDOID || ISCOMPLEX(sourceTypeId))) ||
+			(sourceTypeId == ORARECORDOID && (targetTypeId == RECORDOID || ISCOMPLEX(targetTypeId)))))
+			return COERCION_PATH_NONE;
+		else
+		/* End - ReqID:SRS-PLSQL-RECORD */
+			result = COERCION_PATH_COERCEVIAIO;
+	}
 
 	return result;
 }

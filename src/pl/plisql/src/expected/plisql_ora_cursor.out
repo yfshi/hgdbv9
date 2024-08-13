@@ -8943,9 +8943,6 @@ begin
  close c1;
 end;
 /
-ERROR:  record type has not been registered
-CONTEXT:  SQL statement "insert into tb2 values tab1"
-PL/iSQL function inline_code_block line 13 at SQL statement
 --test package'cursor attribute
 DROP package pkg;
 CREATE OR REPLACE package pkg IS

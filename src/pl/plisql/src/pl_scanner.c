@@ -21,6 +21,9 @@
 
 #include "plisql.h"
 #include "pl_subproc_function.h" /* SRS-PLSQL-SUBPROC */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+#include "pl_udt_type.h"
+/* End - ReqID:SRS-PLSQL-RECORD */
 #include "pl_gram.h"			/* must be after parser/scanner.h */
 #include "parser/parse_param.h"	/* ReqID:SRS-SQL-ANONYOUT */
 /* Begin - BUG#M0000134 */
@@ -166,11 +169,29 @@ typedef struct PLiSQL_yylex_global_proper
 } PLiSQL_yylex_global_proper;
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+typedef struct more_idents_tokendata
+{
+	List *idents;
+	int	*token;
+	TokenAuxData *token_data;
+	int	nused_token;
+} more_idents_tokendata;
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* Internal functions */
 static int	internal_yylex(TokenAuxData *auxdata);
 static void push_back_token(int token, TokenAuxData *auxdata);
 static void location_lineno_init(void);
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+static more_idents_tokendata *plisql_get_morewords_idents(char *paramname, char *word1,
+										char *word2, char *word3,
+										int lloc, int *pre_last_tok);
+static PLwdatum *plisql_get_ora_record_field(PLiSQL_datum *datum,
+					List *idents,
+					int nlen,
+					int nth);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 
 /*
@@ -292,15 +313,105 @@ plisql_yylex(void)
 					tok5 = internal_yylex(&aux5);
 					if (tok5 == IDENT)
 					{
-						if (plisql_parse_tripword(paramname,/* ReqID:SRS-SQL-ANONYOUT */
-												   aux1.lval.str,
-												   aux3.lval.str,
-												   aux5.lval.str,
-												   &aux1.lval.wdatum,
-												   &aux1.lval.cword))
-							tok1 = T_DATUM;
+						int 		tok6;
+						TokenAuxData aux6;
+
+						tok6 = internal_yylex(&aux6);
+						if (tok6 != '.')
+						{
+							push_back_token(tok6, &aux6);
+							if (plisql_parse_tripword(paramname,/* ReqID:SRS-SQL-ANONYOUT */
+													   aux1.lval.str,
+													   aux3.lval.str,
+													   aux5.lval.str,
+													   &aux1.lval.wdatum,
+													   &aux1.lval.cword))
+								tok1 = T_DATUM;
+							else
+								tok1 = T_CWORD;
+						}
+						/* Begin - ReqID:SRS-PLSQL-RECORD */
 						else
-							tok1 = T_CWORD;
+						{
+							more_idents_tokendata *moredata;
+							int	pre_last_tok = tok4;
+							int nnames;
+
+							push_back_token(tok6, &aux6);
+							/*
+							 * support more than three names
+							 */
+							aux1.lval.str = paramname;
+							moredata = plisql_get_morewords_idents(paramname,
+																aux1.lval.str,
+																aux3.lval.str,
+																aux5.lval.str,
+																aux1.lloc,
+																&pre_last_tok);
+
+							if (plisql_parse_moreword(moredata->idents,
+									&aux1.lval.wdatum,
+									&aux1.lval.cword,
+									pre_last_tok,
+									aux1.lloc,
+									&nnames))
+							{
+								if (aux1.lval.wdatum.datum != NULL)
+								{
+									if (aux1.lval.wdatum.datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+									{
+										/* we should push some tokens back */
+										PLwdatum *wdatum;
+										List *idents = list_copy(moredata->idents);
+
+										wdatum = plisql_get_ora_record_field(aux1.lval.wdatum.datum,
+																	idents,
+																	list_length(idents),
+																	nnames);
+										if (wdatum != NULL)
+										{
+											aux1.lval.wdatum.datum = wdatum->datum;
+											aux1.lval.wdatum.ident = NULL;
+											aux1.lval.wdatum.quoted = false; /* not used */
+											aux1.lval.wdatum.idents = wdatum->idents;
+
+											tok1 = T_DATUM;
+										}
+										else
+											ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+												plisql_scanner_errposition(aux1.lloc)));
+									}
+									else
+										tok1 = T_DATUM;
+								}
+							}
+							else
+							{
+								if (pre_last_tok == '%')
+								{
+									char *last_name;
+
+									push_back_token(moredata->token[moredata->nused_token - 1],
+													&moredata->token_data[moredata->nused_token - 1]);
+									push_back_token(moredata->token[moredata->nused_token - 2],
+													&moredata->token_data[moredata->nused_token - 2]);
+
+									/* remove the %rowtype or %type idents */
+									last_name = strVal(list_nth(aux1.lval.cword.idents,
+														list_length(aux1.lval.cword.idents) - 1));
+									if (strcmp(last_name, "type") == 0 ||
+										strcmp(last_name, "rowtype") == 0)
+										aux1.lval.cword.idents = list_truncate(aux1.lval.cword.idents,
+																			list_length(aux1.lval.cword.idents) - 1);
+								}
+								tok1 = T_CWORD;
+							}
+							pfree(moredata->token);
+							pfree(moredata->token_data);
+							pfree(moredata);
+						}
+					/* End - ReqID:SRS-PLSQL-RECORD */
 					}
 					else
 					{
@@ -830,3 +941,166 @@ plisql_recover_yylex_global_proper(void *value)
 	return;
 }
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+static more_idents_tokendata *
+plisql_get_morewords_idents(char *paramname, char *word1,
+						char *word2, char *word3,
+						int lloc, int *pre_last_tok)
+{
+	more_idents_tokendata *moredata;
+	List	   		*idents;
+	TokenAuxData	*tokdata = NULL;
+	int				*token = NULL;
+	int			init_tokdata = 4;
+	int			nused_tokdata = 0;
+	int			percent_address = -1;
+
+	token = (int *) palloc0(sizeof(int) * init_tokdata);
+	tokdata = (TokenAuxData *) palloc0(sizeof(TokenAuxData) * init_tokdata);
+
+	idents = list_make3(makeString(word1),
+						makeString(word2),
+						makeString(word3));
+
+	token[nused_tokdata] = internal_yylex(&tokdata[nused_tokdata]);
+	nused_tokdata++;
+	while (token[nused_tokdata - 1] == '.' || token[nused_tokdata - 1] == '%')
+	{
+		if (nused_tokdata >= init_tokdata - 2)
+		{
+			init_tokdata *= 2;
+			token = repalloc(token, sizeof(int) * init_tokdata);
+			tokdata = repalloc(tokdata, sizeof(TokenAuxData) * init_tokdata);
+		}
+
+		*pre_last_tok = token[nused_tokdata - 1];
+
+		if (percent_address != -1)
+			elog(ERROR, "%% should be followed by one idents");
+		else if (token[nused_tokdata - 1] == '%')
+			percent_address = nused_tokdata;
+
+		token[nused_tokdata] = internal_yylex(&tokdata[nused_tokdata]);
+		nused_tokdata++;
+
+		if (token[nused_tokdata - 1] == IDENT)
+			idents = lappend(idents, makeString(tokdata[nused_tokdata - 1].lval.str));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("'.' should be followed by ident"),
+					plisql_scanner_errposition(lloc)));
+
+		token[nused_tokdata] = internal_yylex(&tokdata[nused_tokdata]);
+		nused_tokdata++;
+	}
+
+	/* we should push back the last token */
+	push_back_token(token[nused_tokdata - 1], &tokdata[nused_tokdata -1]);
+
+	moredata = (more_idents_tokendata *) palloc(sizeof(more_idents_tokendata));
+
+	moredata->idents = idents;
+	moredata->token = token;
+	moredata->token_data = tokdata;
+	moredata->nused_token = nused_tokdata - 1;
+	return moredata;
+}
+
+static PLwdatum *
+plisql_get_ora_record_field(PLiSQL_datum *datum,
+					List *idents,
+					int nlen,
+					int nth)
+{
+	PLiSQL_row	*ora_rec;
+	int 		i;
+	char		*word;
+	PLwdatum 	*wdatum;
+
+	ora_rec = (PLiSQL_row *) datum;
+	word = ((Value *) list_nth(idents, nth))->val.str;
+	wdatum = palloc0(sizeof(PLwdatum));
+
+	for (i = 0; i < ora_rec->nfields; i++)
+	{
+		if (ora_rec->fieldnames[i] &&
+			pg_strcasecmp(ora_rec->fieldnames[i], word) == 0)
+		{
+			PLiSQL_datum	*datum;
+
+			datum = plisql_Datums[ora_rec->varnos[i]];
+			if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
+			{
+				if (nth == nlen - 1)
+				{
+					wdatum->datum = datum;
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					return wdatum;
+				}
+				else
+				{
+					nth++;
+					return plisql_get_ora_record_field(datum, idents, nlen, nth);
+				}
+			}
+			else if (datum->dtype == PLISQL_DTYPE_REC)
+			{
+				if (nth == nlen - 1)
+				{
+					wdatum->datum = datum;
+					wdatum->ident = NULL;
+					wdatum->quoted = false; /* not used */
+					wdatum->idents = idents;
+					return wdatum;
+				}
+				else
+				{
+
+					PLiSQL_rec *rec = (PLiSQL_rec *)datum;
+					int 		i;
+
+					nth++;
+					word = ((Value *) list_nth(idents, nth))->val.str;
+
+					/* search for a datum referencing this field */
+					i = rec->firstfield;
+					while (i >= 0)
+					{
+						PLiSQL_recfield *fld = (PLiSQL_recfield *) plisql_Datums[i];
+
+						Assert(fld->dtype == PLISQL_DTYPE_RECFIELD);
+
+						if (strcmp(fld->fieldname, word) == 0 &&
+							nth == nlen - 1)
+						{
+							wdatum->datum = (PLiSQL_datum *)fld;
+							wdatum->ident = NULL;
+							wdatum->quoted = false; /* not used */
+							wdatum->idents = idents;
+							return wdatum;
+						}
+
+						i = fld->nextfield;
+					}
+
+				}
+			}
+			else if (nth == nlen - 1)
+			{
+				wdatum->datum = datum;
+				wdatum->ident = NULL;
+				wdatum->quoted = false; /* not used */
+				wdatum->idents = idents;
+				return wdatum;
+
+			}
+		}
+	}
+
+	return NULL;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */

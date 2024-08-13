@@ -190,7 +190,11 @@ plisql_ns_lookup(PLiSQL_nsitem *ns_cur, bool localmode,
 				if (strcmp(nsitem->name, name2) == 0)
 				{
 					if (name3 == NULL ||
-						nsitem->itemtype != PLISQL_NSTYPE_VAR ||
+						(nsitem->itemtype != PLISQL_NSTYPE_VAR &&
+						/* Begin - ReqID:SRS-PLSQL-RECORD */
+						nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_FUNC &&
+						nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_PROC)||
+						/* End - ReqID:SRS-PLSQL-RECORD */
 						/* Begin - ReqID:SRS-PLSQL-CURSOR */
 						ISORACURSOROID(nsitem->typoid))
 						/* End - ReqID:SRS-PLSQL-CURSOR */
@@ -215,6 +219,109 @@ plisql_ns_lookup(PLiSQL_nsitem *ns_cur, bool localmode,
 	return NULL;				/* No match found */
 }
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * like plisql_ns_lookup
+ * but we support more than three names lookup
+ */
+PLiSQL_nsitem *
+plisql_ns_lookup_wordlist(PLiSQL_nsitem *ns_cur, bool localmode,
+					const List *names,
+					int *names_used)
+{
+	char *name1;
+	int	list_size = list_length(names);
+
+	name1 = strVal(linitial(names));
+
+	/* Outer loop iterates once per block level in the namespace chain */
+	while (ns_cur != NULL)
+	{
+		PLiSQL_nsitem *nsitem;
+
+		/* Check this level for unqualified match to variable name */
+		for (nsitem = ns_cur;
+			 nsitem->itemtype != PLISQL_NSTYPE_LABEL;
+			 nsitem = nsitem->prev)
+		{
+			if (pg_strcasecmp(nsitem->name, name1) == 0)
+			{
+				if (list_size == 1 ||
+					(nsitem->itemtype != PLISQL_NSTYPE_VAR &&
+					nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_FUNC &&
+					nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_PROC))
+				{
+					if (names_used)
+						*names_used = 1;
+					return nsitem;
+				}
+			}
+		}
+
+		/* Check this level for qualified match to variable name */
+		if (list_size != 1 &&
+			pg_strcasecmp(nsitem->name, name1) == 0)
+		{
+			char	*match_name;
+			int		n_check_match = 2;
+			PLiSQL_nsitem *saved = nsitem;
+
+			/*
+			 * like oracle,if match the first label,
+			 * we doesn't condiser the above label
+			 */
+			localmode = true;
+
+			/* check next to the last names match */
+			while (n_check_match <= list_size)
+			{
+				if (nsitem == NULL)
+				{
+					nsitem = saved;
+					break;
+				}
+
+				match_name = strVal(list_nth(names, n_check_match - 1));
+
+				for (nsitem = ns_cur;
+					 nsitem->itemtype != PLISQL_NSTYPE_LABEL;
+					 nsitem = nsitem->prev)
+				{
+					if (pg_strcasecmp(nsitem->name, match_name) == 0)
+					{
+						if (list_size == n_check_match ||
+							(nsitem->itemtype != PLISQL_NSTYPE_VAR &&
+							nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_FUNC &&
+							nsitem->itemtype != PLISQL_NSTYPE_SUBPROC_PROC))
+						{
+							if (names_used)
+								*names_used = n_check_match;
+							return nsitem;
+						}
+					}
+				}
+				if (list_size != n_check_match &&
+					nsitem != NULL &&
+					pg_strcasecmp(nsitem->name, match_name) == 0)
+					n_check_match++;
+				else
+					nsitem = NULL;		/* break out */
+			}
+		}
+
+		if (localmode)
+			break;				/* do not look into upper levels */
+
+		ns_cur = nsitem->prev;
+	}
+
+
+	/* This is just to suppress possibly-uninitialized-variable warnings */
+	if (names_used)
+		*names_used = 0;
+	return NULL;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* ----------
  * plisql_ns_lookup_label		Lookup a label in the given namespace chain
@@ -814,6 +921,10 @@ plisql_free_function_memory(PLiSQL_function *func,
 			case PLISQL_DTYPE_TYPE:
 				break;
 			/* End - ReqID:SRS-PLSQL-CURSOR */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_ORA_RECORD:
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			default:
 				elog(ERROR, "unrecognized data type: %d", d->dtype);
 		}

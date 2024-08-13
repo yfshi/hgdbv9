@@ -26,10 +26,12 @@
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
 #include "miscadmin.h"
+#include "parser/parse_coerce.h"	/* SRS-PLSQL-RECORD */
 #include "parser/parse_type.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/datum.h"
+#include "utils/lsyscache.h"		/* SRS-PLSQL-RECORD */
 #include "utils/resowner_private.h"
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
@@ -944,6 +946,14 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 	FormData_pg_attribute *dattr;
 	FormData_pg_attribute *sattr;
 
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	/* don't check udtpointer */
+	if (valuedesc->attrs[0].atttypid == UDTPOINTEROID)
+		j = 1;
+	if (targetdesc->attrs[0].atttypid == UDTPOINTEROID)
+		i = 1;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	for (; i < targetdesc->natts; i++)
 	{
 		dattr = &targetdesc->attrs[i];
@@ -976,7 +986,12 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 		if (dattr->attlen != sattr->attlen ||
 			dattr->attalign != sattr->attalign)
 		{
-			if (raise_error)
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			if (dattr->atttypid == ORARECORDOID &&
+				get_rel_type_id(dattr->attrelid) == sattr->atttypid)
+				continue;
+			/* End - ReqID:SRS-PLSQL-RECORD */
+			else if (raise_error)
 				ereport(ERROR,
 					(errcode(ERRCODE_DATATYPE_MISMATCH),
 					 errmsg("Return rowtype or query do not match")));
@@ -1001,3 +1016,22 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 }
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * Check that the tupdesc column contains Oracle record type
+ */
+bool
+tupledesc_has_udt_type(TupleDesc desc)
+{
+	int		i;
+
+	for (i = 0; i < desc->natts; i++)
+	{
+		if (desc->attrs[i].atttypid == ORARECORDOID ||
+			desc->attrs[i].atttypid == UDTPOINTEROID)
+			return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */

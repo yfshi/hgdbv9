@@ -53,8 +53,11 @@ typedef enum PLiSQL_nsitem_type
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	/* Begin - SRS-PLSQL-SUBPROC */
 	PLISQL_NSTYPE_SUBPROC_FUNC,	/* subproc function */
-	PLISQL_NSTYPE_SUBPROC_PROC	/* subproc proc */
+	PLISQL_NSTYPE_SUBPROC_PROC,	/* subproc proc */
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	PLISQL_NSTYPE_ORA_RECORD	/* Oracle compatible record type variables */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_nsitem_type;
 
 /*
@@ -82,8 +85,11 @@ typedef enum PLiSQL_datum_type
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	PLISQL_DTYPE_TYPE,
-	PLISQL_DTYPE_ATTRIBUTE
+	PLISQL_DTYPE_ATTRIBUTE,
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	PLISQL_DTYPE_ORA_RECORD		/* Oracle compatible record type variables */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_datum_type;
 
 /*
@@ -116,7 +122,10 @@ typedef enum PLiSQL_type_type
 	PLISQL_TTYPE_UDT_REF_CURSOR,/* UDT REF CURSOR */
 	PLISQL_TTYPE_EXPLICIT_CURSOR,	/* explicit cursor like cursor%rowtype */
 	/* End - ReqID:SRS-PLSQL-CURSOR */
-	PLISQL_TTYPE_PSEUDO		/* pseudotypes */
+	PLISQL_TTYPE_PSEUDO,		/* pseudotypes */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	PLISQL_TTYPE_ORARECORD_TYPE		/* Oracle compatible record type or other types */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_type_type;
 
 /*
@@ -435,6 +444,14 @@ typedef struct PLiSQL_row
 	int			nfields;
 	char	  **fieldnames;
 	int		   *varnos;
+	/* Begin - ReqID:SRS-SQL-FUNCOUT */
+	char		info; /* Build the variable for the function argument,
+					   * record the argument mode which may be IN, OUT or IN OUT.
+					   * If build the variable in plsql block local, info is NONE */
+	/* End - ReqID:SRS-SQL-FUNCOUT */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	PLiSQL_type	*datatype;	/* Oracle record type */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_row;
 
 /*
@@ -1122,6 +1139,10 @@ typedef struct PLiSQL_function
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	char		**paramnames;	/* saved do + using parameter'name */
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	bool		fn_hasudtype;	/* the function arguments have an Oracle record type or another udt type? */
+	PLiSQL_type	*rettype;		/* NOT NULL if function return'type is from a package */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -1216,6 +1237,11 @@ typedef struct PLiSQL_execstate
 	const char *err_text;		/* additional state info */
 
 	void	   *plugin_info;	/* reserved for use by optional plugin */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	bool		rettuple_hasudt;/* true if construct a record that contains
+                                 * a Oracle record type or other udt type
+                                 */
+	/* End - ReqID:SRS-PLSQL-RECORD */
 } PLiSQL_execstate;
 
 /*
@@ -1431,6 +1457,11 @@ extern void delete_function(PLiSQL_function *func);
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 extern void plisql_free_function(Oid funcOid);
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern bool plisql_parse_moreword(List *idents, PLwdatum *wdatum,
+					PLcword *cword, int pre_last_tok,
+					int lloc, int *nnames);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /*
  * Functions in pl_handler.c
@@ -1486,6 +1517,20 @@ extern TupleDesc plisql_get_cursor_tupdesc(PLiSQL_execstate * estate,
 									int cursor_options);
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+extern void exec_eval_datum(PLiSQL_execstate *estate,
+							PLiSQL_datum *datum,
+							Oid *typeid,
+							int32 *typetypmod,
+							Datum *value,
+							bool *isnull);
+extern void exec_assign_value(PLiSQL_execstate *estate,
+				  PLiSQL_datum *target,
+				  Datum value, bool isNull,
+				  Oid valtype, int32 valtypmod);
+extern Datum exec_cast_value(PLiSQL_execstate *estate,
+				Datum value, bool *isnull,
+				Oid valtype, int32 valtypmod,
+				Oid reqtype, int32 reqtypmod);
 
 /*
  * Functions for namespace handling in pl_funcs.c
@@ -1515,6 +1560,11 @@ extern const char *plisql_getdiag_kindname(PLiSQL_getdiag_kind kind);
 extern void plisql_free_function_memory(PLiSQL_function *func,
 							int start_datum, int start_inlinefunc); /* SRS-PLSQL-SUBPROC */
 extern void plisql_dumptree(PLiSQL_function *func, int start_datum, int start_subprocfunc); /* ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+extern PLiSQL_nsitem *plisql_ns_lookup_wordlist(PLiSQL_nsitem *ns_cur, bool localmode,
+					const List *names,
+					int *names_used);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /*
  * Scanner functions in pl_scanner.c

@@ -1118,6 +1118,79 @@ SPI_returntuple(HeapTuple tuple, TupleDesc tupdesc)
 	return dtup;
 }
 
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * similar to SPI_returntuple,
+ * but we handle tuple of record, 
+ * which has some columns of Oracle record type.
+ */
+Datum
+SPI_return_udtinrec_tuple(HeapTuple tuple, TupleDesc tupdesc)
+{
+	MemoryContext oldcxt = NULL;
+	Datum	dtup;
+	bool	isnull;
+	int 	i;
+	Datum		src_value;
+	Datum		*values;
+	bool		*nulls;
+	bool		*replaces;
+	int 		natts;
+
+	if (tuple == NULL || tupdesc == NULL)
+	{
+		SPI_result = SPI_ERROR_ARGUMENT;
+		return (Datum) 0;
+	}
+
+	if (_SPI_current == NULL)
+	{
+		SPI_result = SPI_ERROR_UNCONNECTED;
+		return (Datum) 0;
+	}
+
+	/* For RECORD results, make sure a typmod has been assigned */
+	if (tupdesc->tdtypmod < 0)
+		assign_record_type_typmod(tupdesc);
+
+	oldcxt = MemoryContextSwitchTo(_SPI_current->savedcxt);
+
+	natts = tupdesc->natts;
+	values = palloc0(sizeof(Datum) * natts);
+	nulls = palloc0(sizeof(bool) * natts);
+	replaces = palloc0(sizeof(bool) * natts);
+
+	for (i = 0; i < natts; i++)
+	{
+		Oid toid = SPI_gettypeid(tupdesc, i + 1);
+
+		src_value = SPI_getbinval(tuple, tupdesc, i + 1, &isnull);
+		copy_tupleAttrsValues(src_value,
+								isnull,
+								toid,
+								tupdesc->attrs[i].attbyval,
+								tupdesc->attrs[i].attlen,
+								&(values[i]));
+		replaces[i] = true;
+		nulls[i] = isnull;
+	}
+
+	/* Now call heap_modify_tuple() to create a new tuple that
+	 * replaces the old one in the record.
+	 */
+	dtup = HeapTupleGetDatum(heap_modify_tuple(tuple, tupdesc,
+							values, nulls, replaces));
+
+	pfree(values);
+	pfree(nulls);
+	pfree(replaces);
+
+	MemoryContextSwitchTo(oldcxt);
+
+	return dtup;
+}
+/* End - ReqID:SRS-PLSQL-RECORD */
+
 HeapTuple
 SPI_modifytuple(Relation rel, HeapTuple tuple, int natts, int *attnum,
 				Datum *Values, const char *Nulls)
@@ -3012,6 +3085,9 @@ _SPI_error_callback(void *arg)
 			case RAW_PARSE_PLISQL_ASSIGN1:
 			case RAW_PARSE_PLISQL_ASSIGN2:
 			case RAW_PARSE_PLISQL_ASSIGN3:
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case RAW_PARSE_PLISQL_ASSIGNN:
+			/* End - ReqID:SRS-PLSQL-RECORD */
 				errcontext("PL/iSQL assignment \"%s\"", query);
 				break;
 			/* End - BUG:M0000079 */

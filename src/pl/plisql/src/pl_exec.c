@@ -369,16 +369,6 @@ static void exec_assign_expr(PLiSQL_execstate *estate,
 static void exec_assign_c_string(PLiSQL_execstate *estate,
 								 PLiSQL_datum *target,
 								 const char *str);
-static void exec_assign_value(PLiSQL_execstate *estate,
-							  PLiSQL_datum *target,
-							  Datum value, bool isNull,
-							  Oid valtype, int32 valtypmod);
-static void exec_eval_datum(PLiSQL_execstate *estate,
-							PLiSQL_datum *datum,
-							Oid *typeid,
-							int32 *typetypmod,
-							Datum *value,
-							bool *isnull);
 static int	exec_eval_integer(PLiSQL_execstate *estate,
 							  PLiSQL_expr *expr,
 							  bool *isNull);
@@ -438,10 +428,6 @@ static void instantiate_empty_record_variable(PLiSQL_execstate *estate,
 											  PLiSQL_rec *rec);
 static char *convert_value_to_string(PLiSQL_execstate *estate,
 									 Datum value, Oid valtype);
-static inline Datum exec_cast_value(PLiSQL_execstate *estate,
-									Datum value, bool *isnull,
-									Oid valtype, int32 valtypmod,
-									Oid reqtype, int32 reqtypmod);
 static Datum do_cast_value(PLiSQL_execstate *estate,
 						   Datum value, bool *isnull,
 						   Oid valtype, int32 valtypmod,
@@ -495,6 +481,12 @@ static void plisql_out_param(ExprState *state, ExprEvalStep *op);
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 static void plisql_anonymous_return_out_parameter(PLiSQL_execstate *estate, PLiSQL_function *func);
 /* End - ReqID:SRS-SQL-ANONYOUT */
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+static void check_row(PLiSQL_row *row, TupleDesc tupdesc,
+		Datum *values, bool *nulls,
+		int *anum, int *fnum);
+static void exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row);
+/* End - ReqID:SRS-PLSQL-RECORD */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -695,6 +687,43 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 				}
 				break;
 
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_ORA_RECORD:
+			{
+					PLiSQL_row *ora_rec = (PLiSQL_row *) estate.datums[n];
+
+					/* Begin - ReqID:SRS-SQL-FUNCOUT */
+					if (ora_rec->info != PROARGMODE_OUT)
+					{
+					/* End - ReqID:SRS-SQL-FUNCOUT */
+						if (!fcinfo->args[i].isnull)
+						{
+							/* Assign oracle record value from oracle record datum */
+							exec_move_row_from_datum(&estate,
+													 (PLiSQL_variable *) ora_rec,
+													 fcinfo->args[i].value);
+						}
+						/* clean up after exec_move_row() */
+						exec_eval_cleanup(&estate);
+					/* Begin - ReqID:SRS-SQL-FUNCOUT */
+					}
+					/* End - ReqID:SRS-SQL-FUNCOUT */
+					else
+					{
+						/*
+						 * out paramster has a column default value
+						 */
+						if (ora_rec->datatype != NULL && ora_rec->info == PROARGMODE_OUT)
+						{
+							exec_assing_out_parameter_row(&estate, ora_rec);
+						}
+						else
+							exec_move_row(&estate, (PLiSQL_variable *)ora_rec, NULL, NULL);
+					}
+			}
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
+
 			default:
 				/* Anything else should not be an argument variable */
 				elog(ERROR, "unrecognized dtype: %d", func->datums[i]->dtype);
@@ -819,7 +848,10 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 			/* End - ReqID:SRS-SQL-ANONYOUT */
 				/* Don't need coercion if rowtype is known to match */
 				if (func->fn_rettype == estate.rettype &&
-					func->fn_rettype != RECORDOID)
+					func->fn_rettype != RECORDOID &&
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					func->fn_rettype != ORARECORDOID)
+					/* End - ReqID:SRS-PLSQL-RECORD */
 				{
 					/*
 					 * Copy the tuple result into upper executor memory context.
@@ -850,8 +882,20 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 					 */
 					Oid			resultTypeId;
 					TupleDesc	tupdesc;
+					/* Begin - ReqID:SRS-PLSQL-RECORD */
+					TypeFuncClass	resulttypeclass;
 
-					switch (get_call_result_type(fcinfo, &resultTypeId, &tupdesc))
+					if (estate.func->rettype != NULL &&
+						estate.func->fn_rettype == ORARECORDOID)
+					{
+						tupdesc = plisql_build_tupdesc_from_recordtype((PLiSQL_ora_record_type*) estate.func->rettype);
+						resulttypeclass = TYPEFUNC_COMPOSITE;
+					}
+					else
+						resulttypeclass = get_call_result_type(fcinfo, &resultTypeId, &tupdesc);
+					/* End - ReqID:SRS-PLSQL-RECORD */
+
+					switch (resulttypeclass)
 					{
 						case TYPEFUNC_COMPOSITE:
 							/* got the expected result rowtype, now coerce it */
@@ -1046,7 +1090,17 @@ coerce_function_result_tuple(PLiSQL_execstate *estate, TupleDesc tupdesc)
 			 * Copy tuple to upper executor memory, as a tuple Datum.  Make
 			 * sure it is labeled with the caller-supplied tuple type.
 			 */
-			estate->retval = PointerGetDatum(SPI_returntuple(rettup, tupdesc));
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			/*
+			 * if return tuple which include some udtrecord type vars, we should copy its
+			 * all bytes, for example: call function(name out varchar, id out pkg.record_type)
+			 */
+			if (estate->rettuple_hasudt ||
+				tupdesc->tdtypeid == ORARECORDOID)
+				estate->retval = PointerGetDatum(SPI_return_udtinrec_tuple(rettup, tupdesc));
+			else
+			/* End - ReqID:SRS-PLSQL-RECORD */
+				estate->retval = PointerGetDatum(SPI_returntuple(rettup, tupdesc));
 			/* no need to free map, we're about to return anyway */
 		}
 		else if (!(tupdesc->tdtypeid == erh->er_decltypeid ||
@@ -1115,7 +1169,17 @@ coerce_function_result_tuple(PLiSQL_execstate *estate, TupleDesc tupdesc)
 		 * Copy tuple to upper executor memory, as a tuple Datum.  Make sure
 		 * it is labeled with the caller-supplied tuple type.
 		 */
-		estate->retval = PointerGetDatum(SPI_returntuple(rettup, tupdesc));
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		/*
+		 * if return tuple which include some udtrecord type vars, we should copy its
+		 * all bytes, for example: call function(name out varchar, id out pkg.record_type)
+		 */
+		if (estate->rettuple_hasudt ||
+			tupdesc->tdtypeid == ORARECORDOID)
+			estate->retval = SPI_return_udtinrec_tuple(rettup, tupdesc);
+		else
+		/* End - ReqID:SRS-PLSQL-RECORD */
+			estate->retval = PointerGetDatum(SPI_returntuple(rettup, tupdesc));
 
 		/* no need to free map, we're about to return anyway */
 
@@ -1575,6 +1639,15 @@ copy_plisql_datums(PLiSQL_execstate *estate,
 				ws_next += MAXALIGN(sizeof(PLiSQL_attribute));
 				break;
 			/* End - ReqID:SRS-PLSQL-CURSOR */
+
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_ORA_RECORD:
+				outdatum = (PLiSQL_datum *) ws_next;
+				memcpy(outdatum, indatum, sizeof(PLiSQL_row));
+				ws_next += MAXALIGN(sizeof(PLiSQL_row));
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
+
 			default:
 				elog(ERROR, "unrecognized dtype: %d", indatum->dtype);
 				outdatum = NULL;	/* keep compiler quiet */
@@ -1977,6 +2050,30 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 				/* package'var doesn't need init */
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_TYPE:
+				break;
+			case PLISQL_DTYPE_ROW:
+			case PLISQL_DTYPE_ORA_RECORD:
+				{
+					PLiSQL_row *row = (PLiSQL_row *) datum;
+
+					if (row->default_val == NULL)
+					{
+						if (row->notnull)
+							ereport(ERROR,
+									(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+									 errmsg("variable \"%s\" declared NOT NULL cannot default to NULL",
+											row->refname)));
+					}
+					else
+					{
+						exec_assign_expr(estate, (PLiSQL_datum *) row,
+										row->default_val);
+					}
+				}
+				break;
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			/* Begin - ReqID:SRS-PLSQL-CURSOR */
 			case PLISQL_DTYPE_ATTRIBUTE:
@@ -3601,6 +3698,9 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 				break;
 
 			case PLISQL_DTYPE_ROW:
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			case PLISQL_DTYPE_ORA_RECORD:
+			/* End - ReqID:SRS-PLSQL-RECORD */
 				{
 					PLiSQL_row *row = (PLiSQL_row *) retvar;
 					int32		rettypmod;
@@ -4532,6 +4632,10 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	estate->err_text = NULL;
 
 	estate->plugin_info = NULL;
+
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	estate->rettuple_hasudt = func->fn_hasudtype;
+	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
 	 * Create an EState and ExprContext for evaluation of simple expressions.
@@ -5635,7 +5739,7 @@ exec_assign_c_string(PLiSQL_execstate *estate, PLiSQL_datum *target,
  * call exec_eval_cleanup here for fear of destroying the input Datum value.
  * ----------
  */
-static void
+void
 exec_assign_value(PLiSQL_execstate *estate,
 				  PLiSQL_datum *target,
 				  Datum value, bool isNull,
@@ -5783,7 +5887,7 @@ exec_assign_value(PLiSQL_execstate *estate,
 				else
 				{
 					/* Source must be of RECORD or composite type */
-					if (!type_is_rowtype(valtype))
+					if (!type_is_rowtype(valtype) && valtype != ROWPOINTEROID/* SRS-PLSQL-RECORD */)
 						ereport(ERROR,
 								(errcode(ERRCODE_DATATYPE_MISMATCH),
 								 errmsg("cannot assign non-composite value to a row variable")));
@@ -6023,6 +6127,41 @@ exec_assign_value(PLiSQL_execstate *estate,
 			}
 		/* End - ReqID:SRS-PLSQL-CURSOR */
 
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				/*
+				 * Target is a oracle record variable
+				 */
+				PLiSQL_row *row;
+
+				if (is_package_global_var((PLiSQL_variable *)target))
+					row = (PLiSQL_row *) get_package_datum_bydno(estate,
+												((PLiSQL_row *)(target))->pkgoid,
+												target->dno);
+				else
+					row = (PLiSQL_row *) target;
+
+				if (isNull)
+				{
+					/* If source is null, just assign nulls to the row */
+					exec_move_row(estate, (PLiSQL_variable *) row,
+								  NULL, NULL);
+				}
+					else
+					{
+						/* Source must be of RECORD or composite type */
+						if (!type_is_rowtype(valtype) && valtype != ROWPOINTEROID)
+							ereport(ERROR,
+									(errcode(ERRCODE_DATATYPE_MISMATCH),
+									 errmsg("cannot assign non-composite value to a row variable")));
+						exec_move_row_from_datum(estate, (PLiSQL_variable *) row,
+												 value);
+					}
+					break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", target->dtype);
 	}
@@ -6045,7 +6184,7 @@ exec_assign_value(PLiSQL_execstate *estate,
  * In some cases we have to palloc a return value, and in such cases we put
  * it into the estate's eval_mcontext.
  */
-static void
+void
 exec_eval_datum(PLiSQL_execstate *estate,
 				PLiSQL_datum *datum,
 				Oid *typeid,
@@ -6312,6 +6451,30 @@ exec_eval_datum(PLiSQL_execstate *estate,
 			}
 		/* End - ReqID:SRS-PLSQL-CURSOR */
 
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *row = (PLiSQL_row *) datum;
+				HeapTuple	tup;
+
+				/* We get here if there are multiple OUT parameters */
+				if (!row->rowtupdesc)	/* should not happen */
+					elog(ERROR, "row variable has no tupdesc");
+				/* Make sure we have a valid type/typmod setting */
+				BlessTupleDesc(row->rowtupdesc);
+				oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+				tup = make_tuple_from_row(estate, row, row->rowtupdesc);
+				if (tup == NULL)	/* should not happen */
+					elog(ERROR, "row not compatible with its own tupdesc");
+				*typeid = row->rowtupdesc->tdtypeid;
+				*typetypmod = row->rowtupdesc->tdtypmod;
+				*value = HeapTupleGetDatum(tup);
+				*isnull = false;
+				MemoryContextSwitchTo(oldcontext);
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
 		default:
 			elog(ERROR, "unrecognized dtype: %d", datum->dtype);
 	}
@@ -6538,6 +6701,31 @@ plisql_exec_get_datum_type_info(PLiSQL_execstate *estate,
 				break;
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *ora_rec = (PLiSQL_row *) datum;
+
+				if (ora_rec->datatype != NULL)
+				{
+					*typeId = ora_rec->datatype->typoid;
+					*typMod = ora_rec->datatype->atttypmod;
+				}
+				else
+				{
+					*typeId = InvalidOid;
+					*typMod = -1;
+				}
+				/* composite types are never collatable */
+				*collation = InvalidOid;
+
+				/* save record type */
+				if (ora_rec->datatype != NULL)
+					*type_address = (void *) ora_rec->datatype;
+
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
 
 		/* Begin - ReqID:SRS-PLSQL-CURSOR */
 		case PLISQL_DTYPE_ATTRIBUTE:
@@ -7858,6 +8046,10 @@ plisql_param_compile(ParamListInfo params, Param *param,
 		scratch.d.cparam.pkgoid = InvalidOid;
 	scratch.d.cparam.paramid = dno + 1;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	scratch.d.cparam.type = param->type;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
 	ExprEvalPushStep(state, &scratch);
 }
 
@@ -8587,6 +8779,10 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			int			vtd_natts = var_tupdesc->natts;
 			Datum	   *newvalues;
 			bool	   *newnulls;
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			int			anum_value;
+			int			is_ora_rec = false;	/* the value datatype is from a Oracle record type */
+			/* End - ReqID:SRS-PLSQL-RECORD */
 
 			/*
 			 * Need workspace arrays.  If vtd_natts is small enough, use local
@@ -8610,6 +8806,16 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 
 			/* Walk over destination columns */
 			anum = 0;
+
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			anum_value = 0;
+			if (tupdesc->natts >= 1 && tupdesc->attrs[0].atttypid == UDTPOINTEROID)
+			{
+				is_ora_rec = true;
+				anum_value = 1;
+			}
+			/* End - ReqID:SRS-PLSQL-RECORD */
+
 			for (fnum = 0; fnum < vtd_natts; fnum++)
 			{
 				Form_pg_attribute attr = TupleDescAttr(var_tupdesc, fnum);
@@ -8625,7 +8831,7 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 				}
 
 				while (anum < td_natts &&
-					   TupleDescAttr(tupdesc, anum)->attisdropped)
+					   TupleDescAttr(tupdesc, anum_value)->attisdropped)
 					anum++;		/* skip dropped column in tuple */
 
 				/* Begin - ReqID:SRS-SQL-ROWID */
@@ -8640,11 +8846,11 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 				}/* End - ReqID:SRS-SQL-ROWID */
 				else if (anum < td_natts)
 				{
-					value = values[anum];
-					isnull = nulls[anum];
+					value = values[anum_value];
+					isnull = nulls[anum_value];
 
-					valtype = TupleDescAttr(tupdesc, anum)->atttypid;
-					valtypmod = TupleDescAttr(tupdesc, anum)->atttypmod;
+					valtype = TupleDescAttr(tupdesc, anum_value)->atttypid;
+					valtypmod = TupleDescAttr(tupdesc, anum_value)->atttypmod;
 
 					anum++;
 				}
@@ -8678,29 +8884,59 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 												  attr->atttypid,
 												  attr->atttypmod);
 				newnulls[fnum] = isnull;
+
+				/* Begin - ReqID:SRS-PLSQL-RECORD */
+				anum_value++;
+				/* End - ReqID:SRS-PLSQL-RECORD */
 			}
 
 			/*
 			 * When strict_multiassignment extra check is active, then ensure
 			 * there are no unassigned source attributes.
 			 */
-			if (strict_multiassignment_level && anum < td_natts)
+			/* Begin - ReqID:SRS-SQL-ROWID */
+			if (is_ora_rec)
 			{
-				/* skip dropped columns in the source descriptor */
-				while (anum < td_natts &&
-					   TupleDescAttr(tupdesc, anum)->attisdropped)
-					anum++;
+				if (strict_multiassignment_level && anum_value - 1 < td_natts)
+				{
+					/* skip dropped columns in the source descriptor */
+					while (anum_value < td_natts &&
+						   TupleDescAttr(tupdesc, anum_value)->attisdropped)
+						anum_value++;
 
-				if (anum < td_natts)
-					ereport(strict_multiassignment_level,
-							(errcode(ERRCODE_DATATYPE_MISMATCH),
-							 errmsg("number of source and target fields in assignment does not match"),
-					/* translator: %s represents a name of an extra check */
-							 errdetail("%s check of %s is active.",
-									   "strict_multi_assignment",
-									   strict_multiassignment_level == ERROR ? "extra_errors" :
-									   "extra_warnings"),
-							 errhint("Make sure the query returns the exact list of columns.")));
+					if (anum_value - 1 < td_natts)
+						ereport(strict_multiassignment_level,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("number of source and target fields in assignment does not match"),
+						/* translator: %s represents a name of an extra check */
+								 errdetail("%s check of %s is active.",
+										   "strict_multi_assignment",
+										   strict_multiassignment_level == ERROR ? "extra_errors" :
+										   "extra_warnings"),
+								 errhint("Make sure the query returns the exact list of columns.")));
+				}
+			}
+			else
+			{
+			/* End - ReqID:SRS-SQL-ROWID */
+				if (strict_multiassignment_level && anum < td_natts)
+				{
+					/* skip dropped columns in the source descriptor */
+					while (anum < td_natts &&
+						   TupleDescAttr(tupdesc, anum)->attisdropped)
+						anum++;
+
+					if (anum < td_natts)
+						ereport(strict_multiassignment_level,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("number of source and target fields in assignment does not match"),
+						/* translator: %s represents a name of an extra check */
+								 errdetail("%s check of %s is active.",
+										   "strict_multi_assignment",
+										   strict_multiassignment_level == ERROR ? "extra_errors" :
+										   "extra_warnings"),
+								 errhint("Make sure the query returns the exact list of columns.")));
+				}
 			}
 
 			values = newvalues;
@@ -8735,12 +8971,26 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 	 * If we have no input data at all, we'll assign NULL to all columns of
 	 * the row variable.
 	 */
-	if (target->dtype == PLISQL_DTYPE_ROW)
+	if (target->dtype == PLISQL_DTYPE_ROW
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		|| target->dtype == PLISQL_DTYPE_ORA_RECORD)
+		/* End - ReqID:SRS-PLSQL-RECORD */
 	{
-		PLiSQL_row *row = (PLiSQL_row *) target;
+		PLiSQL_row 	*row = (PLiSQL_row *) target;
+		bool		is_pkg_var = false;	/* SRS-PLSQL-RECORD */
 
 		anum = 0;
-		for (fnum = 0; fnum < row->nfields; fnum++)
+
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		fnum = 0;
+		check_row(row, tupdesc, values, nulls, &anum, &fnum);
+
+		/* if the row variable is a global variable in a package, set is_pkg_var to true */
+		if (is_package_global_var((PLiSQL_variable *)target))
+			is_pkg_var = true;
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
+		for (; fnum < row->nfields; fnum++)
 		{
 			PLiSQL_var *var;
 			Datum		value;
@@ -8748,7 +8998,14 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			Oid			valtype;
 			int32		valtypmod;
 
-			var = (PLiSQL_var *) (estate->datums[row->varnos[fnum]]);
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			if (is_pkg_var)
+				var = (PLiSQL_var *) get_package_datum_bydno(estate,
+												row->pkgoid,
+												row->varnos[fnum]);
+			else
+			/* End - ReqID:SRS-PLSQL-RECORD */
+				var = (PLiSQL_var *) (estate->datums[row->varnos[fnum]]);
 
 			while (anum < td_natts &&
 				   TupleDescAttr(tupdesc, anum)->attisdropped)
@@ -8874,6 +9131,7 @@ make_tuple_from_row(PLiSQL_execstate *estate,
 	Datum	   *dvalues;
 	bool	   *nulls;
 	int			i;
+	bool		is_pkg_var = false; /* SRS-PLSQL-RECORD */
 
 	if (natts != row->nfields)
 		return NULL;
@@ -8881,7 +9139,22 @@ make_tuple_from_row(PLiSQL_execstate *estate,
 	dvalues = (Datum *) eval_mcontext_alloc0(estate, natts * sizeof(Datum));
 	nulls = (bool *) eval_mcontext_alloc(estate, natts * sizeof(bool));
 
-	for (i = 0; i < natts; i++)
+	/* Begin - ReqID:SRS-PLSQL-RECORD */
+	if (row->dtype == PLISQL_DTYPE_ORA_RECORD)
+	{
+		dvalues[0] = PointerGetDatum(row->datatype);
+		nulls[0] = false;
+		i = 1;
+	}
+	else
+		i = 0;
+
+	/* if the row variable is a global variable in a package, set is_pkg_var to true */
+	if (is_package_global_var((PLiSQL_variable *)row))
+		is_pkg_var = true;
+	/* End - ReqID:SRS-PLSQL-RECORD */
+
+	for (; i < natts; i++)
 	{
 		Oid			fieldtypeid;
 		int32		fieldtypmod;
@@ -8892,10 +9165,23 @@ make_tuple_from_row(PLiSQL_execstate *estate,
 			continue;
 		}
 
-		exec_eval_datum(estate, estate->datums[row->varnos[i]],
-						&fieldtypeid, &fieldtypmod,
-						&dvalues[i], &nulls[i]);
-		if (fieldtypeid != TupleDescAttr(tupdesc, i)->atttypid)
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		if (is_pkg_var)
+			exec_eval_datum(estate, get_package_datum_bydno(estate,
+														row->pkgoid,
+														row->varnos[i]),
+							&fieldtypeid, &fieldtypmod,
+							&dvalues[i], &nulls[i]);
+		else
+		/* End - ReqID:SRS-PLSQL-RECORD */
+			exec_eval_datum(estate, estate->datums[row->varnos[i]],
+							&fieldtypeid, &fieldtypmod,
+							&dvalues[i], &nulls[i]);
+		if (fieldtypeid != TupleDescAttr(tupdesc, i)->atttypid &&
+			/* Begin - ReqID:SRS-PLSQL-RECORD */
+			!(fieldtypeid == ORARECORDOID &&
+			TupleDescAttr(tupdesc, i)->atttypid == ROWPOINTEROID))
+			/* End - ReqID:SRS-PLSQL-RECORD */
 			return NULL;
 		/* XXX should we insist on typmod match, too? */
 	}
@@ -9271,7 +9557,7 @@ convert_value_to_string(PLiSQL_execstate *estate, Datum value, Oid valtype)
  * done with the result.
  * ----------
  */
-static inline Datum
+Datum
 exec_cast_value(PLiSQL_execstate *estate,
 				Datum value, bool *isnull,
 				Oid valtype, int32 valtypmod,
@@ -11011,3 +11297,110 @@ plisql_anonymous_return_out_parameter(PLiSQL_execstate *estate, PLiSQL_function 
 	return;
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
+
+
+/* Begin - ReqID:SRS-PLSQL-RECORD */
+/*
+ * check if the row's rowtupdesc is matched with tupdesc
+ */
+static void
+check_row(PLiSQL_row *row, TupleDesc tupdesc,
+		Datum *values, bool *nulls,
+		int *anum, int *fnum)
+{
+	if (row->datatype != NULL)
+	{
+		if (values != NULL && nulls != NULL)
+		{
+			if (tupdesc->attrs[0].atttypid == UDTPOINTEROID)
+			{
+				/* two Oracle record variable assignmnet */
+				PLiSQL_ora_record_type *type;
+
+				type = (PLiSQL_ora_record_type *)(DatumGetPointer(values[0]));
+				if (type == NULL)
+					ora_test_tupdesc_match(row->rowtupdesc, tupdesc, true);
+				else
+				{
+					if (type->type.ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+					{
+						/* Begin - BUG:0000624 */
+						if (row->datatype->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+						{
+							if (pg_strcasecmp(type->type.typname, row->datatype->typname))
+								ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg(" expression is of wrong type, \"%s\" does't matched with \"%s\"",
+											type->type.typname, row->datatype->typname)));
+
+							ora_test_tupdesc_match(row->rowtupdesc, tupdesc, true);
+
+						}
+					}
+				}
+				*anum = 1;
+			}
+			else
+			{
+				ora_test_tupdesc_match(tupdesc, row->rowtupdesc, true);
+				if (tupdesc->attrs[0].atttypid == UDTPOINTEROID)
+					*anum = 1;
+			}
+		}			
+
+		*fnum = 1;
+	}
+	else
+	{
+		/* maybe Oracle record be assigned to %rowtype */
+		if (tupdesc &&
+			tupdesc->attrs[0].atttypid == UDTPOINTEROID)
+		{
+			ora_test_tupdesc_match(tupdesc, row->rowtupdesc, true);
+			*anum = 1;
+		}
+	}
+}
+
+/*
+ * It's similar to exec_move_row, but we take
+ * the default values into account when we do assign
+ */
+static void
+exec_assing_out_parameter_row(PLiSQL_execstate *estate, PLiSQL_row *row)
+{
+	int fnum;
+
+	Assert(row->datatype != NULL);
+
+	/* ignore first type pointer */
+	for (fnum = 1; fnum < row->nfields; fnum++)
+	{
+		PLiSQL_var *var;
+		Datum		value;
+		bool		isnull;
+		Oid			valtype;
+		int32		valtypmod;
+
+		if (row->varnos[fnum] < 0)
+			continue;		/* skip dropped column in row struct */
+
+		var = (PLiSQL_var *) (estate->datums[row->varnos[fnum]]);
+
+		if (var->default_val != NULL)
+		{
+			exec_assign_expr(estate, (PLiSQL_datum *) var, var->default_val);
+		}
+		else
+		{
+			value = (Datum) 0;
+			isnull = true;
+			valtype = UNKNOWNOID;
+			valtypmod = -1;
+			exec_assign_value(estate, (PLiSQL_datum *) var,
+						  value, isnull, valtype, valtypmod);
+			exec_eval_cleanup(estate);
+		}
+	}
+}
+/* End - ReqID:SRS-PLSQL-RECORD */
