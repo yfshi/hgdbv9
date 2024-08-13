@@ -1869,6 +1869,56 @@ BeginCopyFrom(ParseState *pstate,
 	cstate->num_defaults = num_defaults;
 	cstate->is_program = is_program;
 
+	/* Begin - BUG:M0000368 */
+	/* decode skip column to bool arrays */
+	if (cstate->opts.skiplist && !cstate->opts.binary)
+	{
+		List            *temp_skiplist = NIL;
+		ListCell        *cur;
+		ListCell        *l;
+		int             skip_count = 0;
+
+		foreach(l, cstate->opts.skiplist)
+		{
+			A_Const    *con;
+			int     num;
+			Node    *arg = (Node *)lfirst(l);
+			if( IsA(arg, A_Const))
+			{
+				con = (A_Const *) arg;
+				num = intVal(&con->val);
+				if ( list_member_int(temp_skiplist, num) )
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_COLUMN),
+							errmsg("skiplist \"%d\" specified more than once", num)));
+				temp_skiplist = lappend_int(temp_skiplist, num);
+			}
+		}
+
+		foreach(cur,temp_skiplist)
+		{
+			int tmp;
+			skip_count ++;
+			if (skip_count > MAX_SKIP_COUNT)
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
+					errmsg("skiplist is too much for COPY, the MAX is \"%d\"",
+					MAX_SKIP_COUNT)));
+			tmp = lfirst_int(cur);
+			if(tmp <= 0)
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
+					errmsg("skiplist have invalid \"%d\" value for COPY", tmp)));
+			else if(tmp > MaxHeapAttributeNumber+MAX_SKIP_COUNT)
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
+					errmsg("skiplist have invalid \"%d\" value for COPY", tmp)));
+			else
+				cstate->opts.skip_list[tmp] = true;
+		}
+	}
+	/* End - BUG:M0000368 */
+
 	if (data_source_cb)
 	{
 		progress_vals[1] = PROGRESS_COPY_TYPE_CALLBACK;

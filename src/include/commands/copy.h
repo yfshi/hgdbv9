@@ -19,6 +19,8 @@
 #include "parser/parse_node.h"
 #include "tcop/dest.h"
 
+#define MAX_SKIP_COUNT  128     /* BUG:M0000368 */
+
 /*
  * A struct to hold COPY options, in a parsed form. All of these are related
  * to formatting, except for 'freeze', which doesn't really belong here, but
@@ -62,6 +64,14 @@ typedef struct CopyFormatOptions
 	char	   *logbad;
 	bool	   log_bad;
 	/* End - BUG#Z1087 */
+
+	/* Begin - BUG:M0000368 */
+	List	   *skiplist;
+	//int	   *skip_list;
+	//int	   skip_count;
+	// skip_list[0] did not used
+	bool	   skip_list[MaxHeapAttributeNumber + MAX_SKIP_COUNT + 1];
+	/* End - BUG:M0000368 */
 
 } CopyFormatOptions;
 

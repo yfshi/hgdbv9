@@ -137,3 +137,7 @@ test: stats
 #/* Begin - ReqID:SRS-MISC-BULKLOAD */
 test: copyerror
 #/* End - ReqID:SRS-MISC-BULKLOAD */
+
+#/* Begin - BUG:M0000368 */
+test: copy_skip
+#/* End - BUG:M0000368 */

@@ -602,6 +602,25 @@ ProcessCopyOptions(ParseState *pstate,
 						parser_errposition(pstate, defel->location)));
 		}
 		/* End - BUG#Z1087 */
+		/* Begin - BUG:M0000368 */
+		else if (strcmp(defel->defname, "skiplist") == 0)
+		{
+			if (opts_out->skiplist)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("conflicting or redundant options"),
+					parser_errposition(pstate, defel->location)));
+			if(defel->arg && IsA(defel->arg, List))
+				opts_out->skiplist = castNode(List, defel->arg);
+			else
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					errmsg("argument to option \"%s\" must be a list of int",
+					defel->defname),
+					parser_errposition(pstate, defel->location)));
+
+		}
+		/* End - BUG:M0000368 */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -801,6 +820,16 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Feature logbad only support under Tolerate mode")));
 	/* End - BUG#Z1087 */
+	/* Begin - BUG:M0000368 */
+	if ( (opts_out->skiplist) && !is_from )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("COPY skiplist only available using COPY FROM")));
+	if ( (!opts_out->csv_mode) && (opts_out->skiplist))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("COPY skiplist support just for CSV mode")));
+	/* End - BUG:M0000368 */
 }
 
 /*
