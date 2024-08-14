@@ -273,6 +273,17 @@ typedef struct RelationData
 	struct PgStat_TableStatus *pgstat_info; /* statistics collection area */
 
 	RelAttrinfo		relattrinfo;	/* ReqID:SRS-SQL-Object */
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	/*
+	 * dblink-table support
+	 */
+	List       *relattrlists;
+	Oid         serverOid;
+	char        *relname;
+	char        *relnspname;
+	bool        rel_from_dblink;
+	/* End - ReqID:SRS-SQL-DBLINK */
 } RelationData;
 
 

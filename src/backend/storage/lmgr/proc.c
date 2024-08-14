@@ -294,6 +294,10 @@ InitProcGlobal(void)
 	/* Create ProcStructLock spinlock, too */
 	ProcStructLock = (slock_t *) ShmemAlloc(sizeof(slock_t));
 	SpinLockInit(ProcStructLock);
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	ProcGlobal->ivy_global_names_guc = false;
+	/* End - ReqID:SRS-SQL-DBLINK */
 }
 
 /*

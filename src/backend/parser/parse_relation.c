@@ -43,6 +43,16 @@
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-ROWID */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+#include "commands/dbcommands.h"
+#include "foreign/foreign.h"
+#include "foreign/fdwapi.h"
+#include "tcop/tcopprot.h"
+#include "tcop/utility.h"
+#include "miscadmin.h"
+#include "access/genam.h"
+#include "catalog/pg_foreign_table.h"
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * Support for fuzzily matching columns.
@@ -89,7 +99,7 @@ static void expandTupleDesc(TupleDesc tupdesc, Alias *eref,
 static int	specialAttNum(const char *attname);
 static bool isQueryUsingTempRelation_walker(Node *node, void *context);
 static bool is_query_using_gtt_walker(Node *node, void *context);
-
+static List *get_open_dblinks(void);
 
 /*
  * refnameNamespaceItem
@@ -1378,11 +1388,71 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	Relation	rel;
 	ParseCallbackState pcbstate;
 
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	char		*tname = NULL;
+	char		*ftname = NULL;
+	char 		*servname = NULL;
+	char		*curdbname = NULL;
+	char  	*relnspname = NULL;
+	ForeignServer 			*server = NULL;
+	UserMapping   			*mapping = NULL;
+	ForeignDataWrapper 		*fdw = NULL;
+	FdwRoutine 				*fdw_routine = NULL;
+	ImportForeignSchemaStmt *imstmt = NULL;
+	CreateForeignTableStmt 	*cstmt = NULL;
+	RangeVar	*rangevar;
+	RangeVar	*dblinkrv = NULL;
+	RangeVar   	*localrelation;
+	List	   	*cmd_list = NIL;
+	List 		*raw_parsetree_list = NIL;
+	List 		*tupnatts = NIL;
+	List 		*mdtupnatts_changed = NIL;
+	ListCell	*f;
+	RawStmt    	*rs;
+	PlannedStmt *pstmt;
+	int			i;
+	IvyLnkFdw	fdw_type = 0;
+	bool		is_dblnkrel = false;
+	bool		is_loopbacklnkrel = false;
+	/* End - ReqID:SRS-SQL-DBLINK */
+
 	setup_parser_errposition_callback(&pcbstate, pstate, relation->location);
-	rel = table_openrv_extended(relation, lockmode, true);
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	localrelation = copyObject((RangeVar *)relation);
+
+	if (isDblinkTable(relation->relname, &tname, &servname))
+	{
+		curdbname = get_database_name(MyDatabaseId);
+
+		/* Check Global Name as a Loopback Database Link */
+		if (strcmp(servname, curdbname) == 0)
+		{
+			localrelation->relname = tname;
+			is_loopbacklnkrel = true;
+		}
+		else
+		{
+			server = GetForeignServerByName(servname, false);
+			fdw = GetForeignDataWrapper(server->fdwid);
+			mapping = GetUserMapping(GetUserId(), server->serverid);
+			fdw_routine = GetFdwRoutine(fdw->fdwhandler);
+
+			if (ORA_PARSER == compatible_db && ora_global_names)
+			{
+				if (strcmp(server->servername, server->olnk_service_name) != 0)
+					elog(ERROR, "database link %s connects to %s", server->servername, server->olnk_service_name); // ORA-02085:
+			}
+
+			is_dblnkrel = true;
+		}
+	}
+	/* End - ReqID:SRS-SQL-DBLINK */
+
+	rel = table_openrv_extended(localrelation, lockmode, true);
 	if (rel == NULL)
 	{
-		if (relation->schemaname)
+		if (relation->schemaname && !is_dblnkrel)
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_TABLE),
 					 errmsg("relation \"%s.%s\" does not exist",
@@ -1403,6 +1473,141 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 						 errdetail("There is a WITH item named \"%s\", but it cannot be referenced from this part of the query.",
 								   relation->relname),
 						 errhint("Use WITH RECURSIVE, or re-order the WITH items to remove forward references.")));
+			/* Begin - ReqID:SRS-SQL-DBLINK */
+			else if (is_dblnkrel && !is_loopbacklnkrel)
+			{
+				List	*op_lnks = NIL;
+
+				/* handle the shared DBLINK authenticated */
+				if (server->ora_dblink_isshared && !server->ora_lnkshared_auth)
+					fdw_routine->DblinkAuthenticated(servname);
+
+				op_lnks = get_open_dblinks();
+
+				if (ORA_PARSER == compatible_db && (list_length(op_lnks) >= ora_open_lins))
+				{
+					if (!list_member_oid(op_lnks, server->serverid))
+						elog(ERROR, "too many database links in use"); /* ORA-02020:too many database links in user */
+				}
+
+				if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
+					fdw_type = ORA_FDW;
+				else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
+					fdw_type = PG_FDW;
+
+				ftname = psprintf("%s@%s", tname, servname);
+
+				dblinkrv = makeRangeVar(NULL, ftname, -1);
+				dblinkrv->relpersistence = RELPERSISTENCE_TEMP;
+				rel = table_openrv_extended(dblinkrv, lockmode, true);
+				if (rel == NULL)
+				{
+					char 	*cmd = NULL;
+
+					rangevar = makeRangeVar(NULL, tname, -1);
+
+					if (!server->ora_dblink_ispublic && server->owner != GetUserId())
+						elog(ERROR, "server \"%s\" not found", servname);
+
+					imstmt = makeNode(ImportForeignSchemaStmt);
+					imstmt->server_name = servname;
+
+					if (fdw_type == PG_FDW)
+					{
+						if (relation->schemaname)
+							imstmt->remote_schema = psprintf("%s", relation->schemaname);
+						else
+							imstmt->remote_schema = psprintf("%s", "public");
+						imstmt->local_schema = psprintf("%s", "public");
+						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
+						imstmt->table_list = list_make1(rangevar);
+					}
+					else if (fdw_type == ORA_FDW)
+					{
+						char	*umpname = NULL;
+
+						get_usermapping_name(mapping->options, &umpname);
+
+						imstmt->remote_schema = psprintf("%s", upper_character(umpname, strlen(umpname)));
+						imstmt->local_schema = psprintf("%s", "public");
+						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
+						imstmt->table_list = list_make1(rangevar);
+					}
+
+
+					/* Call FDW to get a list of commands */
+					cmd_list = fdw_routine->ImportForeignSchema(imstmt, server->serverid);
+					Assert(list_length(cmd_list) == 1);
+
+					f = list_head(cmd_list);
+					cmd = (char *) lfirst(f);
+
+					raw_parsetree_list = pg_parse_query(cmd);
+					Assert(list_length(raw_parsetree_list) == 1);
+
+					f = list_head(raw_parsetree_list);
+					rs = lfirst(f);
+
+					cstmt = (CreateForeignTableStmt *) rs->stmt;
+
+					if (!IsA(cstmt, CreateForeignTableStmt))
+						elog(ERROR,
+							 "foreign-data wrapper \"%s\" returned incorrect statement type %d",
+							  fdw->fdwname, (int) nodeTag(cstmt));
+
+					cstmt->servername = down_character(cstmt->servername, strlen(cstmt->servername));
+					cstmt->base.relation->relname = ftname;
+					cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
+
+					pstmt = makeNode(PlannedStmt);
+					pstmt->commandType = CMD_UTILITY;
+					pstmt->canSetTag = false;
+					pstmt->utilityStmt = (Node *) cstmt;
+					pstmt->stmt_location = rs->stmt_location;
+					pstmt->stmt_len = rs->stmt_len;
+
+					/* Execute statement */
+					ProcessUtility(pstmt, cmd, false,
+								   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+								   None_Receiver, NULL);
+
+					CommandCounterIncrement();
+
+					// open table return rel
+					rel = table_openrv_extended(dblinkrv, lockmode, false);
+					if (rel == NULL)
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_TABLE),
+								 errmsg("relation \"%s\" does not exist",
+										relation->relname)));
+
+					/* get column info */
+					for (i = 0; i < rel->rd_att->natts; i++)
+					{
+						TupdescNatts *col = makeNode(TupdescNatts);
+						Form_pg_attribute attr;
+
+						attr = TupleDescAttr(rel->rd_att, i);
+						if (attr->attisdropped)
+							continue;
+						col->colname = pstrdup(NameStr(attr->attname));
+						col->coltypid = attr->atttypid;
+						col->coltypmod = attr->atttypmod;
+
+						tupnatts = lappend(tupnatts, col);
+					}
+
+					rel->serverOid = server->serverid;
+					rel->relattrlists = tupnatts;
+					rel->relname = tname;
+					rel->relnspname = imstmt->remote_schema;
+					rel->rel_from_dblink = true;
+
+					cancel_parser_errposition_callback(&pcbstate);
+					return rel;
+				}
+			}
+			/* End - ReqID:SRS-SQL-DBLINK */
 			else
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_TABLE),
@@ -1410,6 +1615,170 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 								relation->relname)));
 		}
 	}
+
+	if (is_dblnkrel)
+	{
+		char	*umpname = NULL;
+
+		/* get the old tupnatts list */
+		for (i = 0; i < rel->rd_att->natts; i++)
+		{
+			TupdescNatts *col = makeNode(TupdescNatts);
+			Form_pg_attribute attr;
+
+			attr = TupleDescAttr(rel->rd_att, i);
+			if (attr->attisdropped)
+				continue;
+			col->colname = pstrdup(NameStr(attr->attname));
+			col->coltypid = attr->atttypid;
+			col->coltypmod = attr->atttypmod;
+
+			tupnatts = lappend(tupnatts, col);
+		}
+
+		if (fdw_type == ORA_FDW)
+		{
+			get_usermapping_name(mapping->options, &umpname);
+			relnspname = psprintf("%s", upper_character(umpname, strlen(umpname)));
+		}
+		else if (fdw_type == PG_FDW)
+		{
+			if (relation->schemaname)
+				relnspname = psprintf("%s", relation->schemaname);
+			else
+				relnspname = psprintf("%s", "public");
+		}
+
+		/*
+		 * check the metadata change
+		 */
+		if (check_lnk_metadata_changed)
+		{
+			bool		metadata_changed = false;
+
+			mdtupnatts_changed = fdw_routine->DblinkCheckMetadataChanged(server->serverid, relnspname, tname);
+
+			/* first check */
+			if (list_length(tupnatts) != list_length(mdtupnatts_changed))
+				metadata_changed = true;
+			else
+			{
+				ListCell   *lo, *lc;
+
+				/* The second check compares the info in each column */
+				forboth(lo, tupnatts, lc, mdtupnatts_changed)
+				{
+					TupdescNatts *o_col = (TupdescNatts *) lfirst(lo);
+					TupdescNatts *c_col = (TupdescNatts *) lfirst(lc);
+
+					if (strcmp(o_col->colname, c_col->colname) != 0)
+						metadata_changed = true;
+					if (o_col->coltypid != c_col->coltypid)
+						metadata_changed = true;
+					if (o_col->coltypmod != c_col->coltypmod)
+						metadata_changed = true;
+
+					if (metadata_changed)
+						break;
+				}
+			}
+
+			if (metadata_changed)
+			{
+				char		*dopstmt;
+				DropStmt	*ds;
+				char		*query_string = NULL;
+
+				/* 1. close opened table */
+				table_close(rel, lockmode);
+
+				/* 2. drop this old table */
+				dopstmt = psprintf("DROP FOREIGN TABLE %s", ftname);
+
+				raw_parsetree_list = pg_parse_query(dopstmt);
+				Assert(list_length(raw_parsetree_list) == 1);
+
+				f = list_head(raw_parsetree_list);
+				rs =  lfirst(f);
+				ds = (DropStmt *) rs->stmt;
+
+				if ((!IsA(ds, DropStmt)))
+					elog(ERROR, "not a DropStmt");
+
+				pstmt = makeNode(PlannedStmt);
+				pstmt->commandType = CMD_UTILITY;
+				pstmt->canSetTag = false;
+				pstmt->utilityStmt = (Node *) ds;
+				pstmt->stmt_location = rs->stmt_location;
+				pstmt->stmt_len = rs->stmt_len;
+
+				ProcessUtility(pstmt, dopstmt, false,
+							   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+							   None_Receiver, NULL);
+
+				CommandCounterIncrement();
+
+				/* 3. create a new one using changed matedata */
+				query_string = buildCreateForeignTablequeryString(mdtupnatts_changed,
+																 ftname, tname, server->servername,
+																 relnspname, fdw_type);
+
+				raw_parsetree_list = pg_parse_query(query_string);
+				Assert(list_length(raw_parsetree_list) == 1);
+				f = list_head(raw_parsetree_list);
+				rs =  lfirst(f);
+				cstmt = (CreateForeignTableStmt *) rs->stmt;
+
+				if (!IsA(cstmt, CreateForeignTableStmt))
+					elog(ERROR, "not a CreateForeignTableStmt");
+
+				cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
+				pstmt = makeNode(PlannedStmt);
+				pstmt->commandType = CMD_UTILITY;
+				pstmt->canSetTag = false;
+				pstmt->utilityStmt = (Node *) cstmt;
+				pstmt->stmt_location = rs->stmt_location;
+				pstmt->stmt_len = rs->stmt_len;
+
+				ProcessUtility(pstmt, pstrdup(query_string), false,
+							   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+							   None_Receiver, NULL);
+				CommandCounterIncrement();
+
+				rel = table_openrv_extended(dblinkrv, lockmode, false);
+				if (rel == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_TABLE),
+							 errmsg("relation \"%s\" does not exist",
+							 dblinkrv->relname)));
+
+				rel->serverOid = server->serverid;
+				rel->relattrlists = mdtupnatts_changed;
+				rel->relname = tname;
+				rel->relnspname = relnspname;
+				rel->rel_from_dblink = true;
+			}
+			else
+			{
+				rel->serverOid = server->serverid;
+				rel->relattrlists = tupnatts;
+				rel->relname = tname;
+				rel->relnspname = relnspname;
+				rel->rel_from_dblink = true;
+			}
+
+		}
+		else
+		{
+			rel->serverOid = server->serverid;
+			rel->relattrlists = tupnatts;
+			rel->relname = tname;
+			rel->relnspname = relnspname;
+			rel->rel_from_dblink = true;
+		}
+
+	}
+
 	cancel_parser_errposition_callback(&pcbstate);
 	return rel;
 }
@@ -1492,9 +1861,24 @@ addRangeTableEntry(ParseState *pstate,
 	}
 	/* End - ReqID:SRS-SQL-FORCEVIEW */
 
-	rte->relid = RelationGetRelid(rel);
-	rte->relkind = rel->rd_rel->relkind;
-	rte->rellockmode = lockmode;
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (rel->rel_from_dblink)
+	{
+		rte->rtekind = RTE_DBLINK;
+		rte->relid = InvalidOid;
+
+		rte->rellockmode = lockmode;
+		rte->serverOid = rel->serverOid;
+		rte->linkrelname = rel->relname;
+		rte->linkrelnsname = rel->relnspname;
+		rte->linkrelattrs = rel->relattrlists;
+	}/* End - ReqID:SRS-SQL-DBLINK */
+	else
+	{
+		rte->relid = RelationGetRelid(rel);
+		rte->relkind = rel->rd_rel->relkind;
+		rte->rellockmode = lockmode;
+	}
 
 	/*
 	 * Build the list of effective column names using user-supplied aliases
@@ -3879,3 +4263,60 @@ addRangeTableEntryForCount(ParseState *pstate)
 
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
+
+bool
+isDblinkTable(const char *name, char **tname, char **servname)
+{
+	char 		*ret = NULL;
+	char		*relname = NULL;
+	char		*servername = NULL;
+
+	if (strstr((char *)name, "@"))
+	{
+		ret = strtok((char *)name, "@");
+		relname = ret;
+		if (tname)
+			*tname = relname;
+		ret = strtok(NULL, "@");
+		servername = ret;
+		if (servname)
+			*servname = servername;
+
+		return true;
+	}
+	else
+		return false;
+}
+
+static List *
+get_open_dblinks(void)
+{
+	Relation	relation;
+	SysScanDesc scan;
+	HeapTuple	ftableTup;
+	List		*srvOids = NIL;
+	ForeignServer *fs;
+
+	/*
+	 * We must seqscan pg_foreign_table to find the ftserver, because there is no
+	 * index that can help us here.
+	 */
+	relation = table_open(ForeignTableRelationId, AccessShareLock);
+	scan = systable_beginscan(relation, InvalidOid, false,
+							  NULL, 0, NULL);
+	while ((ftableTup = systable_getnext(scan)) != NULL)
+	{
+		Form_pg_foreign_table ftableForm = (Form_pg_foreign_table) GETSTRUCT(ftableTup);
+		Oid	 servid = ftableForm->ftserver;
+		fs = GetForeignServer(servid);
+
+		if (fs->ora_dblink_contype != 0 && !list_member_oid(srvOids, servid))
+			srvOids = lappend_oid(srvOids,servid);
+	}
+
+	/* we're done with pg_foreign_table */
+	systable_endscan(scan);
+	table_close(relation, AccessShareLock);
+
+	return srvOids;
+}

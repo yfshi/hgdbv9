@@ -20,6 +20,11 @@
 #include "utils/array.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+#include "utils/relcache.h"
+#include "storage/lockdefs.h"
+#include "nodes/parsenodes.h"
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /* avoid including subscripting.h here */
 struct SubscriptRoutines;
@@ -160,6 +165,7 @@ extern bool get_typbyval(Oid typid);
 extern void get_typlenbyval(Oid typid, int16 *typlen, bool *typbyval);
 extern void get_typlenbyvalalign(Oid typid, int16 *typlen, bool *typbyval,
 								 char *typalign);
+extern char *get_typename(Oid typid);	/* ReqID:SRS-SQL-DBLINK */
 extern Oid	getTypeIOParam(HeapTuple typeTuple);
 extern void get_type_io_data(Oid typid,
 							 IOFuncSelector which_func,
@@ -214,6 +220,9 @@ extern Oid	get_index_column_opclass(Oid index_oid, int attno);
 extern bool get_index_isreplident(Oid index_oid);
 extern bool get_index_isvalid(Oid index_oid);
 extern bool get_index_isclustered(Oid index_oid);
+/* Begin - ReqID:SRS-SQL-DBLINK */
+extern Relation get_rel_oid_from_relname(char *relname, LOCKMODE lockmode, AclMode aclmode);
+/* End - ReqID:SRS-SQL-DBLINK */
 
 #define type_is_array(typid)  (get_element_type(typid) != InvalidOid)
 /* type_is_array_domain accepts both plain arrays and domains over arrays */

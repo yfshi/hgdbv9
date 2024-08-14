@@ -103,4 +103,6 @@ extern void ProcArraySetFdwXactUnresolvedXmin(TransactionId xmin);
 
 extern int list_all_backend_gtt_frozenxids(int max_size, int *pids, uint32 *xids, int *n);
 
+extern void SendSignalToAllBackends(ProcSignalReason reason);	/* ReqID:SRS-SQL-DBLINK */
+
 #endif							/* PROCARRAY_H */

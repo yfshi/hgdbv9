@@ -713,6 +713,7 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 			break;
 		case RTE_COUNT:
 		case RTE_CTE:	/* ReqID:SRS-SQL-ROWNUM */
+		case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 
 			/*
 			 * CTE tuplestores aren't shared among parallel workers, so we

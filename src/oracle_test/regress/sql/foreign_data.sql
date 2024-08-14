@@ -26,31 +26,70 @@ COMMENT ON FOREIGN DATA WRAPPER dummy IS 'useless';
 CREATE FOREIGN DATA WRAPPER postgresql VALIDATOR postgresql_fdw_validator;
 
 -- At this point we should have 2 built-in wrappers and no servers.
-SELECT fdwname, fdwhandler::regproc, fdwvalidator::regproc, fdwoptions FROM pg_foreign_data_wrapper ORDER BY 1, 2, 3;
+SELECT fdwname, fdwhandler::regproc, fdwvalidator::regproc, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw' ORDER BY 1, 2, 3;
 SELECT srvname, srvoptions FROM pg_foreign_server;
 SELECT * FROM pg_user_mapping;
 
 -- CREATE FOREIGN DATA WRAPPER
 CREATE FOREIGN DATA WRAPPER foo VALIDATOR bar;            -- ERROR
 CREATE FOREIGN DATA WRAPPER foo;
-\dew
+--\dew
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 CREATE FOREIGN DATA WRAPPER foo; -- duplicate
 DROP FOREIGN DATA WRAPPER foo;
 CREATE FOREIGN DATA WRAPPER foo OPTIONS (testing '1');
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 DROP FOREIGN DATA WRAPPER foo;
 CREATE FOREIGN DATA WRAPPER foo OPTIONS (testing '1', testing '2');   -- ERROR
 CREATE FOREIGN DATA WRAPPER foo OPTIONS (testing '1', another '2');
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 DROP FOREIGN DATA WRAPPER foo;
 SET ROLE regress_test_role;
 CREATE FOREIGN DATA WRAPPER foo; -- ERROR
 RESET ROLE;
 CREATE FOREIGN DATA WRAPPER foo VALIDATOR postgresql_fdw_validator;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 -- HANDLER related checks
 CREATE FUNCTION invalid_fdw_handler() RETURNS int LANGUAGE SQL AS 'SELECT 1;';
@@ -64,26 +103,82 @@ DROP FOREIGN DATA WRAPPER test_fdw;
 ALTER FOREIGN DATA WRAPPER foo;                             -- ERROR
 ALTER FOREIGN DATA WRAPPER foo VALIDATOR bar;               -- ERROR
 ALTER FOREIGN DATA WRAPPER foo NO VALIDATOR;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (a '1', b '2');
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (SET c '4');         -- ERROR
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (DROP c);            -- ERROR
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (ADD x '1', DROP x);
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (DROP a, SET b '3', ADD c '4');
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (a '2');
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (b '4');             -- ERROR
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 SET ROLE regress_test_role;
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (ADD d '5');         -- ERROR
 SET ROLE regress_test_role_super;
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (ADD d '5');
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OWNER TO regress_test_role;  -- ERROR
 ALTER FOREIGN DATA WRAPPER foo OWNER TO regress_test_role_super;
@@ -91,10 +186,33 @@ ALTER ROLE regress_test_role_super NOSUPERUSER;
 SET ROLE regress_test_role_super;
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (ADD e '6');         -- ERROR
 RESET ROLE;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo RENAME TO foo1;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+
 ALTER FOREIGN DATA WRAPPER foo1 RENAME TO foo;
 
 -- HANDLER related checks
@@ -106,14 +224,36 @@ DROP FUNCTION invalid_fdw_handler();
 -- DROP FOREIGN DATA WRAPPER
 DROP FOREIGN DATA WRAPPER nonexistent;                      -- ERROR
 DROP FOREIGN DATA WRAPPER IF EXISTS nonexistent;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 DROP ROLE regress_test_role_super;                          -- ERROR
 SET ROLE regress_test_role_super;
 DROP FOREIGN DATA WRAPPER foo;
 RESET ROLE;
 DROP ROLE regress_test_role_super;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 
 CREATE FOREIGN DATA WRAPPER foo;
 CREATE SERVER s1 FOREIGN DATA WRAPPER foo;
@@ -121,7 +261,18 @@ COMMENT ON SERVER s1 IS 'foreign server';
 CREATE USER MAPPING FOR current_user SERVER s1;
 CREATE USER MAPPING FOR current_user SERVER s1;				-- ERROR
 CREATE USER MAPPING IF NOT EXISTS FOR current_user SERVER s1; -- NOTICE
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 \des+
 \deu+
 DROP FOREIGN DATA WRAPPER foo;                              -- ERROR
@@ -129,7 +280,18 @@ SET ROLE regress_test_role;
 DROP FOREIGN DATA WRAPPER foo CASCADE;                      -- ERROR
 RESET ROLE;
 DROP FOREIGN DATA WRAPPER foo CASCADE;
-\dew+
+--\dew+
+SELECT fdw.fdwname AS "Name",
+  pg_catalog.pg_get_userbyid(fdw.fdwowner) AS "Owner",
+  fdw.fdwhandler::pg_catalog.regproc AS "Handler",
+  fdw.fdwvalidator::pg_catalog.regproc AS "Validator",
+  pg_catalog.array_to_string(fdwacl, E'\n') AS "Access privileges",
+ CASE WHEN fdwoptions IS NULL THEN '' ELSE   '(' || pg_catalog.array_to_string(ARRAY(SELECT   pg_catalog.quote_ident(option_name) ||  ' ' ||   pg_catalog.quote_literal(option_value)  FROM   pg_catalog.pg_options_to_table(fdwoptions)),  ', ') || ')'   END AS "FDW options",
+  d.description AS "Description"
+FROM pg_catalog.pg_foreign_data_wrapper fdw
+LEFT JOIN pg_catalog.pg_description d
+       ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
+WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
 \des+
 \deu+
 
@@ -443,7 +605,7 @@ ALTER FOREIGN TABLE IF EXISTS doesnt_exist_ft1 RENAME TO foreign_table_1;
 
 -- Information schema
 
-SELECT * FROM information_schema.foreign_data_wrappers ORDER BY 1, 2;
+SELECT * FROM information_schema.foreign_data_wrappers WHERE foreign_data_wrapper_name != 'postgres_fdw' ORDER BY 1, 2;
 SELECT * FROM information_schema.foreign_data_wrapper_options ORDER BY 1, 2, 3;
 SELECT * FROM information_schema.foreign_servers ORDER BY 1, 2;
 SELECT * FROM information_schema.foreign_server_options ORDER BY 1, 2, 3;
@@ -860,7 +1022,7 @@ DROP FOREIGN DATA WRAPPER dummy CASCADE;
 DROP ROLE regress_foreign_data_user;
 
 -- At this point we should have no wrappers, no servers, and no mappings.
-SELECT fdwname, fdwhandler, fdwvalidator, fdwoptions FROM pg_foreign_data_wrapper;
+SELECT fdwname, fdwhandler, fdwvalidator, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw';
 SELECT srvname, srvoptions FROM pg_foreign_server;
 SELECT * FROM pg_user_mapping;
 reset ivorysql.enable_emptystring_to_null;

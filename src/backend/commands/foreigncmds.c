@@ -13,6 +13,8 @@
  */
 #include "postgres.h"
 
+#include <unistd.h>
+
 #include "access/fdwxact.h"
 #include "access/fdwxact_launcher.h"
 #include "access/htup_details.h"
@@ -41,6 +43,7 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
+#include "nodes/makefuncs.h"	/* ReqID:SRS-SQL-DBLINK */
 
 typedef struct
 {
@@ -48,8 +51,15 @@ typedef struct
 	char	   *cmd;
 } import_error_callback_arg;
 
+
 /* Internal functions */
 static void import_error_callback(void *arg);
+
+static void parseDblinkConnectString(CreateForeignServerStmt *server, List *connstr);
+static int ivyParseServiceConf(const char *filename, const char *service_name, char **shost, char **sport, char **sdbname);
+#ifndef WIN32
+static const char* get_home_directory();
+#endif
 
 
 /*
@@ -914,6 +924,12 @@ CreateForeignServer(CreateForeignServerStmt *stmt)
 		DirectFunctionCall1(namein, CStringGetDatum(stmt->servername));
 	values[Anum_pg_foreign_server_srvowner - 1] = ObjectIdGetDatum(ownerId);
 	values[Anum_pg_foreign_server_srvfdw - 1] = ObjectIdGetDatum(fdw->fdwid);
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	values[Anum_pg_foreign_server_olnkispublic -1] = BoolGetDatum(stmt->is_public);
+	values[Anum_pg_foreign_server_olnkisshared -1] = BoolGetDatum(stmt->is_shared);
+	values[Anum_pg_foreign_server_olnksharedauth -1] = BoolGetDatum(false);
+	values[Anum_pg_foreign_server_olnkconntype -1] = Int8GetDatum(stmt->ora_dblink_contype);
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/* Add server type if supplied */
 	if (stmt->servertype)
@@ -942,6 +958,21 @@ CreateForeignServer(CreateForeignServerStmt *stmt)
 		values[Anum_pg_foreign_server_srvoptions - 1] = srvoptions;
 	else
 		nulls[Anum_pg_foreign_server_srvoptions - 1] = true;
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	/* Add olnkusingstring */
+	if (stmt->olnkusing)
+		values[Anum_pg_foreign_server_olnkusingstring - 1] =
+			CStringGetTextDatum(stmt->olnkusing);
+	else
+		nulls[Anum_pg_foreign_server_olnkusingstring - 1] = true;
+
+	if (stmt->service_name)
+		values[Anum_pg_foreign_server_olnksviname - 1] =
+			CStringGetTextDatum(stmt->service_name);
+	else
+		nulls[Anum_pg_foreign_server_olnksviname - 1] = true;
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	tuple = heap_form_tuple(rel->rd_att, values, nulls);
 
@@ -1071,6 +1102,57 @@ AlterForeignServer(AlterForeignServerStmt *stmt)
 	return address;
 }
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+void
+IvyUpdateLinkServerAuthen(char *servername)
+{
+	Relation	rel;
+	HeapTuple	tp;
+	Datum		repl_val[Natts_pg_foreign_server];
+	bool		repl_null[Natts_pg_foreign_server];
+	bool		repl_repl[Natts_pg_foreign_server];
+	Oid			srvId;
+	Form_pg_foreign_server srvForm;
+	bool		isnull;
+
+	rel = table_open(ForeignServerRelationId, RowExclusiveLock);
+	tp = SearchSysCacheCopy1(FOREIGNSERVERNAME,
+							 CStringGetDatum(servername));
+
+	if (!HeapTupleIsValid(tp))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("server \"%s\" does not exist", servername)));
+
+	srvForm = (Form_pg_foreign_server) GETSTRUCT(tp);
+	srvId = srvForm->oid;
+
+	memset(repl_val, 0, sizeof(repl_val));
+	memset(repl_null, false, sizeof(repl_null));
+	memset(repl_repl, false, sizeof(repl_repl));
+
+	/* Extract the current srvoptions */
+	SysCacheGetAttr(FOREIGNSERVEROID,
+							tp,
+							Anum_pg_foreign_server_olnksharedauth,
+							&isnull);
+
+	repl_val[Anum_pg_foreign_server_olnksharedauth - 1] = BoolGetDatum(true);
+	repl_null[Anum_pg_foreign_server_olnksharedauth - 1] = false;
+	repl_repl[Anum_pg_foreign_server_olnksharedauth - 1] = true;
+
+	/* Everything looks good - update the tuple */
+	tp = heap_modify_tuple(tp, RelationGetDescr(rel),
+						   repl_val, repl_null, repl_repl);
+
+	CatalogTupleUpdate(rel, &tp->t_self, tp);
+	InvokeObjectPostAlterHook(ForeignServerRelationId, srvId, 0);
+	heap_freetuple(tp);
+
+	table_close(rel, RowExclusiveLock);
+}
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*
  * Drop foreign server
  */
@@ -1079,6 +1161,7 @@ RemoveForeignServer(DropForeignServerStmt *stmt)
 {
 	Oid serverid;
 	ObjectAddress object;
+	ForeignServer * server = NULL;	/* ReqID:SRS-SQL-DBLINK */
 
 	serverid = GetSysCacheOid1(FOREIGNSERVERNAME, Anum_pg_foreign_server_oid,
 							   CStringGetDatum(stmt->servername));
@@ -1096,12 +1179,17 @@ RemoveForeignServer(DropForeignServerStmt *stmt)
 		return InvalidOid;
 	}
 
-	/*
-	 * Only owner or a superuser can ALTER a SERVER.
-	 */
-	if (!pg_foreign_server_ownercheck(serverid, GetUserId()))
-		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_FOREIGN_SERVER,
-					   stmt->servername);
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	server = GetForeignServer(serverid);
+	if (!server->ora_dblink_ispublic)
+	{
+		/*
+		 * Only owner or a superuser can ALTER a SERVER.
+		 */
+		if (!pg_foreign_server_ownercheck(serverid, GetUserId()))
+			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_FOREIGN_SERVER, stmt->servername);
+	}
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/* Do the deletion */
 	object.classId = ForeignServerRelationId;
@@ -1513,9 +1601,15 @@ CreateForeignTable(CreateForeignTableStmt *stmt, Oid relid)
 	 * get the actual FDW for option validation etc.
 	 */
 	server = GetForeignServerByName(stmt->servername, false);
-	aclresult = pg_foreign_server_aclcheck(server->serverid, ownerId, ACL_USAGE);
-	if (aclresult != ACLCHECK_OK)
-		aclcheck_error(aclresult, OBJECT_FOREIGN_SERVER, server->servername);
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (!server->ora_dblink_ispublic)
+	{
+		aclresult = pg_foreign_server_aclcheck(server->serverid, ownerId, ACL_USAGE);
+		if (aclresult != ACLCHECK_OK)
+			aclcheck_error(aclresult, OBJECT_FOREIGN_SERVER, server->servername);
+	}
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	fdw = GetForeignDataWrapper(server->fdwid);
 
@@ -1695,3 +1789,540 @@ import_error_callback(void *arg)
 		errcontext("importing foreign table \"%s\"",
 				   callback_arg->tablename);
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ * CreateDatabaseLink
+ *	handle the CREATE DATABASE LINK statement
+ */
+void
+CreateDatabaseLink(CreateDatabaseLinkStmt *stmt)
+{
+	ListCell	*lc;
+
+	foreach(lc, stmt->elems)
+	{
+		Node *elem = (Node *) lfirst(lc);
+
+		switch (nodeTag(elem))
+		{
+		case T_CreateForeignServerStmt:
+			{
+				CreateForeignServerStmt *s = (CreateForeignServerStmt *) elem;
+
+				if (!s->fdwname)
+				{
+					if (strcmp(default_dblink_fdw, "postgres_fdw") == 0)
+					{
+						s->fdwname = psprintf("%s","postgres_fdw");
+						s->servertype = psprintf("%s", "postgres");
+					}
+					else if (strcmp(default_dblink_fdw, "oracle_fdw") == 0)
+					{
+						s->fdwname = psprintf("%s","oracle_fdw");
+						s->servertype = psprintf("%s", "oracle");
+					}
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_FDW_NO_SCHEMAS),
+								 errmsg("invalid ivorysql.default_dblink_fdw \"%s\" only support postgres_fdw or oracle_fdw in currently.",
+									 default_dblink_fdw)));
+				}
+
+				parseDblinkConnectString(s, stmt->conn_string);
+
+				(void)CreateForeignServer(s);
+
+				CommandCounterIncrement();
+			}
+			break;
+		case T_CreateUserMappingStmt:
+			{
+				CreateUserMappingStmt *u = (CreateUserMappingStmt *) elem;
+
+				(void)CreateUserMapping(u);
+			}
+			break;
+		default:
+			ereport(ERROR,
+					(errmsg("no such element: %d", nodeTag(elem))));
+		}
+	}
+}
+
+/*
+ * Alter Database Link
+ */
+ObjectAddress
+AlterDatabaseLink(AlterDatabaseLinkStmt *stmt)
+{
+	Relation	rel;
+	HeapTuple	tp;
+	Datum		repl_val[Natts_pg_user_mapping];
+	bool		repl_null[Natts_pg_user_mapping];
+	bool		repl_repl[Natts_pg_user_mapping];
+	Oid			useId;
+	Oid			umId;
+	ForeignServer *srv;
+	ObjectAddress address;
+	RoleSpec   *role = (RoleSpec *) stmt->user;
+
+	rel = table_open(UserMappingRelationId, RowExclusiveLock);
+
+	if (role->roletype == ROLESPEC_PUBLIC)
+		useId = ACL_ID_PUBLIC;
+	else
+		useId = get_rolespec_oid(stmt->user, false);
+
+	srv = GetForeignServerByName(stmt->servername, false);
+
+	if (srv->ora_dblink_contype != 0)
+	{
+		if (srv->ora_dblink_contype != ORA_DBLINK_FIXED_USER)
+			elog(ERROR, "ALTER DATABASE LINK only modify a fixed-user database link.");
+	}
+	else
+		elog(ERROR, "server \"%s\" is not a compatible oracle dblink server", stmt->servername);
+
+	if (stmt->is_public)
+	{
+		if (!srv->ora_dblink_ispublic)
+			elog(ERROR, "database link \"%s\" not found", stmt->servername);
+	}
+	else
+	{
+		if (srv->ora_dblink_ispublic)
+			elog(ERROR, "database link \"%s\" not found", stmt->servername);
+	}
+
+
+	umId = GetSysCacheOid2(USERMAPPINGUSERSERVER, Anum_pg_user_mapping_oid,
+						   ObjectIdGetDatum(useId),
+						   ObjectIdGetDatum(srv->serverid));
+	if (!OidIsValid(umId))
+		elog(ERROR, "database link \"%s\" not found", stmt->servername);
+
+	if (!stmt->is_public)
+		user_mapping_ddl_aclcheck(useId, srv->serverid, stmt->servername);
+
+	tp = SearchSysCacheCopy1(USERMAPPINGOID, ObjectIdGetDatum(umId));
+
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, "cache lookup failed for user mapping %u", umId);
+
+	memset(repl_val, 0, sizeof(repl_val));
+	memset(repl_null, false, sizeof(repl_null));
+	memset(repl_repl, false, sizeof(repl_repl));
+
+	if (stmt->options)
+	{
+		ForeignDataWrapper *fdw;
+		Datum		datum;
+		bool		isnull;
+
+		/*
+		 * Process the options.
+		 */
+
+		fdw = GetForeignDataWrapper(srv->fdwid);
+
+		datum = SysCacheGetAttr(USERMAPPINGUSERSERVER,
+								tp,
+								Anum_pg_user_mapping_umoptions,
+								&isnull);
+		if (isnull)
+			datum = PointerGetDatum(NULL);
+
+		/* Prepare the options array */
+		datum = transformGenericOptions(UserMappingRelationId,
+										datum,
+										stmt->options,
+										fdw->fdwvalidator);
+
+		if (PointerIsValid(DatumGetPointer(datum)))
+			repl_val[Anum_pg_user_mapping_umoptions - 1] = datum;
+		else
+			repl_null[Anum_pg_user_mapping_umoptions - 1] = true;
+
+		repl_repl[Anum_pg_user_mapping_umoptions - 1] = true;
+	}
+
+	/* Everything looks good - update the tuple */
+	tp = heap_modify_tuple(tp, RelationGetDescr(rel),
+						   repl_val, repl_null, repl_repl);
+
+	CatalogTupleUpdate(rel, &tp->t_self, tp);
+
+	InvokeObjectPostAlterHook(UserMappingRelationId,
+							  umId, 0);
+
+	ObjectAddressSet(address, UserMappingRelationId, umId);
+
+	heap_freetuple(tp);
+
+	table_close(rel, RowExclusiveLock);
+
+	return address;
+}
+
+void
+AlterSessionCloseDblink(AlterSessionCloseDblinkStmt *stmt)
+{
+	ForeignServer *srv = NULL;
+	ForeignDataWrapper *fdw;
+	FdwRoutine *fdw_routine;
+
+	srv = GetForeignServerByName(stmt->linkname, true);
+	if (!srv)
+		elog(ERROR, "database link is not open");
+
+	if (srv->ora_dblink_contype == 0)
+		elog(ERROR, "server \"%s\" is not a compatible oracle dblink server", stmt->linkname);
+
+	fdw = GetForeignDataWrapper(srv->fdwid);
+	fdw_routine = GetFdwRoutine(fdw->fdwhandler);
+
+	fdw_routine->DblinkAlterSessionCloseLink(stmt->linkname);
+}
+
+void
+get_usermapping_name(List *options, char **user)
+{
+	ListCell *cell;
+
+	foreach(cell, options)
+	{
+		DefElem *def = (DefElem *) lfirst(cell);
+		if (strcmp(def->defname, "user") == 0)
+		{
+			*user = psprintf("%s", (strVal(def->arg)));
+			break;
+		}
+	}
+}
+
+static void
+move_spaces_and_newlines(char *ostring, char **newstring)
+{
+	int i, j = 0;
+	StringInfoData buf;
+
+	initStringInfo(&buf);
+
+	for (i = 0; i < strlen(ostring); i++)
+	{
+		if (ostring[i] != ' ' && ostring[i] != '\n')
+		{
+			buf.data[j] = ostring[i];
+			j++;
+		}
+	}
+
+	buf.data[j] = '\0';
+
+	*newstring = buf.data;
+}
+
+static void
+extractDblinkConnectString(char *con, char **shost, char **sport, char **sdbname)
+{
+	char	*hostStart = NULL;
+	char	*hostEnd = NULL;
+	char	*portStart = NULL;
+	char 	*portEnd = NULL;
+	char	*serviceStart = NULL;
+	char	*serviceEnd = NULL;
+
+	StringInfoData host;
+	StringInfoData port;
+	StringInfoData dbname;
+
+	/* find the HOST */
+	hostStart = strstr(con, "host=");
+	if (hostStart)
+		hostEnd = strchr(hostStart, ')');
+	if (hostStart && hostEnd)
+	{
+		initStringInfo(&host);
+
+		strncpy(host.data, hostStart + 5, hostEnd - hostStart - 5);
+		host.data[hostEnd - hostStart - 5] = '\0';
+		*shost = host.data;
+	}
+
+	/* Find the PORT */
+	portStart = strstr(con, "port=");
+	if (portStart)
+		portEnd = strchr(portStart, ')');
+	if (portStart && portEnd)
+	{
+		initStringInfo(&port);
+
+		strncpy(port.data, portStart + 5, portEnd - portStart - 5);
+		port.data[portEnd - portStart - 5] = '\0';
+		*sport = port.data;
+	}
+
+	/* Find the SERVICE_NAME */
+	serviceStart = strstr(con, "service_name=");
+	if (serviceStart)
+		serviceEnd = strchr(serviceStart, ')');
+	if (serviceStart && serviceEnd)
+	{
+		initStringInfo(&dbname);
+		strncpy(dbname.data, serviceStart + 13, serviceEnd - serviceStart - 13);
+		dbname.data[serviceEnd - serviceStart - 13] = '\0';
+		*sdbname = dbname.data;
+	}
+
+}
+
+static int
+ivyParseServiceConf(const char *filename, const char *service_name, char **shost, char **sport, char **sdbname)
+{
+	char 	line[256];
+	char 	current_service_name[64] = {0};
+	int 	service_found = 0;
+	char	*start;
+	char	*end;
+	StringInfoData host;
+	StringInfoData port;
+	StringInfoData dbname;
+
+	FILE *file = fopen(filename, "r");
+
+	if (file == NULL)
+		return -1;
+
+	while (fgets(line, sizeof(line), file))
+	{
+		/* Trim leading and trailing whitespace */
+		start = line;
+
+		while (*start == ' ' || *start == '\t')
+			start++;
+
+		end = start + strlen(start) - 1;
+
+		while (end > start && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r'))
+			end--;
+
+		*(end + 1) = '\0';
+
+		if (start[0] == '[' && end[0] == ']')
+		{
+			if (service_found)
+				break;
+
+			strncpy(current_service_name, start + 1, end - start - 1);
+			current_service_name[end - start - 1] = '\0';
+			service_found = (strcmp(current_service_name, service_name) == 0);
+		}
+		else if (service_found)
+		{
+			if (strstr(start, "host=") == start)
+			{
+				initStringInfo(&host);
+				strncpy(host.data, start + 5, end - start - 4);
+				host.data[end - start - 4] = '\0';
+				*shost = host.data;
+			}
+			else if (strstr(start, "port=") == start)
+			{
+				initStringInfo(&port);
+				strncpy(port.data, start + 5, end - start - 4);
+				port.data[end - start - 4] = '\0';
+				*sport = port.data;
+			}
+			else if (strstr(start, "dbname=") == start)
+			{
+				initStringInfo(&dbname);
+				strncpy(dbname.data, start + 7, end - start - 6);
+				dbname.data[end - start - 6] = '\0';
+				*sdbname = dbname.data;
+			}
+		}
+	}
+
+	fclose(file);
+	return service_found ? 0 : -1;
+}
+
+#ifndef WIN32
+static const char *
+get_home_directory()
+{
+	struct passwd *pw = getpwuid(getuid());
+	if (pw == NULL)
+		return NULL;
+
+	return pw->pw_dir;
+}
+#endif
+
+static void
+parseDblinkConnectString(CreateForeignServerStmt *server, List *connstr)
+{
+	char	   *connstring = NULL;
+	char 	   *tmp = NULL;
+	char	   *host = NULL;
+	char	   *port = NULL;
+	char	   *dbname = NULL;
+	int			fdw_type = 0;
+	bool		is_service_name = true;
+
+	Node	   *cstr = (Node *) linitial(connstr);
+
+	if (!IsA(cstr, A_Const) && !IsA(&((A_Const *)cstr)->val, String))
+		elog(ERROR, "invalid DBLINK connect string");
+
+	connstring = ((A_Const *)cstr)->val.val.str;
+	move_spaces_and_newlines(down_character(connstring, strlen(connstring)), &tmp);
+
+	if (tmp[0] == '(' && strstr(down_character(connstring, strlen(connstring)), "port") &&
+		strstr(down_character(connstring, strlen(connstring)), "service_name"))
+		is_service_name = false;
+
+	/* get the fdw name */
+	if (strcmp(server->fdwname, "postgres_fdw") == 0)
+		fdw_type = PG_FDW;
+	else if (strcmp(server->fdwname, "oracle_fdw") == 0)
+		fdw_type = ORA_FDW;
+
+	if (is_service_name)
+	{
+		char		servicefilename[MAXPGPATH];
+
+ #ifdef WIN32
+ #define SYSCONFDIR "/etc"
+		snprintf(servicefilename, MAXPGPATH, "%s/pg_service.conf",
+				 getenv("PGSYSCONFDIR") ? getenv("PGSYSCONFDIR") : SYSCONFDIR);
+ #else
+		const char *homedir = get_home_directory();
+
+		if (homedir != NULL)
+			snprintf(servicefilename, MAXPGPATH, "%s/%s", homedir, ".pg_service.conf");
+		else
+			elog(ERROR, "get home directory error");
+#endif
+
+		if (ivyParseServiceConf(servicefilename, tmp, &host, &port, &dbname) == 0)
+		{
+			server->service_name = dbname;
+
+			if (fdw_type == PG_FDW)
+			{
+				server->options = lappend(server->options, (void *)makeDefElem("host",
+											(Node *)list_make1(makeString(host)), -1));
+				server->options = lappend(server->options, (void *)makeDefElem("port",
+											(Node *)list_make1(makeString(port)), -1));
+				server->options = lappend(server->options, (void *)makeDefElem("dbname",
+											(Node *)list_make1(makeString(dbname)), -1));
+			}
+			else if (fdw_type == ORA_FDW)
+			{
+				char	*ora_constring = psprintf("//%s:%s/%s", host, port, dbname);
+				server->options = lappend(server->options, makeDefElem("dbserver", (Node *)list_make1(makeString(ora_constring)), -1));
+			}
+		}
+		else
+		{
+			if (fdw_type == PG_FDW)
+			{
+				server->options = lappend(server->options, (void *)makeDefElem("host",
+											(Node *)list_make1(makeString("xxxx")), -1));
+				server->options = lappend(server->options, (void *)makeDefElem("port",
+											(Node *)list_make1(makeString("1521")), -1));
+				server->options = lappend(server->options, (void *)makeDefElem("dbname",
+											(Node *)list_make1(makeString("xxxx")), -1));
+			}
+			else if (fdw_type == ORA_FDW)
+			{
+				char	*ora_constring = psprintf("//%s:%s/%s", "xxxx", "1521", "xxxx");
+				server->options = lappend(server->options, makeDefElem("dbserver", (Node *)list_make1(makeString(ora_constring)), -1));
+			}
+		}
+	}
+	else
+	{
+		extractDblinkConnectString(down_character(tmp, strlen(tmp)), &host, &port, &dbname);
+
+		if (dbname)
+			server->service_name = dbname;
+
+		if (fdw_type == PG_FDW)
+		{
+			if (host)
+				server->options = lappend(server->options, (void *)makeDefElem("host", (Node *)list_make1(makeString(host)), -1));
+			if (port)
+				server->options = lappend(server->options, (void *)makeDefElem("port", (Node *)list_make1(makeString(port)), -1));
+			if (dbname)
+				server->options = lappend(server->options, (void *)makeDefElem("dbname", (Node *)list_make1(makeString(dbname)), -1));
+
+		}
+		else if (fdw_type == ORA_FDW)
+		{
+			if (host && port && dbname)
+			{
+				char	*ora_constring = psprintf("//%s:%s/%s", host, port, dbname);
+				server->options = lappend(server->options, makeDefElem("dbserver", (Node *)list_make1(makeString(ora_constring)), -1));
+			}
+			else
+				elog(ERROR, "invalid connection string for oracle_fdw");
+		}
+	}
+}
+
+char *
+buildCreateForeignTablequeryString(List *tupattrs, char *fname, char *relname,
+				char *srvname, char *relnspname, int fdw_type)
+{
+
+	StringInfoData	buf;
+	ListCell		*att;
+	char			*format_type;
+	int 			i;
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf, "CREATE FOREIGN TABLE %s \n(", fname);
+
+	i = 1;
+	foreach(att, tupattrs)
+	{
+		TupdescNatts	*tp = lfirst(att);
+
+		format_type = format_type_extended(tp->coltypid, tp->coltypmod, FORMAT_TYPE_TYPEMOD_GIVEN);
+
+		appendStringInfo(&buf, " %s %s", tp->colname, format_type);
+
+		if (i < list_length(tupattrs))
+			appendStringInfoString(&buf, ",\n");
+
+		i++;
+	}
+
+	appendStringInfo(&buf, "\n)\n SERVER %s OPTIONS (", srvname);
+
+	if (fdw_type == ORA_FDW)
+	{
+		appendStringInfoString(&buf, "schema ");
+		appendStringInfo(&buf, "'%s'", relnspname);
+		appendStringInfoString(&buf, ", table ");
+		appendStringInfo(&buf, "'%s'", upper_character(relname, strlen(relname)));
+	}
+	else if (fdw_type == PG_FDW)
+	{
+		appendStringInfoString(&buf, "schema_name ");
+		appendStringInfo(&buf, "'%s'", relnspname);
+		appendStringInfoString(&buf, ", table_name ");
+		appendStringInfo(&buf, "'%s'", relname);
+	}
+	else
+		elog(ERROR,
+			 "Only postgres_fdw or oracle_fdw are supported currently");
+
+	appendStringInfoString(&buf, ");");
+
+	return buf.data;
+}
+/* End - ReqID:SRS-SQL-DBLINK */

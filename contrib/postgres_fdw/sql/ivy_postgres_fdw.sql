@@ -2,7 +2,7 @@
 -- create FDW objects
 -- ===================================================================
 
-CREATE EXTENSION postgres_fdw;
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 SET ivorysql.identifier_case_switch = normal;
 \set EXECUTE_RUN_PREPARE on
 

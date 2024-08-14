@@ -654,6 +654,21 @@ _readPseudoColVar(void)
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static TupdescNatts*
+_readTupdescNatts()
+{
+	READ_LOCALS(TupdescNatts);
+
+	READ_STRING_FIELD(colname);
+	READ_OID_FIELD(coltypid);
+	READ_INT_FIELD(coltypmod);
+
+	READ_DONE();
+
+}
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*
  * _readConst
  */
@@ -1523,6 +1538,16 @@ _readRangeTblEntry(void)
 			READ_INT_FIELD(rellockmode);
 			READ_NODE_FIELD(tablesample);
 			break;
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case RTE_DBLINK:
+			READ_OID_FIELD(relid);
+			READ_INT_FIELD(rellockmode);
+			READ_OID_FIELD(serverOid);
+			READ_NODE_FIELD(linkrelattrs);
+			READ_STRING_FIELD(linkrelname);
+			READ_STRING_FIELD(linkrelnsname);
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case RTE_SUBQUERY:
 			READ_NODE_FIELD(subquery);
 			READ_BOOL_FIELD(security_barrier);
@@ -3124,6 +3149,10 @@ parseNodeString(void)
 	else if (MATCH("PSEUDOCOLVAR", 12))
 		return_value = _readPseudoColVar();
 	/* End - ReqID:SRS-SQL-ROWNUM */
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	else if (MATCH("TUPDESCNATTS", 12))
+		return_value = _readTupdescNatts();
+	/* End - ReqID:SRS-SQL-DBLINK */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

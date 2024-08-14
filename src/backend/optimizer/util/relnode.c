@@ -333,6 +333,10 @@ build_simple_rel(PlannerInfo *root, int relid, RelOptInfo *parent)
 			rel->attr_needed = NULL;
 			rel->attr_widths = NULL;
 			break;
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case RTE_DBLINK:
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		default:
 			elog(ERROR, "unrecognized RTE kind: %d",
 				 (int) rte->rtekind);

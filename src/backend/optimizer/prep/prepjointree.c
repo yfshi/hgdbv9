@@ -1209,6 +1209,7 @@ pull_up_simple_subquery(PlannerInfo *root, Node *jtnode, RangeTblEntry *rte,
 				case RTE_NAMEDTUPLESTORE:
 				case RTE_RESULT:
 				case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
+				case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 					/* these can't contain any lateral references */
 					break;
 			}
@@ -2273,6 +2274,7 @@ replace_vars_in_jointree(Node *jtnode,
 					case RTE_NAMEDTUPLESTORE:
 					case RTE_RESULT:
 					case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
+					case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 						/* these shouldn't be marked LATERAL */
 						Assert(false);
 						break;

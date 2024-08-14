@@ -1885,7 +1885,19 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 Oid
 AlterDatabaseSet(AlterDatabaseSetStmt *stmt)
 {
-	Oid			datid = get_database_oid(stmt->dbname, false);
+	Oid			datid = InvalidOid;
+	char		*set_valuestr = NULL;
+	bool		is_global_names = false;
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (strcmp(stmt->setstmt->name, "global_names") == 0)
+	{
+		is_global_names = true;
+		set_valuestr = ExtractSetVariableArgs(stmt->setstmt);
+		datid = MyDatabaseId;
+	}
+	else
+		datid = get_database_oid(stmt->dbname, false);
 
 	/*
 	 * Obtain a lock on the database and make sure it didn't go away in the
@@ -1900,6 +1912,25 @@ AlterDatabaseSet(AlterDatabaseSetStmt *stmt)
 	AlterSetting(datid, InvalidOid, stmt->setstmt);
 
 	UnlockSharedObject(DatabaseRelationId, datid, 0, AccessShareLock);
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (is_global_names)
+	{
+		bool	op_value = false;
+
+		if (strcmp(set_valuestr, "true") == 0 || strcmp(set_valuestr, "on") == 0 || strcmp(set_valuestr, "1") == 0)
+			op_value = true;
+		else if (strcmp(set_valuestr, "false") == 0 || strcmp(set_valuestr, "off") == 0 || strcmp(set_valuestr, "0") == 0)
+			op_value = false;
+
+		LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
+		ProcGlobal->ivy_global_names_guc = op_value;
+		LWLockRelease(ProcArrayLock);
+
+		/* Send the PROCSIG_RELOAD_DB_GUC signal to all opened backendId */
+		SendSignalToAllBackends(PROCSIG_RELOAD_DB_GUC);
+	}
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	return datid;
 }
@@ -2618,3 +2649,30 @@ dbase_redo(XLogReaderState *record)
 	else
 		elog(PANIC, "dbase_redo: unknown op code %u", info);
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ * HandleUpdateOraGlobalNamesSignal
+ *
+ *	Recive function for PROCSIG_RELOAD_DB_GUC signal.
+ */
+void
+HandleReloadDBGucSignal(void)
+{
+	char 	*newvalue = NULL;
+	bool	is_change ;
+
+	/* Acquire lock before reading shared memory */
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	is_change = ProcGlobal->ivy_global_names_guc;
+	LWLockRelease(ProcArrayLock);
+
+	if (is_change)
+		newvalue = psprintf("%s", "on");
+	else
+		newvalue = psprintf("%s", "off");
+
+	/* Update local  value */
+	SetConfigOption("global_names", newvalue, PGC_SUSET, PGC_S_SESSION);
+}
+/* Begin - ReqID:SRS-SQL-DBLINK */

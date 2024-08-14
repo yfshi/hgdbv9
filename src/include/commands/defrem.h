@@ -150,6 +150,10 @@ extern Datum transformGenericOptions(Oid catalogId,
 									 List *options,
 									 Oid fdwvalidator);
 
+extern void CreateDatabaseLink(CreateDatabaseLinkStmt *stmt);
+extern ObjectAddress AlterDatabaseLink(AlterDatabaseLinkStmt *stmt);
+extern void AlterSessionCloseDblink(AlterSessionCloseDblinkStmt *stmt);
+
 /* commands/amcmds.c */
 extern ObjectAddress CreateAccessMethod(CreateAmStmt *stmt);
 extern Oid	get_index_am_oid(const char *amname, bool missing_ok);

@@ -8614,6 +8614,7 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	char	   *name;
 	char	   *value;
 	bool		resetall = false;
+	bool		skip_dblevel_check = false;
 	ConfigVariable *head = NULL;
 	ConfigVariable *tail = NULL;
 	volatile int Tmpfd;
@@ -8621,10 +8622,21 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	char		AutoConfTmpFileName[MAXPGPATH];
 
 	/*
+	 * Extract statement arguments
+	 */
+	name = altersysstmt->setstmt->name;
+
+	if (DB_ORACLE == database_mode)
+	{
+		if (strcmp(name, "open_links") == 0)
+			skip_dblevel_check = true;
+	}
+
+	/*
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Determine the type of user 
 	 */
-	if(!isinstancelevel())
+	if(!skip_dblevel_check && !isinstancelevel())
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("database-level user cann't execute ALTER SYSTEM command")));
@@ -8637,10 +8649,6 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to execute ALTER SYSTEM command")));
 
-	/*
-	 * Extract statement arguments
-	 */
-	name = altersysstmt->setstmt->name;
 
 	switch (altersysstmt->setstmt->kind)
 	{

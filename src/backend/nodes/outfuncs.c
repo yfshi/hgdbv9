@@ -3372,6 +3372,16 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 			WRITE_INT_FIELD(rellockmode);
 			WRITE_NODE_FIELD(tablesample);
 			break;
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case RTE_DBLINK:
+			WRITE_OID_FIELD(relid);
+			WRITE_INT_FIELD(rellockmode);
+			WRITE_OID_FIELD(serverOid);
+			WRITE_NODE_FIELD(linkrelattrs);
+			WRITE_STRING_FIELD(linkrelname);
+			WRITE_STRING_FIELD(linkrelnsname);
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case RTE_SUBQUERY:
 			WRITE_NODE_FIELD(subquery);
 			WRITE_BOOL_FIELD(security_barrier);
@@ -3594,6 +3604,17 @@ _outPseudoColumnRef(StringInfo str, const PseudoColumnRef *node)
 	WRITE_INT_FIELD(location);
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
+
+static void
+_outTupdescNatts(StringInfo str, const TupdescNatts *node)
+{
+	WRITE_NODE_TYPE("TUPDESCNATTS");
+
+	WRITE_STRING_FIELD(colname);
+	WRITE_OID_FIELD(coltypid);
+	WRITE_INT_FIELD(coltypmod);
+}
+
 
 static void
 _outParamRef(StringInfo str, const ParamRef *node)
@@ -4558,6 +4579,9 @@ outNode(StringInfo str, const void *obj)
 				_outPseudoColumnRef(str, obj);
 				break;
 			/* End - ReqID:SRS-SQL-ROWNUM */
+			case T_TupdescNatts:
+				_outTupdescNatts(str, obj);
+				break;
 			case T_TypeName:
 				_outTypeName(str, obj);
 				break;

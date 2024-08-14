@@ -302,6 +302,9 @@ static void load_hg_misc(FILE *cmdfd);
 /* Begin - ReqID:SRS-SQL-Object */
 static void load_ivorysql_base(FILE *cmdfd);
 /* End - ReqID:SRS-SQL-Object */
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void load_postgres_fdw(FILE *cmdfd);
+/* End - ReqID:SRS-SQL-DBLINK */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -2110,6 +2113,14 @@ load_hg_misc(FILE *cmdfd)
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void
+load_postgres_fdw(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION postgres_fdw WITH SCHEMA public;\n\n");
+}
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*
  * clean everything up in template1
  */
@@ -3194,26 +3205,29 @@ initialize_data_directory(void)
 	load_gb18030_2022(cmdfd);	/* Bug#M0000342 , load gb18030_2022 at all times */
 	/* END - SRS-MISC-GB18030*/
 	load_plpgsql(cmdfd);
-/* Begin - ReqID:SRS-MISC-LICENSE */
+	/* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 	load_hg_misc(cmdfd);
 #endif
-/* End - ReqID:SRS-MISC-LICENSE */
+	/* End - ReqID:SRS-MISC-LICENSE */
 
-/* Begin - ReqID:SRS-SQL-Object */
+	/* Begin - ReqID:SRS-SQL-Object */
 	load_ivorysql_base(cmdfd);
-/* END - ReqID:SRS-SQL-Object */
+	/* END - ReqID:SRS-SQL-Object */
 
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	load_postgres_fdw(cmdfd);
+	/* End - ReqID:SRS-SQL-DBLINK */
 
-/* BEGIN - SQL PARSER */
-  /* load oracle compatible objects and plisql language */
+	/* BEGIN - SQL PARSER */
+	/* load oracle compatible objects and plisql language */
 	if (database_mode == DB_ORACLE)
 	{
 		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 	}
-/* END - SQL PARSER */
+	/* END - SQL PARSER */
 
 	vacuum_db(cmdfd);
 

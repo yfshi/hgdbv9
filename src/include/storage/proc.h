@@ -373,6 +373,8 @@ typedef struct PROC_HDR
 	int			startupProcPid;
 	/* Buffer id of the buffer that Startup process waits for pin on, or -1 */
 	int			startupBufferPinWaitBufId;
+
+	bool		ivy_global_names_guc; /* ReqID:SRS-SQL-DBLINK */
 } PROC_HDR;
 
 extern PGDLLIMPORT PROC_HDR *ProcGlobal;

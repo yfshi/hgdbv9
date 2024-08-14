@@ -2,7 +2,7 @@
 -- create FDW objects
 -- ===================================================================
 
-CREATE EXTENSION postgres_fdw;
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 
 CREATE SERVER testserver1 FOREIGN DATA WRAPPER postgres_fdw;
 DO $d$

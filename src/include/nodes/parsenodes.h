@@ -277,6 +277,16 @@ typedef struct PseudoColumnRef
 } PseudoColumnRef;
 /* End - ReqID:SRS-SQL-ROWNUM */
 
+typedef struct TupdescNatts
+{
+	NodeTag		type;
+	char  		*colname;
+	Oid 		coltypid;
+	int32		coltypmod;
+} TupdescNatts;
+
+
+
 /*
  * ParamRef - specifies a $n parameter reference
  */
@@ -1025,7 +1035,8 @@ typedef enum RTEKind
 	RTE_RESULT,					/* RTE represents an empty FROM clause; such
 								 * RTEs are added by the planner, they're not
 								 * present during parsing or rewriting */
-	RTE_COUNT	/* ReqID:SRS-SQL-ROWNUM */
+	RTE_COUNT,					/* ReqID:SRS-SQL-ROWNUM */
+	RTE_DBLINK
 } RTEKind;
 
 typedef struct RangeTblEntry
@@ -1173,6 +1184,16 @@ typedef struct RangeTblEntry
 	 */
 	char	   *enrname;		/* name of ephemeral named relation */
 	double		enrtuples;		/* estimated or actual from caller */
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	/*
+	 * Fields valid for DBLINK RTEs
+	 */
+	Oid			serverOid;
+	List	   *linkrelattrs;
+	char	   *linkrelname;
+	char	   *linkrelnsname;
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/*
 	 * Fields valid in all RTEs:
@@ -2534,7 +2555,12 @@ typedef struct CreateForeignServerStmt
 	char	   *version;		/* optional server version */
 	char	   *fdwname;		/* FDW name */
 	bool		if_not_exists;	/* just do nothing if it already exists? */
+	bool		is_public;
+	bool		is_shared;
+	int			ora_dblink_contype;
 	List	   *options;		/* generic options to server */
+	char	   *olnkusing;
+	char	   *service_name;
 } CreateForeignServerStmt;
 
 typedef struct AlterForeignServerStmt
@@ -2618,6 +2644,50 @@ typedef struct ImportForeignSchemaStmt
 	List	   *table_list;		/* List of RangeVar */
 	List	   *options;		/* list of options to pass to FDW */
 } ImportForeignSchemaStmt;
+
+
+typedef enum OraDBlinkUserType
+{
+	ORA_DBLINK_CONNECTED_USER = 1,
+	ORA_DBLINK_FIXED_USER,
+	ORA_DBLINK_CURRENT_USER
+} OraDBlinkUserType;
+
+typedef struct CreateDatabaseLinkStmt
+{
+	NodeTag		type;
+	List		*elems;
+	List		*conn_string;
+} CreateDatabaseLinkStmt;
+
+typedef struct DropDatabaseLinkStmt
+{
+	NodeTag		type;
+	char	   *linkname;		/* link name */
+	DropBehavior behavior;		/* RESTRICT or CASCADE behavior */
+	bool		is_public;
+} DropDatabaseLinkStmt;
+
+typedef struct AlterDatabaseLinkStmt
+{
+	NodeTag		type;
+	RoleSpec   *user;			/* user role */
+	char	   *servername;		/* server name */
+	List	   *options;		/* generic options to server */
+	bool		is_public;
+} AlterDatabaseLinkStmt;
+
+/*typedef struct AuthenticatedByStmt
+{
+	NodeTag		type;
+	List		*options;
+}*/
+
+typedef struct AlterSessionCloseDblinkStmt
+{
+	NodeTag		type;
+	char		*linkname;
+} AlterSessionCloseDblinkStmt;
 
 /*----------------------
  *		Create POLICY Statement

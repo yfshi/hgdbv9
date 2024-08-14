@@ -139,6 +139,7 @@ typedef struct PgFdwConnState
 extern int	set_transmission_modes(void);
 extern void reset_transmission_modes(int nestlevel);
 extern void process_pending_request(AsyncRequest *areq);
+extern PGconn *connect_pg_server(ForeignServer *server, UserMapping *user);
 
 /* in connection.c */
 extern PGconn *GetConnection(UserMapping *user, bool will_prep_stmt,
@@ -163,6 +164,13 @@ extern int	ExtractConnectionOptions(List *defelems,
 									 const char **values);
 extern List *ExtractExtensionList(const char *extensionsString,
 								  bool warnOnMissing);
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+extern int IvyExtractUserAuthOptions(List *defelems, const char **keywords,
+						 const char **values);
+extern PGconn *ivy_connect_pg_server(ForeignServer *server, UserMapping *user);
+extern bool ivy_disconnect_cached_connections(Oid serverid);
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /* in deparse.c */
 extern void classifyConditions(PlannerInfo *root,

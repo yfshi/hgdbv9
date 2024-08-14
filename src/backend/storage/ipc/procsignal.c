@@ -31,6 +31,7 @@
 #include "storage/sinval.h"
 #include "tcop/tcopprot.h"
 #include "utils/memutils.h"
+#include "commands/dbcommands.h"	/* ReqID:SRS-SQL-DBLINK */
 
 /*
  * The SIGUSR1 signal is multiplexed to support signaling multiple event
@@ -678,6 +679,11 @@ procsignal_sigusr1_handler(SIGNAL_ARGS)
 
 	if (CheckProcSignal(PROCSIG_RECOVERY_CONFLICT_BUFFERPIN))
 		RecoveryConflictInterrupt(PROCSIG_RECOVERY_CONFLICT_BUFFERPIN);
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (CheckProcSignal(PROCSIG_RELOAD_DB_GUC))
+		HandleReloadDBGucSignal();
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	SetLatch(MyLatch);
 

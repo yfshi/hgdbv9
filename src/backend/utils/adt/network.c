@@ -31,6 +31,23 @@
 #include "utils/lsyscache.h"
 #include "utils/sortsupport.h"
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+#ifdef WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
+#else
+#include <unistd.h>
+#include <ifaddrs.h>
+#include <sys/types.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <linux/if.h>
+#endif
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * An IPv4 netmask size is a value in the range of 0 - 32, which is
@@ -67,7 +84,11 @@ static List *match_network_subset(Node *leftop,
 								  Oid opfamily);
 static bool addressOK(unsigned char *a, int bits, int family);
 static inet *internal_inetpl(inet *ip, int64 addend);
-
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void get_host_name(char *hostname, size_t len);
+static void get_host_ipv4(StringInfo buf);
+static void get_host_ipv6(StringInfo buf);
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * Common INET/CIDR input routine
@@ -2148,3 +2169,259 @@ pg_get_connection_mode(PG_FUNCTION_ARGS)
 		PG_RETURN_DATUM(CStringGetTextDatum("Unknown"));
 }
 /* End - ReqID:LISTEN-MULTI-PORT */
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void
+get_host_name(char *hostname, size_t len)
+{
+	int result;
+#ifdef WIN32
+	WSADATA wsaData;
+	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (result != 0)
+	{
+		fprintf(stderr, "WSAStartup failed: %d\n", result);
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	result = gethostname(hostname, len);
+	if (result != 0)
+	{
+#ifdef WIN32
+		fprintf(stderr, "gethostname failed: %d\n", WSAGetLastError());
+		WSACleanup();
+#else
+		elog(ERROR, "Cannot get local hostname.");
+#endif
+	}
+
+#ifdef WIN32
+	WSACleanup();
+#endif
+}
+
+/*
+ *	get_host_ipv4
+ *		only get a host IPV4 address
+ */
+static void
+get_host_ipv4(StringInfo buf)
+{
+#ifdef WIN32
+	WSADATA wsaData;
+	int 	result;
+
+	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (result != 0)
+	{
+		fprintf(stderr, "WSAStartup failed: %d\n", result);
+		exit(EXIT_FAILURE);
+	}
+
+	PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+	ULONG outBufLen = 0;
+	ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+	ULONG family = AF_INET;
+
+	/* Make an initial call to GetAdaptersAddresses to get the size needed into the outBufLen variable */
+	if (GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen) == ERROR_BUFFER_OVERFLOW)
+	{
+		pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+	}
+
+	if (pAddresses == NULL)
+	{
+		fprintf(stderr, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct.\n");
+		WSACleanup();
+		return;
+	}
+
+	if (GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen) == NO_ERROR)
+	{
+		PIP_ADAPTER_ADDRESSES pCurrAddresses = pAddresses;
+		while (pCurrAddresses)
+		{
+			PIP_ADAPTER_UNICAST_ADDRESS pUnicast = pCurrAddresses->FirstUnicastAddress;
+			while (pUnicast != NULL)
+			{
+				if (pUnicast->Address.lpSockaddr->sa_family == AF_INET)
+				{
+					char ip[INET_ADDRSTRLEN];
+					struct sockaddr_in *sa_in = (struct sockaddr_in *)pUnicast->Address.lpSockaddr;
+
+					if (sa_in->sin_addr.S_un.S_addr != htonl(INADDR_LOOPBACK))
+					{
+						inet_ntop(AF_INET, &(sa_in->sin_addr), ip, INET_ADDRSTRLEN);
+						appendStringInfo(buf, "%s", ip);
+						if (pUnicast->Next)
+							appendStringInfo(buf, "%s", " ");
+					}
+				}
+				pUnicast = pUnicast->Next;
+			}
+			pCurrAddresses = pCurrAddresses->Next;
+		}
+	}
+	else
+		fprintf(stderr, "GetAdaptersAddresses failed.\n");
+
+	if (pAddresses)
+		free(pAddresses);
+
+	WSACleanup();
+#else
+	struct ifaddrs *interfaces, *temp;
+	char ip[INET_ADDRSTRLEN];
+
+	if (getifaddrs(&interfaces) == -1)
+	{
+		elog(ERROR, "getifaddrs error.");
+	}
+
+	temp = interfaces;
+	while (temp != NULL)
+	{
+		if (temp->ifa_addr && temp->ifa_addr->sa_family == AF_INET && !(temp->ifa_flags & IFF_LOOPBACK))
+		{
+			struct sockaddr_in *addr = (struct sockaddr_in *)temp->ifa_addr;
+			inet_ntop(AF_INET, &addr->sin_addr, ip, INET_ADDRSTRLEN);
+			appendStringInfo(buf, "%s", ip);
+
+			if (temp->ifa_next)
+				appendStringInfo(buf, "%s", " ");
+		}
+		temp = temp->ifa_next;
+	}
+
+	freeifaddrs(interfaces);
+#endif
+}
+
+
+/*
+ *	get_host_ipv6
+ *		only get a host IPV6 address
+ */
+static void
+get_host_ipv6(StringInfo buf)
+{
+#ifdef WIN32
+	WSADATA wsaData;
+	int 	result;
+
+	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (result != 0)
+	{
+		fprintf(stderr, "WSAStartup failed: %d\n", result);
+		exit(EXIT_FAILURE);
+	}
+
+	PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+	ULONG outBufLen = 0;
+	ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+	ULONG family = AF_INET6;
+
+	/* Make an initial call to GetAdaptersAddresses to get the size needed into the outBufLen variable */
+	if (GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen) == ERROR_BUFFER_OVERFLOW)
+	{
+		pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+	}
+
+	if (pAddresses == NULL)
+	{
+		fprintf(stderr, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct.\n");
+		WSACleanup();
+		return;
+	}
+
+	if (GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen) == NO_ERROR)
+	{
+		PIP_ADAPTER_ADDRESSES pCurrAddresses = pAddresses;
+		while (pCurrAddresses)
+		{
+			PIP_ADAPTER_UNICAST_ADDRESS pUnicast = pCurrAddresses->FirstUnicastAddress;
+			while (pUnicast != NULL)
+			{
+				if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6)
+				{
+					char ip[INET6_ADDRSTRLEN];
+
+					struct sockaddr_in6 *sa_in = (struct sockaddr_in6 *)pUnicast->Address.lpSockaddr;
+					if (!IN6_IS_ADDR_LOOPBACK(&sa_in->sin6_addr))
+					{
+						inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip, INET6_ADDRSTRLEN);
+						appendStringInfo(buf, "%s", ip);
+						if (pUnicast->Next)
+							appendStringInfo(buf, "%s", " ");
+					}
+				}
+				pUnicast = pUnicast->Next;
+			}
+			pCurrAddresses = pCurrAddresses->Next;
+		}
+	}
+	else
+		fprintf(stderr, "GetAdaptersAddresses failed.\n");
+
+	if (pAddresses)
+		free(pAddresses);
+
+	WSACleanup();
+#else
+	struct ifaddrs *interfaces, *temp;
+	char ip[INET6_ADDRSTRLEN];
+
+	if (getifaddrs(&interfaces) == -1)
+	{
+		elog(ERROR, "getifaddrs error.");
+	}
+
+	temp = interfaces;
+	while (temp != NULL)
+	{
+		if (temp->ifa_addr && temp->ifa_addr->sa_family == AF_INET6 && !(temp->ifa_flags & IFF_LOOPBACK))
+		{
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)temp->ifa_addr;
+			inet_ntop(AF_INET6, &addr->sin6_addr, ip, INET6_ADDRSTRLEN);
+			appendStringInfo(buf, "%s", ip);
+
+			if (temp->ifa_next)
+				appendStringInfo(buf, "%s", " ");
+		}
+		temp = temp->ifa_next;
+	}
+
+	freeifaddrs(interfaces);
+#endif
+}
+
+Datum
+ivy_get_host_name(PG_FUNCTION_ARGS)
+{
+	char	hostname[IVY_HOST_NAME_MAX];
+
+	get_host_name(hostname, sizeof(hostname));
+	PG_RETURN_DATUM(CStringGetTextDatum(hostname));
+}
+
+Datum
+ivy_get_host_ipv4(PG_FUNCTION_ARGS)
+{
+	StringInfoData buf;
+
+	initStringInfo(&buf);
+	get_host_ipv4(&buf);
+	PG_RETURN_DATUM(CStringGetTextDatum(buf.data));
+}
+
+Datum
+ivy_get_host_ipv6(PG_FUNCTION_ARGS)
+{
+	StringInfoData buf;
+
+	initStringInfo(&buf);
+	get_host_ipv6(&buf);
+	PG_RETURN_DATUM(CStringGetTextDatum(buf.data));
+}
+/* End - ReqID:SRS-SQL-DBLINK */

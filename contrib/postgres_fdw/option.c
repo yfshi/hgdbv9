@@ -93,8 +93,14 @@ postgres_fdw_validator(PG_FUNCTION_ARGS)
 			for (opt = postgres_fdw_options; opt->keyword; opt++)
 			{
 				if (catalog == opt->optcontext)
+				{
+					/* Begin - ReqID:SRS-SQL-DBLINK */
+					if (strcmp(opt->keyword, "authuser") == 0 || strcmp(opt->keyword, "authpassword") == 0)
+						continue;
+					/* End - ReqID:SRS-SQL-DBLINK */
 					appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
 									 opt->keyword);
+				}
 			}
 
 			ereport(ERROR,
@@ -250,6 +256,15 @@ InitPgFdwOptions(void)
 		{"sslcert", UserMappingRelationId, true},
 		{"sslkey", UserMappingRelationId, true},
 
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		/*
+		 * compatible Oracle DBLINK authenticated by clause
+		 * added authuser, authpassword optionss.
+		 */
+		{"authuser", UserMappingRelationId, true},
+		{"authpassword", UserMappingRelationId, true},
+		/* End - ReqID:SRS-SQL-DBLINK */
+
 		{NULL, InvalidOid, false}
 	};
 
@@ -381,6 +396,13 @@ ExtractConnectionOptions(List *defelems, const char **keywords,
 	{
 		DefElem    *d = (DefElem *) lfirst(lc);
 
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		if (strcmp(d->defname, "authuser") == 0)
+			continue;
+		if (strcmp(d->defname, "authpassword") == 0)
+			continue;
+		/* End - ReqID:SRS-SQL-DBLINK */
+
 		if (is_libpq_option(d->defname))
 		{
 			keywords[i] = d->defname;
@@ -390,6 +412,40 @@ ExtractConnectionOptions(List *defelems, const char **keywords,
 	}
 	return i;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+int
+IvyExtractUserAuthOptions(List *defelems, const char **keywords,
+						 const char **values)
+{
+	ListCell   *lc;
+	int			i;
+
+	i = 0;
+	foreach(lc, defelems)
+	{
+		DefElem    *d = (DefElem *) lfirst(lc);
+
+		if (strcmp(d->defname, "user") == 0)
+			continue;
+		if (strcmp(d->defname, "password") == 0)
+			continue;
+
+		if (strcmp(d->defname, "authuser") == 0)
+		{
+			keywords[i] = psprintf("%s", "user");
+			values[i] = defGetString(d);
+		}
+		if (strcmp(d->defname, "authpassword") == 0)
+		{
+			keywords[i] =psprintf("%s", "password");
+			values[i] = defGetString(d);
+		}
+		i++;
+	}
+	return i;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * Parse a comma-separated string and return a List of the OIDs of the

@@ -80,6 +80,8 @@
 
 #include "utils/ora_compatible.h"
 
+#include "foreign/foreign.h"	/* ReqID:SRS-SQL-DBLINK */
+
 /* Hook for plugins to get control in ProcessUtility() */
 ProcessUtility_hook_type ProcessUtility_hook = NULL;
 
@@ -193,6 +195,12 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreatePackageBodyStmt:
 		case T_AlterPackageStmt:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_CreateDatabaseLinkStmt:
+		case T_AlterDatabaseLinkStmt:
+		case T_AlterSessionCloseDblinkStmt:
+		case T_DropDatabaseLinkStmt:
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case T_CreateOpClassStmt:
 		case T_CreateOpFamilyStmt:
 		case T_CreatePLangStmt:
@@ -1640,7 +1648,49 @@ ProcessUtilitySlow(ParseState *pstate,
 				/* commands are stashed inside ImportForeignSchema */
 				commandCollected = true;
 				break;
+			/* Begin - ReqID:SRS-SQL-DBLINK */
+			case T_CreateDatabaseLinkStmt:
+				CreateDatabaseLink((CreateDatabaseLinkStmt *) parsetree);
+				break;
 
+			case T_AlterDatabaseLinkStmt:
+				address = AlterDatabaseLink((AlterDatabaseLinkStmt *) parsetree);
+				break;
+
+			case T_AlterSessionCloseDblinkStmt:
+				AlterSessionCloseDblink((AlterSessionCloseDblinkStmt *) parsetree);
+				break;
+
+			case T_DropDatabaseLinkStmt:
+				{
+					ForeignServer *server = NULL;
+					DropDatabaseLinkStmt *dp = (DropDatabaseLinkStmt *)parsetree;
+					DropForeignServerStmt *dpstmt = makeNode(DropForeignServerStmt);
+
+					server = GetForeignServerByName(dp->linkname, false);
+
+					if (server->ora_dblink_contype == 0)
+						elog(ERROR, "server \"%s\" is not a compatible oracle dblink server", dp->linkname);
+
+					if (dp->is_public)
+					{
+						if (!server->ora_dblink_ispublic)
+							elog(ERROR, "database link \"%s\" not found", dp->linkname);
+					}
+					else
+					{
+						if (server->ora_dblink_ispublic)
+							elog(ERROR, "database link \"%s\" not found", dp->linkname);
+					}
+
+					dpstmt->servername = dp->linkname;
+					dpstmt->missing_ok = false;
+					dpstmt->behavior = dp->behavior;
+
+					RemoveForeignServer(dpstmt);
+				}
+				break;
+				/* End - ReqID:SRS-SQL-DBLINK */
 			case T_CompositeTypeStmt:	/* CREATE TYPE (composite) */
 				{
 					CompositeTypeStmt *stmt = (CompositeTypeStmt *) parsetree;
@@ -3302,6 +3352,20 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_ALTER_PACKAGE;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_CreateDatabaseLinkStmt:
+			tag = CMDTAG_CREATE_DATABASE_LINK;
+			break;
+		case T_AlterDatabaseLinkStmt:
+			tag = CMDTAG_ALTER_DATABASE_LINK;
+			break;
+		case T_AlterSessionCloseDblinkStmt:
+			tag = CMDTAG_ALTER_SESSION_CLOSE_DATABASE_LINK;
+			break;
+		case T_DropDatabaseLinkStmt:
+			tag = CMDTAG_DROP_DATABASE_LINK;
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 
 		default:
 			elog(WARNING, "unrecognized node type: %d",
@@ -3400,6 +3464,9 @@ GetCommandLogLevel(Node *parsetree)
 		case T_AlterUserMappingStmt:
 		case T_DropUserMappingStmt:
 		case T_ImportForeignSchemaStmt:
+		case T_CreateDatabaseLinkStmt:		/* ReqID:SRS-SQL-DBLINK */
+		case T_AlterDatabaseLinkStmt:		/* ReqID:SRS-SQL-DBLINK */
+		case T_AlterSessionCloseDblinkStmt:	/* ReqID:SRS-SQL-DBLINK */
 			lev = LOGSTMT_DDL;
 			break;
 

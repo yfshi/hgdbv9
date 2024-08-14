@@ -578,6 +578,11 @@ typedef struct _foreignServerInfo
 	DumpableObject dobj;
 	char	   *rolname;
 	Oid			srvfdw;
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	bool		lnkispublic;
+	bool		lnkisshared;
+	int			lnkconntype;
+	/* End - ReqID:SRS-SQL-DBLINK */
 	char	   *srvtype;
 	char	   *srvversion;
 	char	   *srvacl;
@@ -585,6 +590,7 @@ typedef struct _foreignServerInfo
 	char	   *initsrvacl;
 	char	   *initrsrvacl;
 	char	   *srvoptions;
+	char	   *lnkusingstring; /* ReqID:SRS-SQL-DBLINK */
 } ForeignServerInfo;
 
 typedef struct _defaultACLInfo
@@ -795,5 +801,7 @@ extern void getSubscriptions(Archive *fout);
 extern TableInfo *getTables(Archive *fout, int *numTables);
 extern DatabaseRolesInfo *getDbRoles(Archive *fout, int *numRoles);
 extern DbRolesMembershipInfo *getDbRoleMembership(Archive *fout, int *numRolesMembership);
-
+#ifdef	WIN32
+extern char 	*strtok_r(char *str, const char *delim, char **saveptr);
+#endif
 #endif							/* PG_DUMP_H */

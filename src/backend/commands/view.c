@@ -547,7 +547,7 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		   int stmt_location, int stmt_len)
 {
 	RawStmt    *rawstmt;
-	Query	   *viewParse;
+	Query	   *viewParse = NULL;
 	RangeVar   *view;
 	ListCell   *cell;
 	bool		check_option;

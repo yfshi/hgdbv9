@@ -289,24 +289,24 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
 		AlterEventTrigStmt AlterCollationStmt
-		AlterDatabaseStmt AlterDatabaseSetStmt AlterDomainStmt AlterEnumStmt
+		AlterDatabaseStmt AlterDatabaseLinkStmt AlterDatabaseSetStmt AlterDomainStmt AlterEnumStmt
 		AlterFdwStmt AlterForeignServerStmt AlterGroupStmt
 		AlterObjectDependsStmt AlterObjectSchemaStmt AlterOwnerStmt
-		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSystemStmt AlterTableStmt
+		AlterOperatorStmt AlterTypeStmt AlterSeqStmt AlterSessionCloseDblinkStmt AlterSystemStmt AlterTableStmt
 		AlterTblSpcStmt AlterExtensionStmt AlterExtensionContentsStmt
 		AlterCompositeTypeStmt AlterUserMappingStmt
 		AlterRoleStmt AlterRoleSetStmt AlterPolicyStmt AlterStatsStmt
 		AlterDefaultPrivilegesStmt DefACLAction
 		AnalyzeStmt CallStmt ClosePortalStmt ClusterStmt CommentStmt
 		ConstraintsSetStmt CopyStmt CreateAsStmt CreateCastStmt
-		CreateDomainStmt CreateExtensionStmt CreateGroupStmt CreateOpClassStmt
+		CreateDatabaseLinkStmt CreateDomainStmt CreateExtensionStmt CreateGroupStmt CreateOpClassStmt
 		CreateOpFamilyStmt AlterOpFamilyStmt CreatePLangStmt
 		CreateSchemaStmt CreateSeqStmt CreateStmt CreateStatsStmt CreateTableSpaceStmt
 		CreateFdwStmt CreateForeignServerStmt CreateForeignTableStmt
 		CreateAssertionStmt CreateTransformStmt CreateTrigStmt CreateEventTrigStmt
 		CreateUserStmt CreateUserMappingStmt CreateRoleStmt CreatePolicyStmt
 		CreatedbStmt DeclareCursorStmt DefineStmt DeleteStmt DiscardStmt DoStmt
-		DropOpClassStmt DropOpFamilyStmt DropForeignServerStmt DropStmt
+		DropDatabaseLinkStmt DropOpClassStmt DropOpFamilyStmt DropForeignServerStmt DropStmt
 		DropCastStmt DropRoleStmt
 		DropdbStmt DropTableSpaceStmt
 		DropTransformStmt
@@ -467,8 +467,10 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %type <node>	grouping_sets_clause
 %type <node>	opt_publication_for_tables publication_for_tables
 
-%type <list>	opt_fdw_options fdw_options
+%type <list>	opt_fdw_options fdw_options dblink_authentication
 %type <defelt>	fdw_option
+%type <boolean> opt_public opt_shared
+%type <str> 	opt_with_fdw
 
 %type <range>	OptTempTableName
 %type <into>	into_clause create_as_target create_mv_target
@@ -711,7 +713,8 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
-	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
+	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHENTICATED /* ReqID:SRS-SQL-DBLINK */
+	AUTHORIZATION
 
 	BACKWARD BADFILE /* ReqID:SRS-MISC-BULKLOAD */ BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
 	BEFORE BEGIN_P BETWEEN BIGINT BINARY BINARY_DOUBLE /* ReqID:SRS-GKC-DATATYPE_001 */
@@ -722,7 +725,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
+	CONNECT /* ReqID:SRS-SQL-DBLINK */ CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_SHARD /* ReqID:SRS-MISC-BULKLOAD*/
@@ -744,7 +747,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 	HANDLER HAVING HEADER_P HOLD HOUR_P
 
-	IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
+	IDENTIFIED IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTANCEUSER INSTEAD INT_P INTEGER
@@ -756,7 +759,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	KEEP KEY	/* ReqID:SRS-SQL-SEQ */
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
-	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
+	LEADING LEAKPROOF LEAST LEFT LEVEL LINK LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE /* ReqID:SRS-SQL-MERGE */
@@ -774,7 +777,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PGEXTRACT PLACING PLANS POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
-	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLICATION PURGE	/* BUG:M0000118 */
+	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLIC PUBLICATION PURGE	/* BUG:M0000118 */
 
 	QUOTE
 
@@ -785,7 +788,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD
-	SHARDING /* ReqID:SRS-MISC-BULKLOAD*/ SHARE SHOW	/* ReqID:SRS-SQL-SEQ */
+	SHARDING /* ReqID:SRS-MISC-BULKLOAD*/ SHARE SHARED /* ReqID:SRS-SQL-DBLINK */ SHOW	/* ReqID:SRS-SQL-SEQ */
 	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
@@ -911,6 +914,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
 %token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P/* BUG#Z375 */ /* Bug#Z485 */
+%token	    CONNECT_TO DATABASE_LINK
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -1132,6 +1136,7 @@ stmt:
 			AlterEventTrigStmt
 			| AlterCollationStmt
 			| AlterDatabaseStmt
+			| AlterDatabaseLinkStmt	/* ReqID:SRS-SQL-DBLINK */
 			| AlterDatabaseSetStmt
 			| AlterDefaultPrivilegesStmt
 			| AlterDomainStmt
@@ -1149,6 +1154,7 @@ stmt:
 			| AlterTypeStmt
 			| AlterPolicyStmt
 			| AlterSeqStmt
+			| AlterSessionCloseDblinkStmt	/* ReqID:SRS-SQL-DBLINK */
 			| AlterSystemStmt
 			| AlterTableStmt
 			| AlterTblSpcStmt
@@ -1174,6 +1180,7 @@ stmt:
 			| CreateAssertionStmt
 			| CreateCastStmt
 			| CreateConversionStmt
+			| CreateDatabaseLinkStmt	/* ReqID:SRS-SQL-DBLINK */
 			| CreateDomainStmt
 			| CreateExtensionStmt
 			| CreateFdwStmt
@@ -1208,6 +1215,7 @@ stmt:
 			| DiscardStmt
 			| DoStmt
 			| DropCastStmt
+			| DropDatabaseLinkStmt	/* ReqID:SRS-SQL-DBLINK */
 			| DropForeignServerStmt
 			| DropOpClassStmt
 			| DropOpFamilyStmt
@@ -6261,6 +6269,325 @@ AlterUserMappingStmt: ALTER USER MAPPING FOR auth_ident SERVER name alter_generi
 					n->options = $8;
 					$$ = (Node *) n;
 				}
+		;
+
+/*****************************************************************************
+ *
+ *		QUERY :
+ *				CREATE [ SHARED ] [ PUBLIC ] DATABASE LINK dblink
+ *				  [ CONNECT TO
+ *				  	{ CURRENT_USER
+ *					| user IDENTIFIED BY password [ dblink_authentication ]
+ *					}
+ *				  | dblink_authentication
+ *				  ]...
+ *				  [ USING { connect_string | WITH 'fdw_name'} ];
+ *
+ *				dblink_authentication:
+ *					AUTHENTICATED BY user IDENTIFIED BY password
+ *
+ ****************************************************************************/
+
+CreateDatabaseLinkStmt:
+				CREATE opt_shared opt_public DATABASE_LINK LINK name CONNECT_TO TO name
+					IDENTIFIED BY IDENT dblink_authentication USING Sconst opt_with_fdw
+				{
+					CreateDatabaseLinkStmt  *dblinkstmt = makeNode(CreateDatabaseLinkStmt);
+					CreateForeignServerStmt *server = makeNode(CreateForeignServerStmt);
+					CreateUserMappingStmt	*umapp =  makeNode(CreateUserMappingStmt);
+
+					dblinkstmt->elems = NIL;
+
+					if ($2)
+					{
+						if (!$13)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing or invalid option"),
+									 parser_errposition(@13)));
+						else
+							server->is_shared = true;
+					}
+					else
+					{
+						if ($13)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing keyword"),
+									 parser_errposition(@2)));
+					}
+
+					if ($3)
+					{
+						server->is_public = true;
+						umapp->user = makeRoleSpec(ROLESPEC_PUBLIC, -1);
+					}
+					else
+					{
+						umapp->user = makeRoleSpec(ROLESPEC_CURRENT_USER, -1);
+					}
+
+					server->servername = $6;
+					server->ora_dblink_contype = ORA_DBLINK_FIXED_USER;
+
+					umapp->servername = server->servername;
+					umapp->options = list_make2(makeDefElem("user", (Node *)list_make1(makeString($9)), @9),
+												  makeDefElem("password", (Node *)list_make1(makeString($12)), @12));
+					if ($13)
+					{
+						umapp->options = list_concat(umapp->options, $13);
+					}
+
+					server->olnkusing = $15;
+					dblinkstmt->conn_string = list_make1(makeStringConst($15, @15));
+
+					if ($16)
+					{
+						if (strcmp($16, "postgres_fdw") == 0)
+						{
+							server->fdwname = $16;
+							server->servertype = psprintf("%s", "postgres");
+						}
+						else if (strcmp($16, "oracle_fdw") == 0)
+						{
+							server->fdwname = $16;
+							server->servertype = psprintf("%s", "oracle");
+						}
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("unrecognized FDW name \"%s\"", $16),
+										errhint("Only postgres_fdw or oracle_fdw are supported currently."),
+										parser_errposition(@16)));
+					}
+
+					dblinkstmt->elems = lappend(dblinkstmt->elems, server);
+					dblinkstmt->elems = lappend(dblinkstmt->elems, umapp);
+
+					$$ = (Node *)dblinkstmt;
+				}
+				| CREATE opt_shared opt_public DATABASE_LINK LINK name CONNECT_TO TO CURRENT_USER
+					dblink_authentication USING Sconst opt_with_fdw
+				{
+					CreateDatabaseLinkStmt  *dblinkstmt = makeNode(CreateDatabaseLinkStmt);
+					CreateForeignServerStmt *server = makeNode(CreateForeignServerStmt);
+
+					dblinkstmt->elems = NIL;
+
+					if ($2)
+					{
+						if (!$10)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing or invalid option"),
+									 parser_errposition(@10)));
+						else
+							server->is_shared = true;
+					}
+					else
+					{
+						if ($10)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing keyword"),
+									 parser_errposition(@2)));
+					}
+
+					if ($3)
+					{
+						server->is_public = true;
+					}
+
+					server->servername = $6;
+					server->ora_dblink_contype = ORA_DBLINK_CURRENT_USER;
+					server->olnkusing = $12;
+					dblinkstmt->conn_string = list_make1(makeStringConst($12, @12));
+
+					if ($13)
+					{
+						if (strcmp($13, "postgres_fdw") == 0)
+						{
+							server->fdwname = $13;
+							server->servertype = psprintf("%s", "postgres");
+						}
+						else if (strcmp($13, "oracle_fdw") == 0)
+						{
+							server->fdwname = $13;
+							server->servertype = psprintf("%s", "oracle");
+						}
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("unrecognized FDW name \"%s\"", $13),
+										errhint("Only postgres_fdw or oracle_fdw are supported currently."),
+										parser_errposition(@13)));
+					}
+
+					dblinkstmt->elems = lappend(dblinkstmt->elems, (Node *) server);
+
+					$$ = (Node *)dblinkstmt;
+				}
+				| CREATE opt_shared opt_public DATABASE_LINK LINK name dblink_authentication
+					USING Sconst opt_with_fdw
+				{
+					CreateDatabaseLinkStmt  *dblinkstmt = makeNode(CreateDatabaseLinkStmt);
+					CreateForeignServerStmt *server = makeNode(CreateForeignServerStmt);
+
+					dblinkstmt->elems = NIL;
+
+					if ($2)
+					{
+						if (!$7)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing or invalid option"),
+									 parser_errposition(@7)));
+						else
+							server->is_shared = true;
+					}
+					else
+					{
+						if ($7)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("missing keyword"),
+									 parser_errposition(@2)));
+					}
+
+					if ($3)
+					{
+						server->is_public = true;
+					}
+
+					server->servername = $6;
+					server->ora_dblink_contype = ORA_DBLINK_CONNECTED_USER;
+					server->olnkusing = $9;
+					dblinkstmt->conn_string = list_make1(makeStringConst($9, @9));
+
+					if ($10)
+					{
+						if (strcmp($10, "postgres_fdw") == 0)
+						{
+							server->fdwname = $10;
+							server->servertype = psprintf("%s", "postgres");
+						}
+						else if (strcmp($10, "oracle_fdw") == 0)
+						{
+							server->fdwname = $10;
+							server->servertype = psprintf("%s", "oracle");
+						}
+						else
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("unrecognized FDW name \"%s\"", $10),
+										errhint("Only postgres_fdw or oracle_fdw are supported currently."),
+											parser_errposition(@10)));
+					}
+
+					dblinkstmt->elems = lappend(dblinkstmt->elems, (Node *) server);
+
+					$$ = (Node *)dblinkstmt;
+				}
+
+		;
+
+opt_shared:
+		SHARED		{ $$ = true; }
+		| /*EMPTY*/	{ $$ = false; }
+
+		;
+
+
+opt_public:
+		PUBLIC 		{ $$ = true; }
+		| /*EMPTY*/	{ $$ = false; }
+
+		;
+
+dblink_authentication:
+		AUTHENTICATED BY name IDENTIFIED BY IDENT
+		{
+			$$ = list_make2(makeDefElem("authuser", (Node *)list_make1(makeString($3)), @3),
+							makeDefElem("authpassword", (Node *)list_make1(makeString($6)), @6));
+		}
+		| /*EMPTY*/	{ $$ = NIL; }
+
+		;
+
+opt_with_fdw:
+		WITH Sconst		{ $$ = $2; }
+		| /*EMPTY*/	{ $$ = NULL; }
+
+		;
+
+
+/*****************************************************************************
+ *
+ * DROP [ PUBLIC ] DATABASE LINK dblink
+ *
+ *****************************************************************************/
+
+DropDatabaseLinkStmt: DROP opt_public DATABASE_LINK LINK name
+					{
+						DropDatabaseLinkStmt *dp = makeNode(DropDatabaseLinkStmt);
+
+						if ($2)
+							dp->is_public = true;
+						else
+							dp->is_public = false;
+
+						dp->linkname = $5;
+						dp->behavior = DROP_CASCADE;
+
+						$$ = (Node *) dp;
+					}
+		;
+
+
+/*****************************************************************************
+ *
+ * ALTER [ PUBLIC ] DATABASE LINK dblink CONNECT TO user IDENTIFIED BY password
+ *
+ *****************************************************************************/
+
+AlterDatabaseLinkStmt: ALTER opt_public DATABASE_LINK LINK name
+						CONNECT_TO TO name IDENTIFIED BY IDENT
+					{
+						AlterDatabaseLinkStmt *ad = makeNode(AlterDatabaseLinkStmt);
+
+						if ($2)
+						{
+							ad->is_public = true;
+							ad->user = makeRoleSpec(ROLESPEC_PUBLIC, -1);
+						}
+						else
+						{
+							ad->is_public = false;
+							ad->user = makeRoleSpec(ROLESPEC_CURRENT_USER, -1);
+						}
+
+						ad->servername = $5;
+						ad->options = list_make1(makeDefElemExtended(NULL, "password", (Node *)list_make1(makeString($11)), DEFELEM_SET, @11));
+
+						$$ = (Node *) ad;
+					}
+
+		;
+
+/*****************************************************************************
+ *
+ * ALTER SESSION CLOSE DATABASE LINK dblink
+ *
+ *****************************************************************************/
+AlterSessionCloseDblinkStmt: ALTER SESSION CLOSE DATABASE_LINK LINK name
+							{
+								AlterSessionCloseDblinkStmt *asc = makeNode(AlterSessionCloseDblinkStmt);
+
+								asc->linkname = $6;
+
+								$$ = (Node *) asc;
+							}
+
 		;
 
 /*****************************************************************************
@@ -13218,7 +13545,16 @@ AlterSystemStmt:
 				{
 					AlterSystemStmt *n = makeNode(AlterSystemStmt);
 					n->setstmt = $4;
-					$$ = (Node *)n;
+
+					if (strcmp(n->setstmt->name, "global_names") == 0)
+					{
+						AlterDatabaseSetStmt *dbset = makeNode(AlterDatabaseSetStmt);
+						dbset->setstmt = $4;
+
+						$$ = (Node *)dbset;
+					}
+					else
+						$$ = (Node *)n;
 				}
 			| ALTER SYSTEM_P RESET generic_reset
 				{
@@ -20332,6 +20668,7 @@ unreserved_keyword:
 			| COMPRESSION
 			| CONFIGURATION
 			| CONFLICT
+			| CONNECT
 			| CONNECTION
 			| CONSTRAINTS
 			| CONTENT_P
@@ -20405,6 +20742,7 @@ unreserved_keyword:
 			| HEADER_P
 			| HOLD
 			| HOUR_P
+			| IDENTIFIED	/* ReqID:SRS-SQL-DBLINK */
 			| IDENTITY_P
 			| IF_P
 			| IMMEDIATE
@@ -20434,6 +20772,7 @@ unreserved_keyword:
 			| LAST_P
 			| LEAKPROOF
 			| LEVEL
+			| LINK /* ReqID:SRS-SQL-DBLINK */
 			| LISTEN
 			| LOAD
 			| LOCAL
@@ -20520,6 +20859,7 @@ unreserved_keyword:
 			| PROCEDURE
 			| PROCEDURES
 			| PROGRAM
+			| PUBLIC	/* ReqID:SRS-SQL-DBLINK */
 			| PUBLICATION
 			/* Begin - BUG:M0000118 */
 			| PURGE
@@ -20579,6 +20919,7 @@ unreserved_keyword:
 			| SHARD		/* ReqID:SRS-SQL-SEQ */
 			| SHARDING      /* ReqID:SRS-MISC-BULKLOAD */
 			| SHARE
+			| SHARED /* ReqID:SRS-SQL-DBLINK */
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
 			| SIMPLE
@@ -20779,6 +21120,7 @@ reserved_keyword:
 			| AS
 			| ASC
 			| ASYMMETRIC
+			| AUTHENTICATED
 			| BINARY_DOUBLE_INFINITY	/* BUG:Z092 */
 			| BINARY_DOUBLE_NAN			/* BUG:Z092 */
 			| BINARY_FLOAT_INFINITY		/* BUG:Z092 */
@@ -20789,6 +21131,7 @@ reserved_keyword:
 			| CHECK
 			| COLLATE
 			| COLUMN
+			/*| CONNECT*/	/* ReqID:SRS-SQL-DBLINK */
 			| CONSTRAINT
 			| CREATE
 			| CURRENT_CATALOG
@@ -20897,6 +21240,7 @@ bare_label_keyword:
 			| ATOMIC
 			| ATTACH
 			| ATTRIBUTE
+			| AUTHENTICATED 	/* ReqID:SRS-SQL-DBLINK */
 			| AUTHID	/* ReqID:SRS-SQL-PROC */
 			| AUTHORIZATION
 			| BACKWARD
@@ -20949,6 +21293,7 @@ bare_label_keyword:
 			| CONCURRENTLY
 			| CONFIGURATION
 			| CONFLICT
+			/*| CONNECT */	/* ReqID:SRS-SQL-DBLINK */
 			| CONNECTION
 			| CONSTRAINT
 			| CONSTRAINTS
@@ -21047,6 +21392,7 @@ bare_label_keyword:
 			| HASH_P	/* ReqID:SRS-SQL-PROC */
 			| HEADER_P
 			| HOLD
+			| IDENTIFIED	/* ReqID:SRS-SQL-DBLINK */
 			| IDENTITY_P
 			| IF_P
 			| ILIKE
@@ -21093,6 +21439,7 @@ bare_label_keyword:
 			| LEFT
 			| LEVEL
 			| LIKE
+			| LINK	/* ReqID:SRS-SQL-DBLINK */
 			| LISTEN
 			| LOAD
 			| LOCAL
@@ -21202,6 +21549,7 @@ bare_label_keyword:
 			| PROCEDURE
 			| PROCEDURES
 			| PROGRAM
+			| PUBLIC	/* ReqID:SRS-SQL-DBLINK */
 			| PUBLICATION
 			/* Begin - BUG:M0000118 */
 			| PURGE
@@ -21267,6 +21615,7 @@ bare_label_keyword:
 			| SHARD		/* ReqID:SRS-SQL-SEQ */
 			| SHARDING      /* ReqID:SRS-MISC-BULKLOAD */
 			| SHARE
+			| SHARED /* ReqID:SRS-SQL-DBLINK */
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
 			| SIMILAR

@@ -452,6 +452,12 @@ typedef enum NodeTag
 	T_CreatePackageBodyStmt,
 	T_AlterPackageStmt,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	T_CreateDatabaseLinkStmt,
+	T_DropDatabaseLinkStmt,
+	T_AlterDatabaseLinkStmt,
+	T_AlterSessionCloseDblinkStmt,
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)
@@ -515,6 +521,7 @@ typedef enum NodeTag
 	T_VacuumRelation,
 	T_ColumnRefOrFuncCall,	/* ReqID:SRS-SQL-PROC */
 	T_PseudoColumnRef, /* ReqID:SRS-SQL-ROWNUM */
+	T_TupdescNatts,	/* ReqID:SRS-SQL-DBLINK */
 
 	/*
 	 * TAGS FOR REPLICATION GRAMMAR PARSE NODES (replnodes.h)

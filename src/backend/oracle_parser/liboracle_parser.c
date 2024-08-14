@@ -785,6 +785,14 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			cur_token_length = 1;
 			break;
 		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case CONNECT:
+			cur_token_length = 7;
+			break;
+		 case DATABASE:
+			cur_token_length = 8;
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		default:
 			return cur_token;
 	}
@@ -857,6 +865,16 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				cur_token = PACKAGE_BODY;
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case CONNECT:
+			if (next_token == TO)
+				cur_token = CONNECT_TO;
+			break;
+		case DATABASE:
+			if (next_token == LINK)
+				cur_token = DATABASE_LINK;
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case WITH:
 			/* Replace WITH by WITH_LA if it's followed by TIME or ORDINALITY */
 			switch (next_token)

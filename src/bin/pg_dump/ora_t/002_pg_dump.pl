@@ -3006,7 +3006,7 @@ my %tests = (
 	'DROP SCHEMA public (for testing without public schema)' => {
 		database     => 'regress_pg_dump_test',
 		create_order => 100,
-		create_sql   => 'DROP SCHEMA public;',
+		create_sql   => 'DROP SCHEMA public CASCADE;',
 		regexp       => qr/^DROP SCHEMA public;/m,
 		like         => {},
 	},
