@@ -2207,7 +2207,7 @@ static HeapTuple
 heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 					CommandId cid, int options)
 {
-	int 	seqnum;
+	int64 	seqnum;
 
 	/*
 	 * To allow parallel inserts, we need to ensure that they are safe to be
@@ -2221,16 +2221,19 @@ heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 				 errmsg("cannot insert tuples in a parallel worker")));
 
 	/* Begin - ReqID:SRS-SQL-ROWID */
-	if (relation->rd_rel->relhasrowid && OidIsValid(relation->rd_rowdSeqid))
+	if (relation->rd_rel->relhasrowid)
 	{
 #ifdef	NOT_USED
 		/* this is redundant with an Assert in HeapTupleSetRowId */
 		Assert(tup->t_data->t_infomask & HEAP_HASROWID);
 #endif
 		/* Get the sequence next value */
-		seqnum = nextval_internal(relation->rd_rowdSeqid, true);
-		/* Set the HeapTupleHeader */
-		HeapTupleSetRowId(tup, seqnum);
+		if (OidIsValid(relation->rd_rowdSeqid))
+		{
+			seqnum = nextval_internal(relation->rd_rowdSeqid, true);
+			/* Set the HeapTupleHeader */
+			HeapTupleSetRowId(tup, seqnum);
+		}
 	}
 	/* End - ReqID:SRS-SQL-ROWID */
 
