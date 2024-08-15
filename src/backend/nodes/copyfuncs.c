@@ -2523,6 +2523,12 @@ _copyRangeTblEntry(const RangeTblEntry *from)
 	COPY_NODE_FIELD(colcollations);
 	COPY_STRING_FIELD(enrname);
 	COPY_SCALAR_FIELD(enrtuples);
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	COPY_SCALAR_FIELD(serverOid);
+	COPY_NODE_FIELD(linkrelattrs);
+	COPY_STRING_FIELD(linkrelname);
+	COPY_STRING_FIELD(linkrelnsname);
+	/* End - ReqID:SRS-SQL-DBLINK */
 	COPY_NODE_FIELD(alias);
 	COPY_NODE_FIELD(eref);
 	COPY_SCALAR_FIELD(lateral);
@@ -2815,6 +2821,20 @@ _copyPseudoColVar(const PseudoColVar *from)
 	return newnode;
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static TupdescNatts *
+_copyTupdescNatts(const TupdescNatts *from)
+{
+	TupdescNatts *newnode = makeNode(TupdescNatts);
+
+	COPY_STRING_FIELD(colname);
+	COPY_SCALAR_FIELD(coltypid);
+	COPY_SCALAR_FIELD(coltypmod);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 static ParamRef *
 _copyParamRef(const ParamRef *from)
@@ -4484,7 +4504,14 @@ _copyCreateForeignServerStmt(const CreateForeignServerStmt *from)
 	COPY_STRING_FIELD(version);
 	COPY_STRING_FIELD(fdwname);
 	COPY_SCALAR_FIELD(if_not_exists);
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	COPY_SCALAR_FIELD(is_public);
+	COPY_SCALAR_FIELD(is_shared);
+	COPY_SCALAR_FIELD(ora_dblink_contype);
+	/* End - ReqID:SRS-SQL-DBLINK */
 	COPY_NODE_FIELD(options);
+	COPY_STRING_FIELD(olnkusing); /* ReqID:SRS-SQL-DBLINK */
+	COPY_STRING_FIELD(service_name);
 
 	return newnode;
 }
@@ -4578,6 +4605,52 @@ _copyImportForeignSchemaStmt(const ImportForeignSchemaStmt *from)
 
 	return newnode;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static CreateDatabaseLinkStmt *
+_copyCreateDatabaseLinkStmt(const CreateDatabaseLinkStmt * from)
+{
+	CreateDatabaseLinkStmt *newnode = makeNode(CreateDatabaseLinkStmt);
+
+	COPY_NODE_FIELD(elems);
+	COPY_NODE_FIELD(conn_string);
+
+	return newnode;
+}
+
+static DropDatabaseLinkStmt *
+_copyDropDatabaseLinkStmt(const DropDatabaseLinkStmt * from)
+{
+	DropDatabaseLinkStmt *newnode = makeNode(DropDatabaseLinkStmt);
+
+	COPY_STRING_FIELD(linkname);
+	COPY_SCALAR_FIELD(behavior);
+
+	return newnode;
+}
+
+static AlterDatabaseLinkStmt *
+_copyAlterDatabaseLinkStmt(const AlterDatabaseLinkStmt *from)
+{
+	AlterDatabaseLinkStmt *newnode = makeNode(AlterDatabaseLinkStmt);
+
+	COPY_NODE_FIELD(user);
+	COPY_STRING_FIELD(servername);
+	COPY_NODE_FIELD(options);
+
+	return newnode;
+}
+
+static AlterSessionCloseDblinkStmt *
+_copyAlterSessionCloseDblinkStmt(const AlterSessionCloseDblinkStmt * from)
+{
+	AlterSessionCloseDblinkStmt *newnode = makeNode(AlterSessionCloseDblinkStmt);
+
+	COPY_STRING_FIELD(linkname);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 static CreateTransformStmt *
 _copyCreateTransformStmt(const CreateTransformStmt *from)
@@ -5912,6 +5985,20 @@ copyObjectImpl(const void *from)
 		case T_ImportForeignSchemaStmt:
 			retval = _copyImportForeignSchemaStmt(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_CreateDatabaseLinkStmt:
+			retval = _copyCreateDatabaseLinkStmt(from);
+			break;
+		case T_DropDatabaseLinkStmt:
+			retval = _copyDropDatabaseLinkStmt(from);
+			break;
+		case T_AlterDatabaseLinkStmt:
+			retval = _copyAlterDatabaseLinkStmt(from);
+			break;
+		case T_AlterSessionCloseDblinkStmt:
+			retval = _copyAlterSessionCloseDblinkStmt(from);
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case T_CreateTransformStmt:
 			retval = _copyCreateTransformStmt(from);
 			break;
@@ -6096,6 +6183,9 @@ copyObjectImpl(const void *from)
 			break;
 		case T_RangeTblEntry:
 			retval = _copyRangeTblEntry(from);
+			break;
+		case T_TupdescNatts:
+			retval = _copyTupdescNatts(from);
 			break;
 		case T_RangeTblFunction:
 			retval = _copyRangeTblFunction(from);

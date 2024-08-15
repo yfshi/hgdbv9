@@ -517,7 +517,7 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 	PLiSQL_execstate estate;
 	ErrorContextCallback plerrcontext;
 	int			i;
-	int			rc;
+	int			rc = -1;
 	/* Begin - SRS-PLSQL-SUBPROC */
 	char	function_from = plisql_function_from(fcinfo);
 	/* End - SRS-PLSQL-SUBPROC */

@@ -212,4 +212,6 @@ test: plus_outer_join
 
 #/* Begin - ReqID:SRS-MISC-BULKLOAD */
 test: copyerror
-#/* End - ReqID:SRS-MISC-BULKLOAD */
+#/* End - ReqID:SRS-MISC-BULKLOAD */'
+
+test: ora_dblink_for_pgfdw

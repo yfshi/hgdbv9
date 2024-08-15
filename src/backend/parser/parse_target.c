@@ -397,6 +397,7 @@ markTargetListOrigin(ParseState *pstate, TargetEntry *tle,
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
 		case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
+		case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 			/* not a simple relation, leave it unmarked */
 			break;
 		case RTE_CTE:
@@ -1620,6 +1621,7 @@ expandRecordVariable(ParseState *pstate, Var *var, int levelsup)
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
 		case RTE_COUNT: /* ReqID:SRS-SQL-ROWNUM */
+		case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 
 			/*
 			 * This case should not occur: a column of a table, values list,

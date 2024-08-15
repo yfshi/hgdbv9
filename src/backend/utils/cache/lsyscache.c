@@ -55,6 +55,11 @@
 /* End - ReqID:SRS-SQL-PACKAGE */
 #include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+#include "catalog/pg_foreign_table.h"
+#include "access/table.h"
+#include "access/heapam.h"
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /* Hook for plugins to get control in get_attavgwidth() */
 get_attavgwidth_hook_type get_attavgwidth_hook = NULL;
@@ -2921,6 +2926,50 @@ get_typtype(Oid typid)
 		return '\0';
 }
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ * get_typename
+ *		Get type name for given type OID
+ */
+char *
+get_typename(Oid typid)
+{
+	HeapTuple		tuple;
+	Form_pg_type	typeForm;
+	char		   *result;
+	char		   *nspname;
+	StringInfoData	buf;
+
+	tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(typid));
+
+	if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for type %u", typid);
+
+	typeForm = (Form_pg_type) GETSTRUCT(tuple);
+	nspname = get_namespace_name(typeForm->typnamespace);
+	if (!nspname ||
+		(strncmp(nspname, "pg_temp_", 8) == 0) ||
+		(strncmp(nspname, "pg_toast_temp_", 14) == 0))
+	{
+		result = pstrdup(NameStr(typeForm->typname));
+	}
+	else
+	{
+		initStringInfo(&buf);
+		appendStringInfo(&buf, "%s.%s",
+						 nspname,
+						 NameStr(typeForm->typname));
+		result = pstrdup(buf.data);
+		pfree(buf.data);
+	}
+	if (nspname)
+		pfree(nspname);
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*
  * type_is_rowtype
  *
@@ -3980,3 +4029,28 @@ get_index_isclustered(Oid index_oid)
 
 	return isclustered;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ *	get_rel_oid_from_relname
+ *		get a relation by relname.
+ */
+Relation
+get_rel_oid_from_relname(char *relname, LOCKMODE lockmode, AclMode aclmode)
+{
+	RangeVar   *relvar;
+	Relation	rel;
+	AclResult	aclresult;
+
+	relvar = makeRangeVar(NULL, relname, -1);
+	rel = table_openrv(relvar, lockmode);
+
+	aclresult = pg_class_aclcheck(RelationGetRelid(rel), GetUserId(),
+								  aclmode);
+	if (aclresult != ACLCHECK_OK)
+		aclcheck_error(aclresult, get_relkind_objtype(rel->rd_rel->relkind),
+					   RelationGetRelationName(rel));
+
+	return rel;
+}
+/* End - ReqID:SRS-SQL-DBLINK */

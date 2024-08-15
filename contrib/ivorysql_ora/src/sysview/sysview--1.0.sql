@@ -2274,3 +2274,178 @@ CREATE VIEW sys.v$open_cursor AS
  FROM ora_open_cursors();
 GRANT SELECT ON sys.v$open_cursor TO public;
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+CREATE OR REPLACE VIEW sys.ivorysql_dblink as
+   SELECT t.lnkname,
+    t.lnkowner,
+    t.lnkowneroid,
+        CASE
+            WHEN t.fdwname = 'postgres_fdw'::name THEN 1::oid
+            WHEN t.fdwname = 'oracle_fdw'::name THEN 0::oid
+            ELSE t.fdwoid
+        END AS lnktype,
+    t.lnkispublic,
+    (SELECT substring(__unnamed_subquery_0.option, length('user='::text) + 1) AS "substring"
+           FROM ( SELECT unnest(t.umoptions) AS option) __unnamed_subquery_0
+          WHERE __unnamed_subquery_0.option ~~ 'user=%'::text) AS lnkuser,
+    '********'::text AS lnkpassword,
+    t.lnkconnstr,
+    t.lnkacl,
+    t.srvoid AS oid
+   FROM ( SELECT srv.srvname AS lnkname,
+            ums.usename AS lnkowner,
+            srv.srvowner AS lnkowneroid,
+            true AS lnkispublic,
+            srv.olnkusingstring as lnkconnstr,
+            srv.srvacl AS lnkacl,
+            srv.oid AS srvoid,
+            um.umoptions,
+            srv.srvoptions,
+            fdw.fdwname,
+            fdw.oid AS fdwoid
+           FROM pg_foreign_server srv
+             JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
+             LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = 0::oid
+             LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser = 0::oid
+          WHERE srv.olnkispublic = true and srv.olnkconntype != 0
+        UNION ALL
+         SELECT srv.srvname AS lnkname,
+            ums.usename AS lnkowner,
+            srv.srvowner AS linkowneroid,
+            false AS lnkispublic,
+            srv.olnkusingstring as lnkconnstr,
+            srv.srvacl AS lnkacl,
+            srv.oid AS srvoid,
+            um.umoptions,
+            srv.srvoptions,
+            fdw.fdwname,
+            fdw.oid AS fdwoid
+           FROM pg_foreign_server srv
+             JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
+             LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = srv.srvowner
+             LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser != 0::oid
+          WHERE srv.olnkispublic = false and srv.olnkconntype != 0) t;
+GRANT SELECT ON SYS.ivorysql_dblink TO PUBLIC;
+--
+-- ALL_DB_LINKS
+--
+CREATE OR REPLACE VIEW sys.ALL_DB_LINKS as
+ SELECT i.lnkowner::VARCHAR2(12) AS owner,
+    i.lnkname::VARCHAR2(128) AS db_link,
+    i.lnkuser::VARCHAR2(128) AS username,
+    NULL::VARCHAR2(128) AS credential_name,
+    NULL::VARCHAR2(128) AS credential_owner,
+    i.lnkconnstr::VARCHAR2(2000) AS host,
+    NULL::DATE AS created,
+    'no'::VARCHAR2(3) AS hidden,
+    'no'::VARCHAR2(3) AS shard_internal,
+    'yes'::VARCHAR2(3) AS valid,
+    'no'::VARCHAR2(3) AS intra_cdb
+   FROM ivorysql_dblink i
+  WHERE i.lnkispublic = true OR has_server_privilege(i.oid, 'USAGE'::text);
+GRANT SELECT ON SYS.ALL_DB_LINKS TO PUBLIC;
+--
+-- USER_DB_LINKS
+--
+CREATE OR REPLACE VIEW sys.USER_DB_LINKS as
+ SELECT i.lnkname::VARCHAR2(128) AS db_link,
+    i.lnkuser::VARCHAR2(128) AS username,
+    i.lnkpassword::VARCHAR2(128) AS password,
+    NULL::VARCHAR2(128) AS credential_name,
+    NULL::VARCHAR2(128) AS credential_owner,
+    i.lnkconnstr::VARCHAR2(2000) AS host,
+    NULL::DATE AS created,
+    'no'::VARCHAR2(3) AS hidden,
+    'no'::VARCHAR2(3) AS shard_internal,
+    'yes'::VARCHAR2(3) AS valid,
+    'no'::VARCHAR2(3) AS intra_cdb
+   FROM ivorysql_dblink i
+  WHERE pg_get_userbyid(i.lnkowneroid) = current_user AND i.lnkispublic = false;
+GRANT SELECT ON SYS.USER_DB_LINKS TO PUBLIC;
+--
+-- DBA_DB_LINKS
+--
+CREATE OR REPLACE VIEW sys.DBA_DB_LINKS as
+ SELECT
+    i.lnkowner::VARCHAR2(12) AS owner,
+    i.lnkname::VARCHAR2(128) AS db_link,
+    i.lnkuser::VARCHAR2(128) AS username,
+    NULL::VARCHAR2(128) AS credential_name,
+    NULL::VARCHAR2(128) AS credential_owner,
+    i.lnkconnstr::VARCHAR2(2000) AS host,
+    NULL::DATE AS created,
+    'no'::VARCHAR2(3) AS hidden,
+    'no'::VARCHAR2(3) AS shard_internal,
+    'yes'::VARCHAR2(3) AS valid,
+    'no'::VARCHAR2(3) AS intra_cdb
+   FROM ivorysql_dblink i;
+GRANT SELECT ON SYS.DBA_DB_LINKS TO PUBLIC;
+--
+-- V$DBLINK
+--
+CREATE OR REPLACE VIEW sys.V$DBLINK as
+  SELECT DISTINCT
+    i.lnkname::VARCHAR2(128) as DB_LINK,
+    (select iu.usesysid  from ivory_user iu LEFT JOIN pg_database d
+      ON iu.dboid = d.oid WHERE iu.usename = session_user AND d.datname = current_database)::INT8::NUMBER as OWNER_ID,
+    'yes'::VARCHAR2(3) as LOGGED_ON,
+    'no'::VARCHAR2(3) as HETEROGENEOUS,
+    'unkn'::VARCHAR2(6) as PROTOCOL,
+    1::NUMBER AS OPEN_CURSORS,
+    'yes'::VARCHAR2(3) as IN_TRANSACTION,
+    'no'::VARCHAR2(3) as UPDATE_SENT,
+    1::NUMBER as COMMIT_POINT_STRENGTH,
+    1::NUMBER as CON_ID
+  FROM sys.ivorysql_dblink i LEFT JOIN pg_foreign_table f ON  f.ftserver = i.oid LEFT JOIN pg_class c ON c.oid = f.ftrelid
+   LEFT JOIN pg_namespace n ON c.relnamespace = n.oid
+   WHERE  n.nspname LIKE 'pg_temp%' AND
+      n.nspname = (SELECT nspname
+                   FROM pg_namespace
+                   WHERE oid = pg_my_temp_schema());
+GRANT SELECT ON SYS.V$DBLINK TO PUBLIC;
+--
+-- GV$DBLINK
+--
+CREATE OR REPLACE VIEW sys.GV$DBLINK as
+  SELECT DISTINCT
+  1::NUMBER as INST_ID,
+    i.lnkname::VARCHAR2(128) as DB_LINK,
+    (SELECT oid from pg_roles WHERE rolname = session_user)::INT8::NUMBER as OWNER_ID,
+    'yes'::VARCHAR2(3) as LOGGED_ON,
+    'no'::VARCHAR2(3) as HETEROGENEOUS,
+    'unkn'::VARCHAR2(6) as PROTOCOL,
+    1::NUMBER AS OPEN_CURSORS,
+    'yes'::VARCHAR2(3) as IN_TRANSACTION,
+    'no'::VARCHAR2(3) as UPDATE_SENT,
+    1::NUMBER as COMMIT_POINT_STRENGTH,
+    1::NUMBER as CON_ID
+  FROM sys.ivorysql_dblink i LEFT JOIN pg_foreign_table f ON  f.ftserver = i.oid LEFT JOIN pg_class c ON c.oid = f.ftrelid
+   LEFT JOIN pg_namespace n ON c.relnamespace = n.oid
+   WHERE  n.nspname LIKE 'pg_temp%' AND
+      n.nspname = (SELECT nspname
+                   FROM pg_namespace
+                   WHERE oid = pg_my_temp_schema());
+GRANT SELECT ON SYS.GV$DBLINK TO PUBLIC;
+--
+-- DBA_DB_LINK_SOURCES
+--
+CREATE OR REPLACE VIEW sys.dba_db_link_sources AS
+SELECT
+    1::NUMBER AS source_id,
+    d.datname::VARCHAR2(256) AS db_name,
+    d.oid::INT4::NUMBER AS dbid,
+    d.datname::VARCHAR2(256) AS db_unique_name,
+    (SELECT ivy_get_host_name())::VARCHAR2(256) AS host_name,
+    (SELECT (string_to_array(ivy_get_host_ipv4, ' '))[1])::VARCHAR2(128) AS ip_address,
+    'tcp'::VARCHAR2(64) AS protocol,
+    (SELECT current_user)::VARCHAR2(128) AS username,
+    iu.usesysid::INT4::NUMBER AS "user#",
+    current_timestamp::TIMESTAMP(6) AS first_logon_time,
+    current_timestamp::TIMESTAMP(6) AS last_logon_time,
+    1::NUMBER AS logon_count
+FROM
+    ivory_user iu LEFT JOIN pg_database d ON iu.dboid = d.oid
+    WHERE iu.usename = current_user AND d.datname = current_database;
+GRANT SELECT ON SYS.dba_db_link_sources TO PUBLIC;
+/* End - ReqID:SRS-SQL-DBLINK */

@@ -43,6 +43,7 @@ typedef enum
 	PROCSIG_RECOVERY_CONFLICT_SNAPSHOT,
 	PROCSIG_RECOVERY_CONFLICT_BUFFERPIN,
 	PROCSIG_RECOVERY_CONFLICT_STARTUP_DEADLOCK,
+	PROCSIG_RELOAD_DB_GUC, /* ReqID:SRS-SQL-DBLINK */
 
 	NUM_PROCSIGNALS				/* Must be last! */
 } ProcSignalReason;
@@ -72,5 +73,4 @@ extern void WaitForProcSignalBarrier(uint64 generation);
 extern void ProcessProcSignalBarrier(void);
 
 extern void procsignal_sigusr1_handler(SIGNAL_ARGS);
-
 #endif							/* PROCSIGNAL_H */

@@ -11733,6 +11733,20 @@
 
 # /* END - SRS-MISC-GB18030 */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+{ oid => '4654', descr => 'get server hostname',
+  proname => 'ivy_get_host_name', provolatile => 's', prorettype => 'text',
+  proargtypes => '', prosrc => 'ivy_get_host_name' },
+
+{ oid => '4655', descr => 'get server ipv4 address',
+  proname => 'ivy_get_host_ipv4', provolatile => 's', prorettype => 'text',
+  proargtypes => '', prosrc => 'ivy_get_host_ipv4' },
+
+{ oid => '4656', descr => 'get server ipv6 address',
+  proname => 'ivy_get_host_ipv6', provolatile => 's', prorettype => 'text',
+  proargtypes => '', prosrc => 'ivy_get_host_ipv6' },
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*BEGIN Oracle Compatibility Metadatas*/
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 { oid => '9101', descr => 'call this function for execution of PL/iSQL procedures',

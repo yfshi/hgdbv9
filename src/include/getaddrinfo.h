@@ -91,6 +91,9 @@
 #define NI_MAXSERV	32
 #endif
 
+#ifndef IVY_HOST_NAME_MAX
+#define IVY_HOST_NAME_MAX 	256
+#endif
 
 #ifndef HAVE_STRUCT_ADDRINFO
 

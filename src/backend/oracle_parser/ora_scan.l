@@ -449,6 +449,10 @@ quoted_ora_param	:({dquote}{ora_identifier}{dquote})
 quoted_ora_failed	((:{dquote})|(:{dquote}{ora_ident_start})|(:{dquote}{ora_ident_start}{ora_ident_cont}*))
 /* End - BUG#Z366 */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+ora_dblink_ident  ([A-Za-z\200-\377_][0-9]*)+@([A-Za-z\200-\377_0-9\$])*
+/* End - ReqID:SRS-SQL-DBLINK */
+
 other			.
 
 /*
@@ -1312,6 +1316,52 @@ other			.
 					yylval->str = ident;
 					return IDENT;
 				}
+
+{ora_dblink_ident}	{
+						int			kwnum;
+						char	   *ident;
+						char	   *tname = NULL;
+						char	   *server = NULL;
+						char	   *originalstr = NULL;
+						char	   *str = NULL;
+						char	   *ret = NULL;
+
+						SET_YYLLOC();
+
+						originalstr = pnstrdup(yytext, yyleng);
+						str = yytext;
+
+						if (strstr(str, "@"))
+						{
+							ret = strtok(str, "@");
+							tname = ret;
+							ret = strtok(NULL, "@");
+							server = ret;
+							if (server == NULL)
+								yyerror("No spaces allowed");
+						}
+
+						kwnum = ScanKeywordLookup(tname, yyextra->keywordlist);
+
+						if (kwnum >= 0)
+						{
+							yylval->keyword = GetScanKeyword(kwnum, yyextra->keywordlist);
+							return yyextra->keyword_tokens[kwnum];
+						}
+
+						kwnum = ScanKeywordLookup(server, yyextra->keywordlist);
+
+						if (kwnum >= 0)
+						{
+							yylval->keyword = GetScanKeyword(kwnum, yyextra->keywordlist);
+							return yyextra->keyword_tokens[kwnum];
+						}
+
+						ident = downcase_truncate_identifier(originalstr, strlen(originalstr), true);
+						yylval->str = ident;
+						return IDENT;
+					}
+
 
 {other}			{
 					SET_YYLLOC();

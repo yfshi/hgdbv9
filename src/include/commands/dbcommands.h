@@ -31,5 +31,7 @@ extern Oid	get_database_oid(const char *dbname, bool missing_ok);
 extern char *get_database_name(Oid dbid);
 
 extern void check_encoding_locale_matches(int encoding, const char *collate, const char *ctype);
-
+/* Begin - ReqID:SRS-SQL-DBLINK */
+extern void HandleReloadDBGucSignal(void);
+/* End - ReqID:SRS-SQL-DBLINK */
 #endif							/* DBCOMMANDS_H */

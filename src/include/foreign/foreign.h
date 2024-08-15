@@ -39,7 +39,12 @@ typedef struct ForeignServer
 	char	   *servername;		/* name of the server */
 	char	   *servertype;		/* server type, optional */
 	char	   *serverversion;	/* server version, optional */
+	char	   *olnk_service_name;	/* DBLINK service name */
 	List	   *options;		/* srvoptions as DefElem list */
+	bool		ora_dblink_ispublic;
+	bool		ora_dblink_isshared;
+	bool		ora_lnkshared_auth;
+	int8 		ora_dblink_contype;
 } ForeignServer;
 
 typedef struct UserMapping
@@ -57,12 +62,18 @@ typedef struct ForeignTable
 	List	   *options;		/* ftoptions as DefElem list */
 } ForeignTable;
 
+
 /* Flags for GetForeignServerExtended */
 #define FSV_MISSING_OK	0x01
 
 /* Flags for GetForeignDataWrapperExtended */
 #define FDW_MISSING_OK	0x01
 
+typedef enum IvyLnkFdw
+{
+	ORA_FDW = 1,
+	PG_FDW
+} IvyLnkFdw;
 
 extern ForeignServer *GetForeignServer(Oid serverid);
 extern ForeignServer *GetForeignServerExtended(Oid serverid,
@@ -80,5 +91,9 @@ extern List *GetForeignColumnOptions(Oid relid, AttrNumber attnum);
 
 extern Oid	get_foreign_data_wrapper_oid(const char *fdwname, bool missing_ok);
 extern Oid	get_foreign_server_oid(const char *servername, bool missing_ok);
+extern void get_usermapping_name(List *options, char **user);
+extern void IvyUpdateLinkServerAuthen(char *servername);
+extern char *buildCreateForeignTablequeryString(List *tupattrs, char *fname, char *relname,
+				char *srvname, char *relnspname, int fdw_type);
 
 #endif							/* FOREIGN_H */

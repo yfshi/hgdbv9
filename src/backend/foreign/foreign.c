@@ -142,6 +142,18 @@ GetForeignServerExtended(Oid serverid, bits16 flags)
 	server->servername = pstrdup(NameStr(serverform->srvname));
 	server->owner = serverform->srvowner;
 	server->fdwid = serverform->srvfdw;
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	server->ora_dblink_ispublic = serverform->olnkispublic;
+	server->ora_dblink_isshared = serverform->olnkisshared;
+	server->ora_lnkshared_auth = serverform->olnksharedauth;
+
+	/* Extract srvodblinkcontype */
+	datum = SysCacheGetAttr(FOREIGNSERVEROID,
+							tp,
+							Anum_pg_foreign_server_olnkconntype,
+							&isnull);
+	server->ora_dblink_contype = isnull ? 0 : DatumGetInt16(datum);
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/* Extract server type */
 	datum = SysCacheGetAttr(FOREIGNSERVEROID,
@@ -166,6 +178,13 @@ GetForeignServerExtended(Oid serverid, bits16 flags)
 		server->options = NIL;
 	else
 		server->options = untransformRelOptions(datum);
+
+	/* Extract olnksviname */
+	datum = SysCacheGetAttr(FOREIGNSERVEROID,
+							tp,
+							Anum_pg_foreign_server_olnksviname,
+							&isnull);
+	server->olnk_service_name = isnull ? NULL : TextDatumGetCString(datum);
 
 	ReleaseSysCache(tp);
 
@@ -674,8 +693,14 @@ postgresql_fdw_validator(PG_FUNCTION_ARGS)
 			initStringInfo(&buf);
 			for (opt = libpq_conninfo_options; opt->optname; opt++)
 				if (catalog == opt->optcontext)
+				{
+					/* Begin - ReqID:SRS-SQL-DBLINK */
+					if (strcmp(opt->optname, "authuser") == 0 || strcmp(opt->optname, "authpassword") == 0)
+						continue;
+					/* End - ReqID:SRS-SQL-DBLINK */
 					appendStringInfo(&buf, "%s%s", (buf.len > 0) ? ", " : "",
 									 opt->optname);
+				}
 
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),

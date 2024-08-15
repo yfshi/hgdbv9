@@ -197,7 +197,11 @@ typedef void (*CommitForeignTransaction_function) (FdwXactInfo *finfo);
 typedef void (*RollbackForeignTransaction_function) (FdwXactInfo *finfo);
 typedef char *(*GetPrepareId_function) (TransactionId xid, Oid serverid,
 										Oid userid, int *prep_id_len);
-
+/* Begin - ReqID:SRS-SQL-DBLINK */
+typedef void (*DblinkAuthenticated_function)(char *servername);
+typedef void (*AlterSessionCloseDbLink_function)(char *linkname);
+typedef List *(*DblinkCheckMetadataChanged_function)(Oid serverid, char *nsp, char *relname);
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * FdwRoutine is the struct returned by a foreign-data wrapper's handler
@@ -292,6 +296,14 @@ typedef struct FdwRoutine
 	RollbackForeignTransaction_function RollbackForeignTransaction;
 	PrepareForeignTransaction_function PrepareForeignTransaction;
 	GetPrepareId_function GetPrepareId;
+
+	/* Support functions for DBLINK authentiacted */
+	DblinkAuthenticated_function DblinkAuthenticated;
+
+	/* Support functions for DBLINK 'alter session close dblink' */
+	AlterSessionCloseDbLink_function DblinkAlterSessionCloseLink;
+
+	DblinkCheckMetadataChanged_function DblinkCheckMetadataChanged;
 } FdwRoutine;
 
 

@@ -13,7 +13,7 @@ subdir =
 top_builddir = .
 include $(top_builddir)/src/Makefile.global
 
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora  contrib/pg_object)	# SRS-MISC-GB18030	# BUGM0000266
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw)	# SRS-MISC-GB18030	# BUGM0000266
 
 docs:
 	$(MAKE) -C doc all
@@ -50,7 +50,7 @@ $(call recurse,distprep coverage,doc src config contrib)
 
 # clean, distclean, etc should apply to contrib too, even though
 # it's not built by default
-$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 src config)	#BUG#M0000243 #BUGM0000266
+$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw src config)	#BUG#M0000243 #BUGM0000266
 clean:
 	rm -rf tmp_install/ portlock/
 # Garbage from autoconf:

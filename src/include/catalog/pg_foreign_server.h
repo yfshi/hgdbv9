@@ -31,12 +31,17 @@ CATALOG(pg_foreign_server,1417,ForeignServerRelationId)
 	NameData	srvname;		/* foreign server name */
 	Oid			srvowner BKI_LOOKUP(pg_authid); /* server owner */
 	Oid			srvfdw BKI_LOOKUP(pg_foreign_data_wrapper); /* server FDW */
-
+	bool		olnkispublic BKI_DEFAULT(f);
+	bool		olnkisshared BKI_DEFAULT(f);
+	bool		olnksharedauth BKI_DEFAULT(f);
+	int8		olnkconntype BKI_DEFAULT(0);
 #ifdef CATALOG_VARLEN			/* variable-length fields start here */
 	text		srvtype;
 	text		srvversion;
 	aclitem		srvacl[1];		/* access permissions */
 	text		srvoptions[1];	/* FDW-specific options */
+	text 		olnkusingstring BKI_DEFAULT(_null_); 	/* Text string of dblink using */
+	text		olnksviname BKI_DEFAULT(_null_);		/* DBLINK service_name */
 #endif
 } FormData_pg_foreign_server;
 

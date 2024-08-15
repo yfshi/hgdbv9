@@ -144,6 +144,13 @@ int grant_usertype = PG_GRANTUSER;
 bool numerictonumber = false;
 /* End - BUG#z476 */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+int ora_open_lins = 4;
+char *default_dblink_fdw = "";
+bool check_lnk_metadata_changed = false;
+bool ora_global_names = false;
+/* End - ReqID:SRS-SQL-DBLINK */
+
 
 /* Begin - SRS-MISC-COMPATDM-SQL, this GUC for compat DM SPACE_COMPARE_MODE,
  * if this is true,we  compare the blank padding in chracter type as same as oracle,
@@ -285,6 +292,9 @@ static bool default_collation_check(char **newval, void **extra, GucSource sourc
 static void default_collation_assign(const char *newval, void *extra);
 static bool max_string_size_check(int *newval, void **extra, GucSource source);
 /* End - SRS-SQL-NLSSORT */
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static bool dblink_using_fdw_check(char **newval, void **extra, GucSource source);
+/* End - ReqID:SRS-SQL-DBLINK */
 #endif
 
 #if 0
@@ -597,6 +607,28 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* END - SRS-SQL-NLSSORT */
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	{
+		{"ivorysql.check_lnk_metadata_changed", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Check whether the object metadata accessed by using dblink has changed."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&check_lnk_metadata_changed,
+		false,
+		NULL, NULL, NULL
+	},
+	{
+		{"global_names", PGC_SUSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("enforce that database links have same name as remote database."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&ora_global_names,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-DBLINK */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -682,6 +714,18 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	{
+    	{"open_links", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
+        	gettext_noop("Sets the ccurrent session maximum number of database links in use."),
+        	NULL,
+        	GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+    	},
+    	&ora_open_lins,
+    	4, 1, 10,
+    	NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-DBLINK */	
 #endif
 #if 0
 	/* End-of-list marker */
@@ -821,6 +865,18 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		default_collation_check, default_collation_assign, NULL
 	},
 	/* End - SRS-SQL-NLSSORT */
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	{
+		{"ivorysql.default_dblink_fdw", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle DBLINK using FDW name."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&default_dblink_fdw,
+		"postgres_fdw",
+		dblink_using_fdw_check, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-DBLINK */
 #endif
 #if 0
 	/* End-of-list marker */
@@ -1363,4 +1419,20 @@ max_string_size_check(int *newval, void **extra, GucSource source)
 	return true;
 }
 /* End - SRS-SQL-NLSSORT */
+
+static bool
+dblink_using_fdw_check(char **newval, void **extra, GucSource source)
+{
+   if (DB_ORACLE == database_mode)
+   {
+       if (pg_strcasecmp(*newval, "postgres_fdw") == 0)
+           memcpy(*newval, "postgres_fdw", 12);
+       else if (pg_strcasecmp(*newval, "oracle_fdw") == 0)
+           memcpy(*newval, "oracle_fdw", 10);
+       else
+           ereport(ERROR, (errmsg("invalid fdw name specified")));
+   }
+
+   return true;
+}
 #endif

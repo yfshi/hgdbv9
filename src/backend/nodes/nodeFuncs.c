@@ -2602,6 +2602,7 @@ range_table_entry_walker(RangeTblEntry *rte,
 		case RTE_NAMEDTUPLESTORE:
 		case RTE_RESULT:
 		case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
+		case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 			/* nothing to do */
 			break;
 	}
@@ -3551,6 +3552,7 @@ range_table_mutator(List *rtable,
 			case RTE_NAMEDTUPLESTORE:
 			case RTE_RESULT:
 			case RTE_COUNT:	/* ReqID:SRS-SQL-ROWNUM */
+			case RTE_DBLINK: /* ReqID:SRS-SQL-DBLINK */
 				/* nothing to do */
 				break;
 		}

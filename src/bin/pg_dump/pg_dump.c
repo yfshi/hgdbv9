@@ -335,6 +335,10 @@ static void dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo);
 static void dumpDbRolesmembership(Archive *fout, const DbRolesMembershipInfo *dbrinfo);
 /* End - ReqID:SRS-MISC-USER */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static char *get_usermapping_options_kv(char *umoptions, char *optname);
+/* End - ReqID:SRS-SQL-DBLINK */
+
 int
 main(int argc, char **argv)
 {
@@ -10407,6 +10411,11 @@ getForeignServers(Archive *fout, int *numForeignServers)
 	int			i_srvname;
 	int			i_rolname;
 	int			i_srvfdw;
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	int			i_lnkispublic;
+	int			i_lnkisshared;
+	int			i_lnkconntype;
+	/* End - ReqID:SRS-SQL-DBLINK */
 	int			i_srvtype;
 	int			i_srvversion;
 	int			i_srvacl;
@@ -10414,6 +10423,7 @@ getForeignServers(Archive *fout, int *numForeignServers)
 	int			i_initsrvacl;
 	int			i_initrsrvacl;
 	int			i_srvoptions;
+	int			i_lnkusingstring;	/* ReqID:SRS-SQL-DBLINK */
 
 	/* Before 8.4, there are no foreign servers */
 	if (fout->remoteVersion < 80400)
@@ -10437,7 +10447,7 @@ getForeignServers(Archive *fout, int *numForeignServers)
 
 		appendPQExpBuffer(query, "SELECT f.tableoid, f.oid, f.srvname, "
 						  "(%s f.srvowner) AS rolname, "
-						  "f.srvfdw, f.srvtype, f.srvversion, "
+						  "f.srvfdw, f.olnkispublic, f.olnkisshared, f.olnkconntype, f.srvtype, f.srvversion, "
 						  "%s AS srvacl, "
 						  "%s AS rsrvacl, "
 						  "%s AS initsrvacl, "
@@ -10447,7 +10457,8 @@ getForeignServers(Archive *fout, int *numForeignServers)
 						  "quote_literal(option_value) "
 						  "FROM pg_options_to_table(f.srvoptions) "
 						  "ORDER BY option_name"
-						  "), E',\n    ') AS srvoptions "
+						  "), E',\n    ') AS srvoptions, "
+						  "f.olnkusingstring "
 						  "FROM pg_foreign_server f "
 						  "LEFT JOIN pg_init_privs pip "
 						  "ON (f.oid = pip.objoid "
@@ -10493,6 +10504,11 @@ getForeignServers(Archive *fout, int *numForeignServers)
 	i_srvname = PQfnumber(res, "srvname");
 	i_rolname = PQfnumber(res, "rolname");
 	i_srvfdw = PQfnumber(res, "srvfdw");
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	i_lnkispublic = PQfnumber(res, "olnkispublic");
+	i_lnkisshared = PQfnumber(res, "olnkisshared");
+	i_lnkconntype = PQfnumber(res, "olnkconntype");
+	/* End - ReqID:SRS-SQL-DBLINK */
 	i_srvtype = PQfnumber(res, "srvtype");
 	i_srvversion = PQfnumber(res, "srvversion");
 	i_srvacl = PQfnumber(res, "srvacl");
@@ -10500,6 +10516,8 @@ getForeignServers(Archive *fout, int *numForeignServers)
 	i_initsrvacl = PQfnumber(res, "initsrvacl");
 	i_initrsrvacl = PQfnumber(res, "initrsrvacl");
 	i_srvoptions = PQfnumber(res, "srvoptions");
+	i_lnkusingstring = PQfnumber(res, "olnkusingstring");	/* ReqID:SRS-SQL-DBLINK */
+
 
 	for (i = 0; i < ntups; i++)
 	{
@@ -10511,9 +10529,15 @@ getForeignServers(Archive *fout, int *numForeignServers)
 		srvinfo[i].dobj.namespace = NULL;
 		srvinfo[i].rolname = pg_strdup(PQgetvalue(res, i, i_rolname));
 		srvinfo[i].srvfdw = atooid(PQgetvalue(res, i, i_srvfdw));
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		srvinfo[i].lnkispublic = (strcmp(PQgetvalue(res, i, i_lnkispublic), "t") == 0);
+		srvinfo[i].lnkisshared = (strcmp(PQgetvalue(res, i, i_lnkisshared), "t") == 0);
+		srvinfo[i].lnkconntype = atoi(PQgetvalue(res, i, i_lnkconntype));
+		/* End - ReqID:SRS-SQL-DBLINK */
 		srvinfo[i].srvtype = pg_strdup(PQgetvalue(res, i, i_srvtype));
 		srvinfo[i].srvversion = pg_strdup(PQgetvalue(res, i, i_srvversion));
 		srvinfo[i].srvoptions = pg_strdup(PQgetvalue(res, i, i_srvoptions));
+		srvinfo[i].lnkusingstring = pg_strdup(PQgetvalue(res, i, i_lnkusingstring)); /* ReqID:SRS-SQL-DBLINK */
 		srvinfo[i].srvacl = pg_strdup(PQgetvalue(res, i, i_srvacl));
 		srvinfo[i].rsrvacl = pg_strdup(PQgetvalue(res, i, i_rsrvacl));
 		srvinfo[i].initsrvacl = pg_strdup(PQgetvalue(res, i, i_initsrvacl));
@@ -16163,9 +16187,11 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 	PQExpBuffer q;
 	PQExpBuffer delq;
 	PQExpBuffer query;
+	PQExpBuffer query_um;	/* ReqID:SRS-SQL-DBLINK */
 	PGresult   *res;
 	char	   *qsrvname;
 	char	   *fdwname;
+	int			i_umoptions;	/* ReqID:SRS-SQL-DBLINK */
 
 	/* Skip if not to be dumped */
 	if (!srvinfo->dobj.dump || dopt->dataOnly)
@@ -16174,6 +16200,7 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 	q = createPQExpBuffer();
 	delq = createPQExpBuffer();
 	query = createPQExpBuffer();
+	query_um = createPQExpBuffer();	/* ReqID:SRS-SQL-DBLINK */
 
 	qsrvname = pg_strdup(fmtId(srvinfo->dobj.name));
 
@@ -16185,28 +16212,129 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 	res = ExecuteSqlQueryForSingleRow(fout, query->data);
 	fdwname = PQgetvalue(res, 0, 0);
 
-	appendPQExpBuffer(q, "CREATE SERVER %s", qsrvname);
-	if (srvinfo->srvtype && strlen(srvinfo->srvtype) > 0)
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	if (srvinfo->lnkconntype)
 	{
-		appendPQExpBufferStr(q, " TYPE ");
-		appendStringLiteralAH(q, srvinfo->srvtype, fout);
-	}
-	if (srvinfo->srvversion && strlen(srvinfo->srvversion) > 0)
+		char	   *umoptions = NULL;
+		char	   *username = NULL;
+		char	   *userpwd = NULL;
+		char	   *authusername = NULL;
+		char	   *authuserpwd = NULL;
+		int			ntups;
+
+		/*
+		 * Get the user mapping options
+		 */
+		appendPQExpBuffer(query_um,
+						  "SELECT srvname, "
+						  "array_to_string(ARRAY("
+						  "SELECT quote_ident(option_name) || ':' || "
+						  "quote_literal(option_value) "
+						  "FROM pg_options_to_table(umoptions) "
+						  "ORDER BY option_name"
+						  "), E',') AS umoptions "
+						  "FROM pg_user_mappings "
+						  "WHERE srvid = '%u' "
+						  " AND srvname = '%s'",
+						  srvinfo->dobj.catId.oid, qsrvname);
+
+		res = ExecuteSqlQuery(fout, query_um->data, PGRES_TUPLES_OK);
+		ntups = PQntuples(res);
+		if (ntups == 1)
+		{
+			i_umoptions = PQfnumber(res, "umoptions");
+			umoptions = PQgetvalue(res, 0, i_umoptions);
+
+			/*
+			 * Extract the user and password, if it's a shared dblink also extract the
+			 * authuser and authpassword
+			 */
+			username = get_usermapping_options_kv(umoptions, "\"user\"");
+			userpwd = get_usermapping_options_kv(umoptions, "password");
+			authusername = get_usermapping_options_kv(umoptions, "authuser");
+			authuserpwd = get_usermapping_options_kv(umoptions, "authpassword");
+		}
+
+		appendPQExpBuffer(q, "CREATE ");
+
+		if (srvinfo->lnkisshared)
+			appendPQExpBuffer(q, "SHARED ");
+		if (srvinfo->lnkispublic)
+			appendPQExpBuffer(q, "PUBLIC ");
+
+		appendPQExpBuffer(q, "DATABASE LINK %s ", qsrvname);
+
+		switch (srvinfo->lnkconntype)
+		{
+			case ORA_DBLINK_CONNECTED_USER:
+			{
+				appendPQExpBufferStr(q, "\n");
+				if (srvinfo->lnkisshared)
+					appendPQExpBuffer(q, " AUTHENTICATED BY %s IDENTIFIED BY \"%s\"\n", "authuser", "authpwd");
+			}
+			break;
+			case ORA_DBLINK_FIXED_USER:
+			{
+				appendPQExpBuffer(q, "CONNECT TO %s\n ", username);
+				appendPQExpBuffer(q, " IDENTIFIED BY \"%s\"\n ", userpwd);
+				if (srvinfo->lnkisshared)
+					appendPQExpBuffer(q, " AUTHENTICATED BY %s IDENTIFIED BY \"%s\"\n", authusername, authuserpwd);
+			}
+			break;
+			case ORA_DBLINK_CURRENT_USER:
+			{
+				appendPQExpBuffer(q, " CONNECT TO CURRENT_USER\n");
+				if (srvinfo->lnkisshared)
+					appendPQExpBuffer(q, " AUTHENTICATED BY %s IDENTIFIED BY \"%s\"\n", "authuser", "authpwd");
+			}
+			break;
+			default:
+				break;
+		}
+
+		appendPQExpBuffer(q, "  USING \'%s\'", srvinfo->lnkusingstring);
+
+		if (strcmp(srvinfo->srvtype, "postgres") ==0)
+		{
+			appendPQExpBuffer(q, " WITH \'%s\'", "postgres_fdw");
+			appendPQExpBufferStr(q, ";\n");
+		}
+		else if (strcmp(srvinfo->srvtype, "oracle") ==0)
+		{
+			appendPQExpBuffer(q, " WITH \'%s\'", "oracle_fdw");
+			appendPQExpBufferStr(q, ";\n");
+		}
+
+		if (srvinfo->lnkispublic)
+			appendPQExpBuffer(delq, "DROP PUBLIC DATABASE LINK %s;\n", qsrvname);
+		else
+			appendPQExpBuffer(delq, "DROP DATABASE LINK %s;\n", qsrvname);
+	}/* End - ReqID:SRS-SQL-DBLINK */
+	else
 	{
-		appendPQExpBufferStr(q, " VERSION ");
-		appendStringLiteralAH(q, srvinfo->srvversion, fout);
+		appendPQExpBuffer(q, "CREATE SERVER %s", qsrvname);
+		if (srvinfo->srvtype && strlen(srvinfo->srvtype) > 0)
+		{
+			appendPQExpBufferStr(q, " TYPE ");
+			appendStringLiteralAH(q, srvinfo->srvtype, fout);
+		}
+		if (srvinfo->srvversion && strlen(srvinfo->srvversion) > 0)
+		{
+			appendPQExpBufferStr(q, " VERSION ");
+			appendStringLiteralAH(q, srvinfo->srvversion, fout);
+		}
+
+		appendPQExpBufferStr(q, " FOREIGN DATA WRAPPER ");
+		appendPQExpBufferStr(q, fmtId(fdwname));
+
+		if (srvinfo->srvoptions && strlen(srvinfo->srvoptions) > 0)
+			appendPQExpBuffer(q, " OPTIONS (\n    %s\n)", srvinfo->srvoptions);
+
+		appendPQExpBufferStr(q, ";\n");
+
+		appendPQExpBuffer(delq, "DROP SERVER %s;\n", qsrvname);
+
 	}
-
-	appendPQExpBufferStr(q, " FOREIGN DATA WRAPPER ");
-	appendPQExpBufferStr(q, fmtId(fdwname));
-
-	if (srvinfo->srvoptions && strlen(srvinfo->srvoptions) > 0)
-		appendPQExpBuffer(q, " OPTIONS (\n    %s\n)", srvinfo->srvoptions);
-
-	appendPQExpBufferStr(q, ";\n");
-
-	appendPQExpBuffer(delq, "DROP SERVER %s;\n",
-					  qsrvname);
 
 	if (dopt->binary_upgrade)
 		binary_upgrade_extension_member(q, &srvinfo->dobj,
@@ -16236,7 +16364,7 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 				srvinfo->initsrvacl, srvinfo->initrsrvacl);
 
 	/* Dump user mappings */
-	if (srvinfo->dobj.dump & DUMP_COMPONENT_USERMAP)
+	if (srvinfo->lnkconntype == 0 && srvinfo->dobj.dump & DUMP_COMPONENT_USERMAP)
 		dumpUserMappings(fout,
 						 srvinfo->dobj.name, NULL,
 						 srvinfo->rolname,
@@ -16247,6 +16375,7 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 	destroyPQExpBuffer(q);
 	destroyPQExpBuffer(delq);
 	destroyPQExpBuffer(query);
+	destroyPQExpBuffer(query_um); /* ReqID:SRS-SQL-DBLINK */
 }
 
 /*
@@ -20478,3 +20607,62 @@ appendReloptionsArrayAH(PQExpBuffer buffer, const char *reloptions,
 	if (!res)
 		pg_log_warning("could not parse reloptions array");
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ *	strtok_r
+ *		Windows compatibility for strtok_r
+ */
+#ifdef	WIN32
+char *
+strtok_r(char *str, const char *delim, char **saveptr)
+{
+	char 	*token;
+
+	if (str == NULL)
+		str = *saveptr;
+
+	/* Skip leading delimiters */
+	str += strspn(str, delim);
+	if (*str == '\0')
+	{
+		/* No more tokens */
+		return NULL;
+	}
+
+	/* Find the end of the token */
+	token = str;
+	str = strpbrk(token, delim);
+	if (str == NULL)
+	{
+		/* This token finishes the rest of the string */
+		*saveptr = token + strlen(token);
+	}
+	else
+	{
+		/* Terminate the token and save the rest for later */
+		*str = '\0';
+		*saveptr = str + 1;
+	}
+
+	return token;
+}
+#endif
+
+static char *
+get_usermapping_options_kv(char *umoptions, char *optname)
+{
+	char *token;
+	char *rest = strdup(umoptions);
+
+	while ((token = strtok_r(rest, ",", &rest)))
+	{
+		char *optval = strtok(token, ":");
+		char *v = strtok(NULL, "'");
+		if (strcmp(optval, optname) == 0)
+			return v;
+	}
+
+	return NULL;
+}
+/* End - ReqID:SRS-SQL-DBLINK */

@@ -5465,3 +5465,30 @@ list_all_backend_gtt_frozenxids(int max_size, int *pids, uint32 *xids, int *n)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+void
+SendSignalToAllBackends(ProcSignalReason reason)
+{
+	int numProcs;
+	int i;
+
+	ProcArrayStruct *arrayP = procArray;
+
+	LWLockAcquire(ProcArrayLock, LW_SHARED);
+	numProcs = arrayP->numProcs;
+
+	for (i = 0; i < numProcs; i++)
+	{
+		int pgprocno = arrayP->pgprocnos[i];
+		PGPROC *proc = &ProcGlobal->allProcs[pgprocno];
+
+		if (proc != NULL && proc->pid != 0 && proc->databaseId == MyDatabaseId)
+		{
+			SendProcSignal(proc->pid, reason, proc->backendId);
+		}
+	}
+
+	LWLockRelease(ProcArrayLock);
+}
+/* End - ReqID:SRS-SQL-DBLINK */

@@ -2094,7 +2094,14 @@ _equalCreateForeignServerStmt(const CreateForeignServerStmt *a, const CreateFore
 	COMPARE_STRING_FIELD(version);
 	COMPARE_STRING_FIELD(fdwname);
 	COMPARE_SCALAR_FIELD(if_not_exists);
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	COMPARE_SCALAR_FIELD(is_public);
+	COMPARE_SCALAR_FIELD(is_shared);
+	COMPARE_SCALAR_FIELD(ora_dblink_contype);
+	/* End - ReqID:SRS-SQL-DBLINK */
 	COMPARE_NODE_FIELD(options);
+	COMPARE_STRING_FIELD(olnkusing);	/* ReqID:SRS-SQL-DBLINK */
+	COMPARE_STRING_FIELD(service_name);
 
 	return true;
 }
@@ -2176,6 +2183,45 @@ _equalImportForeignSchemaStmt(const ImportForeignSchemaStmt *a, const ImportFore
 
 	return true;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static bool
+_equalCreateDatabaseLinkStmt(const CreateDatabaseLinkStmt *a, const CreateDatabaseLinkStmt *b)
+{
+	COMPARE_NODE_FIELD(elems);
+	COMPARE_NODE_FIELD(conn_string);
+
+	return true;
+}
+
+static bool
+_equalDropDatabaseLinkStmt(const DropDatabaseLinkStmt*a,
+							const DropDatabaseLinkStmt *b)
+{
+	COMPARE_STRING_FIELD(linkname);
+	COMPARE_SCALAR_FIELD(behavior);
+
+	return true;
+}
+
+static bool
+_equalAlterDatabaseLinkStmt(const AlterDatabaseLinkStmt *a, const AlterDatabaseLinkStmt *b)
+{
+	COMPARE_NODE_FIELD(user);
+	COMPARE_STRING_FIELD(servername);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+
+static bool
+_equalAlterSessionCloseDblinkStmt(const AlterSessionCloseDblinkStmt *a, const AlterSessionCloseDblinkStmt *b)
+{
+	COMPARE_STRING_FIELD(linkname);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 static bool
 _equalCreateTransformStmt(const CreateTransformStmt *a, const CreateTransformStmt *b)
@@ -2545,6 +2591,18 @@ _equalPseudoColumnRef(const PseudoColumnRef *a, const PseudoColumnRef *b)
 	return true;
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
+
+
+static bool
+_equalTupdescNatts(const TupdescNatts *a, const TupdescNatts *b)
+{
+	COMPARE_STRING_FIELD(colname);
+	COMPARE_SCALAR_FIELD(coltypid);
+	COMPARE_SCALAR_FIELD(coltypmod);
+
+	return true;
+}
+
 
 static bool
 _equalParamRef(const ParamRef *a, const ParamRef *b)
@@ -3863,6 +3921,20 @@ equal(const void *a, const void *b)
 		case T_ImportForeignSchemaStmt:
 			retval = _equalImportForeignSchemaStmt(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-DBLINK */
+		case T_CreateDatabaseLinkStmt:
+			retval = _equalCreateDatabaseLinkStmt(a, b);
+			break;
+		case T_DropDatabaseLinkStmt:
+			retval = _equalDropDatabaseLinkStmt(a, b);
+			break;
+		case T_AlterDatabaseLinkStmt:
+			retval = _equalAlterDatabaseLinkStmt(a, b);
+			break;
+		case T_AlterSessionCloseDblinkStmt:
+			retval = _equalAlterSessionCloseDblinkStmt(a,b);
+			break;
+		/* End - ReqID:SRS-SQL-DBLINK */
 		case T_CreateTransformStmt:
 			retval = _equalCreateTransformStmt(a, b);
 			break;
@@ -3969,6 +4041,9 @@ equal(const void *a, const void *b)
 		/* End - ReqID:SRS-SQL-ROWNUM */
 		case T_ParamRef:
 			retval = _equalParamRef(a, b);
+			break;
+		case T_TupdescNatts:
+			retval = _equalTupdescNatts(a, b);
 			break;
 		case T_A_Const:
 			retval = _equalAConst(a, b);

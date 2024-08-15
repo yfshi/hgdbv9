@@ -858,7 +858,7 @@ static void
 PrepareAllFdwXacts(TransactionId xid, bool prepare_all)
 {
 	FdwXactEntry *fdwent;
-	XLogRecPtr	flush_lsn;
+	XLogRecPtr	flush_lsn = 0;
 	bool	canceled;
 	HASH_SEQ_STATUS scan;
 

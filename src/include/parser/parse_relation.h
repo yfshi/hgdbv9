@@ -128,4 +128,5 @@ extern bool is_query_using_gtt(Query *query);
 extern RangeTblEntry *addRangeTableEntryForCount(ParseState *pstate);
 /* End - ReqID:SRS-SQL-ROWNUM */
 
+extern bool isDblinkTable(const char *name, char **tname, char **servname);
 #endif							/* PARSE_RELATION_H */

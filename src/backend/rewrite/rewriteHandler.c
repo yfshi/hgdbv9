@@ -49,6 +49,8 @@
 #include "utils/guc.h"				/* ReqID:SRS-SQL-FORCEVIEW */
 #include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 
+#include "tcop/tcopprot.h"	/* ReqID:SRS-SQL-DBLINK */
+#include "tcop/utility.h"	/* ReqID:SRS-SQL-DBLINK */
 
 /* We use a list of these to detect recursion in RewriteQuery */
 typedef struct rewrite_event
@@ -202,7 +204,112 @@ AcquireRewriteLocks(Query *parsetree,
 
 				table_close(rel, NoLock);
 				break;
+			/* Begin - ReqID:SRS-SQL-DBLINK */
+			case RTE_DBLINK:
+				{
+					List	    *raw_parsetree_list = NIL;
+					ListCell    *f;
+					ForeignServer *server;
+					ForeignDataWrapper *fdw;
+					RawStmt    *rs;
+					CreateForeignTableStmt *cstmt;
+					PlannedStmt *pstmt;
+					Relation 	rel;
+					char		*ftname = NULL;
+					int			fdw_type = 0;
+					bool		find_failed = false;
+					char 		*query_string;
+					MemoryContext   current_cxt = CurrentMemoryContext;
 
+					if (!forExecute)
+						lockmode = AccessShareLock;
+					else if (forUpdatePushedDown)
+					{
+						/* Upgrade RTE's lock mode to reflect pushed-down lock */
+						if (rte->rellockmode == AccessShareLock)
+							rte->rellockmode = RowShareLock;
+						lockmode = rte->rellockmode;
+					}
+					else
+						lockmode = rte->rellockmode;
+
+					/* Get fdw name */
+					server = GetForeignServer(rte->serverOid);
+					fdw = GetForeignDataWrapper(server->fdwid);
+
+					if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
+						fdw_type = ORA_FDW;
+					else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
+						fdw_type = PG_FDW;
+
+					ftname = psprintf("%s@%s", rte->linkrelname, server->servername);
+
+					PG_TRY();
+					{
+						MemoryContextSwitchTo(current_cxt);
+						rel = get_rel_oid_from_relname(ftname, lockmode, ACL_SELECT);
+					}
+					PG_CATCH();
+					{
+						FlushErrorState();
+						find_failed = true;
+					}
+					PG_END_TRY();
+
+					MemoryContextSwitchTo(current_cxt);
+
+					if (!find_failed)
+					{
+						rte->rtekind = RTE_RELATION;
+						rte->relid = rel->rd_id;
+						rte->relkind = rel->rd_rel->relkind;
+
+						table_close(rel, NoLock);
+					}
+					else
+					{
+						query_string = buildCreateForeignTablequeryString(rte->linkrelattrs, ftname,
+																		  rte->linkrelname, server->servername,
+																		  rte->linkrelnsname, fdw_type
+																		  );
+
+						/* Parse the SQL string into a list of raw parse trees. */
+						raw_parsetree_list = pg_parse_query(pstrdup(query_string));
+						Assert(list_length(raw_parsetree_list) == 1);
+						f = list_head(raw_parsetree_list);
+						rs =  lfirst(f);
+						cstmt = (CreateForeignTableStmt *) rs->stmt;
+
+						if (!IsA(cstmt, CreateForeignTableStmt))
+							elog(ERROR, "not a CreateForeignTableStmt");
+
+						cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
+
+						pstmt = makeNode(PlannedStmt);
+						pstmt->commandType = CMD_UTILITY;
+						pstmt->canSetTag = false;
+						pstmt->utilityStmt = (Node *) cstmt;
+						pstmt->stmt_location = rs->stmt_location;
+						pstmt->stmt_len = rs->stmt_len;
+
+						/* Execute statement */
+						ProcessUtility(pstmt, pstrdup(query_string), false,
+									   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+									   None_Receiver, NULL);
+
+						/* Be sure to advance the command counter between subcommands */
+						CommandCounterIncrement();
+
+						rel = get_rel_oid_from_relname(ftname, lockmode, ACL_SELECT);
+
+						rte->rtekind = RTE_RELATION;
+						rte->relid = rel->rd_id;
+						rte->relkind = rel->rd_rel->relkind;
+						table_close(rel, NoLock);
+					}
+				}
+				break;
+				/* End - ReqID:SRS-SQL-DBLINK */
 			case RTE_JOIN:
 
 				/*
@@ -3743,6 +3850,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 	Query	   *qual_product = NULL;
 	List	   *rewritten = NIL;
 	ListCell   *lc1;
+	ListCell   *rt;	/* ReqID:SRS-SQL-DBLINK */
 
 	/*
 	 * First, recursively process any insert/update/delete statements in WITH
@@ -4237,6 +4345,30 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 
 		table_close(rt_entry_relation, NoLock);
 	}
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	foreach(rt, parsetree->rtable)
+	{
+		RangeTblEntry *rte = (RangeTblEntry *) lfirst(rt);
+		if (rte->rtekind == RTE_DBLINK)
+		{
+			Relation  	 rel;
+			char		*ftname = NULL;
+			ForeignServer *server;
+
+			server = GetForeignServer(rte->serverOid);
+			ftname = psprintf("%s@%s", rte->linkrelname, server->servername);
+
+			rel = get_rel_oid_from_relname(ftname, AccessShareLock, ACL_SELECT);
+
+			rte->rtekind = RTE_RELATION;
+			rte->relid = rel->rd_id;
+			rte->relkind = rel->rd_rel->relkind;
+
+			relation_close(rel, AccessShareLock);
+		}
+	}
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/*
 	 * For INSERTs, the original query is done first; for UPDATE/DELETE, it is

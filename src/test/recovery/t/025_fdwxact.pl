@@ -43,7 +43,7 @@ $node_fs2->start;
 
 # Create foreign servers on the master node
 $node_master->safe_psql('postgres', qq(
-CREATE EXTENSION postgres_fdw
+CREATE EXTENSION IF NOT EXISTS postgres_fdw
 ));
 $node_master->safe_psql('postgres', qq(
 CREATE SERVER fs1 FOREIGN DATA WRAPPER postgres_fdw

@@ -413,6 +413,13 @@ extern bool enable_cursor_as_column_type;
 extern PGDLLIMPORT bool out_parameter_column_position;
 /* End - ReqID:SRS-SQL-LIBPQOUT */
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+extern PGDLLIMPORT char *default_dblink_fdw;
+extern PGDLLIMPORT int ora_open_lins;
+extern PGDLLIMPORT bool check_lnk_metadata_changed;
+extern PGDLLIMPORT bool ora_global_names;
+/* End - ReqID:SRS-SQL-DBLINK */
+
 /*
  * Functions exported by guc.c
  */

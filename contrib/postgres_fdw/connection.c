@@ -90,11 +90,13 @@ PG_FUNCTION_INFO_V1(postgres_fdw_disconnect_all);
 
 /* prototypes of private functions */
 static void make_new_connection(ConnCacheEntry *entry, UserMapping *user);
-static PGconn *connect_pg_server(ForeignServer *server, UserMapping *user);
 static void disconnect_pg_server(ConnCacheEntry *entry);
 static void check_conn_params(const char **keywords, const char **values, UserMapping *user);
 static void configure_remote_session(PGconn *conn);
 static void begin_remote_xact(ConnCacheEntry *entry, UserMapping *user);
+#if 0
+static void pgfdw_xact_callback(XactEvent event, void *arg);
+#endif
 static void pgfdw_subxact_callback(SubXactEvent event,
 								   SubTransactionId mySubid,
 								   SubTransactionId parentSubid,
@@ -363,7 +365,7 @@ MarkConnectionModified(UserMapping *user)
 /*
  * Connect to remote server using specified server and user mapping properties.
  */
-static PGconn *
+PGconn *
 connect_pg_server(ForeignServer *server, UserMapping *user)
 {
 	PGconn	   *volatile conn = NULL;
@@ -479,6 +481,128 @@ connect_pg_server(ForeignServer *server, UserMapping *user)
 
 	return conn;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+/*
+ * Connect to remote server using specified server and user mapping properties.
+ */
+PGconn *
+ivy_connect_pg_server(ForeignServer *server, UserMapping *user)
+{
+	PGconn	   *volatile conn = NULL;
+
+	/*
+	 * Use PG_TRY block to ensure closing connection on error.
+	 */
+	PG_TRY();
+	{
+		const char **keywords;
+		const char **values;
+		int			n;
+
+		/*
+		 * Construct connection params from generic options of ForeignServer
+		 * and UserMapping.  (Some of them might not be libpq options, in
+		 * which case we'll just waste a few array slots.)  Add 3 extra slots
+		 * for fallback_application_name, client_encoding, end marker.
+		 */
+		n = list_length(server->options) + list_length(user->options) + 3;
+		keywords = (const char **) palloc(n * sizeof(char *));
+		values = (const char **) palloc(n * sizeof(char *));
+
+		n = 0;
+		n += ExtractConnectionOptions(server->options,
+									  keywords + n, values + n);
+		n += IvyExtractUserAuthOptions(user->options,
+									  keywords + n, values + n);
+
+		/* Use "postgres_fdw" as fallback_application_name. */
+		keywords[n] = "fallback_application_name";
+		values[n] = "postgres_fdw";
+		n++;
+
+		/* Set client_encoding so that libpq can convert encoding properly. */
+		keywords[n] = "client_encoding";
+		values[n] = GetDatabaseEncodingName();
+		n++;
+
+		keywords[n] = values[n] = NULL;
+
+		/* verify the set of connection parameters */
+		check_conn_params(keywords, values, user);
+
+		/*
+		 * We must obey fd.c's limit on non-virtual file descriptors.  Assume
+		 * that a PGconn represents one long-lived FD.  (Doing this here also
+		 * ensures that VFDs are closed if needed to make room.)
+		 */
+		if (!AcquireExternalFD())
+		{
+#ifndef WIN32					/* can't write #if within ereport() macro */
+			ereport(ERROR,
+					(errcode(ERRCODE_SQLCLIENT_UNABLE_TO_ESTABLISH_SQLCONNECTION),
+					 errmsg("could not connect to server \"%s\"",
+							server->servername),
+					 errdetail("There are too many open files on the local server."),
+					 errhint("Raise the server's max_files_per_process and/or \"ulimit -n\" limits.")));
+#else
+			ereport(ERROR,
+					(errcode(ERRCODE_SQLCLIENT_UNABLE_TO_ESTABLISH_SQLCONNECTION),
+					 errmsg("could not connect to server \"%s\"",
+							server->servername),
+					 errdetail("There are too many open files on the local server."),
+					 errhint("Raise the server's max_files_per_process setting.")));
+#endif
+		}
+
+		/* OK to make connection */
+		conn = PQconnectdbParams(keywords, values, false);
+
+		if (!conn)
+			ReleaseExternalFD();	/* because the PG_CATCH block won't */
+
+		if (!conn || PQstatus(conn) != CONNECTION_OK)
+			ereport(ERROR,
+					(errcode(ERRCODE_SQLCLIENT_UNABLE_TO_ESTABLISH_SQLCONNECTION),
+					 errmsg("could not connect to server \"%s\"",
+							server->servername),
+					 errdetail_internal("%s", pchomp(PQerrorMessage(conn)))));
+
+		/*
+		 * Check that non-superuser has used password to establish connection;
+		 * otherwise, he's piggybacking on the postgres server's user
+		 * identity. See also dblink_security_check() in contrib/dblink and
+		 * check_conn_params.
+		 */
+		if (!superuser_arg(user->userid) && UserMappingPasswordRequired(user) &&
+			!PQconnectionUsedPassword(conn))
+			ereport(ERROR,
+					(errcode(ERRCODE_S_R_E_PROHIBITED_SQL_STATEMENT_ATTEMPTED),
+					 errmsg("password is required"),
+					 errdetail("Non-superuser cannot connect if the server does not request a password."),
+					 errhint("Target server's authentication method must be changed or password_required=false set in the user mapping attributes.")));
+
+		/* Prepare new session for use */
+		configure_remote_session(conn);
+
+		pfree(keywords);
+		pfree(values);
+	}
+	PG_CATCH();
+	{
+		/* Release PGconn data structure if we managed to create one */
+		if (conn)
+		{
+			PQfinish(conn);
+			ReleaseExternalFD();
+		}
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	return conn;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * Disconnect any open connection for a connection cache entry.
@@ -1706,6 +1830,73 @@ disconnect_cached_connections(Oid serverid)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+bool
+ivy_disconnect_cached_connections(Oid serverid)
+{
+	HASH_SEQ_STATUS scan;
+	ConnCacheEntry *entry;
+	bool		all = !OidIsValid(serverid);
+	bool		result = false;
+
+	/*
+	 * Connection cache hashtable has not been initialized yet in this
+	 * session, so return false.
+	 */
+	if (!ConnectionHash)
+		return false;
+
+	hash_seq_init(&scan, ConnectionHash);
+	while ((entry = (ConnCacheEntry *) hash_seq_search(&scan)))
+	{
+		/* Ignore cache entry if no open connection right now. */
+		if (!entry->conn)
+			continue;
+
+		if (all || entry->serverid == serverid)
+		{
+			/*
+			 * Emit a warning because the connection to close is used in the
+			 * current transaction and cannot be disconnected right now.
+			 */
+			if (entry->xact_depth > 0)
+			{
+				ForeignServer *server;
+
+				server = GetForeignServerExtended(entry->serverid,
+												  FSV_MISSING_OK);
+
+				if (!server)
+				{
+					/*
+					 * If the foreign server was dropped while its connection
+					 * was used in the current transaction, the connection
+					 * must have been marked as invalid by
+					 * pgfdw_inval_callback at the end of DROP SERVER command.
+					 */
+					Assert(entry->invalidated);
+
+					ereport(WARNING,
+							(errmsg("cannot close dropped server connection because it is still in use")));
+				}
+				else
+					ereport(WARNING,
+							(errmsg("cannot close connection for server \"%s\" because it is still in use",
+									server->servername)));
+			}
+			else
+			{
+				elog(DEBUG3, "discarding connection %p", entry->conn);
+				disconnect_pg_server(entry);
+				result = true;
+			}
+		}
+	}
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
 
 void
 postgresCommitForeignTransaction(FdwXactInfo *finfo)

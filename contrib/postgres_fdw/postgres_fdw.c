@@ -543,6 +543,11 @@ static void merge_fdw_options(PgFdwRelationInfo *fpinfo,
 							  const PgFdwRelationInfo *fpinfo_i);
 static int	get_batch_size_option(Relation rel);
 
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void ivorysqlDblinkAuthenticated(char *servername);
+static void ivorysqlAlterSessionCloseLink(char *linkname);
+static List *ivorysqlDblinkCheckMetadataChanged(Oid srvId, char *nsp, char  *relname);
+/* End - ReqID:SRS-SQL-DBLINK */
 
 /*
  * Foreign-data wrapper handler function: return a struct with pointers
@@ -612,6 +617,12 @@ postgres_fdw_handler(PG_FUNCTION_ARGS)
 	routine->CommitForeignTransaction = postgresCommitForeignTransaction;
 	routine->RollbackForeignTransaction = postgresRollbackForeignTransaction;
 	routine->PrepareForeignTransaction = postgresPrepareForeignTransaction;
+
+	/* Begin - ReqID:SRS-SQL-DBLINK */
+	routine->DblinkAuthenticated = ivorysqlDblinkAuthenticated;
+	routine->DblinkAlterSessionCloseLink = ivorysqlAlterSessionCloseLink;
+	routine->DblinkCheckMetadataChanged = ivorysqlDblinkCheckMetadataChanged;
+	/* End - ReqID:SRS-SQL-DBLINK */
 
 	PG_RETURN_POINTER(routine);
 }
@@ -5472,7 +5483,7 @@ postgresImportForeignSchema(ImportForeignSchemaStmt *stmt, Oid serverOid)
 				appendStringInfoChar(&buf, ')');
 
 				/* Add COLLATE if needed */
-				if (import_collate && collname != NULL && collnamespace != NULL)
+				if (server->ora_dblink_contype == 0 && import_collate && collname != NULL && collnamespace != NULL)
 					appendStringInfo(&buf, " COLLATE %s.%s",
 									 quote_identifier(collnamespace),
 									 quote_identifier(collname));
@@ -7614,3 +7625,89 @@ get_batch_size_option(Relation rel)
 
 	return batch_size;
 }
+
+/* Begin - ReqID:SRS-SQL-DBLINK */
+static void
+ivorysqlDblinkAuthenticated(char *servername)
+{
+	ForeignServer *server;
+	UserMapping *mapping;
+	PGconn	   *conn = NULL;
+
+	server = GetForeignServerByName(servername, false);
+	mapping = GetUserMapping(GetUserId(), server->serverid);
+	conn = ivy_connect_pg_server(server, mapping);
+
+	/*
+	 * Update the Authen flag
+	 */
+	 if (conn)
+		IvyUpdateLinkServerAuthen(servername);
+}
+
+static void
+ivorysqlAlterSessionCloseLink(char *linkname)
+{
+	ForeignServer *server;
+
+	server = GetForeignServerByName(linkname, false);
+
+	(void)ivy_disconnect_cached_connections(server->serverid);
+}
+
+List *
+ivorysqlDblinkCheckMetadataChanged(Oid srvId, char *nsp, char  *relname)
+{
+	ForeignServer 	*server;
+	UserMapping 	*mapping;
+	PGconn	   		*conn = NULL;
+	StringInfoData 	buf;
+	PGresult   		*volatile res = NULL;
+	List			*tupnatts = NIL;
+	int 			numrows, i;
+
+	server = GetForeignServer(srvId);
+	mapping = GetUserMapping(GetUserId(), server->serverid);
+
+	conn = connect_pg_server(server, mapping);
+
+	/* build sql string */
+	initStringInfo(&buf);
+	appendStringInfoString(&buf,
+						   "SELECT a.attname as column_name, a.atttypid as column_type, a.atttypmod as column_typmod"
+						   "  FROM pg_class c JOIN pg_attribute a ON a.attrelid = c.oid LEFT JOIN pg_namespace ns "
+						   " ON ns.oid = c.relnamespace WHERE");
+	appendStringInfo(&buf, " c.relname = '%s'", relname);
+	appendStringInfo(&buf, " AND ns.nspname = '%s'", nsp);
+	appendStringInfoString(&buf, " AND a.attnum > 0;");
+
+	PG_TRY();
+	{
+		res = pgfdw_exec_query(conn, buf.data, NULL);
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			pgfdw_report_error(ERROR, res, conn, false, buf.data);
+
+		/* Process results */
+		numrows = PQntuples(res);
+
+		for (i = 0; i < numrows; i++)
+		{
+			TupdescNatts *col = makeNode(TupdescNatts);
+
+			col->colname	= PQgetvalue(res, i, 0);
+			col->coltypid  	= atooid(PQgetvalue(res, i, PQfnumber(res, "column_type")));
+			col->coltypmod 	= atoi(PQgetvalue(res, i, PQfnumber(res, "column_typmod")));
+
+			tupnatts = lappend(tupnatts, col);
+		}
+	}
+	PG_FINALLY();
+	{
+		if (res)
+			PQclear(res);
+	}
+	PG_END_TRY();
+
+	return tupnatts;
+}
+/* End - ReqID:SRS-SQL-DBLINK */
