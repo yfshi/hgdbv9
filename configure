@@ -852,6 +852,7 @@ with_llvm
 enable_depend
 enable_cassert
 enable_root
+enable_normalobjectid
 enable_thread_safety
 with_icu
 with_tcl
@@ -1541,6 +1542,7 @@ Optional Features:
   --enable-depend         turn on automatic dependency tracking
   --enable-cassert        enable assertion checks (for debugging)
   --enable-root           enable can be run as root user
+  --enable-normalobjectid use first normal object id, default 32767
   --disable-thread-safety disable thread-safety in client libraries
   --disable-largefile     omit support for large files
 
@@ -8230,6 +8232,37 @@ fi
 
 
 ### End - Bug#M0000315 ###
+
+### Begin - Bug#Z1064 ###
+#
+# Enable normalobjectid pg use 16384, ivorysql pro use 32767
+#
+
+
+# Check whether --enable-normalobjectid was given.
+if test "${enable_normalobjectid+set}" = set; then :
+  enableval=$enable_normalobjectid;
+  case $enableval in
+    yes)
+
+$as_echo "#define USE_NORMAL_OBJECT_ID 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-normalobjectid option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_normalobjectid=no
+
+fi
+
+### End - Bug#Z1064 ###
+
 
 
 #

@@ -1201,3 +1201,13 @@ RETURNS varchar2
 AS 'MODULE_PATHNAME', 'ora_convert'
 LANGUAGE C IMMUTABLE STRICT;
 /* End - BUG#M0000194 */
+
+/* Begin - Bug#Z1064 */
+/* get macro value */
+CREATE FUNCTION sys.get_macro_value(text)
+RETURNS text
+AS 'MODULE_PATHNAME','get_macro_value'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - Bug#Z1064 */

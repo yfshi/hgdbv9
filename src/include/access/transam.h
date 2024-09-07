@@ -189,7 +189,17 @@ FullTransactionIdAdvance(FullTransactionId *dest)
  */
 #define FirstGenbkiObjectId		10000
 #define FirstBootstrapObjectId	12000
+
+/* Begin - Bug#Z1064 */
+#ifndef USE_NORMAL_OBJECT_ID
+#define FirstNormalObjectId		32767
+#else
+/* End - Bug#Z1064 */
 #define FirstNormalObjectId		16384
+/* Begin - Bug#Z1064 */
+#endif
+/* End - Bug#Z1064 */
+
 /* BEGIN - SQL PARSER */
 /* 1."MinTypeObjectId" specifies the minimum value
  *  to assign an OID to a new data type In IvorySQL-2.0.
