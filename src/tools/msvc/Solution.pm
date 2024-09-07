@@ -531,6 +531,9 @@ sub GenerateFiles
 		USE_ROOT				   => undef,
 		USE_ADMINISTRATOR		   => $self->{options}->{administrator} ? 1 : undef,
 		#/* End - Bug#M0000315 */
+		#/*Begin - Bug#Z1064*/
+		USE_NORMAL_OBJECT_ID	   => undef,
+		#/*End - Bug#Z1064*/
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,

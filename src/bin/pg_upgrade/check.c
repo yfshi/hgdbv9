@@ -36,6 +36,12 @@ static void check_for_new_tablespace_dir(ClusterInfo *new_cluster);
 static void check_for_user_defined_encoding_conversions(ClusterInfo *cluster);
 static char *get_canonical_locale_name(int category, const char *locale);
 
+/* Begin - Bug#Z1064 */
+static Oid get_first_normal_oid(ClusterInfo *cluster);
+
+static Oid source_first_normal_oid = InvalidOid;
+static Oid target_first_normal_oid = InvalidOid;
+/* End - Bug#Z1064 */
 
 /*
  * fix_path_separator
@@ -189,6 +195,10 @@ check_and_dump_old_cluster(bool live_check)
 	if (!user_opts.check)
 		generate_old_dump();
 
+	/* Begin - Bug#Z1064 */
+	source_first_normal_oid = get_first_normal_oid(&old_cluster);
+	/* End - Bug#Z1064 */
+
 	if (!live_check)
 		stop_postmaster(false);
 }
@@ -221,6 +231,10 @@ check_new_cluster(void)
 	check_for_prepared_transactions(&new_cluster);
 
 	check_for_new_tablespace_dir(&new_cluster);
+
+	/* Begin - Bug#Z1064 */
+	target_first_normal_oid = get_first_normal_oid(&new_cluster);
+	/* End - Bug#Z1064 */
 }
 
 
@@ -1539,3 +1553,60 @@ get_canonical_locale_name(int category, const char *locale)
 
 	return res;
 }
+
+/* Begin - Bug#Z1064 */
+static Oid
+get_first_normal_oid(ClusterInfo *cluster)
+{
+	Oid		   first_normal_oid;
+	PGresult   *res;
+	PGconn	   *conn = connectToServer(cluster, "template1");
+
+	res = executeQueryOrDie(conn,
+							"SELECT count(*) "
+							"FROM pg_namespace ns JOIN pg_proc p ON ns.oid = p.pronamespace "
+							"WHERE ns.nspname = 'sys' AND p.proname = 'get_macro_value'");
+
+	if (atoi(PQgetvalue(res, 0, 0)) == 1)
+	{
+		PQclear(res);
+		res = executeQueryOrDie(conn,
+							"SELECT "
+							"sys.get_macro_value('FirstNormalObjectId')");
+
+		if (PQntuples(res) != 1)
+		{
+			if (cluster == &old_cluster)
+				pg_fatal("failed to get 'FirstNormalObjectId' from source cluster\n");
+			else
+				pg_fatal("failed to get 'FirstNormalObjectId' from target cluster\n");
+		}
+
+		first_normal_oid = atooid(PQgetvalue(res, 0, 0));
+	}
+	else
+	{
+		first_normal_oid = 16384;
+	}
+
+	PQclear(res);
+
+	PQfinish(conn);
+
+	return first_normal_oid;
+}
+
+void
+check_for_first_normal_oid(void)
+{
+	prep_status("Checking for FirstNormalObjectId");
+
+	if (source_first_normal_oid != target_first_normal_oid)
+	{
+		pg_fatal("The source cluster's FirstNormalObjectId[%u] and target cluster's FirstNormalObjectId[%u] do not match\n",
+				source_first_normal_oid, target_first_normal_oid);
+	}
+
+	check_ok();
+}
+/* End - Bug#Z1064 */

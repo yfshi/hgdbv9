@@ -127,6 +127,9 @@ main(int argc, char **argv)
 	start_postmaster(&new_cluster, true);
 
 	check_new_cluster();
+	/* Begin - Bug#Z1064 */
+	check_for_first_normal_oid();
+	/* End - Bug#Z1064 */
 	report_clusters_compatible();
 
 	pg_log(PG_REPORT,

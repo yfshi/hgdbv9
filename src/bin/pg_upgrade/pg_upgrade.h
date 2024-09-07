@@ -346,6 +346,10 @@ void		check_cluster_versions(void);
 void		check_cluster_compatibility(bool live_check);
 void		create_script_for_old_cluster_deletion(char **deletion_script_file_name);
 
+/* Begin - Bug#Z1064 */
+void		check_for_first_normal_oid(void);
+/* End - Bug#Z1064 */
+
 
 /* controldata.c */
 

@@ -841,6 +841,15 @@ PGAC_ARG_BOOL(enable, root, no, [enable can be run as root user],
 						 [Define to 1 to build with root user. (--enable-root)])])
 ### End - Bug#M0000315 ###
 
+### Begin - Bug#Z1064 ###
+#
+# Enable normalobjectid pg use 16384, ivorysql pro use 32767
+#
+PGAC_ARG_BOOL(enable, normalobjectid, no, [use first normal object id, default 32767],
+                          [AC_DEFINE([USE_NORMAL_OBJECT_ID], 1,
+                                                 [Define to 32767 to build with normalobjectid. (--enable-normalobjectid)])])
+### End - Bug#Z1064 ###
+
 
 #
 # Include directories
