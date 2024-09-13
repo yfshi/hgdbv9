@@ -4490,20 +4490,72 @@ AfterTriggerExecute(EState *estate,
 			}
 			else if (estate->badtable != NULL)
 			{
+				int single_quote_count = 0; /* BUG:M0000370 */
+
 				/* SPI call */
 				initStringInfo(&query);
-				appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
-					 estate->badtable,
-					 estate->taskid, estate->schema_name, estate->cur_relname,
-					 estate->filename, BAD_RECORD_F,
-					 line_no,print_str->data);
 
-				SPI_connect();
+				/* Begin - BUG:M0000370 */
+				for (int i = 0; i < linebuf_cut->len; i++)
+				{
+					if (linebuf_cut->data[i] == '\'')
+						single_quote_count++;
+				}
+				if (single_quote_count == 0)
+				{
+					appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+						estate->badtable,
+						estate->taskid, estate->schema_name, estate->cur_relname,
+						estate->filename, BAD_RECORD_F,
+					 	line_no,linebuf_cut->data);
+				}
+				else
+				{
+					int j = 0;
+					int new_len = 0;
+					char *new_str = NULL;
+
+					new_len = linebuf_cut->len + single_quote_count;
+					new_str = (char*) palloc (new_len + 1);
+					if (!new_str)
+						elog(ERROR, "Allocate memory error in OutputBadRecord()");
+
+					memset(new_str, 0, new_len + 1);
+					for (int i = 0; i < linebuf_cut->len; i++)
+					{
+						if (linebuf_cut->data[i] == '\'')
+						{
+							new_str[j++] = '\'';
+							new_str[j++] = '\'';
+						}
+						else
+							new_str[j++] = linebuf_cut->data[i];
+
+					}
+					new_str[j] = '\0';
+
+					appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+						estate->badtable,
+						estate->taskid, estate->schema_name, estate->cur_relname,
+						estate->filename, BAD_RECORD_F,
+						line_no, new_str);
+					pfree (new_str);
+				}
+
+				if (SPI_connect() != SPI_OK_CONNECT)
+					elog(ERROR, "SPI_connect failed");
+				/* End - BUG:M0000370 */
+
 				if (SPI_execute(query.data, false, 0) != 7)
 					ereport(ERROR,
 						(errcode(ERRCODE_DATA_EXCEPTION),
 						errmsg("invalid query")));
-				SPI_finish();
+
+				/* Begin - BUG:M0000370 */
+				if (SPI_finish() != SPI_OK_FINISH)
+					elog(ERROR, "SPI_finish failed");
+				pfree(query.data);
+				/* End - BUG:M0000370 */
 			}
 			else
 				ereport(ERROR,

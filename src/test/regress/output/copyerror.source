@@ -684,7 +684,7 @@ SELECT CHAR_LENGTH(address) from fk_length_2000 where id=3;
 SELECT CHAR_LENGTH(buff) from x_bad where taskid='fklength2000' and lineno=2;
  char_length 
 -------------
-        2020
+        2000
 (1 row)
 
 TRUNCATE fk_length_2000;
@@ -744,6 +744,103 @@ SELECT CHAR_LENGTH(name) from copy_split_80002;
 (1 row)
 
 -- End - BUG:M0000348
+-- Begin - BUG:M0000370
+CREATE TABLE table_quote (id int primary key,name text);
+CREATE TABLE table_quote_bad (
+	taskid varchar(64),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(64),
+	type char,
+	lineno bigint,
+	buff text
+) ;
+COPY table_quote FROM stdin with csv taskid 'quote_1' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '|' delimiter ',';
+SELECT * FROM table_quote_bad where taskid = 'quote_1';
+ taskid  | schema |  tablename  | filename | type | lineno |      buff      
+---------+--------+-------------+----------+------+--------+----------------
+ quote_1 | public | table_quote | stdin    | r    |      2 | |11|,|11|,|11|
+(1 row)
+
+COPY table_quote FROM stdin with csv taskid 'quote_2' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '''';
+SELECT * FROM table_quote_bad where taskid = 'quote_2';
+ taskid  | schema |  tablename  | filename | type | lineno |          buff           
+---------+--------+-------------+----------+------+--------+-------------------------
+ quote_2 | public | table_quote | stdin    | r    |      4 | '22222','22222','22222'
+ quote_2 | public | table_quote | stdin    | i    |      3 | 22,'222'
+ quote_2 | public | table_quote | stdin    | i    |      5 | '2','"2222"'
+(3 rows)
+
+COPY table_quote FROM stdin with csv taskid 'quote_3' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '@';
+SELECT * FROM table_quote_bad where taskid = 'quote_3';
+ taskid  | schema |  tablename  | filename | type | lineno |  buff   
+---------+--------+-------------+----------+------+--------+---------
+ quote_3 | public | table_quote | stdin    | r    |      2 | @33,33@
+(1 row)
+
+-- default quote is ""
+COPY table_quote FROM stdin with csv taskid 'quote_4' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0;
+SELECT * FROM table_quote_bad where taskid = 'quote_4';
+ taskid  | schema |  tablename  | filename | type | lineno |      buff      
+---------+--------+-------------+----------+------+--------+----------------
+ quote_4 | public | table_quote | stdin    | r    |      2 | "44","44","44"
+ quote_4 | public | table_quote | stdin    | i    |      4 | 444,"4444''"
+(2 rows)
+
+SELECT * FROM table_quote;
+ id  | name 
+-----+------
+   1 | 1
+   2 | 2
+  22 | 22
+   3 | 3
+   4 | 4
+ 444 | 444
+(6 rows)
+
+-- fk error checking (using after row trigger)
+CREATE TABLE table_1(id int primary key);
+INSERT INTO table_1 values(1),(2),(3);
+CREATE TABLE table_2(id int REFERENCES table_1(id),
+	name text);
+COPY table_2 FROM stdin with csv taskid 'table_2_1' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0;
+SELECT * FROM table_2;
+ id |  name  
+----+--------
+  1 | 'what'
+  1 | 'tian'
+(2 rows)
+
+SELECT * FROM table_quote_bad where taskid = 'table_2_1';
+  taskid   | schema | tablename | filename | type | lineno |      buff       
+-----------+--------+-----------+----------+------+--------+-----------------
+ table_2_1 | public | table_2   | stdin    | f    |      2 | 10,''tiantian''
+ table_2_1 | public | table_2   | stdin    | f    |      3 | 10,&hao
+ table_2_1 | public | table_2   | stdin    | f    |      4 | 10,highgo
+ table_2_1 | public | table_2   | stdin    | f    |      5 | 10,!hao
+(4 rows)
+
+COPY table_2 FROM stdin with csv taskid 'table_2_2' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '''';
+SELECT * FROM table_2;
+ id |  name  
+----+--------
+  1 | 'what'
+  1 | 'tian'
+  2 | tian
+  2 | "tian"
+(4 rows)
+
+-- If record is: 10,'"tian"'
+-- after insert it into tuple, the tuple is (10,"tian"), single quote has skipped
+-- when making fk checking,if fail, read the tuple (10,"tian")
+-- as have no idea to adding single quote or not? so output the origin tuple,not the record
+SELECT * FROM table_quote_bad where taskid = 'table_2_2';
+  taskid   | schema | tablename | filename | type | lineno |   buff    
+-----------+--------+-----------+----------+------+--------+-----------
+ table_2_2 | public | table_2   | stdin    | f    |      3 | 10,"tian"
+(1 row)
+
+-- End - BUG:M0000370
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;
@@ -761,3 +858,5 @@ DROP TABLE length_2000;
 DROP TABLE fk_t,fk_t_u,fk_t_2fk,fk_t_2fk_2pk,fk_parti,fk_length_2000,fk_parti_son;
 DROP TABLE pk_t,pk_t_u,pk_t2;
 DROP TABLE copy_split_80002;
+DROP TABLE table_quote,table_quote_bad;
+DROP TABLE table_2,table_1;
