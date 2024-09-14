@@ -36,6 +36,11 @@
 #include "utils/syscache.h"
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+#include "catalog/objectaddress.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * CreateConstraintEntry
  *	Create a constraint table entry.
@@ -632,6 +637,18 @@ RemoveConstraintById(Oid conId)
 	/* Clean up */
 	ReleaseSysCache(tup);
 	table_close(conDesc, RowExclusiveLock);
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (compatible_db == ORA_PARSER && pg_object_create_obj_hook_type)
+	{
+		ObjectAddress	addr;
+		PgObjectInfo	ori;
+
+		ObjectAddressSet(addr, RelationRelationId, conId);
+		ori = pg_object_get_ori_infor_hook_type(addr);
+		if (ori != NULL)
+			pg_object_drop_obj_hook_type(addr);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /*

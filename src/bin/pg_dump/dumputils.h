@@ -41,14 +41,15 @@ extern bool CurrentUserIsInstanceSuperuser;
 extern bool CurrentUserIsDatabaseSuperuser;				/* BUG:z680,z538 */
 extern const char *CurrentSessionUserName;
 extern DBMode database_mode;
-extern DBParser compatible_db;
 extern DBGrantUser grant_usertype;
 extern DBDump dumppgtype;
 extern bool restoremode; 			/*  bug#M0000238 */
 extern const char *DumpMode;			/*  bug#M0000261 */
 extern bool haveDBuser;					/*  bug#M0000261 */
 /* END - ReqID:SRS-MISC-USER */
-
+extern DBParser compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
+extern DBUser	CurUser;		/* ReqID:SRS-CMD-PGDUMP */
+extern const char *DumpM;	/* ReqID:SRS-CMD-PGDUMP */
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
 							 const char *type, const char *acls, const char *racls,
 							 const char *owner, const char *prefix, int remoteVersion,
@@ -87,8 +88,10 @@ extern void setIdentifierCaseSwitch(PGconn *conn);		/* BUG#M229 */
 extern void setNLSdateFormat(PGconn *conn); 				/* BUG:z774 */
 
 extern AssignDumpMode  getDumpMode(const char *dumpmode);		/*  bug#M0000261 */
-extern bool haveDatabaseUser(PGconn *conn);		/*  bug#M0000261 */
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern bool haveDatabaseUserPg(PGconn *conn);		/*  bug#M0000261 */
+extern bool haveDatabaseUserOracle(PGconn *conn);
+/* END - ReqID:SRS-CMD-PGDUMP */
 extern void SetDumptypeMode(PGconn *conn);
 extern void ReSetDumptypeMode(PGconn *conn);
 extern Oid FindUserLevelbyoid(PGconn *conn, Oid oid);

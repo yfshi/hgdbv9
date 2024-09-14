@@ -116,7 +116,11 @@
 /* Begin - BUG:M0000325 */
 #include "postmaster/bgwriter.h"
 /* End - BUG:M0000325 */
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+#include "catalog/objectaddress.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * ON COMMIT action list
  */
@@ -1436,34 +1440,118 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 	ObjectAddressSet(address, RelationRelationId, relationId);
 	
-	/* 
-	 * ReqID:SRS-SQL-NLSSORT
- 	 * Set table's collation, or inherit from Effective Schema Default Collation,
-	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
- 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation)
-	{
-		Oid	relColl;		
 
-		if(stmt->collname)
-		{
-			relColl = CollationGetCollid(stmt->collname);
-			if (!OidIsValid(relColl))
-				ereport(ERROR,
-						errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
-		} 
-		else
-			relColl = GetNamespaceCollation(namespaceId);
-
-		SetRelationCollation(relname, namespaceId, relColl, address);
-	}
 
 	/*
 	 * Clean up.  We keep lock on new relation (although it shouldn't be
 	 * visible to anyone else anyway, until commit).
 	 */
 	relation_close(rel, NoLock);
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if(pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	{
+		ListCell	*cell;
+		int			num = 1;
+		StringInfoData	str;
+		initStringInfo(&str);
+		if (relkind == RELKIND_SEQUENCE)
+		{
+			ListCell 	*option;
+
+			appendStringInfo(&str, "{");
+			foreach(option, stmt->options)
+			{
+				DefElem *defel = (DefElem *) lfirst(option);
+
+				if (strcmp(defel->defname, "keep") == 0)
+					appendStringInfo(&str, "\"KEEP\":\"keep\",");
+				else if (strcmp(defel->defname, "nokeep") == 0)
+					appendStringInfo(&str, "\"NOKEEP\":\"nokeep\"");
+				else if (strcmp(defel->defname, "session") == 0)
+					appendStringInfo(&str, "\"SESSION\":\"session\",");
+				else if (strcmp(defel->defname, "global") == 0)
+					appendStringInfo(&str, "\"GLOBAL\":\"global\",");
+				else if (strcmp(defel->defname, "scale_extend") == 0)
+					appendStringInfo(&str, "\"SCALE_EXTEND\":\"scale_extend\",");
+				else if ((strcmp(defel->defname, "scale") == 0) || (strcmp(defel->defname, "scale_noextend") == 0))
+					appendStringInfo(&str, "\"SCALE_NOEXTEND\":\"scale_noextend\",");
+				else if (strcmp(defel->defname, "noscale") == 0)
+					appendStringInfo(&str, "\"NOSCALE\":\"noscale\",");
+				else if (strcmp(defel->defname, "noshard") == 0)
+					appendStringInfo(&str, "\"NOSHARD\":\"noshard\",");
+				else if ((strcmp(defel->defname, "shard") == 0) || (strcmp(defel->defname, "shard_noextend") == 0))
+					appendStringInfo(&str, "\"SHARD_NOEXTEND\":\"shard_noextend\",");
+				else if (strcmp(defel->defname, "shard_extend") == 0)
+					appendStringInfo(&str, "\"SHARD_EXTEND\":\"shard_extend\",");
+				else
+					continue;
+			}
+
+			str.len = str.len - 1;
+
+			appendStringInfo(&str, "}");
+
+		}
+
+		pg_object_create_obj_hook_type(relname,
+										namespaceId,
+										false,
+										relkind,
+										address,
+										relkind == RELKIND_SEQUENCE ? (strcmp(str.data, "}") == 0 ? NULL : DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(str.data)))) : NULL,
+										NULL);
+		pfree(str.data);
+
+		if (relkind == RELKIND_SEQUENCE)
+			return address;
+
+		foreach(cell, stmt->tableElts)
+		{
+			ObjectAddress	newaddress;
+
+			ObjectAddressSubSet(newaddress, AttributeRelationId, relationId, num++);
+			if (IsA(lfirst(cell), ColumnDef))
+			{
+				ColumnDef *coldef = (ColumnDef *)lfirst(cell);
+
+				pg_object_create_obj_hook_type(coldef->colname, namespaceId,
+													false,
+													'c',
+													newaddress,
+													NULL,
+													NULL);
+			}
+		}
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
+	CommandCounterIncrement();
+		/* 
+		* ReqID:SRS-SQL-NLSSORT
+		* Set table's collation, or inherit from Effective Schema Default Collation,
+		* Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
+		*/
+		if (ORA_PARSER == compatible_db &&
+			enable_ora_default_collation &&
+			(relkind == RELKIND_RELATION ||
+				relkind == RELKIND_PARTITIONED_TABLE ||
+				relkind == RELKIND_FOREIGN_TABLE ||
+				relkind == RELKIND_COMPOSITE_TYPE))
+		{
+			Oid	relColl;		
+
+			if(stmt->collname)
+			{
+				relColl = CollationGetCollid(stmt->collname);
+				if (!OidIsValid(relColl))
+					ereport(ERROR,
+							errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
+			} 
+			else
+				relColl = GetNamespaceCollation(namespaceId);
+
+			SetRelationCollation(relname, namespaceId, relColl, address);
+		}
+
 
 	return address;
 }
@@ -1735,10 +1823,10 @@ RemoveRelations(DropStmt *drop)
 		obj.objectId = relOid;
 		obj.objectSubId = 0;
 
-		/* Begin - Req: SRS-SQL-NLSSORT */
-		if (pg_object_drop_obj_hook_type)
-			pg_object_drop_obj_hook_type(obj);
-		/* End - Req: SRS-SQL-NLSSORT */
+		// /* Begin - Req: SRS-SQL-NLSSORT */
+		// if (pg_object_drop_obj_hook_type && relkind != RELKIND_VIEW)
+		// 	pg_object_drop_obj_hook_type(obj);
+		// /* End - Req: SRS-SQL-NLSSORT */
 
 		add_exact_object_address(&obj, objects);
 	}
@@ -3755,11 +3843,25 @@ renameatt_internal(Oid myrelid,
 		{
 			Oid			childrelid = lfirst_oid(lo);
 			int			numparents = lfirst_int(li);
+			AttrNumber		childttnum;		/* ReqID:SRS-CMD-PGDUMP */
 
 			if (childrelid == myrelid)
 				continue;
 			/* note we need not recurse again */
-			renameatt_internal(childrelid, oldattname, newattname, false, true, numparents, behavior);
+			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+			childttnum = renameatt_internal(childrelid, oldattname, newattname, false, true, numparents, behavior);
+
+			if (pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+			{
+				ObjectAddress	address;
+				PgObjectInfo	objinf;
+
+				ObjectAddressSubSet(address, AttributeRelationId, childrelid, (int32)childttnum);
+
+				if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
+					pg_object_alter_obj_hook_type(address, pstrdup(newattname), objinf->orischema, objinf->orioption, NULL);
+			}
+			/* END - ReqID:SRS-CMD-PGDUMP */
 		}
 	}
 	else
@@ -3906,7 +4008,20 @@ renameatt(RenameStmt *stmt)
 						   stmt->behavior);
 
 	ObjectAddressSubSet(address, RelationRelationId, relid, attnum);
-
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if(pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+	{
+		ObjectAddress address;
+		PgObjectInfo objinf;
+		ObjectAddressSubSet(address, AttributeRelationId, relid, attnum);
+		if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
+			pg_object_alter_obj_hook_type(address,
+										  stmt->newname,
+										  objinf->orischema,
+										  objinf->orioption,
+										  NULL);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 	return address;
 }
 
@@ -4136,6 +4251,14 @@ RenameRelation(RenameStmt *stmt)
 	 */
 	check_function_depend_on_relation(relid);
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+	{
+		PgObjectInfo objinf;
+		if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
+			pg_object_alter_obj_hook_type(address, stmt->newname, objinf->orischema, objinf->orioption, NULL);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 
 	return address;
 }
@@ -7402,6 +7525,21 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	InvokeObjectPostCreateHook(RelationRelationId, myrelid, newattnum);
 
 	table_close(pgclass, RowExclusiveLock);
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	{
+		ObjectAddress address, address_paraent;
+		PgObjectInfo	objori;
+		ObjectAddressSubSet(address, AttributeRelationId, myrelid, newattnum);
+		ObjectAddressSubSet(address_paraent, RelationRelationId, myrelid, 0);
+		objori = pg_object_get_ori_infor_hook_type(address_paraent);
+		pg_object_create_obj_hook_type(colDef->colname, RelationGetNamespace(rel), true,
+											 'c',
+											 address,DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"fill zeor\": 5}"))),
+											 NULL);
+		pg_object_alter_obj_hook_type(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 
 	/* Make the attribute's catalog entry visible */
 	CommandCounterIncrement();
@@ -9374,7 +9512,16 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 		tab->rewrite |= AT_REWRITE_ALTER_ROWID;
 	}
 	/* End - ReqID:SRS-SQL-ROWID */
-
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (pg_object_drop_obj_hook_type)
+	{
+		ObjectAddress address;
+		ObjectAddressSubSet(address, AttributeRelationId,
+							object.objectId, object.objectSubId);
+		if (pg_object_get_ori_infor_hook_type(address) != NULL)
+			pg_object_drop_obj_hook_type(address);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 	return object;
 }
 
@@ -12639,6 +12786,17 @@ ATExecDropConstraint(Relation rel, const char *constrName,
 	}
 
 	table_close(conrel, RowExclusiveLock);
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (compatible_db == ORA_PARSER && pg_object_drop_obj_hook_type)
+	{
+		ObjectAddress	addr;
+		PgObjectInfo	ori;
+		ObjectAddressSet(addr, RelationRelationId, con->oid);
+		ori = pg_object_get_ori_infor_hook_type(addr);
+		if (ori != NULL)
+			pg_object_drop_obj_hook_type(addr);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /*

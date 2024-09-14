@@ -259,6 +259,17 @@ typedef void (*SetupWorkerPtrType) (Archive *AH);
 extern void ConnectDatabase(Archive *AHX,
 							const ConnParams *cparams,
 							bool isReconnect);
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern void ConnectDatabaseNative(Archive *AHX,
+							const ConnParams *cparams,
+							bool isReconnect);
+extern void ConnectDatabasePg(Archive *AHX,
+							const ConnParams *cparams,
+							bool isReconnect);
+extern void ConnectDatabaseOracle(Archive *AHX,
+							const ConnParams *cparams,
+							bool isReconnect);
+/* END - ReqID:SRS-CMD-PGDUMP */
 extern void DisconnectDatabase(Archive *AHX);
 extern PGconn *GetConnection(Archive *AHX);
 
@@ -273,8 +284,17 @@ extern void CloseArchive(Archive *AH);
 extern void SetArchiveOptions(Archive *AH, DumpOptions *dopt, RestoreOptions *ropt);
 
 extern void ProcessArchiveRestoreOptions(Archive *AH);
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern void ProcessArchiveRestoreOptionsNative(Archive *AH);
+extern void ProcessArchiveRestoreOptionsPg(Archive *AH);
+extern void ProcessArchiveRestoreOptionsOracle(Archive *AH);
+/* END - ReqID:SRS-CMD-PGDUMP */
 extern void RestoreArchive(Archive *AH);
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern void RestoreArchiveNative(Archive *AH);
+extern void RestoreArchivePg(Archive *AH);
+extern void RestoreArchiveOracle(Archive *AH);
+/* END - ReqID:SRS-CMD-PGDUMP */
 
 /* Open an existing archive */
 extern Archive *OpenArchive(const char *FileSpec, const ArchiveFormat fmt);
@@ -283,7 +303,17 @@ extern Archive *OpenArchive(const char *FileSpec, const ArchiveFormat fmt);
 extern Archive *CreateArchive(const char *FileSpec, const ArchiveFormat fmt,
 							  const int compression, bool dosync, ArchiveMode mode,
 							  SetupWorkerPtrType setupDumpWorker);
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern Archive *CreateArchiveNative(const char *FileSpec, const ArchiveFormat fmt,
+							  const int compression, bool dosync, ArchiveMode mode,
+							  SetupWorkerPtrType setupDumpWorker);
+extern Archive *CreateArchivePg(const char *FileSpec, const ArchiveFormat fmt,
+							  const int compression, bool dosync, ArchiveMode mode,
+							  SetupWorkerPtrType setupDumpWorker);
+extern Archive *CreateArchiveOracle(const char *FileSpec, const ArchiveFormat fmt,
+							  const int compression, bool dosync, ArchiveMode mode,
+							  SetupWorkerPtrType setupDumpWorker);
+/* END- ReqID:SRS-CMD-PGDUMP */
 /* The --list option */
 extern void PrintTOCSummary(Archive *AH);
 

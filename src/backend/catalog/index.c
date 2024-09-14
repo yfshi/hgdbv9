@@ -86,7 +86,12 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/tuplesort.h"
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+#include "catalog/objectaddress.h"
+#include "utils/ora_compatible.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_index_pg_class_oid = InvalidOid;
 
@@ -2457,6 +2462,18 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 		UnlockRelationIdForSession(&heaprelid, ShareUpdateExclusiveLock);
 		UnlockRelationIdForSession(&indexrelid, ShareUpdateExclusiveLock);
 	}
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (ORA_PARSER == compatible_db && pg_object_drop_obj_hook_type)
+	{
+		PgObjectInfo		ori;
+		ObjectAddress		addr;
+
+		ObjectAddressSet(addr, RelationRelationId, indexId);
+		ori = pg_object_get_ori_infor_hook_type(addr);
+		if (ori != NULL)
+			pg_object_drop_obj_hook_type(addr);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /* ----------------------------------------------------------------

@@ -2467,6 +2467,8 @@ my %tests = (
 		regexp => qr/^
 			\Q-- Name: measurement;\E.*\n
 			\Q--\E\n\n
+			\Qset ivorysql.compatible_mode to pg;\E\n
+			\Q\parser\E\n\n
 			\QCREATE TABLE dump_test.measurement (\E\n
 			\s+\Qcity_id integer NOT NULL,\E\n
 			\s+\Qlogdate pg_catalog."date" NOT NULL,\E\n
@@ -2666,9 +2668,9 @@ my %tests = (
 			\s+\QSEQUENCE NAME dump_test.test_table_identity_col1_seq\E\n
 			\s+\QSTART WITH 1\E\n
 			\s+\QINCREMENT BY 1\E\n
-			\s+\QNOMINVALUE\E\n
-			\s+\QNOMAXVALUE\E\n
-			\s+\QNOCACHE \E\n
+			\s+\QNO MINVALUE\E\n
+			\s+\QNO MAXVALUE\E\n
+			\s+\Q\E\n
 			\);
 			/xms,
 		like =>
@@ -2855,9 +2857,9 @@ my %tests = (
 			\n\s+\QAS integer\E
 			\n\s+\QSTART WITH 1\E
 			\n\s+\QINCREMENT BY 1\E
-			\n\s+\QNOMINVALUE\E
-			\n\s+\QNOMAXVALUE\E
-			\n\s+\QNOCACHE ;\E
+			\n\s+\QNO MINVALUE\E
+			\n\s+\QNO MAXVALUE\E
+			\n\s+\Q;\E
 			/xm,
 		like => {
 			%full_runs,

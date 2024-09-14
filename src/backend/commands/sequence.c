@@ -240,7 +240,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	stmt->relation = seq->sequence;
 	stmt->inhRelations = NIL;
 	stmt->constraints = NIL;
-	stmt->options = NIL;
+	stmt->options = seq->options;	/* ReqID:SRS-CMD-PGDUMP */
 	stmt->oncommit = ONCOMMIT_NOOP;
 	stmt->tablespacename = NULL;
 	stmt->if_not_exists = seq->if_not_exists;

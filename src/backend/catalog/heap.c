@@ -2149,6 +2149,18 @@ heap_drop_with_catalog(Oid relid)
 	 */
 	DeleteRelationTuple(relid);
 
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (compatible_db == ORA_PARSER && pg_object_create_obj_hook_type)
+	{
+		PgObjectInfo 	ori;
+		ObjectAddress	addr;
+
+		ObjectAddressSet(addr, RelationRelationId, relid);
+		ori = pg_object_get_ori_infor_hook_type(addr);
+		if (ori != NULL)
+			pg_object_drop_obj_hook_type(addr);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 	if (OidIsValid(parentOid))
 	{
 		/*
@@ -4049,9 +4061,9 @@ DeleteForceViewAttinPgobject(Oid viewid)
 				Int32GetDatum(0));
 
 	scan = systable_beginscan(attrel, ObjectRefidOidSubidIndexId, true,
-								NULL, 1, key);
+								NULL, 3, key);
 
-	while ((atttup = systable_getnext(scan)) != NULL)
+	while (HeapTupleIsValid(atttup = systable_getnext(scan)))
 		CatalogTupleDelete(attrel, &atttup->t_self);
 
 	systable_endscan(scan);

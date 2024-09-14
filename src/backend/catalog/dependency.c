@@ -95,8 +95,11 @@
 #include "funcapi.h"
 #include "lib/qunique.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
-
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "catalog/pg_object.h"
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * Deletion processing requires additional state for each ObjectAddress that
  * it's planning to delete.  For simplicity and code-sharing we make the

@@ -142,6 +142,7 @@ typedef struct _dumpableObject
 	DumpId	   *dependencies;	/* dumpIds of objects this one depends on */
 	int			nDeps;			/* number of valid dependencies */
 	int			allocDeps;		/* allocated size of dependencies[] */
+	char	   *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 } DumpableObject;
 
 typedef struct _namespaceInfo
@@ -711,7 +712,144 @@ typedef struct DbRolesMembershipInfo
 } DbRolesMembershipInfo;
 /* End - bug:z836*/
 /* End - ReqID:SRS-MISC-USER */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+/*
+ * The function pointers used in the dump process are maintained here. If
+ * you need to change the separated function pointers, you should modify
+ * them in the corresponding pg_dump_xxx.c file while making the
+ * changes here.
+ */
+typedef struct dumpMethods
+{
+	char			*mode;
+	void 			(*setupDumpWorker)(Archive *AHX);
+	Archive 		*(*CreateArchive)(const char *FileSpec, const ArchiveFormat fmt,
+										  const int compression, bool dosync, ArchiveMode mode,
+										  SetupWorkerPtrType setupDumpWorker);
+	void			(*ConnectDatabase)(Archive *AHX,
+											const ConnParams *cparams,
+											bool isReconnect);
+	void			(*getDbCompatibleMode)(PGconn *conn);
+	void 			(*getDatabaseMode)(PGconn *conn);
+	bool 			(*haveDatabaseUser)(PGconn *conn);
+	void			(*getcurrentuserisInstanceSupperuser)(PGconn *conn, char *name);
+	void			(*getcurrentuserisDatabaseSupperuser)(PGconn *conn, char *name);
+	void 			(*setIdentifierCaseSwitch)(PGconn *conn);
+	void 			(*setNLSdateFormat)(PGconn *conn);
+	void			(*setup_connection)(Archive *AH, const char *dumpencoding,
+										 const char *dumpsnapshot, char *use_role);
+	Oid				(*findLastBuiltinOid_V71)(Archive *fout);
+	void			(*expand_schema_name_patterns)(Archive *fout,
+													SimpleStringList *patterns,
+													SimpleOidList *oids,
+													bool strict_names);
+	void			(*expand_table_name_patterns)(Archive *fout,
+												   SimpleStringList *patterns, SimpleOidList *oids,
+												   bool strict_names);
+	void			(*expand_foreign_server_name_patterns)(Archive *fout,
+															SimpleStringList *patterns,
+															SimpleOidList *oids);
+	void			(*expand_extension_name_patterns)(Archive *fout,
+													   SimpleStringList *patterns,
+													   SimpleOidList *oids,
+													   bool strict_names);
+	TableInfo 		*(*getSchemaData)(Archive *fout, int *numTablesPtr);
+	void			(*guessConstraintInheritance)(TableInfo *tblinfo, int numTables);
+	void			(*getTableData)(DumpOptions *dopt, TableInfo *tblinfo, int numTables, char relkind);
+	void			(*buildMatViewRefreshDependencies)(Archive *fout);
+	void			(*getTableDataFKConstraints)(void);
+	void			(*getBlobs)(Archive *fout);
+	void			(*getDependencies)(Archive *fout);
+	DumpableObject 	*(*createBoundaryObjects)(void);
+	void			(*getDumpableObjects)(DumpableObject ***objs, int *numObjs);
+	void			(*addBoundaryDependencies)(DumpableObject **dobjs, int numObjs,
+												DumpableObject *boundaryObjs);
+	void			(*sortDumpableObjectsByTypeName)(DumpableObject **objs, int numObjs);
+	void			(*sortDumpableObjects)(DumpableObject **objs, int numObjs,
+											DumpId preBoundaryId, DumpId postBoundaryId);
+	void			(*dumpEncoding)(Archive *AH);
+	void			(*dumpStdStrings)(Archive *AH);
+	void			(*dumpSearchPath)(Archive *AH);
+	void			(*dumpDatabase)(Archive *fout);
+	void			(*dumpDumpableObject)(Archive *fout, const DumpableObject *dobj);
+	void			(*ProcessArchiveRestoreOptions)(Archive *AHX);
+	void			(*BuildArchiveDependencies)(Archive *fout);
+	void			(*RestoreArchive)(Archive *AHX);
+}DumpMethods;
+/*
+ * This is where the global variables used in the dump process are
+ * maintained. If new global variables are added, they should be declared
+ * here. At the same time, not all global variables here are suitable for
+ * storage in this place.
+ * TODO : Adjust these variables to the appropriate positions.
+ */
+extern DumpMethods *dM;
 
+extern struct dumpMethods dumpMethodsNative;
+extern struct dumpMethods dumpMethodsOracle;
+extern struct dumpMethods dumpMethodsPg;
+
+extern char role_catalog[10];
+extern int	no_role_passwords;
+
+extern bool dosync;
+extern const char *username_subquery;
+extern Oid	g_last_builtin_oid;
+extern int	strict_names;
+
+extern SimpleStringList schema_include_patterns;
+extern SimpleOidList schema_include_oids;
+extern SimpleStringList schema_exclude_patterns;
+extern SimpleOidList schema_exclude_oids;
+
+extern SimpleStringList table_include_patterns;
+extern SimpleOidList table_include_oids;
+extern SimpleStringList table_exclude_patterns;
+extern SimpleOidList table_exclude_oids;
+extern SimpleStringList tabledata_exclude_patterns;
+extern SimpleOidList tabledata_exclude_oids;
+extern SimpleStringList foreign_servers_include_patterns;
+extern SimpleOidList foreign_servers_include_oids;
+
+extern SimpleStringList extension_include_patterns;
+extern SimpleOidList extension_include_oids;
+
+extern const CatalogId nilCatalogId;
+
+extern bool have_extra_float_digits;
+extern int	extra_float_digits;
+
+extern DumpableObject **tblinfoindex;
+extern DumpableObject **typinfoindex;
+extern DumpableObject **funinfoindex;
+extern DumpableObject **oprinfoindex;
+extern DumpableObject **collinfoindex;
+extern DumpableObject **nspinfoindex;
+extern DumpableObject **extinfoindex;
+extern DumpableObject **pubinfoindex;
+extern int	numTables;
+extern int	numTypes;
+extern int	numPkgs;
+extern int	numFuncs;
+extern int	numOperators;
+extern int	numCollations;
+extern int	numNamespaces;
+extern int	numExtensions;
+extern int	numPublications;
+extern int	numRoles;
+extern int	numRolesMembership;
+extern ExtensionMemberId *extmembers;
+extern int	numextmembers;
+
+
+extern DumpableObject **dumpIdMap;
+extern int	allocedDumpIds;
+extern DumpId lastDumpId;	/* Note: 0 is InvalidDumpId */
+
+extern bool catalogIdMapValid;
+extern DumpableObject **catalogIdMap;
+extern int	numCatalogIds;
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  *	common utility functions
  */
@@ -737,71 +875,24 @@ extern NamespaceInfo *findNamespaceByOid(Oid oid);
 extern ExtensionInfo *findExtensionByOid(Oid oid);
 extern PublicationInfo *findPublicationByOid(Oid oid);
 
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern void flagInhTables(Archive *fout, TableInfo *tblinfo, int numTables,
+			  InhInfo *inhinfo, int numInherits);
+extern void flagInhIndexes(Archive *fout, TableInfo tblinfo[], int numTables);
+extern void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
+extern DumpableObject **buildIndexArray(void *objArray, int numObjs, Size objSize);
+extern void sortDumpableObjects(DumpableObject **objs, int numObjs,
+								DumpId preBoundaryId, DumpId postBoundaryId);
+extern void sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs);
+/*END - ReqID:SRS-CMD-PGDUMP */
 extern void setExtensionMembership(ExtensionMemberId *extmems, int nextmems);
 extern ExtensionInfo *findOwningExtension(CatalogId catalogId);
 
 extern void parseOidArray(const char *str, Oid *array, int arraysize);
 
-extern void sortDumpableObjects(DumpableObject **objs, int numObjs,
-								DumpId preBoundaryId, DumpId postBoundaryId);
-extern void sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs);
-
-/*
- * version specific routines
- */
-extern NamespaceInfo *getNamespaces(Archive *fout, int *numNamespaces);
-extern ExtensionInfo *getExtensions(Archive *fout, int *numExtensions);
-extern TypeInfo *getTypes(Archive *fout, int *numTypes);
-extern FuncInfo *getFuncs(Archive *fout, int *numFuncs);
-/* Begin - ReqID:SRS-SQL-PACKAGE */
-extern PkgInfo *getPackages(Archive *fout, int *numPkgs);
-/* End - ReqID:SRS-SQL-PACKAGE */
-extern AggInfo *getAggregates(Archive *fout, int *numAggregates);
-extern OprInfo *getOperators(Archive *fout, int *numOperators);
-extern AccessMethodInfo *getAccessMethods(Archive *fout, int *numAccessMethods);
-extern OpclassInfo *getOpclasses(Archive *fout, int *numOpclasses);
-extern OpfamilyInfo *getOpfamilies(Archive *fout, int *numOpfamilies);
-extern CollInfo *getCollations(Archive *fout, int *numCollations);
-extern ConvInfo *getConversions(Archive *fout, int *numConversions);
-extern TableInfo *getTables(Archive *fout, int *numTables);
-extern void getOwnedSeqs(Archive *fout, TableInfo tblinfo[], int numTables);
-extern InhInfo *getInherits(Archive *fout, int *numInherits);
-extern void getPartitioningInfo(Archive *fout);
-extern void getIndexes(Archive *fout, TableInfo tblinfo[], int numTables);
-extern void getExtendedStatistics(Archive *fout);
-extern void getConstraints(Archive *fout, TableInfo tblinfo[], int numTables);
-extern RuleInfo *getRules(Archive *fout, int *numRules);
-extern void getTriggers(Archive *fout, TableInfo tblinfo[], int numTables);
-extern ProcLangInfo *getProcLangs(Archive *fout, int *numProcLangs);
-extern CastInfo *getCasts(Archive *fout, int *numCasts);
-extern TransformInfo *getTransforms(Archive *fout, int *numTransforms);
-extern void getTableAttrs(Archive *fout, TableInfo *tbinfo, int numTables);
-extern bool shouldPrintColumn(const DumpOptions *dopt, const TableInfo *tbinfo, int colno);
-extern TSParserInfo *getTSParsers(Archive *fout, int *numTSParsers);
-extern TSDictInfo *getTSDictionaries(Archive *fout, int *numTSDicts);
-extern TSTemplateInfo *getTSTemplates(Archive *fout, int *numTSTemplates);
-extern TSConfigInfo *getTSConfigurations(Archive *fout, int *numTSConfigs);
-extern FdwInfo *getForeignDataWrappers(Archive *fout,
-									   int *numForeignDataWrappers);
-extern ForeignServerInfo *getForeignServers(Archive *fout,
-											int *numForeignServers);
-extern DefaultACLInfo *getDefaultACLs(Archive *fout, int *numDefaultACLs);
-extern void getExtensionMembership(Archive *fout, ExtensionInfo extinfo[],
-								   int numExtensions);
-extern void processExtensionTables(Archive *fout, ExtensionInfo extinfo[],
-								   int numExtensions);
-extern EventTriggerInfo *getEventTriggers(Archive *fout, int *numEventTriggers);
-extern void getPolicies(Archive *fout, TableInfo tblinfo[], int numTables);
-extern PublicationInfo *getPublications(Archive *fout,
-										int *numPublications);
-extern void getPublicationTables(Archive *fout, TableInfo tblinfo[],
-								 int numTables);
-extern void getSubscriptions(Archive *fout);
-
-extern TableInfo *getTables(Archive *fout, int *numTables);
-extern DatabaseRolesInfo *getDbRoles(Archive *fout, int *numRoles);
-extern DbRolesMembershipInfo *getDbRoleMembership(Archive *fout, int *numRolesMembership);
+/* BEGIN - ReqID:SRS-SQL-DBLINK */
 #ifdef	WIN32
 extern char 	*strtok_r(char *str, const char *delim, char **saveptr);
 #endif
+/* End - ReqID:SRS-SQL-DBLINK */
 #endif							/* PG_DUMP_H */

@@ -29,6 +29,35 @@ static struct
 
 static int	on_exit_nicely_index;
 
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+RestoreMethods *RAM;
+/*
+ * Assign corresponding values to RAM according to
+ * the three existing frameworks.
+ *
+ * TODO : If you want to add a new framework, you
+ * should add the corresponding function pointer here.
+ */
+RestoreMethods ramNative =
+{
+	.mode = "n",
+	.ProcessArchiveRestoreOptions = ProcessArchiveRestoreOptionsNative,
+	.RestoreArchive = RestoreArchiveNative
+};
+RestoreMethods ramOracle =
+{
+	.mode = "o",
+	.ProcessArchiveRestoreOptions = ProcessArchiveRestoreOptionsOracle,
+	.RestoreArchive = RestoreArchiveOracle
+};
+RestoreMethods ramPg =
+{
+	.mode = "p",
+	.ProcessArchiveRestoreOptions = ProcessArchiveRestoreOptionsPg,
+	.RestoreArchive = RestoreArchivePg
+};
+/* END - ReqID:SRS-CMD-PGDUMP */
+
 /*
  * Parse a --section=foo command line argument.
  *

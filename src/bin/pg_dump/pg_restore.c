@@ -50,6 +50,10 @@
 #include "parallel.h"
 #include "pg_backup_utils.h"
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "pg_dump.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
@@ -454,8 +458,10 @@ main(int argc, char **argv)
 		PrintTOCSummary(AH);
 	else
 	{
-		ProcessArchiveRestoreOptions(AH);
-		RestoreArchive(AH);
+		/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+		RAM->ProcessArchiveRestoreOptions(AH);
+		RAM->RestoreArchive(AH);
+		/* END - ReqID:SRS-CMD-PGDUMP */
 	}
 
 	/* done, print a summary of ignored errors */
