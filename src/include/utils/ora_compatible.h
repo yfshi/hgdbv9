@@ -22,9 +22,16 @@
 typedef enum DBMode
 {
 	DB_PG = 0,
-	DB_ORACLE
+	DB_ORACLE = 1, /* ReqID:SRS-CMD-PGDUMP */
+	DB_NATIVE = 2	/* ReqID:SRS-CMD-PGDUMP */
 }DBMode;
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+typedef enum DBUser
+{
+	INSTANCE = 0,
+	DB = 1
+}DBUser;
+/* END - ReqID:SRS-CMD-PGDUMP */
 typedef enum DBParser
 {
 	PG_PARSER = 0,

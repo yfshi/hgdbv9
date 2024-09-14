@@ -22,64 +22,18 @@
 #include "pg_backup_archiver.h"
 #include "pg_backup_utils.h"
 #include "pg_dump.h"
+#include "pg_dump_native.h"	/* ReqID:SRC-CMD-PGDUMP */
+#include "pg_dump_pg.h"	/* ReqID:SRC-CMD-PGDUMP */
+#include "pg_dump_oracle.h"	/* ReqID:SRC-CMD-PGDUMP */
 #include "dumputils.h"
-
-/*
- * Variables for mapping DumpId to DumpableObject
- */
-static DumpableObject **dumpIdMap = NULL;
-static int	allocedDumpIds = 0;
-static DumpId lastDumpId = 0;	/* Note: 0 is InvalidDumpId */
-
-/*
- * Variables for mapping CatalogId to DumpableObject
- */
-static bool catalogIdMapValid = false;
-static DumpableObject **catalogIdMap = NULL;
-static int	numCatalogIds = 0;
-
-/*
- * These variables are static to avoid the notational cruft of having to pass
- * them into findTableByOid() and friends.  For each of these arrays, we build
- * a sorted-by-OID index array immediately after the objects are fetched,
- * and then we use binary search in findTableByOid() and friends.  (qsort'ing
- * the object arrays themselves would be simpler, but it doesn't work because
- * pg_dump.c may have already established pointers between items.)
- */
-static DumpableObject **tblinfoindex;
-static DumpableObject **typinfoindex;
-static DumpableObject **funinfoindex;
-static DumpableObject **oprinfoindex;
-static DumpableObject **collinfoindex;
-static DumpableObject **nspinfoindex;
-static DumpableObject **extinfoindex;
-static DumpableObject **pubinfoindex;
-static int	numTables;
-static int	numTypes;
-/* Begin - ReqID:SRS-SQL-PACKAGE */
-static int	numPkgs;
-/* End - ReqID:SRS-SQL-PACKAGE */
-static int	numFuncs;
-static int	numOperators;
-static int	numCollations;
-static int	numNamespaces;
-static int	numExtensions;
-static int	numPublications;
-/* BEGIN - ReqID:SRS-MISC-USER  BUG:Z538 */
-static int	numRoles;
-static int	numRolesMembership;
-/* END - ReqID:SRS-MISC-USER  BUG:Z538 */
-
-/* This is an array of object identities, not actual DumpableObjects */
-static ExtensionMemberId *extmembers;
-static int	numextmembers;
-
-static void flagInhTables(Archive *fout, TableInfo *tbinfo, int numTables,
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+void flagInhTables(Archive *fout, TableInfo *tbinfo, int numTables,
 						  InhInfo *inhinfo, int numInherits);
-static void flagInhIndexes(Archive *fout, TableInfo *tblinfo, int numTables);
-static void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
-static DumpableObject **buildIndexArray(void *objArray, int numObjs,
+void flagInhIndexes(Archive *fout, TableInfo *tblinfo, int numTables);
+void flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables);
+DumpableObject **buildIndexArray(void *objArray, int numObjs,
 										Size objSize);
+/* END - ReqID:SRS-CMD-PGDUMP */
 static int	DOCatalogIdCompare(const void *p1, const void *p2);
 static int	ExtensionMemberIdCompare(const void *p1, const void *p2);
 static void findParentsByOid(TableInfo *self,
@@ -96,213 +50,19 @@ static IndxInfo *findIndexByOid(Oid oid, DumpableObject **idxinfoindex,
 TableInfo *
 getSchemaData(Archive *fout, int *numTablesPtr)
 {
-	TableInfo  *tblinfo;
-	TypeInfo   *typinfo;
-	FuncInfo   *funinfo;
-	OprInfo    *oprinfo;
-	CollInfo   *collinfo;
-	NamespaceInfo *nspinfo;
-	ExtensionInfo *extinfo;
-	PublicationInfo *pubinfo;
-	InhInfo    *inhinfo;
-	int			numAggregates;
-	int			numInherits;
-	int			numRules;
-	int			numProcLangs;
-	int			numCasts;
-	int			numTransforms;
-	int			numAccessMethods;
-	int			numOpclasses;
-	int			numOpfamilies;
-	int			numConversions;
-	int			numTSParsers;
-	int			numTSTemplates;
-	int			numTSDicts;
-	int			numTSConfigs;
-	int			numForeignDataWrappers;
-	int			numForeignServers;
-	int			numDefaultACLs;
-	int			numEventTriggers;
-
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	/*
-	 * We must read extensions and extension membership info first, because
-	 * extension membership needs to be consultable during decisions about
-	 * whether other objects are to be dumped.
+	 *	In the separated framework, in order to ensure that third-party tools
+	 *	can use this interface, we provide third-party tools with the same
+	 *	name as the native PG interface.
 	 */
-
-	/* BEGIN - ReqID:SRS-MISC-USER  BUG#Z538 */
-	/*
-	 *When backing up library-level users, we must first determine whether 
-	 * there is a library-level user in the current database, and whether 
-	 * the current user is a super user. The purpose of judging this is 
-	 * to be compatible with the lower version and backup native pg
-	 *
-	 */
-	if(DB_ORACLE == database_mode && haveDBuser && (fout->remoteVersion >= 140008) 
-		&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && 
-		(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))		/* BUG:z680,z538 */
-	{
-		pg_log_info("reading database user");
-		getDbRoles(fout, &numRoles);
-		getDbRoleMembership(fout, &numRolesMembership);
-	}
-	/* End - ReqID:SRS-MISC-USER  BUG#Z538 */
-
-	pg_log_info("reading extensions");
-	extinfo = getExtensions(fout, &numExtensions);
-	extinfoindex = buildIndexArray(extinfo, numExtensions, sizeof(ExtensionInfo));
-
-	pg_log_info("identifying extension members");
-	getExtensionMembership(fout, extinfo, numExtensions);
-
-	pg_log_info("reading schemas");
-	nspinfo = getNamespaces(fout, &numNamespaces);
-	nspinfoindex = buildIndexArray(nspinfo, numNamespaces, sizeof(NamespaceInfo));
-
-	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	/* Begin - BUG#M229 */
-	/* When the database mode is pg, you do not need to back up the package */
-	if (DB_ORACLE == database_mode)
-	{
-		pg_log_info("reading user-defined packages");
-		getPackages(fout, &numPkgs);
-	}
-	/* End- BUG#M229 */
-	/* End - ReqID:SRS-SQL-PACKAGE */
-
-	/*
-	 * getTables should be done as soon as possible, so as to minimize the
-	 * window between starting our transaction and acquiring per-table locks.
-	 * However, we have to do getNamespaces first because the tables get
-	 * linked to their containing namespaces during getTables.
-	 */
-	pg_log_info("reading user-defined tables");
-	tblinfo = getTables(fout, &numTables);
-	tblinfoindex = buildIndexArray(tblinfo, numTables, sizeof(TableInfo));
-
-	/* Do this after we've built tblinfoindex */
-	getOwnedSeqs(fout, tblinfo, numTables);
-
-	pg_log_info("reading user-defined functions");
-	funinfo = getFuncs(fout, &numFuncs);
-	funinfoindex = buildIndexArray(funinfo, numFuncs, sizeof(FuncInfo));
-
-	/* this must be after getTables and getFuncs */
-	pg_log_info("reading user-defined types");
-	typinfo = getTypes(fout, &numTypes);
-	typinfoindex = buildIndexArray(typinfo, numTypes, sizeof(TypeInfo));
-
-	/* this must be after getFuncs, too */
-	pg_log_info("reading procedural languages");
-	getProcLangs(fout, &numProcLangs);
-
-	pg_log_info("reading user-defined aggregate functions");
-	getAggregates(fout, &numAggregates);
-
-	pg_log_info("reading user-defined operators");
-	oprinfo = getOperators(fout, &numOperators);
-	oprinfoindex = buildIndexArray(oprinfo, numOperators, sizeof(OprInfo));
-
-	pg_log_info("reading user-defined access methods");
-	getAccessMethods(fout, &numAccessMethods);
-
-	pg_log_info("reading user-defined operator classes");
-	getOpclasses(fout, &numOpclasses);
-
-	pg_log_info("reading user-defined operator families");
-	getOpfamilies(fout, &numOpfamilies);
-
-	pg_log_info("reading user-defined text search parsers");
-	getTSParsers(fout, &numTSParsers);
-
-	pg_log_info("reading user-defined text search templates");
-	getTSTemplates(fout, &numTSTemplates);
-
-	pg_log_info("reading user-defined text search dictionaries");
-	getTSDictionaries(fout, &numTSDicts);
-
-	pg_log_info("reading user-defined text search configurations");
-	getTSConfigurations(fout, &numTSConfigs);
-
-	pg_log_info("reading user-defined foreign-data wrappers");
-	getForeignDataWrappers(fout, &numForeignDataWrappers);
-
-	pg_log_info("reading user-defined foreign servers");
-	getForeignServers(fout, &numForeignServers);
-
-	pg_log_info("reading default privileges");
-	getDefaultACLs(fout, &numDefaultACLs);
-
-	pg_log_info("reading user-defined collations");
-	collinfo = getCollations(fout, &numCollations);
-	collinfoindex = buildIndexArray(collinfo, numCollations, sizeof(CollInfo));
-
-	pg_log_info("reading user-defined conversions");
-	getConversions(fout, &numConversions);
-
-	pg_log_info("reading type casts");
-	getCasts(fout, &numCasts);
-
-	pg_log_info("reading transforms");
-	getTransforms(fout, &numTransforms);
-
-	pg_log_info("reading table inheritance information");
-	inhinfo = getInherits(fout, &numInherits);
-
-	pg_log_info("reading event triggers");
-	getEventTriggers(fout, &numEventTriggers);
-
-	/* Identify extension configuration tables that should be dumped */
-	pg_log_info("finding extension tables");
-	processExtensionTables(fout, extinfo, numExtensions);
-
-	/* Link tables to parents, mark parents of target tables interesting */
-	pg_log_info("finding inheritance relationships");
-	flagInhTables(fout, tblinfo, numTables, inhinfo, numInherits);
-
-	pg_log_info("reading column info for interesting tables");
-	getTableAttrs(fout, tblinfo, numTables);
-
-	pg_log_info("flagging inherited columns in subtables");
-	flagInhAttrs(fout->dopt, tblinfo, numTables);
-
-	pg_log_info("reading partitioning data");
-	getPartitioningInfo(fout);
-
-	pg_log_info("reading indexes");
-	getIndexes(fout, tblinfo, numTables);
-
-	pg_log_info("flagging indexes in partitioned tables");
-	flagInhIndexes(fout, tblinfo, numTables);
-
-	pg_log_info("reading extended statistics");
-	getExtendedStatistics(fout);
-
-	pg_log_info("reading constraints");
-	getConstraints(fout, tblinfo, numTables);
-
-	pg_log_info("reading triggers");
-	getTriggers(fout, tblinfo, numTables);
-
-	pg_log_info("reading rewrite rules");
-	getRules(fout, &numRules);
-
-	pg_log_info("reading policies");
-	getPolicies(fout, tblinfo, numTables);
-
-	pg_log_info("reading publications");
-	pubinfo = getPublications(fout, &numPublications);
-	pubinfoindex = buildIndexArray(pubinfo, numPublications,
-								   sizeof(PublicationInfo));
-
-	pg_log_info("reading publication membership");
-	getPublicationTables(fout, tblinfo, numTables);
-
-	pg_log_info("reading subscriptions");
-	getSubscriptions(fout);
-
-	*numTablesPtr = numTables;
-	return tblinfo;
+	if (database_mode == DB_PG)
+		return getSchemaDataPg(fout, numTablesPtr);
+	else if (database_mode == DB_ORACLE)
+		return getSchemaDataOracle(fout, numTablesPtr);
+	else
+		return getSchemaDataNative(fout, numTablesPtr);
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /* flagInhTables -
@@ -317,7 +77,7 @@ getSchemaData(Archive *fout, int *numTablesPtr)
  *
  * modifies tblinfo
  */
-static void
+void
 flagInhTables(Archive *fout, TableInfo *tblinfo, int numTables,
 			  InhInfo *inhinfo, int numInherits)
 {
@@ -409,7 +169,7 @@ flagInhTables(Archive *fout, TableInfo *tblinfo, int numTables,
  *	 Create IndexAttachInfo objects for partitioned indexes, and add
  *	 appropriate dependency links.
  */
-static void
+void
 flagInhIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 {
 	int			i,
@@ -528,7 +288,7 @@ flagInhIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
  *
  * modifies tblinfo
  */
-static void
+void
 flagInhAttrs(DumpOptions *dopt, TableInfo *tblinfo, int numTables)
 {
 	int			i,
@@ -814,7 +574,7 @@ findObjectByOid(Oid oid, DumpableObject **indexArray, int numObjs)
 /*
  * Build an index array of DumpableObject pointers, sorted by OID
  */
-static DumpableObject **
+DumpableObject **
 buildIndexArray(void *objArray, int numObjs, Size objSize)
 {
 	DumpableObject **ptrs;
@@ -863,18 +623,19 @@ DOCatalogIdCompare(const void *p1, const void *p2)
 void
 getDumpableObjects(DumpableObject ***objs, int *numObjs)
 {
-	int			i,
-				j;
-
-	*objs = (DumpableObject **)
-		pg_malloc(allocedDumpIds * sizeof(DumpableObject *));
-	j = 0;
-	for (i = 1; i < allocedDumpIds; i++)
-	{
-		if (dumpIdMap[i])
-			(*objs)[j++] = dumpIdMap[i];
-	}
-	*numObjs = j;
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	/*
+	 *	In the separated framework, in order to ensure that third-party tools
+	 *	can use this interface, we provide third-party tools with the same
+	 *	name as the native PG interface.
+	 */
+	if (database_mode == DB_ORACLE)
+		getDumpableObjectsOracle(objs, numObjs);
+	else if (database_mode == DB_PG)
+		getDumpableObjectsPg(objs, numObjs);
+	else
+		getDumpableObjectsNative(objs, numObjs);
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /*

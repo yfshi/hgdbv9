@@ -69,7 +69,11 @@
 #include "utils/syscache.h"
 
 #include "catalog/storage_gtt.h"	/* ReqID:SRS-SQL-GTT */
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "utils/jsonb.h"
+#include "parser/pg_object_hook.h"
+#include "catalog/objectaddress.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /* non-export function prototypes */
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
 static void CheckPredicate(Expr *predicate);
@@ -1204,7 +1208,16 @@ DefineIndex(Oid relationId,
 
 		return address;
 	}
-
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (ORA_PARSER == compatible_db && pg_object_create_obj_hook_type)
+		pg_object_create_obj_hook_type(stmt->idxname,
+										RelationGetNamespace(rel),
+										false,
+										RELKIND_INDEX,
+										address,
+										NULL,
+										NULL);
+	/* END - ReqID:SRS-CMD-PGDUMP */
 	/*
 	 * Roll back any GUC changes executed by index functions, and keep
 	 * subsequent changes local to this command.  This is essential if some

@@ -98,6 +98,11 @@
 #include "nodes/makefuncs.h"
 #include "access/xact.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+#include "catalog/objectaddress.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
@@ -1418,6 +1423,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	ArrayType	*parametertypeNames = NULL;
 	char		*rettypeName = NULL;
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
 
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->funcname,
@@ -1667,7 +1673,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	 * And now that we have all the parameters, and know we're permitted to do
 	 * so, go ahead and create the function.
 	 */
-	return ProcedureCreate(funcname,
+	address =  ProcedureCreate(funcname,		/* ReqID:SRS-CMD-PGDUMP */
 						   namespaceId,
 						   stmt->replace,
 						   returnsSet,
@@ -1699,6 +1705,14 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						   PointerGetDatum(parametertypeNames),
 						   rettypeName);
 						   /* End - ReqID:SRS-SQL-PACKAGE */
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	{
+		pg_object_create_obj_hook_type(funcname, namespaceId, stmt->replace, stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION), address, NULL, NULL);
+	}
+
+	return address;
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -2146,6 +2160,16 @@ RemoveFunctionById(Oid funcOid)
 
 		table_close(relation, RowExclusiveLock);
 	}
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+	if (pg_object_drop_obj_hook_type && ORA_PARSER == compatible_db)
+	{
+		ObjectAddress address;
+
+		ObjectAddressSet(address, ProcedureRelationId, funcOid);
+		if (pg_object_get_ori_infor_hook_type(address) != NULL)
+			pg_object_drop_obj_hook_type(address);
+	}
+	/* END - ReqID:SRS-CMD-PGDUMP */
 }
 
 /*

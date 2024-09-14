@@ -96,10 +96,11 @@ typedef z_stream *z_streamp;
 /* Begin - ReqID:SRS-SQL-FORCEVIEW */
 #define K_VERS_1_15 MAKE_ARCHIVE_VERSION(1, 15, 0)	/* add ident_case for force view */
 /* End - ReqID:SRS-SQL-FORCEVIEW */
+#define K_VERS_1_16	MAKE_ARCHIVE_VERSION(1, 16, 0)	/* ReqID:SRS-CMD-PGDUMP */
 
 /* Current archive version number (the format we can output) */
 #define K_VERS_MAJOR 1
-#define K_VERS_MINOR 15		/* ReqID:SRS-SQL-FORCEVIEW */
+#define K_VERS_MINOR 16		/* ReqID:SRS-SQL-FORCEVIEW */ /* ReqID:SRS-CMD-PGDUMP */
 #define K_VERS_REV 0
 #define K_VERS_SELF MAKE_ARCHIVE_VERSION(K_VERS_MAJOR, K_VERS_MINOR, K_VERS_REV)
 
@@ -410,6 +411,7 @@ struct _tocEntry
 	DumpId	   *lockDeps;		/* dumpIds of objects this one needs lock on */
 	int			nLockDeps;		/* number of such dependencies */
 	char		ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
+	char 	   *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 };
 
 extern int	parallel_restore(ArchiveHandle *AH, TocEntry *te);
@@ -435,6 +437,7 @@ typedef struct _archiveOpts
 	DataDumperPtr dumpFn;
 	const void *dumpArg;
 	const char	ident_case;		/* BUG#M0000323 */
+	const char *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 } ArchiveOpts;
 #define ARCHIVE_OPTS(...) &(ArchiveOpts){__VA_ARGS__}
 /* Called to add a TOC entry */
@@ -448,6 +451,11 @@ extern void ReadToc(ArchiveHandle *AH);
 extern void WriteDataChunks(ArchiveHandle *AH, struct ParallelState *pstate);
 extern void WriteDataChunksForTocEntry(ArchiveHandle *AH, TocEntry *te);
 extern ArchiveHandle *CloneArchive(ArchiveHandle *AH);
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern ArchiveHandle *CloneArchiveNative(ArchiveHandle *AH);
+extern ArchiveHandle *CloneArchiveOracle(ArchiveHandle *AH);
+extern ArchiveHandle *CloneArchivePg(ArchiveHandle *AH);
+/* END - ReqID:SRS-CMD-PGDUMP */
 extern void DeCloneArchive(ArchiveHandle *AH);
 
 extern int	TocIDRequired(ArchiveHandle *AH, DumpId id);
@@ -485,6 +493,11 @@ extern void InitArchiveFmt_Tar(ArchiveHandle *AH);
 extern bool isValidTarHeader(char *header);
 
 extern void ReconnectToServer(ArchiveHandle *AH, const char *dbname);
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+extern void ReconnectToServerNative(ArchiveHandle *AH, const char *dbname);
+extern void ReconnectToServerPg(ArchiveHandle *AH, const char *dbname);
+extern void ReconnectToServerOracle(ArchiveHandle *AH, const char *dbname);
+/* END - ReqID:SRS-CMD-PGDUMP */
 extern void DropBlobIfExists(ArchiveHandle *AH, Oid oid);
 
 void		ahwrite(const void *ptr, size_t size, size_t nmemb, ArchiveHandle *AH);

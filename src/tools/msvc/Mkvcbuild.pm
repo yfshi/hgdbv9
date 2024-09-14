@@ -516,6 +516,9 @@ sub mkvcbuild
 	my $pgdump = AddSimpleFrontend('pg_dump', 1);
 	$pgdump->AddIncludeDir('src/backend');
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump.c');
+	$pgdump->AddFile('src/bin/pg_dump/pg_dump_native.c');
+	$pgdump->AddFile('src/bin/pg_dump/pg_dump_pg.c');
+	$pgdump->AddFile('src/bin/pg_dump/pg_dump_oracle.c');
 	$pgdump->AddFile('src/bin/pg_dump/common.c');
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump_sort.c');
 	$pgdump->AddLibrary('ws2_32.lib');

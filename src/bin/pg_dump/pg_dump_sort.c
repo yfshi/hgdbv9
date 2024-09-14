@@ -19,7 +19,13 @@
 #include "pg_backup_archiver.h"
 #include "pg_backup_utils.h"
 #include "pg_dump.h"
-
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+#include "pg_dump_native.h"
+#include "pg_dump_oracle.h"
+#include "pg_dump_pg.h"
+#include "utils/ora_compatible.h"
+#include "dumputils.h"
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * Sort priority for database object types.
  * Objects are sorted by type, and within a type by name.
@@ -190,14 +196,43 @@ static void describeDumpableObject(DumpableObject *obj,
  * Normally this is just the starting point for the dependency-based
  * ordering.
  */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 void
-sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs)
+sortDumpableObjectsByTypeNameNative(DumpableObject **objs, int numObjs)
 {
 	if (numObjs > 1)
 		qsort((void *) objs, numObjs, sizeof(DumpableObject *),
 			  DOTypeNameCompare);
 }
 
+void
+sortDumpableObjectsByTypeNamePg(DumpableObject **objs, int numObjs)
+{
+	if (numObjs > 1)
+		qsort((void *) objs, numObjs, sizeof(DumpableObject *),
+			  DOTypeNameCompare);
+}
+
+void
+sortDumpableObjectsByTypeNameOracle(DumpableObject **objs, int numObjs)
+{
+	if (numObjs > 1)
+		qsort((void *) objs, numObjs, sizeof(DumpableObject *),
+			  DOTypeNameCompare);
+}
+void
+sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs)
+{
+	if (database_mode == DB_PG)
+		sortDumpableObjectsByTypeNamePg(objs,numObjs);
+	else if (database_mode == DB_ORACLE)
+		sortDumpableObjectsByTypeNameOracle(objs,numObjs);
+	else if (database_mode == DB_NATIVE)
+		sortDumpableObjectsByTypeNameNative(objs,numObjs);
+	else
+		sortDumpableObjectsByTypeNameNative(objs, numObjs);
+}
+/* END - ReqID:SRS-CMD-PGDUMP */
 static int
 DOTypeNameCompare(const void *p1, const void *p2)
 {
@@ -323,8 +358,9 @@ DOTypeNameCompare(const void *p1, const void *p2)
  * The DumpIds of the PRE_DATA_BOUNDARY and POST_DATA_BOUNDARY objects are
  * passed in separately, in case we need them during dependency loop repair.
  */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 void
-sortDumpableObjects(DumpableObject **objs, int numObjs,
+sortDumpableObjectsNative(DumpableObject **objs, int numObjs,
 					DumpId preBoundaryId, DumpId postBoundaryId)
 {
 	DumpableObject **ordering;
@@ -349,6 +385,72 @@ sortDumpableObjects(DumpableObject **objs, int numObjs,
 	free(ordering);
 }
 
+void
+sortDumpableObjectsPg(DumpableObject **objs, int numObjs,
+					DumpId preBoundaryId, DumpId postBoundaryId)
+{
+	DumpableObject **ordering;
+	int			nOrdering;
+
+	if (numObjs <= 0)			/* can't happen anymore ... */
+		return;
+
+	/*
+	 * Saving the boundary IDs in static variables is a bit grotty, but seems
+	 * better than adding them to parameter lists of subsidiary functions.
+	 */
+	preDataBoundId = preBoundaryId;
+	postDataBoundId = postBoundaryId;
+
+	ordering = (DumpableObject **) pg_malloc(numObjs * sizeof(DumpableObject *));
+	while (!TopoSort(objs, numObjs, ordering, &nOrdering))
+		findDependencyLoops(ordering, nOrdering, numObjs);
+
+	memcpy(objs, ordering, numObjs * sizeof(DumpableObject *));
+
+	free(ordering);
+}
+
+void
+sortDumpableObjectsOracle(DumpableObject **objs, int numObjs,
+					DumpId preBoundaryId, DumpId postBoundaryId)
+{
+	DumpableObject **ordering;
+	int			nOrdering;
+
+	if (numObjs <= 0)			/* can't happen anymore ... */
+		return;
+
+	/*
+	 * Saving the boundary IDs in static variables is a bit grotty, but seems
+	 * better than adding them to parameter lists of subsidiary functions.
+	 */
+	preDataBoundId = preBoundaryId;
+	postDataBoundId = postBoundaryId;
+
+	ordering = (DumpableObject **) pg_malloc(numObjs * sizeof(DumpableObject *));
+	while (!TopoSort(objs, numObjs, ordering, &nOrdering))
+		findDependencyLoops(ordering, nOrdering, numObjs);
+
+	memcpy(objs, ordering, numObjs * sizeof(DumpableObject *));
+
+	free(ordering);
+}
+
+void
+sortDumpableObjects(DumpableObject **objs, int numObjs,
+					DumpId preBoundaryId, DumpId postBoundaryId)
+{
+	if (database_mode == DB_PG)
+		sortDumpableObjectsPg(objs, numObjs, preBoundaryId, postBoundaryId);
+	else if (database_mode == DB_ORACLE)
+		sortDumpableObjectsOracle(objs, numObjs, preBoundaryId, postBoundaryId);
+	else if (database_mode == DB_NATIVE)
+		sortDumpableObjectsNative(objs, numObjs, preBoundaryId, postBoundaryId);
+	else
+		sortDumpableObjectsNative(objs, numObjs, preBoundaryId, postBoundaryId);
+}
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * TopoSort -- topological sort of a dump list
  *

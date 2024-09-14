@@ -324,9 +324,9 @@ my %tests = (
                     \n\s+\QAS integer\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNOMINVALUE\E
-                    \n\s+\QNOMAXVALUE\E
-                    \n\s+\QNOCACHE ;\E
+                    \n\s+\QNO MINVALUE\E
+                    \n\s+\QNO MAXVALUE\E
+                    \n\s+\Q;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -348,9 +348,9 @@ my %tests = (
                     \QCREATE SEQUENCE public.regress_pg_dump_seq\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNOMINVALUE\E
-                    \n\s+\QNOMAXVALUE\E
-                    \n\s+\QNOCACHE ;\E
+                    \n\s+\QNO MINVALUE\E
+                    \n\s+\QNO MAXVALUE\E
+                    \n\s+\Q;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},
@@ -578,9 +578,9 @@ my %tests = (
                     \QCREATE SEQUENCE regress_pg_dump_schema.test_seq\E
                     \n\s+\QSTART WITH 1\E
                     \n\s+\QINCREMENT BY 1\E
-                    \n\s+\QNOMINVALUE\E
-                    \n\s+\QNOMAXVALUE\E
-                    \n\s+\QNOCACHE ;\E
+                    \n\s+\QNO MINVALUE\E
+                    \n\s+\QNO MAXVALUE\E
+                    \n\s+\Q;\E
                     \n/xm,
 		like => { binary_upgrade => 1, },
 	},

@@ -36,13 +36,14 @@ bool CurrentUserIsDatabaseSuperuser = false;					/* BUG:z680,z538 */
 const char *CurrentSessionUserName = NULL;
 DBMode database_mode = DB_PG;
 bool restoremode = true; 					/*  bug#M0000238 */
-DBParser compatible_db = PG_PARSER;
 DBGrantUser grant_usertype = PG_GRANTUSER;
 DBDump dumppgtype = PG_DUMP;
 const char *DumpMode = NULL;				/*  bug#M0000261 */
 bool haveDBuser = false;			/*  bug#M0000261 */
 /* END - ReqID:SRS-MISC-USER */
-
+DBParser compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
+DBUser	CurUser = INSTANCE;		/* ReqID:SRS-CMD-PGDUMP */
+const char *DumpM = NULL;		/* ReqID:SRS-CMD-PGDUMP */
 /*
  * Build GRANT/REVOKE command(s) for an object.
  *
@@ -1384,13 +1385,14 @@ getDatabaseMode(PGconn *conn)
 	PGresult *res;
 
 	char *db_style = NULL;
-
+	if (conn == NULL)
+		return ;
 	res = PQexec(conn, "show ivorysql.database_mode;");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		database_mode = DB_PG;
 		native_PG = true;
+		database_mode = DB_NATIVE;	/* ReqID:SRS-CMD-PGDUMP */
 	}
 	else
 	{
@@ -1481,8 +1483,9 @@ getDumpMode(const char *dumpmode)
  * If it does not exist, return false. This is to ensure compatibility 
  * with databases of earlier versions
  */
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 bool 
-haveDatabaseUser(PGconn *conn)
+haveDatabaseUserPg(PGconn *conn)
 {
 	PGresult *res;
 
@@ -1490,7 +1493,7 @@ haveDatabaseUser(PGconn *conn)
 	if(database_mode == DB_PG)
 		return false;
 
-	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");	
+	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");
 
 	if (PQntuples(res))
 	{
@@ -1503,6 +1506,28 @@ haveDatabaseUser(PGconn *conn)
 	return false;
 }
 
+bool
+haveDatabaseUserOracle(PGconn *conn)
+{
+	PGresult *res;
+
+	/* When the database mode is pg, you do not need to get it */
+	if(database_mode == DB_PG)
+		return false;
+
+	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");
+
+	if (PQntuples(res))
+	{
+		haveDBuser = true;		/*  bug#M0000261 */
+		PQclear(res);
+		return true;
+	}
+
+	PQclear(res);
+	return false;
+}
+/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * SetDumptypeMode  ReqID:SRS-MISC-USE
  * 

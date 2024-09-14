@@ -33,4 +33,26 @@ extern void exit_nicely(int code) pg_attribute_noreturn();
 
 #define fatal(...) do { pg_log_error(__VA_ARGS__); exit_nicely(1); } while(0)
 
+/* BEGIN - ReqID:SRS-CMD-PGDUMP */
+/*
+ * Here we maintain the function pointers used by
+ * pg_restore in different frameworks.
+ *
+ * TODO : These function pointers may be reorganized
+ * in the future.
+ */
+typedef struct restoreMethods
+{
+	char	*mode;
+	void	(*ConnectDatabase)(Archive *AHX, const ConnParams *cparams, bool isReconnect);
+	void	(*ProcessArchiveRestoreOptions)(Archive *AHX);
+	void	(*RestoreArchive)(Archive *AHX);
+}RestoreMethods;
+
+extern RestoreMethods *RAM;
+extern RestoreMethods ramNative;
+extern RestoreMethods ramOracle;
+extern RestoreMethods ramPg;
+/* END - ReqID:SRS-CMD-PGDUMP */
+
 #endif							/* PG_BACKUP_UTILS_H */
