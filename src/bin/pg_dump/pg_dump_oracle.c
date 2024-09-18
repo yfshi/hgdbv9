@@ -5500,7 +5500,7 @@ getFuncs(Archive *fout, int *numFuncs)
 							"(%s p.proowner) AS rolname, "
 							"oj.compatible_mode AS compatible_mode "
 							"FROM pg_proc p "
-							"LEFT JOIN pg_object oj ON (p.oid = oj.obj_oid) "
+							"LEFT JOIN pg_object oj ON (p.oid = oj.obj_oid AND oj.refclassid = 'pg_proc'::regclass) "	/* BUG#M0000394 */
 							"LEFT JOIN pg_init_privs pip ON "
 							"(p.oid = pip.objoid "
 							"AND pip.classoid = 'pg_proc'::regclass "
@@ -6105,7 +6105,7 @@ getTables(Archive *fout, int *numTables)
 						  "d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
 						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
 						  "LEFT JOIN pg_am am ON (c.relam = am.oid) "
-						  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0) "
+						  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
 						  "LEFT JOIN pg_init_privs pip ON "
 						  "(c.oid = pip.objoid "
 						  "AND pip.classoid = 'pg_class'::regclass "
@@ -7248,7 +7248,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 								"LEFT JOIN pg_catalog.pg_inherits inh "
 								"ON (inh.inhrelid = indexrelid) "
 								"LEFT JOIN pg_object oj "
-								"ON (oj.obj_oid = indexrelid) "
+								"ON (oj.obj_oid = indexrelid AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
 								"WHERE i.indrelid = '%u'::pg_catalog.oid "
 								"AND (i.indisvalid OR t2.relkind = 'p') "
 								"AND i.indisready "
@@ -18260,7 +18260,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 							"seqcache, seqcycle, flags, "
 							"oj.option as option "									/* ReqID:SRS-CMD-PGDUMP */
 							"FROM pg_catalog.pg_sequence "
-							"LEFT JOIN pg_object oj ON (seqrelid = oj.obj_oid) "	/* ReqID:SRS-CMD-PGDUMP */
+							"LEFT JOIN pg_object oj ON (seqrelid = oj.obj_oid AND oj.refclassid = 'pg_class'::regclass) "	/* ReqID:SRS-CMD-PGDUMP */ /* BUG#M0000394 */
 							"WHERE seqrelid = '%u'::oid ",
 							tbinfo->dobj.catId.oid);	/* ReqID:SRS-SQL-SEQ */
 		}
@@ -18535,7 +18535,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 									"option->'NOSHARD' as noshard, "
 									"option->'SHARD_EXTEND' as shard_extend, "
 									"option->'SHARD_NOEXTEND' as shard_noextend "
-									"FROM pg_object WHERE obj_oid = '%u'::oid",
+									"FROM pg_object WHERE obj_oid = '%u'::oid AND refclassid = 'pg_class'::regclass",	/* BUG#M0000394 */
 									tbinfo->dobj.catId.oid);
 		optres = ExecuteSqlQuery(fout, optquery->data, PGRES_TUPLES_OK);
 		iskeep = PQgetisnull(optres, 0, PQfnumber(optres, "keep")) ? false : true;
