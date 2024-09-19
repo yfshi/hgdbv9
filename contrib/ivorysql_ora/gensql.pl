@@ -57,9 +57,11 @@ sub sql_merge
 		unlink(File::Spec->rel2abs("ivorysql_ora--$v.sql"))
 			if (-e File::Spec->rel2abs("ivorysql_ora--$v.sql"));
 
+		# Begin - BUG#M0000381
 		# Open(create if necessary) ivorysql_ora--x.x(--x.x).sql.
-		open(OUTFILE, ">ivorysql_ora--$v.sql")
-			|| croak "Could not open ivorysql_ora--$v.sql : $!";
+		open(OUTFILE, ">ivorysql_ora--$v.sql.in")
+			|| croak "Could not open ivorysql_ora--$v.sql.in : $!";
+		# End - BUG#M0000381
 
 		# Write "extension file loading information" into it.
 		# Create extension when this version is "x.x".
@@ -104,5 +106,28 @@ sub sql_merge
 		}
 
 		close OUTFILE;
+
+		# Begin - BUG#M0000381
+		# Convert Windows encoding format to Unix format.
+		# 	for example: \r\n Convert to \n
+		#
+		open(my $infile, "<:raw", File::Spec->rel2abs("ivorysql_ora--$v.sql.in"))
+			|| croak "Could not open ivorysql_ora--$v.sql.in : $!";
+		open(my $outfile, ">:unix", "ivorysql_ora--$v.sql")
+			|| croak "Could not open ivorysql_ora--$v.sql : $!";
+		while (my $line = <$infile>)
+		{
+			# change unix encoding
+			$line =~ s/\r\n/\n/g;
+			print $outfile "$line";
+		}
+
+		close ($outfile);
+		close ($infile);
+
+		# Delete ivorysql_ora--x.x(--x.x).sql.in files generated before.
+		unlink(File::Spec->rel2abs("ivorysql_ora--$v.sql.in"))
+			if (-e File::Spec->rel2abs("ivorysql_ora--$v.sql.in"));
+		# End - BUG#M0000381
 	}
 }
