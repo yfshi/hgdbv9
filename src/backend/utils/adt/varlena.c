@@ -2264,6 +2264,13 @@ nlssortfastcmp_internal_with_collid(const char *arg1, int32_t len1, const char *
 	if (result == 0 && plen1 != plen2)
 		result = (plen1 < plen2) ? -1 : 1;
 
+	/* Begin - bug#M0000373 */
+	if (k1)
+		pfree(k1);
+	if (k2)
+		pfree(k2);
+	/* End - bug#M0000373 */
+
 	return result;
 }
 
