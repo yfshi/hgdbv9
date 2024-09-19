@@ -829,50 +829,64 @@ merge_collation_state(Oid collation,
 						context->strength = strength;
 						context->location = location;
 					}
-					/* Begin - Req: SRS-SQL-NLSSORT */
-					else if (!enable_ora_default_collation)
-					{
-						context->strength = COLLATE_CONFLICT;
-						context->collation2 = collation;
-						context->location2 = location;
-					}
-					/* End - Req: SRS-SQL-NLSSORT */
 					else if (collation != DEFAULT_COLLATION_OID) // Neither of them equals to DEFAULT_COLLATION_OID(100)
 					{
-						char provider1 = get_collation_provider(collation);
-						char provider2 = get_collation_provider(context->collation);
-
-						/* Begin - Req: SRS-SQL-NLSSORT
-						 * Oops, we have a conflict.  We cannot throw error
-						 * here, since the conflict could be resolved by a
-						 * later sibling CollateExpr, or the parent might not
-						 * care about collation anyway.  Return enough info to
-						 * throw the error later, if needed.
-						 */
-						if (provider1 == provider2)
+						/* Begin - bug#M0000372 */
+						if (ORA_PARSER != compatible_db ||
+							!enable_ora_default_collation)
 						{
-							if ((IsPseudoCollation(collation) && IsPseudoCollation(context->collation)) || 
-								(!IsPseudoCollation(collation) && !IsPseudoCollation(context->collation)))
+							/* 
+							 * Oops, we have a conflict.  We cannot throw error
+							 * here, since the conflict could be resolved by a
+							 * later sibling CollateExpr, or the parent might not
+							 * care about collation anyway.  Return enough info to
+							 * throw the error later, if needed.
+							 */
+							context->strength = COLLATE_CONFLICT;
+							context->collation2 = collation;
+							context->location2 = location;
+						}
+						/* End - bug#M0000372 */
+						else
+						{
+							/* Begin - Req: SRS-SQL-NLSSORT */
+							char provider1 = get_collation_provider(collation);
+							char provider2 = get_collation_provider(context->collation);
+							
+							if (provider1 == provider2)
+							{
+								if ((IsPseudoCollation(collation) && IsPseudoCollation(context->collation)) || 
+									(!IsPseudoCollation(collation) && !IsPseudoCollation(context->collation)))
+								{
+									context->strength = COLLATE_CONFLICT;
+									context->collation2 = collation;
+									context->location2 = location;
+								}
+								else if (!IsPseudoCollation(collation))
+								{
+									context->collation = collation;
+									context->strength = strength;
+									context->location = location;								
+								}
+							}
+							/* Begin - bug#M0000372 */
+							else if (provider1 != COLLPROVIDER_ORACLE &&
+									 provider2 != COLLPROVIDER_ORACLE)
 							{
 								context->strength = COLLATE_CONFLICT;
 								context->collation2 = collation;
 								context->location2 = location;
 							}
-							else if (!IsPseudoCollation(collation))
+							/* End - bug#M0000372 */
+							else if (provider1 != COLLPROVIDER_ORACLE && 
+									 provider2 == COLLPROVIDER_ORACLE)
 							{
 								context->collation = collation;
 								context->strength = strength;
-								context->location = location;								
+								context->location = location;
 							}
+							/* End - Req: SRS-SQL-NLSSORT */
 						}
-						else if (provider1 != COLLPROVIDER_ORACLE && 
-								 provider2 == COLLPROVIDER_ORACLE)
-						{
-							context->collation = collation;
-							context->strength = strength;
-							context->location = location;
-						}
-						/* End - Req: SRS-SQL-NLSSORT */
 					}
 				}
 				break;
