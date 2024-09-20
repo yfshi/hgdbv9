@@ -1595,10 +1595,26 @@ exec_parse_message(const char *query_string,	/* string to execute */
 			Oid			ptype = paramTypes[i];
 
 			if (ptype == InvalidOid || ptype == UNKNOWNOID)
+			{
+				/* Begin - BUG#M0000369 */
+				/*
+				 * DoStmt has no information for ptyp
+				 * so we assign its textoid or varchar2oid
+				 */
+				if (nodeTag(raw_parse_tree->stmt) == T_DoStmt)
+				{
+					if (compatible_db == ORA_PARSER)
+						paramTypes[i] = ORAVARCHARCHAROID;
+					else
+						paramTypes[i] = TEXTOID;
+					continue;
+				}
+				/* End - BUG#M0000369 */
 				ereport(ERROR,
 						(errcode(ERRCODE_INDETERMINATE_DATATYPE),
 						 errmsg("could not determine data type of parameter $%d",
 								i + 1)));
+			}
 		}
 
 		if (log_parser_stats)
