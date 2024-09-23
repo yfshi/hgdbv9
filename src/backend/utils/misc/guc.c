@@ -2177,6 +2177,18 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+	{
+		{"enable_insertparallel", PGC_USERSET, QUERY_TUNING_METHOD,
+			gettext_noop("Enables the parallel dml of plans."),
+			NULL,
+			GUC_EXPLAIN
+		},
+		&enable_insertparallel,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
 	#include "ivy_guc.c"

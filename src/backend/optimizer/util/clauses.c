@@ -20,6 +20,9 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
+/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+#include "access/xact.h"
+/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 #include "catalog/pg_aggregate.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_language.h"
@@ -923,6 +926,69 @@ max_parallel_hazard_walker(Node *node, max_parallel_hazard_context *context)
 								  max_parallel_hazard_walker,
 								  context);
 }
+
+/* Begin - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+/*
+ * is_parallel_allowed_for_modify
+ *
+ * Check at a high-level if parallel mode is able to be used for the specified
+ * table-modification statement. Currently, we support only Inserts.
+ *
+ * It's not possible in the following cases:
+ *
+ *  1) INSERT...ON CONFLICT...DO UPDATE
+ *  2) INSERT without SELECT
+ *
+ * (Note: we don't do in-depth parallel-safety checks here, we do only the
+ * cheaper tests that can quickly exclude obvious cases for which
+ * parallelism isn't supported, to avoid having to do further parallel-safety
+ * checks for these)
+ */
+bool
+is_parallel_allowed_for_modify(Query *parse)
+{
+	bool            hasSubQuery;
+	RangeTblEntry *rte;
+        ListCell   *lc;
+
+        if (!IsModifySupportedInParallelMode(parse->commandType))
+                return false;
+
+        /*
+	 * UPDATE is not currently supported in parallel-mode, so prohibit
+	 * INSERT...ON CONFLICT...DO UPDATE...
+	 *
+	 * In order to support update, even if only in the leader, some further
+	 * work would need to be done. A mechanism would be needed for sharing
+	 * combo-cids between leader and workers during parallel-mode, since for
+	 * example, the leader might generate a combo-cid and it needs to be
+	 * propagated to the workers.
+	 */
+        if (parse->commandType == CMD_INSERT &&
+                parse->onConflict != NULL &&
+                parse->onConflict->action == ONCONFLICT_UPDATE)
+                return false;
+
+        /*
+	 * If there is no underlying SELECT, a parallel insert operation is not
+	 * desirable.
+	 */
+        hasSubQuery = false;
+        foreach(lc, parse->rtable)
+        {
+                rte = lfirst_node(RangeTblEntry, lc);
+                if (rte->rtekind == RTE_SUBQUERY)
+                {
+                        hasSubQuery = true;
+                        break;
+                }
+        }
+
+        return hasSubQuery;
+}
+/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+
+
 
 
 /*****************************************************************************
