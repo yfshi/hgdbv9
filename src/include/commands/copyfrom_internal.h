@@ -177,6 +177,11 @@ typedef struct CopyFromStateData
 	uint64 g_lineno;		/* global line number used to split file */
 	/* End - BUG:M0000348 */
 
+	/* Begin - BUG:M0000383 */
+	bool copy_fail_message;
+	StringInfoData tmp_copy_fail_message;
+	/* End - BUG:M0000383 */
+
 } CopyFromStateData;
 
 extern void ReceiveCopyBegin(CopyFromState cstate);

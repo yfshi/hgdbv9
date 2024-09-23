@@ -1079,14 +1079,29 @@ CopyFrom(CopyFromState cstate)
 				MemoryContextSwitchTo(current_cxt);
 				FlushErrorState();
 
-				/* output the error record to file or table */
-				OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
-				error_flag = true;
-
-				cstate->num_errors++; /* BUG#Z1087 */
+				/* Begin - BUG:M0000383 */
+				/*
+				 * if user cancel this query 
+				 * let the top level try/catch in PortalRun()  catched this fail
+				 * detail refer CopyGetData() -> case COPY_FRONTEND -> case 'f': -> ereport()
+				 */
+				if(cstate->copy_fail_message)
+				{
+					ereport(ERROR,
+						(errcode(ERRCODE_QUERY_CANCELED),
+						 errmsg("COPY from stdin failed: %s",
+						 cstate->tmp_copy_fail_message.data)));
+				}
+				/* End - BUG:M0000383 */
+				else
+				{
+					/* output the error record to file or table */
+					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					error_flag = true;
+					cstate->num_errors++; /* BUG#Z1087 */
+				}
 			}
 			PG_END_TRY();
-                        
 		}
 		if (error_flag)
 			continue;
@@ -1776,6 +1791,9 @@ BeginCopyFrom(ParseState *pstate,
 
 		initStringInfo(&cstate->line_buf);
 		initStringInfo(&cstate->tmp_line_buf); /* BUG:M0000348 */
+
+		/* BUG:M0000383 */
+		initStringInfo(&cstate->tmp_copy_fail_message);
 	}
 
 	initStringInfo(&cstate->attribute_buf);
