@@ -90,6 +90,7 @@ typedef struct CopyFromStateData
 	AttrNumber	num_defaults;
 	FmgrInfo   *in_functions;	/* array of input functions for each attrs */
 	Oid		   *typioparams;	/* array of element types for in_functions */
+	uint64		num_errors; /* BUG#Z1087 */
 	int		   *defmap;			/* array of default att numbers */
 	ExprState **defexprs;		/* array of default att expressions */
 	bool		volatile_defexprs;	/* is any of defexprs volatile? */

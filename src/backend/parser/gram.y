@@ -686,7 +686,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
-	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
+	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGBAD /* BUG#Z1087 */ LOGGED
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
 	MINUTE_P MINVALUE MODE MONTH_P MOVE
@@ -3233,6 +3233,12 @@ copy_opt_item:
 					$$ = makeDefElem("filename", (Node *)makeString($2), @1);
 				}
 			/* End - ReqID:SRS-MISC-BULKLOAD */
+			/* Begin - BUG#Z1087 */
+			| LOGBAD Sconst
+				{
+					$$ = makeDefElem("logbad", (Node *)makeString($2), @1);
+				}
+			/* End - BUG#Z1087 */
 		;
 
 /* The following exist for backward compatibility with very old versions */
@@ -15845,6 +15851,7 @@ unreserved_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| MAPPING
 			| MATCH
@@ -16420,6 +16427,7 @@ bare_label_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| MAPPING
 			| MATCH

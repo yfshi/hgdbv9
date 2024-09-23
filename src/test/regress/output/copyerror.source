@@ -503,7 +503,8 @@ CREATE TABLE fk_t_u (
 insert into pk_t_u values(1,1,10,'aaaa');
 insert into pk_t_u values(2,2,20,'bbbb');
 insert into pk_t_u values(3,3,30,'cccc');
-COPY fk_t_u from stdin with csv delimiter ',' taskid 'fk2unique' filename 'fk2unique.csv' badtable 'x_bad';
+COPY fk_t_u from stdin with csv delimiter ',' taskid 'fk2unique' filename 'fk2unique.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fk2unique-public-fk_t_u-fk2unique.csv-1-0: 1 rows were skipped
 SELECT * from fk_t_u order by fa;
  fa | fb | fc 
 ----+----+----
@@ -524,7 +525,8 @@ CREATE TABLE fk_t_2fk (
 	fb integer REFERENCES pk_t(pb),
 	fc integer REFERENCES pk_t(pc)
 ) ;
-COPY fk_t_2fk from stdin with csv delimiter ',' taskid 'fk2fk' filename 'fk2fk.csv' badtable 'x_bad';
+COPY fk_t_2fk from stdin with csv delimiter ',' taskid 'fk2fk' filename 'fk2fk.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fk2fk-public-fk_t_2fk-fk2fk.csv-1-0: 3 rows were skipped
 SELECT * from fk_t_2fk order by fa;
  fa | fb | fc 
 ----+----+----
@@ -555,7 +557,8 @@ CREATE TABLE fk_t_2fk_2pk (
 ) ;
 insert into pk_t2 values(1000,1000,1000,'1000');
 insert into pk_t2 values(1001,1001,1001,'1001');
-COPY fk_t_2fk_2pk from stdin with csv delimiter ',' taskid 'fk2fk2pk' filename 'fk2fk2pk.csv' badtable 'x_bad';
+COPY fk_t_2fk_2pk from stdin with csv delimiter ',' taskid 'fk2fk2pk' filename 'fk2fk2pk.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fk2fk2pk-public-fk_t_2fk_2pk-fk2fk2pk.csv-1-0: 3 rows were skipped
 SELECT * FROM fk_t_2fk_2pk order by fa;
  fa  | fb |  fc  
 -----+----+------
@@ -582,7 +585,8 @@ CREATE TABLE fk_parti (
 CREATE TABLE fk_parti_10 PARTITION OF fk_parti FOR VALUES FROM (1) TO (10);
 CREATE TABLE fk_parti_100 PARTITION OF fk_parti FOR VALUES FROM (11) TO (100);
 CREATE TABLE fk_parti_1000 PARTITION OF fk_parti FOR VALUES FROM (101) TO (1000);
-COPY fk_parti from stdin with csv delimiter ',' taskid 'fkparti' filename 'fkparti.csv' badtable 'x_bad';
+COPY fk_parti from stdin with csv delimiter ',' taskid 'fkparti' filename 'fkparti.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fkparti-public-fk_parti-fkparti.csv-1-0: 2 rows were skipped
 SELECT * FROM fk_parti order by fpa;
  fpa | fpb |   fpc    
 -----+-----+----------
@@ -599,7 +603,8 @@ SELECT * FROM x_bad where taskid='fkparti' order by lineno;
 (2 rows)
 
 -- copy into partition table directly
-COPY fk_parti_100 from stdin with csv delimiter ',' taskid 'fkparti100' filename 'fkparti100.csv' badtable 'x_bad';
+COPY fk_parti_100 from stdin with csv delimiter ',' taskid 'fkparti100' filename 'fkparti100.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fkparti100-public-fk_parti_100-fkparti100.csv-1-0: 2 rows were skipped
 SELECT * FROM fk_parti_100 order by fpa;
  fpa | fpb |   fpc   
 -----+-----+---------
@@ -626,7 +631,8 @@ CREATE TABLE fk_parti_son (
 CREATE TABLE fk_parti_son_10 PARTITION OF fk_parti_son FOR VALUES FROM (1) TO (10);
 CREATE TABLE fk_parti_son_100 PARTITION OF fk_parti_son(fpc REFERENCES pk_t(pd)) FOR VALUES FROM (11) TO (100);
 CREATE TABLE fk_parti_son_1000 PARTITION OF fk_parti_son FOR VALUES FROM (101) TO (1000);
-COPY fk_parti_son from stdin with csv delimiter ',' taskid 'fkpartison' filename 'fkpartison.csv' badtable 'x_bad';
+COPY fk_parti_son from stdin with csv delimiter ',' taskid 'fkpartison' filename 'fkpartison.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fkpartison-public-fk_parti_son-fkpartison.csv-1-0: 2 rows were skipped
 SELECT * FROM fk_parti_son order by fpa;
  fpa | fpb |  fpc   
 -----+-----+--------
@@ -645,7 +651,8 @@ SELECT * FROM x_bad where taskid='fkpartison' order by lineno;
 
 -- lineno 
 TRUNCATE fk_parti;
-COPY fk_parti from stdin with csv delimiter ',' taskid 'fkpartilineno' filename 'fklineno.csv' badtable 'x_bad' sharding 5 current_shard 3;
+COPY fk_parti from stdin with csv delimiter ',' taskid 'fkpartilineno' filename 'fklineno.csv' badtable 'x_bad' sharding 5 current_shard 3 logbad 'true';
+NOTICE:  fkpartilineno-public-fk_parti-fklineno.csv-5-3: 2 rows were skipped
 SELECT * FROM fk_parti order by fpa;
  fpa | fpb |   fpc    
 -----+-----+----------
@@ -668,7 +675,8 @@ CREATE TABLE fk_length_2000(
 	address text,
 	idd integer
 ) ;
-COPY fk_length_2000 from '@abs_srcdir@/data/fk_length_2000.data' with csv delimiter ',' taskid 'fklength2000' filename 'fklength2000.csv' badtable 'x_bad';
+COPY fk_length_2000 from '@abs_srcdir@/data/fk_length_2000.data' with csv delimiter ',' taskid 'fklength2000' filename 'fklength2000.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fklength2000-public-fk_length_2000-fklength2000.csv-1-0: 1 rows were skipped
 SELECT CHAR_LENGTH(address) from fk_length_2000 where id=1;
  char_length 
 -------------
@@ -702,7 +710,8 @@ ERROR:  Tolerate mode,not support after insert row trigger(expect fk check trigg
 -- NULL value handle
 DROP TRIGGER after_insert_row_tri on fk_length_2000;
 DROP FUNCTION after_insert_row;
-COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknull' filename 'fknull.csv' badtable 'x_bad';
+COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknull' filename 'fknull.csv' badtable 'x_bad' logbad 'true';
+NOTICE:  fknull-public-fk_length_2000-fknull.csv-1-0: 2 rows were skipped
 SELECT * FROM fk_length_2000 where id>=1000;
   id  | id_fk | address | idd  
 ------+-------+---------+------
@@ -720,7 +729,8 @@ SELECT * FROM x_bad where taskid='fknull' order by lineno;
 -- Beign - BUG:M0000348
 TRUNCATE x;
 TRUNCATE x_bad;
-COPY x FROM '@abs_srcdir@/data/copy_split.data' with csv delimiter ',' taskid 'copy_split' filename 'copy_split.data' badtable 'x_bad' sharding 5 current_shard 0;
+COPY x FROM '@abs_srcdir@/data/copy_split.data' with csv delimiter ',' taskid 'copy_split' filename 'copy_split.data' badtable 'x_bad' sharding 5 current_shard 0 logbad 'true';
+NOTICE:  copy_split-public-x-copy_split.data-5-0: 1 rows were skipped
 SELECT * FROM x;
  a  | b  |   c   | d  |    e     | f  
 ----+----+-------+----+----------+----
