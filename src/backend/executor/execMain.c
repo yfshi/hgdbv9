@@ -1400,17 +1400,17 @@ ExecContextForcesRowId(PlanState *planstate, bool *hasrowid)
 {
 	ResultRelInfo *info = NULL;
 	Relation	rel;
-	ResultRelInfo **ri = planstate->state->es_result_relations;
 
-	if (ri)
+	/* Begin BUG#M0000362 */
+	if (planstate->state->es_opened_result_relations != NIL)
+		info = (ResultRelInfo *) llast(planstate->state->es_opened_result_relations);
+	/* End BUG#M0000362 */
+
+	if (info)
 	{
-		info = *ri;
-		if (info)
-		{
-			rel = info->ri_RelationDesc;
-			*hasrowid = rel->rd_rel->relhasrowid;
-			return true;
-		}
+		rel = info->ri_RelationDesc;
+		*hasrowid = rel->rd_rel->relhasrowid;
+		return true;
 	}
 
 	if (planstate->state->es_top_eflags & EXEC_FLAG_WITH_ROWID)
