@@ -1022,20 +1022,91 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 	}
 	else if (cstate->opts.badtable != NULL)
 	{
+
+		int single_quote_count = 0; /* BUG:M0000370 */
+
 		/* SPI call */
 		initStringInfo(&query);
-		appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+
+		/* Begin - BUG:M0000370 */
+		/*
+		 * need exchange the single quote
+		 * there have three cases:
+		 * 1) quote is '''', but data value(char, varchar, text) did not have
+		 * 	example: copy xxx from xxx quote '''';
+		 * 2) quote is not '''', but data value have
+		 * 	example: copy xxx from xxx;
+		 * 		 2,'3456',5  -- (int, varchar(20), int)
+		 * 3) quote is '''', and data value have
+		 * 	example: copy xxx from xxx quote '''';
+		 * 		 '2',''3456'','5'
+		 */
+		for (int i = 0; i < linebuf_cut->len; i++)
+		{
+			if (linebuf_cut->data[i] == '\'')
+			{
+				single_quote_count++;
+			}
+		}
+
+		/* not single quote */
+		if ( single_quote_count == 0)
+		{
+			appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
 				cstate->opts.badtable,
 				cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
 				cstate->opts.filename, type,
 				line_no, linebuf_cut->data);
+		}
+		/* need exchange the quote */
+		else
+		{
+			int j = 0;
+			int new_len = 0;
+			char *new_str = NULL;
 
-		SPI_connect();
+			new_len = linebuf_cut->len + single_quote_count + 1;
+			new_str = (char*) palloc (new_len );
+			if (!new_str)
+				elog(ERROR, "Allocate memory error in OutputBadRecord()");
+
+			memset(new_str, 0, new_len);
+			for (int i = 0; i < linebuf_cut->len; i++)
+			{
+				if (linebuf_cut->data[i] == '\'')
+				{
+					new_str[j++] = '\'';
+					new_str[j++] = '\'';
+				}
+				else
+					new_str[j++] = linebuf_cut->data[i];
+
+			}
+			new_str[j] = '\0';
+
+			appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
+				  	 cstate->opts.badtable,
+					 cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
+					 cstate->opts.filename, type,
+					 line_no, new_str);
+			pfree (new_str);
+		}
+
+		if (SPI_connect() != SPI_OK_CONNECT)
+			elog(ERROR, "SPI_connect failed");
+		/* End - BUG#M0000370 */
+
 		if (SPI_execute(query.data, false, 0) != SPI_OK_INSERT)
 			ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("invalid query")));
-		SPI_finish();
+
+		/* Begin - BUG#M0000370 */
+		if (SPI_finish() != SPI_OK_FINISH)
+			elog(ERROR, "SPI_finish failed");
+		pfree(query.data); 
+		/* End - BUG#M0000370 */
+
 	}
 	else
 		ereport(ERROR,
