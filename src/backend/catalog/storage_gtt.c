@@ -483,6 +483,7 @@ remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 						MyBackendId, relid);
 		}
 
+		entry->relid = relid;
 		entry->relfilenode_list = NIL;
 		entry->relkind = rel->rd_rel->relkind;
 		entry->on_commit_delete = false;
@@ -494,7 +495,7 @@ remember_gtt_storage_info(RelFileNode rnode, Relation rel)
 			if (RELATION_GTT_ON_COMMIT_DELETE(rel))
 			{
 				entry->on_commit_delete = true;
-				register_on_commit_action(RelationGetRelid(rel), ONCOMMIT_DELETE_ROWS);
+				register_on_commit_action(relid, ONCOMMIT_DELETE_ROWS);
 			}
 		}
 
@@ -1668,49 +1669,28 @@ gtt_search_by_relid(Oid relid, bool missing_ok)
 }
 
 /*
- * RemoveGlobalTempRelations
+ * remove_all_gtt_storage_in_currentsession
  *	support for DISCARD TEMP command remove all the global temp tables.
  */
 void
-RemoveGlobalTempRelations(void)
+remove_all_gtt_storage_in_currentsession(void)
 {
 	HASH_SEQ_STATUS				status;
 	gtt_local_hash_entry		*entry;
-	ObjectAddresses 			*objects;
 
 	if (gtt_storage_local_hash == NULL)
 		return;
 
-	/* Search all relfilenode for GTT in current backend */
+	/* Search all GTT in current backend */
 	hash_seq_init(&status, gtt_storage_local_hash);
-
-	objects = new_object_addresses();
 
 	while ((entry = (gtt_local_hash_entry *) hash_seq_search(&status)) != NULL)
 	{
-		ListCell *lc;
+		Relation		rel;
 
-		foreach(lc, entry->relfilenode_list)
-		{
-			ObjectAddress obj;
-			Relation		rel;
-			gtt_relfilenode *gtt_rnode = lfirst(lc);
-
-			rel = relation_open(gtt_rnode->relfilenode, RowExclusiveLock);
-
-			if (rel->rd_rel->relkind == RELKIND_RELATION)
-			{
-				obj.classId = RelationRelationId;
-				obj.objectId = gtt_rnode->relfilenode;
-				obj.objectSubId = 0;
-
-				add_exact_object_address(&obj, objects);
-			}
-
-			relation_close(rel, NoLock);
-		}
+		rel = relation_open(entry->relid, RowExclusiveLock);
+		RelationDropStorage(rel);
+		smgrDoPendingDeletes(true);
+		relation_close(rel, NoLock);
 	}
-
-	performMultipleDeletions(objects, DROP_CASCADE, 0);
-	free_object_addresses(objects);
 }

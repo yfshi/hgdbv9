@@ -3669,7 +3669,10 @@ typedef enum DiscardMode
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	DISCARD_PACKAGES,
 	/* End - ReqID:SRS-SQL-PACKAGE */
-	DISCARD_TEMP
+	DISCARD_TEMP,
+	/* Begin - ReqID:SRS-SQL-GTT */
+	DISCARD_GLOBAL_TEMP
+	/* End - ReqID:SRS-SQL-GTT */
 } DiscardMode;
 
 typedef struct DiscardStmt

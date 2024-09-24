@@ -2166,6 +2166,20 @@ DiscardStmt:
 					n->target = DISCARD_TEMP;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-SQL-GTT */
+			| DISCARD GLOBAL TEMP
+				{
+					DiscardStmt *n = makeNode(DiscardStmt);
+					n->target = DISCARD_GLOBAL_TEMP;
+					$$ = (Node *) n;
+				}
+			| DISCARD GLOBAL TEMPORARY
+				{
+					DiscardStmt *n = makeNode(DiscardStmt);
+					n->target = DISCARD_GLOBAL_TEMP;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-GTT */
 			| DISCARD PLANS
 				{
 					DiscardStmt *n = makeNode(DiscardStmt);

@@ -57,12 +57,12 @@ DiscardCommand(DiscardStmt *stmt, bool isTopLevel)
 
 		case DISCARD_TEMP:
 			ResetTempTableNamespace();
-
-			/* Begin - ReqID:SRS-SQL-GTT */
-			RemoveGlobalTempRelations();
-			/* End - ReqID:SRS-SQL-GTT */
 			break;
-
+		/* Begin - ReqID:SRS-SQL-GTT */
+		case DISCARD_GLOBAL_TEMP:
+			remove_all_gtt_storage_in_currentsession();
+			break;
+		/* End - ReqID:SRS-SQL-GTT */
 		default:
 			elog(ERROR, "unrecognized DISCARD target: %d", stmt->target);
 	}
@@ -95,6 +95,6 @@ DiscardAll(bool isTopLevel)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
 	/* Begin - ReqID:SRS-SQL-GTT */
-	RemoveGlobalTempRelations();
+	remove_all_gtt_storage_in_currentsession();
 	/* End - ReqID:SRS-SQL-GTT */
 }
