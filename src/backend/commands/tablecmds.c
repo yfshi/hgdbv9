@@ -17911,7 +17911,22 @@ PreCommit_on_commit_actions(void)
 				 * tables, as they must still be empty.
 				 */
 				if ((MyXactFlags & XACT_FLAGS_ACCESSEDTEMPNAMESPACE))
-					oids_to_truncate = lappend_oid(oids_to_truncate, oc->relid);
+				{
+					/* Begin - BUG#M0000366 */
+					if (get_rel_persistence(oc->relid) == RELPERSISTENCE_GLOBAL_TEMP)
+					{
+						Relation 	rel;
+
+						rel = table_open(oc->relid, RowExclusiveLock);
+						RelationDropStorage(rel);
+						table_close(rel, RowExclusiveLock);
+
+						/* Unregister this rel in on_commits List */
+						remove_on_commit_action(oc->relid);
+					} /* End - BUG#M0000366 */
+					else
+						oids_to_truncate = lappend_oid(oids_to_truncate, oc->relid);
+				}
 				break;
 			case ONCOMMIT_DROP:
 				oids_to_drop = lappend_oid(oids_to_drop, oc->relid);

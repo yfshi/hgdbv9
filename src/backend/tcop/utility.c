@@ -3043,6 +3043,11 @@ CreateCommandTag(Node *parsetree)
 				case DISCARD_TEMP:
 					tag = CMDTAG_DISCARD_TEMP;
 					break;
+				/* Begin  - ReqID:SRS-SQL-GTT */
+				case DISCARD_GLOBAL_TEMP:
+					tag = CMDTAG_DISCARD_GLOBAL_TEMP;
+					break;
+				/* End  - ReqID:SRS-SQL-GTT */
 				case DISCARD_SEQUENCES:
 					tag = CMDTAG_DISCARD_SEQUENCES;
 					break;

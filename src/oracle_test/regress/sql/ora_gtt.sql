@@ -97,7 +97,6 @@ select * from g_tmp_dr where a = 100;
 set enable_seqscan = false;
 explain (costs off) select * from g_tmp_dr where a = 100;
 commit;
-select count(*) from g_tmp_dr;
 drop table g_tmp_dr;
 
 create global temporary table g_tmp_dr(a int) ON COMMIT DELETE ROWS;
@@ -393,9 +392,10 @@ select count(*) from t group by t;
 drop table t;
 
 -- group by with rowid
-create global temporary table t (a int) with rowid;
+create global temporary table t (a int) with rowid on commit preserve rows;
 insert into t values(1);
 select count(*) from t group by t; -- ERROR:  invalid identifier
 select count(*) from t group by rowid;
+truncate table t;
 drop table t;
 /* End - BUG#M0000330 */

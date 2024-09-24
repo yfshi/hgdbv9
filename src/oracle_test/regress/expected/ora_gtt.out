@@ -178,12 +178,6 @@ explain (costs off) select * from g_tmp_dr where a = 100;
 (2 rows)
 
 commit;
-select count(*) from g_tmp_dr;
- count 
--------
-     0
-(1 row)
-
 drop table g_tmp_dr;
 create global temporary table g_tmp_dr(a int) ON COMMIT DELETE ROWS;
 create index gdr_idx on g_tmp_dr(a);
@@ -648,14 +642,16 @@ select count(*) from t group by t;
 
 drop table t;
 -- group by with rowid
-create global temporary table t (a int) with rowid;
+create global temporary table t (a int) with rowid on commit preserve rows;
 insert into t values(1);
 select count(*) from t group by t; -- ERROR:  invalid identifier
 ERROR:  invalid identifier
 select count(*) from t group by rowid;
  count 
 -------
-(0 rows)
+     1
+(1 row)
 
+truncate table t;
 drop table t;
 /* End - BUG#M0000330 */
