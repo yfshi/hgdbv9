@@ -281,6 +281,11 @@ struct ParseState
 	bool	p_hasAnsiJoinType;
 	bool	p_hasOraJoinType;
 	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+	/* Begin - BUG#M0000376 */
+	bool	p_not_set_oraparammode;	/* when tranform a FunCall, don't cosider the placeholder mode */
+	char	p_oraparammode;			/* the argument mode of a function or procedure */
+	bool	p_not_transform_funcCall;	/* don't transform funcCall */
+	/* End - BUG#M0000376 */
 };
 
 /*

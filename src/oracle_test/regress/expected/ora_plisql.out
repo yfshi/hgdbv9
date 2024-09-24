@@ -2618,3 +2618,732 @@ LINE 4:   call;
 DROP TABLE test1;
 DROP TABLE __rp_ora_alerts;
 /*End - BUG #M0000304*/
+/* Begin - BUG#M0000376 */
+set ivorysql.enable_get_oraparam_mode = true;
+create table t1(id int, name varchar(20));
+insert into t1 values(1, 'a');
+insert into t1 values(2, 'b');
+--assign statment
+select get_parameter_descr('do $$ BEGIN insert into t1 values(:x, :y) ; END; $$ using :x inout, :y inout PARAMSTYPE 23, 25;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,i)
+ (:y,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ BEGIN :x := 23; END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ BEGIN :x := :y; END; $$ using :x inout,:y inout  PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+ (:y,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ BEGIN :x := 23 + :x; END; $$ using :x inout  PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+(2 rows)
+
+select get_parameter_descr('do $$ BEGIN :x := 23; :y := :x; END; $$ using :x inout, :y inout  PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+ (:y,2,,o)
+(3 rows)
+
+--select into parameters
+select get_parameter_descr('do $$ BEGIN select id into :x from t1 ; END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ DECLARE a int; BEGIN select id into :x from t1 ; a = :x; END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+(2 rows)
+
+--return into parameters
+select get_parameter_descr('do $$ BEGIN delete from t1 returning id into :x; END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ DECLARE a int; BEGIN delete from t1 returning id into :x; a = :x; END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+(2 rows)
+
+--fetch into parameters
+select * from get_parameter_descr('
+ do $$
+ declare
+   l_name varchar(256);
+   l_num integer;
+   cursor c1 is select * from t1;
+ begin
+   open c1;
+   LOOP
+     fetch c1 into :1, :2;
+     exit when c1%NOTFOUND;
+   end LOOP;
+   close c1;
+ end; $$ using :1 inout, :2 inout PARAMSTYPE 23, 25');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :1   |        1 |      | o
+ :2   |        2 |      | o
+(3 rows)
+
+select * from get_parameter_descr('
+ do $$
+ declare
+   l_name varchar(256);
+   l_num integer;
+   cursor c1 is select * from t1;
+ begin
+   open c1;
+   LOOP
+     fetch c1 into :1, :2;
+	 l_name := :2;
+	 l_num := :1;
+     exit when c1%NOTFOUND; 
+   end LOOP;
+   close c1;
+ end; $$ using :1 inout, :2 inout PARAMSTYPE 23, 25');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :1   |        1 |      | b
+ :2   |        2 |      | b
+(3 rows)
+
+ 
+--mix statments
+select * from get_parameter_descr('
+ do $$
+ declare
+	id integer;
+	salary integer;
+	id1 integer;
+	id2 varchar(256);
+begin
+	insert into t1(id, name) values(:1,:2);
+	id := :1;
+	:1 := id * 2 + 1;
+	:x := ''this is a test ok'';
+	:y := 23;
+end; $$ using :1 inout, :2 in, :x out, :y out PARAMSTYPE 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :1   |        1 |      | b
+ :2   |        2 |      | i
+ :x   |        3 |      | o
+ :y   |        4 |      | o
+(5 rows)
+
+create or replace function f1(id in int, id2 out int) return int as
+begin
+  id2 := id;
+  return 1;
+end;
+/
+create or replace function f2(id in int, id2 inout int) return int as
+begin
+  id2 := id;
+  return 2;
+end;
+/
+create or replace function f3(id in int, name text default 'a', id2 inout int) return int as
+begin
+  id2 := id;
+  return 3;
+end;
+/
+create or replace procedure p1(id in int, name text default 'a', id2 inout int)  as
+begin
+  id2 := id;
+end;
+/
+--call a proc function or procedure
+select get_parameter_descr('do $$ declare a int := 11;  b int; BEGIN insert into t1 values(f1(a, b),:x) ; END; $$ using :x inout PARAMSTYPE 25;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,i)
+(2 rows)
+
+select get_parameter_descr('do $$ declare a int := 11;  b int; BEGIN b := f1(a,:x); END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := f1(:y,:x); END; $$ using :y inout, :x inout PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,i)
+ (:x,2,,o)
+(3 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := f1(id2=>:y,id=>:x); END; $$ using :y inout, :x inout PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,o)
+ (:x,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := f1(id2=>:y,id=>:x+:z); END; $$ using :y inout, :x inout,:z inout PARAMSTYPE 23, 23 ,23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,o)
+ (:x,2,,i)
+ (:z,3,,i)
+(4 rows)
+
+select get_parameter_descr('do $$ declare a int; b int := 2;  BEGIN b := f1(1, id2=>:x); END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ declare a int; b int := 2;  BEGIN b := f1(1, id2=>:x); :x = 1; END; $$ using  :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ declare a int; b int := 2;  BEGIN CALL p1(id2=>:x, id=>:y); END; $$ using :x inout,:y inout PARAMSTYPE 23,23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+ (:y,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ declare a int; b int := 2;  BEGIN CALL p1(id2=>:x, id=>:y); :y = 1; END; $$ using  :x inout,:y inout PARAMSTYPE 23,23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+ (:y,2,,b)
+(3 rows)
+
+select get_parameter_descr('do $$   BEGIN  delete from t1 where id = f2(id2=>:y, id=>:x); END; $$ using :y inout,:x inout PARAMSTYPE 23,23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,b)
+ (:x,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$   BEGIN  delete from t1 where id = f2(id2=>:y, id=>:x); :x = 1; END; $$ using  :y inout,:x inout PARAMSTYPE 23,23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,b)
+ (:x,2,,b)
+(3 rows)
+
+select get_parameter_descr('do $$ declare a int := 11;  b int; BEGIN b := f2(a,:x); END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+(2 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := f3(id2=>:y,id=>:x); END; $$ using :y inout, :x inout PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,b)
+ (:x,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := f3(name=> :1, id2=>:y,id=>:x); END; $$ using :1 inout, :y inout, :x inout PARAMSTYPE 25, 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:1,1,,i)
+ (:y,2,,b)
+ (:x,3,,i)
+(4 rows)
+
+--call a package function or procedure
+create or replace package pkg as
+  function f1(id in integer, id2 out integer) return integer;
+  function f2(id in integer, id2 in out integer) return integer;
+  function f3(id out integer, name text default 'a') return integer;
+  procedure p1(id in integer, name text default 'a', name2 in out varchar);
+end;
+/
+create or replace package body pkg as
+  function f1(id in integer, id2 out integer) return integer as
+  begin
+    id2 := 1;
+	return 1;
+  end;
+  function f2(id in integer, id2 in out integer) return integer as
+  begin
+    id2 := 2;
+	return 2;
+  end;
+  function f3(id out integer, name text default 'a') return integer as
+  begin
+    id := 3;
+	return 3;
+  end;
+  procedure p1(id in integer, name text default 'a', name2 in out varchar) as
+  begin
+    name2 := 'procedure1';
+  end;
+end;
+/
+select get_parameter_descr('do $$ declare b int; BEGIN b := pkg.f1(:1,:x); END; $$ using :1 inout, :x inout PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:1,1,,i)
+ (:x,2,,o)
+(3 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := pkg.f2(id2=>:y,id=>:x); END; $$ using :y inout, :x inout PARAMSTYPE 23, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:y,1,,b)
+ (:x,2,,i)
+(3 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := pkg.f3(:x); END; $$ using :x inout PARAMSTYPE 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,o)
+(2 rows)
+
+select get_parameter_descr('do $$ declare b int; BEGIN b := pkg.f3(name=>:x, id=>:y); END; $$ using :x inout, :y inout PARAMSTYPE 25, 23;');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,i)
+ (:y,2,,o)
+(3 rows)
+
+select get_parameter_descr(
+  'do $$
+  declare
+    b int;
+  BEGIN
+    CALL pkg.p1(name2=>:x, id=>:y, name=>:z);
+  END; $$ using :x inout, :y inout, :z inout PARAMSTYPE 25, 23, 25;
+');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,b)
+ (:y,2,,i)
+ (:z,3,,i)
+(4 rows)
+
+--not an anonymous block, can't get parameters mode
+select get_parameter_descr('select f1(1,id2=>:x)');
+ get_parameter_descr 
+---------------------
+ (SELECT,0,,)
+ (:x,1,,)
+(2 rows)
+
+--nested proc function call
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := f1(f2(:x, :y), :z);
+  end; $$ using  :x in, :y out, :z inout PARAMSTYPE 23, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :x   |        1 |      | i
+ :y   |        2 |      | b
+ :z   |        3 |      | o
+(4 rows)
+
+  
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := f1(:z + f2(:x, :y), :k);
+end; $$ using :z in,  :x in, :y inout, :k out PARAMSTYPE 23, 23, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :y   |        3 |      | b
+ :k   |        4 |      | o
+(5 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := f1(:y + f2(:x, :z), :y);
+end; $$ using  :y inout, :x in, :z inout PARAMSTYPE 23, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :y   |        1 |      | b
+ :x   |        2 |      | i
+ :z   |        3 |      | b
+(4 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := f3(f1(:z + f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+begin
+  p1(f1(:z + f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+begin
+  CALL p1(f1(:z + f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+--nested package function call
+drop package pkg;
+create or replace package pkg as
+  function f1(id in integer, id2 out integer) return integer;
+  function f2(id in integer, id2 in out integer) return integer;
+  function f3(id in int, name text default 'a', id2 in out int) return integer;
+  procedure p1(id in integer, name text default 'a', name2 in out varchar);
+end;
+/
+create or replace package body pkg as
+  function f1(id in integer, id2 out integer) return integer as
+  begin
+    id2 := 1;
+	return 1;
+  end;
+  function f2(id in integer, id2 in out integer) return integer as
+  begin
+    id2 := 2;
+	return 2;
+  end;
+  function f3(id in int, name text default 'a', id2 in out int) return integer as
+  begin
+    id2 := 3;
+	return 3;
+  end;
+  procedure p1(id in integer, name text default 'a', name2 in out varchar) as
+  begin
+    name2 := 'procedure1';
+  end;
+end;
+/
+select get_parameter_descr(
+'do $$
+declare
+  id integer;
+begin
+  id := pkg.f1(pkg.f2(:x, :y), :z);
+  end; $$ using  :x in, :y out, :z inout PARAMSTYPE 23, 23, 23;
+');
+ get_parameter_descr 
+---------------------
+ (DO,0,,)
+ (:x,1,,i)
+ (:y,2,,b)
+ (:z,3,,o)
+(4 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := pkg.f1(:z + pkg.f2(:x, :y), :k);
+end; $$ using :z in,  :x in, :y inout, :k out PARAMSTYPE 23, 23, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :y   |        3 |      | b
+ :k   |        4 |      | o
+(5 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := pkg.f1(:y + pkg.f2(:x, :z), :y);
+end; $$ using  :y inout, :x in, :z inout PARAMSTYPE 23, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :y   |        1 |      | b
+ :x   |        2 |      | i
+ :z   |        3 |      | b
+(4 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := pkg.f3(pkg.f1(:z + pkg.f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+begin
+  pkg.p1(pkg.f1(:z + pkg.f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  id := pkg.f3(f1(:z + pkg.f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  pkg.p1(f1(:z + pkg.f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+begin
+  CALL pkg.p1(f1(:z + pkg.f2(:x, :1), :y), :2, :3);
+end; $$ using :z in,  :x in, :1 out, :y inout, :2 in, :3 inout PARAMSTYPE 23, 23, 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :z   |        1 |      | i
+ :x   |        2 |      | i
+ :1   |        3 |      | b
+ :y   |        4 |      | o
+ :2   |        5 |      | i
+ :3   |        6 |      | b
+(7 rows)
+
+--nested inline function call
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+  function f1(i int, j out int) return int as
+  declare
+  begin
+    j := 100;
+    return i;
+  end;
+  function f2(id in integer, id2 in out integer) return integer as
+  begin
+    id2 := 2;
+    return 2;
+  end;
+  function f3(id in int, name text default ''a'', id2 in out int) return integer as
+  begin
+    id2 := 3;
+    return 3;
+  end;
+begin
+	id := f1(:x, :y);
+	id := f3(f1(:1 + f2(:2, :3), :4), :5, :6);
+	id := f1(:7, :7);
+end; $$ using  :x in, :y out, :1 in, :2 in, :3 inout, :4 out, :5 in, :6 inout, :7 inout PARAMSTYPE 23, 23, 23, 23, 23, 23, 25, 23, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :x   |        1 |      | i
+ :y   |        2 |      | o
+ :1   |        3 |      | i
+ :2   |        4 |      | i
+ :3   |        5 |      | b
+ :4   |        6 |      | o
+ :5   |        7 |      | i
+ :6   |        8 |      | b
+ :7   |        9 |      | b
+(10 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+  function f1(i int, j out int) return int as
+  declare
+  begin
+    j := 100;
+    return i;
+  end;
+  procedure p1(id in integer, name text default ''a'', name2 in out varchar) as
+  begin
+    name2 := ''procedure1'';
+  end;
+begin
+  p1(f1(:x, :y), :2, :3);
+end; $$ using  :x in, :y out, :2 in, :3 inout PARAMSTYPE 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :x   |        1 |      | i
+ :y   |        2 |      | o
+ :2   |        3 |      | i
+ :3   |        4 |      | b
+(5 rows)
+
+select * from get_parameter_descr('
+do $$
+declare
+  id integer;
+  function f1(i int, j out int) return int as
+  declare
+  begin
+    j := 100;
+    return i;
+  end;
+  procedure p1(id in integer, name text default ''a'', name2 in out varchar) as
+  begin
+    name2 := ''procedure1'';
+  end;
+begin
+  CALL p1(f1(:x, :y), :2, :3);
+end; $$ using  :x in, :y out, :2 in, :3 inout PARAMSTYPE 23, 23, 25, 23');
+ name | position | hint | mode 
+------+----------+------+------
+ DO   |        0 |      | 
+ :x   |        1 |      | i
+ :y   |        2 |      | o
+ :2   |        3 |      | i
+ :3   |        4 |      | b
+(5 rows)
+
+drop function f1(id in int, id2 out int);
+drop function f2(id in int, id2 inout int);
+drop function f3(id in int, name text, id2 inout int);
+drop procedure p1(id in int, name text, id2 inout int);
+drop table t1;
+drop package pkg;
+reset ivorysql.enable_get_oraparam_mode;
+/* End - BUG#M0000376 */

@@ -3068,26 +3068,11 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 									false,
 									scanslot);
 
-			/* Begin - ReqID:SRS-SQL-LIBPQOUT */
-			if (DB_ORACLE == compatible_db)
-			{
-				/*
-				 * if anonymous block has a paramname, should send result description
-				 */
-				if (params != NULL && params->paramnames != NULL)
-					SetRemoteDestReceiverSendDescr(dest, true);
-				/* End - ReqID:SRS-SQL-LIBPQOUT */
-				/* Begin - ReqID:SRS-CMD-PSQL */
-				else if (codeblock->do_from_call)
-					SetRemoteDestReceiverSendDescr(dest, true);
-				else if (params != NULL &&
-					params->haveout &&
-					where_from != FROM_JDBC &&
-					where_from != FROM_OCI &&
-					where_from != FROM_LIBPQ)
-					SetRemoteDestReceiverSendDescr(dest, true);
-				/* End - ReqID:SRS-CMD-PSQL */
-			}
+			/* Begin - ReqID:SRS-CMD-PSQL */
+			if (DB_ORACLE == compatible_db &&
+				codeblock->do_from_call)
+				SetRemoteDestReceiverSendDescr(dest, true);
+			/* End - ReqID:SRS-CMD-PSQL */
 
 			dest->rStartup(dest, (int) CMD_UTILITY, tupdesc);
 			dest->receiveSlot(scanslot, dest);

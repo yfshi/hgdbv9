@@ -2894,6 +2894,7 @@ _copyFuncCall(const FuncCall *from)
 	COPY_SCALAR_FIELD(func_variadic);
 	COPY_SCALAR_FIELD(funcformat);
 	COPY_LOCATION_FIELD(location);
+	COPY_NODE_FIELD(rawargs);	/* BUG#M0000376 */
 
 	return newnode;
 }
@@ -3912,6 +3913,7 @@ _copyDoStmt(const DoStmt *from)
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	COPY_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
 	COPY_SCALAR_FIELD(do_from_call);	/* ReqID:SRS-SQL-CALL */
+	COPY_NODE_FIELD(paramstype);	/* BUG#M0000376 */
 
 	return newnode;
 }

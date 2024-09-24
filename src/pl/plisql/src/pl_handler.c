@@ -783,3 +783,34 @@ plisql_validator(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
+/* Begin - BUG#M0000376 */
+/* ----------
+ * plisql_validator_inline
+ *
+ * This function attempts to compile a PL/iSQL anonymous block
+ * ----------
+ */
+PG_FUNCTION_INFO_V1(plisql_validator_inline);
+
+Datum
+plisql_validator_inline(PG_FUNCTION_ARGS)
+{
+	InlineCodeBlock *codeblock = castNode(InlineCodeBlock, DatumGetPointer(PG_GETARG_DATUM(0)));
+	int 			rc;
+
+	if ((rc = SPI_connect()) != SPI_OK_CONNECT)
+		elog(ERROR, "SPI_connect failed: %s", SPI_result_code_string(rc));
+
+	plisql_compile_inline(codeblock->source_text,
+						codeblock->params,
+						codeblock->do_from_call);
+
+	/*
+	 * Disconnect from SPI manager
+	 */
+	if ((rc = SPI_finish()) != SPI_OK_FINISH)
+		elog(ERROR, "SPI_finish failed: %s", SPI_result_code_string(rc));
+
+	PG_RETURN_VOID();
+}
+/* End - BUG#M0000346 */

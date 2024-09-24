@@ -1945,6 +1945,7 @@ exec_bind_message(StringInfo input_message)
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			char		pmode = PROARGMODE_IN; /* BUG:M0000083 */
 			/* End - ReqID:SRS-SQL-FUNCOUT */
+			bool		inout = false;	/* BUG#M0000346 */
 
 			/* Begin - BUG:M0000083 */
 			if (psrc->param_modes && psrc->param_modes[paramno])
@@ -1976,6 +1977,7 @@ exec_bind_message(StringInfo input_message)
 
 				if (pg_strcasecmp(v->val.str, "inout") == 0)
 				{
+					inout = true;	/* BUG#M0000346 */
 					if (!params->haveout)
 						params->haveout = true;
 				}
@@ -2211,6 +2213,10 @@ exec_bind_message(StringInfo input_message)
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			params->params[paramno].pmode = pmode;
 			/* End - ReqID:SRS-SQL-FUNCOUT */
+			/* Begin - BUG#M0000346 */
+			if (inout)
+				params->params[paramno].pflags |= PARAM_FLAG_OUT;
+			/* End- BUG#M0000346 */
 
 			/* Begin - ReqID:SRS-CMD-PSQL */
 			if (dostmt_plength != NIL)

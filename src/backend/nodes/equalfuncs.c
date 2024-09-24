@@ -1595,6 +1595,7 @@ _equalDoStmt(const DoStmt *a, const DoStmt *b)
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 	COMPARE_NODE_FIELD(paramslen);	/* ReqID:SRS-CMD-PSQL */
 	COMPARE_SCALAR_FIELD(do_from_call);	/* ReqID:SRS-SQL-CALL */
+	COMPARE_NODE_FIELD(paramstype);	/* BUG#M0000376 */
 
 	return true;
 }
@@ -2637,6 +2638,7 @@ _equalFuncCall(const FuncCall *a, const FuncCall *b)
 	COMPARE_SCALAR_FIELD(func_variadic);
 	COMPARE_COERCIONFORM_FIELD(funcformat);
 	COMPARE_LOCATION_FIELD(location);
+	COMPARE_NODE_FIELD(rawargs);	/* BUG#M0000376 */
 
 	return true;
 }

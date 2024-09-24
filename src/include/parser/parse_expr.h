@@ -20,6 +20,10 @@ extern bool Transform_null_equals;
 
 extern Node *transformExpr(ParseState *pstate, Node *expr, ParseExprKind exprKind);
 
+/* Begin - BUG#M0000376 */
+extern void transformFuncArg(ParseState *pstate, Node *func_arg);
+/* End - BUG#M0000376 */
+
 extern const char *ParseExprKindName(ParseExprKind exprKind);
 
 #endif							/* PARSE_EXPR_H */

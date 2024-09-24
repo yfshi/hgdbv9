@@ -54,6 +54,9 @@
 #include "catalog/pg_depend.h"
 #include "access/genam.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - BUG#M0000376 */
+#include "parser/parse_param.h"
+/* End - BUG#M0000376 */
 
 /* ----------
  * Our own local and global variables
@@ -1941,7 +1944,19 @@ plisql_param_ref(ParseState *pstate, ParamRef *pref)
 			for (i = 0; i < expr->func->fn_nargs; i++)
 				if (expr->func->paramnames[i] != NULL &&
 					strcmp(expr->func->paramnames[i], oraref->name) == 0)
-					return make_datum_param(expr, expr->func->fn_argvarnos[i], oraref->location);
+			{
+				/* Begin - BUG#M0000376 */
+				if (enable_get_oraparam_mode && !pstate->p_not_transform_funcCall)
+				{
+					if (!pstate->p_not_set_oraparammode)
+						set_oraparam_mode(oraref->name, PROARGMODE_IN);
+					else if (pstate->p_oraparammode != ' ')
+						set_oraparam_mode(oraref->name, pstate->p_oraparammode);
+				}
+				/* End - BUG#M0000376 */
+
+				return make_datum_param(expr, expr->func->fn_argvarnos[i], oraref->location);
+			}
 		}
 	}
 	/* End - ReqID:SRS-SQL-LIBPQOUT */

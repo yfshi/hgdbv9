@@ -67,6 +67,9 @@ typedef struct OraParamNumber
 {
 	int 	number;
 	char*	name;
+	/* Begin - BUG#M0000376 */
+	char	mode;
+	/* End - BUG#M0000376 */
 }OraParamNumber;
 
 typedef struct OraParamNumbers
@@ -762,6 +765,9 @@ calculate_oraparamnumber(const char* name)
 	 
 	 oldcontext = MemoryContextSwitchTo(CurrentOraParamNode->mcontext);
 	 CurrentOraParamNode->params[CurrentOraParamNode->param_count].name = pstrdup(name);
+	 /* Begin - BUG#M0000376 */
+	 CurrentOraParamNode->params[CurrentOraParamNode->param_count].mode = PROARGMODE_NOT_SET;
+	 /* End - BUG#M0000376 */
 	 MemoryContextSwitchTo(oldcontext);
 	 
 	 CurrentOraParamNode->params[CurrentOraParamNode->param_count++].number = number;	 
@@ -920,11 +926,17 @@ get_current_oraparam_level(void)
  * calculate oraparamname position
  */
 int
-recalculate_oraparamname_position(char ***paramnames)
+recalculate_oraparamname_position(char ***paramnames,
+							/* Begin - BUG#M0000376 */
+							char **parammodes)
+							/* End - BUG#M0000376 */
 {
 	int numparams = 0;
 	int i;
 	char **oraparamnames;
+	/* Begin - BUG#M0000376 */
+	char *oraparammodes;
+	/* End - BUG#M0000376 */
 
 	if (CurrentOraParamNode == NULL)
 		return 0;
@@ -936,11 +948,21 @@ recalculate_oraparamname_position(char ***paramnames)
 
 	/* oranumber start from 1 */
 	oraparamnames = palloc0(sizeof(char *) * (numparams + 1));
+	/* Begin - BUG#M0000376 */
+	if (enable_get_oraparam_mode)
+		oraparammodes = palloc0(sizeof(char) * (numparams + 1));
+	/* End - BUG#M0000376 */
 
 	for (i = 0; i < numparams; i++)
 	{
 		if (oraparamnames[CurrentOraParamNode->params[i].number] == NULL)
+		{
 			oraparamnames[CurrentOraParamNode->params[i].number] = pstrdup(CurrentOraParamNode->params[i].name);
+			/* Begin - BUG#M0000376 */
+			if (enable_get_oraparam_mode)
+				oraparammodes[CurrentOraParamNode->params[i].number] = CurrentOraParamNode->params[i].mode;
+			/* End - BUG#M0000376 */
+		}
 		else if (strcmp(oraparamnames[CurrentOraParamNode->params[i].number],
 				CurrentOraParamNode->params[i].name) != 0)
 			elog(ERROR, "the same position %d, but has different name",
@@ -956,6 +978,11 @@ recalculate_oraparamname_position(char ***paramnames)
 		if (oraparamnames[i] == NULL)
 			elog(ERROR, "the position of %d placeholdvar has no name", i);
 	*paramnames = oraparamnames;
+	/* Begin - BUG#M0000376 */
+	if (enable_get_oraparam_mode)
+		*parammodes = oraparammodes;
+	/* End - BUG#M0000376 */
+
 	return numparams;
 }
 
@@ -1123,3 +1150,51 @@ getdynamic_doparser(void)
 	return IsDynDoStmt;
 }
 /* End - BUG#M0000316 */
+
+/* Begin - BUG#M0000376 */
+/*
+ * set_oraparam_mode
+ * If the current compiled function is an anonymous block,
+ * the variable is a placeholder, such as :x,:y,
+ * set the mode.
+ */
+void
+set_oraparam_mode(char *refname, char setmode)
+{
+	int numparams = 0;
+	int i;
+
+	if (CurrentOraParamNode == NULL)
+		return;
+
+	numparams = CurrentOraParamNode->param_count;
+
+	for (i = 0; i < numparams; i++)
+	{
+		if (CurrentOraParamNode->params[i].name != NULL &&
+			strcmp(CurrentOraParamNode->params[i].name, refname) == 0)
+		{
+			if (setmode == PROARGMODE_OUT)
+			{
+				if (CurrentOraParamNode->params[i].mode == PROARGMODE_NOT_SET)
+					CurrentOraParamNode->params[i].mode = PROARGMODE_OUT;
+				else if (CurrentOraParamNode->params[i].mode == PROARGMODE_IN)
+					CurrentOraParamNode->params[i].mode = PROARGMODE_INOUT;
+			}
+			else if (setmode == PROARGMODE_IN)
+			{
+				if (CurrentOraParamNode->params[i].mode == PROARGMODE_NOT_SET)
+					CurrentOraParamNode->params[i].mode = PROARGMODE_IN;
+				else if (CurrentOraParamNode->params[i].mode == PROARGMODE_OUT)
+					CurrentOraParamNode->params[i].mode = PROARGMODE_INOUT;
+			}
+			else if (setmode == PROARGMODE_INOUT)
+			{
+				CurrentOraParamNode->params[i].mode = PROARGMODE_INOUT;
+			}
+		}
+	}
+
+	return;
+}
+/* End - BUG#M0000376 */

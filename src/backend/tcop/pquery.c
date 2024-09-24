@@ -1899,7 +1899,18 @@ CreateTupleDescFromParams(ParamListInfo params)
 
 				if (params->params[j].pflags & PARAM_FLAG_OUT)
 				{
-					snprintf(buf, 23, "$%d", j + 1);
+					/* Begin - BUG#M0000346 */
+					/*
+					 * if a anonymous block is binded by position,
+					 * the binded paramters are named $1, $2..,
+					 * if a anonymous block is binded by name,
+					 * the binded paramters name are the binded name.
+					 */
+					if (params->paramnames != NULL && params->paramnames[j] != NULL)
+						strcpy(buf, params->paramnames[j]);
+					else
+					/* End - BUG#M0000346 */
+						snprintf(buf, 23, "$%d", j + 1);
 					TupleDescInitEntry(desc, i + 1,
 									buf,
 									params->params[j].ptype,

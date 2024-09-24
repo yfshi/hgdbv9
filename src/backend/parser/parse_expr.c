@@ -1751,6 +1751,44 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 	Node	   *last_srf = pstate->p_last_srf;
 	List	   *targs;
 	ListCell   *args;
+	/* Begin - BUG#M0000376 */
+	Node	   *result;
+	bool		need_reset_p_oraparammode = false;
+
+	/*
+	 * If enable_get_oraparam_mode is on, copy fn->args to fn->rawargs.
+	 * fn->rawargs are the list of arguments without doing transform.
+	 * because only after find the function and get the arguments mode,
+	 * we can get parameters by doing transform fn->rawargs.
+	 */
+	if (enable_get_oraparam_mode && fn->args != NIL)
+	{
+		/*
+		 * To get the placeholder mode, we do transform the FuncCall expr.
+		 * IF in a nested function call, a function argument is another function call,
+		 * e.g., id = func1(func2(:x), :y); the :x and :y are placeholder,
+		 * when transform func2, we already set argument modes for the function func2,
+		 * then transform func1, we don't need to transform func2.
+		 *
+		 * If there aren't nested function call, just do tranform.
+		 */
+		if (pstate->p_not_set_oraparammode &&
+			pstate->p_oraparammode != ' ')
+		{
+			pstate->p_not_transform_funcCall = true;
+		}
+		else
+		{
+			fn->rawargs = list_copy_deep(fn->args);
+			if (!pstate->p_not_set_oraparammode)
+			{
+				pstate->p_not_set_oraparammode = true;
+				pstate->p_oraparammode = ' ';
+				need_reset_p_oraparammode = true;
+			}
+		}
+	}
+	/* End - BUG#M0000376 */
 
 	/* Transform the list of arguments ... */
 	targs = NIL;
@@ -1803,14 +1841,46 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 	}
 	/* End - ReqID:SRS-PLSQL-RECORD */
 
-	/* ... and hand off to ParseFuncOrColumn */
-	return ParseFuncOrColumn(pstate,
-							 fn->funcname,
-							 targs,
-							 last_srf,
-							 fn,
-							 false,
-							 fn->location);
+	PG_TRY();
+	{
+		/* ... and hand off to ParseFuncOrColumn */
+		result = ParseFuncOrColumn(pstate,
+								 fn->funcname,
+								 targs,
+								 last_srf,
+								 fn,
+								 false,
+								 fn->location);
+	}
+	/* Begin - BUG#M0000376 */
+	PG_CATCH();
+	{
+		if (enable_get_oraparam_mode && fn->args != NIL)
+		{
+			pstate->p_not_set_oraparammode = false;
+			pstate->p_oraparammode = ' ';
+			list_free_deep(fn->rawargs);
+			fn->rawargs = NIL;
+			pstate->p_not_transform_funcCall = false;
+		}
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	if (enable_get_oraparam_mode
+		&& fn->args != NIL)
+	{
+		list_free_deep(fn->rawargs);
+		fn->rawargs = NIL;
+		pstate->p_oraparammode = ' ';
+		pstate->p_not_transform_funcCall = false;
+
+		if (need_reset_p_oraparammode)
+			pstate->p_not_set_oraparammode = false;
+	}
+	/* End - BUG#M0000376 */
+
+	return result;
 }
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -3601,6 +3671,14 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 
 	return (Node *) newc;
 }
+
+/* Begin - BUG#M0000376 */
+void
+transformFuncArg(ParseState *pstate, Node *func_arg)
+{
+	transformExprRecurse(pstate, func_arg);
+}
+/* End - BUG#M0000376 */
 
 /*
  * Transform a "row compare-op row" construct

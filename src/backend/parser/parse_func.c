@@ -1024,6 +1024,61 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 				else
 					funcexpr->ref_pkgtype = false;
 			}
+
+			/* Begin - BUG#M0000376 */
+			/*
+			 * If enable_get_oraparam_mode is on, and pstate->p_not_set_oraparammode is false,
+			 * we get the function argmodes array, and transform the fn->rawarg.
+			 * Therefore, if there are placeholder(e.g., func(:x, :y)) in fn->rawarg,
+			 * we can set the placeholder mode when doing transform.
+			 */
+			if (enable_get_oraparam_mode
+				&& pstate->p_not_set_oraparammode &&
+				!pstate->p_not_transform_funcCall)
+			{
+				bool		isNull;
+				Datum		proargmodes;
+
+				/* Get argument modes, if available */
+				proargmodes = SysCacheGetAttr(PROCOID, procTup,
+											  Anum_pg_proc_proargmodes,
+											  &isNull);
+				if (!isNull)
+				{
+					int			i;
+					ListCell 	*args;
+					char	   *p_argmodes;
+					ArrayType  *arr;
+					int			numargs;
+
+					arr = DatumGetArrayTypeP(proargmodes);	/* ensure not toasted */
+					numargs = ARR_DIMS(arr)[0];
+					if (ARR_NDIM(arr) != 1 ||
+						numargs < 0 ||
+						ARR_HASNULL(arr) ||
+						ARR_ELEMTYPE(arr) != CHAROID)
+						elog(ERROR, "proargmodes is not a 1-D char array or it contains nulls");
+					p_argmodes = (char *) ARR_DATA_PTR(arr);
+
+					i = 0;
+					foreach(args, fn->rawargs)
+					{
+						Node	   *arg = (Node *)lfirst(args);
+						if (IsA(arg, NamedArgExpr))
+						{
+							NamedArgExpr *na = (NamedArgExpr *) list_nth(fn->args, i);
+							pstate->p_oraparammode = p_argmodes[na->argnumber];
+						}
+						else
+							pstate->p_oraparammode = p_argmodes[i];
+
+						transformFuncArg(pstate, arg);
+						i++;
+					}
+				}
+			}
+			/* End - BUG#M0000376 */
+
 			ReleaseSysCache(procTup);
 			if (p_argtypeNames)
 				pfree(p_argtypeNames);
@@ -1031,6 +1086,52 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 				pfree(rettypeName);
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
+
+		/* Begin - BUG#M0000376 */
+		/*
+		 * If enable_get_oraparam_mode is on, and pstate->p_not_set_oraparammode is false,
+		 * we get the function argmodes array, and transform the fn->rawarg.
+		 * Therefore, if there are placeholder(e.g., pkg.func(:x, :y)) in fn->rawarg,
+		 * we can set the placeholder mode when doing transform.
+		 */
+		if ((function_from == FUNC_FROM_PACKAGE ||
+			function_from == FUNC_FROM_SUBPROCFUNC) &&
+			enable_get_oraparam_mode &&
+			pstate->p_not_set_oraparammode &&
+			!pstate->p_not_transform_funcCall)
+		{
+			Oid 	   *argtypes;
+			char	  **argnames;
+			char	   *argmodes = NULL;
+
+			/* Get argument modes, if available */
+			plisql_internal_funcs.get_subproc_arg_info(funcexpr,
+												&argtypes,
+												&argnames,
+												&argmodes);
+			if (argmodes != NULL)
+			{
+				int 		i;
+				ListCell	*args;
+
+				i = 0;
+				foreach(args, fn->rawargs)
+				{
+					Node	   *arg = (Node *)lfirst(args);
+					if (IsA(arg, NamedArgExpr))
+					{
+						NamedArgExpr *na = (NamedArgExpr *) list_nth(fn->args, i);
+						pstate->p_oraparammode = argmodes[na->argnumber];
+					}
+					else
+						pstate->p_oraparammode = argmodes[i];
+
+					transformFuncArg(pstate, arg);
+					i++;
+				}
+			}
+		}
+		/* End - BUG#M0000376 */
 
 		retval = (Node *) funcexpr;
 	}

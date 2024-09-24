@@ -1516,7 +1516,6 @@ extern TupleDesc plisql_get_cursor_tupdesc(PLiSQL_execstate * estate,
 									PLiSQL_expr * expr,
 									int cursor_options);
 /* End - ReqID:SRS-PLSQL-CURSOR */
-
 extern void exec_eval_datum(PLiSQL_execstate *estate,
 							PLiSQL_datum *datum,
 							Oid *typeid,
@@ -1531,6 +1530,9 @@ extern Datum exec_cast_value(PLiSQL_execstate *estate,
 				Datum value, bool *isnull,
 				Oid valtype, int32 valtypmod,
 				Oid reqtype, int32 reqtypmod);
+/* Begin - BUG#M0000376 */
+extern void do_transform_for_anonyblock_expr(PLiSQL_expr *expr);
+/* End - BUG#M0000376 */
 
 /*
  * Functions for namespace handling in pl_funcs.c
