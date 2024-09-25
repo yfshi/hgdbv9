@@ -45,6 +45,10 @@
 #include "pl_udt_type.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+#include "pl_udt_exception.h"
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 #include "utils/ora_compatible.h"	/* case sensitive indentify */
 /* Begin - BUG#M0000376 */
@@ -150,6 +154,11 @@ ScanReservedKeywordLookup(const char *text,
 				  const ScanKeyword *keywords,
 				  int num_keywords);
 /* End - BUG #M0000304 */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+static PLiSQL_nsitem *plisql_ns_lookup_exception(PLiSQL_nsitem *ns_cur,
+									const char *except_name);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 /* Begin - BUG#M0000376 */
 static void check_oraparam_mode(PLiSQL_datum *datum, int location, char mode);
@@ -256,6 +265,12 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 
 %type <str>		any_identifier opt_block_label opt_loop_label opt_label
 %type <str>		option_value
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+%type <str>		exception_any_identifier
+%type <ival> 	exception_error_code
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 %type <list>	proc_sect stmt_elsifs stmt_else
 %type <loop_body>	loop_body
@@ -423,6 +438,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_ERRCODE
 %token <keyword>	K_ERROR
 %token <keyword>	K_EXCEPTION
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+%token <keyword>	K_EXCEPTION_INIT
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 %token <keyword>	K_EXECUTE
 %token <keyword>	K_EXIT
 %token <keyword>	K_FETCH
@@ -474,6 +492,9 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_PIPELINED
 /* End - SRS-PLSQL-SUBPROC*/
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+%token <keyword>	K_PRAGMA
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 %token <keyword>	K_PRINT_STRICT_PARAMS
 %token <keyword>	K_PRIOR
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -881,6 +902,22 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 					{
 						PLiSQL_variable	*var;
 
+						/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+						/*
+						 * exception var only support xxx exception
+						 * ora-6550
+						 */
+						if (ISEXCEPTIONOID($3->typoid))
+						{
+							if ($2 || $4 != InvalidOid ||
+								$5 || $6 != NULL)
+								ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("exception variable should only declare as xxxx exception"),
+									parser_errposition(@1)));
+						}
+						/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 						/*
 						 * If a collation is supplied, insert it into the
 						 * datatype.  We assume decl_datatype always returns
@@ -929,6 +966,35 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						plisql_ns_additem($4->itemtype,
 										   $4->itemno, $1.name);
 					}
+				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+				| K_PRAGMA K_EXCEPTION_INIT '(' any_identifier ',' exception_error_code ')' ';'
+					{
+						PLiSQL_var *exception_var;
+						PLiSQL_nsitem *nsi;
+
+						nsi = plisql_ns_lookup(plisql_ns_top(), true,
+													$4, NULL, NULL, NULL);
+						/* raise ORA-06550 */
+						if (nsi == NULL)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("PRAGMA EXCEPTION_INIT of %s must follow declaration of its"
+									" exception in the same declarative part", $4),
+									parser_errposition(@4)));
+						if (nsi->itemtype != PLISQL_NSTYPE_VAR)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("'%s' must be declared as an exception", $4),
+									parser_errposition(@4)));
+						exception_var = (PLiSQL_var *) plisql_Datums[nsi->itemno];
+						if (!ISEXCEPTIONOID(exception_var->datatype->typoid))
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("'%s' must be declared as an exception", $4),
+									parser_errposition(@4)));
+						plisql_set_udt_exception_errcode(exception_var, $6);
+					}
+				/* End - ReqID:SRS-PLSQL-EXCEPTION */
 				/* Begin - ReqID:SRS-PLSQL-CURSOR */
 				| K_TYPE decl_varname K_IS K_REF K_CURSOR opt_return_ora_rowtype ';'
 					{
@@ -2894,6 +2960,9 @@ stmt_raise		: K_RAISE
 						new->message	= NULL;
 						new->params		= NIL;
 						new->options	= NIL;
+						/* Begin - ReqID:SRS-PLSQL-CURSOR */
+						new->excepdno = -1;
+						/* End - ReqID:SRS-PLSQL-CURSOR */
 
 						tok = yylex();
 						if (tok == 0)
@@ -2905,10 +2974,40 @@ stmt_raise		: K_RAISE
 						 */
 						if (tok != ';')
 						{
+							/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+							/*
+							 * we should check user define exception first
+							 * because serverity level maybe a exception
+							 * name
+							 */
+							if (tok == T_DATUM)
+							{
+								PLiSQL_datum *except_datum;
+
+								if (yylval.wdatum.datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+									except_datum = ((PLiSQL_pkg_datum *) yylval.wdatum.datum)->pkgvar;
+								else
+									except_datum = yylval.wdatum.datum;
+
+								/*
+								 * raise ORA-06550 exception
+								 */
+								if (except_datum->dtype != PLISQL_DTYPE_VAR)
+									yyerror("in exception handler, raise'var must be an exception name");
+
+								if (!ISEXCEPTIONOID(((PLiSQL_var *) except_datum)->datatype->typoid))
+									yyerror("in exception handler, raise'var must be an exception name");
+
+								new->excepdno = yylval.wdatum.datum->dno;
+								tok = yylex();
+								if (tok != ';')
+									yyerror("syntax error");
+							}
+							/* End - ReqID:SRS-PLSQL-EXCEPTION */
 							/*
 							 * First is an optional elog severity level.
 							 */
-							if (tok_is_keyword(tok, &yylval,
+							else if (tok_is_keyword(tok, &yylval,
 											   K_EXCEPTION, "exception"))
 							{
 								new->elog_level = ERROR;
@@ -2979,7 +3078,8 @@ stmt_raise		: K_RAISE
 									new->params = lappend(new->params, expr);
 								}
 							}
-							else if (tok != K_USING)
+							else if (tok != K_USING &&
+									tok != ';') /* ReqID:SRS-PLSQL-CURSOR */
 							{
 								/* must be condition name or SQLSTATE */
 								if (tok_is_keyword(tok, &yylval,
@@ -3547,7 +3647,38 @@ exception_sect	:
 					proc_exceptions
 					{
 						PLiSQL_exception_block *new = $<exception_block>2;
+						ListCell *lc; /* ReqID:SRS-PLSQL-EXCEPTION */
+
 						new->exc_list = $3;
+						/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+						/*
+						 * check others must be last conditions
+						 * ORA-06550
+						 */
+						foreach (lc, new->exc_list)
+						{
+							PLiSQL_exception *exception = (PLiSQL_exception *) lfirst(lc);
+							ListCell *nextlc = lnext(new->exc_list, lc);
+
+							if (exception->conditions->condname != NULL &&
+								strcmp(exception->conditions->condname, "others") == 0)
+							{
+								/*
+								 * others should the last conditions except for
+								 * query_canceled or assert_failure
+								 */
+								if (nextlc != NULL)
+								{
+									PLiSQL_exception *nexcep = (PLiSQL_exception *) lfirst(nextlc);
+
+									if (nexcep->conditions->condname != NULL &&
+										strcmp(nexcep->conditions->condname, "query_canceled") != 0 &&
+										strcmp(nexcep->conditions->condname, "assert_failure") != 0)
+										yyerror("OTHERS handler must be last among the exception handlers of a block");
+								}
+							}
+						}
+						/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 						$$ = new;
 					}
@@ -3579,9 +3710,48 @@ proc_exception	: K_WHEN proc_conditions K_THEN proc_sect
 proc_conditions	: proc_conditions K_OR proc_condition
 						{
 							PLiSQL_condition	*old;
+							/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+							bool	assert_failue_or_cancel_query = false;
+							bool	has_common_exception = false;
+
+							/*
+							 * The assert_failure and cancel_query exceptions are not included
+							 * in the others exception. Therefore, we allow these two exceptions
+							 * to be mixed with others.
+							 */
+							if ($3->condname != NULL &&
+								(strcmp($3->condname, "query_canceled") == 0 ||
+								strcmp($3->condname, "assert_failure") == 0))
+								assert_failue_or_cancel_query = true;
 
 							for (old = $1; old->next != NULL; old = old->next)
-								/* skip */ ;
+							{
+								/*
+								 * check not others conditions
+								 * ORA-06550
+								 */
+								if (!assert_failue_or_cancel_query &&
+									old->condname != NULL &&
+									strcmp(old->condname, "others") == 0)
+									yyerror("no choices may appear with choice OTHERS in an exception handler");
+								if (old->condname != NULL &&
+									strcmp(old->condname, "query_canceled") != 0 &&
+									strcmp(old->condname, "assert_failure") != 0)
+									has_common_exception = true;
+							}
+							if (!assert_failue_or_cancel_query &&
+								old->condname != NULL &&
+								strcmp(old->condname, "others") == 0)
+								yyerror("no choices may appear with choice OTHERS in an exception handler");
+							if (old->condname != NULL &&
+								strcmp(old->condname, "query_canceled") != 0 &&
+								strcmp(old->condname, "assert_failure") != 0)
+								has_common_exception = true;
+							if (has_common_exception &&
+								$3->condname != NULL &&
+								strcmp($3->condname, "others") == 0)
+								yyerror("no choices may appear with choice OTHERS in an exception handler");
+							/* End - ReqID:SRS-PLSQL-EXCEPTION */
 							old->next = $3;
 							$$ = $1;
 						}
@@ -3591,7 +3761,7 @@ proc_conditions	: proc_conditions K_OR proc_condition
 						}
 				;
 
-proc_condition	: any_identifier
+proc_condition	: exception_any_identifier
 						{
 							if (strcmp($1, "sqlstate") != 0)
 							{
@@ -3621,10 +3791,106 @@ proc_condition	: any_identifier
 												  sqlstatestr[4]);
 								new->condname = sqlstatestr;
 								new->next = NULL;
+								/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+								new->excepdno = -1;
+								/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 								$$ = new;
 							}
 						}
+				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+				| T_DATUM
+					{
+						PLiSQL_datum *datum = $1.datum;
+
+						if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+							datum = ((PLiSQL_pkg_datum *) datum)->pkgvar;
+
+						/*
+						 * check is exception or we handle like exception_any_identifier
+						 * others is special and have high priority.
+						 */
+						if (datum->dtype == PLISQL_DTYPE_VAR &&
+							((PLiSQL_var *) datum)->refname != NULL &&
+							strcmp(((PLiSQL_var *) datum)->refname, "others") != 0 &&
+							ISEXCEPTIONOID(((PLiSQL_var *) datum)->datatype->typoid))
+						{
+							PLiSQL_condition *new;
+
+							new = palloc0(sizeof(PLiSQL_condition));
+							new->next = NULL;
+							new->condname = $1.ident;
+							new->excepdno = $1.datum->dno;
+
+							$$ = new;
+						}
+						else
+						{
+							/* like exception_any_identifier handle */
+							if ($1.ident == NULL) /* composite name not OK */
+								yyerror("syntax error");
+							if (strcmp($1.ident, "sqlstate") != 0 &&
+								strcmp($1.ident, "sqlcode") != 0 &&
+								strcmp($1.ident, "sqlerrm") != 0)
+							{
+								$$ = plisql_parse_err_condition($1.ident);
+							}
+							else
+							{
+								PLiSQL_condition *new;
+								char   *sqlstatestr;
+								int		token;
+
+								token = yylex();
+
+								/*
+								 * next token should be a string literal
+								 * or a udt exception var
+								 */
+								if (token == K_THEN)
+								{
+									PLiSQL_datum *exception_datum = NULL;
+									PLiSQL_nsitem *nse = NULL;
+
+									nse = plisql_ns_lookup_exception(plisql_ns_top(),
+																		$1.ident);
+									if (nse != NULL)
+										exception_datum = plisql_Datums[nse->itemno];
+									else
+										yyerror("invalid exception");
+									new = palloc0(sizeof(PLiSQL_condition));
+									new->next = NULL;
+									new->condname = $1.ident;
+									new->excepdno = exception_datum->dno;
+									plisql_push_back_token(token);
+								}
+								else if (token != SCONST)
+									yyerror("syntax error");
+								else
+								{
+									sqlstatestr = yylval.str;
+
+									if (strlen(sqlstatestr) != 5)
+										yyerror("invalid SQLSTATE code");
+									if (strspn(sqlstatestr, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") != 5)
+										yyerror("invalid SQLSTATE code");
+
+									new = palloc(sizeof(PLiSQL_condition));
+									new->sqlerrstate =
+										MAKE_SQLSTATE(sqlstatestr[0],
+													  sqlstatestr[1],
+													  sqlstatestr[2],
+													  sqlstatestr[3],
+													  sqlstatestr[4]);
+									new->condname = sqlstatestr;
+									new->next = NULL;
+									new->excepdno = -1;
+								}
+								$$ = new;
+							}
+						}
+					}
+				/* End - ReqID:SRS-PLSQL-EXCEPTION */
 				;
 
 expr_until_semi :
@@ -3699,6 +3965,29 @@ any_identifier	: T_WORD
 					}
 				;
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * like any_identifier but we shoud
+ * split T_DATUM for user define exception
+ */
+exception_any_identifier	: T_WORD
+					{
+						$$ = $1.ident;
+					}
+				| unreserved_keyword
+					{
+						$$ = pstrdup($1);
+					}
+				;
+
+exception_error_code:	'-' ICONST	{$$ = 0 - $2;}
+						|'+' ICONST	{$$ = $2;}
+						|ICONST { $$ = $1;}
+						;
+
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+
 unreserved_keyword	:
 				K_ABSOLUTE
 				/* Begin - SRS-PLSQL-SUBPROC */
@@ -3751,6 +4040,9 @@ unreserved_keyword	:
 				| K_ERRCODE
 				| K_ERROR
 				| K_EXCEPTION
+				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+				| K_EXCEPTION_INIT
+				/* End - ReqID:SRS-PLSQL-EXCEPTION */
 				| K_EXIT
 				| K_FETCH
 				| K_FIRST
@@ -3873,6 +4165,9 @@ unit_name_keyword:
 				| K_ERRCODE
 				| K_ERROR
 				| K_EXCEPTION
+				/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+				| K_EXCEPTION_INIT
+				/* End - ReqID:SRS-PLSQL-EXCEPTION */
 				| K_EXIT
 				| K_FETCH
 				| K_FIRST
@@ -5061,7 +5356,7 @@ read_into_target(PLiSQL_variable **target, bool *strict)
 	/* Set default results */
 	*target = NULL;
 	if (strict)
-		*strict = false;
+		*strict = plisql_default_into_strict; /* ReqID:SRS-PLSQL-EXCEPTION */
 
 	tok = yylex();
 	if (strict && tok == K_STRICT)
@@ -5343,19 +5638,38 @@ parse_datatype(const char *string, int location)
 	typeName = typeStringToTypeName(string);
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
-	if (list_length(typeName->names) < 2 &&
-		!is_compile_standard_package())
+	if (list_length(typeName->names) < 2)
 	{
-		/* may be a standard.type */
-		size_t len = 8 + strlen(string) + 2;
-		char *refname = (char *) palloc0(len);
-		TypeName *newtypName;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		if (!is_compile_standard_package())
+		{
+			/* may be a standard.type */
+			size_t len = 8 + strlen(string) + 2;
+			char *refname = (char *) palloc0(len);
+			TypeName *newtypName;
 
-		snprintf(refname, len, "standard.%s", string);
-		newtypName = typeStringToTypeName(refname);
-		pfree(refname);
-		result = plisql_parse_package_type(newtypName, parse_by_pkg_type, true);
-		pfree(newtypName);
+			snprintf(refname, len, "standard.%s", string);
+			newtypName = typeStringToTypeName(refname);
+			pfree(refname);
+			result = plisql_parse_package_type(newtypName, parse_by_pkg_type, true);
+			pfree(newtypName);
+		}
+		/* lookup dbms_standard package */
+		if (result == NULL &&
+			!is_compile_dbms_standard_package())
+		{
+			/* may be a dbms_standard.type */
+			size_t len = 13 + strlen(string) + 2;
+			char *refname = (char *) palloc0(len);
+			TypeName *newtypName;
+
+			snprintf(refname, len, "dbms_standard.%s", string);
+			newtypName = typeStringToTypeName(refname);
+			pfree(refname);
+			result = plisql_parse_package_type(newtypName, parse_by_pkg_type, true);
+			pfree(newtypName);
+		}
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 	}
 	else
 		result = plisql_parse_package_type(typeName, parse_by_pkg_type, false);
@@ -6232,6 +6546,7 @@ ScanReservedKeywordLookup(const char *text,
 }
 /* End - BUG #M0000304 */
 
+
 /* Begin - BUG#M0000376 */
 /*
  * check_oraparam_mode
@@ -6422,3 +6737,40 @@ check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int location, char mode
 	}
 }
 /* End - BUG#M0000376 */
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+/*
+ * like plisql_ns_lookup,
+ * but we only find exception and lookup all
+ * block level
+ */
+static PLiSQL_nsitem*
+plisql_ns_lookup_exception(PLiSQL_nsitem *ns_cur,
+									const char *except_name)
+{
+	/* Outer loop iterates once per block level in the namespace chain */
+	while (ns_cur != NULL)
+	{
+		PLiSQL_nsitem *nsitem;
+
+		/* Check this level for unqualified match to variable name */
+		for (nsitem = ns_cur;
+			 nsitem->itemtype != PLISQL_NSTYPE_LABEL;
+			 nsitem = nsitem->prev)
+		{
+			if (strcmp(nsitem->name, except_name) == 0 &&
+				nsitem->itemtype == PLISQL_NSTYPE_VAR)
+			{
+				PLiSQL_var *var = (PLiSQL_var *) plisql_Datums[nsitem->itemno];
+
+				if (ISEXCEPTIONOID(var->datatype->typoid))
+					return nsitem;
+			}
+		}
+		ns_cur = nsitem->prev;
+	}
+	return NULL;
+}
+
+/* End - ReqID:SRS-PLSQL-EXCEPTION */

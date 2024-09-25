@@ -660,7 +660,7 @@ end
 $$ language plisql;
 /
 select catch();
-NOTICE:  caught case_not_found 20000 case not found
+NOTICE:  caught case_not_found 20000 IVY-06592: CASE not found while executing CASE statement
  catch 
 -------
  

@@ -9,23 +9,6 @@ END
 $$ language plisql;
 /
 SET ivorysql.allow_out_parameter_const = true;
---test sys.standard package
-CREATE OR REPLACE package sys.standard IS
-BINARY_FLOAT_NAN constant BINARY_FLOAT;
-  BINARY_FLOAT_INFINITY constant BINARY_FLOAT;
-  BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT;
-  BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT;
-  BINARY_DOUBLE_NAN constant BINARY_DOUBLE;
-  BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE;
-  BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE;
-end;
-/
-GRANT EXECUTE ON package sys.standard TO public;
 --ok
 create or replace package test_pkg is
   var1 integer;
@@ -3638,6 +3621,7 @@ create or replace package body dwdai_pkg is
  end;
 end;
 /
+SET plisql.plisql_default_into_strict = false;
 begin
   call dwdai_pkg.test(23);
 end;
@@ -5407,55 +5391,66 @@ CREATE OR REPLACE package test_schema.standard IS
 end;
 /
 ERROR:  this name is currently reserved for use by user SYS
---success
-CREATE OR REPLACE package sys.standard IS
-  standard_var1 integer;
-  FUNCTION test_f(id integer) RETURN integer;
-end;
-/
-CREATE OR REPLACE package body sys.standard IS
-  var2 integer;
-  FUNCTION test_f(id integer) RETURN integer IS
-  BEGIN
-     raise info 'standard func';
-	 RETURN 23;
-  end;
-end;
-/
 --rename failed
 ALTER package sys.standard rename TO pkg;
 ERROR:  this name is currently reserved for use by user SYS
 --set scheam failed
 ALTER package sys.standard SET schema test_schema;
 ERROR:  this name is currently reserved for use by user SYS
---ok
-DECLARE
-  var2 integer;
 BEGIN
-  standard_var1 := 23;
-  raise info '%', standard_var1;
+	raise info '%',BINARY_FLOAT_NAN;
+	raise info '%',BINARY_FLOAT_INFINITY;
+	raise info '%',BINARY_FLOAT_MAX_NORMAL;
+	raise info '%',BINARY_FLOAT_MIN_NORMAL;
+	raise info '%',BINARY_FLOAT_MAX_SUBNORMAL;
+	raise info '%',BINARY_FLOAT_MIN_SUBNORMAL;
+	raise info '%',BINARY_DOUBLE_NAN;
+	raise info '%',BINARY_DOUBLE_INFINITY;
+	raise info '%',BINARY_DOUBLE_MAX_NORMAL;
+	raise info '%',BINARY_DOUBLE_MAX_SUBNORMAL;
+	raise info '%',BINARY_DOUBLE_MIN_NORMAL;
+	raise info '%',BINARY_DOUBLE_MIN_SUBNORMAL;
 end;
 /
-INFO:  23
---ok
+INFO:  Nan
+INFO:  Inf
+INFO:  3.4028235E+038
+INFO:  1.1754944E-038
+INFO:  1.1754942E-038
+INFO:  1.0E-045
+INFO:  Nan
+INFO:  Inf
+INFO:  1.7976931348623157E+308
+INFO:  2.2250738585072014E-308
+INFO:  2.225073858507201E-308
+INFO:  5.0E-324
 BEGIN
-  raise info '%', standard_var1;
+	raise info '%',standard.BINARY_FLOAT_NAN;
+	raise info '%',standard.BINARY_FLOAT_INFINITY;
+	raise info '%',standard.BINARY_FLOAT_MAX_NORMAL;
+	raise info '%',standard.BINARY_FLOAT_MIN_NORMAL;
+	raise info '%',standard.BINARY_FLOAT_MAX_SUBNORMAL;
+	raise info '%',standard.BINARY_FLOAT_MIN_SUBNORMAL;
+	raise info '%',standard.BINARY_DOUBLE_NAN;
+	raise info '%',standard.BINARY_DOUBLE_INFINITY;
+	raise info '%',standard.BINARY_DOUBLE_MAX_NORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MAX_SUBNORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MIN_NORMAL;
+	raise info '%',standard.BINARY_DOUBLE_MIN_SUBNORMAL;
 end;
 /
-INFO:  23
-DECLARE
- var1 integer;
-BEGIN
-  var1 := sys.standard.test_f(23);
-  var1 := standard.test_f(23);
-  var1 := test_f(23);
-end;
-/
-INFO:  standard func
-INFO:  standard func
-INFO:  standard func
---drop
-DROP package sys.standard;
+INFO:  Nan
+INFO:  Inf
+INFO:  3.4028235E+038
+INFO:  1.1754944E-038
+INFO:  1.1754942E-038
+INFO:  1.0E-045
+INFO:  Nan
+INFO:  Inf
+INFO:  1.7976931348623157E+308
+INFO:  2.2250738585072014E-308
+INFO:  2.225073858507201E-308
+INFO:  5.0E-324
 DROP SCHEMA test_schema;
 --test #option dump
 CREATE OR REPLACE package test_pkg IS
@@ -5553,108 +5548,368 @@ CREATE OR REPLACE package body sys.test_pkg1 IS
 end;
 /
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg  | PACKAGE      | 1    | PACKAGE test_pkg IS
- test_pkg  | PACKAGE      | 2    | var1 integer;
- test_pkg  | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
- test_pkg  | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
- test_pkg  | PACKAGE      | 5    |   PROCEDURE test_pp1;
- test_pkg  | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
- test_pkg  | PACKAGE      | 7    | end;
- test_pkg  | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
- test_pkg  | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
- test_pkg  | PACKAGE BODY | 3    |   BEGIN
- test_pkg  | PACKAGE BODY | 4    |      RETURN 23;
- test_pkg  | PACKAGE BODY | 5    |   end;
- test_pkg  | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
- test_pkg  | PACKAGE BODY | 7    |   BEGIN
- test_pkg  | PACKAGE BODY | 8    |     var1 := 23;
- test_pkg  | PACKAGE BODY | 9    |   end;
- test_pkg  | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
- test_pkg  | PACKAGE BODY | 11   |   BEGIN
- test_pkg  | PACKAGE BODY | 12   |      var1 := 24;
- test_pkg  | PACKAGE BODY | 13   |   end;
- test_pkg  | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
- test_pkg  | PACKAGE BODY | 15   |   BEGIN
- test_pkg  | PACKAGE BODY | 16   |     RETURN var1;
- test_pkg  | PACKAGE BODY | 17   |   end;
- test_pkg  | PACKAGE BODY | 18   | BEGIN
- test_pkg  | PACKAGE BODY | 19   |    var1 := 56;
- test_pkg  | PACKAGE BODY | 20   | end;
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(47 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg      | PACKAGE      | 1    | PACKAGE test_pkg IS
+ test_pkg      | PACKAGE      | 2    | var1 integer;
+ test_pkg      | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
+ test_pkg      | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
+ test_pkg      | PACKAGE      | 5    |   PROCEDURE test_pp1;
+ test_pkg      | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
+ test_pkg      | PACKAGE      | 7    | end;
+ test_pkg      | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
+ test_pkg      | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
+ test_pkg      | PACKAGE BODY | 3    |   BEGIN
+ test_pkg      | PACKAGE BODY | 4    |      RETURN 23;
+ test_pkg      | PACKAGE BODY | 5    |   end;
+ test_pkg      | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
+ test_pkg      | PACKAGE BODY | 7    |   BEGIN
+ test_pkg      | PACKAGE BODY | 8    |     var1 := 23;
+ test_pkg      | PACKAGE BODY | 9    |   end;
+ test_pkg      | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
+ test_pkg      | PACKAGE BODY | 11   |   BEGIN
+ test_pkg      | PACKAGE BODY | 12   |      var1 := 24;
+ test_pkg      | PACKAGE BODY | 13   |   end;
+ test_pkg      | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
+ test_pkg      | PACKAGE BODY | 15   |   BEGIN
+ test_pkg      | PACKAGE BODY | 16   |     RETURN var1;
+ test_pkg      | PACKAGE BODY | 17   |   end;
+ test_pkg      | PACKAGE BODY | 18   | BEGIN
+ test_pkg      | PACKAGE BODY | 19   |    var1 := 56;
+ test_pkg      | PACKAGE BODY | 20   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(177 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg  | PACKAGE      | 1    | PACKAGE test_pkg IS
- test_pkg  | PACKAGE      | 2    | var1 integer;
- test_pkg  | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
- test_pkg  | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
- test_pkg  | PACKAGE      | 5    |   PROCEDURE test_pp1;
- test_pkg  | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
- test_pkg  | PACKAGE      | 7    | end;
- test_pkg  | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
- test_pkg  | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
- test_pkg  | PACKAGE BODY | 3    |   BEGIN
- test_pkg  | PACKAGE BODY | 4    |      RETURN 23;
- test_pkg  | PACKAGE BODY | 5    |   end;
- test_pkg  | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
- test_pkg  | PACKAGE BODY | 7    |   BEGIN
- test_pkg  | PACKAGE BODY | 8    |     var1 := 23;
- test_pkg  | PACKAGE BODY | 9    |   end;
- test_pkg  | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
- test_pkg  | PACKAGE BODY | 11   |   BEGIN
- test_pkg  | PACKAGE BODY | 12   |      var1 := 24;
- test_pkg  | PACKAGE BODY | 13   |   end;
- test_pkg  | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
- test_pkg  | PACKAGE BODY | 15   |   BEGIN
- test_pkg  | PACKAGE BODY | 16   |     RETURN var1;
- test_pkg  | PACKAGE BODY | 17   |   end;
- test_pkg  | PACKAGE BODY | 18   | BEGIN
- test_pkg  | PACKAGE BODY | 19   |    var1 := 56;
- test_pkg  | PACKAGE BODY | 20   | end;
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(47 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg      | PACKAGE      | 1    | PACKAGE test_pkg IS
+ test_pkg      | PACKAGE      | 2    | var1 integer;
+ test_pkg      | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
+ test_pkg      | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
+ test_pkg      | PACKAGE      | 5    |   PROCEDURE test_pp1;
+ test_pkg      | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
+ test_pkg      | PACKAGE      | 7    | end;
+ test_pkg      | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
+ test_pkg      | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
+ test_pkg      | PACKAGE BODY | 3    |   BEGIN
+ test_pkg      | PACKAGE BODY | 4    |      RETURN 23;
+ test_pkg      | PACKAGE BODY | 5    |   end;
+ test_pkg      | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
+ test_pkg      | PACKAGE BODY | 7    |   BEGIN
+ test_pkg      | PACKAGE BODY | 8    |     var1 := 23;
+ test_pkg      | PACKAGE BODY | 9    |   end;
+ test_pkg      | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
+ test_pkg      | PACKAGE BODY | 11   |   BEGIN
+ test_pkg      | PACKAGE BODY | 12   |      var1 := 24;
+ test_pkg      | PACKAGE BODY | 13   |   end;
+ test_pkg      | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
+ test_pkg      | PACKAGE BODY | 15   |   BEGIN
+ test_pkg      | PACKAGE BODY | 16   |     RETURN var1;
+ test_pkg      | PACKAGE BODY | 17   |   end;
+ test_pkg      | PACKAGE BODY | 18   | BEGIN
+ test_pkg      | PACKAGE BODY | 19   |    var1 := 56;
+ test_pkg      | PACKAGE BODY | 20   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(177 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name    |     type     | line |                                 text                                  
@@ -5709,30 +5964,42 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 (47 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
- test_pkg    | test_f1        | 4             | PACKAGE     | DEFINER
- test_pkg    | test_pp        | 2             | PACKAGE     | DEFINER
- test_pkg    | test_pp1       | 3             | PACKAGE     | DEFINER
- test_pkg    |                | 0             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(8 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
+ test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
+ test_pkg      | test_pp                 | 2             | PACKAGE     | DEFINER
+ test_pkg      | test_pp1                | 3             | PACKAGE     | DEFINER
+ test_pkg      |                         | 0             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(14 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
- test_pkg    | test_f1        | 4             | PACKAGE     | DEFINER
- test_pkg    | test_pp        | 2             | PACKAGE     | DEFINER
- test_pkg    | test_pp1       | 3             | PACKAGE     | DEFINER
- test_pkg    |                | 0             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(8 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
+ test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
+ test_pkg      | test_pp                 | 2             | PACKAGE     | DEFINER
+ test_pkg      | test_pp1                | 3             | PACKAGE     | DEFINER
+ test_pkg      |                         | 0             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(14 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -5748,30 +6015,44 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 (8 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(8 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(8 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -5789,81 +6070,341 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
 GRANT EXECUTE ON package test_pkg1 TO test_user;
 set session authorization test_user;
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg  | PACKAGE      | 1    | PACKAGE test_pkg IS
- test_pkg  | PACKAGE      | 2    | var1 integer;
- test_pkg  | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
- test_pkg  | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
- test_pkg  | PACKAGE      | 5    |   PROCEDURE test_pp1;
- test_pkg  | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
- test_pkg  | PACKAGE      | 7    | end;
- test_pkg  | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
- test_pkg  | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
- test_pkg  | PACKAGE BODY | 3    |   BEGIN
- test_pkg  | PACKAGE BODY | 4    |      RETURN 23;
- test_pkg  | PACKAGE BODY | 5    |   end;
- test_pkg  | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
- test_pkg  | PACKAGE BODY | 7    |   BEGIN
- test_pkg  | PACKAGE BODY | 8    |     var1 := 23;
- test_pkg  | PACKAGE BODY | 9    |   end;
- test_pkg  | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
- test_pkg  | PACKAGE BODY | 11   |   BEGIN
- test_pkg  | PACKAGE BODY | 12   |      var1 := 24;
- test_pkg  | PACKAGE BODY | 13   |   end;
- test_pkg  | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
- test_pkg  | PACKAGE BODY | 15   |   BEGIN
- test_pkg  | PACKAGE BODY | 16   |     RETURN var1;
- test_pkg  | PACKAGE BODY | 17   |   end;
- test_pkg  | PACKAGE BODY | 18   | BEGIN
- test_pkg  | PACKAGE BODY | 19   |    var1 := 56;
- test_pkg  | PACKAGE BODY | 20   | end;
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(47 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg      | PACKAGE      | 1    | PACKAGE test_pkg IS
+ test_pkg      | PACKAGE      | 2    | var1 integer;
+ test_pkg      | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
+ test_pkg      | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
+ test_pkg      | PACKAGE      | 5    |   PROCEDURE test_pp1;
+ test_pkg      | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
+ test_pkg      | PACKAGE      | 7    | end;
+ test_pkg      | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
+ test_pkg      | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
+ test_pkg      | PACKAGE BODY | 3    |   BEGIN
+ test_pkg      | PACKAGE BODY | 4    |      RETURN 23;
+ test_pkg      | PACKAGE BODY | 5    |   end;
+ test_pkg      | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
+ test_pkg      | PACKAGE BODY | 7    |   BEGIN
+ test_pkg      | PACKAGE BODY | 8    |     var1 := 23;
+ test_pkg      | PACKAGE BODY | 9    |   end;
+ test_pkg      | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
+ test_pkg      | PACKAGE BODY | 11   |   BEGIN
+ test_pkg      | PACKAGE BODY | 12   |      var1 := 24;
+ test_pkg      | PACKAGE BODY | 13   |   end;
+ test_pkg      | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
+ test_pkg      | PACKAGE BODY | 15   |   BEGIN
+ test_pkg      | PACKAGE BODY | 16   |     RETURN var1;
+ test_pkg      | PACKAGE BODY | 17   |   end;
+ test_pkg      | PACKAGE BODY | 18   | BEGIN
+ test_pkg      | PACKAGE BODY | 19   |    var1 := 56;
+ test_pkg      | PACKAGE BODY | 20   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(177 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(20 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(150 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
  name | type | line | text 
@@ -5871,25 +6412,37 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 (0 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
- test_pkg    | test_f1        | 4             | PACKAGE     | DEFINER
- test_pkg    | test_pp        | 2             | PACKAGE     | DEFINER
- test_pkg    | test_pp1       | 3             | PACKAGE     | DEFINER
- test_pkg    |                | 0             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(8 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
+ test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
+ test_pkg      | test_pp                 | 2             | PACKAGE     | DEFINER
+ test_pkg      | test_pp1                | 3             | PACKAGE     | DEFINER
+ test_pkg      |                         | 0             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(14 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(3 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(9 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
  object_name | procedure_name | subprogram_id | object_type | authid 
@@ -5897,26 +6450,40 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 (0 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(8 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(4 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(11 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -5927,108 +6494,368 @@ reset session authorization;
 ALTER package test_pkg owner TO test_user;
 set session authorization test_user;
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg  | PACKAGE      | 1    | PACKAGE test_pkg IS
- test_pkg  | PACKAGE      | 2    | var1 integer;
- test_pkg  | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
- test_pkg  | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
- test_pkg  | PACKAGE      | 5    |   PROCEDURE test_pp1;
- test_pkg  | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
- test_pkg  | PACKAGE      | 7    | end;
- test_pkg  | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
- test_pkg  | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
- test_pkg  | PACKAGE BODY | 3    |   BEGIN
- test_pkg  | PACKAGE BODY | 4    |      RETURN 23;
- test_pkg  | PACKAGE BODY | 5    |   end;
- test_pkg  | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
- test_pkg  | PACKAGE BODY | 7    |   BEGIN
- test_pkg  | PACKAGE BODY | 8    |     var1 := 23;
- test_pkg  | PACKAGE BODY | 9    |   end;
- test_pkg  | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
- test_pkg  | PACKAGE BODY | 11   |   BEGIN
- test_pkg  | PACKAGE BODY | 12   |      var1 := 24;
- test_pkg  | PACKAGE BODY | 13   |   end;
- test_pkg  | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
- test_pkg  | PACKAGE BODY | 15   |   BEGIN
- test_pkg  | PACKAGE BODY | 16   |     RETURN var1;
- test_pkg  | PACKAGE BODY | 17   |   end;
- test_pkg  | PACKAGE BODY | 18   | BEGIN
- test_pkg  | PACKAGE BODY | 19   |    var1 := 56;
- test_pkg  | PACKAGE BODY | 20   | end;
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(47 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg      | PACKAGE      | 1    | PACKAGE test_pkg IS
+ test_pkg      | PACKAGE      | 2    | var1 integer;
+ test_pkg      | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
+ test_pkg      | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
+ test_pkg      | PACKAGE      | 5    |   PROCEDURE test_pp1;
+ test_pkg      | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
+ test_pkg      | PACKAGE      | 7    | end;
+ test_pkg      | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
+ test_pkg      | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
+ test_pkg      | PACKAGE BODY | 3    |   BEGIN
+ test_pkg      | PACKAGE BODY | 4    |      RETURN 23;
+ test_pkg      | PACKAGE BODY | 5    |   end;
+ test_pkg      | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
+ test_pkg      | PACKAGE BODY | 7    |   BEGIN
+ test_pkg      | PACKAGE BODY | 8    |     var1 := 23;
+ test_pkg      | PACKAGE BODY | 9    |   end;
+ test_pkg      | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
+ test_pkg      | PACKAGE BODY | 11   |   BEGIN
+ test_pkg      | PACKAGE BODY | 12   |      var1 := 24;
+ test_pkg      | PACKAGE BODY | 13   |   end;
+ test_pkg      | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
+ test_pkg      | PACKAGE BODY | 15   |   BEGIN
+ test_pkg      | PACKAGE BODY | 16   |     RETURN var1;
+ test_pkg      | PACKAGE BODY | 17   |   end;
+ test_pkg      | PACKAGE BODY | 18   | BEGIN
+ test_pkg      | PACKAGE BODY | 19   |    var1 := 56;
+ test_pkg      | PACKAGE BODY | 20   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(177 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-   name    |     type     | line |                                 text                                  
------------+--------------+------+-----------------------------------------------------------------------
- test_pkg  | PACKAGE      | 1    | PACKAGE test_pkg IS
- test_pkg  | PACKAGE      | 2    | var1 integer;
- test_pkg  | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
- test_pkg  | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
- test_pkg  | PACKAGE      | 5    |   PROCEDURE test_pp1;
- test_pkg  | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
- test_pkg  | PACKAGE      | 7    | end;
- test_pkg  | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
- test_pkg  | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
- test_pkg  | PACKAGE BODY | 3    |   BEGIN
- test_pkg  | PACKAGE BODY | 4    |      RETURN 23;
- test_pkg  | PACKAGE BODY | 5    |   end;
- test_pkg  | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
- test_pkg  | PACKAGE BODY | 7    |   BEGIN
- test_pkg  | PACKAGE BODY | 8    |     var1 := 23;
- test_pkg  | PACKAGE BODY | 9    |   end;
- test_pkg  | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
- test_pkg  | PACKAGE BODY | 11   |   BEGIN
- test_pkg  | PACKAGE BODY | 12   |      var1 := 24;
- test_pkg  | PACKAGE BODY | 13   |   end;
- test_pkg  | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
- test_pkg  | PACKAGE BODY | 15   |   BEGIN
- test_pkg  | PACKAGE BODY | 16   |     RETURN var1;
- test_pkg  | PACKAGE BODY | 17   |   end;
- test_pkg  | PACKAGE BODY | 18   | BEGIN
- test_pkg  | PACKAGE BODY | 19   |    var1 := 56;
- test_pkg  | PACKAGE BODY | 20   | end;
- test_pkg1 | PACKAGE      | 1    | PACKAGE test_pkg1 IS
- test_pkg1 | PACKAGE      | 2    | var1 integer;
- test_pkg1 | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
- test_pkg1 | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
- test_pkg1 | PACKAGE      | 5    | end;
- test_pkg1 | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
- test_pkg1 | PACKAGE BODY | 2    | var2 integer;
- test_pkg1 | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
- test_pkg1 | PACKAGE BODY | 4    |   BEGIN
- test_pkg1 | PACKAGE BODY | 5    |      RETURN id;
- test_pkg1 | PACKAGE BODY | 6    |   END test_pkg1_f;
- test_pkg1 | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
- test_pkg1 | PACKAGE BODY | 8    |   BEGIN
- test_pkg1 | PACKAGE BODY | 9    |      var2 := 23;
- test_pkg1 | PACKAGE BODY | 10   |   END test_pkg1_p;
- test_pkg1 | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
- test_pkg1 | PACKAGE BODY | 12   |   begin
- test_pkg1 | PACKAGE BODY | 13   |      return id;
- test_pkg1 | PACKAGE BODY | 14   |   end;
- test_pkg1 | PACKAGE BODY | 15   | end;
-(47 rows)
+     name      |     type     | line |                                                                                  text                                                                                  
+---------------+--------------+------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
+ dbms_standard | PACKAGE      | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE      | 3    |       keeperrorstack boolean default FALSE);
+ dbms_standard | PACKAGE      | 4    | end;
+ dbms_standard | PACKAGE BODY | 1    | PACKAGE BODY dbms_standard IS
+ dbms_standard | PACKAGE BODY | 2    | procedure raise_application_error(num integer, msg varchar2,
+ dbms_standard | PACKAGE BODY | 3    |       keeperrorstack boolean default FALSE) IS
+ dbms_standard | PACKAGE BODY | 4    |          BEGIN
+ dbms_standard | PACKAGE BODY | 5    |                 -- num valid is -20000 and -20999
+ dbms_standard | PACKAGE BODY | 6    |                 IF (num < -20999 or num > -20000) then
+ dbms_standard | PACKAGE BODY | 7    |                         plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false);
+ dbms_standard | PACKAGE BODY | 8    |                 else
+ dbms_standard | PACKAGE BODY | 9    |                         plisql_raise_application_error(num, msg, keeperrorstack);
+ dbms_standard | PACKAGE BODY | 10   |                 END if;
+ dbms_standard | PACKAGE BODY | 11   |          end;
+ dbms_standard | PACKAGE BODY | 12   | end;
+ standard      | PACKAGE      | 1    | PACKAGE standard IS
+ standard      | PACKAGE      | 2    | BINARY_FLOAT_NAN constant BINARY_FLOAT DEFAULT 'Nan';
+ standard      | PACKAGE      | 3    |   BINARY_FLOAT_INFINITY constant BINARY_FLOAT DEFAULT 'Inf';
+ standard      | PACKAGE      | 4    |   BINARY_FLOAT_MAX_NORMAL constant BINARY_FLOAT DEFAULT '3.40282347E+038';
+ standard      | PACKAGE      | 5    |   BINARY_FLOAT_MIN_NORMAL constant BINARY_FLOAT DEFAULT '1.17549435E-038';
+ standard      | PACKAGE      | 6    |   BINARY_FLOAT_MAX_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.17549421E-038';
+ standard      | PACKAGE      | 7    |   BINARY_FLOAT_MIN_SUBNORMAL constant BINARY_FLOAT DEFAULT '1.40129846E-045';
+ standard      | PACKAGE      | 8    |   BINARY_DOUBLE_NAN constant BINARY_DOUBLE DEFAULT 'Nan';
+ standard      | PACKAGE      | 9    |   BINARY_DOUBLE_INFINITY constant BINARY_DOUBLE DEFAULT 'Inf';
+ standard      | PACKAGE      | 10   |   BINARY_DOUBLE_MAX_NORMAL constant BINARY_DOUBLE DEFAULT '1.7976931348623157E+308';
+ standard      | PACKAGE      | 11   |   BINARY_DOUBLE_MIN_NORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072009E-308';
+ standard      | PACKAGE      | 12   |   BINARY_DOUBLE_MAX_SUBNORMAL constant BINARY_DOUBLE DEFAULT '2.2250738585072014E-308';
+ standard      | PACKAGE      | 13   |   BINARY_DOUBLE_MIN_SUBNORMAL constant BINARY_DOUBLE DEFAULT '4.9406564584124654E-324';
+ standard      | PACKAGE      | 14   | 
+ standard      | PACKAGE      | 15   |   /********** Add new constants here **********/
+ standard      | PACKAGE      | 16   | 
+ standard      | PACKAGE      | 17   | /********** Predefined exceptions **********/
+ standard      | PACKAGE      | 18   |   CURSOR_ALREADY_OPEN exception;
+ standard      | PACKAGE      | 19   |    pragma EXCEPTION_INIT(CURSOR_ALREADY_OPEN, -6511);
+ standard      | PACKAGE      | 20   | 
+ standard      | PACKAGE      | 21   |   DUP_VAL_ON_INDEX exception;
+ standard      | PACKAGE      | 22   |     pragma EXCEPTION_INIT(DUP_VAL_ON_INDEX, -0001);
+ standard      | PACKAGE      | 23   | 
+ standard      | PACKAGE      | 24   |   TIMEOUT_ON_RESOURCE exception;
+ standard      | PACKAGE      | 25   |     pragma EXCEPTION_INIT(TIMEOUT_ON_RESOURCE, -0051);
+ standard      | PACKAGE      | 26   | 
+ standard      | PACKAGE      | 27   |   INVALID_CURSOR exception;
+ standard      | PACKAGE      | 28   |     pragma EXCEPTION_INIT(INVALID_CURSOR, -1001);
+ standard      | PACKAGE      | 29   | 
+ standard      | PACKAGE      | 30   |   NOT_LOGGED_ON exception;
+ standard      | PACKAGE      | 31   |     pragma EXCEPTION_INIT(NOT_LOGGED_ON, -1012);
+ standard      | PACKAGE      | 32   | 
+ standard      | PACKAGE      | 33   |   LOGIN_DENIED exception;
+ standard      | PACKAGE      | 34   |     pragma EXCEPTION_INIT(LOGIN_DENIED, -1017);
+ standard      | PACKAGE      | 35   | 
+ standard      | PACKAGE      | 36   |   NO_DATA_FOUND exception;
+ standard      | PACKAGE      | 37   |     pragma EXCEPTION_INIT(NO_DATA_FOUND, 100);
+ standard      | PACKAGE      | 38   | 
+ standard      | PACKAGE      | 39   |   ZERO_DIVIDE exception;
+ standard      | PACKAGE      | 40   |     pragma EXCEPTION_INIT(ZERO_DIVIDE, -1476);
+ standard      | PACKAGE      | 41   | 
+ standard      | PACKAGE      | 42   |   INVALID_NUMBER exception;
+ standard      | PACKAGE      | 43   |     pragma EXCEPTION_INIT(INVALID_NUMBER, -1722);
+ standard      | PACKAGE      | 44   | 
+ standard      | PACKAGE      | 45   |   TOO_MANY_ROWS exception;
+ standard      | PACKAGE      | 46   |     pragma EXCEPTION_INIT(TOO_MANY_ROWS, -1422);
+ standard      | PACKAGE      | 47   | 
+ standard      | PACKAGE      | 48   |   STORAGE_ERROR exception;
+ standard      | PACKAGE      | 49   |     pragma EXCEPTION_INIT(STORAGE_ERROR, -6500);
+ standard      | PACKAGE      | 50   | 
+ standard      | PACKAGE      | 51   |   PROGRAM_ERROR exception;
+ standard      | PACKAGE      | 52   |     pragma EXCEPTION_INIT(PROGRAM_ERROR, -6501);
+ standard      | PACKAGE      | 53   | 
+ standard      | PACKAGE      | 54   |   VALUE_ERROR exception;
+ standard      | PACKAGE      | 55   |     pragma EXCEPTION_INIT(VALUE_ERROR, -6502);
+ standard      | PACKAGE      | 56   | 
+ standard      | PACKAGE      | 57   |   ACCESS_INTO_NULL exception;
+ standard      | PACKAGE      | 58   |     pragma EXCEPTION_INIT(ACCESS_INTO_NULL, -6530);
+ standard      | PACKAGE      | 59   | 
+ standard      | PACKAGE      | 60   |   COLLECTION_IS_NULL exception;
+ standard      | PACKAGE      | 61   |     pragma EXCEPTION_INIT(COLLECTION_IS_NULL , -6531);
+ standard      | PACKAGE      | 62   | 
+ standard      | PACKAGE      | 63   |   SUBSCRIPT_OUTSIDE_LIMIT exception;
+ standard      | PACKAGE      | 64   |     pragma EXCEPTION_INIT(SUBSCRIPT_OUTSIDE_LIMIT,-6532);
+ standard      | PACKAGE      | 65   | 
+ standard      | PACKAGE      | 66   |   SUBSCRIPT_BEYOND_COUNT exception;
+ standard      | PACKAGE      | 67   |     pragma EXCEPTION_INIT(SUBSCRIPT_BEYOND_COUNT ,-6533);
+ standard      | PACKAGE      | 68   | 
+ standard      | PACKAGE      | 69   |   -- exception for ref cursors
+ standard      | PACKAGE      | 70   |   ROWTYPE_MISMATCH exception;
+ standard      | PACKAGE      | 71   |   pragma EXCEPTION_INIT(ROWTYPE_MISMATCH, -6504);
+ standard      | PACKAGE      | 72   | 
+ standard      | PACKAGE      | 73   |   SYS_INVALID_ROWID  EXCEPTION;
+ standard      | PACKAGE      | 74   |   PRAGMA EXCEPTION_INIT(SYS_INVALID_ROWID, -1410);
+ standard      | PACKAGE      | 75   | 
+ standard      | PACKAGE      | 76   |   -- The object instance i.e. SELF is null
+ standard      | PACKAGE      | 77   |   SELF_IS_NULL exception;
+ standard      | PACKAGE      | 78   |     pragma EXCEPTION_INIT(SELF_IS_NULL, -30625);
+ standard      | PACKAGE      | 79   | 
+ standard      | PACKAGE      | 80   |   CASE_NOT_FOUND exception;
+ standard      | PACKAGE      | 81   |     pragma EXCEPTION_INIT(CASE_NOT_FOUND, -6592);
+ standard      | PACKAGE      | 82   | 
+ standard      | PACKAGE      | 83   |   -- Added for USERENV enhancement, bug 1622213.
+ standard      | PACKAGE      | 84   |   USERENV_COMMITSCN_ERROR exception;
+ standard      | PACKAGE      | 85   |     pragma EXCEPTION_INIT(USERENV_COMMITSCN_ERROR, -1725);
+ standard      | PACKAGE      | 86   | 
+ standard      | PACKAGE      | 87   |   -- Parallel and pipelined support
+ standard      | PACKAGE      | 88   |   NO_DATA_NEEDED exception;
+ standard      | PACKAGE      | 89   |     pragma EXCEPTION_INIT(NO_DATA_NEEDED, -6548);
+ standard      | PACKAGE      | 90   |   -- End of 8.2 parallel and pipelined support
+ standard      | PACKAGE      | 91   | 
+ standard      | PACKAGE      | 92   |   /********** Add new exceptions here **********/
+ standard      | PACKAGE      | 93   | 
+ standard      | PACKAGE      | 94   |   /********** Function, operators and procedures **********/
+ standard      | PACKAGE      | 95   |   function SQLCODE return integer;
+ standard      | PACKAGE      | 96   | 
+ standard      | PACKAGE      | 97   |   function SQLERRM return varchar2;
+ standard      | PACKAGE      | 98   | 
+ standard      | PACKAGE      | 99   |   function SQLERRM (code number) return varchar2;
+ standard      | PACKAGE      | 100  | end;
+ standard      | PACKAGE BODY | 1    | PACKAGE BODY standard IS
+ standard      | PACKAGE BODY | 2    | FUNCTION SQLCODE RETURN integer IS
+ standard      | PACKAGE BODY | 3    |         BEGIN
+ standard      | PACKAGE BODY | 4    |                 RETURN plisql_sqlcode();
+ standard      | PACKAGE BODY | 5    |         end;
+ standard      | PACKAGE BODY | 6    |         FUNCTION sqlerrm RETURN varchar2 IS
+ standard      | PACKAGE BODY | 7    |         BEGIN
+ standard      | PACKAGE BODY | 8    |                 RETURN plisql_sqlerrm();
+ standard      | PACKAGE BODY | 9    |         end;
+ standard      | PACKAGE BODY | 10   |         FUNCTION sqlerrm(code number) RETURN varchar2 IS
+ standard      | PACKAGE BODY | 11   |         BEGIN
+ standard      | PACKAGE BODY | 12   |                 RETURN plisql_sqlerrm(code::integer);
+ standard      | PACKAGE BODY | 13   |         end;
+ standard      | PACKAGE BODY | 14   | end;
+ test_pkg      | PACKAGE      | 1    | PACKAGE test_pkg IS
+ test_pkg      | PACKAGE      | 2    | var1 integer;
+ test_pkg      | PACKAGE      | 3    |   FUNCTION test_f(id integer DEFAULT 23) RETURN integer;
+ test_pkg      | PACKAGE      | 4    |   PROCEDURE test_pp(id integer);
+ test_pkg      | PACKAGE      | 5    |   PROCEDURE test_pp1;
+ test_pkg      | PACKAGE      | 6    |   FUNCTION test_f1 RETURN integer;
+ test_pkg      | PACKAGE      | 7    | end;
+ test_pkg      | PACKAGE BODY | 1    | PACKAGE BODY test_pkg IS
+ test_pkg      | PACKAGE BODY | 2    | FUNCTION test_f(id integer DEFAULT 23) RETURN integer IS
+ test_pkg      | PACKAGE BODY | 3    |   BEGIN
+ test_pkg      | PACKAGE BODY | 4    |      RETURN 23;
+ test_pkg      | PACKAGE BODY | 5    |   end;
+ test_pkg      | PACKAGE BODY | 6    |   PROCEDURE test_pp(id integer) IS
+ test_pkg      | PACKAGE BODY | 7    |   BEGIN
+ test_pkg      | PACKAGE BODY | 8    |     var1 := 23;
+ test_pkg      | PACKAGE BODY | 9    |   end;
+ test_pkg      | PACKAGE BODY | 10   |   PROCEDURE test_pp1 IS
+ test_pkg      | PACKAGE BODY | 11   |   BEGIN
+ test_pkg      | PACKAGE BODY | 12   |      var1 := 24;
+ test_pkg      | PACKAGE BODY | 13   |   end;
+ test_pkg      | PACKAGE BODY | 14   |   FUNCTION test_f1 RETURN integer IS
+ test_pkg      | PACKAGE BODY | 15   |   BEGIN
+ test_pkg      | PACKAGE BODY | 16   |     RETURN var1;
+ test_pkg      | PACKAGE BODY | 17   |   end;
+ test_pkg      | PACKAGE BODY | 18   | BEGIN
+ test_pkg      | PACKAGE BODY | 19   |    var1 := 56;
+ test_pkg      | PACKAGE BODY | 20   | end;
+ test_pkg1     | PACKAGE      | 1    | PACKAGE test_pkg1 IS
+ test_pkg1     | PACKAGE      | 2    | var1 integer;
+ test_pkg1     | PACKAGE      | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer;
+ test_pkg1     | PACKAGE      | 4    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie');
+ test_pkg1     | PACKAGE      | 5    | end;
+ test_pkg1     | PACKAGE BODY | 1    | PACKAGE BODY test_pkg1 IS
+ test_pkg1     | PACKAGE BODY | 2    | var2 integer;
+ test_pkg1     | PACKAGE BODY | 3    |   FUNCTION test_pkg1_f(id integer) RETURN integer IS
+ test_pkg1     | PACKAGE BODY | 4    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 5    |      RETURN id;
+ test_pkg1     | PACKAGE BODY | 6    |   END test_pkg1_f;
+ test_pkg1     | PACKAGE BODY | 7    |   PROCEDURE test_pkg1_p(id integer,name varchar2 DEFAULT 'xiexie') IS
+ test_pkg1     | PACKAGE BODY | 8    |   BEGIN
+ test_pkg1     | PACKAGE BODY | 9    |      var2 := 23;
+ test_pkg1     | PACKAGE BODY | 10   |   END test_pkg1_p;
+ test_pkg1     | PACKAGE BODY | 11   |   function test_pkg1_private(id integer) return integer is
+ test_pkg1     | PACKAGE BODY | 12   |   begin
+ test_pkg1     | PACKAGE BODY | 13   |      return id;
+ test_pkg1     | PACKAGE BODY | 14   |   end;
+ test_pkg1     | PACKAGE BODY | 15   | end;
+(177 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name   |     type     | line |                           text                           
@@ -6063,30 +6890,42 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 (27 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
- test_pkg    | test_f1        | 4             | PACKAGE     | DEFINER
- test_pkg    | test_pp        | 2             | PACKAGE     | DEFINER
- test_pkg    | test_pp1       | 3             | PACKAGE     | DEFINER
- test_pkg    |                | 0             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(8 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
+ test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
+ test_pkg      | test_pp                 | 2             | PACKAGE     | DEFINER
+ test_pkg      | test_pp1                | 3             | PACKAGE     | DEFINER
+ test_pkg      |                         | 0             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(14 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
- object_name | procedure_name | subprogram_id | object_type | authid  
--------------+----------------+---------------+-------------+---------
- test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
- test_pkg    | test_f1        | 4             | PACKAGE     | DEFINER
- test_pkg    | test_pp        | 2             | PACKAGE     | DEFINER
- test_pkg    | test_pp1       | 3             | PACKAGE     | DEFINER
- test_pkg    |                | 0             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_f    | 1             | PACKAGE     | DEFINER
- test_pkg1   | test_pkg1_p    | 2             | PACKAGE     | DEFINER
- test_pkg1   |                | 0             | PACKAGE     | DEFINER
-(8 rows)
+  object_name  |     procedure_name      | subprogram_id | object_type |    authid    
+---------------+-------------------------+---------------+-------------+--------------
+ dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
+ dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      |                         | 0             | PACKAGE     | CURRENT_USER
+ test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
+ test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
+ test_pkg      | test_pp                 | 2             | PACKAGE     | DEFINER
+ test_pkg      | test_pp1                | 3             | PACKAGE     | DEFINER
+ test_pkg      |                         | 0             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
+ test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
+ test_pkg1     |                         | 0             | PACKAGE     | DEFINER
+(14 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -6099,30 +6938,44 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 (5 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(8 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
- object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p | test_pkg1    | 2             | name          | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(8 rows)
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 

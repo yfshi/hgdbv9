@@ -4,3 +4,33 @@
 ALTER LANGUAGE plisql OWNER TO @extowner@;
 
 COMMENT ON LANGUAGE plisql IS 'PL/iSQL procedural language';
+
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+CREATE FUNCTION sys.plisql_sqlerrm(integer)
+RETURNS text
+AS 'MODULE_PATHNAME', 'plisql_sqlerrm_int4'
+LANGUAGE C STRICT;
+
+
+CREATE FUNCTION sys.plisql_sqlcode()
+RETURNS integer
+AS 'MODULE_PATHNAME', 'plisql_sqlcode'
+LANGUAGE C;
+
+CREATE FUNCTION sys.plisql_error_stack()
+RETURNS text
+AS 'MODULE_PATHNAME', 'plisql_error_stack'
+LANGUAGE C;
+
+CREATE FUNCTION sys.plisql_sqlerrm()
+RETURNS text
+AS 'MODULE_PATHNAME', 'plisql_sqlerrm'
+LANGUAGE C;
+
+CREATE PROCEDURE sys.plisql_raise_application_error(integer,
+text,
+boolean)
+AS 'MODULE_PATHNAME', 'plisql_raise_application_error'
+LANGUAGE C;
+/* End - ReqID:SRS-PLSQL-EXCEPTION */

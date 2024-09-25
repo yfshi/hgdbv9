@@ -401,9 +401,15 @@ extern PGDLLIMPORT bool check_strong_cursor_assign;
 extern int	open_cursors;
 extern bool enable_cursor_as_column_type;
 /* End - ReqID:SRS-PLSQL-CURSOR */
+
 /* Begin - BUG#M0000376 */
 extern PGDLLIMPORT bool enable_get_oraparam_mode;
 /* End - BUG#M0000376 */
+
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern PGDLLIMPORT char *plsql_warnings;
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

@@ -1184,7 +1184,7 @@ get_package_bodyid(Oid pkgoid, bool miss_ok)
 
 /*
  * forbide some special names
- * we only allow standard name in sys at current
+ * we only allow standard and dbms_standard name in sys at current
  */
 void
 check_package_name(Oid nspname, char *newpkgname, char *oldpkgname)
@@ -1195,6 +1195,15 @@ check_package_name(Oid nspname, char *newpkgname, char *oldpkgname)
 	if (oldpkgname != NULL &&
 		strcmp(oldpkgname, "standard") == 0)
 		elog(ERROR, "this name is currently reserved for use by user SYS");
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	/* check for dmbs_standard */
+	if (nspname != PG_SYS_NAMESPACE &&
+		strcmp(newpkgname, "dbms_standard") == 0)
+		elog(ERROR, "this name is currently reserved for use by user SYS");
+	if (oldpkgname != NULL &&
+		strcmp(oldpkgname, "dbms_standard") == 0)
+		elog(ERROR, "this name is currently reserved for use by user SYS");
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 }
 
 /*

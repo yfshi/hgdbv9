@@ -1,5 +1,6 @@
 --test implicit cursor
 --ok
+SET plisql.plisql_default_into_strict = false;
 set ivorysql.check_strong_cursor_assign = false;
 SET plisql.plisql_cursor_name_exclude_oid = true;
 CREATE TABLE departments(department_id integer,

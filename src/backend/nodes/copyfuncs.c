@@ -2859,6 +2859,10 @@ _copyAConst(const A_Const *from)
 		case T_Integer:
 			COPY_SCALAR_FIELD(val.val.ival);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+		case T_BFloat: /* BUG:Z093 */
+		case T_BDouble: /* BUG:Z093 */
+		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		case T_Float:
 		case T_String:
 		case T_BitString:

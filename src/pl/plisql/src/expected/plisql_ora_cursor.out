@@ -1,5 +1,6 @@
 --test implicit cursor
 --ok
+SET plisql.plisql_default_into_strict = false;
 SET plisql.plisql_cursor_name_exclude_oid = true;
 CREATE TABLE departments(department_id integer,
 department_name varchar2(256),location_id number(38, 0));
@@ -2725,7 +2726,7 @@ BEGIN
  END if;
 end;
 /
-ERROR:  invalid input syntax for type integer: "meigong"
+ERROR:  Return rowtype or query do not match
 CONTEXT:  PL/iSQL function inline_code_block line 11 at FETCH
 INSERT INTO jobs VALUES(1,'yanfa');
 INSERT INTO jobs VALUES(2,'guanli');

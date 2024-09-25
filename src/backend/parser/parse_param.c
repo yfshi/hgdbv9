@@ -935,7 +935,7 @@ recalculate_oraparamname_position(char ***paramnames,
 	int i;
 	char **oraparamnames;
 	/* Begin - BUG#M0000376 */
-	char *oraparammodes;
+	char *oraparammodes = NULL;
 	/* End - BUG#M0000376 */
 
 	if (CurrentOraParamNode == NULL)

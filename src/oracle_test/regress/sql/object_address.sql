@@ -3,6 +3,7 @@
 --
 
 set ivorysql.enable_emptystring_to_null to false;
+SET plisql.plisql_sqlerrm_use_oracle = false;
 -- Clean up in case a prior regression run failed
 SET client_min_messages TO 'warning';
 DROP ROLE IF EXISTS regress_addr_user;

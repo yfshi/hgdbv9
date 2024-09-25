@@ -219,6 +219,11 @@ extern int	internalerrquery(const char *query);
 
 extern int	err_generic_string(int field, const char *str);
 
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+extern int err_generic_exception_datum(void *excepdatum);
+extern int err_generic_nokeeperrorstack(bool keeperrorstack);
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
 extern int	geterrcode(void);
 extern int	geterrposition(void);
 extern int	getinternalerrposition(void);
@@ -398,6 +403,10 @@ typedef struct ErrorData
 
 	/* context containing associated non-constant strings */
 	struct MemoryContextData *assoc_context;
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	void		*excep_datum;	/* the user define exception address */
+	bool		nokeeperrorstack; /* should no keep error stack */
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 } ErrorData;
 
 extern void EmitErrorReport(void);

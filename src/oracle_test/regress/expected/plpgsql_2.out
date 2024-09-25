@@ -21,6 +21,8 @@
 --     or into a room.
 --
 set ivorysql.enable_emptystring_to_null to false;
+SET plisql.plisql_name_composite_type_var_assign_check = false;
+SET plisql.plisql_default_into_strict = false;
 create table Room (
     roomno	char(8),
     comment	text

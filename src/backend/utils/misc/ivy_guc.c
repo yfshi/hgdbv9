@@ -168,6 +168,9 @@ bool	enable_cursor_as_column_type = false;
 /* Begin - BUG#M0000376 */
 bool	enable_get_oraparam_mode = false;
 /* End - BUG#M0000376 */
+/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+char	*plsql_warnings = "";
+/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
 #endif
 
@@ -896,6 +899,18 @@ static struct config_string Ivy_ConfigureNamesString[] =
 		dblink_using_fdw_check, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+	{
+		{"plsql_warnings", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Compatible Oracle plsql_warnings."     ),
+			NULL,
+			GUC_LIST_INPUT
+		},
+		&plsql_warnings,
+		"",
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #endif
 #if 0
 	/* End-of-list marker */

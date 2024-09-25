@@ -30,7 +30,7 @@
 
 #define INVALID_NLS ereport(ERROR, (errmsg("invalid NLS parameter string " \
 										   "used in SQL Function")))
-#define INVALID_NUMBER ereport(ERROR, (errmsg("invalid number")))
+#define INVALID_NUMBER ereport(ERROR, (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),(errmsg("invalid number"))))
 #define NUMERIC_OVERFLOW ereport(ERROR, (errmsg("numeric overflow")))
 
 typedef struct FormatElems

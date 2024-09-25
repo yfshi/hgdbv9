@@ -1,7 +1,7 @@
 --
 -- Test error trapping
 --
-
+SET plisql.plisql_default_into_strict = false;
 create function trap_zero_divide(int) returns int as $$
 declare x int;
 	sx smallint;

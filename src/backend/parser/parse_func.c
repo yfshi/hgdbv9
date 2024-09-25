@@ -364,6 +364,25 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			list_free(new_funcname);
 			if (fdresult != FUNCDETAIL_NOTFOUND)
 				function_from = FUNC_FROM_PACKAGE;
+			/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+			/* lookup dbms_standard package func */
+			if (fdresult == FUNCDETAIL_NOTFOUND)
+			{
+				List *new_funcname = lcons(makeString("dbms_standard"), copyObject(funcname));
+
+				fdresult = LookupPkgFunc(pstate, new_funcname, &fargs, argnames, nargs,
+												actual_arg_types,
+												!func_variadic, true, proc_call,
+												&funcid, &rettype, &retset,
+												&nvargs, &vatype,
+												&declared_arg_types, &argdefaults,
+												&pfunc, &pkgoid,
+												true, has_udt_type);
+				list_free(new_funcname);
+				if (fdresult != FUNCDETAIL_NOTFOUND)
+					function_from = FUNC_FROM_PACKAGE;
+			}
+			/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		}
 	}
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
