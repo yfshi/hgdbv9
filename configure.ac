@@ -218,6 +218,37 @@ elif test "$default_ora_port" -lt "1" -o "$default_ora_port" -gt "65535"; then
   AC_MSG_ERROR([invalid --with-oraport specification: must be between 1 and 65535])
 fi
 
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+# Default port number (--with-mysport), default 3306
+#
+AC_MSG_CHECKING([for default port number in mysql compatible mode])
+PGAC_ARG_REQ(with, mysport, [PORTNUM], [set default port number for mysql [3306]],
+             [default_mys_port=$withval],
+             [default_mys_port=1521])
+AC_MSG_RESULT([$default_mys_port])
+# Need both of these because some places want an integer and some a string
+AC_DEFINE_UNQUOTED(DEF_MYSPORT, ${default_mys_port},
+[Define to the default TCP port number on which the server listens and
+to which clients will try to connect.  This can be overridden at run-time,
+but it's convenient if your clients have the right default compiled in.
+(--with-mysport=PORTNUM)])
+AC_DEFINE_UNQUOTED(DEF_MYSPORT_STR, "${default_mys_port}",
+                   [Define to the default TCP port number as a string constant.])
+AC_SUBST(default_mys_port)
+
+# It's worth validating port; you can get very confusing errors otherwise
+if test x"$default_mys_port" = x""; then
+  AC_MSG_ERROR([invalid --with-mysport specification: empty string])
+elif test ! x`echo "$default_mys_port" | sed -e 's/[[0-9]]*//'` = x""; then
+  AC_MSG_ERROR([invalid --with-mysport specification: must be a number])
+elif test ! x`echo "$default_mys_port" | sed -e 's/^0.//'` = x"$default_mys_port"; then
+  AC_MSG_ERROR([invalid --with-mysport specification: must not have leading 0])
+elif test "$default_mys_port" -lt "1" -o "$default_mys_port" -gt "65535"; then
+  AC_MSG_ERROR([invalid --with-mysport specification: must be between 1 and 65535])
+fi
+
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 #
 # '-rpath'-like feature can be disabled
 #

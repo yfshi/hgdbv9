@@ -18,12 +18,14 @@ extern bool EnableSSL;
 extern int	ReservedBackends;
 extern PGDLLIMPORT int PostPortNumber;
 extern PGDLLIMPORT int OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
+extern PGDLLIMPORT int MysPortNumber;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 extern int	Unix_socket_permissions;
 extern char *Unix_socket_group;
 extern char *Unix_socket_directories;
 extern char *ListenAddresses;
 extern char *OraListenAddresses;		/* ReqID:LISTEN-MULTI-PORT */
+extern char *MysListenAddresses;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 extern bool ClientAuthInProgress;
 extern int	PreAuthDelay;
 extern int	AuthenticationTimeout;

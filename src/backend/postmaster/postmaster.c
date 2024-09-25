@@ -217,6 +217,7 @@ BackgroundWorker *MyBgworkerEntry = NULL;
 /* The socket number we are listening for connections on */
 int			PostPortNumber;
 int			OraPortNumber;	/* ReqID:LISTEN-MULTI-PORT */
+int			MysPortNumber;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 
 /* The directory names for Unix socket(s) */
@@ -225,6 +226,8 @@ char	   *Unix_socket_directories;
 /* The TCP listen address(es) */
 char	   *ListenAddresses;
 char	   *OraListenAddresses;	/* ReqID:LISTEN-MULTI-PORT */
+char	   *MysListenAddresses;	/* ReqID:SRS-MISC-MYSQL-FRAME */
+
 
 /*
  * ReservedBackends is the number of backends reserved for superuser use.
@@ -731,7 +734,7 @@ PostmasterMain(int argc, char *argv[])
 	 * tcop/postgres.c (the option sets should not conflict) and with the
 	 * common help() function in main/main.c.
 	 */
-	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:nOo:Pp:r:S:sTt:W:-:")) != -1)	/* ReqID:LISTEN-MULTI-PORT */
+	while ((opt = getopt(argc, argv, "B:bc:C:D:d:EeFf:h:ijk:lN:m:nOo:Pp:r:S:sTt:W:-:")) != -1)	/* ReqID:LISTEN-MULTI-PORT SRS-MISC-MYSQL-FRAME */
 	{
 		switch (opt)
 		{
@@ -797,6 +800,11 @@ PostmasterMain(int argc, char *argv[])
 				SetConfigOption("ssl", "true", PGC_POSTMASTER, PGC_S_ARGV);
 				break;
 
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
+			case 'm':
+				SetConfigOption("mysql.port", optarg, PGC_POSTMASTER, PGC_S_ARGV);
+				break;
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME  */
 			case 'N':
 				SetConfigOption("max_connections", optarg, PGC_POSTMASTER, PGC_S_ARGV);
 				break;
@@ -1312,6 +1320,68 @@ PostmasterMain(int argc, char *argv[])
 	}
 	/* End - ReqID:LISTEN-MULTI-PORT */
 
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
+	if (DB_PG != database_mode && DB_ORACLE != database_mode &&
+		MysListenAddresses)
+	{
+		char	   *rawstring;
+		List	   *elemlist;
+		ListCell   *l;
+		int 		success = 0;
+
+		/* Need a modifiable copy of ListenAddresses */
+		rawstring = pstrdup(MysListenAddresses);
+
+		/* Parse string into list of hostnames */
+		if (!SplitGUCList(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"listen_addresses")));
+		}
+
+		foreach(l, elemlist)
+		{
+			char	   *curhost = (char *) lfirst(l);
+
+			if (strcmp(curhost, "*") == 0)
+				status = StreamServerPort(AF_UNSPEC, NULL,
+										  (unsigned short) MysPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN);
+			else
+				status = StreamServerPort(AF_UNSPEC, curhost,
+										  (unsigned short) MysPortNumber,
+										  NULL,
+										  ListenSocket, MAXLISTEN);
+
+			if (status == STATUS_OK)
+			{
+				success++;
+				/* record the first successful host addr in lockfile */
+				if (!listen_addr_saved)
+				{
+					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
+					listen_addr_saved = true;
+				}
+			}
+			else
+				ereport(WARNING,
+						(errmsg("could not create listen socket for \"%s\"",
+								curhost)));
+		}
+
+		if (!success && elemlist != NIL)
+			ereport(FATAL,
+					(errmsg("could not create any Mysql TCP/IP sockets")));
+
+		list_free(elemlist);
+		pfree(rawstring);
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
 #ifdef USE_BONJOUR
 	/* Register for Bonjour only if we opened TCP socket(s) */
 	if (enable_bonjour && ListenSocket[0] != PGINVALID_SOCKET)
@@ -1431,6 +1501,37 @@ PostmasterMain(int argc, char *argv[])
 		}
 		/* End - ReqID:LISTEN-MULTI-PORT */
 
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME, Mysql unix domain socket */
+		if (DB_PG != database_mode && DB_ORACLE != database_mode)
+		{
+			success = 0;
+			foreach(l, elemlist)
+			{
+				char	   *socketdir = (char *) lfirst(l);
+
+				status = StreamServerPort(AF_UNIX, NULL,
+										  (unsigned short) MysPortNumber,
+										  socketdir,
+										  ListenSocket, MAXLISTEN);
+
+				if (status == STATUS_OK)
+				{
+					success++;
+					/* record the first successful Unix socket in lockfile */
+					if (success == 1)
+						AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
+				}
+				else
+					ereport(WARNING,
+							(errmsg("could not create MySQL Unix-domain socket in directory \"%s\"",
+									socketdir)));
+			}
+
+			if (!success && elemlist != NIL)
+				ereport(FATAL,
+						(errmsg("could not create any MySQL Unix-domain sockets")));
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		list_free_deep(elemlist);
 		pfree(rawstring);
 	}
@@ -4696,9 +4797,11 @@ BackendInitialize(Port *port)
 	{
 		char	PostPortNumberStr[32];
 		char	OraPortNumberStr[32];
+		char	MysPortNumberStr[32];	/* ReqID:SRS-MISC-MYSQL-FRAME */
 		
 		snprintf(PostPortNumberStr, sizeof(PostPortNumberStr), "%d", PostPortNumber);
 		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
+		snprintf(MysPortNumberStr, sizeof(MysPortNumberStr), "%d", MysPortNumber);		/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 		if (strstr(service, PostPortNumberStr) != NULL)
 		{
@@ -4708,6 +4811,12 @@ BackendInitialize(Port *port)
 		{
 			port->connmode = 'o';
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if(strstr(service, MysPortNumberStr) != NULL)
+		{
+			port->connmode = 'm';
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 			port->connmode = 'u';
 	}
@@ -4721,6 +4830,12 @@ BackendInitialize(Port *port)
 		{
 			port->connmode = 'o';
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (localport == MysPortNumber)
+		{
+			port->connmode = 'm';
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 			port->connmode = 'u';
 	}

@@ -218,6 +218,9 @@ sub GenerateFiles
 	$extraver = '' unless defined $extraver;
 	my $port = $self->{options}->{"--with-pgport"} || 5432;
 	my $oraport = $self->{options}->{"--with-oraport"} || 1521;
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $mysport = $self->{options}->{"--with-mysport"} || 3306;
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	# Every symbol in pg_config.h.in must be accounted for here.  Set
 	# to undef if the symbol should not be defined.

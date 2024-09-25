@@ -132,6 +132,13 @@
 #undef IVY_GUC_VAR_DEFINE
 /* End - ReqID:SRS-MISC-GUC */
 
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+#define IVY_MY_GUC_VAR_DEFINE
+#include "ivy_mysql_guc.c"
+#undef IVY_MY_GUC_VAR_DEFINE
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
+
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
 #endif
@@ -3671,6 +3678,12 @@ static struct config_int ConfigureNamesInt[] =
 	#include "ivy_guc.c"
 	#undef IVY_GUC_INT_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
+
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	#define IVY_MY_GUC_INT_PARAMS
+	#include "ivy_mysql_guc.c"
+	#undef IVY_MY_GUC_INT_PARAMS
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, 0, 0, 0, NULL, NULL, NULL
@@ -4727,6 +4740,12 @@ static struct config_string ConfigureNamesString[] =
 	#include "ivy_guc.c"
 	#undef IVY_GUC_STRING_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
+
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	#define IVY_MY_GUC_STRING_PARAMS
+	#include "ivy_mysql_guc.c"
+	#undef IVY_MY_GUC_STRING_PARAMS
+	/* End - ReqID:SSRS-MISC-MYSQL-FRAME */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, NULL, NULL, NULL, NULL
