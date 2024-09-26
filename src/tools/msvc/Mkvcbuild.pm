@@ -370,11 +370,11 @@ sub mkvcbuild
 	$libparser_mysql->AddFiles('src/backend/mysql_parser', 'mys_scan.l', 'mys_gram.y');
 	$libparser_mysql->AddReference($postgres);
 
-	#my $plmysql =
-	#  $solution->AddProject('plmysql', 'dll', 'PLs', 'src/pl/plmysql/src');
-	#$plmysql->AddPrefixInclude('src/include/mysqle_parser');
-	#$plmysql->AddFiles('src/pl/plmysql/src', 'pl_gram.y');
-	#$plmysql->AddReference($postgres, $libparser_mysql);
+	my $plmysql =
+	  $solution->AddProject('plmysql', 'dll', 'PLs', 'src/pl/plmysql/src');
+	$plmysql->AddPrefixInclude('src/include/mysqle_parser');
+	$plmysql->AddFiles('src/pl/plmysql/src', 'pl_gram.y');
+	$plmysql->AddReference($postgres, $libparser_mysql);
 	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	my $pgoutput = $solution->AddProject('pgoutput', 'dll', '',

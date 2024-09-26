@@ -734,6 +734,17 @@ sub GenerateFiles
         }
 	# END - SQL PARSER
 
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer(
+                        'src/pl/plmysql/src/plerrcodes.h', 'src/backend/utils/mys_errcodes.txt'))
+        {
+                        print "Generating PL/mySQL's plerrcodes.h...\n";
+                        system(
+                                'perl src/pl/plmysql/src/generate-plerrcodes.pl src/backend/utils/mys_errcodes.txt > src/pl/plmysql/src/plerrcodes.h'
+                );
+        }
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	if ($self->{options}->{tcl}
 		&& IsNewer(
 			'src/pl/tcl/pltclerrcodes.h', 'src/backend/utils/errcodes.txt'))
@@ -819,6 +830,27 @@ sub GenerateFiles
 		chdir('../../../..');
 	}
 	# END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer(
+			'src/pl/plmysql/src/pl_reserved_kwlist_d.h',
+			'src/pl/plmysql/src/pl_reserved_kwlist.h')
+		|| IsNewer(
+			'src/pl/plmysql/src/pl_unreserved_kwlist_d.h',
+			'src/pl/plmysql/src/pl_unreserved_kwlist.h'))
+	{
+		print
+		  "Generating Mysql compatibility pl_reserved_kwlist_d.h and pl_unreserved_kwlist_d.h...\n";
+		chdir('src/pl/plmysql/src');
+		system(
+			'perl -I ../../../tools ../../../tools/gen_keywordlist.pl --varname ReservedPLKeywords pl_reserved_kwlist.h'
+		);
+		system(
+			'perl -I ../../../tools ../../../tools/gen_keywordlist.pl --varname UnreservedPLKeywords pl_unreserved_kwlist.h'
+		);
+		chdir('../../../..');
+	}
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	if (IsNewer(
 			'src/interfaces/ecpg/preproc/c_kwlist_d.h',

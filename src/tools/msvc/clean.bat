@@ -37,6 +37,9 @@ if exist src\pl\plperl\win32ver.rc del /q src\pl\plperl\win32ver.rc
 if exist src\pl\plpgsql\src\win32ver.rc del /q src\pl\plpgsql\src\win32ver.rc
 REM BEGIN - SQL PARSER
 if exist src\pl\plisql\src\win32ver.rc del /q src\pl\plisql\src\win32ver.rc
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if exist src\pl\plmysql\src\win32ver.rc del /q src\pl\plmysql\src\win32ver.rc
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if exist src\pl\plpython\win32ver.rc del /q src\pl\plpython\win32ver.rc
 if exist src\pl\tcl\win32ver.rc del /q src\pl\tcl\win32ver.rc
@@ -88,6 +91,9 @@ if %DIST%==1 if exist src\pl\plpgsql\src\plerrcodes.h del /q src\pl\plpgsql\src\
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\pl\plisql\src\plerrcodes.h del /q src\pl\plisql\src\plerrcodes.h
 REM END - SQL PARSER
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if %DIST%==1 if exist src\pl\plmysql\src\plerrcodes.h del /q src\pl\plmysql\src\plerrcodes.h
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 if %DIST%==1 if exist src\pl\tcl\pltclerrcodes.h del /q src\pl\tcl\pltclerrcodes.h
 if %DIST%==1 if exist src\bin\psql\sql_help.c del /q src\bin\psql\sql_help.c
 if %DIST%==1 if exist src\bin\psql\sql_help.h del /q src\bin\psql\sql_help.h
@@ -104,6 +110,10 @@ REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\pl\plisql\src\pl_reserved_kwlist_d.h del /q src\pl\plisql\src\pl_reserved_kwlist_d.h
 if %DIST%==1 if exist src\pl\plisql\src\pl_unreserved_kwlist_d.h del /q src\pl\plisql\src\pl_unreserved_kwlist_d.h
 REM END - SQL PARSER
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\pl\plmysql\src\pl_reserved_kwlist_d.h del /q src\pl\plmysql\src\pl_reserved_kwlist_d.h
+if %DIST%==1 if exist src\pl\plmysql\src\pl_unreserved_kwlist_d.h del /q src\pl\plmysql\src\pl_unreserved_kwlist_d.h
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 if %DIST%==1 if exist src\interfaces\ecpg\preproc\c_kwlist_d.h del /q src\interfaces\ecpg\preproc\c_kwlist_d.h
 if %DIST%==1 if exist src\interfaces\ecpg\preproc\ecpg_kwlist_d.h del /q src\interfaces\ecpg\preproc\ecpg_kwlist_d.h
 if %DIST%==1 if exist src\interfaces\ecpg\preproc\preproc.y del /q src\interfaces\ecpg\preproc\preproc.y
@@ -163,10 +173,16 @@ if %DIST%==1 if exist src\pl\plpgsql\src\pl_gram.c del /q src\pl\plpgsql\src\pl_
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\pl\plisql\src\pl_gram.c del /q src\pl\plisql\src\pl_gram.c
 REM END - SQL PARSER
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\pl\plmysql\src\pl_gram.c del /q src\pl\plmysql\src\pl_gram.c
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
 if %DIST%==1 if exist src\pl\plpgsql\src\pl_gram.h del /q src\pl\plpgsql\src\pl_gram.h
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\pl\plisql\src\pl_gram.h del /q src\pl\plisql\src\pl_gram.h
 REM END - SQL PARSER
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\pl\plmysql\src\pl_gram.h del /q src\pl\plmysql\src\pl_gram.h
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
 
 if %DIST%==1 if exist src\fe_utils\psqlscan.c del /q src\fe_utils\psqlscan.c
 if %DIST%==1 if exist src\bin\psql\psqlscanslash.c del /q src\bin\psql\psqlscanslash.c

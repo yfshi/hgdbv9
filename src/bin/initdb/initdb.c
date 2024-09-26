@@ -295,6 +295,9 @@ static void load_plpgsql(FILE *cmdfd);
 /* BEGIN - SQL PARSER */
 static void load_plisql(FILE *cmdfd);
 /* END - SQL PARSER */
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+static void load_plmysql(FILE *cmdfd);
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
@@ -2126,6 +2129,15 @@ load_plisql(FILE *cmdfd)
 }
 /* END - SQL PARSER */
 
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+/* load plmysql language */
+static void
+load_plmysql(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION plmysql;\n\n");
+}
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
 /* BEGIN - SRS-MISC-GB18030 */
 static void
 load_gb18030_2022(FILE *cmdfd)
@@ -3306,6 +3318,12 @@ initialize_data_directory(void)
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (database_mode == DB_MYSQL)
+	{
+		load_plmysql(cmdfd);
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */
 
 	vacuum_db(cmdfd);

@@ -185,6 +185,9 @@ sub Install
 		# BEGIN - SQL PARSER
 		push @pldirs, "src/pl/plisql/src";
 		# END - SQL PARSER
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+		push @pldirs, "src/pl/plmysql/src";
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		push @pldirs, "src/pl/plperl"   if $config->{perl};
 		push @pldirs, "src/pl/plpython" if $config->{python};
 		push @pldirs, "src/pl/tcl"      if $config->{tcl};
@@ -716,6 +719,12 @@ sub CopyIncludeFiles
 		$target . '/include/server/',
 		'src/pl/plisql/src/', 'plisql.h');
 	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	CopyFiles(
+		'PL/mySQL header',
+		$target . '/include/server/',
+		'src/pl/plmysql/src/', 'plmysql.h');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	# some xcopy progs don't like mixed slash style paths
 	(my $ctarget = $target) =~ s!/!\\!g;
 	while (my $d = readdir($D))
