@@ -24,6 +24,11 @@
 #include "fe_utils/psqlscan_int.h"
 #include "ora_prompt.h"		/* ReqID:SRS-SQL-ESCAPECHAR */
 /* End - ReqID:SRS-PSQL-PARSER */
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+#include "mysql_fe_utils/mys_string_utils.h"
+#include "mysql_fe_utils/mys_psqlscan.h"
+#include "mys_prompt.h"
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 /* callback functions for our flex lexer */
 const PsqlScanCallbacks psqlscan_callbacks = {
@@ -35,6 +40,12 @@ const Ora_psqlScanCallbacks Ora_psqlscan_callbacks = {
 	ora_psql_get_variable,
 };
 /* End - ReqID:SRS-PSQL-PARSER */
+
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+const Mys_psqlScanCallbacks Mys_psqlscan_callbacks = {
+	mys_psql_get_variable,
+};
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 
 /*
@@ -49,6 +60,7 @@ MainLoop(FILE *source)
 {
 	PsqlScanState scan_state;	/* lexer working state */
 	PsqlScanState ora_scan_state;	/* oracle lexer working state */ /* ReqID:SRS-PSQL-PARSER */
+	PsqlScanState mys_scan_state;	/* mysql lexer working state */ /* ReqID:SRS-MISC-MYSQL-FRAME */
 	ConditionalStack cond_stack;	/* \if status stack */
 	volatile PQExpBuffer query_buf; /* buffer for query being accumulated */
 	volatile PQExpBuffer previous_buf;	/* if there isn't anything in the new
@@ -92,6 +104,12 @@ MainLoop(FILE *source)
 	ora_scan_state = ora_psql_scan_create(&Ora_psqlscan_callbacks);
 	ora_psql_scan_set_passthrough(ora_scan_state, (void *) cond_stack);
 	/* End - ReqID:SRS-PSQL-PARSER */
+
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	/* MySQL working state */
+	mys_scan_state = mys_psql_scan_create(&Mys_psqlscan_callbacks);
+	mys_psql_scan_set_passthrough(mys_scan_state, (void *) cond_stack);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 	query_buf = createPQExpBuffer();
 	previous_buf = createPQExpBuffer();
@@ -145,6 +163,12 @@ MainLoop(FILE *source)
 			ora_psql_scan_reset(ora_scan_state);
 			/* End - ReqID:SRS-PSQL-PARSER */
 
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			/* reset oracle parsing state */
+			mys_psql_scan_finish(mys_scan_state);
+			mys_psql_scan_reset(mys_scan_state);
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
 			resetPQExpBuffer(query_buf);
 			resetPQExpBuffer(history_buf);
 			count_eof = 0;
@@ -188,6 +212,10 @@ MainLoop(FILE *source)
 				/* Begin - ReqID:SRS-SQL-ESCAPECHAR */
 				if(db_mode == DB_ORACLE)
 					prompt_status = ORAPROMPT_READY;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if(db_mode == DB_MYSQL)
+					prompt_status = MYSPROMPT_READY;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else
 					prompt_status = PROMPT_READY;
 				/* End - ReqID:SRS-SQL-ESCAPECHAR */
@@ -200,6 +228,10 @@ MainLoop(FILE *source)
 					/* Begin - ReqID:SRS-SQL-ESCAPECHAR */
 					if(db_mode == DB_ORACLE)
 						fputs(ora_get_prompt(ORAPROMPT_READY, cond_stack), stdout);
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+					else if(db_mode == DB_MYSQL)
+						fputs(mys_get_prompt(MYSPROMPT_READY, cond_stack), stdout);
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 					else
 						fputs(get_prompt(PROMPT_READY, cond_stack), stdout);
 					/* End - ReqID:SRS-SQL-ESCAPECHAR */
@@ -213,6 +245,11 @@ MainLoop(FILE *source)
 			if(db_mode == DB_ORACLE)
 				line = gets_interactive(ora_get_prompt(prompt_status, cond_stack),
 									query_buf);
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if(db_mode == DB_MYSQL)
+				line = gets_interactive(mys_get_prompt(prompt_status, cond_stack),
+									query_buf);
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			else
 				line = gets_interactive(get_prompt(prompt_status, cond_stack),
 									query_buf);
@@ -289,6 +326,16 @@ MainLoop(FILE *source)
 			}
 		}
 		/* End - ReqID:SRS-PSQL-PARSER */
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (db_mode == DB_MYSQL)
+		{
+			if (line[0] == '\0' && !mys_psql_scan_in_quote(mys_scan_state))
+			{
+				free(line);
+				continue;
+			}
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 		/* Recognize "help", "quit", "exit" only in interactive mode */
 		if (pset.cur_cmd_interactive)
@@ -455,6 +502,13 @@ MainLoop(FILE *source)
 								pset.encoding, standard_strings());
 		}
 		/* End - ReqID:SRS-PSQL-PARSER */
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (db_mode == DB_MYSQL)
+		{
+			mys_psql_scan_setup(mys_scan_state, line, strlen(line),
+								pset.encoding, standard_strings());
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 		/* Begin - ReqID:SRS-CMD-PSQL */
 		/*
@@ -787,7 +841,6 @@ non_psqlplus_cmd:
 			free(psqlplus_line);
 		}
 		/* End - ReqID:SRS-CMD-PSQL */
-
 		success = true;
 		line_saved_in_history = false;
 
@@ -795,8 +848,10 @@ non_psqlplus_cmd:
 		{
 			PsqlScanResult scan_result;
 			Ora_PsqlScanResult ora_scan_result; /* ReqID:SRS-PSQL-PARSER */
+			Mys_PsqlScanResult mys_scan_result; /* ReqID:SRS-MISC-MYSQL-FRAME */
 			promptStatus_t prompt_tmp = prompt_status;
 			Ora_promptStatus_t ora_prompt_tmp = (Ora_promptStatus_t)prompt_status; /* ReqID:SRS-PSQL-PARSER */
+			Mys_promptStatus_t mys_prompt_tmp = (Mys_promptStatus_t)prompt_status; /* ReqID:SRS-MISC-MYSQL-FRAME */
 			size_t		pos_in_query;
 			char	   *tmp_line;
 
@@ -1228,6 +1283,180 @@ non_psqlplus_cmd:
 					break;
 			}
 			/* End - ReqID:SRS-PSQL-PARSER */
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if (db_mode == DB_MYSQL)
+			{
+				if (mys_scan_state->scanbufhandle == NULL)
+					break;
+				mys_scan_result = mys_psql_scan(mys_scan_state, query_buf, &mys_prompt_tmp);
+				prompt_status = mys_prompt_tmp;
+
+				if (PQExpBufferBroken(query_buf))
+				{
+					pg_log_error("out of memory");
+					exit(EXIT_FAILURE);
+				}
+
+				/*
+				 * Increase statement line number counter for each linebreak added
+				 * to the query buffer by the last psql_scan() call. There only
+				 * will be ones to add when navigating to a statement in
+				 * readline's history containing newlines.
+				 */
+				tmp_line = query_buf->data + pos_in_query;
+				while (*tmp_line != '\0')
+				{
+					if (*(tmp_line++) == '\n')
+						pset.stmt_lineno++;
+				}
+
+				if (mys_scan_result == MYSPSCAN_EOL)
+					pset.stmt_lineno++;
+
+				/*
+				 * Send command if semicolon found, or if end of line and we're in
+				 * single-line mode or in EXECUTE cmd.
+				 */
+				if (mys_scan_result == MYSPSCAN_SEMICOLON ||
+					(mys_scan_result == MYSPSCAN_EOL && pset.singleline))
+				{
+					/*
+					 * Save line in history.  We use history_buf to accumulate
+					 * multi-line queries into a single history entry.  Note that
+					 * history accumulation works on input lines, so it doesn't
+					 * matter whether the query will be ignored due to \if.
+					 */
+					if (pset.cur_cmd_interactive && !line_saved_in_history)
+					{
+						pg_append_history(line, history_buf);
+						pg_send_history(history_buf);
+						line_saved_in_history = true;
+					}
+
+					/* execute query unless we're in an inactive \if branch */
+					if (conditional_active(cond_stack))
+					{
+						success = SendQuery(query_buf->data);
+						slashCmdStatus = success ? PSQL_CMD_SEND : PSQL_CMD_ERROR;
+						pset.stmt_lineno = 1;
+
+						/* transfer query to previous_buf by pointer-swapping */
+						{
+							PQExpBuffer swap_buf = previous_buf;
+
+							previous_buf = query_buf;
+							query_buf = swap_buf;
+						}
+						resetPQExpBuffer(query_buf);
+
+						added_nl_pos = -1;
+						/* we need not do psql_scan_reset() here */
+					}
+					else
+					{
+						/* if interactive, warn about non-executed query */
+						if (pset.cur_cmd_interactive)
+							pg_log_error("query ignored; use \\endif or Ctrl-C to exit current \\if block");
+						/* fake an OK result for purposes of loop checks */
+						success = true;
+						slashCmdStatus = PSQL_CMD_SEND;
+						pset.stmt_lineno = 1;
+						/* note that query_buf doesn't change state */
+					}
+				}
+				else if (mys_scan_result == MYSPSCAN_BACKSLASH)
+				{
+					/* handle backslash command */
+
+					/*
+					 * If we added a newline to query_buf, and nothing else has
+					 * been inserted in query_buf by the lexer, then strip off the
+					 * newline again.  This avoids any change to query_buf when a
+					 * line contains only a backslash command.  Also, in this
+					 * situation we force out any previous lines as a separate
+					 * history entry; we don't want SQL and backslash commands
+					 * intermixed in history if at all possible.
+					 */
+					if (query_buf->len == added_nl_pos)
+					{
+						query_buf->data[--query_buf->len] = '\0';
+						pg_send_history(history_buf);
+					}
+					added_nl_pos = -1;
+
+					/* save backslash command in history */
+					if (pset.cur_cmd_interactive && !line_saved_in_history)
+					{
+						pg_append_history(line, history_buf);
+						pg_send_history(history_buf);
+						line_saved_in_history = true;
+					}
+
+					/* execute backslash command */
+					slashCmdStatus = HandleSlashCmds(mys_scan_state,
+													cond_stack,
+													query_buf,
+													previous_buf);
+
+					success = slashCmdStatus != PSQL_CMD_ERROR;
+
+					/*
+					 * Resetting stmt_lineno after a backslash command isn't
+					 * always appropriate, but it's what we've done historically
+					 * and there have been few complaints.
+					 */
+					pset.stmt_lineno = 1;
+					if (slashCmdStatus == PSQL_CMD_SEND)
+					{
+						/* should not see this in inactive branch */
+						Assert(conditional_active(cond_stack));
+
+						success = SendQuery(query_buf->data);
+
+						/* transfer query to previous_buf by pointer-swapping */
+						{
+							PQExpBuffer swap_buf = previous_buf;
+
+							previous_buf = query_buf;
+							query_buf = swap_buf;
+						}
+						resetPQExpBuffer(query_buf);
+
+						/* flush any paren nesting info after forced send */
+						mys_psql_scan_reset(mys_scan_state);
+					}
+					else if (slashCmdStatus == PSQL_CMD_NEWEDIT)
+					{
+						/* should not see this in inactive branch */
+						Assert(conditional_active(cond_stack));
+						/* ensure what came back from editing ends in a newline */
+						if (query_buf->len > 0 &&
+							query_buf->data[query_buf->len - 1] != '\n')
+							appendPQExpBufferChar(query_buf, '\n');
+						/* rescan query_buf as new input */
+						mys_psql_scan_finish(mys_scan_state);
+						free(line);
+						line = pg_strdup(query_buf->data);
+						resetPQExpBuffer(query_buf);
+						/* reset parsing state since we are rescanning whole line */
+						mys_psql_scan_reset(mys_scan_state);
+						mys_psql_scan_setup(mys_scan_state, line, strlen(line),
+										pset.encoding, standard_strings());
+						line_saved_in_history = false;
+						prompt_status = PROMPT_READY;
+						/* we'll want to redisplay after parsing what we have */
+						need_redisplay = true;
+					}
+					else if (slashCmdStatus == PSQL_CMD_TERMINATE)
+						break;
+				}
+
+				/* fall out of loop if lexer reached EOL */
+				if (mys_scan_result == MYSPSCAN_INCOMPLETE ||
+					mys_scan_result == MYSPSCAN_EOL)
+					break;
+			}
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		}
 
 		/* Add line to pending history if we didn't execute anything yet */
@@ -1236,6 +1465,7 @@ non_psqlplus_cmd:
 
 		psql_scan_finish(scan_state);
 		ora_psql_scan_finish(ora_scan_state); /* ReqID:SRS-PSQL-PARSER */
+		mys_psql_scan_finish(mys_scan_state); /* ReqID:SRS-MISC-MYSQL-FRAME */
 		free(line);
 
 		if (slashCmdStatus == PSQL_CMD_TERMINATE)
@@ -1315,6 +1545,7 @@ non_psqlplus_cmd:
 
 	psql_scan_destroy(scan_state);
 	ora_psql_scan_destroy(ora_scan_state); /* ReqID:SRS-PSQL-PARSER */
+	mys_psql_scan_destroy(mys_scan_state); /* ReqID:SRS-MISC-MYSQL-FRAME */
 	conditional_stack_destroy(cond_stack);
 
 	pset.cur_cmd_source = prev_cmd_source;

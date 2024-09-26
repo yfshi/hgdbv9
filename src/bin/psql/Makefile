@@ -22,7 +22,7 @@ export with_readline
 REFDOCDIR= $(top_srcdir)/doc/src/sgml/ref
 
 override CPPFLAGS := -I. -I$(srcdir) -I$(libpq_srcdir) $(CPPFLAGS)
-LDFLAGS_INTERNAL += -L$(top_builddir)/src/oracle_fe_utils -lorafeutils -L$(top_builddir)/src/fe_utils -lpgfeutils $(libpq_pgport) # ReqID:SRS-PSQL-PARSER
+LDFLAGS_INTERNAL += -L$(top_builddir)/src/oracle_fe_utils -lorafeutils -L$(top_builddir)/src/mysql_fe_utils -lmysfeutils -L$(top_builddir)/src/fe_utils -lpgfeutils $(libpq_pgport) # ReqID:SRS-PSQL-PARSER SRS-MISC-MYSQL-FRAME
 
 OBJS = \
 	$(WIN32RES) \
@@ -45,9 +45,12 @@ OBJS = \
 	stringutils.o \
 	tab-complete.o \
 	variables.o \
-	system_variables.o
+	system_variables.o \
+	mys_psqlscanslash.o \
+	mys_prompt.o
 # ReqID:SRS-PSQL-PARSER
 # ReqID:SRS-SQL-ESCAPECHAR
+# ReqID:SRS-MISC-MYSQL-FRAME
 
 all: psql
 
@@ -76,8 +79,14 @@ ora_psqlscanslash.c: FLEX_NO_BACKUP=yes
 ora_psqlscanslash.c: FLEX_FIX_WARNING=yes
 # End - ReqID:SRS-PSQL-PARSER
 
-# ReqID:SRS-CMD-PSQL
-distprep: ora_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c psqlplusscan.c psqlplusparse.c
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mys_psqlscanslash.c: FLEXFLAGS = -Cfe -p -p
+mys_psqlscanslash.c: FLEX_NO_BACKUP=yes
+mys_psqlscanslash.c: FLEX_FIX_WARNING=yes
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
+# ReqID:SRS-CMD-PSQL SRS-MISC-MYSQL-FRAME
+distprep: ora_psqlscanslash.c mys_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c psqlplusscan.c psqlplusparse.c
 
 install: all installdirs
 	$(INSTALL_PROGRAM) psql$(X) '$(DESTDIR)$(bindir)/psql$(X)'
@@ -90,14 +99,14 @@ uninstall:
 	rm -f '$(DESTDIR)$(bindir)/psql$(X)' '$(DESTDIR)$(datadir)/psqlrc.sample'
 
 clean distclean:
-	rm -f psql$(X) $(OBJS) lex.backup ora_psqlscanslash.c
+	rm -f psql$(X) $(OBJS) lex.backup ora_psqlscanslash.c mys_psqlscanslash.c #ReqID:SRS-PSQL-PARSER SRS-MISC-MYSQL-FRAME
 	rm -rf tmp_check
 
 # files removed here are supposed to be in the distribution tarball,
 # so do not clean them in the clean/distclean rules
 # ReqID:SRS-CMD-PSQL
 maintainer-clean: distclean
-	rm -f ora_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c #ReqID:SRS-PSQL-PARSER
+	rm -f ora_psqlscanslash.c mys_psqlscanslash.c sql_help.h sql_help.c psqlscanslash.c #ReqID:SRS-PSQL-PARSER SRS-MISC-MYSQL-FRAME
 	rm -f psqlplusscan.c psqlplusparse.c
 
 check:

@@ -15,6 +15,7 @@
 /* Use port in the private/dynamic port number range */
 #define DEF_PGUPORT			50432
 #define DEF_ORAUPORT		50433	/* ReqID:SRS-GKC-DATATYPE_001 */
+#define DEF_MYSUPORT		50434	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 #define MAX_STRING			1024
 #define QUERY_ALLOC			8192
@@ -35,6 +36,7 @@
 extern char *output_files[];
 
 extern bool pg_cluster_within_oracle_mode;	/* ReqID:SRS-GKC-DATATYPE_001 */
+extern bool pg_cluster_within_mysql_mode;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 /*
  * WIN32 files do not accept writes from multiple processes
@@ -224,6 +226,7 @@ typedef struct
 	bool		float8_pass_by_value;
 	uint32		data_checksum_version;
 	bool		database_mode_is_oracle;	/* ReqID:SRS-GKC-DATATYPE_001 */
+	bool		database_mode_is_mysql;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 } ControlData;
 
 /*
@@ -272,6 +275,7 @@ typedef struct
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	unsigned short oraport;		/* port number where postmaster is waiting for oracle mode */
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+	unsigned short mysport;		/* ReqID:SRS-MISC-MYSQL-FRAME, port number where postmaster is waiting for MySQL mode*/
 	uint32		major_version;	/* PG_VERSION of cluster */
 	char		major_version_str[64];	/* string PG_VERSION of cluster */
 	uint32		bin_version;	/* version returned from pg_ctl */

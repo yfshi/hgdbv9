@@ -269,6 +269,10 @@ sub ParseData
 	my  $match_oracle_regex_begin = 0;
 	my  $match_oracle_regex_end = 0;
 	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	my  $match_mysql_regex_begin = 0;
+	my  $match_mysql_regex_end = 0;
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	# Scan the input file.
 	while (<$ifd>)
@@ -290,14 +294,38 @@ sub ParseData
 			next;
 		}
 
-		if ($match_oracle_regex_begin == 1)
+		if ($match_oracle_regex_begin == 1 && $match_oracle_regex_end < 1)	# ReqID:SRS-MISC-MYSQL-FRAME
 		{
-			if ($compatible_type eq 'pg')
+			if ($compatible_type eq 'pg' || $compatible_type eq 'mysql')	# ReqID:SRS-MISC-MYSQL-FRAME
 			{
 				next;
 			}
 		}
 		#END - SQL PARSER
+
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+		die "$input_file: MySQL Compatibility comments more than once and mismatching.\n"
+			if ($match_mysql_regex_begin > 1 || $match_mysql_regex_end > 1);
+
+		if (/^\/\*BEGIN\sMySQL\sCompatibility\sMetadatas\*\//)
+		{
+			$match_mysql_regex_begin++;
+			next;
+		}
+		if (/^\/\*END\sMySQL\sCompatibility\sMetadatas\*\//)
+		{
+			$match_mysql_regex_end++;
+			next;
+		}
+
+		if ($match_mysql_regex_begin == 1 && $match_mysql_regex_end < 1)
+		{
+			if ($compatible_type eq 'pg' || $compatible_type eq 'oracle')
+			{
+				next;
+			}
+		}
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 		if (/{/)
 		{
@@ -364,6 +392,11 @@ sub ParseData
 	die "$input_file: Oracle Compatibility comments missing and can't generate BKI file successfully.\n"
 		if ($match_oracle_regex_begin != $match_oracle_regex_end);
 	#END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	die "$input_file: MySQL Compatibility comments missing and can't generate BKI file successfully.\n"
+		if ($match_mysql_regex_begin != $match_mysql_regex_end);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	# If this is pg_type, auto-generate array types too.
 	GenerateArrayTypes($schema, $data) if $catname eq 'pg_type';
 
@@ -579,10 +612,12 @@ sub FindAllOidsFromHeaders
 		# Not all catalogs have a data file.
 		if (-e $datfile)
 		{
-			#BEGIN - SQL PARSER
+			#BEGIN - SQL PARSER SRS-MISC-MYSQL-FRAME
 			my $catdata =
 			  Catalog::ParseData($datfile, $catalog->{columns}, 0, "oracle");
-			#END - SQL PARSER
+			  Catalog::ParseData($datfile, $catalog->{columns}, 0, "mysql");
+			  Catalog::ParseData($datfile, $catalog->{columns}, 0, "all");
+			#END - SQL PARSER SRS-MISC-MYSQL-FRAME
 
 			foreach my $row (@$catdata)
 			{

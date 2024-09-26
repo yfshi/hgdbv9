@@ -485,6 +485,10 @@ GetPortConnmode(void)
 	{
 		if(ORA_PARSER == compatible_db)
 			return 'o';
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if(MYS_PARSER == compatible_db)
+			return 'm';
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 			return 'p';
 	}
@@ -496,6 +500,10 @@ GetPortConnmode(void)
 			return 'o';
 		else if (port->connmode == 'u')
 			return 'u';
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (port->connmode == 'm')
+			return 'm';
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	}
 	return 'u';
 }

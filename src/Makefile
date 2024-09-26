@@ -20,11 +20,13 @@ SUBDIRS = \
 	backend/utils/mb/conversion_procs \
 	backend/snowball \
 	backend/oracle_parser \
+	backend/mysql_parser \
 	include \
 	interfaces \
 	backend/replication/libpqwalreceiver \
 	backend/replication/pgoutput \
 	oracle_fe_utils \
+	mysql_fe_utils \
 	fe_utils \
 	bin \
 	pl \

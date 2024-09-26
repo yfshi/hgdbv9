@@ -476,6 +476,13 @@ main(int argc, char *argv[])
 			ControlFile.dbmode = DB_ORACLE;
 			ControlFile.casemode = INTERCHANGE;	/* case sensitive indentify - reset case conversion mode */
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if(pg_strcasecmp(dbmode, "mysql") == 0 || pg_strcasecmp(dbmode, "2") == 0)
+		{
+			ControlFile.dbmode = DB_MYSQL;
+			ControlFile.casemode = NORMAL;
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 		{
 			ControlFile.dbmode = DB_PG;

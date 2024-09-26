@@ -5359,6 +5359,15 @@ InitIvorysql(void)
 				ereport(ERROR,
 					(errmsg("Invalid Oracle compatibility mode syntax library.")));
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
+		else if (MyProcPort->connmode == 'm')
+		{
+			SetConfigOption("ivorysql.compatible_mode", "mysql", PGC_USERSET, PGC_S_OVERRIDE);      /* ReqID:SRS-MISC-GUC */
+			if (NULL == mys_raw_parser)
+				ereport(ERROR,
+					(errmsg("Invalid MySQL compatibility mode syntax library.")));
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME  */
 	}
 }
 /* End - ReqID:SRS-MISC-GUC */

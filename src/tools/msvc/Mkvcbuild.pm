@@ -34,6 +34,7 @@ my $postgres;
 my $libpq;
 # BEGIN - SQL PARSER
 my $liborafeutils;
+my $libmysfeutils;	# ReqID:SRS-MISC-MYSQL-FRAME
 # END - SQL PARSER
 
 my @unlink_on_exit;
@@ -90,12 +91,16 @@ my $frontend_extrasource = {
 	# Begin - ReqID:SRS-PSQL-PARSER
 	# BEGIN - SQL PARSER
 	# Begin - ReqID:SRS-CMD-PSQL
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
 	'psql' => ['src/bin/psql/psqlplusscan.l', 'src/bin/psql/psqlplusparse.y',
 			   'src/bin/psql/psqlscanslash.l', 'src/bin/psql/ora_psqlscanslash.l',
 			   'src/oracle_fe_utils/ora_string_utils.c',
 			   'src/oracle_fe_utils/ora_number_utils.c', # ReqID:SRS-SQL-SYSFUNC
 			   'src/oracle_fe_utils/ora_psqlscan.l',
-			   'src/backend/oracle_parser/ora_keywords.c'],
+			   'src/backend/oracle_parser/ora_keywords.c',	
+			   'src/bin/psql/mys_psqlscanslash.l', 'src/mysql_fe_utils/mys_string_utils.c', 
+			   'src/mysql_fe_utils/mys_psqlscan.l', 'src/backend/mysql_parser/mys_keywords.c'],
+	# End - ReqID:SRS-MISC-MYSQL-FRAME 
 	# End - ReqID:SRS-CMD-PSQL
 	# END - SQL PARSER
 	# End - ReqID:SRS-PSQL-PARSER
@@ -182,6 +187,10 @@ sub mkvcbuild
 	our @orafeutilsfiles = qw(
 	  ora_string_utils.c ora_psqlscan.l ora_psqlscan.c);
 	# END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	our @mysfeutilsfiles = qw(
+	  mys_string_utils.c mys_psqlscan.l mys_psqlscan.c);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	# End - ReqID:SRS-PSQL-PARSER
 
 	$libpgport = $solution->AddProject('libpgport', 'lib', 'misc');
@@ -214,6 +223,14 @@ sub mkvcbuild
 	$liborafeutils->AddFiles('src/oracle_fe_utils', @orafeutilsfiles);
 	$liborafeutils->AddFile('src/backend/oracle_parser/ora_keywords.c');
 	# END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	$libmysfeutils = $solution->AddProject('libmysfeutils', 'lib', 'misc');
+	$libmysfeutils->AddDefine('FRONTEND');
+	$libmysfeutils->AddIncludeDir('src/interfaces/libpq');
+	$libmysfeutils->AddFiles('src/mysql_fe_utils', @mysfeutilsfiles);
+	$libmysfeutils->AddFile('src/backend/mysql_parser/mys_keywords.c');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	$postgres = $solution->AddProject('postgres', 'exe', '', 'src/backend');
 	$postgres->AddIncludeDir('src/backend');
@@ -344,6 +361,21 @@ sub mkvcbuild
 	$plisql->AddFiles('src/pl/plisql/src', 'pl_gram.y');
 	$plisql->AddReference($postgres, $libparser_oracle);
 	# END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $libparser_mysql =
+	  $solution->AddProject('libmysql_parser', 'dll', '',
+		'src/backend/mysql_parser');
+	$libparser_mysql->AddPrefixInclude('src/include/mysql_parser');
+	$libparser_mysql->AddFiles('src/backend/mysql_parser', 'mys_scan.l', 'mys_gram.y');
+	$libparser_mysql->AddReference($postgres);
+
+	#my $plmysql =
+	#  $solution->AddProject('plmysql', 'dll', 'PLs', 'src/pl/plmysql/src');
+	#$plmysql->AddPrefixInclude('src/include/mysqle_parser');
+	#$plmysql->AddFiles('src/pl/plmysql/src', 'pl_gram.y');
+	#$plmysql->AddReference($postgres, $libparser_mysql);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	my $pgoutput = $solution->AddProject('pgoutput', 'dll', '',
 		'src/backend/replication/pgoutput');
@@ -947,9 +979,9 @@ sub mkvcbuild
 			}
 		}
 		$proj->AddIncludeDir('src/interfaces/libpq');
-		# BEGIN - SQL PARSER
-		$proj->AddReference($libpq, $libpgfeutils, $liborafeutils, $libpgcommon, $libpgport);
-		# END - SQL PARSER
+		# BEGIN - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
+		$proj->AddReference($libpq, $libpgfeutils, $liborafeutils, $libmysfeutils, $libpgcommon, $libpgport);
+		# END - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 		$proj->AddDirResourceFile('src/bin/scripts');
 		$proj->AddLibrary('ws2_32.lib');
 		# Begin - ReqID:SRS-MISC-LICENSE
@@ -1042,9 +1074,9 @@ sub AddSimpleFrontend
 	
 	my $p = $solution->AddProject($n, 'exe', 'bin');
 	$p->AddDir('src/bin/' . $n);
-	# BEGIN - SQL PARSER
-	$p->AddReference($libpgfeutils, $liborafeutils, $libpgcommon, $libpgport);
-	# END - SQL PARSER
+	# BEGIN - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
+	$p->AddReference($libpgfeutils, $liborafeutils,  $libmysfeutils,$libpgcommon, $libpgport);
+	# END - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 	if ($uselibpq)
 	{
 		$p->AddIncludeDir('src/interfaces/libpq');

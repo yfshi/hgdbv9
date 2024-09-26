@@ -586,6 +586,7 @@ interpret_function_parameter_list(ParseState *pstate,
 		{
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			if (compatible_db == PG_PARSER ||
+				compatible_db == MYS_PARSER ||		/* ReqID:SRS-MISC-MYSQL-FRAME */
 				(compatible_db == ORA_PARSER &&
 				LANG_PLISQL_OID != languageOid))
 			{

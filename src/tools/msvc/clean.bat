@@ -25,6 +25,9 @@ if exist src\backend\replication\pgoutput\win32ver.rc del /q src\backend\replica
 if exist src\backend\snowball\win32ver.rc del /q src\backend\snowball\win32ver.rc
 REM BEGIN - SQL PARSER
 if exist src\backend\oracle_parser\win32ver.rc del /q src\backend\oracle_parser\win32ver.rc
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if exist src\backend\mysql_parser\win32ver.rc del /q src\backend\mysql_parser\win32ver.rc
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if exist src\interfaces\ecpg\test\win32ver.rc del /q src\interfaces\ecpg\test\win32ver.rc
 REM BEGIN - SQL PARSER
@@ -58,6 +61,9 @@ if exist src\include\pg_config_os.h del /q src\include\pg_config_os.h
 if %DIST%==1 if exist src\backend\parser\gram.h del /q src\backend\parser\gram.h
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\backend\oracle_parser\ora_gram.h del /q src\backend\oracle_parser\ora_gram.h
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\backend\mysql_parser\mys_gram.h del /q src\backend\mysql_parser\mys_gram.h
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if exist src\include\utils\errcodes.h del /q src\include\utils\errcodes.h
 if exist src\include\utils\fmgroids.h del /q src\include\utils\fmgroids.h
@@ -88,6 +94,9 @@ if %DIST%==1 if exist src\bin\psql\sql_help.h del /q src\bin\psql\sql_help.h
 if %DIST%==1 if exist src\common\kwlist_d.h del /q src\common\kwlist_d.h
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\backend\oracle_parser\ora_kwlist_d.h del /q src\backend\oracle_parser\ora_kwlist_d.h
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if %DIST%==1 if exist src\backend\mysql_parser\mys_kwlist_d.h del /q src\backend\mysql_parser\mys_kwlist_d.h
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if %DIST%==1 if exist src\pl\plpgsql\src\pl_reserved_kwlist_d.h del /q src\pl\plpgsql\src\pl_reserved_kwlist_d.h
 if %DIST%==1 if exist src\pl\plpgsql\src\pl_unreserved_kwlist_d.h del /q src\pl\plpgsql\src\pl_unreserved_kwlist_d.h
@@ -104,16 +113,25 @@ if %DIST%==1 if exist src\backend\catalog\schemapg.h del /q src\backend\catalog\
 if %DIST%==1 if exist src\backend\catalog\system_fk_info.h del /q src\backend\catalog\system_fk_info.h
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\backend\catalog\postgres_oracle.bki del /q src\backend\catalog\postgres_oracle.bki
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\backend\catalog\postgres_mysql.bki del /q src\backend\catalog\postgres_mysql.bki
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if %DIST%==1 if exist src\backend\catalog\pg_*_d.h del /q src\backend\catalog\pg_*_d.h
 if %DIST%==1 if exist src\backend\catalog\bki-stamp del /q src\backend\catalog\bki-stamp
 if %DIST%==1 if exist src\backend\parser\scan.c del /q src\backend\parser\scan.c
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\backend\oracle_parser\ora_scan.c del /q src\backend\oracle_parser\ora_scan.c
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\backend\mysql_parser\mys_scan.c del /q src\backend\mysql_parser\mys_scan.c
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if %DIST%==1 if exist src\backend\parser\gram.c del /q src\backend\parser\gram.c
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\backend\oracle_parser\ora_gram.c del /q src\backend\oracle_parser\ora_gram.c
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+if %DIST%==1 if exist src\backend\mysql_parser\mys_gram.c del /q src\backend\mysql_parser\mys_gram.c
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if %DIST%==1 if exist src\backend\bootstrap\bootscanner.c del /q src\backend\bootstrap\bootscanner.c
 if %DIST%==1 if exist src\backend\bootstrap\bootparse.c del /q src\backend\bootstrap\bootparse.c

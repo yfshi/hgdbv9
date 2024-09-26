@@ -128,7 +128,7 @@
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_VAR_DEFINE
-#include "ivy_guc.c"
+#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 #undef IVY_GUC_VAR_DEFINE
 /* End - ReqID:SRS-MISC-GUC */
 
@@ -265,7 +265,7 @@ static bool check_primary_slot_name(char **newval, void **extra, GucSource sourc
 static bool check_default_with_oids(bool *newval, void **extra, GucSource source);
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
-#include "ivy_guc.c"
+#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 #undef IVY_GUC_FUNC_DECLARE
 /* End - ReqID:SRS-MISC-GUC */
 
@@ -275,7 +275,7 @@ static ConfigVariable *ProcessConfigFileInternal(GucContext context,
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_VAR_STRUCT
-#include "ivy_guc.c"
+#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 #undef IVY_GUC_VAR_STRUCT
 /* End - ReqID:SRS-MISC-GUC */
 
@@ -2198,7 +2198,7 @@ static struct config_bool ConfigureNamesBool[] =
 	/* End - ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
-	#include "ivy_guc.c"
+	#include "ivy_oracle_guc.c"
 	#undef IVY_GUC_BOOL_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
@@ -3675,7 +3675,7 @@ static struct config_int ConfigureNamesInt[] =
 	},
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_INT_PARAMS
-	#include "ivy_guc.c"
+	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	#undef IVY_GUC_INT_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 
@@ -3954,7 +3954,7 @@ static struct config_real ConfigureNamesReal[] =
 	},
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_REAL_PARAMS
-	#include "ivy_guc.c"
+	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	#undef IVY_GUC_REAL_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
@@ -4737,7 +4737,7 @@ static struct config_string ConfigureNamesString[] =
 	},
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_STRING_PARAMS
-	#include "ivy_guc.c"
+	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	#undef IVY_GUC_STRING_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 
@@ -5123,7 +5123,7 @@ static struct config_enum ConfigureNamesEnum[] =
 	},
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_ENUM_PARAMS
-	#include "ivy_guc.c"
+	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	#undef IVY_GUC_ENUM_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
@@ -12731,7 +12731,7 @@ check_default_with_oids(bool *newval, void **extra, GucSource source)
 }
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE
-#include "ivy_guc.c"
+#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
 #undef IVY_GUC_FUNC_DEFINE
 /* End - ReqID:SRS-MISC-GUC */
 

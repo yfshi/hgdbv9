@@ -1321,8 +1321,7 @@ PostmasterMain(int argc, char *argv[])
 	/* End - ReqID:LISTEN-MULTI-PORT */
 
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
-	if (DB_PG != database_mode && DB_ORACLE != database_mode &&
-		MysListenAddresses)
+	if (DB_MYSQL == database_mode && MysListenAddresses)
 	{
 		char	   *rawstring;
 		List	   *elemlist;
@@ -1502,7 +1501,7 @@ PostmasterMain(int argc, char *argv[])
 		/* End - ReqID:LISTEN-MULTI-PORT */
 
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME, Mysql unix domain socket */
-		if (DB_PG != database_mode && DB_ORACLE != database_mode)
+		if (DB_MYSQL == database_mode)
 		{
 			success = 0;
 			foreach(l, elemlist)
@@ -6183,6 +6182,10 @@ BackgroundWorkerInitializeConnectionByOid(Oid dboid, Oid useroid, uint32 flags)
 	 */
 	if(worker->connmode == 'o')
 		SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(worker->connmode == 'm')
+		SetConfigOption("ivorysql.compatible_mode", "mysql", PGC_USERSET, PGC_S_OVERRIDE);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 		SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
 	/*

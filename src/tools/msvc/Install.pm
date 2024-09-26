@@ -149,6 +149,12 @@ sub Install
 			'BKI files',
 			[ glob("src\\backend\\catalog\\postgres_oracle.*") ],
 			$target . '/share/');
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+		CopySetOfFiles(
+			'BKI files',
+			[ glob("src\\backend\\catalog\\postgres_mysql.*") ],
+			$target . '/share/');
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		#END - SQL PARSER
 		CopySetOfFiles(
 			'SQL files',

@@ -110,7 +110,12 @@ bki-stamp: genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_
 		--set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
 	$(PERL) $< -M oracle --include-path=$(top_srcdir)/src/include/ \
 		--set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
-	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	$(PERL) $< -M mysql --include-path=$(top_srcdir)/src/include/ \
+		--set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
+	$(PERL) $< -M all --include-path=$(top_srcdir)/src/include/ \
+		--set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
+	#END - SQL PARSER  - ReqID:SRS-MISC-MYSQL-FRAME
 	touch $@
 
 # The generated headers must all be symlinked into builddir/src/include/,
@@ -132,7 +137,10 @@ install-data: bki-stamp installdirs
 	$(INSTALL_DATA) $(srcdir)/system_functions.sql '$(DESTDIR)$(datadir)/system_functions.sql'
 	#BEGIN - SQL PARSER
 	$(INSTALL_DATA) $(call vpathsearch,postgres_oracle.bki) '$(DESTDIR)$(datadir)/postgres_oracle.bki'
-	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	$(INSTALL_DATA) $(call vpathsearch,postgres_mysql.bki) '$(DESTDIR)$(datadir)/postgres_mysql.bki'
+	$(INSTALL_DATA) $(call vpathsearch,postgres_all.bki) '$(DESTDIR)$(datadir)/postgres_all.bki'
+	#END - SQL PARSER  - ReqID:SRS-MISC-MYSQL-FRAME
 	$(INSTALL_DATA) $(srcdir)/system_views.sql '$(DESTDIR)$(datadir)/system_views.sql'
 	$(INSTALL_DATA) $(srcdir)/information_schema.sql '$(DESTDIR)$(datadir)/information_schema.sql'
 	$(INSTALL_DATA) $(srcdir)/sql_features.txt '$(DESTDIR)$(datadir)/sql_features.txt'
@@ -142,11 +150,15 @@ installdirs:
 
 .PHONY: uninstall-data
 uninstall-data:
-	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki postgres_oracle.bki system_constraints.sql system_functions.sql system_views.sql information_schema.sql sql_features.txt)
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki postgres_oracle.bki postgres_mysql.bki postgres_all.bki system_constraints.sql system_functions.sql system_views.sql information_schema.sql sql_features.txt)
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # postgres.bki, system_constraints.sql, and the generated headers are
 # in the distribution tarball, so they are not cleaned here.
 clean:
 
 maintainer-clean: clean
-	rm -f bki-stamp postgres.bki postgres_oracle.bki system_constraints.sql $(GENERATED_HEADERS)
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	rm -f bki-stamp postgres.bki postgres_oracle.bki postgres_mysql.bki postgres_all.bki system_constraints.sql $(GENERATED_HEADERS)
+	# End - ReqID:SRS-MISC-MYSQL-FRAME

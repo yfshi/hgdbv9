@@ -73,6 +73,7 @@ extern PGDLLIMPORT bool standard_conforming_strings;
 typedef List *(*raw_parser_hook_type) (const char *str, RawParseMode mode);
 extern PGDLLIMPORT raw_parser_hook_type sql_raw_parser;
 extern PGDLLIMPORT raw_parser_hook_type ora_raw_parser;
+extern PGDLLIMPORT raw_parser_hook_type mys_raw_parser;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 /* END - SQL PARSER */
 
 /* Primary entry point for the raw parsing functions */

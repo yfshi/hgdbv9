@@ -28,7 +28,7 @@ command_ok([ $ENV{PG_REGRESS}, '--config-auth', "$tempdir/data" ],
 my $node_port = get_free_port();
 my $ivr_node_port = get_free_port();
 open my $conf, '>>', "$tempdir/data/postgresql.conf";
-open my $ivrconf, '>>', "$tempdir/data/ivorysql.conf";
+open my $ivrconf, '>>', "$tempdir/data/ivorysql.oracle.conf";
 print $conf "fsync = off\n";
 print $conf "port = $node_port\n";
 print $ivrconf "\nivorysql.port = $ivr_node_port\n";

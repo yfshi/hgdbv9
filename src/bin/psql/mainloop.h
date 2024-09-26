@@ -12,7 +12,7 @@
 
 extern const PsqlScanCallbacks psqlscan_callbacks;
 extern const Ora_psqlScanCallbacks Ora_psqlscan_callbacks; /* ReqID:SRS-PSQL-PARSER */
-
+extern const Mys_psqlScanCallbacks Mys_psqlscan_callbacks; /* ReqID:SRS-MISC-MYSQL-FRAME */
 
 extern int	MainLoop(FILE *source);
 

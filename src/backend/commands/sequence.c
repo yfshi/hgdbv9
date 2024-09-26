@@ -1895,7 +1895,8 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 	{
 		Oid			newtypid = typenameTypeId(pstate, defGetTypeName(as_type));
 		/* Begin - ReqID:SRS-SQL-IDENTCOL */
-		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || compatible_db == PG_PARSER)	/* Bug#m0000070 */
+		if (seq_type == ATTRIBUTE_IDENTITY_ALWAYS || seq_type == ATTRIBUTE_IDENTITY_BY_DEFAULT || compatible_db == PG_PARSER
+						|| compatible_db == MYS_PARSER)	/* Bug#m0000070 */	/* ReqID:SRS-MISC-MYSQL-FRAME */
 		{
 			if (newtypid != INT2OID &&
 				newtypid != INT4OID &&
@@ -2269,7 +2270,7 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("START value (%s) cannot be less than MINVALUE (%s)",
 						bufs, bufm)));
 	}
-	if (seqform->seqstart > seqform->seqmax && (compatible_db == PG_PARSER || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */
+	if (seqform->seqstart > seqform->seqmax && (compatible_db == PG_PARSER || compatible_db == MYS_PARSER || !for_identity))	/* BUG#Z026 */ /* ReqID:SRS-SQL-SEQ */	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		char		bufs[100],
 					bufm[100];
@@ -2435,6 +2436,10 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 		else if (start_value && compatible_db == ORA_PARSER)
 			seqdataform->last_value = defGetInt64(start_value);
 		/* End - ReqID:SRS-SQL-SEQ */
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (!restart_value->arg && compatible_db == MYS_PARSER)
+			seqdataform->last_value = seqform->seqstart;
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		seqdataform->is_called = false;
 		seqdataform->log_cnt = 0;
 	}
@@ -2469,6 +2474,20 @@ init_params(ParseState *pstate, List *options, bool for_identity,
 				 errmsg("RESTART value (%s) cannot be greater than MAXVALUE (%s)",
 						bufs, bufm)));
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (seqdataform->last_value > seqform->seqmax && compatible_db == MYS_PARSER)
+	{
+		char		bufs[100],
+					bufm[100];
+
+		snprintf(bufs, sizeof(bufs), INT64_FORMAT, seqdataform->last_value);
+		snprintf(bufm, sizeof(bufm), INT64_FORMAT, seqform->seqmax);
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("RESTART value (%s) cannot be greater than MAXVALUE (%s)",
+						bufs, bufm)));
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 	/* CACHE */
 	if (cache_value != NULL)
@@ -2652,6 +2671,17 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 						 errmsg("column \"%s\" of relation \"%s\" does not exist",
 								attrname, RelationGetRelationName(tablerel))));
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (compatible_db == DB_MYSQL)
+		{
+			attnum = get_attnum(RelationGetRelid(tablerel), attrname);
+			if (attnum == InvalidAttrNumber)
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_COLUMN),
+						 errmsg("column \"%s\" of relation \"%s\" does not exist",
+								attrname, RelationGetRelationName(tablerel))));
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else if (compatible_db == DB_PG)
 		{
 			attnum = get_attnum(RelationGetRelid(tablerel), attrname);

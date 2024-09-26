@@ -1569,6 +1569,10 @@ func_select_candidate(int nargs,
 		 */
 		if (PG_PARSER == compatible_db)
 			return NULL;			/* failed to select a best candidate */
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (MYS_PARSER == compatible_db)
+			return NULL;			/* failed to select a best candidate */
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 		{
 			int times;
@@ -1795,6 +1799,10 @@ func_select_candidate(int nargs,
 			{
 				if (PG_PARSER == compatible_db)
 					return NULL;			/* failed to select a best candidate */
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (MYS_PARSER == compatible_db)
+					return NULL;			/* failed to select a best candidate */
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else
 				{
 					candidate = first_candidate;

@@ -769,6 +769,16 @@ sub GenerateFiles
 		);
 	}
 	# END - SQL PARSER
+	
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer('src/backend/mysql_parser/mys_kwlist_d.h', 'src/include/mysql_parser/mys_kwlist.h'))
+	{
+		print "Generating Mysql compatibility mys_kwlist_d.h...\n";
+		system(
+			'perl -I src/tools src/tools/mys_gen_keywordlist.pl --extern -o src/backend/mysql_parser src/include/mysql_parser/mys_kwlist.h'
+		);
+	}
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	if (IsNewer(
 			'src/pl/plpgsql/src/pl_reserved_kwlist_d.h',
@@ -898,6 +908,14 @@ EOF
 		system(
 			"perl genbki.pl -M oracle --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
 		);
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+		system(
+			"perl genbki.pl -M mysql --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
+		);
+		system(
+			"perl genbki.pl -M all --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
+		);
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		#END - SQL PARSER
 		open(my $f, '>', 'bki-stamp')
 		  || confess "Could not touch bki-stamp";

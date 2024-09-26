@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * ivy_guc.c
+ * ivy_oracle_guc.c
  *
  * Support for grand unified configuration scheme(for ivorysql), including SET
  * command, configuration file, and command line options
@@ -11,7 +11,7 @@
  * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
- *        src/backend/utils/misc/ivy_guc.c
+ *        src/backend/utils/misc/ivy_oracle_guc.c
  *
  *-------------------------------------------------------------------------
  */
@@ -183,14 +183,17 @@ char	*plsql_warnings = "";
 static const struct config_enum_entry db_mode_options[] = {
 	{"pg", DB_PG, false},
 	{"oracle", DB_ORACLE, false},
+	{"mysql", DB_MYSQL, false},		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{"0", DB_PG, false},
 	{"1", DB_ORACLE, false},
+	{"2", DB_MYSQL, false},			/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{NULL, 0, false}
 };
 
 static const struct config_enum_entry db_parser_options[] = {
 	{"pg", PG_PARSER, false},
 	{"oracle", ORA_PARSER, false},
+	{"mysql", MYS_PARSER, false},	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{NULL, 0, false}
 /* END - SQL PARSER */
 };
@@ -1085,7 +1088,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 {
 	int		newmode = *newval;
 
-	if (DB_PG == database_mode && newmode == DB_ORACLE)
+	if (DB_PG == database_mode && (newmode == DB_ORACLE || newmode == DB_MYSQL))	/* ReqID:SRS-MISC-MYSQL-FRAME */
 			ereport(ERROR,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.compatible_mode cannot be changed in native PG mode.")));
@@ -1107,6 +1110,20 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 					errhint("You must load IVORYSQL_ORA to use oracle parser..")));
 		}
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	if(DB_MYSQL == database_mode
+		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (newmode == DB_MYSQL)
+		{
+			if (mys_raw_parser == NULL)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYSTEM_ERROR),
+					errmsg("libmysql_parser not found!"),
+					errhint("You must load libmysql_parser to use mysql parser.")));
+		}
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	return true;
 }
 
@@ -1115,7 +1132,7 @@ check_database_mode(int *newval, void **extra, GucSource source)
 {
 	int		newmode = *newval;
 
-	if (DB_PG == database_mode && DB_ORACLE == newmode)
+	if (DB_PG == database_mode && (DB_ORACLE == newmode || DB_MYSQL == newmode))	/* ReqID:SRS-MISC-MYSQL-FRAME */
 			ereport(NOTICE,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.database_mode cannot be changed")));
@@ -1162,6 +1179,24 @@ assign_compatible_mode(int newval, void *extra)
 			assign_search_path(NULL, NULL);
 		}
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(DB_MYSQL == database_mode
+	&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
+	{
+		if (newval == DB_MYSQL)
+		{
+			sql_raw_parser = mys_raw_parser;
+			pg_object_bulid_relcache = NULL;
+			assign_search_path(NULL, NULL);
+		}
+		else if (newval == DB_PG)
+		{
+			sql_raw_parser = standard_raw_parser;
+			pg_object_bulid_relcache = NULL;
+			assign_search_path(NULL, NULL);
+		}
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 }
 
 /* BEGIN - ReqID:SRS-MISC-USER */

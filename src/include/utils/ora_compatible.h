@@ -23,7 +23,8 @@ typedef enum DBMode
 {
 	DB_PG = 0,
 	DB_ORACLE = 1, /* ReqID:SRS-CMD-PGDUMP */
-	DB_NATIVE = 2	/* ReqID:SRS-CMD-PGDUMP */
+	DB_MYSQL = 2,	/* ReqID:SRS-MISC-MYSQL-FRAME */
+	DB_NATIVE = 3	/* ReqID:SRS-CMD-PGDUMP */
 }DBMode;
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 typedef enum DBUser
@@ -35,7 +36,8 @@ typedef enum DBUser
 typedef enum DBParser
 {
 	PG_PARSER = 0,
-	ORA_PARSER
+	ORA_PARSER,
+	MYS_PARSER		/* ReqID:SRS-MISC-MYSQL-FRAME */
 }DBParser;
 
 /* BEGIN - ReqID:SRS-MISC-USER */

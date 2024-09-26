@@ -20,6 +20,8 @@
 /* Begin - SQL PARSER */
 #include "oracle_fe_utils/ora_string_utils.h"
 #include "oracle_parser/ora_keywords.h"
+#include "mysql_fe_utils/mys_string_utils.h"
+#include "mysql_parser/mys_keywords.h"
 /* END - SQL PARSER */
 
 #include "common/keywords.h"
@@ -74,6 +76,8 @@ fmtId(const char *rawid)
 /* BEGIN - SQL PARSER */
 	if (DB_ORACLE == db_mode)
 		return ora_fmtId(rawid);
+	else if(DB_MYSQL == db_mode)
+		return mys_fmtId(rawid);
 	else
 		return stardand_fmtId(rawid);
 }

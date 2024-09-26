@@ -269,6 +269,20 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 				 " -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c vacuum_defer_cleanup_age=0" : "",
 				 cluster->pgopts ? cluster->pgopts : "", socket_string);
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (cluster->controldata.database_mode_is_mysql)
+	{
+		snprintf(cmd, sizeof(cmd),
+				 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -m %d%s%s %s%s\" start",
+				 cluster->bindir, SERVER_LOG_FILE, cluster->pgconfig, cluster->port, cluster->mysport,
+				 (cluster->controldata.cat_ver >=
+				  BINARY_UPGRADE_SERVER_FLAG_CAT_VER) ? " -b" :
+				 " -c autovacuum=off -c autovacuum_freeze_max_age=2000000000",
+				 (cluster == &new_cluster) ?
+				 " -c synchronous_commit=off -c fsync=off -c full_page_writes=off -c vacuum_defer_cleanup_age=0" : "",
+				 cluster->pgopts ? cluster->pgopts : "", socket_string);
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	{

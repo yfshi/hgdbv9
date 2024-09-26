@@ -15,7 +15,7 @@
  *
  * add the file for requirement "SRS-MISC-MYSQL-FRAME", include
  * IVY_MY_GUC_VAR_DEFINE, IVY_MY_GUC_INT_PARAMS and IVY_MY_GUC_STRING_PARAMS
- *-------------------------------------------------------------------------
+ *-------------------------------------pg_resetwal.c------------------------------------
  */
 #ifdef IVY_MY_GUC_VAR_DEFINE
 
@@ -26,7 +26,7 @@
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		{"mysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the Oracle TCP port the server listens on."),
+			gettext_noop("Sets the MySQL TCP port the server listens on."),
 			NULL
 		},
 		&MysPortNumber,
@@ -40,7 +40,7 @@
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		{"mysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets mysql host name or IP address(es) to listen to."),
+			gettext_noop("Sets MySQL host name or IP address(es) to listen to."),
 			NULL,
 			GUC_LIST_INPUT
 		},

@@ -200,9 +200,11 @@ static const char *default_timezone = NULL;
 
 /* BEGIN - SQL PARSER */
 static const char *ora_options = "-c session_preload_libraries=liboracle_parser ";
+static const char *mys_options = "-c session_preload_libraries=libmysql_parser ";	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 static char  *dbmode = "oracle";
 static char  *ora_conf_file;
+static char  *mys_conf_file;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 static int	database_mode = DB_ORACLE;
 /* END - SQL PARSER */
 /*
@@ -928,7 +930,7 @@ set_null_conf(void)
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
-		path = psprintf("%s/ivorysql.conf", pg_data);
+		path = psprintf("%s/ivorysql.oracle.conf", pg_data);
 		conf_file = fopen(path, PG_BINARY_W);
 		if (conf_file == NULL)
 		{
@@ -943,6 +945,25 @@ set_null_conf(void)
 		free(path);
 	}
 	/* END - SQL PARSER */
+
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	if (database_mode == DB_MYSQL)
+	{
+		path = psprintf("%s/ivorysql.mysql.conf", pg_data);
+		conf_file = fopen(path, PG_BINARY_W);
+		if (conf_file == NULL)
+		{
+			pg_log_error("could not open file \"%s\" for writing: %m", path);
+			exit(1);
+		}
+		if (fclose(conf_file))
+		{
+			pg_log_error("could not write file \"%s\": %m", path);
+			exit(1);
+		}
+		free(path);
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 }
 
 /*
@@ -1312,8 +1333,13 @@ setup_config(void)
 	if (database_mode == DB_PG)
 	{
 		conflines = replace_token(conflines,
-							  "include_if_exists = 'ivorysql.conf'",
-							  "#include_if_exists = 'ivorysql.conf'");
+							  "include_if_exists = 'ivorysql.oracle.conf'",
+							  "#include_if_exists = 'ivorysql.oracle.conf'");
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		conflines = replace_token(conflines,
+							  "include_if_exists = 'ivorysql.mysql.conf'",
+							  "#include_if_exists = 'ivorysql.mysql.conf'");
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	}
 	/* End - BUG#0000065 */
 
@@ -1332,7 +1358,7 @@ setup_config(void)
 		/* oracle compatibility conf file */
 		conflines = readfile(ora_conf_file);
 
-		snprintf(path, sizeof(path), "%s/ivorysql.conf", pg_data);
+		snprintf(path, sizeof(path), "%s/ivorysql.oracle.conf", pg_data);
 
 		/* BEGIN - BUG#M0000120 */
  		if (DEF_ORAPORT != 1521)
@@ -1351,6 +1377,23 @@ setup_config(void)
 		}
 	}
 	/* END - SQL PARSER */
+
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	if (database_mode == DB_MYSQL)
+	{
+		/* mysql compatibility conf file */
+		conflines = readfile(mys_conf_file);
+
+		snprintf(path, sizeof(path), "%s/ivorysql.mysql.conf", pg_data);
+
+		writefile(path, conflines);
+		if (chmod(path, pg_file_create_mode) != 0)
+		{
+			pg_log_error("could not change permissions of \"%s\": %m", path);
+			exit(1);
+		}
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 	/*
 	 * create the automatic configuration file to store the configuration
@@ -1489,6 +1532,7 @@ bootstrap_template1(void)
 	char	  **bki_lines;
 	char		headerline[MAXPGPATH];
 	char		buf[64];
+	char	   *str = NULL;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 	printf(_("running bootstrap script ... "));
 	fflush(stdout);
@@ -1539,6 +1583,15 @@ bootstrap_template1(void)
 	/* Also ensure backend isn't confused by this environment var: */
 	unsetenv("PGCLIENTENCODING");
 
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	if(pg_strcasecmp(dbmode, "pg") == 0)
+		str = "-y pg";
+	else if(pg_strcasecmp(dbmode, "mysql") == 0)
+		str = "-y mysql";
+	else
+		str = "-y oracle";
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+
 	snprintf(cmd, sizeof(cmd),
 			 /* BEGIN - SQL PARSER */
 			 "\"%s\" --boot -x1 -c ivorysql.identifier_case_switch=%d -X %u %s %s %s %s %s",
@@ -1547,7 +1600,7 @@ bootstrap_template1(void)
 			 caseswitchmode,	/* case sensitive indentify: add guc "identifier_case_switch" */
 			 wal_segment_size_mb * (1024 * 1024),
 			 /* BEGIN - SQL PARSER */
-			 pg_strcasecmp(dbmode, "pg") ? "-y oracle" : "-y pg",
+			 str,		/* ReqID:SRS-MISC-MYSQL-FRAME */
 			 /* END - SQL PARSER */
 			 data_checksums ? "-k" : "",
 			 boot_options, extra_options,
@@ -2771,6 +2824,10 @@ setup_data_file_paths(void)
 	/* BEGIN - SQL PARSER */
 	if (DB_PG == database_mode)
 		set_input(&bki_file, "postgres.bki");
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(DB_MYSQL == database_mode)
+		set_input(&bki_file, "postgres_mysql.bki");
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 		set_input(&bki_file, "postgres_oracle.bki");
 	/* END - SQL PARSER */
@@ -2787,9 +2844,15 @@ setup_data_file_paths(void)
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
-		set_input(&ora_conf_file, "ivorysql.conf.sample");
+		set_input(&ora_conf_file, "ivorysql.oracle.conf.sample");	/* ReqID:SRS-MISC-MYSQL-FRAME */
 		set_input(&preload_ora_misc, "preload_ora_misc.sql");	/* BUG#M0000195 */
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(database_mode == DB_MYSQL)
+	{
+		set_input(&mys_conf_file, "ivorysql.mysql.conf.sample");
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */
 	if (show_setting || debug)
 	{
@@ -2825,6 +2888,12 @@ setup_data_file_paths(void)
 		check_input(preload_ora_misc);	/* BUG#M0000195 */
 	}
 	/* END - SQL PARSER */
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(database_mode == DB_MYSQL)
+	{
+		check_input(mys_conf_file);
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 }
 
 
@@ -3158,6 +3227,13 @@ initialize_data_directory(void)
 				 backend_exec, backend_options, extra_options,
 				 DEVNULL);
 	/* BEGIN - SQL PARSER */
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(strcmp(dbmode, "mysql") == 0)
+		snprintf(cmd, sizeof(cmd),
+				 "\"%s\" %s %s %s template1 >%s",
+				 backend_exec, backend_options, extra_options, mys_options,
+				 DEVNULL);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 		snprintf(cmd, sizeof(cmd),
 				 "\"%s\" %s %s %s template1 >%s",
@@ -3175,7 +3251,10 @@ initialize_data_directory(void)
 	if (database_mode == DB_ORACLE)
 		PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
 	/* End - BUG#0000053 */
-
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (database_mode == DB_MYSQL)
+		PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	setup_run_file(cmdfd, system_functions_file);
 
 	setup_depend(cmdfd);
@@ -3434,6 +3513,10 @@ main(int argc, char *argv[])
 					database_mode = DB_PG;
 				else if (pg_strcasecmp(dbmode, "oracle") == 0 || pg_strcasecmp(dbmode, "1") == 0)
 					database_mode = DB_ORACLE;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if(pg_strcasecmp(dbmode, "mysql") == 0 || pg_strcasecmp(dbmode, "2") == 0)
+					database_mode = DB_MYSQL;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else
 				{
 					fprintf(stderr, _("unrecognized database mode.\n"));
