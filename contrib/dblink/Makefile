@@ -19,7 +19,7 @@ ORA_REGRESS = paths	ivy_dblink
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS = --dlpath=$(top_builddir)/src/oracle_test/regress
 # Begin - ReqID:SRS-MISC-MYSQL-FRAME 
-MYS_REGRESS = paths dblink
+MYS_REGRESS = paths mys_dblink
 MYSQL_REGRESS_OPTS = --dlpath=$(top_builddir)/src/mysql_test/regress
 # End - ReqID:SRS-MISC-MYSQL-FRAME
 # END - SQL PARSER

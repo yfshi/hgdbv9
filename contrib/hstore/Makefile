@@ -24,6 +24,9 @@ HEADERS = hstore.h
 
 REGRESS = hstore hstore_utf8
 ORA_REGRESS = ivy_hstore hstore_utf8
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_hstore mys_hstore_utf8
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

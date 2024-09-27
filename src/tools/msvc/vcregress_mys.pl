@@ -64,6 +64,7 @@ my $Config = -e "release/postgres/postgres.exe" ? "Release" : "Debug";
 copy("$Config/refint/refint.dll",                 "src/mysql_test/regress");
 copy("$Config/autoinc/autoinc.dll",               "src/mysql_test/regress");
 copy("$Config/mysregress/mysregress.dll",         "src/mysql_test/regress");
+copy("$Config/mysregress/mysregress.dll",         "src/mysql_test/regress/regress.dll");
 copy("$Config/dummy_seclabel/dummy_seclabel.dll", "src/mysql_test/regress");
 
 # Configuration settings used by TAP tests
@@ -743,7 +744,7 @@ sub fetchTests
 		return ();
 	}
 
-	if ($m =~ /^REGRESS\s*=\s*(.*)$/gm)
+	if ($m =~ /^MYS_REGRESS\s*=\s*(.*)$/gm)
 	{
 		$t = $1;
 		$t =~ s/\s+/ /g;

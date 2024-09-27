@@ -8,6 +8,9 @@ PGFILEDESC = "earthdistance - calculate distances on the surface of the Earth"
 
 REGRESS = earthdistance
 ORA_REGRESS = ora_earthdistance
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_earthdistance
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 EXTRA_INSTALL = contrib/cube
 
 LDFLAGS_SL += $(filter -lm, $(LIBS))

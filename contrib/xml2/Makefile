@@ -12,6 +12,9 @@ PGFILEDESC = "xml2 - XPath querying and XSLT"
 
 REGRESS = xml2
 ORA_REGRESS = ivy_xml2
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_xml2
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 SHLIB_LINK += $(filter -lxslt, $(LIBS)) -lxml2
 

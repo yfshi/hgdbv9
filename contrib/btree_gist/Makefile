@@ -39,6 +39,11 @@ REGRESS = init int2 int4 int8 float4 float8 cash oid timestamp timestamptz \
         time timetz date interval macaddr macaddr8 inet cidr text varchar char \
         bytea bit varbit numeric uuid not_equal enum
 ORA_REGRESS = init
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_init mys_int2 mys_int4 mys_int8 mys_float4 mys_float8 mys_cash mys_oid mys_timestamp mys_timestamptz \
+        mys_time mys_timetz mys_date mys_interval mys_macaddr mys_macaddr8 mys_inet mys_cidr mys_text mys_varchar mys_char \
+        mys_bytea mys_bit mys_varbit mys_numeric mys_uuid mys_not_equal mys_enum
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 SHLIB_LINK += $(filter -lm, $(LIBS))
 

@@ -11,6 +11,9 @@ PGFILEDESC = "dict_int - add-on dictionary template for full-text search"
 
 REGRESS = dict_int
 ORA_REGRESS = dict_int
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_dict_int
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

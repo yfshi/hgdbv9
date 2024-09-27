@@ -12,6 +12,9 @@ PGFILEDESC = "fuzzystrmatch - similarities and distance between strings"
 
 REGRESS = fuzzystrmatch
 ORA_REGRESS = ivy_fuzzystrmatch
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_fuzzystrmatch
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

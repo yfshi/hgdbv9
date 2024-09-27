@@ -23,6 +23,9 @@ PGFILEDESC = "pageinspect - functions to inspect contents of database pages"
 
 REGRESS = page btree brin gin gist hash checksum oldextversions
 ORA_REGRESS = ivy_page btree ivy_brin ivy_gin ivy_gist ivy_hash checksum ivy_oldextversions
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_page mys_btree mys_brin mys_gin mys_gist mys_hash mys_checksum mys_oldextversions
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

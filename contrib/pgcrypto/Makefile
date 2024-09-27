@@ -59,6 +59,13 @@ ORA_REGRESS = init md5 sha1 hmac-md5 hmac-sha1 blowfish rijndael \
 	crypt-des crypt-md5 crypt-blowfish crypt-xdes \
 	pgp-armor pgp-decrypt pgp-encrypt $(CF_PGP_TESTS) \
 	pgp-pubkey-decrypt pgp-pubkey-encrypt pgp-info
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_init mys_md5 mys_sha1 mys_hmac-md5 mys_hmac-sha1 mys_blowfish mys_rijndael \
+	$(CF_TESTS) \
+	mys_crypt-des mys_crypt-md5 mys_crypt-blowfish mys_crypt-xdes \
+	mys_pgp-armor mys_pgp-decrypt mys_pgp-encrypt $(CF_PGP_TESTS) \
+	mys_pgp-pubkey-decrypt mys_pgp-pubkey-encrypt mys_pgp-info
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 EXTRA_CLEAN = gen-rtab
 

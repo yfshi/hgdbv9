@@ -12,6 +12,9 @@ PGFILEDESC = "passwordcheck - strengthen user password checks"
 
 REGRESS = passwordcheck
 ORA_REGRESS = passwordcheck
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_passwordcheck
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

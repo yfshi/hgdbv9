@@ -11,6 +11,9 @@ PGFILEDESC = "pg_surgery - perform surgery on a damaged relation"
 
 REGRESS = heap_surgery
 ORA_REGRESS = heap_surgery
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_heap_surgery
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

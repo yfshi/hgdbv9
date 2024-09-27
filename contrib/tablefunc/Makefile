@@ -8,6 +8,9 @@ PGFILEDESC = "tablefunc - various functions that return tables"
 
 REGRESS = tablefunc
 ORA_REGRESS = ivy_tablefunc
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_tablefunc
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 LDFLAGS_SL += $(filter -lm, $(LIBS))
 

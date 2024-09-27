@@ -200,7 +200,7 @@ chdir "$startdir";
 
 $ENV{PGPORT} = 3306;
 
-my @vcregress_mys_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck");
+my @vcregress_mys_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck","contribcheck");
 foreach $a (@vcregress_mys_install){
 	system("vcregress_mys.bat $a");
 	my $status23 = $? >> 8;

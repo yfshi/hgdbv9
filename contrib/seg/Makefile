@@ -15,6 +15,9 @@ HEADERS = segdata.h
 
 REGRESS = security seg
 ORA_REGRESS = ivy_security ivy_seg
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_security mys_seg
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 EXTRA_CLEAN = y.tab.c y.tab.h
 

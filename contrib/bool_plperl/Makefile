@@ -13,6 +13,9 @@ DATA = bool_plperlu--1.0.sql bool_plperl--1.0.sql
 
 REGRESS = bool_plperl bool_plperlu
 ORA_REGRESS = ivy_bool_plperl ivy_bool_plperlu
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_bool_plperl mys_bool_plperlu
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

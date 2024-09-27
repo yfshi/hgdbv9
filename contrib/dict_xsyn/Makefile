@@ -12,6 +12,9 @@ PGFILEDESC = "dict_xsyn - add-on dictionary template for full-text search"
 
 REGRESS = dict_xsyn
 ORA_REGRESS = dict_xsyn
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_dict_xsyn
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

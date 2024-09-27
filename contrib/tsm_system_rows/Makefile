@@ -11,6 +11,9 @@ DATA = tsm_system_rows--1.0.sql
 
 REGRESS = tsm_system_rows
 ORA_REGRESS = tsm_system_rows
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_tsm_system_rows
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

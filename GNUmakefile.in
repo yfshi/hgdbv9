@@ -106,7 +106,7 @@ $(call recurse,oracle-checkprep,  src/oracle_test src/pl src/interfaces/ecpg con
 $(call recurse,oracle-installcheck-world,src/oracle_test src/pl src/interfaces/ecpg contrib src/bin,oracle-installcheck)
 #add mysql regression
 $(call recurse,mysql-pg-check-world,src/test/regress,mysql-pg-check)
-$(call recurse,mysql-check-world,src/mysql_test src/pl src/interfaces/ecpg src/bin,mysql-check)
+$(call recurse,mysql-check-world,src/mysql_test src/pl src/interfaces/ecpg contrib contrib/ivorysql_my src/bin,mysql-check)
 $(call recurse,mysql-checkprep,  src/mysql_test src/pl src/interfaces/ecpg contrib src/bin)
 
 $(call recurse,mysql-installcheck-world,src/mysql_test src/pl src/interfaces/ecpg contrib src/bin,mysql-installcheck)

@@ -12,6 +12,9 @@ PGFILEDESC = "pg_visibility - page visibility information"
 
 REGRESS = pg_visibility
 ORA_REGRESS = ivy_pg_visibility
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_pg_visibility
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

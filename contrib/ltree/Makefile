@@ -22,6 +22,9 @@ HEADERS = ltree.h
 
 REGRESS = ltree
 ORA_REGRESS = ivy_ltree
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_ltree
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
