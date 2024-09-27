@@ -3324,10 +3324,6 @@ initialize_data_directory(void)
 	load_ivorysql_base(cmdfd);
 	/* END - ReqID:SRS-SQL-Object */
 
-	/* Begin - ReqID:SRS-SQL-DBLINK */
-	load_postgres_fdw(cmdfd);
-	/* End - ReqID:SRS-SQL-DBLINK */
-
 	/* BEGIN - SQL PARSER */
 	/* load oracle compatible objects and plisql language */
 	if (database_mode == DB_ORACLE)
@@ -3335,6 +3331,13 @@ initialize_data_directory(void)
 		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
+		/*When the mysql framework is merged, the extension
+		  creation of dblink is moved here. It was previously
+		  created before if.
+		 */
+		/* Begin - ReqID:SRS-SQL-DBLINK */ 
+		load_postgres_fdw(cmdfd);
+		/* End - ReqID:SRS-SQL-DBLINK */
 	}
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (database_mode == DB_MYSQL)
