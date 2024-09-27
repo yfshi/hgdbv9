@@ -993,6 +993,19 @@ EOF
 	system("perl gensql.pl $versions");
 	chdir('../..');
 	# End - ReqID:SRS-MISC-SQLMERGE
+	
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	$mf = Project::read_file('contrib/ivorysql_my/Makefile');
+	$mf =~ s{\\\r?\n}{}g;
+	$mf =~ /^DATA\s*:?=(.*)$/gm
+		|| croak "Could not find DATA in Makefile\n";
+	my $mversions = $1;
+	$mversions =~ s/ivorysql_my--//g;
+	$mversions =~ s/\.sql//g;
+	chdir('contrib/ivorysql_my');
+	system("perl gensql.pl $mversions");
+	chdir('../..');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	open(my $o, '>', "doc/src/sgml/version.sgml")
 	  || croak "Could not write to version.sgml\n";

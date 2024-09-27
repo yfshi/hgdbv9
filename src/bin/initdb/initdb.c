@@ -300,6 +300,10 @@ static void load_plmysql(FILE *cmdfd);
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 static void load_ivorysql_ora(FILE *cmdfd);		/* ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+static void load_ivorysql_my(FILE *cmdfd);
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
 #ifdef USE_LICENSE
 static void load_hg_misc(FILE *cmdfd);
 #endif
@@ -2160,6 +2164,20 @@ load_ivorysql_ora(FILE *cmdfd)
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+/*
+ * load ivorysql_my extension
+ */
+static void
+load_ivorysql_my(FILE *cmdfd)
+{
+	/* switch to mysql parser and load extenison */
+	PG_CMD_PUTS("set ivorysql.compatible_mode to mysql;\n\n");      /* ReqID:SRS-MISC-GUC */
+	PG_CMD_PUTS("CREATE EXTENSION ivorysql_my;\n\n");
+	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n"); /* BUG#0000054 */
+}
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
 /* Begin - ReqID:SRS-SQL-Object */
 static void
 load_ivorysql_base(FILE *cmdfd)
@@ -3322,6 +3340,7 @@ initialize_data_directory(void)
 	else if (database_mode == DB_MYSQL)
 	{
 		load_plmysql(cmdfd);
+		load_ivorysql_my(cmdfd);
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */

@@ -37,7 +37,7 @@ if exist src\pl\plperl\win32ver.rc del /q src\pl\plperl\win32ver.rc
 if exist src\pl\plpgsql\src\win32ver.rc del /q src\pl\plpgsql\src\win32ver.rc
 REM BEGIN - SQL PARSER
 if exist src\pl\plisql\src\win32ver.rc del /q src\pl\plisql\src\win32ver.rc
-REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
 if exist src\pl\plmysql\src\win32ver.rc del /q src\pl\plmysql\src\win32ver.rc
 REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
@@ -233,6 +233,11 @@ REM for /r %%f in (*.sql) do if exist %%f.in del %%f
 
 REM Begin - ReqID:SRS-MISC-SQLMERGE
 for /r %%f in (contrib\ivorysql_ora\ivorysql_ora*.sql) do if exist %%f del %%f
+
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+for /r %%f in (contrib\ivorysql_my\ivorysql_my*.sql) do if exist %%f del %%f
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
+
 REM End - ReqID:SRS-MISC-SQLMERGE
 
 cd "%~dp0"
