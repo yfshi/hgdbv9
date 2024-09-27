@@ -18,6 +18,10 @@ ORA_REGRESS = paths	ivy_dblink
 # End - BUGM0000294
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS = --dlpath=$(top_builddir)/src/oracle_test/regress
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+MYS_REGRESS = paths dblink
+MYSQL_REGRESS_OPTS = --dlpath=$(top_builddir)/src/mysql_test/regress
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 # END - SQL PARSER
 
 EXTRA_CLEAN = sql/paths.sql expected/paths.out
@@ -34,7 +38,8 @@ include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
-all: ../../src/oracle_test/regress/regress$(DLSUFFIX)
+all: ../../src/oracle_test/regress/regress$(DLSUFFIX) ../../src/mysql_test/regress/regress$(DLSUFFIX)
 
 ../../src/oracle_test/regress/egress$(DLSUFFIX): ../../src/oracle_test/regress/oraregress$(DLSUFFIX)
+../../src/mysql_test/regress/egress$(DLSUFFIX): ../../src/mysql_test/regress/mysregress$(DLSUFFIX)
 	        cp $< $@

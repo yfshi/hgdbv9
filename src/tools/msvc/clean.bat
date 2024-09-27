@@ -32,6 +32,9 @@ REM END - SQL PARSER
 if exist src\interfaces\ecpg\test\win32ver.rc del /q src\interfaces\ecpg\test\win32ver.rc
 REM BEGIN - SQL PARSER
 if exist src\interfaces\ecpg\oracle_test\win32ver.rc del /q src\interfaces\ecpg\oracle_test\win32ver.rc
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if exist src\interfaces\ecpg\mysql_test\win32ver.rc del /q src\interfaces\ecpg\mysql_test\win32ver.rc
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if exist src\pl\plperl\win32ver.rc del /q src\pl\plperl\win32ver.rc
 if exist src\pl\plpgsql\src\win32ver.rc del /q src\pl\plpgsql\src\win32ver.rc
@@ -48,6 +51,10 @@ if exist src\test\regress\win32ver.rc del /q src\test\regress\win32ver.rc
 REM BEGIN - SQL PARSER
 if exist src\oracle_test\isolation\win32ver.rc del /q src\oracle_test\isolation\win32ver.rc
 if exist src\oracle_test\regress\win32ver.rc del /q src\oracle_test\regress\win32ver.rc
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if exist src\mysql_test\isolation\win32ver.rc del /q src\mysql_test\isolation\win32ver.rc
+if exist src\mysql_test\regress\win32ver.rc del /q src\mysql_test\regress\win32ver.rc
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM END - SQL PARSER
 if exist src\timezone\win32ver.rc del /q src\timezone\win32ver.rc
 
@@ -56,7 +63,9 @@ for /d %%f in (contrib\*) do if exist %%f\win32ver.rc del /q %%f\win32ver.rc
 for /d %%f in (src\backend\utils\mb\conversion_procs\*) do if exist %%f\win32ver.rc del /q %%f\win32ver.rc
 for /d %%f in (src\test\modules\*) do if exist %%f\win32ver.rc del /q %%f\win32ver.rc
 for /d %%f in (src\oracle_test\modules\*) do if exist %%f\win32ver.rc del /q %%f\win32ver.rc
-
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+for /d %%f in (src\mysql_test\modules\*) do if exist %%f\win32ver.rc del /q %%f\win32ver.rc
+REM End - ReqID:SRS-MISC-MYSQL-FRAME
 REM Delete files created with GenerateFiles() in Solution.pm
 if exist src\include\pg_config.h del /q src\include\pg_config.h
 if exist src\include\pg_config_ext.h del /q src\include\pg_config_ext.h
@@ -201,6 +210,9 @@ if %DIST%==1 if exist contrib\seg\segparse.c del /q contrib\seg\segparse.c
 if exist src\test\regress\tmp_check rd /s /q src\test\regress\tmp_check
 REM BEGIN - SQL PARSER
 if exist src\oracle_test\regress\tmp_check rd /s /q src\oracle_test\regress\tmp_check
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if exist src\mysql_test\regress\tmp_check rd /s /q src\mysql_test\regress\tmp_check
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
 REM END - SQL PARSER
 if exist contrib\spi\refint.dll del /q contrib\spi\refint.dll
 if exist contrib\spi\autoinc.dll del /q contrib\spi\autoinc.dll
@@ -211,12 +223,21 @@ REM BEGIN - SQL PARSER
 if exist src\oracle_test\regress\oraregress.dll del /q src\oracle_test\regress\oraregress.dll
 if exist src\oracle_test\regress\refint.dll del /q src\oracle_test\regress\refint.dll
 if exist src\oracle_test\regress\autoinc.dll del /q src\oracle_test\regress\autoinc.dll
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if exist src\mysql_test\regress\mysregress.dll del /q src\mysql_test\regress\mysregress.dll
+if exist src\mysql_test\regress\refint.dll del /q src\mysql_test\regress\refint.dll
+if exist src\mysql_test\regress\autoinc.dll del /q src\mysql_test\regress\autoinc.dll
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
 REM END - SQL PARSER
 if %DIST%==1 if exist src\test\isolation\specscanner.c del /q src\test\isolation\specscanner.c
 if %DIST%==1 if exist src\test\isolation\specparse.c del /q src\test\isolation\specparse.c
 REM BEGIN - SQL PARSER
 if %DIST%==1 if exist src\oracle_test\isolation\specscanner.c del /q src\oracle_test\isolation\specscanner.c
 if %DIST%==1 if exist src\oracle_test\isolation\specparse.c del /q src\oracle_test\isolation\specparse.c
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+if %DIST%==1 if exist src\mysql_test\isolation\specscanner.c del /q src\mysql_test\isolation\specscanner.c
+if %DIST%==1 if exist src\mysql_test\isolation\specparse.c del /q src\mysql_test\isolation\specparse.c
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
 REM END - SQL PARSER
 
 for /d %%f in (contrib\* src\bin\* src\test\* src\test\modules\*
@@ -225,6 +246,12 @@ for /d %%f in (contrib\* src\bin\* src\test\* src\test\modules\*
 REM BEGIN - SQL PARSER
 for /d %%f in (src\oracle_test\* src\oracle_test\modules\*
   ) do if exist %%f\tmp_check rd /s /q %%f\tmp_check
+
+REM Begin - ReqID:SRS-MISC-MYSQL-FRAME
+for /d %%f in (src\mysql_test\* src\mysql_test\modules\*
+  ) do if exist %%f\tmp_check rd /s /q %%f\tmp_check
+REM End - ReqID:SRS-MISC-MYSQL-FRAME 
+
 REM END - SQL PARSER
 
 REM Clean up datafiles built with contrib

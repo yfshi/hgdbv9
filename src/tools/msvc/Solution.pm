@@ -242,6 +242,8 @@ sub GenerateFiles
 		DEF_PGPORT_STR             => qq{"$port"},
 		DEF_ORAPORT                 => $oraport,
 		DEF_ORAPORT_STR             => qq{"$oraport"},
+		DEF_MYSPORT                 => $mysport,
+		DEF_MYSPORT_STR             => qq{"$mysport"},
 		ENABLE_GSS                 => $self->{options}->{gss} ? 1 : undef,
 		ENABLE_NLS                 => $self->{options}->{nls} ? 1 : undef,
 		ENABLE_THREAD_SAFETY       => 1,

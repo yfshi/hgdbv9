@@ -28,6 +28,9 @@ clean distclean maintainer-clean:
 #BEGIN - SQL PARSER
 	$(MAKE) -C oracle_test clean
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	$(MAKE) -C mysql_test clean
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 checktcp: | temp-install
 check checktcp installcheck:
@@ -37,3 +40,7 @@ check checktcp installcheck:
 oracle-check oracle-checktcp oracle-installcheck:
 	$(MAKE) -C oracle_test $@
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check mysql-checktcp mysql-installcheck:
+	$(MAKE) -C mysql_test $@
+#End - ReqID:SRS-MISC-MYSQL-FRAME

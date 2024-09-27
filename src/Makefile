@@ -37,7 +37,11 @@ SUBDIRS = \
 	oracle_test/regress \
 	oracle_test/isolation \
 	oracle_test/modules \
-	oracle_test/perl
+	oracle_test/perl \
+	mysql_test/regress \
+	mysql_test/isolation \
+	mysql_test/modules \
+	mysql_test/perl
 # ReqID:SRS-PSQL-PARSER
 
 ifeq ($(with_llvm), yes)
@@ -77,6 +81,7 @@ distprep:
 	$(MAKE) -C test/isolation $@
 #BEGIN - SQL PARSER
 	$(MAKE) -C oracle_test/isolation $@
+	$(MAKE) -C mysql_test/isolation $@
 #END - SQL PARSER
 
 clean:
@@ -86,6 +91,8 @@ clean:
 #BEGIN - SQL PARSER
 	$(MAKE) -C oracle_test $@
 	$(MAKE) -C oracle_test/isolation $@
+	$(MAKE) -C mysql_test $@
+	$(MAKE) -C mysql_test/isolation $@
 #END - SQL PARSER
 
 distclean maintainer-clean:
@@ -95,6 +102,8 @@ distclean maintainer-clean:
 #BEGIN - SQL PARSER
 	$(MAKE) -C oracle_test $@
 	$(MAKE) -C oracle_test/isolation $@
+	$(MAKE) -C mysql_test $@
+	$(MAKE) -C mysql_test/isolation $@
 #END - SQL PARSER
 	rm -f Makefile.port Makefile.global
 

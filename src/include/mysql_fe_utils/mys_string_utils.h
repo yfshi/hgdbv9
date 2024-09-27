@@ -10,7 +10,7 @@
  *
  * src/include/mysql_fe_utils/mys_string_utils.h
  *
- * add the file for requirement "MySQL SQL PARSER"
+ * add the file for requirement "SRS-MISC-MYSQL-FRAME"
  *
  *-------------------------------------------------------------------------
  */

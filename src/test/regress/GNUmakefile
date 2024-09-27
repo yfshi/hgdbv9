@@ -34,13 +34,18 @@ EXTRADEFS = '-DHOST_TUPLE="$(host_tuple)"' \
 
 # Build regression test driver
 
-all: pg_regress$(X) ora_pg_regress$(X)
+all: pg_regress$(X) ora_pg_regress$(X) mys_pg_regress$(X)
 
 pg_regress$(X): pg_regress.o pg_regress_main.o $(WIN32RES) | submake-libpgport
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@
 
 ora_pg_regress$(X): ora_pg_regress.o pg_regress_main.o $(WIN32RES) | submake-libpgport
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@
+
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mys_pg_regress$(X): mys_pg_regress.o pg_regress_main.o $(WIN32RES) | submake-libpgport
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # dependencies ensure that path changes propagate
 pg_regress.o: pg_regress.c $(top_builddir)/src/port/pg_config_paths.h
@@ -49,6 +54,11 @@ pg_regress.o: override CPPFLAGS += -I$(top_builddir)/src/port $(EXTRADEFS)
 ora_pg_regress.o: ora_pg_regress.c $(top_builddir)/src/port/pg_config_paths.h
 ora_pg_regress.o: override CPPFLAGS += -I$(top_builddir)/src/port $(EXTRADEFS)
 
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mys_pg_regress.o: mys_pg_regress.c $(top_builddir)/src/port/pg_config_paths.h
+mys_pg_regress.o: override CPPFLAGS += -I$(top_builddir)/src/port $(EXTRADEFS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
 # note: because of the submake dependency, this rule's action is really a no-op
 $(top_builddir)/src/port/pg_config_paths.h: | submake-libpgport
 	$(MAKE) -C $(top_builddir)/src/port pg_config_paths.h
@@ -56,6 +66,7 @@ $(top_builddir)/src/port/pg_config_paths.h: | submake-libpgport
 install: all installdirs
 	$(INSTALL_PROGRAM) pg_regress$(X) '$(DESTDIR)$(pgxsdir)/$(subdir)/pg_regress$(X)'
 	$(INSTALL_PROGRAM) ora_pg_regress$(X) '$(DESTDIR)$(pgxsdir)/$(subdir)/ora_pg_regress$(X)'
+	$(INSTALL_PROGRAM) mys_pg_regress$(X) '$(DESTDIR)$(pgxsdir)/$(subdir)/mys_pg_regress$(X)'
 
 installdirs:
 	$(MKDIR_P) '$(DESTDIR)$(pgxsdir)/$(subdir)'
@@ -63,6 +74,7 @@ installdirs:
 uninstall:
 	rm -f '$(DESTDIR)$(pgxsdir)/$(subdir)/pg_regress$(X)'
 	rm -f '$(DESTDIR)$(pgxsdir)/$(subdir)/ora_pg_regress$(X)'
+	rm -f '$(DESTDIR)$(pgxsdir)/$(subdir)/mys_pg_regress$(X)'
 
 
 # Build dynamically-loaded object file for CREATE FUNCTION ... LANGUAGE C.
@@ -136,6 +148,11 @@ check: all
 oracle-pg-check: all
 	$(ora_pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
 
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-pg-check: all
+	$(mys_pg_regress_check) $(REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
 check-tests: all | temp-install
 	$(pg_regress_check) $(REGRESS_OPTS) $(MAXCONNOPT) $(TESTS) $(EXTRA_TESTS)
 
@@ -173,6 +190,7 @@ clean distclean maintainer-clean: clean-lib
 	rm -f $(OBJS) refint$(DLSUFFIX) autoinc$(DLSUFFIX)
 	rm -f pg_regress_main.o pg_regress.o pg_regress$(X)
 	rm -f ora_pg_regress.o ora_pg_regress$(X)
+	rm -f mys_pg_regress.o mys_pg_regress$(X)
 # things created by various check targets
 	rm -f $(output_files) $(input_files)
 	rm -rf testtablespace

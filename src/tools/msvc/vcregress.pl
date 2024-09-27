@@ -545,6 +545,8 @@ sub contribcheck
 		next if ($module eq "sepgsql");
 		# Native PostgreSQL does not perform the test of ivorysql_ora.
 		next if ($module eq "ivorysql_ora");
+		# Native PostgreSQL does not perform the test of ivorysql_my.
+		next if ($module eq "ivorysql_my");
 
 		subdircheck($module);
 		my $status = $? >> 8;

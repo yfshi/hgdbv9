@@ -21,6 +21,9 @@ ifeq (,$(findstring snowball,$(subdir)))
 # BEGIN - SQL PARSER
 ifeq (,$(findstring oracle,$(subdir)))
 # END - SQL PARSER
+# BEGIN - SQL PARSER
+ifeq (,$(findstring mysql,$(subdir)))
+# END - SQL PARSER
 override CPPFLAGS+= -DBUILDING_DLL
 endif
 endif

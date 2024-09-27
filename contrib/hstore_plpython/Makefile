@@ -42,11 +42,18 @@ REGRESS_OPTS += --load-extension=hstore
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=hstore
 # END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=hstore
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 ifeq ($(python_majorversion),2)
 REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
 # END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 endif
 EXTRA_INSTALL += contrib/hstore
 

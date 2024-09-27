@@ -389,6 +389,16 @@ ifeq ($(PORTNAME), win)
 endif
 endif # ORA_REGRESS
 
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+ifdef MYS_REGRESS
+# things created by various check targets
+	rm -rf $(mysql_regress_clean_files)
+ifeq ($(PORTNAME), win)
+	rm -f regress.def
+endif
+endif # MYS_REGRESS
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 ifdef TAP_TESTS
 	rm -rf tmp_check/
 endif
@@ -451,7 +461,34 @@ $(test_files_build): $(abs_builddir)/%: $(srcdir)/%
 endif # VPATH
 endif # ORA_REGRESS
 
-.PHONY: submake oracle-submake
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+
+ifdef MYS_REGRESS
+
+MYSQL_REGRESS_OPTS += --dbname=$(CONTRIB_TESTDB)
+
+# When doing a VPATH build, must copy over the data files so that the
+# driver script can find them.  We have to use an absolute path for
+# the targets, because otherwise make will try to locate the missing
+# files using VPATH, and will find them in $(srcdir), but the point
+# here is that we want to copy them from $(srcdir) to the build
+# directory.
+
+ifdef VPATH
+abs_builddir := $(shell pwd)
+test_files_src := $(wildcard $(srcdir)/data/*.data)
+test_files_build := $(patsubst $(srcdir)/%, $(abs_builddir)/%, $(test_files_src))
+
+all: $(test_files_build)
+$(test_files_build): $(abs_builddir)/%: $(srcdir)/%
+	$(MKDIR_P) $(dir $@)
+	ln -s $< $@
+endif # VPATH
+endif # MYS_REGRESS
+
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
+.PHONY: submake oracle-submake mysql-submake
 submake:
 ifndef PGXS
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
@@ -466,6 +503,14 @@ ifndef PGXS
 endif
 #END - SQL PARSER
 
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-submake:
+ifndef PGXS
+	$(MAKE) -C $(top_builddir)/src/mysql_test/regress pg_regress$(X)
+	$(MAKE) -C $(top_builddir)/src/mysql_test/isolation all
+endif
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 ifdef ISOLATION
 ISOLATION_OPTS += --dbname=$(ISOLATION_TESTDB)
 endif
@@ -473,6 +518,12 @@ endif
 ifdef ORA_ISOLATION
 ORA_ISOLATION_OPTS += --dbname=$(ISOLATION_TESTDB)
 endif
+
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+ifdef MYS_ISOLATION
+MYS_ISOLATION_OPTS += --dbname=$(ISOLATION_TESTDB)
+endif
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # Standard rules to run regression tests including multiple test suites.
 # Runs against an installed postmaster.
@@ -499,6 +550,18 @@ ifdef TAP_TESTS
 	$(oracle_prove_installcheck)
 endif
 #END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-installcheck: mysql-submake $(REGRESS_PREP)
+ifdef MYS_REGRESS
+	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+endif
+ifdef MYS_ISOLATION
+	$(mysql_isolation_regress_installcheck) $(MYS_ISOLATION_OPTS) $(MYS_ISOLATION)
+endif
+ifdef TAP_TESTS
+	$(mysql_prove_installcheck)
+endif
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 endif # NO_INSTALLCHECK
 
 # Runs independently of any installation
@@ -511,6 +574,11 @@ oracle-check:
 	@echo '"$(MAKE) oracle-check" is not supported.'
 	@echo 'Do "$(MAKE) install", then "$(MAKE) oracle-installcheck" instead.'
 #END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check:
+        @echo '"$(MAKE) mysql-check" is not supported.'
+        @echo 'Do "$(MAKE) install", then "$(MAKE) mysql-installcheck" instead.'
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 else
 check: submake $(REGRESS_PREP)
 ifdef REGRESS
@@ -534,6 +602,20 @@ ifdef TAP_TESTS
 	$(prove_check)
 endif
 #END - BUGM0000237
+
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME #BEGIN - BUGM0000237
+mysql-pg-check: submake $(REGRESS_PREP)
+ifdef REGRESS
+	$(mys_pg_regress_check) $(REGRESS_OPTS) $(REGRESS)
+endif
+ifdef ISOLATION
+	$(mysql_pg_isolation_regress_check) $(ISOLATION_OPTS) $(ISOLATION)
+endif
+ifdef TAP_TESTS
+	$(prove_check)
+endif
+# End - ReqID:SRS-MISC-MYSQL-FRAME #END - BUGM0000237
+
 #BEGIN - SQL PARSER
 oracle-check: oracle-submake $(REGRESS_PREP)
 ifdef ORA_REGRESS
@@ -546,6 +628,18 @@ ifdef TAP_TESTS
 	$(oracle_prove_check)
 endif
 #END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check: mysql-submake $(REGRESS_PREP)
+ifdef MYS_REGRESS
+	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+endif
+ifdef MYS_ISOLATION
+	$(mysql_isolation_regress_check) $(MYS_ISOLATION_OPTS) $(MYS_ISOLATION)
+endif
+ifdef TAP_TESTS
+	$(mysql_prove_check)
+endif
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 endif # PGXS
 
 ifndef NO_TEMP_INSTALL
@@ -555,7 +649,10 @@ oracle-checkprep: EXTRA_INSTALL+=$(subdir)
 #END - SQL PARSER
 oracle-pg-checkprep: EXTRA_INSTALL+=$(subdir)	#BUGM0000237
 endif
-
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-checkprep: EXTRA_INSTALL+=$(subdir)
+mysql-pg-checkprep: EXTRA_INSTALL+=$(subdir)	#BUGM0000237 --mysql  frame add
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # STANDARD RULES
 

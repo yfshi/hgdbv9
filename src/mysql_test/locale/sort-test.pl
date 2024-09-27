@@ -1,0 +1,17 @@
+#! /usr/bin/perl
+
+# Copyright (c) 2021, PostgreSQL Global Development Group
+# add the file for requirement "SRS-MISC-MYSQL-FRAME"
+
+use strict;
+use warnings;
+use locale;
+
+open(my $in_fh, '<', $ARGV[0]) || die;
+chop(my (@words) = <$in_fh>);
+close($in_fh);
+
+$" = "\n";
+my (@result) = sort @words;
+
+print "@result\n";

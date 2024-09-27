@@ -26,6 +26,9 @@ REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/test_decoding/logical.conf
 #BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/test_decoding/logical.conf
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/test_decoding/logical.conf
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # Disabled because these tests require "wal_level=logical", which
 # typical installcheck users do not have (e.g. buildfarm clients).

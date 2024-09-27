@@ -42,11 +42,17 @@ REGRESS_OPTS += --load-extension=ltree
 #BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=ltree
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=ltree
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 ifeq ($(python_majorversion),2)
 REGRESS_OPTS += --load-extension=plpythonu --load-extension=ltree_plpythonu
 #BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=plpythonu --load-extension=ltree_plpythonu
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=plpythonu --load-extension=ltree_plpythonu
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 endif
 EXTRA_INSTALL += contrib/ltree
 
