@@ -35,7 +35,7 @@ DATA = plmysql.control plmysql--1.0.sql
 
 MYSQL_REGRESS_OPTS = --dbname=$(PL_TESTDB)
 
-REGRESS = plmysql_array plmysql_call plmysql_control plmysql_copy plmysql_domain \
+MYS_REGRESS = plmysql_array plmysql_call plmysql_control plmysql_copy plmysql_domain \
 	plmysql_record plmysql_cache plmysql_simple plmysql_transaction \
 	plmysql_trap plmysql_trigger plmysql_varprops
 
@@ -102,10 +102,10 @@ pl_unreserved_kwlist_d.h: pl_unreserved_kwlist.h $(GEN_KEYWORDLIST_DEPS)
 
 
 mysql-check: submake
-	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(REGRESS)
+	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
 
 mysql-installcheck: submake
-	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(REGRESS)
+	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
 
 .PHONY: submake
 submake:
