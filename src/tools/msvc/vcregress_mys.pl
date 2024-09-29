@@ -245,7 +245,7 @@ sub tap_check
 
 	# Fetch and adjust PROVE_TESTS, applying glob() to each element
 	# defined to build a list of all the tests matching patterns.
-	my $prove_tests_val = $ENV{PROVE_TESTS} || "t/*.pl";
+	my $prove_tests_val = $ENV{PROVE_TESTS} || "mys_t/*.pl";
 	my @prove_tests_array = split(/\s+/, $prove_tests_val);
 	my @prove_tests = ();
 	foreach (@prove_tests_array)
@@ -289,7 +289,7 @@ sub bincheck
 	# Process each test
 	foreach my $dir (@bin_dirs)
 	{
-		next unless -d "$dir/t";
+		next unless -d "$dir/mys_t";
 		my $status = tap_check($dir);
 		$mstat ||= $status;
 	}
@@ -308,7 +308,7 @@ sub taptest
 		$dir = shift;
 	}
 
-	die "no tests found!" unless -d "$topdir/$dir/t";
+	die "no tests found!" unless -d "$topdir/$dir/mys_t";
 
 	push(@args, "$topdir/$dir");
 
