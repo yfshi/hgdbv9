@@ -48,8 +48,6 @@ void		_PG_fini(void);
 PG_FUNCTION_INFO_V1(get_lic_baseinfo);
 PG_FUNCTION_INFO_V1(get_lic_funcinfo);
 
-
-
 /*
  * Module load callback
  */
@@ -112,6 +110,7 @@ get_lic_baseinfo(PG_FUNCTION_ARGS)
 	return CStringGetTextDatum(result_info);
 }
 
+/* Begin - Reqid:SRS-MISC-LICENSE-TEMPLATE*/
 /*
  * Get function list from license and return them as a record, So it can
  * be used in view v_lic_funcinfo.
@@ -124,8 +123,8 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	Tuplestorestate *tupstore;
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
-	int funclist_size = hg_get_enumLen();
-	int idx;
+	int  funclist_size = hg_get_productTemplateLen();
+	int  idx;
 	bool is_chinese = false;
 	char *encoding = "UTF8";
 	char *utf8_region = NULL;
@@ -168,46 +167,63 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	rsinfo->setDesc = tupdesc;
 
 	MemoryContextSwitchTo(oldcontext);
-	// Begin - bug#M0000278
+
 	curr_encoding = (char *)hg_get_encoding();
 	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true));
-	// End - bug#M0000278
+
+	hg_set_productFunclistIsChinese(is_chinese);
+
 	for (idx = 0; idx < funclist_size; idx++)
 	{
 		Datum		values[LIC_FUNC_VIEWS_COLS];
 		bool		nulls[LIC_FUNC_VIEWS_COLS];
 		int			i = 0;
-		const char		*name = NULL;
-		const char		*desc = NULL;
+		const char * classify = NULL;
+		const char * name = NULL;
+		const char * status = NULL;
+		uint32_t 	func_id;
 
 		memset(values, 0, sizeof(values));
 		memset(nulls, 0, sizeof(nulls));
 
-		/* Set coresponding version based on encoding */
-		if(is_chinese)
-		{
-			name = hg_get_productFuncNameCh(idx);
-			desc = hg_get_productFuncDescCh(idx);
-		}
-		else
-		{
-			name = hg_get_productFuncNameEn(idx);
-			desc = hg_get_productFuncDescEn(idx);
-		}
+		/*
+		 * The license function template is upward compatible. 
+		 * For example, the 1.5 version license library is compatible with the 1.6 version feature templates. 
+		 * Note: The newly added features in version 1.6 cannot be displayed in the 1.5 version library, but can 
+		 * be displayed normally in the 1.6 version license library.
+		 */
+		func_id = hg_get_productFuncId(idx);
+		if (func_id >= hg_get_productMaxFuncId() && !hg_get_is_classifyTitle(idx))
+			continue;
 
 		/* Let id start from 1 instead of 0 */
 		values[i++] = UInt32GetDatum((idx+1));
-		values[i++] = CStringGetTextDatum(name);
-		values[i++] = CStringGetTextDatum(desc);
-		values[i++] = BoolGetDatum(hg_get_productBitMapByCode(idx));
+
+		if (hg_get_is_classifyTitle(idx))
+		{
+			classify = hg_get_productFuncName(idx);
+			values[i++] = CStringGetTextDatum(classify);
+			nulls[i++]  = true;
+			nulls[i++]  = true;
+		}
+		else
+		{
+			name   = hg_get_productFuncName(idx);
+			status = hg_get_productFuncCodeStatus(idx);
+
+			nulls[i++]  = true;
+			values[i++] = CStringGetTextDatum(name);
+			values[i++] = CStringGetTextDatum(status);
+		}
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 	}
 
 	tuplestore_donestoring(tupstore);
-	// Begin - bug#M0000278
+	
 	hg_set_encoding(curr_encoding);
 	free(curr_encoding);
-	// End - bug#M0000278
+	
 	return (Datum)0;
 }
+/* End - Reqid:SRS-MISC-LICENSE-TEMPLATE*/

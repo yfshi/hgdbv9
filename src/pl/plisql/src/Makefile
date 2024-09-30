@@ -18,7 +18,7 @@ PGFILEDESC = "PL/iSQL - procedural language"
 NAME= plisql
 
 # Use header files from parser/oracle firstly
-override CPPFLAGS := -I. -I$(srcdir) -I $(top_srcdir)/src/include/oracle_parser $(CPPFLAGS)
+override CPPFLAGS := -I. -I$(srcdir) -I$(top_srcdir)/src/include/oracle_parser $(CPPFLAGS)
 SHLIB_LINK = $(filter -lintl, $(LIBS))
 rpath =
 
