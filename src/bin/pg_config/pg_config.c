@@ -153,6 +153,10 @@ main(int argc, char **argv)
 
 	progname = get_progname(argv[0]);
 
+#ifdef USE_LICENSE
+	hg_load_client_license(argv[0]);
+#endif
+
 	/* check for --help */
 	for (i = 1; i < argc; i++)
 	{
