@@ -8,6 +8,9 @@ PGFILEDESC = "file_fdw - foreign data wrapper for files"
 
 REGRESS = file_fdw
 ORA_REGRESS = ivy_file_fdw
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_file_fdw
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 EXTRA_CLEAN = sql/file_fdw.sql expected/file_fdw.out sql/ivy_file_fdw.sql expected/ivy_file_fdw.out		# BUGM0000266
 

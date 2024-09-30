@@ -64,6 +64,13 @@ oracle-check:
 oracle-installcheck:
 	$(oracle_prove_installcheck)
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check:
+	$(mysql_prove_check)
+
+mysql-installcheck:
+	$(mysql_prove_installcheck)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 uninstall:
 	rm -f $(addprefix '$(DESTDIR)$(bindir)'/, pg_dump$(X) pg_restore$(X) pg_dumpall$(X))

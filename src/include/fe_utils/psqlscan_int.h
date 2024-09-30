@@ -46,6 +46,7 @@
 
 #include "fe_utils/psqlscan.h"
 #include "oracle_fe_utils/ora_psqlscan.h"	/* ReqID:SRS-PSQL-PARSER */
+#include "mysql_fe_utils/mys_psqlscan.h"	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 /*
  * These are just to allow this file to be compilable standalone for header
@@ -304,6 +305,7 @@ typedef struct PsqlScanStateData
 	 */
 	const PsqlScanCallbacks *callbacks;
 	const Ora_psqlScanCallbacks *oracallbacks;	/* ReqID:SRS-PSQL-PARSER */
+	const Mys_psqlScanCallbacks *myscallbacks;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	void	   *cb_passthrough;
 
 	/* Begin - ReqID:SRS-CMD-PSQL */
@@ -369,5 +371,23 @@ extern system_variable GetSysVariable(const char *name);
 extern bool ShowSysVariable(sys_var_list *list);
 extern bool SetSysVariable(sys_var_list *list);
 /* End - ReqID:SRS-SQL-SYSFUNC */
+
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+/*
+ * for mysql parser
+ */
+extern void mys_psqlscan_push_new_buffer(PsqlScanState state, const char *newstr,
+									const char *varname);
+extern void mys_psqlscan_pop_buffer_stack(PsqlScanState state);
+extern void mys_psqlscan_select_top_buffer(PsqlScanState state);
+extern bool mys_psqlscan_var_is_current_source(PsqlScanState state, const char *varname);
+extern YY_BUFFER_STATE mys_psqlscan_prepare_buffer(PsqlScanState state, const char *txt, int len,
+									char **txtcopy);
+extern void mys_psqlscan_emit(PsqlScanState state, const char *txt, int len);
+extern char * mys_psqlscan_extract_substring(PsqlScanState state, const char *txt, int len);
+extern void mys_psqlscan_escape_variable(PsqlScanState state, const char *txt, int len,
+									PsqlScanQuoteType quote);
+extern void mys_psqlscan_test_variable(PsqlScanState state, const char *txt, int len);
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 #endif							/* PSQLSCAN_INT_H */

@@ -6,3 +6,5 @@ REM Resist any temptation to add any logic here.
 @perl vcregress.pl %*
 @perl vcregress_ora.pl %*
 @perl vcregress_ora_pg.pl %*
+@perl vcregress_mys.pl %*
+@perl vcregress_mys_pg.pl %*

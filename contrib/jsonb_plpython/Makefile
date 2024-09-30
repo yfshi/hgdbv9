@@ -13,8 +13,14 @@ DATA = jsonb_plpythonu--1.0.sql jsonb_plpython2u--1.0.sql jsonb_plpython3u--1.0.
 
 ORA_REGRESS = ivy_jsonb_plpython
 REGRESS = jsonb_plpython
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_jsonb_plpython
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
 ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)	#BUGM0000245
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS_PLPYTHON3_MANGLE := $(MYS_REGRESS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -41,6 +47,9 @@ REGRESS_OPTS += --load-extension=plpythonu --load-extension=jsonb_plpythonu
 #BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=plpythonu --load-extension=jsonb_plpythonu
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=plpythonu --load-extension=jsonb_plpythonu
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 endif
 
 include $(top_srcdir)/src/pl/plpython/regress-python3-mangle.mk

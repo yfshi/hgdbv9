@@ -228,6 +228,7 @@ typedef struct Port
 	 * current connection. The valid characters are as follows:
 	 *	'p' =  PostgreSQL mode, 
 	 *	'o' =  Oracle mode,
+	 *	'm' =  Mysql mode,
 	 *	'u' = Unkonw mode, shouldn't happen.
 	 */
 	char	connmode;

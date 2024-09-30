@@ -1774,6 +1774,10 @@ select_common_type_for_nvl(ParseState *pstate, List *exprs, const char *context,
 		{
 			if (compatible_db  == PG_PARSER)
 				ptype = TEXTOID;
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if (compatible_db  == MYS_PARSER)
+				ptype = TEXTOID;
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			else if (compatible_db == ORA_PARSER)
 			{
 				if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */
@@ -1809,6 +1813,10 @@ select_common_type_for_nvl(ParseState *pstate, List *exprs, const char *context,
 			{
 				if (compatible_db == PG_PARSER)
 					ptype = TEXTOID;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (compatible_db  == MYS_PARSER)
+					ptype = TEXTOID;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else if (compatible_db == ORA_PARSER)
 				{
 					if (nls_length_semantics == NLS_LENGTH_CHAR) /* BUG#Z091 */

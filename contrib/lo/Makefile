@@ -8,6 +8,9 @@ PGFILEDESC = "lo - management for large objects"
 
 REGRESS = lo
 ORA_REGRESS = lo
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_lo
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

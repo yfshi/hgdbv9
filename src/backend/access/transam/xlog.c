@@ -4991,11 +4991,18 @@ ReadControlFile(void)
 	SetConfigOption("data_checksums", DataChecksumsEnabled() ? "yes" : "no",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
 	/* Begin - ReqID:SRS-MISC-GUC */
-	/* BEGIN - SQL PARSER */
+	/* BEGIN - SQL PARSER SRS-MISC-MYSQL-FRAME */
 	/* set guc parameters' value about database compatible mode  */
-	SetConfigOption("ivorysql.database_mode", ControlFile->dbmode == DB_PG ? "pg" : "oracle",
+	if(ControlFile->dbmode == DB_PG)
+		SetConfigOption("ivorysql.database_mode", "pg",
 					PGC_INTERNAL, PGC_S_OVERRIDE);
-	/* END - SQL PARSER */
+	else if(ControlFile->dbmode == DB_ORACLE)
+		SetConfigOption("ivorysql.database_mode", "oracle",
+						PGC_INTERNAL, PGC_S_OVERRIDE);
+	else if(ControlFile->dbmode == DB_MYSQL)
+		SetConfigOption("ivorysql.database_mode", "mysql",
+						PGC_INTERNAL, PGC_S_OVERRIDE);
+	/* END - SQL PARSER  SRS-MISC-MYSQL-FRAME */
 	/* End - ReqID:SRS-MISC-GUC */
 }
 

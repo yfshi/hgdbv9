@@ -60,6 +60,7 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	bool		got_date_is_int = false;
 	bool		got_data_checksum_version = false;
 	bool		got_database_mode_is_oracle = false;	/* ReqID:SRS-GKC-DATATYPE_001 */
+	bool		got_database_mode_is_mysql = false;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	bool		got_cluster_state = false;
 	char	   *lc_collate = NULL;
 	char	   *lc_ctype = NULL;
@@ -506,8 +507,23 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 				pg_fatal("%d: controldata retrieval problem\n", __LINE__);
 
 			p++;				/* remove ':' char */
-			cluster->controldata.database_mode_is_oracle = str2uint(p);
-			got_database_mode_is_oracle = true;
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			if(str2uint(p) == 1)
+			{
+				cluster->controldata.database_mode_is_oracle = str2uint(p);
+				got_database_mode_is_oracle = true;
+			}
+			else if(str2uint(p) == 2)
+			{
+				cluster->controldata.database_mode_is_mysql = str2uint(p);
+				got_database_mode_is_mysql = true;
+			}
+			else
+			{
+				got_database_mode_is_mysql = true;
+				got_database_mode_is_oracle = true;
+			}
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		}
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	}
@@ -579,7 +595,7 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		(!got_large_object &&
 		 cluster->controldata.ctrl_ver >= LARGE_OBJECT_SIZE_PG_CONTROL_VER) ||
 		!got_date_is_int || !got_data_checksum_version ||
-		!got_database_mode_is_oracle)	/* ReqID:SRS-GKC-DATATYPE_001 */
+		(!got_database_mode_is_oracle && !got_database_mode_is_mysql))	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		if (cluster == &old_cluster)
 			pg_log(PG_REPORT,
@@ -652,6 +668,11 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		if (!got_database_mode_is_oracle)
 			pg_log(PG_REPORT, "  database mode\n");
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		if (!got_database_mode_is_mysql)
+			pg_log(PG_REPORT, "  database mode\n");
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 		pg_fatal("Cannot continue without required control information, terminating\n");
 	}

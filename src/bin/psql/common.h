@@ -13,6 +13,7 @@
 #include "fe_utils/print.h"
 #include "fe_utils/psqlscan.h"
 #include "oracle_fe_utils/ora_psqlscan.h"  /* ReqID:SRS-PSQL-PARSER */
+#include "mysql_fe_utils/mys_psqlscan.h"  /* ReqID:SRS-MISC-MYSQL-FRAME */
 #include "libpq-fe.h"
 #include "libpq-ivy.h"	/* ReqID:SRS-CMD-PSQL */
 
@@ -24,7 +25,10 @@ extern char *psql_get_variable(const char *varname, PsqlScanQuoteType quote,
 
 extern char *ora_psql_get_variable(const char *varname, Ora_psqlScanQuoteType quote,
 								void *passthrough); /* ReqID:SRS-PSQL-PARSER */
-
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+extern char *mys_psql_get_variable(const char *varname, Mys_psqlScanQuoteType quote,
+								void *passthrough); /* ReqID:SRS-PSQL-PARSER */
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 extern void NoticeProcessor(void *arg, const char *message);
 
 extern volatile bool sigint_interrupt_enabled;

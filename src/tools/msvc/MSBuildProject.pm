@@ -200,6 +200,10 @@ EOF
 				$outputFile =~
 				  s{^src\\pl\\plisql\\src\\gram.c$}{src\\pl\\plisql\\src\\pl_gram.c};
 				# END - SQL PARSER
+				# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+				$outputFile =~
+				  s{^src\\pl\\plmysql\\src\\gram.c$}{src\\pl\\plmysql\\src\\pl_gram.c};
+				# End - ReqID:SRS-MISC-MYSQL-FRAME
 				print $f <<EOF;
     <CustomBuild Include="$grammarFile">
       <Message Condition="'\$(Configuration)|\$(Platform)'=='Debug|$self->{platform}'">Running bison on $grammarFile</Message>

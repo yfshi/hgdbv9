@@ -3072,6 +3072,10 @@ get_preferred_type(Oid typid)
 			case TYPCATEGORY_STRING:
 				if (compatible_db == PG_PARSER)
 					result = TEXTOID;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (compatible_db == MYS_PARSER)
+					result = TEXTOID;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else if (compatible_db == ORA_PARSER)
 				{
 					if (typid == ORAVARCHARBYTEOID ||
@@ -3093,6 +3097,10 @@ get_preferred_type(Oid typid)
 			case TYPCATEGORY_NUMERIC:
 				if (compatible_db == PG_PARSER)
 					result = NUMERICOID;
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (compatible_db == MYS_PARSER)
+					result = NUMERICOID;
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else if (compatible_db == ORA_PARSER)
 				{
 					if (typid == BINARY_DOUBLEOID || typid == BINARY_FLOATOID)

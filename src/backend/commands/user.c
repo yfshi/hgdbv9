@@ -374,6 +374,16 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 					errmsg("role \"%s\" already exists",
 							stmt->role)));
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (DB_MYSQL == database_mode)
+	{
+		if (OidIsValid(get_role_oid(stmt->role, true)))
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					errmsg("role \"%s\" already exists",
+							stmt->role)));
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 	{
 		if (is_instance_user)
@@ -508,6 +518,10 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		else
 			new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(MyDatabaseId);
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (DB_MYSQL == database_mode)
+		new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(0);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/*
 	 * End - ReqID:SRS-MISC-USER
 	 */

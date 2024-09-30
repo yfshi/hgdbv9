@@ -40,6 +40,9 @@ elsif (!-e $input)
 # plpgsql and plisql just has to be different
 $output =~ s/gram\.c$/pl_gram.c/ if $input =~ /src.pl.plpgsql.src.gram\.y$/;
 $output =~ s/gram\.c$/pl_gram.c/ if $input =~ /src.pl.plisql.src.gram\.y$/;
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+$output =~ s/gram\.c$/pl_gram.c/ if $input =~ /src.pl.plmysql.src.gram\.y$/;
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 my $makefile = dirname($input) . "/Makefile";
 my ($mf, $make);

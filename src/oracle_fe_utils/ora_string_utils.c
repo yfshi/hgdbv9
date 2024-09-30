@@ -134,6 +134,10 @@ getDbCompatibleMode(PGconn *conn)
 
 		if (0 == pg_strcasecmp(db_style, "oracle"))
 			db_mode = DB_ORACLE;
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if(0 == pg_strcasecmp(db_style, "mysql"))
+			db_mode = DB_MYSQL;
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 			db_mode = DB_PG;
 	}

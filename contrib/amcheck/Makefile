@@ -12,6 +12,9 @@ PGFILEDESC = "amcheck - function for verifying relation integrity"
 
 REGRESS = check check_btree check_heap
 ORA_REGRESS = check ivy_check_btree check_heap
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_check mys_check_btree mys_check_heap
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 TAP_TESTS = 1
 

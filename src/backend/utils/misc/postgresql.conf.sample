@@ -815,5 +815,7 @@ shared_preload_libraries = 'gb18030_2022'	# (change requires restart)
 #------------------------------------------------------------------------------
 #COMPATIBLE LEVEL
 #------------------------------------------------------------------------------
-
-include_if_exists = 'ivorysql.conf'
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+include_if_exists = 'ivorysql.oracle.conf'
+include_if_exists = 'ivorysql.mysql.conf'
+#End - ReqID:SRS-MISC-MYSQL-FRAME

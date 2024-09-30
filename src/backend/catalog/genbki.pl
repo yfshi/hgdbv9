@@ -487,7 +487,7 @@ my %lookup_kind = (
 
 # Open temp files
 my $tmpext  = ".tmp$$";
-#BEGIN - SQL PARSER
+#BEGIN - SQL PARSER  SRS-MISC-MYSQL-FRAME
 if ($compatible_type eq 'pg')
 {
 	$bkifile = $output_path . 'postgres.bki';
@@ -502,11 +502,25 @@ elsif ($compatible_type eq 'oracle')
 	$constraints_file = $output_path . 'system_constraints.sql';
 	$schemafile = $output_path . 'schemapg.h';
 }
+elsif ($compatible_type eq 'mysql')
+{
+	$bkifile = $output_path . 'postgres_mysql.bki';
+	$fk_info_file = $output_path . 'system_fk_info.h';
+	$constraints_file = $output_path . 'system_constraints.sql';
+	$schemafile = $output_path . 'schemapg.h';
+}
+elsif ($compatible_type eq 'all')
+{
+	$bkifile = $output_path . 'postgres_all.bki';
+	$fk_info_file = $output_path . 'system_fk_info.h';
+	$constraints_file = $output_path . 'system_constraints.sql';
+	$schemafile = $output_path . 'schemapg.h';
+}
 else
 {
 	die "should use -M arg.\n"
 }
-#END - SQL PARSER
+#END - SQL PARSER  SRS-MISC-MYSQL-FRAME
 
 open my $bki, '>', $bkifile . $tmpext
   or die "can't open $bkifile$tmpext: $!";
@@ -1204,9 +1218,9 @@ Options:
     --output         Output directory (default '.')
     --set-version    PostgreSQL version number for initdb cross-check
     --include-path   Include path in source tree
-    #BEGIN - SQL PARSER
-    -M				 compatible_level(pg or oracle)
-    #END - SQL PARSER
+    #BEGIN - SQL PARSER  SRS-MISC-MYSQL-FRAME
+    -M				 compatible_level(pg or oracle or mysql)
+    #END - SQL PARSER  SRS-MISC-MYSQL-FRAME
 
 genbki.pl generates postgres.bki and symbol definition
 headers from specially formatted header files and .dat

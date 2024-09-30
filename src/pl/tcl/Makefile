@@ -36,6 +36,12 @@ REGRESS = pltcl_setup pltcl_queries pltcl_trigger pltcl_call pltcl_start_proc pl
 ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB) --load-extension=pltcl
 ORA_REGRESS = ivy_pltcl_setup ivy_pltcl_queries ivy_pltcl_trigger ivy_pltcl_call ivy_pltcl_start_proc ivy_pltcl_subxact ivy_pltcl_unicode ivy_pltcl_transaction
 # End - BUGM0000301
+
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS = --dbname=$(PL_TESTDB) --load-extension=pltcl
+MYS_REGRESS = mys_pltcl_setup mys_pltcl_queries mys_pltcl_trigger mys_pltcl_call mys_pltcl_start_proc mys_pltcl_subxact mys_pltcl_unicode mys_pltcl_transaction
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
 # Tcl on win32 ships with import libraries only for Microsoft Visual C++,
 # which are not compatible with mingw gcc. Therefore we need to build a
 # new import library to link with.
@@ -96,15 +102,26 @@ oracle-check: submake_ora
 
 oracle-installcheck: submake_ora
 	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check: submake_mys
+	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
 
-.PHONY: submake submake_ora
-# End - BUGM0000301
+mysql-installcheck: submake_mys
+	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+
+.PHONY: submake submake_ora submake_mys
+# End - BUGM0000301 #End - ReqID:SRS-MISC-MYSQL-FRAME
 submake:
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
 # Begin - BUGM0000301
 submake_ora:
 	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+submake_mys:
+	$(MAKE) -C $(top_builddir)/src/mysql_test/regress pg_regress$(X)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
 # pltclerrcodes.h is in the distribution tarball, so don't clean it here.
 clean distclean: clean-lib
 	rm -f $(OBJS)

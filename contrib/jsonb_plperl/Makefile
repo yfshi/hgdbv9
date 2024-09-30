@@ -13,6 +13,9 @@ DATA = jsonb_plperlu--1.0.sql jsonb_plperl--1.0.sql
 
 REGRESS = jsonb_plperl jsonb_plperlu
 ORA_REGRESS = ivy_jsonb_plperl ivy_jsonb_plperlu
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_jsonb_plperl mys_jsonb_plperlu
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 SHLIB_LINK += $(filter -lm, $(LIBS))
 

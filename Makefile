@@ -15,10 +15,10 @@
 # a single-target, empty rule to make the other targets non-default.
 all:
 
-# BEGIN - SQL PARSER
+# BEGIN - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 #all check install installdirs installcheck installcheck-parallel uninstall clean distclean maintainer-clean dist distcheck world check-world install-world installcheck-world:
-all check oracle-check all-check install installdirs installcheck oracle-installcheck installcheck-parallel oracle-installcheck-parallel uninstall clean distclean maintainer-clean dist distcheck world check-world oracle-pg-check-world oracle-check-world all-check-world install-world installcheck-world oracle-installcheck-world all-installcheck-world:
-# END - SQL PARSER
+all check oracle-check mysql-check all-check install installdirs installcheck oracle-installcheck mysql-installcheck installcheck-parallel oracle-installcheck-parallel mysql-installcheck-parallel uninstall clean distclean maintainer-clean dist distcheck world check-world oracle-pg-check-world mysql-pg-check-world oracle-check-world mysql-check-world all-check-world install-world installcheck-world oracle-installcheck-world mysql-installcheck-world all-installcheck-world:
+# END - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 	@if [ ! -f GNUmakefile ] ; then \
 	   echo "You need to run the 'configure' program first. See the file"; \
 	   echo "'INSTALL' for installation instructions." ; \

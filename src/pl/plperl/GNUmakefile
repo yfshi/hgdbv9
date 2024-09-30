@@ -65,6 +65,12 @@ ORA_REGRESS = ivy_plperl_setup ivy_plperl plperl_lc ivy_plperl_trigger ivy_plper
 	ivy_plperl_elog ivy_plperl_util plperl_init plperlu ivy_plperl_array \
 	ivy_plperl_call ivy_plperl_transaction
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS = --dbname=$(PL_TESTDB)
+MYS_REGRESS = mys_plperl_setup mys_plperl mys_plperl_lc mys_plperl_trigger mys_plperl_shared \
+	mys_plperl_elog mys_plperl_util mys_plperl_init mys_plperlu mys_plperl_array \
+	mys_plperl_call mys_plperl_transaction
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 # if Perl can support two interpreters in one backend,
 # test plperl-and-plperlu cases
 ifneq ($(PERL),)
@@ -79,6 +85,13 @@ ifeq ($(shell $(PERL) -V:usemultiplicity), usemultiplicity='define';)
 endif
 endif
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+ifneq ($(PERL),)
+ifeq ($(shell $(PERL) -V:usemultiplicity), usemultiplicity='define';)
+	MYS_REGRESS += mys_plperl_plperlu
+endif
+endif
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 # where to find xsubpp for building XS.
 XSUBPPDIR = $(shell $(PERL) -e 'use List::Util qw(first); print first { -r "$$_/ExtUtils/xsubpp" } @INC')
 
@@ -135,15 +148,25 @@ oracle-check: submake_ora
 
 oracle-installcheck: submake_ora
 	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check: submake_mys
+	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
 
-.PHONY: submake submake_ora
-# End - BUGM0000301
+mysql-installcheck: submake_mys
+	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+
+.PHONY: submake submake_ora submake_mys
+# End - BUGM0000301 #End - ReqID:SRS-MISC-MYSQL-FRAME
 submake:
 	$(MAKE) -C $(top_builddir)/src/test/regress pg_regress$(X)
 # Begin - BUGM0000301
 submake_ora:
 	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+submake_mys:
+	$(MAKE) -C $(top_builddir)/src/mysql_test/regress pg_regress$(X)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 clean distclean maintainer-clean: clean-lib
 	rm -f SPI.c Util.c $(OBJS) perlchunks.h plperl_opmask.h
 	rm -rf $(pg_regress_clean_files)

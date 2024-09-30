@@ -2165,6 +2165,10 @@ pg_get_connection_mode(PG_FUNCTION_ARGS)
 		PG_RETURN_DATUM(CStringGetTextDatum("PostgreSQL"));
 	else if (port->connmode == 'o')
 		PG_RETURN_DATUM(CStringGetTextDatum("Oracle"));
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (port->connmode == 'm')
+		PG_RETURN_DATUM(CStringGetTextDatum("MySQL"));
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else
 		PG_RETURN_DATUM(CStringGetTextDatum("Unknown"));
 }

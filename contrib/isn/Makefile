@@ -12,6 +12,9 @@ HEADERS_isn = isn.h
 
 REGRESS = isn
 ORA_REGRESS = isn
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_isn
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

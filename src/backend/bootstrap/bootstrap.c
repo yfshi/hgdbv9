@@ -275,6 +275,10 @@ AuxiliaryProcessMain(int argc, char *argv[])
 						bootstrap_database_mode = DB_PG;
 					else if (pg_strcasecmp(bootstrap_dbmode, "oracle") == 0 || pg_strcasecmp(bootstrap_dbmode, "1") == 0)
 						bootstrap_database_mode = DB_ORACLE;
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME  */
+					else if(pg_strcasecmp(bootstrap_dbmode, "mysql") == 0 || pg_strcasecmp(bootstrap_dbmode, "2") == 0)
+						bootstrap_database_mode = DB_MYSQL;
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME  */
 					else
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),

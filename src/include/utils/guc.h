@@ -553,6 +553,8 @@ extern PGDLLIMPORT char *GUC_check_errmsg_string;
 extern PGDLLIMPORT char *GUC_check_errdetail_string;
 extern PGDLLIMPORT char *GUC_check_errhint_string;
 
+extern PGDLLIMPORT char *iptimelimite;
+
 extern void GUC_check_errcode(int sqlerrcode);
 
 #define GUC_check_errmsg \

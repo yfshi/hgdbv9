@@ -54,7 +54,8 @@ SUBDIRS = \
 		ivorysql_ora	\
 		ora_btree_gist	\
 		ora_btree_gin	\
-		pg_object
+		pg_object	\
+		ivorysql_my
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

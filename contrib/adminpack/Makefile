@@ -12,6 +12,9 @@ PGFILEDESC = "adminpack - support functions for pgAdmin"
 
 REGRESS = adminpack
 ORA_REGRESS = adminpack
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_adminpack
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

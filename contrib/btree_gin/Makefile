@@ -15,6 +15,12 @@ REGRESS = install_btree_gin int2 int4 int8 float4 float8 money oid \
 	macaddr macaddr8 inet cidr text varchar char bytea bit varbit \
 	numeric enum uuid name bool bpchar
 ORA_REGRESS = install_btree_gin
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_install_btree_gin mys_int2 mys_int4 mys_int8 mys_float4 mys_float8 mys_money mys_oid \
+	mys_timestamp mys_timestamptz mys_time mys_timetz mys_date mys_interval \
+	mys_macaddr mys_macaddr8 mys_inet mys_cidr mys_text mys_varchar mys_char mys_bytea mys_bit mys_varbit \
+	mys_numeric mys_enum mys_uuid mys_name mys_bool mys_bpchar
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

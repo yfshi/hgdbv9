@@ -30,4 +30,11 @@
 # End - ReqID:SRS-GKC-DATATYPE_001
 /*END Oracle Compatibility Metadatas*/
 # End - BUG#M0000336
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+/*BEGIN MySQL Compatibility Metadatas*/
+{ oid => '9256', oid_symbol => 'PG_IVYMY_NAMESPACE',
+  descr => 'Similar mysql sys schema',
+  nspname => 'ivymy', nspacl => '_null_' },
+/*END MySQL Compatibility Metadatas*/
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 ]

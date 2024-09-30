@@ -15,6 +15,9 @@ PGFILEDESC = "pgstattuple - tuple-level statistics"
 
 REGRESS = pgstattuple
 ORA_REGRESS = pgstattuple
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_pgstattuple
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

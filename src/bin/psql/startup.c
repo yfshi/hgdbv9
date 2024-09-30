@@ -415,6 +415,15 @@ main(int argc, char *argv[])
 									cell->val, strlen(cell->val),
 									pset.encoding, standard_strings());
 				}
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (db_mode == DB_MYSQL)
+				{
+					scan_state = mys_psql_scan_create(&Mys_psqlscan_callbacks);
+					mys_psql_scan_setup(scan_state,
+									cell->val, strlen(cell->val),
+									pset.encoding, standard_strings());
+				}
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				else /* BUG:M0000081 */
 				{
 					scan_state = ora_psql_scan_create(&Ora_psqlscan_callbacks);
@@ -437,6 +446,10 @@ main(int argc, char *argv[])
 				else if(db_mode == DB_ORACLE)
 					ora_psql_scan_destroy(scan_state);
 				/* End - ReqID:SRS-PSQL-PARSER */
+				/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+				else if (db_mode == DB_MYSQL)
+					mys_psql_scan_destroy(scan_state);
+				/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				conditional_stack_destroy(cond_stack);
 			}
 			else if (cell->action == ACT_FILE)

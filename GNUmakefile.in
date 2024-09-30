@@ -13,7 +13,7 @@ subdir =
 top_builddir = .
 include $(top_builddir)/src/Makefile.global
 
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw)	# SRS-MISC-GB18030	# BUGM0000266
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME
 
 docs:
 	$(MAKE) -C doc all
@@ -69,8 +69,8 @@ distclean maintainer-clean:
 	rm -f config.cache config.log config.status GNUmakefile
 
 check-tests: | temp-install
-check check-tests installcheck installcheck-parallel installcheck-tests oracle-pg-check: CHECKPREP_TOP=src/test/regress
-check check-tests installcheck installcheck-parallel installcheck-tests oracle-pg-check: submake-generated-headers
+check check-tests installcheck installcheck-parallel installcheck-tests oracle-pg-check mysql-pg-check: CHECKPREP_TOP=src/test/regress
+check check-tests installcheck installcheck-parallel installcheck-tests oracle-pg-check mysql-pg-check: submake-generated-headers
 	$(MAKE) -C src/test/regress $@
 
 #BEGIN - SQL PARSER
@@ -79,11 +79,16 @@ oracle-check oracle-check-tests oracle-installcheck oracle-installcheck-parallel
 oracle-check oracle-check-tests oracle-installcheck oracle-installcheck-parallel oracle-installcheck-tests: submake-generated-headers
 	$(MAKE) -C src/oracle_test/regress $@
 
+# add mysql regression
+mysql-check mysql-check-tests mysql-installcheck mysql-installcheck-parallel mysql-installcheck-tests: CHECKPREP_TOP=src/mysql_test/regress
+mysql-check mysql-check-tests mysql-installcheck mysql-installcheck-parallel mysql-installcheck-tests: submake-generated-headers
+	$(MAKE) -C src/mysql_test/regress $@
+
 #add all check regression
-all-check: check oracle-check
-all-installcheck: installcheck oracle-installcheck
-all-check-world:check-world oracle-pg-check-world oracle-check-world
-all-installcheck-world:installcheck-world oracle-installcheck-world
+all-check: check oracle-check mysql-check
+all-installcheck: installcheck oracle-installcheck mysql-installcheck 
+all-check-world:check-world oracle-pg-check-world mysql-pg-check-world oracle-check-world mysql-check-world
+all-installcheck-world:installcheck-world oracle-installcheck-world mysql-installcheck-world
 # END - SQL PARSER
 
 $(call recurse,check-world,src/test src/pl src/interfaces/ecpg contrib src/bin,check)
@@ -99,6 +104,12 @@ $(call recurse,oracle-check-world,src/oracle_test src/pl src/interfaces/ecpg src
 $(call recurse,oracle-checkprep,  src/oracle_test src/pl src/interfaces/ecpg contrib src/bin)
 
 $(call recurse,oracle-installcheck-world,src/oracle_test src/pl src/interfaces/ecpg contrib src/bin,oracle-installcheck)
+#add mysql regression
+$(call recurse,mysql-pg-check-world,src/test/regress,mysql-pg-check)
+$(call recurse,mysql-check-world,src/mysql_test src/pl src/interfaces/ecpg contrib contrib/ivorysql_my src/bin,mysql-check)
+$(call recurse,mysql-checkprep,  src/mysql_test src/pl src/interfaces/ecpg contrib src/bin)
+
+$(call recurse,mysql-installcheck-world,src/mysql_test src/pl src/interfaces/ecpg contrib src/bin,mysql-installcheck)
 #END - SQL PARSER
 
 GNUmakefile: GNUmakefile.in $(top_builddir)/config.status
@@ -169,5 +180,6 @@ cpluspluscheck: submake-generated-headers
 
 #.PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck
 #BEGIN - SQL PARSER
-.PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck oracle-pg-check-world oracle-check-world oracle-installcheck-world all-check all-check-world all-installcheck-world
+.PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck oracle-pg-check-world oracle-check-world oracle-installcheck-world \
+mysql-pg-check-world mysql-check-world mysql-installcheck-world all-check all-check-world all-installcheck-world
 #END - SQL PARSER

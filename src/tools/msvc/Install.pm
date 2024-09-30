@@ -149,6 +149,12 @@ sub Install
 			'BKI files',
 			[ glob("src\\backend\\catalog\\postgres_oracle.*") ],
 			$target . '/share/');
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+		CopySetOfFiles(
+			'BKI files',
+			[ glob("src\\backend\\catalog\\postgres_mysql.*") ],
+			$target . '/share/');
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		#END - SQL PARSER
 		CopySetOfFiles(
 			'SQL files',
@@ -179,6 +185,9 @@ sub Install
 		# BEGIN - SQL PARSER
 		push @pldirs, "src/pl/plisql/src";
 		# END - SQL PARSER
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+		push @pldirs, "src/pl/plmysql/src";
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		push @pldirs, "src/pl/plperl"   if $config->{perl};
 		push @pldirs, "src/pl/plpython" if $config->{python};
 		push @pldirs, "src/pl/tcl"      if $config->{tcl};
@@ -491,6 +500,26 @@ sub CopyContribFiles
 		}
 	}
 	# END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	print "\nCopying mysql contrib data files...";
+	foreach my $subdir ('contrib', 'src/mysql_test/modules')
+	{
+		my $D;
+		opendir($D, $subdir) || croak "Could not opendir on $subdir!\n";
+		while (my $d = readdir($D))
+		{
+			# These configuration-based exclusions must match vcregress_mys.pl
+			next if ($d eq "uuid-ossp"  && !defined($config->{uuid}));
+			next if ($d eq "sslinfo"    && !defined($config->{openssl}));
+			next if ($d eq "xml2"       && !defined($config->{xml}));
+			next if ($d =~ /_plperl$/   && !defined($config->{perl}));
+			next if ($d =~ /_plpython$/ && !defined($config->{python}));
+			next if ($d eq "sepgsql");
+
+			CopySubdirFiles($subdir, $d, $config, $target);
+		}
+	}
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	print "\n";
 	return;
 }
@@ -710,6 +739,12 @@ sub CopyIncludeFiles
 		$target . '/include/server/',
 		'src/pl/plisql/src/', 'plisql.h');
 	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	CopyFiles(
+		'PL/mySQL header',
+		$target . '/include/server/',
+		'src/pl/plmysql/src/', 'plmysql.h');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	# some xcopy progs don't like mixed slash style paths
 	(my $ctarget = $target) =~ s!/!\\!g;
 	while (my $d = readdir($D))

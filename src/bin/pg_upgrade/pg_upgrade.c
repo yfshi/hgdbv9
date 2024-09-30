@@ -72,6 +72,7 @@ OSInfo		os_info;
  */
 bool		pg_cluster_within_oracle_mode = false;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
+bool		pg_cluster_within_mysql_mode = false;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 char	   *output_files[] = {
 	SERVER_LOG_FILE,

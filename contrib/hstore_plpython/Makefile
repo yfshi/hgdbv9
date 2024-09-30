@@ -11,8 +11,14 @@ DATA = hstore_plpythonu--1.0.sql hstore_plpython2u--1.0.sql hstore_plpython3u--1
 
 ORA_REGRESS = ivy_hstore_plpython
 REGRESS = hstore_plpython
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_hstore_plpython
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 REGRESS_PLPYTHON3_MANGLE := $(REGRESS)
 ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)	#BUG0000245
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS_PLPYTHON3_MANGLE := $(MYS_REGRESS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 PG_CPPFLAGS = $(python_includespec) -DPLPYTHON_LIBNAME='"plpython$(python_majorversion)"'
 
@@ -42,11 +48,18 @@ REGRESS_OPTS += --load-extension=hstore
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=hstore
 # END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=hstore
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 ifeq ($(python_majorversion),2)
 REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
 # BEGIN - SQL PARSER
 ORACLE_REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
 # END - SQL PARSER
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=plpythonu --load-extension=hstore_plpythonu
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 endif
 EXTRA_INSTALL += contrib/hstore
 

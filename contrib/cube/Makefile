@@ -15,6 +15,9 @@ HEADERS = cubedata.h
 
 REGRESS = cube cube_sci
 ORA_REGRESS = ivy_cube cube_sci
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_cube mys_cube_sci
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 EXTRA_CLEAN = y.tab.c y.tab.h
 

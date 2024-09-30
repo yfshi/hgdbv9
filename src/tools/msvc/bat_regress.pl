@@ -102,6 +102,45 @@ rmtree("log_pg_ora.txt");	#BUGM0000294
 chdir "$startdir";
 delete $ENV{PGPORT};
 
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+my @vcregress_mys_pg = ("check","recoverycheck","bincheck","upgradecheck");
+foreach $a (@vcregress_mys_pg){
+	system("vcregress_mys_pg.bat $a");
+	my $status15 = $? >> 8;
+	exit $status15 if $status15;
+	print "=======end vcregress_mys_pg.bat $a regression================\n";
+}
+
+chdir($installdir) or die "can not change install dir!";
+chdir("bin") or die "can not change bin dir!";
+system("initdb.exe -D $installdir/data -m mysql --encoding=UTF-8");
+my $status16 = $? >> 8;
+exit $status16 if $status16;
+system("pg_ctl.exe -D $installdir/data start");
+my $status17 = $? >> 8;
+exit $status17 if $status17;
+chdir "$startdir";
+
+$ENV{PGPORT} = 5432;
+
+my @vcregress_mys_pg_install = ("installcheck","plcheck","contribcheck","modulescheck","ecpgcheck","isolationcheck");
+foreach $a (@vcregress_mys_pg_install){
+	system("vcregress_mys_pg.bat $a");
+	my $status18 = $? >> 8;
+#	exit $status18 if $status18;
+	print "=======end vcregress_mys_pg.bat $a regression================\n";
+}
+chdir($installdir) or die "can not change install dir!";
+chdir("bin") or die "can not change bin dir!";
+system("pg_ctl.exe -D $installdir/data stop");
+my $status19 = $? >> 8;
+exit $status19 if $status19;
+chdir($installdir) or die "can not change install dir!";
+rmtree("data");
+chdir "$startdir";
+delete $ENV{PGPORT};
+# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 my @vcregress_ora = ("check","recoverycheck","bincheck","upgradecheck");
 foreach $a (@vcregress_ora){
 	system("vcregress_ora.bat $a");
@@ -138,4 +177,44 @@ chdir($installdir) or die "can not change install dir!";
 rmtree("data");
 rmtree("log_ora.txt");	#BUGM0000294
 chdir "$startdir";
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+delete $ENV{PGPORT};
+
+my @vcregress_mys = ("check","recoverycheck","bincheck","upgradecheck");
+foreach $a (@vcregress_mys){
+	system("vcregress_mys.bat $a");
+	my $status20 = $? >> 8;
+	exit $status20 if $status20;
+	print "=======end vcregress_mys.bat $a regression================\n";
+}
+
+chdir($installdir) or die "can not change install dir!";
+chdir("bin") or die "can not change bin dir!";
+system("initdb.exe -D $installdir/data -m mysql --encoding=UTF-8");
+my $status21 = $? >> 8;
+exit $status21 if $status21;
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_mys.txt start");
+my $status22 = $? >> 8;
+exit $status22 if $status22;
+chdir "$startdir";
+
+$ENV{PGPORT} = 3306;
+
+my @vcregress_mys_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck","contribcheck");
+foreach $a (@vcregress_mys_install){
+	system("vcregress_mys.bat $a");
+	my $status23 = $? >> 8;
+	exit $status23 if $status23;
+	print "=======end vcregress_mys.bat $a regression================\n";
+}
+chdir($installdir) or die "can not change install dir!";
+chdir("bin") or die "can not change bin dir!";
+system("pg_ctl.exe -D $installdir/data stop");
+my $status24 = $? >> 8;
+exit $status24 if $status24;
+chdir($installdir) or die "can not change install dir!";
+rmtree("data");
+rmtree("log_mys.txt");
+chdir "$startdir";
+# End - ReqID:SRS-MISC-MYSQL-FRAME
 print "===============================finish all regress check========================================\n";

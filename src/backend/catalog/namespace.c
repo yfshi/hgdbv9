@@ -1246,7 +1246,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			if (pronargs > nargs && expand_defaults)
 			{
 				/* Begin - ReqID:SRS-SQL-FUNCOUT */
-				if (compatible_db == PG_PARSER)
+				if (compatible_db == PG_PARSER || compatible_db == MYS_PARSER)	/* ReqID:SRS-MISC-MYSQL-FRAME */
 				{
 				/* End - ReqID:SRS-SQL-FUNCOUT */
 					/* Ignore if not enough default expressions */
@@ -3843,7 +3843,7 @@ GetOverrideSearchPath(MemoryContext context)
 		else
 		{
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			if (PG_PARSER == compatible_db)
+			if (PG_PARSER == compatible_db || MYS_PARSER == compatible_db)	/* ReqID:SRS-MISC-MYSQL-FRAME */
 			{
 				Assert(linitial_oid(schemas) == PG_CATALOG_NAMESPACE);
 				result->addCatalog = true;

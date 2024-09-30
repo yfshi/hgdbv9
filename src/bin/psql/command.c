@@ -47,6 +47,7 @@
 #include "pqexpbuffer.h"
 #include "psqlscanslash.h"
 #include "ora_psqlscanslash.h" /* ReqID:SRS-PSQL-PARSER */
+#include "mys_psqlscanslash.h" /* ReqID:SRS-MISC-MYSQL-FRAME */
 #include "settings.h"
 #include "variables.h"
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
@@ -246,6 +247,13 @@ HandleSlashCmds(PsqlScanState scan_state,
 		cmd = psql_scan_slash_command(scan_state);
 		psql_scan_slash_option_parser = pg_psql_scan_slash_option;
 	}
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(db_mode == DB_MYSQL)
+	{
+		cmd = mys_psql_scan_slash_command(scan_state);
+		psql_scan_slash_option_parser = mys_psql_scan_slash_option;
+	}
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else /* BUG:M0000081 */
 	{
 		cmd = ora_psql_scan_slash_command(scan_state);
@@ -297,6 +305,10 @@ HandleSlashCmds(PsqlScanState scan_state,
 		psql_scan_slash_command_end(scan_state);
 	else if(db_mode == DB_ORACLE)
 		ora_psql_scan_slash_command_end(scan_state);
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if(db_mode == DB_MYSQL)
+		mys_psql_scan_slash_command_end(scan_state);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* End - ReqID:SRS-PSQL-PARSER */
 
 	free(cmd);
@@ -2847,6 +2859,13 @@ exec_command_parser(PsqlScanState scan_state, bool active_branch)
 			psql_scan_slash_option_parser = ora_psql_scan_slash_option;
 			printf(_("Oracle parser.\n"));
 		}
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (db_mode == DB_MYSQL)
+		{
+			psql_scan_slash_option_parser = mys_psql_scan_slash_option;
+			printf(_("MySQL parser.\n"));
+		}
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 			success = false;
 	}

@@ -34,6 +34,7 @@ my $postgres;
 my $libpq;
 # BEGIN - SQL PARSER
 my $liborafeutils;
+my $libmysfeutils;	# ReqID:SRS-MISC-MYSQL-FRAME
 # END - SQL PARSER
 
 my @unlink_on_exit;
@@ -90,12 +91,16 @@ my $frontend_extrasource = {
 	# Begin - ReqID:SRS-PSQL-PARSER
 	# BEGIN - SQL PARSER
 	# Begin - ReqID:SRS-CMD-PSQL
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
 	'psql' => ['src/bin/psql/psqlplusscan.l', 'src/bin/psql/psqlplusparse.y',
 			   'src/bin/psql/psqlscanslash.l', 'src/bin/psql/ora_psqlscanslash.l',
 			   'src/oracle_fe_utils/ora_string_utils.c',
 			   'src/oracle_fe_utils/ora_number_utils.c', # ReqID:SRS-SQL-SYSFUNC
 			   'src/oracle_fe_utils/ora_psqlscan.l',
-			   'src/backend/oracle_parser/ora_keywords.c'],
+			   'src/backend/oracle_parser/ora_keywords.c',	
+			   'src/bin/psql/mys_psqlscanslash.l', 'src/mysql_fe_utils/mys_string_utils.c', 
+			   'src/mysql_fe_utils/mys_psqlscan.l', 'src/backend/mysql_parser/mys_keywords.c'],
+	# End - ReqID:SRS-MISC-MYSQL-FRAME 
 	# End - ReqID:SRS-CMD-PSQL
 	# END - SQL PARSER
 	# End - ReqID:SRS-PSQL-PARSER
@@ -182,6 +187,10 @@ sub mkvcbuild
 	our @orafeutilsfiles = qw(
 	  ora_string_utils.c ora_psqlscan.l ora_psqlscan.c);
 	# END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	our @mysfeutilsfiles = qw(
+	  mys_string_utils.c mys_psqlscan.l mys_psqlscan.c);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 	# End - ReqID:SRS-PSQL-PARSER
 
 	$libpgport = $solution->AddProject('libpgport', 'lib', 'misc');
@@ -214,6 +223,14 @@ sub mkvcbuild
 	$liborafeutils->AddFiles('src/oracle_fe_utils', @orafeutilsfiles);
 	$liborafeutils->AddFile('src/backend/oracle_parser/ora_keywords.c');
 	# END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	$libmysfeutils = $solution->AddProject('libmysfeutils', 'lib', 'misc');
+	$libmysfeutils->AddDefine('FRONTEND');
+	$libmysfeutils->AddIncludeDir('src/interfaces/libpq');
+	$libmysfeutils->AddFiles('src/mysql_fe_utils', @mysfeutilsfiles);
+	$libmysfeutils->AddFile('src/backend/mysql_parser/mys_keywords.c');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	$postgres = $solution->AddProject('postgres', 'exe', '', 'src/backend');
 	$postgres->AddIncludeDir('src/backend');
@@ -345,6 +362,21 @@ sub mkvcbuild
 	$plisql->AddReference($postgres, $libparser_oracle);
 	# END - SQL PARSER
 
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $libparser_mysql =
+	  $solution->AddProject('libmysql_parser', 'dll', '',
+		'src/backend/mysql_parser');
+	$libparser_mysql->AddPrefixInclude('src/include/mysql_parser');
+	$libparser_mysql->AddFiles('src/backend/mysql_parser', 'mys_scan.l', 'mys_gram.y');
+	$libparser_mysql->AddReference($postgres);
+
+	my $plmysql =
+	  $solution->AddProject('plmysql', 'dll', 'PLs', 'src/pl/plmysql/src');
+	$plmysql->AddPrefixInclude('src/include/mysqle_parser');
+	$plmysql->AddFiles('src/pl/plmysql/src', 'pl_gram.y');
+	$plmysql->AddReference($postgres, $libparser_mysql);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	my $pgoutput = $solution->AddProject('pgoutput', 'dll', '',
 		'src/backend/replication/pgoutput');
 	$pgoutput->AddReference($postgres);
@@ -417,6 +449,19 @@ sub mkvcbuild
 	$oraregress_ecpg->AddReference($libpgcommon, $libpgport);
 	#END - SQL PARSER
 
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $mysregress_ecpg =
+	  $solution->AddProject('mys_regress_ecpg', 'exe', 'misc');
+	$mysregress_ecpg->AddFile('src/interfaces/ecpg/mysql_test/pg_regress_ecpg.c');
+	$mysregress_ecpg->AddFile('src/mysql_test/regress/pg_regress.c');
+	$mysregress_ecpg->AddIncludeDir('src/port');
+	$mysregress_ecpg->AddIncludeDir('src/mysql_test/regress');
+	$mysregress_ecpg->AddDefine('HOST_TUPLE="i686-pc-win32vc"');
+	$mysregress_ecpg->AddLibrary('ws2_32.lib');
+	$mysregress_ecpg->AddDirResourceFile('src/interfaces/ecpg/mysql_test');
+	$mysregress_ecpg->AddReference($libpgcommon, $libpgport);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	my $isolation_tester =
 	  $solution->AddProject('isolationtester', 'exe', 'misc');
 	$isolation_tester->AddFile('src/test/isolation/isolationtester.c');
@@ -449,6 +494,23 @@ sub mkvcbuild
 	$ora_isolation_tester->AddReference($libpq, $libpgcommon, $libpgport);
 	#END - SQL PARSER
 
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $mys_isolation_tester =
+	  $solution->AddProject('mys_isolationtester', 'exe', 'misc');
+	$mys_isolation_tester->AddFile('src/mysql_test/isolation/isolationtester.c');
+	$mys_isolation_tester->AddFile('src/mysql_test/isolation/specparse.y');
+	$mys_isolation_tester->AddFile('src/mysql_test/isolation/specscanner.l');
+	$mys_isolation_tester->AddFile('src/mysql_test/isolation/specparse.c');
+	$mys_isolation_tester->AddIncludeDir('src/mysql_test/isolation');
+	$mys_isolation_tester->AddIncludeDir('src/port');
+	$mys_isolation_tester->AddIncludeDir('src/mysql_test/regress');
+	$mys_isolation_tester->AddIncludeDir('src/interfaces/libpq');
+	$mys_isolation_tester->AddDefine('HOST_TUPLE="i686-pc-win32vc"');
+	$mys_isolation_tester->AddLibrary('ws2_32.lib');
+	$mys_isolation_tester->AddDirResourceFile('src/mysql_test/isolation');
+	$mys_isolation_tester->AddReference($libpq, $libpgcommon, $libpgport);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	my $pgregress_isolation =
 	  $solution->AddProject('pg_isolation_regress', 'exe', 'misc');
 	$pgregress_isolation->AddFile('src/test/isolation/isolation_main.c');
@@ -472,6 +534,19 @@ sub mkvcbuild
 	$oraregress_isolation->AddDirResourceFile('src/oracle_test/isolation');
 	$oraregress_isolation->AddReference($libpgcommon, $libpgport);
 	#END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $mysregress_isolation =
+	  $solution->AddProject('mys_isolation_regress', 'exe', 'misc');
+	$mysregress_isolation->AddFile('src/mysql_test/isolation/isolation_main.c');
+	$mysregress_isolation->AddFile('src/mysql_test/regress/pg_regress.c');
+	$mysregress_isolation->AddIncludeDir('src/port');
+	$mysregress_isolation->AddIncludeDir('src/mysql_test/regress');
+	$mysregress_isolation->AddDefine('HOST_TUPLE="i686-pc-win32vc"');
+	$mysregress_isolation->AddLibrary('ws2_32.lib');
+	$mysregress_isolation->AddDirResourceFile('src/mysql_test/isolation');
+	$mysregress_isolation->AddReference($libpgcommon, $libpgport);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	# src/bin
 	my $D;
@@ -947,9 +1022,9 @@ sub mkvcbuild
 			}
 		}
 		$proj->AddIncludeDir('src/interfaces/libpq');
-		# BEGIN - SQL PARSER
-		$proj->AddReference($libpq, $libpgfeutils, $liborafeutils, $libpgcommon, $libpgport);
-		# END - SQL PARSER
+		# BEGIN - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
+		$proj->AddReference($libpq, $libpgfeutils, $liborafeutils, $libmysfeutils, $libpgcommon, $libpgport);
+		# END - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 		$proj->AddDirResourceFile('src/bin/scripts');
 		$proj->AddLibrary('ws2_32.lib');
 		# Begin - ReqID:SRS-MISC-LICENSE
@@ -1007,7 +1082,39 @@ sub mkvcbuild
 	$orapgregress->AddDirResourceFile('src/test/regress');
 	$orapgregress->AddReference($libpgcommon, $libpgport);
 	#END - SQL PARSER
-	
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	#Mysql Regression DDL and EXE
+	my $mys_regress = $solution->AddProject('mysregress', 'dll', 'misc');
+	$mys_regress->AddFile('src/mysql_test/regress/regress.c');
+	$mys_regress->AddDirResourceFile('src/mysql_test/regress');
+	$mys_regress->AddReference($postgres);
+
+	my $mysregress = $solution->AddProject('mys_regress', 'exe', 'misc');
+	$mysregress->AddFile('src/mysql_test/regress/pg_regress.c');
+	$mysregress->AddFile('src/mysql_test/regress/pg_regress_main.c');
+	$mysregress->AddIncludeDir('src/port');
+	$mysregress->AddDefine('HOST_TUPLE="i686-pc-win32vc"');
+	$mysregress->AddLibrary('ws2_32.lib');
+	$mysregress->AddDirResourceFile('src/mysql_test/regress');
+	$mysregress->AddReference($libpgcommon, $libpgport);
+
+	#PostgreSQL Regression DDL and EXE in Mysql compatible mode
+	my $myspg_regress = $solution->AddProject('myspgregress', 'dll', 'misc');
+	$myspg_regress->AddFile('src/test/regress/regress.c');
+	$myspg_regress->AddDirResourceFile('src/test/regress');
+	$myspg_regress->AddReference($postgres);
+
+	my $myspgregress = $solution->AddProject('mys_pg_regress', 'exe', 'misc');
+	$myspgregress->AddFile('src/test/regress/mys_pg_regress.c');
+	$myspgregress->AddFile('src/test/regress/pg_regress_main.c');
+	$myspgregress->AddIncludeDir('src/port');
+	$myspgregress->AddDefine('HOST_TUPLE="i686-pc-win32vc"');
+	$myspgregress->AddLibrary('ws2_32.lib');
+	$myspgregress->AddDirResourceFile('src/test/regress');
+	$myspgregress->AddReference($libpgcommon, $libpgport);
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	# Begin - ReqID:SRS-MISC-LICENSE
 	if ($solution->{options}->{license})
 	{
@@ -1042,9 +1149,9 @@ sub AddSimpleFrontend
 	
 	my $p = $solution->AddProject($n, 'exe', 'bin');
 	$p->AddDir('src/bin/' . $n);
-	# BEGIN - SQL PARSER
-	$p->AddReference($libpgfeutils, $liborafeutils, $libpgcommon, $libpgport);
-	# END - SQL PARSER
+	# BEGIN - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
+	$p->AddReference($libpgfeutils, $liborafeutils,  $libmysfeutils,$libpgcommon, $libpgport);
+	# END - SQL PARSER ReqID:SRS-MISC-MYSQL-FRAME
 	if ($uselibpq)
 	{
 		$p->AddIncludeDir('src/interfaces/libpq');

@@ -12,6 +12,9 @@ PGFILEDESC = "unaccent - text search dictionary that removes accents"
 
 REGRESS = unaccent
 ORA_REGRESS = unaccent
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_unaccent
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # We need a UTF8 database
 ENCODING = UTF8

@@ -639,9 +639,12 @@ ParseConfigFile(const char *config_file, bool strict,
 		}
 		else
 		{
-			ereport(LOG,
-					(errmsg("skipping missing configuration file \"%s\"",
-							abs_path)));
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			if(pg_strcasecmp(config_file, "ivorysql.oracle.conf") && pg_strcasecmp(config_file, "ivorysql.mysql.conf"))
+				ereport(LOG,
+						(errmsg("skipping missing configuration file \"%s\"",
+								abs_path)));
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 		}
 		goto cleanup;
 	}

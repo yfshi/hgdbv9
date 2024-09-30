@@ -586,6 +586,7 @@ interpret_function_parameter_list(ParseState *pstate,
 		{
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			if (compatible_db == PG_PARSER ||
+				compatible_db == MYS_PARSER ||		/* ReqID:SRS-MISC-MYSQL-FRAME */
 				(compatible_db == ORA_PARSER &&
 				LANG_PLISQL_OID != languageOid))
 			{
@@ -2930,12 +2931,23 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("conflicting or redundant options")));
 			/* Begin - BUG:M0000079 */
-			if (PG_PARSER == compatible_db &&
+			/* ReqID:SRS-MISC-MYSQL-FRAME, Add new language plmysql add "
+			 * || MYS_PARSER == compatible_db"
+			 */
+			if ((PG_PARSER == compatible_db || MYS_PARSER == compatible_db) &&
 				!pg_strcasecmp(strVal(defel->arg), "plisql"))
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("when ivorysql.compatible_mode is pg, can't execute a plisql inline procedural-language function")));
 			/* End - BUG:M0000079 */
+
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			if ((PG_PARSER == compatible_db || ORA_PARSER == compatible_db) &&
+							!pg_strcasecmp(strVal(defel->arg), "plmysql"))
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("when ivorysql.compatible_mode is not mysql, can't execute a plmysql inline procedural-language function")));
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			language_item = defel;
 		}
 		else
@@ -2961,6 +2973,10 @@ ExecuteDoStmt(DoStmt *stmt, bool atomic,
 		 */
 		if (ORA_PARSER == compatible_db)
 			language = "plisql";
+		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+		else if (MYS_PARSER == compatible_db)
+			language = "plmysql";
+		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		else
 	/* END - SQL PARSER */
 			language = "plpgsql";

@@ -62,6 +62,10 @@ foreach my $datfile (@ARGV)
 	#BEGIN - SQL PARSER
 	$catalog_data{$catname} = Catalog::ParseData($datfile, $schema, 0, "oracle");
 	#END - SQL PARSER
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	$catalog_data{$catname} = Catalog::ParseData($datfile, $schema, 0, "mysql");
+	$catalog_data{$catname} = Catalog::ParseData($datfile, $schema, 0, "all");
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 }
 
 # Collect certain fields from pg_proc.dat.

@@ -19,6 +19,9 @@ PGFILEDESC = "intarray - functions and operators for arrays of integers"
 
 REGRESS = _int
 ORA_REGRESS = _int
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_int
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

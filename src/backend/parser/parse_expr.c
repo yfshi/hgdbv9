@@ -1066,7 +1066,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 	 * Throw error if no translation found.
 	 */
 	if ((compatible_db == ORA_PARSER && !missing_ok) ||
-		compatible_db == PG_PARSER)
+		compatible_db == PG_PARSER || compatible_db == MYS_PARSER)	/* ReqID:SRS-MISC-MYSQL-FRAME */
 	{
 		if (node == NULL)
 		{
@@ -2327,6 +2327,10 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 		{
 			if (compatible_db == PG_PARSER)
 				arg = coerce_to_common_type(pstate, arg, TEXTOID, "DECODE");
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			else if (compatible_db == MYS_PARSER)
+				arg = coerce_to_common_type(pstate, arg, TEXTOID, "DECODE");
+			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			else if (compatible_db == ORA_PARSER)
 			{
 				if (nls_length_semantics == NLS_LENGTH_BYTE) /* BUG#Z091 */
@@ -2595,11 +2599,19 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	 */
 	if (database_mode == DB_PG)
 		resultexprs = lcons(newc->defresult, resultexprs);
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (database_mode == DB_MYSQL)
+		resultexprs = lcons(newc->defresult, resultexprs);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (database_mode == DB_ORACLE)
 		resultexprs = lappend(resultexprs, newc->defresult);
 
 	if (database_mode == DB_PG)
 		ptype = select_common_type(pstate, resultexprs, "DECODE", NULL);
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (database_mode == DB_MYSQL)
+		ptype = select_common_type(pstate, resultexprs, "DECODE", NULL);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (database_mode == DB_ORACLE)
 		ptype = select_common_type_for_nvl(pstate, resultexprs, "DECODE", NULL);
 	Assert(OidIsValid(ptype));
@@ -3098,6 +3110,10 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 	/* Begin - BUGID:0000536 */
 	if (compatible_db == PG_PARSER)
 		newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	else if (compatible_db == MYS_PARSER)
+		newc->coalescetype = select_common_type(pstate, newargs, "COALESCE", NULL);
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (compatible_db == ORA_PARSER)
 		newc->coalescetype = select_common_type_for_nvl(pstate, newargs, "COALESCE", NULL);
 	/* End - BUGID:0000536 */

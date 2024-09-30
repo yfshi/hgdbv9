@@ -218,6 +218,9 @@ sub GenerateFiles
 	$extraver = '' unless defined $extraver;
 	my $port = $self->{options}->{"--with-pgport"} || 5432;
 	my $oraport = $self->{options}->{"--with-oraport"} || 1521;
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	my $mysport = $self->{options}->{"--with-mysport"} || 3306;
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	# Every symbol in pg_config.h.in must be accounted for here.  Set
 	# to undef if the symbol should not be defined.
@@ -239,6 +242,8 @@ sub GenerateFiles
 		DEF_PGPORT_STR             => qq{"$port"},
 		DEF_ORAPORT                 => $oraport,
 		DEF_ORAPORT_STR             => qq{"$oraport"},
+		DEF_MYSPORT                 => $mysport,
+		DEF_MYSPORT_STR             => qq{"$mysport"},
 		ENABLE_GSS                 => $self->{options}->{gss} ? 1 : undef,
 		ENABLE_NLS                 => $self->{options}->{nls} ? 1 : undef,
 		ENABLE_THREAD_SAFETY       => 1,
@@ -731,6 +736,17 @@ sub GenerateFiles
         }
 	# END - SQL PARSER
 
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer(
+                        'src/pl/plmysql/src/plerrcodes.h', 'src/backend/utils/mys_errcodes.txt'))
+        {
+                        print "Generating PL/mySQL's plerrcodes.h...\n";
+                        system(
+                                'perl src/pl/plmysql/src/generate-plerrcodes.pl src/backend/utils/mys_errcodes.txt > src/pl/plmysql/src/plerrcodes.h'
+                );
+        }
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
 	if ($self->{options}->{tcl}
 		&& IsNewer(
 			'src/pl/tcl/pltclerrcodes.h', 'src/backend/utils/errcodes.txt'))
@@ -766,6 +782,16 @@ sub GenerateFiles
 		);
 	}
 	# END - SQL PARSER
+	
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer('src/backend/mysql_parser/mys_kwlist_d.h', 'src/include/mysql_parser/mys_kwlist.h'))
+	{
+		print "Generating Mysql compatibility mys_kwlist_d.h...\n";
+		system(
+			'perl -I src/tools src/tools/mys_gen_keywordlist.pl --extern -o src/backend/mysql_parser src/include/mysql_parser/mys_kwlist.h'
+		);
+	}
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	if (IsNewer(
 			'src/pl/plpgsql/src/pl_reserved_kwlist_d.h',
@@ -806,6 +832,27 @@ sub GenerateFiles
 		chdir('../../../..');
 	}
 	# END - SQL PARSER
+
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
+	if (IsNewer(
+			'src/pl/plmysql/src/pl_reserved_kwlist_d.h',
+			'src/pl/plmysql/src/pl_reserved_kwlist.h')
+		|| IsNewer(
+			'src/pl/plmysql/src/pl_unreserved_kwlist_d.h',
+			'src/pl/plmysql/src/pl_unreserved_kwlist.h'))
+	{
+		print
+		  "Generating Mysql compatibility pl_reserved_kwlist_d.h and pl_unreserved_kwlist_d.h...\n";
+		chdir('src/pl/plmysql/src');
+		system(
+			'perl -I ../../../tools ../../../tools/gen_keywordlist.pl --varname ReservedPLKeywords pl_reserved_kwlist.h'
+		);
+		system(
+			'perl -I ../../../tools ../../../tools/gen_keywordlist.pl --varname UnreservedPLKeywords pl_unreserved_kwlist.h'
+		);
+		chdir('../../../..');
+	}
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	if (IsNewer(
 			'src/interfaces/ecpg/preproc/c_kwlist_d.h',
@@ -895,6 +942,14 @@ EOF
 		system(
 			"perl genbki.pl -M oracle --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
 		);
+		# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+		system(
+			"perl genbki.pl -M mysql --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
+		);
+		system(
+			"perl genbki.pl -M all --include-path ../../../src/include/ --set-version=$majorver $bki_srcs"
+		);
+		# End - ReqID:SRS-MISC-MYSQL-FRAME
 		#END - SQL PARSER
 		open(my $f, '>', 'bki-stamp')
 		  || confess "Could not touch bki-stamp";
@@ -940,6 +995,19 @@ EOF
 	system("perl gensql.pl $versions");
 	chdir('../..');
 	# End - ReqID:SRS-MISC-SQLMERGE
+	
+	# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+	$mf = Project::read_file('contrib/ivorysql_my/Makefile');
+	$mf =~ s{\\\r?\n}{}g;
+	$mf =~ /^DATA\s*:?=(.*)$/gm
+		|| croak "Could not find DATA in Makefile\n";
+	my $mversions = $1;
+	$mversions =~ s/ivorysql_my--//g;
+	$mversions =~ s/\.sql//g;
+	chdir('contrib/ivorysql_my');
+	system("perl gensql.pl $mversions");
+	chdir('../..');
+	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	open(my $o, '>', "doc/src/sgml/version.sgml")
 	  || croak "Could not write to version.sgml\n";

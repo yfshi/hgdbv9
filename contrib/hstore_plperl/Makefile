@@ -12,6 +12,9 @@ DATA = hstore_plperl--1.0.sql hstore_plperlu--1.0.sql
 
 REGRESS = hstore_plperl hstore_plperlu create_transform
 ORA_REGRESS = ivy_hstore_plperl ivy_hstore_plperlu ivy_create_transform
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_hstore_plperl mys_hstore_plperlu mys_create_transform
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 EXTRA_INSTALL = contrib/hstore
 
 ifdef USE_PGXS

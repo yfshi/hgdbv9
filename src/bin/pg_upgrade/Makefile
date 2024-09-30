@@ -65,6 +65,10 @@ check: test.sh all temp-install
 oracle-check: oracle_test.sh all temp-install
 	MAKE=$(NOTSUBMAKEMAKE) $(with_temp_install) bindir=$(abs_top_builddir)/tmp_install/$(bindir) EXTRA_REGRESS_OPTS="$(EXTRA_REGRESS_OPTS)" $(SHELL) $<
 #END - SQL PARSER
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check: mysql_test.sh all temp-install
+	MAKE=$(NOTSUBMAKEMAKE) $(with_temp_install) bindir=$(abs_top_builddir)/tmp_install/$(bindir) EXTRA_REGRESS_OPTS="$(EXTRA_REGRESS_OPTS)" $(SHELL) $<
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # installcheck is not supported because there's no meaningful way to test
 # pg_upgrade against a single already-running server

@@ -11,6 +11,9 @@ PGFILEDESC = "uuid-ossp - UUID generation"
 
 REGRESS = uuid_ossp
 ORA_REGRESS = ivy_uuid_ossp
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_uuid_ossp
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 SHLIB_LINK += $(UUID_LIBS)
 

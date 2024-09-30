@@ -11,6 +11,9 @@ DATA = tsm_system_time--1.0.sql
 
 REGRESS = tsm_system_time
 ORA_REGRESS = tsm_system_time
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = mys_tsm_system_time
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 
 SHLIB_LINK += $(filter -lm, $(LIBS))
 

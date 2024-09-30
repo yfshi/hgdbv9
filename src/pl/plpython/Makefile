@@ -82,6 +82,9 @@ REGRESS_OPTS = --dbname=$(PL_TESTDB)
 ifeq ($(python_majorversion),2)
 REGRESS_OPTS += --load-extension=plpythonu
 ORACLE_REGRESS_OPTS += --load-extension=plpythonu	# BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYSQL_REGRESS_OPTS += --load-extension=plpythonu
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 endif
 
 REGRESS = \
@@ -138,6 +141,34 @@ ORA_REGRESS = \
 
 ORA_REGRESS_PLPYTHON3_MANGLE := $(ORA_REGRESS)
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+MYS_REGRESS = \
+	mys_plpython_schema \
+	mys_plpython_populate \
+	mys_plpython_test \
+	mys_plpython_do \
+	mys_plpython_global \
+	mys_plpython_import \
+	mys_plpython_spi \
+	mys_plpython_newline \
+	mys_plpython_void \
+	mys_plpython_call \
+	mys_plpython_params \
+	mys_plpython_setof \
+	mys_plpython_record \
+	mys_plpython_trigger \
+	mys_plpython_types \
+	mys_plpython_error \
+	mys_plpython_ereport \
+	mys_plpython_unicode \
+	mys_plpython_quote \
+	mys_plpython_composite \
+	mys_plpython_subtransaction \
+	mys_plpython_transaction \
+	mys_plpython_drop
+
+MYS_REGRESS_PLPYTHON3_MANGLE := $(MYS_REGRESS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 include $(top_srcdir)/src/Makefile.shlib
 
 all: all-lib
@@ -180,6 +211,14 @@ oracle-check: submake_ora
 oracle-installcheck: submake_ora
 	$(oracle_regress_installcheck) $(ORACLE_REGRESS_OPTS) $(ORA_REGRESS)
 
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+mysql-check: submake_mys
+	$(mysql_regress_check) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+
+mysql-installcheck: submake_mys
+	$(mysql_regress_installcheck) $(MYSQL_REGRESS_OPTS) $(MYS_REGRESS)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
+
 .PHONY: submake-pg-regress	submake_ora
 # End - BUGM0000301
 submake-pg-regress: | submake-generated-headers
@@ -188,6 +227,10 @@ submake-pg-regress: | submake-generated-headers
 submake_ora: | submake-generated-headers
 	$(MAKE) -C $(top_builddir)/src/oracle_test/regress pg_regress$(X)
 # End - BUGM0000301
+#Begin - ReqID:SRS-MISC-MYSQL-FRAME
+submake_mys: | submake-generated-headers
+	$(MAKE) -C $(top_builddir)/src/mysql_test/regress pg_regress$(X)
+#End - ReqID:SRS-MISC-MYSQL-FRAME
 clean distclean: clean-lib
 	rm -f $(OBJS)
 	rm -rf $(pg_regress_clean_files)
