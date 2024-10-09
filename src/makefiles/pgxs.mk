@@ -576,8 +576,8 @@ oracle-check:
 #END - SQL PARSER
 # Begin - ReqID:SRS-MISC-MYSQL-FRAME
 mysql-check:
-        @echo '"$(MAKE) mysql-check" is not supported.'
-        @echo 'Do "$(MAKE) install", then "$(MAKE) mysql-installcheck" instead.'
+	@echo '"$(MAKE) mysql-check" is not supported.'
+	@echo 'Do "$(MAKE) install", then "$(MAKE) mysql-installcheck" instead.'
 # End - ReqID:SRS-MISC-MYSQL-FRAME
 else
 check: submake $(REGRESS_PREP)
