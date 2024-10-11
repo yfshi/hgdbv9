@@ -17912,14 +17912,55 @@ PreCommit_on_commit_actions(void)
 				 */
 				if ((MyXactFlags & XACT_FLAGS_ACCESSEDTEMPNAMESPACE))
 				{
+					ListCell   *indlist;
+					ListCell    *cl;
+					Oid 		toastrelid = InvalidOid;
+
 					/* Begin - BUG#M0000366 */
 					if (get_rel_persistence(oc->relid) == RELPERSISTENCE_GLOBAL_TEMP)
 					{
 						Relation 	rel;
 
 						rel = table_open(oc->relid, RowExclusiveLock);
+
+						/* Drop rel index storage if exists */
+						foreach(indlist, RelationGetIndexList(rel))
+						{
+							Oid         indexId = lfirst_oid(indlist);
+							Relation    currentIndex;
+
+							currentIndex = index_open(indexId, RowExclusiveLock);
+							RelationDropStorage(currentIndex);
+							index_close(currentIndex, NoLock);
+						}
+
+						toastrelid = rel->rd_rel->reltoastrelid;
+						if (OidIsValid(toastrelid))
+						{
+							Relation    toastrel = table_open(toastrelid, RowExclusiveLock);
+
+							/* Drop tost index storage */
+							foreach(cl, RelationGetIndexList(toastrel))
+							{
+								Oid         tosId = lfirst_oid(cl);
+								Relation    toscurrentIndex;
+
+								toscurrentIndex = index_open(tosId, RowExclusiveLock);
+								if (toscurrentIndex && toscurrentIndex->rd_node.relNode == 0)
+									toscurrentIndex->rd_node.relNode = tosId;
+								RelationDropStorage(toscurrentIndex);
+
+								index_close(toscurrentIndex, NoLock);
+							}
+
+							/* Drop rel tost storage */
+							RelationDropStorage(toastrel);
+							table_close(toastrel, NoLock);
+						}
+
+						/* Drop rel storage */
 						RelationDropStorage(rel);
-						table_close(rel, RowExclusiveLock);
+						table_close(rel, NoLock);
 
 						/* Unregister this rel in on_commits List */
 						remove_on_commit_action(oc->relid);

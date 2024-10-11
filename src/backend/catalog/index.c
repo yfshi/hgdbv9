@@ -3687,20 +3687,6 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 	if (!OidIsValid(heapId))
 		return;
 
-	/*
-	 * For reindex on global temporary table, If the storage for the index
-	 * in current backend is not initialized, nothing is done.
-	 */
-	if (persistence == RELPERSISTENCE_GLOBAL_TEMP &&
-		!gtt_storage_attached(indexId))
-	{
-		/* Suppress use of the target index while rebuilding it */
-		SetReindexProcessing(heapId, indexId);
-		/* Re-allow use of target index */
-		ResetReindexProcessing();
-		return;
-	}
-
 	if ((params->options & REINDEXOPT_MISSING_OK) != 0)
 		heapRelation = try_table_open(heapId, ShareLock);
 	else

@@ -399,3 +399,17 @@ select count(*) from t group by rowid;
 truncate table t;
 drop table t;
 /* End - BUG#M0000330 */
+
+create global temporary table temp_table (
+   id number,
+   name varchar2(50)
+) on commit delete rows;
+
+CREATE INDEX temp_table_idx ON temp_table (id);
+
+-- reindex index
+reindex index temp_table_idx; -- error
+
+-- reindex table
+reindex table temp_table; -- error
+drop table temp_table;
