@@ -471,11 +471,25 @@ have_loading_data_rest:
 							cstate->raw_reached_eof = true;
 							return bytesread;
 						case 'f':	/* CopyFail */
-							ereport(ERROR,
+						{
+							/* Begin - BUG:M0000383 */
+							if(cstate->opts.tolerate)
+							{
+								cstate->copy_fail_message = true;
+						 		appendStringInfoString(&cstate->tmp_copy_fail_message,pq_getmsgstring(cstate->fe_msgbuf));
+								ereport(ERROR,
 									(errcode(ERRCODE_QUERY_CANCELED),
 									 errmsg("COPY from stdin failed: %s",
-											pq_getmsgstring(cstate->fe_msgbuf))));
+									 cstate->tmp_copy_fail_message.data)));
+							}
+							else
+								ereport(ERROR,
+									(errcode(ERRCODE_QUERY_CANCELED),
+									 errmsg("COPY from stdin failed: %s",
+									 pq_getmsgstring(cstate->fe_msgbuf))));
+							
 							break;
+						}
 						case 'H':	/* Flush */
 						case 'S':	/* Sync */
 
