@@ -32,3 +32,16 @@ select id, uname from (select * from user_info) bm;
 -- clean
 drop table user_info;
 /* End - BUG#M0000217 */
+
+/* Begin - BUG#M0000390 */
+create table test_m390(id int, name varchar2(24));
+insert into test_m390 values(1, 'zhangsan');
+insert into test_m390 values(2, 'lisi');
+insert into test_m390 values(3, 'wangerma');
+select * from test_m390;
+delete test_m390 where id = 2;
+select * from test_m390;
+delete test_m390;
+select * from test_m390;
+drop table test_m390;
+/* End - BUG#M0000390 */

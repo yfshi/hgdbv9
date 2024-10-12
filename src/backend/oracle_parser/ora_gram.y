@@ -14359,6 +14359,19 @@ DeleteStmt: opt_with_clause DELETE_P FROM relation_expr_opt_alias
 					n->withClause = $1;
 					$$ = (Node *)n;
 				}
+			/* Begin - BUG#M0000390 */
+			| opt_with_clause DELETE_P relation_expr_opt_alias
+			  using_clause where_or_current_clause returning_clause
+				{
+					DeleteStmt *n = makeNode(DeleteStmt);
+					n->relation = $3;
+					n->usingClause = $4;
+					n->whereClause = $5;
+					n->returningList = $6;
+					n->withClause = $1;
+					$$ = (Node *)n;
+				}
+			/* End - BUG#M0000390 */
 		;
 
 using_clause:
