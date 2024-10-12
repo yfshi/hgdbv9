@@ -216,3 +216,8 @@ test: copyerror
 #/* End - ReqID:SRS-MISC-BULKLOAD */'
 
 test: ora_dblink_for_pgfdw
+
+#/* Begin - BUG:M0000368 */
+test: copy_skip
+#/* End - BUG:M0000368 */
+

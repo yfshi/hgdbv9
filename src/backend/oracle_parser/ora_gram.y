@@ -698,6 +698,11 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %token <str>	ORAPARAM
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
+/* Begin - BUG#M0000368 */
+%type <list>    skipList
+%type <node>    skipElem
+/* End - BUG#M0000368 */
+
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS LESS_LESS GREATER_GREATER /* ReqID:SRS-SQL-PROC */
 /* Begin - BUG#M0000201: support question marks as binding variables */
@@ -791,7 +796,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD
 	SHARDING /* ReqID:SRS-MISC-BULKLOAD*/ SHARE SHARED /* ReqID:SRS-SQL-DBLINK */ SHOW	/* ReqID:SRS-SQL-SEQ */
-	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
+	SIMILAR SIMPLE SKIP SKIPLIST /* BUG:M0000368*/ SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
@@ -3859,7 +3864,26 @@ copy_opt_item:
 					$$ = makeDefElem("logbad", (Node *)makeString($2), @1);
 				}
 			/* End - BUG#Z1087 */
+			/* Begin - BUG:M0000368 */
+			| SKIPLIST skipList
+				{
+					$$ = makeDefElem("skiplist", (Node *)$2, @1);
+				}
+			/* End - BUG:M0000368 */
 		;
+
+/* Begin - BUG#M0000368 */
+skipList:
+			skipElem                        { $$ = list_make1($1); }
+			| skipList ',' skipElem         { $$ = lappend($1, $3); }
+		;
+
+skipElem: Iconst
+			{
+				$$ = (Node *) makeIntConst($1, @1);
+			}
+		;
+/* End - BUG#M0000368 */
 
 /* The following exist for backward compatibility with very old versions */
 
@@ -20977,6 +21001,7 @@ unreserved_keyword:
 			| SHOW
 			| SIMPLE
 			| SKIP
+			| SKIPLIST /* BUG:M0000368 */
 			| SNAPSHOT
 			| SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 			| SQL_P
@@ -21676,6 +21701,7 @@ bare_label_keyword:
 			| SIMILAR
 			| SIMPLE
 			| SKIP
+			| SKIPLIST /* BUG:M0000368 */
 			| SMALLINT
 			| SNAPSHOT
 			| SOME

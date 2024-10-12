@@ -2021,6 +2021,7 @@ CopyReadAttributesCSV(CopyFromState cstate)
 	char	   *output_ptr;
 	char	   *cur_ptr;
 	char	   *line_end_ptr;
+	int		fieldno_all;
 
 	/*
 	 * We need a special case for zero-column tables: check that the input
@@ -2054,6 +2055,7 @@ CopyReadAttributesCSV(CopyFromState cstate)
 
 	/* Outer loop iterates over fields */
 	fieldno = 0;
+	fieldno_all = 1;  /* BUG:M0000368 */
 	for (;;)
 	{
 		bool		found_delim = false;
@@ -2061,6 +2063,8 @@ CopyReadAttributesCSV(CopyFromState cstate)
 		char	   *start_ptr;
 		char	   *end_ptr;
 		int			input_len;
+
+		bool	need_skip_this_field = false;	/* BUG:M0000368 */
 
 		/* Make sure there is enough space for the next value */
 		if (fieldno >= cstate->max_fields)
@@ -2073,6 +2077,11 @@ CopyReadAttributesCSV(CopyFromState cstate)
 		/* Remember start of field on both input and output sides */
 		start_ptr = cur_ptr;
 		cstate->raw_fields[fieldno] = output_ptr;
+
+		/* Begin - BUG:M0000368 */
+		if (cstate->opts.skip_list[fieldno_all] == true)
+			need_skip_this_field = true;
+		/* End - BUG:M0000368 */
 
 		/*
 		 * Scan data for field,
@@ -2104,18 +2113,34 @@ CopyReadAttributesCSV(CopyFromState cstate)
 						switch (byte_count)
 						{
 						case 2:
-							*output_ptr++ = c;
-							*output_ptr++ = *cur_ptr++;
+							/* Begin - BUG:M0000368 */
+							if(need_skip_this_field)
+								cur_ptr++;
+							else /* End - BUG:M0000368 */
+							{
+								*output_ptr++ = c;
+								*output_ptr++ = *cur_ptr++;
+							}
 							continue;
 						case 4:
 							if (cur_ptr + 3 > line_end_ptr)
 								goto endfield;
 							else
 							{
-								*output_ptr++ = c;
-								*output_ptr++ = *cur_ptr++;
-								*output_ptr++ = *cur_ptr++;
-								*output_ptr++ = *cur_ptr++;
+								/* Begin - BUG:M0000368 */
+								if(need_skip_this_field)
+								{
+									cur_ptr++;
+									cur_ptr++;
+									cur_ptr++;
+								}
+								else /* End - BUG:M0000368 */
+								{
+									*output_ptr++ = c;
+									*output_ptr++ = *cur_ptr++;
+									*output_ptr++ = *cur_ptr++;
+									*output_ptr++ = *cur_ptr++;
+								}
 							}
 							continue;
 						default:
@@ -2138,7 +2163,8 @@ CopyReadAttributesCSV(CopyFromState cstate)
 					break;
 				}
 				/* Add c to output string */
-				*output_ptr++ = c;
+				if (!need_skip_this_field)
+					*output_ptr++ = c;
 			}
 
 			/* In quote */
@@ -2163,8 +2189,16 @@ CopyReadAttributesCSV(CopyFromState cstate)
 						switch (byte_count)
 						{
 						case 2:
-							*output_ptr++ = c;
-							*output_ptr++ = *cur_ptr++;
+							/* Begin - BUG:M0000368 */
+							if(need_skip_this_field)
+							{
+								cur_ptr++;
+							}
+							else	/* End - BUG:M0000368 */
+							{
+								*output_ptr++ = c;
+								*output_ptr++ = *cur_ptr++;
+							}
 							continue;
 						case 4:
 							if (cur_ptr + 3 > line_end_ptr)
@@ -2173,10 +2207,20 @@ CopyReadAttributesCSV(CopyFromState cstate)
 										 errmsg("unterminated CSV quoted field")));
 							else
 							{
-								*output_ptr++ = c;
-								*output_ptr++ = *cur_ptr++;
-								*output_ptr++ = *cur_ptr++;
-								*output_ptr++ = *cur_ptr++;
+								/* Begin - BUG:M0000368 */
+								if(need_skip_this_field)
+								{
+									cur_ptr++;
+									cur_ptr++;
+									cur_ptr++;
+								}
+								else	/* End - BUG:M0000368 */
+								{
+									*output_ptr++ = c;
+									*output_ptr++ = *cur_ptr++;
+									*output_ptr++ = *cur_ptr++;
+									*output_ptr++ = *cur_ptr++;
+								}
 							}
 							continue;
 						default:
@@ -2199,7 +2243,8 @@ CopyReadAttributesCSV(CopyFromState cstate)
 
 						if (nextc == escapec || nextc == quotec)
 						{
-							*output_ptr++ = nextc;
+							if(!need_skip_this_field) /* BUG:M0000368 */
+								*output_ptr++ = nextc;
 							cur_ptr++;
 							continue;
 						}
@@ -2215,24 +2260,35 @@ CopyReadAttributesCSV(CopyFromState cstate)
 					break;
 
 				/* Add c to output string */
-				*output_ptr++ = c;
+				if (!need_skip_this_field) /* BUG:M0000368 */
+					*output_ptr++ = c;
 			}
 		}
 endfield:
 
-		/* Terminate attribute value in output area */
-		*output_ptr++ = '\0';
+		if (need_skip_this_field)	/* BUG:M0000368 */
+		{
+			fieldno_all++;
+			if (cur_ptr >= line_end_ptr)
+				break;
+		}
+		else
+		{
+			/* Terminate attribute value in output area */
+			*output_ptr++ = '\0';
 
-		/* Check whether raw input matched null marker */
-		input_len = end_ptr - start_ptr;
-		if (!saw_quote && input_len == cstate->opts.null_print_len &&
-			strncmp(start_ptr, cstate->opts.null_print, input_len) == 0)
-			cstate->raw_fields[fieldno] = NULL;
+			/* Check whether raw input matched null marker */
+			input_len = end_ptr - start_ptr;
+			if (!saw_quote && input_len == cstate->opts.null_print_len &&
+				strncmp(start_ptr, cstate->opts.null_print, input_len) == 0)
+				cstate->raw_fields[fieldno] = NULL;
 
-		fieldno++;
-		/* Done if we hit EOL instead of a delim */
-		if (!found_delim)
-			break;
+			fieldno++;
+			fieldno_all++;
+			/* Done if we hit EOL instead of a delim */
+			if (!found_delim)
+				break;	
+		}
 	}
 
 	/* Clean up state of attribute_buf */
