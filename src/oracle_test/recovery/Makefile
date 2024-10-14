@@ -17,7 +17,7 @@ top_builddir = ../../..
 include $(top_builddir)/src/Makefile.global
 
 # required for 017_shm.pl
-REGRESS_SHLIB=$(abs_top_builddir)/src/oracle_test/regress/regress$(DLSUFFIX)
+REGRESS_SHLIB=$(abs_top_builddir)/src/oracle_test/regress/oraregress$(DLSUFFIX)
 export REGRESS_SHLIB
 
 oracle-check:
