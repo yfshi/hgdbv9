@@ -1012,10 +1012,10 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 					if(typeid == LONGOID || typeid == BLOBOID || typeid == CLOBOID || typeid == BOOLOID)
 						elog(ERROR, "specified data type is not supported for a virtual column");
 				}
-				if (ORA_PARSER == compatible_db)
-					column->generated = constraint->generated_kind;
-				else
+				/* Begin Bug#m0000392 */
+				if (ORA_PARSER != compatible_db)
 					column->generated = ATTRIBUTE_GENERATED_STORED;
+				/* End Bug#m0000392 */
 				/* End - ReqID:SRS-SQL-VIRTUALCOL */
 				column->raw_default = constraint->raw_expr;
 				Assert(constraint->cooked_expr == NULL);
