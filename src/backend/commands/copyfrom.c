@@ -1532,19 +1532,34 @@ CopyFrom(CopyFromState cstate)
  	 * if need send the error number to the client
  	 * using notice message taking the info
  	 */ 
-	if (cstate->opts.tolerate && cstate->opts.log_bad && 
-			(cstate->num_errors > 0 || estate->handle_fk_error_num > 0) )  /* BUG#Z1087 */
-		ereport(NOTICE,
-			(errmsg("%s-%s-%s-%s-%d-%d: %llu rows were skipped",
-				cstate->opts.taskid, 
-				cstate->schema_name,
-				cstate->cur_relname,
-				cstate->opts.filename,
-				cstate->opts.sharding,
-				cstate->opts.current_shard,
-				(unsigned long long) (cstate->num_errors + estate->handle_fk_error_num))));
-					
-
+	if (cstate->opts.tolerate && cstate->opts.log_bad)
+	{
+		/* Begin - BUG:M0000379 */
+		/*
+ 		 * if there need adding quote for schema or table
+ 		 * adding for both
+ 		 */
+		if (check_need_quote(cstate->schema_name) || check_need_quote(cstate->cur_relname))
+			ereport(NOTICE,
+				(errmsg("%s-\"%s\"-\"%s\"-%s-%d-%d: %llu rows were skipped",
+					(cstate->opts.taskid)? cstate->opts.taskid: "default",
+					cstate->schema_name,
+					cstate->cur_relname,
+					(cstate->opts.filename)? cstate->opts.filename: "default",
+					cstate->opts.sharding,
+					cstate->opts.current_shard,
+					(unsigned long long) (cstate->num_errors + estate->handle_fk_error_num))));
+		else /* End - BUG:M0000379 */
+			ereport(NOTICE,
+				(errmsg("%s-%s-%s-%s-%d-%d: %llu rows were skipped",
+					(cstate->opts.taskid)? cstate->opts.taskid: "default",
+					cstate->schema_name,
+					cstate->cur_relname,
+					(cstate->opts.filename)? cstate->opts.filename: "default",
+					cstate->opts.sharding,
+					cstate->opts.current_shard,
+					(unsigned long long) (cstate->num_errors + estate->handle_fk_error_num))));
+	}
 	/* End - BUG#Z1087 */
 
 

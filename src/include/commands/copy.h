@@ -113,6 +113,8 @@ extern List *CopyGetAttnums(TupleDesc tupDesc, Relation rel,
 
 /* Begin - ReqID:SRS-MISC-BULKLOAD */
 extern bool OutputBadRecord(CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char type);
+extern int check_single_quote(const char *buffer,int len);
+extern bool check_need_quote(const char *rawid);
 /* used for handle FK checking error */
 #define FK_CHECK_OID 1644
 /* used for cut big record for store and output */
