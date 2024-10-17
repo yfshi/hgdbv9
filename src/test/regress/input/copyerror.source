@@ -292,9 +292,11 @@ test1
 -- Output file
 TRUNCATE x;
 TRUNCATE x_bad;
-COPY x to '@abs_srcdir@/results/pg_bulkload_multi.bad' with csv delimiter ',';
 
-COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' filename 'csv1.csv' badfile '@abs_srcdir@/results/pg_bulkload_multi.bad';
+-- Bug:M0000395 change /results/ to /data/
+COPY x to '@abs_srcdir@/data/pg_bulkload_multi.bad' with csv delimiter ',';
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' filename 'csv1.csv' badfile '@abs_srcdir@/data/pg_bulkload_multi.bad';
 5,5,55.5,5,name_5,5
 6,6,66.6,6,name_6,5
 7,7,77.7,7,name_7,7
@@ -305,7 +307,7 @@ COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' file
 SELECT * from x;
 
 TRUNCATE x;
-COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_shard 3 taskid 'all12' filename 'csv1.csv' badfile '@abs_srcdir@/results/pg_bulkload_multi.bad';
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_shard 3 taskid 'all12' filename 'csv1.csv' badfile '@abs_srcdir@/data/pg_bulkload_multi.bad';
 5,5,55.5,5,name_5,5
 6,6,66.6,6,name_6,5
 7,7,77.7,7,name_7,7
@@ -316,7 +318,7 @@ COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_s
 SELECT * from x;
 
 Create table error(bad_record text);
-Copy error from '@abs_srcdir@/results/pg_bulkload_multi.bad' with csv delimiter '|';
+Copy error from '@abs_srcdir@/data/pg_bulkload_multi.bad' with csv delimiter '|';
 SELECT * from error;
 
 -- if row length > 2000, just store and output 2000b

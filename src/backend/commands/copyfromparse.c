@@ -1015,9 +1015,14 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 		/* open file */
 		bad_file = fopen(cstate->opts.badfile, PG_BINARY_A);
 		if( bad_file == NULL)
-			ereport(LOG,
+		{ /* Begin - BUG:M0000395 */
+			if (cstate->opts.sharding > 1)
+				LWLockRelease(BadfileWriteLock);
+	
+			ereport(ERROR,
 				(errcode_for_file_access(),
-				errmsg("could not create file \"%s\": %m", cstate->opts.badfile)));
+				errmsg("could not open file \"%s\": %m", cstate->opts.badfile)));
+		} /* End - BUG:M0000395 */
 
 		/* write the error data */
 		fprintf(bad_file,"%s: %s: %s: %s: %c: %s: %s\n",
@@ -1027,9 +1032,14 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 
 		/* close the file */
 		if (fclose(bad_file)!=0)
-			ereport(LOG,
+		{ /* Begin - BUG:M0000395 */
+			if (cstate->opts.sharding > 1)
+				LWLockRelease(BadfileWriteLock);
+
+			ereport(ERROR,
 				(errcode_for_file_access(),
-				errmsg("could not write file \"%s\": %m", cstate->opts.badfile)));
+				errmsg("could not close file \"%s\": %m", cstate->opts.badfile)));
+		} /* End - BUG:M0000395 */
 
 		if (cstate->opts.sharding > 1)
 			LWLockRelease(BadfileWriteLock);
