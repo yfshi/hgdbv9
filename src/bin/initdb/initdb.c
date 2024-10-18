@@ -197,7 +197,7 @@ static int	n_connections = 10;
 static int	n_buffers = 50;
 static const char *dynamic_shared_memory_type = NULL;
 static const char *default_timezone = NULL;
-
+static bool enable_blankspace_compare = true;	/* SRS-MISC-COMPATDM-SQL */
 /* BEGIN - SQL PARSER */
 static const char *ora_options = "-c session_preload_libraries=liboracle_parser ";
 static const char *mys_options = "-c session_preload_libraries=libmysql_parser ";	/* ReqID:SRS-MISC-MYSQL-FRAME */
@@ -1375,6 +1375,13 @@ setup_config(void)
 		}
 		/* END - BUG#M0000120 */
 
+		/* Begin - SRS-MISC-COMPATDM-SQL */
+		if(!enable_blankspace_compare)
+		{
+			snprintf(repltok,sizeof(repltok),"#ivorysql.enable_blankspace_compare = on");
+			conflines = replace_token(conflines,"ivorysql.enable_blankspace_compare = off",repltok);
+		}
+		/* End - SRS-MISC-COMPATDM-SQL */
 
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
@@ -3406,6 +3413,7 @@ main(int argc, char *argv[])
 		{"case-conversion-mode", required_argument, NULL, 'c'},	/* case sensitive indentify */
 	/* END - SQL PARSER */
 		{"discard-caches", no_argument, NULL, 14},
+		{"enable_blankspace_compare",required_argument,NULL,15},	/* SRS-MISC-COMPATDM-SQL */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -3630,6 +3638,11 @@ main(int argc, char *argv[])
 										 extra_options,
 										 "-c debug_discard_caches=1");
 				break;
+			/* Begin - SRS-MISC-COMPATDM-SQL */
+			case 15:
+				enable_blankspace_compare = pg_strcasecmp(pg_strdup(optarg),"on") == 0?true:false;
+				break;
+			/* End - SRS-MISC-COMPATDM-SQL */
 			default:
 				/* getopt_long already emitted a complaint */
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),

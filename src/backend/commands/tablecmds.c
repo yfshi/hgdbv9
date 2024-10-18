@@ -18612,7 +18612,21 @@ ComputePartitionAttrs(ParseState *pstate, Relation rel, List *partParams, AttrNu
 
 		if (!pelem->opclass)
 		{
-			partopclass[attn] = GetDefaultOpClass(atttype, am_oid);
+			/* 
+			 * Begin - SRS-MISC-COMPATDM-SQL
+			 * The partition key needs a opclass,but if we don't compare triled spaces,
+			 * we should get the explicit-named opclass for partition key,
+			 * this have an impact on the partition prune.
+			 */
+			if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
+			{
+				partopclass[attn] = GetExplicitOpClass(atttype,am_oid);
+				if(!OidIsValid(partopclass[attn]))
+					partopclass[attn] = GetDefaultOpClass(atttype, am_oid);
+			}
+			/* End - SRS-MISC-COMPATDM-SQL */
+			else
+				partopclass[attn] = GetDefaultOpClass(atttype, am_oid);
 
 			if (!OidIsValid(partopclass[attn]))
 			{

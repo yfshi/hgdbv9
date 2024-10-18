@@ -21,6 +21,7 @@ OBJS = \
 	src/datatype/raw_long.o \
 	src/datatype/binary_float.o \
 	src/datatype/binary_double.o \
+	src/dmcompatible/dmchartype_compatible.o \
 	src/builtin_functions/character_datatype_functions.o \
 	src/builtin_functions/datetime_datatype_functions.o \
 	src/builtin_functions/numeric_datatype_functions.o \
@@ -84,7 +85,8 @@ ORA_REGRESS = \
 	ora_nlssort_gbk \
 	ora_nlssort_gb18030 \
 	ora_default_collation \
-	orarefcursor
+	orarefcursor \
+	dm_compatible
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

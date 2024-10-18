@@ -33,6 +33,8 @@
 #include "catalog/pg_opfamily.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_namespace.h"	/* SRS-MISC-COMPATDM-SQL */
+#include "utils/ora_compatible.h"	/* SRS-MISC-COMPATDM-SQL */
 #include "commands/comment.h"
 #include "commands/dbcommands.h"
 #include "commands/defrem.h"
@@ -1049,6 +1051,25 @@ DefineIndex(Oid relationId,
 							found = true;
 							break;
 						}
+						/* Begin - SRS-MISC-COMPATDM-SQL */
+						else if (ORA_PARSER == compatible_db && !enable_blankspace_compare)
+						{
+							/* 
+							 * When defining a partition table pkey,
+							 * the index eqop should be in the explicit-named opclass
+							 * if enable_blankspace_compare is off.
+							 */
+							Oid	 opclass = GetExplicitOpClass(idx_opcintype,accessMethodId);
+							if(OidIsValid(opclass))
+							{
+								if(op_in_opfamily(idx_eqop,get_opclass_family(opclass)))
+								{
+									found = true;
+									break;
+								}
+							}
+						}
+						/* End - SRS-MISC-COMPATDM-SQL */
 					}
 				}
 			}
@@ -2170,8 +2191,22 @@ ResolveOpClass(List *opclass, Oid attrType,
 
 	if (opclass == NIL)
 	{
+
+		/* 
+		 * Begin - SRS-MISC-COMPATDM-SQL
+		 * when opclass is null,it means the user don't assign opclass explicitly,
+		 * and if !enable_blankspace_compare,get the explicit-named one.
+		 */
+		if (ORA_PARSER == compatible_db && !enable_blankspace_compare)
+		{
+			opClassId = GetExplicitOpClass(attrType,accessMethodId);
+			if(!OidIsValid(opClassId))
+				opClassId = GetDefaultOpClass(attrType, accessMethodId);
+		}
+		/* End - SRS-MISC-COMPATDM-SQL */
+		else
 		/* no operator class specified, so find the default */
-		opClassId = GetDefaultOpClass(attrType, accessMethodId);
+			opClassId = GetDefaultOpClass(attrType, accessMethodId);
 		if (!OidIsValid(opClassId))
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -2187,6 +2222,26 @@ ResolveOpClass(List *opclass, Oid attrType,
 
 	/* deconstruct the name list */
 	DeconstructQualifiedName(opclass, &schemaname, &opcname);
+
+	/* Begin - SRS-MISC-COMPATDM-SQL */
+	/* 
+	 * if opclass is not null,and the opclass is explicit-named
+	 * it could be assigned expilicitly in create index or alter table use index implicitly,
+	 * check if the atttype fits the opclass,if not,try to find the default opclass for the type.
+	 */
+	if (ORA_PARSER == compatible_db && !enable_blankspace_compare &&
+			 opcname && OPCLASSISEXPLICIT(opcname) && !ISDMCHARTYPE(attrType))
+	{
+		opClassId = GetDefaultOpClass(attrType, accessMethodId);
+		if (!OidIsValid(opClassId))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					errmsg("data type %s has no default operator class for access method \"%s\"",
+							format_type_be(attrType), accessMethodName),
+					errhint("You must specify an operator class for the index or define a default operator class for the data type.")));
+		return opClassId;
+	}
+	/* End - SRS-MISC-COMPATDM-SQL */
 
 	if (schemaname)
 	{
@@ -2328,6 +2383,61 @@ GetDefaultOpClass(Oid type_id, Oid am_id)
 
 	return InvalidOid;
 }
+
+/* Begin - SRS-MISC-COMPATDM-SQL */
+/*
+ * GetExplicitOpClass
+ *
+ * Given the OIDs of a datatype and an access method, find the explicit-named
+ * operator class, if any.  Returns InvalidOid if there is none.
+ * This is for compatible DM guc enable_blankspace_compare,
+ * if !enable_blankspace_compare,we should not compare blank-space padded,
+ * neither in btree nor in hash compare routines,
+ * so find the explicit-named opclass defined by ourselves as needed.
+ */
+Oid
+GetExplicitOpClass(Oid type_id, Oid am_id)
+{
+	HeapTuple	tup;
+	TYPCATEGORY tcategory;
+	Oid			result;
+	/* If it's a domain, look at the base type instead */
+	type_id = getBaseType(type_id);
+
+	tcategory = TypeCategory(type_id);
+
+	if(tcategory != TYPCATEGORY_STRING)
+		return InvalidOid;
+	switch(type_id)
+	{
+		case ORACHARCHAROID:
+			tup = SearchSysCache3(CLAAMNAMENSP,ObjectIdGetDatum(am_id),PointerGetDatum("oracharchar_ops_explicit"),ObjectIdGetDatum(PG_SYS_NAMESPACE));
+			break;
+		case ORACHARBYTEOID:
+			tup = SearchSysCache3(CLAAMNAMENSP,ObjectIdGetDatum(am_id),PointerGetDatum("oracharbyte_ops_explicit"),ObjectIdGetDatum(PG_SYS_NAMESPACE));
+			break;
+		case ORAVARCHARCHAROID:
+			tup = SearchSysCache3(CLAAMNAMENSP,ObjectIdGetDatum(am_id),PointerGetDatum("oravarcharchar_ops_explicit"),ObjectIdGetDatum(PG_SYS_NAMESPACE));
+			break;
+		case ORAVARCHARBYTEOID:
+			tup = SearchSysCache3(CLAAMNAMENSP,ObjectIdGetDatum(am_id),PointerGetDatum("oravarcharbyte_ops_explicit"),ObjectIdGetDatum(PG_SYS_NAMESPACE));
+			break;
+		case TEXTOID:
+			tup = SearchSysCache3(CLAAMNAMENSP,ObjectIdGetDatum(am_id),PointerGetDatum("oratext_ops_explicit"),ObjectIdGetDatum(PG_SYS_NAMESPACE));
+			break;
+		default:
+			return InvalidOid;
+	}
+	if(HeapTupleIsValid(tup))
+	{
+		Form_pg_opclass opclass = (Form_pg_opclass) GETSTRUCT(tup);
+		result = opclass->oid;
+		ReleaseSysCache(tup);
+		return result;
+	}
+	return InvalidOid;
+}
+/* End - SRS-MISC-COMPATDM-SQL */
 
 /*
  *	makeObjectName()

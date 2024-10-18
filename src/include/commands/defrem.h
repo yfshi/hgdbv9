@@ -48,6 +48,7 @@ extern bool CheckIndexCompatible(Oid oldId,
 								 List *attributeList,
 								 List *exclusionOpNames);
 extern Oid	GetDefaultOpClass(Oid type_id, Oid am_id);
+extern Oid  GetExplicitOpClass(Oid type_id, Oid am_id);		/* SRS-MISC-COMPATDM-SQL */
 extern Oid	ResolveOpClass(List *opclass, Oid attrType,
 						   const char *accessMethodName, Oid accessMethodId);
 

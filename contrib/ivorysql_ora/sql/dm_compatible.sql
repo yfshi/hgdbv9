@@ -1,0 +1,859 @@
+/* Begin - SRS-MISC-COMPATDM-SQL */
+/* Compatible dm blank_compare_mode testing */
+set ivorysql.enable_blankspace_compare to off;	
+set enable_seqscan to off;	
+-- make sure this parameter have no effect on union,intersect,except,distinct and group by
+CREATE TABLE VARCHAR_TBL(f1 varchar2(4) PRIMARY KEY);
+INSERT INTO VARCHAR_TBL (f1) VALUES ('a');
+INSERT INTO VARCHAR_TBL (f1) VALUES ('ab');
+INSERT INTO VARCHAR_TBL (f1) VALUES ('abcd');
+CREATE TABLE CHAR_TBL(f1 char(4) PRIMARY KEY);
+INSERT INTO CHAR_TBL (f1) VALUES ('a');
+INSERT INTO CHAR_TBL (f1) VALUES ('ab');
+INSERT INTO CHAR_TBL (f1) VALUES ('abcd');
+CREATE TABLE TEXT_TBL (f1 text PRIMARY KEY);
+INSERT INTO TEXT_TBL (f1) VALUES ('a');
+INSERT INTO TEXT_TBL (f1) VALUES ('ab');
+INSERT INTO TEXT_TBL (f1) VALUES ('abcd');
+
+/* Union */
+-- test return column type
+create table a as select * from char_tbl union select * from varchar_tbl;
+create table b as select * from varchar_tbl union select * from char_tbl;
+create table c as select * from char_tbl union select * from TEXT_TBL;
+create table d as select * from TEXT_TBL union select * from char_tbl;
+create table e as select * from VARCHAR_TBL union select * from TEXT_TBL;
+create table f as select * from char_tbl union select * from char_tbl;
+\d a	
+-- roltype varchar(4)
+\d b 	
+-- roltype varchar(4)
+\d c	
+-- roltype text
+\d d	
+-- roltype text
+\d e	
+-- roltype text
+\d f	
+-- roltype char(4)
+
+-- test result while diffrent type union
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 union orachar,exprcted 5 rows
+SELECT f1 AS three FROM VARCHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 union orachar,exprcted 5 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar union varchar2,expected 5 rows
+SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar union varchar2,expected 5 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar union orachar,expected 3 rows
+SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar union orachar,expected 3 rows
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' UNION SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 2 rows
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' UNION SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 2 rows
+
+drop table a,b,c,d,e,f;
+/* intersect */
+create table a as select * from char_tbl intersect select * from varchar_tbl;
+create table b as select * from varchar_tbl intersect select * from char_tbl;
+create table c as select * from char_tbl intersect select * from TEXT_TBL;
+create table d as select * from TEXT_TBL intersect select * from char_tbl;
+create table e as select * from VARCHAR_TBL intersect select * from TEXT_TBL;
+create table f as select * from char_tbl intersect select * from char_tbl;
+\d a	
+-- roltype varchar(4)
+\d b 	
+-- roltype varchar(4)
+\d c	
+-- roltype text
+\d d	
+-- roltype text
+\d e	
+-- roltype text
+\d f	
+-- roltype char(4)
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 intersect orachar,exprcted 1 rows
+SELECT f1 AS three FROM VARCHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 intersect orachar,exprcted 1 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar intersect varchar2,expected 1 rows
+SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar intersect varchar2,expected 1 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar intersect orachar,expected 3 rows
+SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar intersect orachar,expected 3 rows
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' intersect SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 0 rows
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' intersect SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 0 rows
+
+drop table a,b,c,d,e,f;
+
+/* except */
+create table a as select * from char_tbl except select * from varchar_tbl;
+create table b as select * from varchar_tbl except select * from char_tbl;
+create table c as select * from char_tbl except select * from TEXT_TBL;
+create table d as select * from TEXT_TBL except select * from char_tbl;
+create table e as select * from VARCHAR_TBL except select * from TEXT_TBL;
+create table f as select * from char_tbl except select * from char_tbl;
+\d a	
+-- roltype varchar(4)
+\d b 	
+-- roltype varchar(4)
+\d c	
+-- roltype text
+\d d	
+-- roltype text
+\d e	
+-- roltype text
+\d f	
+-- roltype char(4)
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 except orachar,exprcted 2 rows
+SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 except orachar,exprcted 2 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar except varchar2,expected 2 rows
+SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar except varchar2,expected 2 rows
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar except orachar,expected 0 rows
+SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar except orachar,expected 0 rows
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' except SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' except SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;   --0 rows
+
+SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM TEXT_TBL  ORDER BY 1;	-- oravarchar except text,expected 0 rows
+drop table a,b,c,d,e,f;
+
+/* distict and group by */
+create table a as select * from char_tbl union all select * from varchar_tbl order by 1;
+\d a
+create index on a(f1);
+explain(costs off) select distinct * from a where f1 > 'a' order by 1;
+select distinct * from a where f1 > 'a' order by 1;		-- expected 3 rows
+
+explain(costs off) select * from a group by f1 order by 1;		-- expected 5 rows
+select * from a group by f1 order by 1;		-- expected 5 rows
+drop table a,char_tbl,varchar_tbl,TEXT_TBL;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+
+/* || operator and compare operator test */
+-- Begin - SRS-MISC-COMPATDM-SQL
+create table ora_char_a(x char(10 char) PRIMARY KEY);
+create table ora_char_b(x char(10 char) PRIMARY KEY);
+create table ora_char_c(x char(10 byte) PRIMARY KEY);
+create table ora_char_d(x char(10 byte) PRIMARY KEY);
+create table ora_char_e(x text PRIMARY KEY);
+create table ora_char_f(x varchar2(10) PRIMARY KEY);
+insert into ora_char_a values('aaa');
+insert into ora_char_b values('bbb');
+insert into ora_char_c values('ccc');               
+insert into ora_char_d values('ddd');
+insert into ora_char_e values('eee');
+insert into ora_char_f values('fff');
+select ora_char_a.x||ora_char_b.x from ora_char_a,ora_char_b; 	-- oracahrchar || oracharchar
+select ora_char_a.x||ora_char_c.x from ora_char_a,ora_char_c;	-- oracharchar || oracharbyte
+select ora_char_c.x||ora_char_a.x from ora_char_c,ora_char_a;	-- oracharbyte || oracharchar
+select ora_char_c.x||ora_char_d.x from ora_char_c,ora_char_d;	-- oracharbyte || oracharbyte
+select ora_char_a.x||ora_char_e.x from ora_char_a,ora_char_e;	-- oracharchar || text
+select ora_char_e.x||ora_char_a.x from ora_char_e,ora_char_a;	-- text || oracharchar
+select ora_char_c.x||ora_char_e.x from ora_char_c,ora_char_e; -- oracharbyte || text       
+select ora_char_e.x||ora_char_c.x from ora_char_e,ora_char_c;	-- text || oracharbyte
+select ora_char_a.x||ora_char_f.x from ora_char_a,ora_char_f;	-- oracharchar || varchar2
+select ora_char_f.x||ora_char_a.x from ora_char_f,ora_char_a;	-- varchar2 || oracharchar
+select ora_char_c.x||ora_char_f.x from ora_char_c,ora_char_f;	-- oracharbyte || varchar2
+select ora_char_f.x||ora_char_c.x from ora_char_f,ora_char_c;	-- varchar2 || oracharbyte 
+select ora_char_a.x||ora_char_b.x||ora_char_c.x from ora_char_a,ora_char_b,ora_char_c; -- oracharchar || oracharchar || oracharbyte
+select ora_char_a.x||ora_char_b.x||ora_char_e.x from ora_char_a,ora_char_b,ora_char_e; -- oracharchar || oracharchar || text
+select ora_char_e.x||ora_char_a.x||ora_char_b.x from ora_char_e,ora_char_a,ora_char_b; -- text || oracharchar || oracharchar
+select ora_char_a.x||ora_char_c.x||ora_char_e.x from ora_char_a,ora_char_c,ora_char_e; -- oracharchar || oracharbyte || text
+select ora_char_e.x||ora_char_a.x||ora_char_c.x from ora_char_e,ora_char_a,ora_char_c; -- text || oracharchar || oracharbyte
+select ora_char_a.x||ora_char_e.x||ora_char_b.x from ora_char_a,ora_char_e,ora_char_b; -- oracharchar || text || oracharchar
+select ora_char_a.x||ora_char_e.x||ora_char_c.x from ora_char_a,ora_char_e,ora_char_c; -- oracharchar || text || oracharbyte
+select ora_char_a.x||ora_char_f.x||ora_char_c.x from ora_char_a,ora_char_f,ora_char_c; -- oracharchar || varchar2 || oracharbyte
+drop table ora_char_a,ora_char_b,ora_char_c,ora_char_d,ora_char_e,ora_char_f;
+
+/* test ivorysql.enable_blankspace_compare */
+create table dm_charchar(x char(10 char) collate "C" PRIMARY KEY);
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" PRIMARY KEY);
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C" PRIMARY KEY);
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C" PRIMARY KEY);
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C" PRIMARY KEY);
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+create table dmmain_table(x) as select * from (select x::varchar2 from dm_charchar union all select x::varchar2 from dm_varcharchar) order by 1;
+
+-- enable_blankspace_compare on
+set ivorysql.enable_blankspace_compare to on;
+select * from dm_charchar where x = 'space'; -- 1 row
+select * from dm_charchar where x = 'space     '; -- 1 row
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+select * from dm_charbyte where x = 'space     '; -- 1 row
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+select * from dm_varcharchar where x = 'space     '; -- 0 row
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+select * from dm_varcharchar where x = 'PG中国      '; -- 0 row
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+select * from dm_varcharbyte where x = 'space     '; -- 0 row
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+select * from dm_varcharbyte where x = 'PG中国      '; -- 0 row
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_text where x = 'space'; -- 1 row
+select * from dm_text where x = 'space     '; -- 0 row
+select * from dm_text where x = 'PG中国'; -- 1 row
+select * from dm_text where x = 'PG中国      '; -- 0 row
+select * from dm_text where x = 'fillallten'; -- 1 row
+
+
+select * from dmmain_table where x != 'space'; -- 5 row
+select * from dmmain_table where x > 'PG中国'; -- 5 row
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+select * from dmmain_table where x < 'PG中国      '; -- 1 row
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+
+-- ivorysql.enable_blankspace_compare off
+set ivorysql.enable_blankspace_compare to off;
+select * from dm_charchar where x = 'space'; -- 1 row
+select * from dm_charchar where x = 'space     '; -- 1 row
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+select * from dm_charbyte where x = 'space     '; -- 1 row
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+select * from dm_varcharchar where x = 'space     '; -- 1 row
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+select * from dm_varcharchar where x = 'PG中国      '; -- 1 row
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+select * from dm_varcharbyte where x = 'space     '; -- 1 row
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+select * from dm_varcharbyte where x = 'PG中国      '; -- 1 row
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_text where x = 'space'; -- 1 row
+select * from dm_text where x = 'space     '; -- 1 row
+select * from dm_text where x = 'PG中国'; -- 1 row
+select * from dm_text where x = 'PG中国      '; -- 1 row
+select * from dm_text where x = 'fillallten'; -- 1 row
+
+
+select * from dmmain_table where x != 'space'; -- 4 row
+select * from dmmain_table where x > 'PG中国'; -- 4 row
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+select * from dmmain_table where x < 'PG中国      '; -- 0 row
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+\d dmmain_table
+create index dmmain_table_x on dmmain_table(x);
+set enable_seqscan to off;
+set enable_indexscan to on;
+explain(costs off) select * from dmmain_table where x != 'space'; -- 4 row
+explain(costs off) select * from dmmain_table where x > 'PG中国'; -- 4 row
+explain(costs off) select * from dmmain_table where x >= 'PG中国'; -- 6 row
+explain(costs off) select * from dmmain_table where x < 'PG中国'; -- 0 row
+explain(costs off) select * from dmmain_table where x < 'PG中国      '; -- 0 row
+explain(costs off) select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+set ivorysql.enable_blankspace_compare to on;
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar,dmmain_table;
+
+
+
+
+/* Test new operator index support */
+set ivorysql.enable_blankspace_compare to off;
+set enable_seqscan to off;
+set enable_bitmapscan to off;
+-- btree
+create table dm_charchar(x char(10 char) collate "C" PRIMARY KEY);
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" PRIMARY KEY);
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C" PRIMARY KEY);
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C" PRIMARY KEY);
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C" PRIMARY KEY);
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+
+explain(costs off)  select x from dm_charchar where x = 'PG中国 ';
+explain(costs off)  select x from dm_charchar where x >= 'PG中国 ';
+explain(costs off)  select x from dm_charchar where x <= 'PG中国 ';
+explain(costs off)  select x from dm_charchar where x < 'PG中国 ';
+explain(costs off)  select x from dm_charchar where x > 'PG中国 ';
+explain(costs off)  select x from dm_charchar where x != 'PG中国 ';
+
+explain(costs off)  select x from dm_charbyte where x = 'PG中国 ';
+explain(costs off)  select x from dm_charbyte where x >= 'PG中国 ';
+explain(costs off)  select x from dm_charbyte where x <= 'PG中国 ';
+explain(costs off)  select x from dm_charbyte where x < 'PG中国 ';
+explain(costs off)  select x from dm_charbyte where x > 'PG中国 ';
+explain(costs off)  select x from dm_charbyte where x != 'PG中国 ';
+
+explain(costs off)  select x from dm_varcharchar where x = 'PG中国 ';
+explain(costs off)  select x from dm_varcharchar where x >= 'PG中国 ';
+explain(costs off)  select x from dm_varcharchar where x <= 'PG中国 ';
+explain(costs off)  select x from dm_varcharchar where x < 'PG中国 ';
+explain(costs off)  select x from dm_varcharchar where x > 'PG中国 ';
+explain(costs off)  select x from dm_varcharchar where x != 'PG中国 ';
+
+explain(costs off)  select x from dm_varcharbyte where x = 'PG中国 ';
+explain(costs off)  select x from dm_varcharbyte where x >= 'PG中国 ';
+explain(costs off)  select x from dm_varcharbyte where x <= 'PG中国 ';
+explain(costs off)  select x from dm_varcharbyte where x < 'PG中国 ';
+explain(costs off)  select x from dm_varcharbyte where x > 'PG中国 ';
+explain(costs off)  select x from dm_varcharbyte where x != 'PG中国 ';
+
+explain(costs off)  select x from dm_text where x = 'PG中国 ';
+explain(costs off)  select x from dm_text where x >= 'PG中国 ';
+explain(costs off)  select x from dm_text where x <= 'PG中国 ';
+explain(costs off)  select x from dm_text where x < 'PG中国 ';
+explain(costs off)  select x from dm_text where x > 'PG中国 ';
+explain(costs off)  select x from dm_text where x != 'PG中国 ';
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar;
+
+-- hash 
+create table dm_charchar(x char(10 char) collate "C");
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" );
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C");
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C");
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C");
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+
+create index dm_charchar_x on dm_charchar using hash (x); 
+create index dm_charbyte_x on dm_charbyte using hash (x); 
+create index dm_varcharchar_x on dm_varcharchar using hash (x); 
+create index dm_varcharbyte_x on dm_varcharbyte using hash (x); 
+create index dm_text_x on dm_text using hash (x);
+
+select x from dm_charchar where x = 'PG中国   ';
+select x from dm_charbyte where x = 'PG中国   ';
+select x from dm_varcharchar where x = 'PG中国   ';
+select x from dm_varcharbyte where x = 'PG中国   ';
+select x from dm_text where x = 'PG中国   ';
+
+explain(costs off)  select x from dm_charchar where x = 'PG中国   ';
+explain(costs off)  select x from dm_charbyte where x = 'PG中国   ';
+explain(costs off)  select x from dm_varcharchar where x = 'PG中国   ';
+explain(costs off)  select x from dm_varcharbyte where x = 'PG中国   ';
+explain(costs off)  select x from dm_text where x = 'PG中国   ';
+
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+
+
+/* make sure seqscan get the correct result  */
+set ivorysql.enable_blankspace_compare to off;
+create table dm_charchar(x char(10 char) collate "C");
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" );
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C");
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C");
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C");
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+
+create table dmmain_table(x) as select * from (select x::varchar2 from dm_charchar union all select x::varchar2 from dm_varcharchar) order by 1;
+
+set enable_bitmapscan to off;
+set enable_indexscan to off;
+set enable_seqscan to on;
+
+select x from dm_charchar where x = 'PG中国    ';
+select x from dm_charbyte where x = 'PG中国    ';
+select x from dm_varcharchar where x = 'PG中国   ';
+select x from dm_varcharbyte where x = 'PG中国   ';
+select x from dm_text where x = 'PG中国    ';
+
+explain(costs off)  select x from dm_charchar where x > 'PG中国    ';
+explain(costs off)  select x from dm_charbyte where x > 'PG中国   ';
+explain(costs off)  select x from dm_varcharchar where x > 'PG中国    ';
+explain(costs off)  select x from dm_varcharbyte where x > 'PG中国   ';
+explain(costs off)  select x from dm_text where x > 'PG中国    ';
+explain(costs off)  select x from dmmain_table where x > 'PG中国    ';
+
+select * from dm_charchar where x = 'space'; -- 1 row
+select * from dm_charchar where x = 'space     '; -- 1 row
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+select * from dm_charbyte where x = 'space     '; -- 1 row
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+select * from dm_varcharchar where x = 'space     '; -- 1 row
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+select * from dm_varcharchar where x = 'PG中国      '; -- 1 row
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+select * from dm_varcharbyte where x = 'space     '; -- 1 row
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+select * from dm_varcharbyte where x = 'PG中国      '; -- 1 row
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+
+select * from dm_text where x = 'space'; -- 1 row
+select * from dm_text where x = 'space     '; -- 1 row
+select * from dm_text where x = 'PG中国'; -- 1 row
+select * from dm_text where x = 'PG中国      '; -- 1 row
+select * from dm_text where x = 'fillallten'; -- 1 row
+
+select * from dmmain_table where x != 'space'; -- 4 row
+select * from dmmain_table where x > 'PG中国'; -- 4 row
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+select * from dmmain_table where x = 'PG中国      '; -- 2 row
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+-- make sure we don't replace operator when enable_blankspace_compare = on
+set ivorysql.enable_blankspace_compare to on;
+explain(costs off)  select * from dmmain_table where x != 'space'; -- 4 row
+explain(costs off)  select * from dmmain_table where x > 'PG中国'; -- 4 row
+explain(costs off)  select * from dmmain_table where x >= 'PG中国'; -- 6 row
+explain(costs off)  select * from dmmain_table where x < 'PG中国'; -- 0 row
+explain(costs off)  select * from dmmain_table where x = 'PG中国      '; -- 2 row
+explain(costs off)  select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+
+
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar,dmmain_table;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+set enable_indexscan to on;
+
+
+/* Unique and primary key constrain test */
+set ivorysql.enable_blankspace_compare to on;
+create table unique_constrain(a varchar2(10) primary key,b text unique);
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+drop table unique_constrain;
+create table unique_constrain(a varchar2(10),b text,unique(a,b));
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+drop table unique_constrain;
+
+set ivorysql.enable_blankspace_compare to off;
+create table unique_constrain(a varchar2(10) primary key,b text unique,c char(10 char) unique,d char(10 byte) unique);
+insert into unique_constrain values ('a','b','c','d');
+insert into unique_constrain values ('a  ','b  ','c ','d ');
+drop table unique_constrain;
+create table unique_constrain(a varchar2(10),b text,unique(a,b));
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+drop table unique_constrain;
+
+/* reference key constrain test */
+set ivorysql.enable_blankspace_compare to on;
+CREATE TABLE products (
+    product_no varchar2(10) PRIMARY KEY,
+    name text,                                          
+    price numeric
+);
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no text REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('a','b',1);
+insert into orders values (1,'a  ',1);
+drop table products,orders;
+CREATE TABLE products (
+     product_no varchar2(10) PRIMARY KEY,
+     name text,                                          
+     price numeric
+ );
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no integer REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('23 ','b',1);
+insert into orders values (1,23,1);
+drop table products,orders;
+
+
+set ivorysql.enable_blankspace_compare to off;
+CREATE TABLE products (
+    product_no varchar2(10) PRIMARY KEY,
+    name text,                                          
+    price numeric
+);
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no text REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('a','b',1);
+insert into orders values (1,'a  ',1);
+drop table products,orders;
+CREATE TABLE products (
+     product_no varchar2(10) PRIMARY KEY,
+     name text,                                          
+     price numeric
+ );
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no integer REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('23 ','b',1);
+insert into orders values (1,23,1);
+drop table products,orders;
+
+/* check constrain test */
+set ivorysql.enable_blankspace_compare to on;
+create table check_constrain(a varchar2(10) check (a != 'a'));
+insert into check_constrain values('a  ');
+drop table check_constrain;
+
+set ivorysql.enable_blankspace_compare to off;
+create table check_constrain(a varchar2(10) check (a != 'a'));
+insert into check_constrain values('a  ');
+drop table check_constrain;
+
+/* join */
+set enable_mergejoin to on;
+set enable_nestloop to off;
+set enable_hashjoin to off;
+set enable_seqscan to off;
+set enable_indexscan to on;
+set enable_bitmapscan to off;
+
+set ivorysql.enable_blankspace_compare to on;
+create table join_a(x char(10 char) primary key);
+create table join_b(x varchar2(10 char) primary key);
+create table join_c(x text primary key);
+insert into join_a values('a');
+insert into join_a values('ab');
+insert into join_a values('abcd');
+insert into join_b values('a');
+insert into join_b values('ab');
+insert into join_b values('abcd');
+insert into join_c values('a');
+insert into join_c values('ab');
+insert into join_c values('abcd');
+
+select * from join_a join join_b using(x);
+select * from join_a join join_b on join_a.x = join_b.x;
+select * from join_a join join_b on join_a.x > join_b.x;
+select * from join_a join join_b on join_a.x >= join_b.x;
+select * from join_a join join_b on join_a.x <= join_b.x;
+select * from join_a join join_b on join_a.x < join_b.x;
+select * from join_a join join_b on join_a.x != join_b.x;
+
+explain(costs off) select * from join_a join join_b using(x);
+explain(costs off) select * from join_a join join_b on join_a.x = join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x > join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x >= join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x <= join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x < join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x != join_b.x;
+drop table join_a,join_b,join_c;
+
+
+set ivorysql.enable_blankspace_compare to off;
+create table join_a(x char(10 char) primary key);
+create table join_b(x varchar2(10 char) primary key);
+create table join_c(x text primary key);
+insert into join_a values('a');
+insert into join_a values('ab');
+insert into join_a values('abcd');
+insert into join_b values('a');
+insert into join_b values('ab');
+insert into join_b values('abcd');
+insert into join_c values('a');
+insert into join_c values('ab');
+insert into join_c values('abcd');
+
+explain(costs off) select * from join_a join join_b using(x);
+explain(costs off) select * from join_a join join_b on join_a.x = join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x > join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x >= join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x <= join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x < join_b.x;
+explain(costs off) select * from join_a join join_b on join_a.x != join_b.x;
+
+select * from join_a join join_b using(x);
+select * from join_a join join_b on join_a.x = join_b.x;
+select * from join_a join join_b on join_a.x > join_b.x;
+select * from join_a join join_b on join_a.x >= join_b.x;
+select * from join_a join join_b on join_a.x <= join_b.x;
+select * from join_a join join_b on join_a.x < join_b.x;
+select * from join_a join join_b on join_a.x != join_b.x;
+drop table join_a,join_b,join_c;
+
+reset all;
+set enable_seqscan to off;
+/* Test where clause when enable_blankspace_compare is off */
+
+-- IN
+set ivorysql.enable_blankspace_compare to on;
+create table in_tb_char(x char(10 char) primary key,y int);
+create table in_tb_varchar2(x varchar(10 char) primary key,y int);
+create table in_tb_text(x text primary key,y int);
+insert into in_tb_char values('a',1);
+insert into in_tb_char values('b',2);
+insert into in_tb_char values('ab',3);
+insert into in_tb_char values('abcd',4);
+insert into in_tb_varchar2 values('a',1);
+insert into in_tb_varchar2 values('b',2);
+insert into in_tb_varchar2 values('ab',3);
+insert into in_tb_varchar2 values('abcd',4);
+insert into in_tb_text values('a',1);
+insert into in_tb_text values('b',2);
+insert into in_tb_text values('ab',3);
+insert into in_tb_text values('abcd',4);
+
+-- col in array
+select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+select x from in_tb_varchar2 where x in ('a ','ab ');     -- 0 rows
+select x from in_tb_text where x in ('a ','ab ');       -- 0 rows
+-- col in subquery
+select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+-- col in array
+explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 0 rows
+explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 0 rows
+-- col in subquery
+explain(costs off) select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+explain(costs off) select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+drop table in_tb_char,in_tb_varchar2,in_tb_text;
+
+set ivorysql.enable_blankspace_compare to off;
+create table in_tb_char(x char(10 char) primary key,y int);
+create table in_tb_varchar2(x varchar(10 char) primary key,y int);
+create table in_tb_text(x text primary key,y int);
+insert into in_tb_char values('a',1);
+insert into in_tb_char values('b',2);
+insert into in_tb_char values('ab',3);
+insert into in_tb_char values('abcd',4);
+insert into in_tb_varchar2 values('a',1);
+insert into in_tb_varchar2 values('b',2);
+insert into in_tb_varchar2 values('ab',3);
+insert into in_tb_varchar2 values('abcd',4);
+insert into in_tb_text values('a',1);
+insert into in_tb_text values('b',2);
+insert into in_tb_text values('ab',3);
+insert into in_tb_text values('abcd',4);
+
+-- col in array
+select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+select x from in_tb_varchar2 where x in ('a ','ab ');     -- 2 rows
+select x from in_tb_text where x in ('a ','ab ');       -- 2 rows
+-- col in subquery
+select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+-- col in array
+explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 2 rows
+explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 2 rows
+-- col in subquery
+explain(costs off) select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+explain(costs off) select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+drop table in_tb_char,in_tb_varchar2,in_tb_text;
+
+
+/* SOME/ANY/ALL */
+set ivorysql.enable_blankspace_compare to on;
+create table saa_char(x char(10) primary key);
+create table saa_varchar(x varchar2(10) primary key);
+create table saa_text(x text primary key);
+insert into saa_char values('a');
+insert into saa_char values('ab');
+insert into saa_char values('abcd');
+insert into saa_varchar values('a');
+insert into saa_varchar values('ab');
+insert into saa_varchar values('abcd');
+insert into saa_text values('a');
+insert into saa_text values('ab');
+insert into saa_text values('abcd');
+
+explain(costs off) select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+explain(costs off) select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+explain(costs off) select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+
+explain(costs off) select x from saa_char where x = SOME (ARRAY['ab ']);   -- 0 rows
+explain(costs off) select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 0 rows
+explain(costs off) select x from saa_text where x = SOME (ARRAY['ab ']);   -- 0 rows
+ 
+explain(costs off) select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+
+select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+
+select x from saa_char where x = SOME (ARRAY['ab ']);   -- 0 rows
+select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 0 rows
+select x from saa_text where x = SOME (ARRAY['ab ']);   -- 0 rows
+
+select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+drop table saa_char,saa_text,saa_varchar;
+
+set ivorysql.enable_blankspace_compare to off;
+create table saa_char(x char(10) primary key);
+create table saa_varchar(x varchar2(10) primary key);
+create table saa_text(x text primary key);
+insert into saa_char values('a');
+insert into saa_char values('ab');
+insert into saa_char values('abcd');
+insert into saa_varchar values('a');
+insert into saa_varchar values('ab');
+insert into saa_varchar values('abcd');
+insert into saa_text values('a');
+insert into saa_text values('ab');
+insert into saa_text values('abcd');
+
+explain(costs off) select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+explain(costs off) select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+explain(costs off) select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+
+explain(costs off) select x from saa_char where x = SOME (ARRAY['ab ']);   -- 1 rows
+explain(costs off) select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 1 rows
+explain(costs off) select x from saa_text where x = SOME (ARRAY['ab ']);   -- 1 rows
+
+explain(costs off) select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+
+select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+
+select x from saa_char where x = SOME (ARRAY['ab ']);   -- 1 rows
+select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 1 rows
+select x from saa_text where x = SOME (ARRAY['ab ']);   -- 1 rows
+
+select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+drop table saa_char,saa_text,saa_varchar;
+
+
+
+/* BETWEEN .. AND .. */
+set ivorysql.enable_blankspace_compare to on;
+create table between_char(x char(10) primary key,y int);
+create table between_varchar(x varchar2(10) primary key,y int);
+create table between_text(x text primary key,y int);
+insert into between_char values('a',1);
+insert into between_char values('ab',2);
+insert into between_char values('abcd',3);
+insert into between_varchar values('a',1);
+insert into between_varchar values('ab',2);
+insert into between_varchar values('abcd',3);
+insert into between_text values('a',1);
+insert into between_text values('ab',2);
+insert into between_text values('abcd',3);
+
+explain(costs off) select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+
+select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+drop table between_char,between_text,between_varchar;
+
+set ivorysql.enable_blankspace_compare to off;
+create table between_char(x char(10) primary key,y int);
+create table between_varchar(x varchar2(10) primary key,y int);
+create table between_text(x text primary key,y int);
+insert into between_char values('a',1);
+insert into between_char values('ab',2);
+insert into between_char values('abcd',3);
+insert into between_varchar values('a',1);
+insert into between_varchar values('ab',2);
+insert into between_varchar values('abcd',3);
+insert into between_text values('a',1);
+insert into between_text values('ab',2);
+insert into between_text values('abcd',3);
+
+explain(costs off) select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+
+select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+drop table between_char,between_text,between_varchar;
+reset all;
+set ivorysql.enable_blankspace_compare to on;
+/* End - SRS-MISC-COMPATDM-SQL */

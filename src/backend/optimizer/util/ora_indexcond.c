@@ -92,7 +92,7 @@ take_oracasetrans_away(Node *clause)
 
 	/* only handle operator "=" while identifier_case_switch is INTERCHANGE */
 	if (identifier_case_switch == INTERCHANGE &&
-		strcmp(get_opname(SA_OpExpr_opno(clause)), "=") != 0)
+		(strcmp(get_opname(SA_OpExpr_opno(clause)), "=") != 0 && strcmp(get_opname(SA_OpExpr_opno(clause)), "#=") != 0))	/* SRS-MISC-COMPATDM-SQL */
 		return clause;
 
 	/*
@@ -130,6 +130,25 @@ static Oid
 opr_left_right_internal(const char *oprname, Oid oprleft, Oid oprright)
 {
 	HeapTuple	tuple;
+
+	/* Begin - SRS-MISC-COMPATDM-SQL 
+	 * the purpose of this routine is to find a suitable op for the lop and rop,
+	 * but when we rewrite the opname in analyze,it may found a wrong one,
+	 * so rewrite the name as needed.
+	 */
+	if(strcmp(oprname,"#=") == 0)
+		oprname = "=";
+	else if(strcmp(oprname,"#>=") == 0)
+		oprname = ">=";
+	else if(strcmp(oprname,"#<=") == 0)
+		oprname = "<=";
+	else if(strcmp(oprname,"#>") == 0)
+		oprname = ">";
+	else if(strcmp(oprname,"#<") == 0)
+		oprname = "<";
+	else if(strcmp(oprname,"#<>") == 0)
+		oprname = "<>";
+	/* End - SRS-MISC-COMPATDM-SQL */
 
 	/*
 	 * XXX Search from pg_catalog, there's no operator about varchar2 now.

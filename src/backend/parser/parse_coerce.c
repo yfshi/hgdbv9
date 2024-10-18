@@ -1645,6 +1645,11 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 	TYPCATEGORY pcategory;
 	bool		pispreferred;
 	ListCell   *lc;
+	/* Begin - Bug#M0000331 */
+	bool		issetop = false;
+	if(context && (strcmp(context,"UNION") == 0 || strcmp(context,"INTERSECT") == 0 || strcmp(context,"EXCEPT") == 0) )
+		issetop = true;
+	/* End - Bug#M0000331 */
 
 	Assert(exprs != NIL);
 	pexpr = (Node *) linitial(exprs);
@@ -1732,6 +1737,21 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 				pcategory = ncategory;
 				pispreferred = nispreferred;
 			}
+			/* 
+			* Begin - Bug#M0000331
+			* The set operation between two subquery returned type is differ from oracle and dm,
+			* it results in wrong results,make it same as oracle and dm.
+			*/
+			else if ( (issetop && ORA_PARSER == compatible_db && ncategory == TYPCATEGORY_STRING &&
+					   can_coerce_type(1, &ptype, &ntype, COERCION_IMPLICIT)) && 
+					   (ptype == ORACHARCHAROID || ptype == ORACHARBYTEOID || (!pispreferred && nispreferred)) )
+			{
+				pexpr = nexpr;
+				ptype = ntype;
+				pcategory = ncategory;
+				pispreferred = nispreferred;
+			}
+			/* End - Bug#M0000331 */
 		}
 	}
 

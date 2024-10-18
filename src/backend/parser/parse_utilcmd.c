@@ -2645,6 +2645,10 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 
 				defopclass = GetDefaultOpClass(attform->atttypid,
 											   index_rel->rd_rel->relam);
+				/* Begin - SRS-MISC-COMPATDM-SQL */
+				if (indclass->values[i] != defopclass && ORA_PARSER == compatible_db && !enable_blankspace_compare)
+					defopclass = GetExplicitOpClass(attform->atttypid,index_rel->rd_rel->relam);
+				/* End - SRS-MISC-COMPATDM-SQL */
 				if (indclass->values[i] != defopclass ||
 					IndexCollationPersistent(attform->attcollation) != index_rel->rd_indcollation[i] ||
 					attoptions != (Datum) 0 ||

@@ -33,7 +33,7 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 #include "utils/regproc.h"		/* ReqID:SRS-GKC-DATATYPE_001 */
-
+#include "utils/guc.h"			/* SRS-MISC-COMPATDM-SQL */
 
 /*
  * The lookup key for the operator lookaside hash table.  Unused bits must be
@@ -90,7 +90,7 @@ static bool make_oper_cache_key(ParseState *pstate, OprCacheKey *key,
 static Oid	find_oper_cache_entry(OprCacheKey *key);
 static void make_oper_cache_entry(OprCacheKey *key, Oid opr_oid);
 static void InvalidateOprCacheCallBack(Datum arg, int cacheid, uint32 hashvalue);
-
+static List *needReplaceOpname(List *opname, Oid ltypeId, Oid rtypeId);		/* SRS-MISC-COMPATDM-SQL */
 
 /*
  * LookupOperName
@@ -725,7 +725,7 @@ op_error(ParseState *pstate, List *op, char oprkind,
  */
 Expr *
 make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
-		Node *last_srf, bool has_outer_join, int location)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		Node *last_srf, bool has_outer_join, int location, int opkind)	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
 {
 	Oid			ltypeId,
 				rtypeId;
@@ -757,6 +757,18 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		/* otherwise, binary operator */
 		ltypeId = exprType(ltree);
 		rtypeId = exprType(rtree);
+		/* 
+		 * Begin - SRS-MISC-COMPATDM-SQL
+		 * replace the comparison opname as needed when enable_blankspace_compare is off,
+		 * this ignore triled spaces in some querys,except(distinct,group by,set operation).
+		 */
+		if(!enable_blankspace_compare && ORA_PARSER == compatible_db && (opkind == AEXPR_OP || opkind == AEXPR_IN || opkind == ROWCOMPARISONOP) )
+		{
+			List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
+			if(opname_rewrite)
+				opname = opname_rewrite;
+		}
+		/* End - SRS-MISC-COMPATDM-SQL */
 		tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 	}
 
@@ -872,7 +884,18 @@ make_scalar_array_op(ParseState *pstate, List *opname,
 					 errmsg("op ANY/ALL (array) requires array on right side"),
 					 parser_errposition(pstate, location)));
 	}
-
+	/* 
+	 * Begin - SRS-MISC-COMPATDM-SQL,
+	 * if we are in make_scalar_array_op,it means we are dealing with ANY|ALL|IN a_expr,
+	 * replace the opname as needed 
+	 */
+	if(!enable_blankspace_compare && ORA_PARSER == compatible_db)
+	{
+		List * opname_rewrite = needReplaceOpname(opname,ltypeId,rtypeId);
+		if(opname_rewrite)
+			opname = opname_rewrite;
+	}
+	/* End - SRS-MISC-COMPATDM-SQL */
 	/* Now resolve the operator */
 	tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 	opform = (Form_pg_operator) GETSTRUCT(tup);
@@ -1120,3 +1143,31 @@ InvalidateOprCacheCallBack(Datum arg, int cacheid, uint32 hashvalue)
 			elog(ERROR, "hash table corrupted");
 	}
 }
+
+/* Begin - SRS-MISC-COMPATDM-SQL */
+static List *
+needReplaceOpname(List *opname, Oid ltypeId, Oid rtypeId)
+{
+	/* replace opname as needed. */
+	char	*schemaname;
+	char	*opername = NULL;
+	char	*rewritename = palloc(sizeof(char)*NAMEDATALEN);
+	/* We only deal with binary operator(=,<,>,<=,>=,!=) */
+	
+	/* Expect these situations */
+	if(!OidIsValid(ltypeId) || !OidIsValid(rtypeId))
+		return NIL;
+	if(!ISDMCHARTYPE(ltypeId) || !ISDMCHARTYPE(rtypeId))
+		return NIL;
+	if(ltypeId == UNKNOWNOID && rtypeId == UNKNOWNOID)
+		return NIL;
+
+	/* Only deal with (=,<,>,<=,>=,!=) */
+	DeconstructQualifiedName(opname, &schemaname, &opername);
+	if(!opername || !ISCOMPAREOPNAME(opername))
+		return NIL;
+	
+	snprintf(rewritename,NAMEDATALEN,"#%s",opername);
+	return list_make1(makeString(rewritename));
+}
+/* End - SRS-MISC-COMPATDM-SQL */

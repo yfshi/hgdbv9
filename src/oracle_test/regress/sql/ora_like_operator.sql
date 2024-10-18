@@ -242,4 +242,18 @@ select * from ora_charbyte_a where x like '%st'::varchar2; -- expected return 3 
 select * from ora_charbyte_a where x like '%st  '::varchar2;	-- expected return 1 rows
 select * from ora_charbyte_a where x not like '%a';  -- expected return 3 rows
 drop table ora_charbyte_a;
+/* has wild card */
+set ivorysql.enable_blankspace_compare to off;
+create table wildcard_a(x varchar(100));
+insert into wildcard_a values('this is   a test');	-- none space at the end
+insert into wildcard_a values('this is   a test     '); -- five space at the end
+select * from wildcard_a where x like '%test';	-- 2 rows
+select * from wildcard_a where x like 'this is___a_test '; -- 1 row
+select * from wildcard_a where x like 'this is___a_test      '; -- none
+
+-- no wild card
+select * from wildcard_a where x like 'this is   a test';   -- two rows
+select * from wildcard_a where x like 'this is   a test                                                 ';  -- two rows
+select * from wildcard_a where x like 'this is   a test_';  -- 1 row
+set ivorysql.enable_blankspace_compare to on;
 -- End - Bug#Z471 && SRS-MISC-COMPATDM-SQL
