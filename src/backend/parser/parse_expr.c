@@ -1308,7 +1308,7 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 								  rexpr,
 								  last_srf,
 								  has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								  a->location);
+								  a->location, AEXPR_OP);	/* SRS-MISC-COMPATDM-SQL */
 
 	}
 
@@ -1414,7 +1414,7 @@ transformAExprNullIf(ParseState *pstate, A_Expr *a)
 								rexpr,
 								pstate->p_last_srf,
 								has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								a->location);
+								a->location, AEXPR_NULLIF);	/* SRS-MISC-COMPATDM-SQL */
 
 	/*
 	 * The comparison operator itself should yield boolean ...
@@ -1594,7 +1594,7 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 								   rexpr,
 								   pstate->p_last_srf,
 								   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								   a->location);
+								   a->location, AEXPR_IN);	/* SRS-MISC-COMPATDM-SQL */
 		}
 
 		cmp = coerce_to_boolean(pstate, cmp, "IN");
@@ -3753,7 +3753,7 @@ make_row_comparison_op(ParseState *pstate, List *opname,
 		OpExpr	   *cmp;
 
 		cmp = castNode(OpExpr, make_op(pstate, opname, larg, rarg,
-									   pstate->p_last_srf, false, location));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									   pstate->p_last_srf, false, location, ROWCOMPARISONOP));	/* ReqID:SRS-SQL-OUTERJOIN(+) */ /* SRS-MISC-COMPATDM-SQL */
 
 		/*
 		 * We don't use coerce_to_boolean here because we insist on the
@@ -3961,7 +3961,7 @@ make_distinct_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	Expr	   *result;
 
 	result = make_op(pstate, opname, ltree, rtree,
-					 pstate->p_last_srf, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					 pstate->p_last_srf, false, location, DISTINCTOP);	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
 	if (((OpExpr *) result)->opresulttype != BOOLOID)
 		ereport(ERROR,
 				(errcode(ERRCODE_DATATYPE_MISMATCH),

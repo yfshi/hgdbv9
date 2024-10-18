@@ -1,0 +1,2867 @@
+/* Begin - SRS-MISC-COMPATDM-SQL */
+/* Compatible dm blank_compare_mode testing */
+set ivorysql.enable_blankspace_compare to off;	
+set enable_seqscan to off;	
+-- make sure this parameter have no effect on union,intersect,except,distinct and group by
+CREATE TABLE VARCHAR_TBL(f1 varchar2(4) PRIMARY KEY);
+INSERT INTO VARCHAR_TBL (f1) VALUES ('a');
+INSERT INTO VARCHAR_TBL (f1) VALUES ('ab');
+INSERT INTO VARCHAR_TBL (f1) VALUES ('abcd');
+CREATE TABLE CHAR_TBL(f1 char(4) PRIMARY KEY);
+INSERT INTO CHAR_TBL (f1) VALUES ('a');
+INSERT INTO CHAR_TBL (f1) VALUES ('ab');
+INSERT INTO CHAR_TBL (f1) VALUES ('abcd');
+CREATE TABLE TEXT_TBL (f1 text PRIMARY KEY);
+INSERT INTO TEXT_TBL (f1) VALUES ('a');
+INSERT INTO TEXT_TBL (f1) VALUES ('ab');
+INSERT INTO TEXT_TBL (f1) VALUES ('abcd');
+/* Union */
+-- test return column type
+create table a as select * from char_tbl union select * from varchar_tbl;
+create table b as select * from varchar_tbl union select * from char_tbl;
+create table c as select * from char_tbl union select * from TEXT_TBL;
+create table d as select * from TEXT_TBL union select * from char_tbl;
+create table e as select * from VARCHAR_TBL union select * from TEXT_TBL;
+create table f as select * from char_tbl union select * from char_tbl;
+\d a	
+                  Table "public.a"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d b 	
+                  Table "public.b"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d c	
+                Table "public.c"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d d	
+                Table "public.d"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d e	
+                Table "public.e"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d f	
+                 Table "public.f"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ f1     | char(4) |           |          | 
+
+-- roltype char(4)
+-- test result while diffrent type union
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 union orachar,exprcted 5 rows
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Sort
+   Sort Key: varchar_tbl.f1 COLLATE using_nls_comp
+   ->  HashAggregate
+         Group Key: varchar_tbl.f1
+         ->  Append
+               ->  Bitmap Heap Scan on varchar_tbl
+                     ->  Bitmap Index Scan on varchar_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 union orachar,exprcted 5 rows
+ three 
+-------
+ a
+ a   
+ ab
+ ab  
+ abcd
+(5 rows)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar union varchar2,expected 5 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Sort
+   Sort Key: (("*SELECT* 1".three)::varchar2) COLLATE using_nls_comp
+   ->  HashAggregate
+         Group Key: (("*SELECT* 1".three)::varchar2)
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Bitmap Heap Scan on varchar_tbl
+                     ->  Bitmap Index Scan on varchar_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar union varchar2,expected 5 rows
+ three 
+-------
+ a
+ a   
+ ab
+ ab  
+ abcd
+(5 rows)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar union orachar,expected 3 rows
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Sort
+   Sort Key: char_tbl.f1 COLLATE using_nls_comp
+   ->  HashAggregate
+         Group Key: char_tbl.f1
+         ->  Append
+               ->  Bitmap Heap Scan on char_tbl
+                     ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Bitmap Heap Scan on char_tbl char_tbl_1
+                     ->  Bitmap Index Scan on char_tbl_pkey
+(9 rows)
+
+SELECT f1 AS three FROM CHAR_TBL UNION SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar union orachar,expected 3 rows
+ three 
+-------
+ a   
+ ab  
+ abcd
+(3 rows)
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' UNION SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 2 rows
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
+ Unique
+   ->  Sort
+         Sort Key: varchar_tbl.f1 COLLATE using_nls_comp
+         ->  Append
+               ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
+                     Index Cond: (f1 #= 'ab'::varchar2)
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Index Only Scan using char_tbl_pkey on char_tbl
+                           Index Cond: (f1 #= 'ab'::oracharbyte)
+(9 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' UNION SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 2 rows
+ three 
+-------
+ ab
+ ab  
+(2 rows)
+
+drop table a,b,c,d,e,f;
+/* intersect */
+create table a as select * from char_tbl intersect select * from varchar_tbl;
+create table b as select * from varchar_tbl intersect select * from char_tbl;
+create table c as select * from char_tbl intersect select * from TEXT_TBL;
+create table d as select * from TEXT_TBL intersect select * from char_tbl;
+create table e as select * from VARCHAR_TBL intersect select * from TEXT_TBL;
+create table f as select * from char_tbl intersect select * from char_tbl;
+\d a	
+                  Table "public.a"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d b 	
+                  Table "public.b"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d c	
+                Table "public.c"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d d	
+                Table "public.d"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d e	
+                Table "public.e"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d f	
+                 Table "public.f"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ f1     | char(4) |           |          | 
+
+-- roltype char(4)
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 intersect orachar,exprcted 1 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Intersect
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on varchar_tbl
+                           ->  Bitmap Index Scan on varchar_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 intersect orachar,exprcted 1 rows
+ three 
+-------
+ abcd
+(1 row)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar intersect varchar2,expected 1 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Sort
+   Sort Key: (("*SELECT* 1".three)::varchar2) COLLATE using_nls_comp
+   ->  HashSetOp Intersect
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on varchar_tbl
+                           ->  Bitmap Index Scan on varchar_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar intersect varchar2,expected 1 rows
+ three 
+-------
+ abcd
+(1 row)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar intersect orachar,expected 3 rows
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Intersect
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on char_tbl char_tbl_1
+                           ->  Bitmap Index Scan on char_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM CHAR_TBL intersect SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar intersect orachar,expected 3 rows
+ three 
+-------
+ a   
+ ab  
+ abcd
+(3 rows)
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' intersect SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 0 rows
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Intersect
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
+                           Index Cond: (f1 #= 'ab'::varchar2)
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Index Only Scan using char_tbl_pkey on char_tbl
+                           Index Cond: (f1 #= 'ab'::oracharbyte)
+(10 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' intersect SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;    -- 0 rows
+ three 
+-------
+(0 rows)
+
+drop table a,b,c,d,e,f;
+/* except */
+create table a as select * from char_tbl except select * from varchar_tbl;
+create table b as select * from varchar_tbl except select * from char_tbl;
+create table c as select * from char_tbl except select * from TEXT_TBL;
+create table d as select * from TEXT_TBL except select * from char_tbl;
+create table e as select * from VARCHAR_TBL except select * from TEXT_TBL;
+create table f as select * from char_tbl except select * from char_tbl;
+\d a	
+                  Table "public.a"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d b 	
+                  Table "public.b"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+-- roltype varchar(4)
+\d c	
+                Table "public.c"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d d	
+                Table "public.d"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d e	
+                Table "public.e"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ f1     | text |           |          | 
+
+-- roltype text
+\d f	
+                 Table "public.f"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ f1     | char(4) |           |          | 
+
+-- roltype char(4)
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 except orachar,exprcted 2 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Except
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on varchar_tbl
+                           ->  Bitmap Index Scan on varchar_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1; 	-- varchar2 except orachar,exprcted 2 rows
+ three 
+-------
+ a
+ ab
+(2 rows)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar except varchar2,expected 2 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Sort
+   Sort Key: (("*SELECT* 1".three)::varchar2) COLLATE using_nls_comp
+   ->  HashSetOp Except
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on varchar_tbl
+                           ->  Bitmap Index Scan on varchar_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM VARCHAR_TBL  ORDER BY 1;	-- orachar except varchar2,expected 2 rows
+ three 
+-------
+ a   
+ ab  
+(2 rows)
+
+explain(costs off) SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar except orachar,expected 0 rows
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Except
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Bitmap Heap Scan on char_tbl
+                           ->  Bitmap Index Scan on char_tbl_pkey
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Bitmap Heap Scan on char_tbl char_tbl_1
+                           ->  Bitmap Index Scan on char_tbl_pkey
+(10 rows)
+
+SELECT f1 AS three FROM CHAR_TBL except SELECT f1 FROM CHAR_TBL  ORDER BY 1;		-- orachar except orachar,expected 0 rows
+ three 
+-------
+(0 rows)
+
+explain(costs off) SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' except SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Sort
+   Sort Key: "*SELECT* 1".three COLLATE using_nls_comp
+   ->  HashSetOp Except
+         ->  Append
+               ->  Subquery Scan on "*SELECT* 1"
+                     ->  Index Only Scan using varchar_tbl_pkey on varchar_tbl
+                           Index Cond: (f1 #= 'ab'::varchar2)
+               ->  Subquery Scan on "*SELECT* 2"
+                     ->  Index Only Scan using char_tbl_pkey on char_tbl
+                           Index Cond: (f1 #= 'ab'::oracharbyte)
+(10 rows)
+
+SELECT f1 AS three FROM VARCHAR_TBL where f1 = 'ab' except SELECT f1 FROM CHAR_TBL where f1 = 'ab'  ORDER BY 1;   --0 rows
+ three 
+-------
+ ab
+(1 row)
+
+SELECT f1 AS three FROM VARCHAR_TBL except SELECT f1 FROM TEXT_TBL  ORDER BY 1;	-- oravarchar except text,expected 0 rows
+ three 
+-------
+(0 rows)
+
+drop table a,b,c,d,e,f;
+/* distict and group by */
+create table a as select * from char_tbl union all select * from varchar_tbl order by 1;
+\d a
+                  Table "public.a"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ f1     | varchar2 |           |          | 
+
+create index on a(f1);
+explain(costs off) select distinct * from a where f1 > 'a' order by 1;
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Unique
+   ->  Sort
+         Sort Key: ((f1)::varchar2) COLLATE "binary"
+         ->  Index Only Scan using a_f1_idx on a
+               Index Cond: (f1 #> 'a'::varchar2)
+(5 rows)
+
+select distinct * from a where f1 > 'a' order by 1;		-- expected 3 rows
+  f1  
+------
+ ab
+ ab  
+ abcd
+(3 rows)
+
+explain(costs off) select * from a group by f1 order by 1;		-- expected 5 rows
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Group
+   Group Key: ((f1)::varchar2)
+   ->  Sort
+         Sort Key: ((f1)::varchar2) COLLATE "binary"
+         ->  Index Only Scan using a_f1_idx on a
+(5 rows)
+
+select * from a group by f1 order by 1;		-- expected 5 rows
+  f1  
+------
+ a
+ a   
+ ab
+ ab  
+ abcd
+(5 rows)
+
+drop table a,char_tbl,varchar_tbl,TEXT_TBL;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+/* || operator and compare operator test */
+-- Begin - SRS-MISC-COMPATDM-SQL
+create table ora_char_a(x char(10 char) PRIMARY KEY);
+create table ora_char_b(x char(10 char) PRIMARY KEY);
+create table ora_char_c(x char(10 byte) PRIMARY KEY);
+create table ora_char_d(x char(10 byte) PRIMARY KEY);
+create table ora_char_e(x text PRIMARY KEY);
+create table ora_char_f(x varchar2(10) PRIMARY KEY);
+insert into ora_char_a values('aaa');
+insert into ora_char_b values('bbb');
+insert into ora_char_c values('ccc');               
+insert into ora_char_d values('ddd');
+insert into ora_char_e values('eee');
+insert into ora_char_f values('fff');
+select ora_char_a.x||ora_char_b.x from ora_char_a,ora_char_b; 	-- oracahrchar || oracharchar
+       ?column?       
+----------------------
+ aaa       bbb       
+(1 row)
+
+select ora_char_a.x||ora_char_c.x from ora_char_a,ora_char_c;	-- oracharchar || oracharbyte
+       ?column?       
+----------------------
+ aaa       ccc       
+(1 row)
+
+select ora_char_c.x||ora_char_a.x from ora_char_c,ora_char_a;	-- oracharbyte || oracharchar
+       ?column?       
+----------------------
+ ccc       aaa       
+(1 row)
+
+select ora_char_c.x||ora_char_d.x from ora_char_c,ora_char_d;	-- oracharbyte || oracharbyte
+       ?column?       
+----------------------
+ ccc       ddd       
+(1 row)
+
+select ora_char_a.x||ora_char_e.x from ora_char_a,ora_char_e;	-- oracharchar || text
+   ?column?    
+---------------
+ aaa       eee
+(1 row)
+
+select ora_char_e.x||ora_char_a.x from ora_char_e,ora_char_a;	-- text || oracharchar
+   ?column?    
+---------------
+ eeeaaa       
+(1 row)
+
+select ora_char_c.x||ora_char_e.x from ora_char_c,ora_char_e; -- oracharbyte || text       
+   ?column?    
+---------------
+ ccc       eee
+(1 row)
+
+select ora_char_e.x||ora_char_c.x from ora_char_e,ora_char_c;	-- text || oracharbyte
+   ?column?    
+---------------
+ eeeccc       
+(1 row)
+
+select ora_char_a.x||ora_char_f.x from ora_char_a,ora_char_f;	-- oracharchar || varchar2
+   ?column?    
+---------------
+ aaa       fff
+(1 row)
+
+select ora_char_f.x||ora_char_a.x from ora_char_f,ora_char_a;	-- varchar2 || oracharchar
+   ?column?    
+---------------
+ fffaaa       
+(1 row)
+
+select ora_char_c.x||ora_char_f.x from ora_char_c,ora_char_f;	-- oracharbyte || varchar2
+   ?column?    
+---------------
+ ccc       fff
+(1 row)
+
+select ora_char_f.x||ora_char_c.x from ora_char_f,ora_char_c;	-- varchar2 || oracharbyte 
+   ?column?    
+---------------
+ fffccc       
+(1 row)
+
+select ora_char_a.x||ora_char_b.x||ora_char_c.x from ora_char_a,ora_char_b,ora_char_c; -- oracharchar || oracharchar || oracharbyte
+            ?column?            
+--------------------------------
+ aaa       bbb       ccc       
+(1 row)
+
+select ora_char_a.x||ora_char_b.x||ora_char_e.x from ora_char_a,ora_char_b,ora_char_e; -- oracharchar || oracharchar || text
+        ?column?         
+-------------------------
+ aaa       bbb       eee
+(1 row)
+
+select ora_char_e.x||ora_char_a.x||ora_char_b.x from ora_char_e,ora_char_a,ora_char_b; -- text || oracharchar || oracharchar
+        ?column?         
+-------------------------
+ eeeaaa       bbb       
+(1 row)
+
+select ora_char_a.x||ora_char_c.x||ora_char_e.x from ora_char_a,ora_char_c,ora_char_e; -- oracharchar || oracharbyte || text
+        ?column?         
+-------------------------
+ aaa       ccc       eee
+(1 row)
+
+select ora_char_e.x||ora_char_a.x||ora_char_c.x from ora_char_e,ora_char_a,ora_char_c; -- text || oracharchar || oracharbyte
+        ?column?         
+-------------------------
+ eeeaaa       ccc       
+(1 row)
+
+select ora_char_a.x||ora_char_e.x||ora_char_b.x from ora_char_a,ora_char_e,ora_char_b; -- oracharchar || text || oracharchar
+        ?column?         
+-------------------------
+ aaa       eeebbb       
+(1 row)
+
+select ora_char_a.x||ora_char_e.x||ora_char_c.x from ora_char_a,ora_char_e,ora_char_c; -- oracharchar || text || oracharbyte
+        ?column?         
+-------------------------
+ aaa       eeeccc       
+(1 row)
+
+select ora_char_a.x||ora_char_f.x||ora_char_c.x from ora_char_a,ora_char_f,ora_char_c; -- oracharchar || varchar2 || oracharbyte
+        ?column?         
+-------------------------
+ aaa       fffccc       
+(1 row)
+
+drop table ora_char_a,ora_char_b,ora_char_c,ora_char_d,ora_char_e,ora_char_f;
+/* test ivorysql.enable_blankspace_compare */
+create table dm_charchar(x char(10 char) collate "C" PRIMARY KEY);
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" PRIMARY KEY);
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C" PRIMARY KEY);
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C" PRIMARY KEY);
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C" PRIMARY KEY);
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+create table dmmain_table(x) as select * from (select x::varchar2 from dm_charchar union all select x::varchar2 from dm_varcharchar) order by 1;
+-- enable_blankspace_compare on
+set ivorysql.enable_blankspace_compare to on;
+select * from dm_charchar where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharchar where x = 'space     '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharchar where x = 'PG中国      '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharbyte where x = 'space     '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharbyte where x = 'PG中国      '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_text where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_text where x = 'space     '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_text where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_text where x = 'PG中国      '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dm_text where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dmmain_table where x != 'space'; -- 5 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+ space     
+(5 rows)
+
+select * from dmmain_table where x > 'PG中国'; -- 5 row
+      x       
+--------------
+ PG中国      
+ fillallten
+ fillallten
+ space
+ space     
+(5 rows)
+
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+ space
+ space     
+(6 rows)
+
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dmmain_table where x < 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+      x       
+--------------
+ PG中国
+ PG中国      
+(2 rows)
+
+-- ivorysql.enable_blankspace_compare off
+set ivorysql.enable_blankspace_compare to off;
+select * from dm_charchar where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharchar where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharchar where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharbyte where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharbyte where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_text where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_text where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_text where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_text where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_text where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dmmain_table where x != 'space'; -- 4 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+(4 rows)
+
+select * from dmmain_table where x > 'PG中国'; -- 4 row
+     x      
+------------
+ fillallten
+ fillallten
+ space
+ space     
+(4 rows)
+
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+ space
+ space     
+(6 rows)
+
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dmmain_table where x < 'PG中国      '; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+      x       
+--------------
+ PG中国
+ PG中国      
+(2 rows)
+
+\d dmmain_table
+            Table "public.dmmain_table"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ x      | varchar2 | C         |          | 
+
+create index dmmain_table_x on dmmain_table(x);
+set enable_seqscan to off;
+set enable_indexscan to on;
+explain(costs off) select * from dmmain_table where x != 'space'; -- 4 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Filter: (x #<> 'space'::varchar2)
+(2 rows)
+
+explain(costs off) select * from dmmain_table where x > 'PG中国'; -- 4 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Index Cond: (x #> 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off) select * from dmmain_table where x >= 'PG中国'; -- 6 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Index Cond: (x #>= 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off) select * from dmmain_table where x < 'PG中国'; -- 0 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Index Cond: (x #< 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off) select * from dmmain_table where x < 'PG中国      '; -- 0 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Index Cond: (x #< 'PG中国      '::varchar2)
+(2 rows)
+
+explain(costs off) select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Only Scan using dmmain_table_x on dmmain_table
+   Index Cond: (x #<= 'PG中国      '::varchar2)
+(2 rows)
+
+set ivorysql.enable_blankspace_compare to on;
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar,dmmain_table;
+/* Test new operator index support */
+set ivorysql.enable_blankspace_compare to off;
+set enable_seqscan to off;
+set enable_bitmapscan to off;
+-- btree
+create table dm_charchar(x char(10 char) collate "C" PRIMARY KEY);
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" PRIMARY KEY);
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C" PRIMARY KEY);
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C" PRIMARY KEY);
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C" PRIMARY KEY);
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+explain(costs off)  select x from dm_charchar where x = 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Index Cond: (x #= 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charchar where x >= 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Index Cond: (x #>= 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charchar where x <= 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Index Cond: (x #<= 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charchar where x < 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Index Cond: (x #< 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charchar where x > 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Index Cond: (x #> 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charchar where x != 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charchar_pkey on dm_charchar
+   Filter: (x #<> 'PG中国 '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x = 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Index Cond: (x #= 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x >= 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Index Cond: (x #>= 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x <= 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Index Cond: (x #<= 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x < 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Index Cond: (x #< 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x > 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Index Cond: (x #> 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x != 'PG中国 ';
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Only Scan using dm_charbyte_pkey on dm_charbyte
+   Filter: (x #<> 'PG中国 '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x = 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Index Cond: (x #= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x >= 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Index Cond: (x #>= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x <= 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Index Cond: (x #<= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x < 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Index Cond: (x #< 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x > 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Index Cond: (x #> 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x != 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharchar_pkey on dm_varcharchar
+   Filter: (x #<> 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x = 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Index Cond: (x #= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x >= 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Index Cond: (x #>= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x <= 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Index Cond: (x #<= 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x < 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Index Cond: (x #< 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x > 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Index Cond: (x #> 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x != 'PG中国 ';
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Index Only Scan using dm_varcharbyte_pkey on dm_varcharbyte
+   Filter: (x #<> 'PG中国 '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x = 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Index Cond: (x #= 'PG中国 '::text)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x >= 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Index Cond: (x #>= 'PG中国 '::text)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x <= 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Index Cond: (x #<= 'PG中国 '::text)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x < 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Index Cond: (x #< 'PG中国 '::text)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x > 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Index Cond: (x #> 'PG中国 '::text)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x != 'PG中国 ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Only Scan using dm_text_pkey on dm_text
+   Filter: (x #<> 'PG中国 '::text)
+(2 rows)
+
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar;
+-- hash 
+create table dm_charchar(x char(10 char) collate "C");
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" );
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C");
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C");
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C");
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+create index dm_charchar_x on dm_charchar using hash (x); 
+create index dm_charbyte_x on dm_charbyte using hash (x); 
+create index dm_varcharchar_x on dm_varcharchar using hash (x); 
+create index dm_varcharbyte_x on dm_varcharbyte using hash (x); 
+create index dm_text_x on dm_text using hash (x);
+select x from dm_charchar where x = 'PG中国   ';
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select x from dm_charbyte where x = 'PG中国   ';
+    x     
+----------
+ PG中国  
+(1 row)
+
+select x from dm_varcharchar where x = 'PG中国   ';
+   x    
+--------
+ PG中国
+(1 row)
+
+select x from dm_varcharbyte where x = 'PG中国   ';
+   x    
+--------
+ PG中国
+(1 row)
+
+select x from dm_text where x = 'PG中国   ';
+   x    
+--------
+ PG中国
+(1 row)
+
+explain(costs off)  select x from dm_charchar where x = 'PG中国   ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Scan using dm_charchar_x on dm_charchar
+   Index Cond: (x #= 'PG中国   '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x = 'PG中国   ';
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Scan using dm_charbyte_x on dm_charbyte
+   Index Cond: (x #= 'PG中国   '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x = 'PG中国   ';
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Index Scan using dm_varcharchar_x on dm_varcharchar
+   Index Cond: (x #= 'PG中国   '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x = 'PG中国   ';
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Index Scan using dm_varcharbyte_x on dm_varcharbyte
+   Index Cond: (x #= 'PG中国   '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x = 'PG中国   ';
+               QUERY PLAN               
+----------------------------------------
+ Index Scan using dm_text_x on dm_text
+   Index Cond: (x #= 'PG中国   '::text)
+(2 rows)
+
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+/* make sure seqscan get the correct result  */
+set ivorysql.enable_blankspace_compare to off;
+create table dm_charchar(x char(10 char) collate "C");
+insert into dm_charchar values('space');
+insert into dm_charchar values('PG中国');
+insert into dm_charchar values('fillallten');
+create table dm_charbyte(x char(10 byte) collate "C" );
+insert into dm_charbyte values('space');
+insert into dm_charbyte values('PG中国');
+insert into dm_charbyte values('fillallten');
+create table dm_varcharchar(x varchar2(10 char) collate "C");
+insert into dm_varcharchar values('space');
+insert into dm_varcharchar values('PG中国');
+insert into dm_varcharchar values('fillallten');
+create table dm_varcharbyte(x varchar2(10 byte) collate "C");
+insert into dm_varcharbyte values('space');
+insert into dm_varcharbyte values('PG中国');
+insert into dm_varcharbyte values('fillallten');
+create table dm_text(x text collate "C");
+insert into dm_text values('space');
+insert into dm_text values('PG中国');
+insert into dm_text values('fillallten');
+create table dmmain_table(x) as select * from (select x::varchar2 from dm_charchar union all select x::varchar2 from dm_varcharchar) order by 1;
+set enable_bitmapscan to off;
+set enable_indexscan to off;
+set enable_seqscan to on;
+select x from dm_charchar where x = 'PG中国    ';
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select x from dm_charbyte where x = 'PG中国    ';
+    x     
+----------
+ PG中国  
+(1 row)
+
+select x from dm_varcharchar where x = 'PG中国   ';
+   x    
+--------
+ PG中国
+(1 row)
+
+select x from dm_varcharbyte where x = 'PG中国   ';
+   x    
+--------
+ PG中国
+(1 row)
+
+select x from dm_text where x = 'PG中国    ';
+   x    
+--------
+ PG中国
+(1 row)
+
+explain(costs off)  select x from dm_charchar where x > 'PG中国    ';
+                 QUERY PLAN                 
+--------------------------------------------
+ Seq Scan on dm_charchar
+   Filter: (x #> 'PG中国    '::oracharchar)
+(2 rows)
+
+explain(costs off)  select x from dm_charbyte where x > 'PG中国   ';
+                QUERY PLAN                 
+-------------------------------------------
+ Seq Scan on dm_charbyte
+   Filter: (x #> 'PG中国   '::oracharbyte)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharchar where x > 'PG中国    ';
+               QUERY PLAN                
+-----------------------------------------
+ Seq Scan on dm_varcharchar
+   Filter: (x #> 'PG中国    '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_varcharbyte where x > 'PG中国   ';
+               QUERY PLAN               
+----------------------------------------
+ Seq Scan on dm_varcharbyte
+   Filter: (x #> 'PG中国   '::varchar2)
+(2 rows)
+
+explain(costs off)  select x from dm_text where x > 'PG中国    ';
+             QUERY PLAN              
+-------------------------------------
+ Seq Scan on dm_text
+   Filter: (x #> 'PG中国    '::text)
+(2 rows)
+
+explain(costs off)  select x from dmmain_table where x > 'PG中国    ';
+               QUERY PLAN                
+-----------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x #> 'PG中国    '::varchar2)
+(2 rows)
+
+select * from dm_charchar where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charchar where x = 'PG中国'; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'PG中国      '; -- 1 row
+      x       
+--------------
+ PG中国      
+(1 row)
+
+select * from dm_charchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_charbyte where x = 'space'; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'space     '; -- 1 row
+     x      
+------------
+ space     
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国'; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'PG中国      '; -- 1 row
+    x     
+----------
+ PG中国  
+(1 row)
+
+select * from dm_charbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharchar where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharchar where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharchar where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharchar where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharchar where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_varcharbyte where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharbyte where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_varcharbyte where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharbyte where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_varcharbyte where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dm_text where x = 'space'; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_text where x = 'space     '; -- 1 row
+   x   
+-------
+ space
+(1 row)
+
+select * from dm_text where x = 'PG中国'; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_text where x = 'PG中国      '; -- 1 row
+   x    
+--------
+ PG中国
+(1 row)
+
+select * from dm_text where x = 'fillallten'; -- 1 row
+     x      
+------------
+ fillallten
+(1 row)
+
+select * from dmmain_table where x != 'space'; -- 4 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+(4 rows)
+
+select * from dmmain_table where x > 'PG中国'; -- 4 row
+     x      
+------------
+ fillallten
+ fillallten
+ space
+ space     
+(4 rows)
+
+select * from dmmain_table where x >= 'PG中国'; -- 6 row
+      x       
+--------------
+ PG中国
+ PG中国      
+ fillallten
+ fillallten
+ space
+ space     
+(6 rows)
+
+select * from dmmain_table where x < 'PG中国'; -- 0 row
+ x 
+---
+(0 rows)
+
+select * from dmmain_table where x = 'PG中国      '; -- 2 row
+      x       
+--------------
+ PG中国
+ PG中国      
+(2 rows)
+
+select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+      x       
+--------------
+ PG中国
+ PG中国      
+(2 rows)
+
+-- make sure we don't replace operator when enable_blankspace_compare = on
+set ivorysql.enable_blankspace_compare to on;
+explain(costs off)  select * from dmmain_table where x != 'space'; -- 4 row
+             QUERY PLAN             
+------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x <> 'space'::varchar2)
+(2 rows)
+
+explain(costs off)  select * from dmmain_table where x > 'PG中国'; -- 4 row
+             QUERY PLAN             
+------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x > 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off)  select * from dmmain_table where x >= 'PG中国'; -- 6 row
+             QUERY PLAN              
+-------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x >= 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off)  select * from dmmain_table where x < 'PG中国'; -- 0 row
+             QUERY PLAN             
+------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x < 'PG中国'::varchar2)
+(2 rows)
+
+explain(costs off)  select * from dmmain_table where x = 'PG中国      '; -- 2 row
+                QUERY PLAN                
+------------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x = 'PG中国      '::varchar2)
+(2 rows)
+
+explain(costs off)  select * from dmmain_table where x <= 'PG中国      '; -- 2 row
+                QUERY PLAN                 
+-------------------------------------------
+ Seq Scan on dmmain_table
+   Filter: (x <= 'PG中国      '::varchar2)
+(2 rows)
+
+drop table dm_charbyte,dm_charchar,dm_text,dm_varcharbyte,dm_varcharchar,dmmain_table;
+set ivorysql.enable_blankspace_compare to on;
+set enable_bitmapscan to on;
+set enable_seqscan to on;
+set enable_indexscan to on;
+/* Unique and primary key constrain test */
+set ivorysql.enable_blankspace_compare to on;
+create table unique_constrain(a varchar2(10) primary key,b text unique);
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+drop table unique_constrain;
+create table unique_constrain(a varchar2(10),b text,unique(a,b));
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+drop table unique_constrain;
+set ivorysql.enable_blankspace_compare to off;
+create table unique_constrain(a varchar2(10) primary key,b text unique,c char(10 char) unique,d char(10 byte) unique);
+insert into unique_constrain values ('a','b','c','d');
+insert into unique_constrain values ('a  ','b  ','c ','d ');
+ERROR:  duplicate key value violates unique constraint "unique_constrain_pkey"
+DETAIL:  Key (a)=(a  ) already exists.
+drop table unique_constrain;
+create table unique_constrain(a varchar2(10),b text,unique(a,b));
+insert into unique_constrain values ('a','b');
+insert into unique_constrain values ('a  ','b  ');
+ERROR:  duplicate key value violates unique constraint "unique_constrain_a_b_key"
+DETAIL:  Key (a, b)=(a  , b  ) already exists.
+drop table unique_constrain;
+/* reference key constrain test */
+set ivorysql.enable_blankspace_compare to on;
+CREATE TABLE products (
+    product_no varchar2(10) PRIMARY KEY,
+    name text,                                          
+    price numeric
+);
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no text REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('a','b',1);
+insert into orders values (1,'a  ',1);
+ERROR:  insert or update on table "orders" violates foreign key constraint "orders_product_no_fkey"
+DETAIL:  Key (product_no)=(a  ) is not present in table "products".
+drop table products,orders;
+CREATE TABLE products (
+     product_no varchar2(10) PRIMARY KEY,
+     name text,                                          
+     price numeric
+ );
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no integer REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('23 ','b',1);
+insert into orders values (1,23,1);
+ERROR:  insert or update on table "orders" violates foreign key constraint "orders_product_no_fkey"
+DETAIL:  Key (product_no)=(23) is not present in table "products".
+drop table products,orders;
+set ivorysql.enable_blankspace_compare to off;
+CREATE TABLE products (
+    product_no varchar2(10) PRIMARY KEY,
+    name text,                                          
+    price numeric
+);
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no text REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('a','b',1);
+insert into orders values (1,'a  ',1);
+drop table products,orders;
+CREATE TABLE products (
+     product_no varchar2(10) PRIMARY KEY,
+     name text,                                          
+     price numeric
+ );
+CREATE TABLE orders (
+    order_id integer PRIMARY KEY,
+    product_no integer REFERENCES products (product_no),
+    quantity integer
+);
+insert into products values ('23 ','b',1);
+insert into orders values (1,23,1);
+drop table products,orders;
+/* check constrain test */
+set ivorysql.enable_blankspace_compare to on;
+create table check_constrain(a varchar2(10) check (a != 'a'));
+insert into check_constrain values('a  ');
+drop table check_constrain;
+set ivorysql.enable_blankspace_compare to off;
+create table check_constrain(a varchar2(10) check (a != 'a'));
+insert into check_constrain values('a  ');
+ERROR:  new row for relation "check_constrain" violates check constraint "check_constrain_a_check"
+DETAIL:  Failing row contains (a  ).
+drop table check_constrain;
+/* join */
+set enable_mergejoin to on;
+set enable_nestloop to off;
+set enable_hashjoin to off;
+set enable_seqscan to off;
+set enable_indexscan to on;
+set enable_bitmapscan to off;
+set ivorysql.enable_blankspace_compare to on;
+create table join_a(x char(10 char) primary key);
+create table join_b(x varchar2(10 char) primary key);
+create table join_c(x text primary key);
+insert into join_a values('a');
+insert into join_a values('ab');
+insert into join_a values('abcd');
+insert into join_b values('a');
+insert into join_b values('ab');
+insert into join_b values('abcd');
+insert into join_c values('a');
+insert into join_c values('ab');
+insert into join_c values('abcd');
+select * from join_a join join_b using(x);
+ x 
+---
+(0 rows)
+
+select * from join_a join join_b on join_a.x = join_b.x;
+ x | x 
+---+---
+(0 rows)
+
+select * from join_a join join_b on join_a.x > join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ ab         | a
+ ab         | ab
+ abcd       | a
+ abcd       | ab
+ abcd       | abcd
+(6 rows)
+
+select * from join_a join join_b on join_a.x >= join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ ab         | a
+ ab         | ab
+ abcd       | a
+ abcd       | ab
+ abcd       | abcd
+(6 rows)
+
+select * from join_a join join_b on join_a.x <= join_b.x;
+     x      |  x   
+------------+------
+ a          | ab
+ a          | abcd
+ ab         | abcd
+(3 rows)
+
+select * from join_a join join_b on join_a.x < join_b.x;
+     x      |  x   
+------------+------
+ a          | ab
+ a          | abcd
+ ab         | abcd
+(3 rows)
+
+select * from join_a join join_b on join_a.x != join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ a          | ab
+ a          | abcd
+ ab         | a
+ ab         | ab
+ ab         | abcd
+ abcd       | a
+ abcd       | ab
+ abcd       | abcd
+(9 rows)
+
+explain(costs off) select * from join_a join join_b using(x);
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Merge Join
+   Merge Cond: (join_a.x = join_b.x)
+   ->  Sort
+         Sort Key: join_a.x COLLATE using_nls_comp
+         ->  Index Only Scan using join_a_pkey on join_a
+   ->  Sort
+         Sort Key: join_b.x COLLATE using_nls_comp
+         ->  Index Only Scan using join_b_pkey on join_b
+(8 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x = join_b.x;
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Merge Join
+   Merge Cond: (join_a.x = join_b.x)
+   ->  Sort
+         Sort Key: join_a.x COLLATE using_nls_comp
+         ->  Index Only Scan using join_a_pkey on join_a
+   ->  Sort
+         Sort Key: join_b.x COLLATE using_nls_comp
+         ->  Index Only Scan using join_b_pkey on join_b
+(8 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x > join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x < join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x >= join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x <= join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x <= join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x >= join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x < join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x > join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x != join_b.x;
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Nested Loop
+   Join Filter: (join_a.x <> join_b.x)
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Materialize
+         ->  Index Only Scan using join_b_pkey on join_b
+(5 rows)
+
+drop table join_a,join_b,join_c;
+set ivorysql.enable_blankspace_compare to off;
+create table join_a(x char(10 char) primary key);
+create table join_b(x varchar2(10 char) primary key);
+create table join_c(x text primary key);
+insert into join_a values('a');
+insert into join_a values('ab');
+insert into join_a values('abcd');
+insert into join_b values('a');
+insert into join_b values('ab');
+insert into join_b values('abcd');
+insert into join_c values('a');
+insert into join_c values('ab');
+insert into join_c values('abcd');
+explain(costs off) select * from join_a join join_b using(x);
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Merge Join
+   Merge Cond: (join_a.x #= join_b.x)
+   ->  Sort
+         Sort Key: join_a.x COLLATE using_nls_comp USING #<
+         ->  Index Only Scan using join_a_pkey on join_a
+   ->  Sort
+         Sort Key: join_b.x COLLATE using_nls_comp USING #<
+         ->  Index Only Scan using join_b_pkey on join_b
+(8 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x = join_b.x;
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Merge Join
+   Merge Cond: (join_a.x #= join_b.x)
+   ->  Sort
+         Sort Key: join_a.x COLLATE using_nls_comp USING #<
+         ->  Index Only Scan using join_a_pkey on join_a
+   ->  Sort
+         Sort Key: join_b.x COLLATE using_nls_comp USING #<
+         ->  Index Only Scan using join_b_pkey on join_b
+(8 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x > join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x #< join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x >= join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x #<= join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x <= join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x #>= join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x < join_b.x;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Nested Loop
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Index Only Scan using join_b_pkey on join_b
+         Index Cond: (x #> join_a.x)
+(4 rows)
+
+explain(costs off) select * from join_a join join_b on join_a.x != join_b.x;
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Nested Loop
+   Join Filter: (join_a.x #<> join_b.x)
+   ->  Index Only Scan using join_a_pkey on join_a
+   ->  Materialize
+         ->  Index Only Scan using join_b_pkey on join_b
+(5 rows)
+
+select * from join_a join join_b using(x);
+     x      
+------------
+ a         
+ ab        
+ abcd      
+(3 rows)
+
+select * from join_a join join_b on join_a.x = join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ ab         | ab
+ abcd       | abcd
+(3 rows)
+
+select * from join_a join join_b on join_a.x > join_b.x;
+     x      | x  
+------------+----
+ ab         | a
+ abcd       | a
+ abcd       | ab
+(3 rows)
+
+select * from join_a join join_b on join_a.x >= join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ ab         | a
+ ab         | ab
+ abcd       | a
+ abcd       | ab
+ abcd       | abcd
+(6 rows)
+
+select * from join_a join join_b on join_a.x <= join_b.x;
+     x      |  x   
+------------+------
+ a          | a
+ a          | ab
+ a          | abcd
+ ab         | ab
+ ab         | abcd
+ abcd       | abcd
+(6 rows)
+
+select * from join_a join join_b on join_a.x < join_b.x;
+     x      |  x   
+------------+------
+ a          | ab
+ a          | abcd
+ ab         | abcd
+(3 rows)
+
+select * from join_a join join_b on join_a.x != join_b.x;
+     x      |  x   
+------------+------
+ a          | ab
+ a          | abcd
+ ab         | a
+ ab         | abcd
+ abcd       | a
+ abcd       | ab
+(6 rows)
+
+drop table join_a,join_b,join_c;
+reset all;
+set enable_seqscan to off;
+/* Test where clause when enable_blankspace_compare is off */
+-- IN
+set ivorysql.enable_blankspace_compare to on;
+create table in_tb_char(x char(10 char) primary key,y int);
+create table in_tb_varchar2(x varchar(10 char) primary key,y int);
+create table in_tb_text(x text primary key,y int);
+insert into in_tb_char values('a',1);
+insert into in_tb_char values('b',2);
+insert into in_tb_char values('ab',3);
+insert into in_tb_char values('abcd',4);
+insert into in_tb_varchar2 values('a',1);
+insert into in_tb_varchar2 values('b',2);
+insert into in_tb_varchar2 values('ab',3);
+insert into in_tb_varchar2 values('abcd',4);
+insert into in_tb_text values('a',1);
+insert into in_tb_text values('b',2);
+insert into in_tb_text values('ab',3);
+insert into in_tb_text values('abcd',4);
+-- col in array
+select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+     x      
+------------
+ a         
+ ab        
+(2 rows)
+
+select x from in_tb_varchar2 where x in ('a ','ab ');     -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from in_tb_text where x in ('a ','ab ');       -- 0 rows
+ x 
+---
+(0 rows)
+
+-- col in subquery
+select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+     x      
+------------
+ a         
+ ab        
+(2 rows)
+
+select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+ x 
+---
+(0 rows)
+
+-- col in array
+explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Bitmap Heap Scan on in_tb_char
+   Recheck Cond: (x = ANY ('{"a ","ab "}'::oracharchar[]))
+   ->  Bitmap Index Scan on in_tb_char_pkey
+         Index Cond: (x = ANY ('{"a ","ab "}'::oracharchar[]))
+(4 rows)
+
+explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 0 rows
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Bitmap Heap Scan on in_tb_varchar2
+   Recheck Cond: (x = ANY ('{"a ","ab "}'::varchar2[]))
+   ->  Bitmap Index Scan on in_tb_varchar2_pkey
+         Index Cond: (x = ANY ('{"a ","ab "}'::varchar2[]))
+(4 rows)
+
+explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 0 rows
+                       QUERY PLAN                       
+--------------------------------------------------------
+ Bitmap Heap Scan on in_tb_text
+   Recheck Cond: (x = ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on in_tb_text_pkey
+         Index Cond: (x = ANY ('{"a ","ab "}'::text[]))
+(4 rows)
+
+-- col in subquery
+explain(costs off) select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: (((in_tb_varchar2.x)::char(10))::varchar2(10)) COLLATE using_nls_comp
+               ->  Bitmap Heap Scan on in_tb_varchar2
+                     Recheck Cond: (x = ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x = ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_char_pkey on in_tb_char
+         Index Cond: (x = ((in_tb_varchar2.x)::char(10))::varchar2(10))
+(10 rows)
+
+explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+                                           QUERY PLAN                                            
+-------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: (((in_tb_varchar2_1.x)::char(10))::varchar2(10)) COLLATE using_nls_comp
+               ->  Bitmap Heap Scan on in_tb_varchar2 in_tb_varchar2_1
+                     Recheck Cond: (x = ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x = ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_varchar2_pkey on in_tb_varchar2
+         Index Cond: (x = ((in_tb_varchar2_1.x)::char(10))::varchar2(10))
+(10 rows)
+
+explain(costs off) select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 0 rows
+                                              QUERY PLAN                                               
+-------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: ((((in_tb_varchar2.x)::char(10))::varchar2(10))::text) COLLATE using_nls_comp
+               ->  Bitmap Heap Scan on in_tb_varchar2
+                     Recheck Cond: (x = ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x = ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_text_pkey on in_tb_text
+         Index Cond: (x = (((in_tb_varchar2.x)::char(10))::varchar2(10))::text)
+(10 rows)
+
+drop table in_tb_char,in_tb_varchar2,in_tb_text;
+set ivorysql.enable_blankspace_compare to off;
+create table in_tb_char(x char(10 char) primary key,y int);
+create table in_tb_varchar2(x varchar(10 char) primary key,y int);
+create table in_tb_text(x text primary key,y int);
+insert into in_tb_char values('a',1);
+insert into in_tb_char values('b',2);
+insert into in_tb_char values('ab',3);
+insert into in_tb_char values('abcd',4);
+insert into in_tb_varchar2 values('a',1);
+insert into in_tb_varchar2 values('b',2);
+insert into in_tb_varchar2 values('ab',3);
+insert into in_tb_varchar2 values('abcd',4);
+insert into in_tb_text values('a',1);
+insert into in_tb_text values('b',2);
+insert into in_tb_text values('ab',3);
+insert into in_tb_text values('abcd',4);
+-- col in array
+select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+     x      
+------------
+ a         
+ ab        
+(2 rows)
+
+select x from in_tb_varchar2 where x in ('a ','ab ');     -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+select x from in_tb_text where x in ('a ','ab ');       -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+-- col in subquery
+select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+     x      
+------------
+ a         
+ ab        
+(2 rows)
+
+select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+-- col in array
+explain(costs off) select x from in_tb_char where x in ('a ','ab ');     -- 2 rows
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Bitmap Heap Scan on in_tb_char
+   Recheck Cond: (x #= ANY ('{"a ","ab "}'::oracharchar[]))
+   ->  Bitmap Index Scan on in_tb_char_pkey
+         Index Cond: (x #= ANY ('{"a ","ab "}'::oracharchar[]))
+(4 rows)
+
+explain(costs off) select x from in_tb_varchar2 where x in ('a ','ab ');     -- 2 rows
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Bitmap Heap Scan on in_tb_varchar2
+   Recheck Cond: (x #= ANY ('{"a ","ab "}'::varchar2[]))
+   ->  Bitmap Index Scan on in_tb_varchar2_pkey
+         Index Cond: (x #= ANY ('{"a ","ab "}'::varchar2[]))
+(4 rows)
+
+explain(costs off) select x from in_tb_text where x in ('a ','ab ');       -- 2 rows
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Bitmap Heap Scan on in_tb_text
+   Recheck Cond: (x #= ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on in_tb_text_pkey
+         Index Cond: (x #= ANY ('{"a ","ab "}'::text[]))
+(4 rows)
+
+-- col in subquery
+explain(costs off) select x from in_tb_char where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: (((in_tb_varchar2.x)::char(10))::varchar2(10)) COLLATE using_nls_comp USING #<
+               ->  Bitmap Heap Scan on in_tb_varchar2
+                     Recheck Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_char_pkey on in_tb_char
+         Index Cond: (x #= ((in_tb_varchar2.x)::char(10))::varchar2(10))
+(10 rows)
+
+explain(costs off) select x from in_tb_varchar2 where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: (((in_tb_varchar2_1.x)::char(10))::varchar2(10)) COLLATE using_nls_comp USING #<
+               ->  Bitmap Heap Scan on in_tb_varchar2 in_tb_varchar2_1
+                     Recheck Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_varchar2_pkey on in_tb_varchar2
+         Index Cond: (x #= ((in_tb_varchar2_1.x)::char(10))::varchar2(10))
+(10 rows)
+
+explain(costs off) select x from in_tb_text where x in (select x::char(10)::varchar2(10) from in_tb_varchar2 where x in ('a','ab'));     -- 2 rows
+                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Nested Loop
+   ->  Unique
+         ->  Sort
+               Sort Key: ((((in_tb_varchar2.x)::char(10))::varchar2(10))::text) COLLATE using_nls_comp USING #<
+               ->  Bitmap Heap Scan on in_tb_varchar2
+                     Recheck Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+                     ->  Bitmap Index Scan on in_tb_varchar2_pkey
+                           Index Cond: (x #= ANY ('{a,ab}'::varchar2[]))
+   ->  Index Only Scan using in_tb_text_pkey on in_tb_text
+         Index Cond: (x #= (((in_tb_varchar2.x)::char(10))::varchar2(10))::text)
+(10 rows)
+
+drop table in_tb_char,in_tb_varchar2,in_tb_text;
+/* SOME/ANY/ALL */
+set ivorysql.enable_blankspace_compare to on;
+create table saa_char(x char(10) primary key);
+create table saa_varchar(x varchar2(10) primary key);
+create table saa_text(x text primary key);
+insert into saa_char values('a');
+insert into saa_char values('ab');
+insert into saa_char values('abcd');
+insert into saa_varchar values('a');
+insert into saa_varchar values('ab');
+insert into saa_varchar values('abcd');
+insert into saa_text values('a');
+insert into saa_text values('ab');
+insert into saa_text values('abcd');
+explain(costs off) select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+                      QUERY PLAN                      
+------------------------------------------------------
+ Bitmap Heap Scan on saa_char
+   Filter: ((x)::text = ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_char_pkey
+(3 rows)
+
+explain(costs off) select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+                      QUERY PLAN                      
+------------------------------------------------------
+ Bitmap Heap Scan on saa_varchar
+   Filter: ((x)::text = ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_varchar_pkey
+(3 rows)
+
+explain(costs off) select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+                       QUERY PLAN                       
+--------------------------------------------------------
+ Bitmap Heap Scan on saa_text
+   Recheck Cond: (x = ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_text_pkey
+         Index Cond: (x = ANY ('{"a ","ab "}'::text[]))
+(4 rows)
+
+explain(costs off) select x from saa_char where x = SOME (ARRAY['ab ']);   -- 0 rows
+                   QUERY PLAN                    
+-------------------------------------------------
+ Bitmap Heap Scan on saa_char
+   Filter: ((x)::text = ANY ('{"ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_char_pkey
+(3 rows)
+
+explain(costs off) select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 0 rows
+                   QUERY PLAN                    
+-------------------------------------------------
+ Bitmap Heap Scan on saa_varchar
+   Filter: ((x)::text = ANY ('{"ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_varchar_pkey
+(3 rows)
+
+explain(costs off) select x from saa_text where x = SOME (ARRAY['ab ']);   -- 0 rows
+                   QUERY PLAN                    
+-------------------------------------------------
+ Index Only Scan using saa_text_pkey on saa_text
+   Index Cond: (x = ANY ('{"ab "}'::text[]))
+(2 rows)
+
+ 
+explain(costs off) select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Index Only Scan using saa_char_pkey on saa_char
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar
+                 Index Cond: (x = 'ab '::varchar2)
+(6 rows)
+
+explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Index Only Scan using saa_varchar_pkey on saa_varchar
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar saa_varchar_1
+                 Index Cond: (x = 'ab '::varchar2)
+(6 rows)
+
+explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Index Only Scan using saa_text_pkey on saa_text
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar
+                 Index Cond: (x = 'ab '::varchar2)
+(6 rows)
+
+select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_char where x = SOME (ARRAY['ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_text where x = SOME (ARRAY['ab ']);   -- 0 rows
+ x 
+---
+(0 rows)
+
+select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+     x      
+------------
+ a         
+ ab        
+ abcd      
+(3 rows)
+
+select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+  x   
+------
+ a
+ ab
+ abcd
+(3 rows)
+
+select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 3 rows
+  x   
+------
+ a
+ ab
+ abcd
+(3 rows)
+
+drop table saa_char,saa_text,saa_varchar;
+set ivorysql.enable_blankspace_compare to off;
+create table saa_char(x char(10) primary key);
+create table saa_varchar(x varchar2(10) primary key);
+create table saa_text(x text primary key);
+insert into saa_char values('a');
+insert into saa_char values('ab');
+insert into saa_char values('abcd');
+insert into saa_varchar values('a');
+insert into saa_varchar values('ab');
+insert into saa_varchar values('abcd');
+insert into saa_text values('a');
+insert into saa_text values('ab');
+insert into saa_text values('abcd');
+explain(costs off) select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Bitmap Heap Scan on saa_char
+   Filter: ((x)::text #= ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_char_pkey
+(3 rows)
+
+explain(costs off) select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Bitmap Heap Scan on saa_varchar
+   Filter: ((x)::text #= ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_varchar_pkey
+(3 rows)
+
+explain(costs off) select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Bitmap Heap Scan on saa_text
+   Recheck Cond: (x #= ANY ('{"a ","ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_text_pkey
+         Index Cond: (x #= ANY ('{"a ","ab "}'::text[]))
+(4 rows)
+
+explain(costs off) select x from saa_char where x = SOME (ARRAY['ab ']);   -- 1 rows
+                    QUERY PLAN                    
+--------------------------------------------------
+ Bitmap Heap Scan on saa_char
+   Filter: ((x)::text #= ANY ('{"ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_char_pkey
+(3 rows)
+
+explain(costs off) select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 1 rows
+                    QUERY PLAN                    
+--------------------------------------------------
+ Bitmap Heap Scan on saa_varchar
+   Filter: ((x)::text #= ANY ('{"ab "}'::text[]))
+   ->  Bitmap Index Scan on saa_varchar_pkey
+(3 rows)
+
+explain(costs off) select x from saa_text where x = SOME (ARRAY['ab ']);   -- 1 rows
+                   QUERY PLAN                    
+-------------------------------------------------
+ Index Only Scan using saa_text_pkey on saa_text
+   Index Cond: (x #= ANY ('{"ab "}'::text[]))
+(2 rows)
+
+explain(costs off) select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Index Only Scan using saa_char_pkey on saa_char
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar
+                 Index Cond: (x #= 'ab '::varchar2)
+(6 rows)
+
+explain(costs off) select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
+ Index Only Scan using saa_varchar_pkey on saa_varchar
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar saa_varchar_1
+                 Index Cond: (x #= 'ab '::varchar2)
+(6 rows)
+
+explain(costs off) select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Index Only Scan using saa_text_pkey on saa_text
+   Filter: (SubPlan 1)
+   SubPlan 1
+     ->  Materialize
+           ->  Index Only Scan using saa_varchar_pkey on saa_varchar
+                 Index Cond: (x #= 'ab '::varchar2)
+(6 rows)
+
+select x from saa_char where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+     x      
+------------
+ a         
+ ab        
+(2 rows)
+
+select x from saa_varchar where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+select x from saa_text where x = ANY (ARRAY['a ','ab ']);   -- 2 rows
+ x  
+----
+ a
+ ab
+(2 rows)
+
+select x from saa_char where x = SOME (ARRAY['ab ']);   -- 1 rows
+     x      
+------------
+ ab        
+(1 row)
+
+select x from saa_varchar where x = SOME (ARRAY['ab ']);   -- 1 rows
+ x  
+----
+ ab
+(1 row)
+
+select x from saa_text where x = SOME (ARRAY['ab ']);   -- 1 rows
+ x  
+----
+ ab
+(1 row)
+
+select x from saa_char where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+     x      
+------------
+ ab        
+(1 row)
+
+select x from saa_varchar where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+ x  
+----
+ ab
+(1 row)
+
+select x from saa_text where x = ALL (select x::char(10) from saa_varchar where x = 'ab '); -- 1 rows
+ x  
+----
+ ab
+(1 row)
+
+drop table saa_char,saa_text,saa_varchar;
+/* BETWEEN .. AND .. */
+set ivorysql.enable_blankspace_compare to on;
+create table between_char(x char(10) primary key,y int);
+create table between_varchar(x varchar2(10) primary key,y int);
+create table between_text(x text primary key,y int);
+insert into between_char values('a',1);
+insert into between_char values('ab',2);
+insert into between_char values('abcd',3);
+insert into between_varchar values('a',1);
+insert into between_varchar values('ab',2);
+insert into between_varchar values('abcd',3);
+insert into between_text values('a',1);
+insert into between_text values('ab',2);
+insert into between_text values('abcd',3);
+explain(costs off) select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_char
+         Recheck Cond: ((x >= 'a '::oracharbyte) AND (x <= 'a    '::oracharbyte))
+         ->  Bitmap Index Scan on between_char_pkey
+               Index Cond: ((x >= 'a '::oracharbyte) AND (x <= 'a    '::oracharbyte))
+(6 rows)
+
+explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_varchar
+         Recheck Cond: ((x >= 'a '::varchar2) AND (x <= 'a    '::varchar2))
+         ->  Bitmap Index Scan on between_varchar_pkey
+               Index Cond: ((x >= 'a '::varchar2) AND (x <= 'a    '::varchar2))
+(6 rows)
+
+explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+                               QUERY PLAN                               
+------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_text
+         Recheck Cond: ((x >= 'a '::text) AND (x <= 'a    '::text))
+         ->  Bitmap Index Scan on between_text_pkey
+               Index Cond: ((x >= 'a '::text) AND (x <= 'a    '::text))
+(6 rows)
+
+select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+     x      | y 
+------------+---
+ a          | 1
+(1 row)
+
+select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+ x | y 
+---+---
+(0 rows)
+
+select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 0 rows
+ x | y 
+---+---
+(0 rows)
+
+drop table between_char,between_text,between_varchar;
+set ivorysql.enable_blankspace_compare to off;
+create table between_char(x char(10) primary key,y int);
+create table between_varchar(x varchar2(10) primary key,y int);
+create table between_text(x text primary key,y int);
+insert into between_char values('a',1);
+insert into between_char values('ab',2);
+insert into between_char values('abcd',3);
+insert into between_varchar values('a',1);
+insert into between_varchar values('ab',2);
+insert into between_varchar values('abcd',3);
+insert into between_text values('a',1);
+insert into between_text values('ab',2);
+insert into between_text values('abcd',3);
+explain(costs off) select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_char
+         Recheck Cond: ((x #>= 'a '::oracharbyte) AND (x #<= 'a    '::oracharbyte))
+         ->  Bitmap Index Scan on between_char_pkey
+               Index Cond: ((x #>= 'a '::oracharbyte) AND (x #<= 'a    '::oracharbyte))
+(6 rows)
+
+explain(costs off) select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_varchar
+         Recheck Cond: ((x #>= 'a '::varchar2) AND (x #<= 'a    '::varchar2))
+         ->  Bitmap Index Scan on between_varchar_pkey
+               Index Cond: ((x #>= 'a '::varchar2) AND (x #<= 'a    '::varchar2))
+(6 rows)
+
+explain(costs off) select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ Sort
+   Sort Key: x COLLATE "binary"
+   ->  Bitmap Heap Scan on between_text
+         Recheck Cond: ((x #>= 'a '::text) AND (x #<= 'a    '::text))
+         ->  Bitmap Index Scan on between_text_pkey
+               Index Cond: ((x #>= 'a '::text) AND (x #<= 'a    '::text))
+(6 rows)
+
+select * from between_char where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+     x      | y 
+------------+---
+ a          | 1
+(1 row)
+
+select * from between_varchar where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+ x | y 
+---+---
+ a | 1
+(1 row)
+
+select * from between_text where x between 'a ' and 'a    ' order by 1;    -- 1 rows
+ x | y 
+---+---
+ a | 1
+(1 row)
+
+drop table between_char,between_text,between_varchar;
+reset all;
+set ivorysql.enable_blankspace_compare to on;
+/* End - SRS-MISC-COMPATDM-SQL */

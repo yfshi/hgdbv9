@@ -358,29 +358,31 @@ pg_compatible_oracle_precedence(Oid arg1, Oid arg2, char *opname_p, Oid *result_
 	}
 	else
 	{
-		/* 
-		 * Begin - Bug#Z471 & SRS-MISC-COMPATDM-SQL
-		 * Cause text if a prefered datatype,like operator tend to find text like text,
-		 * So we need to let it go through oravarbyte like oravarbyte.
-		 */
+		/* Begin - SRS-MISC-COMPATDM-SQL */
 		/* This is for compate DM in situation orachar || other. */
 		if(strcmp(opname_p,"||") == 0 && (arg1 == ORACHARCHAROID || arg1 == ORACHARBYTEOID || arg2 == ORACHARCHAROID || arg2 == ORACHARBYTEOID))
 		{
 			*result_arg1 = ORAVARCHARCHAROID;
 			*result_arg2 = ORAVARCHARCHAROID;
-			PG_RETURN_BOOL(true);
+			return true;
 		}
-
+		/* End - SRS-MISC-COMPATDM-SQL */
+		
+		/* 
+		 * Begin - Bug#Z471
+		 * Cause text if a prefered datatype,like operator tend to find a text-like-text,
+		 * So we need to let it go through oravarcharbyte like oravarcharbyte.
+ 		 */
 		if(strcmp(opname_p,"~~") == 0 || strcmp(opname_p,"!~~") == 0)
 		{
-			if(arg1 == ORACHARCHAROID || arg1 == ORACHARBYTEOID)
+			if(arg1 == ORACHARCHAROID || arg1 == ORACHARBYTEOID || arg2 == ORACHARCHAROID || arg2 == ORACHARBYTEOID)
 			{
 				*result_arg1 = ORAVARCHARBYTEOID;
 				*result_arg2 = ORAVARCHARBYTEOID;
-				PG_RETURN_BOOL(true);
+				return true;
 			}
 		}
-		/* End - Bug#Z471 & SRS-MISC-COMPATDM-SQL */
+		/* End - Bug#Z471*/
 		
 		/* arg1 and arg2 is postgresql data type */
 		*result_arg1 = InvalidOid;

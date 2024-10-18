@@ -287,16 +287,12 @@ textlike(PG_FUNCTION_ARGS)
 	text	   *pat = PG_GETARG_TEXT_PP(1);
 	bool		result;
 	char	   *s,
-			   *p,
-			   *s_trimed,
-			   *p_trimed;	/* SRS-MISC-COMPATDM-SQL */
+			   *p;
 	int			slen,
 				plen,
-				s_trimed_len,
+				s_trimed_len,	/* SRS-MISC-COMPATDM-SQL */
 				p_trimed_len;	/* SRS-MISC-COMPATDM-SQL */
-	text		*str_trimed,
-				*pat_trimed;	/* SRS-MISC-COMPATDM-SQL */
-
+	bool		has_wildcard = false;	/* SRS-MISC-COMPATDM-SQL */
 	s = VARDATA_ANY(str);
 	slen = VARSIZE_ANY_EXHDR(str);
 	p = VARDATA_ANY(pat);
@@ -304,29 +300,34 @@ textlike(PG_FUNCTION_ARGS)
 	/* 
 	 * Begin - SRS-MISC-COMPATDM-SQL
 	 * if  enable_blankspace_copmpare is off,we should not compare blank space,
-	 * so rtrim both str and pat blank spaces then compare.
+	 * so rtrim both str and pat blank spaces then compare
+	 * we only get trimed len here,cause GenericMatchText will deal with it.
 	 */
 	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
 	{
-		str_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(0)));
-		pat_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(1)));
-	
-		s_trimed = VARDATA_ANY(str_trimed);
-		s_trimed_len = VARSIZE_ANY_EXHDR(str_trimed);
-		p_trimed = VARDATA_ANY(pat_trimed);
-		p_trimed_len = VARSIZE_ANY_EXHDR(pat_trimed);
+		s_trimed_len = bpchartruelen(s,slen);
+		p_trimed_len = bpchartruelen(p,plen);
+		
 		/* 
-		 * if the blank padded space in patern more than in str,it's 
-		 * actually exact match in DM, in this situation just return false,
-		 * else use trimed string to compare.
+		 * First we need to determine if the pattern has wildcard,cause this will affect the result in DM
+		 * it's a bit weird,but we need to do it anyway,we need in view of multi-byte character here.
+		 * so use pg_mblen get the length.
 		 */
-		if(slen - s_trimed_len >= plen - p_trimed_len)
+		for(int i = 0;i < p_trimed_len;i = i + pg_mblen(p + i))
 		{
-			result = (GenericMatchText(s_trimed, s_trimed_len, p_trimed, p_trimed_len, PG_GET_COLLATION()) == LIKE_TRUE);
-			PG_RETURN_BOOL(result);
+			if( i < p_trimed_len && (*(p + i) == '%' || *(p + i) == '_') )
+			{
+				has_wildcard = true;
+				break;
+			}
+		}
+		if(!has_wildcard)
+		{
+			/* if the pattern has wildcard,it results in rtrimming both source and pattern to compare. */
+			result = (GenericMatchText(s, s_trimed_len, p, p_trimed_len, PG_GET_COLLATION()) == LIKE_TRUE);
 		}
 		else
-			PG_RETURN_BOOL(false);
+			result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) == LIKE_TRUE);
 	}
 	else
 	/* End - SRS-MISC-COMPATDM-SQL */
@@ -342,41 +343,49 @@ textnlike(PG_FUNCTION_ARGS)
 	text	   *pat = PG_GETARG_TEXT_PP(1);
 	bool		result;
 	char	   *s,
-			   *p,
-			   *s_trimed,
-			   *p_trimed;	/* SRS-MISC-COMPATDM-SQL */
+			   *p;
 	int			slen,
 				plen,
 				s_trimed_len,
 				p_trimed_len;	/* SRS-MISC-COMPATDM-SQL */
-	text		*str_trimed,
-				*pat_trimed;	/* SRS-MISC-COMPATDM-SQL */
+	bool		has_wildcard = false;	/* SRS-MISC-COMPATDM-SQL */
 
 	s = VARDATA_ANY(str);
 	slen = VARSIZE_ANY_EXHDR(str);
 	p = VARDATA_ANY(pat);
 	plen = VARSIZE_ANY_EXHDR(pat);
-	/* SRS-MISC-COMPATDM-SQL,same as textlike */
+	/* 
+	 * Begin - SRS-MISC-COMPATDM-SQL
+	 * if  enable_blankspace_copmpare is off,we should not compare blank space,
+	 * so rtrim both str and pat blank spaces then compare.
+	 */
 	if(ORA_PARSER == compatible_db && !enable_blankspace_compare)
 	{
-		str_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(0)));
-		pat_trimed = DatumGetTextP(DirectFunctionCall1(rtrim1,PG_GETARG_DATUM(1)));
-	
-		s_trimed = VARDATA_ANY(str_trimed);
-		s_trimed_len = VARSIZE_ANY_EXHDR(str_trimed);
-		p_trimed = VARDATA_ANY(pat_trimed);
-		p_trimed_len = VARSIZE_ANY_EXHDR(pat_trimed);
-
-		if(slen - s_trimed_len >= plen - p_trimed_len)
+		s_trimed_len = bpchartruelen(s,slen);
+		p_trimed_len = bpchartruelen(p,plen);
+		
+		/* 
+		 * First we need to determine if the pattern has wildcard,cause this will affect the result in DM
+		 * it's a bit weird,but we need to do it anyway,use pg_mblen handling multi-byte character.
+		 */
+		for(int i = 0;i < p_trimed_len;i = i + pg_mblen(p + i))
 		{
-			result = (GenericMatchText(s_trimed, s_trimed_len, p_trimed, p_trimed_len, PG_GET_COLLATION()) != LIKE_TRUE);
-			PG_RETURN_BOOL(result);
+			if( i < p_trimed_len && (*(p + i) == '%' || *(p + i) == '_') )
+			{
+				has_wildcard = true;
+				break;
+			}
+		}
+		if(!has_wildcard)
+		{
+			/* if the pattern has wildcard,it results in trimming both source and pattern then compare. */
+			result = (GenericMatchText(s, s_trimed_len, p, p_trimed_len, PG_GET_COLLATION()) != LIKE_TRUE);
 		}
 		else
-			PG_RETURN_BOOL(false);
+			result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) != LIKE_TRUE);
 	}
 	else
-	/* SRS-MISC-COMPATDM-SQL */
+	/* End - SRS-MISC-COMPATDM-SQL */
 		result = (GenericMatchText(s, slen, p, plen, PG_GET_COLLATION()) != LIKE_TRUE);
 
 	PG_RETURN_BOOL(result);

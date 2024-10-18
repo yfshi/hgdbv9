@@ -223,8 +223,24 @@ MatchText(const char *t, int tlen, const char *p, int plen,
 		NextByte(t, tlen);
 		NextByte(p, plen);
 	}
-
-	if (tlen > 0)
+	/* 
+	 * Begin - SRS-MISC-COMPATDM-SQL
+	 * if there is blank-space in source string remaining,we do not compare these
+	 * skip these blank-space until we find a none space character,
+	 * if not found,the str matched,on the contrary, match failed.
+	 * this is for compata guc enable_blankspace_compare in dm.
+	 */
+	if(ORA_PARSER == compatible_db && !enable_blankspace_compare && tlen > 0)
+	{
+		while(tlen > 0 && *t == ' ')
+			NextChar(t,tlen);
+		if(tlen > 0)
+			return LIKE_FALSE;
+		else
+			return LIKE_TRUE;
+	}
+	/* End - SRS-MISC-COMPATDM-SQL */
+	else if (tlen > 0)
 		return LIKE_FALSE;		/* end of pattern, but not of text */
 
 	/*

@@ -18,6 +18,25 @@
 #include "nodes/parsenodes.h"
 #include "parser/parse_node.h"
 
+/* Begin - SRS-MISC-COMPATDM-SQL */
+#define ROWCOMPARISONOP -1
+#define DISTINCTOP -2
+#define ISDMCHARTYPE(typeid) ((typeid >= ORACHARCHAROID && typeid <= ORAVARCHARBYTEOID) || (typeid == CLOBOID || typeid == TEXTOID || typeid == UNKNOWNOID))
+
+#define ISCOMPAREOPNAME(opname) (!strcmp(opname,"=")?true:\
+								 !strcmp(opname,"<")?true:\
+								 !strcmp(opname,">")?true:\
+								 !strcmp(opname,"<>")?true:\
+								 !strcmp(opname,"<=")?true:\
+								 !strcmp(opname,">=")?true:\
+								 false)
+#define OPCLASSISEXPLICIT(opcname) (!strcmp(opcname,"oracharchar_ops_explicit")?true:\
+								 !strcmp(opcname,"oracharbyte_ops_explicit")?true:\
+								 !strcmp(opcname,"oravarcharchar_ops_explicit")?true:\
+								 !strcmp(opcname,"oravarcharbyte_ops_explicit")?true:\
+								 !strcmp(opcname,"oratext_ops_explicit")?true:\
+								 false)
+/* End - SRS-MISC-COMPATDM-SQL */
 
 typedef HeapTuple Operator;
 
@@ -62,7 +81,7 @@ extern Oid	oprfuncid(Operator op);
 
 /* Build expression tree for an operator invocation */
 extern Expr *make_op(ParseState *pstate, List *opname,
-					 Node *ltree, Node *rtree, Node *last_srf, bool has_outer_join, int location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					 Node *ltree, Node *rtree, Node *last_srf, bool has_outer_join, int location, int opkind);	/* ReqID:SRS-SQL-OUTERJOIN(+) */ /* SRS-MISC-COMPATDM-SQL */
 extern Expr *make_scalar_array_op(ParseState *pstate, List *opname,
 								  bool useOr,
 								  Node *ltree, Node *rtree, int location);

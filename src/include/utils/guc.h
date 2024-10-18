@@ -279,7 +279,7 @@ extern int	tcp_keepalives_count;
 extern int	tcp_user_timeout;
 
 #ifdef TRACE_SORT
-extern bool trace_sort;
+extern PGDLLIMPORT bool trace_sort;	/* SRS-MISC-COMPATDM-SQL,win32 compile needs this to be declared as PGDLLIMPORT */
 #endif
 
 /* The following are the guc variables of ivorysql */
@@ -290,7 +290,7 @@ extern PGDLLIMPORT bool enable_case_switch;
 /* END - case sensitive indentify */
 
 /* BEGIN - SQL PARSER */
-extern int      database_mode;
+extern PGDLLIMPORT int  database_mode;	/* SRS-MISC-COMPATDM-SQL */
 extern PGDLLIMPORT int  compatible_db;
 /* END - SQL PARSER */
 
