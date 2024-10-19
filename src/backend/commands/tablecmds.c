@@ -10373,7 +10373,7 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		Form_pg_attribute 	att;
 		bool 				multi_col_fk = numfks > 1;
 		bool 				self_reference = (RelationGetRelid(rel) == RelationGetRelid(pkrel));
-		Oid					fk_default_collation = GetRelationCollation(rel);
+		Oid					fk_default_collation = RelationGetRelCollation(rel);
 
 		for (i = 0; i < numfks; i++)
 		{
@@ -13411,7 +13411,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			ModifyCheckPartitionKey(rel, attnum, oldcollid, targetcollid);
 		}
 		else if (OidIsValid(tform->typcollation))
-			targetcollid = GetRelationCollation(rel);
+			targetcollid = RelationGetRelCollation(rel);
 	}
 	/* End - Req: SRS-SQL-NLSSORT */
 	else
@@ -20224,7 +20224,7 @@ ATExecDefaultCollation(Relation relation, char *collname)
 
 	ObjectAddressSet(address, RelationRelationId, RelationGetRelid(relation));
 
-	oldColl = GetRelationCollation(relation);
+	oldColl = RelationGetRelCollation(relation);
 
 	if(newColl != oldColl)
 		UpdateRelationCollation(RelationGetRelationName(relation), 

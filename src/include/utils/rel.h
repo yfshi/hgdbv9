@@ -284,6 +284,8 @@ typedef struct RelationData
 	char        *relnspname;
 	bool        rel_from_dblink;
 	/* End - ReqID:SRS-SQL-DBLINK */
+
+	Oid			relCollation;	/* BUG:M0000393 */
 } RelationData;
 
 

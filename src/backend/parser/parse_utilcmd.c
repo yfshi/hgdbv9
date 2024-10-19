@@ -4240,7 +4240,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 			else if (typtup->oid == NAMEOID)
 				column->collOid = C_COLLATION_OID;
 			else if(cxt->rel) // for cmd `ALTER TABLE ADD`
-				column->collOid = GetRelationCollation(cxt->rel);
+				column->collOid = RelationGetRelCollation(cxt->rel);
 			else
 				column->collOid = cxt->collOid;
 		}
