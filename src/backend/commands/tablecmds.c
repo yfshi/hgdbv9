@@ -1448,7 +1448,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	relation_close(rel, NoLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if(pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	if(pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
 		ListCell	*cell;
 		int			num = 1;
@@ -1493,7 +1493,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		}
 
-		pg_object_create_obj_hook_type(relname,
+		pg_object_create_obj_hook(relname,
 										namespaceId,
 										false,
 										relkind,
@@ -1514,7 +1514,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 			{
 				ColumnDef *coldef = (ColumnDef *)lfirst(cell);
 
-				pg_object_create_obj_hook_type(coldef->colname, namespaceId,
+				pg_object_create_obj_hook(coldef->colname, namespaceId,
 													false,
 													'c',
 													newaddress,
@@ -1822,11 +1822,6 @@ RemoveRelations(DropStmt *drop)
 		obj.classId = RelationRelationId;
 		obj.objectId = relOid;
 		obj.objectSubId = 0;
-
-		// /* Begin - Req: SRS-SQL-NLSSORT */
-		// if (pg_object_drop_obj_hook_type && relkind != RELKIND_VIEW)
-		// 	pg_object_drop_obj_hook_type(obj);
-		// /* End - Req: SRS-SQL-NLSSORT */
 
 		add_exact_object_address(&obj, objects);
 	}
@@ -3851,15 +3846,15 @@ renameatt_internal(Oid myrelid,
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			childttnum = renameatt_internal(childrelid, oldattname, newattname, false, true, numparents, behavior);
 
-			if (pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+			if (pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
 			{
 				ObjectAddress	address;
 				PgObjectInfo	objinf;
 
 				ObjectAddressSubSet(address, AttributeRelationId, childrelid, (int32)childttnum);
 
-				if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
-					pg_object_alter_obj_hook_type(address, pstrdup(newattname), objinf->orischema, objinf->orioption, NULL);
+				if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
+					pg_object_alter_obj_hook(address, pstrdup(newattname), objinf->orischema, objinf->orioption, NULL);
 			}
 			/* END - ReqID:SRS-CMD-PGDUMP */
 		}
@@ -4009,13 +4004,13 @@ renameatt(RenameStmt *stmt)
 
 	ObjectAddressSubSet(address, RelationRelationId, relid, attnum);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if(pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+	if(pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
 	{
 		ObjectAddress address;
 		PgObjectInfo objinf;
 		ObjectAddressSubSet(address, AttributeRelationId, relid, attnum);
-		if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
-			pg_object_alter_obj_hook_type(address,
+		if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
+			pg_object_alter_obj_hook(address,
 										  stmt->newname,
 										  objinf->orischema,
 										  objinf->orioption,
@@ -4252,11 +4247,11 @@ RenameRelation(RenameStmt *stmt)
 	check_function_depend_on_relation(relid);
 	/* End - ReqID:SRS-PLSQL-TYPE */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_alter_obj_hook_type && compatible_db == ORA_PARSER)
+	if (pg_object_alter_obj_hook && compatible_db == ORA_PARSER)
 	{
 		PgObjectInfo objinf;
-		if ((objinf = pg_object_get_ori_infor_hook_type(address)) != NULL)
-			pg_object_alter_obj_hook_type(address, stmt->newname, objinf->orischema, objinf->orioption, NULL);
+		if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
+			pg_object_alter_obj_hook(address, stmt->newname, objinf->orischema, objinf->orioption, NULL);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 
@@ -7530,18 +7525,18 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	table_close(pgclass, RowExclusiveLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	if (pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
 		ObjectAddress address, address_paraent;
 		PgObjectInfo	objori;
 		ObjectAddressSubSet(address, AttributeRelationId, myrelid, newattnum);
 		ObjectAddressSubSet(address_paraent, RelationRelationId, myrelid, 0);
-		objori = pg_object_get_ori_infor_hook_type(address_paraent);
-		pg_object_create_obj_hook_type(colDef->colname, RelationGetNamespace(rel), true,
+		objori = pg_object_get_ori_infor_hook(address_paraent);
+		pg_object_create_obj_hook(colDef->colname, RelationGetNamespace(rel), true,
 											 'c',
 											 address,DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"fill zeor\": 5}"))),
 											 NULL);
-		pg_object_alter_obj_hook_type(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
+		pg_object_alter_obj_hook(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 
@@ -9517,13 +9512,13 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 	}
 	/* End - ReqID:SRS-SQL-ROWID */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_drop_obj_hook_type)
+	if (pg_object_drop_obj_hook)
 	{
 		ObjectAddress address;
 		ObjectAddressSubSet(address, AttributeRelationId,
 							object.objectId, object.objectSubId);
-		if (pg_object_get_ori_infor_hook_type(address) != NULL)
-			pg_object_drop_obj_hook_type(address);
+		if (pg_object_get_ori_infor_hook(address) != NULL)
+			pg_object_drop_obj_hook(address);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 	return object;
@@ -12795,14 +12790,14 @@ ATExecDropConstraint(Relation rel, const char *constrName,
 
 	table_close(conrel, RowExclusiveLock);
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (compatible_db == ORA_PARSER && pg_object_drop_obj_hook_type)
+	if (compatible_db == ORA_PARSER && pg_object_drop_obj_hook)
 	{
 		ObjectAddress	addr;
 		PgObjectInfo	ori;
 		ObjectAddressSet(addr, RelationRelationId, con->oid);
-		ori = pg_object_get_ori_infor_hook_type(addr);
+		ori = pg_object_get_ori_infor_hook(addr);
 		if (ori != NULL)
-			pg_object_drop_obj_hook_type(addr);
+			pg_object_drop_obj_hook(addr);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 }

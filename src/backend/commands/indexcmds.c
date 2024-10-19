@@ -1233,8 +1233,8 @@ DefineIndex(Oid relationId,
 		return address;
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (ORA_PARSER == compatible_db && pg_object_create_obj_hook_type)
-		pg_object_create_obj_hook_type(stmt->idxname,
+	if (ORA_PARSER == compatible_db && pg_object_create_obj_hook)
+		pg_object_create_obj_hook(stmt->idxname,
 										RelationGetNamespace(rel),
 										false,
 										RELKIND_INDEX,

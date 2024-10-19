@@ -54,21 +54,21 @@ typedef struct pg_object_ori_infor
 }pg_object_ori_infor;
 typedef pg_object_ori_infor *PgObjectInfo;
 
-typedef void (*Pg_object_create_obj_hook_type) (char *objname, Oid objnsp, bool replace, char objkind,
+typedef void (*pg_object_create_obj_hook_type) (char *objname, Oid objnsp, bool replace, char objkind,
 															ObjectAddress address, Jsonb *attr, Timestamp *createtime);
-typedef void (*Pg_object_alter_obj_hook_type) (ObjectAddress address, char *newname, Oid newschema, Jsonb *attr, Timestamp *modifiedtime);
-typedef PgObjectInfo (*Pg_object_get_ori_infor_hook_type) (ObjectAddress address);
-typedef void (*Pg_object_drop_obj_hook_type) (ObjectAddress address);
-typedef void (*Pg_object_bulid_cache_obj_hook_type) (Relation relation);
+typedef void (*pg_object_alter_obj_hook_type) (ObjectAddress address, char *newname, Oid newschema, Jsonb *attr, Timestamp *modifiedtime);
+typedef PgObjectInfo (*pg_object_get_ori_infor_hook_type) (ObjectAddress address);
+typedef void (*pg_object_drop_obj_hook_type) (ObjectAddress address);
+typedef void (*pg_object_bulid_cache_obj_hook_type) (Relation relation);
 
 
 
-extern PGDLLIMPORT Pg_object_create_obj_hook_type pg_object_create_obj_hook_type;
-extern PGDLLIMPORT Pg_object_alter_obj_hook_type pg_object_alter_obj_hook_type;
-extern PGDLLIMPORT Pg_object_drop_obj_hook_type pg_object_drop_obj_hook_type;
-extern PGDLLIMPORT Pg_object_get_ori_infor_hook_type pg_object_get_ori_infor_hook_type;
-extern PGDLLIMPORT Pg_object_bulid_cache_obj_hook_type pg_object_bulid_cache_obj_hook_type;
-extern PGDLLIMPORT Pg_object_bulid_cache_obj_hook_type pg_object_bulid_relcache;
+extern PGDLLIMPORT pg_object_create_obj_hook_type pg_object_create_obj_hook;
+extern PGDLLIMPORT pg_object_alter_obj_hook_type pg_object_alter_obj_hook;
+extern PGDLLIMPORT pg_object_drop_obj_hook_type pg_object_drop_obj_hook;
+extern PGDLLIMPORT pg_object_get_ori_infor_hook_type pg_object_get_ori_infor_hook;
+extern PGDLLIMPORT pg_object_bulid_cache_obj_hook_type pg_object_bulid_cache_obj_hook;
+extern PGDLLIMPORT pg_object_bulid_cache_obj_hook_type pg_object_bulid_relcache;
 
 /* Begin - Req:SRS-SQL-NLSSORT */
 extern Oid  GetNamespaceCollation(Oid namespaceId);

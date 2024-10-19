@@ -1707,9 +1707,9 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						   rettypeName);
 						   /* End - ReqID:SRS-SQL-PACKAGE */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_create_obj_hook_type && compatible_db == ORA_PARSER)
+	if (pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
-		pg_object_create_obj_hook_type(funcname, namespaceId, stmt->replace, stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION), address, NULL, NULL);
+		pg_object_create_obj_hook(funcname, namespaceId, stmt->replace, stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION), address, NULL, NULL);
 	}
 
 	return address;
@@ -2162,13 +2162,13 @@ RemoveFunctionById(Oid funcOid)
 		table_close(relation, RowExclusiveLock);
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (pg_object_drop_obj_hook_type && ORA_PARSER == compatible_db)
+	if (pg_object_drop_obj_hook && ORA_PARSER == compatible_db)
 	{
 		ObjectAddress address;
 
 		ObjectAddressSet(address, ProcedureRelationId, funcOid);
-		if (pg_object_get_ori_infor_hook_type(address) != NULL)
-			pg_object_drop_obj_hook_type(address);
+		if (pg_object_get_ori_infor_hook(address) != NULL)
+			pg_object_drop_obj_hook(address);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 }
