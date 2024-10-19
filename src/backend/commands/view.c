@@ -1232,7 +1232,7 @@ make_view_invalid(Oid viewid)
 	 */
 	DeleteAttributeTuples(viewid);
 	/* BEGIN - BUGM354 */
-	if(pg_object_drop_obj_hook_type && compatible_db == ORA_PARSER)
+	if(pg_object_drop_obj_hook && compatible_db == ORA_PARSER)
 		DeleteForceViewAttinPgobject(viewid);
 	/* END - BUGM354 */
 	/*

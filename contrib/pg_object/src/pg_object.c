@@ -29,11 +29,11 @@
 
 bool enable_pg_object = false;
 
-Pg_object_create_obj_hook_type prepg_object_create_obj_hook_type = NULL;
-Pg_object_alter_obj_hook_type prepg_object_alter_obj_hook_type = NULL;
-Pg_object_drop_obj_hook_type prepg_object_drop_obj_hook_type = NULL;
-Pg_object_bulid_cache_obj_hook_type prepg_object_bulid_cache_obj_hook_type = NULL;
-Pg_object_get_ori_infor_hook_type prepg_object_get_ori_infor_hook_type = NULL;
+static pg_object_create_obj_hook_type 		prepg_object_create_obj_hook = NULL;
+static pg_object_alter_obj_hook_type 		prepg_object_alter_obj_hook = NULL;
+static pg_object_drop_obj_hook_type 		prepg_object_drop_obj_hook = NULL;
+static pg_object_bulid_cache_obj_hook_type 	prepg_object_bulid_cache_obj_hook = NULL;
+static pg_object_get_ori_infor_hook_type 	prepg_object_get_ori_infor_hook = NULL;
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -58,16 +58,16 @@ _PG_init(void)
 						 NULL, NULL, NULL);
 
 	/* initialization hook */
-	prepg_object_create_obj_hook_type = pg_object_create_obj_hook_type;
-	pg_object_create_obj_hook_type = pg_object_createobj;
-	prepg_object_alter_obj_hook_type = pg_object_alter_obj_hook_type;
-	pg_object_alter_obj_hook_type = pg_object_alterobj;
-	prepg_object_drop_obj_hook_type = pg_object_drop_obj_hook_type;
-	pg_object_drop_obj_hook_type = pg_object_drop;
-	prepg_object_bulid_cache_obj_hook_type = pg_object_bulid_cache_obj_hook_type;
-	pg_object_bulid_cache_obj_hook_type = RelationBuildColumnAttr;
-	prepg_object_get_ori_infor_hook_type = pg_object_get_ori_infor_hook_type;
-	pg_object_get_ori_infor_hook_type = get_object_origin_info;
+	prepg_object_create_obj_hook = pg_object_create_obj_hook;
+	pg_object_create_obj_hook = pg_object_createobj;
+	prepg_object_alter_obj_hook = pg_object_alter_obj_hook;
+	pg_object_alter_obj_hook = pg_object_alterobj;
+	prepg_object_drop_obj_hook = pg_object_drop_obj_hook;
+	pg_object_drop_obj_hook = pg_object_drop;
+	prepg_object_bulid_cache_obj_hook = pg_object_bulid_cache_obj_hook;
+	pg_object_bulid_cache_obj_hook = RelationBuildColumnAttr;
+	prepg_object_get_ori_infor_hook = pg_object_get_ori_infor_hook;
+	pg_object_get_ori_infor_hook = get_object_origin_info;
 }
 
 /*
@@ -80,9 +80,9 @@ _PG_init(void)
 void
 _PG_fini(void)
 {
-	pg_object_create_obj_hook_type = prepg_object_create_obj_hook_type;
-	pg_object_alter_obj_hook_type = prepg_object_alter_obj_hook_type;
-	pg_object_drop_obj_hook_type = prepg_object_drop_obj_hook_type;
-	pg_object_bulid_cache_obj_hook_type = prepg_object_bulid_cache_obj_hook_type;
-	pg_object_get_ori_infor_hook_type = prepg_object_get_ori_infor_hook_type;
+	pg_object_create_obj_hook = prepg_object_create_obj_hook;
+	pg_object_alter_obj_hook = prepg_object_alter_obj_hook;
+	pg_object_drop_obj_hook = prepg_object_drop_obj_hook;
+	pg_object_bulid_cache_obj_hook = prepg_object_bulid_cache_obj_hook;
+	pg_object_get_ori_infor_hook = prepg_object_get_ori_infor_hook;
 }

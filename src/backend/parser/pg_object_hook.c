@@ -33,27 +33,31 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 
-Pg_object_create_obj_hook_type pg_object_create_obj_hook_type = NULL;
-Pg_object_alter_obj_hook_type pg_object_alter_obj_hook_type = NULL;
-Pg_object_drop_obj_hook_type pg_object_drop_obj_hook_type = NULL;
-Pg_object_bulid_cache_obj_hook_type pg_object_bulid_cache_obj_hook_type = NULL;
-Pg_object_get_ori_infor_hook_type pg_object_get_ori_infor_hook_type = NULL;
-Pg_object_bulid_cache_obj_hook_type pg_object_bulid_relcache = NULL;
+pg_object_create_obj_hook_type      pg_object_create_obj_hook = NULL;
+pg_object_alter_obj_hook_type       pg_object_alter_obj_hook = NULL;
+pg_object_drop_obj_hook_type        pg_object_drop_obj_hook = NULL;
+pg_object_get_ori_infor_hook_type   pg_object_get_ori_infor_hook = NULL;
+pg_object_bulid_cache_obj_hook_type pg_object_bulid_relcache = NULL;
+pg_object_bulid_cache_obj_hook_type pg_object_bulid_cache_obj_hook = NULL;
 
 /* Begin - Req:SRS-SQL-NLSSORT */
+#define COLLATION_KEY_VAL   "collation"
+#define COLLATION_KEY_LEN   9
+#define COLLATION_KEY_PATH "{collation}"
+
 static void
 CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, ObjectAddress address, char objectKind)
 {
     PgObjectInfo     info;
     
-    if (!pg_object_create_obj_hook_type || 
-        !pg_object_alter_obj_hook_type  || 
-        !pg_object_get_ori_infor_hook_type)
+    if (!pg_object_create_obj_hook || 
+        !pg_object_alter_obj_hook  || 
+        !pg_object_get_ori_infor_hook)
     {
         elog(ERROR, "pg_object extension missing!");
     }
 
-    info = pg_object_get_ori_infor_hook_type(address);
+    info = pg_object_get_ori_infor_hook(address);
 
     if (info == NULL || info->orioption == NULL)
     {
@@ -63,8 +67,8 @@ CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, 
                          val;
 
         key.type = jbvString;
-        key.val.string.len = strlen("collation");
-        key.val.string.val = "collation";
+        key.val.string.val = COLLATION_KEY_VAL;
+        key.val.string.len = COLLATION_KEY_LEN; // length of "collation";
 
         val.type = jbvNumeric;
         val.val.numeric = int64_to_numeric(coll);
@@ -74,13 +78,20 @@ CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, 
         pushJsonbValue(&state, WJB_VALUE, &val);
         res = pushJsonbValue(&state, WJB_END_OBJECT, NULL);
 
-        pg_object_create_obj_hook_type(relname, 
-                                       namespaceId, 
-                                       true, 
-                                       objectKind, 
-                                       address, 
-                                       JsonbValueToJsonb(res), 
-                                       NULL);
+        if (info == NULL)
+            pg_object_create_obj_hook(relname, 
+                                      namespaceId, 
+                                      true, 
+                                      objectKind, 
+                                      address, 
+                                      JsonbValueToJsonb(res), 
+                                      NULL);
+        else
+            pg_object_alter_obj_hook(address,
+                                     relname, 
+                                     namespaceId, 
+                                     JsonbValueToJsonb(res), 
+                                     NULL);
     }
     else
     {
@@ -92,7 +103,7 @@ CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, 
         // call array_in
         getTypeInputInfo(TEXTARRAYOID, &typinput, &typioparam);
         path = OidInputFunctionCall(typinput, 
-                                    "{collation}", 
+                                    COLLATION_KEY_PATH, 
                                     typioparam, 
                                     -1);
         // call jsonb_in
@@ -102,6 +113,7 @@ CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, 
                                    collstr, 
                                    typioparam, 
                                    -1);
+
         // call jsonb_set to alter old value
         ret = DirectFunctionCall4(jsonb_set,
                                   JsonbPGetDatum(old),
@@ -109,11 +121,11 @@ CreateOrUpdatePgObjectCollationOption(char *relname, Oid namespaceId, Oid coll, 
                                   JsonbPGetDatum(new),
                                   BoolGetDatum(true));
 
-        pg_object_alter_obj_hook_type(address,
-                                      relname, 
-                                      namespaceId, 
-                                      DatumGetJsonbP(ret), 
-                                      NULL);
+        pg_object_alter_obj_hook(address,
+                                 relname, 
+                                 namespaceId, 
+                                 DatumGetJsonbP(ret), 
+                                 NULL);
     }
 }
 
@@ -144,17 +156,17 @@ GetPgObjectCollationOption(ObjectAddress address)
     JsonbValue      *val = NULL;
     char            *collstr;
 
-    if (!pg_object_get_ori_infor_hook_type)
+    if (!pg_object_get_ori_infor_hook)
         elog(ERROR, "pg_object extension missing!");
 
-    info = pg_object_get_ori_infor_hook_type(address);
+    info = pg_object_get_ori_infor_hook(address);
 
     if (info == NULL || info->orioption == NULL)
         return InvalidOid;
     
     key.type = jbvString;
-	key.val.string.val = "collation";
-	key.val.string.len = strlen("collation");
+	key.val.string.val = COLLATION_KEY_VAL;
+	key.val.string.len = COLLATION_KEY_LEN;
 
     val = findJsonbValueFromContainer(&info->orioption->root,
                                       JB_FOBJECT | JB_FARRAY,
@@ -197,10 +209,6 @@ GetNamespaceCollation(Oid namespaceId)
     if (OidIsValid(coll))
         return coll;
     
-    coll = ORA_COLL_OID(USING_NLS_COMP);
-
-    SetNamespaceCollation(get_namespace_name(namespaceId), namespaceId, coll, address);
-
-    return coll;
+    return ORA_COLL_OID(USING_NLS_COMP);
 }
 /* End - Req:SRS-SQL-NLSSORT */

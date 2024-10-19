@@ -2463,15 +2463,15 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 		UnlockRelationIdForSession(&indexrelid, ShareUpdateExclusiveLock);
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (ORA_PARSER == compatible_db && pg_object_drop_obj_hook_type)
+	if (ORA_PARSER == compatible_db && pg_object_drop_obj_hook)
 	{
 		PgObjectInfo		ori;
 		ObjectAddress		addr;
 
 		ObjectAddressSet(addr, RelationRelationId, indexId);
-		ori = pg_object_get_ori_infor_hook_type(addr);
+		ori = pg_object_get_ori_infor_hook(addr);
 		if (ori != NULL)
-			pg_object_drop_obj_hook_type(addr);
+			pg_object_drop_obj_hook(addr);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 }
