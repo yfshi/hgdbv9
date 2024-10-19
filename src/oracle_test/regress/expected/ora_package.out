@@ -5963,14 +5963,14 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
  test_pkg1 | PACKAGE BODY | 15   | end;
 (47 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
- standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      |                         | 0             | PACKAGE     | CURRENT_USER
  test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
  test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
@@ -5982,14 +5982,14 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (14 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
- standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      |                         | 0             | PACKAGE     | CURRENT_USER
  test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
  test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
@@ -6001,7 +6001,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (14 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
 -------------+----------------+---------------+-------------+---------
  test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
@@ -6014,7 +6014,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
  test_pkg1   |                | 0             | PACKAGE     | DEFINER
 (8 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6026,15 +6026,15 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
 (15 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6046,21 +6046,21 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
 (15 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f | test_pkg1    | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f | test_pkg1    | 1             | id            | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p | test_pkg1    | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6411,14 +6411,14 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 ------+------+------+------
 (0 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
- standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      |                         | 0             | PACKAGE     | CURRENT_USER
  test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
  test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
@@ -6430,7 +6430,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (14 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
@@ -6444,12 +6444,12 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (9 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid 
 -------------+----------------+---------------+-------------+--------
 (0 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6461,23 +6461,23 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
 (15 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6485,7 +6485,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
 (11 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
 (0 rows)
@@ -6889,14 +6889,14 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
  test_pkg | PACKAGE BODY | 20   | end;
 (27 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
- standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      |                         | 0             | PACKAGE     | CURRENT_USER
  test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
  test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
@@ -6908,14 +6908,14 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (14 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
- standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
+ standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
  standard      |                         | 0             | PACKAGE     | CURRENT_USER
  test_pkg      | test_f                  | 1             | PACKAGE     | DEFINER
  test_pkg      | test_f1                 | 4             | PACKAGE     | DEFINER
@@ -6927,7 +6927,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
 (14 rows)
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
 -------------+----------------+---------------+-------------+---------
  test_pkg    | test_f         | 1             | PACKAGE     | DEFINER
@@ -6937,27 +6937,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
  test_pkg    |                | 0             | PACKAGE     | DEFINER
 (5 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
-       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
--------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
- raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
- raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
- sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
- sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
- test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
- test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
- test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(15 rows)
-
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
@@ -6969,21 +6949,41 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
 (15 rows)
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
+       object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
+-------------------------+---------------+---------------+----------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
+ raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
+ raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ sqlerrm                 | standard      | 3             | code           | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ test_f                  | test_pkg      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_f                  | test_pkg      | 1             | id             | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
+ test_pp                 | test_pkg      | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1                 | test_pkg      | 4             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
+(15 rows)
+
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------+--------------+---------------+---------------+----------+----------+-----------+-----------+--------+-------------+----------------+-------+--------------------
  test_f      | test_pkg     | 1             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_f      | test_pkg     | 1             | id            | 1        | 2        | NUMBER    | Y         | IN     | 22          | 38             | 10    | 
- test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  test_pp     | test_pkg     | 2             | id            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ test_f1     | test_pkg     | 4             |               | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
 (4 rows)
 
 reset session authorization;
