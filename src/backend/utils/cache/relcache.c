@@ -6819,3 +6819,14 @@ unlink_initfile(const char *initfilename, int elevel)
 							initfilename)));
 	}
 }
+
+/* Begin - BUG:M0000393 */
+Oid
+RelationGetRelCollation(Relation relation)
+{
+	if (!OidIsValid(relation->relCollation))
+		relation->relCollation = GetRelationCollation(relation);
+
+	return relation->relCollation;
+}
+/* End - BUG:M0000393 */

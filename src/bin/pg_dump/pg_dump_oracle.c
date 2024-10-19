@@ -16999,15 +16999,13 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			appendPQExpBufferChar(q, ')');
 		}
 
-#if 0
-		/* Begin - Req:SRS-SQL-NLSSORT */
+		/* Begin - BUG:M0000393 */
 		if (strcmp(reltypename, "TABLE") == 0 && 
 			tbinfo->default_collation)
 		{
 			appendPQExpBuffer(q, "\nDEFAULT COLLATION \"%s\" ", tbinfo->default_collation);
 		}
-		/* End - Req:SRS-SQL-NLSSORT */
-#endif
+		/* End - BUG:M0000393 */
 
 		/* Begin BUG#Z378 */
 		if (tbinfo->relpersistence == RELPERSISTENCE_TEMP ||
