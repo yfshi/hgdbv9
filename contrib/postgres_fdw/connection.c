@@ -453,7 +453,12 @@ connect_pg_server(ForeignServer *server, UserMapping *user)
 		 * identity. See also dblink_security_check() in contrib/dblink and
 		 * check_conn_params.
 		 */
-		if (!superuser_arg(user->userid) && UserMappingPasswordRequired(user) &&
+		/* BUG#M 0000397 */
+		/* We skip the check if the connected DBLINK server is a supperuser
+		 * server->ora_dblink_contype < 1 is a normal postgres foreign server
+		 * server->ora_dblink_contype > 1 is a compatible Oracle DBLINK server
+		 */
+		if (server->ora_dblink_contype < 1 && !superuser_arg(user->userid) && UserMappingPasswordRequired(user) &&
 			!PQconnectionUsedPassword(conn))
 			ereport(ERROR,
 					(errcode(ERRCODE_S_R_E_PROHIBITED_SQL_STATEMENT_ATTEMPTED),
