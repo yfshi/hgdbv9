@@ -381,8 +381,9 @@ ERROR:  tolerate mode,cannot copy to relation "instead_of_insert_tbl_view" as no
 -- Output file
 TRUNCATE x;
 TRUNCATE x_bad;
-COPY x to '@abs_srcdir@/results/pg_bulkload_multi.bad' with csv delimiter ',';
-COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' filename 'csv1.csv' badfile '@abs_srcdir@/results/pg_bulkload_multi.bad';
+-- Bug:M0000395 change /results/ to /data/
+COPY x to '@abs_srcdir@/data/pg_bulkload_multi.bad' with csv delimiter ',';
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' filename 'csv1.csv' badfile '@abs_srcdir@/data/pg_bulkload_multi.bad';
 SELECT * from x;
  a | b |  c   | d |   e    | f 
 ---+---+------+---+--------+---
@@ -391,7 +392,7 @@ SELECT * from x;
 (2 rows)
 
 TRUNCATE x;
-COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_shard 3 taskid 'all12' filename 'csv1.csv' badfile '@abs_srcdir@/results/pg_bulkload_multi.bad';
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_shard 3 taskid 'all12' filename 'csv1.csv' badfile '@abs_srcdir@/data/pg_bulkload_multi.bad';
 SELECT * from x;
  a | b |  c   | d |   e    | f 
 ---+---+------+---+--------+---
@@ -400,7 +401,7 @@ SELECT * from x;
 (2 rows)
 
 Create table error(bad_record text);
-Copy error from '@abs_srcdir@/results/pg_bulkload_multi.bad' with csv delimiter '|';
+Copy error from '@abs_srcdir@/data/pg_bulkload_multi.bad' with csv delimiter '|';
 SELECT * from error;
                        bad_record                       
 --------------------------------------------------------

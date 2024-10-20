@@ -756,7 +756,7 @@ CopyFrom(CopyFromState cstate)
 					 errmsg("cannot copy to non-table relation \"%s\"",
 							RelationGetRelationName(cstate->rel))));
 	}
-	
+
 	/* Begin - ReqID:SRS-MISC-BULKLOAD */
 	/* check target is base table or partition table */
 	if (cstate->opts.tolerate)
