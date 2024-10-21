@@ -2860,6 +2860,15 @@ ReindexIndex(RangeVar *indexRelation, ReindexParams *params, bool isTopLevel)
 	 * already hold a lock on the index.
 	 */
 	persistence = get_rel_persistence(indOid);
+
+	/* Begin - BUG#M0000386 */
+	/* GTT cannot support reindex */
+	if (persistence == RELPERSISTENCE_GLOBAL_TEMP)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot reindex on a global temporary table")));
+	/* End - BUG#M0000386 */
+
 	relkind = get_rel_relkind(indOid);
 
 	if (relkind == RELKIND_PARTITIONED_INDEX)
@@ -2970,6 +2979,14 @@ ReindexTable(RangeVar *relation, ReindexParams *params, bool isTopLevel)
 									   ShareUpdateExclusiveLock : ShareLock,
 									   0,
 									   RangeVarCallbackOwnsTable, NULL);
+
+	/* Begin - BUG#M0000386 */
+	/* GTT cannot support reindex */
+	if (get_rel_persistence(heapOid) == RELPERSISTENCE_GLOBAL_TEMP)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot reindex on a global temporary table")));
+	/* End - BUG#M0000386 */
 
 	if (get_rel_relkind(heapOid) == RELKIND_PARTITIONED_TABLE)
 		ReindexPartitions(heapOid, params, isTopLevel);
