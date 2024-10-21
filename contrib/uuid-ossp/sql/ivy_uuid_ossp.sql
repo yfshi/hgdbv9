@@ -1,4 +1,5 @@
-CREATE EXTENSION "uuid-ossp";
+-- initdb has already loaded uuid-ossp, so there is no need to create it manually(BUG#M0000359).
+--CREATE EXTENSION "uuid-ossp";
 
 SELECT uuid_nil();
 SELECT uuid_ns_dns();
@@ -79,3 +80,6 @@ SELECT uuid_version_bits(uuid_generate_v4()),
        uuid_reserved_bits(uuid_generate_v4());
 
 SELECT uuid_generate_v4() <> uuid_generate_v4();
+
+-- BUG#M0000359
+SELECT sys_guid() <> sys_guid();

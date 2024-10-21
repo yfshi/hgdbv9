@@ -55,7 +55,8 @@ SUBDIRS = \
 		ora_btree_gist	\
 		ora_btree_gin	\
 		pg_object	\
-		ivorysql_my
+		ivorysql_my	\
+		uuid-ossp
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo
@@ -63,11 +64,11 @@ else
 ALWAYS_SUBDIRS += sslinfo
 endif
 
-ifneq ($(with_uuid),no)
-SUBDIRS += uuid-ossp
-else
-ALWAYS_SUBDIRS += uuid-ossp
-endif
+#ifneq ($(with_uuid),no)
+#SUBDIRS += uuid-ossp
+#else
+#ALWAYS_SUBDIRS += uuid-ossp
+#endif
 
 ifeq ($(with_libxml),yes)
 SUBDIRS += xml2
