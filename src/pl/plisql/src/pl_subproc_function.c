@@ -700,6 +700,18 @@ no_argument:
 	 */
 	function->fn_rettype = rettypeid;
 	function->fn_retset = false;
+	/* Begin - BUG#Z0001268 */
+	/*
+	 * replace nargs
+	 */
+	if (function->fn_nargs < nargs)
+	{
+		if (function->fn_argvarnos == NULL)
+			function->fn_argvarnos = (int *) palloc0(sizeof(int) * nargs);
+		else
+			function->fn_argvarnos = repalloc(function->fn_argvarnos, sizeof(int) * nargs);
+	}
+	/* End - BUG#Z00001268 */
 	function->fn_nargs = nargs;
 
 	/*
@@ -2083,6 +2095,13 @@ plisql_build_subproc_function_internal(char *funcname, List *args,
 		function->fn_prokind = PROKIND_FUNCTION;
 
 	function->fn_nargs = list_length(args);
+	/* Begin - BUG#Z0001268 */
+	/*
+	 * palloc space for fn_varnos
+	 */
+	if (function->fn_nargs > 0)
+		function->fn_argvarnos = (int *) palloc0(sizeof(int) * function->fn_nargs);
+	/* End - BUG#Z00001268 */
 	/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 	function->paramnames = NULL;
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
@@ -3504,6 +3523,13 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	function->nstatements = 0;
 	function->requires_procedure_resowner = false;
 	function->fn_nargs = subprocfunc->function->fn_nargs;
+	/* Begin - BUG#Z0001268 */
+	/*
+	 * palloc space for fn_varnos
+	 */
+	if (function->fn_nargs > 0)
+		function->fn_argvarnos = (int *) palloc0(sizeof(int) * function->fn_nargs);
+	/* End - BUG#Z00001268 */
 	cur_compile_func_level = 0;
 
 	/* Begin - ReqID:SRS-SQL-PACKAGE */

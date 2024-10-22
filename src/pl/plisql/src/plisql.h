@@ -1098,7 +1098,7 @@ typedef struct PLiSQL_function
 	char		fn_prokind;
 
 	int			fn_nargs;
-	int			fn_argvarnos[FUNC_MAX_ARGS];
+	int			*fn_argvarnos; /* BUG#Z0001268 */
 	int			out_param_varno;
 	int			found_varno;
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
