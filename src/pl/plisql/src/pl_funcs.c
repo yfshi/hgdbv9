@@ -988,6 +988,15 @@ plisql_free_function_memory(PLiSQL_function *func,
 	func->nsubprocfuncs = 0;
 	/* End - SRS-PLSQL-SUBPROC */
 
+	/* Begin - BUG#Z0001268 */
+	/* free fn_argvarnos */
+	if (func->fn_argvarnos)
+	{
+		pfree(func->fn_argvarnos);
+		func->fn_argvarnos = NULL;
+	}
+	/* End - BUG#Z00001268 */
+
 	/*
 	 * And finally, release all memory except the PLiSQL_function struct
 	 * itself (which has to be kept around because there may be multiple

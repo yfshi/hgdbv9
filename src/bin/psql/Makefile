@@ -75,13 +75,11 @@ psqlscanslash.c: FLEX_FIX_WARNING=yes
 
 # Begin - ReqID:SRS-PSQL-PARSER
 ora_psqlscanslash.c: FLEXFLAGS = -Cfe -p -p
-ora_psqlscanslash.c: FLEX_NO_BACKUP=yes
 ora_psqlscanslash.c: FLEX_FIX_WARNING=yes
 # End - ReqID:SRS-PSQL-PARSER
 
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
 mys_psqlscanslash.c: FLEXFLAGS = -Cfe -p -p
-mys_psqlscanslash.c: FLEX_NO_BACKUP=yes
 mys_psqlscanslash.c: FLEX_FIX_WARNING=yes
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 

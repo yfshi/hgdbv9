@@ -512,6 +512,15 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	/* Mark the function as busy, just pro forma */
 	func->use_count++;
 
+	/* Begin - BUG#Z0001268 */
+	/* numParams may be exceeds FUNC_MAX_ARGS */
+	if (codeblock->params != NULL &&
+		codeblock->params->numParams > FUNC_MAX_ARGS)
+	{
+		fake_fcinfo = (FunctionCallInfo) palloc(SizeForFunctionCallInfo(codeblock->params->numParams));
+	}
+	/* End - BUG#Z00001268 */
+
 	/*
 	 * Set up a fake fcinfo with just enough info to satisfy
 	 * plisql_exec_function().  In particular note that this sets things up
@@ -593,6 +602,12 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 		}
 		/* End - ReqID:SRS-SQL-CALL */
 
+		/* Begin - BUG#Z0001268 */
+		if (codeblock->params != NULL &&
+			codeblock->params->numParams > FUNC_MAX_ARGS)
+			pfree(fake_fcinfo);
+		/* End - BUG#Z00001268 */
+
 		/* Begin - ReqID:SRS-SQL-ANONYOUT */
 		set_bindbyname(false);
 		/* End - ReqID:SRS-SQL-ANONYOUT */
@@ -661,6 +676,12 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 		MemoryContextSwitchTo(old);
 	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
+
+	/* Begin - BUG#Z0001268 */
+	if (codeblock->params != NULL &&
+		codeblock->params->numParams > FUNC_MAX_ARGS)
+		pfree(fake_fcinfo);
+	/* End - BUG#Z00001268 */
 
 	/* Clean up the private EState and resowner */
 	FreeExecutorState(simple_eval_estate);

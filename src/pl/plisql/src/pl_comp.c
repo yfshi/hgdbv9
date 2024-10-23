@@ -1267,6 +1267,14 @@ do_compile(FunctionCallInfo fcinfo,
 	 */
 	function->fn_nargs = procStruct->pronargs;
 
+	/* Begin - BUG#Z0001268 */
+	/*
+	 * palloc space for fn_argvarnos
+	 */
+	if (function->fn_nargs > 0)
+		function->fn_argvarnos = (int *) palloc0(sizeof(int) * function->fn_nargs);
+	/* End - BUG#Z00001268 */
+
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	if (is_plisql_function)
 	{
@@ -1591,6 +1599,21 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 		/* Begin - ReqID:SRS-SQL-LIBPQOUT */
 		function->paramnames = inparams->paramnames;
 		/* End - ReqID:SRS-SQL-LIBPQOUT */
+
+		/* Begin - BUG#Z0001268 */
+		/*
+		 * The parameters of the anonymous block may exceed the maximum
+		 * value of function parameters FUNC_MAX_ARGS, and increasing FUNC_MAX_ARGS
+		 * will waste memory space From mobile applications, the number of parameters
+		 * in anonymous blocks reaches 50,000. This obviously means that a function
+		 * needs to waste 4 million bytes, which is not reasonable.
+		 * so they are saved with extra pointers
+		 */
+		if (function->fn_nargs > 0)
+		{
+			function->fn_argvarnos = (int *) palloc0(sizeof(int) * function->fn_nargs);
+		}
+		/* End - BUG#Z00001268 */
 
 		for (i = 0; i < inparams->numParams; i++)
 		{
