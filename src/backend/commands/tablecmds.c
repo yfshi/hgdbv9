@@ -7737,7 +7737,14 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		childtab = ATGetQueueEntry(wqueue, childrel);
 
 		if (is_rowid)
+		{
 			childcmd->is_rowid = true; /* ReqID:SRS-SQL-ROWID */
+			/* Begin - BUG#M0000398 */
+			ATParseTransformCmd(wqueue, childtab, childrel, *cmd, recurse, lockmode,
+								   cur_pass, context);
+			/* End - BUG#M0000398 */
+		}
+
 		/* Recurse to child; return value is ignored */
 		ATExecAddColumn(wqueue, childtab, childrel,
 						&childcmd, recurse, true,
@@ -9374,6 +9381,14 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 				elog(ERROR, "cache lookup failed for attribute \"%s\" of relation %u",
 					 colName, childrelid);
 			childatt = (Form_pg_attribute) GETSTRUCT(tuple);
+
+			/* Begin - BUG#M0000398 */
+			if (attnum == RowIdAttributeNumber)
+			{
+				childatt->attinhcount = 1;
+				childatt->attislocal = false;
+			}
+			/* End - BUG#M0000398 */
 
 			if (childatt->attinhcount <= 0) /* shouldn't happen */
 				elog(ERROR, "relation %u has non-inherited attribute \"%s\"",
