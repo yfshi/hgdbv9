@@ -2437,3 +2437,40 @@ drop package pkg;
 
 reset ivorysql.enable_get_oraparam_mode;
 /* End - BUG#M0000376 */
+
+
+--bug#Z1269
+--ok
+create or replace function test_f_array(variadic int[]) return integer is
+begin
+	return $1[1];
+end;
+/
+
+select test_f_array(1,2) from dual;
+select test_f_array(3,4,5) from dual;
+
+--error
+create or replace function test_f_array(variadic int[],  integer) return integer is
+begin
+	return $1[1];
+end;
+/
+
+--error
+create or replace function test_f_array(variadic int[], out integer) return integer is
+begin
+	return $1[1];
+end;
+/
+
+--error
+create or replace function test_f_array(variadic int[], IN out integer) return integer is
+begin
+	return $1[1];
+end;
+/
+
+show ivorysql.compile_plisql_use_owner;
+
+drop function test_f_array;

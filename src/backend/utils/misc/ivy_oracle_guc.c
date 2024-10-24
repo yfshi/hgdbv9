@@ -172,6 +172,11 @@ bool	enable_get_oraparam_mode = false;
 char	*plsql_warnings = "";
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - BUG#Z0001269 */
+bool   convert_utf8_to_gbk_question_mark = true;
+/* End - BUG#Z00001269 */
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -654,6 +659,28 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000376 */
+	/* Begin - BUG#Z0001269 */
+	{
+		{"ivorysql.convert_utf8_to_gbk_question_mark", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether convert the encoding which cannot been converted from UTF8 to GBK to question mark."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&convert_utf8_to_gbk_question_mark,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.compile_plisql_use_owner", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether comping plsqil use its owner."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&compile_plisql_use_owner,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z00001269 */
 #endif
 #if 0
 	/* End-of-list marker */

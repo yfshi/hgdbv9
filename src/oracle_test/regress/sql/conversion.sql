@@ -220,3 +220,24 @@ select description, inbytes, (test_conv(inbytes, 'mule_internal', 'iso8859-5')).
 select description, inbytes, (test_conv(inbytes, 'mule_internal', 'sjis')).* from mic_inputs;
 select description, inbytes, (test_conv(inbytes, 'mule_internal', 'big5')).* from mic_inputs;
 select description, inbytes, (test_conv(inbytes, 'mule_internal', 'euc_jp')).* from mic_inputs;
+
+
+--bug#Z1269
+CREATE TABLE utf8_gbk_inputs (inbytes bytea);
+
+insert into utf8_gbk_inputs values('\xcaa1');
+insert into utf8_gbk_inputs values('\xe280a2');
+insert into utf8_gbk_inputs values('\xe3aebe');
+insert into utf8_gbk_inputs values('\xee97a5');
+insert into utf8_gbk_inputs values('\xee9799');
+insert into utf8_gbk_inputs values('\xee9a85');
+
+set ivorysql.convert_utf8_to_gbk_question_mark = false;
+
+select inbytes,(test_conv(inbytes, 'utf8', 'gbk')).* from utf8_gbk_inputs ORDER BY inbytes;
+
+set ivorysql.convert_utf8_to_gbk_question_mark = true;
+
+select inbytes, (test_conv(inbytes, 'utf8', 'gbk')).* from utf8_gbk_inputs ORDER BY inbytes;
+
+DROP TABLE utf8_gbk_inputs;

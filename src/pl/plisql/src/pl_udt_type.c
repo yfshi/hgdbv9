@@ -710,7 +710,7 @@ plisql_build_package_local_cursor_attribute(PLiSQL_var *cursor,
 
 		switch (i)
 		{
-			case PLISQL_ATTRIBUTE_ISOPNE:
+			case PLISQL_ATTRIBUTE_ISOPEN: /* bug#M364 */
 				attribute_name = "isopen";
 				break;
 			case PLISQL_ATTRIBUTE_FOUND:
@@ -834,7 +834,7 @@ plisql_get_cursor_attribute(PLiSQL_execstate *estate,
 	}
 	switch (attr_type)
 	{
-		case PLISQL_ATTRIBUTE_ISOPNE:
+		case PLISQL_ATTRIBUTE_ISOPEN: /* bug#M364 */
 			*isnull = false;
 			retval = BoolGetDatum(true);
 			break;
