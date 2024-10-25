@@ -5525,8 +5525,10 @@ getFuncs(Archive *fout, int *numFuncs)
 							initacl_subquery->data,
 							initracl_subquery->data,
 							username_subquery,
-							temp_query->data,	/* ReqID:SRS-CMD-PGDUMP */	
+							/* BEGIN - BUG#M0000399 */
 							not_agg_check,
+							temp_query->data,	/* ReqID:SRS-CMD-PGDUMP */
+							/* END - BUG#M0000399 */
 							g_last_builtin_oid,
 							g_last_builtin_oid);
 		else
@@ -6170,7 +6172,7 @@ getTables(Archive *fout, int *numTables)
 						  "OR %s IS NOT NULL"
 						  "))"
 						  "AS changed_acl, "
-						  "%s AS ispartition, "
+						  "%s AS ispartition "	/* BUG#M0000399 */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
