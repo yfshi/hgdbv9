@@ -696,7 +696,8 @@ main(int argc, char *argv[])
 	/* END - ReqID:SRS-MISC-USER */
 
 	/* BEGIN - SQL PARSER */
-	DAM->getDbCompatibleMode(conn);
+	if (DAM->getDbCompatibleMode)	/* BUG#M0000402 */
+		DAM->getDbCompatibleMode(conn);
 	/* END - SQL PARSER */
 	/*
 	 * Get a list of database names that match the exclude patterns
