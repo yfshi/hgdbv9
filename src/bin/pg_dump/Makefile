@@ -33,10 +33,10 @@ OBJS = \
 	pg_backup_utils.o
 
 all: pg_dump pg_restore pg_dumpall
-# BEGIN - SRS-CMD-PGDUMP
-pg_dump: pg_dump.o common.o pg_dump_sort.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
-	$(CC) $(CFLAGS) pg_dump.o common.o pg_dump_sort.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
-# END - SRS-CMD-PGDUMP
+# BEGIN - SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP
+pg_dump: pg_dump.o common.o pg_dump_sort.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o pg_dump_mysql.o $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
+	$(CC) $(CFLAGS) pg_dump.o common.o pg_dump_sort.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o pg_dump_mysql.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
+# END - SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP
 pg_restore: pg_restore.o $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) pg_restore.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
@@ -76,5 +76,5 @@ uninstall:
 	rm -f $(addprefix '$(DESTDIR)$(bindir)'/, pg_dump$(X) pg_restore$(X) pg_dumpall$(X))
 
 clean distclean maintainer-clean:
-	rm -f pg_dump$(X) pg_restore$(X) pg_dumpall$(X) $(OBJS) pg_dump.o common.o pg_dump_sort.o pg_restore.o pg_dumpall.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o	# SRS-CMD-PGDUMP
+	rm -f pg_dump$(X) pg_restore$(X) pg_dumpall$(X) $(OBJS) pg_dump.o common.o pg_dump_sort.o pg_restore.o pg_dumpall.o pg_dump_native.o pg_dump_oracle.o pg_dump_pg.o pg_dump_mysql.o	# SRS-CMD-PGDUMP # SRS-MYSQL-PGDUMP
 	rm -rf tmp_check

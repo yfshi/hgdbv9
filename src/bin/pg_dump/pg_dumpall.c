@@ -47,43 +47,51 @@ static void help(void);
 static void dropRolesNative(PGconn *conn);
 static void dropRolesOracle(PGconn *conn);
 static void dropRolesPg(PGconn *conn);
+static void dropRolesMysql(PGconn *conn);	/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dumpRolesNative(PGconn *conn);
 static void dumpRolesOracle(PGconn *conn);
 static void dumpRolesPg(PGconn *conn);
+static void dumpRolesMysql(PGconn *conn);	/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 static void dumpRoleMembership(PGconn *conn);
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dumpRoleMembershipNative(PGconn *conn);
 static void dumpRoleMembershipPg(PGconn *conn);
+static void dumpRoleMembershipMysql(PGconn *conn);	/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 static void OradumpRoleMembership(PGconn *conn);
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dumpGroupsNative(PGconn *conn);
 static void dumpGroupsOracle(PGconn *conn);
 static void dumpGroupsPg(PGconn *conn);
+static void dumpGroupsMysql(PGconn *conn);	/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dropTablespacesNative(PGconn *conn);
 static void dropTablespacesOracle(PGconn *conn);
 static void dropTablespacesPg(PGconn *conn);
+static void dropTablespacesMysql(PGconn *conn);		/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dumpTablespacesNative(PGconn *conn);
 static void dumpTablespacesOracle(PGconn *conn);
 static void dumpTablespacesPg(PGconn *conn);
+static void dumpTablespacesMysql(PGconn *conn);		/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dropDBsNative(PGconn *conn);
 static void dropDBsOracle(PGconn *conn);
 static void dropDBsPg(PGconn *conn);
+static void dropDBsMysql(PGconn *conn);			/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 static void dumpUserConfig(PGconn *conn, const char *username);
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 static void dumpDatabasesNative(PGconn *conn);
 static void dumpDatabasesOracle(PGconn *conn);
 static void dumpDatabasesPg(PGconn *conn);
+static void dumpDatabasesMysql(PGconn *conn);			/* ReqID:SRS-MYSQL-PGDUMP */
 /* END - ReqID:SRS-CMD-PGDUMP */
 static void dumpTimestamp(const char *msg);
 static int	runPgDump(const char *dbname, const char *create_opts);
@@ -107,6 +115,10 @@ static void expand_dbname_patternsOracle(PGconn *conn, SimpleStringList *pattern
 static void expand_dbname_patternsPg(PGconn *conn, SimpleStringList *patterns,
 								   SimpleStringList *names);
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+static void expand_dbname_patternsMysql(PGconn *conn, SimpleStringList *patterns,
+								   SimpleStringList *names);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 /* BEGIN - ReqID:SRS-MISC-USER */
 static void ResetCompatible(PQExpBuffer buf, PGconn *conn);
 static char *getInstanceSuperuser(PGconn *conn);
@@ -231,6 +243,23 @@ DumpAllMethods dumpallMethodsPg = {
 	.dumpDatabases = dumpDatabasesPg
 };
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+DumpAllMethods dumpallMethodsMysql = {
+	.mode = "m",
+	.getDatabaseMode = getDatabaseMode,
+	.haveDatabaseUser = NULL,
+	.getDbCompatibleMode = getDbCompatibleMode,
+	.expand_dbname_patterns = expand_dbname_patternsMysql,
+	.dropDBs = dropDBsMysql,
+	.dropTablespaces = dropTablespacesMysql,
+	.dropRoles = dropRolesMysql,
+	.dumpRoles = dumpRolesMysql,
+	.dumpRoleMembership = dumpRoleMembershipMysql,
+	.dumpGroups = dumpGroupsMysql,
+	.dumpTablespaces = dumpTablespacesMysql,
+	.dumpDatabases = dumpDatabasesMysql
+};
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 int
 main(int argc, char *argv[])
@@ -654,12 +683,17 @@ main(int argc, char *argv[])
 		case DB_PG:
 			DAM = &dumpallMethodsPg;
 			break;
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		case DB_MYSQL:
+			DAM = &dumpallMethodsMysql;
+			break;
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 		default:
 			pg_log_error("pgdumpall pointer failed");
 			break;
 	}	
 
-	if (strcmp(DAM->mode,"n") != 0)
+	if (strcmp(DAM->mode,"n") != 0 && strcmp(DAM->mode,"m") != 0)	/* ReqID:SRS-MYSQL-PGDUMP, Add not equal to MySQL judgment condition. */
 	{
 		DAM->getDatabaseMode(conn);
 		DAM->haveDatabaseUser(conn);				/* begin - bug:M0000261 */
@@ -685,7 +719,13 @@ main(int argc, char *argv[])
 		}
 		else
 		{
-			pg_log_error("Can't use -m when dbmode is pg.");
+			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+			if (DB_MYSQL == database_mode)
+				pg_log_error("Can't use -m when dbmode is mysql.");
+			else
+				pg_log_error("Can't use -m when dbmode is pg.");
+			/* END - ReqID:SRS-MISC-MYSQL-FRAME */
+
 			exit_nicely(1);
 		}
 
@@ -1113,6 +1153,64 @@ dropRolesPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Drop roles
+ */
+static void
+dropRolesMysql(PGconn *conn)
+{
+	PQExpBuffer buf = createPQExpBuffer();
+	PGresult   *res;
+	int			i_rolname;
+	int			i;
+
+	if (server_version >= 90600)
+		printfPQExpBuffer(buf,
+						  "SELECT rolname "
+						  "FROM %s "
+						  "WHERE rolname !~ '^pg_' "
+						  "ORDER BY 1", role_catalog);
+	else if (server_version >= 80100)
+		printfPQExpBuffer(buf,
+						  "SELECT rolname "
+						  "FROM %s "
+						  "ORDER BY 1", role_catalog);
+	else
+		printfPQExpBuffer(buf,
+						  "SELECT usename as rolname "
+						  "FROM pg_shadow "
+						  "UNION "
+						  "SELECT groname as rolname "
+						  "FROM pg_group "
+						  "ORDER BY 1");
+
+	res = executeQuery(conn, buf->data);
+
+	i_rolname = PQfnumber(res, "rolname");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Drop roles\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		const char *rolename;
+
+		rolename = PQgetvalue(res, i, i_rolname);
+
+		fprintf(OPF, "DROP ROLE %s%s;\n",
+				if_exists ? "IF EXISTS " : "",
+				fmtId(rolename));
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * Dump roles
@@ -1957,6 +2055,262 @@ dumpRolesPg(PGconn *conn)
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump roles
+ */
+static void
+dumpRolesMysql(PGconn *conn)
+{
+	PQExpBuffer buf = createPQExpBuffer();
+	PGresult   *res;
+	int			i_oid,
+				i_rolname,
+				i_rolsuper,
+				i_rolinherit,
+				i_rolcreaterole,
+				i_rolcreatedb,
+				i_rolcanlogin,
+				i_rolconnlimit,
+				i_rolpassword,
+				i_rolvaliduntil,
+				i_rolreplication,
+				i_rolbypassrls,
+				i_rolcomment,
+				i_is_current_user;
+	int			i;
+
+	/* note: rolconfig is dumped later */
+	if (server_version >= 90600)
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, rolreplication, rolbypassrls, "
+						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "WHERE rolname !~ '^pg_' "
+						  "ORDER BY 2", role_catalog, role_catalog);
+	else if (server_version >= 90500)
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, rolreplication, rolbypassrls, "
+						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "ORDER BY 2", role_catalog, role_catalog);
+	else if (server_version >= 90100)
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, rolreplication, "
+						  "false as rolbypassrls, "
+						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "ORDER BY 2", role_catalog, role_catalog);
+	else if (server_version >= 80200)
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "ORDER BY 2", role_catalog, role_catalog);
+	else if (server_version >= 80100)
+		printfPQExpBuffer(buf,
+						  "SELECT oid, rolname, rolsuper, rolinherit, "
+						  "rolcreaterole, rolcreatedb, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
+						  "rolvaliduntil, false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "rolname = current_user AS is_current_user "
+						  "FROM %s "
+						  "ORDER BY 2", role_catalog);
+	else
+		printfPQExpBuffer(buf,
+						  "SELECT 0 as oid, usename as rolname, "
+						  "usesuper as rolsuper, "
+						  "true as rolinherit, "
+						  "usesuper as rolcreaterole, "
+						  "usecreatedb as rolcreatedb, "
+						  "true as rolcanlogin, "
+						  "-1 as rolconnlimit, "
+						  "passwd as rolpassword, "
+						  "valuntil as rolvaliduntil, "
+						  "false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "usename = current_user AS is_current_user "
+						  "FROM pg_shadow "
+						  "UNION ALL "
+						  "SELECT 0 as oid, groname as rolname, "
+						  "false as rolsuper, "
+						  "true as rolinherit, "
+						  "false as rolcreaterole, "
+						  "false as rolcreatedb, "
+						  "false as rolcanlogin, "
+						  "-1 as rolconnlimit, "
+						  "null::text as rolpassword, "
+						  "null::timestamptz as rolvaliduntil, "
+						  "false as rolreplication, "
+						  "false as rolbypassrls, "
+						  "null as rolcomment, "
+						  "false AS is_current_user "
+						  "FROM pg_group "
+						  "WHERE NOT EXISTS (SELECT 1 FROM pg_shadow "
+						  " WHERE usename = groname) "
+						  "ORDER BY 2");
+
+	res = executeQuery(conn, buf->data);
+
+	i_oid = PQfnumber(res, "oid");
+	i_rolname = PQfnumber(res, "rolname");
+	i_rolsuper = PQfnumber(res, "rolsuper");
+	i_rolinherit = PQfnumber(res, "rolinherit");
+	i_rolcreaterole = PQfnumber(res, "rolcreaterole");
+	i_rolcreatedb = PQfnumber(res, "rolcreatedb");
+	i_rolcanlogin = PQfnumber(res, "rolcanlogin");
+	i_rolconnlimit = PQfnumber(res, "rolconnlimit");
+	i_rolpassword = PQfnumber(res, "rolpassword");
+	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
+	i_rolreplication = PQfnumber(res, "rolreplication");
+	i_rolbypassrls = PQfnumber(res, "rolbypassrls");
+	i_rolcomment = PQfnumber(res, "rolcomment");
+	i_is_current_user = PQfnumber(res, "is_current_user");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Roles\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		const char *rolename;
+		Oid			auth_oid;
+
+		auth_oid = atooid(PQgetvalue(res, i, i_oid));
+		rolename = PQgetvalue(res, i, i_rolname);
+
+		if (strncmp(rolename, "pg_", 3) == 0)
+		{
+			pg_log_warning("role name starting with \"pg_\" skipped (%s)",
+						   rolename);
+			continue;
+		}
+
+		resetPQExpBuffer(buf);
+
+		if (binary_upgrade)
+		{
+			appendPQExpBufferStr(buf, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
+			appendPQExpBuffer(buf,
+							  "SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
+							  auth_oid);
+		}
+
+		/*
+		 * We dump CREATE ROLE followed by ALTER ROLE to ensure that the role
+		 * will acquire the right properties even if it already exists (ie, it
+		 * won't hurt for the CREATE to fail).  This is particularly important
+		 * for the role we are connected as, since even with --clean we will
+		 * have failed to drop it.  binary_upgrade cannot generate any errors,
+		 * so we assume the current role is already created.
+		 */
+		if (!binary_upgrade ||
+			strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
+			appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
+
+		if (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0)
+			appendPQExpBufferStr(buf, " SUPERUSER");
+		else
+			appendPQExpBufferStr(buf, " NOSUPERUSER");
+
+		if (strcmp(PQgetvalue(res, i, i_rolinherit), "t") == 0)
+			appendPQExpBufferStr(buf, " INHERIT");
+		else
+			appendPQExpBufferStr(buf, " NOINHERIT");
+
+		if (strcmp(PQgetvalue(res, i, i_rolcreaterole), "t") == 0)
+			appendPQExpBufferStr(buf, " CREATEROLE");
+		else
+			appendPQExpBufferStr(buf, " NOCREATEROLE");
+
+		if (strcmp(PQgetvalue(res, i, i_rolcreatedb), "t") == 0)
+			appendPQExpBufferStr(buf, " CREATEDB");
+		else
+			appendPQExpBufferStr(buf, " NOCREATEDB");
+
+		if (strcmp(PQgetvalue(res, i, i_rolcanlogin), "t") == 0)
+			appendPQExpBufferStr(buf, " LOGIN");
+		else
+			appendPQExpBufferStr(buf, " NOLOGIN");
+
+		if (strcmp(PQgetvalue(res, i, i_rolreplication), "t") == 0)
+			appendPQExpBufferStr(buf, " REPLICATION");
+		else
+			appendPQExpBufferStr(buf, " NOREPLICATION");
+
+		if (strcmp(PQgetvalue(res, i, i_rolbypassrls), "t") == 0)
+			appendPQExpBufferStr(buf, " BYPASSRLS");
+		else
+			appendPQExpBufferStr(buf, " NOBYPASSRLS");
+
+		if (strcmp(PQgetvalue(res, i, i_rolconnlimit), "-1") != 0)
+			appendPQExpBuffer(buf, " CONNECTION LIMIT %s",
+							  PQgetvalue(res, i, i_rolconnlimit));
+
+
+		if (!PQgetisnull(res, i, i_rolpassword) && !no_role_passwords)
+		{
+			appendPQExpBufferStr(buf, " PASSWORD ");
+			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolpassword), conn);
+		}
+
+		if (!PQgetisnull(res, i, i_rolvaliduntil))
+			appendPQExpBuffer(buf, " VALID UNTIL '%s'",
+							  PQgetvalue(res, i, i_rolvaliduntil));
+
+		appendPQExpBufferStr(buf, ";\n");
+
+		if (!no_comments && !PQgetisnull(res, i, i_rolcomment))
+		{
+			appendPQExpBuffer(buf, "COMMENT ON ROLE %s IS ", fmtId(rolename));
+			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolcomment), conn);
+			appendPQExpBufferStr(buf, ";\n");
+		}
+
+		if (!no_security_labels && server_version >= 90200)
+			buildShSecLabels(conn, "pg_authid", auth_oid,
+							 "ROLE", rolename,
+							 buf);
+
+		fprintf(OPF, "%s", buf->data);
+	}
+
+	/*
+	 * Dump configuration settings for roles after all roles have been dumped.
+	 * We do it this way because config settings for roles could mention the
+	 * names of other roles.
+	 */
+	for (i = 0; i < PQntuples(res); i++)
+		dumpUserConfig(conn, PQgetvalue(res, i, i_rolname));
+
+	PQclear(res);
+
+	fprintf(OPF, "\n\n");
+
+	destroyPQExpBuffer(buf);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /*
  * Dump role memberships.  This code is used for 8.1 and later servers.
  *
@@ -2219,6 +2573,65 @@ OradumpRoleMembership(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump role memberships.  This code is used for 8.1 and later servers.
+ *
+ * Note: we expect dumpRoles already created all the roles, but there is
+ * no membership yet.
+ */
+static void
+dumpRoleMembershipMysql(PGconn *conn)
+{
+	PQExpBuffer buf = createPQExpBuffer();
+	PGresult   *res;
+	int			i;
+
+	printfPQExpBuffer(buf, "SELECT ur.rolname AS roleid, "
+					  "um.rolname AS member, "
+					  "a.admin_option, "
+					  "ug.rolname AS grantor "
+					  "FROM pg_auth_members a "
+					  "LEFT JOIN %s ur on ur.oid = a.roleid "
+					  "LEFT JOIN %s um on um.oid = a.member "
+					  "LEFT JOIN %s ug on ug.oid = a.grantor "
+					  "WHERE NOT (ur.rolname ~ '^pg_' AND um.rolname ~ '^pg_')"
+					  "ORDER BY 1,2,3", role_catalog, role_catalog, role_catalog);
+	res = executeQuery(conn, buf->data);
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Role memberships\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		char	   *roleid = PQgetvalue(res, i, 0);
+		char	   *member = PQgetvalue(res, i, 1);
+		char	   *option = PQgetvalue(res, i, 2);
+
+		fprintf(OPF, "GRANT %s", fmtId(roleid));
+		fprintf(OPF, " TO %s", fmtId(member));
+		if (*option == 't')
+			fprintf(OPF, " WITH ADMIN OPTION");
+
+		/*
+		 * We don't track the grantor very carefully in the backend, so cope
+		 * with the possibility that it has been dropped.
+		 */
+		if (!PQgetisnull(res, i, 3))
+		{
+			char	   *grantor = PQgetvalue(res, i, 3);
+
+			fprintf(OPF, " GRANTED BY %s", fmtId(grantor));
+		}
+		fprintf(OPF, ";\n");
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
@@ -2428,6 +2841,78 @@ dumpGroupsPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump group memberships from a pre-8.1 server.  It's annoying that we
+ * can't share any useful amount of code with the post-8.1 case, but
+ * the catalog representations are too different.
+ *
+ * Note: we expect dumpRoles already created all the roles, but there is
+ * no membership yet.
+ */
+static void
+dumpGroupsMysql(PGconn *conn)
+{
+	PQExpBuffer buf = createPQExpBuffer();
+	PGresult   *res;
+	int			i;
+
+	res = executeQuery(conn,
+					   "SELECT groname, grolist FROM pg_group ORDER BY 1");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Role memberships\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		char	   *groname = PQgetvalue(res, i, 0);
+		char	   *grolist = PQgetvalue(res, i, 1);
+		PGresult   *res2;
+		int			j;
+
+		/*
+		 * Array representation is {1,2,3} ... convert to (1,2,3)
+		 */
+		if (strlen(grolist) < 3)
+			continue;
+
+		grolist = pg_strdup(grolist);
+		grolist[0] = '(';
+		grolist[strlen(grolist) - 1] = ')';
+		printfPQExpBuffer(buf,
+						  "SELECT usename FROM pg_shadow "
+						  "WHERE usesysid IN %s ORDER BY 1",
+						  grolist);
+		free(grolist);
+
+		res2 = executeQuery(conn, buf->data);
+
+		for (j = 0; j < PQntuples(res2); j++)
+		{
+			char	   *usename = PQgetvalue(res2, j, 0);
+
+			/*
+			 * Don't try to grant a role to itself; can happen if old
+			 * installation has identically named user and group.
+			 */
+			if (strcmp(groname, usename) == 0)
+				continue;
+
+			fprintf(OPF, "GRANT %s", fmtId(groname));
+			fprintf(OPF, " TO %s;\n", fmtId(usename));
+		}
+
+		PQclear(res2);
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * Drop tablespaces.
@@ -2534,6 +3019,41 @@ dropTablespacesPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+static void
+dropTablespacesMysql(PGconn *conn)
+{
+	PGresult   *res;
+	int			i;
+
+	/*
+	 * Get all tablespaces except built-in ones (which we assume are named
+	 * pg_xxx)
+	 */
+	res = executeQuery(conn, "SELECT spcname "
+					   "FROM pg_catalog.pg_tablespace "
+					   "WHERE spcname !~ '^pg_' "
+					   "ORDER BY 1");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Drop tablespaces\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		char	   *spcname = PQgetvalue(res, i, 0);
+
+		fprintf(OPF, "DROP TABLESPACE %s%s;\n",
+				if_exists ? "IF EXISTS " : "",
+				fmtId(spcname));
+	}
+
+	PQclear(res);
+
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * Dump tablespaces.
@@ -3172,6 +3692,176 @@ dumpTablespacesPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump tablespaces.
+ */
+static void
+dumpTablespacesMysql(PGconn *conn)
+{
+	PGresult   *res;
+	int			i;
+
+	/*
+	 * Get all tablespaces except built-in ones (which we assume are named
+	 * pg_xxx)
+	 *
+	 * For the tablespace ACLs, as of 9.6, we extract both the positive (as
+	 * spcacl) and negative (as rspcacl) ACLs, relative to the default ACL for
+	 * tablespaces, which are then passed to buildACLCommands() below.
+	 *
+	 * See buildACLQueries() and buildACLCommands().
+	 *
+	 * The order in which privileges are in the ACL string (the order they
+	 * have been GRANT'd in, which the backend maintains) must be preserved to
+	 * ensure that GRANTs WITH GRANT OPTION and subsequent GRANTs based on
+	 * those are dumped in the correct order.
+	 *
+	 * Note that we do not support initial privileges (pg_init_privs) on
+	 * tablespaces, so this logic cannot make use of buildACLQueries().
+	 */
+	if (server_version >= 90600)
+	{
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "pg_catalog.pg_tablespace_location(oid), "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "     WITH ORDINALITY AS perm(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(acldefault('t',spcowner)) "
+						   "       AS init(init_acl) "
+						   "     WHERE acl = init_acl)) AS spcacls) "
+						   " AS spcacl, "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(acldefault('t',spcowner)) "
+						   "     WITH ORDINALITY AS initp(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "       AS permp(orig_acl) "
+						   "     WHERE acl = orig_acl)) AS rspcacls) "
+						   " AS rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
+	}
+	else if (server_version >= 90200)
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "pg_catalog.pg_tablespace_location(oid), "
+						   "spcacl, '' as rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
+	else if (server_version >= 90000)
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "spclocation, spcacl, '' as rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
+	else if (server_version >= 80200)
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "spclocation, spcacl, '' as rspcacl, null, "
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
+	else
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "spclocation, spcacl, '' as rspcacl, "
+						   "null, null "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		PQExpBuffer buf = createPQExpBuffer();
+		Oid			spcoid = atooid(PQgetvalue(res, i, 0));
+		char	   *spcname = PQgetvalue(res, i, 1);
+		char	   *spcowner = PQgetvalue(res, i, 2);
+		char	   *spclocation = PQgetvalue(res, i, 3);
+		char	   *spcacl = PQgetvalue(res, i, 4);
+		char	   *rspcacl = PQgetvalue(res, i, 5);
+		char	   *spcoptions = PQgetvalue(res, i, 6);
+		char	   *spccomment = PQgetvalue(res, i, 7);
+		char	   *fspcname;
+		Oid			spcownerid = InvalidOid;
+		Oid			spcownerdboid = InvalidOid;
+
+		if(DB_ORACLE == database_mode)
+		{
+			spcownerid = atooid(PQgetvalue(res, i, 8));
+			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
+			if (spcownerdboid)
+				continue;
+		}
+
+		/* needed for buildACLCommands() */
+		fspcname = pg_strdup(fmtId(spcname));
+
+		appendPQExpBuffer(buf, "CREATE TABLESPACE %s", fspcname);
+
+		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
+		appendPQExpBufferStr(buf, " LOCATION ");
+		appendStringLiteralConn(buf, spclocation, conn);
+		appendPQExpBufferStr(buf, ";\n");
+
+		if (spcoptions && spcoptions[0] != '\0')
+			appendPQExpBuffer(buf, "ALTER TABLESPACE %s SET (%s);\n",
+							  fspcname, spcoptions);
+
+		if (!skip_acls &&
+			!buildACLCommands(fspcname, NULL, NULL, "TABLESPACE",
+							  spcacl, rspcacl,
+							  spcowner, "", server_version, buf))
+		{
+			pg_log_error("could not parse ACL list (%s) for tablespace \"%s\"",
+						 spcacl, spcname);
+			PQfinish(conn);
+			exit_nicely(1);
+		}
+
+		if (!no_comments && spccomment && spccomment[0] != '\0')
+		{
+			appendPQExpBuffer(buf, "COMMENT ON TABLESPACE %s IS ", fspcname);
+			appendStringLiteralConn(buf, spccomment, conn);
+			appendPQExpBufferStr(buf, ";\n");
+		}
+
+		if (!no_security_labels && server_version >= 90200)
+			buildShSecLabels(conn, "pg_tablespace", spcoid,
+							 "TABLESPACE", spcname,
+							 buf);
+
+		fprintf(OPF, "%s", buf->data);
+
+		free(fspcname);
+		destroyPQExpBuffer(buf);
+	}
+
+	PQclear(res);
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * Dump commands to drop each database.
@@ -3311,6 +4001,55 @@ dropDBsPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump commands to drop each database.
+ */
+static void
+dropDBsMysql(PGconn *conn)
+{
+	PGresult   *res;
+	int			i;
+
+	/*
+	 * Skip databases marked not datallowconn, since we'd be unable to connect
+	 * to them anyway.  This must agree with dumpDatabases().
+	 */
+	res = executeQuery(conn,
+					   "SELECT datname "
+					   "FROM pg_database d "
+					   "WHERE datallowconn AND datconnlimit != -2 "
+					   "ORDER BY datname");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Drop databases (except postgres and template1)\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		char	   *dbname = PQgetvalue(res, i, 0);
+
+		/*
+		 * Skip "postgres" and "template1"; dumpDatabases() will deal with
+		 * them specially.  Also, be sure to skip "template0", even if for
+		 * some reason it's not marked !datallowconn.
+		 */
+		if (strcmp(dbname, "template1") != 0 &&
+			strcmp(dbname, "template0") != 0 &&
+			strcmp(dbname, "postgres") != 0)
+		{
+			fprintf(OPF, "DROP DATABASE %s%s;\n",
+					if_exists ? "IF EXISTS " : "",
+					fmtId(dbname));
+		}
+	}
+
+	PQclear(res);
+
+	fprintf(OPF, "\n\n");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /*
  * Dump user-specific configuration
  */
@@ -3530,6 +4269,63 @@ expand_dbname_patternsPg(PGconn *conn,
 	destroyPQExpBuffer(query);
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Find a list of database names that match the given patterns.
+ * See also expand_table_name_patterns() in pg_dump.c
+ */
+static void
+expand_dbname_patternsMysql(PGconn *conn,
+					   SimpleStringList *patterns,
+					   SimpleStringList *names)
+{
+	PQExpBuffer query;
+	PGresult   *res;
+
+	if (patterns->head == NULL)
+		return;					/* nothing to do */
+
+	query = createPQExpBuffer();
+
+	/*
+	 * The loop below runs multiple SELECTs, which might sometimes result in
+	 * duplicate entries in the name list, but we don't care, since all we're
+	 * going to do is test membership of the list.
+	 */
+
+	for (SimpleStringListCell *cell = patterns->head; cell; cell = cell->next)
+	{
+		int		dotcnt;
+
+		appendPQExpBufferStr(query,
+							 "SELECT datname FROM pg_catalog.pg_database n\n");
+		processSQLNamePattern(conn, query, cell->val, false,
+							  false, NULL, "datname", NULL, NULL, NULL,
+							  &dotcnt);
+
+		if (dotcnt > 0)
+		{
+			pg_log_error("improper qualified name (too many dotted names): %s",
+						 cell->val);
+			PQfinish(conn);
+			exit_nicely(1);
+		}
+
+		res = executeQuery(conn, query->data);
+		for (int i = 0; i < PQntuples(res); i++)
+		{
+			simple_string_list_append(names, PQgetvalue(res, i, 0));
+		}
+
+		PQclear(res);
+		resetPQExpBuffer(query);
+	}
+
+	destroyPQExpBuffer(query);
+}
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * Dump contents of databases.
@@ -3875,6 +4671,104 @@ dumpDatabasesPg(PGconn *conn)
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Dump contents of databases.
+ */
+static void
+dumpDatabasesMysql(PGconn *conn)
+{
+	PGresult   *res;
+	int			i;
+
+	/*
+	 * Skip databases marked not datallowconn, since we'd be unable to connect
+	 * to them anyway.  This must agree with dropDBs().
+	 *
+	 * We arrange for template1 to be processed first, then we process other
+	 * DBs in alphabetical order.  If we just did them all alphabetically, we
+	 * might find ourselves trying to drop the "postgres" database while still
+	 * connected to it.  This makes trying to run the restore script while
+	 * connected to "template1" a bad idea, but there's no fixed order that
+	 * doesn't have some failure mode with --clean.
+	 */
+	res = executeQuery(conn,
+					   "SELECT datname "
+					   "FROM pg_database d "
+					   "WHERE datallowconn AND datconnlimit != -2 "
+					   "ORDER BY (datname <> 'template1'), datname");
+
+	if (PQntuples(res) > 0)
+		fprintf(OPF, "--\n-- Databases\n--\n\n");
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		char	   *dbname = PQgetvalue(res, i, 0);
+		const char *create_opts;
+		int			ret;
+
+		/* Skip template0, even if it's not marked !datallowconn. */
+		if (strcmp(dbname, "template0") == 0)
+			continue;
+
+		/* Skip any explicitly excluded database */
+		if (simple_string_list_member(&database_exclude_names, dbname))
+		{
+			pg_log_info("excluding database \"%s\"", dbname);
+			continue;
+		}
+
+		pg_log_info("dumping database \"%s\"", dbname);
+
+		fprintf(OPF, "--\n-- Database \"%s\" dump\n--\n\n", dbname);
+
+		/*
+		 * We assume that "template1" and "postgres" already exist in the
+		 * target installation.  dropDBs() won't have removed them, for fear
+		 * of removing the DB the restore script is initially connected to. If
+		 * --clean was specified, tell pg_dump to drop and recreate them;
+		 * otherwise we'll merely restore their contents.  Other databases
+		 * should simply be created.
+		 */
+		if (strcmp(dbname, "template1") == 0 || strcmp(dbname, "postgres") == 0)
+		{
+			if (output_clean)
+				create_opts = "--clean --create";
+			else
+			{
+				create_opts = "";
+				/* Since pg_dump won't emit a \connect command, we must */
+				fprintf(OPF, "\\connect %s\n\n", dbname);
+			}
+		}
+		else
+			create_opts = "--create";
+		if (filename)
+			fclose(OPF);
+
+		ret = runPgDump(dbname, create_opts);
+		if (ret != 0)
+		{
+			pg_log_error("pg_dump failed on database \"%s\", exiting", dbname);
+			exit_nicely(1);
+		}
+
+		if (filename)
+		{
+			OPF = fopen(filename, PG_BINARY_A);
+			if (!OPF)
+			{
+				pg_log_error("could not re-open the output file \"%s\": %m",
+							 filename);
+				exit_nicely(1);
+			}
+		}
+
+	}
+
+	PQclear(res);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 /*
  * Run pg_dump on dbname, with specified options.

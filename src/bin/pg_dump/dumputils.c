@@ -1400,6 +1400,10 @@ getDatabaseMode(PGconn *conn)
 
 		if (db_style && (0 == pg_strcasecmp(db_style, "oracle")))
 			database_mode = DB_ORACLE;
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		else if (db_style && (0 == pg_strcasecmp(db_style, "mysql")))
+			database_mode = DB_MYSQL;
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 		else
 			database_mode = DB_PG;
 	}

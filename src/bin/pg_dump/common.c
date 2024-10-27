@@ -25,6 +25,7 @@
 #include "pg_dump_native.h"	/* ReqID:SRC-CMD-PGDUMP */
 #include "pg_dump_pg.h"	/* ReqID:SRC-CMD-PGDUMP */
 #include "pg_dump_oracle.h"	/* ReqID:SRC-CMD-PGDUMP */
+#include "pg_dump_mysql.h"	/* ReqID:SRS-MYSQL-PGDUMP */
 #include "dumputils.h"
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 void flagInhTables(Archive *fout, TableInfo *tbinfo, int numTables,
@@ -60,6 +61,10 @@ getSchemaData(Archive *fout, int *numTablesPtr)
 		return getSchemaDataPg(fout, numTablesPtr);
 	else if (database_mode == DB_ORACLE)
 		return getSchemaDataOracle(fout, numTablesPtr);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		return getSchemaDataMysql(fout, numTablesPtr);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		return getSchemaDataNative(fout, numTablesPtr);
 	/* END - ReqID:SRS-CMD-PGDUMP */
@@ -633,6 +638,10 @@ getDumpableObjects(DumpableObject ***objs, int *numObjs)
 		getDumpableObjectsOracle(objs, numObjs);
 	else if (database_mode == DB_PG)
 		getDumpableObjectsPg(objs, numObjs);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		getDumpableObjectsMysql(objs, numObjs);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		getDumpableObjectsNative(objs, numObjs);
 	/* END - ReqID:SRS-CMD-PGDUMP */

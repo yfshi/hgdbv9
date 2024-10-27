@@ -219,6 +219,14 @@ int	numCatalogIds = 0;
 
 DumpMethods *dM;
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+const char *oracledumpoptions[] = {"pg", "oracle", "p", "o"};
+#define ORAMOPTIONSNUM 4
+const char *mysqldumpoptions[] = {"pg", "mysql", "p", "m"};
+#define MYSMOPTIONSNUM 4
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /*
  * The default number of rows per INSERT when
  * --inserts is specified without --rows-per-insert
@@ -235,6 +243,11 @@ DumpMethods *dM;
 static void help(const char *progname);
 static ArchiveFormat parseArchiveFormat(const char *format, ArchiveMode *mode);
 static void ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, char *password);
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+static char *downMoptionString(const char*options);
+static bool Moption(const char *options, const char **moptions, int length);
+static void DatabaseCheckMoption(const char *options);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 
 
@@ -437,7 +450,7 @@ main(int argc, char **argv)
 			/* END - bug#M0000261 */
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			case 'M':
-				DumpM = pg_strdup(optarg);
+				DumpM = downMoptionString(pg_strdup(optarg));	/* ReqID:SRS-MYSQL-PGDUMP */
 				break;
 			/* END - ReqID:SRS-CMD-PGDUMP */
 			case 'n':			/* include schema(s) */
@@ -581,22 +594,7 @@ main(int argc, char **argv)
 				exit_nicely(1);
 		}
 	}
-	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if(DumpM)
-	{
-		if(strcmp(DumpM, "pg") == 0
-			|| strcmp(DumpM, "oracle") == 0
-			|| strcmp(DumpM, "PG") == 0
-			|| strcmp(DumpM, "ORACLE") == 0
-			|| strcmp(DumpM, "p") == 0
-			|| strcmp(DumpM, "P") == 0
-			|| strcmp(DumpM, "o") == 0
-			|| strcmp(DumpM, "O") == 0)
-			;
-		else
-			fatal("wrong value for -M");
-	}
-	/* END - ReqID:SRS-CMD-PGDUMP */
+
 	/*
 	 * Non-option argument specifies database name as long as it wasn't
 	 * already specified with -d / --dbname
@@ -710,6 +708,15 @@ main(int argc, char **argv)
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	ConnectDatabasefordatabase_mode(&dopt.cparams, false, NULL);
 	/* END - ReqID:SRS-CMD-PGDUMP */
+
+	/* BEGIN - ReqID:SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP */
+	/* The reason for checking here is to provide
+	 * different option values according to
+	 * different database modes
+	 */
+	DatabaseCheckMoption(DumpM);
+	/* END - ReqID:SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP */
+
 	/* Open the output file */
 	fout = dM->CreateArchive(filename, archiveFormat, compressLevel, dosync,
 						 archiveMode, dM->setupDumpWorker);
@@ -738,7 +745,7 @@ main(int argc, char **argv)
 	 * death.
 	 */
 	dM->ConnectDatabase(fout, &dopt.cparams, false);
-	if (database_mode != DB_NATIVE)
+	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP, Add not equal to MySQL judgment condition. */
 	{
 		/* BEGIN - SQL PARSER */
 		dM->getDbCompatibleMode(((ArchiveHandle *) fout)->connection);
@@ -1241,6 +1248,11 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 		case DB_NATIVE:
 			dM = &dumpMethodsNative;
 			break;
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		case DB_MYSQL:
+			dM = &dumpMethodsMysql;
+			break;
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 		default:
 			fatal("pointer switch failed");
 	}
@@ -1251,3 +1263,56 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 
 /* END - ReqID:SRS-CMD-PGDUMP */
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * Convert string to lowercase
+ */
+static char *downMoptionString(const char*options)
+{
+	/* Avoid the function down_character from
+	 * throwing an exception for NULL
+	 */
+	if (options != NULL)
+		return down_character(options, strlen(options));
+
+	return NULL;
+}
+
+/*
+ * Determine whether it is the value of M parameter
+ */
+static bool Moption(const char *options, const char **moptions, int length)
+{
+	int i;
+
+	for (i = 0; i < length; i++)
+	{
+		if (strcmp(moptions[i], options) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * Check the value of the M option in different database modes
+ */
+static void DatabaseCheckMoption(const char *options)
+{
+	if (options == NULL)
+		return;
+
+	if (database_mode == DB_ORACLE)
+	{
+		if (!Moption(options, oracledumpoptions, ORAMOPTIONSNUM))
+			fatal("Oracle database wrong value for -M");
+	}
+	else if (database_mode == DB_MYSQL)
+	{
+		if (!Moption(options, mysqldumpoptions, MYSMOPTIONSNUM))
+			fatal("MySQL database wrong value for -M");
+	}
+	else
+		fatal("Except for Oracle and MySQL database modes, other database do not support -M");
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */

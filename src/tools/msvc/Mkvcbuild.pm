@@ -594,6 +594,7 @@ sub mkvcbuild
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump_native.c');
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump_pg.c');
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump_oracle.c');
+	$pgdump->AddFile('src/bin/pg_dump/pg_dump_mysql.c');
 	$pgdump->AddFile('src/bin/pg_dump/common.c');
 	$pgdump->AddFile('src/bin/pg_dump/pg_dump_sort.c');
 	$pgdump->AddLibrary('ws2_32.lib');

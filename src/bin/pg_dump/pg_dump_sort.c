@@ -26,6 +26,9 @@
 #include "utils/ora_compatible.h"
 #include "dumputils.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+#include "pg_dump_mysql.h"
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 /*
  * Sort priority for database object types.
  * Objects are sorted by type, and within a type by name.
@@ -220,6 +223,17 @@ sortDumpableObjectsByTypeNameOracle(DumpableObject **objs, int numObjs)
 		qsort((void *) objs, numObjs, sizeof(DumpableObject *),
 			  DOTypeNameCompare);
 }
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+sortDumpableObjectsByTypeNameMysql(DumpableObject **objs, int numObjs)
+{
+	if (numObjs > 1)
+		qsort((void *) objs, numObjs, sizeof(DumpableObject *),
+			  DOTypeNameCompare);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 void
 sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs)
 {
@@ -229,6 +243,10 @@ sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs)
 		sortDumpableObjectsByTypeNameOracle(objs,numObjs);
 	else if (database_mode == DB_NATIVE)
 		sortDumpableObjectsByTypeNameNative(objs,numObjs);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		sortDumpableObjectsByTypeNameMysql(objs,numObjs);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		sortDumpableObjectsByTypeNameNative(objs, numObjs);
 }
@@ -437,6 +455,34 @@ sortDumpableObjectsOracle(DumpableObject **objs, int numObjs,
 	free(ordering);
 }
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+sortDumpableObjectsMysql(DumpableObject **objs, int numObjs,
+					DumpId preBoundaryId, DumpId postBoundaryId)
+{
+	DumpableObject **ordering;
+	int 		nOrdering;
+
+	if (numObjs <= 0)			/* can't happen anymore ... */
+		return;
+
+	/*
+	 * Saving the boundary IDs in static variables is a bit grotty, but seems
+	 * better than adding them to parameter lists of subsidiary functions.
+	 */
+	preDataBoundId = preBoundaryId;
+	postDataBoundId = postBoundaryId;
+
+	ordering = (DumpableObject **) pg_malloc(numObjs * sizeof(DumpableObject *));
+	while (!TopoSort(objs, numObjs, ordering, &nOrdering))
+		findDependencyLoops(ordering, nOrdering, numObjs);
+
+	memcpy(objs, ordering, numObjs * sizeof(DumpableObject *));
+
+	free(ordering);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 void
 sortDumpableObjects(DumpableObject **objs, int numObjs,
 					DumpId preBoundaryId, DumpId postBoundaryId)
@@ -447,6 +493,10 @@ sortDumpableObjects(DumpableObject **objs, int numObjs,
 		sortDumpableObjectsOracle(objs, numObjs, preBoundaryId, postBoundaryId);
 	else if (database_mode == DB_NATIVE)
 		sortDumpableObjectsNative(objs, numObjs, preBoundaryId, postBoundaryId);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		sortDumpableObjectsMysql(objs, numObjs, preBoundaryId, postBoundaryId);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		sortDumpableObjectsNative(objs, numObjs, preBoundaryId, postBoundaryId);
 }

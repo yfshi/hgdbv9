@@ -5471,11 +5471,11 @@ getFuncs(Archive *fout, int *numFuncs)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
 		{
-			if (strncmp(DumpM, "p", 1) == 0 || strncmp(DumpM, "P", 1) == 0)
+			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode IS NULL AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			}
-			else if(strncmp(DumpM, "o", 1) == 0 || strncmp(DumpM, "O", 1) == 0)
+			else if(strcmp(DumpM, "o") == 0 || strcmp(DumpM, "oracle") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode = 'o' AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			}
@@ -6043,11 +6043,11 @@ getTables(Archive *fout, int *numTables)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
 		{
-			if (strncmp(DumpM, "p", 1) == 0 || strncmp(DumpM, "P", 1) == 0)
+			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode IS NULL AND c.oid > %d OR c.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			}
-			else if(strncmp(DumpM, "o", 1) == 0 || strncmp(DumpM, "O", 1) == 0)
+			else if(strcmp(DumpM, "o") == 0 || strcmp(DumpM, "oracle") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode = 'o' AND c.oid > %d OR c.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			}

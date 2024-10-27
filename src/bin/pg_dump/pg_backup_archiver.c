@@ -282,6 +282,19 @@ CreateArchiveOracle(const char *FileSpec, const ArchiveFormat fmt,
 	return (Archive *) AH;
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+Archive *
+CreateArchiveMysql(const char *FileSpec, const ArchiveFormat fmt,
+			const int compression, bool dosync, ArchiveMode mode,
+			SetupWorkerPtrType setupDumpWorker)
+
+{
+	ArchiveHandle *AH = _allocAH(FileSpec, fmt, compression, dosync,
+								 mode, setupDumpWorker);
+
+	return (Archive *) AH;
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 /* Open an existing archive */
 /* Public */
 Archive *
@@ -333,6 +346,10 @@ ProcessArchiveRestoreOptions(Archive *AHX)
 		ProcessArchiveRestoreOptionsOracle(AHX);
 	else if(database_mode == DB_PG)
 		ProcessArchiveRestoreOptionsPg(AHX);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if(database_mode == DB_MYSQL)
+		ProcessArchiveRestoreOptionsMysql(AHX);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		ProcessArchiveRestoreOptionsNative(AHX);
 }
@@ -501,6 +518,62 @@ ProcessArchiveRestoreOptionsOracle(Archive *AHX)
 		StrictNamesCheck(ropt);
 }
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+ProcessArchiveRestoreOptionsMysql(Archive *AHX)
+{
+	ArchiveHandle *AH = (ArchiveHandle *) AHX;
+	RestoreOptions *ropt = AH->public.ropt;
+	TocEntry   *te;
+	teSection	curSection;
+
+	/* Decide which TOC entries will be dumped/restored, and mark them */
+	curSection = SECTION_PRE_DATA;
+	for (te = AH->toc->next; te != AH->toc; te = te->next)
+	{
+		/*
+		 * When writing an archive, we also take this opportunity to check
+		 * that we have generated the entries in a sane order that respects
+		 * the section divisions.  When reading, don't complain, since buggy
+		 * old versions of pg_dump might generate out-of-order archives.
+		 */
+		if (AH->mode != archModeRead)
+		{
+			switch (te->section)
+			{
+				case SECTION_NONE:
+					/* ok to be anywhere */
+					break;
+				case SECTION_PRE_DATA:
+					if (curSection != SECTION_PRE_DATA)
+						pg_log_warning("archive items not in correct section order");
+					break;
+				case SECTION_DATA:
+					if (curSection == SECTION_POST_DATA)
+						pg_log_warning("archive items not in correct section order");
+					break;
+				case SECTION_POST_DATA:
+					/* ok no matter which section we were in */
+					break;
+				default:
+					fatal("unexpected section code %d",
+						  (int) te->section);
+					break;
+			}
+		}
+
+		if (te->section != SECTION_NONE)
+			curSection = te->section;
+
+		te->reqs = _tocEntryRequired(te, curSection, AH);
+	}
+
+	/* Enforce strict names checking */
+	if (ropt->strict_names)
+		StrictNamesCheck(ropt);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /* Public */
 void
 RestoreArchive(Archive *AHX)
@@ -509,6 +582,10 @@ RestoreArchive(Archive *AHX)
 		RestoreArchivePg(AHX);
 	else if (database_mode == DB_ORACLE)
 		RestoreArchiveOracle(AHX);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+			RestoreArchiveMysql(AHX);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		RestoreArchiveNative(AHX);
 }
@@ -1902,6 +1979,409 @@ RestoreArchiveOracle(Archive *AHX)
 		DisconnectDatabase(&AH->public);
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+RestoreArchiveMysql(Archive *AHX)
+{
+	ArchiveHandle *AH = (ArchiveHandle *) AHX;
+	RestoreOptions *ropt = AH->public.ropt;
+	bool		parallel_mode;
+	TocEntry   *te;
+	OutputContext sav;
+
+	AH->stage = STAGE_INITIALIZING;
+
+	/*
+	 * If we're going to do parallel restore, there are some restrictions.
+	 */
+	parallel_mode = (AH->public.numWorkers > 1 && ropt->useDB);
+	if (parallel_mode)
+	{
+		/* We haven't got round to making this work for all archive formats */
+		if (AH->ClonePtr == NULL || AH->ReopenPtr == NULL)
+			fatal("parallel restore is not supported with this archive file format");
+
+		/* Doesn't work if the archive represents dependencies as OIDs */
+		if (AH->version < K_VERS_1_8)
+			fatal("parallel restore is not supported with archives made by pre-8.0 pg_dump");
+
+		/*
+		 * It's also not gonna work if we can't reopen the input file, so
+		 * let's try that immediately.
+		 */
+		AH->ReopenPtr(AH);
+	}
+
+	/*
+	 * Make sure we won't need (de)compression we haven't got
+	 */
+#ifndef HAVE_LIBZ
+	if (AH->compression != 0 && AH->PrintTocDataPtr != NULL)
+	{
+		for (te = AH->toc->next; te != AH->toc; te = te->next)
+		{
+			if (te->hadDumper && (te->reqs & REQ_DATA) != 0)
+				fatal("cannot restore from compressed archive (compression not supported in this installation)");
+		}
+	}
+#endif
+
+	/*
+	 * Prepare index arrays, so we can assume we have them throughout restore.
+	 * It's possible we already did this, though.
+	 */
+	if (AH->tocsByDumpId == NULL)
+		buildTocEntryArrays(AH);
+
+	/*
+	 * If we're using a DB connection, then connect it.
+	 */
+	if (ropt->useDB)
+	{
+		pg_log_info("connecting to database for restore");
+		if (AH->version < K_VERS_1_3)
+			fatal("direct database connections are not supported in pre-1.3 archives");
+
+		/*
+		 * We don't want to guess at whether the dump will successfully
+		 * restore; allow the attempt regardless of the version of the restore
+		 * target.
+		 */
+		AHX->minRemoteVersion = 0;
+		AHX->maxRemoteVersion = 9999999;
+
+		ConnectDatabase(AHX, &ropt->cparams, false);
+
+		/*
+		 * If we're talking to the DB directly, don't send comments since they
+		 * obscure SQL when displaying errors
+		 */
+		AH->noTocComments = 1;
+	}
+
+	/*
+	 * Work out if we have an implied data-only restore. This can happen if
+	 * the dump was data only or if the user has used a toc list to exclude
+	 * all of the schema data. All we do is look for schema entries - if none
+	 * are found then we set the dataOnly flag.
+	 *
+	 * We could scan for wanted TABLE entries, but that is not the same as
+	 * dataOnly. At this stage, it seems unnecessary (6-Mar-2001).
+	 */
+	if (!ropt->dataOnly)
+	{
+		int			impliedDataOnly = 1;
+
+		for (te = AH->toc->next; te != AH->toc; te = te->next)
+		{
+			if ((te->reqs & REQ_SCHEMA) != 0)
+			{					/* It's schema, and it's wanted */
+				impliedDataOnly = 0;
+				break;
+			}
+		}
+		if (impliedDataOnly)
+		{
+			ropt->dataOnly = impliedDataOnly;
+			pg_log_info("implied data-only restore");
+		}
+	}
+
+	/*
+	 * Setup the output file if necessary.
+	 */
+	sav = SaveOutput(AH);
+	if (ropt->filename || ropt->compression)
+		SetOutput(AH, ropt->filename, ropt->compression);
+
+	ahprintf(AH, "--\n-- PostgreSQL database dump\n--\n\n");
+
+	if (AH->archiveRemoteVersion)
+		ahprintf(AH, "-- Dumped from database version %s\n",
+				 AH->archiveRemoteVersion);
+	if (AH->archiveDumpVersion)
+		ahprintf(AH, "-- Dumped by pg_dump version %s\n",
+				 AH->archiveDumpVersion);
+
+	ahprintf(AH, "\n");
+
+	if (AH->public.verbose)
+		dumpTimestamp(AH, "Started on", AH->createDate);
+
+	if (ropt->single_txn)
+	{
+		if (AH->connection)
+			StartTransaction(AHX);
+		else
+			ahprintf(AH, "BEGIN;\n\n");
+	}
+
+	/*
+	 * Establish important parameter values right away.
+	 */
+	_doSetFixedOutputState(AH);
+
+	AH->stage = STAGE_PROCESSING;
+
+	/*
+	 * Drop the items at the start, in reverse order
+	 */
+	if (ropt->dropSchema)
+	{
+		for (te = AH->toc->prev; te != AH->toc; te = te->prev)
+		{
+			AH->currentTE = te;
+
+			/*
+			 * In createDB mode, issue a DROP *only* for the database as a
+			 * whole.  Issuing drops against anything else would be wrong,
+			 * because at this point we're connected to the wrong database.
+			 * (The DATABASE PROPERTIES entry, if any, should be treated like
+			 * the DATABASE entry.)
+			 */
+			if (ropt->createDB)
+			{
+				if (strcmp(te->desc, "DATABASE") != 0 &&
+					strcmp(te->desc, "DATABASE PROPERTIES") != 0)
+					continue;
+			}
+
+			/* Otherwise, drop anything that's selected and has a dropStmt */
+			if (((te->reqs & (REQ_SCHEMA | REQ_DATA)) != 0) && te->dropStmt)
+			{
+				pg_log_info("dropping %s %s", te->desc, te->tag);
+				/* Select owner and schema as necessary */
+				_becomeOwner(AH, te);
+				_selectOutputSchema(AH, te->namespace);
+
+				/*
+				 * Now emit the DROP command, if the object has one.  Note we
+				 * don't necessarily emit it verbatim; at this point we add an
+				 * appropriate IF EXISTS clause, if the user requested it.
+				 */
+				if (*te->dropStmt != '\0')
+				{
+					if (!ropt->if_exists)
+					{
+						/* No --if-exists?	Then just use the original */
+						ahprintf(AH, "%s", te->dropStmt);
+					}
+					else
+					{
+						/*
+						 * Inject an appropriate spelling of "if exists".  For
+						 * large objects, we have a separate routine that
+						 * knows how to do it, without depending on
+						 * te->dropStmt; use that.  For other objects we need
+						 * to parse the command.
+						 */
+						if (strncmp(te->desc, "BLOB", 4) == 0)
+						{
+							DropBlobIfExists(AH, te->catalogId.oid);
+						}
+						else
+						{
+							char	   *dropStmt = pg_strdup(te->dropStmt);
+							char	   *dropStmtOrig = dropStmt;
+							PQExpBuffer ftStmt = createPQExpBuffer();
+
+							/*
+							 * Need to inject IF EXISTS clause after ALTER
+							 * TABLE part in ALTER TABLE .. DROP statement
+							 */
+							if (strncmp(dropStmt, "ALTER TABLE", 11) == 0)
+							{
+								appendPQExpBufferStr(ftStmt,
+													 "ALTER TABLE IF EXISTS");
+								dropStmt = dropStmt + 11;
+							}
+
+							/*
+							 * ALTER TABLE..ALTER COLUMN..DROP DEFAULT does
+							 * not support the IF EXISTS clause, and therefore
+							 * we simply emit the original command for DEFAULT
+							 * objects (modulo the adjustment made above).
+							 *
+							 * Likewise, don't mess with DATABASE PROPERTIES.
+							 *
+							 * If we used CREATE OR REPLACE VIEW as a means of
+							 * quasi-dropping an ON SELECT rule, that should
+							 * be emitted unchanged as well.
+							 *
+							 * For other object types, we need to extract the
+							 * first part of the DROP which includes the
+							 * object type.  Most of the time this matches
+							 * te->desc, so search for that; however for the
+							 * different kinds of CONSTRAINTs, we know to
+							 * search for hardcoded "DROP CONSTRAINT" instead.
+							 */
+							if (strcmp(te->desc, "DEFAULT") == 0 ||
+								strcmp(te->desc, "DATABASE PROPERTIES") == 0 ||
+								strncmp(dropStmt, "CREATE OR REPLACE VIEW", 22) == 0)
+								appendPQExpBufferStr(ftStmt, dropStmt);
+							else
+							{
+								char		buffer[40];
+								char	   *mark;
+
+								if (strcmp(te->desc, "CONSTRAINT") == 0 ||
+									strcmp(te->desc, "CHECK CONSTRAINT") == 0 ||
+									strcmp(te->desc, "FK CONSTRAINT") == 0)
+									strcpy(buffer, "DROP CONSTRAINT");
+								else
+									snprintf(buffer, sizeof(buffer), "DROP %s",
+											 te->desc);
+
+								mark = strstr(dropStmt, buffer);
+
+								if (mark)
+								{
+									*mark = '\0';
+									appendPQExpBuffer(ftStmt, "%s%s IF EXISTS%s",
+													  dropStmt, buffer,
+													  mark + strlen(buffer));
+								}
+								else
+								{
+									/* complain and emit unmodified command */
+									pg_log_warning("could not find where to insert IF EXISTS in statement \"%s\"",
+												   dropStmtOrig);
+									appendPQExpBufferStr(ftStmt, dropStmt);
+								}
+							}
+
+							ahprintf(AH, "%s", ftStmt->data);
+
+							destroyPQExpBuffer(ftStmt);
+							pg_free(dropStmtOrig);
+						}
+					}
+				}
+			}
+		}
+
+		/*
+		 * _selectOutputSchema may have set currSchema to reflect the effect
+		 * of a "SET search_path" command it emitted.  However, by now we may
+		 * have dropped that schema; or it might not have existed in the first
+		 * place.  In either case the effective value of search_path will not
+		 * be what we think.  Forcibly reset currSchema so that we will
+		 * re-establish the search_path setting when needed (after creating
+		 * the schema).
+		 *
+		 * If we treated users as pg_dump'able objects then we'd need to reset
+		 * currUser here too.
+		 */
+		if (AH->currSchema)
+			free(AH->currSchema);
+		AH->currSchema = NULL;
+	}
+
+	if (parallel_mode)
+	{
+		/*
+		 * In parallel mode, turn control over to the parallel-restore logic.
+		 */
+		ParallelState *pstate;
+		TocEntry	pending_list;
+
+		/* The archive format module may need some setup for this */
+		if (AH->PrepParallelRestorePtr)
+			AH->PrepParallelRestorePtr(AH);
+
+		pending_list_header_init(&pending_list);
+
+		/* This runs PRE_DATA items and then disconnects from the database */
+		restore_toc_entries_prefork(AH, &pending_list);
+		Assert(AH->connection == NULL);
+
+		/* ParallelBackupStart() will actually fork the processes */
+		pstate = ParallelBackupStart(AH);
+		restore_toc_entries_parallel(AH, pstate, &pending_list);
+		ParallelBackupEnd(AH, pstate);
+
+		/* reconnect the leader and see if we missed something */
+		restore_toc_entries_postfork(AH, &pending_list);
+		Assert(AH->connection != NULL);
+	}
+	else
+	{
+		/*
+		 * In serial mode, process everything in three phases: normal items,
+		 * then ACLs, then post-ACL items.  We might be able to skip one or
+		 * both extra phases in some cases, eg data-only restores.
+		 */
+		bool		haveACL = false;
+		bool		havePostACL = false;
+
+		for (te = AH->toc->next; te != AH->toc; te = te->next)
+		{
+			if ((te->reqs & (REQ_SCHEMA | REQ_DATA)) == 0)
+				continue;		/* ignore if not to be dumped at all */
+
+			switch (_tocEntryRestorePass(te))
+			{
+				case RESTORE_PASS_MAIN:
+					(void) restore_toc_entry(AH, te, false);
+					break;
+				case RESTORE_PASS_ACL:
+					haveACL = true;
+					break;
+				case RESTORE_PASS_POST_ACL:
+					havePostACL = true;
+					break;
+			}
+		}
+
+		if (haveACL)
+		{
+			for (te = AH->toc->next; te != AH->toc; te = te->next)
+			{
+				if ((te->reqs & (REQ_SCHEMA | REQ_DATA)) != 0 &&
+					_tocEntryRestorePass(te) == RESTORE_PASS_ACL)
+					(void) restore_toc_entry(AH, te, false);
+			}
+		}
+
+		if (havePostACL)
+		{
+			for (te = AH->toc->next; te != AH->toc; te = te->next)
+			{
+				if ((te->reqs & (REQ_SCHEMA | REQ_DATA)) != 0 &&
+					_tocEntryRestorePass(te) == RESTORE_PASS_POST_ACL)
+					(void) restore_toc_entry(AH, te, false);
+			}
+		}
+	}
+
+	if (ropt->single_txn)
+	{
+		if (AH->connection)
+			CommitTransaction(AHX);
+		else
+			ahprintf(AH, "COMMIT;\n\n");
+	}
+
+	if (AH->public.verbose)
+		dumpTimestamp(AH, "Completed on", time(NULL));
+
+	ahprintf(AH, "--\n-- PostgreSQL database dump complete\n--\n\n");
+
+ 
+	/*
+	 * Clean up & we're done.
+	 */
+	AH->stage = STAGE_FINALIZING;
+
+	if (ropt->filename || ropt->compression)
+		RestoreOutput(AH, sav);
+
+	if (ropt->useDB)
+		DisconnectDatabase(&AH->public);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 /*
  * Restore a single TOC item.  Used in both parallel and non-parallel restore;
  * is_parallel is true if we are in a worker child process.
@@ -2319,7 +2799,7 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 	newToc->defn = opts->createStmt ? pg_strdup(opts->createStmt) : NULL;
 	newToc->dropStmt = opts->dropStmt ? pg_strdup(opts->dropStmt) : NULL;
 	newToc->copyStmt = opts->copyStmt ? pg_strdup(opts->copyStmt) : NULL;
-	newToc->ident_case = opts->ident_case;		/* BUG#M0000323 */
+	newToc->d.oracle.ident_case = opts->ident_case;		/* BUG#M0000323 SRS-MYSQL-PGDUMP*/
 	newToc->compatible_mode = opts->compatible_mode ? pg_strdup(opts->compatible_mode) : NULL;	/* ReqID:SRS-CMD-PGDUMP */
 
 	if (opts->nDeps > 0)
@@ -3379,7 +3859,8 @@ _discoverArchiveFormat(ArchiveHandle *AH)
 	memcpy(&AH->lookahead[0], sig, 5);
 	AH->lookaheadLen = 5;
 
-	if (strncmp(sig, "PGDMP", 5) == 0 || strncmp(sig, "IVYOR", 5) == 0 || strncmp(sig, "IVYPG", 5) == 0)
+	if (strncmp(sig, "PGDMP", 5) == 0 || strncmp(sig, "IVYOR", 5) == 0 || strncmp(sig, "IVYPG", 5) == 0
+				|| strncmp(sig, "IVYMY", 5) == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{
 		/* It's custom format, stop here */
 		AH->format = archCustom;
@@ -3771,7 +4252,7 @@ WriteToc(ArchiveHandle *AH)
 		/* END - ReqID:SRS-MISC-USER */
 		WriteStr(AH, te->owner);
 		WriteStr(AH, "false");
-		WriteInt(AH, te->ident_case);/* ReqID:SRS-SQL-FORCEVIEW */
+		WriteInt(AH, te->d.oracle.ident_case);/* ReqID:SRS-SQL-FORCEVIEW SRS-MYSQL-PGDUMP */
 		WriteStr(AH, te->compatible_mode);	/* ReqID:SRS-CMD-PGDUMP */
 
 		/* Dump list of dependencies */
@@ -3880,7 +4361,7 @@ ReadToc(ArchiveHandle *AH)
 		tmp1 = ReadStr(AH);
 		if(tmp1 && (pg_strcasecmp(tmp1, "DATABASEUSER") == 0 || pg_strcasecmp(tmp1, "INSTANCEUSER") == 0 ))
 		{
-			te->usertype = tmp1;
+			te->d.oracle.usertype = tmp1;	/* ReqID:SRS-MYSQL-PGDUMP */
 			te->owner = ReadStr(AH);
 		}
 		else if(tmp1)
@@ -3892,7 +4373,7 @@ ReadToc(ArchiveHandle *AH)
 
 		/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 		if (AH->version >= K_VERS_1_15)
-			te->ident_case = ReadInt(AH);
+			te->d.oracle.ident_case = ReadInt(AH);	/* ReqID:SRS-MYSQL-PGDUMP */
 		/* End - ReqID:SRS-SQL-FORCEVIEW */
 		/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 		if (AH->version >= K_VERS_1_16)
@@ -4436,7 +4917,7 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 	else
 		ahprintf(AH, "SET row_security = off;\n");
 	
-	if (database_mode != DB_NATIVE)
+	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{	
 		/* Begin - ReqID:SRS-MISC-GUC */
 		ahprintf(AH, "SET ivorysql.identifier_case_switch = normal;\n");	/* case sensitive indentify */
@@ -4927,7 +5408,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			AH->PrintExtraTocPtr(AH, te);
 		ahprintf(AH, "--\n\n");
 	}
-	if (database_mode != DB_NATIVE)
+	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{
 		/* BEGIN - ReqID:SRS-MISC-USER */
 		if ((strcmp(te->desc, "DATABASE") == 0) && (DB_ORACLE == database_mode) && (strcmp(te->tag, "template1") !=0 ))
@@ -5006,6 +5487,41 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				/* END - ReqID:SRS-CMD-PGDUMP */
 			}
 
+			/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+			/*
+			 * fix a non-existent error，keep the code for the following reasons.
+			 * 1. This code may be used later. When splicing alter, the syntax is 
+			 * different from the native one. If it is used under the native parser, 
+			 * the syntax will not be recognized.
+			 * 2. When dumping SQL statements, the parser status may be switched.
+			 */
+			/*if (database_mode == DB_MYSQL && te->compatible_mode != NULL)
+			{
+				if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER
+						&& strcmp(te->desc, "ACL") != 0)
+				{
+					ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+					compatible_mode = PG_PARSER;
+					if (AH->format == archNull || AH->connection == NULL)
+						ahprintf(AH, "\\parser\n\n");
+				}
+				else if (strcmp(pg_strdup(te->compatible_mode),"m") == 0 && compatible_mode != MYS_PARSER)
+				{
+					ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
+					compatible_mode = MYS_PARSER;
+					if (AH->format == archNull || AH->connection == NULL)
+						ahprintf(AH, "\\parser\n\n");
+				}
+				else if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER && strcmp(te->desc, "ACL") == 0)
+				{
+					ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
+					compatible_mode = MYS_PARSER;
+					if (AH->format == archNull || AH->connection == NULL)
+						ahprintf(AH, "\\parser\n\n");
+				}
+			}*/
+			/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 			if (strcmp(te->desc, "VIEW") == 0 && database_mode == DB_ORACLE)	/* ReqID:SRS-CMD-PGDUMP */
 			{
@@ -5017,7 +5533,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					/* Begin - BUG#Z932 */
 					if (strcmp(getInstanceIdentifier_case_switch(AH->connection), "normal") == 0)
 					{
-						switch(te->ident_case)
+						switch(te->d.oracle.ident_case)		/* ReqID:SRS-MYSQL-PGDUMP */
 						{
 							case 'i':
 								need_reset = true;
@@ -5050,7 +5566,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			else
 				ahprintf(AH, "%s\n\n", te->defn);
 
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				if (compatible_mode == PG_PARSER)
 				{
@@ -5060,7 +5576,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					compatible_mode = ORA_PARSER;					
 				}
 			}
-			if (strcmp(te->desc, "INDEX") != 0)
+			if (strcmp(te->desc, "INDEX") != 0 && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 			{
 				if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)
 				{
@@ -5142,8 +5658,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				}
 				else
 				{
-					if ((te->usertype) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						appendPQExpBuffer(temp, " OWNER TO %s %s;", te->usertype, fmtId(te->owner));
+					if ((te->d.oracle.usertype) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 SRS-MYSQL-PGDUMP */
+						appendPQExpBuffer(temp, " OWNER TO %s %s;", te->d.oracle.usertype, fmtId(te->owner));		/* ReqID:SRS-MYSQL-PGDUMP */
 					else
 						appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
 				}
@@ -5188,7 +5704,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			free(AH->currUser);
 		AH->currUser = NULL;
 	}
-	if (database_mode != DB_NATIVE)
+	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{
 		/* BEGIN - ReqID:SRS-MISC-USER */
 		if ((strcmp(te->desc,"DATABASE") == 0) && (DB_ORACLE == database_mode))
@@ -5265,6 +5781,10 @@ WriteHead(ArchiveHandle *AH)
 		AH->WriteBufPtr(AH, "IVYOR", 5);
 	else if (database_mode == DB_PG)
 		AH->WriteBufPtr(AH, "IVYPG", 5);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		AH->WriteBufPtr(AH, "IVYMY", 5);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		AH->WriteBufPtr(AH, "PGDMP", 5);
 	/* BEGIN - bug#M0000238 */
@@ -5327,7 +5847,13 @@ ReadHead(ArchiveHandle *AH)
 			RAM = &ramOracle;
 			database_mode = DB_ORACLE;		
 		}
-
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		else if ((strncmp(tmpMag, "IVYMY", 5) == 0))
+		{
+			RAM = &ramMysql;
+			database_mode = DB_MYSQL;
+		}
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 		else
 			fatal("did not find magic string in file header");
 		/* END - ReqID:SRS-CMD-PGDUMP */
@@ -6378,6 +6904,10 @@ CloneArchive(ArchiveHandle *AH)
 		AH = CloneArchiveOracle(AH);
 	else if (database_mode == DB_PG)
 		AH = CloneArchivePg(AH);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		AH = CloneArchiveMysql(AH);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		AH = CloneArchiveNative(AH);
 
@@ -6515,6 +7045,52 @@ CloneArchivePg(ArchiveHandle *AH)
 	Assert(clone->connection != NULL);
 	return clone;
 }
+
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+ArchiveHandle *
+CloneArchiveMysql(ArchiveHandle *AH)
+{
+	ArchiveHandle *clone;
+
+	/* Make a "flat" copy */
+	clone = (ArchiveHandle *) pg_malloc(sizeof(ArchiveHandle));
+	memcpy(clone, AH, sizeof(ArchiveHandle));
+
+	/* Handle format-independent fields */
+	memset(&(clone->sqlparse), 0, sizeof(clone->sqlparse));
+
+	/* The clone will have its own connection, so disregard connection state */
+	clone->connection = NULL;
+	clone->connCancel = NULL;
+	clone->currUser = NULL;
+	clone->currSchema = NULL;
+	clone->currTablespace = NULL;
+
+	/* savedPassword must be local in case we change it while connecting */
+	if (clone->savedPassword)
+		clone->savedPassword = pg_strdup(clone->savedPassword);
+
+	/* clone has its own error count, too */
+	clone->public.n_errors = 0;
+
+	/*
+	 * Connect our new clone object to the database, using the same connection
+	 * parameters used for the original connection.
+	 */
+	ConnectDatabase((Archive *) clone, &clone->public.ropt->cparams, true);
+
+	/* re-establish fixed state */
+	if (AH->mode == archModeRead)
+		_doSetFixedOutputState(clone);
+	/* in write case, setupDumpWorker will fix up connection state */
+
+	/* Let the format-specific code have a chance too */
+	clone->ClonePtr(clone);
+
+	Assert(clone->connection != NULL);
+	return clone;
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 /*
  * Release clone-local storage.
