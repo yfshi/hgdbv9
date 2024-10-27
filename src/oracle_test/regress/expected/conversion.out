@@ -557,3 +557,36 @@ select description, inbytes, (test_conv(inbytes, 'mule_internal', 'euc_jp')).* f
  invalid, NUL byte         | \x8b00c68bcf8bcf | \x       | \x8b00c68bcf8bcf | invalid byte sequence for encoding "MULE_INTERNAL": 0x8b 0x00
 (10 rows)
 
+--bug#Z1269
+CREATE TABLE utf8_gbk_inputs (inbytes bytea);
+insert into utf8_gbk_inputs values('\xcaa1');
+insert into utf8_gbk_inputs values('\xe280a2');
+insert into utf8_gbk_inputs values('\xe3aebe');
+insert into utf8_gbk_inputs values('\xee97a5');
+insert into utf8_gbk_inputs values('\xee9799');
+insert into utf8_gbk_inputs values('\xee9a85');
+set ivorysql.convert_utf8_to_gbk_question_mark = false;
+select inbytes,(test_conv(inbytes, 'utf8', 'gbk')).* from utf8_gbk_inputs ORDER BY inbytes;
+ inbytes  | result | errorat  |                                               error                                                
+----------+--------+----------+----------------------------------------------------------------------------------------------------
+ \xcaa1   | \x     | \xcaa1   | character with byte sequence 0xca 0xa1 in encoding "UTF8" has no equivalent in encoding "GBK"
+ \xe280a2 | \x     | \xe280a2 | character with byte sequence 0xe2 0x80 0xa2 in encoding "UTF8" has no equivalent in encoding "GBK"
+ \xe3aebe | \x     | \xe3aebe | character with byte sequence 0xe3 0xae 0xbe in encoding "UTF8" has no equivalent in encoding "GBK"
+ \xee9799 | \x     | \xee9799 | character with byte sequence 0xee 0x97 0x99 in encoding "UTF8" has no equivalent in encoding "GBK"
+ \xee97a5 | \x     | \xee97a5 | character with byte sequence 0xee 0x97 0xa5 in encoding "UTF8" has no equivalent in encoding "GBK"
+ \xee9a85 | \x     | \xee9a85 | character with byte sequence 0xee 0x9a 0x85 in encoding "UTF8" has no equivalent in encoding "GBK"
+(6 rows)
+
+set ivorysql.convert_utf8_to_gbk_question_mark = true;
+select inbytes, (test_conv(inbytes, 'utf8', 'gbk')).* from utf8_gbk_inputs ORDER BY inbytes;
+ inbytes  | result | errorat | error 
+----------+--------+---------+-------
+ \xcaa1   | \xa3bf |         | 
+ \xe280a2 | \xa3bf |         | 
+ \xe3aebe | \xa3bf |         | 
+ \xee9799 | \xa3bf |         | 
+ \xee97a5 | \xa3bf |         | 
+ \xee9a85 | \xa3bf |         | 
+(6 rows)
+
+DROP TABLE utf8_gbk_inputs;

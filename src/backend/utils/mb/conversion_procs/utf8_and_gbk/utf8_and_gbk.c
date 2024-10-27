@@ -16,6 +16,11 @@
 #include "mb/pg_wchar.h"
 #include "../../Unicode/gbk_to_utf8.map"
 #include "../../Unicode/utf8_to_gbk.map"
+/* Begin - BUG#Z0001269 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG#Z00001269 */
+
 
 PG_MODULE_MAGIC;
 
@@ -56,6 +61,26 @@ gbk_to_utf8(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(converted);
 }
 
+
+/* Begin - BUG#Z0001269 */
+/*
+ * When no match is found, it is converted to 0xA3BF
+ * which is question mark
+ */
+static uint32
+conv_utf8_to_gbk(uint32 code)
+{
+	uint32 ucode = 0;
+
+	/* guc is set */
+	if (convert_utf8_to_gbk_question_mark &&
+		database_mode == DB_ORACLE)
+		ucode =  0xA3BF;
+	return ucode;
+}
+/* End - BUG#Z00001269 */
+
+
 Datum
 utf8_to_gbk(PG_FUNCTION_ARGS)
 {
@@ -70,7 +95,7 @@ utf8_to_gbk(PG_FUNCTION_ARGS)
 	converted = UtfToLocal(src, len, dest,
 						   &gbk_from_unicode_tree,
 						   NULL, 0,
-						   NULL,
+						   conv_utf8_to_gbk, /* BUG#Z00001269 */
 						   PG_GBK,
 						   noError);
 

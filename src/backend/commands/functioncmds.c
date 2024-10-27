@@ -440,7 +440,7 @@ interpret_function_parameter_list(ParseState *pstate,
 		/* handle output parameters */
 		if (fpmode != FUNC_PARAM_IN && fpmode != FUNC_PARAM_VARIADIC)
 		{
-			if (objtype == OBJECT_PROCEDURE)
+			if (objtype == OBJECT_PROCEDURE || isplisql) /* BUG#Z0001269 */
 			{
 				/*
 				 * We disallow OUT-after-VARIADIC only for procedures.  While

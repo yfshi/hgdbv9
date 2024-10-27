@@ -410,6 +410,10 @@ extern PGDLLIMPORT bool enable_get_oraparam_mode;
 extern PGDLLIMPORT char *plsql_warnings;
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - BUG#Z0001269 */
+extern PGDLLIMPORT bool convert_utf8_to_gbk_question_mark;
+/* End - BUG#Z00001269 */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

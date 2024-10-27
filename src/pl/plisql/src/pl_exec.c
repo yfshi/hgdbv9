@@ -6287,7 +6287,7 @@ exec_assign_value(PLiSQL_execstate *estate,
 					sql_cursor_init = true;
 					switch (attribute_flag)
 					{
-						case PLISQL_ATTRIBUTE_ISOPNE:
+						case PLISQL_ATTRIBUTE_ISOPEN: /* bug#M364 */
 							/* no need assign */
 							break;
 						case PLISQL_ATTRIBUTE_FOUND:
@@ -6563,7 +6563,7 @@ exec_eval_datum(PLiSQL_execstate *estate,
 				{
 					switch (attribute_flag)
 					{
-						case PLISQL_ATTRIBUTE_ISOPNE:
+						case PLISQL_ATTRIBUTE_ISOPEN: /* BUG#M364 */
 							/* implicit cursor isopen is always false */
 							*isnull = false;
 							*value = BoolGetDatum(false);
@@ -6592,7 +6592,7 @@ exec_eval_datum(PLiSQL_execstate *estate,
 				{
 					switch (attribute_flag)
 					{
-						case PLISQL_ATTRIBUTE_ISOPNE:
+						case PLISQL_ATTRIBUTE_ISOPEN: /* BUG#M364 */
 							*isnull = false;
 							if (attr->get_from_portal)
 							{
@@ -10391,7 +10391,7 @@ exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount)
 
 		switch (i)
 		{
-			case PLISQL_ATTRIBUTE_ISOPNE:
+			case PLISQL_ATTRIBUTE_ISOPEN: /* bug#M364 */
 				/* always false, we need not assign */
 				break;
 			case PLISQL_ATTRIBUTE_FOUND:
