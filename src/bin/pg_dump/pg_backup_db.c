@@ -177,6 +177,37 @@ ReconnectToServerOracle(ArchiveHandle *AH, const char *dbname)
 	PQfinish(oldConn);
 }
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+ReconnectToServerMysql(ArchiveHandle *AH, const char *dbname)
+{
+	PGconn	   *oldConn = AH->connection;
+	RestoreOptions *ropt = AH->public.ropt;
+
+	/*
+	 * Save the dbname, if given, in override_dbname so that it will also
+	 * affect any later reconnection attempt.
+	 */
+	if (dbname)
+		ropt->cparams.override_dbname = pg_strdup(dbname);
+
+	/*
+	 * Note: we want to establish the new connection, and in particular update
+	 * ArchiveHandle's connCancel, before closing old connection.  Otherwise
+	 * an ill-timed SIGINT could try to access a dead connection.
+	 */
+	AH->connection = NULL;		/* dodge error check in ConnectDatabase */
+
+	ConnectDatabaseMysql((Archive *) AH, &ropt->cparams, true);
+
+	/* BEGIN - SQL PARSER */
+	getDbCompatibleMode(AH->connection);
+	/* END - SQL PARSER */
+
+	PQfinish(oldConn);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 void
 ReconnectToServer(ArchiveHandle *AH, const char *dbname)
 {
@@ -184,6 +215,10 @@ ReconnectToServer(ArchiveHandle *AH, const char *dbname)
 		ReconnectToServerPg(AH, dbname);
 	else if (database_mode == DB_ORACLE)
 		ReconnectToServerOracle(AH, dbname);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		ReconnectToServerMysql(AH, dbname);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		ReconnectToServerNative(AH, dbname);
 }
@@ -611,6 +646,120 @@ ConnectDatabaseOracle(Archive *AHX,
 	set_archive_cancel_info(AH, AH->connection);
 }
 
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+void
+ConnectDatabaseMysql(Archive *AHX,
+				const ConnParams *cparams,
+				bool isReconnect)
+{
+	ArchiveHandle *AH = (ArchiveHandle *) AHX;
+	trivalue	prompt_password;
+	char	   *password;
+	bool		new_pass;
+
+	if (AH->connection)
+		fatal("already connected to a database");
+
+	/* Never prompt for a password during a reconnection */
+	prompt_password = isReconnect ? TRI_NO : cparams->promptPassword;
+
+	password = AH->savedPassword;
+
+	if (prompt_password == TRI_YES && password == NULL)
+		password = simple_prompt("Password: ", false);
+
+	/*
+	 * Start the connection.  Loop until we have a password if requested by
+	 * backend.
+	 */
+	do
+	{
+		const char *keywords[8];
+		const char *values[8];
+		int 		i = 0;
+
+		/*
+		 * If dbname is a connstring, its entries can override the other
+		 * values obtained from cparams; but in turn, override_dbname can
+		 * override the dbname component of it.
+		 */
+		keywords[i] = "host";
+		values[i++] = cparams->pghost;
+		keywords[i] = "port";
+		values[i++] = cparams->pgport;
+		keywords[i] = "user";
+		values[i++] = cparams->username;
+		keywords[i] = "password";
+		values[i++] = password;
+		keywords[i] = "dbname";
+		values[i++] = cparams->dbname;
+		if (cparams->override_dbname)
+		{
+			keywords[i] = "dbname";
+			values[i++] = cparams->override_dbname;
+		}
+		keywords[i] = "fallback_application_name";
+		values[i++] = progname;
+		keywords[i] = NULL;
+		values[i++] = NULL;
+		Assert(i <= lengthof(keywords));
+
+		new_pass = false;
+		AH->connection = PQconnectdbParams(keywords, values, true);
+
+		if (!AH->connection)
+			fatal("could not connect to database");
+
+		if (PQstatus(AH->connection) == CONNECTION_BAD &&
+			PQconnectionNeedsPassword(AH->connection) &&
+			password == NULL &&
+			prompt_password != TRI_NO)
+		{
+			PQfinish(AH->connection);
+			password = simple_prompt("Password: ", false);
+			new_pass = true;
+		}
+	} while (new_pass);
+
+	/* check to see that the backend connection was successfully made */
+	if (PQstatus(AH->connection) == CONNECTION_BAD)
+	{
+		if (isReconnect)
+			fatal("reconnection failed: %s",
+				  PQerrorMessage(AH->connection));
+		else
+			fatal("%s",
+				  PQerrorMessage(AH->connection));
+	}
+
+	/* Start strict; later phases may override this. */
+	PQclear(ExecuteSqlQueryForSingleRow((Archive *) AH,
+										ALWAYS_SECURE_SEARCH_PATH_SQL));
+
+	if (password && password != AH->savedPassword)
+		free(password);
+
+	/*
+	 * We want to remember connection's actual password, whether or not we got
+	 * it by prompting.  So we don't just store the password variable.
+	 */
+	if (PQconnectionUsedPassword(AH->connection))
+	{
+		if (AH->savedPassword)
+			free(AH->savedPassword);
+		AH->savedPassword = pg_strdup(PQpass(AH->connection));
+	}
+
+	/* check for version mismatch */
+	_check_database_version(AH);
+
+	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
+
+	/* arrange for SIGINT to issue a query cancel on this connection */
+	set_archive_cancel_info(AH, AH->connection);
+}
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 void
 ConnectDatabase(Archive *AHX,
 				const ConnParams *cparams,
@@ -620,6 +769,10 @@ ConnectDatabase(Archive *AHX,
 		ConnectDatabaseOracle(AHX, cparams, isReconnect);
 	else if (database_mode == DB_PG)
 		ConnectDatabasePg(AHX, cparams, isReconnect);
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	else if (database_mode == DB_MYSQL)
+		ConnectDatabaseMysql(AHX, cparams, isReconnect);
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		ConnectDatabaseNative(AHX, cparams, isReconnect);
 }

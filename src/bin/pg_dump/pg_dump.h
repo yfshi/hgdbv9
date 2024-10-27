@@ -789,6 +789,7 @@ extern DumpMethods *dM;
 extern struct dumpMethods dumpMethodsNative;
 extern struct dumpMethods dumpMethodsOracle;
 extern struct dumpMethods dumpMethodsPg;
+extern struct dumpMethods dumpMethodsMysql;	/* ReqID:SRS-MYSQL-PGDUMP */
 
 extern char role_catalog[10];
 extern int	no_role_passwords;

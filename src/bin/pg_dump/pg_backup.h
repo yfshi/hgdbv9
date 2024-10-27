@@ -270,6 +270,11 @@ extern void ConnectDatabaseOracle(Archive *AHX,
 							const ConnParams *cparams,
 							bool isReconnect);
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern void ConnectDatabaseMysql(Archive *AHX,
+							const ConnParams *cparams,
+							bool isReconnect);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 extern void DisconnectDatabase(Archive *AHX);
 extern PGconn *GetConnection(Archive *AHX);
 
@@ -289,13 +294,18 @@ extern void ProcessArchiveRestoreOptionsNative(Archive *AH);
 extern void ProcessArchiveRestoreOptionsPg(Archive *AH);
 extern void ProcessArchiveRestoreOptionsOracle(Archive *AH);
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern void ProcessArchiveRestoreOptionsMysql(Archive *AH);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 extern void RestoreArchive(Archive *AH);
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 extern void RestoreArchiveNative(Archive *AH);
 extern void RestoreArchivePg(Archive *AH);
 extern void RestoreArchiveOracle(Archive *AH);
 /* END - ReqID:SRS-CMD-PGDUMP */
-
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern void RestoreArchiveMysql(Archive *AH);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 /* Open an existing archive */
 extern Archive *OpenArchive(const char *FileSpec, const ArchiveFormat fmt);
 
@@ -314,6 +324,11 @@ extern Archive *CreateArchiveOracle(const char *FileSpec, const ArchiveFormat fm
 							  const int compression, bool dosync, ArchiveMode mode,
 							  SetupWorkerPtrType setupDumpWorker);
 /* END- ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern Archive *CreateArchiveMysql(const char *FileSpec, const ArchiveFormat fmt,
+							  const int compression, bool dosync, ArchiveMode mode,
+							  SetupWorkerPtrType setupDumpWorker);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 /* The --list option */
 extern void PrintTOCSummary(Archive *AH);
 

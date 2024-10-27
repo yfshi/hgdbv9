@@ -384,7 +384,6 @@ struct _tocEntry
 								 * means use database default */
 	char	   *tableam;		/* table access method, only for TABLE tags */
 	char	   *owner;
-	char	   *usertype; 			/* ReqID:SRS-MISC-USER */
 	char	   *desc;
 	char	   *defn;
 	char	   *dropStmt;
@@ -410,8 +409,23 @@ struct _tocEntry
 	int			nRevDeps;		/* number of such dependencies */
 	DumpId	   *lockDeps;		/* dumpIds of objects this one needs lock on */
 	int			nLockDeps;		/* number of such dependencies */
-	char		ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
 	char 	   *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
+	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+	union
+	{
+		struct
+		{
+			char   *usertype; 		/* ReqID:SRS-MISC-USER */
+			char	ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
+		}			oracle;
+		/*
+		struct
+		{
+			
+		}			mysql;
+		*/
+	}			d;
+	/* END - ReqID:SRS-MYSQL-PGDUMP */
 };
 
 extern int	parallel_restore(ArchiveHandle *AH, TocEntry *te);
@@ -456,6 +470,10 @@ extern ArchiveHandle *CloneArchiveNative(ArchiveHandle *AH);
 extern ArchiveHandle *CloneArchiveOracle(ArchiveHandle *AH);
 extern ArchiveHandle *CloneArchivePg(ArchiveHandle *AH);
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern ArchiveHandle *CloneArchiveMysql(ArchiveHandle *AH);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
+
 extern void DeCloneArchive(ArchiveHandle *AH);
 
 extern int	TocIDRequired(ArchiveHandle *AH, DumpId id);
@@ -498,6 +516,9 @@ extern void ReconnectToServerNative(ArchiveHandle *AH, const char *dbname);
 extern void ReconnectToServerPg(ArchiveHandle *AH, const char *dbname);
 extern void ReconnectToServerOracle(ArchiveHandle *AH, const char *dbname);
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern void ReconnectToServerMysql(ArchiveHandle *AH, const char *dbname);
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 extern void DropBlobIfExists(ArchiveHandle *AH, Oid oid);
 
 void		ahwrite(const void *ptr, size_t size, size_t nmemb, ArchiveHandle *AH);

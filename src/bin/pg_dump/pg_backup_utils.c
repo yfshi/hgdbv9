@@ -57,6 +57,14 @@ RestoreMethods ramPg =
 	.RestoreArchive = RestoreArchivePg
 };
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+RestoreMethods ramMysql =
+{
+	.mode = "m",
+	.ProcessArchiveRestoreOptions = ProcessArchiveRestoreOptionsMysql,
+	.RestoreArchive = RestoreArchiveMysql
+};
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 /*
  * Parse a --section=foo command line argument.

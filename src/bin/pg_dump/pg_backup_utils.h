@@ -54,5 +54,8 @@ extern RestoreMethods ramNative;
 extern RestoreMethods ramOracle;
 extern RestoreMethods ramPg;
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+extern RestoreMethods ramMysql;
+/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 #endif							/* PG_BACKUP_UTILS_H */
