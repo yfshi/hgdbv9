@@ -810,10 +810,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	}
 	else if (stmt->partbound)
 	{
-		/*
-		 * For partitions, when no other tablespace is specified, we default
-		 * the tablespace to the parent partitioned table's.
-		 */
 		Assert(list_length(inheritOids) == 1);
 		tablespaceId = get_rel_tablespace(linitial_oid(inheritOids));
 	}
@@ -7289,6 +7285,9 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	TupleDesc	tupdesc;
 	FormData_pg_attribute *aattr[] = {&attribute};
 
+	/* since this function recurses, it could be driven to stack overflow */
+	check_stack_depth();
+
 	/* At top level, permission check was done in ATPrepCmd, else do it */
 	if (recursing)
 		ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
@@ -9282,6 +9281,10 @@ ATExecDropColumn(List **wqueue, Relation rel, const char *colName,
 
 	/* Initialize addrs on the first invocation */
 	Assert(!recursing || addrs != NULL);
+
+	/* since this function recurses, it could be driven to stack overflow */
+	check_stack_depth();
+
 	if (!recursing)
 		addrs = new_object_addresses();
 
@@ -11601,6 +11604,9 @@ ATExecAlterConstrRecurse(Constraint *cmdcon, Relation conrel, Relation tgrel,
 	Oid			refrelid;
 	bool		changed = false;
 
+	/* since this function recurses, it could be driven to stack overflow */
+	check_stack_depth();
+
 	currcon = (Form_pg_constraint) GETSTRUCT(contuple);
 	conoid = currcon->oid;
 	refrelid = currcon->confrelid;
@@ -12586,6 +12592,9 @@ ATExecDropConstraint(Relation rel, const char *constrName,
 	bool		found = false;
 	bool		is_no_inherit_constraint = false;
 	char		contype;
+
+	/* since this function recurses, it could be driven to stack overflow */
+	check_stack_depth();
 
 	/* At top level, permission check was done in ATPrepCmd, else do it */
 	if (recursing)
@@ -13577,7 +13586,6 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				break;
 
 			case OCLASS_REWRITE:
-				/* XXX someday see if we can cope with revising views */
 				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 				if (ORA_PARSER == compatible_db)
 				{
@@ -13629,6 +13637,10 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 					}
 				}
 				else
+					/*
+				 	 * View/rule bodies have pretty much the same issues as
+				 	 * function bodies.  FIXME someday.
+				 	 */
 					ereport(ERROR,
 							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 							 errmsg("cannot alter type of a column used by a view or rule"),
@@ -13645,9 +13657,9 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				 * specified as an update target, or because the column is
 				 * used in the trigger's WHEN condition.  The first case would
 				 * not require any extra work, but the second case would
-				 * require updating the WHEN expression, which will take a
-				 * significant amount of new code.  Since we can't easily tell
-				 * which case applies, we punt for both.  FIXME someday.
+				 * require updating the WHEN expression, which has the same
+				 * issues as above.  Since we can't easily tell which case
+				 * applies, we punt for both.  FIXME someday.
 				 */
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -13716,13 +13728,21 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				/* End - ReqID:SRS-PLSQL-TYPE */
 				{
 					/*
-					 * We don't expect any of these sorts of objects to depend on
-					 * a column.
-					 */
-					elog(ERROR, "unexpected object depending on column: %s",
-						 getObjectDescription(&foundObject, false));
+				 	 * A new-style SQL function can depend on a column, if that
+				 	 * column is referenced in the parsed function body.  Ideally
+				 	 * we'd automatically update the function by deparsing and
+				 	 * reparsing it, but that's risky and might well fail anyhow.
+				 	 * FIXME someday.
+				 	 */
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot alter type of a column used by a function or procedure"),
+						 errdetail("%s depends on column \"%s\"",
+								   getObjectDescription(&foundObject, false),
+								   colName)));
 				}
 				break;
+
 			case OCLASS_TYPE:
 			case OCLASS_CAST:
 			case OCLASS_COLLATION:
@@ -17622,16 +17642,11 @@ AlterTableNamespaceInternal(Relation rel, Oid oldNspOid, Oid nspOid,
 								   nspOid, false, false, objsMoved);
 
 	/* Fix other dependent stuff */
-	if (rel->rd_rel->relkind == RELKIND_RELATION ||
-		rel->rd_rel->relkind == RELKIND_MATVIEW ||
-		rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
-	{
-		AlterIndexNamespaces(classRel, rel, oldNspOid, nspOid, objsMoved);
-		AlterSeqNamespaces(classRel, rel, oldNspOid, nspOid,
-						   objsMoved, AccessExclusiveLock);
-		AlterConstraintNamespaces(RelationGetRelid(rel), oldNspOid, nspOid,
-								  false, objsMoved);
-	}
+	AlterIndexNamespaces(classRel, rel, oldNspOid, nspOid, objsMoved);
+	AlterSeqNamespaces(classRel, rel, oldNspOid, nspOid,
+					   objsMoved, AccessExclusiveLock);
+	AlterConstraintNamespaces(RelationGetRelid(rel), oldNspOid, nspOid,
+							  false, objsMoved);
 
 	table_close(classRel, RowExclusiveLock);
 }

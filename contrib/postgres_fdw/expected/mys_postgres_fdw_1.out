@@ -887,32 +887,6 @@ SELECT * FROM ft2 WHERE c1 = ANY (ARRAY(SELECT c1 FROM ft1 WHERE c1 < 5));
   4 |  4 | 00004 | Mon Jan 05 00:00:00 1970 PST | Mon Jan 05 00:00:00 1970 | 4  | 4          | foo
 (4 rows)
 
--- we should not push order by clause with volatile expressions or unsafe
--- collations
-EXPLAIN (VERBOSE, COSTS OFF)
-	SELECT * FROM ft2 ORDER BY ft2.c1, random();
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Sort
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, (random())
-   Sort Key: ft2.c1, (random())
-   ->  Foreign Scan on public.ft2
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, random()
-         Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
-(6 rows)
-
-EXPLAIN (VERBOSE, COSTS OFF)
-	SELECT * FROM ft2 ORDER BY ft2.c1, ft2.c3 collate "C";
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Sort
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c3)::text)
-   Sort Key: ft2.c1, ft2.c3 COLLATE "C"
-   ->  Foreign Scan on public.ft2
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, c3
-         Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
-(6 rows)
-
 -- user-defined operator/function
 CREATE FUNCTION postgres_fdw_abs(int) RETURNS int AS $$
 BEGIN
@@ -10059,6 +10033,13 @@ SELECT * FROM result_tbl ORDER BY a;
 (2 rows)
 
 DELETE FROM result_tbl;
+-- Test error handling, if accessing one of the foreign partitions errors out
+CREATE FOREIGN TABLE async_p_broken PARTITION OF async_pt FOR VALUES FROM (10000) TO (10001)
+  SERVER loopback OPTIONS (table_name 'non_existent_table');
+SELECT * FROM async_pt;
+ERROR:  relation "public.non_existent_table" does not exist
+CONTEXT:  remote SQL command: SELECT a, b, c FROM public.non_existent_table
+DROP FOREIGN TABLE async_p_broken;
 -- Check case where multiple partitions use the same connection
 CREATE TABLE base_tbl3 (a int, b int, c text);
 CREATE FOREIGN TABLE async_p3 PARTITION OF async_pt FOR VALUES FROM (3000) TO (4000)
