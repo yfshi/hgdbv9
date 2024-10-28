@@ -554,3 +554,26 @@ COMMIT;
 DROP PROCEDURE prepare_test_cursor();
 DROP TABLE test_cursor_null;
 DROP TABLE test_cursor;
+
+/*Begin - BUG#Z1278*/
+create table tr(a int, b int);
+
+insert into tr values(11, 2);
+insert into tr values(3, 5);
+insert into tr values(2, 9);
+insert into tr values(100, 17);
+insert into tr values(33, 14);
+insert into tr values(21, 6);
+insert into tr values(50, 36);
+
+select rownum, * from tr where rownum < 4;
+
+show compute_query_id;
+set compute_query_id to on; --enable jumblequery
+show compute_query_id;
+select rownum, * from tr where rownum < 4;
+create view vtr as select * from tr;
+select rownum, * from vtr;
+reset compute_query_id;
+drop table tr;
+/*End - BUG#Z1278*/
