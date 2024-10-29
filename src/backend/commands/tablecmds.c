@@ -1446,8 +1446,10 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	if(pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
-		ListCell	*cell;
-		int			num = 1;
+		/* BEGIN - BUG#M0000404 */
+		// ListCell	*cell;
+		// int			num = 1;
+		/* END - BUG#M0000404 */
 		StringInfoData	str;
 		initStringInfo(&str);
 		if (relkind == RELKIND_SEQUENCE)
@@ -1500,24 +1502,30 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		if (relkind == RELKIND_SEQUENCE)
 			return address;
-
-		foreach(cell, stmt->tableElts)
+/* BEGIN - BUG#M0000404 */
+#if 0
+		if (compatible_db == MYS_PARSER)
 		{
-			ObjectAddress	newaddress;
-
-			ObjectAddressSubSet(newaddress, AttributeRelationId, relationId, num++);
-			if (IsA(lfirst(cell), ColumnDef))
+			foreach(cell, stmt->tableElts)
 			{
-				ColumnDef *coldef = (ColumnDef *)lfirst(cell);
+				ObjectAddress	newaddress;
 
-				pg_object_create_obj_hook(coldef->colname, namespaceId,
-													false,
-													'c',
-													newaddress,
-													NULL,
-													NULL);
+				ObjectAddressSubSet(newaddress, AttributeRelationId, relationId, num++);
+				if (IsA(lfirst(cell), ColumnDef))
+				{
+					ColumnDef *coldef = (ColumnDef *)lfirst(cell);
+
+					pg_object_create_obj_hook(coldef->colname, namespaceId,
+														false,
+														'c',
+														newaddress,
+														NULL,
+														NULL);
+				}
 			}
 		}
+#endif
+/* END - BUG#M0000404 */
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 	CommandCounterIncrement();

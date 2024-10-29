@@ -5456,7 +5456,11 @@ getFuncs(Archive *fout, int *numFuncs)
 		PQExpBuffer	selectdatabase_query = createPQExpBuffer();	/* ReqID:SRS-CMD-PGDUMP */		
 		const char *not_agg_check;
 		Oid			FirstOIDforUser;	/* ReqID:SRS-CMD-PGDUMP */
-
+		/* BEGIN - BUG#M0000404 */
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		/* END - BUG#M0000404 */
 		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
 						initracl_subquery, "p.proacl", "p.proowner", "'f'",
 						dopt->binary_upgrade);
@@ -5466,7 +5470,11 @@ getFuncs(Archive *fout, int *numFuncs)
 #else
 		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
 #endif
-		FirstOIDforUser = atooid(PQgetvalue(ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK), 0, 0));
+		/* BEGIN - BUG#M0000404 */
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		PQclear(res_firstoid);
+		/* END - BUG#M0000404 */
 		if (FirstOIDforUser < 16384)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
@@ -5488,7 +5496,9 @@ getFuncs(Archive *fout, int *numFuncs)
 		/* END - ReqID:SRS-CMD-PGDUMP */
 		not_agg_check = (fout->remoteVersion >= 110000 ? "p.prokind <> 'a'"
 						 : "NOT p.proisagg");
-		if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)
+		
+
+		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
 			appendPQExpBuffer(query,
 							"SELECT p.tableoid, p.oid, p.proname, p.prolang, "
 							"p.pronargs, p.proargtypes, p.prorettype, "
@@ -5587,6 +5597,7 @@ getFuncs(Archive *fout, int *numFuncs)
 		destroyPQExpBuffer(initracl_subquery);
 		destroyPQExpBuffer(temp_query);
 		destroyPQExpBuffer(selectdatabase_query);
+		PQclear(res_pgobject);	/* BUG#M0000404 */
 	}
 	else
 	{
@@ -5812,7 +5823,12 @@ getPackages(Archive *fout, int *numPkgs)
 	PQclear(res);
 
 	destroyPQExpBuffer(query);
-
+	/* BEGIN - BUG#M0000404 */
+	destroyPQExpBuffer(acl_subquery);
+	destroyPQExpBuffer(racl_subquery);
+	destroyPQExpBuffer(initacl_subquery);
+	destroyPQExpBuffer(initracl_subquery);
+	/* END - BUG#M0000404 */
 	return pkginfo;
 }
 
@@ -6004,6 +6020,11 @@ getTables(Archive *fout, int *numTables)
 
 		PQExpBuffer	temp_query = createPQExpBuffer();	/* ReqID:SRS-CMD-PGDUMP */
 		PQExpBuffer	selectdatabase_query = createPQExpBuffer();	/* ReqID:SRS-CMD-PGDUMP */
+		/* BEGIN - BUG#M0000404 */
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		/* END - BUG#M0000404 */
 		/*
 		 * Collect the information about any partitioned tables, which were
 		 * added in PG10.
@@ -6038,7 +6059,11 @@ getTables(Archive *fout, int *numTables)
 #else
 		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
 #endif
-		FirstOIDforUser = atooid(PQgetvalue(ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK), 0, 0));
+		/* BEGIN - BUG#M0000404 */
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		PQclear(res_firstoid);
+		/* END - BUG#M0000404 */
 		if (FirstOIDforUser < 16384)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
@@ -6059,7 +6084,7 @@ getTables(Archive *fout, int *numTables)
 
 		/* END - ReqID:SRS-CMD-PGDUMP */
 		/* Begin - BUG#M229 */ /* BEGIN - ReqID:SRS-CMD-PGDUMP */
-		if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)
+		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
 			appendPQExpBuffer(query,
 						  "SELECT c.tableoid, c.oid, c.relname, "
 						  "%s AS relacl, %s as rrelacl, "
@@ -6217,6 +6242,7 @@ getTables(Archive *fout, int *numTables)
 		destroyPQExpBuffer(attinitracl_subquery);
 		destroyPQExpBuffer(temp_query);
 		destroyPQExpBuffer(selectdatabase_query);
+		PQclear(res_pgobject);	/* BUG#M0000404 */
 	}	
 	else if (fout->remoteVersion >= 90600)
 	{
@@ -7213,8 +7239,12 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 		resetPQExpBuffer(query);
 		if (fout->remoteVersion >= 110000)
 		{
+			/* BEGIN - BUG#M0000404 */
+			PGresult	*res_pgobject;
+			res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+			/* END - BUG#M0000404 */
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-			if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)
+			if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
 				appendPQExpBuffer(query,
 								"SELECT t.tableoid, t.oid, "
 								"t.relname AS indexname, "
@@ -7296,6 +7326,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 								"AND i.indisready "
 								"ORDER BY indexname",
 								tbinfo->dobj.catId.oid);
+			PQclear(res_pgobject);	/* BUG#M0000404 */
 		}
 		else if (fout->remoteVersion >= 90400)
 		{
@@ -18251,7 +18282,11 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 
 	if (fout->remoteVersion >= 100000)
 	{
-		if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)	/* ReqID:SRS-CMD-PGDUMP */
+		/* BEGIN - BUG#M0000404 */
+		PGresult *res_pgobject;
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		/* END - BUG#M0000404 */
+		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* ReqID:SRS-CMD-PGDUMP */	/* BUG#M0000404 */
 		{
 			appendPQExpBuffer(query,
 							"SELECT format_type(seqtypid, NULL), "
@@ -18275,6 +18310,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 							"WHERE seqrelid = '%u'::oid",
 							tbinfo->dobj.catId.oid);
 		}
+		PQclear(res_pgobject);	/* BUG#M0000404 */
 	}
 	else if (fout->remoteVersion >= 80400)
 	{

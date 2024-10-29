@@ -5462,7 +5462,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			if (database_mode == DB_ORACLE && te->compatible_mode != NULL)
 			{
-				if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER
+				if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != PG_PARSER	/* BUG#M0000404 */
 						&& strcmp(te->desc, "ACL") != 0)
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
@@ -5470,14 +5470,14 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
-				else if (strcmp(pg_strdup(te->compatible_mode),"o") == 0 && compatible_mode != ORA_PARSER)
+				else if (strcmp(te->compatible_mode,"o") == 0 && compatible_mode != ORA_PARSER)	/* BUG#M0000404 */
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 					compatible_mode = ORA_PARSER;
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
-				else if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER && strcmp(te->desc, "ACL") == 0)
+				else if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != PG_PARSER && strcmp(te->desc, "ACL") == 0)	/* BUG#M0000404 */
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 					compatible_mode = ORA_PARSER;
@@ -7626,11 +7626,14 @@ getInstanceIdentifier_case_switch(PGconn *conn)
 		identifier_case_switch = pg_strdup(PQgetvalue(res, 0, 0));
 		PQclear(res);
 		destroyPQExpBuffer(newcmd);
-
 		return identifier_case_switch;
 	}
 	else
+	{/* BEGIN - BUG#M0000404 */
+		PQclear(res);
+		destroyPQExpBuffer(newcmd);
 		return "normal";
+	}/* END - BUG#M0000404 */
 	/* End - BUG#Z932 */
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
