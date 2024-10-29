@@ -16,7 +16,7 @@ create index on t using spgist(f1) include(f2, f3);
 insert into t select
   proname,
   case when length(proname) % 2 = 0 then pronargs else null end,
-  prosrc from pg_proc;
+  prosrc from pg_proc where proname != 'pga_next_schedule';
 vacuum analyze t;
 
 explain (costs off)

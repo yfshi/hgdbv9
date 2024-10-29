@@ -50,6 +50,7 @@ my $contrib_extraincludes = { 'dblink'         => ['src/backend'] };
 my $contrib_extrasource   = {
 	'cube' => [ 'contrib/cube/cubescan.l', 'contrib/cube/cubeparse.y' ],
 	'seg'  => [ 'contrib/seg/segscan.l',   'contrib/seg/segparse.y' ],
+	'ivorysql_ora'  => [ 'contrib/ivorysql_ora/src/builtin_packages/dbms_job/ora_dbms_jobscan.l',   'contrib/ivorysql_ora/src/builtin_packages/dbms_job/ora_dbms_jobparse.y' ],
 };
 my @contrib_excludes = (
 	'bool_plperl',      'commit_ts',

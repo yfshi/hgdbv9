@@ -76,10 +76,12 @@ loop
   end if;
 end loop;
 end$$;
+NOTICE:  pg_attrdef contains unpinned initdb-created object(s)
 NOTICE:  pg_database contains unpinned initdb-created object(s)
 NOTICE:  pg_extension contains unpinned initdb-created object(s)
 NOTICE:  pg_rewrite contains unpinned initdb-created object(s)
 NOTICE:  pg_tablespace contains unpinned initdb-created object(s)
+NOTICE:  pg_trigger contains unpinned initdb-created object(s)
 -- **************** pg_class ****************
 -- Look for system tables with varlena columns but no toast table. All
 -- system tables with toastable columns should have toast tables, with
@@ -110,7 +112,8 @@ ORDER BY 1, 2;
  pg_index                | indpred       | pg_node_tree
  pg_largeobject          | data          | bytea
  pg_largeobject_metadata | lomacl        | aclitem[]
-(12 rows)
+ pga_joblog              | jlgstatus     | character
+(13 rows)
 
 -- system catalogs without primary keys
 --

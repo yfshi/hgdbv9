@@ -314,6 +314,9 @@ static void load_ivorysql_base(FILE *cmdfd);
 /* Begin - ReqID:SRS-SQL-DBLINK */
 static void load_postgres_fdw(FILE *cmdfd);
 /* End - ReqID:SRS-SQL-DBLINK */
+/* Begin - ReqID:SRS-PLSQL-DBMS_JOB */
+static void load_dbms_job_pgagent(FILE *cmdfd);
+/* End - ReqID:SRS-PLSQL-DBMS_JOB */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -2211,6 +2214,14 @@ load_postgres_fdw(FILE *cmdfd)
 }
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-PLSQL-DBMS_JOB */
+static void
+load_dbms_job_pgagent(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION pgagent;\n\n");
+}
+/* End - ReqID:SRS-PLSQL-DBMS_JOB */
+
 /*
  * clean everything up in template1
  */
@@ -3337,6 +3348,7 @@ initialize_data_directory(void)
 	{
 		setup_run_file(cmdfd, preload_ora_misc);	/* BUG#M0000195 */
 		load_plisql(cmdfd);
+		load_dbms_job_pgagent(cmdfd);/* ReqID:SRS-PLSQL-DBMS_JOB */
 		load_ivorysql_ora(cmdfd);	/* ReqID:SRS-GKC-DATATYPE_001 */
 		/*When the mysql framework is merged, the extension
 		  creation of dblink is moved here. It was previously
