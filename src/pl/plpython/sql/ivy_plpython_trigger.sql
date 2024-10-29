@@ -504,6 +504,7 @@ else:
     plpy.notice("TD[event] => " + str(TD["event"]) + ", expecting INSERT");
 return None
 $$;
+/
 
 CREATE TRIGGER recursive_trigger_trig
   AFTER INSERT OR UPDATE ON recursive_trigger_test
