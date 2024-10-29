@@ -145,6 +145,7 @@ LANGUAGE SQL
 AS $$
 SELECT $1, $1;
 $$;
+/
 
 CALL ptest6a(1, null);
 CALL ptest6a(1.1, null);
@@ -154,6 +155,7 @@ LANGUAGE SQL
 AS $$
 SELECT $1, array[$1];
 $$;
+/
 
 CALL ptest6b(1, null, null);
 CALL ptest6b(1.1, null, null);

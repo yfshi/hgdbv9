@@ -209,6 +209,7 @@ LANGUAGE SQL
 AS $$
 SELECT $1, $1;
 $$;
+/
 CALL ptest6a(1, null);
  a | b 
 ---+---
@@ -226,6 +227,7 @@ LANGUAGE SQL
 AS $$
 SELECT $1, array[$1];
 $$;
+/
 CALL ptest6b(1, null, null);
  b |  c  
 ---+-----
