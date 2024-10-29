@@ -274,6 +274,7 @@ CREATE TABLE test_like_6c (LIKE test_like_6 INCLUDING ALL);
  b      | text    |           |          |         | extended |              | 
 Statistics objects:
     "public.test_like_6c_expr_stat" ON (a || b) FROM test_like_6c
+
 DROP TABLE test_like_4, test_like_4a, test_like_4b, test_like_4c, test_like_4d;
 DROP TABLE test_like_5, test_like_5x, test_like_5c;
 DROP TABLE test_like_6, test_like_6c;
