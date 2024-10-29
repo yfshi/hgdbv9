@@ -1983,6 +1983,7 @@ _copyCaseWhen(const CaseWhen *from)
 
 	COPY_NODE_FIELD(expr);
 	COPY_NODE_FIELD(result);
+	COPY_NODE_FIELD(orig_expr); /* BugID:M0000403 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
