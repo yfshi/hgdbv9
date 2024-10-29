@@ -313,6 +313,10 @@ JumbleRangeTable(JumbleState *jstate, List *rtable)
 				break;
 			case RTE_RESULT:
 				break;
+			/* Begin - BUG#Z1278 */
+			case RTE_COUNT:
+				break;
+			/* End - BUG#Z1278 */
 			default:
 				elog(ERROR, "unrecognized RTE kind: %d", (int) rte->rtekind);
 				break;
@@ -823,6 +827,10 @@ JumbleExpr(JumbleState *jstate, Node *node)
 				JumbleExpr(jstate, (Node *) tsc->repeatable);
 			}
 			break;
+		/* Begin - BUG#Z1278 */
+		case T_PseudoColVar:
+			break;
+		/* End - BUG#Z1278 */
 		default:
 			/* Only a warning, since we can stumble along anyway */
 			elog(WARNING, "unrecognized node type: %d",
