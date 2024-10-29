@@ -230,6 +230,7 @@ if t == "text":
 elif t == "int":
      return { "a": 1 }
 $$ LANGUAGE plpythonu;
+/
 
 SELECT * FROM return_record_3('text') AS (a text);
 
