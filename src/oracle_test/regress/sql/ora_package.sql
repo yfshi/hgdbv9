@@ -881,7 +881,7 @@ begin
  ret := pkg.set('welcome');
 end;
 /
---ทรฮส
+
 declare
   ret integer;
 begin

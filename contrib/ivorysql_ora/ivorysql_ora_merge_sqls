@@ -8,3 +8,4 @@ src/orarefcursor/orarefcursor
 src/ora_exception/ora_exception
 src/builtin_packages/standard/standard
 src/builtin_packages/dbms_standard/dbms_standard
+src/builtin_packages/dbms_job/dbms_job

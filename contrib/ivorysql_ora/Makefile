@@ -31,7 +31,9 @@ OBJS = \
 	src/sysview/sysview_functions.o \
 	src/xml_functions/ora_xml_functions.o \
 	src/nlssort/nlssort.o \
-	src/orarefcursor/orarefcursor.o
+	src/orarefcursor/orarefcursor.o \
+	src/builtin_packages/dbms_job/ora_dbms_job.o \
+	src/builtin_packages/dbms_job/ora_dbms_jobparse.o
 
 EXTENSION = ivorysql_ora
 
@@ -41,7 +43,9 @@ DATA = ivorysql_ora--1.0.sql
 
 all: gensql
 
-install: install-data	# BUG#M0000195
+src/builtin_packages/dbms_job/ora_dbms_jobparse.o: src/builtin_packages/dbms_job/ora_dbms_jobscan.c # ReqID:SRS-PLSQL-DBMS_JOB
+
+install: install-data  install-dbms-job	# BUG#M0000195 ReqID:SRS-PLSQL-DBMS_JOB
 
 clean: cleansql
 
@@ -54,6 +58,11 @@ gensql: gensql.pl
 install-data:
 	$(INSTALL_DATA) $(srcdir)/preload_ora_misc.sql '$(DESTDIR)$(datadir)/preload_ora_misc.sql'
 # End - BUG#M0000195
+
+# Begin - ReqID:SRS-PLSQL-DBMS_JOB
+install-dbms-job:
+	$(INSTALL_DATA) $(srcdir)/src/builtin_packages/dbms_job/dbms_job_pgagent/* '$(DESTDIR)$(datadir)/extension/'
+# End - ReqID:SRS-PLSQL-DBMS_JOB
 
 # Clean the generated SQL(s).
 cleansql:
@@ -86,7 +95,8 @@ ORA_REGRESS = \
 	ora_nlssort_gb18030 \
 	ora_default_collation \
 	orarefcursor \
-	dm_compatible
+	dm_compatible \
+	ora_dbms_job
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -99,5 +109,7 @@ include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
-
-
+# Begin - ReqID:SRS-PLSQL-DBMS_JOB
+maintainer-clean:
+	rm -f ./src/builtin_packages/dbms_job/ora_dbms_jobparse.c ./src/builtin_packages/dbms_job/ora_dbms_jobscan.c
+# End - ReqID:SRS-PLSQL-DBMS_JOB

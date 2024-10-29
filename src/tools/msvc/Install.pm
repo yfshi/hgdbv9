@@ -211,7 +211,15 @@ sub Install
 		'client information', $target . '/license/',
 		'dep/license/client_info/', 'client_info.dat') if $config->{license};
 	#END - SRS-MISC-LICENSE-ClientTool
-
+	# Begin - ReqID:SRS-PLSQL-DBMS_JOB
+	CopySetOfFiles(
+		'Pgagent Extension files',
+		[
+			glob ("contrib\\ivorysql_ora\\src\\builtin_packages\\dbms_job\\dbms_job_pgagent\\pgagent.control"),
+			glob("contrib\\ivorysql_ora\\src\\builtin_packages\\dbms_job\\dbms_job_pgagent\\pgagent--4.2.sql")
+		],
+		$target . '/share/extension/');
+	# End - ReqID:SRS-PLSQL-DBMS_JOB
 	GenerateNLSFiles($target, $config->{nls}, $majorver) if ($config->{nls});
 
 	print "Installation complete.\n";
