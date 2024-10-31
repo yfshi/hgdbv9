@@ -5404,7 +5404,11 @@ getFuncs(Archive *fout, int *numFuncs)
 		PQExpBuffer	selectdatabase_query = createPQExpBuffer();	/* ReqID:SRS-MYSQL-PGDUMP */
 		const char *not_agg_check;
 		Oid			FirstOIDforUser;	/* ReqID:SRS-MYSQL-PGDUMP */
-
+		/* BEGIN - BUG#M0000404 */
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		/* END - BUG#M0000404 */
 		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
 						initracl_subquery, "p.proacl", "p.proowner", "'f'",
 						dopt->binary_upgrade);
@@ -5414,7 +5418,11 @@ getFuncs(Archive *fout, int *numFuncs)
 #else
 		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
 #endif
-		FirstOIDforUser = atooid(PQgetvalue(ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK), 0, 0));
+		/* BEGIN - BUG#M0000404 */
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		PQclear(res_firstoid);
+		/* END - BUG#M0000404 */
 		if (FirstOIDforUser < 16384)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
@@ -5431,7 +5439,7 @@ getFuncs(Archive *fout, int *numFuncs)
 
 		not_agg_check = (fout->remoteVersion >= 110000 ? "p.prokind <> 'a'"
 						 : "NOT p.proisagg");
-		if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)
+		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
 			appendPQExpBuffer(query,
 							"SELECT p.tableoid, p.oid, p.proname, p.prolang, "
 							"p.pronargs, p.proargtypes, p.prorettype, "
@@ -5531,6 +5539,7 @@ getFuncs(Archive *fout, int *numFuncs)
 		destroyPQExpBuffer(temp_query);
 		destroyPQExpBuffer(selectdatabase_query);
 		/* END - ReqID:SRS-MYSQL-PGDUMP */
+		PQclear(res_pgobject);	/* BUG#M0000404 */
 	}
 	else
 	{
@@ -5755,6 +5764,11 @@ getTables(Archive *fout, int *numTables)
 		PQExpBuffer	selectdatabase_query = createPQExpBuffer();
 		/* END - ReqID:SRS-MYSQL-PGDUMP */
 
+		/* BEGIN - BUG#M0000404 */
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		/* END - BUG#M0000404 */
 		/*
 		 * Collect the information about any partitioned tables, which were
 		 * added in PG10.
@@ -5790,7 +5804,11 @@ getTables(Archive *fout, int *numTables)
 #else
 		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
 #endif
-		FirstOIDforUser = atooid(PQgetvalue(ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK), 0, 0));
+		/* BEGIN - BUG#M0000404 */
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		PQclear(res_firstoid);
+		/* END - BUG#M0000404 */
 		if (FirstOIDforUser < 16384)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
@@ -5805,7 +5823,7 @@ getTables(Archive *fout, int *numTables)
 		else
 			;
 
-		if (PQfnumber(ExecuteSqlQuery(fout, "select * from pg_object;", PGRES_TUPLES_OK), "obj_oid") != -1)
+		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
 			appendPQExpBuffer(query,
 					"SELECT c.tableoid, c.oid, c.relname, "
 					"%s AS relacl, %s as rrelacl, "
@@ -5967,6 +5985,7 @@ getTables(Archive *fout, int *numTables)
 		destroyPQExpBuffer(temp_query);
 		destroyPQExpBuffer(selectdatabase_query);
 		/* END - ReqID:SRS-MYSQL-PGDUMP */
+		PQclear(res_pgobject);	/* BUG#M0000404 */
 	}	
 	else if (fout->remoteVersion >= 90600)
 	{
