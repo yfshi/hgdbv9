@@ -169,12 +169,12 @@ $sect = "lock conflict";
 $expected_conflicts++;
 
 # acquire lock to conflict with
-$psql_standby{stdin} .= qq[
+$res = $psql_standby->query_safe(qq[
         BEGIN;
         LOCK TABLE $table1 IN ACCESS SHARE MODE;
         SELECT 1;
-        ];
-ok(pump_until_standby(qr/^1$/m), "$sect: conflicting lock acquired");
+        ]);
+like($res, qr/^1$/m, "$sect: conflicting lock acquired");
 
 # DROP TABLE containing block which standby has in a pinned buffer
 $node_primary->safe_psql($test_db, qq[DROP TABLE $table1;]);
