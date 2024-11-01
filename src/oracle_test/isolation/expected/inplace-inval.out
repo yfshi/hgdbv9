@@ -1,6 +1,6 @@
 Parsed test spec with 3 sessions
 
-starting permutation: cachefill3 cir1 cic2 ddl3 
+starting permutation: cachefill3 cir1 cic2 ddl3
 step cachefill3: TABLE newly_indexed;
 c
 -
