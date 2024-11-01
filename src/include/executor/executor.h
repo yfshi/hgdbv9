@@ -303,6 +303,20 @@ extern ProjectionInfo *ExecBuildUpdateProjection(List *targetList,
 												 ExprContext *econtext,
 												 TupleTableSlot *slot,
 												 PlanState *parent);
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern ProjectionInfo *ExecBuildMutilUpdateProjection(List *targetList,
+												 bool evalTargetList,
+												 List *targetColnos,
+												 TupleDesc relDesc,
+												 ExprContext *econtext,
+												 TupleTableSlot *slot,
+												 PlanState *parent,
+												 int Index);
+TupleTableSlot
+*FetchPlanSlot(PlanState *subPlanState, ProjectionInfo **projInfos, int num, int *res, ResultRelInfo *resultRelInfo,
+				   TupleTableSlot **tmpslot, EState *estate, bool *first_fetch_slot);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 extern ExprState *ExecPrepareExpr(Expr *node, EState *estate);
 extern ExprState *ExecPrepareQual(List *qual, EState *estate);
 extern ExprState *ExecPrepareCheck(List *qual, EState *estate);

@@ -242,6 +242,10 @@ typedef struct ModifyTable
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
 	List	   *mergeActionLists;	/* per-target-table lists of actions for
 									 * MERGE */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	List	   *targetlists;	/* For multi-relation modifying */
+	List	   *parseresultrelations;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */

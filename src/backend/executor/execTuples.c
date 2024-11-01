@@ -1219,6 +1219,40 @@ MakeTupleTableSlot(TupleDesc tupleDesc,
 	return slot;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/* --------------------------------
+*	   MakeTupleTableSlot
+*
+*	   Basic routine to make an empty TupleTableSlot of given
+*	   TupleTableSlotType. If tupleDesc is specified the slot's descriptor is
+*	   fixed for its lifetime, gaining some efficiency. If that's
+*	   undesirable, pass NULL.
+* --------------------------------
+*/
+TupleTableSlot *
+MakeMutilTupleTableSlot(const TupleTableSlotOps *tts_ops)
+{
+	TupleTableSlot* slot = makeNode(TupleTableSlot);
+	/* const for optimization purposes, OK to modify at allocation time */
+	*((const TupleTableSlotOps **) &slot->tts_ops) = tts_ops;
+	slot->type = T_TupleTableSlot;
+	slot->tts_flags |= TTS_FLAG_EMPTY;
+	slot->tts_tupleDescriptor = NULL;
+	slot->tts_mcxt = CurrentMemoryContext;
+	slot->tts_nvalid = 0;
+	slot->tts_values = NULL;
+	slot->tts_isnull = NULL;
+
+	/*
+	 * And allow slot type specific initialization.
+	 */
+	slot->tts_ops->init(slot);
+
+	return slot;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /* --------------------------------
  *		ExecAllocTableSlot
  *
@@ -1235,6 +1269,25 @@ ExecAllocTableSlot(List **tupleTable, TupleDesc desc,
 
 	return slot;
 }
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/* --------------------------------
+ *		ExecMutilAllocTableSlot
+ *
+ *		Create a tuple table slot within a tuple table (which is just a List).
+ * --------------------------------
+ */
+TupleTableSlot *
+ExecMutilAllocTableSlot(List **tupleTable,
+				   const TupleTableSlotOps *tts_ops)
+{
+	TupleTableSlot *slot = MakeMutilTupleTableSlot(tts_ops);
+
+	*tupleTable = lappend(*tupleTable, slot);
+
+	return slot;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /* --------------------------------
  *		ExecResetTupleTable

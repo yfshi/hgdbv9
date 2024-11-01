@@ -558,7 +558,11 @@ typedef enum NodeTag
 	T_SupportRequestSelectivity,	/* in nodes/supportnodes.h */
 	T_SupportRequestCost,		/* in nodes/supportnodes.h */
 	T_SupportRequestRows,		/* in nodes/supportnodes.h */
-	T_SupportRequestIndexCondition	/* in nodes/supportnodes.h */
+	T_SupportRequestIndexCondition,	/* in nodes/supportnodes.h */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	T_IndexHintDefinition,
+	T_IndexHintRelationData
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } NodeTag;
 
 /*

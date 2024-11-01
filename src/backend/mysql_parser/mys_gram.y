@@ -64,6 +64,10 @@
 #include "utils/numeric.h"
 #include "utils/xml.h"
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -429,6 +433,13 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				vacuum_relation_list opt_vacuum_relation_list
 				drop_option_list
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+%type <list>	opt_update_limit key_usage_list index_hint_list opt_index_hint_list for_clause
+%type <node>	index_hint_definition
+%type <str>		idx_key opt_lowpriority
+%type <boolean> opt_ignore
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
 %type <list>	group_by_list
@@ -516,7 +527,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <value>	NumericOnly
 %type <list>	NumericOnly_list
 %type <alias>	alias_clause opt_alias_clause opt_alias_clause_for_join_using
-%type <list>	func_alias_clause
+//%type <list>	func_alias_clause
 %type <sortby>	sortby
 %type <ielem>	index_elem index_elem_options
 %type <selem>	stats_param
@@ -673,7 +684,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	HANDLER HAVING HEADER_P HOLD HOUR_P
 
-	IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
+	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
@@ -684,7 +695,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
-	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED
+	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
 	MINUTE_P MINVALUE MODE MONTH_P MOVE
@@ -721,7 +732,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
-	UNLISTEN UNLOGGED UNTIL UPDATE USER USING
+	UNLISTEN UNLOGGED UNTIL UPDATE USE USER USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
@@ -746,6 +757,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
 %token		NOT_LA NULLS_LA WITH_LA
+
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -774,6 +786,10 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %left		OR
 %left		AND
 %right		NOT
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+%nonassoc	lower_than_on
+%left ON USING
+/* End - ReqID:SRS-MYSQL-UPDATE */
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
@@ -4017,7 +4033,20 @@ key_action:
 			| SET DEFAULT				{ $$ = FKCONSTR_ACTION_SETDEFAULT; }
 		;
 
-OptInherit: INHERITS '(' qualified_name_list ')'	{ $$ = $3; }
+OptInherit: INHERITS '(' qualified_name_list ')'
+				{
+					/* Begin - ReqID:SRS-MYSQL-UPDATE */
+					if(MYS_PARSER == compatible_db)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("CREATE TABLE ... INHERITS is not yet supported."),
+							 errhint("Please note whether it's compatible with MySQL.")));
+					}
+					/* End - ReqID:SRS-MYSQL-UPDATE */
+					else
+						$$ = $3;
+				}
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
 
@@ -7485,7 +7514,129 @@ opt_nulls_order: NULLS_LA FIRST_P			{ $$ = SORTBY_NULLS_FIRST; }
 			| NULLS_LA LAST_P				{ $$ = SORTBY_NULLS_LAST; }
 			| /*EMPTY*/						{ $$ = SORTBY_NULLS_DEFAULT; }
 		;
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/* Support index hints , including for clauses. */
+for_clause:
+			FOR ORDER BY '(' key_usage_list ')'
+				{
+					$$ = $5;
+				}
+			| FOR GROUP_P BY '(' key_usage_list ')'
+				{
+					$$ = $5;
+				}
+			| FOR JOIN '(' key_usage_list ')'
+				{
+					$$ = $4;
+				}
+		;
 
+key_usage_list:
+			name
+				{
+					$$ = list_make1(makeString($1));
+				}
+			| key_usage_list ',' name
+				{
+					$$ = lappend($1,makeString($3));
+				}
+		;
+idx_key:
+			INDEX
+				{
+					$$ = NULL;
+				}
+			|KEY
+				{
+					$$ = NULL;
+				}
+		;
+
+
+index_hint_definition:
+			USE idx_key '(' key_usage_list ')'
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_USE;
+					n->indexnames = $4;
+					$$ = (Node*)n;
+				}
+			| USE idx_key for_clause
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_USE;
+					n->indexnames = $3;
+					$$ = (Node*)n;
+				}
+			| USE idx_key '(' ')'
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_USE;
+					n->indexnames = NIL;
+					$$ = (Node*)n;
+				}
+			| FORCE idx_key '(' key_usage_list ')'
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_FORCE;
+					n->indexnames = $4;
+					$$ = (Node*)n;
+				}
+			| FORCE idx_key for_clause
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_FORCE;
+					n->indexnames = $3;
+					$$ = (Node*)n;
+				}
+			| IGNORE_P idx_key '(' key_usage_list ')'
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_IGNORE;
+					n->indexnames = $4;
+					$$ = (Node*)n;
+				}
+			| IGNORE_P idx_key for_clause
+				{
+					IndexHintDefinition* n = makeNode(IndexHintDefinition);
+					n->index_type = INDEX_HINT_IGNORE;
+					n->indexnames = $3;
+					$$ = (Node*)n;
+				}
+		;
+
+
+index_hint_list:
+			index_hint_definition
+				{
+					if (MYS_PARSER != compatible_db)
+					{
+						//error
+					}
+					$$ = list_make1($1);
+				}
+			| index_hint_list index_hint_definition
+				{
+					$$ = lappend($1, $2);
+				}
+		;
+
+opt_index_hint_list:
+			index_hint_list					{$$ = $1;}
+			| /*Empty*/						{$$ = NIL;}
+		;
+
+opt_ignore:
+		IGNORE_P							{ $$ = true; }
+		| /*EMPTY*/ 						{ $$ = false; }
+		;
+
+opt_lowpriority:
+		LOW_PRIORITY							{$$ = NULL;}
+		| /*EMPTY*/ 							{$$ = NULL;}
+		;
+
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /*****************************************************************************
  *
@@ -11221,19 +11372,61 @@ opt_nowait_or_skip:
  *				UpdateStmt (UPDATE)
  *
  *****************************************************************************/
-
-UpdateStmt: opt_with_clause UPDATE relation_expr_opt_alias
+/*
+ * Compatible with MySQL update syntax,supports order by clause and limit clause,
+ * multi-table syntax and index prompts.
+ */
+UpdateStmt: opt_with_clause UPDATE opt_lowpriority opt_ignore from_list	/* ReqID:SRS-MYSQL-UPDATE */
 			SET set_clause_list
 			from_clause
 			where_or_current_clause
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			opt_sort_clause
+			opt_update_limit
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 			returning_clause
 				{
 					UpdateStmt *n = makeNode(UpdateStmt);
-					n->relation = $3;
-					n->targetList = $5;
-					n->fromClause = $6;
-					n->whereClause = $7;
-					n->returningList = $8;
+					n->ignore = $4;
+					//n->relation = linitial($5);
+					n->targetList = $7;
+					n->fromClause = $8;
+					n->whereClause = $9;
+					/* Begin - ReqID:SRS-MYSQL-UPDATE */
+					n->sortClause = $10;
+					n->limitClause = (Node*)list_nth($11, 1);
+					if (MYS_PARSER == compatible_db)
+					{
+//						if ($8)
+//							ereport(ERROR,
+//							(errcode(ERRCODE_SYNTAX_ERROR),
+//							 errmsg("multi-relation update is not supported from clause."),
+//							 errhint("Please note whether it's compatible with MySQL mode.")));
+
+						if (list_length($5) > 1)
+						{
+							n->relationClause = $5;
+						}
+						else
+						{
+							if (!IsA(linitial($5), RangeVar))
+								n->relationClause = $5;
+							else
+								n->relation = linitial($5);
+						}
+					}
+					else
+					{
+						if (list_length($5) > 1)
+							ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("multi-relation update is not supported."),
+							 errhint("Please note whether it's compatible with MySQL mode.")));
+						else
+							n->relation = linitial($5);
+					}
+					/* End - ReqID:SRS-MYSQL-UPDATE */
+					n->returningList = $12;
 					n->withClause = $1;
 					$$ = (Node *)n;
 				}
@@ -11288,7 +11481,6 @@ set_target_list:
 			set_target								{ $$ = list_make1($1); }
 			| set_target_list ',' set_target		{ $$ = lappend($1,$3); }
 		;
-
 
 /*****************************************************************************
  *
@@ -11988,6 +12180,10 @@ opt_select_limit:
 			select_limit						{ $$ = $1; }
 			| /* EMPTY */						{ $$ = NULL; }
 		;
+opt_update_limit:
+			LIMIT a_expr						{ $$ = list_make2(NULL, $2); }
+			| /* EMPTY */						{ $$ = list_make2(NULL, NULL); }
+
 
 limit_clause:
 			LIMIT select_limit_value
@@ -12278,8 +12474,19 @@ from_list:
 /*
  * table_ref is where an alias clause can be attached.
  */
-table_ref:	relation_expr opt_alias_clause
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+table_ref:	relation_expr		 %prec UMINUS
 				{
+					$$ = (Node *) $1;
+				}
+			| relation_expr index_hint_list
+				{
+					$1->indexhints = $2;
+					$$ = (Node *) $1;
+				}
+			| relation_expr alias_clause opt_index_hint_list
+				{
+					$1->indexhints = $3;
 					$1->alias = $2;
 					$$ = (Node *) $1;
 				}
@@ -12291,40 +12498,95 @@ table_ref:	relation_expr opt_alias_clause
 					n->relation = (Node *) $1;
 					$$ = (Node *) n;
 				}
-			| func_table func_alias_clause
+/* End - ReqID:SRS-MYSQL-UPDATE */
+			| func_table		%prec UMINUS
+				{
+					RangeFunction *n = (RangeFunction *) $1;
+					n->coldeflist = NIL;
+					$$ = (Node *) n;
+				}
+			| func_table alias_clause
+				{
+					RangeFunction *n = (RangeFunction *) $1;
+					n->alias = $2;
+					n->coldeflist = NIL;
+					$$ = (Node *) n;
+				}
+			| func_table AS '(' TableFuncElementList ')'
+				{
+					RangeFunction *n = (RangeFunction *) $1;
+					n->coldeflist = $4;
+					$$ = (Node *) n;
+				}
+			| func_table AS ColId '(' TableFuncElementList ')'
+				{
+					RangeFunction *n = (RangeFunction *) $1;
+					Alias *a = makeNode(Alias);
+					a->aliasname = $3;
+					n->alias = a;
+					n->coldeflist = $5;
+					$$ = (Node *) n;
+				}
+			| func_table ColId '(' TableFuncElementList ')'
+				{
+					RangeFunction *n = (RangeFunction *) $1;
+					Alias *a = makeNode(Alias);
+					a->aliasname = $2;
+					n->alias = a;
+					n->coldeflist = $4;
+					$$ = (Node *) n;
+				}
+			/*| func_table func_alias_clause
 				{
 					RangeFunction *n = (RangeFunction *) $1;
 					n->alias = linitial($2);
 					n->coldeflist = lsecond($2);
 					$$ = (Node *) n;
-				}
-			| LATERAL_P func_table func_alias_clause
+				}*/
+			| LATERAL_P func_table		%prec UMINUS
 				{
 					RangeFunction *n = (RangeFunction *) $2;
 					n->lateral = true;
-					n->alias = linitial($3);
-					n->coldeflist = lsecond($3);
+					n->alias = NULL;
+					//n->coldeflist = lsecond($3);
 					$$ = (Node *) n;
 				}
-			| xmltable opt_alias_clause
+			| LATERAL_P func_table alias_clause
+				{
+					RangeFunction *n = (RangeFunction *) $2;
+					n->lateral = true;
+					n->alias = $3;
+					//n->coldeflist = lsecond($3);
+					$$ = (Node *) n;
+				}
+			| xmltable		%prec UMINUS
+				{
+					RangeTableFunc *n = (RangeTableFunc *) $1;
+					n->alias = NULL;
+					$$ = (Node *) n;
+				}
+			| xmltable alias_clause
 				{
 					RangeTableFunc *n = (RangeTableFunc *) $1;
 					n->alias = $2;
 					$$ = (Node *) n;
 				}
-			| LATERAL_P xmltable opt_alias_clause
+			| LATERAL_P xmltable		%prec UMINUS
+				{
+					RangeTableFunc *n = (RangeTableFunc *) $2;
+					n->lateral = true;
+					n->alias = NULL;
+					$$ = (Node *) n;
+				}
+			| LATERAL_P xmltable alias_clause
 				{
 					RangeTableFunc *n = (RangeTableFunc *) $2;
 					n->lateral = true;
 					n->alias = $3;
 					$$ = (Node *) n;
 				}
-			| select_with_parens opt_alias_clause
+			| select_with_parens		%prec UMINUS
 				{
-					RangeSubselect *n = makeNode(RangeSubselect);
-					n->lateral = false;
-					n->subquery = $1;
-					n->alias = $2;
 					/*
 					 * The SQL spec does not permit a subselect
 					 * (<derived_table>) without an alias clause,
@@ -12336,25 +12598,34 @@ table_ref:	relation_expr opt_alias_clause
 					 * However, it does seem like a good idea to emit
 					 * an error message that's better than "syntax error".
 					 */
-					if ($2 == NULL)
+					$$ = NULL;
+					if (IsA($1, SelectStmt) &&
+						((SelectStmt *) $1)->valuesLists)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("VALUES in FROM must have an alias"),
+								 errhint("For example, FROM (VALUES ...) [AS] foo."),
+								 parser_errposition(@1)));
+					else
 					{
-						if (IsA($1, SelectStmt) &&
-							((SelectStmt *) $1)->valuesLists)
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("VALUES in FROM must have an alias"),
-									 errhint("For example, FROM (VALUES ...) [AS] foo."),
-									 parser_errposition(@1)));
-						else
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("subquery in FROM must have an alias"),
-									 errhint("For example, FROM (SELECT ...) [AS] foo."),
-									 parser_errposition(@1)));
+						RangeSubselect *n = makeNode(RangeSubselect);
+						Alias *a = makeNode(Alias);
+						n->subquery = $1;
+						n->alias = NULL;
+						a->aliasname = pstrdup("__unnamed_subquery__");
+						n->alias = a;
+						$$ = (Node *) n;
 					}
+				}
+			|select_with_parens alias_clause
+				{
+					RangeSubselect *n = makeNode(RangeSubselect);
+					n->lateral = false;
+					n->subquery = $1;
+					n->alias = $2;
 					$$ = (Node *) n;
 				}
-			| LATERAL_P select_with_parens opt_alias_clause
+			| LATERAL_P select_with_parens alias_clause
 				{
 					RangeSubselect *n = makeNode(RangeSubselect);
 					n->lateral = true;
@@ -12413,7 +12684,8 @@ joined_table:
 				{
 					$$ = $2;
 				}
-			| table_ref CROSS JOIN table_ref
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			| table_ref CROSS JOIN table_ref %prec lower_than_on
 				{
 					/* CROSS JOIN is same as unqualified inner join */
 					JoinExpr *n = makeNode(JoinExpr);
@@ -12426,6 +12698,29 @@ joined_table:
 					n->quals = NULL;
 					$$ = n;
 				}
+			| table_ref CROSS JOIN table_ref join_qual
+				{
+					JoinExpr *n = makeNode(JoinExpr);
+					n->jointype = JOIN_INNER;
+					n->isNatural = false;
+					n->larg = $1;
+					n->rarg = $4;
+					n->usingClause = NIL;
+					n->join_using_alias = NULL;
+					if ($5 != NULL && IsA($5, List))
+					{
+						 /* USING clause */
+						n->usingClause = linitial_node(List, castNode(List, $5));
+						n->join_using_alias = lsecond_node(Alias, castNode(List, $5));
+					}
+					else
+					{
+						/* ON clause */
+						n->quals = $5;
+					}
+					$$ = n;
+				}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 			| table_ref join_type JOIN table_ref join_qual
 				{
 					JoinExpr *n = makeNode(JoinExpr);
@@ -12467,6 +12762,18 @@ joined_table:
 					}
 					$$ = n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			| table_ref JOIN table_ref %prec lower_than_on
+				{
+					/* letting join_type reduce to empty doesn't work */
+					JoinExpr *n = makeNode(JoinExpr);
+					n->jointype = JOIN_INNER;
+					n->isNatural = false;
+					n->larg = $1;
+					n->rarg = $3;
+					$$ = n;
+				}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 			| table_ref NATURAL join_type JOIN table_ref
 				{
 					JoinExpr *n = makeNode(JoinExpr);
@@ -12477,6 +12784,16 @@ joined_table:
 					n->usingClause = NIL; /* figure out which columns later... */
 					n->join_using_alias = NULL;
 					n->quals = NULL; /* fill later */
+					/* Begin - ReqID:SRS-MYSQL-UPDATE */
+					if (MYS_PARSER == compatible_db)
+					{
+						if (n->jointype == JOIN_FULL || n->jointype == JOIN_INNER)
+							ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("Natural join support {left|right} [outer] join."),
+								 errhint("Please note whether it's compatible with MySQL.")));
+					}
+					/* End - ReqID:SRS-MYSQL-UPDATE */
 					$$ = n;
 				}
 			| table_ref NATURAL JOIN table_ref
@@ -12492,6 +12809,63 @@ joined_table:
 					n->quals = NULL; /* fill later */
 					$$ = n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			| table_ref INNER_P JOIN table_ref join_qual
+				{
+					JoinExpr *n = makeNode(JoinExpr);
+					n->jointype = JOIN_INNER;
+					n->isNatural = false;
+					n->larg = $1;
+					n->rarg = $4;
+					if ($5 != NULL && IsA($5, List))
+					{
+						/* USING clause */
+						n->usingClause = linitial_node(List, castNode(List, $5));
+						n->join_using_alias = lsecond_node(Alias, castNode(List, $5));
+					}
+					else
+						n->quals = $5; /* ON clause */
+					$$ = n;
+				}
+			| table_ref INNER_P JOIN table_ref %prec lower_than_on
+				{
+					JoinExpr *n = makeNode(JoinExpr);
+					n->jointype = JOIN_INNER;
+					n->isNatural = false;
+					n->larg = $1;
+					n->rarg = $4;
+					n->usingClause = NIL;
+					n->quals = NULL;
+					if (IsA($4, JoinExpr))
+					{
+						JoinExpr   *join = (JoinExpr*)$4;
+						n->rarg = join->larg;
+						join->larg = (Node *)n;
+						$$ = join;
+					}
+					else
+						$$ = n;
+				}
+			| table_ref NATURAL INNER_P JOIN table_ref
+				{
+					JoinExpr *n = makeNode(JoinExpr);
+					n->jointype = JOIN_INNER;
+					n->isNatural = true;
+					n->larg = $1;
+					n->rarg = $5;
+					n->usingClause = NIL; /* figure out which columns later... */
+					n->join_using_alias = NULL;
+					n->quals = NULL; /* fill later */
+					if (MYS_PARSER == compatible_db)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Natural join support {left|right} [outer] join."),
+							 errhint("Please note whether it's compatible with MySQL.")));
+					}
+					$$ = n;
+				}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 		;
 
 alias_clause:
@@ -12543,37 +12917,37 @@ opt_alias_clause_for_join_using:
  * func_alias_clause can include both an Alias and a coldeflist, so we make it
  * return a 2-element list that gets disassembled by calling production.
  */
-func_alias_clause:
-			alias_clause
-				{
-					$$ = list_make2($1, NIL);
-				}
-			| AS '(' TableFuncElementList ')'
-				{
-					$$ = list_make2(NULL, $3);
-				}
-			| AS ColId '(' TableFuncElementList ')'
-				{
-					Alias *a = makeNode(Alias);
-					a->aliasname = $2;
-					$$ = list_make2(a, $4);
-				}
-			| ColId '(' TableFuncElementList ')'
-				{
-					Alias *a = makeNode(Alias);
-					a->aliasname = $1;
-					$$ = list_make2(a, $3);
-				}
-			| /*EMPTY*/
-				{
-					$$ = list_make2(NULL, NIL);
-				}
-		;
+//func_alias_clause:
+//			alias_clause
+//				{
+//					$$ = list_make2($1, NIL);
+//				}
+//			| AS '(' TableFuncElementList ')'
+//				{
+//					$$ = list_make2(NULL, $3);
+//				}
+//			| AS ColId '(' TableFuncElementList ')'
+//				{
+//					Alias *a = makeNode(Alias);
+//					a->aliasname = $2;
+//					$$ = list_make2(a, $4);
+//				}
+//			| ColId '(' TableFuncElementList ')'
+//				{
+//					Alias *a = makeNode(Alias);
+//					a->aliasname = $1;
+//					$$ = list_make2(a, $3);
+//				}
+//			| /*EMPTY*/
+//				{
+//					$$ = list_make2(NULL, NIL);
+//				}
+//		;
 
 join_type:	FULL opt_outer							{ $$ = JOIN_FULL; }
 			| LEFT opt_outer						{ $$ = JOIN_LEFT; }
 			| RIGHT opt_outer						{ $$ = JOIN_RIGHT; }
-			| INNER_P								{ $$ = JOIN_INNER; }
+//			| INNER_P								{ $$ = JOIN_INNER; }
 		;
 
 /* OUTER is just noise... */
@@ -16128,6 +16502,7 @@ reserved_keyword:
 			| GRANT
 			| GROUP_P
 			| HAVING
+			| IGNORE_P	/* ReqID:SRS-MYSQL-UPDATE */
 			| IN_P
 			| INITIALLY
 			| INTERSECT
@@ -16137,6 +16512,7 @@ reserved_keyword:
 			| LIMIT
 			| LOCALTIME
 			| LOCALTIMESTAMP
+			| LOW_PRIORITY	/* ReqID:SRS-MYSQL-UPDATE */
 			| NOT
 			| NULL_P
 			| OFFSET
@@ -16159,6 +16535,7 @@ reserved_keyword:
 			| TRUE_P
 			| UNION
 			| UNIQUE
+			| USE	/* ReqID:SRS-MYSQL-UPDATE */
 			| USER
 			| USING
 			| VARIADIC
@@ -16334,6 +16711,7 @@ bare_label_keyword:
 			| HOLD
 			| IDENTITY_P
 			| IF_P
+			| IGNORE_P
 			| ILIKE
 			| IMMEDIATE
 			| IMMUTABLE
@@ -16383,6 +16761,7 @@ bare_label_keyword:
 			| LOCK_P
 			| LOCKED
 			| LOGGED
+			| LOW_PRIORITY
 			| MAPPING
 			| MATCH
 			| MATCHED
@@ -16564,6 +16943,7 @@ bare_label_keyword:
 			| UNLOGGED
 			| UNTIL
 			| UPDATE
+			| USE
 			| USER
 			| USING
 			| VACUUM

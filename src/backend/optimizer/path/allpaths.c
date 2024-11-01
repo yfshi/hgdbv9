@@ -49,6 +49,12 @@
 #include "rewrite/rewriteManip.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "nodes/parsenodes.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /* results of subquery_is_pushdown_safe */
 typedef struct pushdown_safety_info
@@ -142,6 +148,10 @@ static void subquery_push_qual(Query *subquery,
 static void recurse_push_qual(Node *setOp, Query *topquery,
 							  RangeTblEntry *rte, Index rti, Node *qual);
 static void remove_unused_subquery_outputs(Query *subquery, RelOptInfo *rel);
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static bool IsUseOrForceIndexhint(List *indexhintList, List *indexlist);
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 
 /*
@@ -760,6 +770,34 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 	rel->consider_parallel = true;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * IsUseOrForceIndexhint - Determine whether the index of indexhint is use or force.
+ */
+static bool
+IsUseOrForceIndexhint(List *indexhintList, List *indexlist)
+{
+	ListCell	   *lc = NULL;
+	ListCell	   *lc1 = NULL;
+	foreach(lc, indexhintList)
+	{
+		IndexHintRelationData   *indexdata = (IndexHintRelationData *)lfirst(lc);
+		if (indexdata->index_type == INDEX_HINT_USE ||
+			indexdata->index_type == INDEX_HINT_FORCE)
+		{
+			foreach(lc1, indexlist)
+			{
+				IndexOptInfo *index = (IndexOptInfo *) lfirst(lc1);
+				if (indexdata->indexOid == index->indexoid)
+					return true;
+			}
+		}
+	}
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  * set_plain_rel_pathlist
  *	  Build access paths for a plain relation (no subquery, no inheritance)
@@ -776,8 +814,18 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	 */
 	required_outer = rel->lateral_relids;
 
-	/* Consider sequential scan */
-	add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (enable_indexhint && compatible_db == DB_MYSQL &&
+		root->parse->indexhintList && rel->indexlist)
+	{
+		/* If the index hint is use or force, skip seqscan. */
+		if (!IsUseOrForceIndexhint(root->parse->indexhintList, rel->indexlist))
+			add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+		/* Consider sequential scan */
+		add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
 
 	/* If appropriate, consider parallel sequential scan */
 	if (rel->consider_parallel && required_outer == NULL)
@@ -788,6 +836,16 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 
 	/* Consider TID scans */
 	create_tidscan_paths(root, rel);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	/* If no index scan path is generated, a sequence scan path needs to be generated. */
+	if (enable_indexhint && compatible_db == DB_MYSQL &&
+		root->parse->indexhintList && rel->indexlist)
+	{
+		if (!rel->pathlist)
+			add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 }
 
 /*

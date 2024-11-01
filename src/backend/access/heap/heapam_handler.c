@@ -200,6 +200,33 @@ heapam_fetch_row_version(Relation relation,
 	return false;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+bool
+heapam_update_fetch_row_version(Relation relation,
+					  ItemPointer tid,
+					  Snapshot snapshot,
+					  TupleTableSlot *slot,
+					  CommandId cid)
+{
+	BufferHeapTupleTableSlot *bslot = (BufferHeapTupleTableSlot *) slot;
+	Buffer		buffer;
+
+	Assert(TTS_IS_BUFFERTUPLE(slot));
+
+	bslot->base.tupdata.t_self = *tid;
+	if (heap_update_fetch_extended(relation, snapshot, &bslot->base.tupdata, &buffer, false, cid))
+	{
+		/* store in slot, transferring existing pin */
+		ExecStorePinnedBufferHeapTuple(&bslot->base.tupdata, slot, buffer);
+		slot->tts_tableOid = RelationGetRelid(relation);
+
+		return true;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 static bool
 heapam_tuple_tid_valid(TableScanDesc scan, ItemPointer tid)
 {

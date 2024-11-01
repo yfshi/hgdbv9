@@ -1,0 +1,5 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_insert_p s1_insert_c s2_insert_c s1_select_p s1_select_c s2_select_p s2_select_c
+setup of session s1 failed: ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.

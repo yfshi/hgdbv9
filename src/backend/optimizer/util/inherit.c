@@ -34,7 +34,10 @@
 #include "partitioning/partdesc.h"
 #include "partitioning/partprune.h"
 #include "utils/rel.h"
-
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 static void expand_partitioned_rtentry(PlannerInfo *root, RelOptInfo *relinfo,
 									   RangeTblEntry *parentrte,
@@ -604,43 +607,89 @@ expand_single_inheritance_child(PlannerInfo *root, RangeTblEntry *parentrte,
 		root->rowMarks = lappend(root->rowMarks, childrc);
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * If we are creating a child of the query target relation (only possible
 	 * in UPDATE/DELETE), add it to all_result_relids, as well as
 	 * leaf_result_relids if appropriate, and make sure that we generate
 	 * required row-identity data.
 	 */
-	if (bms_is_member(parentRTindex, root->all_result_relids))
+	if(DB_MYSQL == compatible_db && list_length(root->all_result_relids_list) > 1)
 	{
-		/* OK, record the child as a result rel too. */
-		root->all_result_relids = bms_add_member(root->all_result_relids,
-												 childRTindex);
-
-		/* Non-leaf partitions don't need any row identity info. */
-		if (childrte->relkind != RELKIND_PARTITIONED_TABLE)
+		ListCell	*lc;
+		ListCell	*lc1;
+		forboth(lc, root->all_result_relids_list, lc1, root->leaf_result_relids_list)
 		{
-			Var		   *rrvar;
+			Relids allrelids = (Relids)lfirst(lc);
+			Relids leafrelids = (Relids)lfirst(lc1);
+			if(bms_is_member(parentRTindex, allrelids))
+			{
+				/* OK, record the child as a result rel too. */
+				allrelids = bms_add_member(allrelids, childRTindex);
 
-			root->leaf_result_relids = bms_add_member(root->leaf_result_relids,
-													  childRTindex);
+				/* Non-leaf partitions don't need any row identity info. */
+				if (childrte->relkind != RELKIND_PARTITIONED_TABLE)
+				{
+					Var		   *rrvar;
 
-			/*
-			 * If we have any child target relations, assume they all need to
-			 * generate a junk "tableoid" column.  (If only one child survives
-			 * pruning, we wouldn't really need this, but it's not worth
-			 * thrashing about to avoid it.)
-			 */
-			rrvar = makeVar(childRTindex,
-							TableOidAttributeNumber,
-							OIDOID,
-							-1,
-							InvalidOid,
-							0);
-			add_row_identity_var(root, rrvar, childRTindex, "tableoid");
+					leafrelids = bms_add_member(leafrelids, childRTindex);
 
-			/* Register any row-identity columns needed by this child. */
-			add_row_identity_columns(root, childRTindex,
-									 childrte, childrel);
+					/*
+					 * If we have any child target relations, assume they all need to
+					 * generate a junk "tableoid" column.  (If only one child survives
+					 * pruning, we wouldn't really need this, but it's not worth
+					 * thrashing about to avoid it.)
+					 */
+					rrvar = makeVar(childRTindex,
+									TableOidAttributeNumber,
+									OIDOID,
+									-1,
+									InvalidOid,
+									0);
+					add_row_identity_var(root, rrvar, childRTindex, "tableoid");
+
+					/* Register any row-identity columns needed by this child. */
+					add_row_identity_columns(root, childRTindex,
+											 childrte, childrel);
+				}
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+	{
+		if (bms_is_member(parentRTindex, root->all_result_relids))
+		{
+			/* OK, record the child as a result rel too. */
+			root->all_result_relids = bms_add_member(root->all_result_relids,
+													 childRTindex);
+
+			/* Non-leaf partitions don't need any row identity info. */
+			if (childrte->relkind != RELKIND_PARTITIONED_TABLE)
+			{
+				Var		   *rrvar;
+
+				root->leaf_result_relids = bms_add_member(root->leaf_result_relids,
+														  childRTindex);
+
+				/*
+				 * If we have any child target relations, assume they all need to
+				 * generate a junk "tableoid" column.  (If only one child survives
+				 * pruning, we wouldn't really need this, but it's not worth
+				 * thrashing about to avoid it.)
+				 */
+				rrvar = makeVar(childRTindex,
+								TableOidAttributeNumber,
+								OIDOID,
+								-1,
+								InvalidOid,
+								0);
+				add_row_identity_var(root, rrvar, childRTindex, "tableoid");
+
+				/* Register any row-identity columns needed by this child. */
+				add_row_identity_columns(root, childRTindex,
+										 childrte, childrel);
+			}
 		}
 	}
 }

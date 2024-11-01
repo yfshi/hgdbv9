@@ -227,6 +227,10 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_SCALAR_FIELD(exclRelRTI);
 	COPY_NODE_FIELD(exclRelTlist);
 	COPY_NODE_FIELD(mergeActionLists);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COPY_NODE_FIELD(targetlists);
+	COPY_NODE_FIELD(parseresultrelations);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return newnode;
 }
@@ -1404,6 +1408,7 @@ _copyRangeVar(const RangeVar *from)
 	COPY_SCALAR_FIELD(relpersistence);
 	COPY_NODE_FIELD(alias);
 	COPY_LOCATION_FIELD(location);
+	COPY_NODE_FIELD(indexhints);/* ReqID:SRS-MYSQL-UPDATE */
 
 	return newnode;
 }
@@ -2268,6 +2273,10 @@ _copyTargetEntry(const TargetEntry *from)
 	COPY_SCALAR_FIELD(resorigtbl);
 	COPY_SCALAR_FIELD(resorigcol);
 	COPY_SCALAR_FIELD(resjunk);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COPY_SCALAR_FIELD(rtindex);
+	COPY_SCALAR_FIELD(relattno);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return newnode;
 }
@@ -3334,6 +3343,10 @@ _copyQuery(const Query *from)
 	COPY_NODE_FIELD(withCheckOptions);
 	COPY_NODE_FIELD(mergeActionList);
 	COPY_SCALAR_FIELD(mergeUseOuterJoin);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COPY_NODE_FIELD(resultRelations);
+	COPY_NODE_FIELD(indexhintList);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 
@@ -3393,6 +3406,12 @@ _copyUpdateStmt(const UpdateStmt *from)
 	COPY_NODE_FIELD(fromClause);
 	COPY_NODE_FIELD(returningList);
 	COPY_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COPY_SCALAR_FIELD(ignore);
+	COPY_NODE_FIELD(sortClause);
+	COPY_NODE_FIELD(limitClause);
+	COPY_NODE_FIELD(relationClause);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return newnode;
 }
@@ -5286,6 +5305,31 @@ _copyOraParamRef(const OraParamRef *from)
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static IndexHintRelationData *
+_copyIndexHintRelationData(const IndexHintRelationData* from)
+{
+	IndexHintRelationData* newnode = makeNode(IndexHintRelationData);
+
+	COPY_SCALAR_FIELD(relationOid);
+	COPY_SCALAR_FIELD(indexOid);
+	COPY_SCALAR_FIELD(index_type);
+
+	return newnode;
+}
+
+static IndexHintDefinition *
+_copyIndexHintDefinition(const IndexHintDefinition* from)
+{
+	IndexHintDefinition* newnode = makeNode(IndexHintDefinition);
+
+	COPY_NODE_FIELD(indexnames);
+	COPY_SCALAR_FIELD(index_type);
+
+	return newnode;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -6282,7 +6326,14 @@ copyObjectImpl(const void *from)
 			retval = _copyOraParamRef(from);
 			break;
 		/* End - ReqID:SRS-SQL-ANONYOUT */
-
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		case T_IndexHintRelationData:
+			retval = _copyIndexHintRelationData((IndexHintRelationData *)from);
+			break;
+		case T_IndexHintDefinition:
+			retval = _copyIndexHintDefinition((IndexHintDefinition *)from);
+			break;
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */

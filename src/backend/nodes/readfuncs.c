@@ -296,6 +296,10 @@ _readQuery(void)
 	READ_NODE_FIELD(withCheckOptions);
 	READ_NODE_FIELD(mergeActionList);
 	READ_BOOL_FIELD(mergeUseOuterJoin);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	READ_NODE_FIELD(resultRelations);
+	READ_NODE_FIELD(indexhintList);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 
@@ -570,6 +574,7 @@ _readRangeVar(void)
 	READ_CHAR_FIELD(relpersistence);
 	READ_NODE_FIELD(alias);
 	READ_LOCATION_FIELD(location);
+	READ_NODE_FIELD(indexhints);	/* ReqID:SRS-MYSQL-UPDATE */
 
 	READ_DONE();
 }
@@ -1414,6 +1419,10 @@ _readTargetEntry(void)
 	READ_OID_FIELD(resorigtbl);
 	READ_INT_FIELD(resorigcol);
 	READ_BOOL_FIELD(resjunk);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	READ_UINT_FIELD(rtindex);
+	READ_INT_FIELD(relattno);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	READ_DONE();
 }
@@ -1811,6 +1820,10 @@ _readModifyTable(void)
 	READ_UINT_FIELD(exclRelRTI);
 	READ_NODE_FIELD(exclRelTlist);
 	READ_NODE_FIELD(mergeActionLists);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	READ_NODE_FIELD(targetlists);
+	READ_NODE_FIELD(parseresultrelations);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	READ_DONE();
 }
@@ -2859,6 +2872,35 @@ _readTypeName(void)
 
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * _readIndexHintDefinition
+ */
+static IndexHintDefinition *
+_readIndexHintDefinition(void)
+{
+	READ_LOCALS(IndexHintDefinition);
+	READ_NODE_FIELD(indexnames);
+	READ_ENUM_FIELD(index_type, IndexHintType);
+
+	READ_DONE();
+}
+
+/*
+ * _readIndexHintDefinition
+ */
+static IndexHintRelationData *
+_readIndexHintRelationData(void)
+{
+	READ_LOCALS(IndexHintRelationData);
+	READ_OID_FIELD(relationOid);
+	READ_OID_FIELD(indexOid);
+	READ_ENUM_FIELD(index_type, IndexHintType);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * parseNodeString
@@ -3153,6 +3195,12 @@ parseNodeString(void)
 	else if (MATCH("TUPDESCNATTS", 12))
 		return_value = _readTupdescNatts();
 	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	else if (MATCH("INDEXHINT_RELATION_DATA", 23))
+		return_value = _readIndexHintRelationData();
+	else if (MATCH("INDEXHINT_DEFINITION", 20))
+		return_value = _readIndexHintDefinition();
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

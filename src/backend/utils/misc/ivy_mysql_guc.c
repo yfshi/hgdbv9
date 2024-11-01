@@ -18,7 +18,24 @@
  *-------------------------------------pg_resetwal.c------------------------------------
  */
 #ifdef IVY_MY_GUC_VAR_DEFINE
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+bool		enable_indexhint = false;
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
+#endif
+#ifdef IVY_MY_GUC_BOOL_PARAMS
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	{
+		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("whether enable index hint feature in MySQL compatible mode."),
+			NULL
+		},
+		&enable_indexhint,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

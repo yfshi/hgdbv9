@@ -57,5 +57,8 @@ extern Path *get_cheapest_fractional_path(RelOptInfo *rel,
 										  double tuple_fraction);
 
 extern Expr *preprocess_phv_expression(PlannerInfo *root, Expr *expr);
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern List *adjust_multirelation_colnos(PlannerInfo *root, int result_rel, List *update_colnos);
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 #endif							/* PLANNER_H */

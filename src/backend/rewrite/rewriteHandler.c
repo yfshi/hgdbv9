@@ -98,6 +98,14 @@ static Query *fireRIRrules(Query *parsetree, List *activeRIRs);
 static bool view_has_instead_trigger(Relation view, CmdType event);
 static Bitmapset *adjust_view_column_set(Bitmapset *cols, List *targetlist);
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static void rewriteTargetListMultiUpdate(Query* parsetree, List* rtable, List* resultRelations);
+static bool setNewRteIfExist(Query* parsetree, Oid base_relid, int result_relation,
+									RangeTblEntry** new_rte,
+									int* new_rt_index);
+
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * AcquireRewriteLocks -
@@ -3271,6 +3279,53 @@ adjust_view_column_set(Bitmapset *cols, List *targetlist)
 	return result;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * If target relation is already exist in parsetree, make new_rte
+ * and new_rt_index point to it, and return true.
+ */
+static bool setNewRteIfExist(Query *parsetree, Oid base_relid, int result_relation, RangeTblEntry **new_rte,
+								   int *new_rt_index)
+{
+	int			rtindex = 1;
+	bool		targetIsExist = false;
+	ListCell   *lc = NULL;
+
+	foreach (lc, parsetree->rtable)
+	{
+		RangeTblEntry   *rte = (RangeTblEntry *)lfirst(lc);
+
+		if (base_relid == rte->relid && rtindex != result_relation)
+		{
+			parsetree->resultRelations = list_delete_int(parsetree->resultRelations, result_relation);
+			*new_rt_index = rtindex;
+			*new_rte = rte;
+
+			targetIsExist = true;
+			break;
+		}
+		rtindex++;
+	}
+
+	if (targetIsExist)
+	{
+		ListCell* l = NULL;
+		foreach (l, parsetree->jointree->fromlist)
+		{
+			RangeTblRef   *rtf = (RangeTblRef *)lfirst(l);
+
+			if (rtf->rtindex == result_relation)
+			{
+				parsetree->jointree->fromlist = list_delete_ptr(parsetree->jointree->fromlist, rtf);
+				break;
+			}
+		}
+	}
+
+	return targetIsExist;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * rewriteTargetView -
@@ -3362,7 +3417,7 @@ rewriteTargetView(Query *parsetree, Relation view)
 		{
 			TargetEntry *tle = (TargetEntry *) lfirst(lc);
 
-			if (!tle->resjunk)
+			if (!tle->resjunk && (tle->rtindex == 0 || tle->rtindex == (Index)parsetree->resultRelation))	/* ReqID:SRS-MYSQL-UPDATE */
 				modified_cols = bms_add_member(modified_cols,
 											   tle->resno - FirstLowInvalidHeapAttributeNumber);
 		}
@@ -3470,11 +3525,16 @@ rewriteTargetView(Query *parsetree, Relation view)
 	 * Since we copied the whole viewquery above, we can just scribble on
 	 * base_rte instead of copying it.
 	 */
-	new_rte = base_rte;
-	new_rte->rellockmode = RowExclusiveLock;
+	 /* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (!setNewRteIfExist(parsetree, base_rte->relid, parsetree->resultRelation, &new_rte, &new_rt_index))
+	{
+		new_rte = base_rte;
+		new_rte->rellockmode = RowExclusiveLock;
 
-	parsetree->rtable = lappend(parsetree->rtable, new_rte);
-	new_rt_index = list_length(parsetree->rtable);
+		parsetree->rtable = lappend(parsetree->rtable, new_rte);
+		new_rt_index = list_length(parsetree->rtable);
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * INSERTs never inherit.  For UPDATE/DELETE, we use the view query's
@@ -3536,8 +3596,11 @@ rewriteTargetView(Query *parsetree, Relation view)
 	 * This step needs the modified view targetlist, so we have to do things
 	 * in this order.
 	 */
-	Assert(bms_is_empty(new_rte->insertedCols) &&
-		   bms_is_empty(new_rte->updatedCols));
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(DB_MYSQL != compatible_db)
+		Assert(bms_is_empty(new_rte->insertedCols) &&
+			   bms_is_empty(new_rte->updatedCols));
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	new_rte->insertedCols = adjust_view_column_set(view_rte->insertedCols,
 												   view_targetlist);
@@ -3828,6 +3891,182 @@ rewriteTargetView(Query *parsetree, Relation view)
 	return parsetree;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * rewriteTargetListMultiUpdate
+ * For multi-relations update, rewrite the target column.
+ */
+static void
+rewriteTargetListMultiUpdate(Query *parsetree, List *rtable, List *resultRelations)
+{
+	TargetEntry		   **new_tles;
+	List			   *new_tlist = NIL;
+	List			   *junk_tlist = NIL;
+	Form_pg_attribute	att_tup;
+	int					attrno, numattrs;
+	ListCell		   *l = NULL;
+	int					result_relation;
+
+	/*
+	 * We process the normal (non-junk) attributes by scanning the input tlist
+	 * once and transferring TLEs into an array, then scanning the array to
+	 * build an output tlist.  This avoids O(N^2) behavior for large numbers
+	 * of attributes.
+	 *
+	 * Junk attributes are tossed into a separate list during the same tlist
+	 * scan, then appended to the reconstructed tlist.
+	 */
+	ListCell	   *temp = NULL;
+	TargetEntry	   *old_tle = NULL;
+	int				next_junk_attrno;
+
+	foreach (l, resultRelations)
+	{
+		RangeTblEntry	   *rt_entry;
+		Relation			target_relation;
+
+		result_relation = lfirst_int(l);
+		rt_entry = rt_fetch(result_relation, rtable);
+		target_relation = relation_open(rt_entry->relid, NoLock);
+		numattrs = RelationGetNumberOfAttributes(target_relation);
+
+		new_tles = (TargetEntry**)palloc0(numattrs * sizeof(TargetEntry*));
+
+		foreach(temp, parsetree->targetList)
+		{
+			old_tle = (TargetEntry*)lfirst(temp);
+			/*
+			 * For multi-relations update, old_tle has been sorted according to the order of each result relation.
+			 * So when old_tle->rtindex != (Index)result_relation, continue and enter the next loop search until 
+			 * the search is completed.
+			 */
+			if (old_tle->rtindex != (Index)result_relation)
+				continue;
+
+			if (!old_tle->resjunk)
+			{
+				/* Normal attr: stash it into new_tles[] */
+				attrno = old_tle->resno;
+				if (attrno < 1 || attrno > numattrs)
+					elog(ERROR, "bogus resno %d in targetlist",attrno);
+
+				att_tup = &target_relation->rd_att->attrs[attrno - 1];
+
+				/* We can (and must) ignore deleted attributes */
+				if (att_tup->attisdropped)
+				{
+					continue;
+				}
+				/* Merge with any prior assignment to same attribute */
+				new_tles[attrno - 1] = process_matched_tle(old_tle, new_tles[attrno - 1], NameStr(att_tup->attname));
+			}
+			else
+			{
+				/*
+				 * Copy all resjunk tlist entries to junk_tlist, and assign them
+				 * resnos above the last real resno.
+				 *
+				 * Typical junk entries include ORDER BY or GROUP BY expressions
+				 * (are these actually possible in an INSERT or UPDATE?), system
+				 * attribute references, etc.
+				 *
+				 * Get the resno right, but don't copy unnecessarily
+				 */
+				old_tle = flatCopyTargetEntry(old_tle);
+				junk_tlist = lappend(junk_tlist, old_tle);
+			}
+		}
+
+		for (attrno = 1; attrno <= numattrs; attrno++)
+		{
+			TargetEntry   *new_tle = new_tles[attrno - 1];
+			/*
+			 * We need to insert a default expression when the
+			 * tlist entry is a DEFAULT placeholder node.
+			 */
+			bool	applyDefault = new_tle != NULL && new_tle->expr != NULL && IsA(new_tle->expr, SetToDefault);
+			bool	generateCol = ISGENERATEDCOL(target_relation->rd_att, attrno - 1);
+			att_tup = &target_relation->rd_att->attrs[attrno - 1];
+
+			/* We can (and must) ignore deleted attributes */
+			if (att_tup->attisdropped)
+				continue;
+
+			if (generateCol && !applyDefault && new_tle)
+			{
+				ereport(ERROR, ( errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("column \"%s\" can only be updated to DEFAULT", NameStr(att_tup->attname)),
+						 errdetail("Column \"%s\" is a generated column.", NameStr(att_tup->attname))));
+			}
+
+			if (generateCol)
+			{
+				/*
+				 * stored generated column will be fixed in executor
+				 */
+				new_tle = NULL;
+			}
+			else if (applyDefault)
+			{
+				Node   *new_expr = build_column_default(target_relation, attrno);
+				if (new_expr == NULL && target_relation->rd_rel->relkind != RELKIND_VIEW)
+				{
+					new_expr = (Node*)makeConst(att_tup->atttypid, -1, att_tup->attcollation,
+												att_tup->attlen, (Datum)0, true, /* isnull */
+												att_tup->attbyval);
+					/* this is to catch a NOT NULL domain constraint */
+					new_expr = coerce_to_domain(new_expr, InvalidOid, -1, att_tup->atttypid,
+												COERCE_IMPLICIT_CAST, -1, false, false);
+				}
+				if (new_expr != NULL)
+				{
+					new_tle = makeTargetEntry((Expr*)new_expr, attrno, pstrdup(NameStr(att_tup->attname)), false);
+				}
+				new_tle->rtindex = result_relation;
+			}
+
+			/*
+			 * For an UPDATE on a view, provide a dummy entry whenever there is no
+			 * explicit assignment.
+			 */
+			if (new_tle == NULL && ((target_relation->rd_rel->relkind == RELKIND_VIEW
+				 && view_has_instead_trigger(target_relation, CMD_UPDATE))))
+			{
+				Node   *new_expr = NULL;
+
+				new_expr = (Node*)makeVar(
+						result_relation, attrno, att_tup->atttypid, att_tup->atttypmod, att_tup->attcollation, 0);
+				new_tle = makeTargetEntry((Expr*)new_expr, attrno, pstrdup(NameStr(att_tup->attname)), false);
+				new_tle->rtindex = result_relation;
+			}
+
+			if (new_tle != NULL)
+				new_tlist = lappend(new_tlist, new_tle);
+		}
+
+		relation_close(target_relation, NoLock);
+		pfree(new_tles);
+	}
+
+	next_junk_attrno = list_length(new_tlist) + 1;
+
+	foreach (l, junk_tlist)
+	{
+		old_tle = (TargetEntry*)lfirst(l);
+		if (old_tle->resno != next_junk_attrno)
+		{
+			old_tle = flatCopyTargetEntry(old_tle);
+			old_tle->resno = next_junk_attrno;
+		}
+		new_tlist = lappend(new_tlist, old_tle);
+		next_junk_attrno++;
+	}
+
+	parsetree->targetList = new_tlist;
+
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * RewriteQuery -
@@ -3851,6 +4090,7 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 	List	   *rewritten = NIL;
 	ListCell   *lc1;
 	ListCell   *rt;	/* ReqID:SRS-SQL-DBLINK */
+	List       *rewriteRelations = NIL;	/* ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * First, recursively process any insert/update/delete statements in WITH
@@ -3946,8 +4186,19 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		int			values_rte_index = 0;
 		bool		defaults_remaining = false;
 
-		result_relation = parsetree->resultRelation;
-		Assert(result_relation != 0);
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && parsetree->resultRelations)
+		{
+			result_relation = (parsetree->resultRelations ? lfirst_int(list_head(parsetree->resultRelations)) : 0);
+			if (result_relation == 0)
+				return rewritten;
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+		else
+		{
+			result_relation = parsetree->resultRelation;
+			Assert(result_relation != 0);
+		}
 		rt_entry = rt_fetch(result_relation, parsetree->rtable);
 		Assert(rt_entry->rtekind == RTE_RELATION);
 
@@ -4034,13 +4285,22 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		}
 		else if (event == CMD_UPDATE)
 		{
-			Assert(parsetree->override == OVERRIDING_NOT_SET);
-			parsetree->targetList =
-				rewriteTargetListIU(parsetree->targetList,
-									parsetree->commandType,
-									parsetree->override,
-									rt_entry_relation,
-									NULL, 0, NULL);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (list_length(parsetree->resultRelations) > 1 && DB_MYSQL == compatible_db)
+			{
+				rewriteTargetListMultiUpdate(parsetree, parsetree->rtable, parsetree->resultRelations);
+			}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
+			else
+			{
+				Assert(parsetree->override == OVERRIDING_NOT_SET);
+				parsetree->targetList =
+					rewriteTargetListIU(parsetree->targetList,
+										parsetree->commandType,
+										parsetree->override,
+										rt_entry_relation,
+										NULL, 0, NULL);
+			}
 
 		}
 		else if (event == CMD_MERGE)
@@ -4150,96 +4410,227 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 			}
 		}
 
-		/*
-		 * If there was no unqualified INSTEAD rule, and the target relation
-		 * is a view without any INSTEAD OF triggers, see if the view can be
-		 * automatically updated.  If so, we perform the necessary query
-		 * transformation here and add the resulting query to the
-		 * product_queries list, so that it gets recursively rewritten if
-		 * necessary.
-		 *
-		 * If the view cannot be automatically updated, we throw an error here
-		 * which is OK since the query would fail at runtime anyway.  Throwing
-		 * the error here is preferable to the executor check since we have
-		 * more detailed information available about why the view isn't
-		 * updatable.
-		 */
-		if (!instead &&
-			rt_entry_relation->rd_rel->relkind == RELKIND_VIEW &&
-			!view_has_instead_trigger(rt_entry_relation, event))
+		/*  Begin - ReqID:SRS-MYSQL-UPDATE */
+		if(product_queries != NIL)
+			rewriteRelations = lappend_oid(rewriteRelations, RelationGetRelid(rt_entry_relation));
+
+		/* Element of resultRelations may be update under rewriteTargetView. */
+		if (DB_MYSQL == compatible_db && parsetree->resultRelations)
 		{
-			/*
-			 * If there were any qualified INSTEAD rules, don't allow the view
-			 * to be automatically updated (an unqualified INSTEAD rule or
-			 * INSTEAD OF trigger is required).
-			 *
-			 * The messages here should match execMain.c's CheckValidResultRel
-			 * and in principle make those checks in executor unnecessary, but
-			 * we keep them just in case.
-			 */
-			if (qual_product != NULL)
+			ListCell   *resultRel = NULL;
+			bool		rewriteView = false;
+			List	   *tempResultRelations = NIL;
+			int			tempresultRelation = parsetree->resultRelation;
+
+			tempResultRelations = (List*)copyObject(parsetree->resultRelations);
+			foreach (resultRel, tempResultRelations)
 			{
-				switch (parsetree->commandType)
+				result_relation = lfirst_int(resultRel);
+
+				table_close(rt_entry_relation, NoLock);
+				rt_entry = rt_fetch(result_relation, parsetree->rtable);
+				rt_entry_relation = table_open(rt_entry->relid, NoLock);
+
+				/*
+				 * If there was no unqualified INSTEAD rule, and the target relation
+				 * is a view without any INSTEAD OF triggers, see if the view can be
+				 * automatically updated.  If so, we perform the necessary query
+				 * transformation here and add the resulting query to the
+				 * product_queries list, so that it gets recursively rewritten if
+				 * necessary.
+				 *
+				 * If the view cannot be automatically updated, we throw an error here
+				 * which is OK since the query would fail at runtime anyway.  Throwing
+				 * the error here is preferable to the executor check since we have
+				 * more detailed information available about why the view isn't
+				 * updatable.
+				 */
+				if (!instead &&
+					rt_entry_relation->rd_rel->relkind == RELKIND_VIEW &&
+					!view_has_instead_trigger(rt_entry_relation, event))
 				{
-					case CMD_INSERT:
-						ereport(ERROR,
-								(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-								 errmsg("cannot insert into view \"%s\"",
-										RelationGetRelationName(rt_entry_relation)),
-								 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
-								 errhint("To enable inserting into the view, provide an INSTEAD OF INSERT trigger or an unconditional ON INSERT DO INSTEAD rule.")));
-						break;
-					case CMD_UPDATE:
-						ereport(ERROR,
-								(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-								 errmsg("cannot update view \"%s\"",
-										RelationGetRelationName(rt_entry_relation)),
-								 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
-								 errhint("To enable updating the view, provide an INSTEAD OF UPDATE trigger or an unconditional ON UPDATE DO INSTEAD rule.")));
-						break;
-					case CMD_DELETE:
-						ereport(ERROR,
-								(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-								 errmsg("cannot delete from view \"%s\"",
-										RelationGetRelationName(rt_entry_relation)),
-								 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
-								 errhint("To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.")));
-						break;
-					default:
-						elog(ERROR, "unrecognized CmdType: %d",
-							 (int) parsetree->commandType);
-						break;
+					/*
+					 * If there were any qualified INSTEAD rules, don't allow the view
+					 * to be automatically updated (an unqualified INSTEAD rule or
+					 * INSTEAD OF trigger is required).
+					 *
+					 * The messages here should match execMain.c's CheckValidResultRel
+					 * and in principle make those checks in executor unnecessary, but
+					 * we keep them just in case.
+					 */
+					if (qual_product != NULL)
+					{
+						switch (parsetree->commandType)
+						{
+							case CMD_INSERT:
+								ereport(ERROR,
+										(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+										 errmsg("cannot insert into view \"%s\"",
+												RelationGetRelationName(rt_entry_relation)),
+										 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+										 errhint("To enable inserting into the view, provide an INSTEAD OF INSERT trigger or an unconditional ON INSERT DO INSTEAD rule.")));
+								break;
+							case CMD_UPDATE:
+								ereport(ERROR,
+										(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+										 errmsg("cannot update view \"%s\"",
+												RelationGetRelationName(rt_entry_relation)),
+										 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+										 errhint("To enable updating the view, provide an INSTEAD OF UPDATE trigger or an unconditional ON UPDATE DO INSTEAD rule.")));
+								break;
+							case CMD_DELETE:
+								ereport(ERROR,
+										(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+										 errmsg("cannot delete from view \"%s\"",
+												RelationGetRelationName(rt_entry_relation)),
+										 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+										 errhint("To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.")));
+								break;
+							default:
+								elog(ERROR, "unrecognized CmdType: %d",
+									 (int) parsetree->commandType);
+								break;
+						}
+					}
+
+					/*
+					 * Attempt to rewrite the query to automatically update the view.
+					 * This throws an error if the view can't be automatically
+					 * updated.
+					 */
+					parsetree->resultRelation = result_relation;
+					parsetree = rewriteTargetView(parsetree, rt_entry_relation);
+
+					/*
+					 * Set the "instead" flag, as if there had been an unqualified
+					 * INSTEAD, to prevent the original query from being included a
+					 * second time below.  The transformation will have rewritten any
+					 * RETURNING list, so we can also set "returning" to forestall
+					 * throwing an error below.
+					 */
+					instead = true;
+					returning = true;
+					rewriteView = true;
+
+					/*
+					 * If there were any unqualified INSTEAD rules, rewriteRelations
+					 * may contain duplicated oid. But it is ok cause we just use the
+					 * list to check if recursive.
+					 */
+					rewriteRelations = lappend_oid(rewriteRelations, RelationGetRelid(rt_entry_relation));
 				}
 			}
+			pfree(tempResultRelations);
 
-			/*
-			 * Attempt to rewrite the query to automatically update the view.
-			 * This throws an error if the view can't be automatically
-			 * updated.
-			 */
-			parsetree = rewriteTargetView(parsetree, rt_entry_relation);
-
+			parsetree->resultRelation = tempresultRelation;
 			/*
 			 * At this point product_queries contains any DO ALSO rule
 			 * actions. Add the rewritten query before or after those.  This
 			 * must match the handling the original query would have gotten
 			 * below, if we allowed it to be included again.
 			 */
-			if (parsetree->commandType == CMD_INSERT)
-				product_queries = lcons(parsetree, product_queries);
-			else
-				product_queries = lappend(product_queries, parsetree);
-
+			if(rewriteView)
+			{
+				if (parsetree->commandType == CMD_INSERT)
+					product_queries = lcons(parsetree, product_queries);
+				else
+					product_queries = lappend(product_queries, parsetree);
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+		else
+		{
 			/*
-			 * Set the "instead" flag, as if there had been an unqualified
-			 * INSTEAD, to prevent the original query from being included a
-			 * second time below.  The transformation will have rewritten any
-			 * RETURNING list, so we can also set "returning" to forestall
-			 * throwing an error below.
+			 * If there was no unqualified INSTEAD rule, and the target relation
+			 * is a view without any INSTEAD OF triggers, see if the view can be
+			 * automatically updated.  If so, we perform the necessary query
+			 * transformation here and add the resulting query to the
+			 * product_queries list, so that it gets recursively rewritten if
+			 * necessary.
+			 *
+			 * If the view cannot be automatically updated, we throw an error here
+			 * which is OK since the query would fail at runtime anyway.  Throwing
+			 * the error here is preferable to the executor check since we have
+			 * more detailed information available about why the view isn't
+			 * updatable.
 			 */
-			instead = true;
-			returning = true;
-			updatableview = true;
+			if (!instead &&
+				rt_entry_relation->rd_rel->relkind == RELKIND_VIEW &&
+				!view_has_instead_trigger(rt_entry_relation, event))
+			{
+				/*
+				 * If there were any qualified INSTEAD rules, don't allow the view
+				 * to be automatically updated (an unqualified INSTEAD rule or
+				 * INSTEAD OF trigger is required).
+				 *
+				 * The messages here should match execMain.c's CheckValidResultRel
+				 * and in principle make those checks in executor unnecessary, but
+				 * we keep them just in case.
+				 */
+				if (qual_product != NULL)
+				{
+					switch (parsetree->commandType)
+					{
+						case CMD_INSERT:
+							ereport(ERROR,
+									(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+									 errmsg("cannot insert into view \"%s\"",
+											RelationGetRelationName(rt_entry_relation)),
+									 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+									 errhint("To enable inserting into the view, provide an INSTEAD OF INSERT trigger or an unconditional ON INSERT DO INSTEAD rule.")));
+							break;
+						case CMD_UPDATE:
+							ereport(ERROR,
+									(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+									 errmsg("cannot update view \"%s\"",
+											RelationGetRelationName(rt_entry_relation)),
+									 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+									 errhint("To enable updating the view, provide an INSTEAD OF UPDATE trigger or an unconditional ON UPDATE DO INSTEAD rule.")));
+							break;
+						case CMD_DELETE:
+							ereport(ERROR,
+									(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+									 errmsg("cannot delete from view \"%s\"",
+											RelationGetRelationName(rt_entry_relation)),
+									 errdetail("Views with conditional DO INSTEAD rules are not automatically updatable."),
+									 errhint("To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.")));
+							break;
+						default:
+							elog(ERROR, "unrecognized CmdType: %d",
+								 (int) parsetree->commandType);
+							break;
+					}
+				}
+
+				/*
+				 * Attempt to rewrite the query to automatically update the view.
+				 * This throws an error if the view can't be automatically
+				 * updated.
+				 */
+				parsetree = rewriteTargetView(parsetree, rt_entry_relation);
+
+				/*
+				 * At this point product_queries contains any DO ALSO rule
+				 * actions. Add the rewritten query before or after those.  This
+				 * must match the handling the original query would have gotten
+				 * below, if we allowed it to be included again.
+				 */
+				if (parsetree->commandType == CMD_INSERT)
+					product_queries = lcons(parsetree, product_queries);
+				else
+					product_queries = lappend(product_queries, parsetree);
+
+				/*
+				 * Set the "instead" flag, as if there had been an unqualified
+				 * INSTEAD, to prevent the original query from being included a
+				 * second time below.  The transformation will have rewritten any
+				 * RETURNING list, so we can also set "returning" to forestall
+				 * throwing an error below.
+				 */
+				instead = true;
+				returning = true;
+				updatableview = true;
+			}
 		}
 
 		/*
@@ -4250,22 +4641,49 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		{
 			ListCell   *n;
 			rewrite_event *rev;
+			int			i;
 
 			foreach(n, rewrite_events)
 			{
 				rev = (rewrite_event *) lfirst(n);
-				if (rev->relation == RelationGetRelid(rt_entry_relation) &&
+				if (DB_MYSQL == compatible_db && rewriteRelations)
+				{
+					if (list_member_oid(rewriteRelations, rev->relation) &&
 					rev->event == event)
 					ereport(ERROR,
 							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
 							 errmsg("infinite recursion detected in rules for relation \"%s\"",
 									RelationGetRelationName(rt_entry_relation))));
+				}
+				else
+				{
+					if (rev->relation == RelationGetRelid(rt_entry_relation) &&
+						rev->event == event)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+								 errmsg("infinite recursion detected in rules for relation \"%s\"",
+										RelationGetRelationName(rt_entry_relation))));
+				}
 			}
 
-			rev = (rewrite_event *) palloc(sizeof(rewrite_event));
-			rev->relation = RelationGetRelid(rt_entry_relation);
-			rev->event = event;
-			rewrite_events = lappend(rewrite_events, rev);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (DB_MYSQL == compatible_db && rewriteRelations)
+			{
+				foreach (n, rewriteRelations)
+				{
+					rev = (rewrite_event*)palloc(sizeof(rewrite_event));
+					rev->relation = lfirst_oid(n);
+					rev->event = event;
+					rewrite_events = lcons(rev, rewrite_events);
+				}
+			}
+			else
+			{
+				rev = (rewrite_event *) palloc(sizeof(rewrite_event));
+				rev->relation = RelationGetRelid(rt_entry_relation);
+				rev->event = event;
+				rewrite_events = lappend(rewrite_events, rev);
+			}
 
 			foreach(n, product_queries)
 			{
@@ -4288,7 +4706,14 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 				rewritten = list_concat(rewritten, newstuff);
 			}
 
-			rewrite_events = list_delete_last(rewrite_events);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (DB_MYSQL == compatible_db && rewriteRelations)
+			{
+				for (i = 0; i < list_length(rewriteRelations); i++)
+					rewrite_events = list_delete_first(rewrite_events);
+			}
+			else
+				rewrite_events = list_delete_last(rewrite_events);
 		}
 
 		/*

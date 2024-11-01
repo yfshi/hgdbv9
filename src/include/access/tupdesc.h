@@ -91,6 +91,10 @@ typedef struct TupleDescData *TupleDesc;
 
 /* Accessor for the i'th attribute of tupdesc. */
 #define TupleDescAttr(tupdesc, i) (&(tupdesc)->attrs[(i)])
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#define ISGENERATEDCOL(tupdesc, i) \
+	((tupdesc)->constr != NULL && (tupdesc)->constr->num_defval > 0 && (tupdesc)->attrs[i].attgenerated == 's')
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 extern TupleDesc CreateTemplateTupleDesc(int natts, bool hasrowid);
 

@@ -335,6 +335,11 @@ typedef struct ProjectionInfo
 	ExprState	pi_state;
 	/* expression context in which to evaluate expression */
 	ExprContext *pi_exprContext;
+	TupleTableSlot* pi_slot;
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	bool		pi_expr;
+	bool		pi_fetch_slot;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } ProjectionInfo;
 
 /* ----------------
@@ -720,6 +725,7 @@ typedef struct EState
 	const char	*schema_name;
 	const char	*cur_relname;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	int		result_rel_index;	/* ReqID:SRS-MYSQL-UPDATE */
 
 } EState;
 
@@ -1337,6 +1343,12 @@ typedef struct ModifyTableState
 	double		mt_merge_inserted;
 	double		mt_merge_updated;
 	double		mt_merge_deleted;
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	PlanState  *mt_plan;		/* subplan (one per target rel) */
+	List	   *targetlists;	/* for multiple modifying, targetlist's list for each result relation. */
+	List	   *mt_ResultTupleSlots;	/* for multiple modifying, ResultTupleSlot list for build mt_ProjInfos. */
+	ProjectionInfo **mt_ProjInfos;	/* for multiple modifying, projectInfo list array for each result relation. */
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } ModifyTableState;
 
 /* ----------------

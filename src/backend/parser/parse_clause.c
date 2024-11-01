@@ -118,6 +118,10 @@ static Node *transformFrameOffset(ParseState *pstate, int frameOptions,
 static void check_funcexpr_outparams(List *funcexprs);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+List *transfromRelationposition(ParseState *pstate, List *frmList);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 static JoinExpr *outer_join_Recurse(ParseState *pstate, List **multi_outer_joins,
 									JoinExpr *join, Outer_join_vars *plus_var);
@@ -148,6 +152,65 @@ static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace
 							  enable_ora_default_collation && \
 							  IsPseudoCollation(exprCollation(expr))))
 /* End - Req:SRS-SQL-NLSSORT */
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * transfromRelationposition - Adjust the position of the base table.
+ */
+List
+*transfromRelationposition(ParseState *pstate, List *frmList)
+{
+	ListCell   *fl = NULL;
+	List	   *orginlist = NIL;
+	List	   *rellist = NIL;
+
+	/* Guard against stack overflow due to overly deep subtree */
+	check_stack_depth();
+
+	foreach (fl, frmList)
+	{
+		Node	   *n = lfirst(fl);
+		if (IsA(n, RangeVar))
+		{
+			RangeVar   *rv = (RangeVar *) n;
+			char	   *refname = rv->alias ? rv->alias->aliasname : rv->relname;
+			LOCKMODE	lockmode;
+			Relation	rel;
+
+			Assert(pstate != NULL);
+
+			/*
+			 * Identify the type of lock we'll need on this relation.  It's not the
+			 * query's target table (that case is handled elsewhere), so we need
+			 * either RowShareLock if it's locked by FOR UPDATE/SHARE, or plain
+			 * AccessShareLock otherwise.
+			 */
+			lockmode = isLockedRefname(pstate, refname) ? RowShareLock : AccessShareLock;
+
+			/*
+			 * Get the rel's OID.  This access also ensures that we have an up-to-date
+			 * relcache entry for the rel.  Since this is typically the first access
+			 * to a rel in a statement, we must open the rel with the proper lockmode.
+			 */
+			rel = parserOpenTable(pstate, rv, lockmode);
+			if (rel->rd_rel->relkind == RELKIND_RELATION)
+			{
+				rellist = lappend(rellist, rv);
+			}
+			else
+			{
+				orginlist = lappend(orginlist, rv);
+			}
+
+			table_close(rel, NoLock);
+		}
+		else
+			orginlist = lappend(orginlist, n);
+	}
+	return list_concat(rellist, orginlist);
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /*
  * transformFromClause -
@@ -200,6 +263,79 @@ transformFromClause(ParseState *pstate, List *frmList)
 	 */
 	setNamespaceLateralState(pstate->p_namespace, false, true);
 }
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * setMultiTargetTable
+ * Verify whether the target relation of the UPDATE is added to the range table.
+ * If not, add it to the range table. If it is added, return the index value.
+ * Store the target relation information in pstate.
+ */
+int
+setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh, bool alsoSource, AclMode requiredPerms,
+						   bool multiModify)
+{
+	RangeTblEntry* rte = NULL;
+	Relation relation = NULL;
+	int index = 0;
+	ParseNamespaceItem *nsitem = NULL;
+
+	/*
+	 * For UPDATE, maybe target table has been added to rtable before.
+	 * if that, no need to do that again, just set resultRelation to the existed rtindex.
+	 */
+	if (DB_MYSQL == compatible_db)
+	{
+		if (multiModify && (requiredPerms & ACL_UPDATE))
+		{
+			relation = parserOpenTable(pstate, relRv, RowExclusiveLock);
+			/* When update multiple relations, rte has been just now added to p_rtable in transformFromClauseItem. */
+			rte = (RangeTblEntry *)llast(pstate->p_rtable);
+			index = list_length(pstate->p_rtable);
+		}
+	}
+
+	if (index == 0)
+	{
+		relation = parserOpenTable(pstate, relRv, RowExclusiveLock);
+		nsitem = addRangeTableEntryForRelation(pstate, relation, RowExclusiveLock, relRv->alias, inh, false);
+		rte = nsitem->p_rte;
+	}
+	pstate->p_target_rels = lappend(pstate->p_target_rels, relation);
+
+	if (requiredPerms & ACL_UPDATE)
+		pstate->p_updateRangeVars = lappend(pstate->p_updateRangeVars, relRv);
+
+	pstate->p_target_rangetblentry = lappend(pstate->p_target_rangetblentry, rte);
+
+	/* remember the RTE/nsitem as being the query target */
+	if (nsitem)
+	{
+		pstate->p_target_nsitem = nsitem;
+		nsitem->p_rte->requiredPerms = requiredPerms;
+	}
+	/*
+	 * when index equal to 0, indicate that result relation does not exist in rtable.
+	 * assume new rte is at end.
+	 */
+	if (index == 0)
+	{
+		index = list_length(pstate->p_rtable);
+		Assert(rte == rt_fetch(index, pstate->p_rtable));
+		/*
+		 * If UPDATE, and haven't added by fromClause/usingClause, add table to joinlist and namespaces.
+		 * But when UPDATE use relationClause, no need to add.
+		 */
+		if (alsoSource)
+			addNSItemToQuery(pstate, nsitem, true, true, true);
+	}
+	table_close(relation, NoLock);
+
+	return index;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * setTargetTable
@@ -288,6 +424,27 @@ setTargetTable(ParseState *pstate, RangeVar *relation,
 	 */
 	if (alsoSource)
 		addNSItemToQuery(pstate, nsitem, true, true, true);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	/* In MySQL mode, deal index hint pre check */
+	if (relation->indexhints != NIL && DB_MYSQL == compatible_db)
+	{
+		IndexHintType	ihtype = INDEX_HINT_USE;
+		ihtype = preCheckIndexHints(pstate, relation->indexhints, pstate->p_target_relation);
+		if (ihtype == INDEX_HINT_NOT_EXISTS)
+		{
+			ereport(ERROR,
+			(errcode(ERRCODE_UNDEFINED_OBJECT),
+				errmsg("index not exists in relation %s", RelationGetRelationName(pstate->p_target_relation))));
+		}
+		else if (ihtype == INDEX_HINT_MIX)
+		{
+			ereport(ERROR,
+			(errcode(ERRCODE_DUPLICATE_OBJECT),
+				errmsg("mixed use force index and use index")));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return nsitem->p_rtindex;
 }
@@ -1153,6 +1310,16 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		*namespace = list_make1(nsitem);
 		rtr = makeNode(RangeTblRef);
 		rtr->rtindex = nsitem->p_rtindex;
+
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		/* If UPDATE multiple relations, add target table here. */
+		if (pstate->p_addUpdateTable)
+		{
+			pstate->p_updateRelations = lappend_int(pstate->p_updateRelations,
+				setMultiTargetTable(pstate, rv, rv->inh, true, ACL_UPDATE, true));
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+
 		return (Node *) rtr;
 	}
 	else if (IsA(n, RangeSubselect))

@@ -539,6 +539,51 @@ add_rte_to_flat_rtable(PlannerGlobal *glob, RangeTblEntry *rte)
 		glob->relationOids = lappend_oid(glob->relationOids, newrte->relid);
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * If multi result relations, transform and split the original Plan->targetlist to ModifyTable->targetlists.
+ * targetlists is a list that with each result relation targetlist.
+ */
+static void
+fix_assign_targetlists(ModifyTable* plan, Plan* subplan)
+{
+	ListCell	   *lcrr = NULL;
+	ListCell	   *lctl = NULL;
+	List		   *resultRelation = plan->resultRelations;
+	int				resultRelationNum = list_length(resultRelation);
+	List		   **temp = (List**)palloc0(resultRelationNum * sizeof(List*));
+	int				i = 0;
+
+	foreach (lcrr, resultRelation)
+	{
+		Index	rtindex = (Index)lfirst_int(lcrr);
+		int		new_resno = 1;
+		foreach (lctl, subplan->targetlist)
+		{
+			TargetEntry* tle = (TargetEntry*)lfirst(lctl);
+			if (tle->rtindex == 0)
+			{
+				tle = (TargetEntry*)copyObject((void*)tle);
+				tle->resno = new_resno++;
+				temp[i] = lappend(temp[i], tle);
+			}
+			else if (rtindex == tle->rtindex)
+			{
+				tle->resno = new_resno++;
+				temp[i] = lappend(temp[i], tle);
+			}
+		}
+		i++;
+	}
+	for (i = 0; i < resultRelationNum; i++)
+	{
+		plan->targetlists = lappend(plan->targetlists, temp[i]);
+	}
+	subplan->targetlist = (List*)linitial(plan->targetlists);
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  * set_plan_refs: recurse through the Plan nodes of a single subquery level
  */
@@ -1127,6 +1172,14 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 				{
 					lfirst_int(l) += rtoffset;
 				}
+				/* Begin - ReqID:SRS-MYSQL-UPDATE */
+				if(list_length(splan->resultRelations) > 1)
+				{
+					if (subplan->type == T_NestLoop || subplan->type == T_HashJoin || subplan->type == T_MergeJoin ||
+						subplan->type == T_Result)
+						fix_assign_targetlists(splan, subplan);
+				}
+				/* End - ReqID:SRS-MYSQL-UPDATE */
 				foreach(l, splan->rowMarks)
 				{
 					PlanRowMark *rc = (PlanRowMark *) lfirst(l);

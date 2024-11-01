@@ -1,0 +1,5 @@
+Parsed test spec with 3 sessions
+
+starting permutation: wx1 wx2 c1 c2 read
+setup failed: ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.

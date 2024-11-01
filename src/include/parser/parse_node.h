@@ -286,6 +286,15 @@ struct ParseState
 	char	p_oraparammode;			/* the argument mode of a function or procedure */
 	bool	p_not_transform_funcCall;	/* don't transform funcCall */
 	/* End - BUG#M0000376 */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	List	   *p_updateRelations;
+	bool		p_addUpdateTable;
+	List	   *p_target_rels;
+	List	   *p_updateRangeVars;	/* For multiple-update, use relationClase to generate RangeVar list. */
+	List	   *p_target_rangetblentry;
+	bool		p_isupdate;
+	List	   *p_indexhintLists;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 };
 
 /*

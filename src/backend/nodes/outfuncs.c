@@ -430,6 +430,10 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_UINT_FIELD(exclRelRTI);
 	WRITE_NODE_FIELD(exclRelTlist);
 	WRITE_NODE_FIELD(mergeActionLists);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	WRITE_NODE_FIELD(targetlists);
+	WRITE_NODE_FIELD(parseresultrelations);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 }
 
 static void
@@ -1743,6 +1747,10 @@ _outTargetEntry(StringInfo str, const TargetEntry *node)
 	WRITE_OID_FIELD(resorigtbl);
 	WRITE_INT_FIELD(resorigcol);
 	WRITE_BOOL_FIELD(resjunk);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	WRITE_UINT_FIELD(rtindex);
+	WRITE_INT_FIELD(relattno);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 }
 
 static void
@@ -3185,6 +3193,10 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_NODE_FIELD(withCheckOptions);
 	WRITE_NODE_FIELD(mergeActionList);
 	WRITE_BOOL_FIELD(mergeUseOuterJoin);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	WRITE_NODE_FIELD(resultRelations);
+	WRITE_NODE_FIELD(indexhintList);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 }
@@ -4011,6 +4023,26 @@ _outAccessorItem(StringInfo str, const AccessorItem *node)
 }
 /* End - ReqID:SRS-SQL-PACKAGE */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static void
+_outIndexHintRelationData(StringInfo str, IndexHintRelationData* node)
+{
+	WRITE_NODE_TYPE("INDEXHINT_RELATION_DATA");
+	WRITE_OID_FIELD(relationOid);
+	WRITE_OID_FIELD(indexOid);
+	WRITE_ENUM_FIELD(index_type, IndexHintType);
+}
+
+static void
+_outIndexHintDefinition(StringInfo str, IndexHintDefinition* node)
+{
+	WRITE_NODE_TYPE("INDEXHINT_DEFINITION");
+	WRITE_NODE_FIELD(indexnames);
+	WRITE_ENUM_FIELD(index_type, IndexHintType);
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  * outNode -
  *	  converts a Node into ascii string and append it to 'str'
@@ -4760,6 +4792,14 @@ outNode(StringInfo str, const void *obj)
 				_outAccessorItem(str, obj);
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			case T_IndexHintDefinition:
+				_outIndexHintDefinition(str, (IndexHintDefinition*)obj);
+				break;
+			case T_IndexHintRelationData:
+				_outIndexHintRelationData(str, (IndexHintRelationData*)obj);
+				break;
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 
 			default:
 

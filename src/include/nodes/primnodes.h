@@ -71,6 +71,9 @@ typedef struct RangeVar
 	char		relpersistence; /* see RELPERSISTENCE_* in pg_class.h */
 	Alias	   *alias;			/* table alias & optional column aliases */
 	int			location;		/* token location, or -1 if unknown */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	List	   *indexhints;		/* a list of b mode index hint indexHintDefinition members */
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } RangeVar;
 
 /*
@@ -1513,6 +1516,11 @@ typedef struct TargetEntry
 	AttrNumber	resorigcol;		/* column's number in source table */
 	bool		resjunk;		/* set to true to eliminate the attribute from
 								 * final target list */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	Index		rtindex;		/* used when multiple modifying. It indicates the resultRelation
+								 * to which this TLE belongs. */
+	AttrNumber	relattno;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } TargetEntry;
 
 

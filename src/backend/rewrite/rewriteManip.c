@@ -539,6 +539,17 @@ ChangeVarNodes_walker(Node *node, ChangeVarNodes_context *context)
 		/* the subquery itself is visited separately */
 		return false;
 	}
+
+	/*  Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (IsA(node, TargetEntry))
+	{
+		TargetEntry* te = (TargetEntry*)node;
+
+		if (context->sublevels_up == 0 && te->rtindex == (unsigned int)context->rt_index)
+			te->rtindex = context->new_index;
+	}
+	/*  End - ReqID:SRS-MYSQL-UPDATE */
+
 	if (IsA(node, JoinExpr))
 	{
 		JoinExpr   *j = (JoinExpr *) node;
@@ -634,6 +645,14 @@ ChangeVarNodes(Node *node, int rt_index, int new_index, int sublevels_up)
 		if (sublevels_up == 0)
 		{
 			ListCell   *l;
+
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			foreach (l, qry->resultRelations)
+			{
+				if (lfirst_int(l) == rt_index)
+					lfirst_int(l) = new_index;
+			}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 
 			if (qry->resultRelation == rt_index)
 				qry->resultRelation = new_index;

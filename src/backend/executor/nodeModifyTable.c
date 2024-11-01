@@ -114,6 +114,11 @@ exec_merge_matched_hook_type pg_exec_merge_matched_hook = ExecMergeMatched;
 exec_merge_matched_hook_type ora_exec_merge_matched_hook = NULL;
 /* End - ReqID:SRS-SQL-MERGE */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static void InitMultipleModify(ModifyTableState* node, int32 resultRelationNum);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  * Verify that the tuples to be produced by INSERT match the
  * target relation's rowtype
@@ -549,7 +554,7 @@ ExecInitUpdateProjection(ModifyTableState *mtstate,
 	EState	   *estate = mtstate->ps.state;
 	TupleDesc	relDesc = RelationGetDescr(resultRelInfo->ri_RelationDesc);
 	int			whichrel;
-	List	   *updateColnos;
+	List	   *updateColnos = NIL;	/* ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * Usually, mt_lastResultIndex matches the target rel.  If it happens not
@@ -591,6 +596,56 @@ ExecInitUpdateProjection(ModifyTableState *mtstate,
 
 	resultRelInfo->ri_projectNewInfoValid = true;
 }
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * ExecInitMultilUpdateProjection
+ *		Initialize the projection data of the UPDATE tuple once
+ *		according to the target column of the corresponding relationship.
+ */
+static void
+ExecInitMultilUpdateProjection(ModifyTableState *mtstate, List *targetList,
+										  ResultRelInfo *resultRelInfo, int whichrel)
+{
+	ModifyTable *node = (ModifyTable *) mtstate->ps.plan;
+
+	EState 	*estate = mtstate->ps.state;
+	TupleDesc	 relDesc = RelationGetDescr(resultRelInfo->ri_RelationDesc);
+	List		*updateColnos = NIL;
+
+	updateColnos = (List *) list_nth(node->updateColnosLists, whichrel);
+
+	/*
+	 * For UPDATE, we use the old tuple to fill up missing values in the tuple
+	 * produced by the subplan to get the new tuple.  We need two slots, both
+	 * matching the table's desired format.
+	 */
+	resultRelInfo->ri_oldTupleSlot =
+		table_slot_create(resultRelInfo->ri_RelationDesc,
+						   &estate->es_tupleTable);
+	resultRelInfo->ri_newTupleSlot =
+		table_slot_create(resultRelInfo->ri_RelationDesc,
+						   &estate->es_tupleTable);
+
+	/* need an expression context to do the projection */
+	if (mtstate->ps.ps_ExprContext == NULL)
+		ExecAssignExprContext(estate, &mtstate->ps);
+
+	resultRelInfo->ri_projectNew =
+		ExecBuildMutilUpdateProjection(targetList,
+									   false,	 /* subplan did the evaluation */
+									   updateColnos,
+									   relDesc,
+									   mtstate->ps.ps_ExprContext,
+									   resultRelInfo->ri_newTupleSlot,
+									   &mtstate->ps,
+									   resultRelInfo->ri_RangeTableIndex);
+
+	resultRelInfo->ri_projectNewInfoValid = true;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * ExecGetInsertNewTuple
@@ -3345,7 +3400,22 @@ static void
 fireBSTriggers(ModifyTableState *node)
 {
 	ModifyTable *plan = (ModifyTable *) node->ps.plan;
-	ResultRelInfo *resultRelInfo = node->rootResultRelInfo;
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	ResultRelInfo   *resultRelInfo;
+	int				resultRelationNum = 0;
+	int				i = 0;
+	bool			multirel = false;
+
+	if (DB_MYSQL == compatible_db && node->mt_ResultTupleSlots)
+	{
+		resultRelInfo = node->resultRelInfo;
+		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
+		multirel = true;
+	}
+	else
+		resultRelInfo = node->rootResultRelInfo;
+	/* END - ReqID:SRS-MYSQL-UPDATE */
 
 	switch (node->operation)
 	{
@@ -3356,7 +3426,21 @@ fireBSTriggers(ModifyTableState *node)
 									 resultRelInfo);
 			break;
 		case CMD_UPDATE:
-			ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (multirel)
+			{
+				for(i = 0; i < resultRelationNum; i++)
+				{
+					if (resultRelInfo->ri_RootResultRelInfo)
+						resultRelInfo->ri_RootResultRelInfo = NULL;
+
+					ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
+					resultRelInfo++;
+				}
+			}
+			else
+				ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
+			/* END - ReqID:SRS-MYSQL-UPDATE */
 			break;
 		case CMD_DELETE:
 			ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
@@ -3382,7 +3466,22 @@ static void
 fireASTriggers(ModifyTableState *node)
 {
 	ModifyTable *plan = (ModifyTable *) node->ps.plan;
-	ResultRelInfo *resultRelInfo = node->rootResultRelInfo;
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	ResultRelInfo   *resultRelInfo;
+	int				resultRelationNum = 0;
+	int				i = 0;
+	bool			multirel = false;
+
+	if (DB_MYSQL == compatible_db && node->mt_ResultTupleSlots)
+	{
+		resultRelInfo = node->resultRelInfo;
+		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
+		multirel = true;
+	}
+	else
+		resultRelInfo = node->rootResultRelInfo;
+	/* END - ReqID:SRS-MYSQL-UPDATE */
 
 	switch (node->operation)
 	{
@@ -3395,8 +3494,24 @@ fireASTriggers(ModifyTableState *node)
 								 node->mt_transition_capture);
 			break;
 		case CMD_UPDATE:
-			ExecASUpdateTriggers(node->ps.state, resultRelInfo,
-								 node->mt_transition_capture);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (multirel)
+			{
+				for (i = 0; i < resultRelationNum; i++)
+				{
+					if (resultRelInfo->ri_RootResultRelInfo)
+						resultRelInfo->ri_RootResultRelInfo = NULL;
+
+					ExecASUpdateTriggers(node->ps.state, resultRelInfo,
+										 node->mt_transition_capture);
+
+					resultRelInfo++;
+				}
+			}
+			else
+				ExecASUpdateTriggers(node->ps.state, resultRelInfo,
+										 node->mt_transition_capture);
+			/* END - ReqID:SRS-MYSQL-UPDATE */
 			break;
 		case CMD_DELETE:
 			ExecASDeleteTriggers(node->ps.state, resultRelInfo,
@@ -3545,6 +3660,20 @@ ExecModifyTable(PlanState *pstate)
 	HeapTupleData oldtupdata;
 	HeapTuple	oldtuple;
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	int					resultRelationNum = 0;
+	TupleTableSlot	   *tmpslot;
+	int					res = 0;
+	bool				first_fetch_slot;
+
+	if (DB_MYSQL == compatible_db && node->mt_ResultTupleSlots)
+	{
+		tupleid = NULL;
+		resultRelationNum = node->mt_ResultTupleSlots ? list_length(node->mt_ResultTupleSlots) : 1;
+		first_fetch_slot = false;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+
 	CHECK_FOR_INTERRUPTS();
 
 	/*
@@ -3601,6 +3730,10 @@ ExecModifyTable(PlanState *pstate)
 	 */
 	for (;;)
 	{
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && resultRelationNum)
+			resultRelInfo = node->resultRelInfo + estate->result_rel_index;
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 		/*
 		 * Reset the per-output-tuple exprcontext.  This is needed because
 		 * triggers expect to use that context as workspace.  It's a bit ugly
@@ -3617,7 +3750,25 @@ ExecModifyTable(PlanState *pstate)
 		if (pstate->ps_ExprContext)
 			ResetExprContext(pstate->ps_ExprContext);
 
-		planSlot = ExecProcNode(subplanstate);
+		/* Begin - SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && resultRelationNum)
+		{
+			planSlot = FetchPlanSlot(subplanstate, node->mt_ProjInfos, resultRelInfo->ri_RowIdAttNo,
+									 &res, resultRelInfo, &tmpslot, estate, &first_fetch_slot);
+
+			if(estate->result_rel_index && !node->mt_ProjInfos[estate->result_rel_index]->pi_fetch_slot)
+			{
+				if (estate->result_rel_index == resultRelationNum - 1)
+					estate->result_rel_index = 0;
+				else
+					estate->result_rel_index++;
+
+				continue;
+			}
+		}
+		else
+			planSlot = ExecProcNode(subplanstate);
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 
 		/* No more tuples to process? */
 		if (TupIsNull(planSlot))
@@ -3711,6 +3862,7 @@ ExecModifyTable(PlanState *pstate)
 				relkind == RELKIND_MATVIEW ||
 				relkind == RELKIND_PARTITIONED_TABLE)
 			{
+
 				/* ri_RowIdAttNo refers to a ctid attribute */
 				Assert(AttributeNumberIsValid(resultRelInfo->ri_RowIdAttNo));
 				datum = ExecGetJunkAttribute(slot,
@@ -3738,7 +3890,21 @@ ExecModifyTable(PlanState *pstate)
 						continue;	/* no RETURNING support yet */
 					}
 
-					elog(ERROR, "ctid is NULL");
+					/* Begin - ReqID:SRS-MYSQL-UPDATE */
+					if (DB_MYSQL == compatible_db && resultRelationNum)
+					{
+						if (estate->result_rel_index == resultRelationNum - 1)
+							estate->result_rel_index = 0;
+						else
+							estate->result_rel_index++;
+
+						continue;
+					}
+					/* End - ReqID:SRS-MYSQL-UPDATE */
+					if (DB_MYSQL == compatible_db)
+						continue;
+					else
+						elog(ERROR, "ctid is NULL");
 				}
 
 				tupleid = (ItemPointer) DatumGetPointer(datum);
@@ -3804,37 +3970,59 @@ ExecModifyTable(PlanState *pstate)
 								  node->canSetTag, NULL, NULL);
 				break;
 			case CMD_UPDATE:
-				/* Initialize projection info if first time for this table */
-				if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
-					ExecInitUpdateProjection(node, resultRelInfo);
-
-				/*
-				 * Make the new tuple by combining plan's output tuple with
-				 * the old tuple being updated.
-				 */
-				oldSlot = resultRelInfo->ri_oldTupleSlot;
-				if (oldtuple != NULL)
 				{
-					/* Use the wholerow junk attr as the old tuple. */
-					ExecForceStoreHeapTuple(oldtuple, oldSlot, false);
-				}
-				else
-				{
-					/* Fetch the most recent version of old tuple. */
-					Relation	relation = resultRelInfo->ri_RelationDesc;
+					/* Initialize projection info if first time for this table */
+					/* Begin - ReqID:SRS-MYSQL-UPDATE */
+					if (DB_MYSQL == compatible_db && resultRelationNum)
+					{
+						if(!estate->result_rel_index)
+						{
+							if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+								ExecInitUpdateProjection(node, resultRelInfo);
+						}
+						else
+						{
+							List	   *targetlists = ((ModifyTable*)(node->ps.plan))->targetlists;
+							List	   *targetlist = list_nth(targetlists, estate->result_rel_index);
 
-					if (!table_tuple_fetch_row_version(relation, tupleid,
-													   SnapshotAny,
-													   oldSlot))
-						elog(ERROR, "failed to fetch tuple being updated");
-				}
-				slot = internalGetUpdateNewTuple(resultRelInfo, planSlot,
-												 oldSlot, NULL);
-				context.GetUpdateNewTuple = internalGetUpdateNewTuple;
-				context.relaction = NULL;
+							ExecInitMultilUpdateProjection(node, targetlist, resultRelInfo, estate->result_rel_index);
+						}
+					}
+					else
+					{
+						if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+							ExecInitUpdateProjection(node, resultRelInfo);
+					}
+					/* End - ReqID:SRS-MYSQL-UPDATE */
 
-				slot = ExecUpdate(&context, resultRelInfo, tupleid, oldtuple,
-								  slot, node->canSetTag);
+					/*
+					 * Make the new tuple by combining plan's output tuple with
+					 * the old tuple being updated.
+					 */
+					oldSlot = resultRelInfo->ri_oldTupleSlot;
+					if (oldtuple != NULL)
+					{
+						/* Use the wholerow junk attr as the old tuple. */
+						ExecForceStoreHeapTuple(oldtuple, oldSlot, false);
+					}
+					else
+					{
+						/* Fetch the most recent version of old tuple. */
+						Relation	relation = resultRelInfo->ri_RelationDesc;
+
+						if (!table_tuple_fetch_row_version(relation, tupleid,
+														   SnapshotAny,
+														   oldSlot))
+							elog(ERROR, "failed to fetch tuple being updated");
+					}
+					slot = internalGetUpdateNewTuple(resultRelInfo, planSlot,
+													 oldSlot, NULL);
+					context.GetUpdateNewTuple = internalGetUpdateNewTuple;
+					context.relaction = NULL;
+
+					slot = ExecUpdate(&context, resultRelInfo, tupleid, oldtuple,
+									  slot, node->canSetTag);
+				}
 				break;
 			case CMD_DELETE:
 				slot = ExecDelete(&context, resultRelInfo, tupleid, oldtuple,
@@ -3849,6 +4037,16 @@ ExecModifyTable(PlanState *pstate)
 				elog(ERROR, "unknown operation");
 				break;
 		}
+
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && resultRelationNum)
+		{
+			if (estate->result_rel_index == resultRelationNum - 1)
+				estate->result_rel_index = 0;
+			else
+				estate->result_rel_index++;
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 
 		/*
 		 * If we got a RETURNING result, return it to caller.  We'll continue
@@ -3873,6 +4071,55 @@ ExecModifyTable(PlanState *pstate)
 
 	return NULL;
 }
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * InitMultipleModify - Construct a projInfo node based on the target columns.
+ */
+static void
+InitMultipleModify(ModifyTableState* node, int32 resultRelationNum)
+{
+	ListCell	   *l1 = NULL;
+	List		   *targetlists = ((ModifyTable*)(node->ps.plan))->targetlists;
+	EState		   *estate = node->ps.state;
+	int				i = 0;
+
+	if (resultRelationNum == 1)
+		return;
+
+	node->mt_ProjInfos = (ProjectionInfo**)palloc0((resultRelationNum + 1) * sizeof(ProjectionInfo*));
+
+	foreach (l1, targetlists)
+	{
+		TupleTableSlot *slot;
+		TupleDesc tupDesc;
+		ProjectionInfo* projInfo = NULL;
+		List   *tmplist = NIL;
+
+		List	*targetList = (List*)lfirst(l1);
+
+		tmplist = list_concat(tmplist, estate->es_tupleTable);
+
+		slot = ExecMutilAllocTableSlot(&tmplist,
+												   &TTSOpsVirtual);
+
+		tupDesc = ExecTypeFromTL(targetList, false);
+
+		ExecSetSlotDescriptor(slot, tupDesc);
+
+		node->mt_ResultTupleSlots = lappend(node->mt_ResultTupleSlots, slot);
+
+		projInfo = ExecBuildProjectionInfo(targetList, node->ps.ps_ExprContext, slot, (PlanState*)node, NULL);
+
+
+		/* Use the targetlist of the subplan to build mt_ProjInfos. It will be use for FetchMultipleModifySlot. */
+		node->mt_ProjInfos[i] = projInfo;
+		i++;
+	}
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*
  * ExecLookupResultRelByOid
@@ -3991,7 +4238,11 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	}
 	else
 	{
-		Assert(list_length(node->resultRelations) == 1);
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if(!(DB_MYSQL == compatible_db && node->parseresultrelations &&
+		list_length(node->parseresultrelations) > 1))
+			Assert(list_length(node->resultRelations) == 1);
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 		mtstate->rootResultRelInfo = mtstate->resultRelInfo;
 		ExecInitResultRelation(estate, mtstate->resultRelInfo,
 							   linitial_int(node->resultRelations));
@@ -4083,14 +4334,22 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			operation == CMD_MERGE)
 		{
 			char		relkind;
+			List	   *multilist;	/* ReqID:SRS-MYSQL-UPDATE */
 
 			relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 			if (relkind == RELKIND_RELATION ||
 				relkind == RELKIND_MATVIEW ||
 				relkind == RELKIND_PARTITIONED_TABLE)
 			{
+				/* Begin - ReqID:SRS-MYSQL-UPDATE */
+				if (node->targetlists && DB_MYSQL == compatible_db)
+					multilist = list_nth(node->targetlists, i);
+				else
+					multilist = subplan->targetlist;
 				resultRelInfo->ri_RowIdAttNo =
-					ExecFindJunkAttributeInTlist(subplan->targetlist, "ctid");
+					ExecFindJunkAttributeInTlist(multilist, "ctid");
+				/* End - ReqID:SRS-MYSQL-UPDATE */
+
 				if (!AttributeNumberIsValid(resultRelInfo->ri_RowIdAttNo))
 					elog(ERROR, "could not find junk ctid column");
 			}
@@ -4145,7 +4404,13 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 */
 	mtstate->mt_resultOidAttno =
 		ExecFindJunkAttributeInTlist(subplan->targetlist, "tableoid");
-	Assert(AttributeNumberIsValid(mtstate->mt_resultOidAttno) || nrels == 1);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (!(DB_MYSQL == compatible_db && node->parseresultrelations &&
+		list_length(node->parseresultrelations) > 1))
+		Assert(AttributeNumberIsValid(mtstate->mt_resultOidAttno) || nrels == 1);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+
 	mtstate->mt_lastResultOid = InvalidOid; /* force lookup at first tuple */
 	mtstate->mt_lastResultIndex = 0;	/* must be zero if no such attr */
 
@@ -4411,9 +4676,36 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	if (!mtstate->canSetTag)
 		estate->es_auxmodifytables = lcons(mtstate,
 										   estate->es_auxmodifytables);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && operation == CMD_UPDATE && node->parseresultrelations &&
+		list_length(node->parseresultrelations) > 1) /* SRS-MYSQL-UPDATE */
+		{
+			if (mtstate->ps.ps_ExprContext == NULL)
+				ExecAssignExprContext(estate, &mtstate->ps);
+			InitMultipleModify(mtstate, list_length(node->resultRelations));
+
+		}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return mtstate;
 }
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * ExecClearMultipleModifyTuple - Cleap up multiple relation slots.
+ */
+static void
+ExecClearMultipleModifyTuple(List* slots)
+{
+	ListCell	   *l;
+	foreach(l, slots)
+	{
+		TupleTableSlot* slot = (TupleTableSlot*)lfirst(l);
+		(void)ExecClearTuple(slot);
+	}
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /* ----------------------------------------------------------------
  *		ExecEndModifyTable
@@ -4476,6 +4768,10 @@ ExecEndModifyTable(ModifyTableState *node)
 	 */
 	if (node->ps.ps_ResultTupleSlot)
 		ExecClearTuple(node->ps.ps_ResultTupleSlot);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	ExecClearMultipleModifyTuple(node->mt_ResultTupleSlots);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * Terminate EPQ execution if active

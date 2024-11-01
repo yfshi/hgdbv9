@@ -1,0 +1,5 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1b s1delc1 s2sel s1c s2sel
+setup failed: ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.

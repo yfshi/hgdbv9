@@ -432,6 +432,10 @@ extern PGDLLIMPORT bool check_lnk_metadata_changed;
 extern PGDLLIMPORT bool ora_global_names;
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern PGDLLIMPORT bool enable_indexhint;
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 /*
  * Functions exported by guc.c
  */

@@ -784,6 +784,7 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 							  list_length(root->processed_tlist) + 1,
 							  pstrdup(rowid_name),
 							  true);
+		tle->rtindex = rtindex; /* ReqID:SRS-MYSQL-UPDATE */
 		root->processed_tlist = lappend(root->processed_tlist, tle);
 		return;
 	}

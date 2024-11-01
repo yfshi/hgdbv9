@@ -330,6 +330,12 @@ extern void slot_getmissingattrs(TupleTableSlot *slot, int startAttNum,
 								 int lastAttNum);
 extern void slot_getsomeattrs_int(TupleTableSlot *slot, int attnum);
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern TupleTableSlot *MakeMutilTupleTableSlot(const TupleTableSlotOps *tts_ops);
+
+extern TupleTableSlot *ExecMutilAllocTableSlot(List **tupleTable,
+								 const TupleTableSlotOps *tts_ops);
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 #ifndef FRONTEND
 
