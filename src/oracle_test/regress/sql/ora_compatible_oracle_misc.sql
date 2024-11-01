@@ -45,3 +45,10 @@ delete test_m390;
 select * from test_m390;
 drop table test_m390;
 /* End - BUG#M0000390 */
+
+/* Begin - BUG#M0000408 */
+create table testm#408$#(c#408$# integer);
+insert into testm#408$#(c#408$#) values(123);
+select c#408$# from testm#408$#;
+drop table testm#408$#;
+/* End - BUG#M0000408 */

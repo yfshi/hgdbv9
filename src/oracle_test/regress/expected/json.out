@@ -999,49 +999,49 @@ select json_extract_path_text('{"f2":{"f3":1},"f4":[0,1,2,null]}','f4','3') is n
 (1 row)
 
 -- extract_path operators
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f4','f6'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f4','f6'];
  ?column?  
 -----------
  "stringy"
 (1 row)
 
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2'];
  ?column? 
 ----------
  {"f3":1}
 (1 row)
 
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2','0'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2','0'];
  ?column? 
 ----------
  "f3"
 (1 row)
 
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2','1'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2','1'];
  ?column? 
 ----------
  1
 (1 row)
 
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f4','f6'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f4','f6'];
  ?column? 
 ----------
  stringy
 (1 row)
 
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2'];
  ?column? 
 ----------
  {"f3":1}
 (1 row)
 
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2','0'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2','0'];
  ?column? 
 ----------
  f3
 (1 row)
 
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2','1'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2','1'];
  ?column? 
 ----------
  1

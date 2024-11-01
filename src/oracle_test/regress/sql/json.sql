@@ -343,15 +343,15 @@ select json_extract_path_text('{"f2":{"f3":1},"f4":[0,1,2,null]}','f4','3') is n
 
 -- extract_path operators
 
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f4','f6'];
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2'];
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2','0'];
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>array['f2','1'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f4','f6'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2','0'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>array['f2','1'];
 
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f4','f6'];
-select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2'];
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2','0'];
-select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json#>>array['f2','1'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f4','f6'];
+select '{"f2":{"f3":1},"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2','0'];
+select '{"f2":["f3",1],"f4":{"f5":99,"f6":"stringy"}}'::json #>>array['f2','1'];
 
 -- corner cases for same
 select '{"a": {"b":{"c": "foo"}}}'::json #> '{}';
