@@ -36,6 +36,12 @@
 #include "utils/lsyscache.h"
 #include "utils/selfuncs.h"
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+#include "nodes/parsenodes.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /* XXX see PartCollMatchesExprColl */
 #define IndexCollMatchesExprColl(idxcollation, exprcollation) \
@@ -193,6 +199,28 @@ static Expr *match_clause_to_ordering_op(IndexOptInfo *index,
 static bool ec_member_matches_indexcol(PlannerInfo *root, RelOptInfo *rel,
 									   EquivalenceClass *ec, EquivalenceMember *em,
 									   void *arg);
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static IndexHintType CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index);
+
+/* Get indexhint type */
+static IndexHintType
+CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index)
+{
+	IndexHintType	itype;
+	ListCell	   *lc = NULL;
+
+	itype = ((IndexHintRelationData*)lfirst(list_head(indexhintlist)))->index_type;
+	foreach (lc, indexhintlist)
+	{
+		IndexHintRelationData   *indexdata = (IndexHintRelationData *)lfirst(lc);
+		if (indexdata->indexOid == index->indexoid)
+		{
+			itype = (IndexHintType)(indexdata->index_type & itype);
+		}
+	}
+	return itype;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 
 /*
@@ -266,6 +294,16 @@ create_index_paths(PlannerInfo *root, RelOptInfo *rel)
 		 */
 		if (index->indpred != NIL && !index->predOK)
 			continue;
+
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (enable_indexhint && compatible_db == DB_MYSQL &&
+			root->parse->indexhintList)
+		{
+			/* If the index hint is ignore, then skip. */
+			if (CheckRelindexInHint(root->parse->indexhintList, index) == INDEX_HINT_IGNORE)
+				continue;
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 
 		/*
 		 * Identify the restriction clauses that can match the index.

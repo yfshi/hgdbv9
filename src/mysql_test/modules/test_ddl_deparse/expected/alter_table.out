@@ -3,9 +3,11 @@ CREATE TABLE parent (
 );
 NOTICE:  DDL test: type simple, tag CREATE TABLE
 CREATE TABLE child () INHERITS (parent);
-NOTICE:  DDL test: type simple, tag CREATE TABLE
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE grandchild () INHERITS (child);
-NOTICE:  DDL test: type simple, tag CREATE TABLE
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE parent ADD COLUMN b serial;
 NOTICE:  DDL test: type simple, tag CREATE SEQUENCE
 NOTICE:  DDL test: type alter table, tag ALTER TABLE

@@ -27,7 +27,7 @@ cleansql:
 
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
-MYS_REGRESS = \
+MYS_REGRESS = multi_update \
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

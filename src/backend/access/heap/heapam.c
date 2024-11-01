@@ -1645,6 +1645,123 @@ heap_fetch_extended(Relation relation,
 	return false;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * heap_update_fetch_extended
+ * fetch tuple even if it fails snapshot test,and determine the visibility of updates.
+ */
+bool
+heap_update_fetch_extended(Relation relation,
+					Snapshot snapshot,
+					HeapTuple tuple,
+					Buffer *userbuf,
+					bool keep_buf,
+					CommandId cid)
+{
+	ItemPointer tid = &(tuple->t_self);
+	ItemId		lp;
+	Buffer		buffer;
+	Page		page;
+	OffsetNumber offnum;
+	bool		valid;
+	TM_Result	result;
+
+	/*
+	 * Fetch and pin the appropriate page of the relation.
+	 */
+	buffer = ReadBuffer(relation, ItemPointerGetBlockNumber(tid));
+
+	/*
+	 * Need share lock on buffer to examine tuple commit status.
+	 */
+	LockBuffer(buffer, BUFFER_LOCK_SHARE);
+	page = BufferGetPage(buffer);
+	TestForOldSnapshot(snapshot, relation, page);
+
+	/*
+	 * We'd better check for out-of-range offnum in case of VACUUM since the
+	 * TID was obtained.
+	 */
+	offnum = ItemPointerGetOffsetNumber(tid);
+	if (offnum < FirstOffsetNumber || offnum > PageGetMaxOffsetNumber(page))
+	{
+		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+		ReleaseBuffer(buffer);
+		*userbuf = InvalidBuffer;
+		tuple->t_data = NULL;
+		return false;
+	}
+
+	/*
+	 * get the item line pointer corresponding to the requested tid
+	 */
+	lp = PageGetItemId(page, offnum);
+
+	/*
+	 * Must check for deleted tuple.
+	 */
+	if (!ItemIdIsNormal(lp))
+	{
+		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+		ReleaseBuffer(buffer);
+		*userbuf = InvalidBuffer;
+		tuple->t_data = NULL;
+		return false;
+	}
+
+	/*
+	 * fill in *tuple fields
+	 */
+	tuple->t_data = (HeapTupleHeader) PageGetItem(page, lp);
+	tuple->t_len = ItemIdGetLength(lp);
+	tuple->t_tableOid = RelationGetRelid(relation);
+
+	/*
+	 * check tuple visibility, then release lock
+	 */
+	valid = HeapTupleSatisfiesVisibility(tuple, snapshot, buffer);
+
+	result = HeapTupleSatisfiesUpdate(tuple, cid, buffer);
+	if(!valid || result != TM_Ok)
+	{
+		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+		ReleaseBuffer(buffer);
+		return false;
+	}
+
+	if (valid)
+		PredicateLockTID(relation, &(tuple->t_self), snapshot,
+						 HeapTupleHeaderGetXmin(tuple->t_data));
+
+	HeapCheckForSerializableConflictOut(valid, relation, tuple, buffer, snapshot);
+
+	LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
+
+	if (valid)
+	{
+		/*
+		 * All checks passed, so return the tuple as valid. Caller is now
+		 * responsible for releasing the buffer.
+		 */
+		*userbuf = buffer;
+
+		return true;
+	}
+
+	/* Tuple failed time qual, but maybe caller wants to see it anyway. */
+	if (keep_buf)
+		*userbuf = buffer;
+	else
+	{
+		ReleaseBuffer(buffer);
+		*userbuf = InvalidBuffer;
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  *	heap_hot_search_buffer	- search HOT chain for tuple satisfying snapshot
  *

@@ -77,4 +77,11 @@ extern void AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr);
 
 extern JoinExpr *make_inner_join(ParseState *pstate, List *tables);
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern int setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh,
+									bool alsoSource, AclMode requiredPerms,
+									bool multiModify);
+extern List *transfromRelationposition(ParseState *pstate, List *frmList);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 #endif							/* PARSE_CLAUSE_H */

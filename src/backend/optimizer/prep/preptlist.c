@@ -45,8 +45,14 @@
 #include "parser/parse_coerce.h"
 #include "parser/parsetree.h"
 #include "utils/rel.h"
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 static List *expand_insert_targetlist(List *tlist, Relation rel);
+
 
 
 /*
@@ -62,34 +68,62 @@ void
 preprocess_targetlist(PlannerInfo *root)
 {
 	Query	   *parse = root->parse;
-	int			result_relation = parse->resultRelation;
+	int			result_relation;	/* ReqID:SRS-MYSQL-UPDATE */
 	List	   *range_table = parse->rtable;
 	CmdType		command_type = parse->commandType;
 	RangeTblEntry *target_rte = NULL;
 	Relation	target_relation = NULL;
 	List	   *tlist;
 	ListCell   *lc;
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	bool		multirelsflag = false;
+	RangeTblEntry   *rte = NULL;
+	int			tmp_relation;
 
+	if(DB_MYSQL == compatible_db && parse->resultRelations )
+	{
+		multirelsflag = true;
+		result_relation = parse->resultRelations ? lfirst_int(list_head(parse->resultRelations)) : 0;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+		result_relation = parse->resultRelation;
 	/*
 	 * If there is a result relation, open it so we can look for missing
 	 * columns and so on.  We assume that previous code already acquired at
 	 * least AccessShareLock on the relation, so we need no lock here.
 	 */
-	if (result_relation)
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(multirelsflag)
 	{
-		target_rte = rt_fetch(result_relation, range_table);
+		foreach (lc, parse->resultRelations)
+		{
+			int resultRelation = lfirst_int(lc);
+			rte = rt_fetch(resultRelation, range_table);
 
-		/*
-		 * Sanity check: it'd better be a real relation not, say, a subquery.
-		 * Else parser or rewriter messed up.
-		 */
-		if (target_rte->rtekind != RTE_RELATION)
-			elog(ERROR, "result relation must be a regular relation");
-
-		target_relation = table_open(target_rte->relid, NoLock);
+			if (rte->subquery != NULL || rte->relid == InvalidOid)
+				elog(ERROR, "subquery cannot be result relation");
+		}
 	}
 	else
-		Assert(command_type == CMD_SELECT);
+	{
+		if (result_relation)
+		{
+			target_rte = rt_fetch(result_relation, range_table);
+
+			/*
+			 * Sanity check: it'd better be a real relation not, say, a subquery.
+			 * Else parser or rewriter messed up.
+			 */
+			if (target_rte->rtekind != RTE_RELATION)
+				elog(ERROR, "result relation must be a regular relation");
+
+			target_relation = table_open(target_rte->relid, NoLock);
+		}
+		else
+			Assert(command_type == CMD_SELECT);
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * In an INSERT, the executor expects the targetlist to match the exact
@@ -114,15 +148,46 @@ preprocess_targetlist(PlannerInfo *root)
 	 * there might not be any leaf target relations, in which case we must do
 	 * this in distribute_row_identity_vars().)
 	 */
-	if ((command_type == CMD_UPDATE || command_type == CMD_DELETE) &&
-		!target_rte->inh)
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(multirelsflag)
 	{
-		/* row-identity logic expects to add stuff to processed_tlist */
-		root->processed_tlist = tlist;
-		add_row_identity_columns(root, result_relation,
-								 target_rte, target_relation);
-		tlist = root->processed_tlist;
+		foreach (lc, parse->resultRelations)
+		{
+			result_relation = lfirst_int(lc);
+			tmp_relation = root->parse->resultRelation;
+			root->parse->resultRelation = result_relation;
+			target_rte = rt_fetch(result_relation, range_table);
+
+			if (target_rte->subquery != NULL || target_rte->relid == InvalidOid)
+				elog(ERROR, "subquery cannot be result relation");
+
+			target_relation = table_open(target_rte->relid, NoLock);
+			if ((command_type == CMD_UPDATE || command_type == CMD_DELETE) &&
+			!target_rte->inh)
+			{
+				/* row-identity logic expects to add stuff to processed_tlist */
+				root->processed_tlist = tlist;
+				add_row_identity_columns(root, result_relation,
+										 target_rte, target_relation);
+				tlist = root->processed_tlist;
+			}
+			table_close(target_relation, NoLock);
+		}
+		root->parse->resultRelation = tmp_relation;
 	}
+	else
+	{
+		if ((command_type == CMD_UPDATE || command_type == CMD_DELETE) &&
+			!target_rte->inh)
+		{
+			/* row-identity logic expects to add stuff to processed_tlist */
+			root->processed_tlist = tlist;
+			add_row_identity_columns(root, result_relation,
+									 target_rte, target_relation);
+			tlist = root->processed_tlist;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * For MERGE we need to handle the target list for the target relation,
@@ -276,8 +341,13 @@ preprocess_targetlist(PlannerInfo *root)
 
 	root->processed_tlist = tlist;
 
-	if (target_relation)
-		table_close(target_relation, NoLock);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(!multirelsflag)
+	{
+		if (target_relation)
+			table_close(target_relation, NoLock);
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 }
 
 /*
@@ -306,7 +376,11 @@ extract_update_targetlist_colnos(List *tlist)
 		TargetEntry *tle = (TargetEntry *) lfirst(lc);
 
 		if (!tle->resjunk)
+		{
 			update_colnos = lappend_int(update_colnos, tle->resno);
+			/* Record the actual attribute value */
+			tle->relattno = tle->resno;	/* ReqID:SRS-MYSQL-UPDATE */
+		}
 		tle->resno = nextresno++;
 	}
 	return update_colnos;

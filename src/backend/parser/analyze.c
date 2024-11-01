@@ -59,6 +59,7 @@
 #include "commands/proclang.h"
 /* End - BUG#Z196 */
 
+#include "utils/lsyscache.h"	/* ReqID:SRS-MYSQL-UPDATE */
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
 
@@ -77,6 +78,9 @@ static void determineRecursiveColTypes(ParseState *pstate,
 									   Node *larg, List *nrtargetlist);
 static Query *transformReturnStmt(ParseState *pstate, ReturnStmt *stmt);
 static Query *transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt);
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static char *checkUpdateResTargetName(Relation rd, RangeVar* rel, ResTarget* res, bool* matchRelname);
+/* End - ReqID:SRS-MYSQL-UPDATE */
 static List *transformReturningList(ParseState *pstate, List *returningList);
 static Query *transformPLAssignStmt(ParseState *pstate,
 									PLAssignStmt *stmt);
@@ -98,6 +102,15 @@ static bool test_raw_expression_coverage(Node *node, void *context);
 static List *transformUpdateRowTargetList(ParseState *pstate, List *origTlist);
 static List *transformIvyUpdateTargetList(ParseState *pstate, List *origTlist);
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static void transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry);
+static List* transformUpdateSortClause(ParseState *pstate, UpdateStmt *stmt, Query *qry);
+static void CheckUpdateRelations(ParseState *pstate, UpdateStmt *stmt);
+static void transformMergeTargetList(RangeVar *rel,List **targetList, bool ismulti);
+static void transformMultiMergeTargetList(List *rellist, List **targetList);
+
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /*
  * parse_analyze
@@ -2428,6 +2441,261 @@ transformReturnStmt(ParseState *pstate, ReturnStmt *stmt)
 	return qry;
 }
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * transformUpdateSortClause -
+ * transforms an update statement sort clause
+ */
+static List*
+transformUpdateSortClause(ParseState* pstate, UpdateStmt* stmt, Query* qry)
+{
+	ListCell	   *lc = NULL;
+	TargetEntry	   *tle = NULL;
+	int				i = 0;
+	List		   *rlst = NIL;
+	int				len = 0;
+
+	if (stmt->sortClause == NULL)
+	{
+		return NULL;
+	}
+
+	len = list_length(qry->targetList);
+	foreach(lc, qry->targetList)
+	{
+		tle = (TargetEntry*)lfirst(lc);
+		tle->resjunk = true;
+	}
+
+	rlst = transformSortClause(pstate, stmt->sortClause, &qry->targetList, EXPR_KIND_ORDER_BY, false);
+	
+	foreach(lc, qry->targetList)
+	{
+		tle = (TargetEntry*)lfirst(lc);
+		tle->resjunk = false;
+		if (++i >= len)
+		{
+			break;
+		}
+	}
+	return rlst;
+}
+
+
+/*
+ * transformLimitSortClause -
+ * transforms update statement limit and sort clause
+ */
+static void
+transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry)
+{
+	List	   *rlist = NIL;
+
+	qry->limitCount = transformLimitClause(pstate, ((UpdateStmt*)stmt)->limitClause, EXPR_KIND_LIMIT, "LIMIT", LIMIT_OPTION_DEFAULT);
+	rlist = transformUpdateSortClause(pstate, (UpdateStmt*)stmt, qry);
+
+	/*
+	 * For update statement, the effective range of sort clause is not optimized. For delete statement,
+	 * sorting is performed only when limit or returning clause takes effect.
+	 */
+	if (qry->limitCount != NULL)
+	{
+		/* flag for discriminating rownum */
+		Const *flag = makeNode(Const);
+		flag->location = -1;
+		flag->consttype = INT8OID;
+		flag->consttypmod = -1;
+		qry->limitOffset = (Node*)flag;
+	}
+
+	qry->sortClause = rlist;
+
+}
+
+
+/*
+ * If a relation has no column updated in the resultRelations, it is redundant
+ * and remove it from the resultRelations.
+ */
+static List
+*remove_update_redundant_relation(List *resultRelations, List *target_rangetblentry)
+{
+	RangeTblEntry	   *target_rte;
+	ListCell		   *rte = list_head(target_rangetblentry);
+	ListCell		   *res = list_head(resultRelations);
+	List			   *reslist = NIL;
+
+	if (list_length(resultRelations) == 1)
+		return resultRelations;
+
+	forboth(rte, target_rangetblentry, res, resultRelations)
+	{
+		target_rte = (RangeTblEntry*)lfirst(rte);
+		if(!bms_is_empty(target_rte->updatedCols))
+			reslist = lappend_int(reslist, lfirst_int(res));
+	}
+
+	return reslist;
+}
+
+
+/*
+ * CheckUpdateRelations
+ * For mutilple-relations modifying, the limit clause, order by clause,
+ * and returning clause are not supported.
+ */
+static void
+CheckUpdateRelations(ParseState* pstate,        UpdateStmt *stmt)
+{
+	if (list_length(pstate->p_target_rels) == 1)
+		return;
+
+	if (stmt->sortClause != NIL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("mutilple-relations modifying doesn't support %s ORDER BY", "update")));
+	}
+	if (stmt->limitClause != NULL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("mutilple-relations modifying doesn't support %s LIMIT", "update")));
+	}
+	if (stmt->returningList != NIL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("mutilple-relations modifying doesn't support %s returning", "update")));
+	}
+	if(stmt->fromClause)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("mutilple-relations modifying doesn't support %s fromclause", "update")));
+	}
+}
+
+
+/*
+ * transformMergeTargetList - Multiple sets of the same column in a single table.
+ * If the same column is set multiple times in a single table, the last set value is retained.
+ */
+static void
+transformMergeTargetList(RangeVar *rel, List **targetList, bool ismulti)
+{
+	List	   *tmptle = NIL;
+	List	   *tmplist= NIL;
+	ListCell   *lc = NULL;
+	ListCell   *lc1 = NULL;
+	int			i = 0, j = 0;
+	int			num = list_length(*targetList);
+
+	/* To determine whether an alias exists in a table,
+	 * you need to compare whether the alias or table name appears in the target column.
+	 */
+	if (rel->alias && !ismulti)
+	{
+		foreach (lc1, *targetList)
+		{
+			ResTarget   *ret = (ResTarget *)lfirst(lc1);
+			if (ret->indirection)
+			{
+				if (strcmp(ret->name, rel->alias->aliasname) != 0)
+					return;
+			}
+		}
+	}
+
+	/* Merge same columns, retaining the last set value. */
+	tmptle = copyObject(*targetList);
+	foreach (lc, *targetList)
+	{
+		ResTarget   *tmpret;
+		ResTarget   *ret1 = (ResTarget *)lfirst(lc);
+		bool		flag = false;
+
+		j = i + 1;
+		while (j < num)
+		{
+			ResTarget   *ret2 = (ResTarget *)list_nth(tmptle, j);
+
+			if (strcmp(ret1->name, ret2->name) == 0)
+			{
+				if (ret1->indirection && ret2->indirection)
+				{
+					if (equal(ret1->indirection, ret2->indirection))
+					{
+						tmpret = ret2;
+						flag = true;
+					}
+				}
+				else if (!ret1->indirection && !ret2->indirection)
+				{
+					tmpret = ret2;
+					flag = true;
+				}
+			}
+			else
+			{
+				/* Column with or without alias example:id = 3,a.id = 4. */
+				if (ret1->indirection && !ret2->indirection)
+				{
+					if (strcmp(ret2->name, strVal((Value*)llast(ret1->indirection))) == 0)
+					{
+						tmpret = ret2;
+						flag = true;
+					}
+				}
+				else if (!ret1->indirection && ret2->indirection)
+				{
+					if (strcmp(ret1->name, strVal((Value*)llast(ret2->indirection))) == 0)
+					{
+						tmpret = ret2;
+						flag = true;
+					}
+				}
+			}
+			j++;
+		}
+		if (flag)
+		{
+			if (!list_member(tmplist, tmpret))
+				tmplist = lappend(tmplist, tmpret);
+		}
+		else
+		{
+			if (!list_member(tmplist, ret1))
+				tmplist = lappend(tmplist, ret1);
+		}
+		i++;
+	}
+
+	*targetList = NIL;
+	*targetList = tmplist;
+}
+
+
+/*
+ * transformMultiMergeTargetList
+ * Parse columns of multiple relationships and merge same target columns.
+ */
+static void
+transformMultiMergeTargetList(List *rellist, List **targetList)
+{
+	ListCell   *lc = NULL;
+	foreach (lc, rellist)
+	{
+		RangeVar   *ret = (RangeVar *)lfirst(lc);
+		transformMergeTargetList(ret, targetList, true);
+	}
+	return;
+}
+
 
 /*
  * transformUpdateStmt -
@@ -2437,11 +2705,20 @@ static Query *
 transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 {
 	Query	   *qry = makeNode(Query);
-	ParseNamespaceItem *nsitem;
+	ParseNamespaceItem *nsitem = NULL;
 	Node	   *qual;
 
 	qry->commandType = CMD_UPDATE;
 	pstate->p_is_insert = false;
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db)
+	{
+		pstate->p_isupdate = true;
+		if (stmt->relation)
+			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/* process the WITH clause independently of all else */
 	if (stmt->withClause)
@@ -2451,15 +2728,45 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		qry->hasModifyingCTE = pstate->p_hasModifyingCTE;
 	}
 
-	qry->resultRelation = setTargetTable(pstate, stmt->relation,
-										 stmt->relation->inh,
-										 true,
-										 ACL_UPDATE);
-	nsitem = pstate->p_target_nsitem;
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && stmt->relationClause)
+	{
+		pstate->p_addUpdateTable = true;
+		/* Adjust the position of the relationship and put the base table in front */
+		stmt->relationClause = transfromRelationposition(pstate,stmt->relationClause);
+		/* Process the FROM clause and add items to the query's range table,
+		 * joinlist, and namespace. get rtable index of target relation for update stmt.
+		 */
+		transformFromClause(pstate, stmt->relationClause);
+		qry->resultRelations = copyObject(pstate->p_updateRelations);
+		CheckUpdateRelations(pstate, stmt);
+		transformMultiMergeTargetList(pstate->p_updateRangeVars, &stmt->targetList);
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+	{
+		qry->resultRelation = setTargetTable(pstate, stmt->relation,
+											 stmt->relation->inh,
+											 true,
+											 ACL_UPDATE);
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db)
+			pstate->p_updateRelations = lappend_int(pstate->p_updateRelations, qry->resultRelation);
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+	}
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (pstate->p_target_nsitem)
+	{
+		nsitem = pstate->p_target_nsitem;
 
-	/* subqueries in FROM cannot access the result relation */
-	nsitem->p_lateral_only = true;
-	nsitem->p_lateral_ok = false;
+		/* subqueries in FROM cannot access the result relation */
+		nsitem->p_lateral_only = true;
+		nsitem->p_lateral_ok = false;
+	}
+
+	if (DB_MYSQL == compatible_db && pstate->p_indexhintLists)
+		qry->indexhintList = pstate->p_indexhintLists;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * the FROM clause is non-standard SQL syntax. We used to be able to do
@@ -2468,11 +2775,17 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	transformFromClause(pstate, stmt->fromClause);
 
 	/* remaining clauses can reference the result relation normally */
-	nsitem->p_lateral_only = false;
-	nsitem->p_lateral_ok = true;
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (nsitem)
+	{
+		nsitem->p_lateral_only = false;
+		nsitem->p_lateral_ok = true;
+	}
 
-	qual = transformWhereClause(pstate, stmt->whereClause,
-								EXPR_KIND_WHERE, "WHERE");
+	if (compatible_db != DB_MYSQL)
+		qual = transformWhereClause(pstate, stmt->whereClause,
+									EXPR_KIND_WHERE, "WHERE");
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	qry->returningList = transformReturningList(pstate, stmt->returningList);
 
@@ -2496,8 +2809,28 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		 * Now we are done with SELECT-like processing, and can get on with
 		 * transforming the target list to match the UPDATE target columns.
 		 */
-		qry->targetList = transformUpdateTargetList(pstate, stmt->targetList);
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && stmt->relationClause)
+		{
+			qry->targetList = transformMultiUpdateTargetList(pstate, stmt->targetList, qry->resultRelations);
+			qry->resultRelations = remove_update_redundant_relation(qry->resultRelations, pstate->p_target_rangetblentry);
+			pstate->p_updateRelations = copyObject(qry->resultRelations);
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+		else
+			qry->targetList = transformUpdateTargetList(pstate, stmt->targetList);
+
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (DB_MYSQL == compatible_db && qry->resultRelation)
+			transformLimitSortClause(pstate, stmt, qry);
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db)
+		qual = transformWhereClause(pstate, stmt->whereClause,
+										EXPR_KIND_WHERE, "WHERE");
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	qry->rtable = pstate->p_rtable;
 	qry->jointree = makeFromExpr(pstate->p_joinlist, qual);
@@ -2507,8 +2840,378 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 
 	assign_query_collations(pstate, qry);
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && list_length(qry->resultRelations) == 1)
+	{
+		qry->resultRelation = linitial_int(qry->resultRelations);
+		qry->resultRelations = NIL;
+	}
+
+	if (pstate->p_updateRelations && DB_MYSQL == compatible_db)
+		pstate->p_updateRelations = NIL;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+
 	return qry;
 }
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * checkUpdateResTargetName- Get the name of the relationship to be updated.
+ */
+char
+*checkUpdateResTargetName(Relation rd, RangeVar *rel, ResTarget *res, bool *matchRelname)
+{
+	char	   *resname = NULL;
+	AttrNumber	attrnoIndName = InvalidAttrNumber;
+	AttrNumber	attrnoResName = InvalidAttrNumber;
+	Oid			attrtypeid = InvalidOid;
+	Oid			typrelid = InvalidOid;
+
+	/* the length of indireciton can't less than 1 and the first item type must not be A_Indices */
+	if ((list_length(res->indirection) < 1) || IsA(linitial(res->indirection), A_Indices))
+	{
+		return res->name;
+	}
+
+	/* name must relname or aliasname */
+	if ((strcmp(rel->relname, res->name) != 0) &&
+		((rel->alias == NULL) || (strcmp((rel->alias)->aliasname, res->name) != 0)))
+	{
+		return res->name;
+	}
+
+	/*
+	 * if meet set_clause like a.b.c = 1 then the indirection will exceed one,
+	 * so treat first indirection as tablename/alisename like a in this ex.
+	 */
+	resname = pstrdup(strVal(linitial(res->indirection)));
+	if (list_length(res->indirection) > 1)
+	{
+		*matchRelname = true;
+		return resname;
+	}
+
+	/*
+	 * Here only meet set_clause which has two elements like a.b or test.b.
+	 * So first keep forward-compatibility behavior of old version, that results
+	 * if a is a composite type and also relname/alisename then we first handle it as
+	 * composite type.
+	 * Otherwise we handle it like a.b like relname/alisename, then a is a relname just
+	 * update set_clause over.
+	 */
+	attrnoResName = attnameAttNum(rd, res->name, true);
+	attrnoIndName = attnameAttNum(rd, resname, true);
+
+	if (attrnoResName > 0)
+	{
+		attrtypeid = attnumTypeId(rd, attrnoResName);
+		if (attrtypeid)
+		{
+			typrelid = typeidTypeRelid(attrtypeid);
+			if (typrelid && ((get_attnum(typrelid, resname) != InvalidAttrNumber) || (attrnoIndName <= 0)))
+			{
+				ereport(NOTICE, (errmsg("update field '%s' of column '%s', though it's ambiguous.",
+						resname, res->name)));
+				return res->name;
+			}
+		}
+	}
+
+	*matchRelname = true;
+	return resname;
+}
+
+/*
+ * checkSRFInMultiUpdate
+ * Verify that a set-returning function is called in multiple-update and throw a error.
+ */
+static inline void
+checkSRFInMultiUpdate(Expr *expr, int targetRelationNum)
+{
+	if (targetRelationNum == 1)
+		return;
+
+	if ((expr->type == T_FuncExpr) && ((FuncExpr*)expr)->funcretset == true)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("set-returning functions are not allowed in multiple UPDATE")));
+	}
+}
+
+
+
+/*
+ * fixUpdateResTargetName
+ * Find the attrno corresponding to ResTarget from target tables.
+ */
+static int
+fixUpdateResTargetName(ParseState *pstate, List *resultRelations, ResTarget *res, int *rti,
+							   Relation *rd, RangeTblEntry **rte)
+{
+	ListCell	   *l1;
+	ListCell	   *l2;
+	ListCell	   *l3;
+	ListCell	   *l4;
+	bool			removeRelname = false,
+					matchRelname = false;
+	char		   *resname = NULL;
+	char		   *resultResName = NULL;
+	int				attrno,
+					resultAttrno = InvalidAttrNumber;
+	bool			isMatched = false;
+
+	forfour (l1, pstate->p_target_rangetblentry, l2, pstate->p_target_rels,
+			 l3, pstate->p_updateRangeVars, l4, resultRelations)
+	{
+		RangeTblEntry	   *target_rte = (RangeTblEntry*)lfirst(l1);
+		Relation			targetrel = (Relation)lfirst(l2);
+		RangeVar		   *rangeVar = (RangeVar*)lfirst(l3);
+		int					rtindex = lfirst_int(l4);
+
+		resname = checkUpdateResTargetName(targetrel, rangeVar, res, &matchRelname);
+		attrno = attnameAttNum(targetrel, resname, true);
+		if (attrno != InvalidAttrNumber)
+		{
+			/*
+			 * If the targetlist matches more than once and when target contains a relname(matchRelname)
+			 * is the same as before(removeRelname), report error.
+			 */
+			if (isMatched == true && (matchRelname == removeRelname))
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+						errmsg("column reference \"%s\" is ambiguous", res->name),
+						parser_errposition(pstate, res->location)));
+			}
+			resultAttrno = attrno;
+			resultResName = resname;
+			*rti = rtindex;
+			*rd = targetrel;
+			*rte = target_rte;
+
+			isMatched = true;
+			/* Mark the target column as requiring update permissions */
+			target_rte->updatedCols = bms_add_member(target_rte->updatedCols,
+													 attrno - FirstLowInvalidHeapAttributeNumber);
+		}
+		if (matchRelname == true)
+				removeRelname = true;
+	}
+
+	if (!isMatched)
+	{
+		res->name = resname;
+		if (matchRelname)
+		{
+			res->indirection = list_delete_first_n(res->indirection, 1);
+		}
+		return InvalidAttrNumber;
+	}
+
+	if (removeRelname)
+	{
+		res->name = resultResName;
+		res->indirection = list_delete_first_n(res->indirection, 1);
+	}
+
+	return resultAttrno;
+}
+
+/*
+ * MergeTargetList
+ * Merge the targetlists of multiple identical result relations into the one and change their rtindex.
+ */
+static void
+MergeTargetList(List **targetLists, RangeTblEntry *rte1, int rtindex1,
+						   RangeTblEntry *rte2, int rtindex2)
+{
+	ListCell* l = NULL;
+
+	foreach (l, targetLists[rtindex2 - 1])
+	{
+		TargetEntry   *tle = (TargetEntry*)lfirst(l);
+		tle->rtindex = (Index)rtindex1;
+		rte1->updatedCols = bms_add_member(rte1->updatedCols, tle->resno - FirstLowInvalidHeapAttributeNumber);
+		rte2->updatedCols = bms_del_member(rte2->updatedCols, tle->resno - FirstLowInvalidHeapAttributeNumber);
+	}
+	targetLists[rtindex1 - 1] = list_concat(targetLists[rtindex1 - 1], targetLists[rtindex2 - 1]);
+	targetLists[rtindex2 - 1] = NULL;
+}
+
+/*
+ * transformMergeMultiTargetList
+ * If there are actually the same result relations by different alias in multiple update, merge their targetLists.
+ */
+static void
+transformMergeMultiTargetList(List *target_rangetblentry, List **targetLists)
+{
+	int rtindex1 = 1, rtindex2 = 1;
+	ListCell* l1;
+	ListCell* l2;
+
+	if (list_length(target_rangetblentry) <= 1)
+		return;
+	foreach (l1, target_rangetblentry)
+	{
+		RangeTblEntry* rte1 = (RangeTblEntry*)lfirst(l1);
+		rtindex2 = 0;
+
+		l2 = lnext(target_rangetblentry, l1);
+		rtindex2 = rtindex1 + 1;
+		while (l2 != NULL)
+		{
+			RangeTblEntry* rte2 = (RangeTblEntry*)lfirst(l2);
+			if (rte2->relid == rte1->relid)
+				MergeTargetList(targetLists, rte1, rtindex1, rte2, rtindex2);
+			rtindex2++;
+			l2 = lnext(target_rangetblentry, l2);
+		}
+		rtindex1++;
+	}
+}
+
+/*
+ * UndefinedColumnError
+ * Unrecognized column information error.
+ */
+static void
+UndefinedColumnError(ParseState *pstate, ResTarget *origTarget, int targetRelationNum)
+{
+	if (!origTarget->indirection)
+	{
+		if (targetRelationNum == 1)
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+					errmsg("column \"%s\" of relation \"%s\" does not exist",
+					origTarget->name,
+					RelationGetRelationName((Relation)linitial(pstate->p_target_rels))),
+					parser_errposition(pstate, origTarget->location)));
+		}
+		ereport(ERROR,
+		(errcode(ERRCODE_UNDEFINED_COLUMN),
+				errmsg("column \"%s\" does not exist",
+				origTarget->name),
+				parser_errposition(pstate, origTarget->location)));
+	}
+	else
+	{
+		char *resname = pstrdup((char*)(((Value*)lfirst(list_head(origTarget->indirection)))->val.str));
+		if (targetRelationNum == 1)
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+					errmsg("column \"%s.%s\" of relation \"%s\" does not exist",
+					origTarget->name, resname,
+					RelationGetRelationName((Relation)linitial(pstate->p_target_rels))),
+					parser_errposition(pstate, origTarget->location)));
+		}
+		ereport(ERROR,
+			(errcode(ERRCODE_UNDEFINED_COLUMN),
+				errmsg("column \"%s.%s\" does not exist",
+				origTarget->name, resname),
+				parser_errposition(pstate, origTarget->location)));
+	}
+}
+
+
+/*
+ * transformMultiUpdateTargetList
+ * handle SET clause in UPDATE/MERGE/INSERT ... ON CONFLICT UPDATE
+ */
+List *
+transformMultiUpdateTargetList(ParseState *pstate, List *origTlist, List* resultRelations)
+{
+	List	   *tlist = NIL;
+	List	   *rtlist = NIL;
+	RangeTblEntry *target_rte;
+	ListCell   *orig_tl;
+	ListCell   *tl;
+	ListCell   *cell;
+	Relation	targetrel = NULL;
+	int			rtindex = 0;
+	int			targetRelationNum = list_length(pstate->p_target_rels);
+	int			rangeTableNum = list_length(pstate->p_rtable);
+	List	  **new_tle = (List**)palloc0(rangeTableNum * sizeof(List*));
+
+	tlist = transformTargetList(pstate, origTlist,
+								EXPR_KIND_UPDATE_SOURCE);
+
+	/* Prepare to assign non-conflicting resnos to resjunk attributes */
+	pstate->p_next_resno = 1;
+	foreach(cell, pstate->p_target_rels)
+	{
+		targetrel = (Relation)lfirst(cell);
+		pstate->p_next_resno += targetrel->rd_rel->relnatts;
+	}
+
+	/* Prepare non-junk columns for assignment to target table */
+	forboth(tl, tlist, orig_tl, origTlist)
+	{
+		TargetEntry	   *tle = (TargetEntry *) lfirst(tl);
+		ResTarget	   *origTarget = (ResTarget*) lfirst(orig_tl);
+		int				attrno;
+		Relation		tmprelation;
+		char		   *colname_temp = NULL;
+
+		if (tle->resjunk)
+		{
+			/*
+			 * Resjunk nodes need no additional processing, but be sure they
+			 * have resnos that do not match any target columns; else rewriter
+			 * or planner might get confused.  They don't need a resname
+			 * either.
+			 */
+			tle->resno = (AttrNumber) pstate->p_next_resno++;
+			tle->resname = NULL;
+			continue;
+		}
+		attrno = fixUpdateResTargetName(pstate, resultRelations, origTarget, &rtindex, &targetrel, &target_rte);
+		if (attrno == InvalidAttrNumber)
+		{
+			UndefinedColumnError(pstate, origTarget, targetRelationNum);
+		}
+		tmprelation = pstate->p_target_relation;
+		pstate->p_target_relation = targetrel;
+		if (colname_temp)
+			updateTargetListEntry(pstate, tle, origTarget->name, attrno, NULL, origTarget->location);
+		else
+			updateTargetListEntry(pstate, tle, origTarget->name, attrno, origTarget->indirection, origTarget->location);
+		pstate->p_target_relation = tmprelation;
+
+		checkSRFInMultiUpdate(tle->expr, targetRelationNum);
+		tle->rtindex = rtindex;
+		new_tle[rtindex - 1] = lappend(new_tle[rtindex - 1], tle);
+	}
+
+	/*
+	 * If there are actually the same result relations by different alias
+	 * or synonym in multiple update, merge their targetLists.
+	 */
+	transformMergeMultiTargetList(pstate->p_target_rangetblentry, new_tle);
+
+	if (targetRelationNum == 1)
+	{
+		int i = linitial_int(resultRelations);
+		rtlist = new_tle[i - 1];
+	}
+	else
+	{
+		for (int i = 0; i < rangeTableNum; i++)
+		{
+			if (new_tle[i])
+			{
+				rtlist = list_concat(rtlist, new_tle[i]);
+			}
+		}
+	}
+	pfree(new_tle);
+
+	return rtlist;
+}
+/* End -  ReqID:SRS-MYSQL-UPDATE */
 
 /*
  * transformUpdateTargetList -

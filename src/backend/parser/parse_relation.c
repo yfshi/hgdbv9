@@ -101,6 +101,10 @@ static bool isQueryUsingTempRelation_walker(Node *node, void *context);
 static bool is_query_using_gtt_walker(Node *node, void *context);
 static List *get_open_dblinks(void);
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static List *GetValidindexhint(List **indexOidList, IndexHintRelationData *indexdata);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 /*
  * refnameNamespaceItem
  *	  Given a possibly-qualified refname, look to see if it matches any visible
@@ -1924,6 +1928,26 @@ addRangeTableEntry(ParseState *pstate,
 	 * underneath us.
 	 */
 	table_close(rel, NoLock);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	/* In MySQL mode, deal index hint pre check */
+	if(relation->indexhints != NIL && DB_MYSQL == compatible_db)
+	{
+		IndexHintType	ihtype = INDEX_HINT_USE;
+		ihtype = preCheckIndexHints(pstate, relation->indexhints, rel);
+		if (ihtype == INDEX_HINT_NOT_EXISTS) {
+			ereport(ERROR,
+			(errcode(ERRCODE_UNDEFINED_OBJECT),
+				errmsg("index not exists in relation %s", RelationGetRelationName(rel))));
+		}
+		else if (ihtype == INDEX_HINT_MIX)
+		{
+			ereport(ERROR,
+			(errcode(ERRCODE_DUPLICATE_OBJECT),
+				errmsg("mixed use force index and use index")));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return nsitem;
 }
@@ -4329,3 +4353,117 @@ get_open_dblinks(void)
 
 	return srvOids;
 }
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * GetValidindexhint - Get a valid indexhint. If the same index is used with use/force and ignore at the same time,
+ * it will be invalid and there is no need to record it.
+ */
+static List
+*GetValidindexhint(List **indexOidList, IndexHintRelationData *indexdata)
+{
+	int			i = 0;
+	int			tmpnth = 0;
+	ListCell   *lc = NULL;
+	bool		Isvalidindex = false;
+
+	if (!(*indexOidList))
+		*indexOidList = list_append_unique(*indexOidList, (Node*)indexdata);
+	else
+	{
+		foreach (lc, *indexOidList)
+		{
+			IndexHintRelationData   *indexdata1 = lfirst(lc);
+
+			if (indexdata->relationOid == indexdata1->relationOid &&
+			   indexdata->indexOid == indexdata1->indexOid)
+			{
+				if (indexdata->index_type == INDEX_HINT_IGNORE &&
+					(indexdata1->index_type == INDEX_HINT_FORCE ||
+					 indexdata1->index_type == INDEX_HINT_USE))
+				{
+					tmpnth = i;
+					Isvalidindex = true;
+				}
+				else if (indexdata1->index_type == INDEX_HINT_IGNORE &&
+						(indexdata->index_type == INDEX_HINT_FORCE ||
+						 indexdata->index_type == INDEX_HINT_USE))
+				{
+					tmpnth = i;
+					Isvalidindex = true;
+				}
+			}
+			i++;
+		}
+		if (Isvalidindex)
+			*indexOidList = list_delete_nth_cell(*indexOidList, tmpnth);
+		else
+			*indexOidList = list_append_unique(*indexOidList, (Node*)indexdata);
+	}
+	return *indexOidList;
+}
+
+/* preCheckIndexHints - deal index hint pre check */
+IndexHintType
+preCheckIndexHints(ParseState *pstate, List *indexhints, Relation relation)
+{
+	IndexHintType			retType = INDEX_HINT_USE;
+	IndexHintType			itype;
+	ListCell			   *lc = NULL;
+	ListCell			   *lc_index = NULL;
+	List				   *indexOidList = NIL;
+	Oid						indexOid = InvalidOid;
+	Oid						relationOid = RelationGetRelid(relation);
+	Oid						relationNsOid = RelationGetNamespace(relation);
+	List				   *indexList = RelationGetIndexList(relation);
+	IndexHintDefinition	   *idef = NULL;
+	bool					exist_indexs = false;
+
+	/* no index in table ,return */
+	if (indexList == NIL)
+		return INDEX_HINT_NOT_EXISTS;
+
+	itype = ((IndexHintDefinition*)lfirst(list_head(indexhints)))->index_type;
+	foreach (lc, indexhints)
+	{
+		idef = (IndexHintDefinition*)lfirst(lc);
+		itype = (IndexHintType)(idef->index_type | itype);
+		if (itype == INDEX_HINT_MIX)
+		{
+			retType = INDEX_HINT_MIX;
+			goto err;
+		}
+		/* check index is in table */
+		foreach (lc_index, idef->indexnames)
+		{
+			IndexHintRelationData   *indexdata;
+			indexOid = get_relname_relid(strVal(lfirst(lc_index)), relationNsOid);
+			exist_indexs = false;
+			if (OidIsValid(indexOid))
+			{
+				if (list_member_oid(indexList, indexOid))
+					exist_indexs = true;
+			}
+			if (!exist_indexs)
+			{
+				retType = INDEX_HINT_NOT_EXISTS;
+				goto err;
+			}
+
+			indexdata = makeNode(IndexHintRelationData);
+			indexdata->indexOid = indexOid;
+			indexdata->relationOid = relationOid;
+			indexdata->index_type = idef->index_type;
+//			indexOidList = list_append_unique(indexOidList, (Node*)indexdata);
+			indexOidList = GetValidindexhint(&indexOidList, indexdata);
+
+		}
+	}
+
+	pstate->p_indexhintLists = list_copy(indexOidList);
+err:
+	if (indexOidList != NIL)
+		list_free(indexOidList);
+	return retType;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */

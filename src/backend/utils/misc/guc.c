@@ -2204,6 +2204,11 @@ static struct config_bool ConfigureNamesBool[] =
 	#undef IVY_GUC_BOOL_PARAMS
 	/* End - ReqID:SRS-MISC-GUC */
 	/* End-of-list marker */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	#define IVY_MY_GUC_BOOL_PARAMS
+	#include "ivy_mysql_guc.c"
+	#undef IVY_MY_GUC_BOOL_PARAMS
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, false, NULL, NULL, NULL
 	}

@@ -2814,6 +2814,32 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		List	   *right_list;
 		ListCell   *l;
 
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		/* In mysql mode, can't specify target table for update in FROM clause. */
+		if (DB_MYSQL == compatible_db && qtree &&
+			pstate->p_isupdate && qtree->rtable)
+		{
+			ListCell   *lc;
+			ListCell   *lc1;
+			foreach (lc, pstate->p_updateRelations)
+			{
+				int		updateRelation = lfirst_int(lc);
+				if (updateRelation <= list_length(pstate->p_rtable))
+				{
+					RangeTblEntry *rte1 = list_nth(pstate->p_rtable, updateRelation - 1);
+					foreach(lc1, qtree->rtable)
+					{
+						RangeTblEntry *rte2 = (RangeTblEntry*)lfirst(lc1);
+						if (rte1->relid == rte2->relid)
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("You can't specify target table %s for update in FROM clause.", get_rel_name(rte1->relid))));
+					}
+				}
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
+
 		/*
 		 * If the source was "x IN (select)", convert to "x = ANY (select)".
 		 */

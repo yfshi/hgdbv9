@@ -42,6 +42,10 @@
 #include "parser/parsetree.h"
 #include "partitioning/partprune.h"
 #include "utils/lsyscache.h"
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 
 /*
@@ -2797,6 +2801,17 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 							best_path->epqParam);
 
 	copy_generic_path_info(&plan->plan, &best_path->path);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(DB_MYSQL == compatible_db)
+	{
+		if(plan->plan.plan_rows == 0.0 && subplan->plan_rows > 0.0)
+			plan->plan.plan_rows = subplan->plan_rows;
+		if(plan->plan.plan_width == 0 && subplan->plan_width > 0)
+			plan->plan.plan_width = subplan->plan_width;
+		plan->parseresultrelations = root->parse->resultRelations;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return plan;
 }
@@ -7036,7 +7051,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	node->plan.righttree = NULL;
 	node->plan.qual = NIL;
 	/* setrefs.c will fill in the targetlist, if needed */
-	node->plan.targetlist = NIL;
+	node->plan.targetlist = NIL; /* ReqID:SRS-MYSQL-UPDATE */
 
 	node->operation = operation;
 	node->canSetTag = canSetTag;
@@ -7044,6 +7059,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	node->rootRelation = rootRelation;
 	node->partColsUpdated = partColsUpdated;
 	node->resultRelations = resultRelations;
+	node->targetlists = NIL; /* ReqID:SRS-MYSQL-UPDATE */
 	if (!onconflict)
 	{
 		node->onConflictAction = ONCONFLICT_NONE;

@@ -101,19 +101,18 @@ CREATE TABLE emp (
 	salary 		int4,
 	manager 	name
 ) INHERITS (person);
-NOTICE:  DDL test: type simple, tag CREATE TABLE
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE student (
 	gpa 		float8
 ) INHERITS (person);
-NOTICE:  DDL test: type simple, tag CREATE TABLE
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE stud_emp (
 	percent 	int4
 ) INHERITS (emp, student);
-NOTICE:  merging multiple inherited definitions of column "id"
-NOTICE:  merging multiple inherited definitions of column "name"
-NOTICE:  merging multiple inherited definitions of column "age"
-NOTICE:  merging multiple inherited definitions of column "location"
-NOTICE:  DDL test: type simple, tag CREATE TABLE
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- Storage parameters
 CREATE TABLE storage (
     id INT

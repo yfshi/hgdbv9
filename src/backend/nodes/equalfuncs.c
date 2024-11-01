@@ -1031,6 +1031,10 @@ _equalQuery(const Query *a, const Query *b)
 	COMPARE_NODE_FIELD(withCheckOptions);
 	COMPARE_NODE_FIELD(mergeActionList);
 	COMPARE_SCALAR_FIELD(mergeUseOuterJoin);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COMPARE_NODE_FIELD(resultRelations);
+	COMPARE_NODE_FIELD(indexhintList);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
 
@@ -1082,6 +1086,12 @@ _equalUpdateStmt(const UpdateStmt *a, const UpdateStmt *b)
 	COMPARE_NODE_FIELD(fromClause);
 	COMPARE_NODE_FIELD(returningList);
 	COMPARE_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	COMPARE_SCALAR_FIELD(ignore);
+	COMPARE_NODE_FIELD(sortClause);
+	COMPARE_NODE_FIELD(limitClause);
+	COMPARE_NODE_FIELD(relationClause);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	return true;
 }
@@ -3392,6 +3402,26 @@ _equal_Outer_join_vars(const Outer_join_vars *a, const Outer_join_vars *b)
 }
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+static bool
+_equalIndexHintDefinition(const IndexHintDefinition* a, const IndexHintDefinition* b)
+{
+	COMPARE_NODE_FIELD(indexnames);
+	COMPARE_SCALAR_FIELD(index_type);
+	return true;
+}
+
+static bool
+_equalIndexHintRelationData(const IndexHintRelationData* a, const IndexHintRelationData* b)
+{
+	COMPARE_SCALAR_FIELD(relationOid);
+	COMPARE_SCALAR_FIELD(indexOid);
+	COMPARE_SCALAR_FIELD(index_type);
+	return true;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
+
 /*
  * equal
  *	  returns whether two nodes are equal
@@ -4220,6 +4250,14 @@ equal(const void *a, const void *b)
 			retval = _equal_Outer_join_vars(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		case T_IndexHintDefinition:
+			retval = _equalIndexHintDefinition(a, b);
+			break;
+		case T_IndexHintRelationData:
+			retval = _equalIndexHintRelationData(a, b);
+			break;
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

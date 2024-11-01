@@ -274,6 +274,15 @@ extern bool heap_fetch(Relation relation, Snapshot snapshot,
 extern bool heap_fetch_extended(Relation relation, Snapshot snapshot,
 								HeapTuple tuple, Buffer *userbuf,
 								bool keep_buf);
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern bool heap_update_fetch_extended(Relation relation,
+					Snapshot snapshot,
+					HeapTuple tuple,
+					Buffer *userbuf,
+					bool keep_buf,
+					CommandId cid);
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 extern bool heap_hot_search_buffer(ItemPointer tid, Relation relation,
 								   Buffer buffer, Snapshot snapshot, HeapTuple heapTuple,
 								   bool *all_dead, bool first_call);
@@ -374,6 +383,14 @@ extern void compute_new_xmax_infomask(TransactionId xmax, uint16 old_infomask,
 extern XLogRecPtr log_heap_new_cid(Relation relation, HeapTuple tup);
 extern uint8 compute_infobits(uint16 infomask, uint16 infomask2);
 /* End - ReqID:SRS-SQL-MERGE */
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+extern bool heapam_update_fetch_row_version(Relation relation,
+								  ItemPointer tid,
+								  Snapshot snapshot,
+								  TupleTableSlot *slot,
+								  CommandId cid);
+/* End - ReqID:SRS-MYSQL-UPDATE */
 
 /*
  * To avoid leaking too much knowledge about reorderbuffer implementation

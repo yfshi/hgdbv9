@@ -41,6 +41,8 @@ extern List *transformInsertRow(ParseState *pstate, List *exprlist,
 								bool strip_indirection);
 extern List *transformUpdateTargetList(ParseState *pstate,
 									   List *targetList);
+extern List *transformMultiUpdateTargetList(ParseState *pstate,
+									   List *origTlist, List* resultRelations);
 extern Query *transformTopLevelStmt(ParseState *pstate, RawStmt *parseTree);
 extern Query *transformStmt(ParseState *pstate, Node *parseTree);
 

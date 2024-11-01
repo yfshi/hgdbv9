@@ -129,7 +129,7 @@ static void ExplainIndexScanDetails(Oid indexid, ScanDirection indexorderdir,
 									ExplainState *es);
 static void ExplainScanTarget(Scan *plan, ExplainState *es);
 static void ExplainModifyTarget(ModifyTable *plan, ExplainState *es);
-static void ExplainTargetRel(Plan *plan, Index rti, ExplainState *es);
+static void ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget);	/* ReqID:SRS-MYSQL-UPDATE */
 static void show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 								  ExplainState *es);
 static void ExplainMemberNodes(PlanState **planstates, int nplans,
@@ -3732,7 +3732,7 @@ ExplainIndexScanDetails(Oid indexid, ScanDirection indexorderdir,
 static void
 ExplainScanTarget(Scan *plan, ExplainState *es)
 {
-	ExplainTargetRel((Plan *) plan, plan->scanrelid, es);
+	ExplainTargetRel((Plan *) plan, plan->scanrelid, es, false);
 }
 
 /*
@@ -3745,14 +3745,17 @@ ExplainScanTarget(Scan *plan, ExplainState *es)
 static void
 ExplainModifyTarget(ModifyTable *plan, ExplainState *es)
 {
-	ExplainTargetRel((Plan *) plan, plan->nominalRelation, es);
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	bool multiTarget = (list_length(plan->resultRelations) > 1);
+	ExplainTargetRel((Plan *) plan, plan->nominalRelation, es, multiTarget);
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 }
 
 /*
  * Show the target relation of a scan or modify node
  */
 static void
-ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
+ExplainTargetRel(Plan *plan, Index rti, ExplainState *es, bool multiTarget)
 {
 	char	   *objectname = NULL;
 	char	   *namespace = NULL;
@@ -3767,6 +3770,21 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
 
 	switch (nodeTag(plan))
 	{
+		case T_ModifyTable:
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (multiTarget && DB_MYSQL == compatible_db)
+			{
+				objecttag = "Relation Name";
+				break;
+			}
+			/* Assert it's on a real relation */
+			Assert(rte->rtekind == RTE_RELATION);
+			objectname = get_rel_name(rte->relid);
+			if (es->verbose)
+				namespace = get_namespace_name(get_rel_namespace(rte->relid));
+			objecttag = "Relation Name";
+			break;
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 		case T_SeqScan:
 		case T_SampleScan:
 		case T_IndexScan:
@@ -3776,7 +3794,6 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
 		case T_TidRangeScan:
 		case T_ForeignScan:
 		case T_CustomScan:
-		case T_ModifyTable:
 			/* Assert it's on a real relation */
 			Assert(rte->rtekind == RTE_RELATION);
 			objectname = get_rel_name(rte->relid);
@@ -3856,21 +3873,36 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
 	if (es->format == EXPLAIN_FORMAT_TEXT)
 	{
 		appendStringInfoString(es->str, " on");
-		if (namespace != NULL)
-			appendStringInfo(es->str, " %s.%s", quote_identifier(namespace),
-							 quote_identifier(objectname));
-		else if (objectname != NULL)
-			appendStringInfo(es->str, " %s", quote_identifier(objectname));
-		if (objectname == NULL || strcmp(refname, objectname) != 0)
-			appendStringInfo(es->str, " %s", quote_identifier(refname));
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		if (multiTarget && DB_MYSQL == compatible_db)
+		{
+			appendStringInfoString(es->str, " MULTI-RELATION");
+		}
+		else
+		{
+			if (namespace != NULL)
+				appendStringInfo(es->str, " %s.%s", quote_identifier(namespace),
+								 quote_identifier(objectname));
+			else if (objectname != NULL)
+				appendStringInfo(es->str, " %s", quote_identifier(objectname));
+			if (objectname == NULL || strcmp(refname, objectname) != 0)
+				appendStringInfo(es->str, " %s", quote_identifier(refname));
+		}
 	}
 	else
-	{
-		if (objecttag != NULL && objectname != NULL)
-			ExplainPropertyText(objecttag, objectname, es);
-		if (namespace != NULL)
-			ExplainPropertyText("Schema", namespace, es);
-		ExplainPropertyText("Alias", refname, es);
+	{	if (objecttag != NULL && multiTarget && DB_MYSQL == compatible_db)
+		{
+			ExplainPropertyText(objecttag, "MULTI-RELATION", es);
+		}
+		else
+		{
+			if (objecttag != NULL && objectname != NULL)
+				ExplainPropertyText(objecttag, objectname, es);
+			if (namespace != NULL)
+				ExplainPropertyText("Schema", namespace, es);
+			ExplainPropertyText("Alias", refname, es);
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
 }
 
@@ -3951,7 +3983,7 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 			/* Identify target */
 			ExplainTargetRel((Plan *) node,
 							 resultRelInfo->ri_RangeTableIndex,
-							 es);
+							 es, false);	/* ReqID:SRS-MYSQL-UPDATE */
 
 			if (es->format == EXPLAIN_FORMAT_TEXT)
 			{

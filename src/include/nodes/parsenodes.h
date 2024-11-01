@@ -190,7 +190,10 @@ typedef struct Query
 
 	List	   *withCheckOptions;	/* a list of WithCheckOption's (added
 									 * during rewrite) */
-
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	List	   *resultRelations; /* rtable index list of target relation for INSERT/UPDATE/DELETE */
+	List	   *indexhintList; /* a list of b mode index hint members */
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level
@@ -199,6 +202,7 @@ typedef struct Query
 	 */
 	int			stmt_location;	/* start location, or -1 if unknown */
 	int			stmt_len;		/* length in bytes; 0 means "rest of string" */
+
 } Query;
 
 
@@ -1715,7 +1719,40 @@ typedef struct UpdateStmt
 	List	   *fromClause;		/* optional from clause for more tables */
 	List	   *returningList;	/* list of expressions to return */
 	WithClause *withClause;		/* WITH clause */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	bool		ignore;			/* is this stat containing ignore */
+	List	   *sortClause;		/* sort clause (a list of SortBy's) */
+	Node	   *limitClause;	/* limit row count */
+	List	   *relationClause; /* relations to update */
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 } UpdateStmt;
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+typedef enum IndexHintType
+{
+	INDEX_HINT_IGNORE = 0,
+	INDEX_HINT_USE = 1,
+	INDEX_HINT_FORCE,
+	INDEX_HINT_MIX,
+	INDEX_HINT_NOT_EXISTS
+}IndexHintType;
+
+typedef struct IndexHintDefinition
+{
+	NodeTag			type;
+	List		   *indexnames;
+	IndexHintType	index_type;
+}IndexHintDefinition;
+
+typedef struct IndexHintRelationData
+{
+	NodeTag			type;
+	Oid				relationOid;
+	Oid				indexOid;
+	IndexHintType	index_type;
+}IndexHintRelationData;
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /* ----------------------
  *		Merge Statement

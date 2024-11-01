@@ -3174,3 +3174,114 @@ EvalPlanQualEnd(EPQState *epqstate)
 	epqstate->relsubs_done = NULL;
 	epqstate->epqExtra->relsubs_blocked = NULL;
 }
+
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * FetchPlanSlot
+ * Get the ctid corresponding to multiple relationships, Obtained from the first execution of ExecProcNode.
+ */
+TupleTableSlot
+*FetchPlanSlot(PlanState *subPlanState, ProjectionInfo **projInfos, int num, int *res, ResultRelInfo *resultRelInfo,
+				   TupleTableSlot **tmpslot, EState *estate, bool *first_fetch_slot)
+{
+	TupleTableSlot	   *slot = NULL;
+	TupleTableSlot	   *oldTupleSlot = NULL;
+	TupleTableSlot	   *tmpTupleSlot = NULL;
+	int					result_rel_index = subPlanState->state->result_rel_index;
+
+	if (result_rel_index > 0)
+	{
+		ItemPointer			tmp;
+		Relation			relation;
+		ProjectionInfo	   *pro;
+		List			   *tmplist = NIL;
+		int					i = 0;
+		int					len = (*tmpslot)->tts_nvalid;
+
+		if (result_rel_index == 1)
+		{
+			for (i = 0; i < len; i++)
+			{
+				if (strcmp((*tmpslot)->tts_tupleDescriptor->attrs[i].attname.data, "ctid2") == 0)
+				{
+					*res = i;
+					break;
+				}
+			}
+		}
+
+		if (res == 0)
+		{
+			slot = ExecProcNode(subPlanState);
+			*tmpslot = slot;
+		}
+		else
+		{
+			oldTupleSlot = table_slot_create(resultRelInfo->ri_RelationDesc, &tmplist);
+			projInfos[result_rel_index]->pi_fetch_slot = false;
+
+			relation = resultRelInfo->ri_RelationDesc;
+			tmp = (ItemPointer) DatumGetPointer((*tmpslot)->tts_values[*res]);
+			pro = projInfos[result_rel_index];
+			if (tmp != 0)
+			{
+				/* Fetch the most recent version of old tuple. */
+				if (heapam_update_fetch_row_version(relation,
+											tmp,
+											SnapshotAny,
+											oldTupleSlot,
+											estate->es_output_cid))
+				{
+					/* Calculating the expression requires */
+					if (pro->pi_expr)
+					{
+						tmpTupleSlot = pro->pi_exprContext->ecxt_scantuple;
+						pro->pi_exprContext->ecxt_scantuple = oldTupleSlot;
+					}
+					slot = ExecProject(pro);
+					if (slot)
+						slot->tts_values[num - 1] = (*tmpslot)->tts_values[*res];
+					pro->pi_fetch_slot = true;
+
+					if (pro->pi_expr)
+						pro->pi_exprContext->ecxt_scantuple = tmpTupleSlot;
+				}
+				else
+					pro->pi_fetch_slot = false;
+			}
+			else
+			{
+				if (pro->pi_expr)
+				{
+					tmpTupleSlot = pro->pi_exprContext->ecxt_scantuple;
+					pro->pi_exprContext->ecxt_scantuple = oldTupleSlot;
+				}
+				slot = ExecProject(pro);
+				if (slot)
+					slot->tts_values[num - 1] = (*tmpslot)->tts_values[*res];
+				pro->pi_fetch_slot = false;
+
+				if (pro->pi_expr)
+					pro->pi_exprContext->ecxt_scantuple = tmpTupleSlot;
+			}
+			(*res)++;
+
+			ExecDropSingleTupleTableSlot(oldTupleSlot);
+
+			/* The column name of one table is the table name of another table.
+			 * The value assigned here is to pass the assert check in the ExecJustAssignVarVirtImpl function.
+			 */
+			if (slot)
+				slot->tts_flags = (*tmpslot)->tts_flags;
+		}
+	}
+	else
+	{
+		slot = ExecProcNode(subPlanState);
+		*tmpslot = slot;
+		*res = 0;
+	}
+	return slot;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */

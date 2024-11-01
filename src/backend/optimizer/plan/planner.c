@@ -605,6 +605,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	bool		hasResultRTEs;
 	RelOptInfo *final_rel;
 	ListCell   *l;
+	ListCell   *lc;	/* ReqID:SRS-MYSQL-UPDATE */
 
 	/* Create a PlannerInfo data structure for this subquery */
 	root = makeNode(PlannerInfo);
@@ -620,8 +621,8 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	root->multiexpr_params = NIL;
 	root->eq_classes = NIL;
 	root->ec_merging_done = false;
-	root->all_result_relids =
-		parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+	/*root->all_result_relids =
+		parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;*/
 	root->leaf_result_relids = NULL;	/* we'll find out leaf-ness later */
 	root->append_rel_list = NIL;
 	root->row_identity_vars = NIL;
@@ -647,6 +648,23 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	if (root->hasCount)
 		root->countRI = list_length(parse->rtable);
 	/* End - ReqID:SRS-SQL-ROWNUM */
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
+	{
+		foreach(lc, parse->resultRelations)
+		{
+				int		resultrelation = lfirst_int(lc);
+				root->all_result_relids_list = lappend(root->all_result_relids_list,
+													   bms_make_singleton(resultrelation));
+		}
+	}
+	else
+	{
+			root->all_result_relids =
+					parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * If there is a WITH list, process each WITH query and either convert it
@@ -762,17 +780,35 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 											list_length(rte->securityQuals));
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * If we have now verified that the query target relation is
 	 * non-inheriting, mark it as a leaf target.
 	 */
-	if (parse->resultRelation)
+	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) >1)
 	{
-		RangeTblEntry *rte = rt_fetch(parse->resultRelation, parse->rtable);
+		foreach(lc, parse->resultRelations)
+		{
+			int					resultrelation = lfirst_int(lc);
+			RangeTblEntry	   *rte = rt_fetch(resultrelation, parse->rtable);
+			if (!rte->inh)
+			{
+				Relids relids = bms_make_singleton(parse->resultRelation);
+				root->leaf_result_relids_list = lappend(root->leaf_result_relids_list, relids);
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+	{
+		if (parse->resultRelation)
+		{
+			RangeTblEntry *rte = rt_fetch(parse->resultRelation, parse->rtable);
 
-		if (!rte->inh)
-			root->leaf_result_relids =
-				bms_make_singleton(parse->resultRelation);
+			if (!rte->inh)
+				root->leaf_result_relids =
+					bms_make_singleton(parse->resultRelation);
+		}
 	}
 
 	/*
@@ -1240,6 +1276,30 @@ preprocess_phv_expression(PlannerInfo *root, Expr *expr)
 {
 	return (Expr *) preprocess_expression(root, (Node *) expr, EXPRKIND_PHV);
 }
+
+/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/*
+ * adjust_multirelation_colnos
+ * Adjust the true position of the updated target column.
+ */
+List
+*adjust_multirelation_colnos(PlannerInfo *root, int result_rel, List *update_colnos)
+{
+	List			   *upcols = NIL;
+	ListCell		   *lc = NULL;
+
+	foreach(lc, root->parse->targetList)
+	{
+		TargetEntry   *tle = (TargetEntry*)lfirst(lc);
+		if(tle->rtindex == result_rel && !tle->resjunk)
+		{
+			upcols = lappend_int(upcols, tle->relattno);
+		}
+	}
+	return upcols;
+}
+/* End - ReqID:SRS-MYSQL-UPDATE */
+
 
 /*--------------------
  * grouping_planner
@@ -1769,125 +1829,347 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 			List	   *mergeActionLists = NIL;
 			List	   *rowMarks;
 
-			if (bms_membership(root->all_result_relids) == BMS_MULTIPLE)
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			ListCell   *lc;
+			ListCell   *lc1;
+			ListCell   *lc2;
+			int			mutilresultion = 0;
+
+			if (DB_MYSQL == compatible_db && list_length(root->all_result_relids_list) > 1)
 			{
-				/* Inherited UPDATE/DELETE */
-				RelOptInfo *top_result_rel = find_base_rel(root,
-														   parse->resultRelation);
-				int			resultRelation = -1;
-
-				/* Pass the root result rel forward to the executor. */
-				rootRelation = parse->resultRelation;
-
-				/* Add only leaf children to ModifyTable. */
-				while ((resultRelation = bms_next_member(root->leaf_result_relids,
-														 resultRelation)) >= 0)
+				forthree(lc, root->all_result_relids_list, lc1, root->leaf_result_relids_list,
+						lc2, root->parse->resultRelations)
 				{
-					RelOptInfo *this_result_rel = find_base_rel(root,
-																resultRelation);
+					Relids	all_relids = (Relids)lfirst(lc);
+					Relids	leaf_relids = (Relids)lfirst(lc1);
+					int		result_rel = lfirst_int(lc2);
 
-					/*
-					 * Also exclude any leaf rels that have turned dummy since
-					 * being added to the list, for example, by being excluded
-					 * by constraint exclusion.
-					 */
-					if (IS_DUMMY_REL(this_result_rel))
-						continue;
-
-					/* Build per-target-rel lists needed by ModifyTable */
-					resultRelations = lappend_int(resultRelations,
-												  resultRelation);
-					if (parse->commandType == CMD_UPDATE)
+					if(!mutilresultion)
+						mutilresultion = result_rel;
+					if (bms_membership(all_relids) == BMS_MULTIPLE)
 					{
-						List	   *update_colnos = root->update_colnos;
+						/* Inherited UPDATE/DELETE */
+						RelOptInfo *top_result_rel = find_base_rel(root,
+																   result_rel);
+						int			resultRelation = -1;
 
-						if (this_result_rel != top_result_rel)
-							update_colnos =
-								adjust_inherited_attnums_multilevel(root,
-																	update_colnos,
-																	this_result_rel->relid,
-																	top_result_rel->relid);
-						updateColnosLists = lappend(updateColnosLists,
-													update_colnos);
-					}
-					if (parse->withCheckOptions)
-					{
-						List	   *withCheckOptions = parse->withCheckOptions;
-
-						if (this_result_rel != top_result_rel)
-							withCheckOptions = (List *)
-								adjust_appendrel_attrs_multilevel(root,
-																  (Node *) withCheckOptions,
-																  this_result_rel->relids,
-																  top_result_rel->relids);
-						withCheckOptionLists = lappend(withCheckOptionLists,
-													   withCheckOptions);
-					}
-					if (parse->returningList)
-					{
-						List	   *returningList = parse->returningList;
-
-						if (this_result_rel != top_result_rel)
-							returningList = (List *)
-								adjust_appendrel_attrs_multilevel(root,
-																  (Node *) returningList,
-																  this_result_rel->relids,
-																  top_result_rel->relids);
-						returningLists = lappend(returningLists,
-												 returningList);
-					}
-					if (parse->mergeActionList)
-					{
-						ListCell   *l;
-						List	   *mergeActionList = NIL;
-
-						/*
-						 * Copy MergeActions and translate stuff that
-						 * references attribute numbers.
-						 */
-						foreach(l, parse->mergeActionList)
+						/* Add only leaf children to ModifyTable. */
+						while ((resultRelation = bms_next_member(leaf_relids,
+																 resultRelation)) >= 0)
 						{
-							MergeAction *action = lfirst(l),
-									   *leaf_action = copyObject(action);
+							RelOptInfo *this_result_rel = find_base_rel(root,
+																		resultRelation);
 
-							leaf_action->qual =
-								adjust_appendrel_attrs_multilevel(root,
-																  (Node *) action->qual,
-																  this_result_rel->relids,
-																  top_result_rel->relids);
-							leaf_action->targetList = (List *)
-								adjust_appendrel_attrs_multilevel(root,
-																  (Node *) action->targetList,
-																  this_result_rel->relids,
-																  top_result_rel->relids);
-							if (leaf_action->commandType == CMD_UPDATE)
-								leaf_action->updateColnos =
-									adjust_inherited_attnums_multilevel(root,
-																		action->updateColnos,
-																		this_result_rel->relid,
-																		top_result_rel->relid);
-							mergeActionList = lappend(mergeActionList,
-													  leaf_action);
+							/*
+							 * Also exclude any leaf rels that have turned dummy since
+							 * being added to the list, for example, by being excluded
+							 * by constraint exclusion.
+							 */
+							if (IS_DUMMY_REL(this_result_rel))
+								continue;
+
+							/* Build per-target-rel lists needed by ModifyTable */
+							resultRelations = lappend_int(resultRelations,
+														  resultRelation);
+							if (parse->commandType == CMD_UPDATE)
+							{
+								List	   *update_colnos = root->update_colnos;
+
+								if (this_result_rel != top_result_rel)
+									update_colnos =
+										adjust_inherited_attnums_multilevel(root,
+																			update_colnos,
+																			this_result_rel->relid,
+																			top_result_rel->relid);
+								updateColnosLists = lappend(updateColnosLists,
+															update_colnos);
+							}
+							if (parse->withCheckOptions)
+							{
+								List	   *withCheckOptions = parse->withCheckOptions;
+
+								if (this_result_rel != top_result_rel)
+									withCheckOptions = (List *)
+										adjust_appendrel_attrs_multilevel(root,
+																		  (Node *) withCheckOptions,
+																		  this_result_rel->relids,
+																		  top_result_rel->relids);
+								withCheckOptionLists = lappend(withCheckOptionLists,
+															   withCheckOptions);
+							}
+							if (parse->returningList)
+							{
+								List	   *returningList = parse->returningList;
+
+								if (this_result_rel != top_result_rel)
+									returningList = (List *)
+										adjust_appendrel_attrs_multilevel(root,
+																		  (Node *) returningList,
+																		  this_result_rel->relids,
+																		  top_result_rel->relids);
+								returningLists = lappend(returningLists,
+														 returningList);
+							}
+							if (parse->mergeActionList)
+							{
+								ListCell   *l;
+								List	   *mergeActionList = NIL;
+
+								/*
+								 * Copy MergeActions and translate stuff that
+								 * references attribute numbers.
+								 */
+								foreach(l, parse->mergeActionList)
+								{
+									MergeAction *action = lfirst(l),
+											   *leaf_action = copyObject(action);
+
+									leaf_action->qual =
+										adjust_appendrel_attrs_multilevel(root,
+																		  (Node *) action->qual,
+																		  this_result_rel->relids,
+																		  top_result_rel->relids);
+									leaf_action->targetList = (List *)
+										adjust_appendrel_attrs_multilevel(root,
+																		  (Node *) action->targetList,
+																		  this_result_rel->relids,
+																		  top_result_rel->relids);
+									if (leaf_action->commandType == CMD_UPDATE)
+										leaf_action->updateColnos =
+											adjust_inherited_attnums_multilevel(root,
+																				action->updateColnos,
+																				this_result_rel->relid,
+																				top_result_rel->relid);
+									mergeActionList = lappend(mergeActionList,
+															  leaf_action);
+								}
+
+								mergeActionLists = lappend(mergeActionLists,
+														   mergeActionList);
+							}
 						}
 
-						mergeActionLists = lappend(mergeActionLists,
-												   mergeActionList);
+						if (resultRelations == NIL)
+						{
+							/*
+							 * We managed to exclude every child rel, so generate a
+							 * dummy one-relation plan using info for the top target
+							 * rel (even though that may not be a leaf target).
+							 * Although it's clear that no data will be updated or
+							 * deleted, we still need to have a ModifyTable node so
+							 * that any statement triggers will be executed.  (This
+							 * could be cleaner if we fixed nodeModifyTable.c to allow
+							 * zero target relations, but that probably wouldn't be a
+							 * net win.)
+							 */
+							resultRelations = list_make1_int(result_rel);
+							if (parse->commandType == CMD_UPDATE)
+								updateColnosLists = list_make1(root->update_colnos);
+							if (parse->withCheckOptions)
+								withCheckOptionLists = list_make1(parse->withCheckOptions);
+							if (parse->returningList)
+								returningLists = list_make1(parse->returningList);
+							if (parse->mergeActionList)
+								mergeActionLists = list_make1(parse->mergeActionList);
+						}
 					}
+					else
+					{
+						/* Single-relation INSERT/UPDATE/DELETE. */
+						resultRelations = lappend_int(resultRelations, result_rel);
+						if (parse->commandType == CMD_UPDATE)
+						{
+							List	   *update_colnos = root->update_colnos;
+							update_colnos = adjust_multirelation_colnos(root, result_rel, update_colnos);
+							if(update_colnos)
+								updateColnosLists = lappend(updateColnosLists, update_colnos);
+
+						}
+						if (parse->withCheckOptions)
+							withCheckOptionLists = list_make1(parse->withCheckOptions);
+						if (parse->returningList)
+							returningLists = list_make1(parse->returningList);
+						if (parse->mergeActionList)
+							mergeActionLists = list_make1(parse->mergeActionList);
+					}
+
+					/*
+					 * If target is a partition root table, we need to mark the
+					 * ModifyTable node appropriately for that.
+					 */
+					if (rt_fetch(result_rel, parse->rtable)->relkind ==
+						RELKIND_PARTITIONED_TABLE)
+						rootRelation = result_rel;
+					else
+						rootRelation = 0;
 				}
 
-				if (resultRelations == NIL)
+				/*
+				 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
+				 * will have dealt with fetching non-locked marked rows, else we
+				 * need to have ModifyTable do that.
+				 */
+				if (parse->rowMarks)
+					rowMarks = NIL;
+				else
+					rowMarks = root->rowMarks;
+
+				path = (Path *)
+					create_modifytable_path(root, final_rel,
+											path,
+											parse->commandType,
+											parse->canSetTag,
+											mutilresultion,
+											rootRelation,
+											root->partColsUpdated,
+											resultRelations,
+											updateColnosLists,
+											withCheckOptionLists,
+											returningLists,
+											rowMarks,
+											parse->onConflict,
+											mergeActionLists,
+											assign_special_exec_param(root));
+				/* And shove it into final_rel */
+				add_path(final_rel, path);
+			}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
+			else
+			{
+				if (bms_membership(root->all_result_relids) == BMS_MULTIPLE)
 				{
-					/*
-					 * We managed to exclude every child rel, so generate a
-					 * dummy one-relation plan using info for the top target
-					 * rel (even though that may not be a leaf target).
-					 * Although it's clear that no data will be updated or
-					 * deleted, we still need to have a ModifyTable node so
-					 * that any statement triggers will be executed.  (This
-					 * could be cleaner if we fixed nodeModifyTable.c to allow
-					 * zero target relations, but that probably wouldn't be a
-					 * net win.)
-					 */
+					/* Inherited UPDATE/DELETE */
+					RelOptInfo *top_result_rel = find_base_rel(root,
+															   parse->resultRelation);
+					int			resultRelation = -1;
+
+					/* Pass the root result rel forward to the executor. */
+					rootRelation = parse->resultRelation;
+
+					/* Add only leaf children to ModifyTable. */
+					while ((resultRelation = bms_next_member(root->leaf_result_relids,
+															 resultRelation)) >= 0)
+					{
+						RelOptInfo *this_result_rel = find_base_rel(root,
+																	resultRelation);
+
+						/*
+						 * Also exclude any leaf rels that have turned dummy since
+						 * being added to the list, for example, by being excluded
+						 * by constraint exclusion.
+						 */
+						if (IS_DUMMY_REL(this_result_rel))
+							continue;
+
+						/* Build per-target-rel lists needed by ModifyTable */
+						resultRelations = lappend_int(resultRelations,
+													  resultRelation);
+						if (parse->commandType == CMD_UPDATE)
+						{
+							List	   *update_colnos = root->update_colnos;
+
+							if (this_result_rel != top_result_rel)
+								update_colnos =
+									adjust_inherited_attnums_multilevel(root,
+																		update_colnos,
+																		this_result_rel->relid,
+																		top_result_rel->relid);
+							updateColnosLists = lappend(updateColnosLists,
+														update_colnos);
+						}
+						if (parse->withCheckOptions)
+						{
+							List	   *withCheckOptions = parse->withCheckOptions;
+
+							if (this_result_rel != top_result_rel)
+								withCheckOptions = (List *)
+									adjust_appendrel_attrs_multilevel(root,
+																	  (Node *) withCheckOptions,
+																	  this_result_rel->relids,
+																	  top_result_rel->relids);
+							withCheckOptionLists = lappend(withCheckOptionLists,
+														   withCheckOptions);
+						}
+						if (parse->returningList)
+						{
+							List	   *returningList = parse->returningList;
+
+							if (this_result_rel != top_result_rel)
+								returningList = (List *)
+									adjust_appendrel_attrs_multilevel(root,
+																	  (Node *) returningList,
+																	  this_result_rel->relids,
+																	  top_result_rel->relids);
+							returningLists = lappend(returningLists,
+													 returningList);
+						}
+						if (parse->mergeActionList)
+						{
+							ListCell   *l;
+							List	   *mergeActionList = NIL;
+
+							/*
+							 * Copy MergeActions and translate stuff that
+							 * references attribute numbers.
+							 */
+							foreach(l, parse->mergeActionList)
+							{
+								MergeAction *action = lfirst(l),
+										   *leaf_action = copyObject(action);
+
+								leaf_action->qual =
+									adjust_appendrel_attrs_multilevel(root,
+																	  (Node *) action->qual,
+																	  this_result_rel->relids,
+																	  top_result_rel->relids);
+								leaf_action->targetList = (List *)
+									adjust_appendrel_attrs_multilevel(root,
+																	  (Node *) action->targetList,
+																	  this_result_rel->relids,
+																	  top_result_rel->relids);
+								if (leaf_action->commandType == CMD_UPDATE)
+									leaf_action->updateColnos =
+										adjust_inherited_attnums_multilevel(root,
+																			action->updateColnos,
+																			this_result_rel->relid,
+																			top_result_rel->relid);
+								mergeActionList = lappend(mergeActionList,
+														  leaf_action);
+							}
+
+							mergeActionLists = lappend(mergeActionLists,
+													   mergeActionList);
+						}
+					}
+
+					if (resultRelations == NIL)
+					{
+						/*
+						 * We managed to exclude every child rel, so generate a
+						 * dummy one-relation plan using info for the top target
+						 * rel (even though that may not be a leaf target).
+						 * Although it's clear that no data will be updated or
+						 * deleted, we still need to have a ModifyTable node so
+						 * that any statement triggers will be executed.  (This
+						 * could be cleaner if we fixed nodeModifyTable.c to allow
+						 * zero target relations, but that probably wouldn't be a
+						 * net win.)
+						 */
+						resultRelations = list_make1_int(parse->resultRelation);
+						if (parse->commandType == CMD_UPDATE)
+							updateColnosLists = list_make1(root->update_colnos);
+						if (parse->withCheckOptions)
+							withCheckOptionLists = list_make1(parse->withCheckOptions);
+						if (parse->returningList)
+							returningLists = list_make1(parse->returningList);
+						if (parse->mergeActionList)
+							mergeActionLists = list_make1(parse->mergeActionList);
+					}
+				}
+				else
+				{
+					/* Single-relation INSERT/UPDATE/DELETE. */
+					rootRelation = 0;	/* there's no separate root rel */
 					resultRelations = list_make1_int(parse->resultRelation);
 					if (parse->commandType == CMD_UPDATE)
 						updateColnosLists = list_make1(root->update_colnos);
@@ -1898,53 +2180,40 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 					if (parse->mergeActionList)
 						mergeActionLists = list_make1(parse->mergeActionList);
 				}
+
+				/*
+				 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
+				 * will have dealt with fetching non-locked marked rows, else we
+				 * need to have ModifyTable do that.
+				 */
+				if (parse->rowMarks)
+					rowMarks = NIL;
+				else
+					rowMarks = root->rowMarks;
+
+				path = (Path *)
+					create_modifytable_path(root, final_rel,
+											path,
+											parse->commandType,
+											parse->canSetTag,
+											parse->resultRelation,
+											rootRelation,
+											root->partColsUpdated,
+											resultRelations,
+											updateColnosLists,
+											withCheckOptionLists,
+											returningLists,
+											rowMarks,
+											parse->onConflict,
+											mergeActionLists,
+											assign_special_exec_param(root));
+				/* And shove it into final_rel */
+				add_path(final_rel, path);
 			}
-			else
-			{
-				/* Single-relation INSERT/UPDATE/DELETE. */
-				rootRelation = 0;	/* there's no separate root rel */
-				resultRelations = list_make1_int(parse->resultRelation);
-				if (parse->commandType == CMD_UPDATE)
-					updateColnosLists = list_make1(root->update_colnos);
-				if (parse->withCheckOptions)
-					withCheckOptionLists = list_make1(parse->withCheckOptions);
-				if (parse->returningList)
-					returningLists = list_make1(parse->returningList);
-				if (parse->mergeActionList)
-					mergeActionLists = list_make1(parse->mergeActionList);
-			}
-
-
-			/*
-			 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
-			 * will have dealt with fetching non-locked marked rows, else we
-			 * need to have ModifyTable do that.
-			 */
-			if (parse->rowMarks)
-				rowMarks = NIL;
-			else
-				rowMarks = root->rowMarks;
-
-			path = (Path *)
-				create_modifytable_path(root, final_rel,
-										path,
-										parse->commandType,
-										parse->canSetTag,
-										parse->resultRelation,
-										rootRelation,
-										root->partColsUpdated,
-										resultRelations,
-										updateColnosLists,
-										withCheckOptionLists,
-										returningLists,
-										rowMarks,
-										parse->onConflict,
-										mergeActionLists,
-										assign_special_exec_param(root));
 		}
-
-		/* And shove it into final_rel */
-		add_path(final_rel, path);
+		else
+			/* And shove it into final_rel */
+			add_path(final_rel, path);
 	}
 
 	/*
@@ -2241,8 +2510,23 @@ preprocess_rowmarks(PlannerInfo *root)
 	 * need or have FOR [KEY] UPDATE/SHARE marks for.
 	 */
 	rels = get_relids_in_jointree((Node *) parse->jointree, false);
-	if (parse->resultRelation)
-		rels = bms_del_member(rels, parse->resultRelation);
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if(DB_MYSQL == compatible_db && list_length(parse->resultRelations) == 1)
+	{
+		ListCell   *lc;
+		foreach(lc, parse->resultRelations)
+		{
+			int		res_relation = (int)lfirst_int(lc);
+			rels = bms_del_member(rels, res_relation);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+	{
+		if (parse->resultRelation)
+			rels = bms_del_member(rels, parse->resultRelation);
+	}
 
 	/*
 	 * Convert RowMarkClauses to PlanRowMark representation.
@@ -2288,26 +2572,55 @@ preprocess_rowmarks(PlannerInfo *root)
 	 * Now, add rowmarks for any non-target, non-locked base relations.
 	 */
 	i = 0;
-	foreach(l, parse->rtable)
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (list_length(parse->resultRelations) > 1 && DB_MYSQL == compatible_db)
 	{
-		RangeTblEntry *rte = lfirst_node(RangeTblEntry, l);
-		PlanRowMark *newrc;
+		foreach(l, parse->resultRelations)
+		{
+			PlanRowMark *newrc;
+			int		indexrel = lfirst_int(l);
+			RangeTblEntry *rte = rt_fetch(indexrel, parse->rtable);
 
-		i++;
-		if (!bms_is_member(i, rels))
-			continue;
+			i = indexrel;
+			if (!bms_is_member(i, rels))
+				continue;
 
-		newrc = makeNode(PlanRowMark);
-		newrc->rti = newrc->prti = i;
-		newrc->rowmarkId = ++(root->glob->lastRowMarkId);
-		newrc->markType = select_rowmark_type(rte, LCS_NONE);
-		newrc->allMarkTypes = (1 << newrc->markType);
-		newrc->strength = LCS_NONE;
-		newrc->waitPolicy = LockWaitBlock;	/* doesn't matter */
-		newrc->isParent = false;
+			newrc = makeNode(PlanRowMark);
+			newrc->rti = newrc->prti = i;
+			newrc->rowmarkId = ++(root->glob->lastRowMarkId);
+			newrc->markType = select_rowmark_type(rte, LCS_NONE);
+			newrc->allMarkTypes = (1 << newrc->markType);
+			newrc->strength = LCS_NONE;
+			newrc->waitPolicy = LockWaitBlock;	/* doesn't matter */
+			newrc->isParent = false;
 
-		prowmarks = lappend(prowmarks, newrc);
+			prowmarks = lappend(prowmarks, newrc);
+		}
 	}
+	else
+	{
+		foreach(l, parse->rtable)
+		{
+			RangeTblEntry *rte = lfirst_node(RangeTblEntry, l);
+			PlanRowMark *newrc;
+
+			i++;
+			if (!bms_is_member(i, rels))
+				continue;
+
+			newrc = makeNode(PlanRowMark);
+			newrc->rti = newrc->prti = i;
+			newrc->rowmarkId = ++(root->glob->lastRowMarkId);
+			newrc->markType = select_rowmark_type(rte, LCS_NONE);
+			newrc->allMarkTypes = (1 << newrc->markType);
+			newrc->strength = LCS_NONE;
+			newrc->waitPolicy = LockWaitBlock;	/* doesn't matter */
+			newrc->isParent = false;
+
+			prowmarks = lappend(prowmarks, newrc);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	root->rowMarks = prowmarks;
 }
