@@ -2756,6 +2756,147 @@ drop function f1;
 drop table t_370;
 --End - BUG#Z370
 
+/* Begin - BUG#M0000407 */
+\c - system - -;
+create user dn31;
+create schema dn31;
+alter schema dn31 owner to dn31;
+
+\c - dn31 - -;
+create table emp(id int, ename varchar2(10));
+insert into emp values(1, 'A');
+insert into emp values(2, 'A');
+insert into emp values(3, 'B');
+
+--the function arguments type is %type
+create function empfun(en emp.ename%type) return number
+as
+  is_exist number;
+begin
+  select COUNT(*) into is_exist from emp where emp.ename = upper(en);
+  return is_exist;
+end;
+/
+create function empfun1(en dn31.emp.ename%type) return number
+as
+  is_exist number;
+begin
+  select COUNT(*) into is_exist from emp where emp.ename = upper(en);
+  return is_exist;
+end;
+/
+
+--the return type is %type
+create function empfun2(en emp.ename%type) return emp.ename%type
+as
+begin
+  return en;
+end;
+/
+create function empfun3(en dn31.emp.ename%type) return dn31.emp.ename%type
+as
+begin
+  return en;
+end;
+/
+
+----the function arguments type is %rowtype
+create function empfun4(en emp%rowtype) return number
+as
+begin
+  return en.id;
+end;
+/
+create function empfun5(en dn31.emp%rowtype) return number
+as
+begin
+  return en.id;
+end;
+/
+
+--the return type is %rowtype
+create function empfun6(en emp.ename%type) return emp%rowtype
+as
+  a emp%rowtype;
+begin
+  a.id := 60;
+  a.ename = en;
+  return a;
+end;
+/
+create function empfun7(en dn31.emp.ename%type) return dn31.emp%rowtype
+as
+  a emp%rowtype;
+begin
+  a.id := 70;
+  a.ename = en;
+  return a;
+end;
+/
+
+
+select empfun('A');
+select empfun1('B');
+select empfun2('a');
+select empfun3('b');
+
+declare
+  a emp%rowtype;
+  b number;
+  c number;
+begin
+  a.id := 10;
+  a.ename := 'n';
+  b := empfun4(a);
+  raise notice 'b = %', b;
+  c := empfun5(a);
+  raise notice 'c = %', c;
+end;
+/
+
+declare
+  a emp%rowtype;
+  b emp%rowtype;
+begin
+  a := empfun6('na');
+  raise notice 'a.id = %, a.ename = %', a.id, a.ename;
+  b := empfun7('nb');
+  raise notice 'b.id = %, b.ename = %', b.id, b.ename;
+end;
+/
+
+\c - system - -;
+select pg_catalog.pg_get_function_arguments('dn31.empfun'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun1'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun2'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun3'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun4'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun5'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun6'::regproc::oid);
+select pg_catalog.pg_get_function_arguments('dn31.empfun7'::regproc::oid);
+
+select pg_catalog.pg_get_function_result('dn31.empfun'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun1'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun2'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun3'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun4'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun5'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun6'::regproc::oid);
+select pg_catalog.pg_get_function_result('dn31.empfun7'::regproc::oid);
+
+\c - dn31 - -;
+drop function empfun(en emp.ename%type);
+drop function empfun1(en dn31.emp.ename%type);
+drop function empfun2(en emp.ename%type);
+drop function empfun3(en dn31.emp.ename%type);
+drop function empfun4(en emp%rowtype);
+drop function empfun5(en dn31.emp%rowtype);
+drop function empfun6(en emp.ename%type);
+drop function empfun7(en dn31.emp.ename%type);
+drop table emp;
+\c - system - -;
+/* End - BUG#M0000407 */
+
 RESET IVORYSQL.COMPATIBLE_MODE;
 RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 
