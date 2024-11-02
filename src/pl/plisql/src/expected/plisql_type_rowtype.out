@@ -1650,10 +1650,10 @@ END;
 NOTICE:  a=(John,Smith,1-650-555-1234)
 NOTICE:  v.first_name = John, v.last_name = Smith, v.phone_number = 1-650-555-1234
 \df p0
-                        List of functions
- Schema | Name | Result data type |  Argument data types   | Type 
---------+------+------------------+------------------------+------
- public | p0   |                  | IN v employees%ROWTYPE | proc
+                            List of functions
+ Schema | Name | Result data type |      Argument data types      | Type 
+--------+------+------------------+-------------------------------+------
+ public | p0   |                  | IN v public.employees%ROWTYPE | proc
 (1 row)
 
 DROP PROCEDURE p0(employees%ROWTYPE);
@@ -1675,10 +1675,10 @@ END;
 /
 NOTICE:  res.first_name = John, res.last_name = Smith, res.phone_number = 1-650-555-1234
 \df f1
-                       List of functions
- Schema | Name | Result data type  | Argument data types | Type 
---------+------+-------------------+---------------------+------
- public | f1   | employees%ROWTYPE | v integer           | func
+                           List of functions
+ Schema | Name |     Result data type     | Argument data types | Type 
+--------+------+--------------------------+---------------------+------
+ public | f1   | public.employees%ROWTYPE | v integer           | func
 (1 row)
 
 DROP FUNCTION f1;
@@ -1762,7 +1762,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(tmpe%ROWTYPE) line 3 at assignment
+CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 ALTER PROCEDURE p1 COMPILE;
@@ -1777,7 +1777,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(tmpe%ROWTYPE) line 3 at assignment
+CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -1882,7 +1882,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(tmpe%ROWTYPE) line 2 at RAISE
+PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -2005,7 +2005,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(tmpe%ROWTYPE) line 2 at RAISE
+PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -3894,6 +3894,258 @@ SELECT NAME, LINE, TEXT FROM ALL_SOURCE where NAME='F1';
 drop function f1;
 drop table t_370;
 --End - BUG#Z370
+/* Begin - BUG#M0000407 */
+\c - system - -;
+create user dn31;
+create schema dn31;
+alter schema dn31 owner to dn31;
+\c - dn31 - -;
+create table emp(id int, ename varchar2(10));
+insert into emp values(1, 'A');
+insert into emp values(2, 'A');
+insert into emp values(3, 'B');
+--the function arguments type is %type
+create function empfun(en emp.ename%type) return number
+as
+  is_exist number;
+begin
+  select COUNT(*) into is_exist from emp where emp.ename = upper(en);
+  return is_exist;
+end;
+/
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+create function empfun1(en dn31.emp.ename%type) return number
+as
+  is_exist number;
+begin
+  select COUNT(*) into is_exist from emp where emp.ename = upper(en);
+  return is_exist;
+end;
+/
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+--the return type is %type
+create function empfun2(en emp.ename%type) return emp.ename%type
+as
+begin
+  return en;
+end;
+/
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+create function empfun3(en dn31.emp.ename%type) return dn31.emp.ename%type
+as
+begin
+  return en;
+end;
+/
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+----the function arguments type is %rowtype
+create function empfun4(en emp%rowtype) return number
+as
+begin
+  return en.id;
+end;
+/
+create function empfun5(en dn31.emp%rowtype) return number
+as
+begin
+  return en.id;
+end;
+/
+--the return type is %rowtype
+create function empfun6(en emp.ename%type) return emp%rowtype
+as
+  a emp%rowtype;
+begin
+  a.id := 60;
+  a.ename = en;
+  return a;
+end;
+/
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+create function empfun7(en dn31.emp.ename%type) return dn31.emp%rowtype
+as
+  a emp%rowtype;
+begin
+  a.id := 70;
+  a.ename = en;
+  return a;
+end;
+/
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+select empfun('A');
+ empfun 
+--------
+ 2
+(1 row)
+
+select empfun1('B');
+ empfun1 
+---------
+ 1
+(1 row)
+
+select empfun2('a');
+ empfun2 
+---------
+ a
+(1 row)
+
+select empfun3('b');
+ empfun3 
+---------
+ b
+(1 row)
+
+declare
+  a emp%rowtype;
+  b number;
+  c number;
+begin
+  a.id := 10;
+  a.ename := 'n';
+  b := empfun4(a);
+  raise notice 'b = %', b;
+  c := empfun5(a);
+  raise notice 'c = %', c;
+end;
+/
+NOTICE:  b = 10
+NOTICE:  c = 10
+declare
+  a emp%rowtype;
+  b emp%rowtype;
+begin
+  a := empfun6('na');
+  raise notice 'a.id = %, a.ename = %', a.id, a.ename;
+  b := empfun7('nb');
+  raise notice 'b.id = %, b.ename = %', b.id, b.ename;
+end;
+/
+NOTICE:  a.id = 60, a.ename = na
+NOTICE:  b.id = 70, b.ename = nb
+\c - system - -;
+select pg_catalog.pg_get_function_arguments('dn31.empfun'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun1'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun2'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun3'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun4'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp%ROWTYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun5'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp%ROWTYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun6'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_arguments('dn31.empfun7'::regproc::oid);
+ pg_get_function_arguments 
+---------------------------
+ en dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ number
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun1'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ number
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun2'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun3'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ dn31.emp.ename%TYPE
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun4'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ number
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun5'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ number
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun6'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ dn31.emp%ROWTYPE
+(1 row)
+
+select pg_catalog.pg_get_function_result('dn31.empfun7'::regproc::oid);
+ pg_get_function_result 
+------------------------
+ dn31.emp%ROWTYPE
+(1 row)
+
+\c - dn31 - -;
+drop function empfun(en emp.ename%type);
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+drop function empfun1(en dn31.emp.ename%type);
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+drop function empfun2(en emp.ename%type);
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+drop function empfun3(en dn31.emp.ename%type);
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+drop function empfun4(en emp%rowtype);
+drop function empfun5(en dn31.emp%rowtype);
+drop function empfun6(en emp.ename%type);
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+NOTICE:  type reference emp.ename%TYPE converted to varchar2
+drop function empfun7(en dn31.emp.ename%type);
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+NOTICE:  type reference dn31.emp.ename%TYPE converted to varchar2
+drop table emp;
+\c - system - -;
+/* End - BUG#M0000407 */
 RESET IVORYSQL.COMPATIBLE_MODE;
 RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 --

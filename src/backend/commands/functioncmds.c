@@ -185,6 +185,85 @@ compute_return_type(TypeName *returnType, Oid languageOid,
 			languageOid == LANG_PLISQL_OID &&
 			(returnType->pct_type || returnType->row_type))
 		{
+			/* Begin - BUG#M0000407 */
+			/*
+			 * Check if the return type is tablename.columnname%TYPE,
+			 */
+			if (returnType->pct_type)
+			{
+				RangeVar   *rel = makeRangeVar(NULL, NULL, returnType->location);
+				Oid 		relid;
+
+				/* deconstruct the name list */
+				switch (list_length(returnType->names))
+				{
+					case 1:
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("improper %%TYPE reference (too few dotted names): %s",
+										NameListToString(returnType->names))));
+						break;
+					case 2:
+						rel->relname = strVal(linitial(returnType->names));
+						break;
+					case 3:
+						rel->schemaname = strVal(linitial(returnType->names));
+						rel->relname = strVal(lsecond(returnType->names));
+						break;
+					case 4:
+						rel->catalogname = strVal(linitial(returnType->names));
+						rel->schemaname = strVal(lsecond(returnType->names));
+						rel->relname = strVal(lthird(returnType->names));
+						break;
+					default:
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("improper %%TYPE reference (too many dotted names): %s",
+										NameListToString(returnType->names))));
+						break;
+				}
+
+				/* Get the relation oid */
+				relid = RangeVarGetRelid(rel, NoLock, false);
+				if (OidIsValid(relid))
+				{
+					/*
+					 * if the schema name is not given, get the relation namepace name,
+					 * and add it into the first element of the names list.
+					 */
+					if (list_length(returnType->names) == 2)
+						returnType->names = list_insert_nth(returnType->names, 0,
+												makeString(pstrdup(get_namespace_name(get_rel_namespace(relid)))));
+				}
+			}
+			else if (returnType->row_type)
+			{
+				char		*schema_name = NULL;
+				char		*relname = NULL;
+				Oid 		relid;
+				RangeVar	*rel;
+
+				/*
+				 * Check if the return type is %ROWTYPE,
+				 */
+				DeconstructQualifiedName(returnType->names, &schema_name, &relname);
+				rel = makeRangeVar(schema_name, relname, returnType->location);
+
+				/* Get the relation oid */
+				relid = RangeVarGetRelid(rel, NoLock, false);
+				if (OidIsValid(relid))
+				{
+					/*
+					 * if the schema name is not given, get the relation namepace name,
+					 * and add it into the first element of the names list.
+					 */
+					if (list_length(returnType->names) == 1)
+						returnType->names = list_insert_nth(returnType->names, 0,
+												makeString(pstrdup(get_namespace_name(get_rel_namespace(relid)))));
+				}
+			}
+			/* End - BUG#M0000407 */
+
 			*rettypename = nodeToString(returnType);
 		}
 		/* End - ReqID:SRS-PLSQL-TYPE */
@@ -665,6 +744,15 @@ interpret_function_parameter_list(ParseState *pstate,
 			relid = RangeVarGetRelid(rel, NoLock, false);
 			if (OidIsValid(relid))
 			{
+				/* Begin - BUG#M0000407 */
+				/*
+				 * if the schema name is not given, get the relation namepace name,
+				 * and add it into the first element of the names list.
+				 */
+				if (list_length(t->names) == 2)
+					t->names = list_insert_nth(t->names, 0,
+											makeString(pstrdup(get_namespace_name(get_rel_namespace(relid)))));
+				/* End - BUG#M0000407 */
 				typeNames[i] = CStringGetTextDatum(nodeToString(t));
 				has_rel_type = true;
 			}
@@ -685,6 +773,15 @@ interpret_function_parameter_list(ParseState *pstate,
 			relid = RangeVarGetRelid(rel, NoLock, false);
 			if (OidIsValid(relid))
 			{
+				/* Begin - BUG#M0000407 */
+				/*
+				 * if the schema name is not given, get the relation namepace name,
+				 * and add it into the first element of the names list.
+				 */
+				if (list_length(t->names) == 1)
+					t->names = list_insert_nth(t->names, 0,
+											makeString(pstrdup(get_namespace_name(get_rel_namespace(relid)))));
+				/* End - BUG#M0000407 */
 				typeNames[i] = CStringGetTextDatum(nodeToString(t));
 				has_rel_type = true;
 			}
