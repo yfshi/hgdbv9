@@ -3446,7 +3446,17 @@ heap_update(Relation relation, ItemPointer otid, HeapTuple newtup,
 l2:
 	checked_lockers = false;
 	locker_remains = false;
-	result = HeapTupleSatisfiesUpdate(&oldtup, cid, buffer);
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (DB_MYSQL == compatible_db && relation->rd_conflictTid)
+	{
+		if (ItemPointerEquals(relation->rd_conflictTid, otid))
+			result = heapTupleSatisfiesUpdateOnconflict(&oldtup, cid , buffer);
+		else
+			result = HeapTupleSatisfiesUpdate(&oldtup, cid, buffer);
+	}
+	else
+		result = HeapTupleSatisfiesUpdate(&oldtup, cid, buffer);
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	/* see below about the "no wait" case */
 	Assert(result != TM_BeingModified || wait);

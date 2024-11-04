@@ -246,6 +246,13 @@ typedef struct ModifyTable
 	List	   *targetlists;	/* For multi-relation modifying */
 	List	   *parseresultrelations;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	UpsertAction upsertAction;	/* DUPLICATE KEY UPDATE action */
+	List	   *updateTlist;	/* List of UPDATE target */
+	List	   *upexclRelTlist;	/* target list of the EXECLUDED pseudo relation */
+	List	   *upsertCols;		/* Record updated columns */
+	Index		upexclRelRTIndex;	/* RTI of the EXCLUDED pseudo relation */
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */

@@ -286,6 +286,7 @@ typedef struct RelationData
 	/* End - ReqID:SRS-SQL-DBLINK */
 
 	Oid			relCollation;	/* BUG:M0000393 */
+	ItemPointer	rd_conflictTid; /* ReqID:SRS-MYSQL-SQL-INSERT */
 } RelationData;
 
 

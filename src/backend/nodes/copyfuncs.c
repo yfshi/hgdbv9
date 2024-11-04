@@ -231,6 +231,13 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_NODE_FIELD(targetlists);
 	COPY_NODE_FIELD(parseresultrelations);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	COPY_SCALAR_FIELD(upsertAction);
+	COPY_NODE_FIELD(updateTlist);
+	COPY_NODE_FIELD(upexclRelTlist);
+	COPY_NODE_FIELD(upsertCols);
+	COPY_SCALAR_FIELD(upexclRelRTIndex);
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	return newnode;
 }
@@ -2349,6 +2356,24 @@ _copyOnConflictExpr(const OnConflictExpr *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/*
+ * _copyUpsertExpr
+ */
+static UpsertExpr *
+_copyUpsertExpr(const UpsertExpr *from)
+{
+	UpsertExpr *newnode = makeNode(UpsertExpr);
+
+	COPY_SCALAR_FIELD(upsertAction);
+	COPY_NODE_FIELD(updateTlist);
+	COPY_NODE_FIELD(exclRelTlist);
+	COPY_SCALAR_FIELD(exclRelIndex);
+
+	return newnode;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 /* ****************************************************************
  *						pathnodes.h copy functions
  *
@@ -2697,6 +2722,20 @@ _copyOnConflictClause(const OnConflictClause *from)
 
 	return newnode;
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static UpsertClause *
+_copyUpsertClause(const UpsertClause *from)
+{
+	UpsertClause *newnode = makeNode(UpsertClause);
+
+	COPY_NODE_FIELD(targetList);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 
 static CTESearchClause *
 _copyCTESearchClause(const CTESearchClause *from)
@@ -3347,6 +3386,7 @@ _copyQuery(const Query *from)
 	COPY_NODE_FIELD(resultRelations);
 	COPY_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	COPY_NODE_FIELD(upsertClause);	/* ReqID:SRS-MYSQL-SQL-INSERT */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 
@@ -3377,6 +3417,7 @@ _copyInsertStmt(const InsertStmt *from)
 	COPY_NODE_FIELD(returningList);
 	COPY_NODE_FIELD(withClause);
 	COPY_SCALAR_FIELD(override);
+	COPY_NODE_FIELD(upsertClause);/* ReqID:SRS-MYSQL-SQL-INSERT */
 
 	return newnode;
 }
@@ -6334,6 +6375,14 @@ copyObjectImpl(const void *from)
 			retval = _copyIndexHintDefinition((IndexHintDefinition *)from);
 			break;
 		/* End - ReqID:SRS-MYSQL-UPDATE */
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		case T_UpsertClause:
+			retval = _copyUpsertClause(from);
+			break;
+		case T_UpsertExpr:
+			retval = _copyUpsertExpr(from);
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(from));
 			retval = 0;			/* keep compiler quiet */

@@ -295,6 +295,11 @@ struct ParseState
 	bool		p_isupdate;
 	List	   *p_indexhintLists;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	List	   *p_varnamespace;
+	bool		p_ruleflag;
+	bool		p_isexistVar;
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 };
 
 /*

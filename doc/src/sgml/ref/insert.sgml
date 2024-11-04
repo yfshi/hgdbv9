@@ -41,6 +41,30 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
                     ( <replaceable class="parameter">column_name</replaceable> [, ...] ) = ( <replaceable class="parameter">sub-SELECT</replaceable> )
                   } [, ...]
               [ WHERE <replaceable class="parameter">condition</replaceable> ]
+
+In MySQL mode:
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+INSERT [LOW_PRIORITY | DELAYED | HIGH_PRIORITY] [IGNORE] [INTO] table_name [partition_clause] [ AS alias ]
+    [ ( column_name [, ...] ) ]
+    { { VALUES | VALUE} ( value_list ) [, (value_list)]...
+    | set col_name = value [, col_name = value] ... }
+    [ ON DUPLICATE KEY UPDATE col_name = value [, col_name = value] ... ]
+
+INSERT [LOW_PRIORITY | HIGH_PRIORITY] [IGNORE] [INTO] table_name [partition_clause] [ AS alias ]
+    [ ( column_name [, ...] ) ]
+    | SELECT ...
+    [ ON DUPLICATE KEY UPDATE col_name = value [, col_name = value] ... ]
+
+where with_query can be:
+    with_query_name [ ( column_name [, ...] ) ] AS [ [ NOT ] MATERIALIZED ]
+    ( {select | values | insert | update | delete} )
+
+value:
+    {expr | DEFAULT}
+
+value_list:
+    value [, value] ...
+
 </synopsis>
  </refsynopsisdiv>
 

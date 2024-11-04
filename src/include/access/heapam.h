@@ -392,6 +392,12 @@ extern bool heapam_update_fetch_row_version(Relation relation,
 								  CommandId cid);
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+TM_Result
+heapTupleSatisfiesUpdateOnconflict(HeapTuple htup, CommandId curcid,
+								  Buffer buffer);
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 /*
  * To avoid leaking too much knowledge about reorderbuffer implementation
  * details this is implemented in reorderbuffer.c not heapam_visibility.c

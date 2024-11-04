@@ -54,31 +54,22 @@ SELECT * FROM foo;
 INSERT INTO foo SELECT f1+10, f2, f3+99 FROM foo
   RETURNING *, f1+112 IN (SELECT q1 FROM int8_tbl) AS subplan,
     EXISTS(SELECT * FROM int4_tbl) AS initplan;
- f1 |  f2  | f3  | subplan | initplan 
-----+------+-----+---------+----------
- 11 | test | 141 | t       | t
- 12 | more | 141 | f       | t
-(2 rows)
-
+ERROR:   Can't reopen table:foo
 UPDATE foo SET f3 = f3 * 2
   WHERE f1 > 10
   RETURNING *, f1+112 IN (SELECT q1 FROM int8_tbl) AS subplan,
     EXISTS(SELECT * FROM int4_tbl) AS initplan;
- f1 |  f2  | f3  | subplan | initplan 
-----+------+-----+---------+----------
- 11 | test | 282 | t       | t
- 12 | more | 282 | f       | t
-(2 rows)
+ f1 | f2 | f3 | subplan | initplan 
+----+----+----+---------+----------
+(0 rows)
 
 DELETE FROM foo
   WHERE f1 > 10
   RETURNING *, f1+112 IN (SELECT q1 FROM int8_tbl) AS subplan,
     EXISTS(SELECT * FROM int4_tbl) AS initplan;
- f1 |  f2  | f3  | subplan | initplan 
-----+------+-----+---------+----------
- 11 | test | 282 | t       | t
- 12 | more | 282 | f       | t
-(2 rows)
+ f1 | f2 | f3 | subplan | initplan 
+----+----+----+---------+----------
+(0 rows)
 
 -- Joins
 UPDATE foo SET f3 = f3*2

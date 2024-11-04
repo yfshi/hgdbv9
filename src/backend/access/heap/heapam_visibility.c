@@ -1740,3 +1740,71 @@ HeapTupleSatisfiesVisibility(HeapTuple tup, Snapshot snapshot, Buffer buffer)
 
 	return false;				/* keep compiler quiet */
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+TM_Result
+heapTupleSatisfiesUpdateOnconflict(HeapTuple htup, CommandId curcid,
+						 Buffer buffer)
+{
+	HeapTupleHeader tuple = htup->t_data;
+
+	Assert(ItemPointerIsValid(&htup->t_self));
+	Assert(htup->t_tableOid != InvalidOid);
+
+	if (!HeapTupleHeaderXminCommitted(tuple))
+	{
+		if (HeapTupleHeaderXminInvalid(tuple))
+			return TM_Invisible;
+
+		/* Used by pre-9.0 binary upgrades */
+		if (tuple->t_infomask & HEAP_MOVED_OFF)
+		{
+			TransactionId xvac = HeapTupleHeaderGetXvac(tuple);
+
+			if (TransactionIdIsCurrentTransactionId(xvac))
+				return TM_Invisible;
+			if (!TransactionIdIsInProgress(xvac))
+			{
+				if (TransactionIdDidCommit(xvac))
+				{
+					SetHintBits(tuple, buffer, HEAP_XMIN_INVALID,
+								InvalidTransactionId);
+					return TM_Invisible;
+				}
+				SetHintBits(tuple, buffer, HEAP_XMIN_COMMITTED,
+							InvalidTransactionId);
+			}
+		}
+		/* Used by pre-9.0 binary upgrades */
+		else if (tuple->t_infomask & HEAP_MOVED_IN)
+		{
+			TransactionId xvac = HeapTupleHeaderGetXvac(tuple);
+
+			if (!TransactionIdIsCurrentTransactionId(xvac))
+			{
+				if (TransactionIdIsInProgress(xvac))
+					return TM_Invisible;
+				if (TransactionIdDidCommit(xvac))
+					SetHintBits(tuple, buffer, HEAP_XMIN_COMMITTED,
+								InvalidTransactionId);
+				else
+				{
+					SetHintBits(tuple, buffer, HEAP_XMIN_INVALID,
+								InvalidTransactionId);
+					return TM_Invisible;
+				}
+			}
+		}
+		else if (TransactionIdIsCurrentTransactionId(HeapTupleHeaderGetRawXmin(tuple)))
+		{
+			if (HeapTupleHeaderGetCmin(tuple) >= curcid)
+			{
+				 /* Only for compatible oracle MERGE */
+				return TM_Ok;	/* inserted after scan started */
+			}
+		}
+
+	}
+	return TM_Invisible;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */

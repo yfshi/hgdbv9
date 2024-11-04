@@ -3405,6 +3405,12 @@ transformRuleStmt(RuleStmt *stmt, const char *queryString,
 			addNSItemToQuery(sub_pstate, oldnsitem, false, true, false);
 			addNSItemToQuery(sub_pstate, newnsitem, false, true, false);
 
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			/* In MySQL mode,Set flag about rules */
+			if (compatible_db == DB_MYSQL)
+				sub_pstate->p_ruleflag = true;
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 			/* Transform the rule action statement */
 			top_subqry = transformStmt(sub_pstate, action);
 

@@ -390,6 +390,22 @@ typedef struct OnConflictSetState
 	ExprState  *oc_WhereClause; /* state for the WHERE clause */
 } OnConflictSetState;
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/* ----------------
+ *	 UpsertState information
+ * ----------------
+ */
+typedef struct UpsertState
+{
+	NodeTag		type;
+
+	UpsertAction		us_action;		/* Flags showing DUPLICATE UPDATE NOTHING or SOMETHING */
+	TupleTableSlot	   *us_existing;	/* slot to store existing target tuple in */
+	List			   *us_excludedtlist;/* the excluded pseudo relation's tlist */
+	TupleTableSlot	   *us_updateproj;	/* slot to update */
+} UpsertState;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 /* ----------------
  *	 MergeActionState information
  *
@@ -557,6 +573,7 @@ typedef struct ResultRelInfo
 	 * one of its ancestors; see ExecCrossPartitionUpdateForeignKey().
 	 */
 	List	   *ri_ancestorResultRels;
+	ProjectionInfo   *ri_updateProj;	/* ReqID:SRS-MYSQL-SQL-INSERT */
 } ResultRelInfo;
 
 /*
@@ -1349,6 +1366,9 @@ typedef struct ModifyTableState
 	List	   *mt_ResultTupleSlots;	/* for multiple modifying, ResultTupleSlot list for build mt_ProjInfos. */
 	ProjectionInfo **mt_ProjInfos;	/* for multiple modifying, projectInfo list array for each result relation. */
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	UpsertState   *mt_upsert; 			/* DUPLICATE KEY UPDATE evaluation state */
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 } ModifyTableState;
 
 /* ----------------

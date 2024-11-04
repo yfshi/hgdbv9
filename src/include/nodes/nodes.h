@@ -561,8 +561,12 @@ typedef enum NodeTag
 	T_SupportRequestIndexCondition,	/* in nodes/supportnodes.h */
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	T_IndexHintDefinition,
-	T_IndexHintRelationData
+	T_IndexHintRelationData,
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	T_UpsertClause,
+	T_UpsertExpr
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 } NodeTag;
 
 /*
@@ -871,6 +875,15 @@ typedef enum OnConflictAction
 	ONCONFLICT_NOTHING,			/* ON CONFLICT ... DO NOTHING */
 	ONCONFLICT_UPDATE			/* ON CONFLICT ... DO UPDATE */
 } OnConflictAction;
+
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+typedef enum UpsertAction
+{
+	UPSERT_NONE,	/* No "DUPLICATE KEY UPDATE" clause */
+	UPSERT_NOTHING,	/* DUPLICATE KEY UPDATE NOTHING */
+	UPSERT_UPDATE,	/* DUPLICATE KEY UPDATE ... */
+}UpsertAction;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 /*
  * LimitOption -

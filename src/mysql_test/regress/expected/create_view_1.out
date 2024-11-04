@@ -1669,25 +1669,15 @@ select * from int8_tbl i, lateral(values(i.*::int8_tbl)) ss;
 (5 rows)
 
 create view tt17v as select * from int8_tbl i where i in (values(i));
+ERROR:  missing FROM-clause entry for table "excluded"
+LINE 1: ...ew tt17v as select * from int8_tbl i where i in (values(i));
+                                                                   ^
 select * from tt17v;
-        q1        |        q2         
-------------------+-------------------
-              123 |               456
-              123 |  4567890123456789
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
-(5 rows)
-
+ERROR:  relation "tt17v" does not exist
+LINE 1: select * from tt17v;
+                      ^
 select pg_get_viewdef('tt17v', true);
-               pg_get_viewdef                
----------------------------------------------
-  SELECT i.q1,                              +
-     i.q2                                   +
-    FROM int8_tbl i                         +
-   WHERE (i.* IN ( VALUES (i.*::int8_tbl)));
-(1 row)
-
+ERROR:  relation "tt17v" does not exist
 select * from int8_tbl i where i.* in (values(i.*::int8_tbl));
         q1        |        q2         
 ------------------+-------------------
@@ -2044,7 +2034,7 @@ drop cascades to view aliased_view_2
 drop cascades to view aliased_view_3
 drop cascades to view aliased_view_4
 DROP SCHEMA testviewschm2 CASCADE;
-NOTICE:  drop cascades to 74 other objects
+NOTICE:  drop cascades to 73 other objects
 DETAIL:  drop cascades to table t1
 drop cascades to view temporal1
 drop cascades to view temporal2
@@ -2107,7 +2097,6 @@ drop cascades to view tt14v
 drop cascades to type nestedcomposite
 drop cascades to view tt15v
 drop cascades to view tt16v
-drop cascades to view tt17v
 drop cascades to table tt15v_log
 drop cascades to view tt18v
 drop cascades to view tt19v

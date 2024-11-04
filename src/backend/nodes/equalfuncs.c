@@ -858,6 +858,20 @@ _equalOnConflictExpr(const OnConflictExpr *a, const OnConflictExpr *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static bool
+_equalUpsertExpr(const UpsertExpr *a, const UpsertExpr *b)
+{
+	COMPARE_SCALAR_FIELD(upsertAction);
+	COMPARE_NODE_FIELD(updateTlist);
+	COMPARE_NODE_FIELD(exclRelTlist);
+	COMPARE_SCALAR_FIELD(exclRelIndex);
+
+	return true;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 /*
  * Stuff from pathnodes.h
  */
@@ -1035,6 +1049,7 @@ _equalQuery(const Query *a, const Query *b)
 	COMPARE_NODE_FIELD(resultRelations);
 	COMPARE_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	COMPARE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
 
@@ -1061,6 +1076,7 @@ _equalInsertStmt(const InsertStmt *a, const InsertStmt *b)
 	COMPARE_NODE_FIELD(returningList);
 	COMPARE_NODE_FIELD(withClause);
 	COMPARE_SCALAR_FIELD(override);
+	COMPARE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
 
 	return true;
 }
@@ -3124,6 +3140,18 @@ _equalOnConflictClause(const OnConflictClause *a, const OnConflictClause *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static bool
+_equalUpsertClause(const UpsertClause *a, const UpsertClause *b)
+{
+	COMPARE_NODE_FIELD(targetList);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 static bool
 _equalCTESearchClause(const CTESearchClause *a, const CTESearchClause *b)
 {
@@ -4258,6 +4286,14 @@ equal(const void *a, const void *b)
 			retval = _equalIndexHintRelationData(a, b);
 			break;
 		/* End - ReqID:SRS-MYSQL-UPDATE */
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		case T_UpsertClause:
+			retval = _equalUpsertClause(a, b);
+			break;
+		case T_UpsertExpr:
+			retval = _equalUpsertExpr(a, b);
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

@@ -300,6 +300,7 @@ _readQuery(void)
 	READ_NODE_FIELD(resultRelations);
 	READ_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	READ_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 
@@ -1475,6 +1476,7 @@ _readFromExpr(void)
 	READ_DONE();
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 /*
  * _readOnConflictExpr
  */
@@ -1494,6 +1496,22 @@ _readOnConflictExpr(void)
 
 	READ_DONE();
 }
+/*
+ * _readOnConflictExpr
+ */
+static UpsertExpr *
+_readUpsertExpr(void)
+{
+	READ_LOCALS(UpsertExpr);
+
+	READ_ENUM_FIELD(upsertAction, UpsertAction);
+	READ_NODE_FIELD(updateTlist);
+	READ_NODE_FIELD(exclRelTlist);
+	READ_INT_FIELD(exclRelIndex);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 /*
  *	Stuff from pathnodes.h.
@@ -1824,6 +1842,13 @@ _readModifyTable(void)
 	READ_NODE_FIELD(targetlists);
 	READ_NODE_FIELD(parseresultrelations);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	READ_ENUM_FIELD(upsertAction, UpsertAction);
+	READ_NODE_FIELD(updateTlist);
+	READ_NODE_FIELD(upexclRelTlist);
+	READ_NODE_FIELD(upsertCols);
+	READ_UINT_FIELD(upexclRelRTIndex);
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	READ_DONE();
 }
@@ -3201,6 +3226,10 @@ parseNodeString(void)
 	else if (MATCH("INDEXHINT_DEFINITION", 20))
 		return_value = _readIndexHintDefinition();
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	else if (MATCH("UPSERTEXPR", 10))
+		return_value = _readUpsertExpr();
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

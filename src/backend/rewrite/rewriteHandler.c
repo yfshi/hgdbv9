@@ -4282,6 +4282,19 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 										rt_entry_relation,
 										NULL, 0, NULL);
 			}
+
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			if (parsetree->upsertClause != NULL &&
+				parsetree->upsertClause->upsertAction == UPSERT_UPDATE)
+			{
+				parsetree->upsertClause->updateTlist =
+					rewriteTargetListIU(parsetree->upsertClause->updateTlist,
+										CMD_UPDATE,
+										parsetree->override,
+										rt_entry_relation,
+										NULL,0, NULL);
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		}
 		else if (event == CMD_UPDATE)
 		{

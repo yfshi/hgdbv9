@@ -1050,16 +1050,37 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 	if (pstate->p_post_columnref_hook != NULL)
 	{
 		Node	   *hookresult;
+		Node	   *tmpnode = NULL;
+
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		if (compatible_db == MYS_PARSER && node)
+		{
+			tmpnode = copyObject(node);
+			if (pstate->p_isexistVar)
+				node = NULL;
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 		hookresult = pstate->p_post_columnref_hook(pstate, cref, node);
-		if (node == NULL)
-			node = hookresult;
-		else if (hookresult != NULL)
-			ereport(ERROR,
-					(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-					 errmsg("column reference \"%s\" is ambiguous",
-							NameListToString(cref->fields)),
-					 parser_errposition(pstate, cref->location)));
+
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		if (compatible_db == MYS_PARSER && !hookresult && tmpnode)
+		{
+			if (node == NULL)
+				node = tmpnode;
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+		else
+		{
+			if (node == NULL)
+				node = hookresult;
+			else if (hookresult != NULL)
+				ereport(ERROR,
+						(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+						 errmsg("column reference \"%s\" is ambiguous",
+								NameListToString(cref->fields)),
+						 parser_errposition(pstate, cref->location)));
+		}
 	}
 
 	/*
