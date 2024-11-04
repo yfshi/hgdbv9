@@ -2438,6 +2438,15 @@ drop package pkg;
 reset ivorysql.enable_get_oraparam_mode;
 /* End - BUG#M0000376 */
 
+/* Begin - BUG#M0000409 */
+create table t_bug409(id int ,id2 int);
+set ivorysql.enable_get_oraparam_mode = true;
+
+select * from get_parameter_descr('
+ do $$
+begin
+ insert into t_bug409 values(:node1, :node2);end;$$ using inout, inout PARAMSTYPE 23, 23');
+/* End - BUG#M0000409 */
 
 --bug#Z1269
 --ok
