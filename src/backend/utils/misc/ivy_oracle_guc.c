@@ -176,6 +176,10 @@ char	*plsql_warnings = "";
 bool   convert_utf8_to_gbk_question_mark = true;
 /* End - BUG#Z00001269 */
 
+/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+bool   enable_update_multicol = false;
+/* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+
 
 #endif
 
@@ -681,6 +685,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z00001269 */
+	/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+	{
+		{"ivorysql.enable_update_multicol", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether multiple updates of the same column."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_update_multicol,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
 #endif
 #if 0
 	/* End-of-list marker */
