@@ -496,7 +496,15 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <list>	OptSeqOptList SeqOptList OptParenthesizedSeqOptList
 %type <defelt>	SeqOptElem
 
-%type <istmt>	insert_rest
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+%type <istmt>	insert_rest insert_mysql_rest
+%type <node>	upsert_clause insert_empty_values
+%type <list>	empty_values
+%type <keyword>	opt_into
+%type <str>		opt_highpriority
+%type <boolean>	opt_delayed
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 %type <infer>	opt_conf_expr
 %type <onconflict> opt_on_conflict
 %type <mergewhen>	merge_insert merge_update merge_delete
@@ -669,9 +677,9 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
 	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
-	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
+	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
-	DOUBLE_P DROP
+	DOUBLE_P DROP DUPLICATE_P
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
@@ -682,7 +690,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
 	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
 
-	HANDLER HAVING HEADER_P HOLD HOUR_P
+	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
@@ -828,7 +836,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 /* Unary Operators */
 %left		AT				/* sets precedence for AT TIME ZONE */
 %left		COLLATE
-%right		UMINUS
+%right		UMINUS VALUE_P	/* ReqID:SRS-MYSQL-SQL-INSERT */
 %left		'[' ']'
 %left		'(' ')'
 %left		TYPECAST
@@ -11153,15 +11161,36 @@ DeallocateStmt: DEALLOCATE name
  *
  *****************************************************************************/
 
+/* ReqID:SRS-MYSQL-SQL-INSERT */
 InsertStmt:
-			opt_with_clause INSERT INTO insert_target insert_rest
+			/* opt_with_clause INSERT INTO insert_target insert_rest */
+			opt_with_clause INSERT opt_lowpriority opt_delayed opt_highpriority opt_ignore opt_into insert_target insert_mysql_rest
 			opt_on_conflict returning_clause
 				{
-					$5->relation = $4;
-					$5->onConflictClause = $6;
-					$5->returningList = $7;
-					$5->withClause = $1;
-					$$ = (Node *) $5;
+					$9->relation = $8;
+					$9->onConflictClause = $10;
+					$9->returningList = $11;
+					$9->withClause = $1;
+					$$ = (Node *) $9;
+				}
+			| opt_with_clause INSERT opt_lowpriority opt_delayed opt_highpriority opt_ignore opt_into insert_target insert_mysql_rest
+			upsert_clause returning_clause
+				{
+					if ($11 != NIL)
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("RETURNING clause is not yet supported whithin INSERT ON DUPLICATE KEY UPDATE statement."),
+							 errhint("Please note whether it's compatible with MySQL mode.")));
+					if ($1 != NULL)
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("WITH clause is not yet supported whithin INSERT ON DUPLICATE KEY UPDATE statement."),
+							 errhint("Please note whether it's compatible with MySQL mode.")));
+					$9->relation = $8;
+					$9->upsertClause = (UpsertClause *)$10;
+					$9->returningList = $11;
+					$9->withClause = $1;
+					$$ = (Node *) $9;
 				}
 		;
 
@@ -11182,7 +11211,31 @@ insert_target:
 					$$ = $1;
 				}
 		;
-
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+insert_mysql_rest:
+			insert_rest
+				{
+					$$ = $1;
+				}
+			| SET set_clause_list
+				{
+					SelectStmt *n;
+					List	   *tmplist = NIL;
+					ListCell   *cell = NULL;
+					ResTarget  *tmp_res = NULL;
+					$$ = makeNode(InsertStmt);
+					n = makeNode(SelectStmt);
+					foreach(cell, $2)
+					{
+						tmp_res = (ResTarget *)lfirst(cell);
+						tmplist = lappend(tmplist, (Node *)tmp_res->val);
+					}
+					n->valuesLists = lappend(n->valuesLists, tmplist);
+					$$->cols = $2;
+					$$->selectStmt = (Node *)n;
+				}
+		;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 insert_rest:
 			SelectStmt
 				{
@@ -11216,8 +11269,59 @@ insert_rest:
 					$$->cols = NIL;
 					$$->selectStmt = NULL;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			| '(' ')' SelectStmt
+				{
+					$$ = makeNode(InsertStmt);
+					$$->cols = NIL;
+					$$->selectStmt = $3;
+				}
+			| insert_empty_values
+				{
+					$$ = makeNode(InsertStmt);
+					$$->cols = NIL;
+					if (list_length(((SelectStmt *)$1)->valuesLists) == 1)
+						$$->selectStmt = NULL;
+					else
+						$$->selectStmt = $1;
+				}
+			| '(' ')' insert_empty_values
+				{
+					$$ = makeNode(InsertStmt);
+					$$->cols = NIL;
+					if (list_length(((SelectStmt *)$3)->valuesLists) == 1)
+						$$->selectStmt = NULL;
+					else
+						$$->selectStmt = $3;
+				}
 		;
-
+insert_empty_values:
+			VALUES empty_values
+				{
+					SelectStmt   *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1($2);
+					$$ = (Node *)n;
+				}
+			|VALUE_P empty_values
+				{
+					SelectStmt   *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1($2);
+					$$ = (Node *)n;
+				}
+			| insert_empty_values ',' empty_values
+				{
+					SelectStmt   *n = (SelectStmt *)$1;
+					n->valuesLists = lappend(n->valuesLists, $3);
+					$$ = (Node *)n;
+				}
+		;
+empty_values:
+			'(' ')'
+			{
+				$$ = NIL;
+			}
+	;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 override_kind:
 			USER		{ $$ = OVERRIDING_USER_VALUE; }
 			| SYSTEM_P	{ $$ = OVERRIDING_SYSTEM_VALUE; }
@@ -11296,6 +11400,29 @@ returning_clause:
 			| /* EMPTY */				{ $$ = NIL; }
 		;
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+upsert_clause:
+			ON DUPLICATE_P KEY UPDATE set_clause_list
+				{
+					UpsertClause *uc = makeNode(UpsertClause);
+					uc->targetList = $5;
+					uc->location = @1;
+					$$ = (Node *) uc;
+				}
+		;
+opt_into:
+			INTO
+			| /*EMPTY*/		{ $$ = NULL; }
+		;
+opt_highpriority:
+			HIGH_PRIORITY	{$$ = NULL;}
+			| /*EMPTY*/ 	{$$ = NULL;}
+		;
+opt_delayed:
+			DELAYED			{$$ = true;}
+			| /*EMPTY*/ 	{$$ = false;}
+		;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 /*****************************************************************************
  *
@@ -11443,6 +11570,31 @@ set_clause:
 					$1->val = (Node *) $3;
 					$$ = list_make1($1);
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			/*| set_target '='  VALUES '(' columnref ')'
+				{
+					ColumnRef	   *c = NULL;
+					int				nfields = 0;
+					if (IsA($5, ColumnRef))
+						c = (ColumnRef *) $5;
+					else if (IsA($5, A_Indirection))
+						c = (ColumnRef *)(((A_Indirection *)$5)->arg);
+
+					nfields = list_length(c->fields);
+					/* only allow col.*, col[...], col */
+					/*if (nfields > 1)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("only allow column name within VALUES"),
+								 parser_errposition(@5)));
+					}
+
+					c->fields = lcons((Node *)makeString("excluded"), c->fields);
+					$1->val = (Node *) $5;
+					$$ = list_make1($1);
+				}*/
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			| '(' set_target_list ')' '=' a_expr
 				{
 					int ncolumns = list_length($2);
@@ -12444,6 +12596,14 @@ values_clause:
 					n->valuesLists = list_make1($3);
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			| VALUE_P '(' expr_list ')'
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1($3);
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			| values_clause ',' '(' expr_list ')'
 				{
 					SelectStmt *n = (SelectStmt *) $1;
@@ -14249,6 +14409,33 @@ a_expr:		c_expr									{ $$ = $1; }
 														   @2),
 									 @2);
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			/*
+			 * Support insert ...on duplicate key update column = values().
+			 */
+			| VALUES '(' columnref ')'
+				{
+
+					ColumnRef	   *c = NULL;
+					int				nfields = 0;
+					if (IsA($3, ColumnRef))
+						c = (ColumnRef *) $3;
+					else if (IsA($3, A_Indirection))
+						c = (ColumnRef *)(((A_Indirection *)$3)->arg);
+					nfields = list_length(c->fields);
+					/* only allow col.*, col[...], col */
+					if (nfields > 1)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("only allow column name within VALUES"),
+								 parser_errposition(@3)));
+					}
+
+					c->fields = lcons((Node *)makeString("excluded"), c->fields);
+					$$ = (Node *) $3;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT  */
 			| DEFAULT
 				{
 					/*
@@ -14339,7 +14526,7 @@ b_expr:		c_expr
  * inside parentheses, such as function arguments; that cannot introduce
  * ambiguity to the b_expr syntax.
  */
-c_expr:		columnref								{ $$ = $1; }
+c_expr:		columnref				%prec UMINUS	{ $$ = $1; }
 			| AexprConst							{ $$ = $1; }
 			| PARAM opt_indirection
 				{
@@ -16122,6 +16309,7 @@ unreserved_keyword:
 			| DOMAIN_P
 			| DOUBLE_P
 			| DROP
+			| DUPLICATE_P	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| EACH
 			| ENABLE_P
 			| ENCODING
@@ -16488,6 +16676,7 @@ reserved_keyword:
 			| CURRENT_USER
 			| DEFAULT
 			| DEFERRABLE
+			| DELAYED	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| DESC
 			| DISTINCT
 			| DO
@@ -16502,6 +16691,7 @@ reserved_keyword:
 			| GRANT
 			| GROUP_P
 			| HAVING
+			| HIGH_PRIORITY	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| IGNORE_P	/* ReqID:SRS-MYSQL-UPDATE */
 			| IN_P
 			| INITIALLY
@@ -16652,6 +16842,7 @@ bare_label_keyword:
 			| DEFERRABLE
 			| DEFERRED
 			| DEFINER
+			| DELAYED
 			| DELETE_P
 			| DELIMITER
 			| DELIMITERS
@@ -16668,6 +16859,7 @@ bare_label_keyword:
 			| DOMAIN_P
 			| DOUBLE_P
 			| DROP
+			| DUPLICATE_P
 			| EACH
 			| ELSE
 			| ENABLE_P
@@ -16708,6 +16900,7 @@ bare_label_keyword:
 			| GROUPS
 			| HANDLER
 			| HEADER_P
+			| HIGH_PRIORITY
 			| HOLD
 			| IDENTITY_P
 			| IF_P

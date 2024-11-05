@@ -7096,6 +7096,24 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 		node->exclRelRTI = onconflict->exclRelIndex;
 		node->exclRelTlist = onconflict->exclRelTlist;
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (root->parse->upsertClause)
+	{
+		node->upsertAction = root->parse->upsertClause->upsertAction;
+		node->updateTlist = root->parse->upsertClause->updateTlist;
+		node->upsertCols =
+			extract_update_targetlist_colnos(node->updateTlist);
+		node->upexclRelTlist = root->parse->upsertClause->exclRelTlist;
+		node->upexclRelRTIndex = root->parse->upsertClause->exclRelIndex;
+	}
+	else
+	{
+		node->upsertAction = UPSERT_NONE;
+		node->updateTlist = NIL;
+		node->upexclRelTlist = NIL;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	node->updateColnosLists = updateColnosLists;
 	node->withCheckOptionLists = withCheckOptionLists;
 	node->returningLists = returningLists;

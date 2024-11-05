@@ -4106,6 +4106,42 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 		}
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Gather names of ON duplicate key update */
+	if (mtstate->mt_upsert && mtstate->mt_upsert->us_action != UPSERT_NONE &&
+		mtstate->resultRelInfo->ri_NumIndices > 0)
+	{
+		ResultRelInfo	   *resultRelInfo = mtstate->resultRelInfo;
+		IndexInfo		   *indexInfo = NULL;
+		List			   *idxNames = NIL;
+		int					i = 0;
+		for (i = 0; i < resultRelInfo->ri_NumIndices; ++i)
+		{
+			Relation	indexRelation;
+			char	   *indexName;
+
+			indexInfo = resultRelInfo->ri_IndexRelationInfo[i];
+			if (!indexInfo->ii_Unique && !indexInfo->ii_ExclusionOps)
+				continue;
+
+			indexRelation = resultRelInfo->ri_IndexRelationDescs[i];
+			indexName = RelationGetRelationName(indexRelation);
+			idxNames = lappend(idxNames, indexName);
+		}
+		ExplainPropertyText("Conflict Resolution",
+							mtstate->mt_upsert->us_action == UPSERT_NOTHING ? "NOTHING" : "UPDATE",
+							es);
+		/*
+		 * Don't display arbiter indexes at all when DO NOTHING variant
+		 * implicitly ignores all conflicts
+		 */
+		if (idxNames != NIL)
+		{
+			ExplainPropertyList("Conflict Arbiter Indexes", idxNames, es);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 	if (labeltargets)
 		ExplainCloseGroup("Target Tables", "Target Tables", false, es);
 }

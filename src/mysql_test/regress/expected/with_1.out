@@ -3101,23 +3101,8 @@ WITH RECURSIVE t1 AS (
   INSERT INTO yy SELECT * FROM t1 RETURNING *
 )
 SELECT 1;
- ?column? 
-----------
-        1
-(1 row)
-
+ERROR:   Can't reopen table:y
 SELECT * FROM y;
- a 
----
- 1
- 2
- 3
- 1
- 2
- 3
-(6 rows)
-
-SELECT * FROM yy;
  a 
 ---
  1
@@ -3125,47 +3110,30 @@ SELECT * FROM yy;
  3
 (3 rows)
 
+SELECT * FROM yy;
+ a 
+---
+(0 rows)
+
 WITH RECURSIVE t1 AS (
   INSERT INTO yy SELECT * FROM t2 RETURNING *
 ), t2 AS (
   INSERT INTO y SELECT * FROM y RETURNING *
 )
 SELECT 1;
- ?column? 
-----------
-        1
-(1 row)
-
+ERROR:   Can't reopen table:y
 SELECT * FROM y;
  a 
 ---
  1
  2
  3
- 1
- 2
- 3
- 1
- 2
- 3
- 1
- 2
- 3
-(12 rows)
+(3 rows)
 
 SELECT * FROM yy;
  a 
 ---
- 1
- 2
- 3
- 1
- 2
- 3
- 1
- 2
- 3
-(9 rows)
+(0 rows)
 
 -- triggers
 TRUNCATE TABLE y;

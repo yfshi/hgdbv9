@@ -1100,6 +1100,7 @@ checkInsertTargets(ParseState *pstate, List *cols, List **attrnos)
 					attrno = (* OraGetAttrnoHook)(pstate, col);
 			}
 			/* End - ReqID:SRS-SQL-INSERT */
+
 			if (attrno == InvalidAttrNumber)
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_COLUMN),

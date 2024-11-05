@@ -425,6 +425,12 @@ setTargetTable(ParseState *pstate, RangeVar *relation,
 	if (alsoSource)
 		addNSItemToQuery(pstate, nsitem, true, true, true);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* If INSERT, add table to insertvarnamespace. */
+	if (pstate->p_is_insert && DB_MYSQL == compatible_db && !pstate->p_ruleflag)
+		addNSItemToQuery(pstate, nsitem, false, false, false);
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	/* In MySQL mode, deal index hint pre check */
 	if (relation->indexhints != NIL && DB_MYSQL == compatible_db)

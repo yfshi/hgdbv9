@@ -226,6 +226,30 @@ scanNameSpaceForRefname(ParseState *pstate, const char *refname, int location)
 			result = nsitem;
 		}
 	}
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (compatible_db == DB_MYSQL && !result)
+	{
+		foreach(l, pstate->p_varnamespace)
+		{
+			ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
+			/* If not inside LATERAL, ignore lateral-only items */
+			if (nsitem->p_lateral_only && !pstate->p_lateral_active)
+				continue;
+
+			if (strcmp(nsitem->p_names->aliasname, refname) == 0)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_ALIAS),
+							 errmsg("table reference \"%s\" is ambiguous",
+									refname),
+							 parser_errposition(pstate, location)));
+				check_lateral_ref_ok(pstate, nsitem, location);
+				result = nsitem;
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	return result;
 }
 
@@ -270,6 +294,35 @@ scanNameSpaceForRelid(ParseState *pstate, Oid relid, int location)
 			result = nsitem;
 		}
 	}
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (compatible_db == DB_MYSQL && !result)
+	{
+		foreach(l, pstate->p_varnamespace)
+		{
+			ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
+			RangeTblEntry *rte = nsitem->p_rte;
+
+			/* If not inside LATERAL, ignore lateral-only items */
+			if (nsitem->p_lateral_only && !pstate->p_lateral_active)
+				continue;
+
+			/* yes, the test for alias == NULL should be there... */
+			if (rte->rtekind == RTE_RELATION &&
+				rte->relid == relid &&
+				rte->alias == NULL)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_ALIAS),
+							 errmsg("table reference %u is ambiguous",
+									relid),
+							 parser_errposition(pstate, location)));
+				check_lateral_ref_ok(pstate, nsitem, location);
+				result = nsitem;
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	return result;
 }
 
@@ -926,6 +979,41 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 				result = newresult;
 			}
 		}
+
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		if (!result && pstate->p_varnamespace)
+		{
+			foreach(l, pstate->p_varnamespace)
+			{
+				ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
+				Node	   *newresult;
+
+				/* Ignore table-only items */
+				if (!nsitem->p_cols_visible)
+					continue;
+				/* If not inside LATERAL, ignore lateral-only items */
+				if (nsitem->p_lateral_only && !pstate->p_lateral_active)
+					continue;
+
+				/* use orig_pstate here for consistency with other callers */
+				newresult = scanNSItemForColumn(orig_pstate, nsitem, sublevels_up,
+												colname, has_plus_token, location);
+
+				if (newresult)
+				{
+					if (result && !equal(result, newresult))
+						ereport(ERROR,
+								(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+								 errmsg("column reference \"%s\" is ambiguous",
+										colname),
+								 parser_errposition(pstate, location)));
+					check_lateral_ref_ok(pstate, nsitem, location);
+					result = newresult;
+					pstate->p_isexistVar = true;
+				}
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 		if (result != NULL || localonly)
 			break;				/* found, or don't want to look at parent */
@@ -3070,8 +3158,23 @@ addNSItemToQuery(ParseState *pstate, ParseNamespaceItem *nsitem,
 		nsitem->p_cols_visible = addToVarNameSpace;
 		nsitem->p_lateral_only = false;
 		nsitem->p_lateral_ok = true;
-		pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
+		if (addToRelNameSpace || addToVarNameSpace)
+			pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
 	}
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	else
+	{
+		if (DB_MYSQL == compatible_db)
+		{
+			/* Set the new nsitem's visibility flags correctly */
+			nsitem->p_rel_visible = addToRelNameSpace;
+			nsitem->p_cols_visible = true;
+			nsitem->p_lateral_only = false;
+			nsitem->p_lateral_ok = true;
+			pstate->p_varnamespace = lappend(pstate->p_varnamespace, nsitem);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 }
 
 /*

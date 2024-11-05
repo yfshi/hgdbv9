@@ -118,6 +118,22 @@ exec_merge_matched_hook_type ora_exec_merge_matched_hook = NULL;
 static void InitMultipleModify(ModifyTableState* node, int32 resultRelationNum);
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static bool
+ExecConflictUpdate(ModifyTableContext *context,
+			  ResultRelInfo *resultRelInfo,
+			  ItemPointer conflictTid,
+			  TupleTableSlot *excludedSlot,
+			  bool canSetTag,
+			  TupleTableSlot **returning);
+static void
+ExecUpsert(ModifyTableContext *context, ModifyTableState* state, TupleTableSlot* slot,
+			   TupleTableSlot* planSlot, EState* estate,
+			   bool canSetTag, TupleTableSlot** returning,
+			   bool* updated, ResultRelInfo *resultRelInfo);
+
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 
 /*
  * Verify that the tuples to be produced by INSERT match the
@@ -728,6 +744,123 @@ internalGetUpdateNewTuple(ResultRelInfo *relinfo,
 	return ExecProject(newProj);
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/*
+ * ExecUpsert - execute insert ... on duplicate key update.
+ */
+static void
+ExecUpsert(ModifyTableContext *context, ModifyTableState* state, TupleTableSlot* slot, TupleTableSlot* planSlot, EState* estate,
+			   bool canSetTag, TupleTableSlot** returning, bool* updated, ResultRelInfo *resultRelInfo)
+{
+	bool			specConflict = false;
+	List		   *recheckIndexes = NIL;
+	Relation		resultRelationDesc = NULL;
+	Relation		heaprel = NULL; /* actual relation to upsert index */
+	Relation		targetrel = NULL; /* actual relation to upsert tuple */
+	UpsertState	   *upsertState = state->mt_upsert;
+	uint32			specToken;
+//	RangeTblEntry  *rte;
+	ItemPointerData conflictTid;
+
+	*updated = false;
+
+	/*
+	 * get information on the (current) result relation
+	 */
+	resultRelationDesc = resultRelInfo->ri_RelationDesc;
+	heaprel = resultRelationDesc;
+
+//	ConstraintsForExecUpsert(resultRelationDesc);
+
+//	rte = exec_rt_fetch(resultRelInfo->ri_RangeTableIndex, estate);
+	vlock:
+	targetrel = heaprel;
+
+	specConflict = false;
+
+	if (!ExecCheckIndexConstraints(resultRelInfo, slot, estate, &conflictTid, NIL))
+	{
+
+		/* committed conflict tuple found */
+		if (upsertState->us_action == UPSERT_UPDATE)
+		{
+			/*
+			 * In case of ON DUPLICATE KEY UPDATE, execute the UPDATE part.
+			 * Be prepared to retry if the UPDATE fails because
+			 * of another concurrent UPDATE/DELETE to the conflict tuple.
+			 */
+			*returning = NULL;
+
+			if (ExecConflictUpdate(context, resultRelInfo, &conflictTid, slot, canSetTag, returning))
+			{
+				InstrCountFiltered2(&state->ps, 1);
+				*updated = true;
+				return;
+			}
+			else
+			{
+				goto vlock;
+			}
+		}
+		else
+		{
+			/*
+			 * In case of DUPLICATE UPDATE NOTHING, do nothing.
+			 * However, verify that the tuple is visible to the
+			 * executor's MVCC snapshot at higher isolation levels.
+			 */
+			Assert(upsertState->us_action == UPSERT_NOTHING);
+			ExecCheckTIDVisible(estate, resultRelInfo, &conflictTid,
+								ExecGetReturningSlot(estate, resultRelInfo));
+			InstrCountFiltered2(&state->ps, 1);
+			*updated = true;
+			return;
+		}
+	}
+
+	/* insert the tuple */
+	//table_tuple_insert(targetrel, slot, estate->es_output_cid, 0, NULL);
+	specToken = SpeculativeInsertionLockAcquire(GetCurrentTransactionId());
+
+	/* insert the tuple, with the speculative token */
+	table_tuple_insert_speculative(targetrel, slot,
+								   estate->es_output_cid,
+								   0,
+								   NULL,
+								   specToken);
+
+	/* insert index entries for tuple */
+	recheckIndexes = ExecInsertIndexTuples(resultRelInfo,
+										   slot, estate, false, true,
+										   &specConflict,
+										   NULL);
+
+	/* adjust the tuple's state accordingly */
+	table_tuple_complete_speculative(resultRelationDesc, slot,
+									 specToken, !specConflict);
+
+	/*
+	 * Wake up anyone waiting for our decision.  They will re-check
+	 * the tuple, see that it's no longer speculative, and wait on our
+	 * XID as if this was a regularly inserted tuple all along.  Or if
+	 * we killed the tuple, they will see it's dead, and proceed as if
+	 * the tuple never existed.
+	 */
+	SpeculativeInsertionLockRelease(GetCurrentTransactionId());
+	/* other transaction commit index insertion before us,
+	 * then abort the tuple and try to find the conflict tuple again
+	 */
+	if (specConflict)
+	{
+		list_free(recheckIndexes);
+		goto vlock;
+	}
+
+	return;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 /* ----------------------------------------------------------------
  *		ExecInsert
  *
@@ -766,6 +899,7 @@ ExecInsert(ModifyTableContext *context,
 	PartitionTupleRouting *proute = mtstate->mt_partition_tuple_routing;
 	MemoryContext oldContext;
 
+	UpsertAction upsertAction = node->upsertAction; /* ReqID:SRS-MYSQL-SQL-INSERT */
 	/*
 	 * If the input result relation is a partitioned table, find the leaf
 	 * partition to insert the tuple into.
@@ -1124,6 +1258,19 @@ ExecInsert(ModifyTableContext *context,
 
 			/* Since there was no insertion conflict, we're done */
 		}
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		else if (upsertAction != UPSERT_NONE && resultRelInfo->ri_NumIndices > 0)
+		{
+			TupleTableSlot   *returning = NULL;
+			bool			updated = false;
+
+			ExecUpsert(context, mtstate, slot, planSlot, estate, canSetTag, &returning, &updated, resultRelInfo);
+			if (updated)
+			{
+				return returning;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		else
 		{
 			/* insert the tuple normally */
@@ -2693,6 +2840,227 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 	return true;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/*
+ * ExecConflictUpdate --- execute INSERT ON DUPLICATE KEY UPDATE
+ */
+static bool
+ExecConflictUpdate(ModifyTableContext *context,
+			  ResultRelInfo *resultRelInfo,
+			  ItemPointer conflictTid,
+			  TupleTableSlot *excludedSlot,
+			  bool canSetTag,
+			  TupleTableSlot **returning)
+{
+	ModifyTableState *mtstate = context->mtstate;
+	ExprContext *econtext = mtstate->ps.ps_ExprContext;
+	Relation	 relation = resultRelInfo->ri_RelationDesc;
+//	ExprState	*onConflictSetWhere = resultRelInfo->ri_onConflict->oc_WhereClause;
+	TupleTableSlot *existing = mtstate->mt_upsert->us_existing;
+	TM_FailureData tmfd;
+	LockTupleMode lockmode;
+	TM_Result	 test;
+	Datum		 xminDatum;
+	TransactionId xmin;
+	bool		 isnull;
+
+	/* Determine lock mode to use */
+	lockmode = ExecUpdateLockMode(context->estate, resultRelInfo);
+
+	/*
+	 * Lock tuple for update.	Don't follow updates when tuple cannot be
+	 * locked without doing so.  A row locking conflict here means our
+	 * previous conclusion that the tuple is conclusively committed is not
+	 * true anymore.
+	 */
+	test = table_tuple_lock(relation, conflictTid,
+							 context->estate->es_snapshot,
+							 existing, context->estate->es_output_cid,
+							 lockmode, LockWaitBlock, 0,
+							 &tmfd);
+	if ( test != TM_Ok && DB_MYSQL == compatible_db)
+	{
+		if(ItemPointerEquals(conflictTid, &(context->mtstate->mt_upsert->us_updateproj->tts_tid)) &&
+			resultRelInfo->ri_RelationDesc->rd_node.relNode == context->mtstate->mt_upsert->us_updateproj->tts_tableOid)
+		{
+			resultRelInfo->ri_RelationDesc->rd_conflictTid = conflictTid;
+			test = TM_Ok;
+		}
+	}
+	switch (test)
+	{
+		case TM_Ok:
+			/* success! */
+			break;
+
+		case TM_Invisible:
+
+			/*
+			 * This can occur when a just inserted tuple is updated again in
+			 * the same command. E.g. because multiple rows with the same
+			 * conflicting key values are inserted.
+			 *
+			 * This is somewhat similar to the ExecUpdate() TM_SelfModified
+			 * case.  We do not want to proceed because it would lead to the
+			 * same row being updated a second time in some unspecified order,
+			 * and in contrast to plain UPDATEs there's no historical behavior
+			 * to break.
+			 *
+			 * It is the user's responsibility to prevent this situation from
+			 * occurring.	These problems are why the SQL standard similarly
+			 * specifies that for SQL MERGE, an exception must be raised in
+			 * the event of an attempt to update the same row twice.
+			 */
+			xminDatum = slot_getsysattr(existing,
+									 MinTransactionIdAttributeNumber,
+									 &isnull);
+			Assert(!isnull);
+			xmin = DatumGetTransactionId(xminDatum);
+
+			if (TransactionIdIsCurrentTransactionId(xmin))
+				ereport(ERROR,
+					 (errcode(ERRCODE_CARDINALITY_VIOLATION),
+					/* translator: %s is a SQL command name */
+					  errmsg("%s command cannot affect row a second time",
+							 "ON CONFLICT DO UPDATE"),
+					  errhint("Ensure that no rows proposed for insertion within the same command have duplicate constrained values.")));
+
+				/* This shouldn't happen */
+			elog(ERROR, "attempted to lock invisible tuple");
+			break;
+
+		case TM_SelfModified:
+
+			/*
+			 * This state should never be reached. As a dirty snapshot is used
+			 * to find conflicting tuples, speculative insertion wouldn't have
+			 * seen this row to conflict with.
+			 */
+			elog(ERROR, "unexpected self-updated tuple");
+			break;
+
+		case TM_Updated:
+			if (IsolationUsesXactSnapshot())
+				ereport(ERROR,
+						(errcode(ERRCODE_T_R_SERIALIZATION_FAILURE),
+						 errmsg("could not serialize access due to concurrent update")));
+
+			/*
+			 * As long as we don't support an UPDATE of INSERT ON CONFLICT for
+			 * a partitioned table we shouldn't reach to a case where tuple to
+			 * be lock is moved to another partition due to concurrent update
+			 * of the partition key.
+			 */
+			Assert(!ItemPointerIndicatesMovedPartitions(&tmfd.ctid));
+
+			/*
+			 * Tell caller to try again from the very start.
+			 *
+			 * It does not make sense to use the usual EvalPlanQual() style
+			 * loop here, as the new version of the row might not conflict
+			 * anymore, or the conflicting tuple has actually been deleted.
+			 */
+			ExecClearTuple(existing);
+			return false;
+
+		case TM_Deleted:
+			if (IsolationUsesXactSnapshot())
+				ereport(ERROR,
+						(errcode(ERRCODE_T_R_SERIALIZATION_FAILURE),
+						 errmsg("could not serialize access due to concurrent delete")));
+
+			/* see TM_Updated case */
+			Assert(!ItemPointerIndicatesMovedPartitions(&tmfd.ctid));
+			ExecClearTuple(existing);
+			return false;
+
+		default:
+			elog(ERROR, "unrecognized table_tuple_lock status: %u", test);
+	}
+
+	/* Success, the tuple is locked. */
+
+	/*
+	* Verify that the tuple is visible to our MVCC snapshot if the current
+	* isolation level mandates that.
+	*
+	* It's not sufficient to rely on the check within ExecUpdate() as e.g.
+	* CONFLICT ... WHERE clause may prevent us from reaching that.
+	*
+	* This means we only ever continue when a new command in the current
+	* transaction could see the row, even though in READ COMMITTED mode the
+	* tuple will not be visible according to the current statement's
+	* snapshot.  This is in line with the way UPDATE deals with newer tuple
+	* versions.
+	*/
+	ExecCheckTupleVisible(context->estate, relation, existing);
+
+	/*
+	 * Make tuple and any needed join variables available to ExecQual and
+	 * ExecProject.  The EXCLUDED tuple is installed in ecxt_innertuple, while
+	 * the target's existing tuple is installed in the scantuple.	EXCLUDED
+	 * has been made to reference INNER_VAR in setrefs.c, but there is no
+	 * other redirection.
+	 */
+	econtext->ecxt_scantuple = mtstate->mt_upsert->us_existing;
+	econtext->ecxt_innertuple = excludedSlot;
+	econtext->ecxt_outertuple = NULL;
+
+//	if (!ExecQual(onConflictSetWhere, econtext))
+//	{
+//		ExecClearTuple(existing);	 /* see return below */
+//		InstrCountFiltered1(&mtstate->ps, 1);
+//		return true;			 /* done with the tuple */
+//	}
+
+	if (resultRelInfo->ri_WithCheckOptions != NIL)
+	{
+		/*
+		 * Check target's existing tuple against UPDATE-applicable USING
+		 * security barrier quals (if any), enforced here as RLS checks/WCOs.
+		 *
+		 * The rewriter creates UPDATE RLS checks/WCOs for UPDATE security
+		 * quals, and stores them as WCOs of "kind" WCO_RLS_CONFLICT_CHECK,
+		 * but that's almost the extent of its special handling for ON
+		 * CONFLICT DO UPDATE.
+		 *
+		 * The rewriter will also have associated UPDATE applicable straight
+		 * RLS checks/WCOs for the benefit of the ExecUpdate() call that
+		 * follows.  INSERTs and UPDATEs naturally have mutually exclusive WCO
+		 * kinds, so there is no danger of spurious over-enforcement in the
+		 * INSERT or UPDATE path.
+		 */
+		ExecWithCheckOptions(WCO_RLS_CONFLICT_CHECK, resultRelInfo,
+							 existing,
+							 mtstate->ps.state);
+	}
+
+	/* Project the new tuple version */
+	ExecProject(resultRelInfo->ri_updateProj);
+
+	/*
+	* Note that it is possible that the target tuple has been modified in
+	* this session, after the above table_tuple_lock. We choose to not error
+	* out in that case, in line with ExecUpdate's treatment of similar cases.
+	* This can happen if an UPDATE is triggered from within ExecQual(),
+	* ExecWithCheckOptions() or ExecProject() above, e.g. by selecting from a
+	* wCTE in the ON CONFLICT's SET.
+	*/
+	*returning = ExecUpdate(context, resultRelInfo,
+							conflictTid, NULL,
+							mtstate->mt_upsert->us_updateproj,
+							canSetTag);
+
+	/*
+	* Clear out existing tuple, as there might not be another conflict among
+	* the next input rows. Don't want to hold resources till the end of the
+	* query.
+	*/
+	ExecClearTuple(existing);
+	return true;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 /*
  * Perform MERGE.
  */
@@ -4193,6 +4561,11 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	int			i;
 	Relation	rel;
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	UpsertState		   *upsertState = NULL;
+	ResultRelInfo	   *result_rel_info = NULL;
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 	/* check for unsupported flags */
 	Assert(!(eflags & (EXEC_FLAG_BACKWARD | EXEC_FLAG_MARK)));
 
@@ -4216,6 +4589,14 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	mtstate->mt_merge_updated = 0;
 	mtstate->mt_merge_deleted = 0;
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	upsertState = (UpsertState*)palloc0(sizeof(UpsertState));
+	upsertState->us_action = node->upsertAction;
+	upsertState->us_existing = NULL;
+	upsertState->us_excludedtlist = NIL;
+	upsertState->us_updateproj = NULL;
+	mtstate->mt_upsert = upsertState;
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	/*----------
 	 * Resolve the target relation. This is the same as:
 	 *
@@ -4567,6 +4948,46 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		}
 	}
 
+	/*
+	 * If needed, Initialize target list, projection for DUPLICATE KEY UPDATE
+	 */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	result_rel_info = mtstate->resultRelInfo;
+	if (node->upsertAction == UPSERT_UPDATE && DB_MYSQL == compatible_db)
+	{
+		ExprContext	   *econtext = NULL;
+		TupleDesc		tupDesc = NULL;
+
+		ExecOpenIndices(result_rel_info, true);
+		/* already exists if created by RETURNING processing above */
+		if (mtstate->ps.ps_ExprContext == NULL)
+			ExecAssignExprContext(estate, &mtstate->ps);
+
+		econtext = mtstate->ps.ps_ExprContext;
+		tupDesc = result_rel_info->ri_RelationDesc->rd_att;
+
+		/* initialize slot for the existing tuple */
+		upsertState->us_existing =
+			table_slot_create(resultRelInfo->ri_RelationDesc,
+							  &mtstate->ps.state->es_tupleTable);
+
+		upsertState->us_excludedtlist = node->upexclRelTlist;
+		/* create target slot for UPDATE SET projection */
+		upsertState->us_updateproj =
+			table_slot_create(resultRelInfo->ri_RelationDesc,
+							  &mtstate->ps.state->es_tupleTable);
+		/* build UPDATE SET expression and projection state */
+		result_rel_info->ri_updateProj =
+			ExecBuildUpdateProjection(node->updateTlist,
+									  true,
+									  node->upsertCols,
+									  tupDesc,
+									  econtext,
+									  upsertState->us_updateproj,
+									  &mtstate->ps);
+		resultRelInfo->ri_RelationDesc->rd_conflictTid = NULL;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	/*
 	 * If we have any secondary relations in an UPDATE or DELETE, they need to
 	 * be treated like non-locked relations in SELECT FOR UPDATE, ie, the

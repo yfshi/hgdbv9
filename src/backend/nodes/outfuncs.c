@@ -434,6 +434,13 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(targetlists);
 	WRITE_NODE_FIELD(parseresultrelations);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	WRITE_ENUM_FIELD(upsertAction, UpsertAction);
+	WRITE_NODE_FIELD(updateTlist);
+	WRITE_NODE_FIELD(upexclRelTlist);
+	WRITE_NODE_FIELD(upsertCols);
+	WRITE_UINT_FIELD(upexclRelRTIndex);
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 }
 
 static void
@@ -1800,6 +1807,20 @@ _outOnConflictExpr(StringInfo str, const OnConflictExpr *node)
 	WRITE_INT_FIELD(exclRelIndex);
 	WRITE_NODE_FIELD(exclRelTlist);
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static void
+_outUpsertExpr(StringInfo str, const UpsertExpr *node)
+{
+	WRITE_NODE_TYPE("UPSERTEXPR");
+
+	WRITE_ENUM_FIELD(upsertAction, UpsertAction);
+	WRITE_NODE_FIELD(updateTlist);
+	WRITE_NODE_FIELD(exclRelTlist);
+	WRITE_INT_FIELD(exclRelIndex);
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 
 /*****************************************************************************
  *
@@ -3197,6 +3218,7 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_NODE_FIELD(resultRelations);
 	WRITE_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	WRITE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 }
@@ -4800,7 +4822,11 @@ outNode(StringInfo str, const void *obj)
 				_outIndexHintRelationData(str, (IndexHintRelationData*)obj);
 				break;
 			/* End - ReqID:SRS-MYSQL-UPDATE */
-
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			case T_UpsertExpr:
+				_outUpsertExpr(str, obj);
+				break;
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			default:
 
 				/*

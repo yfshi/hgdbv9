@@ -1657,4 +1657,18 @@ typedef struct OnConflictExpr
 typedef Expr NonDefValNode;
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+typedef struct UpsertExpr
+{
+	NodeTag			type;
+	UpsertAction	upsertAction;	/* DO NOTHING or UPDATE? */
+
+	/* DUPLICATE KEY UPDATE */
+	List		   *updateTlist;	/* List of UPDATE TargetEntrys */
+	List		   *exclRelTlist;	/* tlist of the 'EXCLUDED' pseudo relation */
+	int				exclRelIndex;	/* RT index of 'EXCLUDED' relation */
+} UpsertExpr;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 #endif							/* PRIMNODES_H */

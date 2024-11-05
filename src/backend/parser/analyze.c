@@ -112,6 +112,18 @@ static void transformMultiMergeTargetList(List *rellist, List **targetList);
 
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+static UpsertExpr*
+transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations);
+static void transformColumnReference(List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno);
+static void transformSchemaInTargetlist(List **targetlist);
+static void transformTableAndSchemaInCols(ParseState *pstate, List **cols);
+static Node *MakeNullNode();
+static Node *GetExprNode(List *exprList, List *attrnos, int varattno);
+
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 /*
  * parse_analyze
  *		Analyze a raw parse tree and transform it to Query form.
@@ -566,6 +578,241 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	return qry;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/*
+ * MakeNullNode
+ * Construct a null node.
+ */
+static Node *
+MakeNullNode()
+{
+	Const   *cnst = makeNode(Const);
+	cnst->consttype = UNKNOWNOID;
+	cnst->consttypmod = -1;
+	cnst->constcollid = 0;
+	cnst->constlen = -2;
+	cnst->constvalue = 0;
+	cnst->constisnull = true;
+	cnst->constbyval = false;
+	cnst->location = -1;		/* "unknown" */
+	return (Node*)cnst;
+}
+
+/*
+ * GetExprNode
+ * Get the previous column node referenced in the expression.
+ * Note: If the column exists, get it. If not, construct a NULL node.
+ */
+static Node *
+GetExprNode(List *exprList, List *attrnos, int varattno)
+{
+	ListCell   *lc = NULL;
+	int			resnum = 0;
+	int			num = 0;
+	Node	   *node;
+	foreach(lc, attrnos)
+	{
+		int		attrno = lfirst_int(lc);
+		num++;
+		if (attrno == varattno)
+		{
+			resnum = num;
+			node = ((Node *)list_nth(exprList, resnum - 1));
+			break;
+		}
+	}
+
+	if (!resnum)
+		node = MakeNullNode();
+
+	return node;
+}
+
+/*
+ * transformColumnReference
+ * Parsing and processing column references.
+ */
+static void
+transformColumnReference(List           **exprList, OpExpr **opexpr, List *attrnos, int atrrno)
+{
+	List	   *tmpattrnos = NIL;
+	List	   *argslist = NIL;
+	ListCell   *lc = NULL;
+	ListCell   *lc1 = NULL;
+	ListCell   *lc2 = NULL;
+
+	tmpattrnos = copyObject(attrnos);
+	if(!opexpr)
+	{
+		forboth(lc, *exprList, lc2, attrnos)
+		{
+			Node   *node = lfirst(lc);
+			int		num = lfirst_int(lc2);
+			argslist = NIL;
+			/* Whether the node is OpExpr */
+			if (IsA(node, OpExpr))
+			{
+				OpExpr   *opexpr = (OpExpr*)node;
+				/* Iterate over each parameter of the expression */
+				foreach(lc1, opexpr->args)
+				{
+					Node   *node1 = lfirst(lc1);
+					/* If the expression references the previous table column,
+					 * it needs to be replaced. If so, replace it; otherwise,
+					 * construct a NULL node.
+					 */
+					if (IsA(node1, Var))
+					{
+						Node	   *tmpnode;
+						Var		   *var = (Var*)node1;
+						/* Determines whether the expression (current column value) 
+						 * refers to the previous column,
+						 */
+						if (num <= var->varattno)
+							tmpnode = MakeNullNode();
+						else
+							tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
+
+						argslist = lappend(argslist, tmpnode);
+					}
+					/* If the parameter is also an expression,
+					 * recursive processing is required.
+					 */
+					else if (IsA(node1, OpExpr))
+					{
+						OpExpr	   *opr= (OpExpr*)node1;
+						transformColumnReference(exprList, &opr, attrnos, num);
+						argslist = lappend(argslist, opr);
+					}
+					else
+						argslist = lappend(argslist, node1);
+				}
+				opexpr->args = argslist;
+			}
+		}
+	}
+	/* Recursively process parameters, which are expressions. */
+	else
+	{
+		foreach(lc1, (*opexpr)->args)
+		{
+			Node   *node1 = lfirst(lc1);
+			if (IsA(node1, Var))
+			{
+				Node	   *tmpnode;
+				Var		   *var = (Var*)node1;
+
+				if (atrrno <= var->varattno)
+					tmpnode = MakeNullNode();
+				else
+					tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
+
+				argslist = lappend(argslist, tmpnode);
+			}
+			else if (IsA(node1, OpExpr))
+			{
+				OpExpr	   *opr= (OpExpr*)node1;
+				transformColumnReference(exprList, &opr, attrnos, atrrno);
+				argslist = lappend(argslist, opr);
+			}
+			else
+				argslist = lappend(argslist, node1);
+		}
+		(*opexpr)->args = argslist;
+	}
+}
+
+/*
+ * GetTableOidInSubquery
+ * Get temporary table oid in subquery.
+ */
+static Oid
+GetTableOidInSubquery(RangeTblEntry* rte)
+{
+	ListCell   *lc;
+	if (rte->rtekind == RTE_SUBQUERY && rte->subquery)
+	{
+		if( rte->subquery->rtable)
+		{
+			foreach(lc, rte->subquery->rtable)
+			{
+				RangeTblEntry   *subrte = lfirst(lc);
+				if (subrte->relid != InvalidOid)
+				{
+					if(get_rel_persistence(subrte->relid) == 't')
+						return subrte->relid;
+					else
+						return InvalidOid;
+				}
+				else
+				{
+					return GetTableOidInSubquery(subrte);
+				}
+			}
+		}
+	}
+	return InvalidOid;
+}
+
+/*
+ * transformCheckTemptableIsMultiUse
+ * Analyze whether the temporary table is used multiple times.
+ */
+static void
+transformCheckTemptableIsMultiUse(List* rtable, List* subrtable)
+{
+	ListCell   *lc;
+	ListCell   *sublc;
+	char		relpersistence;
+	char		subrelpersistence;
+	Oid			reloid;
+	Oid			subreloid;
+	foreach(lc, rtable)
+	{
+		RangeTblEntry   *rte = lfirst(lc);
+		if (rte->relid != InvalidOid)
+		{
+			reloid = rte->relid;
+			relpersistence = get_rel_persistence(rte->relid);
+			if (relpersistence != 't')
+				continue;
+		}
+		else
+		{
+			reloid = GetTableOidInSubquery(rte);
+			if(reloid != InvalidOid)
+			{
+				relpersistence = get_rel_persistence(reloid);
+				if (relpersistence != 't')
+					continue;
+			}
+		}
+		foreach(sublc, subrtable)
+		{
+			RangeTblEntry   *sub_rte = lfirst(sublc);
+			if (sub_rte->relid != InvalidOid)
+			{
+				subreloid = sub_rte->relid;
+				subrelpersistence = get_rel_persistence(sub_rte->relid);
+			}
+			else
+			{
+				subreloid = GetTableOidInSubquery(sub_rte);
+				if (subreloid != InvalidOid)
+					subrelpersistence = get_rel_persistence(subreloid);
+			}
+
+			if (reloid == subreloid && subrelpersistence == relpersistence &&
+				relpersistence == 't')
+			{
+				elog(ERROR," Can't reopen table:%s", get_rel_name(reloid));
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+
 /*
  * transformInsertStmt -
  *	  transform an Insert Statement
@@ -658,6 +905,9 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	qry->resultRelation = setTargetTable(pstate, stmt->relation,
 										 false, false, targetPerms);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (DB_MYSQL == compatible_db)
+		transformTableAndSchemaInCols(pstate, &(stmt->cols));
 	/* Validate stmt->cols list, or build default list if no list given */
 	icolumns = checkInsertTargets(pstate, stmt->cols, &attrnos);
 	Assert(list_length(icolumns) == list_length(attrnos));
@@ -707,6 +957,12 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 		selectQuery = transformStmt(sub_pstate, stmt->selectStmt);
 
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		/* In MySQL mode, check if the temporary table is referenced multiple times */
+		if (DB_MYSQL == compatible_db)
+			transformCheckTemptableIsMultiUse(pstate->p_rtable, sub_pstate->p_rtable);
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 		free_parsestate(sub_pstate);
 
 		/* The grammar should have produced a SELECT */
@@ -723,8 +979,14 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 											   makeAlias("*SELECT*", NIL),
 											   false,
 											   false);
-		addNSItemToQuery(pstate, nsitem, true, false, false);
-
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		if (DB_MYSQL == compatible_db)
+		{
+			addNSItemToQuery(pstate, nsitem, true, false, true);
+		}
+		else
+			addNSItemToQuery(pstate, nsitem, true, false, false);
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 		/*----------
 		 * Generate an expression list for the INSERT that selects all the
 		 * non-resjunk columns from the subquery.  (INSERT's tlist must be
@@ -760,6 +1022,17 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 			}
 			exprList = lappend(exprList, expr);
 		}
+
+		/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+		/* Check that the number of column values in the query is the same as
+		 * the number of columns inserted into the table.
+		 */
+		if(compatible_db == DB_MYSQL && exprList && icolumns)
+		{
+			if (list_length(exprList) != list_length(icolumns))
+				elog(ERROR, "Column count doesn't match value count!");
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 		/* Prepare row for assignment to target table */
 		exprList = transformInsertRow(pstate, exprList,
@@ -814,6 +1087,11 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 											exprLocation((Node *) sublist))));
 			}
 
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			/* In mysql mode, handle column references. */
+			if (DB_MYSQL == compatible_db)
+				transformColumnReference(&sublist, NULL, attrnos, 0);
+			/*End - ReqID:SRS-MYSQL-SQL-INSERT */
 			/*
 			 * Prepare row for assignment to target table.  We process any
 			 * indirection on the target column specs normally but then strip
@@ -947,6 +1225,9 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 									  stmt->cols,
 									  icolumns, attrnos,
 									  false);
+		if (DB_MYSQL == compatible_db)
+			transformColumnReference(&exprList, NULL, attrnos, 0);
+
 	}
 
 	/*
@@ -989,6 +1270,15 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	if (stmt->onConflictClause)
 		qry->onConflict = transformOnConflictClause(pstate,
 													stmt->onConflictClause);
+
+	/* Process DUPLICATE KEY UPDATE, if any. */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (DB_MYSQL == compatible_db && stmt->upsertClause)
+	{
+//		qry->resultRelations = lappend_int(qry->resultRelations, qry->resultRelation);
+		qry->upsertClause = transformUpsertClause(pstate, stmt->upsertClause, qry->resultRelations);
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 	/* Process RETURNING, if any. */
 	if (stmt->returningList)
@@ -1232,6 +1522,175 @@ transformOnConflictClause(ParseState *pstate,
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+/*
+ * transformTableAndSchemaInCols
+ * Handle table columns with schema and table name.
+ * eg:schema.tbl_name.column or tbl_name.column
+ */
+static void
+transformTableAndSchemaInCols(ParseState *pstate, List **cols)
+{
+	ListCell	   *tl;
+	char		   *relname;
+	foreach(tl, *cols)
+	{
+		ResTarget  *res = (ResTarget *) lfirst(tl);
+		relname = NULL;
+		if (list_length(res->indirection) == 2)
+		{
+			Oid		namespaceId = InvalidOid;
+			Oid		relid = InvalidOid;
+
+			Node   *node = linitial(res->indirection);
+			if (IsA(node, String))
+			{
+				relname = strVal(node);
+				namespaceId = LookupNamespaceNoError(res->name);
+				if (OidIsValid(namespaceId))
+				{
+					relid = get_relname_relid(relname, namespaceId);
+					if (OidIsValid(relid))
+					{
+						/* replace res->name ,delete res->indirection. */
+						res->name = strVal(llast(res->indirection));
+						res->indirection = NIL;
+					}
+				}
+			}
+		}
+		else if(list_length(res->indirection) == 1)
+		{
+			Node   *node = linitial(res->indirection);
+			if (IsA(node, String))
+			{
+				int		attrno;
+				/* Lookup column name. */
+				attrno = attnameAttNum(pstate->p_target_relation, strVal(node), false);
+				if (attrno != InvalidAttrNumber)
+				{
+					/* replace res->name ,delete res->indirection. */
+					res->name = strVal(node);
+					res->indirection = NIL;
+				}
+			}
+		}
+	}
+	return;
+}
+
+/*
+ * transformSchemaInTargetlist
+ * Handle target columns with schema.
+ */
+static void
+transformSchemaInTargetlist(List **targetlist)
+{
+	ListCell   *tl;
+	char	   *relname;
+	foreach(tl, *targetlist)
+	{
+		ResTarget  *res = (ResTarget *) lfirst(tl);
+		relname = NULL;
+		if (list_length(res->indirection) == 2)
+		{
+			Oid		namespaceId = InvalidOid;
+			Oid		relid = InvalidOid;
+
+			Node   *node = linitial(res->indirection);
+			if (IsA(node, String))
+			{
+				relname = strVal(node);
+				namespaceId = LookupNamespaceNoError(res->name);
+				if (OidIsValid(namespaceId))
+				{
+					relid = get_relname_relid(relname, namespaceId);
+					if (OidIsValid(relid))
+					{
+						/* replace res->name ,delete first cell in res->indirection. */
+						res->name = relname;
+						res->indirection = list_delete_first(res->indirection);
+					}
+				}
+			}
+		}
+	}
+	return;
+}
+
+/*
+ * transformUpsertClause
+ * transforms upsert statement.
+ */
+static UpsertExpr *
+transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations)
+{
+	ParseNamespaceItem *exclNSItem = NULL;
+	UpsertExpr		   *result = NULL;
+	List			   *updateTlist = NIL;
+	RangeTblEntry	   *exclRte = NULL;
+	int					exclRelIndex = 0;
+	List			   *exclRelTlist = NIL;
+	UpsertAction		action = UPSERT_NOTHING;
+	Relation			targetrel = pstate->p_target_relation;
+
+	/* Foreign table is not support duplicate key update statement */
+	if (get_rel_relkind(targetrel->rd_id) == 'f')
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("Foreign table is not yet supported whithin INSERT ON DUPLICATE KEY UPDATE statement.")));
+
+	if (upsertClause->targetList != NIL)
+	{
+		pstate->p_is_insert = false;
+		action = UPSERT_UPDATE;
+		exclNSItem = addRangeTableEntryForRelation(pstate,
+												   targetrel,
+												   RowExclusiveLock,
+												   makeAlias("excluded", NIL),
+												   false, false);
+		exclRte = exclNSItem->p_rte;
+		exclRelIndex = exclNSItem->p_rtindex;
+
+		/*
+		 * Build a targetlist for the EXCLUDED pseudo relation. Out of
+		 * simplicity we do that here, because expandRelAttrs() happens to
+		 * nearly do the right thing; specifically it also works with views.
+		 * It'd be more proper to instead scan some pseudo scan node, but it
+		 * doesn't seem worth the amount of code required.
+		 *
+		 * The only caveat of this hack is that the permissions expandRelAttrs
+		 * adds have to be reset. markVarForSelectPriv() will add the exact
+		 * required permissions back.
+		 */
+
+		exclRelTlist = BuildOnConflictExcludedTargetlist(targetrel, exclRelIndex);
+		exclRte->requiredPerms = 0;
+		exclRte->selectedCols = NULL;
+
+		/*
+		 * Add EXCLUDED and the target RTE to the namespace, so that they can
+		 * be used in the UPDATE statement.
+		 */
+		addNSItemToQuery(pstate, exclNSItem, false, true, true);
+//		addNSItemToQuery(pstate, (RangeTblEntry*)linitial(pstate->p_target_rangetblentry), false, true, true);
+
+		transformSchemaInTargetlist(&(upsertClause->targetList));
+//		updateTlist = transformTargetList(pstate, upsertClause->targetList, EXPR_KIND_UPDATE_TARGET);
+		/* Done with select-like processing, move on transforming to match update set target column */
+		updateTlist = transformUpdateTargetList(pstate, upsertClause->targetList);
+	}
+
+	/* Finally, build DUPLICATE KEY UPDATE expression */
+	result = makeNode(UpsertExpr);
+	result->updateTlist = updateTlist;
+	result->exclRelIndex = exclRelIndex;
+	result->exclRelTlist = exclRelTlist;
+	result->upsertAction = action;
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 
 /*

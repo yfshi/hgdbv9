@@ -716,6 +716,14 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	if (parse->setOperations)
 		flatten_simple_union_all(root);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	if (parse->upsertClause)
+	{
+		parse->upsertClause->updateTlist = (List *)
+		preprocess_expression(root, (Node *)parse->upsertClause->updateTlist, EXPRKIND_TARGET);
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 	/*
 	 * Survey the rangetable to see what kinds of entries are present.  We can
 	 * skip some later processing if relevant SQL features are not used; for

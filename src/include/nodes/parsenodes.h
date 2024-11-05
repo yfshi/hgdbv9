@@ -194,6 +194,10 @@ typedef struct Query
 	List	   *resultRelations; /* rtable index list of target relation for INSERT/UPDATE/DELETE */
 	List	   *indexhintList; /* a list of b mode index hint members */
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	UpsertExpr *upsertClause; /* DUPLICATE KEY UPDATE... */
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level
@@ -1217,6 +1221,9 @@ typedef struct RangeTblEntry
 	Bitmapset  *updatedCols;	/* columns needing UPDATE permission */
 	Bitmapset  *extraUpdatedCols;	/* generated columns being updated */
 	List	   *securityQuals;	/* security barrier quals to apply, if any */
+	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+	bool		isexcluded;		/* the rel is the EXCLUDED relation for UPSERT */
+	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 } RangeTblEntry;
 
 /*
@@ -1680,6 +1687,15 @@ typedef struct RawStmt
  * is INSERT ... DEFAULT VALUES.
  * ----------------------
  */
+ /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+typedef struct UpsertClause
+{
+	NodeTag		type;
+	List	   *targetList;
+	int			location;
+} UpsertClause;
+/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
 typedef struct InsertStmt
 {
 	NodeTag		type;
@@ -1690,6 +1706,8 @@ typedef struct InsertStmt
 	List	   *returningList;	/* list of expressions to return */
 	WithClause *withClause;		/* WITH clause */
 	OverridingKind override;	/* OVERRIDING clause */
+	/* ReqID:SRS-MYSQL-SQL-INSERT */
+	UpsertClause *upsertClause; /* DUPLICATE KEY UPDATE clause */
 } InsertStmt;
 
 /* ----------------------
