@@ -2253,6 +2253,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 					for (paramno = 0; paramno < numParamsMode; paramno++)
 					{
 						Oid 		ptype = intVal((Value *)list_nth(dostmt->paramstype, paramno));
+						char		*paramname;	/* BUG#M0000409 */
 
 						params->params[paramno].value = (Datum) 0;
 						params->params[paramno].isnull = true;
@@ -2260,7 +2261,13 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 						params->params[paramno].ptype = ptype;
 						params->params[paramno].pmode = PROARGMODE_NOT_SET;
 
-						params->paramnames[paramno] = pstrdup(((DefElem *)list_nth(dostmt->paramsmode, paramno))->defname);
+						/* Begin - BUG#M0000409 */
+						paramname = ((DefElem *)list_nth(dostmt->paramsmode, paramno))->defname;
+						if (paramname == NULL)
+							params->paramnames[paramno] = NULL;
+						else
+						/* End - BUG#M0000409 */
+							params->paramnames[paramno] = pstrdup(paramname);
 					}
 
 					codeblock->params = params;
