@@ -414,6 +414,10 @@ extern PGDLLIMPORT char *plsql_warnings;
 extern PGDLLIMPORT bool convert_utf8_to_gbk_question_mark;
 /* End - BUG#Z00001269 */
 
+/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+extern PGDLLIMPORT bool enable_update_multicol;
+/* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

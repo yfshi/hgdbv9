@@ -3178,6 +3178,13 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+	else if (DB_ORACLE == compatible_db)
+	{
+		if (stmt->relation && enable_update_multicol)
+			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
+	}
+	/* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
 
 	/* process the WITH clause independently of all else */
 	if (stmt->withClause)
