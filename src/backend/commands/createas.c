@@ -50,6 +50,12 @@
 #include "utils/rel.h"
 #include "utils/rls.h"
 #include "utils/snapmgr.h"
+/* Begin - BUG#M0000401 */
+#include "commands/defrem.h"
+#include "tcop/utility.h"
+#include "nodes/parsenodes.h"
+#include "commands/sequence.h"
+/* End - BUG#M0000401 */
 
 typedef struct
 {
@@ -90,10 +96,49 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	Datum		toast_options;
 	static char *validnsps[] = HEAP_RELOPT_NAMESPACES;
 	ObjectAddress intoRelationAddr;
+	/* Begin - BUG#M0000401 */
+	char	   *snamespace = NULL;
+	char	   *sname = NULL;
+	/* End - BUG#M0000401 */
 
 	/* This code supports both CREATE TABLE AS and CREATE MATERIALIZED VIEW */
 	is_matview = (into->viewQuery != NULL);
 	relkind = is_matview ? RELKIND_MATVIEW : RELKIND_RELATION;
+
+	/* Begin - BUG#M0000401 */
+	if (default_with_rowids && relkind == RELKIND_RELATION)
+	{
+		Oid         snamespaceid;
+		CreateSeqStmt *seqstmt;
+
+		snamespaceid = RangeVarGetCreationNamespace(into->rel);
+		snamespace = get_namespace_name(snamespaceid);
+		sname = ChooseRelationName(into->rel->relname,
+								   "rowid",
+								   "seq",
+								   snamespaceid,
+								   false);
+
+		seqstmt = makeNode(CreateSeqStmt);
+		seqstmt->with_rowid = true;
+		seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
+		seqstmt->options = lcons(makeDefElem("as",
+									(Node *) makeTypeNameFromOid(INT8OID, -1),
+									 -1),
+									 seqstmt->options);
+
+		if (rowid_seq_cache > 1)
+		{
+			seqstmt->options = lcons(makeDefElem("cache", (Node *) makeInteger(rowid_seq_cache),
+									 -1),seqstmt->options);
+		}
+		else
+			seqstmt->options = lcons(makeDefElem("nocache", NULL, -1), seqstmt->options);
+
+		DefineSequence(NULL, seqstmt);
+		CommandCounterIncrement();
+	}
+	/* End - BUG#M0000401 */
 
 	/*
 	 * Create the target relation by faking up a CREATE TABLE parsetree and
@@ -143,6 +188,24 @@ create_ctas_internal(List *attrList, IntoClause *into)
 		StoreViewQuery(intoRelationAddr.objectId, query, false);
 		CommandCounterIncrement();
 	}
+
+	/* Begin - BUG#M0000401 */
+	if (default_with_rowids && relkind == RELKIND_RELATION)
+	{
+		AlterSeqStmt *altseqstmt;
+		List	   *relnamelist = NIL;
+
+		altseqstmt = makeNode(AlterSeqStmt);
+		altseqstmt->sequence = makeRangeVar(snamespace, sname, -1);
+		relnamelist = list_make3(makeString(snamespace),
+								 makeString(into->rel->relname),
+								 makeString(sname));
+		altseqstmt->options = list_make1(makeDefElem("owned_by", (Node *) relnamelist, -1));
+
+		AlterSequence(NULL, altseqstmt);
+		CommandCounterIncrement();
+	}
+	/* End - BUG#M0000401 */
 
 	return intoRelationAddr;
 }

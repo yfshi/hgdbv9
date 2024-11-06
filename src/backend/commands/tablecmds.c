@@ -121,6 +121,9 @@
 #include "utils/jsonb.h"
 #include "catalog/objectaddress.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+#include "catalog/dependency.h" /* BUG#Z1279 */
+
 /*
  * ON COMMIT action list
  */
@@ -1828,6 +1831,27 @@ RemoveRelations(DropStmt *drop)
 		obj.objectSubId = 0;
 
 		add_exact_object_address(&obj, objects);
+
+		/* Begin - BUG#Z1279 */
+		if (relkind == RELKIND_SEQUENCE)
+		{
+			HeapTuple	tuple;
+			Form_pg_class classform;
+			bool		rel_has_rowid = false;
+
+			tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relOid));
+			if (HeapTupleIsValid(tuple))
+			{
+				classform = (Form_pg_class) GETSTRUCT(tuple);
+				rel_has_rowid = classform->relhasrowid;
+
+				ReleaseSysCache(tuple);
+			}
+
+			if (rel_has_rowid)
+				ivy_check_rowid_seq_depend(relOid, rel->relname);
+		}
+		/* End - BUG#Z1279 */
 	}
 
 	performMultipleDeletions(objects, drop->behavior, flags);
