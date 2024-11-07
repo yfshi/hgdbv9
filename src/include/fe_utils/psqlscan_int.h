@@ -323,6 +323,11 @@ typedef struct PsqlScanStateData
 	bool			is_sqlplus_cmd;	/* T if is a psqlplus command */
 	psqlplus_cmd	*psqlpluscmd;
 	/* End - ReqID:SRS-CMD-PSQL */
+	/* Begin - BUG#M000411 */
+	bool		send_space_one_comments;	/*
+											 * Whether send space or one line comments to server
+											 */
+	/* End - BUG#M0000411 */
 } PsqlScanStateData;
 
 

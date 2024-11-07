@@ -754,6 +754,10 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	}
 	else
 	{
+		/* Begin - BUG#M000411 */
+		bool has_change_type = false;
+		/* End - BUG#M0000411 */
+
 		/* otherwise, binary operator */
 		ltypeId = exprType(ltree);
 		rtypeId = exprType(rtree);
@@ -769,7 +773,32 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 				opname = opname_rewrite;
 		}
 		/* End - SRS-MISC-COMPATDM-SQL */
+		/* Begin - BUG#M000411 */
+		/*
+		 * there if const integer operater const integer
+		 * we convert it to const number operater const number
+		 * so that it like oracle, because oracle integer is number(38,0)
+		 */
+		if (ORA_PARSER == compatible_db &&
+			enable_compatible_const_integer_operator &&
+			ltypeId == INT4OID &&
+			nodeTag(ltree) == T_Const &&
+			rtypeId == INT4OID &&
+			nodeTag(rtree) == T_Const)
+		{
+			ltypeId = NUMBEROID;
+			rtypeId = NUMBEROID;
+			has_change_type = true;
+		}
+		/* End - BUG#M0000411 */
 		tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
+		/* Begin - BUG#M000411 */
+		if (has_change_type)
+		{
+			ltypeId = INT4OID;
+			rtypeId = INT4OID;
+		}
+		/* End - BUG#M0000411 */
 	}
 
 	opform = (Form_pg_operator) GETSTRUCT(tup);

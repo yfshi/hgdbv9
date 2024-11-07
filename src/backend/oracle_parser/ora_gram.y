@@ -10207,10 +10207,16 @@ ora_func_is_or_as:
 			IS
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_FUNC);
+					/* Begin - BUG#M000410 */
+					set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+					/* End - BUG#M0000410 */
 				}
 			| AS
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_FUNC);
+					/* Begin - BUG#M000410 */
+					set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+					/* End - BUG#M0000410 */
 				}
 		;
 /* End - ReqID:SRS-SQL-PROC */
@@ -10703,8 +10709,20 @@ package_type:	PACKAGE	{ $$ = OBJECT_PACKAGE; }
 
 
 package_is_or_as:
-				IS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGE); }
-				|AS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGE); }
+				IS
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_PACKAGE);
+						/* Begin - BUG#M000410 */
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+						/* End - BUG#M0000410 */
+					}
+				|AS
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_PACKAGE);
+						/* Begin - BUG#M000410 */
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+						/* End - BUG#M0000410 */
+					}
 				;
 
 package_src:	Sconst	{ $$ = $1; }
@@ -10725,8 +10743,19 @@ CreatePackageBodyStmt:
 			;
 
 package_body_is_or_as:
-				IS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY); }
-				|AS	{ set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY); }
+				IS
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY);
+						/* Begin - BUG#M000410 */
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+						/* End - BUG#M0000410 */
+					}
+				|AS	{
+						set_oracle_plsql_body(yyscanner, OraBody_PACKAGEBODY);
+						/* Begin - BUG#M000410 */
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+						/* End - BUG#M0000410 */
+					}
 				;
 
 AlterPackageStmt:

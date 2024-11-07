@@ -222,6 +222,11 @@ main(int argc, char *argv[])
 	SetVariable(pset.vars, "PROMPT2", DEFAULT_PROMPT2);
 	SetVariable(pset.vars, "PROMPT3", DEFAULT_PROMPT3);
 
+	/* defulat is no */
+	/* Begin - BUG#M000411 */
+	SetVariableBool(pset.vars, "SEND_SPACE_ONE_COMMENTS");
+	/* End - BUG#M0000411 */
+
 	parse_psql_options(argc, argv, &options);
 
 	/*
@@ -432,6 +437,11 @@ main(int argc, char *argv[])
 									pset.encoding, standard_strings());
 				}
 				/* End - ReqID:SRS-PSQL-PARSER */
+
+				/* Begin - BUG#M000411 */
+				scan_state->send_space_one_comments = pset.send_space_one_comments;
+				/* End - BUG#M0000411 */
+
 				cond_stack = conditional_stack_create();
 				psql_scan_set_passthrough(scan_state, (void *) cond_stack);
 
@@ -1266,6 +1276,17 @@ execute_run_prepare_hook(const char *newval)
 }
 /* End - ReqID:SRS-CMD-PSQL */
 
+
+/* Begin - BUG#M000411 */
+static bool
+send_space_one_comments_hook(const char *newval)
+{
+	return ParseVariableBool(newval, "SEND_SPACE_ONE_COMMENTS", &pset.send_space_one_comments);
+}
+
+/* End - BUG#M0000411 */
+
+
 static void
 EstablishVariableSpace(void)
 {
@@ -1339,4 +1360,9 @@ EstablishVariableSpace(void)
 					 bool_substitute_hook,
 					 execute_run_prepare_hook);
 /* End - ReqID:SRS-CMD-PSQL */
+	/* Begin - BUG#M000411 */
+	SetVariableHooks(pset.vars, "SEND_SPACE_ONE_COMMENTS",
+					 bool_substitute_hook,
+					 send_space_one_comments_hook);
+	/* End - BUG#M0000411 */
 }

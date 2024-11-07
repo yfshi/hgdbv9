@@ -137,6 +137,9 @@ typedef struct _psqlSettings
 	bool		hide_compression;
 	bool		hide_tableam;
 	bool		execute_run_prepare;	/* ReqID:SRS-CMD-PSQL */
+	/* Begin - BUG#M000411 */
+	bool		send_space_one_comments;
+	/* End - BUG#M0000411 */
 	int			fetch_count;
 	int			histsize;
 	int			ignoreeof;

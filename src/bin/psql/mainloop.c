@@ -111,6 +111,12 @@ MainLoop(FILE *source)
 	mys_psql_scan_set_passthrough(mys_scan_state, (void *) cond_stack);
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
+	/* Begin - BUG#M000411 */
+	scan_state->send_space_one_comments = pset.send_space_one_comments;
+	ora_scan_state->send_space_one_comments = pset.send_space_one_comments;
+	mys_scan_state->send_space_one_comments = pset.send_space_one_comments;
+	/* End - BUG#M0000411 */
+
 	query_buf = createPQExpBuffer();
 	previous_buf = createPQExpBuffer();
 	history_buf = createPQExpBuffer();
@@ -539,6 +545,10 @@ MainLoop(FILE *source)
 								strlen(psqlplus_line),
 								pset.encoding,
 								standard_strings());
+
+			/* Begin - BUG#M000411 */
+			pstate->send_space_one_comments = pset.send_space_one_comments;
+			/* End - BUG#M0000411 */
 			
 			yyscanner = psqlplus_scanner_init(pstate);
 			if (psqlplus_yyparse(yyscanner) == 0)
@@ -970,6 +980,12 @@ non_psqlplus_cmd:
 													cond_stack,
 													query_buf,
 													previous_buf);
+					/* Begin - BUG#M000411 */
+					/* maybe change varialbe, so sync */
+					scan_state->send_space_one_comments = pset.send_space_one_comments;
+					ora_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					mys_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					/* End - BUG#M0000411 */
 
 					success = slashCmdStatus != PSQL_CMD_ERROR;
 
@@ -1107,7 +1123,9 @@ non_psqlplus_cmd:
 											strlen(sql),
 											pset.encoding,
 											standard_strings());
-
+						/* Begin - BUG#M000411 */
+						pstate->send_space_one_comments = pset.send_space_one_comments;
+						/* End - BUG#M0000411 */
 						yyscanner = psqlplus_scanner_init(pstate);
 						token = orapsql_yylex(&lval, yyscanner);
 						while(token)
@@ -1223,6 +1241,12 @@ non_psqlplus_cmd:
 													cond_stack,
 													query_buf,
 													previous_buf);
+					/* Begin - BUG#M000411 */
+					/* maybe change varialbe, so sync */
+					scan_state->send_space_one_comments = pset.send_space_one_comments;
+					ora_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					mys_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					/* End - BUG#M0000411 */
 
 					success = slashCmdStatus != PSQL_CMD_ERROR;
 
@@ -1397,6 +1421,12 @@ non_psqlplus_cmd:
 													cond_stack,
 													query_buf,
 													previous_buf);
+					/* Begin - BUG#M000411 */
+					/* maybe change varialbe, so sync */
+					scan_state->send_space_one_comments = pset.send_space_one_comments;
+					ora_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					mys_scan_state->send_space_one_comments = pset.send_space_one_comments;
+					/* End - BUG#M0000411 */
 
 					success = slashCmdStatus != PSQL_CMD_ERROR;
 

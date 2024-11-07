@@ -418,6 +418,11 @@ extern PGDLLIMPORT bool convert_utf8_to_gbk_question_mark;
 extern PGDLLIMPORT bool enable_update_multicol;
 /* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
 
+/* Begin - BUG#M000411 */
+extern bool enable_compatible_const_integer_operator;
+/* End - BUG#M0000411 */
+
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

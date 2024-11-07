@@ -2252,9 +2252,10 @@ drop package pkg;
 --test failed
 select * from test_package(23);
 ERROR:  schema "pkg" does not exist
-LINE 1: var1 pkg.mds;
-             ^
-QUERY:  var1 pkg.mds;
+LINE 2:   var1 pkg.mds;
+               ^
+QUERY:  
+  var1 pkg.mds;
   var2 integer;
 begin
   var1 := pkg.gvar;
@@ -2263,7 +2264,7 @@ begin
   raise info 'var1=%', var1;
   return var2;
 end
-CONTEXT:  compilation of PL/iSQL function "test_package" near line 1
+CONTEXT:  compilation of PL/iSQL function "test_package" near line 2
 create or replace package public.pkg as
   type mds is record(id integer,name varchar(23));
   gvar mds;
@@ -2516,15 +2517,16 @@ drop package pkg;
 --call function and report error
 select * from test_rely(23);
 ERROR:  schema "pkg" does not exist
-LINE 1: type mdss is record(id integer, name varchar(256));
-             ^
-QUERY:  type mdss is record(id integer, name varchar(256));
+LINE 2:   type mdss is record(id integer, name varchar(256));
+               ^
+QUERY:  
+  type mdss is record(id integer, name varchar(256));
   var1 mdss;
   var2 pkg.mds;
   function test(id integer, var3 out mdss) return mdss;
 end
-CONTEXT:  compilation of PL/iSQL package "pkg1" near line 3
-compilation of PL/iSQL function "pkg1" near line 3
+CONTEXT:  compilation of PL/iSQL package "pkg1" near line 4
+compilation of PL/iSQL function "pkg1" near line 4
 drop package pkg1;
 drop function test_rely(integer);
 --test body reference package variable and pkg.xx
@@ -2840,9 +2842,10 @@ create or replace package pkg is
 end;
 /
 ERROR:  "mds3" doesn't exist in package "pkg"
-LINE 5:   var3 pkg.mds3;
+LINE 6:   var3 pkg.mds3;
                ^
-QUERY:  type mds1 is record(id integer,name varchar(23));
+QUERY:  
+  type mds1 is record(id integer,name varchar(23));
   function test(id integer) return integer;
   var1 mds1;
   var2 pkg.mds1;

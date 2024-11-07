@@ -9384,9 +9384,12 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 --bug#797 --bug#973 recorver assignment
+--bug#M411 recover IMPLICIT for we conevert
+---const interger operator integer to const number
+--operator number
 CREATE CAST (sys.number AS int4)
 WITH FUNCTION sys.number_int4(sys.number)
-AS ASSIGNMENT;
+AS IMPLICIT;
 
 -- Converts a int4 type to number type
 CREATE FUNCTION sys.int4_number(int4)

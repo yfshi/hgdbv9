@@ -180,6 +180,11 @@ bool   convert_utf8_to_gbk_question_mark = true;
 bool   enable_update_multicol = false;
 /* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
 
+/* Begin - BUG#M000411 */
+bool enable_compatible_const_integer_operator = false;
+/* End - BUG#M0000411 */
+
+
 
 #endif
 
@@ -697,6 +702,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
+	/* Begin - BUG#M000411 */
+	{
+		{"ivorysql.enable_compatible_const_integer_operator", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether compatible const integer operator like oracle."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_compatible_const_integer_operator,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000411 */
 #endif
 #if 0
 	/* End-of-list marker */

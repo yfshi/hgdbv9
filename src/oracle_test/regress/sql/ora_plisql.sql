@@ -2483,3 +2483,203 @@ end;
 show ivorysql.compile_plisql_use_owner;
 
 drop function test_f_array;
+
+--bug#M410
+create or replace function test_f(id integer) return integer is
+/* this is a test
+ *commnet
+ */
+begin
+  /* is is a test comment
+   a mement
+   */
+  return 1;
+end;
+/
+
+select test_f(1) from dual;
+
+select prosrc from pg_proc where proname = 'test_f';
+
+create or replace function test_f1(id integer) return integer is
+/* this is a test commnet */
+var1 integer;
+/* var2 integer */
+var2 integer;
+begin
+  /* is is a test comment */
+  return 1;
+end;
+/
+
+select test_f1(1) from dual;
+select prosrc from pg_proc where proname = 'test_f1';
+
+
+create or replace package test_pkg is
+ /*/* test a test */
+ var1 integer;
+ /* a test_f */
+ function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg is /* test a tett */
+  /* privie var */
+  var2 integer;
+  function test_f(id integer) return integer is
+  begin
+    return var1;
+  end;
+  /* a privie function */
+  function test_p(id integer) return integer is
+  begin
+    /* /* test a test */
+    return var1;
+  end;
+/* init body */
+begin
+  var1 := 100;
+  var2 := 1;
+end;
+/
+
+declare
+  var1 integer;
+begin
+  var1 := test_pkg.test_f(23);
+  raise info '%',var1;
+end;
+/
+
+select a.pkgsrc,b.bodysrc from pg_package a left join pg_package_body b
+on a.oid = b.pkgoid where pkgname = 'test_pkg';
+
+create table test1(c1 varchar2(256));
+
+CREATE OR REPLACE PROCEDURE testp5 IS
+/* comment 1*/
+BEGIN
+/*comment 2*/
+/*comment3*/
+/*comment4*/
+/*comment5*/
+/*comment6*/
+
+/*comment7
+*comment8
+*comment9
+*comment10*/
+  INSERT INTO test1 (c1) VALUES ('17');
+		begin
+			INSERT INTO test1 (c1) VALUES ('11');
+	    exception when others then null ;
+	end;
+EXCEPTION
+WHEN OTHERS THEN null;
+RAISE;
+END testp5;
+/
+call testp5();
+
+select prosrc from pg_proc where proname = 'testp5';
+
+create or replace function test_ff(id integer) return integer is /* a test */
+-- a test comment
+ var1 integer;
+begin
+  return 1;
+end;
+/
+
+SELECT test_ff(1) FROM dual;
+
+select prosrc from pg_proc where proname = 'test_ff';
+
+create or replace package test_pkg1 is
+-- a test comment
+ var1 integer;
+ --a function
+ FUNCTION test_f(id integer) RETURN integer;
+end;
+/
+
+CREATE OR replace package body test_pkg1 IS
+  --a test
+  var3 integer;
+  FUNCTION test_f(id integer) RETURN integer IS
+  BEGIN
+   RETURN 1;
+  end;
+begin
+  var3 := 1;
+  var1 := 2;
+end;
+/
+
+BEGIN
+  raise info '%', test_pkg1.var1;
+end;
+/
+
+select a.pkgsrc,b.bodysrc from pg_package a left join pg_package_body b
+on a.oid = b.pkgoid where pkgname = 'test_pkg1';
+
+
+\set SEND_SPACE_ONE_COMMENTS false
+
+create or replace function test_ff1(id integer) return integer is /* a test */
+-- a test comment
+ var1 integer;
+begin
+  return 1;
+end;
+/
+
+SELECT test_ff1(1) FROM dual;
+
+select prosrc from pg_proc where proname = 'test_ff1';
+
+--clean data
+drop function test_f;
+drop function test_f1;
+drop package test_pkg;
+DROP package test_pkg1;
+drop procedure testp5;
+DROP TABLE test1;
+DROP FUNCTION test_ff;
+DROP FUNCTION test_ff1;
+
+
+--bug#M411
+SET ivorysql.enable_compatible_const_integer_operator = on;
+
+SELECT 1/3 FROM dual;
+
+alter session set NLS_DATE_FORMAT='YYYY-MM-DD hh24:mi:ss';
+
+select to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss')
+,(to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss') +1/24/60/30) FROM dual;
+
+CREATE OR REPLACE FUNCTION test_int(id integer) RETURN integer IS
+BEGIN
+   RETURN id;
+end;
+/
+
+SELECT test_int(23 + 24) FROM dual;
+
+DECLARE
+  var1 integer;
+BEGIN
+  var1 := 23 + 24;
+  raise info '%', var1;
+end;
+/
+
+DROP FUNCTION test_int;
+
+reset ivorysql.enable_compatible_const_integer_operator;
+
+select to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss')
+,(to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss') +1/24/60/30) FROM dual;
