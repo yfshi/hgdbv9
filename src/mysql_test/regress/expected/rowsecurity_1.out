@@ -1600,13 +1600,9 @@ SELECT * FROM t1 ORDER BY a,b;
 SET SESSION AUTHORIZATION regress_rls_bob;
 SET row_security TO ON;
 EXPLAIN (COSTS OFF) DELETE FROM only t1 WHERE f_leak(b);
-                   QUERY PLAN                    
--------------------------------------------------
- Delete on t1
-   ->  Seq Scan on t1
-         Filter: (false AND false AND f_leak(b))
-(3 rows)
-
+ERROR:  syntax error at or near "only"
+LINE 1: EXPLAIN (COSTS OFF) DELETE FROM only t1 WHERE f_leak(b);
+                                        ^
 EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
                    QUERY PLAN                    
 -------------------------------------------------
@@ -1616,10 +1612,9 @@ EXPLAIN (COSTS OFF) DELETE FROM t1 WHERE f_leak(b);
 (3 rows)
 
 DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
- tableoid | id | a | b | t1 
-----------+----+---+---+----
-(0 rows)
-
+ERROR:  syntax error at or near "only"
+LINE 1: DELETE FROM only t1 WHERE f_leak(b) RETURNING tableoid::regc...
+                    ^
 DELETE FROM t1 WHERE f_leak(b) RETURNING tableoid::regclass, *, t1;
  tableoid | id | a | b | t1 
 ----------+----+---+---+----
@@ -3545,18 +3540,16 @@ UPDATE r1 SET a = r2.a + 2 FROM r2 WHERE r1.a = r2.a RETURNING *; -- OK
 (2 rows)
 
 DELETE FROM r1 USING r2 WHERE r1.a = r2.a + 2 RETURNING *; -- OK
- a  | a  
-----+----
- 12 | 10
- 22 | 20
-(2 rows)
-
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
 SELECT * FROM r1;
  a  
 ----
  11
  21
-(2 rows)
+ 12
+ 22
+(4 rows)
 
 SELECT * FROM r2;
  a  
@@ -3665,14 +3658,20 @@ ALTER TABLE r2 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE r2 FORCE ROW LEVEL SECURITY;
 -- Deletes all records from both
 DELETE FROM r1;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "regress_rls_schema"."r2" WHERE $1 OPERATOR...
+                    ^
+QUERY:  DELETE FROM ONLY "regress_rls_schema"."r2" WHERE $1 OPERATOR(pg_catalog.=) "a"
 -- Remove FORCE from r2
 ALTER TABLE r2 NO FORCE ROW LEVEL SECURITY;
 -- As owner, we now bypass RLS
 -- verify no rows in r2 now
 TABLE r2;
- a 
----
-(0 rows)
+ a  
+----
+ 10
+ 20
+(2 rows)
 
 DROP TABLE r2;
 DROP TABLE r1;

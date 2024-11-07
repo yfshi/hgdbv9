@@ -1722,6 +1722,13 @@ typedef struct DeleteStmt
 	Node	   *whereClause;	/* qualifications */
 	List	   *returningList;	/* list of expressions to return */
 	WithClause *withClause;		/* WITH clause */
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	bool		ignore;			/* is this stmt containing ignore */
+	List	   *relationList;	/* relations to delete from */
+	List	   *collist;		/* is specified table */
+	List	   *sortClause;		/* sort clause (a list of SortBy's) */
+	Node	   *limitClause;	/* limit row count */
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 } DeleteStmt;
 
 /* ----------------------

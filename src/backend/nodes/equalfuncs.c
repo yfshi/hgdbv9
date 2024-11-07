@@ -1089,6 +1089,13 @@ _equalDeleteStmt(const DeleteStmt *a, const DeleteStmt *b)
 	COMPARE_NODE_FIELD(whereClause);
 	COMPARE_NODE_FIELD(returningList);
 	COMPARE_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	COMPARE_SCALAR_FIELD(ignore);
+	COMPARE_NODE_FIELD(relationList);
+	COMPARE_NODE_FIELD(collist);
+	COMPARE_NODE_FIELD(sortClause);
+	COMPARE_NODE_FIELD(limitClause);
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 	return true;
 }

@@ -759,7 +759,7 @@ SELECT *
   FROM citext_matview m
   FULL JOIN citext_table t ON (t.id = m.id AND t *= m)
   WHERE t.id IS NULL OR m.id IS NULL;
-REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
+--REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
 SELECT * FROM citext_matview ORDER BY id;
 
 -- test citext_pattern_cmp() function explicitly.

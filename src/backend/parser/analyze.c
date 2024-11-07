@@ -104,7 +104,7 @@ static List *transformIvyUpdateTargetList(ParseState *pstate, List *origTlist);
 /* End - ReqID:SRS-PLSQL-TYPE */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
-static void transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry);
+static void transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry, bool isdel); /* ReqID:SRS-MYSQL-SQL-DELETE */
 static List* transformUpdateSortClause(ParseState *pstate, UpdateStmt *stmt, Query *qry);
 static void CheckUpdateRelations(ParseState *pstate, UpdateStmt *stmt);
 static void transformMergeTargetList(RangeVar *rel,List **targetList, bool ismulti);
@@ -122,6 +122,12 @@ static Node *MakeNullNode();
 static Node *GetExprNode(List *exprList, List *attrnos, int varattno);
 
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+static void transformRangeSubselectInListClause(DeleteStmt *stmt);
+static void transformCollistInFromcClause(List *rangevarlist, List *collist);
+
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 
 /*
@@ -500,6 +506,135 @@ analyze_requires_snapshot(RawStmt *parseTree)
 	return stmt_requires_parse_analysis(parseTree);
 }
 
+
+/*Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+/* 
+ * transformRangeSubselectInListClause
+ * Check if a subquery exists.
+ */
+static void
+transformRangeSubselectInListClause(DeleteStmt *stmt)
+{
+	List	   *rellist = NIL;
+	ListCell   *lc = NULL;
+
+	if (stmt->usingClause)
+		rellist = copyObject(stmt->usingClause);
+	else if(stmt->relationList)
+		rellist = copyObject(stmt->relationList);
+	/* check subquery */
+	foreach(lc, rellist)
+	{
+		Node   *node = (Node *)lfirst(lc);
+		if (IsA(node, RangeSubselect))
+		{
+			RangeSubselect   *rs = (RangeSubselect *)node;
+			elog(ERROR,"The target table %s of the DELETE is not updatable", rs->alias->aliasname);
+		}
+		else
+			continue;
+	}
+	return;
+}
+
+/*
+ * transformCollistInFromcClause - 
+ * Checks whether the specified table exists in the from clause or using clause.
+ */
+static void
+transformCollistInFromcClause(List *rangevarlist, List *collist)
+{
+	List	   *rangelist = NIL;
+	ListCell   *lc = NULL;
+	ListCell   *lc1 = NULL;
+	bool		is_existinrv = false;
+	foreach(lc, collist)
+	{
+		char		   *relname = NULL;
+		char		   *nspname = NULL;
+		Node		   *starnode = NULL;
+		ColumnRef	   *cref = (ColumnRef *)lfirst(lc);
+
+		starnode = llast(cref->fields);
+		/* If exists A_star,delete it in fileds. */
+		if (IsA(starnode, A_Star))
+			cref->fields = list_delete(cref->fields, starnode);
+		switch(list_length(cref->fields))
+		{
+			case 1:
+				{
+					Node   *field1 = (Node *)linitial(cref->fields);
+					Assert(IsA(field1, String));
+					relname = strVal(field1);
+				}
+				break;
+			case 2:
+				{
+					Node   *field1 = (Node *)linitial(cref->fields);
+					Node   *field2 = (Node *)lsecond(cref->fields);
+					Assert(IsA(field1, String));
+					Assert(IsA(field2, String));
+					relname = strVal(field2);
+					nspname = strVal(field1);
+				}
+				break;
+			default:
+				elog(ERROR, " The format of the table name specified for deletion is incorrect! ");
+				break;
+		}
+		is_existinrv = false;
+		rangelist = copyObject(rangevarlist);
+		foreach(lc1, rangelist)
+		{
+			RangeVar   *rv = (RangeVar *)lfirst(lc1);
+			if (!strcmp(relname, rv->relname))
+			{
+				if (nspname && rv->schemaname)
+				{
+					if (!strcmp(nspname, rv->schemaname))
+					{
+						is_existinrv = true;
+						break;
+					}
+				}
+				else if (!nspname || !rv->schemaname)
+				{
+					is_existinrv = true;
+					break;
+				}
+			}
+			else
+			{
+				if (rv->alias)
+				{
+					if (!strcmp(relname, rv->alias->aliasname))
+					{
+						if (nspname && rv->schemaname)
+						{
+							if (!strcmp(nspname, rv->schemaname))
+							{
+								is_existinrv = true;
+								break;
+							}
+						}
+						else if (!nspname || !rv->schemaname)
+						{
+							is_existinrv = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		/* If it does not exist, an error is reported. */
+		if (!is_existinrv)
+			elog(ERROR, "Unknown table %s in MULTI DELETE", relname);
+	}
+	return;
+}
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+
+
 /*
  * transformDeleteStmt -
  *	  transforms a Delete Statement
@@ -508,7 +643,7 @@ static Query *
 transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 {
 	Query	   *qry = makeNode(Query);
-	ParseNamespaceItem *nsitem;
+	ParseNamespaceItem *nsitem = NULL;
 	Node	   *qual;
 
 	qry->commandType = CMD_DELETE;
@@ -521,19 +656,48 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 		qry->hasModifyingCTE = pstate->p_hasModifyingCTE;
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	if (DB_MYSQL == compatible_db)
+	{
+		if (stmt->usingClause || stmt->relationList)
+		{
+			pstate->p_addDeleteTable = true;
+			/* check if exist subquery. */
+			transformRangeSubselectInListClause(stmt);
+		}
+		if (stmt->collist)
+		{
+			if (list_length(stmt->collist) > 1 && !stmt->usingClause &&
+				 !stmt->relationList)
+				ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete must specify the table to delete."),
+				 errhint("Please note whether it's compatible with MySQL mode.")));
+			pstate->p_delrellist = stmt->collist;
+		}
+	}
 	/* set up range table with just the result rel */
-	qry->resultRelation = setTargetTable(pstate, stmt->relation,
-										 stmt->relation->inh,
-										 true,
-										 ACL_DELETE);
-	nsitem = pstate->p_target_nsitem;
+	if (stmt->relation)
+	{
+		if (DB_MYSQL == compatible_db && stmt->relationList && stmt->collist)
+		{
+			transformCollistInFromcClause(list_make1(stmt->relation), stmt->collist);
+			stmt->relationList = NIL;
+		}
+		qry->resultRelation = setTargetTable(pstate, stmt->relation,
+											 stmt->relation->inh,
+											 true,
+											 ACL_DELETE);
+		nsitem = pstate->p_target_nsitem;
+		
+		/* subqueries in USING cannot access the result relation */
+		nsitem->p_lateral_only = true;
+		nsitem->p_lateral_ok = false;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 	/* there's no DISTINCT in DELETE */
 	qry->distinctClause = NIL;
-
-	/* subqueries in USING cannot access the result relation */
-	nsitem->p_lateral_only = true;
-	nsitem->p_lateral_ok = false;
 
 	/*
 	 * The USING clause is non-standard SQL syntax, and is equivalent in
@@ -543,9 +707,39 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	 */
 	transformFromClause(pstate, stmt->usingClause);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	if (DB_MYSQL == compatible_db)
+	{
+		transformFromClause(pstate, stmt->relationList);
+
+		if (pstate->p_indexhintLists)
+			qry->indexhintList = pstate->p_indexhintLists;
+
+		/* Checks whether the specified table exists in the source table. */
+		if (pstate->p_deleteRangerVars && pstate->p_delrellist && 
+			(stmt->relationList || stmt->usingClause))
+			transformCollistInFromcClause(pstate->p_deleteRangerVars, pstate->p_delrellist);
+		/* Support for other situations, eg:delete from t,t1 using t; */
+		else if (pstate->p_delrellist && (stmt->relationList || stmt->usingClause))
+			transformCollistInFromcClause(stmt->relationList ? stmt->relationList : stmt->usingClause, pstate->p_delrellist);
+
+		if (pstate->p_updateRelations)
+		{
+			if (list_length(pstate->p_updateRelations) == 1)
+				qry->resultRelation = linitial_int(pstate->p_updateRelations);
+			else
+				qry->resultRelations = pstate->p_updateRelations;
+		}
+		transformLimitSortClause(pstate, stmt, qry, true);
+	}
+
 	/* remaining clauses can reference the result relation normally */
-	nsitem->p_lateral_only = false;
-	nsitem->p_lateral_ok = true;
+	if (stmt->relation)
+	{
+		nsitem->p_lateral_only = false;
+		nsitem->p_lateral_ok = true;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 	qual = transformWhereClause(pstate, stmt->whereClause,
 								EXPR_KIND_WHERE, "WHERE");
@@ -761,12 +955,12 @@ GetTableOidInSubquery(RangeTblEntry* rte)
 static void
 transformCheckTemptableIsMultiUse(List* rtable, List* subrtable)
 {
-	ListCell   *lc;
-	ListCell   *sublc;
 	char		relpersistence;
 	char		subrelpersistence;
-	Oid			reloid;
-	Oid			subreloid;
+	ListCell   *lc = NULL;
+	ListCell   *sublc = NULL;
+	Oid			reloid = InvalidOid;
+	Oid			subreloid = InvalidOid;
 	foreach(lc, rtable)
 	{
 		RangeTblEntry   *rte = lfirst(lc);
@@ -2946,13 +3140,18 @@ transformUpdateSortClause(ParseState* pstate, UpdateStmt* stmt, Query* qry)
  * transforms update statement limit and sort clause
  */
 static void
-transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry)
+transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry, bool isdel)
 {
 	List	   *rlist = NIL;
 
-	qry->limitCount = transformLimitClause(pstate, ((UpdateStmt*)stmt)->limitClause, EXPR_KIND_LIMIT, "LIMIT", LIMIT_OPTION_DEFAULT);
-	rlist = transformUpdateSortClause(pstate, (UpdateStmt*)stmt, qry);
-
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	qry->limitCount = isdel ? transformLimitClause(pstate, ((DeleteStmt*)stmt)->limitClause, EXPR_KIND_LIMIT, "LIMIT", LIMIT_OPTION_DEFAULT) :
+					  transformLimitClause(pstate, ((UpdateStmt*)stmt)->limitClause, EXPR_KIND_LIMIT, "LIMIT", LIMIT_OPTION_DEFAULT);
+	if (isdel)
+		rlist = transformSortClause(pstate, ((DeleteStmt*)stmt)->sortClause, &qry->targetList, EXPR_KIND_ORDER_BY, false);
+	else
+		rlist = transformUpdateSortClause(pstate, (UpdateStmt*)stmt, qry);
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	/*
 	 * For update statement, the effective range of sort clause is not optimized. For delete statement,
 	 * sorting is performed only when limit or returning clause takes effect.
@@ -2965,10 +3164,10 @@ transformLimitSortClause(ParseState *pstate, void *stmt, Query *qry)
 		flag->consttype = INT8OID;
 		flag->consttypmod = -1;
 		qry->limitOffset = (Node*)flag;
+		qry->sortClause = rlist;
 	}
-
-	qry->sortClause = rlist;
-
+	else if (!isdel || qry->returningList)
+		qry->sortClause = rlist;
 }
 
 
@@ -3165,7 +3364,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 {
 	Query	   *qry = makeNode(Query);
 	ParseNamespaceItem *nsitem = NULL;
-	Node	   *qual;
+	Node	   *qual = NULL;
 
 	qry->commandType = CMD_UPDATE;
 	pstate->p_is_insert = false;
@@ -3288,7 +3487,7 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		if (DB_MYSQL == compatible_db && qry->resultRelation)
-			transformLimitSortClause(pstate, stmt, qry);
+			transformLimitSortClause(pstate, stmt, qry, false);
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 	}
 

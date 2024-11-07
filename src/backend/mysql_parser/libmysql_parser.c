@@ -227,6 +227,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	mys_base_yy_extra_type *yyextra = pg_yyget_extra(yyscanner);
 	int			cur_token;
 	int			next_token;
+	int			third_token; /* ReqID:SRS-MYSQL-SQL-DELETE */
 	int			cur_token_length;
 	YYLTYPE		cur_yylloc;
 
@@ -264,6 +265,9 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 		case USCONST:
 			cur_token_length = strlen(yyextra->core_yy_extra.scanbuf + *llocp);
 			break;
+		case DELETE_P:
+			cur_token_length = 6;
+			break;
 		default:
 			return cur_token;
 	}
@@ -292,6 +296,27 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	yyextra->lookahead_yylloc = *llocp;
 
 	*llocp = cur_yylloc;
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	/* Get the third token ,eg: delete quick/low_priority/ignore from */
+	if (cur_token == DELETE_P && 
+		(next_token == QUICK ||
+		 next_token == LOW_PRIORITY ||
+		 next_token == IGNORE_P))
+	{
+		int next_token_length;
+
+		next_token_length = strlen(yyextra->core_yy_extra.scanbuf + *llocp);
+		yyextra->lookahead_end = yyextra->core_yy_extra.scanbuf +
+		*llocp + next_token_length;
+		Assert(*(yyextra->lookahead_end) == '\0');
+		cur_yylloc = *llocp;
+		third_token = mys_core_yylex(&(yyextra->lookahead_yylval), llocp, yyscanner);
+		yyextra->lookahead_token = third_token;
+		yyextra->lookahead_yylloc = *llocp;
+		*llocp = cur_yylloc;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 	/* Now revert the un-truncation of the current token */
 	yyextra->lookahead_hold_char = *(yyextra->lookahead_end);
@@ -406,6 +431,24 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 				cur_token = SCONST;
 			}
 			break;
+		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+		case DELETE_P:
+			switch (next_token)
+			{
+				case QUICK:
+				case LOW_PRIORITY:
+				case IGNORE_P:
+					{
+						if (third_token == FROM)
+							cur_token = DELETE_FROM;
+					}
+					break;
+				case FROM:
+					cur_token = DELETE_FROM;
+					break;
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	}
 
 	return cur_token;

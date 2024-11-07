@@ -26,6 +26,34 @@ DELETE FROM [ ONLY ] <replaceable class="parameter">table_name</replaceable> [ *
     [ USING <replaceable class="parameter">from_item</replaceable> [, ...] ]
     [ WHERE <replaceable class="parameter">condition</replaceable> | WHERE CURRENT OF <replaceable class="parameter">cursor_name</replaceable> ]
     [ RETURNING * | <replaceable class="parameter">output_expression</replaceable> [ [ AS ] <replaceable class="parameter">output_name</replaceable> ] [, ...] ]
+
+In MySQL mode:
+DELETE Single-Relation Syntax：
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+DELETE [ LOW_PRIORITY ] [ QUICK ] [ IGNORE ] FROM tbl_name [ [ AS ] alias ] ]
+[ PARTITION ( partition_name [, partition_name ]...) ]
+[ WHERE condition ]
+[ ORDER BY {expression [ [ ASC | DESC | USING operator ]
+[ LIMIT { count } ]
+[ RETURNING { * | { output_expr [ [ AS ] output_name ] } [, ...] } ];
+
+DELETE Multiple-Relation Syntax：
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+DELETE [ LOW_PRIORITY ] [ QUICK ] [ IGNORE ]
+tbl_name [. * ] [, tbl_name[. * ]] ...
+FROM from_item [, ...]
+[ WHERE condition ];
+or
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+DELETE [ LOW_PRIORITY ] [ QUICK ] [ IGNORE ]
+FROM tbl_name [. * ] [, tbl_name[. * ]] ...
+USING from_item [, ...]
+[ WHERE condition ];
+
+where with_query can be:
+with_query_name [ ( column_name [, ...] ) ] AS [ [ NOT ] MATERIALIZED ]
+( {select | values | insert | update | delete} )
+
 </synopsis>
  </refsynopsisdiv>
 
