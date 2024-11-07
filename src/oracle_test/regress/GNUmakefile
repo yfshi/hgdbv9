@@ -120,10 +120,13 @@ submake-contrib-spi: | submake-libpgport submake-generated-headers
 ## Run tests
 ##
 
+EXTRA_INSTALL = contrib/pageinspect contrib/gb18030_2022
+
 ORACLE_REGRESS_OPTS = --dlpath=. --max-concurrent-tests=20 --make-testtablespace-dir \
 	$(EXTRA_REGRESS_OPTS)
 
 oracle-check: all
+	$(if $(EXTRA_INSTALL),for extra in $(EXTRA_INSTALL); do $(MAKE) -C '$(top_builddir)'/$$extra DESTDIR='$(abs_top_builddir)'/tmp_install install || exit; done)
 	$(oracle_regress_check) $(ORACLE_REGRESS_OPTS) --schedule=$(srcdir)/parallel_schedule $(MAXCONNOPT) $(EXTRA_TESTS)
 
 oracle-check-tests: all | temp-install

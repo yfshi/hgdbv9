@@ -492,6 +492,39 @@ pg_do_encoding_conversion_buf(Oid proc,
 	return DatumGetInt32(result);
 }
 
+/* Begin - BUG#M0000414 */
+int
+pg_do_encoding_conversion_buf_new(Oid proc,
+							  int src_encoding,
+							  int dest_encoding,
+							  unsigned char *src, int srclen,
+							  unsigned char *dest, int destlen,
+							  bool noError,
+							  unsigned char *double_s,
+							  int *counts)
+{
+	Datum		result;
+
+	/*
+	 * If the destination buffer is not large enough to hold the result in the
+	 * worst case, limit the input size passed to the conversion function.
+	 */
+	if ((Size) srclen >= ((destlen - 1) / (Size) MAX_CONVERSION_GROWTH))
+		srclen = ((destlen - 1) / (Size) MAX_CONVERSION_GROWTH);
+
+	result = OidFunctionCall8(proc,
+							  Int32GetDatum(src_encoding),
+							  Int32GetDatum(dest_encoding),
+							  CStringGetDatum(src),
+							  CStringGetDatum(dest),
+							  Int32GetDatum(srclen),
+							  BoolGetDatum(noError),
+							  CStringGetDatum(double_s),
+							  PointerGetDatum(counts));
+	return DatumGetInt32(result);
+}
+/* End - BUG#M0000414 */
+
 /*
  * Convert string to encoding encoding_name. The source
  * encoding is the DB encoding.

@@ -11747,6 +11747,36 @@
   proargtypes => '', prosrc => 'ivy_get_host_ipv6' },
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - BUG#M0000414 */
+{ oid => '4663', descr => 'internal conversion function for UTF8 to GBK',
+  proname => 'utf8_to_gbk_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'utf8_to_gbk_2', probin => '$libdir/utf8_and_gbk' },
+{ oid => '4664', descr => 'internal conversion function for GBK to UTF8',
+  proname => 'gbk_to_utf8_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gbk_to_utf8_2', probin => '$libdir/utf8_and_gbk' },
+
+{ oid => '4665', descr => 'internal conversion function for UTF8 to GB18030',
+  proname => 'utf8_to_gb18030_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'utf8_to_gb18030_2', probin => '$libdir/utf8_and_gb18030' },
+{ oid => '4666', descr => 'internal conversion function for GB18030 to UTF8',
+  proname => 'gb18030_to_utf8_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gb18030_to_utf8_2', probin => '$libdir/utf8_and_gb18030' },
+
+{ oid => '4667', descr => 'internal conversion function for gbk to gb18030',
+  proname => 'gbk_to_gb18030_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gbk_to_gb18030_2', probin => '$libdir/gb18030_and_gbk' },
+{ oid => '4668', descr => 'internal conversion function for gb18030 to gbk',
+  proname => 'gb18030_to_gbk_2', prolang => 'c', prorettype => 'int4',
+  proargtypes => 'int4 int4 cstring internal int4 bool',
+  prosrc => 'gb18030_to_gbk_2', probin => '$libdir/gb18030_and_gbk' },
+
+/* End - BUG#M0000414 */
+
 /*BEGIN Oracle Compatibility Metadatas*/
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 { oid => '9101', descr => 'call this function for execution of PL/iSQL procedures',

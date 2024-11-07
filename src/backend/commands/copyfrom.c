@@ -53,11 +53,15 @@
 #include "utils/portal.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
+/* Begin - BUG#M0000414 */
+#include "utils/ora_compatible.h"
+/* End - BUG#M0000414 */
 
 /* Begin - ReqID:SRS-MISC-BULKLOAD */
 #include "lib/stringinfo.h"
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-MISC-BULKLOAD */
+
 
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
@@ -1810,14 +1814,41 @@ BeginCopyFrom(ParseState *pstate,
 	else
 	{
 		cstate->need_transcoding = true;
+
 		cstate->conversion_proc = FindDefaultConversionProc(cstate->file_encoding,
-															GetDatabaseEncoding());
+									GetDatabaseEncoding());
 		if (!OidIsValid(cstate->conversion_proc))
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_FUNCTION),
 					 errmsg("default conversion function for encoding \"%s\" to \"%s\" does not exist",
 							pg_encoding_to_char(cstate->file_encoding),
 							pg_encoding_to_char(GetDatabaseEncoding()))));
+
+		/* Begin - BUG#M0000414 */
+		/* when conversion, using conversion_proc function to do the real wrok*/
+		if (database_mode == DB_ORACLE && (cstate->opts.spcode || enable_store_nullterminator_char))
+		{
+			/* utf8 to gbk */
+			if (cstate->conversion_proc == 4371)
+				cstate->conversion_proc = 4663;
+			/* gbk to utf8 */
+			else if (cstate->conversion_proc == 4370)
+				cstate->conversion_proc = 4664;
+			/* uft8 to gb18030*/
+			else if (cstate->conversion_proc == 4369)
+				cstate->conversion_proc = 4665;
+			/* gb18030 to utf8 */
+			else if (cstate->conversion_proc == 4368)
+				cstate->conversion_proc = 4666;
+			/* gbk to gb18030 */
+			else if (cstate->conversion_proc == 4651)
+				cstate->conversion_proc = 4667;
+			/* gb18030 to gbk */
+			else if (cstate->conversion_proc == 4650)
+				cstate->conversion_proc = 4668;
+		}
+		/* End - BUG#M0000414 */
+
 	}
 
 	cstate->copy_src = COPY_FILE;	/* default */
@@ -1905,6 +1936,37 @@ BeginCopyFrom(ParseState *pstate,
 		else
 			getTypeInputInfo(att->atttypid,
 							 &in_func_oid, &typioparams[attnum - 1]);
+		
+		/* Begin - BUG#M0000414 */
+		if (enable_store_nullterminator_char)
+		{
+			switch (att->atttypid)
+			{
+				/* 9000 */
+				case ORACHARCHAROID:
+					getTypeInputInfo(9052,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9001 */
+				case ORACHARBYTEOID:
+					getTypeInputInfo(9054,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9002 */
+				case ORAVARCHARCHAROID:
+					getTypeInputInfo(9056,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9003 */
+				case ORAVARCHARBYTEOID:
+					getTypeInputInfo(9058,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+			}
+		}
+		
+		/* End - BUG#M0000414 */
+
 		fmgr_info(in_func_oid, &in_functions[attnum - 1]);
 
 		/* Get default info if needed */
@@ -2119,6 +2181,8 @@ BeginCopyFrom(ParseState *pstate,
 
 		cstate->max_fields = attr_count;
 		cstate->raw_fields = (char **) palloc(attr_count * sizeof(char *));
+
+		cstate->raw_fields_lens = (uint32 *) palloc(attr_count * sizeof(uint32));	/* BUG#M0000414 */
 	}
 
 	/* ReqID:SRS-MISC-BULKLOAD */

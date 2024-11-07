@@ -445,6 +445,10 @@ extern PGDLLIMPORT bool enable_ora_default_tablespace;
 
 
 
+/* Begin - BUG#M0000414 */
+extern bool enable_store_nullterminator_char;
+/* End - BUG#M0000414 */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

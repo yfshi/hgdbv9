@@ -12036,3 +12036,115 @@ CREATE CAST (pg_catalog.interval AS sys.oravarcharchar)
 WITH INOUT
 AS IMPLICIT;
 /* End - BUG#M0000234 */
+
+-- Begin - BUG#M0000414
+
+/* begin - charchar */
+/* Basic I/O functions for char(byte) */
+CREATE FUNCTION sys.oracharcharin_2(cstring,oid,integer,integer)
+RETURNS sys.oracharchar_2
+AS 'MODULE_PATHNAME','oracharcharin_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.oracharcharout_2(sys.oracharchar_2)
+RETURNS CSTRING
+AS 'MODULE_PATHNAME','oracharcharout_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+-- Register the basic I/O for 'orachar' in pg_type.
+UPDATE pg_type
+SET typinput=(SELECT oid FROM pg_proc WHERE proname='oracharcharin_2')
+WHERE oid = 9052;
+
+UPDATE pg_type
+SET typoutput=(SELECT oid FROM pg_proc WHERE proname='oracharcharout_2')
+WHERE oid = 9052;
+/* end - charchar */
+
+/* begin - charbyte */
+/* Basic I/O functions for char(byte) */
+CREATE FUNCTION sys.oracharbytein_2(cstring,oid,integer,integer)
+RETURNS sys.oracharbyte_2
+AS 'MODULE_PATHNAME','oracharbytein_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.oracharbyteout_2(sys.oracharbyte_2)
+RETURNS CSTRING
+AS 'MODULE_PATHNAME','oracharbyteout_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+-- Register the basic I/O for 'oracharbyte' in pg_type.
+UPDATE pg_type
+SET typinput=(SELECT oid FROM pg_proc WHERE proname='oracharbytein_2')
+WHERE oid = 9054;
+
+UPDATE pg_type
+SET typoutput=(SELECT oid FROM pg_proc WHERE proname='oracharbyteout_2')
+WHERE oid = 9054;
+/* end - charbyte */
+
+/* begin - varcharchar */
+CREATE FUNCTION sys.oravarcharcharin_2(cstring,oid,integer,integer)
+RETURNS sys.oravarcharchar_2
+AS 'MODULE_PATHNAME','oravarcharcharin_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.oravarcharcharout_2(sys.oravarcharchar_2)
+RETURNS CSTRING
+AS 'MODULE_PATHNAME','oravarcharcharout_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+UPDATE pg_type
+SET typinput=(SELECT oid FROM pg_proc WHERE proname='oravarcharcharin_2')
+WHERE oid = 9056;
+
+UPDATE pg_type
+SET typoutput=(SELECT oid FROM pg_proc WHERE proname='oravarcharcharout_2')
+WHERE oid = 9056;
+/* end - varcharchar */
+
+/* begin - varcharbyte */
+CREATE FUNCTION sys.oravarcharbytein_2(cstring,oid,integer,integer)
+RETURNS sys.oravarcharbyte_2
+AS 'MODULE_PATHNAME','oravarcharbytein_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION sys.oravarcharbyteout_2(sys.oravarcharbyte_2)
+RETURNS CSTRING
+AS 'MODULE_PATHNAME','oravarcharbyteout_2'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+UPDATE pg_type
+SET typinput=(SELECT oid FROM pg_proc WHERE proname='oravarcharbytein_2')
+WHERE oid = 9058;
+
+UPDATE pg_type
+SET typoutput=(SELECT oid FROM pg_proc WHERE proname='oravarcharbyteout_2')
+WHERE oid = 9058;
+/* end - varcharbyte */
+
+-- End - BUG#M0000414

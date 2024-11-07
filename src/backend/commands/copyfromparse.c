@@ -74,6 +74,10 @@
 #include "port/pg_bswap.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
+/* Begin - BUG#M0000414 */
+#include "utils/ora_compatible.h"
+/* End - BUG#M0000414 */
+
 
 /* Begin - ReqID:SRS-MISC-BULKLOAD */
 #include "executor/spi.h"
@@ -603,9 +607,25 @@ CopyConvertBuf(CopyFromState cstate)
 		 * Verify the new data, including any residual unverified bytes from
 		 * previous round.
 		 */
-		nverified = pg_encoding_verifymbstr(cstate->file_encoding,
+		/* Begin - BUG#M0000414 */
+		if (database_mode == DB_ORACLE &&
+			(cstate->opts.spcode || enable_store_nullterminator_char) && 
+			(cstate->file_encoding == PG_UTF8 || cstate->file_encoding == PG_GB18030 || cstate->file_encoding == PG_GBK) )
+		{
+			/*
+ 			 * just return the len
+ 			 * did not do the real check
+ 			 */
+			nverified = pg_encoding_verifymbstr_new(cstate->file_encoding,
+								cstate->raw_buf + preverifiedlen,
+								unverifiedlen);
+		}
+		else /* End - BUG#M0000414 */
+		{
+			nverified = pg_encoding_verifymbstr(cstate->file_encoding,
 											cstate->raw_buf + preverifiedlen,
 											unverifiedlen);
+		}
 		if (nverified == 0)
 		{
 			/*
@@ -634,6 +654,7 @@ CopyConvertBuf(CopyFromState cstate)
 		unsigned char *dst;
 		int			dstlen;
 		int			convertedlen;
+		int			exchange_len = 0;	/* BUG#M0000414 */
 
 		if (RAW_BUF_BYTES(cstate) == 0)
 		{
@@ -674,7 +695,20 @@ CopyConvertBuf(CopyFromState cstate)
 		 * after the end-of-input marker as long as it's valid for the
 		 * encoding, but that's harmless.
 		 */
-		convertedlen = pg_do_encoding_conversion_buf(cstate->conversion_proc,
+		/* Begin - BUG#M0000414 */
+		if (database_mode == DB_ORACLE &&
+				(cstate->opts.spcode || enable_store_nullterminator_char) && 
+				(cstate->file_encoding == PG_UTF8 || cstate->file_encoding == PG_GB18030 || cstate->file_encoding == PG_GBK) )
+			convertedlen = pg_do_encoding_conversion_buf_new(cstate->conversion_proc,
+									 cstate->file_encoding,
+									 GetDatabaseEncoding(),
+									 src, srclen,
+									 dst, dstlen,
+									 true,
+									 (unsigned char *)cstate->opts.double_s,
+									 &exchange_len);
+		else	/* End - BUG#M0000414 */
+			convertedlen = pg_do_encoding_conversion_buf(cstate->conversion_proc,
 													 cstate->file_encoding,
 													 GetDatabaseEncoding(),
 													 src, srclen,
@@ -695,7 +729,14 @@ CopyConvertBuf(CopyFromState cstate)
 			return;
 		}
 		cstate->raw_buf_index += convertedlen;
-		cstate->input_buf_len += strlen((char *) dst);
+
+		/* Begin - BUG#M0000414 */
+		if (database_mode == DB_ORACLE &&
+				(cstate->opts.spcode || enable_store_nullterminator_char) && 
+				(cstate->file_encoding == PG_UTF8 || cstate->file_encoding == PG_GB18030 || cstate->file_encoding == PG_GBK) )
+			cstate->input_buf_len += exchange_len;
+		else /* End - BUG#M0000414 */
+			cstate->input_buf_len += strlen((char *) dst);
 	}
 }
 
@@ -1354,10 +1395,26 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 
 			cstate->cur_attname = NameStr(att->attname);
 			cstate->cur_attval = string;
-			values[m] = InputFunctionCall(&in_functions[m],
+
+			/* Begin - BUG#M0000414 */
+			if (enable_store_nullterminator_char && 
+				(att->atttypid == 9000 || att->atttypid == 9001 || 
+				 att->atttypid == 9002 || att->atttypid == 9003))
+			{
+					values[m] = InputFunctionCall_2(&in_functions[m],
+										  string,
+										  typioparams[m],
+										  att->atttypmod,
+										  cstate->raw_fields_lens[m]);
+			}
+			/* End - BUG#M0000414 */
+			else 
+			{
+				values[m] = InputFunctionCall(&in_functions[m],
 										  string,
 										  typioparams[m],
 										  att->atttypmod);
+			}
 			if (string != NULL)
 				nulls[m] = false;
 			cstate->cur_attname = NULL;
@@ -1587,6 +1644,7 @@ CopyReadLineText(CopyFromState cstate)
 	{
 		int			prev_raw_ptr;
 		char		c;
+		char		d;	/* BUG#M0000414 */
 
 		/*
 		 * Load more data if needed.
@@ -1622,6 +1680,16 @@ CopyReadLineText(CopyFromState cstate)
 		prev_raw_ptr = input_buf_ptr;
 		c = copy_input_buf[input_buf_ptr++];
 
+		/* Begin - BUG#M0000414 */
+		if ( cstate->opts.spcode)
+		{
+			if (input_buf_ptr >= copy_buf_len)
+				d = '\0';
+			else
+				d = copy_input_buf[input_buf_ptr];
+		}
+		/* End - BUG#M0000414 */
+
 		if (cstate->opts.csv_mode)
 		{
 			/*
@@ -1643,12 +1711,26 @@ CopyReadLineText(CopyFromState cstate)
 			 * quoted field and immediately preceding a quote char, and not
 			 * the second in an escape-escape sequence.
 			 */
-			if (in_quote && c == escapec)
-				last_was_esc = !last_was_esc;
-			if (c == quotec && !last_was_esc)
-				in_quote = !in_quote;
-			if (c != escapec)
-				last_was_esc = false;
+			
+			/* Begin - BUG#M0000414 */
+			if ( cstate->opts.spcode)
+			{
+				// if (c == quote1 && d == quote2)
+				if (c == cstate->opts.double_s[2] && d == cstate->opts.double_s[3])
+				{
+					in_quote = !in_quote;
+					input_buf_ptr++;
+				}	
+			} /* End - BUG#M0000414 */
+			else
+			{
+				if (in_quote && c == escapec)
+					last_was_esc = !last_was_esc;
+				if (c == quotec && !last_was_esc)
+					in_quote = !in_quote;
+				if (c != escapec)
+					last_was_esc = false;
+			}
 
 			/*
 			 * Updating the line count for embedded CR and/or LF chars is
@@ -2154,11 +2236,15 @@ CopyReadAttributesCSV(CopyFromState cstate)
 	char		delimc = cstate->opts.delim[0];
 	char		quotec = cstate->opts.quote[0];
 	char		escapec = cstate->opts.escape[0];
+
+	bool	ptr_end = false;	/* BUG#M0000414 */
+
 	int			fieldno;
 	char	   *output_ptr;
 	char	   *cur_ptr;
 	char	   *line_end_ptr;
 	int		fieldno_all;
+
 
 	/*
 	 * We need a special case for zero-column tables: check that the input
@@ -2209,6 +2295,10 @@ CopyReadAttributesCSV(CopyFromState cstate)
 			cstate->max_fields *= 2;
 			cstate->raw_fields =
 				repalloc(cstate->raw_fields, cstate->max_fields * sizeof(char *));
+
+			/* BUG#M0000414 */
+			cstate->raw_fields_lens =
+				repalloc(cstate->raw_fields_lens, cstate->max_fields * sizeof(uint32));
 		}
 
 		/* Remember start of field on both input and output sides */
@@ -2229,7 +2319,11 @@ CopyReadAttributesCSV(CopyFromState cstate)
 		 */
 		for (;;)
 		{
-			char		c;
+			/* Begin - BUG#M0000414 */
+			char		c = '\0';
+			char		d = '\0';
+			/* End - BUG#M0000414 */
+
 			int 		byte_count = 0; 	/* SRS-MISC-GB18030 */
 			/* Not in quote */
 			for (;;)
@@ -2238,6 +2332,44 @@ CopyReadAttributesCSV(CopyFromState cstate)
 				if (cur_ptr >= line_end_ptr)
 					goto endfield;
 				c = *cur_ptr++;
+
+				/* Begin - BUG#M0000414 */
+				if (cstate->opts.spcode)
+				{
+					/*
+					 * cur_ptr point next char
+					 * if reached the end, d need a value
+					 */
+					if (cur_ptr >= line_end_ptr)
+						ptr_end = true;
+					else
+						d = *cur_ptr;
+				}
+
+				if (cstate->opts.spcode && !ptr_end)
+				{
+
+					/* check doubledelimc */
+                                        /* if (c == doubledelimc && d == doubledelimd) */
+					if (c == cstate->opts.double_s[0] && d == cstate->opts.double_s[1])
+                                        {
+                                                found_delim = true;
+                                                cur_ptr++;
+                                                goto endfield;
+                                        }
+
+                                        /* if (c == quote1 && d == quote2) */
+                                        if ( cstate->opts.double_s[2] && cstate->opts.double_s[3] &&
+						(c == cstate->opts.double_s[2] && d == cstate->opts.double_s[3]))
+                                        {
+                                                saw_quote = true;
+                                                cur_ptr++;
+                                                break;
+                                        }
+                                }
+                                /* End - BUG#M0000414 */
+
+
 				/* BEGIN - SRS-MISC-GB18030,
 				 * if the  server encoding was gb18030 or gbk,
 				 * we measure the mutibyte character length and append it to output_ptr here,
@@ -2287,18 +2419,27 @@ CopyReadAttributesCSV(CopyFromState cstate)
 				}
 				/* END - SRS-MISC-GB18030 */
 
-				/* unquoted field delimiter */
-				if (c == delimc)
-				{
-					found_delim = true;
-					goto endfield;
+				/* Begin - BUG#M0000414 */
+				if (!cstate->opts.spcode)
+				{ /* Not handle quote and escape */
+				/* End - BUG#M0000414 */
+
+					/* unquoted field delimiter */
+					if (c == delimc)
+					{
+						found_delim = true;
+						goto endfield;
+					}
+				
+					/* start of quoted field (or part of field) */
+					if (c == quotec)
+					{
+						saw_quote = true;
+						break;
+					}
+				
 				}
-				/* start of quoted field (or part of field) */
-				if (c == quotec)
-				{
-					saw_quote = true;
-					break;
-				}
+
 				/* Add c to output string */
 				if (!need_skip_this_field)
 					*output_ptr++ = c;
@@ -2314,6 +2455,32 @@ CopyReadAttributesCSV(CopyFromState cstate)
 							 errmsg("unterminated CSV quoted field")));
 
 				c = *cur_ptr++;
+
+	        		/* Begin - BUG#M0000414 */
+        		        if (cstate->opts.spcode)
+                		{
+                    			/*
+                     			 * cur_ptr point next char
+                     			 * if reached the end, d need a value
+                     			 */
+                    			if (cur_ptr >= line_end_ptr)
+						ereport(ERROR,
+							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
+							errmsg("unterminated CSV quoted field")));
+					else
+						d = *cur_ptr;
+
+					/* check the quote */
+                                        /* if (c == quote1 && d == quote2) */
+                                        if ( cstate->opts.double_s[2] && cstate->opts.double_s[3] &&
+						(c == cstate->opts.double_s[2] && d == cstate->opts.double_s[3]))
+                                        {
+                                                cur_ptr++;
+                                                break;
+                                        }
+                                }
+                                /* End - BUG#M0000414 */
+
 				/* BEGIN - SRS-MISC-GB18030,
 				 * if the  server encoding was gb18030 or gbk,
 				 * we measure the mutibyte character length and append it to output_ptr here,
@@ -2367,6 +2534,11 @@ CopyReadAttributesCSV(CopyFromState cstate)
 				}
 				/* END - SRS-MISC-GB18030 */
 
+				/* Begin - BUG#M0000414 */
+				if (!cstate->opts.spcode)
+				{
+				/* End - BUG#M0000414 */
+
 				/* escape within a quoted field */
 				if (c == escapec)
 				{
@@ -2387,19 +2559,25 @@ CopyReadAttributesCSV(CopyFromState cstate)
 						}
 					}
 				}
+				}
 
-				/*
-				 * end of quoted field. Must do this test after testing for
-				 * escape in case quote char and escape char are the same
-				 * (which is the common case).
-				 */
-				if (c == quotec)
-					break;
+
+				if (!cstate->opts.spcode)	/* BUG#M0000414 */
+				{
+					/*
+					 * end of quoted field. Must do this test after testing for
+					 * escape in case quote char and escape char are the same
+					 * (which is the common case).
+					 */
+					if (c == quotec)
+						break;
+				}
 
 				/* Add c to output string */
 				if (!need_skip_this_field) /* BUG:M0000368 */
 					*output_ptr++ = c;
 			}
+
 		}
 endfield:
 
@@ -2411,6 +2589,7 @@ endfield:
 		}
 		else
 		{
+
 			/* Terminate attribute value in output area */
 			*output_ptr++ = '\0';
 
@@ -2420,6 +2599,11 @@ endfield:
 				strncmp(start_ptr, cstate->opts.null_print, input_len) == 0)
 				cstate->raw_fields[fieldno] = NULL;
 
+			/* BUG#M0000414 */
+			/* store the data length in the raw_fields[x] */
+			cstate->raw_fields_lens[fieldno] = (output_ptr - cstate->raw_fields[fieldno] - 1);
+
+			
 			fieldno++;
 			fieldno_all++;
 			/* Done if we hit EOL instead of a delim */

@@ -95,6 +95,7 @@ WHERE (p1.typinput = 0 OR p1.typoutput = 0) AND p1.typnamespace != 9900;
 
 -- Check for bogus typinput routines
 
+-- BUG#M0000414, as new function have four args, change this checking
 SELECT p1.oid, p1.typname, p2.oid, p2.proname
 FROM pg_type AS p1, pg_proc AS p2
 WHERE p1.typinput = p2.oid AND NOT
@@ -103,7 +104,11 @@ WHERE p1.typinput = p2.oid AND NOT
       p2.proargtypes[1] = 'oid'::regtype) OR
      (p2.pronargs = 3 AND p2.proargtypes[0] = 'cstring'::regtype AND
       p2.proargtypes[1] = 'oid'::regtype AND
-      p2.proargtypes[2] = 'int4'::regtype));
+      p2.proargtypes[2] = 'int4'::regtype) OR
+     (p2.pronargs = 4 AND p2.proargtypes[0] = 'cstring'::regtype AND
+      p2.proargtypes[1] = 'oid'::regtype AND
+      p2.proargtypes[2] = 'int4'::regtype AND
+      p2.proargtypes[3] = 'int4'::regtype));
 
 -- Check for type of the variadic array parameter's elements.
 -- provariadic should be ANYOID if the type of the last element is ANYOID,

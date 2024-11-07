@@ -75,6 +75,13 @@ typedef struct CopyFormatOptions
 	bool	   skip_list[MaxHeapAttributeNumber + MAX_SKIP_COUNT + 1];
 	/* End - BUG:M0000368 */
 
+	/* Begin - BUG#M0000414 */
+	bool	   spcode;
+	char       *doubdeli;
+	char	   *quotes;
+	char	   double_s[5];
+	/* End - BUG#M0000414 */
+
 } CopyFormatOptions;
 
 /* These are private in commands/copy[from|to].c */

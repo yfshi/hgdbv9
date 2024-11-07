@@ -34,6 +34,19 @@ int gb18030_2022_to_utf8(const unsigned char *iso, int len,
 
 int utf8_to_gb18030_2022(const unsigned char *utf, int len,
 								unsigned char *iso, bool noError);
+
+/* Begin - BUG#M0000414 */
+int gb18030_2022_to_utf8_2(const unsigned char *iso, int len,
+				unsigned char *utf, bool noError,
+				unsigned char *double_s,
+				int *counts);
+
+int utf8_to_gb18030_2022_2(const unsigned char *utf, int len,
+				unsigned char *iso, bool noError,
+				unsigned char *double_s,
+				int *counts);
+/* End - BUG#M0000414 */
+
 extern void _PG_init(void);
 extern void _PG_fini(void);
 /*
@@ -232,6 +245,43 @@ int utf8_to_gb18030_2022(const unsigned char *utf, int len,
 
 }
 
+/* Begin - BUG#M0000414 */
+int gb18030_2022_to_utf8_2(const unsigned char *iso, int len,
+						unsigned char *utf, bool noError,
+						unsigned char *double_s,
+						int *counts)
+{
+
+
+	return LocalToUtf_2(iso, len, utf,
+						   &gb18030_2022_to_unicode_tree,
+						   NULL, 0,
+						   conv_18030_2022_to_utf8,
+						   PG_GB18030,
+						   noError,
+						   double_s,
+						   counts);
+
+}
+
+int utf8_to_gb18030_2022_2(const unsigned char *utf, int len,
+						 unsigned char *iso,bool noError,
+						 unsigned char *double_s,
+						 int *counts)
+{
+	return UtfToLocal_2(utf, len, iso,
+						   &gb18030_2022_from_unicode_tree,
+						   NULL, 0,
+						   conv_utf8_to_18030_2022,
+						   PG_GB18030,
+						   noError,
+						   double_s,
+						   counts);
+
+}
+
+/* End - BUG#M0000414 */
+
 void _PG_init(void)
 {
 	/* install hooks */
@@ -239,6 +289,11 @@ void _PG_init(void)
 	pre_utf8_to_gb18030_2022_hook = utf8_to_gb18030_2022_hook;
 	gb18030_2022_to_utf8_hook = gb18030_2022_to_utf8;
 	utf8_to_gb18030_2022_hook = utf8_to_gb18030_2022;
+
+	/* Begin - BUG#M0000414 */
+	gb18030_2022_to_utf8_hook_2 = gb18030_2022_to_utf8_2;
+	utf8_to_gb18030_2022_hook_2 = utf8_to_gb18030_2022_2;
+	/* End - BUG#M0000414 */
 }
 
 void _PG_fini(void)
