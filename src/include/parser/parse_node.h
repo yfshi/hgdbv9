@@ -300,6 +300,11 @@ struct ParseState
 	bool		p_ruleflag;
 	bool		p_isexistVar;
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	bool		p_addDeleteTable;
+	List	   *p_delrellist;
+	List	   *p_deleteRangerVars;
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 };
 
 /*

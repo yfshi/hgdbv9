@@ -78,12 +78,16 @@ preprocess_targetlist(PlannerInfo *root)
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	bool		multirelsflag = false;
 	RangeTblEntry   *rte = NULL;
-	int			tmp_relation;
+	int			tmp_relation = 0;
 
-	if(DB_MYSQL == compatible_db && parse->resultRelations )
+	if(DB_MYSQL == compatible_db && parse->resultRelations)
 	{
 		multirelsflag = true;
 		result_relation = parse->resultRelations ? lfirst_int(list_head(parse->resultRelations)) : 0;
+		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+		if(list_length(parse->resultRelations) == 1)
+			parse->resultRelation = result_relation;
+		/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	else

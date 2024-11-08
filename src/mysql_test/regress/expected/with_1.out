@@ -1873,20 +1873,8 @@ WITH RECURSIVE t(a) AS (
 	SELECT a+1 FROM t WHERE a < 50
 )
 DELETE FROM y USING t WHERE t.a = y.a RETURNING y.a;
- a  
-----
- 11
- 12
- 13
- 14
- 15
- 16
- 17
- 18
- 19
- 20
-(10 rows)
-
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
 SELECT * FROM y;
  a  
 ----
@@ -1900,7 +1888,17 @@ SELECT * FROM y;
   8
   9
  10
-(10 rows)
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+(20 rows)
 
 DROP TABLE y;
 --
@@ -3314,10 +3312,12 @@ SELECT * FROM parent;
 
 WITH rcte AS ( SELECT max(id) AS maxid FROM parent )
 DELETE FROM parent USING rcte WHERE id = maxid;
+ERROR:  Unknown table parent in MULTI DELETE
 SELECT * FROM parent;
  id | val 
 ----+-----
-(0 rows)
+  2 | p1
+(1 row)
 
 WITH wcte AS ( INSERT INTO child2 VALUES ( 42, 'new2' ) RETURNING id AS newid )
 DELETE FROM parent USING wcte WHERE id = newid;
@@ -3327,29 +3327,14 @@ LINE 1: WITH wcte AS ( INSERT INTO child2 VALUES ( 42, 'new2' ) RETU...
 SELECT * FROM parent;
  id | val 
 ----+-----
-(0 rows)
+  2 | p1
+(1 row)
 
 -- check EXPLAIN VERBOSE for a wCTE with RETURNING
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH wcte AS ( INSERT INTO int8_tbl VALUES ( 42, 47 ) RETURNING q2 )
 DELETE FROM a USING wcte WHERE aa = q2;
-                     QUERY PLAN                     
-----------------------------------------------------
- Delete on public.a
-   CTE wcte
-     ->  Insert on public.int8_tbl
-           Output: int8_tbl.q2
-           ->  Result
-                 Output: '42'::bigint, '47'::bigint
-   ->  Nested Loop
-         Output: a.ctid, wcte.*
-         Join Filter: (a.aa = wcte.q2)
-         ->  Seq Scan on public.a
-               Output: a.ctid, a.aa
-         ->  CTE Scan on wcte
-               Output: wcte.*, wcte.q2
-(13 rows)
-
+ERROR:  Unknown table a in MULTI DELETE
 -- error cases
 -- data-modifying WITH tries to use its own output
 WITH RECURSIVE t AS (

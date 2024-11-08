@@ -29,6 +29,7 @@ cleansql:
 #REGRESS_OPTS = --port=3306
 MYS_REGRESS = multi_update \
 			  insert_update \
+			  multi_delete \
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

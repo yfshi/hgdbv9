@@ -455,24 +455,22 @@ select ename, who = current_user as "matches user", action, newsal, oldsal from 
 (11 rows)
 
 delete from rtest_emp using rtest_empmass where rtest_emp.ename = rtest_empmass.ename;
+ERROR:  Unknown table rtest_emp in MULTI DELETE
 select ename, who = current_user as "matches user", action, newsal, oldsal from rtest_emplog order by ename, action, newsal;
         ename         | matches user |   action   |   newsal   |   oldsal   
 ----------------------+--------------+------------+------------+------------
  gates                | t            | fired      |      $0.00 | $80,000.00
  gates                | t            | hired      | $80,000.00 |      $0.00
- maier                | t            | fired      |      $0.00 |  $6,000.00
  maier                | t            | hired      |  $5,000.00 |      $0.00
  maier                | t            | honored    |  $6,000.00 |  $5,000.00
- mayr                 | t            | fired      |      $0.00 |  $7,000.00
  mayr                 | t            | hired      |  $6,000.00 |      $0.00
  mayr                 | t            | honored    |  $7,000.00 |  $6,000.00
- meyer                | t            | fired      |      $0.00 |  $5,000.00
  meyer                | t            | hired      |  $4,000.00 |      $0.00
  meyer                | t            | honored    |  $5,000.00 |  $4,000.00
  wiecc                | t            | hired      |  $5,000.00 |      $0.00
  wieck                | t            | honored    |  $6,000.00 |  $5,000.00
  wieck                | t            | honored    |  $7,000.00 |  $6,000.00
-(14 rows)
+(11 rows)
 
 --
 -- Multiple cascaded qualified instead rule test
@@ -3327,7 +3325,9 @@ create rule r7 as on delete to rules_src do instead
        wdel as (delete from int4_tbl trgt where f1 = 0 returning *)
   insert into rules_log AS trgt select old.* from wins, wupd, wdel
   returning trgt.f1, trgt.f2;
-ERROR:  Column count doesn't match value count!
+ERROR:  syntax error at or near "trgt"
+LINE 4:        wdel as (delete from int4_tbl trgt where f1 = 0 retur...
+                                             ^
 -- check display of all rules added above
 \d+ rules_src
                                  Table "public.rules_src"

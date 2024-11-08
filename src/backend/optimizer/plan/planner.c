@@ -793,7 +793,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	 * If we have now verified that the query target relation is
 	 * non-inheriting, mark it as a leaf target.
 	 */
-	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) >1)
+	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
 	{
 		foreach(lc, parse->resultRelations)
 		{

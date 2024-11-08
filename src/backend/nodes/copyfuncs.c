@@ -3432,6 +3432,13 @@ _copyDeleteStmt(const DeleteStmt *from)
 	COPY_NODE_FIELD(whereClause);
 	COPY_NODE_FIELD(returningList);
 	COPY_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+	COPY_SCALAR_FIELD(ignore);
+	COPY_NODE_FIELD(relationList);
+	COPY_NODE_FIELD(collist);
+	COPY_NODE_FIELD(sortClause);
+	COPY_NODE_FIELD(limitClause);
+	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 	return newnode;
 }

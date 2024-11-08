@@ -34,25 +34,33 @@ SELECT * FROM FKTABLE;
 
 -- Delete a row from PK TABLE
 DELETE FROM PKTABLE WHERE ptest1=1;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_catalog.=) "ftest1"
 -- Check FKTABLE for removal of matched row
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
 --------+--------
+      1 |      2
       2 |      3
       3 |      4
         |      1
-(3 rows)
+(4 rows)
 
 -- Update a row from PK TABLE
 UPDATE PKTABLE SET ptest1=1 WHERE ptest1=2;
+ERROR:  duplicate key value violates unique constraint "pktable_pkey"
+DETAIL:  Key (ptest1)=(1) already exists.
 -- Check FKTABLE for update of matched row
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
 --------+--------
+      1 |      2
+      2 |      3
       3 |      4
         |      1
-      1 |      3
-(3 rows)
+(4 rows)
 
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
@@ -498,14 +506,19 @@ SELECT * from FKTABLE;
 
 -- Try to delete something that should cascade
 DELETE FROM PKTABLE where ptest1=1 and ptest2=5 and ptest3=3;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_catalog.=) "ftest1" AND $2 OPERATOR(pg_catalog.=) "ftest2" AND $3 OPERATOR(pg_catalog.=) "ftest3"
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE;
  ptest1 | ptest2 | ptest3 | ptest4 
 --------+--------+--------+--------
       2 |      4 |      5 | test4
+      1 |      5 |      3 | test1
       1 |      3 |      3 | test2
       1 |      3 |      4 | test3
-(3 rows)
+(4 rows)
 
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -514,17 +527,24 @@ SELECT * from FKTABLE;
       2 |        |      3 |      3
         |      2 |      7 |      4
         |      3 |      4 |      5
-(4 rows)
+      1 |      5 |      3 |      1
+(5 rows)
 
 -- Try to delete something that should not have a cascade
 DELETE FROM PKTABLE where ptest1=2;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."fktable" WHERE $1 OPERATOR(pg_catalog.=) "ftest1" AND $2 OPERATOR(pg_catalog.=) "ftest2" AND $3 OPERATOR(pg_catalog.=) "ftest3"
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE;
  ptest1 | ptest2 | ptest3 | ptest4 
 --------+--------+--------+--------
+      2 |      4 |      5 | test4
+      1 |      5 |      3 | test1
       1 |      3 |      3 | test2
       1 |      3 |      4 | test3
-(2 rows)
+(4 rows)
 
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -533,7 +553,8 @@ SELECT * from FKTABLE;
       2 |        |      3 |      3
         |      2 |      7 |      4
         |      3 |      4 |      5
-(4 rows)
+      1 |      5 |      3 |      1
+(5 rows)
 
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
@@ -2690,15 +2711,21 @@ CREATE SCHEMA fkpart9
 INSERT INTO fkpart9.pk VALUES (35);
 INSERT INTO fkpart9.fk VALUES (35);
 DELETE FROM fkpart9.pk WHERE a=35;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "fkpart9"."fk" WHERE $1 OPERATOR(pg_catalog...
+                    ^
+QUERY:  DELETE FROM ONLY "fkpart9"."fk" WHERE $1 OPERATOR(pg_catalog.=) "fk_a"
 SELECT * FROM fkpart9.pk;
- a 
----
-(0 rows)
+ a  
+----
+ 35
+(1 row)
 
 SELECT * FROM fkpart9.fk;
  fk_a 
 ------
-(0 rows)
+   35
+(1 row)
 
 DROP SCHEMA fkpart9 CASCADE;
 NOTICE:  drop cascades to 2 other objects

@@ -3792,6 +3792,12 @@ fireBSTriggers(ModifyTableState *node)
 			if (plan->onConflictAction == ONCONFLICT_UPDATE)
 				ExecBSUpdateTriggers(node->ps.state,
 									 resultRelInfo);
+			
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			if (plan->upsertAction == UPSERT_UPDATE)
+				ExecBSUpdateTriggers(node->ps.state,
+									 resultRelInfo);
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			break;
 		case CMD_UPDATE:
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
@@ -3811,7 +3817,18 @@ fireBSTriggers(ModifyTableState *node)
 			/* END - ReqID:SRS-MYSQL-UPDATE */
 			break;
 		case CMD_DELETE:
-			ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
+			/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+			if (multirel)
+			{
+				for(i = 0; i < resultRelationNum; i++)
+				{
+					ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
+					resultRelInfo++;
+				}
+			}
+			else
+				ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
+			/* End - ReqID:SRS-MYSQL-SOL-DELETE */
 			break;
 		case CMD_MERGE:
 			if (node->mt_merge_subcommands & MERGE_INSERT)
@@ -3858,6 +3875,13 @@ fireASTriggers(ModifyTableState *node)
 				ExecASUpdateTriggers(node->ps.state,
 									 resultRelInfo,
 									 node->mt_oc_transition_capture);
+			
+			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
+			if (plan->upsertAction == UPSERT_UPDATE)
+				ExecASUpdateTriggers(node->ps.state,
+									 resultRelInfo,
+									 node->mt_oc_transition_capture);
+			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			ExecASInsertTriggers(node->ps.state, resultRelInfo,
 								 node->mt_transition_capture);
 			break;
@@ -3882,8 +3906,20 @@ fireASTriggers(ModifyTableState *node)
 			/* END - ReqID:SRS-MYSQL-UPDATE */
 			break;
 		case CMD_DELETE:
-			ExecASDeleteTriggers(node->ps.state, resultRelInfo,
+			/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+			if (multirel)
+			{
+				for(i = 0; i < resultRelationNum; i++)
+				{
+					ExecASDeleteTriggers(node->ps.state, resultRelInfo,
 								 node->mt_transition_capture);
+					resultRelInfo++;
+				}
+			}
+			else
+				ExecASDeleteTriggers(node->ps.state, resultRelInfo,
+								 node->mt_transition_capture);
+			/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 			break;
 		case CMD_MERGE:
 			/* Begin - ReqID:SRS-SQL-MERGE */
@@ -5098,13 +5134,13 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		estate->es_auxmodifytables = lcons(mtstate,
 										   estate->es_auxmodifytables);
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	if (DB_MYSQL == compatible_db && operation == CMD_UPDATE && node->parseresultrelations &&
+	if (DB_MYSQL == compatible_db && (operation == CMD_UPDATE || operation == CMD_DELETE)
+		&& node->parseresultrelations &&
 		list_length(node->parseresultrelations) > 1) /* SRS-MYSQL-UPDATE */
 		{
 			if (mtstate->ps.ps_ExprContext == NULL)
 				ExecAssignExprContext(estate, &mtstate->ps);
 			InitMultipleModify(mtstate, list_length(node->resultRelations));
-
 		}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 

@@ -153,6 +153,10 @@ static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace
 							  IsPseudoCollation(exprCollation(expr))))
 /* End - Req:SRS-SQL-NLSSORT */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+static bool transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref);
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 /*
@@ -280,6 +284,7 @@ setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh, bool alsoSour
 	Relation relation = NULL;
 	int index = 0;
 	ParseNamespaceItem *nsitem = NULL;
+	ListCell		   *l = NULL;	/* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	/*
 	 * For UPDATE, maybe target table has been added to rtable before.
@@ -294,6 +299,40 @@ setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh, bool alsoSour
 			rte = (RangeTblEntry *)llast(pstate->p_rtable);
 			index = list_length(pstate->p_rtable);
 		}
+		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+		else if (requiredPerms & ACL_DELETE)
+		{
+			int rtindex = 1;
+			/* relation may has been added in p_rtable by usingClause. */
+			foreach(l, pstate->p_rtable)
+			{
+				RangeTblEntry *rte1 = (RangeTblEntry *)lfirst(l);
+				if (relRv->alias != NULL && strcmp(rte1->eref->aliasname, relRv->alias->aliasname) == 0)
+				{
+					rte = rte1;
+					index = rtindex;
+					relRv->relname = get_rel_name(rte1->relid);
+					relation = parserOpenTable(pstate, relRv, RowExclusiveLock);
+					break;
+				}
+				else if (relRv->alias == NULL && strcmp(rte1->eref->aliasname, relRv->relname) == 0)
+				{
+					if (list_member_ptr(pstate->p_target_rangetblentry, rte1))
+					{
+						ereport(ERROR,
+							   (errcode(ERRCODE_DUPLICATE_ALIAS), errmsg("table name \"%s\" specified more than once",
+								relRv->relname)));
+					}
+					rte = rte1;
+					index = rtindex;
+					relRv->relname = get_rel_name(rte1->relid);
+					relation = parserOpenTable(pstate, relRv, RowExclusiveLock);
+					break;
+				}
+				rtindex++;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	}
 
 	if (index == 0)
@@ -1271,6 +1310,116 @@ getNSItemForSpecialRelationTypes(ParseState *pstate, RangeVar *rv)
 	return nsitem;
 }
 
+
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+/*
+ * transformRelInfromOrusingcluase - 
+ * Determine whether the table is a specified table to be deleted.
+ */
+static bool
+transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref)
+{
+	ListCell   *lc = NULL;
+	foreach(lc, relist)
+	{
+		char   *relname = NULL;
+		char   *nspname = NULL;
+		Node   *starnode = NULL;
+		ColumnRef   *cref = NULL;
+		Node   *node = (Node *)lfirst(lc);
+		
+		if (!IsA(node, ColumnRef))
+			continue;
+		cref = (ColumnRef *)node;
+		starnode = (Node *)llast(cref->fields);
+
+		if (IsA(starnode, A_Star))
+			cref->fields = list_delete(cref->fields, starnode);
+
+		switch(list_length(cref->fields))
+		{
+			case 1:
+				{
+					Node   *field1 = (Node *)linitial(cref->fields);
+					Assert(IsA(field1, String));
+					relname = strVal(field1);
+				}
+				break;
+			case 2:
+				{
+					Node   *field1 = (Node *)linitial(cref->fields);
+					Node   *field2 = (Node *)lsecond(cref->fields);
+					Oid		namespaceId;
+					Oid		relid;
+					Assert(IsA(field1, String));
+					Assert(IsA(field2, String));
+					relname = strVal(field2);
+					nspname = strVal(field1);
+
+					namespaceId = LookupNamespaceNoError(nspname);
+					if (OidIsValid(namespaceId))
+					{
+						relid = get_relname_relid(relname, namespaceId);
+						if (!OidIsValid(relid))
+							elog(ERROR, "There is no %s table in %s schema.", nspname, relname);
+					}
+				}
+				break;
+			default:
+				elog(ERROR, "The format of the table name specified for deletion is incorrect!");
+				break;
+		}
+		/* Check whether the table is the specified table to be deleted.
+		 * You need to compare the table name or alias. If there is a schema,
+		 * you also need to compare it. 
+		 */
+		if (!strcmp(relname, rv->relname))
+		{
+			if (rv->alias)
+				elog(ERROR, "Unknown table %s in MULTI DELETE", relname);
+			if (nspname && rv->schemaname)
+			{
+				if (!strcmp(nspname, rv->schemaname))
+				{
+					*colref = cref;
+					return true;
+				}
+			}
+			else if (!nspname && !rv->schemaname)
+			{
+				*colref = cref;
+				return true;
+			}
+			else
+				elog(ERROR, "Unknown table %s in MULTI DELETE", relname);
+		}
+		else
+		{
+			if (rv->alias)
+			{
+				if (!strcmp(relname, rv->alias->aliasname))
+				{
+					if (nspname && rv->schemaname)
+					{
+						if (!strcmp(nspname, rv->schemaname))
+						{
+							*colref = cref;
+							return true;
+						}
+					}
+					else if (!nspname || !rv->schemaname)
+					{
+						*colref = cref;
+						return true;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+
 /*
  * transformFromClauseItem -
  *	  Transform a FROM-clause item, adding any required entries to the
@@ -1304,6 +1453,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		RangeVar   *rv = (RangeVar *) n;
 		RangeTblRef *rtr;
 		ParseNamespaceItem *nsitem;
+		bool		is_exists = false;
 
 		/* Check if it's a CTE or tuplestore reference */
 		nsitem = getNSItemForSpecialRelationTypes(pstate, rv);
@@ -1317,12 +1467,30 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		rtr = makeNode(RangeTblRef);
 		rtr->rtindex = nsitem->p_rtindex;
 
+		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+		if (DB_MYSQL == compatible_db && pstate->p_addDeleteTable &&
+			pstate->p_delrellist)
+		{
+			ColumnRef   *ref = NULL;
+			is_exists = transformRelInfromOrusingcluase(pstate->p_delrellist, rv, &ref);
+			if (is_exists)
+				pstate->p_delrellist = list_delete(pstate->p_delrellist, ref);
+			else
+				pstate->p_deleteRangerVars = lappend(pstate->p_deleteRangerVars, rv);
+		}
+		/* END - ReqID:SRS-MYSQL-SQL-DELETE */
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		/* If UPDATE multiple relations, add target table here. */
-		if (pstate->p_addUpdateTable)
+		if (pstate->p_addUpdateTable || pstate->p_addDeleteTable)
 		{
-			pstate->p_updateRelations = lappend_int(pstate->p_updateRelations,
-				setMultiTargetTable(pstate, rv, rv->inh, true, ACL_UPDATE, true));
+			if (pstate->p_addUpdateTable )
+				pstate->p_updateRelations = lappend_int(pstate->p_updateRelations,
+					setMultiTargetTable(pstate, rv, rv->inh, true, ACL_UPDATE, true));
+			/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+			else if (pstate->p_addDeleteTable && is_exists)
+				pstate->p_updateRelations = lappend_int(pstate->p_updateRelations,
+					setMultiTargetTable(pstate, rv, rv->inh, true, ACL_DELETE, true));
+			/* END - ReqID:SRS-MYSQL-SQL-DELETE */
 		}
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 

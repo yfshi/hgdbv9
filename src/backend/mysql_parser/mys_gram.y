@@ -113,6 +113,7 @@
  */
 #define YYMALLOC palloc
 #define YYFREE   pfree
+#define MULTI_NODES 1
 
 /* Private struct for the result of privilege_target production */
 typedef struct PrivTarget
@@ -205,6 +206,9 @@ static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *deferrable, bool *initdeferred, bool *not_valid,
 			   bool *no_inherit, mys_core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
+
+static RangeVar *transformRelistToRelation(List *rellist);
+static void checkMultiDelete(DeleteStmt *stmt);
 
 %}
 
@@ -440,6 +444,10 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <boolean> opt_ignore
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+%type <str>		opt_quick
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
 %type <list>	group_by_list
@@ -634,6 +642,8 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <list>		hash_partbound
 %type <defelt>		hash_partbound_elem
 
+%type <list>		opt_table_target_list table_name_list
+
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -721,7 +731,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLICATION
 
-	QUOTE
+	QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
@@ -764,7 +774,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA
+%token		NOT_LA NULLS_LA WITH_LA DELETE_FROM
 
 
 /*
@@ -11430,20 +11440,65 @@ opt_delayed:
  *				DELETE STATEMENTS
  *
  *****************************************************************************/
-
-DeleteStmt: opt_with_clause DELETE_P FROM relation_expr_opt_alias
-			using_clause where_or_current_clause returning_clause
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_table_target_list from_clause
+			using_clause where_or_current_clause opt_sort_clause opt_update_limit returning_clause
 				{
 					DeleteStmt *n = makeNode(DeleteStmt);
-					n->relation = $4;
-					n->usingClause = $5;
-					n->whereClause = $6;
-					n->returningList = $7;
+					n->ignore = $5;
+					n->collist = $6;
+					n->relationList= $7;
+					n->usingClause = $8;
+					if (list_length(n->relationList) == 1 && !(n->usingClause))
+					{
+						Node   *node  =(Node *) linitial(n->relationList);
+						if (IsA(node, RangeVar))
+							n->relation = (RangeVar *)node;
+					}
+					n->whereClause = $9;
+					n->sortClause = $10;
+					n->limitClause = (Node*)list_nth($11, 1);
+					n->returningList = $12;
 					n->withClause = $1;
+					if (n->usingClause || n->relationList)
+						checkMultiDelete(n);
+					$$ = (Node *)n;
+				}
+			| opt_with_clause DELETE_FROM opt_lowpriority opt_quick opt_ignore FROM table_name_list
+			using_clause where_or_current_clause opt_sort_clause opt_update_limit returning_clause
+				{
+					DeleteStmt *n = makeNode(DeleteStmt);
+					n->ignore = $5;
+					n->collist = $7;
+					n->usingClause = $8;
+					if (list_length(n->collist) == 1 && !(n->usingClause))
+					{
+						n->relation = transformRelistToRelation(n->collist);
+					}
+					n->whereClause = $9;
+					n->sortClause = $10;
+					n->limitClause = (Node*)list_nth($11, 1);
+					n->returningList = $12;
+					n->withClause = $1;
+					if (n->usingClause)
+						checkMultiDelete(n);
 					$$ = (Node *)n;
 				}
 		;
 
+opt_table_target_list:
+				table_name_list						{ $$ = $1; }
+			| /*EMPTY*/								{ $$ = NIL; }
+		;
+table_name_list:
+				columnref							{ $$ = list_make1($1); }
+			| table_name_list ',' columnref			{ $$ = lappend($1, $3); }
+		;
+opt_quick:
+				QUICK								{ $$ = NULL; }
+			|/*EMPTY*/								{ $$ = NULL; }
+		;
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 using_clause:
 				USING from_list						{ $$ = $2; }
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -16712,6 +16767,7 @@ reserved_keyword:
 			| ORDER
 			| PLACING
 			| PRIMARY
+			| QUICK
 			| REFERENCES
 			| RETURNING
 			| SELECT
@@ -17028,6 +17084,7 @@ bare_label_keyword:
 			| PROCEDURES
 			| PROGRAM
 			| PUBLICATION
+			| QUICK
 			| QUOTE
 			| RANGE
 			| READ
@@ -18044,3 +18101,110 @@ mys_parser_init(mys_base_yy_extra_type *yyext)
 {
 	yyext->parsetree = NIL;		/* in case grammar forgets to set it */
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
+/*
+ * transformRelistToRelation
+ * Delete the specified single relation of the record and convert it to RangeVar node.
+ */
+static RangeVar*
+transformRelistToRelation(List *rellist)
+{
+	RangeVar	   *relation = NULL;
+	char		   *relname = NULL;
+	char		   *schemaname = NULL;
+	ColumnRef	   *colref = (ColumnRef *)linitial(rellist);
+
+	if (list_length(colref->fields) == 1)
+	{
+		Node   *n1 = linitial(colref->fields);
+		if (IsA(n1, String))
+		{
+			relname = strVal(n1);
+		}
+	}
+	else if(list_length(colref->fields) == 2)
+	{
+		Node   *n1 = linitial(colref->fields);
+		Node   *n2 = lsecond(colref->fields);
+		if (IsA(n1, String) && IsA(n2, String))
+		{
+			relname = strVal(n2);
+			schemaname = strVal(n1);
+		}
+		else if(IsA(n2 , A_Star))
+			ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete is a syntax error in %s.", "*")));
+	}
+
+	if (schemaname || relname)
+	{
+		relation = makeRangeVar(schemaname, relname, colref->location);
+		rellist = NIL;
+	}
+
+	return relation;
+}
+
+/*
+ * checkMultiDelete
+ * Determine whether it is a multi-relation deletion and detect unsupported items for multi-relation deletion,
+ * such as limit, order by, returing, etc.
+ */
+static void
+checkMultiDelete(DeleteStmt *stmt)
+{
+	List	   *rellist = NIL;
+	ListCell   *lc = NULL;
+	bool		is_multi = false;
+
+	if (stmt->usingClause)
+		rellist = copyObject(stmt->usingClause);
+	else if(stmt->relationList)
+		rellist = copyObject(stmt->relationList);
+	if (list_length(rellist) > 1)
+	{
+		is_multi = true;
+	}
+	else
+	{
+		foreach(lc, rellist)
+		{
+			Node   *node = (Node *)lfirst(lc);
+			if (IsA(node, JoinExpr))
+				is_multi = true;
+			else if (IsA(node, RangeVar))
+			{
+				if (stmt->collist)
+				{
+					is_multi = true;
+				}
+			}
+		}
+	}
+
+	if (stmt->limitClause && is_multi)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete is not supported limit clause."),
+				 errhint("Please note whether it's compatible with MySQL mode.")));
+	if (stmt->sortClause && is_multi)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete is not supported order by clause."),
+				 errhint("Please note whether it's compatible with MySQL mode.")));
+	if (stmt->returningList && is_multi)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete is not supported returing clause."),
+				 errhint("Please note whether it's compatible with MySQL mode.")));
+	if (stmt->relationList && stmt->usingClause)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("multi-relation delete Cannot support both using clause and from clause."),
+				 errhint("Please note whether it's compatible with MySQL mode.")));
+	return;
+}
+/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+

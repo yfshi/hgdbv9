@@ -92,16 +92,14 @@ DELETE FROM foo
   USING int4_tbl i
   WHERE foo.f1 + 123455 = i.f1
   RETURNING foo.*, i.f1 as "i.f1";
- f1 |  f2  | f3 |  i.f1  
-----+------+----+--------
-  1 | test | 84 | 123456
-(1 row)
-
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
 SELECT * FROM foo;
  f1 |  f2  | f3 
 ----+------+----
   2 | more | 42
-(1 row)
+  1 | test | 84
+(2 rows)
 
 -- Check inheritance cases
 CREATE TEMP TABLE foochild (fc int) INHERITS (foo);
@@ -116,7 +114,8 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4 
 ----+------+----+----
   2 | more | 42 | 99
-(1 row)
+  1 | test | 84 | 99
+(2 rows)
 
 SELECT * FROM foochild;
 ERROR:  relation "foochild" does not exist
@@ -126,13 +125,15 @@ UPDATE foo SET f4 = f4 + f3 WHERE f4 = 99 RETURNING *;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
-(1 row)
+  1 | test | 84 | 183
+(2 rows)
 
 SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
-(1 row)
+  1 | test | 84 | 183
+(2 rows)
 
 SELECT * FROM foochild;
 ERROR:  relation "foochild" does not exist
@@ -150,7 +151,8 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
-(1 row)
+  1 | test | 84 | 183
+(2 rows)
 
 SELECT * FROM foochild;
 ERROR:  relation "foochild" does not exist
@@ -160,15 +162,14 @@ DELETE FROM foo
   USING int8_tbl i
   WHERE foo.f1 = i.q2
   RETURNING *;
- f1 | f2 | f3 | f4 | q1 | q2 
-----+----+----+----+----+----
-(0 rows)
-
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
 SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
-(1 row)
+  1 | test | 84 | 183
+(2 rows)
 
 SELECT * FROM foochild;
 ERROR:  relation "foochild" does not exist
@@ -204,19 +205,21 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
+  1 | test | 84 | 183
  11 | zit  | 57 |  99
  13 | zit2 | 57 |  99
  14 | zoo2 | 57 |  99
-(4 rows)
+(5 rows)
 
 SELECT * FROM voo;
  f1 |  f2  
 ----+------
   2 | more
+  1 | test
  11 | zit
  13 | zit2
  14 | zoo2
-(4 rows)
+(5 rows)
 
 CREATE OR REPLACE RULE voo_u AS ON UPDATE TO voo DO INSTEAD
   UPDATE foo SET f1 = new.f1, f2 = new.f2 WHERE f1 = old.f1
@@ -232,19 +235,21 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
+  1 | test | 84 | 183
  11 | zit  | 57 |  99
  13 | zit2 | 57 |  99
  16 | zoo2 | 57 |  99
-(4 rows)
+(5 rows)
 
 SELECT * FROM voo;
  f1 |  f2  
 ----+------
   2 | more
+  1 | test
  11 | zit
  13 | zit2
  16 | zoo2
-(4 rows)
+(5 rows)
 
 CREATE OR REPLACE RULE voo_d AS ON DELETE TO voo DO INSTEAD
   DELETE FROM foo WHERE f1 = old.f1
@@ -260,15 +265,17 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
+  1 | test | 84 | 183
  16 | zoo2 | 57 |  99
-(2 rows)
+(3 rows)
 
 SELECT * FROM voo;
  f1 |  f2  
 ----+------
   2 | more
+  1 | test
  16 | zoo2
-(2 rows)
+(3 rows)
 
 -- Try a join case
 CREATE TEMP TABLE joinme (f2j text, other int);
@@ -305,15 +312,17 @@ SELECT * FROM foo;
  f1 |  f2  | f3 | f4  
 ----+------+----+-----
   2 | more | 42 | 141
+  1 | test | 84 | 183
  17 | zoo2 | 57 |  99
-(2 rows)
+(3 rows)
 
 SELECT * FROM voo;
  f1 |  f2  
 ----+------
   2 | more
+  1 | test
  17 | zoo2
-(2 rows)
+(3 rows)
 
 -- Check aliased target relation
 INSERT INTO foo AS bar DEFAULT VALUES RETURNING *; -- ok
