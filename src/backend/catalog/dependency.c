@@ -1254,6 +1254,50 @@ findDependentObjects(const ObjectAddress *object,
 }
 
 /*
+ * ivy_check_rowid_seq_depend
+ *	check if the rowid sequence depends on a relation.
+ */
+void
+ivy_check_rowid_seq_depend(Oid seqid, char *seqname)
+{
+	ScanKeyData key[3];
+	int			nkeys;
+	SysScanDesc scan;
+	HeapTuple	tup;
+	Relation	depRel;
+
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_classid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_objid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(seqid));
+
+	nkeys = 2;
+
+	depRel = table_open(DependRelationId, RowExclusiveLock);
+
+	scan = systable_beginscan(depRel, DependDependerIndexId, true, NULL, nkeys, key);
+
+	while (HeapTupleIsValid(tup = systable_getnext(scan)))
+	{
+		Form_pg_depend foundDep = (Form_pg_depend) GETSTRUCT(tup);
+
+		/*
+		 * (seqid + 1) == It depends on the table's OID
+		 */
+		if (foundDep->refobjid == (seqid + 1))
+			elog(ERROR, "cannot drop sequence %s because it depend on table %s",
+				 seqname, get_rel_name(seqid + 1));
+	}
+
+	systable_endscan(scan);
+	table_close(depRel, RowExclusiveLock);
+}
+
+/*
  * reportDependentObjects - report about dependencies, and fail if RESTRICT
  *
  * Tell the user about dependent objects that we are going to delete
