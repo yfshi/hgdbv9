@@ -1792,6 +1792,10 @@ _equalViewStmt(const ViewStmt *a, const ViewStmt *b)
 	COMPARE_NODE_FIELD(aliases);
 	COMPARE_NODE_FIELD(query);
 	COMPARE_SCALAR_FIELD(replace);
+	/* BEGIN - ReqID:SRS-SQL-FORCEVIEW */
+	COMPARE_SCALAR_FIELD(force);
+	COMPARE_STRING_FIELD(stmt_literal);
+	/* END - ReqID:SRS-SQL-FORCEVIEW */
 	COMPARE_NODE_FIELD(options);
 	COMPARE_SCALAR_FIELD(withCheckOption);
 
