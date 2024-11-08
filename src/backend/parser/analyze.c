@@ -126,8 +126,12 @@ static Node *GetExprNode(List *exprList, List *attrnos, int varattno);
 /* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
 static void transformRangeSubselectInListClause(DeleteStmt *stmt);
 static void transformCollistInFromcClause(List *rangevarlist, List *collist);
-
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
+
+/* Begin - BUG#Z1324 */
+static void transformAliasInTargetlist(RangeVar *rel, List *targetList);
+static void transformRemoveschemaInTargetlist(RangeVar *rel, List **targetList);
+/* End - BUG#Z1324 */
 
 
 /*
@@ -3339,6 +3343,93 @@ transformMergeTargetList(RangeVar *rel, List **targetList, bool ismulti)
 
 
 /*
+ * transformAliasInTargetlist
+ * Whether to use alias for target column.
+ */
+static void
+transformAliasInTargetlist(RangeVar *rel, List *targetList)
+{
+	ListCell	   *lc = NULL;
+	char		   *resname = NULL;
+	char		   *colname = NULL;
+	foreach (lc, targetList)
+	{
+		ResTarget   *ret = (ResTarget *)lfirst(lc);
+
+		/* Target column with table name. eg:tbl_name.colname. */
+		if (ret->name && list_length(ret->indirection) == 1)
+		{
+			Node	   *node = linitial(ret->indirection);
+			if (IsA(node, String))
+			{
+				colname = pstrdup(strVal(node));
+				/* If the target column uses the table name but not the table alias,
+				 * an error is reported.
+				 */
+				if (!strcmp(ret->name, rel->relname))
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Unknown column %s.%s in field list ", ret->name, colname)));
+			}
+		}
+		/* Target column with schema and table name. eg:schema.tbl_name.colname. */
+		else if (rel->schemaname && ret->name && list_length(ret->indirection) == 2)
+		{
+			Node	   *node1 = linitial(ret->indirection);
+			Node	   *node2 = lsecond(ret->indirection);
+			if (IsA(node1, String) && IsA(node2, String))
+			{
+				resname = pstrdup(strVal(node1));
+				colname = pstrdup(strVal(node2));
+				/* If the target column uses the schema and table name 
+				 * but not the table alias, an error is reported.
+				 */
+				if (!strcmp(resname, rel->relname) && 
+					!strcmp(ret->name, rel->schemaname))
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Unknown column %s.%s.%s in field list ", ret->name, resname, colname)));
+			}
+		}
+	}
+	return;
+}
+
+/*
+ * transformRemoveschemaInTargetlist
+ * Remove the schema from the target column.
+ */
+static void
+transformRemoveschemaInTargetlist(RangeVar *rel, List **targetList)
+{
+	ListCell	   *lc = NULL;
+	char		   *resname = NULL;
+	foreach (lc, *targetList)
+	{
+		ResTarget	*ret = (ResTarget *)lfirst(lc);
+		if (list_length(ret->indirection) == 2)
+		{
+			Node	   *node = linitial(ret->indirection);
+			if (IsA(node, String))
+			{
+				resname = pstrdup(strVal(node));
+				if (rel->schemaname)
+				{
+					if (!strcmp(rel->relname, resname) && 
+						!strcmp(rel->schemaname, ret->name))
+					{
+						ret->name = resname;
+						ret->indirection = list_delete_first(ret->indirection);
+					}
+				}
+			}
+		}
+	}
+	return;
+}
+
+
+/*
  * transformMultiMergeTargetList
  * Parse columns of multiple relationships and merge same target columns.
  */
@@ -3349,6 +3440,12 @@ transformMultiMergeTargetList(List *rellist, List **targetList)
 	foreach (lc, rellist)
 	{
 		RangeVar   *ret = (RangeVar *)lfirst(lc);
+		/* Begin - BUG#Z1324 */
+		if (ret->alias)
+			transformAliasInTargetlist(ret, *targetList);
+		else
+			transformRemoveschemaInTargetlist(ret, targetList);
+		/* End - BUG#Z1324 */
 		transformMergeTargetList(ret, targetList, true);
 	}
 	return;
@@ -3374,7 +3471,14 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	{
 		pstate->p_isupdate = true;
 		if (stmt->relation)
+		{
 			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
+			/* Begin - BUG#Z1324 */
+			transformRemoveschemaInTargetlist(stmt->relation, &stmt->targetList);
+			if (stmt->relation->alias)
+				transformAliasInTargetlist(stmt->relation, stmt->targetList);
+			/* End - BUG#Z1324 */
+		}
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/* Begin - ReqID:SRS-SQL-MULTICOLUMNUPDATE */
