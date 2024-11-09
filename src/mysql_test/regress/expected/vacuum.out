@@ -87,25 +87,24 @@ COMMIT;
 BEGIN;
 CREATE TABLE past_inh_parent ();
 CREATE TABLE past_inh_child () INHERITS (past_inh_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO past_inh_child DEFAULT VALUES;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 INSERT INTO past_inh_child DEFAULT VALUES;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ANALYZE past_inh_parent;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SELECT reltuples, relhassubclass
   FROM pg_class WHERE oid = 'past_inh_parent'::regclass;
- reltuples | relhassubclass 
------------+----------------
-         0 | t
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DROP TABLE past_inh_child;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ANALYZE past_inh_parent;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SELECT reltuples, relhassubclass
   FROM pg_class WHERE oid = 'past_inh_parent'::regclass;
- reltuples | relhassubclass 
------------+----------------
-         0 | f
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
 -- Test ANALYZE setting relhassubclass=f for partitioning
 BEGIN;
