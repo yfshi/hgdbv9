@@ -169,6 +169,7 @@ submake_mys:
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 clean distclean maintainer-clean: clean-lib
 	rm -f SPI.c Util.c $(OBJS) perlchunks.h plperl_opmask.h
+	rm -f sql/plperl_env.sql expected/plperl_env.out
 	rm -rf $(pg_regress_clean_files)
 ifeq ($(PORTNAME), win32)
 	rm -f $(perlwithver).def
