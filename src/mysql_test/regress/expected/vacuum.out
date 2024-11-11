@@ -83,6 +83,52 @@ INSERT INTO vactst SELECT generate_series(301, 400);
 DELETE FROM vactst WHERE i % 5 <> 0; -- delete a few rows inside
 ANALYZE vactst;
 COMMIT;
+-- Test ANALYZE setting relhassubclass=f for non-partitioning inheritance
+BEGIN;
+CREATE TABLE past_inh_parent ();
+CREATE TABLE past_inh_child () INHERITS (past_inh_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
+INSERT INTO past_inh_child DEFAULT VALUES;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO past_inh_child DEFAULT VALUES;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ANALYZE past_inh_parent;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT reltuples, relhassubclass
+  FROM pg_class WHERE oid = 'past_inh_parent'::regclass;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+DROP TABLE past_inh_child;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ANALYZE past_inh_parent;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT reltuples, relhassubclass
+  FROM pg_class WHERE oid = 'past_inh_parent'::regclass;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+COMMIT;
+-- Test ANALYZE setting relhassubclass=f for partitioning
+BEGIN;
+CREATE TABLE past_parted (i int) PARTITION BY LIST(i);
+CREATE TABLE past_part PARTITION OF past_parted FOR VALUES IN (1);
+INSERT INTO past_parted VALUES (1),(1);
+ANALYZE past_parted;
+DROP TABLE past_part;
+SELECT reltuples, relhassubclass
+  FROM pg_class WHERE oid = 'past_parted'::regclass;
+ reltuples | relhassubclass 
+-----------+----------------
+         2 | t
+(1 row)
+
+ANALYZE past_parted;
+SELECT reltuples, relhassubclass
+  FROM pg_class WHERE oid = 'past_parted'::regclass;
+ reltuples | relhassubclass 
+-----------+----------------
+         0 | f
+(1 row)
+
+COMMIT;
 VACUUM FULL pg_am;
 VACUUM FULL pg_class;
 VACUUM FULL pg_database;

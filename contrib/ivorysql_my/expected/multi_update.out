@@ -10,7 +10,7 @@ UPDATE [ ONLY ] table_name [ * ] [ [ AS ] alias ]
         } [, ...]
     [ FROM from_item [, ...] ]
     [ WHERE condition | WHERE CURRENT OF cursor_name ]
-    [ RETURNING * | output_expression [ [ AS ] output_name ] [, ...] ]
+    [ RETURNING { * | output_expression [ [ AS ] output_name ] } [, ...] ]
 
 In MySQL mode:
 UPDATE Multiple-Relation Syntax:

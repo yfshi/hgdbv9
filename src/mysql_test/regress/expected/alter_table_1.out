@@ -3857,6 +3857,16 @@ ALTER TABLE list_parted ATTACH PARTITION child FOR VALUES IN (1);
 ERROR:  relation "child" does not exist
 ALTER TABLE list_parted ATTACH PARTITION parent FOR VALUES IN (1);
 ERROR:  child table is missing constraint "check_a"
+DROP TABLE child;
+ERROR:  table "child" does not exist
+-- now it should work, with a little tweak
+ALTER TABLE parent ADD CONSTRAINT check_a CHECK (a > 0);
+ALTER TABLE list_parted ATTACH PARTITION parent FOR VALUES IN (1);
+-- test insert/update, per bug #18550
+INSERT INTO parent VALUES (1);
+UPDATE parent SET a = 2 WHERE a = 1;
+ERROR:  new row for relation "parent" violates partition constraint
+DETAIL:  Failing row contains (2, null).
 DROP TABLE parent CASCADE;
 -- check any TEMP-ness
 CREATE TEMP TABLE temp_parted (a int) PARTITION BY LIST (a);
