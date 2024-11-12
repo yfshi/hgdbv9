@@ -1387,9 +1387,9 @@ getDatabaseMode(PGconn *conn)
 	char *db_style = NULL;
 	if (conn == NULL)
 		return ;
-	res = PQexec(conn, "show ivorysql.database_mode;");
+	res = PQexec(conn, "SELECT setting FROM pg_settings WHERE name = 'ivorysql.database_mode';");	/* BUG#Z1294 */
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQntuples(res) == 0)	/* BUGZ1294 */
 	{
 		native_PG = true;
 		database_mode = DB_NATIVE;	/* ReqID:SRS-CMD-PGDUMP */

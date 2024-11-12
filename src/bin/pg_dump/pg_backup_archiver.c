@@ -7141,7 +7141,7 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 	
 	int		is_ownerto_database = 0;
 	int			ntups;
-	PGresult   *res;
+	PGresult   *res = NULL;	/* BUGZ1296 */
 
 	if(!haveDBuser)		/*  bug#M0000261 */
 		return 1;
@@ -7578,8 +7578,9 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 	}
 	else
 		is_ownerto_database = 0;
-	
-	PQclear(res);
+
+	if(res)	/* BUGZ1296 */
+		PQclear(res);
 	
 	destroyPQExpBuffer(query_cmd);
 

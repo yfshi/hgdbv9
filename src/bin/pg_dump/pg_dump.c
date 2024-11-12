@@ -219,7 +219,7 @@ int	numCatalogIds = 0;
 
 DumpMethods *dM;
 /* END - ReqID:SRS-CMD-PGDUMP */
-
+Oid firstnormaloid = 0;	/* BUGZ1295 */
 /* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
 const char *oracledumpoptions[] = {"pg", "oracle", "p", "o"};
 #define ORAMOPTIONSNUM 4
@@ -347,7 +347,7 @@ main(int argc, char **argv)
 		{"on-conflict-do-nothing", no_argument, &dopt.do_nothing, 1},
 		{"rows-per-insert", required_argument, NULL, 10},
 		{"include-foreign-data", required_argument, NULL, 11},
-
+		{"first-normal-objectid", required_argument, NULL, 12}, /* BUGZ1295 */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -588,7 +588,11 @@ main(int argc, char **argv)
 				simple_string_list_append(&foreign_servers_include_patterns,
 										  optarg);
 				break;
-
+			/* BEGIN - BUGZ1295 */
+			case 12:
+				firstnormaloid = atooid(pg_strdup(optarg));
+				break;
+			/* END - BUGZ1295 */
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit_nicely(1);
@@ -821,7 +825,14 @@ main(int argc, char **argv)
 	if (fout->remoteVersion < 80100)
 		g_last_builtin_oid = dM->findLastBuiltinOid_V71(fout);
 	else
-		g_last_builtin_oid = FirstNormalObjectId - 1;
+	/* BEGIN - BUGZ1295 */
+	{
+		if(firstnormaloid == 0)
+			g_last_builtin_oid = FirstNormalObjectId - 1;
+		else
+			g_last_builtin_oid = firstnormaloid - 1;
+	}
+	/* END - BUGZ1295 */
 
 	pg_log_info("last built-in OID is %u", g_last_builtin_oid);
 
@@ -1067,6 +1078,7 @@ help(const char *progname)
 	printf(_("  -C, --create                 include commands to create database in dump\n"));
 	printf(_("  -e, --extension=PATTERN      dump the specified extension(s) only\n"));
 	printf(_("  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"));
+	printf(_("  -M					         dump the specified compatible_mode data only(pg, oracle)\n"));	/* BUGZ1299 */
 	printf(_("  -n, --schema=PATTERN         dump the specified schema(s) only\n"));
 	printf(_("  -N, --exclude-schema=PATTERN do NOT dump the specified schema(s)\n"));
 	printf(_("  -O, --no-owner               skip restoration of object ownership in\n"
@@ -1109,7 +1121,7 @@ help(const char *progname)
 	printf(_("  --use-set-session-authorization\n"
 			 "                               use SET SESSION AUTHORIZATION commands instead of\n"
 			 "                               ALTER OWNER commands to set ownership\n"));
-
+	printf(_("  --first-normal-objectid=OID  set FirstNormalObjectId in dump\n"));	/* BUGZ1295 */
 	printf(_("\nConnection options:\n"));
 	printf(_("  -d, --dbname=DBNAME      database to dump\n"));
 	printf(_("  -h, --host=HOSTNAME      database server host or socket directory\n"));
@@ -1166,7 +1178,8 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 	trivalue	prompt_password;
 	char		*password;
 	bool	new_pass;
-
+	PGresult	*res;	/* BUGZ1295 */
+	char	*sql;	/* BUGZ1295 */
 	prompt_password = isReconnect ? TRI_NO : cparams->promptPassword;
 
 	password = pass;
@@ -1256,7 +1269,25 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 		default:
 			fatal("pointer switch failed");
 	}
+/* BEGIN - BUGZ1295 */
+#ifdef USE_LICENSE
+	sql = psprintf("SELECT oid FROM pg_database WHERE datname = '%s';", hg_get_defaultDBname());
+#else
+	sql = psprintf("SELECT oid FROM pg_database WHERE datname = 'postgres';");
+#endif
+	res = PQexec(connforonce, sql);
+	if (firstnormaloid == 0)
+	{
+		firstnormaloid = atooid(PQgetvalue(res, 0, 0));
+		if (firstnormaloid <= 16384)
+			firstnormaloid = 16384;
+		else
+			firstnormaloid = 32767;
+	}
 
+	free(sql);
+	PQclear(res);
+	/* END - BUGZ1295 */
 	PQfinish(connforonce);
 
 }

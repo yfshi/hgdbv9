@@ -4188,6 +4188,10 @@ _copyViewStmt(const ViewStmt *from)
 	COPY_NODE_FIELD(aliases);
 	COPY_NODE_FIELD(query);
 	COPY_SCALAR_FIELD(replace);
+	/* BEGIN - ReqID:SRS-SQL-FORCEVIEW */
+	COPY_SCALAR_FIELD(force);
+	COPY_STRING_FIELD(stmt_literal);
+	/* END - ReqID:SRS-SQL-FORCEVIEW */
 	COPY_NODE_FIELD(options);
 	COPY_SCALAR_FIELD(withCheckOption);
 
