@@ -950,11 +950,42 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 	while (pstate != NULL)
 	{
 		ListCell   *l;
+		/* Begin - BUG#Z1326 */
+		ListCell   *c;
+		bool		both_has_thiscol = false;
+		/* End - BUG#Z1326 */
 
 		foreach(l, pstate->p_namespace)
 		{
 			ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
 			Node	   *newresult;
+
+			/* Begin - BUG#Z1326 */
+			if (ORA_PARSER == compatible_db && pstate->p_expr_kind == EXPR_KIND_MERGE_WHEN &&
+				pstate->p_target_nsitem != nsitem)
+			{
+				foreach(c, nsitem->p_names->colnames)
+				{
+					const char *attcolname = strVal(lfirst(c));
+					if (strcmp(attcolname, colname) == 0)
+						both_has_thiscol = true;
+				}
+			}
+			else
+			{
+				/*------------------------------------------------
+				 * Example:
+				 * 	MERGE INTO TGT_TABLE T
+				 *	USING SRC_TABLE S ON (T.ID=S.ID)
+				 *	WHEN MATCHED THEN UPDATE SET T.BONUS=S.BONUS+50 WHERE S.ID>=3 DELETE WHERE ID>=2;
+				 *-------------------------------------------------
+				 * As in the example above, when a unqualified column is in
+				 * both tables, we assume it belongs to S.
+				 */
+				if (both_has_thiscol)
+					continue;
+			}
+			/* End - BUG#Z1326 */
 
 			/* Ignore table-only items */
 			if (!nsitem->p_cols_visible)
