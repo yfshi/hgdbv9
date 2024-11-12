@@ -1724,6 +1724,16 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 								format_type_be(ntype)),
 						 parser_errposition(pstate, exprLocation(nexpr))));
 			}
+			/* Begin - BUG#M000411 */
+			else if (ntype == NUMBEROID && ptype == INT4OID)
+			{
+				/* number is preferred */
+				pexpr = nexpr;
+				ptype = ntype;
+				pcategory = ncategory;
+				pispreferred = nispreferred;
+			}
+			/* End - BUG#M0000411 */
 			else if (!pispreferred &&
 					 can_coerce_type(1, &ptype, &ntype, COERCION_IMPLICIT) &&
 					 !can_coerce_type(1, &ntype, &ptype, COERCION_IMPLICIT))

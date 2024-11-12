@@ -2037,28 +2037,31 @@ select text from all_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 select text from dba_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 select text from user_source where name='PKG' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE PKG IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 --ok
 select object_name from all_arguments where package_name='PKG';
@@ -2125,11 +2128,13 @@ select text,type from all_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY PKG IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2137,17 +2142,19 @@ select text,type from all_source where name='PKG' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 select text,type from dba_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY PKG IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2155,17 +2162,19 @@ select text,type from dba_source where name='PKG' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 select text,type from user_source where name='PKG' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE PKG IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY PKG IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2173,7 +2182,7 @@ select text,type from user_source where name='PKG' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 CREATE OR REPLACE FUNCTION test_f(id integer,name varchar2) RETURN integer IS
 BEGIN
@@ -2188,10 +2197,11 @@ select text from all_source where name='TEST_F' and type='FUNCTION' ORDER BY lin
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 select text from dba_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
                        text                        
@@ -2200,10 +2210,11 @@ select text from dba_source where name='TEST_F' and type='FUNCTION' ORDER BY lin
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 select text from user_source where name='TEST_F' and type='FUNCTION' ORDER BY line;
                        text                        
@@ -2212,10 +2223,11 @@ select text from user_source where name='TEST_F' and type='FUNCTION' ORDER BY li
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 --ok
 select object_name from all_arguments where object_name='TEST_F';
@@ -2294,10 +2306,11 @@ select text,type from all_source where name='TEST_F' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 select text,type from dba_source where name='TEST_F' ORDER BY type,line;
                        text                        |   type   
@@ -2306,10 +2319,11 @@ select text,type from dba_source where name='TEST_F' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 select text,type from user_source where name='TEST_F' ORDER BY type,line;
                        text                        |   type   
@@ -2318,10 +2332,11 @@ select text,type from user_source where name='TEST_F' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 select object_name from all_arguments where object_name='TEST_F' OR OBJECT_NAME = 'PKG' ORDER BY object_name;
  object_name 
@@ -2374,28 +2389,31 @@ select text from all_source where name='pkg' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE pkg IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 select text from dba_source where name='pkg' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE pkg IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 select text from user_source where name='pkg' and type='PACKAGE' ORDER BY line;
               text              
 --------------------------------
  PACKAGE pkg IS
- var1 integer;
+ 
+  var1 integer;
   procedure test_p(id integer);
  end;
-(4 rows)
+(5 rows)
 
 --ok
 select object_name from all_arguments where package_name='pkg';
@@ -2462,11 +2480,13 @@ select text,type from all_source where name='pkg' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE pkg IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY pkg IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2474,17 +2494,19 @@ select text,type from all_source where name='pkg' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 select text,type from dba_source where name='pkg' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE pkg IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY pkg IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2492,17 +2514,19 @@ select text,type from dba_source where name='pkg' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 select text,type from user_source where name='pkg' ORDER BY type,line;
                text               |     type     
 ----------------------------------+--------------
  PACKAGE pkg IS                   | PACKAGE
- var1 integer;                    | PACKAGE
+                                  | PACKAGE
+  var1 integer;                   | PACKAGE
   procedure test_p(id integer);   | PACKAGE
  end;                             | PACKAGE
  PACKAGE BODY pkg IS              | PACKAGE BODY
- var3 integer;                    | PACKAGE BODY
+                                  | PACKAGE BODY
+  var3 integer;                   | PACKAGE BODY
   procedure test_p(id integer) is | PACKAGE BODY
   begin                           | PACKAGE BODY
     var3 := 4;                    | PACKAGE BODY
@@ -2510,7 +2534,7 @@ select text,type from user_source where name='pkg' ORDER BY type,line;
  begin                            | PACKAGE BODY
    var1 := 2;                     | PACKAGE BODY
  end;                             | PACKAGE BODY
-(13 rows)
+(15 rows)
 
 --ok
 select text from all_source where name='test_f' and type='FUNCTION' ORDER BY line;
@@ -2520,10 +2544,11 @@ select text from all_source where name='test_f' and type='FUNCTION' ORDER BY lin
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 select text from dba_source where name='test_f' and type='FUNCTION' ORDER BY line;
                        text                        
@@ -2532,10 +2557,11 @@ select text from dba_source where name='test_f' and type='FUNCTION' ORDER BY lin
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 select text from user_source where name='test_f' and type='FUNCTION' ORDER BY line;
                        text                        
@@ -2544,10 +2570,11 @@ select text from user_source where name='test_f' and type='FUNCTION' ORDER BY li
   RETURN integer
   AUTHID DEFINER
  IS 
+ 
  BEGIN
    RETURN 1;
  end;
-(7 rows)
+(8 rows)
 
 --ok
 select object_name from all_arguments where object_name='test_f';
@@ -2671,10 +2698,11 @@ select text,type from all_source where name='test_f' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 select text,type from dba_source where name='test_f' ORDER BY type,line;
                        text                        |   type   
@@ -2683,10 +2711,11 @@ select text,type from dba_source where name='test_f' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 select text,type from user_source where name='test_f' ORDER BY type,line;
                        text                        |   type   
@@ -2695,10 +2724,11 @@ select text,type from user_source where name='test_f' ORDER BY type,line;
   RETURN integer                                   | FUNCTION
   AUTHID DEFINER                                   | FUNCTION
  IS                                                | FUNCTION
+                                                   | FUNCTION
  BEGIN                                             | FUNCTION
    RETURN 1;                                       | FUNCTION
  end;                                              | FUNCTION
-(7 rows)
+(8 rows)
 
 --clean data
 DROP package pkg;

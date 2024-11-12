@@ -395,7 +395,21 @@ other			.
 					 * which is pretty dubious but is the historical
 					 * behavior.
 					 */
-					if (!(output_buf->len == 0 || yytext[0] == '-'))
+					/* Begin - BUG#M000410 */
+					/*
+					 * Preserve comments in procedural language when
+					 * send_space_one_comments is true
+					 */
+					if (cur_state->send_space_one_comments &&
+						cur_state->identifier_count >= 4 &&
+						cur_state->identifiers[0] == 'c' &&
+						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' ||
+						 (cur_state->identifiers[1] == 'o' && cur_state->identifiers[2] == 'r' &&
+						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p'))) &&
+						cur_state->paren_depth == 0)
+						ECHO;
+					/* End - BUG#M0000410 */
+					else if (!(output_buf->len == 0 || yytext[0] == '-'))
 						ECHO;
 				}
 
