@@ -5156,6 +5156,7 @@ outer_join_Recurse(ParseState *pstate, List **multi_outer_joins, JoinExpr *join,
 	JoinExpr	   *join_inner = NULL;
 	JoinExpr	   *cur_join = NULL;
 	JoinExpr	   *prev_join = NULL;
+	JoinExpr	   *rec_join = NULL;	/* BUG#Z1334 */
 	RangeTblRef	   *rtr = makeNode(RangeTblRef);
 	List 		   *multi_outer_joins_copy;
 
@@ -5207,7 +5208,10 @@ outer_join_Recurse(ParseState *pstate, List **multi_outer_joins, JoinExpr *join,
 			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->larg);
 			pstate->p_joinlist = list_delete(pstate->p_joinlist, cur_join->rarg);
 			pstate->p_joinlist = lappend(pstate->p_joinlist,copyObject(cur_join));
-			return outer_join_Recurse(pstate, multi_outer_joins, cur_join, outer_join);
+			/* Begin - BUG#Z1334 */
+			rec_join = outer_join_Recurse(pstate, multi_outer_joins, cur_join, plus_var);
+			return outer_join_Recurse(pstate, multi_outer_joins, rec_join, outer_join);
+			/* End -  BUG#Z1334 */
 		}
 	}
 	return join;
