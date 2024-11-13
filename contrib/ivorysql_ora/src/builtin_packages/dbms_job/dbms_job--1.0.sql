@@ -59,227 +59,91 @@ BEGIN
     RETURN newjobnextrun;
 END;
 
+/* BEGIN - BUG#M0000412 */
+CREATE OR REPLACE PROCEDURE sys.pgagent_setval() AUTHID DEFINER IS
+  next_job_id INTEGER;
+BEGIN
+  LOOP
+    SELECT nextval('pgagent.pga_job_jobid_seq') INTO next_job_id;
 
-/* create dbms_job package specification */
-CREATE OR REPLACE NONEDITIONABLE PACKAGE sys.dbms_job AUTHID CURRENT_USER IS
-
-
-  PROCEDURE isubmit    ( job       IN  INTEGER,
-                         what      IN  VARCHAR2,
-                         next_date IN  DATE,
-                         interval  IN  VARCHAR2 DEFAULT 'null',
-                         no_parse  IN  BOOLEAN DEFAULT FALSE);
-
-
-  PROCEDURE submit    ( job       OUT INTEGER,
-                        what      IN  VARCHAR2,
-                        next_date IN  DATE DEFAULT sysdate,
-                        interval  IN  VARCHAR2 DEFAULT 'null',
-                        no_parse  IN  BOOLEAN DEFAULT FALSE,
-                        instance  IN  INTEGER DEFAULT 0,
-                        force     IN  BOOLEAN DEFAULT FALSE );
-
-
-  PROCEDURE remove    ( job       IN  INTEGER );
-
-
-  PROCEDURE change    ( job       IN  INTEGER,
-                        what      IN  VARCHAR2,
-                        next_date IN  DATE,
-                        interval  IN  VARCHAR2,
-                        instance  IN  INTEGER DEFAULT NULL,
-                        force     IN  BOOLEAN DEFAULT FALSE);
-
-
-  PROCEDURE what      ( job       IN  INTEGER,
-                        what      IN  VARCHAR2 );
-
-
-  PROCEDURE next_date ( job       IN  INTEGER,
-                        next_date IN  DATE     );
-
-
-  PROCEDURE instance ( job        IN INTEGER,
-                       instance   IN INTEGER,
-		                   force      IN BOOLEAN DEFAULT FALSE);
-
-
-  PROCEDURE interval  ( job       IN  INTEGER,
-                        interval  IN  VARCHAR2 );
-
-
-  PROCEDURE broken    ( job       IN  INTEGER,
-                        broken    IN  BOOLEAN,
-                        next_date IN  DATE DEFAULT SYSDATE );
-
-
-  PROCEDURE run       ( job       IN  INTEGER,
-			                  force     IN  BOOLEAN DEFAULT FALSE);
-
-
-  PROCEDURE user_export ( job    IN     INTEGER,
-                          mycall IN OUT VARCHAR2);
-
-
-  PROCEDURE user_export ( job     IN     INTEGER,
-                         mycall   IN OUT VARCHAR2,
-                         myinst   IN OUT VARCHAR2);
-
+    IF NOT EXISTS (SELECT 1 FROM pgagent.pga_job WHERE jobid = next_job_id) THEN
+        PERFORM setval('pgagent.pga_job_jobid_seq', next_job_id, FALSE);
+        EXIT;
+    END IF;
+  END LOOP;
 END;
 
 
-/* create dbms_job package body */
-CREATE OR REPLACE PACKAGE BODY sys.dbms_job IS
-     
-PROCEDURE SUBMIT (
-    job OUT INTEGER,
-    what IN VARCHAR2,
-    next_date IN DATE DEFAULT sysdate,
-    interval IN VARCHAR2 DEFAULT 'null',
-    no_parse IN BOOLEAN DEFAULT FALSE,
-    instance IN INTEGER DEFAULT 0,
-    force IN BOOLEAN DEFAULT FALSE
-) IS
-    job_id      INTEGER;
-    current_database_name name;
-    current_user_varchar VARCHAR2(128);
-    client_encoding_varchar VARCHAR2(100);
-    lc_collate_varchar VARCHAR2(100);
-    datestyle_varchar VARCHAR2(100);
-    nls_env_varchar VARCHAR2(300);
-    ivorysql_enable_emptystring_to_null_varchar text;
-    current_job_id INTEGER;
-    next_job_id INTEGER;
-    temp_next_job_id INTEGER;
-
-    interval_is_null BOOLEAN := FALSE;
-    result_datetime pg_catalog.timestamptz;
-    has_keyword BOOLEAN := FALSE;
-    now_future BOOLEAN := FALSE;
-    interval_expression_jobenabled BOOLEAN := TRUE;
-    interval_expression_failures INTEGER := 0;
-    fixed_sysdate TIMESTAMP;
+/* sys.insert_pgagent_tables procedure is used in DBMS_JOB.SUBMIT procedure */
+CREATE OR REPLACE PROCEDURE sys.insert_pgagent_tables(
+  interval_expression_jobenabled BOOLEAN DEFAULT TRUE,
+  result_datetime IN pg_catalog.timestamptz,
+  no_parse IN BOOLEAN DEFAULT FALSE,
+  instance IN INTEGER DEFAULT 0,
+  force IN BOOLEAN DEFAULT FALSE,
+  current_user_varchar VARCHAR2(128),
+  interval_expression_failures INTEGER DEFAULT 0,
+  nls_env_varchar VARCHAR2(300),
+  what IN VARCHAR2,
+  current_database_name VARCHAR2(128),
+  interval IN VARCHAR2 DEFAULT 'null',
+  next_date IN pg_catalog.timestamptz,
+  dbmsjob_calendar_enable IN BOOLEAN,
+  job_id OUT INTEGER
+) AUTHID DEFINER IS
 BEGIN
-    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
-    
-    fixed_sysdate := sysdate;
+  INSERT INTO pgagent.pga_job (jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, dbmsjob_instance, dbmsjob_force, log_user, priv_user, schema_user, failures, nls_env)
+  VALUES (1, 'dbms_job', ''::text, ''::text, interval_expression_jobenabled, result_datetime::pg_catalog.timestamptz, true, no_parse, instance, force, current_user_varchar, current_user_varchar, current_user_varchar, 0, nls_env_varchar)
+  RETURNING jobid INTO job_id;
+  
+  INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
+  VALUES (job_id, 'dbms_job_step', ''::text, true, 's', what, '', current_database_name, 'f');
+  
+  IF (next_date IS NULL) THEN
+    INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, dbmsjob_interval, dbmsjob_calendar_enable)
+      VALUES (job_id, 'job1', ''::text, interval, dbmsjob_calendar_enable);
+  ELSE
+    INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscstart, dbmsjob_interval, dbmsjob_calendar_enable)
+      VALUES (job_id, 'job1', ''::text, next_date, interval, dbmsjob_calendar_enable);
+  END IF;
+END;
 
-    IF next_date >= fixed_sysdate THEN
-        now_future := TRUE;
-        result_datetime := next_date;
-    END IF;
+/* sys.insert_pgagent_tables2 procedure is used in DBMS_JOB.ISUBMIT procedure */
+CREATE OR REPLACE PROCEDURE sys.insert_pgagent_tables2(
+  interval_expression_jobenabled BOOLEAN DEFAULT TRUE,
+  result_datetime IN pg_catalog.timestamptz,
+  no_parse IN BOOLEAN DEFAULT FALSE,
+  current_user_varchar VARCHAR2(128),
+  interval_expression_failures INTEGER DEFAULT 0,
+  nls_env_varchar VARCHAR2(300),
+  what IN VARCHAR2,
+  current_database_name VARCHAR2(128),
+  interval IN VARCHAR2 DEFAULT 'null',
+  next_date IN pg_catalog.timestamptz,
+  dbmsjob_calendar_enable IN BOOLEAN,
+  job_id IN INTEGER
+) AUTHID DEFINER IS
+BEGIN
+  INSERT INTO pgagent.pga_job (jobid, jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, log_user, priv_user, schema_user, failures, nls_env)
+  VALUES (job_id, 1, 'dbms_job', ''::text, ''::text, interval_expression_jobenabled, result_datetime::pg_catalog.timestamptz, true, no_parse, current_user_varchar, current_user_varchar, current_user_varchar, 0, nls_env_varchar);
+  
+  INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
+  VALUES (job_id, 'dbms_job_step', ''::text, true, 's', what, '', current_database_name, 'f');
+  
+  IF (next_date IS NULL) THEN
+    INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, dbmsjob_interval, dbmsjob_calendar_enable)
+      VALUES (job_id, 'job1', ''::text, interval, dbmsjob_calendar_enable);
+  ELSE
+    INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscstart, dbmsjob_interval, dbmsjob_calendar_enable)
+      VALUES (job_id, 'job1', ''::text, next_date, interval, dbmsjob_calendar_enable);
+  END IF;
+END;
 
-    IF what IS NULL THEN
-        RAISE EXCEPTION 'IVY-27451: JOB_ACTION cannot be NULL';
-    END IF;
-
-    IF interval IS NULL THEN
-        IF next_date < fixed_sysdate THEN
-            result_datetime := fixed_sysdate;
-            interval_is_null := TRUE;
-        END IF;    
-    END IF;    
-
-    SELECT current_user INTO current_user_varchar;
-    SELECT current_database() INTO current_database_name;
-    SELECT current_setting('client_encoding') INTO client_encoding_varchar;
-    SELECT current_setting('lc_collate') INTO lc_collate_varchar;
-    SELECT current_setting('datestyle') INTO datestyle_varchar;
-    SELECT current_setting('ivorysql.enable_emptystring_to_null') INTO ivorysql_enable_emptystring_to_null_varchar;
-    
-    nls_env_varchar := 'client_encoding: ' || current_setting('client_encoding') || ', lc_collate: ' || current_setting('lc_collate') || ', datestyle: ' || current_setting('datestyle');
-
-    set ivorysql.enable_emptystring_to_null=off;
-
-    LOOP
-
-        SELECT nextval('pgagent.pga_job_jobid_seq') INTO next_job_id;
-
-        IF NOT EXISTS (SELECT 1 FROM pgagent.pga_job WHERE jobid = next_job_id) THEN
-
-            PERFORM setval('pgagent.pga_job_jobid_seq', next_job_id, FALSE);
-            EXIT;
-        END IF;
-        
-    END LOOP;
-
-    has_keyword := interval::text ILIKE '%FREQ%' OR 
-                   interval::text ILIKE '%INTERVAL%' OR
-                   interval::text ILIKE '%ByMONTH%' OR
-                   interval::text ILIKE '%BYMONTHDAY%' OR
-                   interval::text ILIKE '%BYHOUR%' OR
-                   interval::text ILIKE '%BYMINUTE%' OR
-                   interval::text ILIKE '%BYSECOND%';
-
-    IF has_keyword THEN
-
-        IF NOT interval_is_null THEN
-            IF now_future THEN
-                PERFORM evaluate_calendar_string(interval::text, next_date::timestamp, NULL, true);
-            ELSE
-                result_datetime := evaluate_calendar_string(interval::text, next_date::timestamp, NULL, true);
-            END IF;
-        END IF;
-
-        INSERT INTO pgagent.pga_job (jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, dbmsjob_instance, dbmsjob_force, log_user, priv_user, schema_user, failures, nls_env)
-        VALUES (1, 'dbms_job', ''::text, ''::text, true, result_datetime::pg_catalog.timestamptz, true, NO_PARSE, instance, force, current_user_varchar, current_user_varchar, current_user_varchar, 0, nls_env_varchar)
-        RETURNING jobid INTO job_id;
-
-        INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
-        VALUES (job_id, 'dbms_job_step', ''::text, true, 's', WHAT, '', current_database_name, 'f');
-
-        INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, dbmsjob_interval, dbmsjob_calendar_enable)
-        VALUES (job_id, 'job1', ''::text, interval, true);
-
-    ELSE
-
-        BEGIN
-            IF NOT interval_is_null THEN
-                result_datetime := sys.evaluate_next_schedule_expression(interval::text);
-            END IF;
-        EXCEPTION WHEN others THEN     
-            RAISE EXCEPTION 'IVY-27465: invalid value % for attribute REPEAT_INTERVAL',interval;
-            RETURN;
-        END;
-
-        IF NOT interval_is_null THEN
-            IF result_datetime <= fixed_sysdate THEN
-                interval_expression_jobenabled := false;
-                interval_expression_failures := 1;
-            END IF;
-
-            IF now_future THEN
-                result_datetime := next_date::timestamp;
-            END IF;            
-        END IF;
-
-
-        INSERT INTO pgagent.pga_job (jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, dbmsjob_instance, dbmsjob_force, log_user, priv_user, schema_user, failures, nls_env)
-        VALUES (1, 'dbms_job', ''::text, ''::text, interval_expression_jobenabled, result_datetime::pg_catalog.timestamptz, true, NO_PARSE, instance, force, current_user_varchar, current_user_varchar, current_user_varchar, interval_expression_failures, nls_env_varchar)
-        RETURNING jobid INTO job_id;
-
-        INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
-        VALUES (job_id, 'dbms_job_step', ''::text, true, 's', WHAT, '', current_database_name, 'f');
-
-        INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscstart, dbmsjob_interval, dbmsjob_calendar_enable)
-        VALUES (job_id, 'job1', ''::text, next_date::text::pg_catalog.timestamptz, interval, false);
-    END IF;
-
-
-    EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
-
-    JOB := job_id;
-        
-END SUBMIT;
-
-
-
-
-PROCEDURE broken(
+CREATE OR REPLACE PROCEDURE sys.broken(
     job IN INTEGER,
     broken IN BOOLEAN,
     next_date IN DATE DEFAULT SYSDATE
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
     v_job_broken BOOLEAN;
     new_job_broken BOOLEAN;
@@ -318,7 +182,6 @@ BEGIN
 
     IF v_job_count > 0 THEN
         IF v_job_broken OR NOT new_job_broken THEN
-
             IF now_future THEN
                 result_datetime := next_date::timestamp;
             ELSE
@@ -342,17 +205,15 @@ BEGIN
     END IF;
 END broken;
 
-
-PROCEDURE change (
+CREATE OR REPLACE PROCEDURE sys.change (
     job IN INTEGER,
     what IN VARCHAR2,
     next_date IN DATE,
     interval IN VARCHAR2,
     instance IN INTEGER DEFAULT NULL,
     force IN BOOLEAN DEFAULT FALSE
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
-
 
     result_datetime pg_catalog.timestamptz;
     has_keyword BOOLEAN;
@@ -361,7 +222,6 @@ PROCEDURE change (
     fixed_sysdate TIMESTAMP;
     v_dbmsjob_interval TEXT;
     v_dbmsjob_calendar_enable BOOLEAN;
-
 BEGIN
     set nls_date_format='YYYY-MM-DD HH24:MI:SS';
 
@@ -412,7 +272,6 @@ BEGIN
             END IF;
         END IF;
     END IF;
-
 
     IF interval IS NULL THEN
         SELECT dbmsjob_interval, dbmsjob_calendar_enable 
@@ -522,18 +381,15 @@ BEGIN
     ELSE
         RETURN;
     END IF;
-
 END change;
 
-
-PROCEDURE instance (
+CREATE OR REPLACE PROCEDURE sys.instance (
     job IN INTEGER,
     instance IN INTEGER,
     force IN BOOLEAN DEFAULT FALSE
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
 BEGIN
-
     SELECT COUNT(*)
     INTO v_job_count
     FROM pgagent.pga_job
@@ -557,12 +413,10 @@ BEGIN
     END IF;
 END instance;
 
-
-
-PROCEDURE interval(
+CREATE OR REPLACE PROCEDURE sys.interval(
     job IN INTEGER,
     interval IN VARCHAR2
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
     v_next_date pg_catalog.timestamptz;
     has_keyword BOOLEAN;
@@ -632,12 +486,10 @@ BEGIN
     END IF;
 END interval;
 
-
-
-PROCEDURE next_date (
+CREATE OR REPLACE PROCEDURE sys.next_date (
     job IN INTEGER,
     next_date IN DATE
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
     v_next_date pg_catalog.timestamptz;
     v_dbmsjob_interval text;
@@ -683,15 +535,11 @@ BEGIN
     ELSE
         RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
     END IF;    
-
 END next_date;
 
-
-
-PROCEDURE remove(job IN INTEGER) IS
-    v_job_count NUMBER;
+CREATE OR REPLACE PROCEDURE sys.remove(job IN INTEGER) AUTHID DEFINER IS
+    v_job_count INTEGER;
 BEGIN
-
     SELECT COUNT(*)
     INTO v_job_count
     FROM pgagent.pga_job
@@ -706,12 +554,10 @@ BEGIN
 
 END remove;
 
-
-
-PROCEDURE run (
+CREATE OR REPLACE PROCEDURE sys.run (
     job IN INTEGER,
     force IN BOOLEAN DEFAULT FALSE
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
 BEGIN
     set nls_date_format='YYYY-MM-DD HH24:MI:SS';
@@ -729,15 +575,12 @@ BEGIN
     ELSE
         RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
     END IF;
-
 END run;
 
-
-
-PROCEDURE what (
+CREATE OR REPLACE PROCEDURE sys.what (
     job IN INTEGER,
     what IN VARCHAR2
-) IS
+) AUTHID DEFINER IS
     v_job_count NUMBER;
     v_next_date  pg_catalog.timestamptz;
     v_dbmsjob_interval TEXT;
@@ -784,7 +627,444 @@ BEGIN
     ELSE
         RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
     END IF;
+END what;
 
+CREATE OR REPLACE PROCEDURE sys.user_export (
+    job IN INTEGER,
+    mycall IN OUT VARCHAR2
+) AUTHID DEFINER IS
+    v_what VARCHAR2(4000);
+    v_next_date VARCHAR2(100);
+    v_interval VARCHAR2(100);
+    v_no_parse VARCHAR2(10);
+    v_job_count NUMBER;
+BEGIN
+    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+
+    SELECT COUNT(*)
+    INTO v_job_count
+    FROM pgagent.pga_job
+    WHERE jobid = job;
+
+    IF v_job_count > 0 THEN
+
+        SELECT jstcode INTO v_what
+        FROM pgagent.pga_jobstep
+        WHERE jstjobid = job;
+
+        SELECT jobnextrun::pg_catalog.timestamp INTO v_next_date
+        FROM pgagent.pga_job
+        WHERE jobid = job;
+
+        v_next_date := TO_CHAR(v_next_date::pg_catalog.timestamp, 'YYYY-MM-DD HH24:MI:SS');
+        SELECT dbmsjob_interval INTO v_interval
+        FROM pgagent.pga_schedule
+        WHERE jscjobid = job;
+
+        mycall := 'dbms_job.isubmit(job=>' || job || ' ,what=>''' || v_what || ''', next_date=>' || 'to_date(''' || v_next_date || ''' , ''YYYY-MM-DD HH24:MI:SS'')' || ', interval=>''' || v_interval || ''', no_parse=>TRUE);';
+    ELSE
+        RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
+    END IF;
+END user_export;
+
+CREATE OR REPLACE PROCEDURE sys.user_export (
+    job IN INTEGER,
+    mycall IN OUT VARCHAR2,
+    myinst IN OUT VARCHAR2
+) AUTHID DEFINER IS
+    v_what VARCHAR2(4000);
+    v_next_date VARCHAR2(100);
+    v_interval VARCHAR2(100);
+    v_no_parse VARCHAR2(10);
+    v_instance NUMBER;
+    v_job_count NUMBER;
+BEGIN
+    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+
+    SELECT COUNT(*)
+    INTO v_job_count
+    FROM pgagent.pga_job
+    WHERE jobid = job;
+
+    IF v_job_count > 0 THEN
+
+        SELECT jstcode INTO v_what
+        FROM pgagent.pga_jobstep
+        WHERE jstjobid = job;
+
+        SELECT jobnextrun::pg_catalog.timestamp INTO v_next_date
+        FROM pgagent.pga_job
+        WHERE jobid = job;
+
+        v_next_date := TO_CHAR(v_next_date::pg_catalog.timestamp, 'YYYY-MM-DD HH24:MI:SS');
+
+        SELECT dbmsjob_interval INTO v_interval
+        FROM pgagent.pga_schedule
+        WHERE jscjobid = job;
+
+        SELECT dbmsjob_no_parse INTO v_no_parse
+        FROM pgagent.pga_job
+        WHERE jobid = job;
+
+        mycall := 'dbms_job.isubmit(job=>' || job || ',what=>''' || v_what || ''', next_date=>' || 'to_date(''' || v_next_date || ''' , ''YYYY-MM-DD HH24:MI:SS'')' || ', interval=>''' || v_interval || ''', no_parse=>TRUE);';
+        SELECT dbmsjob_instance INTO v_instance
+        FROM pgagent.pga_job
+        WHERE jobid = job;
+
+        IF v_instance = 0 THEN
+            myinst := NULL;
+        ELSE
+            myinst := 'dbms_job.instance(job=>' || job || ',instance=>' || v_instance || ', force=>TRUE);';
+        END IF;
+    ELSE
+        RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
+    END IF;
+END user_export;
+/* END - BUG#M0000412 */
+
+/* create dbms_job package specification */
+CREATE OR REPLACE NONEDITIONABLE PACKAGE sys.dbms_job AUTHID CURRENT_USER IS
+
+
+  PROCEDURE isubmit    ( job       IN  INTEGER,
+                         what      IN  VARCHAR2,
+                         next_date IN  DATE,
+                         interval  IN  VARCHAR2 DEFAULT 'null',
+                         no_parse  IN  BOOLEAN DEFAULT FALSE);
+
+
+  PROCEDURE submit    ( job       OUT INTEGER,
+                        what      IN  VARCHAR2,
+                        next_date IN  DATE DEFAULT sysdate,
+                        interval  IN  VARCHAR2 DEFAULT 'null',
+                        no_parse  IN  BOOLEAN DEFAULT FALSE,
+                        instance  IN  INTEGER DEFAULT 0,
+                        force     IN  BOOLEAN DEFAULT FALSE );
+
+
+  PROCEDURE remove    ( job       IN  INTEGER );
+
+
+  PROCEDURE change    ( job       IN  INTEGER,
+                        what      IN  VARCHAR2,
+                        next_date IN  DATE,
+                        interval  IN  VARCHAR2,
+                        instance  IN  INTEGER DEFAULT NULL,
+                        force     IN  BOOLEAN DEFAULT FALSE);
+
+
+  PROCEDURE what      ( job       IN  INTEGER,
+                        what      IN  VARCHAR2 );
+
+
+  PROCEDURE next_date ( job       IN  INTEGER,
+                        next_date IN  DATE     );
+
+
+  PROCEDURE instance ( job        IN INTEGER,
+                       instance   IN INTEGER,
+		                   force      IN BOOLEAN DEFAULT FALSE);
+
+
+  PROCEDURE interval  ( job       IN  INTEGER,
+                        interval  IN  VARCHAR2 );
+
+
+  PROCEDURE broken    ( job       IN  INTEGER,
+                        broken    IN  BOOLEAN,
+                        next_date IN  DATE DEFAULT SYSDATE );
+
+
+  PROCEDURE run       ( job       IN  INTEGER,
+			                  force     IN  BOOLEAN DEFAULT FALSE);
+
+
+  PROCEDURE user_export ( job    IN     INTEGER,
+                          mycall IN OUT VARCHAR2);
+
+
+  PROCEDURE user_export ( job     IN     INTEGER,
+                         mycall   IN OUT VARCHAR2,
+                         myinst   IN OUT VARCHAR2);
+
+END;
+
+
+/* create dbms_job package body */
+CREATE OR REPLACE PACKAGE BODY sys.dbms_job IS
+     
+PROCEDURE SUBMIT (
+    job OUT INTEGER,
+    what IN VARCHAR2,
+    next_date IN DATE DEFAULT sysdate,
+    interval IN VARCHAR2 DEFAULT 'null',
+    no_parse IN BOOLEAN DEFAULT FALSE,
+    instance IN INTEGER DEFAULT 0,
+    force IN BOOLEAN DEFAULT FALSE
+) IS
+    job_id      INTEGER;
+    current_database_name VARCHAR2(128);
+    current_user_varchar VARCHAR2(128);
+    client_encoding_varchar VARCHAR2(100);
+    lc_collate_varchar VARCHAR2(100);
+    datestyle_varchar VARCHAR2(100);
+    nls_env_varchar VARCHAR2(300);
+    ivorysql_enable_emptystring_to_null_varchar text;
+    current_job_id INTEGER;
+    next_job_id INTEGER;
+    temp_next_job_id INTEGER;
+
+    interval_is_null BOOLEAN := FALSE;
+    result_datetime pg_catalog.timestamptz;
+    has_keyword BOOLEAN := FALSE;
+    now_future BOOLEAN := FALSE;
+    interval_expression_jobenabled BOOLEAN := TRUE;
+    interval_expression_failures INTEGER := 0;
+    fixed_sysdate TIMESTAMP;
+BEGIN
+    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
+    
+    fixed_sysdate := sysdate;
+
+    IF next_date >= fixed_sysdate THEN
+        now_future := TRUE;
+        result_datetime := next_date;
+    END IF;
+
+    IF what IS NULL THEN
+        RAISE EXCEPTION 'IVY-27451: JOB_ACTION cannot be NULL';
+    END IF;
+
+    IF interval IS NULL THEN
+        IF next_date < fixed_sysdate THEN
+            result_datetime := fixed_sysdate;
+            interval_is_null := TRUE;
+        END IF;    
+    END IF;    
+
+    SELECT current_user INTO current_user_varchar;
+    SELECT current_database() INTO current_database_name;
+    SELECT current_setting('client_encoding') INTO client_encoding_varchar;
+    SELECT current_setting('lc_collate') INTO lc_collate_varchar;
+    SELECT current_setting('datestyle') INTO datestyle_varchar;
+    SELECT current_setting('ivorysql.enable_emptystring_to_null') INTO ivorysql_enable_emptystring_to_null_varchar;
+    
+    nls_env_varchar := 'client_encoding: ' || current_setting('client_encoding') || ', lc_collate: ' || current_setting('lc_collate') || ', datestyle: ' || current_setting('datestyle');
+
+    set ivorysql.enable_emptystring_to_null=off;
+
+	/* BEGIN - BUG#M0000412 */
+	/*
+	 * call sys.pgagent_setval procedure to operator the sequence in schema pgagent.
+	 * because sys.pgagent_setval is runed with the Owner rights (DEFINER), if a user
+	 * call the package dbms_job to create a job, the user can't operator the objects
+	 * in schema pgagent.
+	 */
+    sys.pgagent_setval();
+    /* END - BUG#M0000412 */
+
+    has_keyword := interval::text ILIKE '%FREQ%' OR 
+                   interval::text ILIKE '%INTERVAL%' OR
+                   interval::text ILIKE '%ByMONTH%' OR
+                   interval::text ILIKE '%BYMONTHDAY%' OR
+                   interval::text ILIKE '%BYHOUR%' OR
+                   interval::text ILIKE '%BYMINUTE%' OR
+                   interval::text ILIKE '%BYSECOND%';
+
+    IF has_keyword THEN
+
+        IF NOT interval_is_null THEN
+            IF now_future THEN
+                PERFORM evaluate_calendar_string(interval::text, next_date::timestamp, NULL, true);
+            ELSE
+                result_datetime := evaluate_calendar_string(interval::text, next_date::timestamp, NULL, true);
+            END IF;
+        END IF;
+
+	    /* BEGIN - BUG#M0000412 */
+	    /*
+	     * call sys.insert_pgagent_tables procedure to operator the tables in schema pgagent.
+	     * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+	     * call the package dbms_job to create a job, the user can't operator the objects
+	     * in schema pgagent.
+	     */
+        sys.insert_pgagent_tables(true,
+		                         result_datetime::pg_catalog.timestamptz,
+		                         no_parse,
+		                         instance,
+		                         force,
+		                         current_user_varchar,
+		                         0,
+		                         nls_env_varchar,
+								 what,
+								 current_database_name,
+								 interval,
+								 NULL,
+								 true,
+								 job_id);
+        /* END - BUG#M0000412 */
+    ELSE
+        BEGIN
+            IF NOT interval_is_null THEN
+                result_datetime := sys.evaluate_next_schedule_expression(interval::text);
+            END IF;
+        EXCEPTION WHEN others THEN     
+            RAISE EXCEPTION 'IVY-27465: invalid value % for attribute REPEAT_INTERVAL',interval;
+            RETURN;
+        END;
+
+        IF NOT interval_is_null THEN
+            IF result_datetime <= fixed_sysdate THEN
+                interval_expression_jobenabled := false;
+                interval_expression_failures := 1;
+            END IF;
+
+            IF now_future THEN
+                result_datetime := next_date::timestamp;
+            END IF;            
+        END IF;
+
+	    /* BEGIN - BUG#M0000412 */
+	    /*
+	     * call sys.insert_pgagent_tables procedure to operator the tables in schema pgagent.
+	     * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+	     * call the package dbms_job to create a job, the user can't operator the objects
+	     * in schema pgagent.
+	     */
+        sys.insert_pgagent_tables(interval_expression_jobenabled,
+		                         result_datetime::pg_catalog.timestamptz,
+		                         no_parse,
+		                         instance,
+		                         force,
+		                         current_user_varchar,
+		                         interval_expression_failures,
+		                         nls_env_varchar,
+								 what,
+								 current_database_name,
+								 interval,
+								 next_date::text::pg_catalog.timestamptz,
+								 false,
+								 job_id);
+        /* END - BUG#M0000412 */
+    END IF;
+
+
+    EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
+
+    JOB := job_id;
+        
+END SUBMIT;
+
+
+
+
+PROCEDURE broken(
+    job IN INTEGER,
+    broken IN BOOLEAN,
+    next_date IN DATE DEFAULT SYSDATE
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.broken(job,
+             broken,
+			 next_date);
+  /* END - BUG#M0000412 */
+END broken;
+
+
+PROCEDURE change (
+    job IN INTEGER,
+    what IN VARCHAR2,
+    next_date IN DATE,
+    interval IN VARCHAR2,
+    instance IN INTEGER DEFAULT NULL,
+    force IN BOOLEAN DEFAULT FALSE
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.change(job,
+             what,
+			 next_date,
+			 interval,
+			 instance,
+			 force);
+  /* END - BUG#M0000412 */
+END change;
+
+
+PROCEDURE instance (
+    job IN INTEGER,
+    instance IN INTEGER,
+    force IN BOOLEAN DEFAULT FALSE
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.instance(job,
+			   instance,
+			   force);
+  /* END - BUG#M0000412 */
+END instance;
+
+
+
+PROCEDURE interval(
+    job IN INTEGER,
+    interval IN VARCHAR2
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.interval(job,
+			   interval);
+  /* END - BUG#M0000412 */
+END interval;
+
+
+
+PROCEDURE next_date (
+    job IN INTEGER,
+    next_date IN DATE
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.next_date(job,
+			    next_date);
+  /* END - BUG#M0000412 */
+END next_date;
+
+
+
+PROCEDURE remove(job IN INTEGER) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.remove(job);
+  /* END - BUG#M0000412 */
+END remove;
+
+
+
+PROCEDURE run (
+    job IN INTEGER,
+    force IN BOOLEAN DEFAULT FALSE
+) IS
+    v_job_count NUMBER;
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.run(job,
+		  force);
+  /* END - BUG#M0000412 */
+END run;
+
+
+
+PROCEDURE what (
+    job IN INTEGER,
+    what IN VARCHAR2
+) IS
+BEGIN
+  /* BEGIN - BUG#M0000412 */
+  sys.what(job,
+           what);
+  /* END - BUG#M0000412 */
 END what;
 
 
@@ -798,7 +1078,7 @@ PROCEDURE isubmit(
     no_parse IN BOOLEAN DEFAULT FALSE
 ) IS
     
-    current_database_name name;
+    current_database_name VARCHAR2(128);
     current_user_varchar VARCHAR2(128);
     client_encoding_varchar VARCHAR2(100);
     lc_collate_varchar VARCHAR2(100);
@@ -852,14 +1132,27 @@ BEGIN
             result_datetime := evaluate_calendar_string(interval::text, next_date_to_text::timestamp, NULL, true);
         END IF;    
 
-        INSERT INTO pgagent.pga_job (jobid, jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, log_user, priv_user, schema_user, failures, nls_env)
-        VALUES (job, 1, 'dbms_job', ''::text, ''::text, true, result_datetime::pg_catalog.timestamptz, true, NO_PARSE, current_user_varchar, current_user_varchar, current_user_varchar, 0, nls_env_varchar);
-
-        INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
-        VALUES (job, 'dbms_job_step', ''::text, true, 's', WHAT, '', current_database_name, 'f');
-    
-        INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscstart, dbmsjob_interval, dbmsjob_calendar_enable)
-        VALUES (job, 'job1', ''::text, next_date::text::pg_catalog.timestamptz, interval, true);
+	    /* BEGIN - BUG#M0000412 */
+	    /*
+	     * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+	     * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+	     * call the package dbms_job to create a job, the user can't operator the objects
+	     * in schema pgagent.
+	     */
+        sys.insert_pgagent_tables2(true,
+		                         result_datetime::pg_catalog.timestamptz,
+		                         no_parse,
+		                         current_user_varchar,
+		                         0,
+		                         nls_env_varchar,
+								 what,
+								 current_database_name,
+								 interval,
+								 true,
+								 NULL,
+								 true,
+								 job);
+        /* END - BUG#M0000412 */
     ELSE
 
         BEGIN
@@ -880,14 +1173,26 @@ BEGIN
             result_datetime  := next_date::timestamp;
         END IF;
 
-        INSERT INTO pgagent.pga_job (jobid, jobjclid, jobname, jobdesc, jobhostagent, jobenabled, jobnextrun, dbmsjob_flag, dbmsjob_no_parse, log_user, priv_user, schema_user, failures, nls_env)
-        VALUES (job, 1, 'dbms_job', ''::text, ''::text, interval_expression_jobenabled, result_datetime::pg_catalog.timestamptz, true, NO_PARSE, current_user_varchar, current_user_varchar, current_user_varchar, interval_expression_failures, nls_env_varchar);
-
-        INSERT INTO pgagent.pga_jobstep (jstjobid, jstname, jstdesc, jstenabled, jstkind, jstcode, jstconnstr, jstdbname, jstonerror)
-        VALUES (job, 'dbms_job_step', ''::text, true, 's', WHAT, '', current_database_name, 'f');    
-        
-        INSERT INTO pgagent.pga_schedule (jscjobid, jscname, jscdesc, jscstart, dbmsjob_interval, dbmsjob_calendar_enable)
-        VALUES (job, 'job1', ''::text, next_date::text::pg_catalog.timestamptz, interval, false);
+	    /* BEGIN - BUG#M0000412 */
+	    /*
+	     * call sys.insert_pgagent_tables2 procedure to operator the tables in schema pgagent.
+	     * because sys.insert_pgagent_tables is runed with the Owner rights (DEFINER), if a user
+	     * call the package dbms_job to create a job, the user can't operator the objects
+	     * in schema pgagent.
+	     */
+        sys.insert_pgagent_tables2(interval_expression_jobenabled,
+		                         result_datetime::pg_catalog.timestamptz,
+		                         no_parse,
+		                         current_user_varchar,
+		                         interval_expression_failures,
+		                         nls_env_varchar,
+								 what,
+								 current_database_name,
+								 interval,
+								 next_date::text::pg_catalog.timestamptz,
+								 false,
+								 job);
+        /* END - BUG#M0000412 */
     END IF;
 
     EXECUTE 'SET ivorysql.enable_emptystring_to_null = ' || quote_literal(ivorysql_enable_emptystring_to_null_varchar);
@@ -906,33 +1211,10 @@ PROCEDURE user_export (
     v_no_parse VARCHAR2(10);
     v_job_count NUMBER;
 BEGIN
-    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
-
-    SELECT COUNT(*)
-    INTO v_job_count
-    FROM pgagent.pga_job
-    WHERE jobid = job;
-
-    IF v_job_count > 0 THEN
-
-        SELECT jstcode INTO v_what
-        FROM pgagent.pga_jobstep
-        WHERE jstjobid = job;
-
-        SELECT jobnextrun::pg_catalog.timestamp INTO v_next_date
-        FROM pgagent.pga_job
-        WHERE jobid = job;
-
-        v_next_date := TO_CHAR(v_next_date::pg_catalog.timestamp, 'YYYY-MM-DD HH24:MI:SS');
-        SELECT dbmsjob_interval INTO v_interval
-        FROM pgagent.pga_schedule
-        WHERE jscjobid = job;
-
-        mycall := 'dbms_job.isubmit(job=>' || job || ' ,what=>''' || v_what || ''', next_date=>' || 'to_date(''' || v_next_date || ''' , ''YYYY-MM-DD HH24:MI:SS'')' || ', interval=>''' || v_interval || ''', no_parse=>TRUE);';
-    ELSE
-        RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
-    END IF;
-
+  /* BEGIN - BUG#M0000412 */
+  sys.user_export(job,
+                  mycall);
+  /* END - BUG#M0000412 */
 END user_export;
 
 
@@ -942,54 +1224,12 @@ PROCEDURE user_export (
     mycall IN OUT VARCHAR2,
     myinst IN OUT VARCHAR2
 ) IS
-    v_what VARCHAR2(4000);
-    v_next_date VARCHAR2(100);
-    v_interval VARCHAR2(100);
-    v_no_parse VARCHAR2(10);
-    v_instance NUMBER;
-    v_job_count NUMBER;
 BEGIN
-    set nls_date_format='YYYY-MM-DD HH24:MI:SS';
-
-    SELECT COUNT(*)
-    INTO v_job_count
-    FROM pgagent.pga_job
-    WHERE jobid = job;
-
-    IF v_job_count > 0 THEN
-
-        SELECT jstcode INTO v_what
-        FROM pgagent.pga_jobstep
-        WHERE jstjobid = job;
-
-        SELECT jobnextrun::pg_catalog.timestamp INTO v_next_date
-        FROM pgagent.pga_job
-        WHERE jobid = job;
-
-        v_next_date := TO_CHAR(v_next_date::pg_catalog.timestamp, 'YYYY-MM-DD HH24:MI:SS');
-
-        SELECT dbmsjob_interval INTO v_interval
-        FROM pgagent.pga_schedule
-        WHERE jscjobid = job;
-
-        SELECT dbmsjob_no_parse INTO v_no_parse
-        FROM pgagent.pga_job
-        WHERE jobid = job;
-
-        mycall := 'dbms_job.isubmit(job=>' || job || ',what=>''' || v_what || ''', next_date=>' || 'to_date(''' || v_next_date || ''' , ''YYYY-MM-DD HH24:MI:SS'')' || ', interval=>''' || v_interval || ''', no_parse=>TRUE);';
-        SELECT dbmsjob_instance INTO v_instance
-        FROM pgagent.pga_job
-        WHERE jobid = job;
-
-        IF v_instance = 0 THEN
-            myinst := NULL;
-        ELSE
-            myinst := 'dbms_job.instance(job=>' || job || ',instance=>' || v_instance || ', force=>TRUE);';
-        END IF;
-    ELSE
-        RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
-    END IF;
-
+  /* BEGIN - BUG#M0000412 */
+  sys.user_export(job,
+                  mycall,
+		          myinst);
+  /* END - BUG#M0000412 */
 END user_export;
 
 END;
