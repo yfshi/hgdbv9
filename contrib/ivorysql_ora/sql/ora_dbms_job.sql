@@ -336,3 +336,35 @@ SELECT * FROM DBA_JOBS order by job;
 SELECT * FROM USER_JOBS order by job;
 SELECT * FROM DBA_JOBS_RUNNING order by job;
 /* End - ReqID:SRS-PLSQL-DBMS_JOB */
+
+/* BEGIN - BUG#M0000412 */
+\c - system
+create user test password 'Hello@123';
+create schema authorization test;
+grant execute on package sys.dbms_job to test;
+
+\c - test
+create table test_dbms_job(ct_time date);
+
+DECLARE
+  jobid integer;
+BEGIN
+  dbms_job.submit(jobid,'insert into test_dbms_job values (sysdate);',sysdate,'sysdate+1.0/24/60');
+END;
+/
+
+DECLARE
+  jobid INTEGER;
+BEGIN
+  select job into jobid from user_jobs;
+  Call DBMS_JOB.REMOVE(job => jobid);
+  COMMIT;
+END;
+/
+drop table test_dbms_job;
+
+\c - system
+revoke execute on package sys.dbms_job from test;
+drop schema test;
+drop user test;
+/* END - BUG#M0000412 */

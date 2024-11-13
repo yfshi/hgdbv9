@@ -53,8 +53,10 @@ WHERE proretset AND prokind != 'f';
 -- currently, no built-in functions should be SECURITY DEFINER;
 -- this might change in future, but there will probably never be many.
 SELECT p1.oid, p1.proname
-FROM pg_proc AS p1
+FROM pg_proc AS p1,
+pg_language lang /* BUG#M0000412 */
 WHERE prosecdef
+AND p1.prolang = lang.oid AND lang.lanname != 'plisql' /* BUG#M0000412 */
 ORDER BY 1;
 
 -- pronargdefaults should be 0 iff proargdefaults is null
@@ -349,12 +351,14 @@ WHERE proargmodes IS NOT NULL AND proargnames IS NOT NULL AND
 
 -- Check that proallargtypes matches proargtypes
 SELECT p1.oid, p1.proname, p1.proargtypes, p1.proallargtypes, p1.proargmodes
-FROM pg_proc as p1
+FROM pg_proc as p1,
+pg_language lang /* BUG#M0000412 */
 WHERE proallargtypes IS NOT NULL AND
   ARRAY(SELECT unnest(proargtypes)) <>
   ARRAY(SELECT proallargtypes[i]
         FROM generate_series(1, array_length(proallargtypes, 1)) g(i)
-        WHERE proargmodes IS NULL OR proargmodes[i] IN ('i', 'b', 'v'));
+        WHERE proargmodes IS NULL OR proargmodes[i] IN ('i', 'b', 'v')) AND
+		p1.prolang = lang.oid AND lang.lanname != 'plisql' /* BUG#M0000412 */;
 
 -- Check for prosupport functions with the wrong signature
 SELECT p1.oid, p1.proname, p2.oid, p2.proname
