@@ -746,9 +746,10 @@ LINE 1: update t_t_mutil_t1 a,t_t_mutil_t2 b set col1= 3;
                                                  ^
 begin;
 update t_t_mutil_t1 a,t_t_mutil_t2 b set a.col1=3,t_t_mutil_t1.col2=3;
+ERROR:  Unknown column t_t_mutil_t1.col2 in field list 
 rollback;
 update t_t_mutil_t1 a,t_t_mutil_t2 b set a.col1=3,t_t_mutil_t1.col1=3; --error
-ERROR:  multiple assignments to same column "col1"
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
 begin;
 update t_t_mutil_t1 a,t_t_mutil_t2 b set b.col1=5,a.col2=4 where a.col1=b.col1;
 select * from t_t_mutil_t1;
@@ -1809,3 +1810,62 @@ select * from v1;
 drop table t1;
 drop view v1;
 drop table t2;
+--bug1323,1324
+create schema sch1;
+CREATE TABLE sch1.t_t_mutil_t1(col1 int, col2 int);
+CREATE TABLE sch1.t_t_mutil_t2(col1 int, col2 int);
+insert into sch1.t_t_mutil_t1 values(1,2),(2,2);
+insert into sch1.t_t_mutil_t2 values(2,2),(3,3);
+--single table
+update sch1.t_t_mutil_t1 set col1 = 4;
+update sch1.t_t_mutil_t1 set t_t_mutil_t1.col1 = 5;
+update sch1.t_t_mutil_t1 set sch1.t_t_mutil_t1.col1 = 6;
+update sch1.t_t_mutil_t1 as a set col1 = 7;
+update sch1.t_t_mutil_t1 as a set t_t_mutil_t1.col1 = 7;--error
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
+update sch1.t_t_mutil_t1 as a set sch1.t_t_mutil_t1.col1 = 7;--error
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
+select * from sch1.t_t_mutil_t1;
+ col1 | col2 
+------+------
+    7 |    2
+    7 |    2
+(2 rows)
+
+--multi tables
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set col1 = 7;--error
+ERROR:  column reference "col1" is ambiguous
+LINE 1: update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set col1 = 7;
+                                                        ^
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set t_t_mutil_t1.col1 = 8;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 9;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set t_t_mutil_t1.col1 = 10,t_t_mutil_t2.col1 = 4;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 11,t_t_mutil_t2.col1 = 5;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 12,sch1.t_t_mutil_t2.col1 = 6;
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set t_t_mutil_t1.col1 = 13;--error
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set sch1.t_t_mutil_t1.col1 = 13;--error
+ERROR:  Unknown column sch1.t_t_mutil_t1.col1 in field list 
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, t_t_mutil_t1.col1 = 7;--error
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, sch1.t_t_mutil_t1.col1 = 7;--error
+ERROR:  Unknown column sch1.t_t_mutil_t1.col1 in field list 
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, b.col1 = 7;
+select * from sch1.t_t_mutil_t1;
+ col1 | col2 
+------+------
+   13 |    2
+   13 |    2
+(2 rows)
+
+select * from sch1.t_t_mutil_t2;
+ col1 | col2 
+------+------
+    7 |    2
+    7 |    3
+(2 rows)
+
+drop schema sch1 cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table sch1.t_t_mutil_t1
+drop cascades to table sch1.t_t_mutil_t2

@@ -650,3 +650,32 @@ select * from v1;
 drop table t1;
 drop view v1;
 drop table t2;
+--bug1323,1324
+create schema sch1;
+CREATE TABLE sch1.t_t_mutil_t1(col1 int, col2 int);
+CREATE TABLE sch1.t_t_mutil_t2(col1 int, col2 int);
+insert into sch1.t_t_mutil_t1 values(1,2),(2,2);
+insert into sch1.t_t_mutil_t2 values(2,2),(3,3);
+--single table
+update sch1.t_t_mutil_t1 set col1 = 4;
+update sch1.t_t_mutil_t1 set t_t_mutil_t1.col1 = 5;
+update sch1.t_t_mutil_t1 set sch1.t_t_mutil_t1.col1 = 6;
+update sch1.t_t_mutil_t1 as a set col1 = 7;
+update sch1.t_t_mutil_t1 as a set t_t_mutil_t1.col1 = 7;--error
+update sch1.t_t_mutil_t1 as a set sch1.t_t_mutil_t1.col1 = 7;--error
+select * from sch1.t_t_mutil_t1;
+--multi tables
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set col1 = 7;--error
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set t_t_mutil_t1.col1 = 8;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 9;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set t_t_mutil_t1.col1 = 10,t_t_mutil_t2.col1 = 4;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 11,t_t_mutil_t2.col1 = 5;
+update sch1.t_t_mutil_t1 ,sch1.t_t_mutil_t2 set sch1.t_t_mutil_t1.col1 = 12,sch1.t_t_mutil_t2.col1 = 6;
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set t_t_mutil_t1.col1 = 13;--error
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set sch1.t_t_mutil_t1.col1 = 13;--error
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, t_t_mutil_t1.col1 = 7;--error
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, sch1.t_t_mutil_t1.col1 = 7;--error
+update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, b.col1 = 7;
+select * from sch1.t_t_mutil_t1;
+select * from sch1.t_t_mutil_t2;
+drop schema sch1 cascade;
