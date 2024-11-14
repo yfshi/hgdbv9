@@ -2686,6 +2686,15 @@ ExecEvalRowNullInt(ExprState *state, ExprEvalStep *op,
 	tupType = HeapTupleHeaderGetTypeId(tuple);
 	tupTypmod = HeapTupleHeaderGetTypMod(tuple);
 
+	/* Begin - BUG#Z1307 */
+	/* oracle record datatype does't support IS NULL and IS NOT NULL */
+	if (tupType == ORARECORDOID)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("wrong number or types of arguments in call to '%s'",
+						checkisnull ? "IS NULL" : "IS NOT NULL")));
+	/* End - BUG#Z1307 */
+
 	/* Lookup tupdesc if first time through or if type changes */
 	tupDesc = get_cached_rowtype(tupType, tupTypmod,
 								 &op->d.nulltest_row.rowcache, NULL);

@@ -265,7 +265,7 @@ ERROR:  schema "ng_catalog" does not exist
 LINE 1: SELECT regclass('ng_catalog.pg_class');
                         ^
 SELECT regtype('ng_catalog.int4');
-ERROR:  schema "ng_catalog" does not exist
+ERROR:  type "ng_catalog.int4" does not exist
 LINE 1: SELECT regtype('ng_catalog.int4');
                        ^
 SELECT regcollation('ng_catalog."POSIX"');

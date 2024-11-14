@@ -720,3 +720,19 @@ plisql_build_tupdesc_from_recordtype(PLiSQL_ora_record_type *ora_rec_type)
 	return destDesc;
 }
 /* End - ReqID:SRS-PLSQL-RECORD */
+
+/* Begin - BUG#Z1322 */
+/*
+ * plisql_check_maxnum_record_nest
+ * check if the maximum number of layers that record nest
+ * is greater than PLISQL_MAXNUM_NESTED_RECORD
+ */
+void
+plisql_check_maxnum_record_nest(int num_nested, int record_begin_pos)
+{
+if (num_nested - record_begin_pos > PLISQL_MAXNUM_NESTED_RECORD)
+	ereport(ERROR,
+		(errcode(ERRCODE_SYNTAX_ERROR),
+		errmsg("The maximum number of layers that record can nest is %d", PLISQL_MAXNUM_NESTED_RECORD)));
+}
+/* End - BUG#Z1322 */

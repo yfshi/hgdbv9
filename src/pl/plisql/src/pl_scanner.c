@@ -363,10 +363,20 @@ plisql_yylex(void)
 										/* we should push some tokens back */
 										PLwdatum *wdatum;
 										List *idents = list_copy(moredata->idents);
+										/* Begin - BUG#Z1322 */
+										int	nlen = list_length(idents);
 
+										/*
+										 * check if the maximum number of layers that record nest
+										 * is greater than PLISQL_MAXNUM_NESTED_RECORD
+										 */
+										plisql_check_maxnum_record_nest(nlen, nnames);
+										/* End - BUG#Z1322 */
+
+										idents = list_copy(moredata->idents);
 										wdatum = plisql_get_ora_record_field(aux1.lval.wdatum.datum,
 																	idents,
-																	list_length(idents),
+																	nlen /* BUG#Z1322 */,
 																	nnames);
 										if (wdatum != NULL)
 										{

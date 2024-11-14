@@ -319,9 +319,18 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 					if (name_start == list_size - 1)
 						value = (void *) ora_rec;
 					else
+					{
+						/* Begin - BUG#Z1322 */
+						/*
+						 * check if the maximum number of layers that record nest
+						 * is greater than PLISQL_MAXNUM_NESTED_RECORD
+						 */
+						plisql_check_maxnum_record_nest(list_size, name_start + 1);
+						/* End - BUG#Z1322 */
+
 						value = (void *) plisql_parse_ora_rec_var(psource->source.datums, ora_rec,
 											names, name_start + 1, true);
-
+					}
 					/* Report variable's declared type */
 					if (basetypeid != NULL)
 						*basetypeid = ((PLiSQL_type *)value)->typoid;

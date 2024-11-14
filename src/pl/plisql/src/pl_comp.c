@@ -2238,6 +2238,14 @@ resolve_column_ref(ParseState *pstate, PLiSQL_expr *expr,
 				PLiSQL_row *ora_rec = (PLiSQL_row *) estate->datums[nse->itemno];
 				PLiSQL_datum *datum = NULL;
 
+				/* Begin - BUG#Z1322 */
+				/*
+				 * check if the maximum number of layers that record nest
+				 * is greater than PLISQL_MAXNUM_NESTED_RECORD
+				 */
+				plisql_check_maxnum_record_nest(list_length(cref->fields), nnames);
+				/* End - BUG#Z1322 */
+
 				if ((datum = plisql_parse_ora_rec_var(estate->datums, ora_rec, cref->fields, nnames, false)) != NULL)
 					return make_datum_param(expr, datum->dno, cref->location);
 
@@ -3382,6 +3390,9 @@ plisql_parse_cwordtype(List *idents)
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	TypeName	*typeName;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - BUG#Z1316 */
+	int	nnames = 0;
+	/* End - BUG#Z1316 */
 
 	/* Avoid memory leaks in the long-term function context */
 	oldCxt = MemoryContextSwitchTo(plisql_compile_tmp_cxt);
@@ -3397,7 +3408,7 @@ plisql_parse_cwordtype(List *idents)
 								strVal(linitial(idents)),
 								strVal(lsecond(idents)),
 								NULL,
-								NULL);
+								&nnames/* BUG#Z1316 */);
 
 		if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_VAR)
 		{
@@ -3420,8 +3431,49 @@ plisql_parse_cwordtype(List *idents)
 		/* Begin - ReqID:SRS-PLSQL-RECORD */
 		else if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_ORA_RECORD)
 		{
-			dtype = ((PLiSQL_row *) (plisql_Datums[nse->itemno]))->datatype;
-			goto done;
+			/* Begin - BUG#Z1316 */
+			PLiSQL_row *row = (PLiSQL_row *) (plisql_Datums[nse->itemno]);
+
+			if (nnames == list_length(idents))
+			{
+				/* maybe a rec2.rec1%type, rec2.rec1 is a record */
+				if (row->datatype != NULL)
+				{
+					dtype = row->datatype;
+				}
+				else if (row->rowtupdesc != NULL &&
+					row->rowtupdesc->tdtypeid != InvalidOid)
+				{
+					dtype = plisql_build_datatype(row->rowtupdesc->tdtypeid, -1,
+									InvalidOid, false);
+				}
+				else
+					elog(ERROR, "variable type is not a record or rowvar");
+				goto done;
+			}
+			else
+			{
+				PLiSQL_datum	*datum;
+
+				/* it is rec.field%type, plisql_ns_lookup return the record */
+				if ((datum = plisql_parse_ora_rec_var(plisql_Datums, row, idents, nnames, false)) != NULL)
+				{
+					switch (datum->dtype)
+					{
+						case PLISQL_DTYPE_VAR:
+							dtype = ((PLiSQL_var *) datum)->datatype;
+							dtype->notnull = ((PLiSQL_var *) datum)->notnull;
+							break;
+						case PLISQL_DTYPE_ORA_RECORD:
+							dtype = ((PLiSQL_row *)datum)->datatype;
+							break;
+						default:
+							elog(ERROR, "dtype % is not supported:", datum->dtype);
+					}
+					goto done;;
+				}
+			}
+			/* End - BUG#Z1316 */
 		}
 		/* End - ReqID:SRS-PLSQL-RECORD */
 
@@ -3482,6 +3534,30 @@ plisql_parse_cwordtype(List *idents)
 					else
 						elog(ERROR, "variable type is not a record or rowvar");
 				}
+				/* Begin - BUG#Z1316 */
+				else
+				{
+					PLiSQL_datum	*datum;
+
+					/* it is rec.field%type, plisql_ns_lookup return the record */
+					if ((datum = plisql_parse_ora_rec_var(plisql_Datums, row, idents, nnames, false)) != NULL)
+					{
+						switch (datum->dtype)
+						{
+							case PLISQL_DTYPE_VAR:
+								dtype = ((PLiSQL_var *) datum)->datatype;
+								dtype->notnull = ((PLiSQL_var *) datum)->notnull;
+								break;
+							case PLISQL_DTYPE_ORA_RECORD:
+								dtype = ((PLiSQL_row *)datum)->datatype;
+								break;
+							default:
+								elog(ERROR, "dtype % is not supported:", datum->dtype);
+						}
+						goto done;;
+					}
+				}
+				/* End - BUG#Z1316 */
 			}
 			goto done;
 		}

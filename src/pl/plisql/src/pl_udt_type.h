@@ -98,6 +98,11 @@ typedef struct PLiSQL_ora_record_type
 } PLiSQL_ora_record_type;
 /* End - ReqID:SRS-PLSQL-RECORD */
 
+/* Begin - BUG#Z1322 */
+/* The maximum number of layers that record can nest is 100 */
+#define PLISQL_MAXNUM_NESTED_RECORD		100
+/* End - BUG#Z1322 */
+
 extern int plisql_check_cursor_define(PLiSQL_var *var,
 							PLiSQL_type *rettype,
 							List *arglist);
@@ -156,6 +161,9 @@ extern Node *plisql_ora_record_construct_ref(ParseState *pstate, List *recname, 
 				  FuncCall *fn, int location);
 extern TupleDesc plisql_build_tupdesc_from_recordtype(PLiSQL_ora_record_type *ora_rec_type);
 /* End - ReqID:SRS-PLSQL-RECORD */
+/* Begin - BUG#Z1322 */
+extern void plisql_check_maxnum_record_nest(int num_nested, int record_begin_pos);
+/* End - BUG#Z1322 */
 
 #endif
 
