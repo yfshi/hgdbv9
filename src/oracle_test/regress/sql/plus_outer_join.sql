@@ -559,3 +559,59 @@ INSERT INTO toj2 VALUES(2,0,'BB');
 select * from toj1, toj2 where (toj1.id(+) = toj2.id and toj1.id = 2) or (toj1.id = 2 or toj2.id = 3);
 drop table toj1;
 drop table toj2;
+
+--bug#z1334
+create table t_a (
+id number,
+code number,
+name varchar2(10)
+);
+create table t_b (
+id number,
+code number,
+name varchar2(10)
+);
+create table t_c (
+id number,
+code number,
+name varchar2(10)
+);
+create table t_d (
+id number,
+code number,
+name varchar2(10)
+);
+
+insert into t_a(id,code,name) values(1,2,'A');
+insert into t_a(id,code,name) values(2,1,'B');
+insert into t_a(id,code,name) values(3,5,'C');
+insert into t_a(id,code,name) values(4,6,'D');
+insert into t_a(id,code,name) values(5,7,'E');
+
+insert into t_b(id,code,name) values(1,3,'AA');
+insert into t_b(id,code,name) values(1,4,'BB');
+insert into t_b(id,code,name) values(2,1,'CC');
+insert into t_b(id,code,name) values(1,2,'DD');
+insert into t_b(id,code,name) values(7,5,'GG');
+
+insert into t_c(id,code,name) values(1,3,'AAA');
+insert into t_c(id,code,name) values(1,4,'BBB');
+insert into t_c(id,code,name) values(2,1,'CCC');
+insert into t_c(id,code,name) values(1,2,'DDD');
+insert into t_c(id,code,name) values(7,5,'GGG');
+
+insert into t_d(id,code,name) values(1,3,'AAAA');
+insert into t_d(id,code,name) values(1,4,'BBBB');
+insert into t_d(id,code,name) values(2,1,'CCCC');
+insert into t_d(id,code,name) values(1,2,'DDDD');
+insert into t_d(id,code,name) values(7,5,'GGGG');
+
+select * from t_a a,t_b b,t_c c,t_d d
+where a.id=b.code(+)
+and b.code=c.id(+)
+and b.id=d.code(+);
+
+drop table t_a;
+drop table t_b;
+drop table t_c;
+drop table t_d;
