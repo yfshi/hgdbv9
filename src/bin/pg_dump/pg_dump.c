@@ -1270,11 +1270,7 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 			fatal("pointer switch failed");
 	}
 /* BEGIN - BUGZ1295 */
-#ifdef USE_LICENSE
-	sql = psprintf("SELECT oid FROM pg_database WHERE datname = '%s';", hg_get_defaultDBname());
-#else
-	sql = psprintf("SELECT oid FROM pg_database WHERE datname = 'postgres';");
-#endif
+	sql = psprintf("SELECT oid FROM pg_database WHERE datname != 'template0' AND datname != 'template1' ORDER BY oid;");	/* BUGZ1332 */
 	res = PQexec(connforonce, sql);
 	if (firstnormaloid == 0)
 	{

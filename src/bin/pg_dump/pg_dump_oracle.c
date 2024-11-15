@@ -5513,11 +5513,7 @@ getFuncs(Archive *fout, int *numFuncs)
 						initracl_subquery, "p.proacl", "p.proowner", "'f'",
 						dopt->binary_upgrade);
 		/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-#ifdef	USE_LICENSE
-		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = '%s';", hg_get_defaultDBname());
-#else
-		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
-#endif
+		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname != 'template0' AND datname != 'template1' ORDER BY oid;");	/* BUGZ1332 */
 		/* BEGIN - BUG#M0000404 */
 		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
 		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
@@ -6102,11 +6098,7 @@ getTables(Archive *fout, int *numTables)
 						attinitracl_subquery, "at.attacl", "c.relowner", "'c'",
 						dopt->binary_upgrade);
 		/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-#ifdef	USE_LICENSE
-		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = '%s';", hg_get_defaultDBname());
-#else
-		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname = 'postgres';");
-#endif
+		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname != 'template0' AND datname != 'template1' ORDER BY oid;");	/* BUGZ1332 */
 		/* BEGIN - BUG#M0000404 */
 		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
 		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
