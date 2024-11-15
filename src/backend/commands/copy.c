@@ -808,11 +808,11 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Text and Binary file type is not support for sharding"))); 
 
-	/* tolerate mode, task id and filename is necessary opt */
-	if ( (opts_out->tolerate ) && (!opts_out->taskid || !opts_out->filename) )
+	/* tolerate mode, task id is necessary opt */
+	if ((opts_out->tolerate) && (!opts_out->taskid)) /* BUG#M0000406 */
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("Tolerate mode, taskid and filename is necessary opts")));	
+				 errmsg("Tolerate mode, taskid is necessary opts")));	
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 	/* Begin - BUG#Z1087 */
 	if ( (!opts_out->tolerate) && opts_out->log_bad )

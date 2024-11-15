@@ -6,7 +6,7 @@ CREATE TABLE x_bad (
 	taskid varchar(64),
 	schema varchar(64),
 	tablename  varchar(64),
-	filename varchar(64),
+	filename varchar(128),
 	type char,
 	lineno bigint,
 	buff text
@@ -41,7 +41,7 @@ ERROR:  Text and Binary file type is not support for sharding
 -- TABLE
 -- with error tolerate, but bad table xx_bad did not exist: should fail
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' badtable 'xx_bad';
-ERROR:  Tolerate mode, taskid and filename is necessary opts
+ERROR:  Tolerate mode, taskid is necessary opts
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '12' filename 'csv1.csv' badtable 'xx_bad';
 ERROR:  relation "xx_bad" does not exist
 LINE 1: insert into xx_bad values('12', 'public', 'x', 'csv1.csv', '...
@@ -857,6 +857,53 @@ SELECT * FROM table_quote_bad where taskid = 'table_2_2';
 (1 row)
 
 -- End - BUG:M0000370
+-- Begin - BUG#M0000406
+CREATE TABLE m406(id int, name varchar(20));
+COPY m406 FROM stdin with(format csv, taskid 'm406_stdin', badtable 'x_bad');
+SELECT * FROM m406;
+ id |  name  
+----+--------
+  2 | hangao
+(1 row)
+
+SELECT * FROM x_bad WHERE taskid='m406_stdin';
+   taskid   | schema | tablename | filename | type | lineno |      buff      
+------------+--------+-----------+----------+------+--------+----------------
+ m406_stdin | public | m406      | stdin    | r    |      1 | 1,name,address
+(1 row)
+
+TRUNCATE x;
+TRUNCATE x_bad;
+COPY x FROM '@abs_srcdir@/data/copy_split.data' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+SELECT * FROM x ORDER BY a;
+ a  | b  |   c   | d  |    e    | f  
+----+----+-------+----+---------+----
+  1 |  1 | 11.11 |  1 | name_1  |  1
+  2 |  2 | 22.22 |  2 | name_2  |  2
+  3 |  3 | 33.33 |  3 | name_3  |  3
+  4 |  4 | 44.44 |  4 | name_4  |  4
+  5 |  5 | 55.55 |  5 | name_5  |  5
+  6 |  6 | 66.66 |  6 | name_6  |  6
+  8 |  8 | 88.88 |  8 | name_8  |  8
+  9 |  9 | 99.99 |  9 | name_9  |  9
+ 11 | 11 |  11.1 | 11 | name_11 | 11
+ 12 | 12 | 12.12 | 12 | name_12 | 12
+ 13 | 13 | 13.13 | 13 | name_13 | 13
+ 14 | 14 | 14.14 | 14 | name_14 | 14
+ 15 | 15 | 15.15 | 15 | name_15 | 15
+ 16 | 16 | 16.16 | 16 | name_16 | 16
+(14 rows)
+
+SELECT count(*) FROM x_bad WHERE taskid='m406_file' AND filename='@abs_srcdir@/data/copy_split.data';
+ count 
+-------
+     2
+(1 row)
+
+COPY x FROM '@abs_srcdir@/aaaaaaaaaabbbbbbbbbb/ccccccccccdddddddddd/eeeeeeeeeeffffffffff/gggggggggghhhhhhhhhh/qqqqqqqqqqwwwwwwwwww/ttttttttttyyyyyyyyyy/test.csv' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+ERROR:  Tolerate mode(badtable), file name(from inputfile) is too long(more than 128), using option filename to assgin a short one
+DROP TABLE m406;
+-- End - BUG#M0000406
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

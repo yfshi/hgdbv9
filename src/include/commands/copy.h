@@ -20,6 +20,7 @@
 #include "tcop/dest.h"
 
 #define MAX_SKIP_COUNT  128     /* BUG:M0000368 */
+#define MAX_FILENAME_LEN  128	/* BUG#M0000406 */
 
 /*
  * A struct to hold COPY options, in a parsed form. All of these are related

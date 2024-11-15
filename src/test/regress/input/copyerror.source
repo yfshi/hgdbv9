@@ -6,7 +6,7 @@ CREATE TABLE x_bad (
 	taskid varchar(64),
 	schema varchar(64),
 	tablename  varchar(64),
-	filename varchar(64),
+	filename varchar(128),
 	type char,
 	lineno bigint,
 	buff text
@@ -676,6 +676,28 @@ COPY "m^%'$3""7_\>9" FROM stdin with(format csv, taskid 'm379_1', badtable 'tabl
 DROP TABLE M379;
 DROP TABLE "m^%'$3""7_\>9";
 -- End - BUG:M0000379
+
+-- Begin - BUG#M0000406
+CREATE TABLE m406(id int, name varchar(20));
+COPY m406 FROM stdin with(format csv, taskid 'm406_stdin', badtable 'x_bad');
+1,name,address
+2,hangao
+\.
+SELECT * FROM m406;
+SELECT * FROM x_bad WHERE taskid='m406_stdin';
+
+TRUNCATE x;
+TRUNCATE x_bad;
+
+COPY x FROM '@abs_srcdir@/data/copy_split.data' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+SELECT * FROM x ORDER BY a;
+SELECT count(*) FROM x_bad WHERE taskid='m406_file' AND filename='@abs_srcdir@/data/copy_split.data';
+
+COPY x FROM '@abs_srcdir@/aaaaaaaaaabbbbbbbbbb/ccccccccccdddddddddd/eeeeeeeeeeffffffffff/gggggggggghhhhhhhhhh/qqqqqqqqqqwwwwwwwwww/ttttttttttyyyyyyyyyy/test.csv' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+
+DROP TABLE m406;
+
+-- End - BUG#M0000406
 
 -- clean up
 DROP TABLE x;

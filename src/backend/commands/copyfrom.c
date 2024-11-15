@@ -1970,6 +1970,13 @@ BeginCopyFrom(ParseState *pstate,
 			ReceiveCopyBegin(cstate);
 		else
 			cstate->copy_file = stdin;
+
+		/* Begin - BUG#M0000406 */
+		if (cstate->opts.tolerate && !cstate->opts.filename)
+		{
+			cstate->opts.filename = pstrdup("stdin");
+		}
+		/* End - BUG#M0000406 */
 	}
 	else
 	{
@@ -1978,6 +1985,16 @@ BeginCopyFrom(ParseState *pstate,
 		if (cstate->is_program)
 		{
 			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
+			/* Begin - BUG#M0000406 */
+			if (cstate->opts.tolerate && !cstate->opts.filename)
+			{
+				cstate->opts.filename = pstrdup(filename);
+				if (cstate->opts.badtable && strlen(cstate->opts.filename) > MAX_FILENAME_LEN)
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("Tolerate mode(badtable), file name(from command) is too long(more than 128), using option filename to assgin a short one")));
+			}
+			/* End - BUG#M0000406 */
 			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
@@ -1990,6 +2007,18 @@ BeginCopyFrom(ParseState *pstate,
 			struct stat st;
 
 			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
+
+			/* Begin - BUG#M0000406 */
+			if (cstate->opts.tolerate && !cstate->opts.filename)
+			{
+				cstate->opts.filename = pstrdup(filename);
+				if ( cstate->opts.badtable && strlen(cstate->opts.filename) > MAX_FILENAME_LEN)
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("Tolerate mode(badtable), file name(from inputfile) is too long(more than 128), using option filename to assgin a short one")));
+			}
+			/* End - BUG#M0000406 */
+
 			cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 			{
@@ -2017,6 +2046,7 @@ BeginCopyFrom(ParseState *pstate,
 						 errmsg("\"%s\" is a directory", cstate->filename)));
 
 			progress_vals[2] = st.st_size;
+
 		}
 	}
 
