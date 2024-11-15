@@ -70,7 +70,7 @@ show ivorysql.default_dblink_fdw; -- postgres_fdw is default fdw
 DO $d$
     BEGIN
         EXECUTE $$ create public database link ivyfuplnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -84,7 +84,7 @@ $d$;
 DO $d$
     BEGIN
         EXECUTE $$ create database link ivyfurlnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -142,8 +142,8 @@ create user mapping for public
 DO $d$
     BEGIN
         EXECUTE $$ create shared public database link spglink
-        connect to system identified by ivy123
-        AUTHENTICATED BY system IDENTIFIED BY ivy123
+		connect to system identified by "ivy123"
+		AUTHENTICATED BY system IDENTIFIED BY "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -180,7 +180,8 @@ select * from vt1;
 
 
 -- where conditions
-select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
+--select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
+select * from it1@ivyfuplnk where c2 = 'PACKAGE';
 
 -- inner join two remote tables f2 and f3.
 select * from it1@ivyfuplnk inner join it2@ivyfuplnk  on (it1.c1 = it2.b2);
@@ -227,7 +228,7 @@ show global_names;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link glolnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -243,7 +244,7 @@ select * from it1@glolnk; -- error
 DO $d$
     BEGIN
         EXECUTE $$ create public database link tdblnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =

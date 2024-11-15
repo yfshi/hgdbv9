@@ -710,6 +710,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* End - BUG#M0000201: support question marks as binding variables */
 %token			OUTER_JOIN	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
+
 /*
  * If you want to make any keyword changes, update the keyword table in
  * src/include/parser/kwlist.h and add new keywords to the appropriate one
@@ -6343,6 +6344,8 @@ CreateDatabaseLinkStmt:
 					CreateDatabaseLinkStmt  *dblinkstmt = makeNode(CreateDatabaseLinkStmt);
 					CreateForeignServerStmt *server = makeNode(CreateForeignServerStmt);
 					CreateUserMappingStmt	*umapp =  makeNode(CreateUserMappingStmt);
+					char	*pw = NULL;
+					int		pwlen = 0;
 
 					dblinkstmt->elems = NIL;
 
@@ -6378,9 +6381,12 @@ CreateDatabaseLinkStmt:
 					server->servername = $6;
 					server->ora_dblink_contype = ORA_DBLINK_FIXED_USER;
 
+					pw = $12;
+					pwlen = strlen(pw);
 					umapp->servername = server->servername;
 					umapp->options = list_make2(makeDefElem("user", (Node *)list_make1(makeString($9)), @9),
-												  makeDefElem("password", (Node *)list_make1(makeString($12)), @12));
+												  makeDefElem("password",
+													(Node *)list_make1(makeString(identifier_case_transform(pw, pwlen))), @12));
 					if ($13)
 					{
 						umapp->options = list_concat(umapp->options, $13);
@@ -6555,8 +6561,14 @@ opt_public:
 dblink_authentication:
 		AUTHENTICATED BY name IDENTIFIED BY IDENT
 		{
+			char	*pw = NULL;
+			int 	pwlen = 0;
+
+			pw = $6;
+			pwlen = strlen(pw);
 			$$ = list_make2(makeDefElem("authuser", (Node *)list_make1(makeString($3)), @3),
-							makeDefElem("authpassword", (Node *)list_make1(makeString($6)), @6));
+							makeDefElem("authpassword",
+										(Node *)list_make1(makeString(identifier_case_transform(pw, pwlen))), @6));
 		}
 		| /*EMPTY*/	{ $$ = NIL; }
 
@@ -6602,6 +6614,8 @@ AlterDatabaseLinkStmt: ALTER opt_public DATABASE_LINK LINK name
 						CONNECT_TO TO name IDENTIFIED BY IDENT
 					{
 						AlterDatabaseLinkStmt *ad = makeNode(AlterDatabaseLinkStmt);
+						char	*pw = NULL;
+						int 	pwlen = 0;
 
 						if ($2)
 						{
@@ -6614,8 +6628,11 @@ AlterDatabaseLinkStmt: ALTER opt_public DATABASE_LINK LINK name
 							ad->user = makeRoleSpec(ROLESPEC_CURRENT_USER, -1);
 						}
 
+						pw = $11;
+						pwlen = strlen(pw);
 						ad->servername = $5;
-						ad->options = list_make1(makeDefElemExtended(NULL, "password", (Node *)list_make1(makeString($11)), DEFELEM_SET, @11));
+						ad->options = list_make1(makeDefElemExtended(NULL, "password",
+												 (Node *)list_make1(makeString(identifier_case_transform(pw, pwlen))), DEFELEM_SET, @11));
 
 						$$ = (Node *) ad;
 					}
@@ -14278,6 +14295,20 @@ insert_target:
 					$$ = $1;
 				}
 			/* End - BUG#Z375 */
+			/* Begin - BUG#M0000374 */
+			| qualified_name Op ColId
+				{
+					if (strcmp($2, "@") != 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
+								 parser_errposition(@2)));
+					$$ = $1;
+					$$->inh = true;
+					$$->alias = NULL;
+					$$->srvname = $3;
+				}
+			/* End - BUG#M0000374 */
 		;
 
 insert_rest:
@@ -15870,6 +15901,20 @@ relation_expr:
 					$$->inh = true;
 					$$->alias = NULL;
 				}
+			/* Begin - BUG#M0000374 */
+			| qualified_name Op ColId
+				{
+					if (strcmp($2, "@") != 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
+								 parser_errposition(@2)));
+					$$ = $1;
+					$$->inh = true;
+					$$->alias = NULL;
+					$$->srvname = $3;
+				}
+			/* End - BUG#M0000374 */
 			| ONLY qualified_name
 				{
 					/* no inheritance */

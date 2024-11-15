@@ -1512,9 +1512,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	ParseCallbackState pcbstate;
 
 	/* Begin - ReqID:SRS-SQL-DBLINK */
-	char		*tname = NULL;
 	char		*ftname = NULL;
-	char 		*servname = NULL;
 	char		*curdbname = NULL;
 	char  	*relnspname = NULL;
 	ForeignServer 			*server = NULL;
@@ -1525,7 +1523,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	CreateForeignTableStmt 	*cstmt = NULL;
 	RangeVar	*rangevar;
 	RangeVar	*dblinkrv = NULL;
-	RangeVar   	*localrelation;
 	List	   	*cmd_list = NIL;
 	List 		*raw_parsetree_list = NIL;
 	List 		*tupnatts = NIL;
@@ -1542,21 +1539,18 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	setup_parser_errposition_callback(&pcbstate, pstate, relation->location);
 
 	/* Begin - ReqID:SRS-SQL-DBLINK */
-	localrelation = copyObject((RangeVar *)relation);
-
-	if (isDblinkTable(relation->relname, &tname, &servname))
+	if (relation->srvname != NULL)
 	{
 		curdbname = get_database_name(MyDatabaseId);
 
 		/* Check Global Name as a Loopback Database Link */
-		if (strcmp(servname, curdbname) == 0)
+		if (strcmp(relation->srvname, curdbname) == 0)
 		{
-			localrelation->relname = tname;
 			is_loopbacklnkrel = true;
 		}
 		else
 		{
-			server = GetForeignServerByName(servname, false);
+			server = GetForeignServerByName(relation->srvname, false);
 			fdw = GetForeignDataWrapper(server->fdwid);
 			mapping = GetUserMapping(GetUserId(), server->serverid);
 			fdw_routine = GetFdwRoutine(fdw->fdwhandler);
@@ -1572,7 +1566,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	}
 	/* End - ReqID:SRS-SQL-DBLINK */
 
-	rel = table_openrv_extended(localrelation, lockmode, true);
+	rel = table_openrv_extended(relation, lockmode, true);
 	if (rel == NULL)
 	{
 		if (relation->schemaname && !is_dblnkrel)
@@ -1603,7 +1597,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				/* handle the shared DBLINK authenticated */
 				if (server->ora_dblink_isshared && !server->ora_lnkshared_auth)
-					fdw_routine->DblinkAuthenticated(servname);
+					fdw_routine->DblinkAuthenticated(relation->srvname);
 
 				op_lnks = get_open_dblinks();
 
@@ -1618,7 +1612,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
 					fdw_type = PG_FDW;
 
-				ftname = psprintf("%s@%s", tname, servname);
+				ftname = psprintf("%s@%s", relation->relname, relation->srvname);
 
 				dblinkrv = makeRangeVar(NULL, ftname, -1);
 				dblinkrv->relpersistence = RELPERSISTENCE_TEMP;
@@ -1627,13 +1621,13 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				{
 					char 	*cmd = NULL;
 
-					rangevar = makeRangeVar(NULL, tname, -1);
+					rangevar = makeRangeVar(NULL, relation->relname, -1);
 
 					if (!server->ora_dblink_ispublic && server->owner != GetUserId())
-						elog(ERROR, "server \"%s\" not found", servname);
+						elog(ERROR, "server \"%s\" not found", relation->srvname);
 
 					imstmt = makeNode(ImportForeignSchemaStmt);
-					imstmt->server_name = servname;
+					imstmt->server_name = relation->srvname;
 
 					if (fdw_type == PG_FDW)
 					{
@@ -1641,7 +1635,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 							imstmt->remote_schema = psprintf("%s", relation->schemaname);
 						else
 							imstmt->remote_schema = psprintf("%s", "public");
-						imstmt->local_schema = psprintf("%s", "public");
 						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
 						imstmt->table_list = list_make1(rangevar);
 					}
@@ -1652,15 +1645,18 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 						get_usermapping_name(mapping->options, &umpname);
 
 						imstmt->remote_schema = psprintf("%s", upper_character(umpname, strlen(umpname)));
-						imstmt->local_schema = psprintf("%s", "public");
 						imstmt->list_type = FDW_IMPORT_SCHEMA_LIMIT_TO;
 						imstmt->table_list = list_make1(rangevar);
 					}
 
-
 					/* Call FDW to get a list of commands */
 					cmd_list = fdw_routine->ImportForeignSchema(imstmt, server->serverid);
-					Assert(list_length(cmd_list) == 1);
+					/* Begin - BUG#Z1341 BUG#Z1342 */
+					if (cmd_list == NIL)
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_TABLE),
+								 errmsg("relation %s does not exist", relation->relname)));
+					/* End - BUG#Z1341 BUG#Z1342 */
 
 					f = list_head(cmd_list);
 					cmd = (char *) lfirst(f);
@@ -1722,7 +1718,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 					rel->serverOid = server->serverid;
 					rel->relattrlists = tupnatts;
-					rel->relname = tname;
+					rel->relname = relation->relname;
 					rel->relnspname = imstmt->remote_schema;
 					rel->rel_from_dblink = true;
 
@@ -1779,7 +1775,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 		{
 			bool		metadata_changed = false;
 
-			mdtupnatts_changed = fdw_routine->DblinkCheckMetadataChanged(server->serverid, relnspname, tname);
+			mdtupnatts_changed = fdw_routine->DblinkCheckMetadataChanged(server->serverid, relnspname, relation->relname);
 
 			/* first check */
 			if (list_length(tupnatts) != list_length(mdtupnatts_changed))
@@ -1843,7 +1839,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				/* 3. create a new one using changed matedata */
 				query_string = buildCreateForeignTablequeryString(mdtupnatts_changed,
-																 ftname, tname, server->servername,
+																 ftname, relation->relname, server->servername,
 																 relnspname, fdw_type);
 
 				raw_parsetree_list = pg_parse_query(query_string);
@@ -1877,7 +1873,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				rel->serverOid = server->serverid;
 				rel->relattrlists = mdtupnatts_changed;
-				rel->relname = tname;
+				rel->relname = relation->relname;
 				rel->relnspname = relnspname;
 				rel->rel_from_dblink = true;
 			}
@@ -1885,7 +1881,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			{
 				rel->serverOid = server->serverid;
 				rel->relattrlists = tupnatts;
-				rel->relname = tname;
+				rel->relname = relation->relname;
 				rel->relnspname = relnspname;
 				rel->rel_from_dblink = true;
 			}
@@ -1895,7 +1891,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 		{
 			rel->serverOid = server->serverid;
 			rel->relattrlists = tupnatts;
-			rel->relname = tname;
+			rel->relname = relation->relname;
 			rel->relnspname = relnspname;
 			rel->rel_from_dblink = true;
 		}
@@ -4431,30 +4427,7 @@ addRangeTableEntryForCount(ParseState *pstate)
 }
 /* End - ReqID:SRS-SQL-ROWNUM */
 
-bool
-isDblinkTable(const char *name, char **tname, char **servname)
-{
-	char 		*ret = NULL;
-	char		*relname = NULL;
-	char		*servername = NULL;
-
-	if (strstr((char *)name, "@"))
-	{
-		ret = strtok((char *)name, "@");
-		relname = ret;
-		if (tname)
-			*tname = relname;
-		ret = strtok(NULL, "@");
-		servername = ret;
-		if (servname)
-			*servname = servername;
-
-		return true;
-	}
-	else
-		return false;
-}
-
+/* Begin - ReqID:SRS-SQL-DBLINK */
 static List *
 get_open_dblinks(void)
 {
@@ -4487,6 +4460,7 @@ get_open_dblinks(void)
 
 	return srvOids;
 }
+/* Begin - ReqID:SRS-SQL-DBLINK */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 /*

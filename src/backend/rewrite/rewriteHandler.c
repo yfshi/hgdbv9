@@ -277,21 +277,24 @@ AcquireRewriteLocks(Query *parsetree,
 					}
 					else
 					{
-						query_string = buildCreateForeignTablequeryString(rte->linkrelattrs, ftname,
+						query_string = buildCreateForeignTablequeryString(rte->linkrelattrs, rte->linkrelname,
 																		  rte->linkrelname, server->servername,
 																		  rte->linkrelnsname, fdw_type
 																		  );
 
 						/* Parse the SQL string into a list of raw parse trees. */
 						raw_parsetree_list = pg_parse_query(pstrdup(query_string));
+
 						Assert(list_length(raw_parsetree_list) == 1);
+
 						f = list_head(raw_parsetree_list);
 						rs =  lfirst(f);
-						cstmt = (CreateForeignTableStmt *) rs->stmt;
 
+						cstmt = (CreateForeignTableStmt *) rs->stmt;
 						if (!IsA(cstmt, CreateForeignTableStmt))
 							elog(ERROR, "not a CreateForeignTableStmt");
 
+						cstmt->base.relation->relname = ftname;
 						cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
 
 						pstmt = makeNode(PlannedStmt);

@@ -549,7 +549,6 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 	char	   *nspname = NULL;
 	char	   *relname = NULL;
 	char	   *colname = NULL;
-	char	   *cname = NULL;
 	ParseNamespaceItem *nsitem;
 	int			levels_up;
 	enum
@@ -813,11 +812,6 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				Assert(IsA(field2, String));
 				colname = strVal(field2);
 
-				if (isDblinkTable(colname, &cname, NULL))
-				{
-					colname = cname;
-				}
-
 				/* Begin - Bug#Z167 */
 				set_merge_on_attrno(pstate, colname);
 				/* End - Bug#Z167 */
@@ -899,11 +893,6 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field3, String));
 				colname = strVal(field3);
-
-				if (isDblinkTable(colname, &cname, NULL))
-				{
-					colname = cname;
-				}
 
 				/* Begin - Bug#Z167 */
 				set_merge_on_attrno(pstate, colname);
@@ -1004,11 +993,6 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 				Assert(IsA(field4, String));
 				colname = strVal(field4);
-
-				if (isDblinkTable(colname, &cname, NULL))
-				{
-					colname = cname;
-				}
 
 				/* Begin - Bug#Z167 */
 				set_merge_on_attrno(pstate, colname);

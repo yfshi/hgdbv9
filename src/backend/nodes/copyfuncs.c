@@ -1411,6 +1411,7 @@ _copyRangeVar(const RangeVar *from)
 	COPY_STRING_FIELD(catalogname);
 	COPY_STRING_FIELD(schemaname);
 	COPY_STRING_FIELD(relname);
+	COPY_STRING_FIELD(srvname);		/* BUG#M0000374 */
 	COPY_SCALAR_FIELD(inh);
 	COPY_SCALAR_FIELD(relpersistence);
 	COPY_NODE_FIELD(alias);

@@ -571,6 +571,7 @@ _readRangeVar(void)
 
 	READ_STRING_FIELD(schemaname);
 	READ_STRING_FIELD(relname);
+	READ_STRING_FIELD(srvname);		/* BUG#M0000374 */
 	READ_BOOL_FIELD(inh);
 	READ_CHAR_FIELD(relpersistence);
 	READ_NODE_FIELD(alias);
