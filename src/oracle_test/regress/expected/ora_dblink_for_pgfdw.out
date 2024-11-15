@@ -70,7 +70,7 @@ show ivorysql.default_dblink_fdw; -- postgres_fdw is default fdw
 DO $d$
     BEGIN
         EXECUTE $$ create public database link ivyfuplnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -83,7 +83,7 @@ $d$;
 DO $d$
     BEGIN
         EXECUTE $$ create database link ivyfurlnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -133,8 +133,8 @@ create user mapping for public
 DO $d$
     BEGIN
         EXECUTE $$ create shared public database link spglink
-        connect to system identified by ivy123
-        AUTHENTICATED BY system IDENTIFIED BY ivy123
+		connect to system identified by "ivy123"
+		AUTHENTICATED BY system IDENTIFIED BY "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -216,7 +216,8 @@ select * from vt1;
 (4 rows)
 
 -- where conditions
-select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
+--select * from it1@ivyfuplnk where it1.c2@ivyfuplnk = 'PACKAGE';
+select * from it1@ivyfuplnk where c2 = 'PACKAGE';
  c1 |   c2    
 ----+---------
   3 | PACKAGE
@@ -260,14 +261,14 @@ select * from it1@ivyfuplnk;
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
            umoptions           
 -------------------------------
- {user=system,password=ivy123}
+ {user=system,password=IVY123}
 (1 row)
 
 alter database link ivyfurlnk connect to system identified by ivorysqlpro;
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
              umoptions              
 ------------------------------------
- {user=system,password=ivorysqlpro}
+ {user=system,password=IVORYSQLPRO}
 (1 row)
 
 -- drop link
@@ -320,7 +321,7 @@ show global_names;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link glolnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =
@@ -336,7 +337,7 @@ LINE 1: select * from it1@glolnk;
 DO $d$
     BEGIN
         EXECUTE $$ create public database link tdblnk
-        	connect to system identified by ivy123
+			connect to system identified by "ivy123"
         	using '(DESCRIPTION =
             (ADDRESS = (PROTOCOL = TCP)(PORT = $$||current_setting('ivorysql.port')||$$))
             (CONNECT_DATA =

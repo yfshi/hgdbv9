@@ -316,6 +316,8 @@ JumbleRangeTable(JumbleState *jstate, List *rtable)
 			/* Begin - BUG#Z1278 */
 			case RTE_COUNT:
 				break;
+			case RTE_DBLINK:
+				break;
 			/* End - BUG#Z1278 */
 			default:
 				elog(ERROR, "unrecognized RTE kind: %d", (int) rte->rtekind);
