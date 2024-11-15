@@ -174,10 +174,8 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 	XLogReaderState *xlogreader;
 	char	   *errormsg;
 	XLogPageReadPrivate private;
-
-	/* Track WAL segments opened while searching a checkpoint */
-	XLogSegNo	segno = 0;
-	TimeLineID	tli = 0;
+	XLogSegNo	current_segno = 0;
+	TimeLineID	current_tli = 0;
 
 	/*
 	 * The given fork pointer points to the end of the last common record,
@@ -220,22 +218,23 @@ findLastCheckpoint(const char *datadir, XLogRecPtr forkptr, int tliIndex,
 						 LSN_FORMAT_ARGS(searchptr));
 		}
 
-		/* We are trying to detect if the new WAL file was opened */
-		if (save_wal_file && (xlogreader->seg.ws_tli != tli || xlogreader->seg.ws_segno != segno))
+		/* Detect if a new WAL file has been opened */
+		if (save_wal_file && (xlogreader->seg.ws_tli != current_tli ||
+			xlogreader->seg.ws_segno != current_segno))
 		{
 			char		xlogfname[MAXFNAMELEN];
 
-			tli = xlogreader->seg.ws_tli;
-			segno = xlogreader->seg.ws_segno;
+			snprintf(xlogfname, MAXFNAMELEN, XLOGDIR "/");
 
-			snprintf(xlogfname, MAXPGPATH, XLOGDIR "/");
-			XLogFileName(xlogfname + strlen(xlogfname),
-						 xlogreader->seg.ws_tli,
-						 xlogreader->seg.ws_segno, WalSegSz);
+			/* update curent values */
+			current_tli = xlogreader->seg.ws_tli;
+			current_segno = xlogreader->seg.ws_segno;
 
-			/* Make sure pg_rewind doesn't remove this file, because it is
-			 * required for postgres to start after rewind. */
-			insert_keepwalhash_entry(xlogfname);
+			XLogFileName(xlogfname + sizeof(XLOGDIR),
+						 current_tli, current_segno, WalSegSz);
+
+			/* Track this filename as one to not remove */
+			keepwal_add_entry(xlogfname);
 		}
 
 		/*

@@ -428,8 +428,8 @@ main(int argc, char **argv)
 		exit(0);
 	}
 
-	/* Hash to memorize WAL files that should be kept */
-	keepwalhash_init();
+	/* Initialize hashtable that tracks WAL files protected from removal */
+	keepwal_init();
 
 	findLastCheckpoint(datadir_target, divergerec, lastcommontliIndex,
 					   &chkptrec, &chkpttli, &chkptredo, restore_command);
