@@ -473,6 +473,9 @@ typedef struct ResultRelInfo
 	/* Have the projection and the slots above been initialized? */
 	bool		ri_projectNewInfoValid;
 
+	/* updates do LockTuple() before oldtup read; see README.tuplock */
+	bool		ri_needLockTagTuple;
+
 	/* triggers to be fired, if any */
 	TriggerDesc *ri_TrigDesc;
 
@@ -574,8 +577,6 @@ typedef struct ResultRelInfo
 	 */
 	List	   *ri_ancestorResultRels;
 	ProjectionInfo   *ri_updateProj;	/* ReqID:SRS-MYSQL-SQL-INSERT */
-	/* updates do LockTuple() before oldtup read; see README.tuplock */
-	bool		ri_needLockTagTuple;
 } ResultRelInfo;
 
 /*
