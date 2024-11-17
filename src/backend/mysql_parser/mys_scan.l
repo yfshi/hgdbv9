@@ -202,6 +202,9 @@ extern void mys_core_yyset_column(int column_no, yyscan_t yyscanner);
 %x xui
 %x xus
 %x xeu
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+%x xbq
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 /*
  * In order to make the world safe for Windows and Mac clients as well as
@@ -312,6 +315,12 @@ xdstart			{dquote}
 xdstop			{dquote}
 xddouble		{dquote}{dquote}
 xdinside		[^"]+
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+xbqinside		[^`]+
+bquote			\`
+xbqstart		{bquote}
+xbqstop			{bquote}
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 /* Quoted identifier with Unicode escapes */
 xuistart		[uU]&{dquote}
@@ -381,7 +390,7 @@ not_equals		"!="
  * rule for "operator"!
  */
 self			[,()\[\].;\:\+\-\*\/\%\^\<\>\=]
-op_chars		[\~\!\@\#\^\&\|\`\?\+\-\*\/\%\<\>\=]
+op_chars		[\~\!\@\#\^\&\|\?\+\-\*\/\%\<\>\=]
 operator		{op_chars}+
 
 /* we no longer allow unary minus in numbers.
@@ -776,7 +785,15 @@ other			.
 					BEGIN(xui);
 					startlit();
 				}
-<xd>{xdstop}	{
+{xbqstart}		{
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+					SET_YYLLOC();
+					BEGIN(xbq);
+					startlit();
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				}
+<xbq>{xbqstop}	{
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 					char	   *ident;
 
 					BEGIN(INITIAL);
@@ -787,6 +804,24 @@ other			.
 						truncate_identifier(ident, yyextra->literallen, true);
 					yylval->str = ident;
 					return IDENT;
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				}
+<xd>{xdstop}	{
+					char	   *ident;
+
+					BEGIN(INITIAL);
+					if (yyextra->literallen == 0)
+						yyerror("zero-length delimited identifier");
+					ident = litbufdup(yyscanner);
+					if (yyextra->literallen >= NAMEDATALEN)
+						truncate_identifier(ident, yyextra->literallen, true);
+					yylval->str = ident;
+
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+					if(has_sql_mode(MODE_ANSI_QUOTES))
+						return IDENT;
+					return SCONST;
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				}
 <xui>{dquote}	{
 					BEGIN(INITIAL);
@@ -803,7 +838,16 @@ other			.
 					addlit(yytext, yyleng, yyscanner);
 				}
 <xd,xui><<EOF>>		{ yyerror("unterminated quoted identifier"); }
-
+<xbq>{xbqinside}	{
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+					addlit(yytext, yyleng, yyscanner);
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				}
+<xbq><<EOF>>		{
+					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+					yyerror("unterminated quoted identifier");
+					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+				}
 {xufailed}	{
 					char	   *ident;
 
@@ -904,7 +948,7 @@ other			.
 							char c = yytext[ic];
 							if (c == '~' || c == '!' || c == '@' ||
 								c == '#' || c == '^' || c == '&' ||
-								c == '|' || c == '`' || c == '?' ||
+								c == '|' || c == '?' ||
 								c == '%')
 								break;
 						}
