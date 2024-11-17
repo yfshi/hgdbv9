@@ -56,6 +56,7 @@
 #include "common/string.h"
 #include "funcapi.h"
 #include "jit/jit.h"
+#include "lib/stringinfo.h"
 #include "libpq/auth.h"
 #include "libpq/libpq.h"
 #include "libpq/pqformat.h"
@@ -138,6 +139,11 @@
 #undef IVY_MY_GUC_VAR_DEFINE
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+#define IVY_MY_GUC_FUNC_DEFINE
+#include "ivy_mysql_guc.c"
+#undef IVY_MY_GUC_FUNC_DEFINE
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
@@ -865,11 +871,15 @@ const char *const config_group_names[] =
 	gettext_noop("Developer Options"),
 	/* COMPAT_ORACLE_OPTIONS */
 	gettext_noop("Compat Oracle Options"), /* BUG#Z0001269 */
+	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	/* COMPAT_MYSQL_OPTIONS */
+	gettext_noop("Compat MySQL Options"),
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* help_config wants this array to be null-terminated */
 	NULL
 };
 
-StaticAssertDecl(lengthof(config_group_names) == (COMPAT_ORACLE_OPTIONS + 2),/* BUG#Z0001269 */
+StaticAssertDecl(lengthof(config_group_names) == (COMPAT_MYSQL_OPTIONS + 2),/* BUG#Z0001269 */
 				 "array length mismatch");
 
 /*
@@ -4765,7 +4775,7 @@ static struct config_string ConfigureNamesString[] =
 	#define IVY_MY_GUC_STRING_PARAMS
 	#include "ivy_mysql_guc.c"
 	#undef IVY_MY_GUC_STRING_PARAMS
-	/* End - ReqID:SSRS-MISC-MYSQL-FRAME */
+	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* End-of-list marker */
 	{
 		{NULL, 0, 0, NULL, NULL}, NULL, NULL, NULL, NULL, NULL

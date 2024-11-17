@@ -606,5 +606,50 @@ extern void assign_search_path(const char *newval, void *extra);
 extern bool check_wal_buffers(int *newval, void **extra, GucSource source);
 extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 
+/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+#define MODE_REAL_AS_FLOAT              ((1ULL << 0))
+#define MODE_PIPES_AS_CONCAT            ((1ULL << 1))
+#define MODE_ANSI_QUOTES                ((1ULL << 2))
+#define MODE_IGNORE_SPACE               ((1ULL << 3))
+#define MODE_NOT_USED                   ((1ULL << 4))
+#define MODE_ONLY_FULL_GROUP_BY         ((1ULL << 5))
+#define MODE_NO_UNSIGNED_SUBTRACTION    ((1ULL << 6))
+#define MODE_NO_DIR_IN_CREATE           ((1ULL << 7))
+#define MODE_POSTGRESQL                 ((1ULL << 8))
+#define MODE_ORACLE                     ((1ULL << 9))
+#define MODE_MSSQL                      ((1ULL << 10))
+#define MODE_DB2                        ((1ULL << 11))
+#define MODE_MAXDB                      ((1ULL << 12))
+#define MODE_NO_KEY_OPTIONS             ((1ULL << 13))
+#define MODE_NO_TABLE_OPTIONS           ((1ULL << 14))
+#define MODE_NO_FIELD_OPTIONS           ((1ULL << 15))
+#define MODE_MYSQL323                   ((1ULL << 16))
+#define MODE_MYSQL40                    ((1ULL << 17))
+#define MODE_ANSI                       ((1ULL << 18))
+#define MODE_NO_AUTO_VALUE_ON_ZERO      ((1ULL << 19))
+#define MODE_NO_BACKSLASH_ESCAPES       ((1ULL << 20))
+#define MODE_STRICT_TRANS_TABLES        ((1ULL << 21))
+#define MODE_STRICT_ALL_TABLES          ((1ULL << 22))
+#define MODE_NO_ZERO_IN_DATE            ((1ULL << 23))
+#define MODE_NO_ZERO_DATE               ((1ULL << 24))
+#define MODE_INVALID_DATES              ((1ULL << 25))
+#define MODE_ERROR_FOR_DIVISION_BY_ZERO ((1ULL << 26))
+#define MODE_TRADITIONAL                ((1ULL << 27))
+#define MODE_NO_AUTO_CREATE_USER        ((1ULL << 28))
+#define MODE_HIGH_NOT_PRECEDENCE        ((1ULL << 29))
+#define MODE_NO_ENGINE_SUBSTITUTION     ((1ULL << 30))
+#define MODE_PAD_CHAR_TO_FULL_LENGTH    ((1ULL << 31))
+
+#define NEXT_MODE_VALUE(cur) 			((cur << 1))
+#define MODE_VALUES_FIRST				MODE_REAL_AS_FLOAT
+#define MODE_VALUES_LAST				MODE_PAD_CHAR_TO_FULL_LENGTH
+
+#define has_sql_mode(t)		(sql_mode & t)
+#define is_strict_mode() 	(has_sql_mode(MODE_STRICT_TRANS_TABLES | MODE_STRICT_ALL_TABLES))
+
+typedef unsigned long long sql_mode_t;
+
+extern PGDLLIMPORT sql_mode_t  sql_mode;
+/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 #endif							/* GUC_H */

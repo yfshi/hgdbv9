@@ -1,0 +1,124 @@
+-- check default value
+SHOW sql_mode;
+                                                                       sql_mode                                                                        
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+-- check single value
+SET sql_mode = 'ANSI_QUOTES';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+  sql_mode   
+-------------
+ ANSI_QUOTES
+(1 row)
+
+SET sql_mode = 'IGNORE_SPACE';
+SHOW sql_mode;
+   sql_mode   
+--------------
+ IGNORE_SPACE
+(1 row)
+
+-- check multi value
+SET sql_mode = 'ANSI_QUOTES,IGNORE_SPACE';
+SHOW sql_mode;
+         sql_mode         
+--------------------------
+ ANSI_QUOTES,IGNORE_SPACE
+(1 row)
+
+-- check case sensitive
+SET sql_mode = 'ansi,ANSI_quotes,ignore_SPACE';
+SHOW sql_mode;
+                                    sql_mode                                    
+--------------------------------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ONLY_FULL_GROUP_BY,ANSI
+(1 row)
+
+-- check combination sql modes
+SET sql_mode = 'ANSI';
+SHOW sql_mode;
+                                    sql_mode                                    
+--------------------------------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ONLY_FULL_GROUP_BY,ANSI
+(1 row)
+
+SET sql_mode = 'DB2';
+WARNING:  Changing sql mode 'DB2,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                           sql_mode                                            
+-----------------------------------------------------------------------------------------------
+ PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,DB2,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS
+(1 row)
+
+SET sql_mode = 'MAXDB';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+WARNING:  Changing sql mode 'MAXDB,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                                      sql_mode                                                       
+---------------------------------------------------------------------------------------------------------------------
+ PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,MAXDB,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS,NO_AUTO_CREATE_USER
+(1 row)
+
+SET sql_mode = 'MSSQL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+WARNING:  Changing sql mode 'MSSQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                            sql_mode                                             
+-------------------------------------------------------------------------------------------------
+ PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,MSSQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS
+(1 row)
+
+SET sql_mode = 'MYSQL323';
+WARNING:  Changing sql mode 'MYSQL323' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+           sql_mode           
+------------------------------
+ MYSQL323,HIGH_NOT_PRECEDENCE
+(1 row)
+
+SET sql_mode = 'MYSQL40';
+WARNING:  Changing sql mode 'MYSQL40' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+          sql_mode           
+-----------------------------
+ MYSQL40,HIGH_NOT_PRECEDENCE
+(1 row)
+
+SET sql_mode = 'ORACLE';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+WARNING:  Changing sql mode 'ORACLE,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                                       sql_mode                                                       
+----------------------------------------------------------------------------------------------------------------------
+ PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,ORACLE,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS,NO_AUTO_CREATE_USER
+(1 row)
+
+SET sql_mode = 'POSTGRESQL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+WARNING:  Changing sql mode 'POSTGRESQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                               sql_mode                                               
+------------------------------------------------------------------------------------------------------
+ PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE,POSTGRESQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS
+(1 row)
+
+SET sql_mode = 'TRADITIONAL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+SHOW sql_mode;
+                                                                       sql_mode                                                                       
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+-- check exception value
+SET sql_mode = 'ddd'; -- error
+ERROR:  Variable 'sql_mode' can't be set to the value of 'ddd'
+-- check exception value with space
+SET sql_mode = 'ANSI_QUOTES, IGNORE_SPACE'; -- error
+ERROR:  Variable 'sql_mode' can't be set to the value of 'ANSI_QUOTES, IGNORE_SPACE'
+-- check backquote identifier
+CREATE TABLE `sql_mode_test`(id int);
+DROP TABLE `sql_mode_test`;
