@@ -268,6 +268,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
 	MergeWhenClause		*mergewhen;
+	MysCollateCharacterOpt *myscollatecharacteropt;/* ReqID:SRS-MYSQL-SQL-USE */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -331,6 +332,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
+%type <myscollatecharacteropt> mys_create_option /* ReqID:SRS-MYSQL-SQL-USE */
 
 %type <ival>	opt_lock lock_type cast_context
 %type <str>		utility_option_name
@@ -1454,6 +1456,18 @@ CreateSchemaStmt:
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
+			| CREATE SCHEMA ColId  mys_create_option /*Begin - ReqID: SRS-MYSQL-SQL-USE */
+                {
+                    CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+                	/* ...but not both */
+                	n->schemaname = $3;
+                	n->authrole = NULL;
+                	n->mys_opt = $4;
+                	n->if_not_exists = false;
+                	$$ = (Node *)n;
+
+                }
+                /*End - ReqID: SRS-MYSQL-SQL-USE */
 			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
@@ -1484,6 +1498,17 @@ CreateSchemaStmt:
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
+	/*Begin - ReqID: SRS-MYSQL-SQL-USE */
+            | CREATE SCHEMA IF_P NOT EXISTS ColId  mys_create_option
+				{
+                 CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* ...but not both */
+					n->schemaname = $6;
+					n->authrole = NULL;
+					n->mys_opt = $7;
+					n->if_not_exists = true;
+					$$ = (Node *)n;
+			    } /*End - ReqID: SRS-MYSQL-SQL-USE */
 		;
 
 OptSchemaName:
@@ -1544,6 +1569,16 @@ VariableSetStmt:
 					n->is_local = false;
 					$$ = (Node *) n;
 				}
+             | USE ColId /*Begin - ReqID: SRS-MYSQL-SQL-USE */
+                {
+                	VariableSetStmt *n = makeNode(VariableSetStmt);
+                		n->kind = VAR_SET_VALUE;
+                		n->name = "search_path";
+                		n->args = list_make1(makeStringConst($2, -1));
+                		n->is_local = false;
+                		n->is_use=true;
+                		$$ = (Node *) n;
+                } /*End - ReqID: SRS-MYSQL-SQL-USE */
 		;
 
 set_rest:
@@ -10392,13 +10427,87 @@ LoadStmt:	LOAD file_name
 CreatedbStmt:
 			CREATE DATABASE name opt_with createdb_opt_list
 				{
-					CreatedbStmt *n = makeNode(CreatedbStmt);
-					n->dbname = $3;
-					n->options = $5;
-					$$ = (Node *)n;
+				if($5!=NIL)/* ReqID: SRS-MYSQL-SQL-USE */
+				   {
+				   CreatedbStmt *n = makeNode(CreatedbStmt);
+                   n->dbname = $3;
+                   n->options = $5;
+                   $$ = (Node *)n;
+				    }
+				   else
+				    { /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+                    n->schemaname = $3;
+                    n->authrole = NULL;
+                    n->schemaElts = NULL;
+                    n->if_not_exists = false;
+                    $$ = (Node *)n;
+					 }
 				}
+            | CREATE DATABASE IF_P NOT EXISTS name
+ 				{
+ 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+                     n->schemaname = $6;
+                     n->authrole = NULL;
+                     n->schemaElts = NULL;
+                     n->mys_opt=NULL;
+                     n->if_not_exists = true;
+                     $$ = (Node *)n;
+ 				}
+            | CREATE DATABASE IF_P NOT EXISTS name mys_create_option
+ 				{
+ 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+                     n->schemaname = $6;
+                     n->authrole = NULL;
+                     n->schemaElts = NULL;
+                     n->mys_opt=$7;
+                     n->if_not_exists = true;
+                     $$ = (Node *)n;
+ 				}
+           | CREATE DATABASE name mys_create_option
+                 {
+                  CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+                    n->schemaname = $3;
+                    n->authrole = NULL;
+                    n->schemaElts = NULL;
+                    n->mys_opt=$4;
+                    n->if_not_exists = false;
+                    $$ = (Node *)n;
+                 }
+/* End - ReqID: SRS-MYSQL-SQL-USE */
 		;
-
+/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+mys_create_option:
+        CHARACTER SET '=' name
+            {
+             MysCollateCharacterOpt *n=(MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));;
+                n->opt_type=OPT_CHARACTERSET;
+                n->name=$4;
+                 $$=n;
+            }
+        | CHARACTER SET name
+            {
+             MysCollateCharacterOpt *n=(MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));;
+                n->opt_type=OPT_CHARACTERSET;
+                n->name=$3;
+                $$=n;
+             }
+        | COLLATE '=' name
+                {
+                MysCollateCharacterOpt *n=(MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));;
+                   n->opt_type=OPT_COLLATE;
+                   n->name=$3;
+                   $$=n;
+                }
+        | COLLATE name
+                {
+                MysCollateCharacterOpt *n=(MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));;
+                   n->opt_type=OPT_COLLATE;
+                   n->name=$2;
+                   $$=n;
+                }
+           ;
+/* End - ReqID: SRS-MYSQL-SQL-USE */
 createdb_opt_list:
 			createdb_opt_items						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NIL; }

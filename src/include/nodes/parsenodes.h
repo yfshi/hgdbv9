@@ -2012,6 +2012,19 @@ typedef enum ObjectType
 	/* End - ReqID:SRS-SQL-PACKAGE */
 } ObjectType;
 
+/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+typedef  enum {
+    OPT_CHARACTERSET,
+    OPT_COLLATE
+} OptType;
+
+typedef  struct MysCollateCharacterOpt
+{
+    NodeTag type;
+    OptType opt_type;
+    char * name;
+}MysCollateCharacterOpt;
+/* End - ReqID: SRS-MYSQL-SQL-USE */
 /* ----------------------
  *		Create Schema Statement
  *
@@ -2027,6 +2040,7 @@ typedef struct CreateSchemaStmt
 	RoleSpec   *authrole;		/* the owner of the created schema */
 	List	   *schemaElts;		/* schema components (list of parsenodes) */
 	bool		if_not_exists;	/* just do nothing if schema already exists? */
+    MysCollateCharacterOpt *mys_opt; /* ReqID:SRS-MYSQL-SQL-USE */
 } CreateSchemaStmt;
 
 typedef enum DropBehavior
@@ -2358,6 +2372,7 @@ typedef struct VariableSetStmt
 	char	   *name;			/* variable to be set */
 	List	   *args;			/* List of A_Const nodes */
 	bool		is_local;		/* SET LOCAL? */
+    bool        is_use;         /* ReqID:SRS-MYSQL-SQL-USE */
 } VariableSetStmt;
 
 /* ----------------------

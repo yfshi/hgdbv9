@@ -40,7 +40,7 @@ test: create_function_1
 test: create_type
 test: create_table
 test: create_function_2
-
+test: mys_use_test
 # ----------
 # Load huge amounts of data
 # We should split the data files into single files and then
