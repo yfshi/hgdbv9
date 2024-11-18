@@ -35,7 +35,11 @@
 #include "utils/builtins.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
-
+/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+#include "utils/ora_compatible.h"
+#include "parser/pg_object_hook.h"
+#include "utils/jsonb.h"
+/* End - ReqID: SRS-MYSQL-SQL-USE */
 static void AlterSchemaOwner_internal(HeapTuple tup, Relation rel, Oid newOwnerId);
 
 /*
@@ -65,7 +69,11 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	StringInfoData pathbuf;
 
 	GetUserIdAndSecContext(&saved_uid, &save_sec_context);
-
+    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+    if(stmt->mys_opt && compatible_db==MYS_PARSER  && (stmt->mys_opt->opt_type==OPT_CHARACTERSET||stmt->mys_opt->opt_type==OPT_COLLATE))
+        ereport(WARNING,
+                (errmsg(" COLLATE or CHARACTER SET nonsupport : '%s'",stmt->mys_opt->name)));
+    /* End - ReqID: SRS-MYSQL-SQL-USE */
 	/*
 	 * Who is supposed to own the new schema?
 	 */
@@ -195,7 +203,18 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	 */
 	parsetree_list = transformCreateSchemaStmtElements(stmt->schemaElts,
 													   schemaName);
-
+/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+    if (compatible_db == MYS_PARSER && pg_object_create_obj_hook)
+    {
+        pg_object_create_obj_hook(stmt->schemaname,
+                                       namespaceId,
+                                       false,
+                                       PG_OBJECT_SCHEMA,
+                                       address,
+                                       DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("null"))),
+                                       NULL);
+    }
+    /* End - ReqID: SRS-MYSQL-SQL-USE */
 	/*
 	 * Execute each command contained in the CREATE SCHEMA.  Since the grammar
 	 * allows only utility commands in CREATE SCHEMA, there is no need to pass
