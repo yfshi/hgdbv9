@@ -2510,6 +2510,10 @@ compute_scalar_stats(VacAttrStatsP stats,
 
 			estate = CreateExecutorState();
 			rel = RelationIdGetRelation(stats->attr->attrelid);
+			/* Begin - Bug#m0000421 */
+			if (!RelationIsValid(rel))
+				continue;
+			/* End - Bug#m0000421 */
 			varexpr = (Expr *)build_column_default(rel, stats->tupattnum);
 			fix_opfuncids((Node *) varexpr);
 			exprState = ExecInitExpr(varexpr, NULL);

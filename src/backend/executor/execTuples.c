@@ -1034,6 +1034,10 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 			if (!OidIsValid(tblOid))
 				tblOid = slot->tts_tableOid;
 			rel = RelationIdGetRelation(tblOid);
+			/* Begin - Bug#m0000421 */
+			if (!RelationIsValid(rel))
+				continue;
+			/* End - Bug#m0000421 */
 			varexpr = (Expr *)build_column_default(rel, attnum + 1);
 			fix_opfuncids((Node *) varexpr);
 			exprState = ExecInitExpr(varexpr, NULL);
