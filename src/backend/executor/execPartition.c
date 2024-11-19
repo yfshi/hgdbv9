@@ -1335,6 +1335,10 @@ FormPartitionKeyDatum(PartitionDispatch pd,
 
 			tblOid = estate->es_result_relations[0]->ri_RelationDesc->rd_att->attrs[keycol - 1].attrelid;
 			rel = RelationIdGetRelation(tblOid);
+			/* Begin - Bug#m0000421 */
+			if (!RelationIsValid(rel))
+				continue;
+			/* End - Bug#m0000421 */
 			varexpr = (Expr *)build_column_default(rel, keycol);
 			fix_opfuncids((Node *) varexpr);
 			exprState = ExecInitExpr(varexpr, NULL);
