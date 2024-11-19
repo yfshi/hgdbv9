@@ -1340,6 +1340,6 @@ static void DatabaseCheckMoption(const char *options)
 			fatal("MySQL database wrong value for -M");
 	}
 	else
-		fatal("Except for Oracle and MySQL database modes, other database do not support -M");
+		fatal("Except for Oracle and MySQL database modes, other database modes do not support -M");	/* BUGZ1346 */
 }
 /* END - ReqID:SRS-MYSQL-PGDUMP */
