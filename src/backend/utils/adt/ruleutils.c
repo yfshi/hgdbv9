@@ -10306,13 +10306,44 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		/* binary operator */
 		Node	   *arg1 = (Node *) linitial(args);
 		Node	   *arg2 = (Node *) lsecond(args);
-
+		/* BEGIN - BUG#Z1333 */
+		int			location = 0;
+		int			comma_location = 0;
+		char	   *tmp_expr;
+		char	   *opr = generate_operator_name(opno, exprType(arg1), exprType(arg2));
+		/* END - BUG#Z1333 */
 		get_rule_expr_paren(arg1, context, true, (Node *) expr);
-		appendStringInfo(buf, " %s ",
-						 generate_operator_name(opno,
-												exprType(arg1),
-												exprType(arg2)));
+		/* BEGIN - BUG#Z1333 */
+		appendStringInfo(buf, " %s ", opr);
+		if(strcmp(opr, "~~") == 0)
+			location = buf->len;
+		/* END - BUG#Z1333 */
 		get_rule_expr_paren(arg2, context, true, (Node *) expr);
+		/* BEGIN - BUG#Z1333 */
+		if (location != 0 &&
+			arg2->type == T_FuncExpr &&
+			compatible_db == ORA_PARSER &&
+			enable_emptystring_to_NULL == true)
+		{
+			tmp_expr = palloc(buf->len - location - 12);
+			memcpy(tmp_expr, buf->data + location + 12, buf->len - location - 12);
+			for(int i = 0; i < strlen(tmp_expr); i++)
+			{
+				if (tmp_expr[i] == ',')
+				{
+					comma_location = i;
+					break;
+				}
+			}
+			if (strncmp(tmp_expr + comma_location + 1, " ''", 3) == 0)
+			{
+				memcpy(buf->data + location, tmp_expr, comma_location);
+				context->buf->data[location + comma_location] = '\0';
+				buf->len = location + comma_location;
+			}
+			pfree(tmp_expr);
+		}
+		/* END - BUG#Z1333 */
 	}
 	else
 	{
