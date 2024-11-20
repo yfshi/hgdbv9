@@ -879,6 +879,24 @@ SELECT * FROM TGT_TABLE;
 (2 rows)
 
 ROLLBACK;
+/* End - BUG#1326 */
+/* Begin - BUG#Z1389 */
+CREATE OR REPLACE PROCEDURE proc_merge IS
+BEGIN
+    MERGE INTO TGT_TABLE T
+    USING SRC_TABLE S ON (T.ID=S.ID)
+    WHEN MATCHED THEN UPDATE SET T.BONUS=S.BONUS+50 WHERE S.ID>=3 DELETE WHERE S.ID>=2;
+END proc_merge;
+/
+CALL proc_merge();
+SELECT * FROM TGT_TABLE;
+ id |  name   | age | salary | bonus 
+----+---------+-----+--------+-------
+ 1  | someone | 1   | 0      | 0
+ 4  | someone | 4   | 0      | 0
+(2 rows)
+
+DROP PROCEDURE proc_merge;
 DROP TABLE SRC_TABLE;
 DROP TABLE TGT_TABLE;
-/* End - BUG#1326 */
+/* End - BUG#Z1389 */
