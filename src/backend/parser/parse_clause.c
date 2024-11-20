@@ -3122,6 +3122,14 @@ pseudo_collation_replace_List(List *list, pseudo_collation_replace_context *cont
 	}
 }
 
+/* Begin - BUG#M0000424 */
+static inline void
+pseudo_collation_replace_CoalesceExpr(CoalesceExpr *expr, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) expr->args, context);
+}
+/* End - BUG#M0000424 */
+
 static bool 
 pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context)
 {	
@@ -3185,7 +3193,13 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 		case T_List:
 			pseudo_collation_replace_List((List *) node, context);
 			break;
-		
+
+		/* Begin - BUG#M0000424 */
+		case T_CoalesceExpr:
+			pseudo_collation_replace_CoalesceExpr((CoalesceExpr *) node, context);
+			break;
+		/* End - BUG#M0000424 */
+
 		default:
 			break;
 	}

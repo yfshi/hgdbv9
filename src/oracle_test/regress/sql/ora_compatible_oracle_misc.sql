@@ -52,3 +52,9 @@ insert into testm#408$#(c#408$#) values(123);
 select c#408$# from testm#408$#;
 drop table testm#408$#;
 /* End - BUG#M0000408 */
+
+/* Begin - BUG#M0000424 */
+create table test_m424(item varchar2(64), year timestamp, quantity int);
+select nvl(item, 'aaa') a , nvl(year, '1990-1-1') b , sum(quantity) from test_m424 group by item, rollup(year);
+drop table test_m424;
+/* End - BUG#M0000424 */
