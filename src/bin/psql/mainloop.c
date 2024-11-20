@@ -303,7 +303,12 @@ MainLoop(FILE *source)
 
 		/* Detect attempts to run custom-format dumps as SQL scripts */
 		if (pset.lineno == 1 && !pset.cur_cmd_interactive &&
-			strncmp(line, "PGDMP", 5) == 0)
+			/* BEGIN - BUGZ1346 */
+			(strncmp(line, "PGDMP", 5) == 0 ||
+			strncmp(line, "IVYPG", 5) == 0 ||
+			strncmp(line, "IVYOR", 5) == 0 ||
+			strncmp(line, "IVYMY", 5) == 0))
+			/* END - BUGZ1346 */
 		{
 			free(line);
 			puts(_("The input is a PostgreSQL custom-format dump.\n"
