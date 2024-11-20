@@ -4960,7 +4960,8 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 			 */
 			if (plansource->commandTag == CMDTAG_INSERT ||
 				plansource->commandTag == CMDTAG_UPDATE ||
-				plansource->commandTag == CMDTAG_DELETE)
+				plansource->commandTag == CMDTAG_DELETE ||
+				plansource->commandTag == CMDTAG_MERGE) /* BUG#Z1389 */
 			{
 				stmt->mod_stmt = true;
 				break;
@@ -5023,6 +5024,7 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		case SPI_OK_INSERT_RETURNING:
 		case SPI_OK_UPDATE_RETURNING:
 		case SPI_OK_DELETE_RETURNING:
+		case SPI_OK_MERGE:	/* BUG#Z1389 */
 			Assert(stmt->mod_stmt);
 			exec_set_found(estate, (SPI_processed != 0));
 			/* Begin - ReqID:SRS-PLSQL-CURSOR */
@@ -5224,6 +5226,7 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 		case SPI_OK_INSERT_RETURNING:
 		case SPI_OK_UPDATE_RETURNING:
 		case SPI_OK_DELETE_RETURNING:
+		case SPI_OK_MERGE:	/* BUG#Z1389 */
 		case SPI_OK_UTILITY:
 		case SPI_OK_REWRITTEN:
 			break;
