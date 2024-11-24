@@ -5446,7 +5446,17 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))			/*  bug#M0000261 */	/* BUG:z680,z538 */
 		{
 			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0))			/*  bug#z680 */
+			{	/* BEGIN - BUGZ1398 */
+				if(ropt->binary_upgrade)
+				{
+					ahprintf(AH, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
+					ahprintf(AH,
+								"SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
+								te->catalogId.oid);
+				}
+				/* END - BUGZ1398 */
 				ahprintf(AH, "CREATE ROLE %s;\n", fmtId(te->tag));
+			}
 			ahprintf(AH, "%s\n\n", te->defn);
 		}
 	}
