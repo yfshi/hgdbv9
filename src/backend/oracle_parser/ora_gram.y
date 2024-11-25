@@ -7665,6 +7665,29 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->concurrent = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - SRS-SQL-DBLINK */
+			| DROP FOREIGN TEMP TABLE ColId Op ColId opt_drop_behavior
+				{
+					DropStmt *n = makeNode(DropStmt);
+					char    *lnktbname = NULL;
+
+					if (strcmp($6, "@") != 0)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
+								 parser_errposition(@6)));
+					}
+
+					lnktbname = psprintf("%s@%s", $5, $7);
+					n->removeType = OBJECT_FOREIGN_TABLE;
+					n->missing_ok = false;
+					n->objects = lappend(n->objects, list_make1(makeString(lnktbname)));
+					n->behavior = $8;
+					n->concurrent = false;
+					$$ = (Node *)n;
+				}
+			/* End - SRS-SQL-DBLINK */
 			/* Begin - ReqID:SRS-SQL-PACKAGE  */
 			| DROP package_type IF_P EXISTS package_names_list opt_drop_behavior
 				{

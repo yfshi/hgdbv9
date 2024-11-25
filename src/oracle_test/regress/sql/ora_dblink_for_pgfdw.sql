@@ -153,6 +153,13 @@ DO $d$
     END;
 $d$;
 
+/*Begin - BUG#Z1391 */
+CREATE OR REPLACE PROCEDURE ins_from_pglnk IS
+BEGIN
+    INSERT INTO it1@ivyfuplnk SELECT * FROM it1@ivyfuplnk;
+END;
+/
+/*End - BUG#Z1391 */
 
 -- access remote table it1, it2, it3, it4, it5 by DBLINKs
 select * from it1@ivyfuplnk;
@@ -196,7 +203,11 @@ select * from it1@ivyfuplnk;
 delete from it1@ivyfuplnk where c1 = 1;
 select * from it1@ivyfuplnk;
 
-
+/*Begin - BUG#Z1391 */
+call ins_from_pglnk();
+select * from it1@ivyfuplnk;
+drop procedure ins_from_pglnk;
+/*End - BUG#Z1391 */
 
 -- test alter database link command
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
