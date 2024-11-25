@@ -143,6 +143,7 @@ typedef struct _dumpableObject
 	int			nDeps;			/* number of valid dependencies */
 	int			allocDeps;		/* allocated size of dependencies[] */
 	char	   *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
+	char 	   *User_binary_upgrade;	/* BUGZ1398 */
 } DumpableObject;
 
 typedef struct _namespaceInfo

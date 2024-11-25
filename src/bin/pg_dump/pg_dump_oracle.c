@@ -10042,14 +10042,20 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 {
 	DumpOptions *dopt = fout->dopt;
 	PQExpBuffer query;
-
+	PQExpBuffer	user_binary_upgrade_query;	/* BUGZ1398 */
 	if (dopt->dataOnly)
 		return;
 
 	if (dbrinfo->dobj.name)
 	{
 		query = createPQExpBuffer();
+		/* BEGIN - BUGZ1398 */
+		user_binary_upgrade_query = createPQExpBuffer();
+		appendPQExpBuffer(user_binary_upgrade_query,
+							"SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
+							dbrinfo->dobj.catId.oid);
 
+		/* END - BUGZ1398 */
 		appendPQExpBuffer(query, "ALTER ROLE %s WITH", fmtId(dbrinfo->dobj.name));
 
 		if (dbrinfo->rolsuper)
@@ -10107,9 +10113,11 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 						 ARCHIVE_OPTS(.tag = dbrinfo->dobj.name,
 									  .description = "DATABASEROLE",
 									  .section = SECTION_NONE,
-									  .createStmt = query->data));
+									  .createStmt = query->data,
+									  .User_binary_upgrade = user_binary_upgrade_query->data));	/* BUGZ1398 */
 
 		destroyPQExpBuffer(query);
+		destroyPQExpBuffer(user_binary_upgrade_query);	/* BUGZ1398 */
 	}
 	return;
 }

@@ -2801,7 +2801,7 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 	newToc->copyStmt = opts->copyStmt ? pg_strdup(opts->copyStmt) : NULL;
 	newToc->d.oracle.ident_case = opts->ident_case;		/* BUG#M0000323 SRS-MYSQL-PGDUMP*/
 	newToc->compatible_mode = opts->compatible_mode ? pg_strdup(opts->compatible_mode) : NULL;	/* ReqID:SRS-CMD-PGDUMP */
-
+	newToc->d.oracle.User_binary_upgrade = opts->User_binary_upgrade ? pg_strdup(opts->User_binary_upgrade) : NULL; /* BUGZ1398 */
 	if (opts->nDeps > 0)
 	{
 		newToc->dependencies = (DumpId *) pg_malloc(opts->nDeps * sizeof(DumpId));
@@ -4254,7 +4254,9 @@ WriteToc(ArchiveHandle *AH)
 		WriteStr(AH, "false");
 		WriteInt(AH, te->d.oracle.ident_case);/* ReqID:SRS-SQL-FORCEVIEW SRS-MYSQL-PGDUMP */
 		WriteStr(AH, te->compatible_mode);	/* ReqID:SRS-CMD-PGDUMP */
-
+		/* BEGIN - BUGZ1398 */
+		WriteStr(AH, te->d.oracle.User_binary_upgrade);
+		/* END - BUGZ1398 */
 		/* Dump list of dependencies */
 		for (i = 0; i < te->nDeps; i++)
 		{
@@ -4379,6 +4381,10 @@ ReadToc(ArchiveHandle *AH)
 		if (AH->version >= K_VERS_1_16)
 			te->compatible_mode = ReadStr(AH);
 		/* END - ReqID:SRS-CMD-PGDUMP */
+		/* BEGIN - BUGZ1398 */
+		if (AH->version >= K_VERS_1_17)
+			te->d.oracle.User_binary_upgrade = ReadStr(AH);
+		/* END - BUGZ1398 */
 		/* Read TOC entry dependencies */
 		if (AH->version >= K_VERS_1_5)
 		{
@@ -5444,12 +5450,10 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		{
 			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0))			/*  bug#z680 */
 			{	/* BEGIN - BUGZ1398 */
-				if(ropt->binary_upgrade)
+				if(te->d.oracle.User_binary_upgrade)
 				{
 					ahprintf(AH, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
-					ahprintf(AH,
-								"SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
-								te->catalogId.oid);
+					ahprintf(AH, "%s", te->d.oracle.User_binary_upgrade);
 				}
 				/* END - BUGZ1398 */
 				ahprintf(AH, "CREATE ROLE %s;\n", fmtId(te->tag));
