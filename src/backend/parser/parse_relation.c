@@ -1512,7 +1512,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	ParseCallbackState pcbstate;
 
 	/* Begin - ReqID:SRS-SQL-DBLINK */
-	char		*ftname = NULL;
 	char		*curdbname = NULL;
 	char  	*relnspname = NULL;
 	ForeignServer 			*server = NULL;
@@ -1523,6 +1522,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	CreateForeignTableStmt 	*cstmt = NULL;
 	RangeVar	*rangevar;
 	RangeVar	*dblinkrv = NULL;
+	RangeVar   	*localrelation;
 	List	   	*cmd_list = NIL;
 	List 		*raw_parsetree_list = NIL;
 	List 		*tupnatts = NIL;
@@ -1537,6 +1537,8 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 	/* End - ReqID:SRS-SQL-DBLINK */
 
 	setup_parser_errposition_callback(&pcbstate, pstate, relation->location);
+
+	localrelation = copyObject((RangeVar *)relation);	/* BUG#Z1388 */
 
 	/* Begin - ReqID:SRS-SQL-DBLINK */
 	if (relation->srvname != NULL)
@@ -1555,6 +1557,11 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			mapping = GetUserMapping(GetUserId(), server->serverid);
 			fdw_routine = GetFdwRoutine(fdw->fdwhandler);
 
+			if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
+				fdw_type = ORA_FDW;
+			else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
+				fdw_type = PG_FDW;
+
 			if (ORA_PARSER == compatible_db && ora_global_names)
 			{
 				if (strcmp(server->servername, server->olnk_service_name) != 0)
@@ -1562,11 +1569,12 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			}
 
 			is_dblnkrel = true;
+			localrelation->relname = psprintf("%s@%s", relation->relname, relation->srvname);
 		}
 	}
 	/* End - ReqID:SRS-SQL-DBLINK */
 
-	rel = table_openrv_extended(relation, lockmode, true);
+	rel = table_openrv_extended(localrelation, lockmode, true); /* BUG#Z1388 */
 	if (rel == NULL)
 	{
 		if (relation->schemaname && !is_dblnkrel)
@@ -1607,14 +1615,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 						elog(ERROR, "too many database links in use"); /* ORA-02020:too many database links in user */
 				}
 
-				if (strcmp(fdw->fdwname, "oracle_fdw") == 0)
-					fdw_type = ORA_FDW;
-				else if (strcmp(fdw->fdwname, "postgres_fdw") == 0)
-					fdw_type = PG_FDW;
-
-				ftname = psprintf("%s@%s", relation->relname, relation->srvname);
-
-				dblinkrv = makeRangeVar(NULL, ftname, -1);
+				dblinkrv = makeRangeVar(NULL, localrelation->relname, -1);
 				dblinkrv->relpersistence = RELPERSISTENCE_TEMP;
 				rel = table_openrv_extended(dblinkrv, lockmode, true);
 				if (rel == NULL)
@@ -1675,7 +1676,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 							  fdw->fdwname, (int) nodeTag(cstmt));
 
 					cstmt->servername = down_character(cstmt->servername, strlen(cstmt->servername));
-					cstmt->base.relation->relname = ftname;
+					cstmt->base.relation->relname = localrelation->relname;
 					cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
 
 					pstmt = makeNode(PlannedStmt);
@@ -1812,7 +1813,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				table_close(rel, lockmode);
 
 				/* 2. drop this old table */
-				dopstmt = psprintf("DROP FOREIGN TABLE %s", ftname);
+				dopstmt = psprintf("DROP FOREIGN TEMP TABLE %s", localrelation->relname);
 
 				raw_parsetree_list = pg_parse_query(dopstmt);
 				Assert(list_length(raw_parsetree_list) == 1);
@@ -1839,7 +1840,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				/* 3. create a new one using changed matedata */
 				query_string = buildCreateForeignTablequeryString(mdtupnatts_changed,
-																 ftname, relation->relname, server->servername,
+																 localrelation->relname, relation->relname, server->servername,
 																 relnspname, fdw_type);
 
 				raw_parsetree_list = pg_parse_query(query_string);

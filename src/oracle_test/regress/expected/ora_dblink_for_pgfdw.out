@@ -143,6 +143,13 @@ DO $d$
             ))'$$;
     END;
 $d$;
+/*Begin - BUG#Z1391 */
+CREATE OR REPLACE PROCEDURE ins_from_pglnk IS
+BEGIN
+    INSERT INTO it1@ivyfuplnk SELECT * FROM it1@ivyfuplnk;
+END;
+/
+/*End - BUG#Z1391 */
 -- access remote table it1, it2, it3, it4, it5 by DBLINKs
 select * from it1@ivyfuplnk;
  c1 |    c2    
@@ -257,6 +264,21 @@ select * from it1@ivyfuplnk;
   7 | SEQUENCE
 (3 rows)
 
+/*Begin - BUG#Z1391 */
+call ins_from_pglnk();
+select * from it1@ivyfuplnk;
+ c1 |    c2    
+----+----------
+ 11 | DBLINK
+  3 | PACKAGE
+  7 | SEQUENCE
+ 11 | DBLINK
+  3 | PACKAGE
+  7 | SEQUENCE
+(6 rows)
+
+drop procedure ins_from_pglnk;
+/*End - BUG#Z1391 */
 -- test alter database link command
 select umoptions from pg_user_mappings where srvname = 'ivyfurlnk';
            umoptions           
@@ -352,7 +374,10 @@ select * from it1@tdblnk;
  11 | DBLINK
   3 | PACKAGE
   7 | SEQUENCE
-(3 rows)
+ 11 | DBLINK
+  3 | PACKAGE
+  7 | SEQUENCE
+(6 rows)
 
 drop public database link glolnk;
 NOTICE:  drop cascades to user mapping for public on server glolnk
