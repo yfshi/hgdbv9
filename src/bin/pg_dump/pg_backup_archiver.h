@@ -97,10 +97,10 @@ typedef z_stream *z_streamp;
 #define K_VERS_1_15 MAKE_ARCHIVE_VERSION(1, 15, 0)	/* add ident_case for force view */
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 #define K_VERS_1_16	MAKE_ARCHIVE_VERSION(1, 16, 0)	/* ReqID:SRS-CMD-PGDUMP */
-
+#define	K_VERS_1_17 MAKE_ARCHIVE_VERSION(1, 17, 0)	/* BUGZ1398 */
 /* Current archive version number (the format we can output) */
 #define K_VERS_MAJOR 1
-#define K_VERS_MINOR 16		/* ReqID:SRS-SQL-FORCEVIEW */ /* ReqID:SRS-CMD-PGDUMP */
+#define K_VERS_MINOR 17		/* ReqID:SRS-SQL-FORCEVIEW */ /* ReqID:SRS-CMD-PGDUMP */ /* BUGZ1398 */
 #define K_VERS_REV 0
 #define K_VERS_SELF MAKE_ARCHIVE_VERSION(K_VERS_MAJOR, K_VERS_MINOR, K_VERS_REV)
 
@@ -417,6 +417,7 @@ struct _tocEntry
 		{
 			char   *usertype; 		/* ReqID:SRS-MISC-USER */
 			char	ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
+			char   *User_binary_upgrade;	/* BUGZ1398 */
 		}			oracle;
 		/*
 		struct
@@ -452,6 +453,7 @@ typedef struct _archiveOpts
 	const void *dumpArg;
 	const char	ident_case;		/* BUG#M0000323 */
 	const char *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
+	const char *User_binary_upgrade; /* BUGZ1398 */
 } ArchiveOpts;
 #define ARCHIVE_OPTS(...) &(ArchiveOpts){__VA_ARGS__}
 /* Called to add a TOC entry */
