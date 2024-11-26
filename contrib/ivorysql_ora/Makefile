@@ -96,7 +96,8 @@ ORA_REGRESS = \
 	ora_default_collation \
 	orarefcursor \
 	dm_compatible \
-	ora_dbms_job
+	ora_dbms_job \
+	decode
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
