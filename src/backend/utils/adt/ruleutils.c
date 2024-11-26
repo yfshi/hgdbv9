@@ -9479,7 +9479,10 @@ get_rule_expr(Node *node, deparse_context *context,
 				if (caseexpr->arg)
 				{
 					appendStringInfoChar(buf, ' ');
-					get_rule_expr((Node *) caseexpr->arg, context, true);
+					/* Begin - bugz1409 */
+					if (!caseexpr->is_decode)
+						get_rule_expr((Node *) caseexpr->arg, context, true);
+					/* End - bugz1409 */
 				}
 				foreach(temp, caseexpr->args)
 				{
