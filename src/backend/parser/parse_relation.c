@@ -1549,6 +1549,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 		if (strcmp(relation->srvname, curdbname) == 0)
 		{
 			is_loopbacklnkrel = true;
+			localrelation->srvname = NULL;
 		}
 		else
 		{
