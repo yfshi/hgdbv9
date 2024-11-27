@@ -1549,6 +1549,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 		if (strcmp(relation->srvname, curdbname) == 0)
 		{
 			is_loopbacklnkrel = true;
+			localrelation->srvname = NULL;
 		}
 		else
 		{
@@ -1608,8 +1609,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 					fdw_routine->DblinkAuthenticated(relation->srvname);
 
 				op_lnks = get_open_dblinks();
-
-				if (ORA_PARSER == compatible_db && (list_length(op_lnks) >= ora_open_lins))
+				if (list_length(op_lnks) >= ora_open_links_per_instance) /* BUG#Z1325 */
 				{
 					if (!list_member_oid(op_lnks, server->serverid))
 						elog(ERROR, "too many database links in use"); /* ORA-02020:too many database links in user */
@@ -1840,19 +1840,24 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 
 				/* 3. create a new one using changed matedata */
 				query_string = buildCreateForeignTablequeryString(mdtupnatts_changed,
-																 localrelation->relname, relation->relname, server->servername,
+																 relation->relname, relation->relname, server->servername,
 																 relnspname, fdw_type);
 
 				raw_parsetree_list = pg_parse_query(query_string);
 				Assert(list_length(raw_parsetree_list) == 1);
+
 				f = list_head(raw_parsetree_list);
 				rs =  lfirst(f);
+
 				cstmt = (CreateForeignTableStmt *) rs->stmt;
 
 				if (!IsA(cstmt, CreateForeignTableStmt))
 					elog(ERROR, "not a CreateForeignTableStmt");
 
+				cstmt->servername = down_character(cstmt->servername, strlen(cstmt->servername));
+				cstmt->base.relation->relname = localrelation->relname;
 				cstmt->base.relation->relpersistence = RELPERSISTENCE_TEMP;
+
 				pstmt = makeNode(PlannedStmt);
 				pstmt->commandType = CMD_UTILITY;
 				pstmt->canSetTag = false;
@@ -1860,17 +1865,17 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				pstmt->stmt_location = rs->stmt_location;
 				pstmt->stmt_len = rs->stmt_len;
 
-				ProcessUtility(pstmt, pstrdup(query_string), false,
+				ProcessUtility(pstmt, query_string, false,
 							   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
 							   None_Receiver, NULL);
 				CommandCounterIncrement();
 
-				rel = table_openrv_extended(dblinkrv, lockmode, false);
+				rel = table_openrv_extended(localrelation, lockmode, false);
 				if (rel == NULL)
 					ereport(ERROR,
 							(errcode(ERRCODE_UNDEFINED_TABLE),
 							 errmsg("relation \"%s\" does not exist",
-							 dblinkrv->relname)));
+							 localrelation->relname)));
 
 				rel->serverOid = server->serverid;
 				rel->relattrlists = mdtupnatts_changed;
@@ -1886,7 +1891,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				rel->relnspname = relnspname;
 				rel->rel_from_dblink = true;
 			}
-
 		}
 		else
 		{
@@ -1896,7 +1900,6 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			rel->relnspname = relnspname;
 			rel->rel_from_dblink = true;
 		}
-
 	}
 
 	cancel_parser_errposition_callback(&pcbstate);
