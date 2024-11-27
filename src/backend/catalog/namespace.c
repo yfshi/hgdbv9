@@ -353,7 +353,12 @@ RangeVarGetRelidExtended(const RangeVar *relation, LOCKMODE lockmode,
 		else
 		{
 			/* search the namespace path */
-			relId = RelnameGetRelid(relation->relname);
+			/* Begin - ReqID:SRS-SQL-DBLINK */
+			if (relation->srvname)
+				relId = RelnameGetRelid(psprintf("%s@%s", relation->relname, relation->srvname));
+			/* End - ReqID:SRS-SQL-DBLINK */
+			else
+				relId = RelnameGetRelid(relation->relname);
 		}
 
 		/*

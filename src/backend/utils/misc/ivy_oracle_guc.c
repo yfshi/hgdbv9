@@ -145,7 +145,8 @@ bool numerictonumber = false;
 /* End - BUG#z476 */
 
 /* Begin - ReqID:SRS-SQL-DBLINK */
-int ora_open_lins = 4;
+int ora_open_links = 4;
+int32 ora_open_links_per_instance = 4;	/* BUG#Z1325 */
 char *default_dblink_fdw = "";
 bool check_lnk_metadata_changed = false;
 bool ora_global_names = false;
@@ -802,14 +803,26 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	/* Begin - ReqID:SRS-SQL-DBLINK */
 	{
     	{"open_links", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
-        	gettext_noop("Sets the ccurrent session maximum number of database links in use."),
+			gettext_noop("Sets the global maximum number of database links in use."),
         	NULL,
         	GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
     	},
-    	&ora_open_lins,
-    	4, 1, 10,
-    	NULL, NULL, NULL
+		&ora_open_links,
+		4, 0, 32767, /* BUG#Z1397 */
+		NULL, NULL, NULL
 	},
+	/* Begin - BUG#Z1325 */
+	{
+		{"open_links_per_instance", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Sets the instance maximum number of database links in use."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&ora_open_links_per_instance,
+		4, 0, 32767,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z1325 */
 	/* End - ReqID:SRS-SQL-DBLINK */	
 #endif
 #if 0
