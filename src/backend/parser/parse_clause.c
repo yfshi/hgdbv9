@@ -3130,6 +3130,74 @@ pseudo_collation_replace_CoalesceExpr(CoalesceExpr *expr, pseudo_collation_repla
 }
 /* End - BUG#M0000424 */
 
+/* Begin - BUG#Z1420 */
+static inline void 
+pseudo_collation_replace_ResTarget(ResTarget *res, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker(res->val, context);
+}
+
+static inline void 
+pseudo_collation_replace_CaseExpr(CaseExpr *c, pseudo_collation_replace_context *context)
+{
+	if (equal(c->arg, context->base))
+		c->arg = (Expr *) makePseudoCollationReplaceNode((Node *) c->arg, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) c->arg, context);
+
+	pseudo_collation_replace_walker((Node *) c->args, context);
+	
+	if (equal(c->defresult, context->base))
+		c->defresult = (Expr *) makePseudoCollationReplaceNode((Node *) c->defresult, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) c->defresult, context);
+}
+
+static inline void 
+pseudo_collation_replace_CaseWhen(CaseWhen *cw, pseudo_collation_replace_context *context)
+{
+	if (equal(cw->expr, context->base))
+		cw->expr = (Expr *) makePseudoCollationReplaceNode((Node *) cw->expr, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) cw->expr, context);
+
+	if (equal(cw->orig_expr, context->base))
+		cw->orig_expr = (Expr *) makePseudoCollationReplaceNode((Node *) cw->orig_expr, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) cw->orig_expr, context);
+
+	if (equal(cw->result, context->base))
+		cw->result = (Expr *) makePseudoCollationReplaceNode((Node *) cw->result, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) cw->result, context);
+}
+
+static inline void 
+pseudo_collation_replace_BoolExpr(BoolExpr *b, pseudo_collation_replace_context *context)
+{
+	pseudo_collation_replace_walker((Node *) b->args, context);
+}
+
+static inline void 
+pseudo_collation_replace_TypeCast(TypeCast *t, pseudo_collation_replace_context *context)
+{
+	if (equal(t->arg, context->base))
+		t->arg = makePseudoCollationReplaceNode((Node *) t->arg, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) t->arg, context);
+}
+
+static inline void 
+pseudo_collation_replace_NullTest(NullTest *nt, pseudo_collation_replace_context *context)
+{
+	if (equal(nt->arg, context->base))
+		nt->arg = (Expr *) makePseudoCollationReplaceNode((Node *) nt->arg, context->targetcoll);
+	else
+		pseudo_collation_replace_walker((Node *) nt->arg, context);
+}
+
+/* End - BUG#Z1420 */
+
 static bool 
 pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context)
 {	
@@ -3200,6 +3268,27 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 			break;
 		/* End - BUG#M0000424 */
 
+		/* Begin - BUG#Z1420 */
+		case T_ResTarget:
+			pseudo_collation_replace_ResTarget((ResTarget *) node, context);
+			break;
+		case T_CaseExpr:
+			pseudo_collation_replace_CaseExpr((CaseExpr *) node, context);
+			break;
+		case T_CaseWhen:
+			pseudo_collation_replace_CaseWhen((CaseWhen *) node, context);
+			break;
+		case T_BoolExpr:
+			pseudo_collation_replace_BoolExpr((BoolExpr *) node, context);
+			break;
+		case T_TypeCast:
+			pseudo_collation_replace_TypeCast((TypeCast *) node, context);
+			break;
+		case T_NullTest:
+			pseudo_collation_replace_NullTest((NullTest *) node, context);
+			break;
+		/* End - BUG#Z1420 */
+		
 		default:
 			break;
 	}
