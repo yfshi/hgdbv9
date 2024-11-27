@@ -5280,7 +5280,8 @@ IndexCollationPersistent(Oid collid)
 		return collid;
 	}
 
-	switch(collid) {
+	switch(collid) 
+	{
 		case ORA_COLL_OID(USING_NLS_COMP):
 		case ORA_COLL_OID(USING_NLS_SORT):
 		case ORA_COLL_OID(USING_NLS_SORT_CS):
