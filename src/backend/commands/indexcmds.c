@@ -1234,13 +1234,15 @@ DefineIndex(Oid relationId,
 	}
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	if (ORA_PARSER == compatible_db && pg_object_create_obj_hook)
-		pg_object_create_obj_hook(stmt->idxname,
-										RelationGetNamespace(rel),
-										false,
-										RELKIND_INDEX,
-										address,
-										NULL,
-										NULL);
+	{
+		pg_object_create_obj_hook(indexRelationName, 		/* BUG#Z1410 */
+								  RelationGetNamespace(rel),
+								  false,
+								  RELKIND_INDEX,
+								  address,
+								  NULL,
+								  NULL);
+	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 	/*
 	 * Roll back any GUC changes executed by index functions, and keep
