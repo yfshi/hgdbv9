@@ -5711,12 +5711,48 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 			is_plisql_rowtype_record((PLiSQL_rec *) target)))
 		{
 			TupleDesc target_desc;
+			TupleDesc src_desc = NULL;
 
 			oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
 			target_desc = plisql_get_tupledesc_fromvar(estate, target);
 			MemoryContextSwitchTo(oldcontext);
 			if (target_desc != NULL)
-				ora_test_tupdesc_match(tuptab->tupdesc, target_desc, true);
+			{
+				/* Begin - BUG#Z0001372 */
+				/*
+				 * there maybe select one rowtype column into var%rowtype
+				 * which we should check its rowtype tupdesc match to
+				 * target desc not the origin tuptab->tupdesc, which is
+				 * always one columns and its oid is RECORDOID
+				 */
+				if (tuptab->tupdesc->natts == 1 &&
+					tuptab->tupdesc->tdtypeid == RECORDOID &&
+					tuptab->tupdesc->attrs[0].atttypid == target_desc->tdtypeid)
+				{
+					oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+					src_desc = lookup_rowtype_tupdesc_domain(tuptab->tupdesc->attrs[0].atttypid,
+															tuptab->tupdesc->attrs[0].atttypmod,
+															true);
+					if (src_desc == NULL)
+						src_desc = tuptab->tupdesc;
+					else
+					{
+						TupleDesc tmp_desc = CreateTupleDescCopyConstr(src_desc);
+
+						ReleaseTupleDesc(src_desc);
+
+						src_desc = tmp_desc;
+					}
+
+					MemoryContextSwitchTo(oldcontext);
+				}
+				else
+					src_desc = tuptab->tupdesc;
+
+				Assert(src_desc != NULL);
+				ora_test_tupdesc_match(src_desc, target_desc, true);
+				/* End - BUG#Z00001372 */
+			}
 		}
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 
@@ -8625,9 +8661,60 @@ exec_move_row(PLiSQL_execstate *estate,
 
 		/* Begin - ReqID:SRS-PLSQL-CURSOR */
 		if (is_rowtype_rec)
+		{
+			/* Begin - BUG#Z0001372 */
+			TupleDesc targetdesc = expanded_record_get_tupdesc(newerh);
+			/*
+			 * there maybe select one rowtype column into var%rowtype
+			 * which we should check its rowtype tupdesc match to
+			 * target desc not the origin tuptab->tupdesc, which is
+			 * always one columns and its oid is RECORDOID
+			 */
+			if (tupdesc->natts == 1 &&
+				tupdesc->tdtypeid == RECORDOID &&
+				tupdesc->attrs[0].atttypid == targetdesc->tdtypeid)
+			{
+				MemoryContext oldcontext;
+				TupleDesc src_desc;
+
+				oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+				src_desc = lookup_rowtype_tupdesc_domain(tupdesc->attrs[0].atttypid,
+														tupdesc->attrs[0].atttypmod,
+														true);
+				if (src_desc != NULL)
+				{
+					/*
+					 * has change tupdesc, so we change tup
+					 */
+					if (HeapTupleIsValid(tup))
+					{
+						Datum		tmp_values[1];
+						bool		tmp_nulls[1];
+						HeapTupleHeader tuphd;
+						HeapTupleData tupledata;
+
+						heap_deform_tuple(tup, tupdesc, tmp_values, tmp_nulls);
+						Assert(!tmp_nulls[0]);
+						tuphd = DatumGetHeapTupleHeader(tmp_values[0]);
+
+						tupledata.t_len = HeapTupleHeaderGetDatumLength(tuphd);
+						ItemPointerSetInvalid(&(tupledata.t_self));
+						tupledata.t_tableOid = InvalidOid;
+						tupledata.t_data = tuphd;
+
+						tup = heap_copytuple(&tupledata);
+					}
+					tupdesc = CreateTupleDescCopyConstr(src_desc);
+					ReleaseTupleDesc(src_desc);
+				}
+				MemoryContextSwitchTo(oldcontext);
+			}
+
 			ora_test_tupdesc_match(tupdesc,
-				expanded_record_get_tupdesc(newerh),
+				targetdesc,
 				true);
+			/* End - BUG#Z00001372 */
+		}
 		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		/*
@@ -8884,16 +8971,6 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 	int			fnum;
 	int			anum;
 	int			strict_multiassignment_level = 0;
-	/* Begin - ReqID:SRS-SQL-ROWID */
-	HeapTupleHeader tuphd = NULL;
-	Oid 		tupType;
-	int32		tupTypmod;
-	TupleDesc	rowidtupdesc;
-	HeapTupleData tuple;
-	Datum	   *r_values = NULL;
-	bool	   *r_nulls = NULL;
-	bool		is_rowid_var = false;
-	/* End - ReqID:SRS-SQL-ROWID */
 
 	/*
 	 * The extra check strict strict_multi_assignment can be active, only when
@@ -8933,38 +9010,6 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 		Assert(newerh != NULL); /* caller must have built new object */
 
 		var_tupdesc = expanded_record_get_tupdesc(newerh);
-
-		/* Begin - ReqID:SRS-SQL-ROWID */
-		if (compatible_db == DB_ORACLE && (rec->datatype->typoid == ROWIDOID ||
-			rec->datatype->typoid == UROWIDOID))
-		{
-			is_rowid_var = true;
-
-			for (int i = 0; i < tupdesc->natts; i++)
-			{
-				if (strcmp(pstrdup(NameStr(tupdesc->attrs[i].attname)), "rowid") == 0)
-					tuphd = DatumGetHeapTupleHeader(values[i]);
-			}
-
-			if (tuphd)
-			{
-				tupType = HeapTupleHeaderGetTypeId(tuphd);
-				tupTypmod = HeapTupleHeaderGetTypMod(tuphd);
-				rowidtupdesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
-
-				tuple.t_len = HeapTupleHeaderGetDatumLength(tuphd);
-				ItemPointerSetInvalid(&(tuple.t_self));
-				tuple.t_tableOid = InvalidOid;
-				tuple.t_data = tuphd;
-
-				r_values = (Datum *) palloc(rowidtupdesc->natts * sizeof(Datum));
-				r_nulls = (bool *) palloc(rowidtupdesc->natts * sizeof(bool));
-
-				heap_deform_tuple(&tuple, rowidtupdesc, r_values, r_nulls);
-				ReleaseTupleDesc(rowidtupdesc);
-			}
-		}
-		/* End - ReqID:SRS-SQL-ROWID */
 
 		/*
 		 * Coerce field values if needed.  This might involve dealing with
@@ -9035,17 +9080,7 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 					   TupleDescAttr(tupdesc, anum_value)->attisdropped)
 					anum++;		/* skip dropped column in tuple */
 
-				/* Begin - ReqID:SRS-SQL-ROWID */
-				if (is_rowid_var && anum < var_tupdesc->natts)
-				{
-					value = r_values[anum];
-					isnull = r_nulls[anum];
-					valtype = attr->atttypid;
-					valtypmod = attr->atttypmod;
-
-					anum++;
-				}/* End - ReqID:SRS-SQL-ROWID */
-				else if (anum < td_natts)
+				if (anum < td_natts)
 				{
 					value = values[anum_value];
 					isnull = nulls[anum_value];
@@ -9095,7 +9130,6 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			 * When strict_multiassignment extra check is active, then ensure
 			 * there are no unassigned source attributes.
 			 */
-			/* Begin - ReqID:SRS-SQL-ROWID */
 			if (is_ora_rec)
 			{
 				if (strict_multiassignment_level && anum_value - 1 < td_natts)
@@ -9119,7 +9153,6 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			}
 			else
 			{
-			/* End - ReqID:SRS-SQL-ROWID */
 				if (strict_multiassignment_level && anum < td_natts)
 				{
 					/* skip dropped columns in the source descriptor */
@@ -9143,10 +9176,6 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 			values = newvalues;
 			nulls = newnulls;
 
-			if (r_values)
-				pfree(r_values);
-			if (r_nulls)
-				pfree(r_nulls);
 		}
 
 		/* Insert the coerced field values into the new expanded record */
