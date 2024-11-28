@@ -1543,7 +1543,7 @@ explain (costs off)
                  ->  Seq Scan on pg_class pg_class_1
    ->  Unique
          ->  Sort
-               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "c"
                ->  Append
                      ->  Index Scan using pg_class_relname_nsp_index on pg_class
                            Index Cond: (relname = (ora_case_trans($0))::text)
@@ -1578,7 +1578,7 @@ explain (costs off)
                                    ->  Seq Scan on pg_type
    ->  Unique
          ->  Sort
-               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               Sort Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "c"
                ->  Append
                      ->  Index Scan using pg_class_relname_nsp_index on pg_class
                            Index Cond: (relname = (ora_case_trans($0))::text)
@@ -1917,14 +1917,14 @@ explain (costs off)
    ->  Merge Join
          Merge Cond: (((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) = v_oct_3.name)
          ->  Sort
-               Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "c"
                ->  HashAggregate
                      Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
                      ->  Append
                            ->  Seq Scan on pg_class
                            ->  Seq Scan on pg_proc
          ->  Sort
-               Sort Key: v_oct_3.name COLLATE "C"
+               Sort Key: v_oct_3.name COLLATE "c"
                ->  Subquery Scan on v_oct_3
                      ->  HashAggregate
                            Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
@@ -1950,7 +1950,7 @@ explain (costs off)
    ->  Merge Join
          Merge Cond: (v_oct_2.name = ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)))
          ->  Sort
-               Sort Key: v_oct_2.name COLLATE "C"
+               Sort Key: v_oct_2.name COLLATE "c"
                ->  Subquery Scan on v_oct_2
                      ->  HashAggregate
                            Group Key: (((pg_class.oid)::varchar2(10))::number), ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128))
@@ -1958,7 +1958,7 @@ explain (costs off)
                                  ->  Seq Scan on pg_class
                                  ->  Seq Scan on pg_proc
          ->  Sort
-               Sort Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) COLLATE "C"
+               Sort Key: ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128)) COLLATE "c"
                ->  HashAggregate
                      Group Key: (((pg_class_1.oid)::varchar2(10))::number), ((ora_case_trans((pg_class_1.relname)::varchar2))::varchar2(128))
                      ->  Append
@@ -1981,7 +1981,7 @@ explain (costs off)
 -----------------------------------------------------------------------------------------------
  Limit
    ->  Sort
-         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C"
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "c"
          ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
 (4 rows)
 
@@ -1998,7 +1998,7 @@ explain (costs off)
 ----------------------------------------------------------------------------------------------------
  Limit
    ->  Sort
-         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "C" DESC
+         Sort Key: ((ora_case_trans((pg_class.relname)::varchar2))::varchar2(128)) COLLATE "c" DESC
          ->  Index Only Scan using pg_class_relname_nsp_index on pg_class
 (4 rows)
 

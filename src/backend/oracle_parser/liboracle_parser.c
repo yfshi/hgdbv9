@@ -40,6 +40,7 @@
 #include "parser/scansup.h"
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
+#include "utils/guc.h" /* BUG#Z1423 */
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 #include "parser/parse_param.h"
 /* End - ReqID:SRS-SQL-ANONYOUT */
@@ -1495,20 +1496,48 @@ oracle_quote_identifier(const char *ident)
 	if (safe)
 		return ident;			/* no change needed */
 
-	result = (char *) palloc(strlen(ident) + nquotes + 2 + 1);
-
-	optr = result;
-	*optr++ = '"';
-	for (ptr = ident; *ptr; ptr++)
+	/* Begin - BUG#Z1423 */
+	if (compatible_db == ORA_PARSER && identifier_case_switch == INTERCHANGE)
 	{
-		char		ch = *ptr;
+		char *ident_case;
 
-		if (ch == '"')
-			*optr++ = '"';
-		*optr++ = ch;
+		ident_case = string_case_transform(ident, strlen(ident));
+
+		result = (char *) palloc(strlen(ident_case) + nquotes + 2 + 1);
+
+		optr = result;
+		*optr++ = '"';
+		for (ptr = ident_case; *ptr; ptr++)
+		{
+			char		ch = *ptr;
+
+			if (ch == '"')
+				*optr++ = '"';
+			*optr++ = ch;
+		}
+		*optr++ = '"';
+		*optr = '\0';
+
+		pfree(ident_case);
 	}
-	*optr++ = '"';
-	*optr = '\0';
+	else
+	/* End - BUG#Z1423 */
+	{
+		result = (char *) palloc(strlen(ident) + nquotes + 2 + 1);
+
+		optr = result;
+		*optr++ = '"';
+		for (ptr = ident; *ptr; ptr++)
+		{
+			char		ch = *ptr;
+
+			if (ch == '"')
+				*optr++ = '"';
+			*optr++ = ch;
+		}
+		*optr++ = '"';
+		*optr = '\0';
+	}
 
 	return result;
 }
