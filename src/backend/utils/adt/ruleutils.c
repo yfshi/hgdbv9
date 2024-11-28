@@ -90,10 +90,6 @@
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
-/* Begin - BUG#M0000340 */
-#include "utils/guc.h"
-#include "common/fe_memutils.h"
-/* End - BUG#M0000340 */
 
 /* ----------
  * Pretty formatting constants
@@ -522,10 +518,6 @@ static void get_reloptions(StringInfo buf, Datum reloptions);
 /* BEGIN - SQL PARSER */
 static const char *standard_quote_identifier(const char *ident);
 /* END - SQL PARSER */
-/* Begin - BUG#M0000340 */
-static const char *interchange_transform(const char *ident);
-static bool all_uppercase_or_lowercase(const char *ident);
-/* End - BUG#M0000340 */
 
 Datum pg_get_functiondef_internal(PG_FUNCTION_ARGS); /* BUG:Z139 */
 
@@ -7833,7 +7825,7 @@ get_variable(Var *var, int levelsup, bool istoplevel, deparse_context *context)
 
 	if (refname && (context->varprefix || attname == NULL))
 	{
-		appendStringInfoString(buf, interchange_transform(quote_identifier(refname)));	/* BUG#M0000340 */
+		appendStringInfoString(buf, quote_identifier(refname));
 		appendStringInfoChar(buf, '.');
 	}
 	if (attname)
@@ -12256,26 +12248,11 @@ quote_qualified_identifier(const char *qualifier,
 						   const char *ident)
 {
 	StringInfoData buf;
-	char *result;
 
 	initStringInfo(&buf);
 	if (qualifier)
-	/* Begin - BUG#M0000340 */
-	{
-		if (compatible_db == ORA_PARSER && identifier_case_switch == INTERCHANGE && database_mode == DB_ORACLE && all_uppercase_or_lowercase(qualifier))
-		{
-			appendStringInfo(&buf, "\"%s\".", interchange_transform(qualifier));
-		}
-		else
-			appendStringInfo(&buf, "%s.", quote_identifier(qualifier));
-	}
-
-	result = (char *)quote_identifier(ident);
-	if (result[0] == '"')
-		appendStringInfoString(&buf, interchange_transform(result));
-	else
-		appendStringInfoString(&buf, quote_identifier(ident));
-	/* End - BUG#M0000340 */
+		appendStringInfo(&buf, "%s.", quote_identifier(qualifier));
+	appendStringInfoString(&buf, quote_identifier(ident));
 	return buf.data;
 }
 
@@ -13228,72 +13205,3 @@ pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate **tupstore,
 	pfree(typeName);
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
-
-/* Begin - BUG#M0000340 */
-static const char *
-interchange_transform(const char *ident)
-{
-	char *result;
-	int i;
-
-	result = (char *) palloc(strlen(ident) + 1);
-
-	if (compatible_db != ORA_PARSER || database_mode != DB_ORACLE || identifier_case_switch != INTERCHANGE || !all_uppercase_or_lowercase(ident))
-	{
-		result = (char *)ident;
-		return result;
-	}
-
-	for (i = 0 ; i <= strlen(ident); i++ )
-	{
-		if ((ident[i] >= 'A' && ident[i] <= 'Z') || (ident[i] >= 'a' && ident[i] <= 'z'))
-		{
-			if (ident[i] >= 'A' && ident[i] <= 'Z')
-				result[i] = ident[i] + 32;
-			else
-				result[i] = ident[i] - 32;
-		}
-		else
-			result[i] = ident[i];
-	}
-
-	return result;
-}
-
-static bool
-all_uppercase_or_lowercase(const char *ident)
-{
-	/* true for all uppercase, false for all lowercase */
-	bool now_case;
-	bool pre_case;
-	int i;
-	now_case = true;
-	pre_case = true;
-
-	for (i = 1; i < strlen(ident); i++)
-	{
-		if ((ident[i] >= 'A' && ident[i] <= 'Z') || (ident[i] >= 'a' && ident[i] <= 'z'))
-		{
-			if (ident[i] >= 'A' && ident[i] <= 'Z')
-			{
-				pre_case = now_case;
-				now_case = true;
-				if (pre_case != now_case)
-					return false;
-			}
-			else
-			{
-				pre_case = now_case;
-				now_case = false;
-				if (pre_case != now_case)
-					return false;
-			}
-		}
-		else
-			continue;
-	}
-
-	return true;
-
-}
-/* End - BUG#M0000340 */

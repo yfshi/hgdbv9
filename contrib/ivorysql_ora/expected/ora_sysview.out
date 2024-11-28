@@ -48,7 +48,7 @@ END;
 SELECT NAME, LINE, TEXT FROM ALL_SOURCE WHERE NAME = 'func_quotes_lower';
        name        | line |                      text                       
 -------------------+------+-------------------------------------------------
- func_quotes_lower | 1    | FUNCTION public."func_quotes_lower"(id integer)
+ func_quotes_lower | 1    | FUNCTION public."FUNC_QUOTES_LOWER"(id integer)
  func_quotes_lower | 2    |  RETURN varchar2
  func_quotes_lower | 3    |  AUTHID DEFINER
  func_quotes_lower | 4    | IS 
