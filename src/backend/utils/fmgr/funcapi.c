@@ -2915,3 +2915,18 @@ get_subproc_parallel_enable(FuncExpr *funcexpr)
 }
 /* End - BUG#M0000141 */
 
+/* Begin - BUG#M0000432 */
+/*
+ * get subproc deterministic.
+ */
+char
+get_subproc_deterministic(FuncExpr *funcexpr)
+{
+	plisql_internel_funcs_init();
+
+	if (FUNC_EXPR_FROM_PACKAGE(funcexpr->function_from))
+		set_pkginfo_from_funcexpr(funcexpr);
+
+	return plisql_internal_funcs.get_subproc_deterministic(funcexpr);
+}
+/* ENd - BUG#M0000432 */

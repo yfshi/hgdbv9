@@ -231,6 +231,10 @@ extern void release_package_func_usecount(FunctionCallInfo fcinfo);
 extern char plisql_get_subproc_parallel_enable(FuncExpr *fexpr);
 /* End - BUG#M0000141 */
 
+/* Begin - BUG#M0000432 */
+extern char plisql_get_subproc_deterministic(FuncExpr *fexpr);
+/* End - BUG#M0000432 */
+
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 extern void plisql_push_compile_global_proper(void);
 extern void plisql_pop_compile_global_proper(void);

@@ -4156,4 +4156,38 @@ plisql_get_subproc_parallel_enable(FuncExpr *fexpr)
 }
 /* End - BUG#M0000141 */
 
+/* Begin - BUG#M0000432 */
+/*
+ * like func_volatile, we get subproc func_deterministic
+ */
+char
+plisql_get_subproc_deterministic(FuncExpr *fexpr)
+{
+	PLiSQL_function *function;
+	PLiSQL_subproc_function *subprocfunc;
+	ListCell *lc;
+
+	if (FUNC_EXPR_FROM_PG_PROC(fexpr->function_from))
+		elog(ERROR, "FuncExpr is not a internal function");
+
+	function = get_parent_func(fexpr);
+	if (function == NULL)
+		elog(ERROR, "parent_func has not set");
+
+	if (fexpr->funcid < 0 || fexpr->funcid >= function->nsubprocfuncs)
+		elog(ERROR, "invalid fno %d", fexpr->funcid);
+
+	subprocfunc = function->subprocfuncs[fexpr->funcid];
+
+	foreach (lc, subprocfunc->properties)
+	{
+		PLiSQL_subprocfunc_proper *proper = (PLiSQL_subprocfunc_proper *) lfirst(lc);
+
+		if (proper->proper_type == FUNC_PROPER_DETERMINISTIC)
+			return PROVOLATILE_IMMUTABLE;
+	}
+
+	return PROVOLATILE_VOLATILE;
+}
+/* End - BUG#M0000432 */
 
