@@ -26,6 +26,7 @@ extern char *upcase_identifier(const char *ident, int len,
 extern char *identifier_case_transform(const char *ident, int len);
 /* END - case sensitive indentify */
 
+extern char *string_case_transform(const char *ident, int len); /* BUG#Z1423 */
 extern void truncate_identifier(char *ident, int len, bool warn);
 
 extern bool scanner_isspace(char ch);

@@ -149,6 +149,41 @@ identifier_case_transform(const char *ident, int len)
 	return result;
 }
 
+/* Begin - BUG#Z1423 */
+/*
+ * Same as identifier_case_transform except that 
+ * identifiers are not truncated according to the
+ * length of NAMEDATALEN.
+ */
+char *
+string_case_transform(const char *ident, int len)
+{
+	char *upper_ident = NULL, *lower_ident = NULL, *result = NULL;
+
+	upper_ident = upcase_identifier(ident, len, false, false);
+	lower_ident = downcase_identifier(ident, len, false, false);
+
+	if (strcmp(upper_ident, ident) == 0)
+	{
+		result = lower_ident;
+		pfree(upper_ident);
+	}
+	else if (strcmp(lower_ident, ident) == 0)
+	{
+		result = upper_ident;
+		pfree(lower_ident);
+	}
+	else
+	{
+		result = palloc0(len + 1);
+		memcpy(result, ident, len);
+		pfree(upper_ident);
+		pfree(lower_ident);
+	}
+
+	return result;
+}
+/* End - BUG#Z1423 */
 
 /*
  * truncate_identifier() --- truncate an identifier to NAMEDATALEN-1 bytes.

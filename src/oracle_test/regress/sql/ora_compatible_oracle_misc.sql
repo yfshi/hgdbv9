@@ -58,3 +58,28 @@ create table test_m424(item varchar2(64), year timestamp, quantity int);
 select nvl(item, 'aaa') a , nvl(year, '1990-1-1') b , sum(quantity) from test_m424 group by item, rollup(year);
 drop table test_m424;
 /* End - BUG#M0000424 */
+
+/* Begin - BUG#Z1423 */
+-- bug case.
+SET ivorysql.identifier_case_switch=interchange;
+create table test_z1423(a number,b varchar2(50));
+create or replace view v_test_z1423 as select to_number(b) from test_z1423;
+select pg_get_viewdef('v_test_z1423'::regclass);	-- "TO_NUMBER"
+SET ivorysql.identifier_case_switch=normal;
+select pg_get_viewdef('v_test_z1423'::regclass);	-- "to_number"
+drop view v_test_z1423;
+drop table test_z1423;
+
+-- table name is keyword.
+SET ivorysql.identifier_case_switch=interchange;
+create table "UNION"(a number,b varchar2(50));
+create or replace view v_test_z1423 as select to_number(b) from "UNION";
+select pg_get_viewdef('v_test_z1423'::regclass);	-- "TO_NUMBER" and "UNION"
+SET ivorysql.identifier_case_switch=normal;
+select pg_get_viewdef('v_test_z1423'::regclass);	-- "to_number" and "union"
+
+SET ivorysql.identifier_case_switch=interchange;
+drop view v_test_z1423;
+drop table "UNION";
+SET ivorysql.identifier_case_switch=normal;
+/* End - BUG#Z1423 */
