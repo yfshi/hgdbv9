@@ -262,3 +262,59 @@ insert into  blob_test(val) values('ff2020');
 insert into  blob_test(val) values('ff200020');
 select       nlssort(val)   from blob_test;
 drop table   blob_test;
+
+-- BUG#M0000436, test collation inherit
+---- When ivorysql.enable_ora_default_collation = on
+set ivorysql.enable_ora_default_collation = on;
+create table ora_default_collation_test(ora_default_collation_col text);
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+drop table ora_default_collation_test;
+
+set default_collation to 'DEFAULT';
+create table ora_default_collation_test(ora_default_collation_col text);
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+drop table ora_default_collation_test;
+
+set default_collation to DEFAULT;
+create table ora_default_collation_test(ora_default_collation_col text);
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+drop table ora_default_collation_test;
+
+---- When ivorysql.enable_ora_default_collation = off
+set ivorysql.enable_ora_default_collation = off;
+create table ora_default_collation_test(ora_default_collation_col text);
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;
+
+
+-- BUG#M0000436
+---- GUC default_collation can set libc or icu collation
+set ivorysql.enable_ora_default_collation = on;
+set default_collation to 'DEFAULT';
+set default_collation to 'C';
+set default_collation to 'POSIX';
+reset default_collation;
+
+---- CREATE TABLE DEFAULT COLLATION can set libc or icu collation
+set ivorysql.enable_ora_default_collation = on;
+CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION schinese_pinyin_m;
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;
+
+CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION DEFAULT;
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;
+
+CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION C;
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;
+
+CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION POSIX;
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;
+
+---- if ivorysql.enable_ora_default_collation is off, CREATE TABLE DEFAULT COLLATION invalid
+set ivorysql.enable_ora_default_collation = off;
+CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION schinese_pinyin_m;
+select attcollation from pg_attribute where attname = 'ora_default_collation_col';
+DROP TABLE ora_default_collation_test;

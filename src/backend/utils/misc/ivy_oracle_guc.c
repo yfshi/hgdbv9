@@ -1530,7 +1530,12 @@ default_collation_check(char **newval, void **extra, GucSource source)
 		if (strlen(*newval))
 		{
 			coll = CollationGetCollid(*newval);
-			if (!OidIsValid(coll) || get_collation_provider(coll) != COLLPROVIDER_ORACLE)
+
+			/**
+			 * BUG#M0000436
+			 * We allow to set DEFAULT_COLLATION with libc or ICU's collation.
+			 */
+			if (!OidIsValid(coll))
 				ereport(ERROR, (errmsg("IVY-12705: Cannot access NLS data files or invalid environment specified")));
 		}
 
@@ -1545,6 +1550,8 @@ default_collation_assign(const char *newval, void *extra)
 {
 	if (strlen(newval))
 		default_collation_oid = CollationGetCollid(newval);
+	else
+		default_collation_oid = InvalidOid; /* BUG#M0000436 */
 }
 
 static bool

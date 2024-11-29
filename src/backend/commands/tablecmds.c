@@ -1450,10 +1450,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	if(pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
-		/* BEGIN - BUG#M0000404 */
-		// ListCell	*cell;
-		// int			num = 1;
-		/* END - BUG#M0000404 */
 		StringInfoData	str;
 		initStringInfo(&str);
 		if (relkind == RELKIND_SEQUENCE)
@@ -1506,60 +1502,37 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		if (relkind == RELKIND_SEQUENCE)
 			return address;
-/* BEGIN - BUG#M0000404 */
-#if 0
-		if (compatible_db == MYS_PARSER)
-		{
-			foreach(cell, stmt->tableElts)
-			{
-				ObjectAddress	newaddress;
-
-				ObjectAddressSubSet(newaddress, AttributeRelationId, relationId, num++);
-				if (IsA(lfirst(cell), ColumnDef))
-				{
-					ColumnDef *coldef = (ColumnDef *)lfirst(cell);
-
-					pg_object_create_obj_hook(coldef->colname, namespaceId,
-														false,
-														'c',
-														newaddress,
-														NULL,
-														NULL);
-				}
-			}
-		}
-#endif
-/* END - BUG#M0000404 */
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
+
 	CommandCounterIncrement();
-		/* 
-		* ReqID:SRS-SQL-NLSSORT
-		* Set table's collation, or inherit from Effective Schema Default Collation,
-		* Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
-		*/
-		if (ORA_PARSER == compatible_db &&
-			enable_ora_default_collation &&
-			(relkind == RELKIND_RELATION ||
-				relkind == RELKIND_PARTITIONED_TABLE ||
-				relkind == RELKIND_FOREIGN_TABLE ||
-				relkind == RELKIND_COMPOSITE_TYPE))
+
+	/* 
+	 * ReqID:SRS-SQL-NLSSORT
+	 * Set table's collation, or inherit from Effective Schema Default Collation,
+	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
+	 */
+	if (ORA_PARSER == compatible_db &&
+		enable_ora_default_collation &&
+		(relkind == RELKIND_RELATION ||
+		 relkind == RELKIND_PARTITIONED_TABLE ||
+		 relkind == RELKIND_FOREIGN_TABLE ||
+		 relkind == RELKIND_COMPOSITE_TYPE))
+	{
+		Oid	relColl;
+
+		if(stmt->collname)
 		{
-			Oid	relColl;		
+			relColl = CollationGetCollid(stmt->collname);
+			if (!OidIsValid(relColl))
+				ereport(ERROR,
+						errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
+		} 
+		else
+			relColl = GetNamespaceCollation(namespaceId);
 
-			if(stmt->collname)
-			{
-				relColl = CollationGetCollid(stmt->collname);
-				if (!OidIsValid(relColl))
-					ereport(ERROR,
-							errmsg("IVY-12746: unrecognized collation name \"%s\"", stmt->collname));
-			} 
-			else
-				relColl = GetNamespaceCollation(namespaceId);
-
-			SetRelationCollation(relname, namespaceId, relColl, address);
-		}
-
+		SetRelationCollation(relname, namespaceId, relColl, address);
+	}
 
 	return address;
 }
@@ -20374,6 +20347,12 @@ ATExecDefaultCollation(Relation relation, char *collname)
 	Oid				newColl;
 	Oid				oldColl;
 	ObjectAddress 	address = InvalidObjectAddress;
+
+	/* Begin - BUG#M0000436 */
+	if (ORA_PARSER != compatible_db ||
+		!enable_ora_default_collation)
+		return InvalidObjectAddress;
+	/* End - BUG#M0000436 */
 
 	newColl = CollationGetCollid(collname);
 	if (!OidIsValid(newColl))
