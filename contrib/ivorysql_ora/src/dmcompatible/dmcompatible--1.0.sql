@@ -1929,6 +1929,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp_explicit(sys.oravarcharbyte, sys.o
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp_explicit'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -1937,6 +1938,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp_explicit(sys.oravarcharbyte, sys.o
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp_explicit'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -1945,6 +1947,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp_explicit(sys.oravarcharchar, sys.o
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp_explicit'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -1953,6 +1956,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp_explicit(sys.oravarcharchar, sys.o
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp_explicit'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -1961,6 +1965,7 @@ CREATE FUNCTION sys.orabttextcmp_explicit(text, text)
 RETURNS integer
 AS 'MODULE_PATHNAME','orabttextcmp_explicit'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;

@@ -37,6 +37,7 @@ CREATE FUNCTION sys.sysrefcursorin(cstring)
 RETURNS sys.sys_refcursor
 AS 'MODULE_PATHNAME','sysrefcursorin'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -44,6 +45,7 @@ CREATE FUNCTION sys.sysrefcursorout(sys.sys_refcursor)
 RETURNS CSTRING
 AS 'MODULE_PATHNAME','sysrefcursorout'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
