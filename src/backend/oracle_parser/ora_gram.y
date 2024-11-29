@@ -7848,7 +7848,8 @@ any_name_list:
 
 any_name:	ColId						{ $$ = list_make1(makeString($1)); }
 			| ColId attrs				{ $$ = lcons(makeString($1), $2); }
-			| BINARY					{ $$ = list_make1(makeString("binary")); }/* SRS-SQL-NLSSORT */
+			| BINARY					{ $$ = list_make1(makeString("binary")); }  /* SRS-SQL-NLSSORT */
+			| DEFAULT					{ $$ = list_make1(makeString("DEFAULT")); } /* BUG#M0000436 */
 		;
 
 attrs:		'.' attr_name
@@ -22722,8 +22723,10 @@ SplitColQualList(List *qualList,
 			CollateClause *c = (CollateClause *) n;
 
 			/* Begin - ReqID:SRS-SQL-NLSSORT */
-			if(ORA_PARSER == compatible_db) {
-				if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) {
+			if(ORA_PARSER == compatible_db) 
+			{
+				if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) 
+				{
 					elog(ERROR, "ORA-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.");
 				}
 			}
