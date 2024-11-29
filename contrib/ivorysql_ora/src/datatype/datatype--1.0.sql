@@ -40,6 +40,7 @@ CREATE FUNCTION sys.oracharchartypmodin(cstring[])
 RETURNS integer
 AS 'MODULE_PATHNAME','oracharchartypmodin'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -82,6 +83,7 @@ CREATE FUNCTION sys.btoravarstrequalimage(oid)
 RETURNS boolean
 AS 'btvarstrequalimage'
 LANGUAGE internal
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -146,6 +148,7 @@ CREATE FUNCTION sys.inet_orachar(inet)
 RETURNS sys.oracharchar
 AS 'network_show'
 LANGUAGE internal
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -154,6 +157,7 @@ CREATE FUNCTION sys.bool_orachar(boolean)
 RETURNS sys.oracharchar
 AS 'MODULE_PATHNAME','bool_orachar'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -495,6 +499,7 @@ CREATE FUNCTION sys.oracharbytetypmodin(cstring[])
 RETURNS integer
 AS 'MODULE_PATHNAME','oracharbytetypmodin'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -1690,25 +1695,29 @@ ALTER OPERATOR FAMILY sys.orachar_minmax_ops USING brin ADD
  * CREATE AGGREGATE for CHAR(n char/byte).
  */
 CREATE AGGREGATE sys.max(sys.oracharchar) (
-  SFUNC=sys.oracharchar_larger,
-  STYPE= sys.oracharchar,
-  SORTOP= >
+  SFUNC = sys.oracharchar_larger,
+  STYPE = sys.oracharchar,
+  SORTOP = >,
+  PARALLEL = SAFE  -- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oracharchar) (
-  SFUNC=sys.oracharchar_smaller,
-  STYPE= sys.oracharchar,
-  SORTOP= <
+  SFUNC =sys.oracharchar_smaller,
+  STYPE = sys.oracharchar,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 CREATE AGGREGATE sys.max(sys.oracharbyte) (
-  SFUNC=sys.oracharbyte_larger,
-  STYPE= sys.oracharbyte,
-  SORTOP= >
+  SFUNC = sys.oracharbyte_larger,
+  STYPE = sys.oracharbyte,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oracharbyte) (
-  SFUNC=sys.oracharbyte_smaller,
-  STYPE= sys.oracharbyte,
-  SORTOP= <
+  SFUNC = sys.oracharbyte_smaller,
+  STYPE = sys.oracharbyte,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /***************************************************************
@@ -2038,6 +2047,7 @@ CREATE FUNCTION sys.cidr_oravarchar(cidr)
 RETURNS sys.oravarcharchar
 AS 'network_show'
 LANGUAGE internal
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -3730,6 +3740,7 @@ CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharbyt
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3738,6 +3749,7 @@ CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharbyt
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3746,6 +3758,7 @@ CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharbyte, sys.oravarcharcha
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3754,6 +3767,7 @@ CREATE FUNCTION sys.bt_orachar_oravarchar_cmp(sys.oracharchar, sys.oravarcharcha
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3762,6 +3776,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharbyt
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3770,6 +3785,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharbyte, sys.oracharcha
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3778,6 +3794,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharbyt
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -3786,6 +3803,7 @@ CREATE FUNCTION sys.bt_oravarchar_orachar_cmp(sys.oravarcharchar, sys.oracharcha
 RETURNS integer
 AS 'MODULE_PATHNAME','bt_oravarchar_cmp'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -4084,6 +4102,7 @@ CREATE FUNCTION sys.oravarchar_pattern_gt(sys.oravarcharchar, sys.oravarcharchar
 RETURNS boolean
 AS 'MODULE_PATHNAME','oravarchar_pattern_gt'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -4530,25 +4549,29 @@ IMMUTABLE
 LEAKPROOF;
 
 CREATE AGGREGATE sys.max(sys.oravarcharchar) (
-  SFUNC=sys.oravarchar_larger,
-  STYPE= sys.oravarcharchar,
-  SORTOP= >
+  SFUNC = sys.oravarchar_larger,
+  STYPE = sys.oravarcharchar,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oravarcharchar) (
-  SFUNC=sys.oravarchar_smaller,
-  STYPE= sys.oravarcharchar,
-  SORTOP= <
+  SFUNC = sys.oravarchar_smaller,
+  STYPE = sys.oravarcharchar,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 CREATE AGGREGATE sys.max(sys.oravarcharbyte) (
-  SFUNC=sys.oravarchar_larger,
-  STYPE= sys.oravarcharbyte,
-  SORTOP= >
+  SFUNC = sys.oravarchar_larger,
+  STYPE = sys.oravarcharbyte,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oravarcharbyte) (
-  SFUNC=sys.oravarchar_smaller,
-  STYPE= sys.oravarcharbyte,
-  SORTOP= <
+  SFUNC = sys.oravarchar_smaller,
+  STYPE = sys.oravarcharbyte,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* Begin - Bug#793 */
@@ -4557,6 +4580,7 @@ CREATE FUNCTION sys.oravarcharcat(sys.oravarcharchar, sys.oravarcharchar)
 RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','oravarcharcat'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 IMMUTABLE;
 
 CREATE OPERATOR ||  (
@@ -4570,6 +4594,7 @@ CREATE OPERATOR ||  (
 CREATE FUNCTION sys.concat(sys.oravarcharchar, sys.oravarcharchar)
 RETURNS sys.oravarcharchar
 AS 'MODULE_PATHNAME','oravarcharcat'
+PARALLEL SAFE	-- BUG#M0000422
 LANGUAGE C
 IMMUTABLE;
 /* End - BUG#Z037 */
@@ -4634,6 +4659,7 @@ CREATE FUNCTION sys.oradate_date(sys.oradate)
 RETURNS pg_catalog.date
 AS 'MODULE_PATHNAME','oradate_date'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -4645,6 +4671,7 @@ CREATE FUNCTION sys.date_oradate(pg_catalog.date)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','date_oradate'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -4952,6 +4979,7 @@ CREATE FUNCTION sys.oradate_le_oratimestamptz(sys.oradate, sys.oratimestamptz)
 RETURNS boolean
 AS 'MODULE_PATHNAME','oradate_le_oratimestamptz'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
  
@@ -5291,14 +5319,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.oradate) (
-  SFUNC=sys.oradate_larger,
-  STYPE= sys.oradate,
-  SORTOP= >
+  SFUNC = sys.oradate_larger,
+  STYPE = sys.oradate,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oradate) (
-  SFUNC=sys.oradate_smaller,
-  STYPE= sys.oradate,
-  SORTOP= <
+  SFUNC = sys.oradate_smaller,
+  STYPE = sys.oradate,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /***************************************************************
@@ -6050,14 +6080,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.oratimestamp) (
-  SFUNC=sys.oratimestamp_larger,
-  STYPE= sys.oratimestamp,
-  SORTOP= >
+  SFUNC = sys.oratimestamp_larger,
+  STYPE = sys.oratimestamp,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oratimestamp) (
-  SFUNC=sys.oratimestamp_smaller,
-  STYPE= sys.oratimestamp,
-  SORTOP= <
+  SFUNC = sys.oratimestamp_smaller,
+  STYPE = sys.oratimestamp,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );		
 		
 /***************************************************************
@@ -6733,6 +6765,7 @@ CREATE FUNCTION sys.oratimestamptz_hash_extended(sys.oratimestamptz, bigint)
 RETURNS bigint
 AS 'MODULE_PATHNAME','ora_datetime_hash_extended'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - BUG:M0000085 */
@@ -6798,14 +6831,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.oratimestamptz) (
-  SFUNC=sys.oratimestamptz_larger,
-  STYPE= sys.oratimestamptz,
-  SORTOP= >
+  SFUNC = sys.oratimestamptz_larger,
+  STYPE = sys.oratimestamptz,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oratimestamptz) (
-  SFUNC=sys.oratimestamptz_smaller,
-  STYPE= sys.oratimestamptz,
-  SORTOP= <
+  SFUNC = sys.oratimestamptz_smaller,
+  STYPE = sys.oratimestamptz,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );		
 
 /***************************************************************
@@ -7540,14 +7575,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.oratimestampltz) (
-  SFUNC=sys.oratimestampltz_larger,
-  STYPE= sys.oratimestampltz,
-  SORTOP= >
+  SFUNC = sys.oratimestampltz_larger,
+  STYPE = sys.oratimestampltz,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.oratimestampltz) (
-  SFUNC=sys.oratimestampltz_smaller,
-  STYPE= sys.oratimestampltz,
-  SORTOP= <
+  SFUNC = sys.oratimestampltz_smaller,
+  STYPE = sys.oratimestampltz,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /***************************************************************
@@ -7907,14 +7944,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.yminterval) (
-  SFUNC=sys.yminterval_larger,
-  STYPE= sys.yminterval,
-  SORTOP= >
+  SFUNC = sys.yminterval_larger,
+  STYPE = sys.yminterval,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.yminterval) (
-  SFUNC=sys.yminterval_smaller,
-  STYPE= sys.yminterval,
-  SORTOP= <
+  SFUNC = sys.yminterval_smaller,
+  STYPE = sys.yminterval,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /***************************************************************
@@ -8269,14 +8308,16 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.dsinterval) (
-  SFUNC=sys.dsinterval_larger,
-  STYPE= sys.dsinterval,
-  SORTOP= >
+  SFUNC = sys.dsinterval_larger,
+  STYPE = sys.dsinterval,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 CREATE AGGREGATE sys.min(sys.dsinterval) (
-  SFUNC=sys.dsinterval_smaller,
-  STYPE= sys.dsinterval,
-  SORTOP= <
+  SFUNC = sys.dsinterval_smaller,
+  STYPE = sys.dsinterval,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 		
 /*****************************************************************************
@@ -9872,9 +9913,10 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.max(sys.number) (
-  SFUNC=sys.number_larger,
-  STYPE= sys.number,
-  SORTOP= >
+  SFUNC = sys.number_larger,
+  STYPE = sys.number,
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* min */
@@ -9887,9 +9929,10 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.min(sys.number) (
-  SFUNC=sys.number_smaller,
-  STYPE= sys.number,
-  SORTOP= <
+  SFUNC = sys.number_smaller,
+  STYPE = sys.number,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );		
 
 /* AVG */
@@ -9923,7 +9966,8 @@ CREATE AGGREGATE sys.avg(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );	
 
 /* sum */
@@ -9943,7 +9987,8 @@ CREATE AGGREGATE sys.sum(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* var_pop */
@@ -9970,7 +10015,8 @@ CREATE AGGREGATE sys.var_pop(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* var_samp */
@@ -9990,7 +10036,8 @@ CREATE AGGREGATE sys.var_samp(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* variance: historical Postgres syntax for var_samp */
@@ -10003,7 +10050,8 @@ CREATE AGGREGATE sys.variance(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* stddev_pop */
@@ -10023,7 +10071,8 @@ CREATE AGGREGATE sys.stddev_pop(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* stddev_samp */
@@ -10043,7 +10092,8 @@ CREATE AGGREGATE sys.stddev_samp(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* stddev: historical Postgres syntax for stddev_samp */
@@ -10056,7 +10106,8 @@ CREATE AGGREGATE sys.stddev(sys.number) (
   STYPE = internal,
   SSPACE = 128,
   MSTYPE = internal,
-  MSSPACE =128
+  MSSPACE = 128,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 
@@ -10661,6 +10712,7 @@ CREATE FUNCTION sys.numeric_binary_double(numeric)
 RETURNS sys.binary_double
 AS 'MODULE_PATHNAME','number_binary_double'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE
 LEAKPROOF;
@@ -11465,7 +11517,8 @@ IMMUTABLE;
 CREATE AGGREGATE sys.max(sys.binary_float) (
   SFUNC = sys.binary_float_larger,
   STYPE = sys.binary_float,
-  SORTOP = >
+  SORTOP = >,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 /* min */
@@ -11478,18 +11531,24 @@ STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE sys.min(sys.binary_float) (
-  SFUNC=sys.binary_float_smaller,
-  STYPE= sys.binary_float,
-  SORTOP= <
+  SFUNC = sys.binary_float_smaller,
+  STYPE = sys.binary_float,
+  SORTOP = <,
+  PARALLEL = SAFE	-- BUG#M0000422
 );
 
 -- ----------------------------------------
 -- REDO LATER
 -- ----------------------------------------
 /* Begin - BUGID:0000531 */
-create or replace function sys.text_text(text,text) returns numeric as $$
-  select $1::varchar2-$2::varchar2;
-$$ language sql strict immutable;
+CREATE OR REPLACE FUNCTION sys.text_text(text,text) 
+RETURNS NUMERIC AS
+$$
+  SELECT $1::VARCHAR2-$2::VARCHAR2;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+STRICT IMMUTABLE;
 
 CREATE OPERATOR sys.- (
 	procedure = sys.text_text,
@@ -11681,16 +11740,32 @@ AS IMPLICIT;
 
 --create function for sgrdb
 --bug#984 add immutable
-create or replace function sys.to_char(text) RETURNS text AS $$ SELECT $1 $$ LANGUAGE SQL IMMUTABLE;
+CREATE OR REPLACE FUNCTION sys.to_char(text)
+RETURNS text AS 
+$$
+	SELECT $1;
+$$
+PARALLEL SAFE	-- BUG#M0000422
+LANGUAGE SQL IMMUTABLE;
 
 --bug#797 generate_series support int2,int4,int8 but number has more choices will result error
-CREATE FUNCTION sys.generate_series(number, number) returns setof numeric AS $$
-SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric)
-$$ LANGUAGE SQL IMMUTABLE;
+CREATE FUNCTION sys.generate_series(number, number) 
+RETURNS setof numeric AS 
+$$
+	SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric)
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE;
 
-CREATE FUNCTION sys.generate_series(number, number, number) returns setof numeric AS $$
-SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric, $3::numeric)
-$$ LANGUAGE SQL IMMUTABLE;
+CREATE FUNCTION sys.generate_series(number, number, number) 
+RETURNS setof numeric AS 
+$$
+	SELECT PG_CATALOG.generate_series($1::numeric,$2::numeric, $3::numeric)
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE;
 
 --bug#800
 CREATE CAST (sys.oravarcharchar AS pg_catalog.int4)
@@ -11698,10 +11773,38 @@ WITH INOUT
 AS IMPLICIT;
 
 /* will move to oracharchar partion */
-create or replace function sys.oid_cc_eq(oid_l pg_catalog.oid, cc_r sys.oracharchar) RETURNS BOOLEAN AS $$ SELECT $1::sys.oracharchar=trim(leading '0' from $2) $$ LANGUAGE SQL;
-create or replace function sys.cc_oid_eq(cc_l sys.oracharchar, oid_r pg_catalog.oid) RETURNS BOOLEAN AS $$ SELECT trim(leading '0' from $1)=$2::sys.oracharchar $$ LANGUAGE SQL;
-create or replace function sys.oid_cc_ne(oid_l pg_catalog.oid, cc_r sys.oracharchar) RETURNS BOOLEAN AS $$ SELECT not sys.oid_cc_eq(oid_l, cc_r) $$ LANGUAGE SQL;
-create or replace function sys.cc_oid_ne(cc_l sys.oracharchar, oid_r pg_catalog.oid) RETURNS BOOLEAN AS $$ SELECT not sys.cc_oid_eq(cc_l, oid_r) $$ LANGUAGE SQL;
+create or replace function sys.oid_cc_eq(oid_l pg_catalog.oid, cc_r sys.oracharchar) 
+RETURNS BOOLEAN AS 
+$$ 
+	SELECT $1::sys.oracharchar=trim(leading '0' from $2) 
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE;	-- BUG#M0000422
+
+create or replace function sys.cc_oid_eq(cc_l sys.oracharchar, oid_r pg_catalog.oid) 
+RETURNS BOOLEAN AS 
+$$ 
+	SELECT trim(leading '0' from $1)=$2::sys.oracharchar 
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE;	-- BUG#M0000422
+
+create or replace function sys.oid_cc_ne(oid_l pg_catalog.oid, cc_r sys.oracharchar) 
+RETURNS BOOLEAN AS 
+$$ 
+	SELECT not sys.oid_cc_eq(oid_l, cc_r) 
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE;	-- BUG#M0000422
+
+create or replace function sys.cc_oid_ne(cc_l sys.oracharchar, oid_r pg_catalog.oid) 
+RETURNS BOOLEAN AS 
+$$ 
+	SELECT not sys.cc_oid_eq(cc_l, oid_r) 
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE;	-- BUG#M0000422
+
 create operator = (procedure=sys.oid_cc_eq, LEFTARG=pg_catalog.oid, RIGHTARG=sys.oracharchar);
 create operator = (procedure=sys.cc_oid_eq, LEFTARG=sys.oracharchar, RIGHTARG=pg_catalog.oid);
 create operator <> (procedure=sys.oid_cc_ne, LEFTARG=pg_catalog.oid, RIGHTARG=sys.oracharchar);
@@ -11713,6 +11816,7 @@ CREATE FUNCTION sys.round(number, integer)
 RETURNS numeric
 AS $$SELECT pg_catalog.round($1,$2);$$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -11764,7 +11868,9 @@ IMMUTABLE;
 CREATE  OR REPLACE FUNCTION sys.varchar2like(varchar2, varchar2)
 RETURNS bool AS $$
 SELECT $1::text like $2::text;
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE OPERATOR ~~ (
 PROCEDURE = sys.varchar2like,
@@ -11773,9 +11879,13 @@ RIGHTARG  = varchar2
 );
 
 CREATE  OR REPLACE FUNCTION sys.varchar2notlike(varchar2, varchar2)
-RETURNS bool AS $$
-SELECT $1::text not like $2::text;
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+RETURNS bool AS 
+$$
+	SELECT $1::text not like $2::text;
+$$ 
+LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE OPERATOR !~~ (
 PROCEDURE = sys.varchar2notlike,
@@ -11784,9 +11894,13 @@ RIGHTARG  = varchar2
 );
 
 CREATE  OR REPLACE FUNCTION sys.byteatextlike(bytea, text)
-RETURNS bool AS $$
-SELECT $1::text like $2;
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+RETURNS bool AS 
+$$
+	SELECT $1::text like $2;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE OPERATOR ~~ (
 PROCEDURE = sys.byteatextlike,
@@ -11795,9 +11909,13 @@ RIGHTARG  = text
 );
 
 CREATE  OR REPLACE FUNCTION sys.byteatextnotlike(bytea, text)
-RETURNS bool AS $$
-SELECT $1::text not like $2;
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+RETURNS bool AS 
+$$
+	SELECT $1::text not like $2;
+$$ 
+LANGUAGE SQL 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE OPERATOR !~~ (
 PROCEDURE = sys.byteatextnotlike,

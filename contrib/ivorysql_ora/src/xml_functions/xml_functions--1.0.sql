@@ -7,12 +7,16 @@ CREATE TYPE sys.XMLTYPE;
 CREATE FUNCTION sys.xmltype_in(cstring)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_xmltype_in'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.xmltype_out(sys.xmltype)
 RETURNS cstring
 AS 'MODULE_PATHNAME','ivy_xmltype_out'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE TYPE sys.XMLTYPE (
 	INPUT		   = sys.xmltype_in,
@@ -31,13 +35,17 @@ CREATE TYPE sys.XMLTYPE (
 CREATE FUNCTION sys.EXISTSNODE(sys.xmltype, text)
 RETURNS int
 AS 'MODULE_PATHNAME','ivy_existsnode'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- existsnode with namespace
 CREATE FUNCTION sys.EXISTSNODE(sys.xmltype, text, text)
 RETURNS int
 AS 'MODULE_PATHNAME','ivy_existsnode2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 
 --
@@ -46,13 +54,17 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.EXTRACTVALUE(sys.xmltype, text)
 RETURNS text
 AS 'MODULE_PATHNAME','ivy_extractvalue'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- extractvalue with namespace
 CREATE FUNCTION sys.EXTRACTVALUE(sys.xmltype, text, text)
 RETURNS text
 AS 'MODULE_PATHNAME','ivy_extractvalue2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 --
 -- EXTRACT(XML)
@@ -102,13 +114,17 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.INSERTXMLBEFORE(sys.xmltype, text, sys.xmltype)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertxmlbefore'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- insertxmlbefore with namespace
 CREATE FUNCTION sys.INSERTXMLBEFORE(sys.xmltype, text, sys.xmltype, text)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertxmlbefore2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 --
 -- INSERTXMLAFTER
@@ -116,13 +132,17 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.INSERTXMLAFTER(sys.xmltype, text, sys.xmltype)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertxmlafter'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- insertxmlafter with namspace
 CREATE FUNCTION sys.INSERTXMLAFTER(sys.xmltype, text, sys.xmltype, text)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertxmlafter2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 --
 -- INSERTCHILDXML
@@ -130,13 +150,17 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.INSERTCHILDXML(sys.xmltype, text, text, sys.xmltype)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxml'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- insertchildxml with namespace
 CREATE FUNCTION sys.INSERTCHILDXML(sys.xmltype, text, text, sys.xmltype, text)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxml2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 --
 -- INSERTCHILDXMLBEFORE
@@ -144,13 +168,17 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.INSERTCHILDXMLBEFORE(sys.xmltype, text, text, sys.xmltype)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxmlbefore'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- insertchildxmlbefore with namespace
 CREATE FUNCTION sys.INSERTCHILDXMLBEFORE(sys.xmltype, text, text, sys.xmltype, text)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxmlbefore2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 --
 -- INSERTCHILDXMLAFTER
@@ -158,10 +186,14 @@ LANGUAGE C IMMUTABLE;
 CREATE FUNCTION sys.INSERTCHILDXMLAFTER(sys.xmltype, text, text, sys.xmltype)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxmlafter'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;
 
 -- inseretchildxmlafter with namespace
 CREATE FUNCTION sys.INSERTCHILDXMLAFTER(sys.xmltype, text, text, sys.xmltype, text)
 RETURNS sys.xmltype
 AS 'MODULE_PATHNAME','ivy_insertchildxmlafter2'
-LANGUAGE C IMMUTABLE;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE;

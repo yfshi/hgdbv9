@@ -81,9 +81,13 @@ IMMUTABLE;
 
 /* Begin - bug0000540 */
 CREATE FUNCTION sys.length(integer)
-RETURNS integer
-AS $$SELECT sys.length(cast($1 as sys.oravarcharchar));$$
-LANGUAGE SQL VOLATILE;
+RETURNS integer AS
+$$
+	SELECT sys.length(cast($1 as sys.oravarcharchar));
+$$
+LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
+VOLATILE;
 /* End - bug0000540 */
 
 create function sys.lengthb(bytea) returns int as
@@ -92,7 +96,8 @@ begin
   return octet_length($1);
 end;
 $$
-language plpgsql;
+language plpgsql
+PARALLEL SAFE; -- BUG#M0000422
 
 
 /* trim/ltrim/rtrim functions */
@@ -135,6 +140,7 @@ CREATE FUNCTION sys.trim(sys.oravarcharchar)
 RETURNS oravarcharchar
 AS 'MODULE_PATHNAME','trim1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -142,6 +148,7 @@ CREATE FUNCTION sys.trim(sys.oravarcharchar, sys.oravarcharchar)
 RETURNS oravarcharchar
 AS 'MODULE_PATHNAME','trim2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -150,6 +157,7 @@ CREATE FUNCTION sys.trim(bytea, bytea)
 RETURNS bytea
 AS $$ SELECT pg_catalog.btrim($1, $2);$$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - BUG#833 */
@@ -334,6 +342,7 @@ CREATE FUNCTION sys.substrb(varchar, number)
 RETURNS text
 AS 'MODULE_PATHNAME','ora_substrb_no_length'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -341,6 +350,7 @@ CREATE FUNCTION sys.substrb(varchar, number, number)
 RETURNS text
 AS 'MODULE_PATHNAME','ora_substrb'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -348,6 +358,7 @@ CREATE FUNCTION sys.replace(varchar, varchar, varchar default NULL)
 RETURNS text
 AS 'MODULE_PATHNAME','ora_replace'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 IMMUTABLE;
 
 /* Begin - ReqID:SRS-SQL-SYSFUNC: modify text and varchar to varchar2 */
@@ -355,6 +366,7 @@ CREATE FUNCTION sys.instrb(varchar2, varchar2, number default 1, number default 
 RETURNS int
 AS 'MODULE_PATHNAME','ora_instrb'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - ReqID:SRS-SQL-SYSFUNC */
@@ -364,12 +376,14 @@ IMMUTABLE;
 CREATE FUNCTION sys.lpad(varchar2, number) returns varchar2 AS
 $$ select pg_catalog.lpad($1::text, $2::integer); $$
 LANGUAGE SQL
+PARALLEL SAFE -- BUG#M0000422, for pg_catalog.lpad() is parallel safe
 STRICT
 IMMUTABLE;
 
 CREATE FUNCTION sys.lpad(varchar2, number, varchar2) returns varchar2 AS
 $$ select pg_catalog.lpad($1::text, $2::integer, $3::text); $$
 LANGUAGE SQL
+PARALLEL SAFE -- BUG#M0000422, for pg_catalog.lpad() is parallel safe
 STRICT
 IMMUTABLE;
 
@@ -377,12 +391,14 @@ IMMUTABLE;
 CREATE FUNCTION sys.rpad(varchar2, number) returns varchar2 AS
 $$ select pg_catalog.rpad($1::text, $2::integer); $$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
 CREATE FUNCTION sys.rpad(varchar2, number, varchar2) returns varchar2 AS
 $$ select pg_catalog.rpad($1::text, $2::integer, $3::text); $$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - BUG#997 */
@@ -396,6 +412,7 @@ CREATE FUNCTION sys.sysdate()
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','sysdate'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -449,6 +466,7 @@ CREATE FUNCTION sys.last_day(sys.oradate)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','last_day'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -457,6 +475,7 @@ CREATE FUNCTION sys.add_months(sys.oradate,sys.number)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','add_months'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 /* End - BUGID:0000414 */
@@ -465,6 +484,7 @@ CREATE FUNCTION sys.round(sys.oradate,text)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','ora_round'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 
@@ -472,6 +492,7 @@ CREATE FUNCTION sys.round(sys.oradate)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','ora_round'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 
@@ -503,12 +524,16 @@ LANGUAGE C IMMUTABLE STRICT;
 CREATE FUNCTION sys.new_time(sys.oradate,text,text)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME', 'ora_new_time'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.tz_offset(text)
 RETURNS text
 AS 'MODULE_PATHNAME', 'ora_tz_offset'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.months_between(sys.oradate, sys.oradate)
 RETURNS double precision
@@ -519,6 +544,7 @@ CREATE FUNCTION sys.from_tz(sys.oratimestamp,text)
 RETURNS sys.oratimestamptz
 AS 'MODULE_PATHNAME','ora_from_tz'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 
@@ -526,6 +552,7 @@ CREATE FUNCTION sys.sys_extract_utc(sys.oratimestamptz)
 RETURNS sys.oratimestamp
 AS 'MODULE_PATHNAME','ora_sys_extract_utc'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 
@@ -534,6 +561,7 @@ CREATE FUNCTION sys.sessiontimezone()
 RETURNS text
 AS 'MODULE_PATHNAME','ora_sessiontimezone'
 LANGUAGE C
+PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 /* End - bug0000427 */
@@ -563,6 +591,7 @@ CREATE FUNCTION sys.to_timestamp(text)
 RETURNS sys.oratimestamp
 AS 'MODULE_PATHNAME','to_oratimestamp1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -570,6 +599,7 @@ CREATE FUNCTION sys.to_timestamp(text, text)
 RETURNS sys.oratimestamp
 AS 'MODULE_PATHNAME','to_oratimestamp2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -577,6 +607,7 @@ CREATE FUNCTION sys.to_timestamp(text, text, text)
 RETURNS sys.oratimestamp
 AS 'MODULE_PATHNAME','to_oratimestamp3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -584,6 +615,7 @@ CREATE FUNCTION sys.to_timestamp_tz(text)
 RETURNS sys.oratimestamptz
 AS 'MODULE_PATHNAME','to_oratimestamptz1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -591,6 +623,7 @@ CREATE FUNCTION sys.to_timestamp_tz(text, text)
 RETURNS sys.oratimestamptz
 AS 'MODULE_PATHNAME','to_oratimestamptz2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -598,6 +631,7 @@ CREATE FUNCTION sys.to_timestamp_tz(text, text, text)
 RETURNS sys.oratimestamptz
 AS 'MODULE_PATHNAME','to_oratimestamptz3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
@@ -605,6 +639,7 @@ CREATE FUNCTION sys.to_char(sys.oradate)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradate_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -613,6 +648,7 @@ CREATE FUNCTION sys.to_char(sys.oradate, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradate_to_char2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -620,6 +656,7 @@ CREATE FUNCTION sys.to_char(sys.oradate, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradate_to_char3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -627,6 +664,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamp)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamp_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -634,6 +672,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamp, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamp_to_char2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -641,6 +680,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamp, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamp_to_char3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -648,6 +688,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamptz)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamptz_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -655,6 +696,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamptz, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamptz_to_char2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -662,6 +704,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestamptz, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamptz_to_char3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -669,6 +712,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestampltz)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestampltz_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -676,6 +720,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestampltz, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestampltz_to_char2'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -683,6 +728,7 @@ CREATE FUNCTION sys.to_char(sys.oratimestampltz, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestampltz_to_char3'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -690,6 +736,7 @@ CREATE FUNCTION sys.to_char(sys.dsinterval)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradsinterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -697,6 +744,7 @@ CREATE FUNCTION sys.to_char(sys.dsinterval, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradsinterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -704,6 +752,7 @@ CREATE FUNCTION sys.to_char(sys.dsinterval, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradsinterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -711,6 +760,7 @@ CREATE FUNCTION sys.to_char(sys.yminterval)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','orayminterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -718,6 +768,7 @@ CREATE FUNCTION sys.to_char(sys.yminterval, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','orayminterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -725,6 +776,7 @@ CREATE FUNCTION sys.to_char(sys.yminterval, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','orayminterval_to_char1'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -732,6 +784,7 @@ CREATE FUNCTION sys.to_yminterval(text)
 RETURNS sys.yminterval
 AS 'MODULE_PATHNAME','to_yminterval'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -739,6 +792,7 @@ CREATE FUNCTION sys.numtoyminterval(float8, text)
 RETURNS sys.yminterval
 AS 'MODULE_PATHNAME','numtoyminterval'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -746,6 +800,7 @@ CREATE FUNCTION sys.to_dsinterval(text)
 RETURNS sys.dsinterval
 AS 'MODULE_PATHNAME','to_dsinterval'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -753,6 +808,7 @@ CREATE FUNCTION sys.numtodsinterval(float8, text)
 RETURNS sys.dsinterval
 AS 'MODULE_PATHNAME','numtodsinterval'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -767,6 +823,7 @@ CREATE FUNCTION sys.bitand(number,number)
 RETURNS number
 AS 'MODULE_PATHNAME','number_bitand'
 LANGUAGE C
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - bug0000457 */
@@ -784,6 +841,7 @@ begin
 end;
 $$
 LANGUAGE plpgsql
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - bug0000478 */
@@ -824,9 +882,12 @@ IMMUTABLE;
  ***************************************************************/
 --bug#834 support to_clob
 CREATE OR REPLACE FUNCTION sys.to_clob(varchar2)
-RETURNS clob
-AS $$ SELECT $1::clob;$$
+RETURNS clob AS 
+$$ 
+	SELECT $1::clob;
+$$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
@@ -835,6 +896,7 @@ CREATE OR REPLACE FUNCTION sys.to_blob(varchar2)
 RETURNS blob
 AS $$ SELECT $1::blob;$$
 LANGUAGE SQL
+PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - BUG#999 */
@@ -890,12 +952,17 @@ $$ LANGUAGE plpgsql STRICT SET client_min_messages to error;
 /* LANG */
 CREATE OR REPLACE FUNCTION sys.get_lang() RETURNS varchar2 AS $$     
 	SELECT (regexp_split_to_array(current_setting('lc_messages'), '\.'))[1];    
-$$ LANGUAGE sql STRICT;
+$$ 
+LANGUAGE sql 
+PARALLEL SAFE -- BUG#M0000422
+STRICT;
 
 /* LANGUAGE */
 CREATE OR REPLACE FUNCTION sys.get_language() RETURNS varchar2 AS $$     
 	SELECT (regexp_split_to_array(current_setting('lc_monetary'), '\.'))[1]||'.'||pg_client_encoding();  
-$$ LANGUAGE sql STRICT;
+$$ LANGUAGE sql 
+PARALLEL SAFE	-- BUG#M0000422
+STRICT;
 
 /* CLIENT_INFO */
 CREATE OR REPLACE FUNCTION sys.get_client_info() RETURNS varchar2 AS $$     
@@ -903,7 +970,10 @@ DECLARE
 BEGIN       
 	RETURN NULL;         
 END;     
-$$ LANGUAGE plpgsql STRICT SET client_min_messages to error;
+$$ LANGUAGE plpgsql 
+PARALLEL SAFE	-- BUG#M0000422
+STRICT
+SET client_min_messages to error;
 
 
 /* ENTRYID */
@@ -912,7 +982,10 @@ DECLARE
 BEGIN       
 	RETURN NULL;         
 END;     
-$$ LANGUAGE plpgsql STRICT SET client_min_messages to error; 
+$$ LANGUAGE plpgsql
+PARALLEL SAFE	-- BUG#M0000422
+STRICT
+SET client_min_messages to error; 
 
 /* TERMINAL */
 CREATE OR REPLACE FUNCTION sys.get_terminal() RETURNS number AS $$     
@@ -920,7 +993,10 @@ DECLARE
 BEGIN       
 	RETURN NULL;         
 END;     
-$$ LANGUAGE plpgsql STRICT SET client_min_messages to error; 
+$$ LANGUAGE plpgsql 
+PARALLEL SAFE -- BUG#M0000422
+STRICT 
+SET client_min_messages to error; 
 
 /* SID */
 CREATE OR REPLACE FUNCTION sys.get_sid() RETURNS number AS $$     
@@ -930,7 +1006,10 @@ BEGIN
 	SELECT pg_backend_pid() into res;
 	RETURN res;         
 END;     
-$$ LANGUAGE plpgsql STRICT SET client_min_messages to error;
+$$ LANGUAGE plpgsql 
+PARALLEL RESTRICTED	-- BUG#M0000422
+STRICT 
+SET client_min_messages to error;
 
 /* ISDBA */
 CREATE OR REPLACE FUNCTION sys.get_isdba() RETURNS VARCHAR2 AS $$     
@@ -1045,7 +1124,8 @@ RETURNS integer
 AS 'MODULE_PATHNAME','oravarcharoctetlen'
 LANGUAGE C
 STRICT
-IMMUTABLE;
+IMMUTABLE
+PARALLEL SAFE; -- BUG#M0000422
 
 --round
 CREATE OR REPLACE FUNCTION sys.round(text)
@@ -1112,89 +1192,121 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 CREATE FUNCTION sys.substr(str text, sta int, len int)
 RETURNS varchar
 AS 'MODULE_PATHNAME','oracle_substr3'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.substr(str text, sta int)
 RETURNS varchar
 AS 'MODULE_PATHNAME','oracle_substr2'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.substr(str varchar2, sta number, len number)
 RETURNS varchar
 AS $$
   select sys.substr(str::text, sta::integer, len::integer);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.substr(str varchar2, sta number)
 RETURNS varchar
 AS $$
  select sys.substr(str::text, sta::integer);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str text, patt text, sta int, nth int)
 RETURNS int
 AS 'MODULE_PATHNAME','oracle_instr4'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str text, patt text, sta int)
 RETURNS int
 AS 'MODULE_PATHNAME','oracle_instr3'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str text, patt text)
 RETURNS int
 AS 'MODULE_PATHNAME','oracle_instr2'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str varchar2, patt varchar2, sta number, nth number)
 RETURNS int
 AS $$
   select sys.instr(str::text, patt::text, sta::integer, nth::integer);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str varchar2, patt varchar2, sta number)
 RETURNS int
 AS $$
   select sys.instr(str::text, patt::text, sta::integer);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.instr(str varchar2, patt varchar2)
 RETURNS int
 AS $$
   select sys.instr(str::text, patt::text);
-$$ LANGUAGE SQL IMMUTABLE STRICT;
+$$ LANGUAGE SQL 
+PARALLEL SAFE -- BUG#M0000422
+IMMUTABLE STRICT;
 /* End - BUG:M0000084 */
 
 /* Begin - BUG#M0000194 */
 CREATE FUNCTION sys.to_multi_byte(varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'orafce_to_multi_byte'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.to_single_byte(varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'orafce_to_single_byte'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.asciistr(varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'ora_asciistr'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C 
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.compose(varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'ora_compose'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.decompose(varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'ora_decompose'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.decompose(varchar2, varchar2)
 RETURNS varchar2
 AS 'MODULE_PATHNAME', 'ora_decompose'
-LANGUAGE C IMMUTABLE STRICT;
+LANGUAGE C
+PARALLEL SAFE  -- BUG#M0000422
+IMMUTABLE STRICT;
 
 CREATE FUNCTION sys.convert(varchar2, name, name)
 RETURNS varchar2
@@ -1208,6 +1320,7 @@ CREATE FUNCTION sys.get_macro_value(text)
 RETURNS text
 AS 'MODULE_PATHNAME','get_macro_value'
 LANGUAGE C
+PARALLEL SAFE  -- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - Bug#Z1064 */
