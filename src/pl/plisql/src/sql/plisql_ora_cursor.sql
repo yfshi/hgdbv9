@@ -8461,3 +8461,515 @@ end;
 DROP FUNCTION test_f;
 DROP package test_pkg;
 DROP TABLE tb1;
+
+--bug#Z1350
+create table tb1(id number(4), name varchar2(30));
+
+insert into tb1 values (10, 'smith');
+insert into tb1 values (20, 'allen');
+insert into tb1 values (30, 'ward');
+
+--ok
+declare
+	cursor c1 is select * from tb1;
+	cursor c2 return c1%rowtype;
+begin
+	null;
+end;
+/
+
+
+--ok
+declare
+	cursor c1 is select * from tb1;
+	cursor c2 return c1%rowtype is select * from tb1 order by id;
+	var2 c2%rowtype;
+begin
+	open c2;
+	LOOP
+	   fetch c2 into var2;
+	   exit when c2%notfound;
+	   raise info '%',var2;
+	end loop;
+	close c2;
+end;
+/
+
+create table test_1(id integer);
+
+--error
+declare
+	cursor c1 is select * from tb1;
+	cursor c2 return c1%rowtype is select * from test_1 order by id;
+	var2 c2%rowtype;
+begin
+	open c2;
+	LOOP
+	   fetch c2 into var2;
+	   exit when c2%notfound;
+	   raise info '%',var2;
+	end loop;
+	close c2;
+end;
+/
+
+--ok
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  r1 typ1;
+  cursor c1 return r1%type;
+begin
+  NULL;
+end;
+/
+
+--ok
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  r1 typ1;
+  cursor c1 return r1%type;
+  cursor c1 return r1%type is select * from tb1 order by id;
+begin
+  open c1;
+  LOOP
+    fetch c1 into r1;
+    exit when c1%notfound;
+    raise info '%', r1;
+  end loop;
+end;
+/
+
+--ok
+declare
+  type typ1 is record(ids number(4), names varchar2(30));
+  r1 typ1;
+  cursor c1 return r1%type;
+  cursor c1 return r1%type is select * from tb1 order by id;
+begin
+  open c1;
+  LOOP
+    fetch c1 into r1;
+    exit when c1%notfound;
+    raise info '%', r1;
+  end loop;
+end;
+/
+
+--faield
+declare
+  type typ1 is record(ids number(4), names varchar2(30), mdss varchar2(23));
+  r1 typ1;
+  cursor c1 return r1%type;
+  cursor c1 return r1%type is select * from tb1 order by id;
+begin
+  open c1;
+  LOOP
+    fetch c1 into r1;
+    exit when c1%notfound;
+    raise info '%', r1;
+  end loop;
+end;
+/
+
+--failed
+declare
+  type typ1 is record(ids number(4), names varchar2(30));
+  r1 typ1;
+  cursor c1 return r1%type;
+  cursor c1 return r1%type is select * from tb1 order by id;
+  type typ2 is record(ids number(4), names varchar2(30),name1 varchar2(30));
+  r2 typ2;
+begin
+  open c1;
+  LOOP
+    fetch c1 into r2;
+    exit when c1%notfound;
+    raise info '%', r2;
+  end loop;
+end;
+/
+
+--failed
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  r1 typ1;
+  cursor c1 return r1%type;
+  cursor c1 return r1%type is select * from test_1;
+begin
+  open c1;
+  LOOP
+    fetch c1 into r1;
+    exit when c1%notfound;
+    raise info '%', r1;
+  end loop;
+end;
+/
+
+--ok
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  cursor c1 return typ1;
+begin
+  NULL;
+end;
+/
+
+--ok
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  cursor c1 return typ1 is select * from tb1 order by id;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%', var1;
+  end loop;
+end;
+/
+
+--failed
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  cursor c1 return typ1 is select * from test_1;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%', var1;
+  end loop;
+end;
+/
+
+
+create table tb2(id number(4), name varchar2(30), ids integer);
+
+insert into tb2 values (10, 'smith', 1);
+insert into tb2 values (20, 'allen', 2);
+insert into tb2 values (30, 'ward', 3);
+
+--error
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  cursor c1 return typ1 is select * from tb2;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%', var1;
+  end loop;
+end;
+/
+
+--error
+declare
+ cursor c1 is select * from tb1;
+ var1 tb2%rowtype;
+begin
+  open c1;
+  fetch c1 into var1;
+  close c1;
+end;
+/
+
+
+--error
+declare
+ cursor c1 is select * from tb1;
+ cursor c2 is select * from tb2;
+ var1 c2%rowtype;
+begin
+  open c1;
+  fetch c1 into var1;
+  close c1;
+end;
+/
+
+alter table tb2 drop column ids;
+
+--ok
+declare
+  type typ1 is record(id number(4), name varchar2(30));
+  cursor c1 return typ1 is select * from tb2 order by id;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%', var1;
+  end loop;
+end;
+/
+
+--clean data
+drop table tb2;
+drop table tb1;
+drop table test_1;
+
+--bug#Z1372
+create type test_rowtype as (id integer,name varchar2(256));
+
+create table test_mds(id test_rowtype,name varchar2(256));
+
+insert into test_mds values('(1,abc)','one');
+insert into test_mds values('(2,cdef)','two');
+
+--ok
+declare
+  cursor c1 is select id from test_mds order by name;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+    fetch c1 into var1;
+    exit when c1%notfound;
+    raise info '%',var1;
+    raise info '%',var1.id;
+  end loop;
+  close c1;
+ end;
+ /
+
+
+--ok
+declare
+  cursor c1 is select * from test_mds order by name;
+  var1 c1%rowtype;
+begin
+  open c1;
+  loop
+    fetch c1 into var1;
+    exit when c1%notfound;
+    raise info '%',var1;
+  end loop;
+  close c1;
+ end;
+ /
+
+--ok
+declare
+  cursor c1 is select id from test_mds order by name;
+  var1 test_rowtype;
+begin
+  open c1;
+  loop
+    fetch c1 into var1;
+    exit when c1%notfound;
+    raise info '%',var1;
+  end loop;
+  close c1;
+ end;
+ /
+
+--ok
+declare
+  var1 test_rowtype;
+begin
+  select id into var1 from test_mds limit 1;
+ end;
+ /
+
+create type test_mdsss as (id integer,name varchar2(256),name2 varchar2(256));
+
+--error
+declare
+  cursor c1 is select id from test_mds order by name;
+  var1 test_mdsss;
+begin
+  open c1;
+  loop
+    fetch c1 into var1;
+    exit when c1%notfound;
+    raise info '%',var1;
+  end loop;
+  close c1;
+ end;
+ /
+
+set ivorysql.default_with_rowids to on ;
+create table tb1_tirt001171843 (a int,b int);
+insert into tb1_tirt001171843 values (100, 101);
+create or replace function tf_r() return int
+as
+declare
+	rr rowid;
+begin
+	select rowid from tb1_tirt001171843 into rr;
+	return 1;
+end;
+/
+
+--ok
+select tf_r() from dual;
+
+
+--two columns into one rowtype var
+create table test_table(id integer,name varchar2(256));
+
+--ok
+declare
+  var1 test_table%rowtype;
+  cursor c1 is select id,name from test_table;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+ end loop;
+end;
+/
+
+create table test_one_col(id integer);
+
+--ok
+declare
+  var1 test_one_col%rowtype;
+  cursor c1 is select id from test_one_col;
+begin
+  open c1;
+  fetch c1 into var1;
+  close c1;
+end;
+/
+
+drop table test_one_col;
+
+create table test_one_col(id test_mdsss);
+
+insert into test_one_col values((1,'one','two'));
+insert into test_one_col values((2,'three','two'));
+
+--ok
+declare
+  var1 test_one_col%rowtype;
+  cursor c1 is select id from test_one_col order by id;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%',var1;
+	raise info '%', var1.id;
+  end loop;
+  close c1;
+end;
+/
+
+--ok
+declare
+  var1 test_mdsss;
+  cursor c1 is select id from test_one_col order by id;
+begin
+  open c1;
+  loop
+	fetch c1 into var1;
+	exit when c1%notfound;
+	raise info '%',var1;
+	raise info '%', var1.id;
+  end loop;
+  close c1;
+end;
+/
+
+--clean data
+drop table tb1_tirt001171843;
+drop table test_one_col;
+drop table test_table;
+drop function tf_r;
+drop table test_mds;
+drop type test_mdsss;
+drop type test_rowtype;
+
+
+create type test_mds as (id integer);
+
+create table test_mdss(id test_mds);
+
+insert into test_mdss values('(1)');
+
+--ok
+declare
+  var1 test_mds;
+begin
+  select id into var1 from test_mdss;
+  raise info '%',var1;
+end;
+/
+
+--ok
+declare
+  var1 test_mdss%rowtype;
+begin
+  select id into var1 from test_mdss;
+end;
+/
+
+--ok
+declare
+  var1 test_mdss%rowtype;
+begin
+  select * into var1 from test_mdss;
+end;
+/
+
+--ok
+declare
+  var1 test_mds;
+begin
+  select * into var1 from test_mdss;
+end;
+/
+
+--ok
+declare
+  var1 test_mdss.id%type;
+begin
+  select * into var1 from test_mdss;
+end;
+/
+
+
+insert into test_mdss values('(2)');
+insert into test_mdss values('(3)');
+
+--ok
+declare
+  var1 test_mds;
+  cursor c1 is select id from test_mdss order by id;
+  var2 c1%rowtype;
+  var3 test_mdss.id%type;
+begin
+  open c1;
+  fetch c1 into var1;
+  fetch c1 into var2;
+  fetch c1 into var3;
+  raise info '%-%-%',var1,var2,var3;
+  close c1;
+end;
+/
+
+--ok
+declare
+  var1 test_mds;
+  cursor c1 is select * from test_mdss order by id;
+  var2 c1%rowtype;
+  var3 test_mdss.id%type;
+begin
+  open c1;
+  fetch c1 into var1;
+  fetch c1 into var2;
+  fetch c1 into var3;
+  raise info '%-%-%',var1,var2,var3;
+  close c1;
+end;
+/
+
+--clean data
+drop table test_mdss;
+drop type test_mds;

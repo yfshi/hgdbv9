@@ -915,6 +915,15 @@ plisql_get_rowtype_tupledesc(PLiSQL_type *rowtype)
 				destDesc = cursor_type->retdesc;
 			}
 			break;
+		/* Begin - BUG#Z0001350 */
+		case PLISQL_TTYPE_ORARECORD_TYPE:
+			{
+				PLiSQL_ora_record_type *ora_rec_type = (PLiSQL_ora_record_type *) rowtype;
+
+				destDesc = plisql_build_tupdesc_from_recordtype(ora_rec_type);
+			}
+			break;
+		/* End - BUG#Z00001350 */
 		default:
 			/* table or view */
 			{

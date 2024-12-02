@@ -884,13 +884,6 @@ plisql_free_function_memory(PLiSQL_function *func,
 
 					free_expr(var->default_val);
 					free_expr(var->cursor_explicit_expr);
-					/* Begin - ReqID:SRS-PLSQL-CURSOR */
-					if (var->cursor_resulttupdesc != NULL)
-						FreeTupleDesc(var->cursor_resulttupdesc);
-					if (var->is_explicit_cursor &&
-						var->cursor_rettype_tupledesc)
-						FreeTupleDesc(var->cursor_rettype_tupledesc);
-					/* End - ReqID:SRS-PLSQL-CURSOR */
 					/* Begin - ReqID:SRS-SQL-PACKAGE */
 					/* we should close package explicit cursor */
 					if (OidIsValid(var->pkgoid) &&
