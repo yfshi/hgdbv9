@@ -83,3 +83,53 @@ drop view v_test_z1423;
 drop table "UNION";
 SET ivorysql.identifier_case_switch=normal;
 /* End - BUG#Z1423 */
+
+
+--bug#M437
+create table merge_tab(id timestamp, name varchar2(256));
+
+SET ivorysql.insert_enable_alias TO on;
+
+merge into merge_tab a using (select null modify_time,'test' name from dual) b on
+(a.name = b.name)
+when not matched then
+  insert(a.id,a.name) values(b.modify_time,b.name);
+
+
+ merge into merge_tab a using (select '2024-10-24' modify_time,'test1' name from dual) b on
+(a.name = b.name)
+when not matched then
+  insert(a.id,a.name) values(b.modify_time,b.name);
+
+create table test_a as select 'a' AS ids;
+
+insert into test_a values('we are a varchar2 type');
+
+select * from test_a ORDER BY ids;
+
+create table m3_meta_schema(uuid varchar2(256),
+name varchar2(256),
+modify_time TIMESTAMP(2),
+alias varchar2(256),
+related_meta text,
+schema_type text
+);
+
+MERGE INTO m3_meta_schema a using (SELECT '839724555' uuid, NULL modify_time,
+'test' name,'test' alias,'test' related_meta,'1' schema_type FROM dual)
+b ON (a.name = b.name)
+WHEN NOT matched THEN INSERT(a.uuid,a.name,a.modify_time,a.alias,a.related_meta,
+a.schema_type) VALUES(b.uuid,b.name,b.modify_time,b.alias,b.related_meta,b.schema_type);
+
+--namedata vs varchar2
+SELECT COUNT(*) FROM pg_class WHERE relname = 'm3_meta_schema';
+
+--text vs varchar2
+SELECT COUNT(*) FROM m3_meta_schema WHERE related_meta = 'test';
+
+--clean data
+DROP TABLE m3_meta_schema;
+DROP TABLE test_a;
+DROP TABLE merge_tab;
+
+--end bug#M437
