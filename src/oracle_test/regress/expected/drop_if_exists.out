@@ -347,9 +347,9 @@ NOTICE:  database "test_database_exists" does not exist, skipping
 drop database if exists test_database_exists with (force);
 NOTICE:  database "test_database_exists" does not exist, skipping
 --Begin BUG:M0000118
-CREATE TABLE t1(id int);
+CREATE TABLE tm118(id int);
 CREATE TABLE t2(id int);
-DROP TABLE t1 PURGE;
+DROP TABLE tm118 PURGE;
 DROP TABLE IF EXISTS t2 PURGE;
 CREATE TABLE at1 (test int);
 CREATE TABLE at2 (test2 int);
