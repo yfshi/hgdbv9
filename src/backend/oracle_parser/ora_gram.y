@@ -8362,6 +8362,35 @@ GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
 					n->grantor = $8;
 					$$ = (Node*)n;
 				}
+			/* Begin - BUG#Z1331 */
+			/* same as the following statement:
+			 * GRANT USAGE ON FOREIGN DATA WRAPPER oracle_fdw TO user
+			 */
+			| GRANT CRETAE_or_ALTER opt_public DATABASE_LINK LINK TO grantee_list
+			{
+				GrantStmt *n = makeNode(GrantStmt);
+				PrivTarget *pt = (PrivTarget *) palloc(sizeof(PrivTarget));
+				AccessPriv *ap = makeNode(AccessPriv);
+
+				ap->utype = UNKNOWN_USER;
+				ap->priv_name = pstrdup("usage");
+				ap->cols = NIL;
+
+				pt->targtype = ACL_TARGET_OBJECT;
+				pt->objtype = OBJECT_FDW;
+				pt->objs = list_make1(makeString("oracle_fdw"));
+				pt->objs = lappend(pt->objs, makeString("postgres_fdw"));
+
+				n->is_grant = true;
+				n->privileges = list_make1(ap);
+				n->targtype = pt->targtype;
+				n->objtype = pt->objtype;
+				n->objects = pt->objs;
+				n->grantees = $7;
+
+				$$ = (Node*)n;
+			}
+			/* End - BUG#Z1331 */
 			/* Begin - ReqID:SRS-MISC-USER */
 			| GRANT privileges ON privilege_target TO instance_database_grantee_list
 			opt_grant_grant_option
@@ -8489,8 +8518,43 @@ RevokeStmt:
 					n->behavior = $11;
 					$$ = (Node *)n;
 				}
+			/* Begin - BUG#Z1331 */
+			/* same as the following statement:
+			 * REVOKE USAGE ON FOREIGN DATA WRAPPER oracle_fdw FROM user;
+			 */
+			| REVOKE CRETAE_or_ALTER opt_public DATABASE_LINK LINK FROM grantee_list
+			{
+				GrantStmt *n = makeNode(GrantStmt);
+				PrivTarget *pt = (PrivTarget *) palloc(sizeof(PrivTarget));
+				AccessPriv *ap = makeNode(AccessPriv);
+
+				ap->utype = UNKNOWN_USER;
+				ap->priv_name = pstrdup("usage");
+				ap->cols = NIL;
+
+				pt->targtype = ACL_TARGET_OBJECT;
+				pt->objtype = OBJECT_FDW;
+				pt->objs = list_make1(makeString("oracle_fdw"));
+				pt->objs = lappend(pt->objs, makeString("postgres_fdw"));
+
+				n->is_grant = false;
+				n->grant_option = false;
+				n->privileges = list_make1(ap);
+				n->targtype = pt->targtype;
+				n->objtype = pt->objtype;
+				n->objects = pt->objs;
+				n->grantees = $7;
+
+				$$ = (Node*)n;
+			}
+			/* End - BUG#Z1331 */
 		;
 
+CRETAE_or_ALTER:
+			CREATE
+		|	ALTER
+		|	DROP
+		;
 
 /*
  * Privilege names are represented as strings; the validity of the privilege

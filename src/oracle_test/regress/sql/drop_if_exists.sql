@@ -308,10 +308,10 @@ drop database if exists test_database_exists (force);
 drop database if exists test_database_exists with (force);
 
 --Begin BUG:M0000118
-CREATE TABLE t1(id int);
+CREATE TABLE tm118(id int);
 CREATE TABLE t2(id int);
 
-DROP TABLE t1 PURGE;
+DROP TABLE tm118 PURGE;
 DROP TABLE IF EXISTS t2 PURGE;
 
 CREATE TABLE at1 (test int);

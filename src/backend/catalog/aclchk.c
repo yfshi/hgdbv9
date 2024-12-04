@@ -944,10 +944,22 @@ objectNamesToOids(ObjectType objtype, List *objnames)
 		case OBJECT_FDW:
 			foreach(cell, objnames)
 			{
+				Oid			fdwid = InvalidOid;
 				char	   *fdwname = strVal(lfirst(cell));
-				Oid			fdwid = get_foreign_data_wrapper_oid(fdwname, false);
 
-				objects = lappend_oid(objects, fdwid);
+				/* Begin - BUG#Z1331 */
+				if (ORA_PARSER == compatible_db)
+				{
+					fdwid = get_foreign_data_wrapper_oid(fdwname, true);
+					if (OidIsValid(fdwid))
+						objects = lappend_oid(objects, fdwid);
+				}
+				else
+				{
+					fdwid = get_foreign_data_wrapper_oid(fdwname, false);
+					objects = lappend_oid(objects, fdwid);
+				}
+				/* End - BUG#Z1331 */
 			}
 			break;
 		case OBJECT_FOREIGN_SERVER:

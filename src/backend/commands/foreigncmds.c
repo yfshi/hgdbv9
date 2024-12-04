@@ -907,14 +907,9 @@ CreateForeignServer(CreateForeignServerStmt *stmt)
 	 */
 	fdw = GetForeignDataWrapperByName(stmt->fdwname, false);
 
-	/* Begin - BUG#M0000397 */
-	if (!stmt->olnkusing)
-	{
-		aclresult = pg_foreign_data_wrapper_aclcheck(fdw->fdwid, ownerId, ACL_USAGE);
-		if (aclresult != ACLCHECK_OK)
-			aclcheck_error(aclresult, OBJECT_FDW, fdw->fdwname);
-	}
-	/* End - BUG#M0000397 */
+	aclresult = pg_foreign_data_wrapper_aclcheck(fdw->fdwid, ownerId, ACL_USAGE);
+	if (aclresult != ACLCHECK_OK)
+		aclcheck_error(aclresult, OBJECT_FDW, fdw->fdwname);
 
 	/*
 	 * Insert tuple into pg_foreign_server.
