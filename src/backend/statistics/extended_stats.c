@@ -643,7 +643,7 @@ examine_expression(Node *expr, int stattarget)
 	 * reasonable into attstattarget, which is the only thing std_typanalyze
 	 * needs.
 	 */
-	stats->attr = (Form_pg_attribute) palloc(ATTRIBUTE_FIXED_PART_SIZE);
+	stats->attr = (Form_pg_attribute) palloc0(ATTRIBUTE_FIXED_PART_SIZE);	/* Bug#m0000421 */
 
 	/*
 	 * We can't have statistics target specified for the expression, so we

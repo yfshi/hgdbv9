@@ -68,6 +68,7 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 #include "rewrite/rewriteHandler.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
+#include "utils/ora_compatible.h"	/* Bug#m0000421 */
 
 
 /* Per-index data for ANALYZE */
@@ -2499,7 +2500,7 @@ compute_scalar_stats(VacAttrStatsP stats,
 			continue;
 		}
 		/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
-		else if (stats->attr->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+		else if (stats->attr->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL && ORA_PARSER == compatible_db)	/* Bug#m0000421 */
 		{
 			EState     *estate;
 			Expr       *varexpr;
