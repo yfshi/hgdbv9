@@ -33,6 +33,10 @@ sql_mode_t  sql_mode;
 static char *sql_mode_str = NULL;
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
+/* Begin - BUG#Z1434 */
+bool		enable_ignore_columns_list = false;
+/* End - BUG#Z1434 */
+
 #endif
 #ifdef IVY_MY_GUC_BOOL_PARAMS
 
@@ -47,6 +51,17 @@ static char *sql_mode_str = NULL;
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - BUG#Z1434 */
+	{
+		{"mysql.enable_ignore_columns_list", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("whether enable ignore cloumns list feature in MySQL compatible mode."),
+			NULL
+		},
+		&enable_ignore_columns_list,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z1434 */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

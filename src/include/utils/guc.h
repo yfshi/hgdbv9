@@ -446,6 +446,10 @@ extern PGDLLIMPORT bool ora_global_names;
 extern PGDLLIMPORT bool enable_indexhint;
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - BUG#Z1434 */
+extern PGDLLIMPORT bool enable_ignore_columns_list;
+/* End - BUG#Z1434 */
+
 /*
  * Functions exported by guc.c
  */
