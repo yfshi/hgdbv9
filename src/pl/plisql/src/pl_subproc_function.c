@@ -1139,6 +1139,9 @@ plisql_register_internal_func(void)
 	/* Begin - BUG#M0000141 */
 	plisql_internal_funcs.get_subproc_parallel_enable = plisql_get_subproc_parallel_enable;
 	/* End - BUG#M0000141 */
+	/* Begin - BUG#M0000432 */
+	plisql_internal_funcs.get_subproc_deterministic = plisql_get_subproc_deterministic;
+	/* End - BUG#M0000432 */
 
 	plisql_internal_funcs.isload = true;
 }

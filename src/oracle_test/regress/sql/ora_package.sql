@@ -7268,3 +7268,37 @@ SELECT test_f(name=>'abc',interval=>4);
  DROP package test_pkg;
  DROP package test_job;
  DROP FUNCTION test_f;
+
+
+--bug#M0000432
+create or replace package test_pkg is
+  function test_f(a integer default 1) return integer;
+  function test_f_d(a integer default 1) return integer deterministic;
+end;
+/
+
+create or replace package body test_pkg is
+	function test_f(a integer default 1) return integer is
+	begin
+		raise notice '1';
+		return a;
+	end;
+	function test_f_d(a integer default 1) return integer is
+	begin
+		raise notice '1';
+		return a;
+	end;
+end;
+/
+
+create table test_imm(id integer);
+insert into test_imm values(1),(2),(3);
+
+--test
+select test_pkg.test_f(1),id from test_imm;
+select test_pkg.test_f_d(1),id from test_imm;
+select test_pkg.test_f_d(1+1),id from test_imm;
+
+--clean data
+drop table test_imm;
+drop package test_pkg;

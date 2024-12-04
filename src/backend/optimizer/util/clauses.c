@@ -143,6 +143,11 @@ static Expr *simplify_function(Oid funcid,
 							   Oid result_collid, Oid input_collid, List **args_p,
 							   bool funcvariadic, bool process_args, bool allow_non_const,
 							   eval_const_expressions_context *context);
+/* Begin - BUG#M0000432 */
+static Expr *simplify_function_for_subproc(FuncExpr *expr,
+										   List **args_p,
+										   eval_const_expressions_context *context);
+/* ENd - BUG#M0000432 */
 static List *reorder_function_arguments(List *args, int pronargs,
 										HeapTuple func_tuple);
 static List *add_function_defaults(List *args, int pronargs,
@@ -156,6 +161,11 @@ static Expr *evaluate_function(Oid funcid, Oid result_type, int32 result_typmod,
 							   bool funcvariadic,
 							   HeapTuple func_tuple,
 							   eval_const_expressions_context *context);
+/* Begin - BUG#M0000432 */
+static Expr *evaluate_function_for_subproc(FuncExpr *expr,
+										   List *args,
+										   eval_const_expressions_context *context);
+/* ENd - BUG#M0000432 */
 static Expr *inline_function(Oid funcid, Oid result_type, Oid result_collid,
 							 Oid input_collid, List *args,
 							 bool funcvariadic,
@@ -407,11 +417,34 @@ contain_mutable_functions_checker(Oid func_id, void *context)
 	return (func_volatile(func_id) != PROVOLATILE_IMMUTABLE);
 }
 
+/* Begin - BUG#M0000432 */
+/*
+ * Check function not from pg_proc is mutable.
+ */
+static bool
+contain_mutable_functions_checker_for_subproc(FuncExpr *funcexpr, void *context)
+{
+	return (get_subproc_deterministic(funcexpr) != PROVOLATILE_IMMUTABLE);
+}
+/* ENd - BUG#M0000432 */
+
 static bool
 contain_mutable_functions_walker(Node *node, void *context)
 {
 	if (node == NULL)
 		return false;
+
+	/* Begin - BUG#M0000432 */
+	/* check package'func and subproc func */
+	if (nodeTag(node) == T_FuncExpr)
+	{
+		FuncExpr *funcexpr = (FuncExpr *) node;
+
+		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			return contain_mutable_functions_checker_for_subproc(funcexpr, context);
+	}
+	/* End - BUG#M0000432 */
+
 	/* Check for mutable functions in node itself */
 	if (check_functions_in_node(node, contain_mutable_functions_checker,
 								context))
@@ -529,6 +562,17 @@ contain_volatile_functions_checker(Oid func_id, void *context)
 	return (func_volatile(func_id) == PROVOLATILE_VOLATILE);
 }
 
+/* Begin - BUG#M0000432 */
+/*
+ * Check function not from pg_proc is volatile.
+ */
+static bool
+contain_volatile_functions_checker_for_subproc(FuncExpr *funcexpr, void *context)
+{
+	return (get_subproc_deterministic(funcexpr) == PROVOLATILE_VOLATILE);
+}
+/* ENd - BUG#M0000432 */
+
 static bool
 contain_volatile_functions_walker(Node *node, void *context)
 {
@@ -541,7 +585,7 @@ contain_volatile_functions_walker(Node *node, void *context)
 		FuncExpr   *expr = (FuncExpr *) node;
 
 		if (!FUNC_EXPR_FROM_PG_PROC(expr->function_from))
-			return true;
+			return contain_volatile_functions_checker_for_subproc(expr, context); /* BUG:M0000432 */
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
 
@@ -2599,14 +2643,16 @@ eval_const_expressions_mutator(Node *node,
 										   context);
 				}
 				/* End - SRS-PLSQL-SUBPROC */
-				if (simple)		/* successfully simplified it */
-					return (Node *) simple;
-
 				/* Begin - ReqID:SRS-SQL-PACKAGE */
-				if (FUNC_EXPR_FROM_PACKAGE(expr->function_from))
+				else if (FUNC_EXPR_FROM_PACKAGE(expr->function_from))
+				{
 					set_pkginfo_from_funcexpr(expr);
+					simple = simplify_function_for_subproc(expr, &args, context); /* BUG:M0000432 */
+				}
 				/* End - ReqID:SRS-SQL-PACKAGE */
 
+				if (simple)		/* successfully simplified it */
+					return (Node *) simple;
 				/*
 				 * The expression cannot be simplified any further, so build
 				 * and return a replacement FuncExpr node using the
@@ -4309,6 +4355,42 @@ simplify_function(Oid funcid, Oid result_type, int32 result_typmod,
 	return newexpr;
 }
 
+/* Begin - BUG#M0000432 */
+/*
+ * Like simplify_function, try to simplify a package function call.
+ * Please also consider this function when modifying simplify_function.
+ */
+static Expr *
+simplify_function_for_subproc(FuncExpr *expr, List **args_p, eval_const_expressions_context *context)
+{
+	List	   *args = *args_p;
+	Expr	   *newexpr;
+
+	/*
+	 * Process the function arguments, unless the caller did it already.
+	 *
+	 * Here we must deal with named or defaulted arguments, and then
+	 * recursively apply eval_const_expressions to the whole argument list.
+	 *
+	 * For package functions, defaulted argments are already in the
+	 * argument list.
+	 */
+	args = (List *)expression_tree_mutator((Node *)args,
+										   eval_const_expressions_mutator,
+										   (void *)context);
+	/* Argument processing done, give it back to the caller */
+	*args_p = args;
+
+	/* Now attempt simplification of the function call proper. */
+
+	newexpr = evaluate_function_for_subproc(expr, args, context);
+
+	/* Here we don't try to expand a function call inline. */
+
+	return newexpr;
+}
+/* ENd - BUG#M0000432 */
+
 /*
  * expand_function_arguments: convert named-notation args to positional args
  * and/or insert default args, as needed
@@ -4727,6 +4809,102 @@ evaluate_function(Oid funcid, Oid result_type, int32 result_typmod,
 	return evaluate_expr((Expr *) newexpr, result_type, result_typmod,
 						 result_collid);
 }
+
+/* Begin - BUG#M0000432 */
+/*
+ * Like evaluate_function, try to pre-evaluate a package function call.
+ * Please also consider this function when modifying evaluate_function.
+ */
+static Expr *
+evaluate_function_for_subproc(FuncExpr *expr, List *args, eval_const_expressions_context *context)
+{
+	bool		has_nonconst_input = false;
+	bool		has_null_input = false;
+	ListCell   *arg;
+	FuncExpr   *newexpr;
+
+	/*
+	 * Can't simplify if it returns a set.
+	 */
+	if (expr->funcretset)
+		return NULL;
+
+	/*
+	 * Can't simplify if it returns RECORD.  The immediate problem is that it
+	 * will be needing an expected tupdesc which we can't supply here.
+	 *
+	 * In the case where it has OUT parameters, we could build an expected
+	 * tupdesc from those, but there may be other gotchas lurking.  In
+	 * particular, if the function were to return NULL, we would produce a
+	 * null constant with no remaining indication of which concrete record
+	 * type it is.  For now, seems best to leave the function call unreduced.
+	 */
+	if (expr->funcresulttype == RECORDOID)
+		return NULL;
+
+	/*
+	 * Check for constant inputs and especially constant-NULL inputs.
+	 */
+	foreach(arg, args)
+	{
+		if (IsA(lfirst(arg), Const))
+			has_null_input |= ((Const *) lfirst(arg))->constisnull;
+		else
+			has_nonconst_input = true;
+	}
+
+	/*
+	 * If the function is strict and has a constant-NULL input, it will never
+	 * be called at all, so we can replace the call by a NULL constant, even
+	 * if there are other inputs that aren't constant, and even if the
+	 * function is not otherwise immutable.
+	 */
+	if (has_null_input)
+		/* Do nothing for oracle. */ ;
+
+	/*
+	 * Otherwise, can simplify only if all inputs are constants. (For a
+	 * non-strict function, constant NULL inputs are treated the same as
+	 * constant non-NULL inputs.)
+	 */
+	if (has_nonconst_input)
+		return NULL;
+
+	/*
+	 * Ordinarily we are only allowed to simplify immutable functions. But for
+	 * purposes of estimation, we consider it okay to simplify functions that
+	 * are merely stable; the risk that the result might change from planning
+	 * time to execution time is worth taking in preference to not being able
+	 * to estimate the value at all.
+	 */
+	if (contain_mutable_functions((Node *)expr))
+		return NULL;
+
+	/*
+	 * OK, looks like we can simplify this operator/function.
+	 *
+	 * Build a new FuncExpr node containing the already-simplified arguments.
+	 */
+	newexpr = makeNode(FuncExpr);
+	newexpr->funcid = expr->funcid;
+	newexpr->funcresulttype = expr->funcresulttype;
+	newexpr->funcretset = false;
+	newexpr->funcvariadic = expr->funcvariadic;
+	newexpr->funcformat = COERCE_EXPLICIT_CALL; /* doesn't matter */
+	newexpr->funccollid = expr->funccollid;	/* doesn't matter */
+	newexpr->inputcollid = expr->inputcollid;
+	newexpr->args = args;
+	newexpr->function_from = expr->function_from;
+	newexpr->parent_func = expr->parent_func;
+	newexpr->function_name = expr->function_name;
+	newexpr->ref_pkgtype = expr->ref_pkgtype;
+	newexpr->pkgoid = expr->pkgoid;
+	newexpr->location = -1;
+
+	return evaluate_expr((Expr *) newexpr, expr->funcresulttype, exprTypmod((Node *)expr),
+						 expr->funccollid);
+}
+/* ENd - BUG#M0000432 */
 
 /*
  * inline_function: try to expand a function call inline

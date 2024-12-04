@@ -225,6 +225,9 @@ typedef struct
 	/* Begin - BUG#M0000141 */
 	char (*get_subproc_parallel_enable) (FuncExpr *expr);
 	/* End - BUG#M0000141 */
+	/* Begin - BUG#M0000432 */
+	char (*get_subproc_deterministic) (FuncExpr *expr);
+	/* ENd - BUG#M0000432 */
 	bool isload;
 } PLiSQL_funcs_call;
 
@@ -351,6 +354,10 @@ extern void change_func_prostatus(Oid funcOid, char prostatus);
 /* Begin - BUG#M0000141 */
 extern char get_subproc_parallel_enable(FuncExpr *funcexpr);
 /* End - BUG#M0000141 */
+
+/* Begin - BUG#M0000432 */
+extern char get_subproc_deterministic(FuncExpr *funcexpr);
+/* End - BUG#M0000432 */
 
 
 
