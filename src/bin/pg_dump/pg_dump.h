@@ -39,6 +39,7 @@ typedef enum
 	/* When modifying this enum, update priority tables in pg_dump_sort.c! */
 	DO_DATABASEROLE,
 	DO_DATABASEROLEMEMBERSHIP,
+	DO_DATABASETABLESPACE,		/* BUGZ1343 */
 	DO_NAMESPACE,
 	DO_EXTENSION,
 	DO_TYPE,
@@ -714,6 +715,21 @@ typedef struct DbRolesMembershipInfo
 } DbRolesMembershipInfo;
 /* End - bug:z836*/
 /* End - ReqID:SRS-MISC-USER */
+/* BEGIN - BUGZ1343 */
+typedef struct DbTableSpaceInfo
+{
+	DumpableObject	dobj;
+	Oid				spcoid;
+	char			*spcname;
+	char			*spclocation;
+	char			*spcowner;
+	char			*spcacl;
+	char			*rspcacl;
+	char			*spcoptions;
+	char			*spccomment;
+	char			*fspcname;
+} DbTableSpaceInfo;
+/* END - BUGZ1343 */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * The function pointers used in the dump process are maintained here. If
@@ -841,6 +857,7 @@ extern int	numExtensions;
 extern int	numPublications;
 extern int	numRoles;
 extern int	numRolesMembership;
+extern int  numTablespaces;/* BUGZ1343 */
 extern ExtensionMemberId *extmembers;
 extern int	numextmembers;
 

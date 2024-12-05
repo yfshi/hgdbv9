@@ -94,6 +94,6 @@ extern void	ConnectDatabaseOracle(Archive *AHX,
 									bool isReconnect);
 extern void	ProcessArchiveRestoreOptionsOracle(Archive *AHX);
 extern void	RestoreArchiveOracle(Archive *AHX);
-
+extern DbTableSpaceInfo *getDbTablespace(Archive *fout, int *numTablespaces);	/* BUGZ1343 */
 
 #endif							/* PG_DUMP_ORACLE_H */

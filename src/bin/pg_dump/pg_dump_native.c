@@ -9876,6 +9876,7 @@ dumpDumpableObjectNative(Archive *fout, const DumpableObject *dobj)
 		case DO_POST_DATA_BOUNDARY:
 		case DO_DATABASEROLE:
 		case DO_DATABASEROLEMEMBERSHIP:
+		case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 		case DO_PACKAGE:
 			/* never dumped, nothing to do */
 			break;
@@ -18144,6 +18145,7 @@ addBoundaryDependenciesNative(DumpableObject **dobjs, int numObjs,
 				break;
 			case DO_DATABASEROLE:
 			case DO_DATABASEROLEMEMBERSHIP:
+			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_PACKAGE:
 				/* nothing to do */
 				break;

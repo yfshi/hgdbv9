@@ -5472,6 +5472,18 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			ahprintf(AH, "%s\n\n", te->defn);
 		}
 	}
+	/* BEGIN - BUGZ1343 */
+	else if(strcmp(te->desc, "DATABASETABLESPACE") == 0 && (DB_ORACLE == database_mode))
+	{
+		if (CurUser == INSTANCE)
+		{
+			ahprintf(AH, "set session authorization %s;\n", fmtId(te->owner));
+			CurUser = DB;
+		}
+		ahprintf(AH, "%s\n\n", te->defn);
+
+	}
+	/* END - BUGZ1343 */
 	else
 	{
 		if (te->defn && strlen(te->defn) > 0)

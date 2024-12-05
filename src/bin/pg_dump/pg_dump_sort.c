@@ -63,6 +63,7 @@ enum dbObjectTypePriorities
 {
 	PRIO_DATABASEROLE = 1,			/* bug:z538 z833*/
 	PRIO_DATABASEROLEMEMBERSHIP,
+	PRIO_DATABASETABLESPACE,		/* BUGZ1343 */
 	PRIO_NAMESPACE,
 	PRIO_PROCLANG,
 	PRIO_COLLATION,
@@ -116,6 +117,7 @@ static const int dbObjectTypePriority[] =
 {
 	PRIO_DATABASEROLE,			/* DO_DATABASEROLE		bug:z538 */
 	PRIO_DATABASEROLEMEMBERSHIP,
+	PRIO_DATABASETABLESPACE,	/* DO_DATABASETABLESPACE - BUGZ1343 */
 	PRIO_NAMESPACE,				/* DO_NAMESPACE */
 	PRIO_EXTENSION,				/* DO_EXTENSION */
 	PRIO_TYPE,					/* DO_TYPE */
@@ -1486,6 +1488,13 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 					 "DATABASEROLEMEMBERSHIP  (ID %d)",
 					 obj->dumpId);
 			return;
+		/* BEGIN - BUGZ1343 */
+		case DO_DATABASETABLESPACE:
+			snprintf(buf, bufsize,
+					"DATABASETABLESPACE		(ID %d)",
+					obj->dumpId);
+			return;
+		/* END - BUGZ1343 */
 		case DO_NAMESPACE:
 			snprintf(buf, bufsize,
 					 "SCHEMA %s  (ID %d OID %u)",
