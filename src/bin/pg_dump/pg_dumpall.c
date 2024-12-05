@@ -705,7 +705,7 @@ main(int argc, char *argv[])
 		cdboid = FindUserLevelbyoid(conn , InvalidOid);
 		if (OidIsValid(cdboid))
 		{
-			pg_log_error("Can't pg_dumpall use databaseuser");
+			pg_log_error("Cannot execute pg_dumpall with a DATABASEUSER");	/* BUGZ1346 */
 			exit_nicely(1);
 		}
 	}
