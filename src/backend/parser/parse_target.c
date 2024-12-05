@@ -312,11 +312,28 @@ resolveTargetListUnknowns(ParseState *pstate, List *targetlist)
 
 		if (restype == UNKNOWNOID)
 		{
+			/* Begin - BUG#M000437 */
+			/*
+			 * there, we convert to default typeid accroding compatible
+			 * in oracle we convert to varchar2 oid
+			 * others, we convert to textoid, so that, oracle data type like timestamp
+			 * can accept const value like null or '2022-12-24'
+			 */
+			Oid targetoid = TEXTOID;
+
+			if (compatible_db == ORA_PARSER)
+			{
+				if (nls_length_semantics == NLS_LENGTH_BYTE)
+					targetoid = ORAVARCHARBYTEOID;
+				else
+					targetoid = ORAVARCHARCHAROID;
+			}
 			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
-											 restype, TEXTOID, -1,
+											 restype, targetoid, -1,
 											 COERCION_IMPLICIT,
 											 COERCE_IMPLICIT_CAST,
 											 -1);
+			/* End - BUG#M0000437 */
 		}
 	}
 }

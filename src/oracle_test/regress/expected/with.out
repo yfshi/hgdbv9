@@ -146,7 +146,7 @@ WITH q AS (SELECT 'foo' AS x)
 SELECT x, pg_typeof(x) FROM q;
   x  | pg_typeof 
 -----+-----------
- foo | text
+ foo | varchar2
 (1 row)
 
 WITH RECURSIVE t(n) AS (

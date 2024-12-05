@@ -1607,7 +1607,15 @@ exec_parse_message(const char *query_string,	/* string to execute */
 				if (nodeTag(raw_parse_tree->stmt) == T_DoStmt)
 				{
 					if (compatible_db == ORA_PARSER)
-						paramTypes[i] = ORAVARCHARCHAROID;
+					{
+						/* Begin - BUG#M000437 */
+						/* according to nls_length_semantics to assign default oid */
+						if (nls_length_semantics == NLS_LENGTH_BYTE)
+							paramTypes[i] = ORAVARCHARBYTEOID;
+						else
+							paramTypes[i] = ORAVARCHARCHAROID;
+						/* End - BUG#M0000437 */
+					}
 					else
 						paramTypes[i] = TEXTOID;
 					continue;
