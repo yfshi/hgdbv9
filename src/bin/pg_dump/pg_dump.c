@@ -248,7 +248,9 @@ static char *downMoptionString(const char*options);
 static bool Moption(const char *options, const char **moptions, int length);
 static void DatabaseCheckMoption(const char *options);
 /* END - ReqID:SRS-MYSQL-PGDUMP */
-
+/* Begin - bugz1402 */
+static void DatabaseCheckoptions(const char *options);
+/* End - bugz1402 */
 
 
 int
@@ -720,6 +722,9 @@ main(int argc, char **argv)
 	 */
 	DatabaseCheckMoption(DumpM);
 	/* END - ReqID:SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP */
+	/* Begin - bugz1402 */
+	DatabaseCheckoptions(DumpMode);
+	/* End - bugz1402 */
 
 	/* Open the output file */
 	fout = dM->CreateArchive(filename, archiveFormat, compressLevel, dosync,
@@ -1343,3 +1348,11 @@ static void DatabaseCheckMoption(const char *options)
 		fatal("Except for Oracle and MySQL database modes, other database modes do not support -M");	/* BUGZ1346 */
 }
 /* END - ReqID:SRS-MYSQL-PGDUMP */
+
+/* Begin - bugz1402 */
+static void DatabaseCheckoptions(const char *options)
+{
+	if (database_mode == DB_MYSQL && options != NULL)
+		fatal("MySQL database does not support the -m option");
+}
+/* End - bugz1402 */
