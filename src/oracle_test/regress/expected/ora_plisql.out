@@ -3728,3 +3728,174 @@ select to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss')
  2024-11-09 13:45:36 | 2024-11-09 13:45:36
 (1 row)
 
+--bug#Z1452
+set ivorysql.enable_compatible_numeric_division_result = true;
+select 3::bigint/6::int,3::int/6::int,3::smallint/6::int;
+        ?column?        |        ?column?        |        ?column?        
+------------------------+------------------------+------------------------
+ 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000
+(1 row)
+
+select 3::bigint/6::bigint,3::int/6::bigint,3::smallint/6::bigint;
+        ?column?        |        ?column?        |        ?column?        
+------------------------+------------------------+------------------------
+ 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000
+(1 row)
+
+select 3::bigint/6::smallint,3::int/6::smallint,3::smallint/6::smallint;
+        ?column?        |        ?column?        |        ?column?        
+------------------------+------------------------+------------------------
+ 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000
+(1 row)
+
+SELECT '2' / 4, '2' / '4','2' / 4.0, 2 / '4', 2 / 4 FROM dual;
+        ?column?        |        ?column?        |        ?column?        |        ?column?        |        ?column?        
+------------------------+------------------------+------------------------+------------------------+------------------------
+ 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000 | 0.50000000000000000000
+(1 row)
+
+--error
+SELECT 'abc' / '3' FROM dual;
+ERROR:  invalid input syntax for type numeric: "abc"
+LINE 1: SELECT 'abc' / '3' FROM dual;
+               ^
+--error
+SELECT 'abc' / '3' FROM dual;
+ERROR:  invalid input syntax for type numeric: "abc"
+LINE 1: SELECT 'abc' / '3' FROM dual;
+               ^
+--error
+SELECT 'abc' / 3 FROM dual;
+ERROR:  invalid input syntax for type numeric: "abc"
+LINE 1: SELECT 'abc' / 3 FROM dual;
+               ^
+--error
+SELECT 3 / 'abc' FROM dual;
+ERROR:  invalid input syntax for type numeric: "abc"
+LINE 1: SELECT 3 / 'abc' FROM dual;
+                   ^
+SELECT 1/6 FROM dual;
+        ?column?        
+------------------------
+ 0.16666666666666666667
+(1 row)
+
+create table t_insert(id integer,name varchar2(256));
+create table t_insert_his(id integer,name varchar2(256));
+insert into t_insert values(1,'xiexie');
+insert into t_insert_his values(1,'xiexie');
+insert into t_insert_his values(2,'history');
+SELECT
+(SELECT sum(1) FROM T_INSERT) sum,
+(SELECT count(1) FROM T_INSERT_HIS ) count,
+(SELECT count(1) FROM T_INSERT ) countd,
+(SELECT sum(1) FROM T_INSERT)/ (SELECT count(1) FROM T_INSERT_HIS ) "sum/count",
+(SELECT count(1) FROM T_INSERT )/ (SELECT count(1) FROM T_INSERT_HIS ) "countd/count"
+from dual;
+ sum | count | countd |       sum/count        |      countd/count      
+-----+-------+--------+------------------------+------------------------
+   1 |     2 |      1 | 0.50000000000000000000 | 0.50000000000000000000
+(1 row)
+
+CREATE TABLE test_id(id oid);
+INSERT INTO test_id VALUES(1);
+DROP TABLE test_id;
+create table test_id(id char, ids char);
+INSERT INTO test_id VALUES(1,2);
+INSERT INTO test_id VALUES(2,3);
+SELECT id / 2 FROM test_id ORDER BY id;
+        ?column?        
+------------------------
+ 0.50000000000000000000
+ 1.00000000000000000000
+(2 rows)
+
+SELECT id / ids FROM test_id ORDER BY id;
+        ?column?        
+------------------------
+ 0.50000000000000000000
+ 0.66666666666666666667
+(2 rows)
+
+--error
+SELECT id / 2 ,xmin / 2 FROM test_id;
+ERROR:  operator does not exist: xid / integer
+LINE 1: SELECT id / 2 ,xmin / 2 FROM test_id;
+                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+reset ivorysql.enable_compatible_numeric_division_result;
+select 3::bigint/6::int,3::int/6::int,3::smallint/6::int;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        0 |        0 |        0
+(1 row)
+
+select 3::bigint/6::bigint,3::int/6::bigint,3::smallint/6::bigint;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        0 |        0 |        0
+(1 row)
+
+select 3::bigint/6::smallint,3::int/6::smallint,3::smallint/6::smallint;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        0 |        0 |        0
+(1 row)
+
+SELECT '2' / 4, '2' / '4','2' / 4.0, 2 / '4', 2 / 4 FROM dual;
+ ?column? |        ?column?        |        ?column?        | ?column? | ?column? 
+----------+------------------------+------------------------+----------+----------
+        0 | 0.50000000000000000000 | 0.50000000000000000000 |        0 |        0
+(1 row)
+
+--error
+SELECT 'abc' / '3' FROM dual;
+ERROR:  invalid input syntax for type numeric: "abc"
+LINE 1: SELECT 'abc' / '3' FROM dual;
+               ^
+--error
+SELECT 'abc' / 3 FROM dual;
+ERROR:  invalid input syntax for type integer: "abc"
+LINE 1: SELECT 'abc' / 3 FROM dual;
+               ^
+--error
+SELECT 3 / 'abc' FROM dual;
+ERROR:  invalid input syntax for type integer: "abc"
+LINE 1: SELECT 3 / 'abc' FROM dual;
+                   ^
+SELECT 1/6 FROM dual;
+ ?column? 
+----------
+        0
+(1 row)
+
+SELECT
+(SELECT sum(1) FROM T_INSERT) sum,
+(SELECT count(1) FROM T_INSERT_HIS ) count,
+(SELECT count(1) FROM T_INSERT ) countd,
+(SELECT sum(1) FROM T_INSERT)/ (SELECT count(1) FROM T_INSERT_HIS ) "sum/count",
+(SELECT count(1) FROM T_INSERT )/ (SELECT count(1) FROM T_INSERT_HIS ) "countd/count"
+from dual;
+ sum | count | countd | sum/count | countd/count 
+-----+-------+--------+-----------+--------------
+   1 |     2 |      1 |         0 |            0
+(1 row)
+
+SELECT id / 2 FROM test_id ORDER BY id;
+        ?column?        
+------------------------
+ 0.50000000000000000000
+ 1.00000000000000000000
+(2 rows)
+
+SELECT id / ids FROM test_id ORDER BY id;
+        ?column?        
+------------------------
+ 0.50000000000000000000
+ 0.66666666666666666667
+(2 rows)
+
+--clean data
+drop table t_insert;
+drop table t_insert_his;
+DROP TABLE test_id;

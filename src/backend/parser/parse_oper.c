@@ -757,6 +757,10 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 		/* Begin - BUG#M000411 */
 		bool has_change_type = false;
 		/* End - BUG#M0000411 */
+		/* Begin - BUG#Z0001452 */
+		Oid save_origltypeId = InvalidOid;
+		Oid save_origrtypeId = InvalidOid;
+		/* End - BUG#Z00001452 */
 
 		/* otherwise, binary operator */
 		ltypeId = exprType(ltree);
@@ -786,17 +790,48 @@ make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 			rtypeId == INT4OID &&
 			nodeTag(rtree) == T_Const)
 		{
+			/* Begin - BUG#Z0001452 */
+			save_origltypeId = ltypeId;
+			save_origrtypeId = rtypeId;
+			/* End - BUG#Z00001452 */
 			ltypeId = NUMBEROID;
 			rtypeId = NUMBEROID;
 			has_change_type = true;
 		}
+		/* Begin - BUG#Z0001452 */
+		/*
+		 * At least one of the parties is of numeric type,
+		 * we use number / number
+		 */
+		else if (ORA_PARSER == compatible_db &&
+				enable_compatible_numeric_division_result &&
+				((ltypeId == INT4OID ||
+				ltypeId == INT2OID ||
+				ltypeId == INT8OID ||
+				ltypeId == UNKNOWNOID) &&
+				(rtypeId == INT4OID ||
+				rtypeId == INT2OID ||
+				rtypeId == INT8OID ||
+				rtypeId == UNKNOWNOID)) &&
+				list_length(opname) == 1 &&
+				strcmp(strVal(linitial(opname)), "/") == 0)
+		{
+			save_origltypeId = ltypeId;
+			save_origrtypeId = rtypeId;
+			has_change_type = true;
+			ltypeId = NUMBEROID;
+			rtypeId = NUMBEROID;
+		}
+		/* End - BUG#Z00001452 */
 		/* End - BUG#M0000411 */
 		tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 		/* Begin - BUG#M000411 */
 		if (has_change_type)
 		{
-			ltypeId = INT4OID;
-			rtypeId = INT4OID;
+			/* Begin - BUG#Z0001452 */
+			ltypeId = save_origltypeId;
+			rtypeId = save_origrtypeId;
+			/* End - BUG#Z00001452 */
 		}
 		/* End - BUG#M0000411 */
 	}

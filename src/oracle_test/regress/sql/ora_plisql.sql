@@ -2683,3 +2683,99 @@ reset ivorysql.enable_compatible_const_integer_operator;
 
 select to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss')
 ,(to_date('2024-11-9 13:45:36', 'yyyy-mm-dd hh24:mi:ss') +1/24/60/30) FROM dual;
+
+--bug#Z1452
+set ivorysql.enable_compatible_numeric_division_result = true;
+
+select 3::bigint/6::int,3::int/6::int,3::smallint/6::int;
+select 3::bigint/6::bigint,3::int/6::bigint,3::smallint/6::bigint;
+select 3::bigint/6::smallint,3::int/6::smallint,3::smallint/6::smallint;
+
+SELECT '2' / 4, '2' / '4','2' / 4.0, 2 / '4', 2 / 4 FROM dual;
+
+--error
+SELECT 'abc' / '3' FROM dual;
+
+--error
+SELECT 'abc' / '3' FROM dual;
+
+--error
+SELECT 'abc' / 3 FROM dual;
+
+--error
+SELECT 3 / 'abc' FROM dual;
+
+SELECT 1/6 FROM dual;
+
+
+create table t_insert(id integer,name varchar2(256));
+
+create table t_insert_his(id integer,name varchar2(256));
+
+insert into t_insert values(1,'xiexie');
+insert into t_insert_his values(1,'xiexie');
+insert into t_insert_his values(2,'history');
+
+SELECT
+(SELECT sum(1) FROM T_INSERT) sum,
+(SELECT count(1) FROM T_INSERT_HIS ) count,
+(SELECT count(1) FROM T_INSERT ) countd,
+(SELECT sum(1) FROM T_INSERT)/ (SELECT count(1) FROM T_INSERT_HIS ) "sum/count",
+(SELECT count(1) FROM T_INSERT )/ (SELECT count(1) FROM T_INSERT_HIS ) "countd/count"
+from dual;
+
+
+CREATE TABLE test_id(id oid);
+
+INSERT INTO test_id VALUES(1);
+
+DROP TABLE test_id;
+
+create table test_id(id char, ids char);
+
+INSERT INTO test_id VALUES(1,2);
+INSERT INTO test_id VALUES(2,3);
+
+SELECT id / 2 FROM test_id ORDER BY id;
+
+SELECT id / ids FROM test_id ORDER BY id;
+
+--error
+SELECT id / 2 ,xmin / 2 FROM test_id;
+
+reset ivorysql.enable_compatible_numeric_division_result;
+
+select 3::bigint/6::int,3::int/6::int,3::smallint/6::int;
+select 3::bigint/6::bigint,3::int/6::bigint,3::smallint/6::bigint;
+select 3::bigint/6::smallint,3::int/6::smallint,3::smallint/6::smallint;
+
+
+SELECT '2' / 4, '2' / '4','2' / 4.0, 2 / '4', 2 / 4 FROM dual;
+
+--error
+SELECT 'abc' / '3' FROM dual;
+
+--error
+SELECT 'abc' / 3 FROM dual;
+
+--error
+SELECT 3 / 'abc' FROM dual;
+
+SELECT 1/6 FROM dual;
+
+SELECT
+(SELECT sum(1) FROM T_INSERT) sum,
+(SELECT count(1) FROM T_INSERT_HIS ) count,
+(SELECT count(1) FROM T_INSERT ) countd,
+(SELECT sum(1) FROM T_INSERT)/ (SELECT count(1) FROM T_INSERT_HIS ) "sum/count",
+(SELECT count(1) FROM T_INSERT )/ (SELECT count(1) FROM T_INSERT_HIS ) "countd/count"
+from dual;
+
+SELECT id / 2 FROM test_id ORDER BY id;
+
+SELECT id / ids FROM test_id ORDER BY id;
+
+--clean data
+drop table t_insert;
+drop table t_insert_his;
+DROP TABLE test_id;

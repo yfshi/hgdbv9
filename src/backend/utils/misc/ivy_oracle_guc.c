@@ -185,6 +185,10 @@ bool   enable_update_multicol = false;
 bool enable_compatible_const_integer_operator = false;
 /* End - BUG#M0000411 */
 
+/* Begin - BUG#Z0001452 */
+bool enable_compatible_numeric_division_result = false;
+/* End - BUG#Z00001452 */
+
 
 
 #endif
@@ -715,6 +719,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000411 */
+	/* Begin - BUG#Z0001452 */
+	{
+		{"ivorysql.enable_compatible_numeric_division_result", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether compatible with numeric type division results with Oracle."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_compatible_numeric_division_result,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#Z00001452 */
 #endif
 #if 0
 	/* End-of-list marker */
