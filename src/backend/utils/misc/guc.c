@@ -8694,7 +8694,7 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	 */
 	name = altersysstmt->setstmt->name;
 
-	if (DB_ORACLE == database_mode)
+	if (DB_ORACLE == database_mode && name)	/* Bug#z1456 */
 	{
 		if (strcmp(name, "open_links") == 0 ||
 			strcmp(name, "open_links_per_instance") == 0) /* BUG#Z1325 */
