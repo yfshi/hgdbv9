@@ -198,7 +198,7 @@ int	numPublications;
 int	numRoles;
 int	numRolesMembership;
 /* END - ReqID:SRS-MISC-USER  BUG:Z538 */
-
+int numTablespaces;	/* BUGZ1343 */
 /* This is an array of object identities, not actual DumpableObjects */
 ExtensionMemberId *extmembers;
 int	numextmembers;

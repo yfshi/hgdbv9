@@ -9883,6 +9883,10 @@ dumpDumpableObjectPg(Archive *fout, const DumpableObject *dobj)
 			/* nothing to do in pg mode */
 			break;
 		/* End - BUG#Z836 */
+		/* BEGIN - BUGZ1343 */
+		case DO_DATABASETABLESPACE:
+			break;	/* nothing to do in pg mode */
+		/* END - BUGZ1343 */
 		case DO_EXTENSION:
 			dumpExtension(fout, (const ExtensionInfo *) dobj);
 			break;
@@ -18446,6 +18450,7 @@ addBoundaryDependenciesPg(DumpableObject **dobjs, int numObjs,
 			case DO_NAMESPACE:
 			case DO_DATABASEROLE:
 			case DO_DATABASEROLEMEMBERSHIP:
+			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_EXTENSION:
 			case DO_TYPE:
 			case DO_SHELL_TYPE:

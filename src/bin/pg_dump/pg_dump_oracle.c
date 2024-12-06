@@ -288,6 +288,8 @@ static bool	shouldPrintColumn(const DumpOptions *dopt, const TableInfo *tbinfo, 
 static char *get_usermapping_options_kv(char *umoptions, char *optname);
 /* End - ReqID:SRS-SQL-DBLINK */
 
+static void dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo);	/* BUGZ1343 */
+
 struct dumpMethods dumpMethodsOracle = {
 	.mode = "o",
 	.setupDumpWorker = setupDumpWorkerOracle,
@@ -10765,6 +10767,11 @@ dumpDumpableObjectOracle(Archive *fout, const DumpableObject *dobj)
 			dumpDbRolesmembership(fout, (const DbRolesMembershipInfo *) dobj);
 			break;
 		/* End - BUG#Z836 */
+		/* BEGIN - BUGZ1343 */
+		case DO_DATABASETABLESPACE:
+			dumpDbTablespace(fout, (const DbTableSpaceInfo *) dobj);
+			break;
+		/* END - BUGZ1343 */
 		case DO_EXTENSION:
 			dumpExtension(fout, (const ExtensionInfo *) dobj);
 			break;
@@ -19786,6 +19793,7 @@ addBoundaryDependenciesOracle(DumpableObject **dobjs, int numObjs,
 			case DO_NAMESPACE:
 			case DO_DATABASEROLE:
 			case DO_DATABASEROLEMEMBERSHIP:
+			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_EXTENSION:
 			case DO_TYPE:
 			case DO_SHELL_TYPE:
@@ -20149,6 +20157,10 @@ getSchemaDataOracle(Archive *fout, int *numTablesPtr)
 		pg_log_info("reading database user");
 		getDbRoles(fout, &numRoles);
 		getDbRoleMembership(fout, &numRolesMembership);
+		/* BEGIN - BUGZ1343 */
+		pg_log_info("reading database tablespace");
+		getDbTablespace(fout, &numTablespaces);
+		/* END - BUGZ1343 */
 	}
 	/* End - ReqID:SRS-MISC-USER  BUG#Z538 */
 
@@ -20379,5 +20391,165 @@ get_usermapping_options_kv(char *umoptions, char *optname)
 	return NULL;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+/* BEGIN - BUGZ1343 */
+DbTableSpaceInfo *
+getDbTablespace(Archive *fout, int *numTablespaces)
+{
+	DbTableSpaceInfo	*spcinfo;
+	PQExpBuffer	buf = createPQExpBuffer();
+	PGresult	*res;
+	int			i_tableoid,
+				i_spcoid,
+				i_spcname,
+				i_spclocation,
+				i_spcowner,
+				i_spcacl,
+				i_rspcacl,
+				i_spcoptions,
+				i_spccomment;
+	int			i = 0;
+	int			ntups = 0;
 
+	printfPQExpBuffer(buf, "SELECT a.tableoid AS tableoid, t.oid AS spcoid, spcname, "
+							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+							   "pg_catalog.pg_tablespace_location(t.oid) AS spclocation, "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "     WITH ORDINALITY AS perm(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(acldefault('t',spcowner)) "
+							   "       AS init(init_acl) "
+							   "     WHERE acl = init_acl)) AS spcacls) "
+							   " AS spcacl, "
+							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+							   "  (SELECT acl, row_n FROM "
+							   "     unnest(acldefault('t',spcowner)) "
+							   "     WITH ORDINALITY AS initp(acl,row_n) "
+							   "   WHERE NOT EXISTS ( "
+							   "     SELECT 1 "
+							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+							   "       AS permp(orig_acl) "
+							   "     WHERE acl = orig_acl)) AS rspcacls) "
+							   " AS rspcacl, "
+							   "array_to_string(spcoptions, ', ') AS spcoptions,"
+							   "pg_catalog.shobj_description(t.oid, 'pg_tablespace') AS spccomment, "
+							   "a.rolname AS spcowner "
+							   "FROM pg_catalog.pg_tablespace t "
+							   "LEFT JOIN pg_catalog.pg_authid a on (a.oid = spcowner) "
+							   "LEFT JOIN pg_catalog.pg_database d on (d.oid = a.rolowndboid) "
+							   "WHERE spcname !~ '^pg_' "
+							   "AND d.datname = current_database() "
+							   "ORDER BY 1");
+	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
 
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_spcoid = PQfnumber(res, "spcoid");
+	i_spcname = PQfnumber(res, "spcname");
+	i_spclocation = PQfnumber(res, "spclocation");
+	i_spcowner = PQfnumber(res, "spcowner");
+	i_spcacl = PQfnumber(res, "spcacl");
+	i_rspcacl = PQfnumber(res, "rspcacl");
+	i_spcoptions = PQfnumber(res, "spcoptions");
+	i_spccomment = PQfnumber(res, "spccomment");
+
+	ntups = PQntuples(res);
+
+	*numTablespaces = ntups;
+
+	spcinfo = (DbTableSpaceInfo *) pg_malloc0(ntups * sizeof(DbTableSpaceInfo));
+
+	for(i = 0; i < ntups; i++)
+	{
+		spcinfo[i].dobj.objType = DO_DATABASETABLESPACE;
+		spcinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		spcinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_spcoid));
+		AssignDumpId(&spcinfo[i].dobj);
+		spcinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_spcname));
+		spcinfo[i].spcname = pg_strdup(PQgetvalue(res, i, i_spcname));
+		spcinfo[i].spclocation = pg_strdup(PQgetvalue(res, i, i_spclocation));
+		spcinfo[i].spcowner = pg_strdup(PQgetvalue(res, i, i_spcowner));
+		spcinfo[i].spcacl = PQgetvalue(res, i, i_spcacl);
+		spcinfo[i].rspcacl = PQgetvalue(res, i, i_rspcacl);
+		spcinfo[i].spccomment = PQgetisnull(res, i, i_spccomment) ? NULL : pg_strdup(PQgetvalue(res, i, i_spccomment));
+		spcinfo[i].spcoptions = PQgetisnull(res, i, i_spcoptions) ? NULL : pg_strdup(PQgetvalue(res, i, i_spcoptions));
+
+		selectDumpableObject(&(spcinfo[i].dobj), fout);
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(buf);
+
+	return spcinfo;
+}
+
+static void
+dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer	query;
+
+	if(dopt->dataOnly)
+		return;
+
+	if(spcinfo->dobj.name)
+	{
+		char *fspcname;
+		query = createPQExpBuffer();
+
+		fspcname = pg_strdup(fmtId(spcinfo->spcname));
+
+		appendPQExpBuffer(query, "CREATE TABLESPACE %s", fspcname);
+		appendPQExpBuffer(query, " OWNER %s", fmtId(spcinfo->spcowner));
+		appendPQExpBufferStr(query, " LOCATION ");
+		appendStringLiteralAH(query, spcinfo->spclocation, fout);
+		appendPQExpBuffer(query, ";\n");
+
+		if(spcinfo->spcoptions && spcinfo->spcoptions[0] != '\0')
+		{
+			appendPQExpBuffer(query, "ALTER TABLESPACE %s SET (%s);\n", fspcname, spcinfo->spcoptions);
+		}
+
+		if(!fout->dopt->aclsSkip &&
+			!buildACLCommands(fspcname, NULL, NULL, "TABLESPACE",
+								spcinfo->spcacl, spcinfo->rspcacl,
+								spcinfo->spcowner, "", fout->remoteVersion, query))
+		{
+			pg_log_error("could not parse ACL list (%s) for Database Tablespace \"%s\"", spcinfo->spcacl, spcinfo->spcname);
+			exit_nicely(1);
+		}
+
+		if(!fout->dopt->no_comments && spcinfo->spccomment && spcinfo->spccomment[0] != '\0')
+		{
+			appendPQExpBuffer(query, "COMMENT ON TABLESPACE %s IS ", fspcname);
+			appendStringLiteralAH(query, spcinfo->spccomment, fout);
+			appendPQExpBuffer(query, ";\n");
+		}
+
+		if(!fout->dopt->no_security_labels && fout->remoteVersion >= 90200)
+		{
+			PQExpBuffer sql = createPQExpBuffer();
+			PGresult	*res;
+			ArchiveHandle	*AH_tmp = (ArchiveHandle *)fout;
+
+			buildShSecLabelQuery("pg_tablespace", spcinfo->dobj.catId.oid, sql);
+			res = ExecuteSqlQuery(fout, sql->data, PGRES_TUPLES_OK);
+			emitShSecLabels(AH_tmp->connection, res, query, "TABLESPACE", spcinfo->spcname);
+
+			PQclear(res);
+			destroyPQExpBuffer(sql);
+		}
+
+		if(spcinfo->dobj.dump & DUMP_COMPONENT_POLICY)
+			ArchiveEntry(fout, spcinfo->dobj.catId, spcinfo->dobj.dumpId,
+						ARCHIVE_OPTS(.tag = spcinfo->dobj.name,
+									 .description = "DATABASETABLESPACE",
+									 .section = SECTION_NONE,
+									 .createStmt = query->data));
+
+		free(fspcname);
+		destroyPQExpBuffer(query);
+	}
+}
+/* END - BUGZ1343 */
