@@ -3868,6 +3868,28 @@ _discoverArchiveFormat(ArchiveHandle *AH)
 		/* It's custom format, stop here */
 		AH->format = archCustom;
 		AH->readHeader = 1;
+		/* BEGIN - BUGZ1403 */
+		if(strncmp(sig, "IVYOR", 5) == 0)
+		{
+			RAM = &ramOracle;
+			database_mode = DB_ORACLE;
+		}
+		else if(strncmp(sig, "IVYMY", 5) == 0)
+		{
+			RAM = &ramMysql;
+			database_mode = DB_MYSQL;
+		}
+		else if(strncmp(sig, "IVYPG", 5) == 0)
+		{
+			RAM = &ramPg;
+			database_mode = DB_PG;
+		}
+		else
+		{
+			RAM = &ramNative;
+			database_mode = DB_NATIVE;
+		}
+		/* END - BUGZ1403 */
 	}
 	else
 	{
