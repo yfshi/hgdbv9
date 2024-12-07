@@ -503,6 +503,7 @@ typedef struct
  * Datetime to char conversion
  * ----------
  */
+
 #define ZERO_tm(_X) \
 do {	\
 	(_X)->tm_sec  = (_X)->tm_year = (_X)->tm_min = (_X)->tm_wday = \
@@ -622,7 +623,7 @@ typedef enum
 	DCH_Day,
 	DCH_Dy,
 	DCH_D,
-	DCH_FF1,
+	DCH_FF1,					/* FFn codes must be consecutive */
 	DCH_FF2,
 	DCH_FF3,
 	DCH_FF4,
@@ -807,12 +808,12 @@ static const KeyWord DCH_keywords[] = {
 	{"Day", 3, DCH_Day, false, FROM_CHAR_DATE_NONE},
 	{"Dy", 2, DCH_Dy, false, FROM_CHAR_DATE_NONE},
 	{"D", 1, DCH_D, true, FROM_CHAR_DATE_GREGORIAN},
-	{"FF1", 3, DCH_FF1, false, FROM_CHAR_DATE_NONE},	/* F */
-	{"FF2", 3, DCH_FF2, false, FROM_CHAR_DATE_NONE},
-	{"FF3", 3, DCH_FF3, false, FROM_CHAR_DATE_NONE},
-	{"FF4", 3, DCH_FF4, false, FROM_CHAR_DATE_NONE},
-	{"FF5", 3, DCH_FF5, false, FROM_CHAR_DATE_NONE},
-	{"FF6", 3, DCH_FF6, false, FROM_CHAR_DATE_NONE},
+	{"FF1", 3, DCH_FF1, true, FROM_CHAR_DATE_NONE}, /* F */
+	{"FF2", 3, DCH_FF2, true, FROM_CHAR_DATE_NONE},
+	{"FF3", 3, DCH_FF3, true, FROM_CHAR_DATE_NONE},
+	{"FF4", 3, DCH_FF4, true, FROM_CHAR_DATE_NONE},
+	{"FF5", 3, DCH_FF5, true, FROM_CHAR_DATE_NONE},
+	{"FF6", 3, DCH_FF6, true, FROM_CHAR_DATE_NONE},
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	{"FF7", 3, DCH_FF7, false, FROM_CHAR_DATE_NONE},
 	{"FF8", 3, DCH_FF8, false, FROM_CHAR_DATE_NONE},
@@ -872,12 +873,12 @@ static const KeyWord DCH_keywords[] = {
 	{"dd", 2, DCH_DD, true, FROM_CHAR_DATE_GREGORIAN},
 	{"dy", 2, DCH_dy, false, FROM_CHAR_DATE_NONE},
 	{"d", 1, DCH_D, true, FROM_CHAR_DATE_GREGORIAN},
-	{"ff1", 3, DCH_FF1, false, FROM_CHAR_DATE_NONE},	/* f */
-	{"ff2", 3, DCH_FF2, false, FROM_CHAR_DATE_NONE},
-	{"ff3", 3, DCH_FF3, false, FROM_CHAR_DATE_NONE},
-	{"ff4", 3, DCH_FF4, false, FROM_CHAR_DATE_NONE},
-	{"ff5", 3, DCH_FF5, false, FROM_CHAR_DATE_NONE},
-	{"ff6", 3, DCH_FF6, false, FROM_CHAR_DATE_NONE},
+	{"ff1", 3, DCH_FF1, true, FROM_CHAR_DATE_NONE},	/* f */
+	{"ff2", 3, DCH_FF2, true, FROM_CHAR_DATE_NONE},
+	{"ff3", 3, DCH_FF3, true, FROM_CHAR_DATE_NONE},
+	{"ff4", 3, DCH_FF4, true, FROM_CHAR_DATE_NONE},
+	{"ff5", 3, DCH_FF5, true, FROM_CHAR_DATE_NONE},
+	{"ff6", 3, DCH_FF6, true, FROM_CHAR_DATE_NONE},
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	{"ff7", 3, DCH_FF7, false, FROM_CHAR_DATE_NONE},
 	{"ff8", 3, DCH_FF8, false, FROM_CHAR_DATE_NONE},
@@ -1164,10 +1165,10 @@ index_seq_search(const char *str, const KeyWord *kw, const int *index)
 					return temk;
 			}
 
-			/* 
-			 *	Record the match success option when case-insensitive, 
+			/*
+			 *	Record the match success option when case-insensitive,
 			 *	preferably matching the second letter with the source data
-			 */	
+			 */
 			if (pg_strncasecmp(str, k->name, k->len) == 0)
 			{
 				if(temk == NULL || temk->len < k->len || *(str + 1) >= 'a' )
@@ -2526,7 +2527,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	char		copy[DCH_MAX_ITEM_SIZ + 1];
 	const char *init = *src;
 	int			used;
-	
+
 	/*
 	 * Skip any whitespace before parsing the integer.
 	 */
@@ -2535,7 +2536,7 @@ from_char_parse_int_len(int *dest, const char **src, const int len, FormatNode *
 	Assert(len <= DCH_MAX_ITEM_SIZ);
 	used = (int) strlcpy(copy, *src, len + 1);
 
-	if (((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) && 
+	if (((ORA_PARSER != compatible_db || (node->type != NODE_TYPE_END && (node + 1)->type == NODE_TYPE_END)) &&
 		(S_FM(node->suffix) || is_next_separator(node)))  || node->sep)	/* BUG:0000561 */ /*BUG:z97 and z99 */
 	{
 		/*
@@ -3391,7 +3392,7 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 				break;
 			case DCH_YY:
 			case DCH_IY:
-			case DCH_RR:	/* BUG:z59 */	
+			case DCH_RR:	/* BUG:z59 */
 				sprintf(s, "%0*d",
 						S_FM(n->suffix) ? 0 :
 						(ADJUST_YEAR(tm->tm_year, is_interval) >= 0) ? 2 : 3,
@@ -3493,8 +3494,8 @@ DCH_to_char(FormatNode *node, bool is_interval, TmToChar *in, char *out, Oid col
 	*s = '\0';
 }
 
-/* Begin - BUG:z97: This counts on the entire string, 
- * without spaces and separators, and returns true if 
+/* Begin - BUG:z97: This counts on the entire string,
+ * without spaces and separators, and returns true if
  * there are spaces and separators
  */
 static bool ivy_getsep(const char *in)
@@ -3530,7 +3531,7 @@ static bool ivy_getsep(const char *in)
 }
 /* End - BUG:z97 */
 
-/* Begin - BUG:z98: Calculate the number of consecutive numbers 
+/* Begin - BUG:z98: Calculate the number of consecutive numbers
  * to determine what truncation method is used for the string
  */
 static int ivy_getnumlength(const char *in)
@@ -3937,7 +3938,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 
 				/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 				/*
-				 * Compatible oracle, if the number of fractional seconds is greater than 
+				 * Compatible oracle, if the number of fractional seconds is greater than
 				 * the lenght of format picture item 'FFx' should error out.
 				 *	eg: select to_timestamp('1990-1-1 11:11:11.1235', 'yyyy-mm-dd hh24:mi:ss.ff3') from dual;
 				 *	errmsg: ORA-01830: date format picture ends before converting entire input string.
@@ -3966,10 +3967,10 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 				{
 					/*
 					 * More than 1 second after rounding(eg:999999999) what action should we take ?
-					 * Perhaps we should use truncation instead of rounding in all cases! 
+					 * Perhaps we should use truncation instead of rounding in all cases!
 					 */
 					int	fsec = out->us;
-					
+
 					switch(len)
 					{
 						case 7:
@@ -4549,7 +4550,7 @@ DCH_from_char(FormatNode *node, const char *in, TmFromChar *out,
 
 			if (!sep)
 				skipff = false;
-			second = false;	
+			second = false;
 		}
 		/* Begin - BUG:z101 */
 
@@ -4853,8 +4854,8 @@ DCH_cache_fetch(const char *str, bool std)
  * Format a date/time or interval into a string according to fmt.
  * We parse fmt into a list of FormatNodes.  This is then passed to DCH_to_char
  * for formatting.
- * 
- * ReqID:SRS-GKC-DATATYPE_001: export for used in ivorysql_ora. 
+ *
+ * ReqID:SRS-GKC-DATATYPE_001: export for used in ivorysql_ora.
  */
 text *
 datetime_to_char_body(TmToChar *tmtc, text *fmt, bool is_interval, Oid collid)
@@ -5650,12 +5651,12 @@ static void
 final_datetime_check(TmFromChar *out)
 {
 	/*
-	 * Final check for valid day of month 
+	 * Final check for valid day of month
 	 * now that we know for sure the month and year.
-	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when 
-	 * analyze datetime format 'DD', we don`t known 
-	 * the value of 'YYYY', so we don`t know that the 
-	 * year is there a leap year ? so check again 
+	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when
+	 * analyze datetime format 'DD', we don`t known
+	 * the value of 'YYYY', so we don`t know that the
+	 * year is there a leap year ? so check again
 	 */
 	if (out->year != 0 && out->mm != 0)
 	{
@@ -5693,7 +5694,7 @@ final_datetime_check(TmFromChar *out)
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-				  errmsg("The year value must be between -4713 and +9999, and can not be 0"))); 
+				  errmsg("The year value must be between -4713 and +9999, and can not be 0")));
 		}
 	}
 }
@@ -5702,12 +5703,12 @@ static void
 final_datetime_check_for_conv_func(struct pg_tm *out)
 {
 	/*
-	 * Final check for valid day of month 
+	 * Final check for valid day of month
 	 * now that we know for sure the month and year.
-	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when 
-	 * analyze datetime format 'DD', we don`t known 
-	 * the value of 'YYYY', so we don`t know that the 
-	 * year is there a leap year ? so check again 
+	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when
+	 * analyze datetime format 'DD', we don`t known
+	 * the value of 'YYYY', so we don`t know that the
+	 * year is there a leap year ? so check again
 	 */
 	if (out->tm_year != 0 && out->tm_mon != 0)
 	{
@@ -5738,14 +5739,14 @@ final_datetime_check_for_conv_func(struct pg_tm *out)
 		{
 			ereport(ERROR,
 					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-				  errmsg("The year value must be between -4713 and +9999, and can not be 0"))); 
+				  errmsg("The year value must be between -4713 and +9999, and can not be 0")));
 		}
 	}
 }
 
 /*
  * ora_do_to_timestamp
- * 	Oracle-compatible datetime datatype input and conversion functions copied from do_to_timestamp.	
+ * 	Oracle-compatible datetime datatype input and conversion functions copied from do_to_timestamp.
  */
 void
 ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
@@ -7001,13 +7002,20 @@ NUM_processor(FormatNode *node, NUMDesc *Num, char *inout,
 
 			/*
 			 * If any '0' specifiers are present, make sure we don't strip
-			 * those digits.
+			 * those digits.  But don't advance last_relevant beyond the last
+			 * character of the Np->number string, which is a hazard if the
+			 * number got shortened due to precision limitations.
 			 */
 			if (Np->last_relevant && Np->Num->zero_end > Np->out_pre_spaces)
 			{
+				int			last_zero_pos;
 				char	   *last_zero;
 
-				last_zero = Np->number + (Np->Num->zero_end - Np->out_pre_spaces);
+				/* note that Np->number cannot be zero-length here */
+				last_zero_pos = strlen(Np->number) - 1;
+				last_zero_pos = Min(last_zero_pos,
+									Np->Num->zero_end - Np->out_pre_spaces);
+				last_zero = Np->number + last_zero_pos;
 				if (Np->last_relevant < last_zero)
 					Np->last_relevant = last_zero;
 			}
