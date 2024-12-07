@@ -1078,7 +1078,7 @@ help(const char *progname)
 	printf(_("  -C, --create                 include commands to create database in dump\n"));
 	printf(_("  -e, --extension=PATTERN      dump the specified extension(s) only\n"));
 	printf(_("  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"));
-	printf(_("  -M					         dump the specified compatible_mode data only(pg, oracle)\n"));	/* BUGZ1299 */
+	printf(_("  -M                           dump the specified compatible_mode data only(pg, oracle, mysql)\n"));	/* BUGZ1299 */
 	printf(_("  -n, --schema=PATTERN         dump the specified schema(s) only\n"));
 	printf(_("  -N, --exclude-schema=PATTERN do NOT dump the specified schema(s)\n"));
 	printf(_("  -O, --no-owner               skip restoration of object ownership in\n"
