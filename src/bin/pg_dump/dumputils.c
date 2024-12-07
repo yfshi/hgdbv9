@@ -1294,7 +1294,7 @@ getcurrentuserisInstanceSupperuser(PGconn *conn, char *name)
 	{
 		if (name != NULL)
 			appendPQExpBuffer(cmd1, "select usesuper from ivory_user where "
-							"usename = %s and dboid = 0;\n", name);
+							"usename = '%s' and dboid = 0;\n", name);	/* BUGZ1365 */
 		else
 			appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where "
 							"usesysid = current_userid() and dboid = 0;\n");
@@ -1310,7 +1310,7 @@ getcurrentuserisInstanceSupperuser(PGconn *conn, char *name)
 	{
 		if (name != NULL)
 			appendPQExpBuffer(cmd1, "select usesuper from pg_user where "
-							"usename = %s;\n", name);
+							"usename = '%s';\n", name);	/* BUGZ1365 */
 		else
 			appendPQExpBufferStr(cmd1, "select usesuper from pg_user where "
 							"usesysid = current_user::regrole;\n");
@@ -1350,7 +1350,7 @@ getcurrentuserisDatabaseSupperuser(PGconn *conn, char *name)
 			appendPQExpBuffer(cmd1, 
 								 "select usesuper from ivory_user u, pg_database d "
 								 "where u.dboid = d.oid and "
-								 "u.usename = %s "
+								 "u.usename = '%s' "	/* BUGZ1365 */
 								 "and d.datname = current_database();", name);
 		else
 			appendPQExpBufferStr(cmd1, 

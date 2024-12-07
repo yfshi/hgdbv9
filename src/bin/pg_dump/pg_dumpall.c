@@ -1498,16 +1498,31 @@ dumpRolesOracle(PGconn *conn)
 	if (server_version >= 140008)				/* bug:z683 */
 	{
 		if(haveDBuser)			/*  bug#M0000261 */
-			printfPQExpBuffer(buf,
-							  "SELECT oid, rolname, rolsuper, rolinherit, "
-							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-							  "rolvaliduntil, rolreplication, rolbypassrls, "
-							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-							  "rolname = current_user AS is_current_user "
-							  "FROM %s "
-							  "WHERE rolname !~ '^pg_' "
-							  "ORDER BY 2", role_catalog, role_catalog);
+		{/* BEGIN - BUGZ1364 */
+			if (!no_role_passwords)
+				printfPQExpBuffer(buf,
+								"SELECT oid, rolname, rolsuper, rolinherit, "
+								"rolcreaterole, rolcreatedb, "
+								"rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+								"rolvaliduntil, rolreplication, rolbypassrls, "
+								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+								"rolname = current_user AS is_current_user "
+								"FROM %s "
+								"WHERE rolname !~ '^pg_' "
+								"ORDER BY 2", role_catalog, role_catalog);
+			else
+				printfPQExpBuffer(buf,
+								"SELECT oid, rolname, rolsuper, rolinherit, "
+								"rolcreaterole, rolcreatedb, "
+								"rolcanlogin, rolconnlimit, dboid AS rolowndboid, rolpassword, "
+								"rolvaliduntil, rolreplication, rolbypassrls, "
+								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+								"rolname = current_user AS is_current_user "
+								"FROM %s "
+								"WHERE rolname !~ '^pg_' "
+								"ORDER BY 2", role_catalog, role_catalog);
+
+		}/* END - BUGZ1364 */
 		else
 			printfPQExpBuffer(buf,
 							  "SELECT oid, rolname, rolsuper, rolinherit, "
@@ -1792,16 +1807,31 @@ dumpRolesPg(PGconn *conn)
 	if (server_version >= 140008)				/* bug:z683 */
 	{
 		if(haveDBuser)			/*  bug#M0000261 */
-			printfPQExpBuffer(buf,
-							  "SELECT oid, rolname, rolsuper, rolinherit, "
-							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-							  "rolvaliduntil, rolreplication, rolbypassrls, "
-							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-							  "rolname = current_user AS is_current_user "
-							  "FROM %s "
-							  "WHERE rolname !~ '^pg_' "
-							  "ORDER BY 2", role_catalog, role_catalog);
+		{/* BEGIN - BUGZ1364 */
+			if (!no_role_passwords)
+				printfPQExpBuffer(buf,
+								"SELECT oid, rolname, rolsuper, rolinherit, "
+								"rolcreaterole, rolcreatedb, "
+								"rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
+								"rolvaliduntil, rolreplication, rolbypassrls, "
+								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+								"rolname = current_user AS is_current_user "
+								"FROM %s "
+								"WHERE rolname !~ '^pg_' "
+								"ORDER BY 2", role_catalog, role_catalog);
+			else
+				printfPQExpBuffer(buf,
+								"SELECT oid, rolname, rolsuper, rolinherit, "
+								"rolcreaterole, rolcreatedb, "
+								"rolcanlogin, rolconnlimit, dboid AS rolowndboid, rolpassword, "
+								"rolvaliduntil, rolreplication, rolbypassrls, "
+								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
+								"rolname = current_user AS is_current_user "
+								"FROM %s "
+								"WHERE rolname !~ '^pg_' "
+								"ORDER BY 2", role_catalog, role_catalog);
+
+		}/* END - BUGZ1364 */
 		else
 			printfPQExpBuffer(buf,
 							  "SELECT oid, rolname, rolsuper, rolinherit, "
