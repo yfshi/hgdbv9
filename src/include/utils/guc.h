@@ -422,6 +422,10 @@ extern PGDLLIMPORT bool enable_update_multicol;
 extern bool enable_compatible_const_integer_operator;
 /* End - BUG#M0000411 */
 
+/* Begin - BUG#Z0001452 */
+extern bool enable_compatible_numeric_division_result;
+/* End - BUG#Z00001452 */
+
 
 
 #define ORADATE_MASK			0x01
