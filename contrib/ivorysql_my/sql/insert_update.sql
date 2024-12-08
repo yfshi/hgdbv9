@@ -412,17 +412,31 @@ INSERT INTO test_insert.t05 VALUES(DEFAULT, DEFAULT, 200), (DEFAULT, 200, DEFAUL
 ON DUPLICATE KEY UPDATE col3 = DEFAULT, col1 = col3;
 SELECT * FROM test_insert.t05 ORDER BY 1, 2, 3;
 
---问题 mysql均支持
 --- test using table name on update
----error
 INSERT INTO test_insert.t05 VALUES(DEFAULT, DEFAULT, 200), (DEFAULT, 200, DEFAULT)
 ON DUPLICATE KEY UPDATE t05.col3 = DEFAULT, t05.col1 = t05.col3 + 1;
 SELECT * FROM test_insert.t05 ORDER BY 1, 2, 3;
 
---- error: should not append schema
 INSERT INTO test_insert.t05 VALUES(DEFAULT, DEFAULT, 200), (DEFAULT, 200, DEFAULT)
 ON DUPLICATE KEY UPDATE test_insert.t05.col3 = DEFAULT, test_insert.t05.col1 = test_insert.t05.col3 + 2;
 SELECT * FROM test_insert.t05 ORDER BY 1, 2, 3;
 
 drop table t01,t00,t02,t03,t04;
 drop schema test_insert cascade;
+
+--BUG#Z1434,1435
+create table test(a int, b int default 3);
+insert test(a,b) value(b * 2, 2);
+insert test(a,b) value(2, b * 2);
+create table test1(a int, b int);
+insert test1(a,b) value(b * 2, 2);
+insert test1(a,b) value(2, b * 2);
+create table test2(a int , b varchar(50));
+set mysql.enable_ignore_columns_list to on;
+insert into test2 values(1);
+insert into test2 values(2),(3);
+set mysql.enable_ignore_columns_list to default;
+insert into test2 values(1);
+insert into test2 values(2),(3);
+select * from test2;
+drop table test,test1,test2;

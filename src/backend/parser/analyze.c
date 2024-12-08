@@ -58,8 +58,10 @@
 /* Begin - BUG#Z196 */
 #include "commands/proclang.h"
 /* End - BUG#Z196 */
-
 #include "utils/lsyscache.h"	/* ReqID:SRS-MYSQL-UPDATE */
+/* Begin - BUG#Z1435 */
+#include "rewrite/rewriteHandler.h"
+/* End - BUG#Z1435 */
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
 
@@ -115,7 +117,7 @@ static void transformMultiMergeTargetList(List *rellist, List **targetList);
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 static UpsertExpr*
 transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resultRelations);
-static void transformColumnReference(List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno);
+static void transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno);
 static void transformSchemaInTargetlist(List **targetlist);
 static void transformTableAndSchemaInCols(ParseState *pstate, List **cols);
 static Node *MakeNullNode();
@@ -831,7 +833,7 @@ GetExprNode(List *exprList, List *attrnos, int varattno)
  * Parsing and processing column references.
  */
 static void
-transformColumnReference(List           **exprList, OpExpr **opexpr, List *attrnos, int atrrno)
+transformColumnReference(ParseState *pstate, List          **exprList, OpExpr **opexpr, List *attrnos, int atrrno)
 {
 	List	   *tmpattrnos = NIL;
 	List	   *argslist = NIL;
@@ -863,11 +865,41 @@ transformColumnReference(List           **exprList, OpExpr **opexpr, List *attrn
 					{
 						Node	   *tmpnode;
 						Var		   *var = (Var*)node1;
+						Form_pg_attribute att_tup;
 						/* Determines whether the expression (current column value) 
 						 * refers to the previous column,
 						 */
+						/* Begin - BUG#Z1435 */
 						if (num <= var->varattno)
-							tmpnode = MakeNullNode();
+						{
+							att_tup = TupleDescAttr(pstate->p_target_relation->rd_att, var->varattno - 1);
+							if (att_tup->atthasdef)
+							{
+								tmpnode = build_column_default(pstate->p_target_relation, var->varattno);
+							}
+							else
+							{
+								/* If it is a primary key column, you need to get an implicit default value. */
+//								Bitmapset  *pkattnos;
+//								Bitmapset  *varattnos;
+//								Oid			constraintOid;
+//								pkattnos = get_primary_key_attnos(pstate->p_target_relation->rd_node.relNode, false, &constraintOid);
+//								if (!pkattnos)
+//									tmpnode = MakeNullNode();
+//								else
+//								{
+//									varattnos = bms_add_member(varattnos,
+//										   var->varattno - FirstLowInvalidHeapAttributeNumber);
+//									if (bms_is_subset(pkattnos, varattnos))
+//									{
+//										/* get type implict default value. */
+//										tmpnode = MakeNullNode();
+//									}
+//								}
+								tmpnode = MakeNullNode();
+							}
+						}
+						/* End - BUG#Z1435 */
 						else
 							tmpnode = GetExprNode(*exprList, tmpattrnos, var->varattno);
 
@@ -879,7 +911,7 @@ transformColumnReference(List           **exprList, OpExpr **opexpr, List *attrn
 					else if (IsA(node1, OpExpr))
 					{
 						OpExpr	   *opr= (OpExpr*)node1;
-						transformColumnReference(exprList, &opr, attrnos, num);
+						transformColumnReference(pstate, exprList, &opr, attrnos, num);
 						argslist = lappend(argslist, opr);
 					}
 					else
@@ -910,7 +942,7 @@ transformColumnReference(List           **exprList, OpExpr **opexpr, List *attrn
 			else if (IsA(node1, OpExpr))
 			{
 				OpExpr	   *opr= (OpExpr*)node1;
-				transformColumnReference(exprList, &opr, attrnos, atrrno);
+				transformColumnReference(pstate, exprList, &opr, attrnos, atrrno);
 				argslist = lappend(argslist, opr);
 			}
 			else
@@ -1228,7 +1260,9 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		if(compatible_db == DB_MYSQL && exprList && icolumns)
 		{
 			if (list_length(exprList) != list_length(icolumns))
-				elog(ERROR, "Column count doesn't match value count!");
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("Column count doesn't match value count!")));
 		}
 		/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
@@ -1287,8 +1321,19 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* In mysql mode, handle column references. */
-			if (DB_MYSQL == compatible_db)
-				transformColumnReference(&sublist, NULL, attrnos, 0);
+			if (DB_MYSQL == compatible_db && sublist)
+			{
+				transformColumnReference(pstate, &sublist, NULL, attrnos, 0);
+				/* Begin - BUG#Z1434 */
+				if (enable_ignore_columns_list)
+				{
+					if (list_length(sublist) != list_length(icolumns) && !stmt->cols)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("Column count doesn't match value count!")));
+				}
+				/* End - BUG#Z1434 */
+			}
 			/*End - ReqID:SRS-MYSQL-SQL-INSERT */
 			/*
 			 * Prepare row for assignment to target table.  We process any
@@ -1423,8 +1468,19 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 									  stmt->cols,
 									  icolumns, attrnos,
 									  false);
-		if (DB_MYSQL == compatible_db)
-			transformColumnReference(&exprList, NULL, attrnos, 0);
+		if (DB_MYSQL == compatible_db && exprList)
+		{
+			transformColumnReference(pstate, &exprList, NULL, attrnos, 0);
+			/* Begin - BUG#Z1434 */
+			if (enable_ignore_columns_list)
+			{
+				if (list_length(exprList) != list_length(icolumns) && !stmt->cols)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Column count doesn't match value count!")));
+			}
+			/* End - BUG#Z1434 */
+		}
 
 	}
 
