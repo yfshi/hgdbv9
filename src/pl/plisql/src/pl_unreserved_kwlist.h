@@ -144,6 +144,7 @@ PG_KEYWORD("returned_sqlstate", K_RETURNED_SQLSTATE)
 PG_KEYWORD("reverse", K_REVERSE)
 PG_KEYWORD("rollback", K_ROLLBACK)
 PG_KEYWORD("row_count", K_ROW_COUNT)
+PG_KEYWORD("rownum", K_ROWNUM)	/* BUG#M0000450 */
 PG_KEYWORD("rowtype", K_ROWTYPE)
 PG_KEYWORD("schema", K_SCHEMA)
 PG_KEYWORD("schema_name", K_SCHEMA_NAME)

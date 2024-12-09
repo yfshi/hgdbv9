@@ -9975,6 +9975,26 @@ func_arg:
 					n->defexpr = NULL;
 					$$ = n;
 				}
+			/* Begin - BUG#M0000451 */
+			| ROWNUM func_type
+				{
+					FunctionParameter *n = makeNode(FunctionParameter);
+					n->name = pstrdup("rownum");
+					n->argType = $2;
+					n->mode = FUNC_PARAM_DEFAULT;
+					n->defexpr = NULL;
+					$$ = n;
+				}
+			| ROWNUM arg_class func_type
+				{
+					FunctionParameter *n = makeNode(FunctionParameter);
+					n->name = pstrdup("rownum");
+					n->argType = $3;
+					n->mode = $2;
+					n->defexpr = NULL;
+					$$ = n;
+				}
+			/* End - BUG#M0000451 */
 		;
 
 /* INOUT is SQL99 standard, IN OUT is for Oracle compatibility */
@@ -18491,15 +18511,6 @@ b_expr:		c_expr
  */
 c_expr:		columnref								{ $$ = $1; }
 			| AexprConst							{ $$ = $1; }
-			/* Begin - ReqID:SRS-SQL-ROWNUM */
-			| ROWNUM
-				{
-					PseudoColumnRef	*pcr = makeNode(PseudoColumnRef);
-					pcr->pckind = PSEUDOCOL_KIND_ROWNUM;
-					pcr->location = @1;
-					$$ = (Node *) pcr;
-				}
-			/* End - ReqID:SRS-SQL-ROWNUM */
 			| PARAM opt_indirection
 				{
 					ParamRef *p = makeNode(ParamRef);
@@ -19761,6 +19772,17 @@ func_arg_expr:  a_expr
 					na->location = @1;
 					$$ = (Node *) na;
 				}
+			/* Begin - BUG#M0000451 */
+			| ROWNUM EQUALS_GREATER a_expr
+				{
+					NamedArgExpr *na = makeNode(NamedArgExpr);
+					na->name = pstrdup("rownum");
+					na->arg = (Expr *) $3;
+					na->argnumber = -1;		/* until determined */
+					na->location = @1;
+					$$ = (Node *) na;
+				}
+			/* End - BUG#M0000451 */
 		;
 
 func_arg_list_opt:	func_arg_list					{ $$ = $1; }
@@ -20140,6 +20162,15 @@ columnref:	ColId opt_out_join	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 					}
 					/* End - ReqID:SRS-SQL-PROC */
 				}
+			/* Begin - ReqID:SRS-SQL-ROWNUM */
+			| ROWNUM
+				{
+					PseudoColumnRef *pcr = makeNode(PseudoColumnRef);
+					pcr->pckind = PSEUDOCOL_KIND_ROWNUM;
+					pcr->location = @1;
+					$$ = (Node *) pcr;
+				}
+			/* End - ReqID:SRS-SQL-ROWNUM */
 		;
 
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
@@ -20726,6 +20757,12 @@ plassign_target: ColId							{ $$ = $1; }
 					/* End - BUG#M0000316 */
 				}
 			/* End - BUG#M0000201: support question marks as binding variables */
+			/* Begin - BUG#M0000451 */
+			| ROWNUM
+				{
+					$$ = pstrdup("rownum");
+				}
+			/* End - BUG#M0000451 */
 		;
 
 plassign_equals: COLON_EQUALS

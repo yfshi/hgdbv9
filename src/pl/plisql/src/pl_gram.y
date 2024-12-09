@@ -519,6 +519,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_REVERSE
 %token <keyword>	K_ROLLBACK
 %token <keyword>	K_ROW_COUNT
+%token <keyword>	K_ROWNUM	/* BUG#M0000450 */
 %token <keyword>	K_ROWTYPE
 %token <keyword>	K_SCHEMA
 %token <keyword>	K_SCHEMA_NAME
@@ -1486,6 +1487,35 @@ decl_varname	: T_WORD
 						}
 
 					}
+				/* Begin - BUG#M0000450 */
+				| K_ROWNUM
+					{
+						$$.name = pstrdup("rownum");
+						$$.lineno = plisql_location_to_lineno(@1);
+						/*
+						 * Check to make sure name isn't already declared
+						 * in the current block.
+						 */
+						if (plisql_ns_lookup(plisql_ns_top(), true,
+											  $1, NULL, NULL,
+											  NULL) != NULL)
+							yyerror("duplicate declaration");
+
+						if (plisql_curr_compile->extra_warnings & PLISQL_XCHECK_SHADOWVAR ||
+							plisql_curr_compile->extra_errors & PLISQL_XCHECK_SHADOWVAR)
+						{
+							PLiSQL_nsitem *nsi;
+							nsi = plisql_ns_lookup(plisql_ns_top(), false,
+													$1, NULL, NULL, NULL);
+							if (nsi != NULL)
+								ereport(plisql_curr_compile->extra_errors & PLISQL_XCHECK_SHADOWVAR ? ERROR : WARNING,
+										(errcode(ERRCODE_DUPLICATE_ALIAS),
+										 errmsg("variable \"%s\" shadows a previously defined variable",
+												$1),
+										 parser_errposition(@1)));
+						}
+					}
+				/* End - BUG#M0000450 */
 				;
 
 decl_const		:
@@ -1845,6 +1875,26 @@ func_arg_item:
 							new->nocopy = $3;
 							$$ = new;
 						}
+					/* Begin - BUG#M0000451 */
+					| K_ROWNUM arg_mode function_arg_nocopy decl_datatype arg_decl_defval
+						{
+							PLiSQL_function_argitem *new = NULL;
+
+							if ($2 != ARGMODE_IN && $5 != NULL)
+								yyerror("OUT and IN OUT formal parameters may not have default expressions");
+
+							if ($3 && $2 == ARGMODE_IN)
+								yyerror("only out mode argument allow to have nocopy proper");
+
+							new = (PLiSQL_function_argitem *) palloc0(sizeof(PLiSQL_function_argitem));
+							new->argname = pstrdup("rownum");;
+							new->type = $4;
+							new->argmode = $2;
+							new->defexpr = $5;
+							new->nocopy = $3;
+							$$ = new;
+						}
+					/* End - BUG#M0000451 */
 					;
 arg_mode:
 					K_IN	{ $$ = ARGMODE_IN; }
