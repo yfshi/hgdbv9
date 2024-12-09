@@ -1175,17 +1175,6 @@ CREATE OR REPLACE FUNCTION sys.to_char(number)
 RETURNS sys.oravarcharchar
 AS 'select sys.to_char($1::text)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
-
---to_number
-CREATE OR REPLACE FUNCTION sys.to_number(number)
-RETURNS sys.number
-AS 'select sys.to_number($1::text)'
-LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
-
-CREATE OR REPLACE FUNCTION sys.to_number(number, number)
-RETURNS sys.number
-AS 'select sys.to_number($1::text, $2::text)'
-LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
 /* Begin - BUG:M0000084 */

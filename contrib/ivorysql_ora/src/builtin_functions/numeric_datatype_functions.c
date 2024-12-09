@@ -83,7 +83,6 @@ static Numeric string_to_numeric(char *str, bool *has_error);
 PG_FUNCTION_INFO_V1(ora_to_number_w);
 /* End - ReqID:SRS-SQL-SYSFUNC */
 PG_FUNCTION_INFO_V1(number_bitand);
-PG_FUNCTION_INFO_V1(ora_to_number);		/* bug0000451 */
 
 
 /* Begin - bug0000457 */
