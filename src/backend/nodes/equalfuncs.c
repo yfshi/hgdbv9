@@ -116,6 +116,12 @@ _equalRangeVar(const RangeVar *a, const RangeVar *b)
 	COMPARE_NODE_FIELD(alias);
 	COMPARE_LOCATION_FIELD(location);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COMPARE_SCALAR_FIELD(ispartition);
+	COMPARE_NODE_FIELD(colnamelist);
+	COMPARE_NODE_FIELD(partitionnamelist);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 	return true;
 }
 
@@ -1051,6 +1057,10 @@ _equalQuery(const Query *a, const Query *b)
 	COMPARE_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	COMPARE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COMPARE_SCALAR_FIELD(isReplace);
+	COMPARE_NODE_FIELD(partOids);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
 
@@ -1078,6 +1088,7 @@ _equalInsertStmt(const InsertStmt *a, const InsertStmt *b)
 	COMPARE_NODE_FIELD(withClause);
 	COMPARE_SCALAR_FIELD(override);
 	COMPARE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
+	COMPARE_SCALAR_FIELD(isReplace); /* ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	return true;
 }

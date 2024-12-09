@@ -1829,7 +1829,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 		 */
 		if (parse->commandType != CMD_SELECT)
 		{
-			Index		rootRelation;
+			Index		rootRelation = 0;
 			List	   *resultRelations = NIL;
 			List	   *updateColnosLists = NIL;
 			List	   *withCheckOptionLists = NIL;

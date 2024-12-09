@@ -238,6 +238,10 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_NODE_FIELD(upsertCols);
 	COPY_SCALAR_FIELD(upexclRelRTIndex);
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_SCALAR_FIELD(isReplace);
+	COPY_NODE_FIELD(partOids);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	return newnode;
 }
@@ -1417,6 +1421,11 @@ _copyRangeVar(const RangeVar *from)
 	COPY_NODE_FIELD(alias);
 	COPY_LOCATION_FIELD(location);
 	COPY_NODE_FIELD(indexhints);/* ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_SCALAR_FIELD(ispartition);
+	COPY_NODE_FIELD(colnamelist);
+	COPY_NODE_FIELD(partitionnamelist);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	return newnode;
 }
@@ -3389,6 +3398,10 @@ _copyQuery(const Query *from)
 	COPY_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	COPY_NODE_FIELD(upsertClause);	/* ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_SCALAR_FIELD(isReplace);
+	COPY_NODE_FIELD(partOids);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 
@@ -3420,6 +3433,7 @@ _copyInsertStmt(const InsertStmt *from)
 	COPY_NODE_FIELD(withClause);
 	COPY_SCALAR_FIELD(override);
 	COPY_NODE_FIELD(upsertClause);/* ReqID:SRS-MYSQL-SQL-INSERT */
+	COPY_SCALAR_FIELD(isReplace); /* ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	return newnode;
 }

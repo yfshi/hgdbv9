@@ -2463,7 +2463,12 @@ CreateCommandTag(Node *parsetree)
 
 			/* raw plannable queries */
 		case T_InsertStmt:
-			tag = CMDTAG_INSERT;
+			/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+			if (((InsertStmt *)parsetree)->isReplace && DB_MYSQL == compatible_db)
+				tag = CMDTAG_REPLACE;
+			else
+			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+				tag = CMDTAG_INSERT;
 			break;
 
 		case T_DeleteStmt:

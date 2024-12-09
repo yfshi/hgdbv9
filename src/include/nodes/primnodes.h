@@ -75,6 +75,11 @@ typedef struct RangeVar
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	List	   *indexhints;		/* a list of b mode index hint indexHintDefinition members */
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	bool		ispartition;	/* for partition action */
+	List	   *colnamelist;
+	List	   *partitionnamelist;
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 } RangeVar;
 
 /*

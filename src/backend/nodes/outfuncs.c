@@ -1110,6 +1110,13 @@ _outRangeVar(StringInfo str, const RangeVar *node)
 	WRITE_CHAR_FIELD(relpersistence);
 	WRITE_NODE_FIELD(alias);
 	WRITE_LOCATION_FIELD(location);
+
+	WRITE_NODE_FIELD(indexhints); /* ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	WRITE_BOOL_FIELD(ispartition);	/* for partition action */
+	WRITE_NODE_FIELD(colnamelist);
+	WRITE_NODE_FIELD(partitionnamelist);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 }
 
 static void

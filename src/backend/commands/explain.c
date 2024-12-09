@@ -1183,7 +1183,12 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			switch (((ModifyTable *) plan)->operation)
 			{
 				case CMD_INSERT:
-					pname = operation = "Insert";
+					/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+					if (((ModifyTable *) plan)->isReplace && DB_MYSQL == compatible_db)
+						pname = operation = "Replace";
+					else
+						pname = operation = "Insert";
+					/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 					break;
 				case CMD_UPDATE:
 					pname = operation = "Update";

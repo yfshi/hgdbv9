@@ -4208,7 +4208,8 @@ exec_stmt_execsql(PLmySQL_execstate *estate,
 			if (plansource->commandTag == CMDTAG_INSERT ||
 				plansource->commandTag == CMDTAG_UPDATE ||
 				plansource->commandTag == CMDTAG_DELETE ||
-				plansource->commandTag == CMDTAG_MERGE)
+				plansource->commandTag == CMDTAG_MERGE ||
+				plansource->commandTag == CMDTAG_REPLACE)	/* ReqID:SRS-MYSQL-SQL-REPLACE */
 			{
 				stmt->mod_stmt = true;
 				break;

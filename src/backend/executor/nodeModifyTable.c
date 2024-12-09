@@ -868,6 +868,35 @@ ExecUpsert(ModifyTableContext *context, ModifyTableState* state, TupleTableSlot*
 }
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+/*
+ * CheckPartitionRelationIsexist
+ * Check whether the partition is the specified partition.
+ */
+static bool
+CheckPartitionRelationIsexist(ResultRelInfo *partRelInfo, List *partOids)
+{
+	bool		partflag = false;
+	ListCell   *lc = NULL;
+	Oid			partreloid = InvalidOid;
+
+	/* Get the oid of the partition relation. */
+	if (partRelInfo->ri_RelationDesc)
+		partreloid = partRelInfo->ri_RelationDesc->rd_node.relNode;
+	/* Traverse all specified partitions relation and report an error if not found. */
+	foreach(lc, partOids)
+	{
+		Oid		partoid = lfirst_int(lc);
+		if (partoid == partreloid)
+		{
+			partflag = true;
+			break;
+		}
+	}
+	return partflag;
+}
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 
 /* ----------------------------------------------------------------
  *		ExecInsert
@@ -919,6 +948,15 @@ ExecInsert(ModifyTableContext *context,
 		slot = ExecPrepareTupleRouting(mtstate, estate, proute,
 									   resultRelInfo, slot,
 									   &partRelInfo);
+		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+		if (DB_MYSQL == compatible_db && mtstate->mt_partOids)
+		{
+			if (!CheckPartitionRelationIsexist(partRelInfo, mtstate->mt_partOids))
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_TABLE),
+						 errmsg("Found a row not matching the given partition set.")));
+		}
+		/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 		resultRelInfo = partRelInfo;
 	}
 
@@ -1272,6 +1310,11 @@ ExecInsert(ModifyTableContext *context,
 			TupleTableSlot   *returning = NULL;
 			bool			updated = false;
 
+			/* Get project node information. */
+			if (!resultRelInfo->ri_updateProj &&
+				mtstate->resultRelInfo->ri_updateProj)
+				resultRelInfo->ri_updateProj = mtstate->resultRelInfo->ri_updateProj;
+
 			ExecUpsert(context, mtstate, slot, planSlot, estate, canSetTag, &returning, &updated, resultRelInfo);
 			if (updated)
 			{
@@ -1355,6 +1398,7 @@ ExecInsert(ModifyTableContext *context,
 
 	return result;
 }
+
 
 /* ----------------------------------------------------------------
  *		ExecBatchInsert
@@ -4050,6 +4094,363 @@ ExecPrepareTupleRouting(ModifyTableState *mtstate,
 	return slot;
 }
 
+
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+/*
+ * For REPLACE, we have to insert the tuple into the target relation
+ * (or partition thereof) and insert appropriate tuples into the index relations.
+ * If the insertion conflicts with the primary key and unique constraints, 
+ * delete first and then insert.
+ */
+static TupleTableSlot *
+ExecReplace(ModifyTableContext *context,
+		   ResultRelInfo *resultRelInfo,
+		   TupleTableSlot *slot,
+		   bool canSetTag,
+		   TupleTableSlot **inserted_tuple,
+		   ResultRelInfo **insert_destrel,
+		   HeapTuple oldtuple)
+{
+	ModifyTableState *mtstate = context->mtstate;
+	EState	   *estate = context->estate;
+	Relation	resultRelationDesc;
+	List	   *recheckIndexes = NIL;
+	TupleTableSlot *result = NULL;
+	TupleTableSlot *planSlot = context->planSlot;
+	TransitionCaptureState *ar_insert_trig_tcs;
+	ModifyTable *node = (ModifyTable *) mtstate->ps.plan;
+	OnConflictAction onconflict = node->onConflictAction;
+	PartitionTupleRouting *proute = mtstate->mt_partition_tuple_routing;
+	MemoryContext oldContext;
+	ItemPointerData conflictTid;
+
+	/*
+	 * If the input result relation is a partitioned table, find the leaf
+	 * partition to insert the tuple into.
+	 */
+	if (proute)
+	{
+		ResultRelInfo *partRelInfo;
+
+		slot = ExecPrepareTupleRouting(mtstate, estate, proute,
+									   resultRelInfo, slot,
+									   &partRelInfo);
+		if (DB_MYSQL == compatible_db && mtstate->mt_partOids)
+		{
+			if (!CheckPartitionRelationIsexist(partRelInfo, mtstate->mt_partOids))
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_TABLE),
+						 errmsg("Found a row not matching the given partition set.")));
+		}
+		resultRelInfo = partRelInfo;
+	}
+
+	ExecMaterializeSlot(slot);
+
+	resultRelationDesc = resultRelInfo->ri_RelationDesc;
+
+	/*
+	 * Open the table's indexes, if we have not done so already, so that we
+	 * can add new index entries for the inserted tuple.
+	 */
+	if (resultRelationDesc->rd_rel->relhasindex &&
+		resultRelInfo->ri_IndexRelationDescs == NULL)
+		ExecOpenIndices(resultRelInfo, onconflict != ONCONFLICT_NONE);
+
+	/*
+	 * BEFORE ROW INSERT Triggers.
+	 *
+	 * Note: We fire BEFORE ROW TRIGGERS for every attempted insertion in an
+	 * INSERT ... ON CONFLICT statement.  We cannot check for constraint
+	 * violations before firing these triggers, because they can change the
+	 * values to insert.  Also, they can run arbitrary user-defined code with
+	 * side-effects that we can't cancel by just not inserting the tuple.
+	 */
+	if (resultRelInfo->ri_TrigDesc &&
+		resultRelInfo->ri_TrigDesc->trig_insert_before_row)
+	{
+		/* Flush any pending inserts, so rows are visible to the triggers */
+		if (estate->es_insert_pending_result_relations != NIL)
+			ExecPendingInserts(estate);
+
+		if (!ExecBRInsertTriggers(estate, resultRelInfo, slot))
+			return NULL;		/* "do nothing" */
+	}
+
+	/* INSTEAD OF ROW INSERT Triggers */
+	if (resultRelInfo->ri_TrigDesc &&
+		resultRelInfo->ri_TrigDesc->trig_insert_instead_row)
+	{
+		if (!ExecIRInsertTriggers(estate, resultRelInfo, slot))
+			return NULL;		/* "do nothing" */
+	}
+	else if (resultRelInfo->ri_FdwRoutine)
+	{
+		/*
+		 * GENERATED expressions might reference the tableoid column, so
+		 * (re-)initialize tts_tableOid before evaluating them.
+		 */
+		slot->tts_tableOid = RelationGetRelid(resultRelInfo->ri_RelationDesc);
+
+		/*
+		 * Compute stored generated columns
+		 */
+		if (resultRelationDesc->rd_att->constr &&
+			resultRelationDesc->rd_att->constr->has_generated_stored)
+			ExecComputeStoredGenerated(resultRelInfo, estate, slot,
+									   CMD_INSERT);
+
+		/*
+		 * If the FDW supports batching, and batching is requested, accumulate
+		 * rows and insert them in batches. Otherwise use the per-row inserts.
+		 */
+		if (resultRelInfo->ri_BatchSize > 1)
+		{
+			bool		flushed = false;
+
+			/*
+			 * When we've reached the desired batch size, perform the
+			 * insertion.
+			 */
+			if (resultRelInfo->ri_NumSlots == resultRelInfo->ri_BatchSize)
+			{
+				ExecBatchInsert(mtstate, resultRelInfo,
+								resultRelInfo->ri_Slots,
+								resultRelInfo->ri_PlanSlots,
+								resultRelInfo->ri_NumSlots,
+								estate, canSetTag);
+				flushed = true;
+			}
+
+			oldContext = MemoryContextSwitchTo(estate->es_query_cxt);
+
+			if (resultRelInfo->ri_Slots == NULL)
+			{
+				resultRelInfo->ri_Slots = palloc(sizeof(TupleTableSlot *) *
+												 resultRelInfo->ri_BatchSize);
+				resultRelInfo->ri_PlanSlots = palloc(sizeof(TupleTableSlot *) *
+													 resultRelInfo->ri_BatchSize);
+			}
+
+			/*
+			 * Initialize the batch slots. We don't know how many slots will
+			 * be needed, so we initialize them as the batch grows, and we
+			 * keep them across batches. To mitigate an inefficiency in how
+			 * resource owner handles objects with many references (as with
+			 * many slots all referencing the same tuple descriptor) we copy
+			 * the appropriate tuple descriptor for each slot.
+			 */
+			if (resultRelInfo->ri_NumSlots >= resultRelInfo->ri_NumSlotsInitialized)
+			{
+				TupleDesc	tdesc = CreateTupleDescCopy(slot->tts_tupleDescriptor);
+				TupleDesc	plan_tdesc =
+					CreateTupleDescCopy(planSlot->tts_tupleDescriptor);
+
+				resultRelInfo->ri_Slots[resultRelInfo->ri_NumSlots] =
+					MakeSingleTupleTableSlot(tdesc, slot->tts_ops);
+
+				resultRelInfo->ri_PlanSlots[resultRelInfo->ri_NumSlots] =
+					MakeSingleTupleTableSlot(plan_tdesc, planSlot->tts_ops);
+
+				/* remember how many batch slots we initialized */
+				resultRelInfo->ri_NumSlotsInitialized++;
+			}
+
+			ExecCopySlot(resultRelInfo->ri_Slots[resultRelInfo->ri_NumSlots],
+						 slot);
+
+			ExecCopySlot(resultRelInfo->ri_PlanSlots[resultRelInfo->ri_NumSlots],
+						 planSlot);
+
+			/*
+			 * If these are the first tuples stored in the buffers, add the
+			 * target rel and the mtstate to the
+			 * es_insert_pending_result_relations and
+			 * es_insert_pending_modifytables lists respectively, execpt in
+			 * the case where flushing was done above, in which case they
+			 * would already have been added to the lists, so no need to do
+			 * this.
+			 */
+			if (resultRelInfo->ri_NumSlots == 0 && !flushed)
+			{
+				Assert(!list_member_ptr(estate->es_insert_pending_result_relations,
+										resultRelInfo));
+				estate->es_insert_pending_result_relations =
+					lappend(estate->es_insert_pending_result_relations,
+							resultRelInfo);
+				estate->es_insert_pending_modifytables =
+					lappend(estate->es_insert_pending_modifytables, mtstate);
+			}
+			Assert(list_member_ptr(estate->es_insert_pending_result_relations,
+								   resultRelInfo));
+
+			resultRelInfo->ri_NumSlots++;
+
+			MemoryContextSwitchTo(oldContext);
+
+			return NULL;
+		}
+
+		/*
+		 * insert into foreign table: let the FDW do it
+		 */
+		slot = resultRelInfo->ri_FdwRoutine->ExecForeignInsert(estate,
+															   resultRelInfo,
+															   slot,
+															   planSlot);
+
+		if (slot == NULL)		/* "do nothing" */
+			return NULL;
+
+		/*
+		 * AFTER ROW Triggers or RETURNING expressions might reference the
+		 * tableoid column, so (re-)initialize tts_tableOid before evaluating
+		 * them.  (This covers the case where the FDW replaced the slot.)
+		 */
+		slot->tts_tableOid = RelationGetRelid(resultRelInfo->ri_RelationDesc);
+	}
+	else
+	{
+		WCOKind		wco_kind;
+
+		/*
+		 * Constraints and GENERATED expressions might reference the tableoid
+		 * column, so (re-)initialize tts_tableOid before evaluating them.
+		 */
+		slot->tts_tableOid = RelationGetRelid(resultRelationDesc);
+
+		/*
+		 * Compute stored generated columns
+		 */
+		if (resultRelationDesc->rd_att->constr &&
+			resultRelationDesc->rd_att->constr->has_generated_stored)
+			ExecComputeStoredGenerated(resultRelInfo, estate, slot,
+									   CMD_INSERT);
+
+		/*
+		 * Check any RLS WITH CHECK policies.
+		 *
+		 * Normally we should check INSERT policies. But if the insert is the
+		 * result of a partition key update that moved the tuple to a new
+		 * partition, we should instead check UPDATE policies, because we are
+		 * executing policies defined on the target table, and not those
+		 * defined on the child partitions.
+		 *
+		 * If we're running MERGE, we refer to the action that we're executing
+		 * to know if we're doing an INSERT or UPDATE to a partition table.
+		 */
+		if (mtstate->operation == CMD_UPDATE)
+			wco_kind = WCO_RLS_UPDATE_CHECK;
+		else if (mtstate->operation == CMD_MERGE)
+			wco_kind = (context->relaction->mas_action->commandType == CMD_UPDATE) ?
+				WCO_RLS_UPDATE_CHECK : WCO_RLS_INSERT_CHECK;
+		else
+			wco_kind = WCO_RLS_INSERT_CHECK;
+
+		/*
+		 * ExecWithCheckOptions() will skip any WCOs which are not of the kind
+		 * we are looking for at this point.
+		 */
+		if (resultRelInfo->ri_WithCheckOptions != NIL)
+			ExecWithCheckOptions(wco_kind, resultRelInfo, slot, estate);
+
+		/*
+		 * Check the constraints of the tuple.
+		 */
+		if (resultRelationDesc->rd_att->constr)
+			ExecConstraints(resultRelInfo, slot, estate);
+
+		/*
+		 * Also check the tuple against the partition constraint, if there is
+		 * one; except that if we got here via tuple-routing, we don't need to
+		 * if there's no BR trigger defined on the partition.
+		 */
+		if (resultRelationDesc->rd_rel->relispartition &&
+			(resultRelInfo->ri_RootResultRelInfo == NULL ||
+			 (resultRelInfo->ri_TrigDesc &&
+			  resultRelInfo->ri_TrigDesc->trig_insert_before_row)))
+			ExecPartitionCheck(resultRelInfo, slot, estate, true);
+
+		if (!ExecCheckIndexConstraints(resultRelInfo, slot, estate, &conflictTid, NIL))
+		{
+			(void *)ExecDelete(context, resultRelInfo, &conflictTid, oldtuple,
+							  true, false, node->canSetTag, NULL, NULL);
+		}
+		/* insert the tuple normally */
+		table_tuple_insert(resultRelationDesc, slot,
+						   estate->es_output_cid,
+						   0, NULL);
+
+		/* insert index entries for tuple */
+		if (resultRelInfo->ri_NumIndices > 0)
+			recheckIndexes = ExecInsertIndexTuples(resultRelInfo,
+												   slot, estate, false,
+												   false, NULL, NIL);
+	}
+
+	if (canSetTag)
+		(estate->es_processed)++;
+
+	/*
+	 * If this insert is the result of a partition key update that moved the
+	 * tuple to a new partition, put this row into the transition NEW TABLE,
+	 * if there is one. We need to do this separately for DELETE and INSERT
+	 * because they happen on different tables.
+	 */
+	ar_insert_trig_tcs = mtstate->mt_transition_capture;
+	if (mtstate->operation == CMD_UPDATE && mtstate->mt_transition_capture
+		&& mtstate->mt_transition_capture->tcs_update_new_table)
+	{
+		ExecARUpdateTriggers(estate, resultRelInfo,
+							 NULL, NULL,
+							 NULL,
+							 NULL,
+							 slot,
+							 NULL,
+							 mtstate->mt_transition_capture,
+							 false);
+
+		/*
+		 * We've already captured the NEW TABLE row, so make sure any AR
+		 * INSERT trigger fired below doesn't capture it again.
+		 */
+		ar_insert_trig_tcs = NULL;
+	}
+
+	/* AFTER ROW INSERT Triggers */
+	ExecARInsertTriggers(estate, resultRelInfo, slot, recheckIndexes,
+						 ar_insert_trig_tcs);
+
+	list_free(recheckIndexes);
+
+	/*
+	 * Check any WITH CHECK OPTION constraints from parent views.  We are
+	 * required to do this after testing all constraints and uniqueness
+	 * violations per the SQL spec, so we do it after actually inserting the
+	 * record into the heap and all indexes.
+	 *
+	 * ExecWithCheckOptions will elog(ERROR) if a violation is found, so the
+	 * tuple will never be seen, if it violates the WITH CHECK OPTION.
+	 *
+	 * ExecWithCheckOptions() will skip any WCOs which are not of the kind we
+	 * are looking for at this point.
+	 */
+	if (resultRelInfo->ri_WithCheckOptions != NIL)
+		ExecWithCheckOptions(WCO_VIEW_CHECK, resultRelInfo, slot, estate);
+
+	/* Process RETURNING if present */
+	if (resultRelInfo->ri_projectReturning)
+		result = ExecProcessReturning(resultRelInfo, slot, planSlot);
+
+	if (inserted_tuple)
+		*inserted_tuple = slot;
+	if (insert_destrel)
+		*insert_destrel = resultRelInfo;
+
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 /* ----------------------------------------------------------------
  *	   ExecModifyTable
  *
@@ -4380,8 +4781,14 @@ ExecModifyTable(PlanState *pstate)
 				if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
 					ExecInitInsertProjection(node, resultRelInfo);
 				slot = ExecGetInsertNewTuple(resultRelInfo, planSlot);
-				slot = ExecInsert(&context, resultRelInfo, slot,
-								  node->canSetTag, NULL, NULL);
+				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+				if (node->isReplace && DB_MYSQL == compatible_db)
+					slot = ExecReplace(&context, resultRelInfo, slot,
+									  node->canSetTag, NULL, NULL, oldtuple);
+				else
+					slot = ExecInsert(&context, resultRelInfo, slot,
+									  node->canSetTag, NULL, NULL);
+				/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 				break;
 			case CMD_UPDATE:
 				{
@@ -4434,6 +4841,11 @@ ExecModifyTable(PlanState *pstate)
 					context.GetUpdateNewTuple = internalGetUpdateNewTuple;
 					context.relaction = NULL;
 
+					if (DB_MYSQL == compatible_db && node->mt_partOids)
+					{
+						if (!CheckPartitionRelationIsexist(resultRelInfo, node->mt_partOids))
+							continue;
+					}
 					slot = ExecUpdate(&context, resultRelInfo, tupleid, oldtuple,
 									  slot, node->canSetTag);
 				}
@@ -4643,6 +5055,11 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	upsertState->us_updateproj = NULL;
 	mtstate->mt_upsert = upsertState;
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	mtstate->isReplace = node->isReplace;
+	mtstate->mt_partOids = node->partOids;
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	/*----------
 	 * Resolve the target relation. This is the same as:
 	 *
@@ -4999,11 +5416,12 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 */
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	result_rel_info = mtstate->resultRelInfo;
-	if (node->upsertAction == UPSERT_UPDATE && DB_MYSQL == compatible_db)
+	if ((node->upsertAction == UPSERT_UPDATE || node->isReplace) && DB_MYSQL == compatible_db)
 	{
 		ExprContext	   *econtext = NULL;
 		TupleDesc		tupDesc = NULL;
 
+		resultRelInfo->ri_RelationDesc->rd_onduplicate = true;
 		ExecOpenIndices(result_rel_info, true);
 		/* already exists if created by RETURNING processing above */
 		if (mtstate->ps.ps_ExprContext == NULL)

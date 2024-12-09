@@ -28,6 +28,8 @@
 #include "input.h"
 #include "settings.h"
 #include "sql_help.h"
+#include "oracle_fe_utils/ora_string_utils.h"	/* ReqID:SRS-MYSQL-SQL-REPLACE */
+
 
 /*
  * PLEASE:
@@ -658,14 +660,30 @@ helpSQL(const char *topic, unsigned short int pager)
 								   strstr(PG_VERSION, "devel") ? "devel" : PG_MAJORVERSION,
 								   QL_HELP[i].docbook_id);
 					/* # of newlines in format must match constant above! */
-					fprintf(output, _("Command:     %s\n"
+					/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+					getDbCompatibleMode(pset.db);
+					if (!pg_strcasecmp(QL_HELP[i].cmd, "REPLACE") && db_mode == DB_MYSQL)
+						fprintf(output, _("Command:     %s\n"
 									  "Description: %s\n"
-									  "Syntax:\n%s\n\n"
-									  "URL: %s\n\n"),
+									  "Syntax:\n%s\n\n"),
 							QL_HELP[i].cmd,
 							_(QL_HELP[i].help),
-							buffer.data,
-							url);
+							buffer.data);
+					else if (!pg_strcasecmp(QL_HELP[i].cmd, "REPLACE") && db_mode != DB_MYSQL)
+					{
+						output = NULL;
+						continue;
+					}
+					else
+						fprintf(output, _("Command:     %s\n"
+										  "Description: %s\n"
+										  "Syntax:\n%s\n\n"
+										  "URL: %s\n\n"),
+								QL_HELP[i].cmd,
+								_(QL_HELP[i].help),
+								buffer.data,
+								url);
+					/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 					free(url);
 					termPQExpBuffer(&buffer);
 

@@ -578,6 +578,12 @@ _readRangeVar(void)
 	READ_LOCATION_FIELD(location);
 	READ_NODE_FIELD(indexhints);	/* ReqID:SRS-MYSQL-UPDATE */
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	READ_BOOL_FIELD(ispartition);
+	READ_NODE_FIELD(colnamelist);
+	READ_NODE_FIELD(partitionnamelist);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 	READ_DONE();
 }
 
@@ -1850,6 +1856,10 @@ _readModifyTable(void)
 	READ_NODE_FIELD(upsertCols);
 	READ_UINT_FIELD(upexclRelRTIndex);
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	READ_BOOL_FIELD(isReplace);
+	READ_NODE_FIELD(partOids);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	READ_DONE();
 }

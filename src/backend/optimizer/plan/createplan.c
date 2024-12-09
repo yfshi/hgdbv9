@@ -2811,6 +2811,10 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 		if(plan->plan.plan_width == 0 && subplan->plan_width > 0)
 			plan->plan.plan_width = subplan->plan_width;
 		plan->parseresultrelations = root->parse->resultRelations;
+		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+		plan->isReplace = root->parse->isReplace;
+		plan->partOids = root->parse->partOids;
+		/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 

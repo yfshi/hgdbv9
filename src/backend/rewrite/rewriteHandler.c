@@ -4892,6 +4892,18 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 					 errmsg("WITH cannot be used in a query that is rewritten by rules into multiple queries")));
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	if (parsetree->isReplace && DB_MYSQL == compatible_db)
+	{
+		foreach (lc1, rewritten)
+		{
+			Query   *q = (Query*)lfirst(lc1);
+
+			q->isReplace = parsetree->isReplace;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 	return rewritten;
 }
 
