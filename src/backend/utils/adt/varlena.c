@@ -404,11 +404,22 @@ byteaout(PG_FUNCTION_ARGS)
 
 	if (bytea_output == BYTEA_OUTPUT_HEX)
 	{
-		/* Print hex format */
-		rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 2 + 1);
-		*rp++ = '\\';
-		*rp++ = 'x';
-		rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
+		/* Begin - Bug#z1457 */
+		if (hex_bytea)
+		{
+			rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 1);
+			rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
+			result = upper_character(result, VARSIZE_ANY_EXHDR(vlena) * 2);
+		}
+		else
+		{
+			/* Print hex format */
+			rp = result = palloc(VARSIZE_ANY_EXHDR(vlena) * 2 + 2 + 1);
+			*rp++ = '\\';
+			*rp++ = 'x';
+			rp += hex_encode(VARDATA_ANY(vlena), VARSIZE_ANY_EXHDR(vlena), rp);
+		}
+		/* End -  Bug#z1457 */
 	}
 	else if (bytea_output == BYTEA_OUTPUT_ESCAPE)
 	{

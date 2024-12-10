@@ -189,7 +189,7 @@ bool enable_compatible_const_integer_operator = false;
 bool enable_compatible_numeric_division_result = false;
 /* End - BUG#Z00001452 */
 
-
+bool hex_bytea = false; /* Bug#z1457 */
 
 #endif
 
@@ -357,6 +357,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* END - case sensitive indentify */
+
+	/* Begin - Bug#z1457 */
+	{
+		{"ivorysql.hex_bytea", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Convert hex data display format."),
+			NULL
+		},
+		&hex_bytea,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End -  Bug#z1457 */
 
 	/* Begin - ReqID:EMPTY_STIRNG_TO_NULL */
 	{
