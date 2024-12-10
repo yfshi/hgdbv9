@@ -2345,3 +2345,66 @@ reset nls_date_format;
 reset nls_timestamp_format;
 reset nls_timestamp_tz_format;
 reset default_text_search_config;
+
+/* Begin - BUG#M0000457 */
+select listagg(i::text) from generate_series(1,3) g(i);
+select listagg(i::text, ',') from generate_series(1,3) g(i);
+create table test(id text, pid int);
+insert into test values('1',11), ('2',12), ('3',13), ('1',21), ('2',22);
+select listagg(id, ',') from test;
+select listagg(id, ',') from test group by id;
+select listagg(pid, '/') from test group by id;
+select listagg(pid::text, '/') from test group by id;
+select listagg(id, '/')  over(partition by id) from test;
+select listagg(id, '/')  over(partition by pid) from test;
+select listagg(id, '/')  over(partition by id) from test group by id;
+create table tbl1 (gid int, val text, ts pg_catalog.timestamp default clock_timestamp());
+insert into tbl1 values (1,'a'),(1,'b'),(1,null),(2,'test'),(2,'a""b"c'),(3,'fw');
+select gid, string_agg(val,',' order by ts) from tbl1 group by gid;
+select count(1), gid, string_agg(val,',' order by ts) from tbl1 group by gid;
+select gid, string_agg(val,',' order by ts) from tbl1; --error
+select gid, string_agg(val,',' order by ts) from tbl1 group by gid; --ok
+select string_agg(val,',' order by ts) from tbl1; --ok
+drop table test;
+drop table tbl1;
+
+CREATE TABLE test_orders
+(
+ cust_nbr number(2),
+ region_id number(2),
+ sales_person_id number(2),
+ year number(4),
+ month number(2),
+ tot_orders number(2),
+ tot_sales number(6)
+);
+
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(11,7,11,2001,7,2,12204);
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(4,5,4,2001,10,2,37802);
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(7,6,7,2001,2,3,3750);
+
+SELECT listagg (t.sales_person_id, ',' ) within GROUP ( ORDER BY t.region_id ) AS persons, t.region_id FROM test_orders t GROUP BY t.region_id;
+DROP TABLE test_orders;
+
+select listagg(i) from generate_series(1,3) g(i);
+select listagg(i, ',') from generate_series(1,3) g(i);
+
+CREATE TABLE employee(department_id INT, employee_name VARCHAR2(64));
+INSERT INTO employee VALUES (1, 'John');
+INSERT INTO employee VALUES (1, 'Alice');
+INSERT INTO employee VALUES (2, 'Bob');
+INSERT INTO employee VALUES (2, 'Emma');
+INSERT INTO employee VALUES (2, 'Chris');
+INSERT INTO employee VALUES (3, 'Mary');
+
+create view test_listagg as 
+SELECT department_id, LISTAGG(employee_name, ', ') WITHIN GROUP (ORDER BY employee_name) AS employee_list
+FROM employee
+GROUP BY department_id;
+
+select * from test_listagg;
+select pg_get_viewdef('test_listagg');
+
+DROP VIEW test_listagg;
+DROP TABLE employee;
+/* End - BUG#M0000457 */

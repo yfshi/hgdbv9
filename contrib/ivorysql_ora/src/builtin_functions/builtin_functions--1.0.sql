@@ -1324,3 +1324,32 @@ PARALLEL SAFE  -- BUG#M0000422
 STRICT
 IMMUTABLE;
 /* End - Bug#Z1064 */
+
+/* Begin - BUG#M0000457 */
+CREATE FUNCTION sys.listagg1_transfn(internal, text)
+RETURNS internal
+AS 'MODULE_PATHNAME','orafce_listagg1_transfn'
+LANGUAGE C IMMUTABLE;
+
+CREATE FUNCTION sys.listagg2_transfn(internal, text, text)
+RETURNS internal
+AS 'MODULE_PATHNAME','orafce_listagg2_transfn'
+LANGUAGE C IMMUTABLE;
+
+CREATE FUNCTION sys.listagg_finalfn(internal)
+RETURNS text
+AS 'MODULE_PATHNAME','orafce_listagg_finalfn'
+LANGUAGE C IMMUTABLE;
+
+CREATE AGGREGATE sys.listagg(varchar2) (
+  SFUNC=sys.listagg1_transfn,
+  STYPE=internal,
+  FINALFUNC=sys.listagg_finalfn
+);
+
+CREATE AGGREGATE sys.listagg(varchar2, varchar2) (
+  SFUNC=sys.listagg2_transfn,
+  STYPE=internal,
+  FINALFUNC=sys.listagg_finalfn
+);
+/* End - BUG#M0000457 */
