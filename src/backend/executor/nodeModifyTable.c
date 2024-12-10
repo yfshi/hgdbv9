@@ -2575,9 +2575,11 @@ ExecUpdate(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	}
 	else
 	{
+		ItemPointerData lockedtid;
 		/* Fill in the slot appropriately */
 		ExecUpdatePrepareSlot(resultRelInfo, slot, estate);
 redo_act:;
+		lockedtid = *tupleid;
 		result = ExecUpdateAct(context, resultRelInfo, tupleid, oldtuple, slot,
 							   canSetTag, &updateCxt);
 		/*
@@ -2670,6 +2672,14 @@ redo_act:;
 							if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
 								ExecInitUpdateProjection(context->mtstate,
 														 resultRelInfo);
+
+							if (resultRelInfo->ri_needLockTagTuple)
+							{
+								UnlockTuple(resultRelationDesc,
+											&lockedtid, InplaceUpdateTupleLock);
+								LockTuple(resultRelationDesc,
+										  tupleid, InplaceUpdateTupleLock);
+							}
 
 							/* Fetch the most recent version of old tuple. */
 							oldSlot = resultRelInfo->ri_oldTupleSlot;
@@ -2777,6 +2787,14 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 	Datum		xminDatum;
 	TransactionId xmin;
 	bool		isnull;
+
+	/*
+	 * Parse analysis should have blocked ON CONFLICT for all system
+	 * relations, which includes these.  There's no fundamental obstacle to
+	 * supporting this; we'd just need to handle LOCKTAG_TUPLE like the other
+	 * ExecUpdate() caller.
+	 */
+	Assert(!resultRelInfo->ri_needLockTagTuple);
 
 	/* Determine lock mode to use */
 	lockmode = ExecUpdateLockMode(context->estate, resultRelInfo);
@@ -3284,18 +3302,20 @@ ExecMergeMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 				 ItemPointer tupleid, bool canSetTag)
 {
 	ModifyTableState *mtstate = context->mtstate;
+	ItemPointerData lockedtid;
 	TupleTableSlot *newslot;
 	EState	   *estate = context->estate;
 	ExprContext *econtext = mtstate->ps.ps_ExprContext;
 	bool		isNull;
 	EPQState   *epqstate = &mtstate->mt_epqstate;
 	ListCell   *l;
+	bool		no_further_action = true;
 
 	/*
 	 * If there are no WHEN MATCHED actions, we are done.
 	 */
 	if (resultRelInfo->ri_matchedMergeAction == NIL)
-		return true;
+		return no_further_action;
 
 	/*
 	 * Make tuple and any needed join variables available to ExecQual and
@@ -3308,6 +3328,19 @@ ExecMergeMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	econtext->ecxt_outertuple = NULL;
 
 lmerge_matched:;
+	if (resultRelInfo->ri_needLockTagTuple)
+	{
+		/*
+		 * This locks even for CMD_DELETE, for CMD_NOTHING, and for tuples
+		 * that don't match mas_whenqual.  MERGE on system catalogs is a minor
+		 * use case, so don't bother optimizing those.
+		 */
+		LockTuple(resultRelInfo->ri_RelationDesc, tupleid,
+				  InplaceUpdateTupleLock);
+		lockedtid = *tupleid;
+	}
+	else
+		ItemPointerSetInvalid(&lockedtid);
 
 	/*
 	 * This routine is only invoked for matched rows, and we must have found
@@ -3382,11 +3415,25 @@ lmerge_matched:;
 										tupleid, NULL, newslot))
 				{
 					result = TM_Ok;
-					break;
+					goto out;
 				}
 				ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
 				result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
 									   newslot, mtstate->canSetTag, &updateCxt);
+				
+				/*
+				 * As in ExecUpdate(), if ExecUpdateAct() reports that a
+				 * cross-partition update was done, then there's nothing else
+				 * for us to do --- the UPDATE has been turned into a DELETE
+				 * and an INSERT, and we must not perform any of the usual
+				 * post-update tasks.
+				 */
+				if (updateCxt.crossPartUpdate)
+				{
+					mtstate->mt_merge_updated += 1;
+					goto out;
+				}
+
 				if (result == TM_Ok && updateCxt.updated)
 				{
 					ExecUpdateEpilogue(context, &updateCxt, resultRelInfo,
@@ -3402,7 +3449,7 @@ lmerge_matched:;
 										NULL, NULL))
 				{
 					result = TM_Ok;
-					break;
+					goto out;
 				}
 				result = ExecDeleteAct(context, resultRelInfo, tupleid, false);
 				if (result == TM_Ok)
@@ -3445,7 +3492,8 @@ lmerge_matched:;
 							 errhint("Ensure that not more than one source row matches any one target row.")));
 				/* This shouldn't happen */
 				elog(ERROR, "attempted to update or delete invisible tuple");
-				break;
+				no_further_action = false;
+				goto out;
 
 			case TM_Deleted:
 				if (IsolationUsesXactSnapshot())
@@ -3457,7 +3505,8 @@ lmerge_matched:;
 				 * If the tuple was already deleted, return to let caller
 				 * handle it under NOT MATCHED clauses.
 				 */
-				return false;
+				no_further_action = false;
+				goto out;
 
 			case TM_Updated:
 				{
@@ -3526,13 +3575,19 @@ lmerge_matched:;
 							 * NOT MATCHED actions.
 							 */
 							if (TupIsNull(epqslot))
-								return false;
+							{
+								no_further_action = false;
+								goto out;
+							}
 
 							(void) ExecGetJunkAttribute(epqslot,
 														resultRelInfo->ri_RowIdAttNo,
 														&isNull);
 							if (isNull)
-								return false;
+							{
+								no_further_action = false;
+								goto out;
+							}
 
 							/*
 							 * When a tuple was updated and migrated to
@@ -3558,6 +3613,10 @@ lmerge_matched:;
 							 * Update tupleid to that of the new tuple, for
 							 * the refetch we do at the top.
 							 */
+							if (resultRelInfo->ri_needLockTagTuple)
+								UnlockTuple(resultRelInfo->ri_RelationDesc,
+											&lockedtid,
+											InplaceUpdateTupleLock);
 							ItemPointerCopy(&context->tmfd.ctid, tupleid);
 							goto lmerge_matched;
 
@@ -3567,7 +3626,8 @@ lmerge_matched:;
 							 * tuple already deleted; tell caller to run NOT
 							 * MATCHED actions
 							 */
-							return false;
+							no_further_action = false;
+							goto out;
 
 						case TM_SelfModified:
 
@@ -3593,7 +3653,8 @@ lmerge_matched:;
 							/* see table_tuple_lock call in ExecDelete() */
 							elog(ERROR, "unexpected table_tuple_lock status: %u",
 								 result);
-							return false;
+							no_further_action = false;
+							goto out;
 					}
 				}
 
@@ -3615,7 +3676,11 @@ lmerge_matched:;
 	/*
 	 * Successfully executed an action or no qualifying action was found.
 	 */
-	return true;
+out:
+	if (ItemPointerIsValid(&lockedtid))
+		UnlockTuple(resultRelInfo->ri_RelationDesc, &lockedtid,
+					InplaceUpdateTupleLock);
+	return no_further_action;
 }
 
 
@@ -4314,6 +4379,7 @@ ExecModifyTable(PlanState *pstate)
 	ItemPointerData tuple_ctid;
 	HeapTupleData oldtupdata;
 	HeapTuple	oldtuple;
+	bool		tuplock;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	int					resultRelationNum = 0;
@@ -4671,6 +4737,7 @@ ExecModifyTable(PlanState *pstate)
 				break;
 			case CMD_UPDATE:
 				{
+					tuplock = false;
 					/* Initialize projection info if first time for this table */
 					/* Begin - ReqID:SRS-MYSQL-UPDATE */
 					if (DB_MYSQL == compatible_db && resultRelationNum)
@@ -4702,6 +4769,7 @@ ExecModifyTable(PlanState *pstate)
 					oldSlot = resultRelInfo->ri_oldTupleSlot;
 					if (oldtuple != NULL)
 					{
+						Assert(!resultRelInfo->ri_needLockTagTuple);
 						/* Use the wholerow junk attr as the old tuple. */
 						ExecForceStoreHeapTuple(oldtuple, oldSlot, false);
 					}
@@ -4709,6 +4777,12 @@ ExecModifyTable(PlanState *pstate)
 					{
 						/* Fetch the most recent version of old tuple. */
 						Relation	relation = resultRelInfo->ri_RelationDesc;
+
+						if (resultRelInfo->ri_needLockTagTuple)
+						{
+							LockTuple(relation, tupleid, InplaceUpdateTupleLock);
+							tuplock = true;
+						}
 
 						if (!table_tuple_fetch_row_version(relation, tupleid,
 														   SnapshotAny,
@@ -4722,6 +4796,10 @@ ExecModifyTable(PlanState *pstate)
 
 					slot = ExecUpdate(&context, resultRelInfo, tupleid, oldtuple,
 									  slot, node->canSetTag);
+					
+					if (tuplock)
+					UnlockTuple(resultRelInfo->ri_RelationDesc, tupleid,
+								InplaceUpdateTupleLock);
 				}
 				break;
 			case CMD_DELETE:
