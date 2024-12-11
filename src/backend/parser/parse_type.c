@@ -203,13 +203,32 @@ LookupTypeNameExtended(ParseState *pstate,
 
 			setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
 
+			/* Begin - BUG#Z1308 */
+			if (ORA_PARSER == compatible_db)
+				missing_ok = true;
+			/* End - BUG#Z1308 */
 			namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
 			if (OidIsValid(namespaceId))
 				typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
 										 PointerGetDatum(typname),
 										 ObjectIdGetDatum(namespaceId));
 			else
-				typoid = InvalidOid;
+			{
+				/* Begin - BUG#Z1308 */
+				/*
+				 * can't find the schemaname as a schema,
+				 * try to find the schemaname as a package,
+				 * if references a package object, raise an error.
+				 */
+				if (OidIsValid(PkgnameGetPkgid(schemaname)))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("invalid datatype"),
+							 parser_errposition(pstate, typeName->location)));
+				else
+				/* End - BUG#Z1308 */
+					typoid = InvalidOid;
+			}
 
 			cancel_parser_errposition_callback(&pcbstate);
 		}

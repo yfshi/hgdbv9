@@ -3734,6 +3734,463 @@ select argument_name,data_type,pls_type from all_arguments where object_name='PR
 select argument_name,data_type,pls_type from dba_arguments where object_name='PRO1';
 select argument_name,data_type,pls_type from user_arguments where object_name='PRO1';
 
+/* Begin - BUG#Z1322 */
+--The maximum number of layers that record can nest is 100
+declare
+  type rec1 is record(c1 int,c2 varchar(10));
+  type rec2 is record(c1 rec1,c2 int);
+  type rec3 is record(c1 rec2,c2 int);
+  type rec4 is record(c1 rec3,c2 int);
+  type rec5 is record(c1 rec4,c2 int);
+  type rec6 is record(c1 rec5,c2 int);
+  type rec7 is record(c1 rec6,c2 int);
+  type rec8 is record(c1 rec7,c2 int);
+  type rec9 is record(c1 rec8,c2 int);
+  type rec10 is record(c1 rec9,c2 int);
+  type rec11 is record(c1 rec10,c2 int);
+  type rec12 is record(c1 rec11,c2 int);
+  type rec13 is record(c1 rec12,c2 int);
+  type rec14 is record(c1 rec13,c2 int);
+  type rec15 is record(c1 rec14,c2 int);
+  type rec16 is record(c1 rec15,c2 int);
+  type rec17 is record(c1 rec16,c2 int);
+  type rec18 is record(c1 rec17,c2 int);
+  type rec19 is record(c1 rec18,c2 int);
+  type rec20 is record(c1 rec19,c2 int);
+  type rec21 is record(c1 rec20,c2 int);
+  type rec22 is record(c1 rec21,c2 int);
+  type rec23 is record(c1 rec22,c2 int);
+  type rec24 is record(c1 rec23,c2 int);
+  type rec25 is record(c1 rec24,c2 int);
+  type rec26 is record(c1 rec25,c2 int);
+  type rec27 is record(c1 rec26,c2 int);
+  type rec28 is record(c1 rec27,c2 int);
+  type rec29 is record(c1 rec28,c2 int);
+  type rec30 is record(c1 rec29,c2 int);
+  type rec31 is record(c1 rec30,c2 int);
+  type rec32 is record(c1 rec31,c2 int);
+  type rec33 is record(c1 rec32,c2 int);
+  type rec34 is record(c1 rec33,c2 int);
+  type rec35 is record(c1 rec34,c2 int);
+  type rec36 is record(c1 rec35,c2 int);
+  type rec37 is record(c1 rec36,c2 int);
+  type rec38 is record(c1 rec37,c2 int);
+  type rec39 is record(c1 rec38,c2 int);
+  type rec40 is record(c1 rec39,c2 int);
+  type rec41 is record(c1 rec40,c2 int);
+  type rec42 is record(c1 rec41,c2 int);
+  type rec43 is record(c1 rec42,c2 int);
+  type rec44 is record(c1 rec43,c2 int);
+  type rec45 is record(c1 rec44,c2 int);
+  type rec46 is record(c1 rec45,c2 int);
+  type rec47 is record(c1 rec46,c2 int);
+  type rec48 is record(c1 rec47,c2 int);
+  type rec49 is record(c1 rec48,c2 int);
+  type rec50 is record(c1 rec49,c2 int);
+  type rec51 is record(c1 rec50,c2 int);
+  type rec52 is record(c1 rec51,c2 int);
+  type rec53 is record(c1 rec52,c2 int);
+  type rec54 is record(c1 rec53,c2 int);
+  type rec55 is record(c1 rec54,c2 int);
+  type rec56 is record(c1 rec55,c2 int);
+  type rec57 is record(c1 rec56,c2 int);
+  type rec58 is record(c1 rec57,c2 int);
+  type rec59 is record(c1 rec58,c2 int);
+  type rec60 is record(c1 rec59,c2 int);
+  type rec61 is record(c1 rec60,c2 int);
+  type rec62 is record(c1 rec61,c2 int);
+  type rec63 is record(c1 rec62,c2 int);
+  type rec64 is record(c1 rec63,c2 int);
+  type rec65 is record(c1 rec64,c2 int);
+  type rec66 is record(c1 rec65,c2 int);
+  type rec67 is record(c1 rec66,c2 int);
+  type rec68 is record(c1 rec67,c2 int);
+  type rec69 is record(c1 rec68,c2 int);
+  type rec70 is record(c1 rec69,c2 int);
+  type rec71 is record(c1 rec70,c2 int);
+  type rec72 is record(c1 rec71,c2 int);
+  type rec73 is record(c1 rec72,c2 int);
+  type rec74 is record(c1 rec73,c2 int);
+  type rec75 is record(c1 rec74,c2 int);
+  type rec76 is record(c1 rec75,c2 int);
+  type rec77 is record(c1 rec76,c2 int);
+  type rec78 is record(c1 rec77,c2 int);
+  type rec79 is record(c1 rec78,c2 int);
+  type rec80 is record(c1 rec79,c2 int);
+  type rec81 is record(c1 rec80,c2 int);
+  type rec82 is record(c1 rec81,c2 int);
+  type rec83 is record(c1 rec82,c2 int);
+  type rec84 is record(c1 rec83,c2 int);
+  type rec85 is record(c1 rec84,c2 int);
+  type rec86 is record(c1 rec85,c2 int);
+  type rec87 is record(c1 rec86,c2 int);
+  type rec88 is record(c1 rec87,c2 int);
+  type rec89 is record(c1 rec88,c2 int);
+  type rec90 is record(c1 rec89,c2 int);
+  type rec91 is record(c1 rec90,c2 int);
+  type rec92 is record(c1 rec91,c2 int);
+  type rec93 is record(c1 rec92,c2 int);
+  type rec94 is record(c1 rec93,c2 int);
+  type rec95 is record(c1 rec94,c2 int);
+  type rec96 is record(c1 rec95,c2 int);
+  type rec97 is record(c1 rec96,c2 int);
+  type rec98 is record(c1 rec97,c2 int);
+  type rec99 is record(c1 rec98,c2 int);
+  type rec100 is record(c1 rec99,c2 int);
+  type rec101 is record(c1 rec100,c2 int);
+  type rec102 is record(c1 rec101,c2 int);
+  type rec103 is record(c1 rec102,c2 int);
+  type rec104 is record(c1 rec103,c2 int);
+
+  r rec104;
+  ty1 r%type;
+begin
+  ty1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1 := 100;
+end;
+/
+
+CREATE OR REPLACE PACKAGE p_bug1322 AS
+  type rec1 is record(c1 int,c2 varchar(10));
+  type rec2 is record(c1 rec1,c2 int);
+  type rec3 is record(c1 rec2,c2 int);
+  type rec4 is record(c1 rec3,c2 int);
+  type rec5 is record(c1 rec4,c2 int);
+  type rec6 is record(c1 rec5,c2 int);
+  type rec7 is record(c1 rec6,c2 int);
+  type rec8 is record(c1 rec7,c2 int);
+  type rec9 is record(c1 rec8,c2 int);
+  type rec10 is record(c1 rec9,c2 int);
+  type rec11 is record(c1 rec10,c2 int);
+  type rec12 is record(c1 rec11,c2 int);
+  type rec13 is record(c1 rec12,c2 int);
+  type rec14 is record(c1 rec13,c2 int);
+  type rec15 is record(c1 rec14,c2 int);
+  type rec16 is record(c1 rec15,c2 int);
+  type rec17 is record(c1 rec16,c2 int);
+  type rec18 is record(c1 rec17,c2 int);
+  type rec19 is record(c1 rec18,c2 int);
+  type rec20 is record(c1 rec19,c2 int);
+  type rec21 is record(c1 rec20,c2 int);
+  type rec22 is record(c1 rec21,c2 int);
+  type rec23 is record(c1 rec22,c2 int);
+  type rec24 is record(c1 rec23,c2 int);
+  type rec25 is record(c1 rec24,c2 int);
+  type rec26 is record(c1 rec25,c2 int);
+  type rec27 is record(c1 rec26,c2 int);
+  type rec28 is record(c1 rec27,c2 int);
+  type rec29 is record(c1 rec28,c2 int);
+  type rec30 is record(c1 rec29,c2 int);
+  type rec31 is record(c1 rec30,c2 int);
+  type rec32 is record(c1 rec31,c2 int);
+  type rec33 is record(c1 rec32,c2 int);
+  type rec34 is record(c1 rec33,c2 int);
+  type rec35 is record(c1 rec34,c2 int);
+  type rec36 is record(c1 rec35,c2 int);
+  type rec37 is record(c1 rec36,c2 int);
+  type rec38 is record(c1 rec37,c2 int);
+  type rec39 is record(c1 rec38,c2 int);
+  type rec40 is record(c1 rec39,c2 int);
+  type rec41 is record(c1 rec40,c2 int);
+  type rec42 is record(c1 rec41,c2 int);
+  type rec43 is record(c1 rec42,c2 int);
+  type rec44 is record(c1 rec43,c2 int);
+  type rec45 is record(c1 rec44,c2 int);
+  type rec46 is record(c1 rec45,c2 int);
+  type rec47 is record(c1 rec46,c2 int);
+  type rec48 is record(c1 rec47,c2 int);
+  type rec49 is record(c1 rec48,c2 int);
+  type rec50 is record(c1 rec49,c2 int);
+  type rec51 is record(c1 rec50,c2 int);
+  type rec52 is record(c1 rec51,c2 int);
+  type rec53 is record(c1 rec52,c2 int);
+  type rec54 is record(c1 rec53,c2 int);
+  type rec55 is record(c1 rec54,c2 int);
+  type rec56 is record(c1 rec55,c2 int);
+  type rec57 is record(c1 rec56,c2 int);
+  type rec58 is record(c1 rec57,c2 int);
+  type rec59 is record(c1 rec58,c2 int);
+  type rec60 is record(c1 rec59,c2 int);
+  type rec61 is record(c1 rec60,c2 int);
+  type rec62 is record(c1 rec61,c2 int);
+  type rec63 is record(c1 rec62,c2 int);
+  type rec64 is record(c1 rec63,c2 int);
+  type rec65 is record(c1 rec64,c2 int);
+  type rec66 is record(c1 rec65,c2 int);
+  type rec67 is record(c1 rec66,c2 int);
+  type rec68 is record(c1 rec67,c2 int);
+  type rec69 is record(c1 rec68,c2 int);
+  type rec70 is record(c1 rec69,c2 int);
+  type rec71 is record(c1 rec70,c2 int);
+  type rec72 is record(c1 rec71,c2 int);
+  type rec73 is record(c1 rec72,c2 int);
+  type rec74 is record(c1 rec73,c2 int);
+  type rec75 is record(c1 rec74,c2 int);
+  type rec76 is record(c1 rec75,c2 int);
+  type rec77 is record(c1 rec76,c2 int);
+  type rec78 is record(c1 rec77,c2 int);
+  type rec79 is record(c1 rec78,c2 int);
+  type rec80 is record(c1 rec79,c2 int);
+  type rec81 is record(c1 rec80,c2 int);
+  type rec82 is record(c1 rec81,c2 int);
+  type rec83 is record(c1 rec82,c2 int);
+  type rec84 is record(c1 rec83,c2 int);
+  type rec85 is record(c1 rec84,c2 int);
+  type rec86 is record(c1 rec85,c2 int);
+  type rec87 is record(c1 rec86,c2 int);
+  type rec88 is record(c1 rec87,c2 int);
+  type rec89 is record(c1 rec88,c2 int);
+  type rec90 is record(c1 rec89,c2 int);
+  type rec91 is record(c1 rec90,c2 int);
+  type rec92 is record(c1 rec91,c2 int);
+  type rec93 is record(c1 rec92,c2 int);
+  type rec94 is record(c1 rec93,c2 int);
+  type rec95 is record(c1 rec94,c2 int);
+  type rec96 is record(c1 rec95,c2 int);
+  type rec97 is record(c1 rec96,c2 int);
+  type rec98 is record(c1 rec97,c2 int);
+  type rec99 is record(c1 rec98,c2 int);
+  type rec100 is record(c1 rec99,c2 int);
+  type rec101 is record(c1 rec100,c2 int);
+  type rec102 is record(c1 rec101,c2 int);
+  type rec103 is record(c1 rec102,c2 int);
+  type rec104 is record(c1 rec103,c2 int);
+
+  r rec104;
+END;
+/
+DECLARE
+BEGIN
+  p_bug1322.r.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1 := 100;
+END;
+/
+
+CREATE TABLE tb1(id int);
+
+DECLARE
+BEGIN
+   insert into tb1 values(p_bug1322.r.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1);
+END;
+/
+
+DECLARE
+  ty1 p_bug1322.r%type;
+BEGIN
+   insert into tb1 values(ty1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1.c1);
+END;
+/
+DROP PACKAGE p_bug1322;
+DROP TABLE tb1;
+/* End - BUG#Z1322 */
+
+/* Begin - BUG#Z1316 */
+create table tb_1316(id int);
+
+DECLARE
+  TYPE rec1 IS RECORD (col1 int,col2 varchar(10));
+  r rec1;
+  ty1 r.col1%type;
+BEGIN
+  ty1 := 10;
+  insert into tb_1316(id) values(ty1);
+END;
+/
+SELECT * FROM tb_1316;
+
+DECLARE
+  TYPE rec1 IS RECORD (col1 int,col2 varchar(10));
+  TYPE rec2 IS RECORD (col1 rec1,col2 int);
+  r rec2;
+  ty1 r.col1.col1%type;
+BEGIN
+  ty1 := 20;
+  insert into tb_1316(id) values(ty1);
+END;
+/
+SELECT * FROM tb_1316;
+
+DECLARE
+  TYPE rec1 IS RECORD (col1 int,col2 varchar(10));
+  TYPE rec2 IS RECORD (col1 rec1,col2 int);
+  r rec2;
+  ra r.col1%type;
+BEGIN
+  ra.col1 := 30;
+  insert into tb_1316(id) values(ra.col1);
+END;
+/
+SELECT * FROM tb_1316;
+
+<<label>>
+DECLARE
+  TYPE rec1 IS RECORD (col1 int,col2 varchar(10));
+  r rec1;
+  ty1 label.r%type;
+BEGIN
+  ty1.col1 := 50;
+  insert into tb_1316(id) values(ty1.col1);
+END;
+/
+SELECT * FROM tb_1316;
+
+CREATE OR REPLACE PACKAGE p_bug1316 AS
+  TYPE rec1 IS RECORD (col1 int,col2 varchar(10));
+  r rec1;
+END;
+/
+
+DELETE FROM tb_1316;
+
+DECLARE
+  ty1 p_bug1316.r%type;
+BEGIN
+  ty1.col1 := 10;
+  insert into tb_1316(id) values(ty1.col1);
+END;
+/
+SELECT * FROM tb_1316;
+
+DECLARE
+  ty1 p_bug1316.r.col1%type;
+BEGIN
+  ty1 := 20;
+  insert into tb_1316(id) values(ty1);
+END;
+/
+SELECT * FROM tb_1316;
+
+DROP PACKAGE p_bug1316;
+DROP TABLE tb_1316;
+/* End - BUG#Z1316 */
+
+/* Begin - BUG#Z1306 */
+CREATE TABLE tb1(col1 int, col2 varchar(5));
+INSERT INTO  tb1 VALUES (1, 'sam');
+INSERT INTO  tb1 VALUES (2, 'amy');
+INSERT INTO  tb1 VALUES (3, 'dam');
+INSERT INTO  tb1 VALUES (4, 'vel');
+CREATE TABLE tb2(x int,y varchar(5));
+
+DECLARE
+  TYPE rt IS RECORD (x int, y varchar(5));
+  CURSOR cstb1 RETURN rt IS SELECT * FROM tb1;
+  var1 rt;
+BEGIN
+  OPEN cstb1;
+  FOR i IN 1 .. 4 LOOP
+    FETCH cstb1 INTO var1;
+    insert into tb2 values var1;
+  END LOOP;
+  CLOSE cstb1;
+END;
+/
+
+SELECT * FROM tb2;
+
+DELETE FROM tb2;
+<<label>>
+DECLARE
+  TYPE rt IS RECORD (x int, y varchar(5));
+  CURSOR cstb1 RETURN label.rt IS SELECT * FROM tb1;
+  var1 rt;
+BEGIN
+  OPEN cstb1;
+  FOR i IN 1 .. 4 LOOP
+    FETCH cstb1 INTO var1;
+    insert into tb2 values var1;
+  END LOOP;
+  CLOSE cstb1;
+END;
+/
+
+SELECT * FROM tb2;
+
+DELETE FROM tb2;
+CREATE OR REPLACE PACKAGE p_bug1306 AS
+  TYPE rt IS RECORD (x int, y varchar(5));
+END;
+/
+
+DECLARE
+  CURSOR cstb1 RETURN p_bug1306.rt IS SELECT * FROM tb1;
+  var1 p_bug1306.rt;
+BEGIN
+  OPEN cstb1;
+  FOR i IN 1 .. 4 LOOP
+    FETCH cstb1 INTO var1;
+    insert into tb2 values var1;
+  END LOOP;
+  CLOSE cstb1;
+END;
+/
+
+SELECT * FROM tb2;
+
+DROP PACKAGE p_bug1306;
+DROP TABLE tb1;
+DROP TABLE tb2;
+/* End - BUG#Z1306 */
+
+/* Begin - BUG#Z1308 */
+declare
+  type rt is record(id int);
+  var1 rt;
+  var2 rt;
+begin
+  var1:=rt(1);
+  var2:=rt(1);
+  if var1 = var2 then
+    null;
+  end if;
+end;
+/
+
+declare
+  type rt is record(id int);
+  var1 rt;
+  var2 rt;
+begin
+  var1:=rt(1);
+  var2:=rt(1);
+  if var1 > var2 then
+    null;
+  end if;
+end;
+/
+
+create or replace package pkg_z1308 is
+  type rt is record(id int,name varchar(10));
+end;
+/
+
+create table tb1(stu pkg_z1308.rt, age int);
+drop table tb1;
+drop package pkg_z1308;
+/* End - BUG#Z1308 */
+
+/* Begin - BUG#Z1307 */
+declare
+ type rt is record(id int,name varchar(5));
+ var1 rt;
+begin
+ var1:=null;
+ if var1 is null then
+   null;
+ end if;
+end;
+/
+
+declare
+ type rt is record(id int,name varchar(5));
+ var1 rt;
+begin
+ var1:=null;
+ if var1 is not null then
+   null;
+ end if;
+end;
+/
+/* End - BUG#Z1307 */
+
 reset ivorysql.identifier_case_switch;
 
 --clean table

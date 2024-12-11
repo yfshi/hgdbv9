@@ -437,10 +437,19 @@ oper(ParseState *pstate, List *opname, Oid ltypeId, Oid rtypeId,
 	if (DB_ORACLE == database_mode &&
 		(ltypeId == ORARECORDOID ||
 		rtypeId == ORARECORDOID))
+	{
+		/* Begin - BUG#Z1308 */
+		char	   *schemaname;
+		char	   *opername;
+		/* deconstruct the name list */
+		DeconstructQualifiedName(opname, &schemaname, &opername);
+		/* End - BUG#Z1308 */
+
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
-				errmsg("unimplemented feature"),
+				errmsg("wrong number or types of arguments in call to '%s'", opername), /* BUG#Z1308 */
 				parser_errposition(pstate, location)));
+	}
 	/* End - ReqID:SRS-PLSQL-RECORD */
 
 	/*
