@@ -10084,6 +10084,7 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 	DumpOptions *dopt = fout->dopt;
 	PQExpBuffer query;
 	PQExpBuffer	user_binary_upgrade_query;	/* BUGZ1398 */
+	PQExpBuffer	delquery;	/* BUGZ1362 */
 	if (dopt->dataOnly)
 		return;
 
@@ -10099,7 +10100,14 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 
 		/* END - BUGZ1398 */
 		appendPQExpBuffer(query, "ALTER ROLE %s WITH", fmtId(dbrinfo->dobj.name));
-
+		/* BEGIN - BUGZ1362 */
+		delquery = createPQExpBuffer();
+		if(strcmp(dbrinfo->dobj.name, "sys") != 0 && strcmp(dbrinfo->dobj.name, "system") != 0)
+		{
+			appendPQExpBuffer(delquery, "DROP ROLE %s", fmtId(dbrinfo->dobj.name));
+			appendPQExpBuffer(delquery, ";\n\n");
+		}
+		/* END - BUGZ1362 */
 		if (dbrinfo->rolsuper)
 			appendPQExpBufferStr(query, " SUPERUSER");
 		else
@@ -10156,10 +10164,12 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 									  .description = "DATABASEROLE",
 									  .section = SECTION_NONE,
 									  .createStmt = query->data,
+									  .dropStmt = delquery->data,	/* BUGZ1362 */
 									  .User_binary_upgrade = user_binary_upgrade_query->data));	/* BUGZ1398 */
 
 		destroyPQExpBuffer(query);
 		destroyPQExpBuffer(user_binary_upgrade_query);	/* BUGZ1398 */
+		destroyPQExpBuffer(delquery);	/* BUGZ1362 */
 	}
 	return;
 }
