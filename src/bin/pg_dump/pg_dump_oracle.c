@@ -14031,7 +14031,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opcinfo->dobj.catId.oid,
 						  opcfamily);
 	}
@@ -14046,7 +14046,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
 						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opcinfo->dobj.catId.oid);
 	}
 	else if (fout->remoteVersion >= 80300)
@@ -14060,7 +14060,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
 						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opcinfo->dobj.catId.oid);
 	}
 	else
@@ -14143,7 +14143,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
 						  "AND objid = ap.oid "
-						  "ORDER BY amprocnum",
+						  "ORDER BY amprocnum, ao.oid", /* BUG#M0000344 */
 						  opcinfo->dobj.catId.oid);
 	}
 	else
@@ -14308,7 +14308,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 						  "WHERE refclassid = 'pg_catalog.pg_opfamily'::pg_catalog.regclass "
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND amopfamily = '%u'::pg_catalog.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opfinfo->dobj.catId.oid,
 						  opfinfo->dobj.catId.oid);
 	}
@@ -14323,7 +14323,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
 						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opfinfo->dobj.catId.oid);
 	}
 	else
@@ -14337,7 +14337,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass "
 						  "AND objid = ao.oid "
-						  "ORDER BY amopstrategy",
+						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
 						  opfinfo->dobj.catId.oid);
 	}
 
@@ -14354,7 +14354,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 					  "AND refobjid = '%u'::pg_catalog.oid "
 					  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
 					  "AND objid = ap.oid "
-					  "ORDER BY amprocnum",
+					  "ORDER BY amprocnum, ao.oid", /* BUG#M0000344 */
 					  opfinfo->dobj.catId.oid);
 
 	res_procs = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
@@ -15563,7 +15563,10 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 	query = createPQExpBuffer();
 	query_um = createPQExpBuffer();	/* ReqID:SRS-SQL-DBLINK */
 
-	qsrvname = pg_strdup(fmtId(srvinfo->dobj.name));
+	if (srvinfo->lnkconntype)
+		qsrvname = pg_strdup(ora_dblink_fmtId(srvinfo->dobj.name, false)); /* BUG#Z1317 */
+	else
+		qsrvname = pg_strdup(fmtId(srvinfo->dobj.name));
 
 	/* look up the foreign-data wrapper */
 	appendPQExpBuffer(query, "SELECT fdwname "
@@ -15594,9 +15597,9 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 						  "ORDER BY option_name"
 						  "), E',') AS umoptions "
 						  "FROM pg_user_mappings "
-						  "WHERE srvid = '%u' "
-						  " AND srvname = '%s'",
-						  srvinfo->dobj.catId.oid, qsrvname);
+						  "WHERE srvid = '%u' ",
+						  srvinfo->dobj.catId.oid);
+
 		res = ExecuteSqlQuery(fout, query_um->data, PGRES_TUPLES_OK);
 		ntups = PQntuples(res);
 		if (ntups == 1)
@@ -15608,9 +15611,19 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 			 * authuser and authpassword
 			 */
 			username = get_usermapping_options_kv(umoptions, "\"user\"");
-			userpwd = get_usermapping_options_kv(umoptions, "password");
-			authusername = get_usermapping_options_kv(umoptions, "authuser");
-			authuserpwd = get_usermapping_options_kv(umoptions, "authpassword");
+			/* Begin - BUG#Z1317 */
+			if (quote_all_identifiers)
+			{
+				userpwd = get_usermapping_options_kv(umoptions, "\"password\"");
+				authusername = get_usermapping_options_kv(umoptions, "\"authuser\"");
+				authuserpwd = get_usermapping_options_kv(umoptions, "\"authpassword\"");
+			} /* End - BUG#Z1317 */
+			else
+			{
+				userpwd = get_usermapping_options_kv(umoptions, "password");
+				authusername = get_usermapping_options_kv(umoptions, "authuser");
+				authuserpwd = get_usermapping_options_kv(umoptions, "authpassword");
+			}
 		}
 		appendPQExpBuffer(q, "CREATE ");
 		if (srvinfo->lnkisshared)
