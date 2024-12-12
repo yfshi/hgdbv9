@@ -89,6 +89,7 @@ PG_KEYWORD("first", K_FIRST)
 PG_KEYWORD("forward", K_FORWARD)
 PG_KEYWORD("get", K_GET)
 PG_KEYWORD("hint", K_HINT)
+PG_KEYWORD("immediate", K_IMMEDIATE)	/* BUG#Z1438 */
 PG_KEYWORD("import", K_IMPORT)
 PG_KEYWORD("info", K_INFO)
 PG_KEYWORD("insert", K_INSERT)

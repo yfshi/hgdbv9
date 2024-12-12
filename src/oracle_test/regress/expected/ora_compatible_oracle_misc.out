@@ -230,3 +230,107 @@ DROP TABLE m3_meta_schema;
 DROP TABLE test_a;
 DROP TABLE merge_tab;
 --end bug#M437
+/* Begin - BUG#Z1488 */
+select true::varchar2(1 byte) from dual;
+ oravarcharbyte 
+----------------
+ 1
+(1 row)
+
+select true::varchar2(1 char) from dual;
+ oravarcharchar 
+----------------
+ 1
+(1 row)
+
+select true::varchar2 from dual;
+ oravarcharbyte 
+----------------
+ 1
+(1 row)
+
+select false::varchar2(1 byte) from dual;
+ oravarcharbyte 
+----------------
+ 0
+(1 row)
+
+select false::varchar2(1 char) from dual;
+ oravarcharchar 
+----------------
+ 0
+(1 row)
+
+select false::varchar2 from dual;
+ oravarcharbyte 
+----------------
+ 0
+(1 row)
+
+select true::char(1 byte) from dual;
+ oracharbyte 
+-------------
+ 1
+(1 row)
+
+select true::char(1 char) from dual;
+ oracharchar 
+-------------
+ 1
+(1 row)
+
+select true::char from dual;
+ oracharbyte 
+-------------
+ 1
+(1 row)
+
+select false::char(1 byte) from dual;
+ oracharbyte 
+-------------
+ 0
+(1 row)
+
+select false::char(1 char) from dual;
+ oracharchar 
+-------------
+ 0
+(1 row)
+
+select false::char from dual;
+ oracharbyte 
+-------------
+ 0
+(1 row)
+
+/*
+ * Note:
+ * I think about it and I don't plan to change the conversion of boolean to text for the time being. 
+ * I am worried that any other third-party programs such as extensions may not expect or know this.
+ * For now, I will only handle Oracle-compatible character types.
+ */
+select true::text from dual;
+ text 
+------
+ true
+(1 row)
+
+select false::text from dual;
+ text  
+-------
+ false
+(1 row)
+
+/* End - BUG#Z1488 */
+/* Begin - BUG#Z1438 */
+create table test_z1438(a int);
+create or replace procedure proc_z1438
+is
+szSql varchar2(500);
+begin
+szSql := 'DROP TABLE test_z1438';
+execute immediate szSql;
+end;
+/
+call proc_z1438();
+/* End - BUG#Z1438 */

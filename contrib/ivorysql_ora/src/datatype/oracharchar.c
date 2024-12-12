@@ -521,10 +521,22 @@ bool_orachar(PG_FUNCTION_ARGS)
 	bool		arg1 = PG_GETARG_BOOL(0);
 	const char *str;
 
-	if (arg1)
-		str = "true";
+	/* Begin - BUG#Z1488 */
+	if (compatible_db == ORA_PARSER)
+	{
+		if (arg1)
+			str = "1";
+		else
+			str = "0";
+	}
 	else
-		str = "false";
+	/* End - BUG#Z1488 */
+	{
+		if (arg1)
+			str = "true";
+		else
+			str = "false";
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }

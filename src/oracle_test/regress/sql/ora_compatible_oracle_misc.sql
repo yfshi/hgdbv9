@@ -133,3 +133,42 @@ DROP TABLE test_a;
 DROP TABLE merge_tab;
 
 --end bug#M437
+
+/* Begin - BUG#Z1488 */
+select true::varchar2(1 byte) from dual;
+select true::varchar2(1 char) from dual;
+select true::varchar2 from dual;
+select false::varchar2(1 byte) from dual;
+select false::varchar2(1 char) from dual;
+select false::varchar2 from dual;
+
+select true::char(1 byte) from dual;
+select true::char(1 char) from dual;
+select true::char from dual;
+select false::char(1 byte) from dual;
+select false::char(1 char) from dual;
+select false::char from dual;
+
+/*
+ * Note:
+ * I think about it and I don't plan to change the conversion of boolean to text for the time being. 
+ * I am worried that any other third-party programs such as extensions may not expect or know this.
+ * For now, I will only handle Oracle-compatible character types.
+ */
+select true::text from dual;
+select false::text from dual;
+
+/* End - BUG#Z1488 */
+
+/* Begin - BUG#Z1438 */
+create table test_z1438(a int);
+create or replace procedure proc_z1438
+is
+szSql varchar2(500);
+begin
+szSql := 'DROP TABLE test_z1438';
+execute immediate szSql;
+end;
+/
+call proc_z1438();
+/* End - BUG#Z1438 */
