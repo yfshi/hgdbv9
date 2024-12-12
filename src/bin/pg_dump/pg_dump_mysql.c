@@ -13265,7 +13265,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 						  "AND refobjid = '%u'::pg_catalog.oid "
 						  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
 						  "AND objid = ap.oid "
-						  "ORDER BY amprocnum, ao.oid", /* BUG#M0000344 */
+						  "ORDER BY amprocnum, ap.oid", /* BUG#M0000344 */
 						  opcinfo->dobj.catId.oid);
 	}
 	else
@@ -13476,7 +13476,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 					  "AND refobjid = '%u'::pg_catalog.oid "
 					  "AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass "
 					  "AND objid = ap.oid "
-					  "ORDER BY amprocnum, ao.oid", /* BUG#M0000344 */
+					  "ORDER BY amprocnum, ap.oid", /* BUG#M0000344 */
 					  opfinfo->dobj.catId.oid);
 
 	res_procs = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
