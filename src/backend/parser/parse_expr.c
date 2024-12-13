@@ -1940,9 +1940,30 @@ transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall *cref_func)
 static Node *
 transformPseudoColumnRef(ParseState *pstate, PseudoColumnRef *pcr)
 {
+	Node	   *node = NULL;
 	PseudoColVar	*pv = makeNode(PseudoColVar);
 
 	pv->pvarkind = pcr->pckind;
+
+	/* Begin - BUG#M0000451 */
+	if (pstate->p_post_columnref_hook != NULL)
+	{
+		if (pv->pvarkind == PSEUDOCOL_KIND_ROWNUM)
+		{
+			ColumnRef	*cf = makeNode(ColumnRef);
+
+			cf->type = T_ColumnRef;
+			cf->fields = list_make1(makeString("rownum"));
+			cf->location = pcr->location;
+			cf->has_outer_join = false;
+
+			node = pstate->p_post_columnref_hook(pstate, cf, NULL);
+			if (node != NULL)
+				return node;
+		}
+	}
+	/* End - BUG#M0000451 */
+
 	switch (pv->pvarkind)
 	{
 		case PSEUDOCOL_KIND_ROWNUM:

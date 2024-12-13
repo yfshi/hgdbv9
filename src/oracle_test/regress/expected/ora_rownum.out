@@ -1647,3 +1647,70 @@ select rownum, * from vtr;
 reset compute_query_id;
 drop table tr;
 /*End - BUG#Z1278*/
+/* Begin - BUG#M0000450 and BUG#M0000451 */
+create or replace package pkg_rownum is
+  procedure test_pf(id integer, rownum in out varchar2);
+end;
+/
+create or replace package body pkg_rownum is
+  procedure test_pf(id integer,rownum in out varchar2) is
+    var1 varchar2(23);
+  begin
+    rownum := 'xiexie' || rownum;
+	var1 := rownum;
+  end;
+end;
+/
+create or replace function test_f(id integer, rownum in out varchar2) return integer is
+begin
+  pkg_rownum.test_pf(id, rownum);
+  pkg_rownum.test_pf(id=>id,rownum=>rownum);
+  raise notice '%', rownum;
+  return 23;
+end;
+/
+--print xiexiexiexie
+declare
+  id integer;
+  rownum varchar2(256);
+  ret integer;
+begin
+  ret := test_f(id, rownum);
+end;
+/
+NOTICE:  xiexiexiexie
+--print NULL
+declare
+   rownum varchar2(256);
+begin
+  select rownum into rownum from dual;
+  raise notice '%', rownum;
+end;
+/
+NOTICE:  <NULL>
+--print 111
+declare
+  rownum integer;
+begin
+  rownum := 111;
+  raise notice '%', rownum;
+end;
+/
+NOTICE:  111
+create or replace function test_inquote("Rownum" integer) return integer is
+begin
+  return 23;
+end;
+/
+declare
+ rownum integer;
+ ret integer;
+begin
+  ret := test_inquote("Rownum"=>rownum);
+end;
+/
+--cleanup
+drop function test_inquote;
+drop function test_f;
+drop package pkg_rownum;
+/* End - BUG#M0000450 and BUG#M0000451 */
