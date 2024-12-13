@@ -23,5 +23,5 @@ typedef enum
 }			ByteaOutputType;
 
 extern int	bytea_output;		/* ByteaOutputType, but int for GUC enum */
-
+extern bool hex_bytea;			/* Bug#z1457 */
 #endif							/* BYTEA_H */
