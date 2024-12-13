@@ -646,10 +646,10 @@ other			.
 				}
 
 ";"				{
-                /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-                    if(cur_state->is_use)
-					    cur_state->use_has_sem=true;
-			    /* End - ReqID: SRS-MYSQL-SQL-USE */
+                	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+                    if (cur_state->is_use)
+					    cur_state->use_has_sem = true;
+			    	/* End - ReqID: SRS-MYSQL-SQL-USE */
 					ECHO;
 					if (cur_state->paren_depth == 0 && cur_state->begin_depth == 0)
 					{
@@ -888,10 +888,10 @@ other			.
 
 					if (cur_state->identifier_count == 0)
 						memset(cur_state->identifiers, 0, sizeof(cur_state->identifiers));
-                        /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-                    if(pg_strcasecmp(yytext, "use") == 0)
-                        cur_state->is_use=true;
-                        /* End - ReqID: SRS-MYSQL-SQL-USE */
+                    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+                    if (pg_strcasecmp(yytext, "use") == 0)
+                        cur_state->is_use = true;
+                    /* End - ReqID: SRS-MYSQL-SQL-USE */
 					if (pg_strcasecmp(yytext, "create") == 0 ||
 						pg_strcasecmp(yytext, "function") == 0 ||
 						pg_strcasecmp(yytext, "procedure") == 0 ||
@@ -936,30 +936,31 @@ other			.
 				}
 
 <<EOF>>			{
-                /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-                    if(cur_state->is_use&&!cur_state->use_has_sem)
-                     {
-                     /*
-                     * When the 'USE' flag is active, it is appended to
-                     * the end of the statement.However, it only takes
-                     * effect once, so it is necessary to avoid entering
-                     * the 'EOF' more than once
-                     */
-                        cur_state->is_use=false;
-                        cur_state->use_has_sem=false;
-                        if(pg_strcasecmp(yytext, "") == 0)
-                            yytext=";";
-                        ECHO;
-                        if (cur_state->paren_depth == 0 &&
-                            cur_state->begin_depth == 0 &&
-                            !cur_state->cancel_semicolon_terminator)
-                        {
-                        		/* Terminate lexing temporarily */
-                        		cur_state->start_state = YY_START;
-                        		cur_state->identifier_count = 0;
-                        		return LEXRES_SEMI;
-                        }
-                     } /* End - ReqID: SRS-MYSQL-SQL-USE */
+                	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+                    if (cur_state->is_use&&!cur_state->use_has_sem)
+					{
+						/*
+						 * When the 'USE' flag is active, it is appended to
+						 * the end of the statement.However, it only takes
+						 * effect once, so it is necessary to avoid entering
+						 * the 'EOF' more than once
+						 */
+						cur_state->is_use=false;
+						cur_state->use_has_sem=false;
+						if (pg_strcasecmp(yytext, "") == 0)
+							yytext=";";
+						ECHO;
+						if (cur_state->paren_depth == 0 &&
+							cur_state->begin_depth == 0 &&
+							!cur_state->cancel_semicolon_terminator)
+						{
+							/* Terminate lexing temporarily */
+							cur_state->start_state = YY_START;
+							cur_state->identifier_count = 0;
+							return LEXRES_SEMI;
+						}
+                    } 
+					/* End - ReqID: SRS-MYSQL-SQL-USE */
 					if (cur_state->buffer_stack == NULL)
 					{
 						cur_state->start_state = YY_START;

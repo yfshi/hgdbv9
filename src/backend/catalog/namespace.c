@@ -75,7 +75,6 @@
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
-#define  USE_LABLE 1 /* ReqID:SRS-MYSQL-SQL-USE */
 
 /*
  * The namespace search path is a possibly-empty list of namespace OIDs.
@@ -4281,8 +4280,8 @@ recomputeNamespacePath(void)
 	MemoryContext oldcxt;
     /* Begin - ReqID: SRS-MYSQL-SQL-USE */
     Oid			mys_schema_id;
-    bool        is_use=false;
-    int        count=0;
+    bool        is_use = false;
+    int			count = 0;
     /* End - ReqID: SRS-MYSQL-SQL-USE */
 	/* Do nothing if an override search spec is active. */
 	if (overrideStack)
@@ -4315,7 +4314,9 @@ recomputeNamespacePath(void)
 	{
 		char	   *curname = (char *) lfirst(l);
 		Oid			namespaceId;
-        count++;/* ReqID:SRS-MYSQL-SQL-USE */
+
+        count++;	/* ReqID:SRS-MYSQL-SQL-USE */
+		
 		if ((compatible_db == DB_ORACLE && enable_case_switch && identifier_case_switch != NORMAL) ?	/* case sensitive indentify */
 			pg_strcasecmp(curname, "$user") == 0 : strcmp(curname, "$user") == 0)
 		{
@@ -4366,15 +4367,17 @@ recomputeNamespacePath(void)
 				oidlist = lappend_oid(oidlist, namespaceId);
 		}
 	}
+
     /*
-      *If it's a path set by use, or a single path set only one
-      * value will exist. So it's assigned to firstNS.
-      **/
-    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+	 * Begin - ReqID: SRS-MYSQL-SQL-USE
+     * If it's a path set by use, or a single path set only one
+     * value will exist. So it's assigned to firstNS.
+     */
+	#define  USE_LABLE 	1
     if (compatible_db == MYS_PARSER && oidlist && list_length(oidlist) == USE_LABLE && count == USE_LABLE)
     {
-        mys_schema_id=linitial_oid(oidlist);
-        oidlist=list_delete_first(oidlist);
+        mys_schema_id = linitial_oid(oidlist);
+        oidlist = list_delete_first(oidlist);
         is_use = true;
     }
     /*
@@ -4385,7 +4388,7 @@ recomputeNamespacePath(void)
     if (compatible_db == MYS_PARSER && is_use && mys_schema_id)
         firstNS = mys_schema_id;
     else
-    {/* End - ReqID: SRS-MYSQL-SQL-USE */
+    {	/* End - ReqID: SRS-MYSQL-SQL-USE */
         if (oidlist == NIL)
             firstNS = InvalidOid;
         else
@@ -4398,8 +4401,9 @@ recomputeNamespacePath(void)
 	 */
 	if (!list_member_oid(oidlist, PG_CATALOG_NAMESPACE))
 		oidlist = lcons_oid(PG_CATALOG_NAMESPACE, oidlist);
-    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+
     /*
+	 * Begin - ReqID: SRS-MYSQL-SQL-USE
      * In mysql mode, the schema set by the user will be accessed first,
      * so it should be higher than any other schema. If you want objects
      * in other paths to be used by the current schema except for 'schema.obj',

@@ -126,4 +126,60 @@ LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#Z1477 */
+CREATE FUNCTION sys.nlssort(int)
+RETURNS RAW AS 
+$$
+    select nlssort($1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION sys.nlssort(int, text)
+RETURNS RAW AS 
+$$
+    select nlssort($1::text, $2::unknown);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION sys.nlssort(double precision)
+RETURNS RAW AS 
+$$
+BEGIN
+    IF $1 > 1 THEN
+        return nlssort($1::text);
+    END IF;
+    
+    return nlssort(substr($1::text, 2));
+END;
+$$
+LANGUAGE plpgsql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION sys.nlssort(double precision, text)
+RETURNS RAW AS 
+$$
+BEGIN
+    IF $1 > 1 THEN
+        return nlssort($1::text);
+    END IF;
+    
+    return nlssort(substr($1::text, 2), $2::unknown);
+END;
+$$
+LANGUAGE plpgsql
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+/* End - BUG#Z1477 */
+
 /* END: SRS-SQL-NLSSORT */

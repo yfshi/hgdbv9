@@ -3058,19 +3058,34 @@ pseudo_collation_replace_RelabelType(RelabelType *relab, pseudo_collation_replac
 static inline void 
 pseudo_collation_replace_CoerceViaIO(CoerceViaIO *iocoerce, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) iocoerce->arg, context);
+	/* Begin - BUG#Z1491 */
+	if (equal(iocoerce->arg, context->base))
+		iocoerce->arg = (Expr *) makePseudoCollationReplaceNode((Node *) iocoerce->arg, context->targetcoll);
+	/* End - BUG#Z1491 */
+	else
+		pseudo_collation_replace_walker((Node *) iocoerce->arg, context);
 }
 
 static inline void 
 pseudo_collation_replace_ArrayCoerceExpr(ArrayCoerceExpr *acoerce, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) acoerce->arg, context);
+	/* Begin - BUG#Z1491 */
+	if (equal(acoerce->arg, context->base))
+		acoerce->arg = (Expr *) makePseudoCollationReplaceNode((Node *) acoerce->arg, context->targetcoll);
+	/* End - BUG#Z1491 */
+	else
+		pseudo_collation_replace_walker((Node *) acoerce->arg, context);
 }
 
 static inline void 
 pseudo_collation_replace_ConvertRowtypeExpr(ConvertRowtypeExpr *cvt, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) cvt->arg, context);
+	/* Begin - BUG#Z1491 */
+	if (equal(cvt->arg, context->base))
+		cvt->arg = (Expr *) makePseudoCollationReplaceNode((Node *) cvt->arg, context->targetcoll);
+	/* End - BUG#Z1491 */
+	else
+		pseudo_collation_replace_walker((Node *) cvt->arg, context);
 }
 
 static inline void 
@@ -3090,7 +3105,12 @@ pseudo_collation_replace_CollateExpr(CollateExpr *coll, pseudo_collation_replace
 static inline void 
 pseudo_collation_replace_CoerceToDomain(CoerceToDomain *cd, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) cd->arg, context);
+	/* Begin - BUG#Z1491 */
+	if (equal(cd->arg, context->base))
+		cd->arg = (Expr *) makePseudoCollationReplaceNode((Node *) cd->arg, context->targetcoll);
+	/* End - BUG#Z1491 */
+	else
+		pseudo_collation_replace_walker((Node *) cd->arg, context);
 }
 
 static inline void 

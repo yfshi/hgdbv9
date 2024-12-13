@@ -2407,6 +2407,9 @@ job_next_run_date(Timestamp last_date, ScheduleData *sch, freqType freq)
 		default:
 			elog(ERROR, "Invalid frequency type was specified."); /* shouldn't happen */
 	}
+
+	// meanless
+	return 0;
 }
 
 
@@ -2587,6 +2590,9 @@ fetch_array_first_set(char *array, CalendarType type)
 	 * which is an error and should not occur, we must fix it.
 	 */
 	elog(ERROR, "DBMS_JOB internal error.");
+
+	// meanless
+	return 0;
 }
 
 /* End - BUG#M0000349 */

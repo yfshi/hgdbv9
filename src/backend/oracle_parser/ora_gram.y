@@ -4212,13 +4212,17 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 						n->not_spefify_column_type = true;	/* Bug#Z485 */
 						n->isvisible = false;
 						keyword_is_visibility = true;
-					}else if (pg_strcasecmp(tpname, "visible") == 0 && $3){
+					}
+					else if (pg_strcasecmp(tpname, "visible") == 0 && $3)
+					{
 						n->typeName = makeTypeName("int4");
 						n->not_spefify_column_type = true;	/* Bug#Z485 */
 						n->isvisible = true;
 						keyword_is_visibility = true;
 					/* Begin - Bug#Z485 */
-					}else if (pg_strcasecmp(tpname, "generated") == 0){
+					}
+					else if (pg_strcasecmp(tpname, "generated") == 0)
+					{
 						n->typeName = makeTypeName("int4");
 						n->not_spefify_column_type = true;
 						n->isvisible = true;
@@ -4716,9 +4720,15 @@ TableConstraint:
 					Constraint *n = castNode(Constraint, $3);
 					n->conname = $2;
 					n->location = @1;
+					n->table_level = true;	/* BUG#Z1460 */
 					$$ = (Node *) n;
 				}
-			| ConstraintElem						{ $$ = $1; }
+			| ConstraintElem
+				{
+					Constraint *n = castNode(Constraint, $1);
+					n->table_level = true; /* BUG#Z1460 */
+					$$ = (Node *) n;
+				}
 		;
 
 ConstraintElem:

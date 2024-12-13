@@ -318,3 +318,27 @@ set ivorysql.enable_ora_default_collation = off;
 CREATE TABLE ora_default_collation_test(ora_default_collation_col text) DEFAULT COLLATION schinese_pinyin_m;
 select attcollation from pg_attribute where attname = 'ora_default_collation_col';
 DROP TABLE ora_default_collation_test;
+
+
+-- Begin - BUG#Z1477
+RESET nls_comp;
+RESET nls_sort;
+
+select nlssort(+1) from dual;                           -- 3100
+select nlssort(+1, 'nls_sort=binary') from dual;        -- 3100
+
+select nlssort(1) from dual;                            -- 3100
+select nlssort(1, 'nls_sort=binary') from dual;         -- 3100
+
+select nlssort(-1) from dual;                           -- 2d3100
+select nlssort(-1, 'nls_sort=binary') from dual;        -- 2d3100
+
+select nlssort(2.3) from dual;                          -- 322E3300
+select nlssort(2.3, 'nls_sort=binary') from dual;       -- 322E3300
+
+select nlssort(1E2) from dual;                          -- 31303000
+select nlssort(1E2, 'nls_sort=binary') from dual;       -- 31303000
+
+select nlssort(1.123E-2) from dual;                     -- 2E303131323300
+select nlssort(1.123E-2, 'nls_sort=binary') from dual;  -- 2E303131323300
+-- End - BUG#Z1477

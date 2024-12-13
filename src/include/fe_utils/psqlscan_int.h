@@ -328,10 +328,10 @@ typedef struct PsqlScanStateData
 											 * Whether send space or one line comments to server
 											 */
 	/* End - BUG#M0000411 */
-	/*Begin- SRS-MYSQL-SQL-USE */
+	/* Begin- SRS-MYSQL-SQL-USE */
     bool   is_use;
     bool   use_has_sem;
-    /*End- SRS-MYSQL-SQL-USE */
+    /* End- SRS-MYSQL-SQL-USE */
 } PsqlScanStateData;
 
 

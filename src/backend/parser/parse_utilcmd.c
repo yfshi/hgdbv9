@@ -524,6 +524,36 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 */
 	cxt.alist = list_concat(cxt.alist, cxt.likeclauses);
 
+	/** 
+	 * Begin - BUG#Z1460 
+	 * If column's collation is set explicity, mark it in pg_attribute.attoptions.
+	 * ALTER TABLE xx ALTER COLUMN xx SET (explict_set_collation=true)
+	 */
+	if (compatible_db == ORA_PARSER && enable_ora_default_collation)
+	{
+		foreach(elements, cxt.columns)
+		{
+			ColumnDef *col = lfirst(elements);
+
+			if (col->collClause)
+			{
+				AlterTableStmt *alterstmt = makeNode(AlterTableStmt);
+				AlterTableCmd *n = makeNode(AlterTableCmd);
+
+				n->subtype = AT_SetOptions;
+				n->name = pstrdup(col->colname);
+				n->def = (Node *) list_make1(makeDefElem("explict_set_collation", (Node *) makeString(pstrdup("true")), -1));
+
+				alterstmt->relation = cxt.relation;
+				alterstmt->cmds = list_make1(n);
+				alterstmt->objtype = OBJECT_COLUMN;
+
+				cxt.alist = lappend(cxt.alist, alterstmt);
+			}
+		}
+	}
+	/* End - BUG#Z1460 */
+
 	/*
 	 * Postprocess foreign-key constraints.
 	 */
