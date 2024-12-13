@@ -1628,8 +1628,9 @@ iso_year (int y, int m, int d)
 static int64
 sys_time_zone()
 {
-
-#ifdef _WIN64 
+/* Begin - BUG#Z0001485 */
+#ifdef WIN32 
+/* End - BUG#Z00001485 */
 	size_t a;
 	char time_zone[128];
 	long diff_secs;
