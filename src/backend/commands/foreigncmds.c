@@ -44,6 +44,7 @@
 #include "utils/syscache.h"
 
 #include "nodes/makefuncs.h"	/* ReqID:SRS-SQL-DBLINK */
+#include "parser/pg_object_hook.h"	/* BUG#Z1317 */
 
 typedef struct
 {
@@ -1195,6 +1196,15 @@ RemoveForeignServer(DropForeignServerStmt *stmt)
 	object.classId = ForeignServerRelationId;
 	object.objectId = serverid;
 	object.objectSubId = 0;
+
+	/* Begin - BUG#Z1317 */
+	if (server->olnk_service_name)
+	{
+		if (pg_object_drop_obj_hook)
+			pg_object_drop_obj_hook(object);
+	}
+	/* End - BUG#Z1317 */
+
 	performDeletion(&object, stmt->behavior, 0);
 
 	/* Stop the foreign transaction resolver immediately */
@@ -1799,6 +1809,7 @@ void
 CreateDatabaseLink(CreateDatabaseLinkStmt *stmt)
 {
 	ListCell	*lc;
+	ObjectAddress address;
 
 	foreach(lc, stmt->elems)
 	{
@@ -1831,9 +1842,20 @@ CreateDatabaseLink(CreateDatabaseLinkStmt *stmt)
 
 				parseDblinkConnectString(s, stmt->conn_string);
 
-				(void)CreateForeignServer(s);
-
+				address = CreateForeignServer(s);
 				CommandCounterIncrement();
+				/* Begin - BUG#Z1317 */
+				if (pg_object_create_obj_hook)
+				{
+					pg_object_create_obj_hook(s->servername,
+											  InvalidOid,
+											  false,
+											  PG_OBJECT_DBLINK,
+											  address,
+											  NULL,
+											  NULL);
+				}
+				/* End - BUG#Z1317 */
 			}
 			break;
 		case T_CreateUserMappingStmt:

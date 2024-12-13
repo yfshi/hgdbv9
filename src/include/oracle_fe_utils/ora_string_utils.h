@@ -29,5 +29,6 @@ extern void getDbCompatibleMode(PGconn *conn);
 
 /* Functions */
 extern const char *ora_fmtId(const char *identifier);
+extern const char *ora_dblink_fmtId(const char *identifier, bool quote_dblink); /* BUG#Z1317 */
 
 #endif							/* ORA_STRING_UTILS_H */

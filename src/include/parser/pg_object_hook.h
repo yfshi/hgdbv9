@@ -44,6 +44,7 @@
 #define  PG_OBJECT_DATABASE 'd'				/* database */
 #define  PG_OBJECT_TRIGGER 't'				/* trigger */
 #define  PG_OBJECT_COLUMN 'c'				/* column, used by zerofill */
+#define  PG_OBJECT_DBLINK 'l'				/* compatible Oracle DBLINK */
 
 typedef struct pg_object_ori_infor
 {

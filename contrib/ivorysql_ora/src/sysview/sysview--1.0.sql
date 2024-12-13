@@ -2294,7 +2294,8 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
     '********'::text AS lnkpassword,
     t.lnkconnstr,
     t.lnkacl,
-    t.srvoid AS oid
+    t.srvoid AS oid,
+    t.lnkcreated
    FROM ( SELECT srv.srvname AS lnkname,
             ums.usename AS lnkowner,
             srv.srvowner AS lnkowneroid,
@@ -2305,11 +2306,13 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
             um.umoptions,
             srv.srvoptions,
             fdw.fdwname,
-            fdw.oid AS fdwoid
+            fdw.oid AS fdwoid,
+            ob.created AS lnkcreated
            FROM pg_foreign_server srv
              JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
              LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = 0::oid
              LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser = 0::oid
+             LEFT JOIN pg_object ob ON ob.obj_oid = srv.oid
           WHERE srv.olnkispublic = true and srv.olnkconntype != 0
         UNION ALL
          SELECT srv.srvname AS lnkname,
@@ -2322,11 +2325,13 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
             um.umoptions,
             srv.srvoptions,
             fdw.fdwname,
-            fdw.oid AS fdwoid
+            fdw.oid AS fdwoid,
+            ob.created AS lnkcreated
            FROM pg_foreign_server srv
              JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
              LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = srv.srvowner
              LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser != 0::oid
+             LEFT JOIN pg_object ob ON ob.obj_oid = srv.oid
           WHERE srv.olnkispublic = false and srv.olnkconntype != 0) t;
 GRANT SELECT ON SYS.ivorysql_dblink TO PUBLIC;
 --
@@ -2339,7 +2344,7 @@ CREATE OR REPLACE VIEW sys.ALL_DB_LINKS as
     NULL::VARCHAR2(128) AS credential_name,
     NULL::VARCHAR2(128) AS credential_owner,
     i.lnkconnstr::VARCHAR2(2000) AS host,
-    NULL::DATE AS created,
+    i.lnkcreated::TIMESTAMP(0)::DATE AS created,
     'no'::VARCHAR2(3) AS hidden,
     'no'::VARCHAR2(3) AS shard_internal,
     'yes'::VARCHAR2(3) AS valid,
@@ -2357,7 +2362,7 @@ CREATE OR REPLACE VIEW sys.USER_DB_LINKS as
     NULL::VARCHAR2(128) AS credential_name,
     NULL::VARCHAR2(128) AS credential_owner,
     i.lnkconnstr::VARCHAR2(2000) AS host,
-    NULL::DATE AS created,
+    i.lnkcreated::TIMESTAMP(0)::DATE AS created,
     'no'::VARCHAR2(3) AS hidden,
     'no'::VARCHAR2(3) AS shard_internal,
     'yes'::VARCHAR2(3) AS valid,
@@ -2376,7 +2381,7 @@ CREATE OR REPLACE VIEW sys.DBA_DB_LINKS as
     NULL::VARCHAR2(128) AS credential_name,
     NULL::VARCHAR2(128) AS credential_owner,
     i.lnkconnstr::VARCHAR2(2000) AS host,
-    NULL::DATE AS created,
+    i.lnkcreated::TIMESTAMP(0)::DATE AS created,
     'no'::VARCHAR2(3) AS hidden,
     'no'::VARCHAR2(3) AS shard_internal,
     'yes'::VARCHAR2(3) AS valid,
