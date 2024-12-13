@@ -864,3 +864,79 @@ select attcollation from pg_attribute where attname = 'ora_default_collation_col
 (1 row)
 
 DROP TABLE ora_default_collation_test;
+-- Begin - BUG#Z1477
+RESET nls_comp;
+RESET nls_sort;
+select nlssort(+1) from dual;                           -- 3100
+ nlssort 
+---------
+ \x3100
+(1 row)
+
+select nlssort(+1, 'nls_sort=binary') from dual;        -- 3100
+ nlssort 
+---------
+ \x3100
+(1 row)
+
+select nlssort(1) from dual;                            -- 3100
+ nlssort 
+---------
+ \x3100
+(1 row)
+
+select nlssort(1, 'nls_sort=binary') from dual;         -- 3100
+ nlssort 
+---------
+ \x3100
+(1 row)
+
+select nlssort(-1) from dual;                           -- 2d3100
+ nlssort  
+----------
+ \x2d3100
+(1 row)
+
+select nlssort(-1, 'nls_sort=binary') from dual;        -- 2d3100
+ nlssort  
+----------
+ \x2d3100
+(1 row)
+
+select nlssort(2.3) from dual;                          -- 322E3300
+  nlssort   
+------------
+ \x322e3300
+(1 row)
+
+select nlssort(2.3, 'nls_sort=binary') from dual;       -- 322E3300
+  nlssort   
+------------
+ \x322e3300
+(1 row)
+
+select nlssort(1E2) from dual;                          -- 31303000
+  nlssort   
+------------
+ \x31303000
+(1 row)
+
+select nlssort(1E2, 'nls_sort=binary') from dual;       -- 31303000
+  nlssort   
+------------
+ \x31303000
+(1 row)
+
+select nlssort(1.123E-2) from dual;                     -- 2E303131323300
+     nlssort      
+------------------
+ \x2e303131323300
+(1 row)
+
+select nlssort(1.123E-2, 'nls_sort=binary') from dual;  -- 2E303131323300
+     nlssort      
+------------------
+ \x2e303131323300
+(1 row)
+
+-- End - BUG#Z1477

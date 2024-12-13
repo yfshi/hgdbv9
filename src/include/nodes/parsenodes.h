@@ -2013,17 +2013,17 @@ typedef enum ObjectType
 } ObjectType;
 
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-typedef  enum {
+typedef enum {
     OPT_CHARACTERSET,
     OPT_COLLATE
 } OptType;
 
-typedef  struct MysCollateCharacterOpt
+typedef struct MysCollateCharacterOpt
 {
     NodeTag type;
     OptType opt_type;
     char * name;
-}MysCollateCharacterOpt;
+} MysCollateCharacterOpt;
 /* End - ReqID: SRS-MYSQL-SQL-USE */
 /* ----------------------
  *		Create Schema Statement
@@ -2529,6 +2529,7 @@ typedef struct Constraint
 	/* Fields used for constraints that allow a NOT VALID specification */
 	bool		skip_validation;	/* skip validation of existing rows? */
 	bool		initially_valid;	/* mark the new constraint as valid? */
+	bool		table_level;		/* BUG#Z1460, The constraint is table-level */
 } Constraint;
 
 /* ----------------------

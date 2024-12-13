@@ -92,6 +92,7 @@
 #include "storage/smgr.h"
 #include "tcop/utility.h"
 #include "utils/acl.h"
+#include "utils/attoptcache.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/inval.h"
@@ -10440,9 +10441,7 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		enable_ora_default_collation)
 	{
 		Form_pg_attribute 	att;
-		bool 				multi_col_fk = numfks > 1;
 		bool 				self_reference = (RelationGetRelid(rel) == RelationGetRelid(pkrel));
-		Oid					fk_default_collation = RelationGetRelCollation(rel);
 
 		for (i = 0; i < numfks; i++)
 		{
@@ -10455,13 +10454,31 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 				Form_pg_attribute 	attTup;
 				AttrNumber			attnum;
 
-				if (!is_create || self_reference)
+				/* Begin - BUG#Z1460 */
+				AttributeOpts 	   *aopt = get_attribute_options(RelationGetRelid(rel), fkattnum[i]);
+				bool 				explicit = aopt ? aopt->explict_set_collation : false;
+				/* End - BUG#Z1460 */
+
+				// it's ALTER command
+				if (!is_create)
 					ereport(ERROR,
 							errmsg("IVY-02267: column type incompatible with referenced column type"));
 
-				if (fkattcoll[i] != fk_default_collation && multi_col_fk)
+				// it's self reference foreign key
+				if (self_reference)
+						ereport(ERROR,
+								errmsg("IVY-02267: column type incompatible with referenced column type"));
+
+				/**
+				 * Begin - BUG#Z1460
+				 * it's table-level foreign key and the collation is seted explicity
+				 */
+				if (fkconstraint->table_level && explicit)
+				{
 					ereport(ERROR,
-							errmsg("IVY-02267: column type incompatible with referenced column type"));
+								errmsg("IVY-02267: column type incompatible with referenced column type"));
+				}
+				/* End - BUG#Z1460 */
 
 				heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), NameStr(att->attname));
 

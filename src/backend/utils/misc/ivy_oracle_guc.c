@@ -637,7 +637,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
 		},
 		&enable_ora_default_collation,
-		true,
+		false,
 		NULL, NULL, NULL
 	},
 	{
@@ -1524,7 +1524,6 @@ nls_sort_check(char **newval, void **extra, GucSource source)
 	{
 		Oid coll = CollationGetCollid(*newval);
 		if (!OidIsValid(coll) || 
-			get_collation_provider(coll) != COLLPROVIDER_ORACLE ||
 			IsPseudoCollation(coll))
 		{
 			ereport(ERROR, (errmsg("IVY-12705: Cannot access NLS data files or invalid environment specified")));

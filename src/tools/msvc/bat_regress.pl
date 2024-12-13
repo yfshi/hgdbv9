@@ -77,7 +77,7 @@ chdir("bin") or die "can not change bin dir!";
 system("initdb.exe -D $installdir/data -m oracle --encoding=UTF-8");	#BUGM0000294
 my $status6 = $? >> 8;
 exit $status6 if $status6;
-system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg_ora.txt start");	#BUGM0000294
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg_ora.txt start -o \"-c ivorysql.enable_ora_default_collation=on\"");	#BUGM0000294
 my $status7 = $? >> 8;
 exit $status7 if $status7;
 chdir "$startdir";
@@ -154,7 +154,7 @@ chdir("bin") or die "can not change bin dir!";
 system("initdb.exe -D $installdir/data -c normal --encoding=UTF-8");	#BUGM0000294
 my $status11 = $? >> 8;
 exit $status11 if $status11;
-system("pg_ctl.exe -D $installdir/data -l $installdir/log_ora.txt start");	#BUGM0000294
+system("pg_ctl.exe -D $installdir/data -l $installdir/log_ora.txt start -o \"-c ivorysql.enable_ora_default_collation=on\"");	#BUGM0000294
 my $status12 = $? >> 8;
 exit $status12 if $status12;
 chdir "$startdir";

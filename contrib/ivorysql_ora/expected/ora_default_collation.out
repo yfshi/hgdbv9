@@ -1300,3 +1300,363 @@ select check_column_collation('test', 'val') from dual;
 (1 row)
 
 drop table test;
+-- 1. create + Column Level + With CONSTRAINT Keyword + Self Reference + Multi Columns       -- pass, cannot set multi columns foreign keys on column-devel
+-- 2. create + Column Level + With CONSTRAINT Keyword + Self Reference + Single Column
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) constraint fk references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) collate using_nls_comp constraint fk references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) collate binary_ai constraint fk references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 3. create + Column Level + With CONSTRAINT Keyword + Not Self Reference + Multi Columns     -- pass, cannot set multi columns foreign keys on column-devel
+-- 4. create + Column Level + With CONSTRAINT Keyword + Not Self Reference + Single Column
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) constraint fk references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp constraint fk references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, and not same as table's default collation, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate binary_ai constraint fk references pktest
+);
+drop table fktest;
+drop table pktest;
+-- 5. create + Column Level + Without CONSTRAINT Keyword + Self Reference + Multi Columns     -- pass, cannot set multi columns foreign keys on column-devel
+-- 6. create + Column Level + Without CONSTRAINT Keyword + Self Reference + Single Column
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) collate using_nls_comp references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key, 
+    b varchar2(10) collate binary_ai references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 7. create + Column Level + Without CONSTRAINT Keyword + Not Self Reference + Multi Columns   -- pass, cannot set multi columns foreign keys on column-devel
+-- 8. create + Column Level + Without CONSTRAINT Keyword + Not Self Reference + Single Column
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, and not same as table's default collation, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate binary_ai references pktest
+);
+drop table fktest;
+drop table pktest;
+-- 9. create + Table Level + With CONSTRAINT Keyword + Self Reference + Multi Columns
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10),
+    d varchar2(10),
+    primary key (a, b),
+    constraint fk foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10) collate using_nls_comp,
+    d varchar2(10) collate using_nls_comp,
+    primary key (a, b),
+    constraint fk foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10) collate binary_ai,
+    d varchar2(10) collate binary_ai,
+    primary key (a, b),
+    constraint fk foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 10. create + Table Level + With CONSTRAINT Keyword + Self Reference + Single Column
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10),
+    constraint fk foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10) collate using_nls_comp,
+    constraint fk foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10) collate binary_ai,
+    constraint fk foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 11. create + Table Level + With CONSTRAINT Keyword + Not Self Reference + Multi Columns
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10),
+    b varchar2(10),
+    constraint fk foreign key (a, b) references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp,
+    b varchar2(10) collate using_nls_comp,
+    constraint fk foreign key (a, b) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+---- explicit, and not same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10) collate binary_ai,
+    b varchar2(10) collate binary_ai,
+    constraint fk foreign key (a, b) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+-- 12. create + Table Level + With CONSTRAINT Keyword + Not Self Reference + Single Column
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10),
+    constraint fk foreign key (a) references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp,
+    constraint fk foreign key (a) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+---- explicit, and not same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate binary_ai,
+    constraint fk foreign key (a) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+-- 13. create + Table Level + Without CONSTRAINT Keyword + Self Reference + Multi Columns
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10),
+    d varchar2(10),
+    primary key (a, b),
+    foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10) collate using_nls_comp,
+    d varchar2(10) collate using_nls_comp,
+    primary key (a, b),
+    foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    c varchar2(10) collate binary_ai,
+    d varchar2(10) collate binary_ai,
+    primary key (a, b),
+    foreign key (c, d) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 14. create + Table Level + Without CONSTRAINT Keyword + Self Reference + Single Column
+---- implicit, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10),
+    foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, but same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10) collate using_nls_comp,
+    foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+---- explicit, and not same as table's default collation, IVY-02267
+create table fktest(
+    a varchar2(10) collate binary primary key,
+    b varchar2(10) collate binary_ai,
+    foreign key (b) references fktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+-- 15. create + Table Level + Without CONSTRAINT Keyword + Not Self Reference + Multi Columns
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10),
+    b varchar2(10),
+    foreign key (a, b) references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp,
+    b varchar2(10) collate using_nls_comp,
+    foreign key (a, b) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+---- explicit, and not same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary,
+    b varchar2(10) collate binary,
+    primary key (a, b)
+);
+create table fktest(
+    a varchar2(10) collate binary_ai,
+    b varchar2(10) collate binary_ai,
+    foreign key (a, b) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+-- 16. create + Table Level + Without CONSTRAINT Keyword + Not Self Reference + Single Column
+---- implicit, success
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10),
+    foreign key (a) references pktest
+);
+drop table fktest;
+drop table pktest;
+---- explicit, but same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate using_nls_comp,
+    foreign key (a) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+---- explicit, and not same as table's default collation, IVY-02267
+create table pktest(
+    a varchar2(10) collate binary primary key
+);
+create table fktest(
+    a varchar2(10) collate binary_ai,
+    foreign key (a) references pktest
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table pktest;
+-- BUG#Z1460
+create table departments (
+    department_id varchar2(50) collate binary_ai primary key,
+    department_name varchar2(50) not null
+);
+create table employees (
+    employee_id varchar2(50) primary key,
+    first_name varchar2(50),
+    last_name varchar2(50),
+    department_id varchar2(50) collate schinese_stroke_m,
+    constraint fk_department_id foreign key (department_id) references departments(department_id)
+);
+ERROR:  IVY-02267: column type incompatible with referenced column type
+drop table departments;

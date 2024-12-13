@@ -17448,7 +17448,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			/*
 			 * Dump per-column attributes.
 			 */
-			if (tbinfo->attoptions[j][0] != '\0')
+			if (tbinfo->attoptions[j][0] != '\0' &&
+				strncmp(tbinfo->attoptions[j], "explict_set_collation", strlen("explict_set_collation")) /* BUG#Z1460 */)
 				appendPQExpBuffer(q, "ALTER %sTABLE ONLY %s ALTER COLUMN %s SET (%s);\n",
 								  foreign, qualrelname,
 								  fmtId(tbinfo->attnames[j]),

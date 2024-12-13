@@ -172,6 +172,17 @@ static relopt_bool boolRelOpts[] =
 		},
 		true
 	},
+	/* Begin - BUG#Z1460 */
+	{
+		{
+			"explict_set_collation",
+			"Tags column's collation weather is set explicity.",
+			RELOPT_KIND_ATTRIBUTE,
+			ShareUpdateExclusiveLock
+		},
+		false
+	},
+	/* End - BUG#Z1460 */
 	/* list terminator */
 	{{NULL}}
 };
@@ -2089,7 +2100,8 @@ attribute_reloptions(Datum reloptions, bool validate)
 {
 	static const relopt_parse_elt tab[] = {
 		{"n_distinct", RELOPT_TYPE_REAL, offsetof(AttributeOpts, n_distinct)},
-		{"n_distinct_inherited", RELOPT_TYPE_REAL, offsetof(AttributeOpts, n_distinct_inherited)}
+		{"n_distinct_inherited", RELOPT_TYPE_REAL, offsetof(AttributeOpts, n_distinct_inherited)},
+		{"explict_set_collation", RELOPT_TYPE_BOOL, offsetof(AttributeOpts, explict_set_collation)} /* BUG#Z1460 */
 	};
 
 	return (bytea *) build_reloptions(reloptions, validate,
