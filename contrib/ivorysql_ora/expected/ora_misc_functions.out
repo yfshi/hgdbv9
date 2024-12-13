@@ -4181,3 +4181,179 @@ reset nls_date_format;
 reset nls_timestamp_format;
 reset nls_timestamp_tz_format;
 reset default_text_search_config;
+/* Begin - BUG#M0000457 */
+select listagg(i::text) from generate_series(1,3) g(i);
+ listagg 
+---------
+ 123
+(1 row)
+
+select listagg(i::text, ',') from generate_series(1,3) g(i);
+ listagg 
+---------
+ 1,2,3
+(1 row)
+
+create table test(id text, pid int);
+insert into test values('1',11), ('2',12), ('3',13), ('1',21), ('2',22);
+select listagg(id, ',') from test;
+  listagg  
+-----------
+ 1,2,3,1,2
+(1 row)
+
+select listagg(id, ',') from test group by id;
+ listagg 
+---------
+ 2,2
+ 3
+ 1,1
+(3 rows)
+
+select listagg(pid, '/') from test group by id;
+ listagg 
+---------
+ 12/22
+ 13
+ 11/21
+(3 rows)
+
+select listagg(pid::text, '/') from test group by id;
+ listagg 
+---------
+ 12/22
+ 13
+ 11/21
+(3 rows)
+
+select listagg(id, '/')  over(partition by id) from test;
+ listagg 
+---------
+ 1/1
+ 1/1
+ 2/2
+ 2/2
+ 3
+(5 rows)
+
+select listagg(id, '/')  over(partition by pid) from test;
+ listagg 
+---------
+ 1
+ 2
+ 3
+ 1
+ 2
+(5 rows)
+
+select listagg(id, '/')  over(partition by id) from test group by id;
+ listagg 
+---------
+ 1
+ 2
+ 3
+(3 rows)
+
+create table tbl1 (gid int, val text, ts pg_catalog.timestamp default clock_timestamp());
+insert into tbl1 values (1,'a'),(1,'b'),(1,null),(2,'test'),(2,'a""b"c'),(3,'fw');
+select gid, string_agg(val,',' order by ts) from tbl1 group by gid;
+ gid | string_agg  
+-----+-------------
+   1 | a,b
+   2 | test,a""b"c
+   3 | fw
+(3 rows)
+
+select count(1), gid, string_agg(val,',' order by ts) from tbl1 group by gid;
+ count | gid | string_agg  
+-------+-----+-------------
+     3 |   1 | a,b
+     2 |   2 | test,a""b"c
+     1 |   3 | fw
+(3 rows)
+
+select gid, string_agg(val,',' order by ts) from tbl1; --error
+ERROR:  column "tbl1.gid" must appear in the GROUP BY clause or be used in an aggregate function
+LINE 1: select gid, string_agg(val,',' order by ts) from tbl1;
+               ^
+select gid, string_agg(val,',' order by ts) from tbl1 group by gid; --ok
+ gid | string_agg  
+-----+-------------
+   1 | a,b
+   2 | test,a""b"c
+   3 | fw
+(3 rows)
+
+select string_agg(val,',' order by ts) from tbl1; --ok
+     string_agg     
+--------------------
+ a,b,test,a""b"c,fw
+(1 row)
+
+drop table test;
+drop table tbl1;
+CREATE TABLE test_orders
+(
+ cust_nbr number(2),
+ region_id number(2),
+ sales_person_id number(2),
+ year number(4),
+ month number(2),
+ tot_orders number(2),
+ tot_sales number(6)
+);
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(11,7,11,2001,7,2,12204);
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(4,5,4,2001,10,2,37802);
+insert into test_orders(cust_nbr,region_id,sales_person_id,year,month,tot_orders,tot_sales) values(7,6,7,2001,2,3,3750);
+SELECT listagg (t.sales_person_id, ',' ) within GROUP ( ORDER BY t.region_id ) AS persons, t.region_id FROM test_orders t GROUP BY t.region_id;
+ persons | region_id 
+---------+-----------
+ 4       | 5
+ 7       | 6
+ 11      | 7
+(3 rows)
+
+DROP TABLE test_orders;
+select listagg(i) from generate_series(1,3) g(i);
+ listagg 
+---------
+ 123
+(1 row)
+
+select listagg(i, ',') from generate_series(1,3) g(i);
+ listagg 
+---------
+ 1,2,3
+(1 row)
+
+CREATE TABLE employee(department_id INT, employee_name VARCHAR2(64));
+INSERT INTO employee VALUES (1, 'John');
+INSERT INTO employee VALUES (1, 'Alice');
+INSERT INTO employee VALUES (2, 'Bob');
+INSERT INTO employee VALUES (2, 'Emma');
+INSERT INTO employee VALUES (2, 'Chris');
+INSERT INTO employee VALUES (3, 'Mary');
+create view test_listagg as 
+SELECT department_id, LISTAGG(employee_name, ', ') WITHIN GROUP (ORDER BY employee_name) AS employee_list
+FROM employee
+GROUP BY department_id;
+select * from test_listagg;
+ department_id |  employee_list   
+---------------+------------------
+             1 | Alice, John
+             2 | Bob, Chris, Emma
+             3 | Mary
+(3 rows)
+
+select pg_get_viewdef('test_listagg');
+                                                                pg_get_viewdef                                                                
+----------------------------------------------------------------------------------------------------------------------------------------------
+  SELECT employee.department_id,                                                                                                             +
+     "listagg"((employee.employee_name COLLATE "binary"), ', '::varchar2 ORDER BY (employee.employee_name COLLATE "binary")) AS employee_list+
+    FROM employee                                                                                                                            +
+   GROUP BY employee.department_id;
+(1 row)
+
+DROP VIEW test_listagg;
+DROP TABLE employee;
+/* End - BUG#M0000457 */

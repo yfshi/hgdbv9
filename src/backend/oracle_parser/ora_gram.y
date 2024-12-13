@@ -948,6 +948,9 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %token		MODE_PLISQL_ASSIGNN
 /* End - ReqID:SRS-PLSQL-RECORD */
 /* End - BUG:M0000079 */
+/* Begin - BUG#M0000457 */
+%token <keyword> LISTAGG OVERFLOW COUNT_P
+/* End - BUG#M0000457 */
 
 
 /* Precedence: lowest to highest */
@@ -18786,6 +18789,30 @@ func_expr: func_application within_group_clause filter_clause over_clause
 				}
 			| func_expr_common_subexpr
 				{ $$ = $1; }
+			/* Begin - BUG#M0000457 */
+			| LISTAGG '(' ALL func_arg_list opt_listagg_overflow_clause ')' within_group_clause over_clause
+				{
+					FuncCall *n = makeFuncCall(OracleSystemFuncName("listagg"), $4, COERCE_SQL_SYNTAX, @1);
+					n->agg_order = $7;
+					n->over = $8;
+					$$ = (Node *)n;
+				}
+			| LISTAGG '(' DISTINCT func_arg_list opt_listagg_overflow_clause ')' within_group_clause over_clause
+				{
+					FuncCall *n = makeFuncCall(OracleSystemFuncName("listagg"), $4, COERCE_SQL_SYNTAX, @1);
+					n->agg_order = $7;
+					n->over = $8;
+					n->agg_distinct = true;
+					$$ = (Node *)n;
+				}
+			| LISTAGG '(' func_arg_list opt_listagg_overflow_clause ')' within_group_clause over_clause
+				{
+					FuncCall *n = makeFuncCall(OracleSystemFuncName("listagg"), $3, COERCE_SQL_SYNTAX, @1);
+					n->agg_order = $6;
+					n->over = $7;
+					$$ = (Node *)n;
+				}
+			/* End - BUG#M0000457 */
 		;
 
 /*
@@ -19159,7 +19186,6 @@ func_expr_common_subexpr:
 								 errmsg("invalid USERENV parameter.")));
 				}
 			/* End - BUGID:0000830 */
-
 		;
 
 /* Begin - ReqID:SRS-SQL-XML */
@@ -19181,6 +19207,29 @@ xmlf_expr_list:	a_expr
 				}
 		;
 /* End - ReqID:SRS-SQL-XML */
+
+/* Begin - BUG#M0000457 */
+/*
+ * Just syntactically compatible with Oracle, Therefore,
+ * we did not declare opt_listagg_overflow_clause, opt_truncate_indicator,
+ * and opt_with_count. If you want to do more than just syntax support in
+ * the future, please use %type to declare these nonterminal symbols.
+ */
+opt_listagg_overflow_clause:
+			ON OVERFLOW ERROR_P
+			| ON OVERFLOW TRUNCATE opt_truncate_indicator opt_with_count
+			| /*empty*/
+		;
+opt_truncate_indicator:
+			Sconst
+			| /* empty */
+		;
+opt_with_count:
+			WITH COUNT_P
+			| WITHOUT COUNT_P
+			| /*EMPTY*/
+		;
+/* End - BUG#M0000457 */
 
 
 /*
@@ -20926,6 +20975,7 @@ unreserved_keyword:
 			| CONVERSION_P
 			| COPY
 			| COST
+			| COUNT_P /* BUG#M0000457 */
 			| CSV
 			| CUBE
 			| CURRENT_P
@@ -21082,6 +21132,7 @@ unreserved_keyword:
 			| ORDINALITY
 			| OTHERS
 			| OVER
+			| OVERFLOW /* BUG#M0000457 */
 			| OVERRIDING
 			| OWNED
 			| OWNER
@@ -21419,6 +21470,7 @@ reserved_keyword:
 			| LATERAL_P
 			| LEADING
 			| LIMIT
+			| LISTAGG /* BUG#M0000457 */
 			| LOCALTIME
 			| LOCALTIMESTAMP
 			| NAN_P	/* BUG:Z093 */
@@ -21555,6 +21607,7 @@ bare_label_keyword:
 			| CONVERSION_P
 			| COPY
 			| COST
+			| COUNT_P /* BUG#M0000457 */
 			| CROSS
 			| CSV
 			| CUBE
@@ -21693,6 +21746,7 @@ bare_label_keyword:
 			| LEVEL
 			| LIKE
 			| LINK	/* ReqID:SRS-SQL-DBLINK */
+			| LISTAGG /* BUG#M0000457 */
 			| LISTEN
 			| LOAD
 			| LOCAL
@@ -21770,6 +21824,7 @@ bare_label_keyword:
 			| OTHERS
 			| OUT_P
 			| OUTER_P
+			| OVERFLOW /* BUG#M0000457 */
 			| OVERLAY
 			| OVERRIDING
 			| OWNED
