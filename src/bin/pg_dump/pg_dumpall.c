@@ -4846,7 +4846,10 @@ runPgDump(const char *dbname, const char *create_opts)
 		appendPQExpBufferStr(cmd, " -Fa ");
 	else
 		appendPQExpBufferStr(cmd, " -Fp ");
-
+	/* BEGIN - BUGZ1492 */
+	if (no_role_passwords)
+		appendPQExpBufferStr(cmd, " --no-role-passwords ");
+	/* END - BUGZ1492 */
 	/*
 	 * Append the database name to the already-constructed stem of connection
 	 * string.
