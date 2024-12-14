@@ -455,6 +455,7 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 %token <keyword>	K_GET
 %token <keyword>	K_HINT
 %token <keyword>	K_IF
+%token <keyword>	K_IMMEDIATE	/* BUG#Z1438 */
 %token <keyword>	K_IMPORT
 %token <keyword>	K_IN
 %token <keyword>	K_INFO
@@ -3283,6 +3284,15 @@ stmt_dynexecute : K_EXECUTE
 						PLiSQL_expr *expr;
 						int endtoken;
 
+						/* Begin - BUG#Z1438 */
+						int	tok;
+						tok = yylex();
+
+						/* Eat IMMEDIATE otherwise put token back into read-ahead stack */
+						if(tok != K_IMMEDIATE)
+							plisql_push_back_token(tok);
+						/* End - BUG#Z1438 */
+
 						expr = read_sql_construct(K_INTO, K_USING, ';',
 												  "INTO or USING or ;",
 												  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
@@ -4106,6 +4116,7 @@ unreserved_keyword	:
 				| K_FORWARD
 				| K_GET
 				| K_HINT
+				| K_IMMEDIATE	/* BUG#Z1438 */
 				| K_IMPORT
 				| K_INFO
 				| K_INSERT
@@ -4232,6 +4243,7 @@ unit_name_keyword:
 				| K_FORWARD
 				| K_GET
 				| K_HINT
+				| K_IMMEDIATE	/* BUG#Z1438 */
 				| K_IMPORT
 				| K_INFO
 				| K_INSERT
