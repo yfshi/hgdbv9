@@ -1816,9 +1816,13 @@ RestoreArchiveOracle(Archive *AHX)
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
 								else
-									snprintf(buffer, sizeof(buffer), "DROP %s",
-											 te->desc);
-
+								/*BEGIN - BUGZ1362 */
+									if(strcmp(te->desc, "DATABASEROLE") == 0)
+										snprintf(buffer, sizeof(buffer), "DROP ROLE");
+									else
+								/* END - BUGZ1362 */
+										snprintf(buffer, sizeof(buffer), "DROP %s",
+												te->desc);
 								mark = strstr(dropStmt, buffer);
 
 								if (mark)

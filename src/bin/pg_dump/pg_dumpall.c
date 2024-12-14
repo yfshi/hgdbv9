@@ -1053,8 +1053,24 @@ dropRolesOracle(PGconn *conn)
 	PGresult   *res;
 	int			i_rolname;
 	int			i;
-
-	if (server_version >= 90600)
+	/* BEGIN - BUGZ1362 */
+	if (server_version >= 140008)
+		if (no_role_passwords)
+			printfPQExpBuffer(buf,
+							"SELECT rolname "
+							"FROM %s "
+							"WHERE rolname !~ '^pg_' "
+							"AND dboid = 0 "
+							"ORDER BY 1", role_catalog);
+		else
+			printfPQExpBuffer(buf,
+							"SELECT rolname "
+							"FROM %s "
+							"WHERE rolname !~ '^pg_' "
+							"AND rolowndboid = 0 "
+							"ORDER BY 1", role_catalog);
+	/* END - BUGZ1362 */
+	else if (server_version >= 90600)
 		printfPQExpBuffer(buf,
 						  "SELECT rolname "
 						  "FROM %s "
