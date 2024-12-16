@@ -2297,13 +2297,13 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
     t.srvoid AS oid,
     t.lnkcreated
    FROM ( SELECT srv.srvname AS lnkname,
-            ums.usename AS lnkowner,
+            aut.rolname AS lnkowner,
             srv.srvowner AS lnkowneroid,
             true AS lnkispublic,
             srv.olnkusingstring as lnkconnstr,
             srv.srvacl AS lnkacl,
             srv.oid AS srvoid,
-            um.umoptions,
+            ums.umoptions,
             srv.srvoptions,
             fdw.fdwname,
             fdw.oid AS fdwoid,
@@ -2312,17 +2312,18 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
              JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
              LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = 0::oid
              LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser = 0::oid
+             LEFT JOIN pg_authid aut ON aut.oid = srv.srvowner
              LEFT JOIN pg_object ob ON ob.obj_oid = srv.oid
           WHERE srv.olnkispublic = true and srv.olnkconntype != 0
         UNION ALL
          SELECT srv.srvname AS lnkname,
-            ums.usename AS lnkowner,
-            srv.srvowner AS linkowneroid,
+            aut.rolname AS lnkowner,
+            srv.srvowner AS lnkowneroid,
             false AS lnkispublic,
             srv.olnkusingstring as lnkconnstr,
             srv.srvacl AS lnkacl,
             srv.oid AS srvoid,
-            um.umoptions,
+            ums.umoptions,
             srv.srvoptions,
             fdw.fdwname,
             fdw.oid AS fdwoid,
@@ -2331,6 +2332,7 @@ CREATE OR REPLACE VIEW sys.ivorysql_dblink as
              JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srv.srvfdw
              LEFT JOIN pg_user_mapping um ON um.umserver = srv.oid AND um.umuser = srv.srvowner
              LEFT JOIN pg_user_mappings ums ON ums.srvname = srv.srvname AND ums.umuser != 0::oid
+             LEFT JOIN pg_authid aut ON aut.oid = srv.srvowner
              LEFT JOIN pg_object ob ON ob.obj_oid = srv.oid
           WHERE srv.olnkispublic = false and srv.olnkconntype != 0) t;
 GRANT SELECT ON SYS.ivorysql_dblink TO PUBLIC;
