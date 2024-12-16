@@ -1464,7 +1464,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 				if (strcmp(defel->defname, "keep") == 0)
 					appendStringInfo(&str, "\"KEEP\":\"keep\",");
 				else if (strcmp(defel->defname, "nokeep") == 0)
-					appendStringInfo(&str, "\"NOKEEP\":\"nokeep\"");
+					appendStringInfo(&str, "\"NOKEEP\":\"nokeep\",");	/* The change here is to correct the error in the previous SRS-CMD-PGDUMP requirement and add a comma */
 				else if (strcmp(defel->defname, "session") == 0)
 					appendStringInfo(&str, "\"SESSION\":\"session\",");
 				else if (strcmp(defel->defname, "global") == 0)
