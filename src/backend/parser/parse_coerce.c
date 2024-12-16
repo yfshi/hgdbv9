@@ -1777,7 +1777,25 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 	 * now.
 	 */
 	if (ptype == UNKNOWNOID)
-		ptype = TEXTOID;
+	{
+		/* Begin - BUG#Z1506 */
+		/*
+		 * For now, we will not change the type of the unknown array expression,
+		 * because many catalog tables have text[] columns, and some extensions
+		 * also require that it must be of text[] type. Oracle does not have the
+		 * concept of arrays, so it will not affect our compatibility with Oracle.
+		 */
+		if (context && strcmp(context, "ARRAY") && compatible_db == ORA_PARSER)
+		{
+			if (nls_length_semantics == NLS_LENGTH_BYTE)
+				ptype = ORAVARCHARBYTEOID;
+			else
+				ptype = ORAVARCHARCHAROID;
+		}
+		else
+		/* End - BUG#Z1506 */
+			ptype = TEXTOID;
+	}
 
 	if (which_expr)
 		*which_expr = pexpr;

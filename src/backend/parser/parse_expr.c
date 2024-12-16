@@ -2163,7 +2163,23 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 		 * commonly seen.
 		 */
 		if (exprType(arg) == UNKNOWNOID)
-			arg = coerce_to_common_type(pstate, arg, TEXTOID, "CASE");
+		{
+			/* Begin - BUG#Z1506 */
+			Oid	unknown_type;
+
+			if (compatible_db == ORA_PARSER)
+			{
+				if (nls_length_semantics == NLS_LENGTH_BYTE)
+					unknown_type = ORAVARCHARBYTEOID;
+				else
+					unknown_type = ORAVARCHARCHAROID;
+			}
+			else
+				unknown_type = TEXTOID;
+			/* End - BUG#Z1506 */
+
+			arg = coerce_to_common_type(pstate, arg, unknown_type /* BUG#Z1506 */, "CASE");
+		}
 
 		/*
 		 * Run collation assignment on the test expression so that we know
