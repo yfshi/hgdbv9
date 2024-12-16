@@ -87,6 +87,10 @@
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#include "utils/datetime.h"
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 typedef struct
 {
 	const char *descr;			/* comment for an object */
@@ -227,6 +231,10 @@ const char *mysqldumpoptions[] = {"pg", "mysql", "p", "m"};
 #define MYSMOPTIONSNUM 4
 /* END - ReqID:SRS-MYSQL-PGDUMP */
 
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+char day_time[MAXDATELEN + 1];
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 /*
  * The default number of rows per INSERT when
  * --inserts is specified without --rows-per-insert
@@ -281,6 +289,9 @@ main(int argc, char **argv)
 	ArchiveMode archiveMode;
 
 	static DumpOptions dopt;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	time_t		timer;
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	static struct option long_options[] = {
 		{"data-only", no_argument, NULL, 'a'},
@@ -974,6 +985,15 @@ main(int argc, char **argv)
 	if (dopt.outputCreateDB)
 		dM->dumpDatabase(fout);
 
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (dopt.binary_upgrade && (fout->remoteVersion >=140000 && fout->remoteVersion <150000))
+	{
+		timer = time(NULL);
+		strftime(day_time, sizeof(day_time), "_%Y%m%d%H%M%S", localtime(&timer));
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
+
+
 	/* Now the rearrangeable objects. */
 	for (i = 0; i < numObjs; i++)
 		dM->dumpDumpableObject(fout, dobjs[i]);
@@ -1280,9 +1300,15 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 	if (firstnormaloid == 0)
 	{
 		firstnormaloid = atooid(PQgetvalue(res, 0, 0));
+
+		/* When we use the command highgo2pg,
+			the OID values of the database we obtain are between 16384 and 32767,
+			which should be kept as they are. */
 		if (firstnormaloid <= 16384)
 			firstnormaloid = 16384;
-		else
+		/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+		else if (firstnormaloid >= 32767)
+		/* END - ReqID:SRS-CMD-highgo2pg */
 			firstnormaloid = 32767;
 	}
 

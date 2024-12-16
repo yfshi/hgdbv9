@@ -43,6 +43,10 @@ static Oid source_first_normal_oid = InvalidOid;
 static Oid target_first_normal_oid = InvalidOid;
 /* End - Bug#Z1064 */
 
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+bool same_version = false;
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 /*
  * fix_path_separator
  * For non-Windows, just return the argument.
@@ -531,18 +535,25 @@ check_for_new_tablespace_dir(ClusterInfo *new_cluster)
 
 	prep_status("Checking for new cluster tablespace directories");
 
-	for (tblnum = 0; tblnum < os_info.num_old_tablespaces; tblnum++)
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (!same_version)
 	{
-		struct stat statbuf;
+	/* END - ReqID:SRS-CMD-pg2highgo */
+		for (tblnum = 0; tblnum < os_info.num_old_tablespaces; tblnum++)
+		{
+			struct stat statbuf;
 
-		snprintf(new_tablespace_dir, MAXPGPATH, "%s%s",
-				 os_info.old_tablespaces[tblnum],
-				 new_cluster->tablespace_suffix);
+			snprintf(new_tablespace_dir, MAXPGPATH, "%s%s",
+					 os_info.old_tablespaces[tblnum],
+					 new_cluster->tablespace_suffix);
 
-		if (stat(new_tablespace_dir, &statbuf) == 0 || errno != ENOENT)
-			pg_fatal("new cluster tablespace directory already exists: \"%s\"\n",
-					 new_tablespace_dir);
+			if (stat(new_tablespace_dir, &statbuf) == 0 || errno != ENOENT)
+				pg_fatal("new cluster tablespace directory already exists: \"%s\"\n",
+						 new_tablespace_dir);
+		}
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	check_ok();
 }
@@ -689,16 +700,33 @@ check_is_install_user(ClusterInfo *cluster)
 	prep_status("Checking database user is the install user");
 
 	/* Can't use pg_authid because only superusers can view it. */
-	res = executeQueryOrDie(conn,
-							"SELECT r.rolsuper, r.oid "
-							"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
-							"WHERE r.rolname = current_user "
-							"AND d.datname = current_database() "
-							"AND r.rolname !~ '^pg_' "
-							"AND "
-							"CASE WHEN current_user = 'system' "
-							"  THEN d.oid = r.dboid "
-							"  ELSE r.rolname !='sys' AND r.rolname != 'system' END ");
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	/* ivorysql pro */
+	if (cluster->controldata.database_mode == DB_ORACLE)
+	{
+	/* END - ReqID:SRS-CMD-pg2highgo */
+		res = executeQueryOrDie(conn,
+								"SELECT r.rolsuper, r.oid "
+								"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
+								"WHERE r.rolname = current_user "
+								"AND d.datname = current_database() "
+								"AND r.rolname !~ '^pg_' "
+								"AND "
+								"CASE WHEN current_user = 'system' "
+								"  THEN d.oid = r.dboid "
+								"  ELSE r.rolname !='sys' AND r.rolname != 'system' END ");
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	}
+	/* pg */
+	else
+	{
+		res = executeQueryOrDie(conn,
+								"SELECT rolsuper, oid "
+								"FROM pg_catalog.pg_roles "
+								"WHERE rolname = current_user "
+								"AND rolname !~ '^pg_'");
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/*
 	 * We only allow the install user in the new cluster (see comment below)
@@ -712,15 +740,29 @@ check_is_install_user(ClusterInfo *cluster)
 
 	PQclear(res);
 
-	res = executeQueryOrDie(conn,
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (cluster->controldata.database_mode == DB_ORACLE)
+	{
+	/* END - ReqID:SRS-CMD-pg2highgo */
+		res = executeQueryOrDie(conn,
+								"SELECT COUNT(*) "
+								"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
+								"WHERE r.rolname !~ '^pg_' "
+								"AND d.datname = current_database()  "
+								"AND "
+								"CASE WHEN current_user= 'system' "
+								"  THEN d.oid = r.dboid "
+								"  ELSE r.rolname != 'sys' AND r.rolname != 'system' END ");
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	}
+	else
+	{
+		res = executeQueryOrDie(conn,
 							"SELECT COUNT(*) "
-							"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
-							"WHERE r.rolname !~ '^pg_' "
-							"AND d.datname = current_database()  "
-							"AND "
-							"CASE WHEN current_user= 'system' "
-							"  THEN d.oid = r.dboid "
-							"  ELSE r.rolname != 'sys' AND r.rolname != 'system' END ");
+							"FROM pg_catalog.pg_roles "
+							"WHERE rolname !~ '^pg_'");
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	if (PQntuples(res) != 1)
 		pg_fatal("could not determine the number of users\n");

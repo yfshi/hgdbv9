@@ -59,8 +59,6 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	bool		got_large_object = false;
 	bool		got_date_is_int = false;
 	bool		got_data_checksum_version = false;
-	bool		got_database_mode_is_oracle = false;	/* ReqID:SRS-GKC-DATATYPE_001 */
-	bool		got_database_mode_is_mysql = false;		/* ReqID:SRS-MISC-MYSQL-FRAME */
 	bool		got_cluster_state = false;
 	char	   *lc_collate = NULL;
 	char	   *lc_ctype = NULL;
@@ -75,7 +73,6 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 	uint32		logid = 0;
 	uint32		segno = 0;
 	char	   *resetwal_bin;
-
 
 	/*
 	 * Because we test the pg_resetwal output as strings, it has to be in
@@ -204,6 +201,19 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		cluster->controldata.data_checksum_version = 0;
 		got_data_checksum_version = true;
 	}
+
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	/* set default */
+#ifdef PG2HG
+	cluster->controldata.database_mode = DB_PG;
+/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+#elif HG2PG
+	cluster->controldata.database_mode = DB_PG;
+/* END - ReqID:SRS-CMD-highgo2pg */
+#else
+	cluster->controldata.database_mode = DB_NATIVE;
+#endif
+/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/* we have the result of cmd in "output". so parse it line by line now */
 	while (fgets(bufin, sizeof(bufin), output))
@@ -510,18 +520,22 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 			if(str2uint(p) == 1)
 			{
-				cluster->controldata.database_mode_is_oracle = str2uint(p);
-				got_database_mode_is_oracle = true;
+				/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+				cluster->controldata.database_mode = DB_ORACLE;
+				/* END - ReqID:SRS-CMD-pg2highgo */
 			}
 			else if(str2uint(p) == 2)
 			{
-				cluster->controldata.database_mode_is_mysql = str2uint(p);
-				got_database_mode_is_mysql = true;
+				/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+				cluster->controldata.database_mode = DB_MYSQL;
+				/* END - ReqID:SRS-CMD-pg2highgo */
 			}
+			/* mode is pg */
 			else
 			{
-				got_database_mode_is_mysql = true;
-				got_database_mode_is_oracle = true;
+				/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+				cluster->controldata.database_mode = DB_PG;
+				/* END - ReqID:SRS-CMD-pg2highgo */
 			}
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		}
@@ -595,7 +609,7 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		(!got_large_object &&
 		 cluster->controldata.ctrl_ver >= LARGE_OBJECT_SIZE_PG_CONTROL_VER) ||
 		!got_date_is_int || !got_data_checksum_version ||
-		(!got_database_mode_is_oracle && !got_database_mode_is_mysql))	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME */
+		cluster->controldata.database_mode == DB_NATIVE)/* ReqID:SRS-CMD-pg2highgo */
 	{
 		if (cluster == &old_cluster)
 			pg_log(PG_REPORT,
@@ -664,15 +678,8 @@ get_control_data(ClusterInfo *cluster, bool live_check)
 		if (!got_data_checksum_version)
 			pg_log(PG_REPORT, "  data checksum version\n");
 
-		/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-		if (!got_database_mode_is_oracle)
+		if (cluster->controldata.database_mode == DB_NATIVE)/* ReqID:SRS-CMD-pg2highgo */
 			pg_log(PG_REPORT, "  database mode\n");
-		/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
-		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-		if (!got_database_mode_is_mysql)
-			pg_log(PG_REPORT, "  database mode\n");
-		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 		pg_fatal("Cannot continue without required control information, terminating\n");
 	}
@@ -740,7 +747,7 @@ check_control_data(ControlData *oldctrl,
 		pg_fatal("old and new cluster pg_controldata checksum versions do not match\n");
 
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (oldctrl->database_mode_is_oracle != newctrl->database_mode_is_oracle)
+	if (oldctrl->database_mode != newctrl->database_mode)/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		pg_fatal("old and new pg_controldata database mode do not match\n");
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 }

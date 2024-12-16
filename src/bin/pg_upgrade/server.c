@@ -257,7 +257,7 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 	 * vacuumdb --freeze actually freezes the tuples.
 	 */
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (cluster->controldata.database_mode_is_oracle)
+	if (cluster->controldata.database_mode == DB_ORACLE) /* ReqID:SRS-CMD-pg2highgo */
 	{
 		snprintf(cmd, sizeof(cmd),
 				 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -o %d%s%s %s%s\" start",
@@ -270,7 +270,7 @@ start_postmaster(ClusterInfo *cluster, bool report_and_exit_on_error)
 				 cluster->pgopts ? cluster->pgopts : "", socket_string);
 	}
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (cluster->controldata.database_mode_is_mysql)
+	else if (cluster->controldata.database_mode == DB_MYSQL) /* ReqID:SRS-CMD-pg2highgo */
 	{
 		snprintf(cmd, sizeof(cmd),
 				 "\"%s/pg_ctl\" -w -l \"%s\" -D \"%s\" -o \"-p %d -m %d%s%s %s%s\" start",

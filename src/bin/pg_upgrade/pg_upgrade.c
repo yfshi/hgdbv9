@@ -358,6 +358,18 @@ create_new_objects(void)
 		 */
 		create_opts = "--clean --create";
 
+#ifdef HG2PG
+		exec_prog(log_file_name,
+				  NULL,
+				  true,
+				  true,
+				  "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
+				  "--dbname postgres \"%s\"",
+				  old_cluster.bindir,
+				  cluster_conn_opts(&new_cluster),
+				  create_opts,
+				  sql_file_name);
+#else
 		exec_prog(log_file_name,
 				  NULL,
 				  true,
@@ -368,6 +380,7 @@ create_new_objects(void)
 				  cluster_conn_opts(&new_cluster),
 				  create_opts,
 				  sql_file_name);
+#endif
 
 		break;					/* done once we've processed template1 */
 	}
@@ -397,6 +410,16 @@ create_new_objects(void)
 		else
 			create_opts = "--create";
 
+#ifdef HG2PG
+		parallel_exec_prog(log_file_name,
+						   NULL,
+						   "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
+						   "--dbname template1 \"%s\"",
+						   old_cluster.bindir,
+						   cluster_conn_opts(&new_cluster),
+						   create_opts,
+						   sql_file_name);
+#else
 		parallel_exec_prog(log_file_name,
 						   NULL,
 						   "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
@@ -405,6 +428,8 @@ create_new_objects(void)
 						   cluster_conn_opts(&new_cluster),
 						   create_opts,
 						   sql_file_name);
+#endif
+
 	}
 
 	/* reap all children */

@@ -11,6 +11,7 @@
 #include <sys/time.h>
 
 #include "libpq-fe.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-CMD-pg2highgo */
 
 /* Use port in the private/dynamic port number range */
 #define DEF_PGUPORT			50432
@@ -37,6 +38,7 @@ extern char *output_files[];
 
 extern bool pg_cluster_within_oracle_mode;	/* ReqID:SRS-GKC-DATATYPE_001 */
 extern bool pg_cluster_within_mysql_mode;	/* ReqID:SRS-MISC-MYSQL-FRAME */
+extern bool same_version;					/* ReqID:SRS-CMD-pg2highgo */
 
 /*
  * WIN32 files do not accept writes from multiple processes
@@ -225,8 +227,7 @@ typedef struct
 	bool		date_is_int;
 	bool		float8_pass_by_value;
 	uint32		data_checksum_version;
-	bool		database_mode_is_oracle;	/* ReqID:SRS-GKC-DATATYPE_001 */
-	bool		database_mode_is_mysql;		/* ReqID:SRS-MISC-MYSQL-FRAME */
+	DBMode		database_mode;	/* ReqID:SRS-CMD-pg2highgo */
 } ControlData;
 
 /*

@@ -81,6 +81,10 @@
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#include <sys/stat.h>
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 typedef struct
 {
 	const char *descr;			/* comment for an object */
@@ -20494,8 +20498,8 @@ getDbTablespace(Archive *fout, int *numTablespaces)
 		spcinfo[i].spcname = pg_strdup(PQgetvalue(res, i, i_spcname));
 		spcinfo[i].spclocation = pg_strdup(PQgetvalue(res, i, i_spclocation));
 		spcinfo[i].spcowner = pg_strdup(PQgetvalue(res, i, i_spcowner));
-		spcinfo[i].spcacl = PQgetvalue(res, i, i_spcacl);
-		spcinfo[i].rspcacl = PQgetvalue(res, i, i_rspcacl);
+		spcinfo[i].spcacl = PQgetisnull(res, i, i_spcacl) ? pg_strdup(""):pg_strdup(PQgetvalue(res, i, i_spcacl));
+		spcinfo[i].rspcacl = PQgetisnull(res, i, i_rspcacl) ? pg_strdup(""):pg_strdup(PQgetvalue(res, i, i_rspcacl));
 		spcinfo[i].spccomment = PQgetisnull(res, i, i_spccomment) ? NULL : pg_strdup(PQgetvalue(res, i, i_spccomment));
 		spcinfo[i].spcoptions = PQgetisnull(res, i, i_spcoptions) ? NULL : pg_strdup(PQgetvalue(res, i, i_spcoptions));
 
@@ -20513,6 +20517,9 @@ dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo)
 {
 	DumpOptions *dopt = fout->dopt;
 	PQExpBuffer	query;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	char tablespace_path[MAXPGPATH + 1];
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	if(dopt->dataOnly)
 		return;
@@ -20527,7 +20534,34 @@ dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo)
 		appendPQExpBuffer(query, "CREATE TABLESPACE %s", fspcname);
 		appendPQExpBuffer(query, " OWNER %s", fmtId(spcinfo->spcowner));
 		appendPQExpBufferStr(query, " LOCATION ");
-		appendStringLiteralAH(query, spcinfo->spclocation, fout);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		if (dopt->binary_upgrade && (fout->remoteVersion >=140000 && fout->remoteVersion <150000))
+		{
+			/* The tablespace exists, and in the case of an in-place upgrade,
+			it is necessary to create the tablespace in a different directory.
+			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss*/
+			snprintf(tablespace_path, MAXPGPATH, "%s%s",spcinfo->spclocation, day_time);
+			appendStringLiteralAH(query, tablespace_path, fout);
+
+			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+			{
+				pg_log_error(" mkdir \"%s\" fail:%s",
+							 tablespace_path, strerror(errno));
+				exit_nicely(1);
+				return;
+			}
+		}
+		else
+		{
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
+			appendStringLiteralAH(query, spcinfo->spclocation, fout);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		}
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
 		appendPQExpBuffer(query, ";\n");
 
 		if(spcinfo->spcoptions && spcinfo->spcoptions[0] != '\0')

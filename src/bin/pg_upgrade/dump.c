@@ -20,12 +20,23 @@ generate_old_dump(void)
 	prep_status("Creating dump of global objects");
 
 	/* run new pg_dumpall binary for globals */
+/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+#ifdef HG2PG
+	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
+			  "\"%s/pg_dumpall\" %s --globals-only --quote-all-identifiers "
+			  "--binary-upgrade %s -f %s",
+			  old_cluster.bindir, cluster_conn_opts(&old_cluster),
+			  log_opts.verbose ? "--verbose" : "",
+			  GLOBALS_DUMP_FILE);
+#else
+/* END - ReqID:SRS-CMD-highgo2pg */
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
 			  "\"%s/pg_dumpall\" %s --globals-only --quote-all-identifiers "
 			  "--binary-upgrade %s -f %s",
 			  new_cluster.bindir, cluster_conn_opts(&old_cluster),
 			  log_opts.verbose ? "--verbose" : "",
 			  GLOBALS_DUMP_FILE);
+#endif /* ReqID:SRS-CMD-highgo2pg */
 	check_ok();
 
 	prep_status("Creating dump of database schemas\n");
@@ -50,12 +61,23 @@ generate_old_dump(void)
 		snprintf(sql_file_name, sizeof(sql_file_name), DB_DUMP_FILE_MASK, old_db->db_oid);
 		snprintf(log_file_name, sizeof(log_file_name), DB_DUMP_LOG_FILE_MASK, old_db->db_oid);
 
+/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+#ifdef HG2PG
+		parallel_exec_prog(log_file_name, NULL,
+						   "\"%s/pg_dump\" %s --schema-only --quote-all-identifiers "
+						   "--binary-upgrade --format=custom %s --file=\"%s\" %s",
+						   old_cluster.bindir, cluster_conn_opts(&old_cluster),
+						   log_opts.verbose ? "--verbose" : "",
+						   sql_file_name, escaped_connstr.data);
+#else
+/* END - ReqID:SRS-CMD-highgo2pg */
 		parallel_exec_prog(log_file_name, NULL,
 						   "\"%s/pg_dump\" %s --schema-only --quote-all-identifiers "
 						   "--binary-upgrade --format=custom %s --file=\"%s\" %s",
 						   new_cluster.bindir, cluster_conn_opts(&old_cluster),
 						   log_opts.verbose ? "--verbose" : "",
 						   sql_file_name, escaped_connstr.data);
+#endif /* ReqID:SRS-CMD-highgo2pg */
 
 		termPQExpBuffer(&escaped_connstr);
 	}
