@@ -17,6 +17,9 @@
 
 #include <time.h>
 #include <unistd.h>
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#include <sys/stat.h>
+/* END - ReqID:SRS-CMD-pg2highgo */
 
 #include "common/connect.h"
 #include "common/file_utils.h"
@@ -35,6 +38,12 @@
 #ifdef USE_LICENSE
 #include "license.h"
 #endif
+
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#include "postgres.h"
+#include "utils/datetime.h"
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 /* version string we expect back from pg_dump */
 #define PGDUMP_VERSIONSTR "pg_dump (PostgreSQL) " PG_VERSION "\n"
@@ -3096,6 +3105,10 @@ dumpTablespacesNative(PGconn *conn)
 {
 	PGresult   *res;
 	int			i;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	time_t		timer;
+	char ts[MAXDATELEN + 1];
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/*
 	 * Get all tablespaces except built-in ones (which we assume are named
@@ -3222,6 +3235,14 @@ dumpTablespacesNative(PGconn *conn)
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
 
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (binary_upgrade && (server_version >=140000 && server_version <150000))
+	{
+		timer = time(NULL);
+		strftime(ts, sizeof(ts), "_%Y%m%d%H%M%S", localtime(&timer));
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		PQExpBuffer buf = createPQExpBuffer();
@@ -3236,6 +3257,9 @@ dumpTablespacesNative(PGconn *conn)
 		char	   *fspcname;
 		Oid			spcownerid = InvalidOid;
 		Oid			spcownerdboid = InvalidOid;
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		char tablespace_path[MAXPGPATH + 1];
+		/* END - ReqID:SRS-CMD-pg2highgo */
 
 		if(DB_ORACLE == database_mode)
 		{
@@ -3252,7 +3276,34 @@ dumpTablespacesNative(PGconn *conn)
 
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		appendPQExpBufferStr(buf, " LOCATION ");
-		appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		if (binary_upgrade && (server_version >=140000 && server_version <150000))
+		{
+			/* The tablespace exists, and in the case of an in-place upgrade,
+			it is necessary to create the tablespace in a different directory.
+			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss*/
+			snprintf(tablespace_path, MAXPGPATH, "%s%s",spclocation, ts);
+			appendStringLiteralConn(buf, tablespace_path, conn);
+
+			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+			{
+				pg_log_error(" mkdir \"%s\" fail:%s",
+							 tablespace_path, strerror(errno));
+				PQfinish(conn);
+				exit_nicely(1);
+			}
+		}
+		else
+		{
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
+			appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		}
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
 		appendPQExpBufferStr(buf, ";\n");
 
 		if (spcoptions && spcoptions[0] != '\0')
@@ -3301,6 +3352,10 @@ dumpTablespacesOracle(PGconn *conn)
 {
 	PGresult   *res;
 	int			i;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	time_t		timer;
+	char ts[MAXDATELEN + 1];
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/*
 	 * Get all tablespaces except built-in ones (which we assume are named
@@ -3427,6 +3482,14 @@ dumpTablespacesOracle(PGconn *conn)
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
 
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (binary_upgrade && (server_version >=140000 && server_version <150000))
+	{
+		timer = time(NULL);
+		strftime(ts, sizeof(ts), "_%Y%m%d%H%M%S", localtime(&timer));
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		PQExpBuffer buf = createPQExpBuffer();
@@ -3441,11 +3504,15 @@ dumpTablespacesOracle(PGconn *conn)
 		char	   *fspcname;
 		Oid			spcownerid = InvalidOid;
 		Oid			spcownerdboid = InvalidOid;
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		char tablespace_path[MAXPGPATH + 1];
+		/* END - ReqID:SRS-CMD-pg2highgo */
 
 		if(DB_ORACLE == database_mode)
 		{
 			spcownerid = atooid(PQgetvalue(res, i, 8));
 			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
+
 			if (spcownerdboid)
 				continue;
 		}
@@ -3467,9 +3534,37 @@ dumpTablespacesOracle(PGconn *conn)
 			appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		}
 */
+
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		appendPQExpBufferStr(buf, " LOCATION ");
-		appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		if (binary_upgrade && (server_version >=140000 && server_version <150000))
+		{
+			/* The tablespace exists, and in the case of an in-place upgrade,
+			it is necessary to create the tablespace in a different directory.
+			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss*/
+			snprintf(tablespace_path, MAXPGPATH, "%s%s",spclocation, ts);
+			appendStringLiteralConn(buf, tablespace_path, conn);
+
+			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+			{
+				pg_log_error(" mkdir \"%s\" fail:%s",
+							 tablespace_path, strerror(errno));
+				PQfinish(conn);
+				exit_nicely(1);
+			}
+		}
+		else
+		{
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
+			appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		}
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
 		appendPQExpBufferStr(buf, ";\n");
 
 		if (spcoptions && spcoptions[0] != '\0')
@@ -3517,6 +3612,10 @@ dumpTablespacesPg(PGconn *conn)
 {
 	PGresult   *res;
 	int			i;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	time_t		timer;
+	char ts[MAXDATELEN + 1];
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/*
 	 * Get all tablespaces except built-in ones (which we assume are named
@@ -3643,6 +3742,14 @@ dumpTablespacesPg(PGconn *conn)
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
 
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (binary_upgrade && (server_version >=140000 && server_version <150000))
+	{
+		timer = time(NULL);
+		strftime(ts, sizeof(ts), "_%Y%m%d%H%M%S", localtime(&timer));
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		PQExpBuffer buf = createPQExpBuffer();
@@ -3657,6 +3764,9 @@ dumpTablespacesPg(PGconn *conn)
 		char	   *fspcname;
 		Oid			spcownerid = InvalidOid;
 		Oid			spcownerdboid = InvalidOid;
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		char tablespace_path[MAXPGPATH + 1];
+		/* END - ReqID:SRS-CMD-pg2highgo */
 
 		if(DB_ORACLE == database_mode)
 		{
@@ -3685,7 +3795,33 @@ dumpTablespacesPg(PGconn *conn)
 */
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		appendPQExpBufferStr(buf, " LOCATION ");
-		appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		if (binary_upgrade && (server_version >=140000 && server_version <150000))
+		{
+			/* The tablespace exists, and in the case of an in-place upgrade,
+			it is necessary to create the tablespace in a different directory.
+			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss*/
+			snprintf(tablespace_path, MAXPGPATH, "%s%s",spclocation, ts);
+			appendStringLiteralConn(buf, tablespace_path, conn);
+
+			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+			{
+				pg_log_error(" mkdir \"%s\" fail:%s",
+							 tablespace_path, strerror(errno));
+				PQfinish(conn);
+				exit_nicely(1);
+			}
+		}
+		else
+		{
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
+			appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		}
+		/* END - ReqID:SRS-CMD-pg2highgo */
 		appendPQExpBufferStr(buf, ";\n");
 
 		if (spcoptions && spcoptions[0] != '\0')
@@ -3735,6 +3871,10 @@ dumpTablespacesMysql(PGconn *conn)
 {
 	PGresult   *res;
 	int			i;
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	time_t		timer;
+	char ts[MAXDATELEN + 1];
+	/* END - ReqID:SRS-CMD-pg2highgo */
 
 	/*
 	 * Get all tablespaces except built-in ones (which we assume are named
@@ -3824,6 +3964,14 @@ dumpTablespacesMysql(PGconn *conn)
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
 
+	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+	if (binary_upgrade && (server_version >=140000 && server_version <150000))
+	{
+		timer = time(NULL);
+		strftime(ts, sizeof(ts), "_%Y%m%d%H%M%S", localtime(&timer));
+	}
+	/* END - ReqID:SRS-CMD-pg2highgo */
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		PQExpBuffer buf = createPQExpBuffer();
@@ -3838,6 +3986,9 @@ dumpTablespacesMysql(PGconn *conn)
 		char	   *fspcname;
 		Oid			spcownerid = InvalidOid;
 		Oid			spcownerdboid = InvalidOid;
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		char tablespace_path[MAXPGPATH + 1];
+		/* END - ReqID:SRS-CMD-pg2highgo */
 
 		if(DB_ORACLE == database_mode)
 		{
@@ -3854,7 +4005,34 @@ dumpTablespacesMysql(PGconn *conn)
 
 		appendPQExpBuffer(buf, " OWNER %s", fmtId(spcowner));
 		appendPQExpBufferStr(buf, " LOCATION ");
-		appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		if (binary_upgrade && (server_version >=140000 && server_version <150000))
+		{
+			/* The tablespace exists, and in the case of an in-place upgrade,
+			it is necessary to create the tablespace in a different directory.
+			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss */
+			snprintf(tablespace_path, MAXPGPATH, "%s%s",spclocation, ts);
+			appendStringLiteralConn(buf, tablespace_path, conn);
+
+			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+			{
+				pg_log_error(" mkdir \"%s\" fail:%s",
+							 tablespace_path, strerror(errno));
+				PQfinish(conn);
+				exit_nicely(1);
+			}
+		}
+		else
+		{
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
+			appendStringLiteralConn(buf, spclocation, conn);
+
+		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+		}
+		/* END - ReqID:SRS-CMD-pg2highgo */
+
 		appendPQExpBufferStr(buf, ";\n");
 
 		if (spcoptions && spcoptions[0] != '\0')

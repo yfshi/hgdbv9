@@ -259,7 +259,14 @@ verify_directories(void)
 
 	check_bin_dir(&old_cluster, false);
 	check_data_dir(&old_cluster);
+
+/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+#ifdef HG2PG
+	check_bin_dir(&new_cluster, false);
+#else
+/* END - ReqID:SRS-CMD-highgo2pg */
 	check_bin_dir(&new_cluster, true);
+#endif /* ReqID:SRS-CMD-highgo2pg */
 	check_data_dir(&new_cluster);
 }
 

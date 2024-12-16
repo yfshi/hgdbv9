@@ -25,8 +25,20 @@ init_tablespaces(void)
 
 	if (os_info.num_old_tablespaces > 0 &&
 		strcmp(old_cluster.tablespace_suffix, new_cluster.tablespace_suffix) == 0)
+	{
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#ifdef PG2HG
+		same_version = true;
+/* BEGIN - ReqID:SRS-CMD-highgo2pg */
+#elif HG2PG
+		same_version = true;
+/* END - ReqID:SRS-CMD-highgo2pg */
+#else
+/* END - ReqID:SRS-CMD-pg2highgo */
 		pg_fatal("Cannot upgrade to/from the same system catalog version when\n"
 				 "using tablespaces.\n");
+#endif /* ReqID:SRS-CMD-pg2highgo */
+	}
 }
 
 

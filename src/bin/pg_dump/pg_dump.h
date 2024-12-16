@@ -15,7 +15,10 @@
 #define PG_DUMP_H
 
 #include "pg_backup.h"
-
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+#include "postgres.h"
+#include "utils/datetime.h"
+/* END - ReqID:SRS-CMD-pg2highgo */
 
 #define oidcmp(x,y) ( ((x) < (y) ? -1 : ((x) > (y)) ?  1 : 0) )
 
@@ -870,6 +873,10 @@ extern bool catalogIdMapValid;
 extern DumpableObject **catalogIdMap;
 extern int	numCatalogIds;
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* BEGIN - ReqID:SRS-CMD-pg2highgo */
+extern char day_time[MAXDATELEN + 1];
+/* END - ReqID:SRS-CMD-pg2highgo */
+
 /*
  *	common utility functions
  */
