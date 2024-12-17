@@ -165,40 +165,35 @@ ANALYZE pagg_tab;
 set ivorysql.enable_partitionwise_qual_force_pushdown = off;
 -- use PARTITIONWISE_AGGREGATE_FULL partitionwise-aggregate strategy, and can push filter into sub table
 EXPLAIN SELECT c collate binary_ci, count(c) FROM pagg_tab GROUP BY c collate binary_ci HAVING avg(d) < 15 ORDER BY 1;
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Sort  (cost=69.69..69.70 rows=3 width=10)
-   Sort Key: pagg_tab.c COLLATE binary_ci
-   ->  Append  (cost=12.56..69.67 rows=3 width=10)
-         ->  HashAggregate  (cost=12.56..12.59 rows=1 width=10)
-               Group Key: pagg_tab.c
-               Filter: (avg(pagg_tab.d) < '15'::numeric)
-               ->  Seq Scan on pagg_tab_p2 pagg_tab  (cost=0.00..8.46 rows=546 width=6)
-         ->  HashAggregate  (cost=25.06..25.12 rows=1 width=10)
-               Group Key: pagg_tab_1.c
-               Filter: (avg(pagg_tab_1.d) < '15'::numeric)
-               ->  Seq Scan on pagg_tab_p3 pagg_tab_1  (cost=0.00..16.89 rows=1089 width=6)
-         ->  HashAggregate  (cost=31.89..31.95 rows=1 width=10)
-               Group Key: pagg_tab_2.c
-               Filter: (avg(pagg_tab_2.d) < '15'::numeric)
-               ->  Seq Scan on pagg_tab_p1 pagg_tab_2  (cost=0.00..21.65 rows=1365 width=6)
+                                            QUERY PLAN                                            
+--------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=69.82..69.99 rows=2 width=10)
+   Group Key: pagg_tab.c
+   Filter: (avg(pagg_tab.d) < '15'::numeric)
+   ->  Sort  (cost=69.82..69.84 rows=10 width=42)
+         Sort Key: pagg_tab.c COLLATE binary_ci
+         ->  Append  (cost=12.56..69.65 rows=10 width=42)
+               ->  Partial HashAggregate  (cost=12.56..12.58 rows=2 width=42)
+                     Group Key: pagg_tab.c
+                     ->  Seq Scan on pagg_tab_p2 pagg_tab  (cost=0.00..8.46 rows=546 width=6)
+               ->  Partial HashAggregate  (cost=25.06..25.10 rows=4 width=42)
+                     Group Key: pagg_tab_1.c
+                     ->  Seq Scan on pagg_tab_p3 pagg_tab_1  (cost=0.00..16.89 rows=1089 width=6)
+               ->  Partial HashAggregate  (cost=31.89..31.93 rows=4 width=42)
+                     Group Key: pagg_tab_2.c
+                     ->  Seq Scan on pagg_tab_p1 pagg_tab_2  (cost=0.00..21.65 rows=1365 width=6)
 (15 rows)
 
 -- but result is error !!!
 SELECT c collate binary_ci, count(c) FROM pagg_tab GROUP BY c collate binary_ci HAVING avg(d) < 15 ORDER BY 1;
  c | count 
 ---+-------
- a |   546
- A |   273
- B |   273
- b |   273
- c |   273
- C |   272
- d |   273
- D |   272
- E |   272
- e |   273
-(10 rows)
+ a |   819
+ B |   546
+ c |   545
+ D |   545
+ E |   545
+(5 rows)
 
 set ivorysql.enable_partitionwise_qual_force_pushdown = on;
 -- use PARTITIONWISE_AGGREGATE_PARTIAL partitionwise-aggregate strategy, and cannot push filter into sub table
@@ -253,23 +248,23 @@ ANALYZE pagg_tab;
 set ivorysql.enable_partitionwise_qual_force_pushdown = off;
 -- result is right, but cannot use PARTITIONWISE_AGGREGATE_FULL partitionwise-aggregate strategy, poor performance
 EXPLAIN SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
-                                            QUERY PLAN                                             
----------------------------------------------------------------------------------------------------
- Finalize GroupAggregate  (cost=69.82..70.07 rows=3 width=40)
-   Group Key: ((pagg_tab.c)::text)
-   Filter: (avg(pagg_tab.d) < '15'::numeric)
-   ->  Sort  (cost=69.82..69.84 rows=10 width=72)
-         Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
-         ->  Append  (cost=12.56..69.65 rows=10 width=72)
-               ->  Partial HashAggregate  (cost=12.56..12.58 rows=2 width=72)
-                     Group Key: (pagg_tab.c)::text
-                     ->  Seq Scan on pagg_tab_p2 pagg_tab  (cost=0.00..8.46 rows=546 width=38)
-               ->  Partial HashAggregate  (cost=25.06..25.10 rows=4 width=72)
-                     Group Key: (pagg_tab_1.c)::text
-                     ->  Seq Scan on pagg_tab_p3 pagg_tab_1  (cost=0.00..16.89 rows=1089 width=38)
-               ->  Partial HashAggregate  (cost=31.89..31.93 rows=4 width=72)
-                     Group Key: (pagg_tab_2.c)::text
-                     ->  Seq Scan on pagg_tab_p1 pagg_tab_2  (cost=0.00..21.65 rows=1365 width=38)
+                                         QUERY PLAN                                          
+---------------------------------------------------------------------------------------------
+ Sort  (cost=69.69..69.70 rows=3 width=40)
+   Sort Key: ((pagg_tab.c)::text) COLLATE "binary"
+   ->  Append  (cost=12.56..69.67 rows=3 width=40)
+         ->  HashAggregate  (cost=12.56..12.59 rows=1 width=40)
+               Group Key: (pagg_tab.c)::text
+               Filter: (avg(pagg_tab.d) < '15'::numeric)
+               ->  Seq Scan on pagg_tab_p2 pagg_tab  (cost=0.00..8.46 rows=546 width=38)
+         ->  HashAggregate  (cost=25.06..25.12 rows=1 width=40)
+               Group Key: (pagg_tab_1.c)::text
+               Filter: (avg(pagg_tab_1.d) < '15'::numeric)
+               ->  Seq Scan on pagg_tab_p3 pagg_tab_1  (cost=0.00..16.89 rows=1089 width=38)
+         ->  HashAggregate  (cost=31.89..31.95 rows=1 width=40)
+               Group Key: (pagg_tab_2.c)::text
+               Filter: (avg(pagg_tab_2.d) < '15'::numeric)
+               ->  Seq Scan on pagg_tab_p1 pagg_tab_2  (cost=0.00..21.65 rows=1365 width=38)
 (15 rows)
 
 SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
