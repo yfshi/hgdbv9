@@ -983,6 +983,19 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 		if (can_coerce_type(1, &sattr->atttypid, &dattr->atttypid, COERCION_ASSIGNMENT))
 			continue;			 /* no worries */
 
+		/* Begin - BUG#M454 */
+		/*
+		 * there,plisql_build_row_for_ora_record has change rowtype to
+		 * ROWPOINTEROID, so we accept all rowtype can exchange to
+		 * ROWPOINTEROID
+		 */
+		if ((dattr->atttypid == ROWPOINTEROID &&
+			ISCOMPLEX(sattr->atttypid)) ||
+			(sattr->atttypid == ROWPOINTEROID &&
+			ISCOMPLEX(dattr->atttypid)))
+			continue;
+		/* End - BUG#M454 */
+
 		if (dattr->attlen != sattr->attlen ||
 			dattr->attalign != sattr->attalign)
 		{

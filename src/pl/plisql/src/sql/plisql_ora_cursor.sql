@@ -8307,6 +8307,8 @@ BEGIN
 end;
 /
 
+discard all;
+
 SET open_cursors = 51;
 
 --ok
@@ -8329,6 +8331,8 @@ BEGIN
   END loop;
 end;
 /
+
+discard all;
 
 reset open_cursors;
 
@@ -8973,3 +8977,107 @@ end;
 --clean data
 drop table test_mdss;
 drop type test_mds;
+
+--bug#Z1504
+create table test_wq(id integer,name varchar2(256));
+
+insert into test_wq values(1,'one');
+
+create or replace package test_pkg is
+ type c_cursor is ref cursor;
+end;
+/
+
+create or replace procedure test1(agsdm varchar2,pRecCur in out test_pkg.c_cursor) is
+  aSQL varchar2(8000);
+begin
+  open PrecCur for select * from test_wq;
+end;
+/
+
+--ok
+declare
+  var1 test_pkg.c_cursor;
+  var2 test_wq%rowtype;
+begin
+  test1('xiexie', var1);
+  commit;
+  loop
+	fetch var1 into var2;
+	exit when var1%notfound;
+	raise info '%', var2;
+  end loop;
+  close var1;
+end;
+/
+
+create or replace procedure test2(agsdm varchar2, pRecCur in out test_pkg.c_cursor) is
+  aSQL varchar2(8000);
+begin
+  aSQL := 'select * from test_wq; ';
+  open pRecCur for aSQL;
+  if pRecCur%isopen then
+    raise info '%', 'pRecCur is open';
+    raise info '%-%-%', pRecCur%found,pRecCur%notfound, pRecCur%rowcount;
+  end if;
+end;
+/
+
+--ok
+declare
+  var1 test_pkg.c_cursor;
+  var2 test_wq%rowtype;
+begin
+  test2('xiexie', var1);
+  commit;
+  loop
+	fetch var1 into var2;
+	exit when var1%notfound;
+	raise info '%', var2;
+  end loop;
+  close var1;
+end;
+/
+
+--clean data
+drop procedure test1;
+drop procedure test2;
+drop table test_wq;
+DROP package test_pkg;
+
+
+--bug#M454
+create type test_mds as (id integer);
+
+create table test_mdss(id test_mds);
+insert into test_mdss values('(1)');
+
+--ok
+DECLARE
+  type c_type IS record(id test_mds);
+  CURSOR c1 RETURN c_type IS SELECT id FROM test_mdss;
+  var1 c_type;
+BEGIN
+  OPEN c1;
+  LOOP
+    FETCH c1 INTO var1;
+    EXIT WHEN c1%notfound;
+    raise info '%', var1.id;
+  END loop;
+end;
+/
+
+
+--ok
+declare
+  type c_type is record(id test_mds);
+  var1 c_type;
+begin
+  select id into var1 from test_mdss;
+  raise info '%',var1.id;
+end;
+/
+
+--clean data
+DROP TABLE test_mdss;
+DROP type test_mds;
