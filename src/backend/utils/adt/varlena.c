@@ -4038,6 +4038,127 @@ SplitIdentifierString(char *rawstring, char separator,
 	return true;
 }
 
+
+/* Begin - BUG#Z0001310 */
+/*
+ * like SplitIdentifierString
+ * but we ingore space char in
+ * middle of string and not Downcase
+ * and not consider separator in bracket
+ */
+bool
+SplitStringIgnoreSpaceAndBracket(char *rawstring, char separator,
+						 List **namelist)
+{
+	char	   *nextp = rawstring;
+	bool		done = false;
+
+	*namelist = NIL;
+
+	while (scanner_isspace(*nextp))
+		nextp++;				/* skip leading whitespace */
+
+	if (*nextp == '\0')
+		return true;			/* allow empty string */
+
+	/* At the top of the loop, we are at start of a new identifier. */
+	do
+	{
+		char	   *curname;
+		char	   *endp;
+
+		if (*nextp == '"')
+		{
+			/* Quoted name --- collapse quote-quote pairs, no downcasing */
+			curname = nextp + 1;
+			for (;;)
+			{
+				endp = strchr(nextp + 1, '"');
+				if (endp == NULL)
+					return false;	/* mismatched quotes */
+				if (endp[1] != '"')
+					break;		/* found end of quoted name */
+				/* Collapse adjacent quotes into one quote, and look again */
+				memmove(endp, endp + 1, strlen(endp));
+				nextp = endp;
+			}
+			/* endp now points at the terminating quote */
+			nextp = endp + 1;
+		}
+		else if (*nextp == '(')
+		{
+			/* bracket */
+			curname = nextp;
+			for (;;)
+			{
+				endp = strchr(nextp + 1, ')');
+				if (endp == NULL)
+					return false;	/* mismatched bracket */
+				if (endp[1] != '(')
+					break;		/* found end of bracket */
+				nextp = endp + 1;
+			}
+			endp = endp + 1;
+			nextp = endp;
+		}
+		else
+		{
+			curname = nextp;
+			while (*nextp &&
+				*nextp != separator)
+			{
+				if (*nextp == '(')
+				{
+					for (;;)
+					{
+						endp = strchr(nextp + 1, ')');
+						if (endp == NULL)
+							return false;	/* mismatched bracket */
+						if (endp[1] != '(')
+							break;		/* found end of bracket */
+						nextp = endp + 1;
+					}
+					nextp = endp + 1;
+				}
+				else
+					nextp++;
+			}
+			endp = nextp;
+			if (curname == nextp)
+				return false;	/* empty unquoted name not allowed */
+		}
+
+		while (scanner_isspace(*nextp))
+			nextp++;			/* skip trailing whitespace */
+
+		if (*nextp == separator)
+		{
+			nextp++;
+			while (scanner_isspace(*nextp))
+				nextp++;		/* skip leading whitespace for next */
+			/* we expect another name, so done remains false */
+		}
+		else if (*nextp == '\0')
+			done = true;
+		else
+			return false;		/* invalid syntax */
+
+		/* Now safe to overwrite separator with a null */
+		*endp = '\0';
+
+		/*
+		 * Finished isolating current name --- add it to list
+		 */
+		*namelist = lappend(*namelist, curname);
+
+		/* Loop back if we didn't reach end of string */
+	} while (!done);
+
+	return true;
+}
+/* End - BUG#Z00001310 */
+
+
 /* Begin - BUG#0000049 */
 /* Resolve query specified schema failure issue due to case conversion */
 bool

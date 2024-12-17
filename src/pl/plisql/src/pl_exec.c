@@ -2817,15 +2817,12 @@ make_callstmt_target(PLiSQL_execstate *estate, PLiSQL_expr *expr)
 		{
 			Node	   *n = list_nth(stmt->outargs, nfields);
 
-			/* Begin - ReqID:SRS-SQL-CALL */
+			/* Begin - BUG#Z0001311 */
 			/*
-			 * I'm not sure if this is a bug, so I'm only temporarily
-			 * fixing it for scenarios that I care about.
+			 * maybe exits type cast
 			 */
-			if (estate->func && estate->func->do_from_call &&
-				strcmp(estate->func->fn_signature, "inline_code_block") == 0)
-				n = ParseParamVariable(n);
-			/* End - ReqID:SRS-SQL-CALL */
+			n = ParseParamVariable(n);
+			/* End - BUG#Z00001311 */
 
 			if (IsA(n, Param))
 			{

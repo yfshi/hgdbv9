@@ -26,7 +26,7 @@ INSERT INTO sys._ivorysql_ora_exception_map values('20000', -6592, 'IVY-06592: C
 INSERT INTO sys._ivorysql_ora_exception_map values('22000', -6531, 'IVY-06531: Reference to uninitialized collection');
 
 --cursor_already_open
-INSERT INTO sys._ivorysql_ora_exception_map values('42P03', -6511, 'IVY-06511:PL/iSQL: cursor already open');
+INSERT INTO sys._ivorysql_ora_exception_map values('42P03', -6511, 'IVY-06511: PL/iSQL: cursor already open');
 
 --dup_val_on_index
 INSERT INTO sys._ivorysql_ora_exception_map values('23505',-1, 'IVY-00001: unique constraint (string.string) violated');
@@ -42,6 +42,9 @@ INSERT INTO sys._ivorysql_ora_exception_map values('08001', -1017, 'IVY-01017: l
 
 --no_data_found
 INSERT INTO sys._ivorysql_ora_exception_map values('P0002', 100, 'IVY-01403: no data found');
+
+--1403
+INSERT INTO sys._ivorysql_ora_exception_map values('P0002', -1403, 'IVY-01403: no data found');
 
 --no_data_needed --not found
 

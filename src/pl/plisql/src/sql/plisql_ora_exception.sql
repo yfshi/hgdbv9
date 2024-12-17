@@ -2244,3 +2244,215 @@ DROP TABLE vtest1;
 DROP TABLE tab1;
 DROP TABLE common_t;
 DROP FUNCTION test_f;
+
+
+--bug#Z1312
+--error
+declare
+  cursor c1 is select * from dual;
+begin
+  open c1;
+  open c1;
+end;
+/
+
+--ok and print no data found
+begin
+  raise info '%', sqlerrm(-1403);
+  raise info '%', sqlerrm(100);
+end;
+/
+
+--bug#Z1311
+create table emp (empno number,ename varchar2(20),eage number);
+create table dept (deptno number,dname varchar2(30));
+
+--print this is rowtype_mismatch
+declare
+	type v_emp is ref cursor return emp%rowtype;
+	v_emp_ref v_emp;
+	emp_rec emp%rowtype;
+	procedure return_dept_row(v_emp in out sys_refcursor)
+	is
+	begin
+		open v_emp for select * from dept;
+	end return_dept_row;
+begin
+	return_dept_row(v_emp_ref);
+	loop
+		fetch v_emp_ref into emp_rec;
+		exit when v_emp_ref%notfound;
+		raise notice '%',emp_rec.empno||'--'||emp_rec.ename||'--'||emp_rec.eage;
+	end loop;
+exception
+	when rowtype_mismatch then
+		raise notice '%','this is rowtype_mismatch';
+	when others then
+		raise notice '%','reason for error-->'||sqlerrm;
+end;
+/
+
+create table test_id(id integer,name varchar2(256));
+
+insert into test_id values(1,'one');
+insert into test_id values(2,'two');
+
+create or replace package test_pkg is
+ type c_cursor is ref cursor;
+end;
+/
+
+create or replace procedure test1(agsdm varchar2,pRecCur in out test_pkg.c_cursor) is
+  aSQL varchar2(8000);
+begin
+  open PrecCur for select * from test_id order by id;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_id%rowtype;
+begin
+  test1('xiexie', var1);
+  LOOP
+    fetch var1 into var2;
+    exit when var1%notfound;
+    raise info '%', var2.id;
+  end loop;
+  close var1;
+end;
+/
+
+--clean data
+DROP procedure test1;
+DROP package test_pkg;
+DROP TABLE test_id;
+DROP TABLE emp;
+DROP TABLE dept;
+
+--bug#Z1310
+reset plsql_warnings;
+show plsql_warnings;
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'DISABLE: 5000';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'DISABLE:5000';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:ALL';
+
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 50001,50002';
+
+--oracle error,but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:  (  50001,50002   )';
+
+--oracle error,but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:  (50001,50002)';
+
+--oracle error, but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: (50001,50002)';
+
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 5001,5002';
+
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:5001,5002';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(5001,5002)';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 5001';
+
+--ok
+SET PLSQL_WARNINGS = 'ENABLE: (5001,5002)';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: ( 5001,5002)';
+
+--ok
+SET PLSQL_WARNINGS = 'ENABLE: ( 5001, 5002)';
+
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE';
+
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE
+:5000';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:
+5000';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:( 6000 )';
+
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(( 6000 ))';
+
+--error
+ALTER session SET PLSQL_WARNINGS = ' ';
+
+--error
+ALTER session SET PLSQL_WARNINGS = '';
+
+--ok
+alter session set PLSQL_WARNINGS = 'DISABLE:5000', 'ENABLE:5001', 'ERROR:5002';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: ( 5001, 5002)';
+
+--enable warning_type
+alter session set plsql_warnings = 'ENABLE:ALL';
+alter session set plsql_warnings = 'ENABLE:SEVERE';
+alter session set plsql_warnings = 'ENABLE:informational';
+alter session set plsql_warnings = 'enable:performance';
+alter session set plsql_warnings = 'enable:5001';
+alter session set plsql_warnings = 'enable:(5001,5002,5003)';
+
+--error
+alter session set plsql_warnings = 'enable:5s';
+alter session set plsql_warnings = 'enable:(5001,500s)';
+alter session set plsql_warnings = 'enable:mds';
+
+--disable warning_type
+alter session set plsql_warnings = 'disable:ALL';
+alter session set plsql_warnings = 'disable:SEVERE';
+alter session set plsql_warnings = 'disable:informational';
+alter session set plsql_warnings = 'DISABLE:performance';
+alter session set plsql_warnings = 'DISABLE:5001';
+alter session set plsql_warnings = 'DISABLE:(5001,5002,5003)';
+
+--error
+alter session set plsql_warnings = 'DISABLE:5s';
+alter session set plsql_warnings = 'DISABLE:(5001,500s)';
+alter session set plsql_warnings = 'DISABLE:mds';
+
+--error warning_type
+alter session set plsql_warnings = 'Error:ALL';
+alter session set plsql_warnings = 'Error:SEVERE';
+alter session set plsql_warnings = 'Error:informational';
+alter session set plsql_warnings = 'Error:performance';
+alter session set plsql_warnings = 'ERROR:5001';
+alter session set plsql_warnings = 'ERROR:(5001,5002,5003)';
+
+--error
+alter session set plsql_warnings = 'Error:5s';
+alter session set plsql_warnings = 'error:(5001,500s)';
+alter session set plsql_warnings = 'error:mds';
+
+
+--error
+alter session set plsql_warnings='123321111';
+alter session set plsql_warnings='%&**(DASDdqwd';
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:SEVERE', 'DISABLE:INFORMATIONAL';
+ALTER session SET PLSQL_WARNINGS = 'DISABLE:5000', 'ENABLE:5001', 'ERROR:5002';
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(5000,5001,5002)', 'DISABLE:(6000,6001)';
+ALTER SESSION SET PLSQL_WARNINGS = 'ENABLE:SEVERE', 'DISABLE:PERFORMANCE', 'ERROR:06002';

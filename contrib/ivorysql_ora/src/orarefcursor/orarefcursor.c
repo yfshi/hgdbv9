@@ -314,12 +314,19 @@ oracursor_syscursor(PG_FUNCTION_ARGS)
 
 	portal = DatumGetOraRefCursorPortal(oraref);
 
+	/* Begin - BUG#Z0001311 */
+	/*
+	 * return null should use PG_RETURN_NULL
+	 */
 	if (portal != NULL)
 	{
 		sys_refcursor = cstring_to_text(portal);
 		pfree(portal);
+		PG_RETURN_TEXT_P(sys_refcursor);
 	}
-	PG_RETURN_TEXT_P(sys_refcursor);
+	else
+		PG_RETURN_NULL();
+	/* End - BUG#Z00001311 */
 }
 
 /*

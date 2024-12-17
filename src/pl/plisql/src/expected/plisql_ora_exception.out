@@ -423,7 +423,7 @@ BEGIN
   raise info '%','SQLERRM(-6511): ' || TO_CHAR(SQLERRM(-6511));
 END;
 /
-INFO:  SQLERRM(-6511): IVY-06511:PL/iSQL: cursor already open
+INFO:  SQLERRM(-6511): IVY-06511: PL/iSQL: cursor already open
 --not a common error code
 BEGIN
   raise info '%','SQLERRM(-50000): ' || TO_CHAR(SQLERRM(-50000));
@@ -1158,7 +1158,7 @@ INFO:  sqlcode func = -1476
 INFO:  sqlerrm func = IVY-01476: divisor is equal to zero
 INFO:  tree exception
 INFO:  sqlcode func = -6511
-INFO:  sqlerrm func = IVY-06511:PL/iSQL: cursor already open
+INFO:  sqlerrm func = IVY-06511: PL/iSQL: cursor already open
 INFO:  after two exception
 INFO:  sqlcode func = -1476
 INFO:  sqlerrm func = IVY-01476: divisor is equal to zero
@@ -1242,7 +1242,7 @@ INFO:  sqlcode func = -1476
 INFO:  sqlerrm func = IVY-01476: divisor is equal to zero
 INFO:  three exception
 INFO:  sqlcode func = -6511
-INFO:  sqlerrm func = IVY-06511:PL/iSQL: cursor already open
+INFO:  sqlerrm func = IVY-06511: PL/iSQL: cursor already open
 INFO:  after two exception
 INFO:  sqlcode func = -1476
 INFO:  sqlerrm func = IVY-01476: divisor is equal to zero
@@ -1297,7 +1297,7 @@ INFO:  sqlcode func = 1
 INFO:  sqlerrm func = User-Defined Exception
 INFO:  three exception
 INFO:  sqlcode func = -6511
-INFO:  sqlerrm func = IVY-06511:PL/iSQL: cursor already open
+INFO:  sqlerrm func = IVY-06511: PL/iSQL: cursor already open
 INFO:  after three exception
 INFO:  sqlcode func = 1
 INFO:  sqlerrm func = User-Defined Exception
@@ -1352,7 +1352,7 @@ INFO:  sqlcode func = 1
 INFO:  sqlerrm func = User-Defined Exception
 INFO:  three exception
 INFO:  sqlcode func = -6511
-INFO:  sqlerrm func = IVY-06511:PL/iSQL: cursor already open
+INFO:  sqlerrm func = IVY-06511: PL/iSQL: cursor already open
 INFO:  after three exception
 INFO:  sqlcode func = 1
 INFO:  sqlerrm func = User-Defined Exception
@@ -2594,3 +2594,218 @@ DROP TABLE vtest1;
 DROP TABLE tab1;
 DROP TABLE common_t;
 DROP FUNCTION test_f;
+--bug#Z1312
+--error
+declare
+  cursor c1 is select * from dual;
+begin
+  open c1;
+  open c1;
+end;
+/
+ERROR:  cursor "f_0_0_2_c1" already in use
+CONTEXT:  PL/iSQL function inline_code_block line 5 at OPEN
+--ok and print no data found
+begin
+  raise info '%', sqlerrm(-1403);
+  raise info '%', sqlerrm(100);
+end;
+/
+INFO:  IVY-01403: no data found
+INFO:  IVY-01403: no data found
+--bug#Z1311
+create table emp (empno number,ename varchar2(20),eage number);
+create table dept (deptno number,dname varchar2(30));
+--print this is rowtype_mismatch
+declare
+	type v_emp is ref cursor return emp%rowtype;
+	v_emp_ref v_emp;
+	emp_rec emp%rowtype;
+	procedure return_dept_row(v_emp in out sys_refcursor)
+	is
+	begin
+		open v_emp for select * from dept;
+	end return_dept_row;
+begin
+	return_dept_row(v_emp_ref);
+	loop
+		fetch v_emp_ref into emp_rec;
+		exit when v_emp_ref%notfound;
+		raise notice '%',emp_rec.empno||'--'||emp_rec.ename||'--'||emp_rec.eage;
+	end loop;
+exception
+	when rowtype_mismatch then
+		raise notice '%','this is rowtype_mismatch';
+	when others then
+		raise notice '%','reason for error-->'||sqlerrm;
+end;
+/
+NOTICE:  this is rowtype_mismatch
+create table test_id(id integer,name varchar2(256));
+insert into test_id values(1,'one');
+insert into test_id values(2,'two');
+create or replace package test_pkg is
+ type c_cursor is ref cursor;
+end;
+/
+create or replace procedure test1(agsdm varchar2,pRecCur in out test_pkg.c_cursor) is
+  aSQL varchar2(8000);
+begin
+  open PrecCur for select * from test_id order by id;
+end;
+/
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_id%rowtype;
+begin
+  test1('xiexie', var1);
+  LOOP
+    fetch var1 into var2;
+    exit when var1%notfound;
+    raise info '%', var2.id;
+  end loop;
+  close var1;
+end;
+/
+INFO:  1
+INFO:  2
+--clean data
+DROP procedure test1;
+DROP package test_pkg;
+DROP TABLE test_id;
+DROP TABLE emp;
+DROP TABLE dept;
+--bug#Z1310
+reset plsql_warnings;
+show plsql_warnings;
+ plsql_warnings 
+----------------
+ DISABLE:ALL
+(1 row)
+
+--ok
+ALTER session SET PLSQL_WARNINGS = 'DISABLE: 5000';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'DISABLE:5000';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:ALL';
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 50001,50002';
+ERROR:  invalid value for parameter "plsql_warnings": "ENABLE: 50001,50002"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--oracle error,but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:  (  50001,50002   )';
+--oracle error,but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:  (50001,50002)';
+--oracle error, but we success
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: (50001,50002)';
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 5001,5002';
+ERROR:  invalid value for parameter "plsql_warnings": "ENABLE: 5001,5002"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:5001,5002';
+ERROR:  invalid value for parameter "plsql_warnings": "ENABLE:5001,5002"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(5001,5002)';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: 5001';
+--ok
+SET PLSQL_WARNINGS = 'ENABLE: (5001,5002)';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: ( 5001,5002)';
+--ok
+SET PLSQL_WARNINGS = 'ENABLE: ( 5001, 5002)';
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE';
+ERROR:  invalid value for parameter "plsql_warnings": "ENABLE"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE
+:5000';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:
+5000';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:( 6000 )';
+--error
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(( 6000 ))';
+ERROR:  invalid value for parameter "plsql_warnings": "ENABLE:(( 6000 ))"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--error
+ALTER session SET PLSQL_WARNINGS = ' ';
+ERROR:  invalid value for parameter "plsql_warnings": " "
+DETAIL:  plsql_warings must be 'value_cluase' [,'value_clause'] and value_clause must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--error
+ALTER session SET PLSQL_WARNINGS = '';
+ERROR:  invalid value for parameter "plsql_warnings": ""
+DETAIL:  plsql_warings must be 'value_cluase' [,'value_clause'] and value_clause must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--ok
+alter session set PLSQL_WARNINGS = 'DISABLE:5000', 'ENABLE:5001', 'ERROR:5002';
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE: ( 5001, 5002)';
+--enable warning_type
+alter session set plsql_warnings = 'ENABLE:ALL';
+alter session set plsql_warnings = 'ENABLE:SEVERE';
+alter session set plsql_warnings = 'ENABLE:informational';
+alter session set plsql_warnings = 'enable:performance';
+alter session set plsql_warnings = 'enable:5001';
+alter session set plsql_warnings = 'enable:(5001,5002,5003)';
+--error
+alter session set plsql_warnings = 'enable:5s';
+ERROR:  invalid value for parameter "plsql_warnings": "enable:5s"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'enable:(5001,500s)';
+ERROR:  invalid value for parameter "plsql_warnings": "enable:(5001,500s)"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'enable:mds';
+ERROR:  invalid value for parameter "plsql_warnings": "enable:mds"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--disable warning_type
+alter session set plsql_warnings = 'disable:ALL';
+alter session set plsql_warnings = 'disable:SEVERE';
+alter session set plsql_warnings = 'disable:informational';
+alter session set plsql_warnings = 'DISABLE:performance';
+alter session set plsql_warnings = 'DISABLE:5001';
+alter session set plsql_warnings = 'DISABLE:(5001,5002,5003)';
+--error
+alter session set plsql_warnings = 'DISABLE:5s';
+ERROR:  invalid value for parameter "plsql_warnings": "DISABLE:5s"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'DISABLE:(5001,500s)';
+ERROR:  invalid value for parameter "plsql_warnings": "DISABLE:(5001,500s)"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'DISABLE:mds';
+ERROR:  invalid value for parameter "plsql_warnings": "DISABLE:mds"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--error warning_type
+alter session set plsql_warnings = 'Error:ALL';
+alter session set plsql_warnings = 'Error:SEVERE';
+alter session set plsql_warnings = 'Error:informational';
+alter session set plsql_warnings = 'Error:performance';
+alter session set plsql_warnings = 'ERROR:5001';
+alter session set plsql_warnings = 'ERROR:(5001,5002,5003)';
+--error
+alter session set plsql_warnings = 'Error:5s';
+ERROR:  invalid value for parameter "plsql_warnings": "Error:5s"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'error:(5001,500s)';
+ERROR:  invalid value for parameter "plsql_warnings": "error:(5001,500s)"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings = 'error:mds';
+ERROR:  invalid value for parameter "plsql_warnings": "error:mds"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--error
+alter session set plsql_warnings='123321111';
+ERROR:  invalid value for parameter "plsql_warnings": "123321111"
+DETAIL:  plsql_warings must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+alter session set plsql_warnings='%&**(DASDdqwd';
+ERROR:  invalid value for parameter "plsql_warnings": "%&**(DASDdqwd"
+DETAIL:  plsql_warings must be 'value_cluase' [,'value_clause'] and value_clause must be {ENABLE|DISABLE|ERROR}:{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}
+--ok
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:SEVERE', 'DISABLE:INFORMATIONAL';
+ALTER session SET PLSQL_WARNINGS = 'DISABLE:5000', 'ENABLE:5001', 'ERROR:5002';
+ALTER session SET PLSQL_WARNINGS = 'ENABLE:(5000,5001,5002)', 'DISABLE:(6000,6001)';
+ALTER SESSION SET PLSQL_WARNINGS = 'ENABLE:SEVERE', 'DISABLE:PERFORMANCE', 'ERROR:06002';
