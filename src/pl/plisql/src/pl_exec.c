@@ -5508,6 +5508,20 @@ exec_stmt_open(PLiSQL_execstate *estate, PLiSQL_stmt_open *stmt)
 		if (curname == NULL)
 			assign_cursor_var(estate, curvar, portal); /* ReqID:SRS-PLSQL-CURSOR */
 
+		/* Begin - BUG#Z0001504 */
+		/*
+		 * pakcag global cursor var or oracle cursor
+		 * should holdable
+		 */
+		if (ISORACURSOROID(curvar->datatype->typoid) ||
+			is_package_global_var((PLiSQL_variable *) curvar))
+			portal->cursorOptions = portal->cursorOptions | CURSOR_OPT_HOLD;
+		if (ISORACURSOROID(curvar->datatype->typoid))
+		{
+			exec_set_cursor_attribute(estate, curvar);
+		}
+		/* End - BUG#Z00001504 */
+
 		return PLISQL_RC_OK;
 	}
 	else
