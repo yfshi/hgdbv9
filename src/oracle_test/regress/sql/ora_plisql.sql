@@ -2779,3 +2779,12 @@ SELECT id / ids FROM test_id ORDER BY id;
 drop table t_insert;
 drop table t_insert_his;
 DROP TABLE test_id;
+
+/* Begin - BUG#M00000453 */
+create table t_bug453(id int);
+
+select * from get_parameter_descr('insert into t_bug453 values(1);begin insert into t_bug453 values(2);');
+select * from get_parameter_descr('insert into t_bug453 values(1)');
+
+drop table t_bug453;
+/* End - BUG#M00000453 */

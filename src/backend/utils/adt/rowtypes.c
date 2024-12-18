@@ -2130,6 +2130,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		/* Begin - BUG#M0000376 */
 		bool					is_do_using_stmt;
 		/* End - BUG#M0000376 */
+		bool					multistmt; /* BUG#M0000453 */
 	} outparam_fctx;
 	/* End - ReqID:SRS-SQL-CALL */
 	FuncCallContext *funcctx;
@@ -2149,6 +2150,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		/* End - BUG#M0000376 */
 		MemoryContext	oldcxt;
 		int oraparam_cur_level;
+		bool		multistmt = false; /* BUG#M0000453 */
 
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcxt = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
@@ -2169,7 +2171,7 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		if (list_length(parsetree) != 1)
 		{
 			pop_oraparam_stack(oraparam_cur_level);
-			elog(ERROR, "we only support one parse tree");
+			multistmt = true; /* BUG#M0000453 */
 		}
 
 		/* Begin - BUG#M0000376 */
@@ -2355,6 +2357,9 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		/* Begin - BUG#M0000376 */
 		user_fctx->extral->paramodes = paramodes;
 		/* End - BUG#M0000376 */
+		/* Begin - BUG#M0000453 */
+		user_fctx->multistmt = multistmt;
+		/* End - BUG#M0000453 */
 
 		MemoryContextSwitchTo(oldcxt);
 		funcctx->user_fctx  = (void *) user_fctx; /* ReqID:SRS-SQL-CALL */
@@ -2375,7 +2380,12 @@ get_parameter_descr(PG_FUNCTION_ARGS)
 		/* the first tuple is constructed by stmt */
 		if (user_fctx->extral->next_params == 0)
 		{
-			values[0] = CStringGetTextDatum(user_fctx->cmdtag); /* ReqID:SRS-SQL-CALL */
+			/* Begin - BUG#M0000453 */
+			if (user_fctx->multistmt)
+				values[0] = CStringGetTextDatum("multistatement");
+			else
+			/* End - BUG#M0000453 */
+				values[0] = CStringGetTextDatum(user_fctx->cmdtag); /* ReqID:SRS-SQL-CALL */
 			values[1] = Int32GetDatum(user_fctx->extral->next_params);
 			/* Begin - ReqID:SRS-SQL-CALL */
 			if (user_fctx->callintoexpr)
