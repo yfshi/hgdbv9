@@ -1725,6 +1725,7 @@ ldelete:;
 											  estate->es_snapshot,
 											  inputslot, estate->es_output_cid,
 											  LockTupleExclusive, LockWaitBlock,
+											  0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 											  TUPLE_LOCK_FLAG_FIND_LAST_VERSION,
 											  &context->tmfd);
 
@@ -2579,6 +2580,7 @@ redo_act:;
 											  estate->es_snapshot,
 											  inputslot, estate->es_output_cid,
 											  context->lockmode, LockWaitBlock,
+											  0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 											  TUPLE_LOCK_FLAG_FIND_LAST_VERSION,
 											  &context->tmfd);
 
@@ -2719,7 +2721,9 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 	test = table_tuple_lock(relation, conflictTid,
 							context->estate->es_snapshot,
 							existing, context->estate->es_output_cid,
-							lockmode, LockWaitBlock, 0,
+							lockmode, LockWaitBlock,
+							0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+							0,
 							&tmfd);
 	switch (test)
 	{
@@ -2930,7 +2934,9 @@ ExecConflictUpdate(ModifyTableContext *context,
 	test = table_tuple_lock(relation, conflictTid,
 							 context->estate->es_snapshot,
 							 existing, context->estate->es_output_cid,
-							 lockmode, LockWaitBlock, 0,
+							 lockmode, LockWaitBlock,
+							 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+							 0,
 							 &tmfd);
 	if ( test != TM_Ok && DB_MYSQL == compatible_db)
 	{
@@ -3433,6 +3439,7 @@ lmerge_matched:;
 											  estate->es_snapshot,
 											  inputslot, estate->es_output_cid,
 											  lockmode, LockWaitBlock,
+											  0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 											  TUPLE_LOCK_FLAG_FIND_LAST_VERSION,
 											  &context->tmfd);
 					switch (result)

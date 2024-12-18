@@ -776,6 +776,9 @@ typedef struct ExecRowMark
 	RowMarkType markType;		/* see enum in nodes/plannodes.h */
 	LockClauseStrength strength;	/* LockingClause's strength, or LCS_NONE */
 	LockWaitPolicy waitPolicy;	/* NOWAIT and SKIP LOCKED */
+	/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+	int32		waitInteger;	/* WAIT integer: wait up to the specified number of seconds to acquire a DML lock */
+	/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 	bool		ermActive;		/* is this mark relevant for current tuple? */
 	ItemPointerData curCtid;	/* ctid of currently locked tuple, if any */
 	void	   *ermExtra;		/* available for use by relation source node */

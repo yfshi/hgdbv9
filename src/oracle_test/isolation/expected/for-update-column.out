@@ -1,0 +1,408 @@
+Parsed test spec with 5 sessions
+
+starting permutation: s1a s1b s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1b: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF a;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1b s2a s2c s1z s2z
+step s1a: BEGIN;
+step s1b: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF a;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2c: SELECT t.a FROM t WHERE a = 1 FOR UPDATE NOWAIT;
+ERROR:  could not obtain lock on row in relation "t"
+step s1z: COMMIT;
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1c s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1c: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF t.a;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1d s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1d: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF public.t.a;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1e s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1e: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF a,b;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1f s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1f: SELECT t.a FROM t, t3 WHERE t.a = t3.id FOR UPDATE OF public.t.a, public.t3.id;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1f s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1f: SELECT t.a FROM t, t3 WHERE t.a = t3.id FOR UPDATE OF public.t.a, public.t3.id;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1; <waiting ...>
+step s1z: COMMIT;
+step s2d: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1g s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1g: SELECT t.a FROM t, t3 FOR UPDATE OF a;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1;
+step s1z: COMMIT;
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1g s2a s2e s1z s2z
+step s1a: BEGIN;
+step s1g: SELECT t.a FROM t, t3 FOR UPDATE OF a;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2e: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF a NOWAIT;
+ERROR:  could not obtain lock on row in relation "t"
+step s1z: COMMIT;
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1h s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1h: SELECT t.a FROM t, t3 FOR UPDATE OF id;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1; <waiting ...>
+step s1z: COMMIT;
+step s2d: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1h s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1h: SELECT t.a FROM t, t3 FOR UPDATE OF id;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1;
+step s1z: COMMIT;
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1g s2a s2f s1z s2z
+step s1a: BEGIN;
+step s1g: SELECT t.a FROM t, t3 FOR UPDATE OF a;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2f: SELECT t.a FROM t WHERE a = 1 FOR UPDATE OF a SKIP LOCKED;
+a
+-
+(0 rows)
+
+step s1z: COMMIT;
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1i s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1i: SELECT a FROM (SELECT id as a FROM t3, t WHERE id = 1)  FOR UPDATE OF a;
+a
+-
+1
+1
+1
+1
+(4 rows)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1; <waiting ...>
+step s1z: COMMIT;
+step s2d: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1j s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1j: SELECT a FROM (SELECT id1 as a FROM (select id as id1 from t, t3))  FOR UPDATE OF a;
+ a
+--
+ 1
+ 1
+ 1
+ 1
+10
+10
+10
+10
+(8 rows)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1; <waiting ...>
+step s1z: COMMIT;
+step s2d: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1k s2a s2b s1z s2z
+step s1a: BEGIN;
+step s1k: SELECT t.a FROM t3 join t on t3.id = t.a FOR UPDATE OF a;
+a
+-
+1
+(1 row)
+
+step s2a: BEGIN;
+step s2b: UPDATE t SET a = 11 WHERE a = 1; <waiting ...>
+step s1z: COMMIT;
+step s2b: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s1a s1l s2a s2d s1z s2z
+step s1a: BEGIN;
+step s1l: SELECT a FROM v1, v3 FOR UPDATE OF id;
+a
+-
+1
+2
+3
+4
+1
+2
+3
+4
+(8 rows)
+
+step s2a: BEGIN;
+step s2d: UPDATE t3 SET id = 11 WHERE id = 1; <waiting ...>
+step s1z: COMMIT;
+step s2d: <... completed>
+step s2z: ROLLBACK;
+
+starting permutation: s3a s3b s3y
+step s3a: BEGIN;
+step s3b: SELECT * from tmp1, tmp2 FOR UPDATE OF id;
+ERROR:  column ambiguously defined
+step s3y: ROLLBACK;
+
+starting permutation: s3a s3c s4a s4b s3z s4z
+step s3a: BEGIN;
+step s3c: SELECT * from tmp1, tmp2 FOR UPDATE OF tmp1.id;
+id|id
+--+--
+ 1| 1
+ 2| 1
+(2 rows)
+
+step s4a: BEGIN;
+step s4b: SELECT * from tmp1 FOR UPDATE OF id; <waiting ...>
+step s3z: COMMIT;
+step s4b: <... completed>
+id
+--
+ 1
+ 2
+(2 rows)
+
+step s4z: COMMIT;
+
+starting permutation: s3a s3c s4a s4c s3z s4z
+step s3a: BEGIN;
+step s3c: SELECT * from tmp1, tmp2 FOR UPDATE OF tmp1.id;
+id|id
+--+--
+ 1| 1
+ 2| 1
+(2 rows)
+
+step s4a: BEGIN;
+step s4c: SELECT * from tmp2 FOR UPDATE OF id;
+id
+--
+ 1
+(1 row)
+
+step s3z: COMMIT;
+step s4z: COMMIT;
+
+starting permutation: s3a s3d s3y
+step s3a: BEGIN;
+step s3d: SELECT id AS i from tmp1 FOR UPDATE;
+i
+-
+1
+2
+(2 rows)
+
+step s3y: ROLLBACK;
+
+starting permutation: s3a s3e s3y
+step s3a: BEGIN;
+step s3e: SELECT id from tmp1 FOR UPDATE OF id, tmp1;
+ERROR:  FOR UPDATE can't specify unqualified relation names and column name together
+step s3y: ROLLBACK;
+
+starting permutation: s3a s3f s3y
+step s3a: BEGIN;
+step s3f: SELECT id from tmp1 FOR UPDATE OF i;
+ERROR:  "i" invalid identifier
+step s3y: ROLLBACK;
+
+starting permutation: s3a s3g s4a s4b s3z s4z
+step s3a: BEGIN;
+step s3g: SELECT a FROM (SELECT id+1 AS a FROM tmp1) FOR UPDATE;
+a
+-
+2
+3
+(2 rows)
+
+step s4a: BEGIN;
+step s4b: SELECT * from tmp1 FOR UPDATE OF id; <waiting ...>
+step s3z: COMMIT;
+step s4b: <... completed>
+id
+--
+ 1
+ 2
+(2 rows)
+
+step s4z: COMMIT;
+
+starting permutation: s3a s3h s3y
+step s3a: BEGIN;
+step s3h: SELECT a FROM (SELECT id+1 AS a FROM tmp1) FOR UPDATE a;
+ERROR:  syntax error at or near "a"
+step s3y: ROLLBACK;
+
+starting permutation: s4a s4b s5a s5b s4z s5z
+step s4a: BEGIN;
+step s4b: SELECT * from tmp1 FOR UPDATE OF id;
+id
+--
+ 1
+ 2
+(2 rows)
+
+step s5a: BEGIN;
+step s5b: SELECT * from tmp1 FOR UPDATE WAIT 5;
+ERROR:  could not obtain lock on row in relation "tmp1"
+step s4z: COMMIT;
+step s5z: ROLLBACK;
+
+starting permutation: s4a s4b s5a s4z s5c s5z
+step s4a: BEGIN;
+step s4b: SELECT * from tmp1 FOR UPDATE OF id;
+id
+--
+ 1
+ 2
+(2 rows)
+
+step s5a: BEGIN;
+step s4z: COMMIT;
+step s5c: SELECT tmp1.id from tmp1, tmp2 WHERE tmp1.id = tmp2.id FOR UPDATE OF tmp1.id WAIT 5;
+id
+--
+ 1
+(1 row)
+
+step s5z: ROLLBACK;

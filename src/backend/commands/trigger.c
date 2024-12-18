@@ -3201,6 +3201,7 @@ GetTupleForTrigger(EState *estate,
 		test = table_tuple_lock(relation, tid, estate->es_snapshot, oldslot,
 								estate->es_output_cid,
 								lockmode, LockWaitBlock,
+								0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 								lockflags,
 								&tmfd);
 

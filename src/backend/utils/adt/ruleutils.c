@@ -6252,46 +6252,119 @@ get_select_query_def(Query *query, deparse_context *context,
 	/* Add FOR [KEY] UPDATE/SHARE clauses if present */
 	if (query->hasForUpdate)
 	{
+		/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+		bool	has_forupdate_of;
+		int		ith;
+		int		nrowclause;
+
+		ith = 0;
+		nrowclause = list_length(query->rowMarks);
+		has_forupdate_of  = false;
+		/* End - BUG#M0000470: SELECT FOR UPDATE */
+
 		foreach(l, query->rowMarks)
 		{
 			RowMarkClause *rc = (RowMarkClause *) lfirst(l);
+
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+			if (rc->lockedColumns != NIL && !has_forupdate_of)
+				has_forupdate_of = true;
+			/* End - BUG#M0000470: SELECT FOR UPDATE */
 
 			/* don't print implicit clauses */
 			if (rc->pushedDown)
 				continue;
 
-			switch (rc->strength)
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+			if (!has_forupdate_of ||
+				(has_forupdate_of && ith == 0))
+			/* End - BUG#M0000470: SELECT FOR UPDATE */
 			{
-				case LCS_NONE:
-					/* we intentionally throw an error for LCS_NONE */
-					elog(ERROR, "unrecognized LockClauseStrength %d",
-						 (int) rc->strength);
-					break;
-				case LCS_FORKEYSHARE:
-					appendContextKeyword(context, " FOR KEY SHARE",
-										 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
-					break;
-				case LCS_FORSHARE:
-					appendContextKeyword(context, " FOR SHARE",
-										 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
-					break;
-				case LCS_FORNOKEYUPDATE:
-					appendContextKeyword(context, " FOR NO KEY UPDATE",
-										 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
-					break;
-				case LCS_FORUPDATE:
-					appendContextKeyword(context, " FOR UPDATE",
-										 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
-					break;
+				switch (rc->strength)
+				{
+					case LCS_NONE:
+						/* we intentionally throw an error for LCS_NONE */
+						elog(ERROR, "unrecognized LockClauseStrength %d",
+							 (int) rc->strength);
+						break;
+					case LCS_FORKEYSHARE:
+						appendContextKeyword(context, " FOR KEY SHARE",
+											 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
+						break;
+					case LCS_FORSHARE:
+						appendContextKeyword(context, " FOR SHARE",
+											 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
+						break;
+					case LCS_FORNOKEYUPDATE:
+						appendContextKeyword(context, " FOR NO KEY UPDATE",
+											 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
+						break;
+					case LCS_FORUPDATE:
+						appendContextKeyword(context, " FOR UPDATE",
+											 -PRETTYINDENT_STD, PRETTYINDENT_STD, 0);
+						break;
+				}
 			}
 
-			appendStringInfo(buf, " OF %s",
-							 quote_identifier(get_rtable_name(rc->rti,
-															  context)));
-			if (rc->waitPolicy == LockWaitError)
-				appendStringInfoString(buf, " NOWAIT");
-			else if (rc->waitPolicy == LockWaitSkip)
-				appendStringInfoString(buf, " SKIP LOCKED");
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+			if (has_forupdate_of)
+			{
+				int	       nlen = list_length(rc->lockedColumns);
+				char	   *columnname = NULL;
+				char	   *nspname = NULL;
+				char	   *relname = NULL;
+
+				switch (nlen)
+				{
+					case 1:
+						columnname = strVal(linitial(rc->lockedColumns));
+						if (ith == 0)
+							appendStringInfo(buf, " OF %s", columnname);
+						else
+							appendStringInfo(buf, ", %s", columnname);
+						break;
+					case 2:
+						relname = strVal(linitial(rc->lockedColumns));
+						columnname = strVal(lsecond(rc->lockedColumns));
+						if (ith == 0)
+							appendStringInfo(buf, " OF %s.%s", relname, columnname);
+						else
+							appendStringInfo(buf, ", %s.%s", relname, columnname);
+						break;
+					case 3:
+						nspname = strVal(linitial(rc->lockedColumns));
+						relname = strVal(lsecond(rc->lockedColumns));
+						columnname = strVal(lthird(rc->lockedColumns));
+						if (ith == 0)
+							appendStringInfo(buf, " OF %s.%s.%s", nspname, relname, columnname);
+						else
+							appendStringInfo(buf, ", %s.%s.%s", nspname, relname, columnname);
+						break;
+					default:
+						elog(ERROR, "Invalid column");
+						break;
+				}
+			}
+			else
+			/* End - BUG#M0000470: SELECT FOR UPDATE */
+				appendStringInfo(buf, " OF %s",
+								 quote_identifier(get_rtable_name(rc->rti,
+																  context)));
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+			if (!has_forupdate_of ||
+				(has_forupdate_of && ith == nrowclause - 1))
+			{
+				/* End - BUG#M0000470: SELECT FOR UPDATE */
+				if (rc->waitPolicy == LockWaitError)
+					appendStringInfoString(buf, " NOWAIT");
+				else if (rc->waitPolicy == LockWaitSkip)
+					appendStringInfoString(buf, " SKIP LOCKED");
+				/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+				else if (rc->waitPolicy == LockWaitNBlock)
+					appendStringInfo(buf, " WAIT %d", rc->waitInteger);
+				/* End - BUG#M0000470:FOR UPDATE WAIT integer */
+			}
+			ith++;	/* BUG#M0000470:FOR UPDATE WAIT integer */
 		}
 	}
 

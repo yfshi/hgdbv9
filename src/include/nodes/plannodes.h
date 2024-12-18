@@ -1172,6 +1172,9 @@ typedef struct PlanRowMark
 	int			allMarkTypes;	/* OR of (1<<markType) for all children */
 	LockClauseStrength strength;	/* LockingClause's strength, or LCS_NONE */
 	LockWaitPolicy waitPolicy;	/* NOWAIT and SKIP LOCKED options */
+	/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+	int32		waitInteger;	/* WAIT integer: wait up to the specified number of seconds to acquire a DML lock */
+	/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 	bool		isParent;		/* true if this is a "dummy" parent entry */
 } PlanRowMark;
 

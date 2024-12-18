@@ -1305,6 +1305,7 @@ _copyPlanRowMark(const PlanRowMark *from)
 	COPY_SCALAR_FIELD(allMarkTypes);
 	COPY_SCALAR_FIELD(strength);
 	COPY_SCALAR_FIELD(waitPolicy);
+	COPY_SCALAR_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 	COPY_SCALAR_FIELD(isParent);
 
 	return newnode;
@@ -2689,6 +2690,8 @@ _copyRowMarkClause(const RowMarkClause *from)
 	COPY_SCALAR_FIELD(rti);
 	COPY_SCALAR_FIELD(strength);
 	COPY_SCALAR_FIELD(waitPolicy);
+	COPY_SCALAR_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
+	COPY_NODE_FIELD(lockedColumns);/* BUG#M0000470:FOR UPDATE WAIT integer */
 	COPY_SCALAR_FIELD(pushedDown);
 
 	return newnode;
@@ -3307,6 +3310,7 @@ _copyLockingClause(const LockingClause *from)
 	COPY_NODE_FIELD(lockedRels);
 	COPY_SCALAR_FIELD(strength);
 	COPY_SCALAR_FIELD(waitPolicy);
+	COPY_SCALAR_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 
 	return newnode;
 }

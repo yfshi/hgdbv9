@@ -92,6 +92,8 @@ static bool rewriteValuesRTE(Query *parsetree, RangeTblEntry *rte, int rti,
 static void rewriteValuesRTEToNulls(Query *parsetree, RangeTblEntry *rte);
 static void markQueryForLocking(Query *qry, Node *jtnode,
 								LockClauseStrength strength, LockWaitPolicy waitPolicy,
+								int32 waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+								List *lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
 								bool pushedDown);
 static List *matchLocks(CmdType event, RuleLock *rulelocks,
 						int varno, Query *parsetree, bool *hasUpdate);
@@ -2065,7 +2067,10 @@ ApplyRetrieveRule(Query *parsetree,
 	 */
 	if (rc != NULL)
 		markQueryForLocking(rule_action, (Node *) rule_action->jointree,
-							rc->strength, rc->waitPolicy, true);
+							rc->strength, rc->waitPolicy,
+							rc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+							rc->lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
+							true);
 
 	/*
 	 * Recursively expand any view references inside the view.
@@ -2145,6 +2150,8 @@ ApplyRetrieveRule(Query *parsetree,
 static void
 markQueryForLocking(Query *qry, Node *jtnode,
 					LockClauseStrength strength, LockWaitPolicy waitPolicy,
+					int32 waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+					List *lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
 					bool pushedDown)
 {
 	if (jtnode == NULL)
@@ -2156,15 +2163,24 @@ markQueryForLocking(Query *qry, Node *jtnode,
 
 		if (rte->rtekind == RTE_RELATION)
 		{
-			applyLockingClause(qry, rti, strength, waitPolicy, pushedDown);
+			applyLockingClause(qry, rti, strength, waitPolicy,
+							  waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							  lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							  pushedDown);
 			rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
 		}
 		else if (rte->rtekind == RTE_SUBQUERY)
 		{
-			applyLockingClause(qry, rti, strength, waitPolicy, pushedDown);
+			applyLockingClause(qry, rti, strength, waitPolicy,
+							  waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							  lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							  pushedDown);
 			/* FOR UPDATE/SHARE of subquery is propagated to subquery's rels */
 			markQueryForLocking(rte->subquery, (Node *) rte->subquery->jointree,
-								strength, waitPolicy, true);
+								strength, waitPolicy,
+								waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+								lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+								true);
 		}
 		/* other RTE types are unaffected by FOR UPDATE */
 	}
@@ -2174,14 +2190,23 @@ markQueryForLocking(Query *qry, Node *jtnode,
 		ListCell   *l;
 
 		foreach(l, f->fromlist)
-			markQueryForLocking(qry, lfirst(l), strength, waitPolicy, pushedDown);
+			markQueryForLocking(qry, lfirst(l), strength, waitPolicy,
+								waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+								lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+								pushedDown);
 	}
 	else if (IsA(jtnode, JoinExpr))
 	{
 		JoinExpr   *j = (JoinExpr *) jtnode;
 
-		markQueryForLocking(qry, j->larg, strength, waitPolicy, pushedDown);
-		markQueryForLocking(qry, j->rarg, strength, waitPolicy, pushedDown);
+		markQueryForLocking(qry, j->larg, strength, waitPolicy,
+							waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+							lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							pushedDown);
+		markQueryForLocking(qry, j->rarg, strength, waitPolicy,
+							waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+							lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							pushedDown);
 	}
 	else
 		elog(ERROR, "unrecognized node type: %d",

@@ -37,6 +37,9 @@ typedef enum LockWaitPolicy
 {
 	/* Wait for the lock to become available (default behavior) */
 	LockWaitBlock,
+	/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+	LockWaitNBlock,
+	/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 	/* Skip rows that can't be locked (SKIP LOCKED) */
 	LockWaitSkip,
 	/* Raise an error if a row cannot be locked (NOWAIT) */

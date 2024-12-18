@@ -1020,6 +1020,7 @@ _outPlanRowMark(StringInfo str, const PlanRowMark *node)
 	WRITE_INT_FIELD(allMarkTypes);
 	WRITE_ENUM_FIELD(strength, LockClauseStrength);
 	WRITE_ENUM_FIELD(waitPolicy, LockWaitPolicy);
+	WRITE_INT_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 	WRITE_BOOL_FIELD(isParent);
 }
 
@@ -3042,6 +3043,7 @@ _outLockingClause(StringInfo str, const LockingClause *node)
 	WRITE_NODE_FIELD(lockedRels);
 	WRITE_ENUM_FIELD(strength, LockClauseStrength);
 	WRITE_ENUM_FIELD(waitPolicy, LockWaitPolicy);
+	WRITE_INT_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 }
 
 static void
@@ -3294,6 +3296,8 @@ _outRowMarkClause(StringInfo str, const RowMarkClause *node)
 	WRITE_UINT_FIELD(rti);
 	WRITE_ENUM_FIELD(strength, LockClauseStrength);
 	WRITE_ENUM_FIELD(waitPolicy, LockWaitPolicy);
+	WRITE_INT_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
+	WRITE_NODE_FIELD(lockedColumns);/* BUG#M0000470:FOR UPDATE WAIT integer */
 	WRITE_BOOL_FIELD(pushedDown);
 }
 

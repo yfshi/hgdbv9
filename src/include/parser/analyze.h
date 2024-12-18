@@ -53,7 +53,10 @@ extern const char *LCS_asString(LockClauseStrength strength);
 extern void CheckSelectLocking(Query *qry, LockClauseStrength strength);
 extern void applyLockingClause(Query *qry, Index rtindex,
 							   LockClauseStrength strength,
-							   LockWaitPolicy waitPolicy, bool pushedDown);
+							   LockWaitPolicy waitPolicy,
+							   int32 waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							   List *lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
+							   bool pushedDown);
 
 extern List *BuildOnConflictExcludedTargetlist(Relation targetrel,
 											   Index exclRelIndex);

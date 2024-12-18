@@ -2571,6 +2571,7 @@ preprocess_rowmarks(PlannerInfo *root)
 		newrc->allMarkTypes = (1 << newrc->markType);
 		newrc->strength = rc->strength;
 		newrc->waitPolicy = rc->waitPolicy;
+		newrc->waitInteger = rc->waitInteger; /* BUG#M0000470:FOR UPDATE WAIT integer */
 		newrc->isParent = false;
 
 		prowmarks = lappend(prowmarks, newrc);
@@ -2600,6 +2601,7 @@ preprocess_rowmarks(PlannerInfo *root)
 			newrc->allMarkTypes = (1 << newrc->markType);
 			newrc->strength = LCS_NONE;
 			newrc->waitPolicy = LockWaitBlock;	/* doesn't matter */
+			newrc->waitInteger = 0;	/* BUG#M0000470:FOR UPDATE WAIT integer */
 			newrc->isParent = false;
 
 			prowmarks = lappend(prowmarks, newrc);
@@ -2623,6 +2625,7 @@ preprocess_rowmarks(PlannerInfo *root)
 			newrc->allMarkTypes = (1 << newrc->markType);
 			newrc->strength = LCS_NONE;
 			newrc->waitPolicy = LockWaitBlock;	/* doesn't matter */
+			newrc->waitInteger = 0;	/* BUG#M0000470:FOR UPDATE WAIT integer */
 			newrc->isParent = false;
 
 			prowmarks = lappend(prowmarks, newrc);

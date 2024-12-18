@@ -309,6 +309,7 @@ extern TM_Result heap_update(Relation relation, ItemPointer otid,
 							 struct TM_FailureData *tmfd, LockTupleMode *lockmode);
 extern TM_Result heap_lock_tuple(Relation relation, HeapTuple tuple,
 								 CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
+								 int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
 								 bool follow_update,
 								 Buffer *buffer, struct TM_FailureData *tmfd);
 
@@ -370,7 +371,9 @@ extern bool HeapTupleIsSurelyDead(HeapTuple htup,
 extern bool DoesMultiXactIdConflict(MultiXactId multi, uint16 infomask,
 									LockTupleMode lockmode, bool *current_is_member);
 extern bool heap_acquire_tuplock(Relation relation, ItemPointer tid, LockTupleMode mode,
-									LockWaitPolicy wait_policy, bool *have_tuple_lock);
+									LockWaitPolicy wait_policy,
+									int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
+									bool *have_tuple_lock);
 extern void MultiXactIdWait(MultiXactId multi, MultiXactStatus status, uint16 infomask,
 								Relation rel, ItemPointer ctid, XLTW_Oper oper, int *remaining);
 extern void UpdateXmaxHintBits(HeapTupleHeader tuple, Buffer buffer, TransactionId xid);

@@ -374,7 +374,9 @@ heapam_tuple_update(Relation relation, ItemPointer otid, TupleTableSlot *slot,
 static TM_Result
 heapam_tuple_lock(Relation relation, ItemPointer tid, Snapshot snapshot,
 				  TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
-				  LockWaitPolicy wait_policy, uint8 flags,
+				  LockWaitPolicy wait_policy,
+				  int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
+				  uint8 flags,
 				  TM_FailureData *tmfd)
 {
 	BufferHeapTupleTableSlot *bslot = (BufferHeapTupleTableSlot *) slot;
@@ -391,6 +393,7 @@ heapam_tuple_lock(Relation relation, ItemPointer tid, Snapshot snapshot,
 tuple_lock_retry:
 	tuple->t_self = *tid;
 	result = heap_lock_tuple(relation, tuple, cid, mode, wait_policy,
+							 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							 follow_updates, &buffer, tmfd);
 
 	if (result == TM_Updated &&
@@ -484,6 +487,39 @@ tuple_lock_retry:
 											 errmsg("could not obtain lock on row in relation \"%s\"",
 													RelationGetRelationName(relation))));
 								break;
+							/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+							case LockWaitNBlock:
+							{
+								TimestampTz now;
+								TimestampTz fin_time;
+								int 	elapsed_min;
+
+								/* firt get the current time. */
+								now = GetCurrentTimestamp();
+
+								while(1)
+								{
+									if (!ConditionalXactLockTableWait(SnapshotDirty.xmax))
+									{
+										fin_time = GetCurrentTimestamp();
+
+										/* elapsed_min is seconds */
+										elapsed_min = (fin_time - now) / 1000000.0;
+
+										/* if the time is less than wait time speicify in WAIT N clause, goto waitn */
+										if (elapsed_min < wait_integer)
+											continue;
+
+										ereport(ERROR,
+												(errcode(ERRCODE_LOCK_NOT_AVAILABLE),
+												 errmsg("could not obtain lock on row in relation \"%s\"",
+													RelationGetRelationName(relation))));
+									}
+									break;
+								}
+							}
+								break;
+							/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 						}
 						continue;	/* loop back to repeat heap_fetch */
 					}

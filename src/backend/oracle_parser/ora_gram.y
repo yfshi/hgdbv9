@@ -813,7 +813,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
 
-	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
+	WAIT/* BUG#M0000470:FOR UPDATE WAIT integer */ WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
@@ -15591,8 +15591,20 @@ for_locking_item:
 					n->lockedRels = $2;
 					n->strength = $1;
 					n->waitPolicy = $3;
+					n->waitInteger = 0;	/* BUG#M0000470:FOR UPDATE WAIT integer */
 					$$ = (Node *) n;
 				}
+			/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+			| for_locking_strength locked_rels_list WAIT Iconst
+				{
+					LockingClause *n = makeNode(LockingClause);
+					n->lockedRels = $2;
+					n->strength = $1;
+					n->waitPolicy = LockWaitNBlock;
+					n->waitInteger = $4;
+					$$ = (Node *) n;
+				}
+			/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 		;
 
 for_locking_strength:
@@ -21330,6 +21342,7 @@ unreserved_keyword:
 			| VIEWS
 			| VIRTUAL			/* ReqID:SRS-SQL-VIRTUALCOL */
 			| VOLATILE
+			| WAIT	/* BUG#M0000470:FOR UPDATE WAIT integer */
 			| WHITESPACE_P
 			| WITHIN
 			| WITHOUT
@@ -22058,6 +22071,7 @@ bare_label_keyword:
 			| VIRTUAL		/* ReqID:SRS-SQL-VIRTUALCOL */
 			| VISIBLE		/* ReqID:SRS-SQL-INVISIBLECOL */
 			| VOLATILE
+			| WAIT			/* BUG#M0000470:FOR UPDATE WAIT integer */
 			| WHEN
 			| WHITESPACE_P
 			| WORK

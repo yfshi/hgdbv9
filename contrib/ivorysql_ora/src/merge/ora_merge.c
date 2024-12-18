@@ -500,6 +500,7 @@ lmerge_matched:;
 											   estate->es_snapshot,
 											   inputslot, estate->es_output_cid,
 											   lockmode, LockWaitBlock,
+											   0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 											   TUPLE_LOCK_FLAG_FIND_LAST_VERSION,
 											   &context->tmfd);
 					 switch (result)
@@ -1090,7 +1091,9 @@ l1:
 				 */
 				if (!current_is_member)
 					heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
-										 LockWaitBlock, &have_tuple_lock);
+										 LockWaitBlock,
+										 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+										 &have_tuple_lock);
 
 				/* wait for multixact */
 				MultiXactIdWait((MultiXactId) xwait, MultiXactStatusUpdate, infomask,
@@ -1127,7 +1130,9 @@ l1:
 			 */
 			LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 			heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
-								 LockWaitBlock, &have_tuple_lock);
+								 LockWaitBlock,
+								 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+								 &have_tuple_lock);
 			XactLockTableWait(xwait, relation, &(tp.t_self), XLTW_Delete);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 

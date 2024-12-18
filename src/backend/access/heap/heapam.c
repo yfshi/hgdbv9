@@ -2896,7 +2896,9 @@ l1:
 				 */
 				if (!current_is_member)
 					heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
-										 LockWaitBlock, &have_tuple_lock);
+										 LockWaitBlock,
+										 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+										 &have_tuple_lock);
 
 				/* wait for multixact */
 				MultiXactIdWait((MultiXactId) xwait, MultiXactStatusUpdate, infomask,
@@ -2937,7 +2939,9 @@ l1:
 			 */
 			LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 			heap_acquire_tuplock(relation, &(tp.t_self), LockTupleExclusive,
-								 LockWaitBlock, &have_tuple_lock);
+								 LockWaitBlock,
+								 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+								 &have_tuple_lock);
 			XactLockTableWait(xwait, relation, &(tp.t_self), XLTW_Delete);
 			LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
 
@@ -3530,7 +3534,9 @@ l2:
 				 */
 				if (!current_is_member)
 					heap_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
-										 LockWaitBlock, &have_tuple_lock);
+										 LockWaitBlock,
+										 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+										 &have_tuple_lock);
 
 				/* wait for multixact */
 				MultiXactIdWait((MultiXactId) xwait, mxact_status, infomask,
@@ -3615,7 +3621,9 @@ l2:
 			 */
 			LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 			heap_acquire_tuplock(relation, &(oldtup.t_self), *lockmode,
-								 LockWaitBlock, &have_tuple_lock);
+								 LockWaitBlock,
+								 0,/* BUG#M0000470:FOR UPDATE WAIT integer */
+								 &have_tuple_lock);
 			XactLockTableWait(xwait, relation, &oldtup.t_self,
 							  XLTW_Update);
 			checked_lockers = true;
@@ -4417,6 +4425,7 @@ get_mxact_status_for_lock(LockTupleMode mode, bool is_update)
 TM_Result
 heap_lock_tuple(Relation relation, HeapTuple tuple,
 				CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
+				int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
 				bool follow_updates,
 				Buffer *buffer, TM_FailureData *tmfd)
 {
@@ -4787,6 +4796,7 @@ l3:
 			 */
 			if (!skip_tuple_lock &&
 				!heap_acquire_tuplock(relation, tid, mode, wait_policy,
+									  wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
 									  &have_tuple_lock))
 			{
 				/*
@@ -4833,8 +4843,42 @@ l3:
 									(errcode(ERRCODE_LOCK_NOT_AVAILABLE),
 									 errmsg("could not obtain lock on row in relation \"%s\"",
 											RelationGetRelationName(relation))));
-
 						break;
+					/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+					case LockWaitNBlock:
+					{
+						TimestampTz now;
+						TimestampTz fin_time;
+						int 	elapsed_min;
+
+						/* first get the current time. */
+						now = GetCurrentTimestamp();
+
+						while(1)
+						{
+							if (!ConditionalMultiXactIdWait((MultiXactId) xwait,
+															status, infomask, relation,
+															NULL))
+							{
+								fin_time = GetCurrentTimestamp();
+
+								/* elapsed_min is seconds */
+								elapsed_min = (fin_time - now) / 1000000.0;
+
+								/* if the time is less than wait time speicify in WAIT integer clause, continue */
+								if (elapsed_min < wait_integer)
+									continue;
+
+								ereport(ERROR,
+										(errcode(ERRCODE_LOCK_NOT_AVAILABLE),
+										 errmsg("could not obtain lock on row in relation \"%s\"",
+											RelationGetRelationName(relation))));
+							}
+							break;
+						}
+					}
+						break;
+					/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 				}
 
 				/*
@@ -4872,6 +4916,39 @@ l3:
 									 errmsg("could not obtain lock on row in relation \"%s\"",
 											RelationGetRelationName(relation))));
 						break;
+					/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+					case LockWaitNBlock:
+					{
+						TimestampTz now;
+						TimestampTz fin_time;
+						int 	elapsed_min;
+
+						/* firt get the current time. */
+						now = GetCurrentTimestamp();
+
+						while(1)
+						{
+							if (!ConditionalXactLockTableWait(xwait))
+							{
+								fin_time = GetCurrentTimestamp();
+
+								/* elapsed_min is seconds */
+								elapsed_min = (fin_time - now) / 1000000.0;
+
+								/* if the time is less than wait time speicify in WAIT N clause, goto waitn */
+								if (elapsed_min < wait_integer)
+									continue;
+
+								ereport(ERROR,
+										(errcode(ERRCODE_LOCK_NOT_AVAILABLE),
+										 errmsg("could not obtain lock on row in relation \"%s\"",
+											RelationGetRelationName(relation))));
+							}
+							break;
+						}
+					}
+						break;
+					/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 				}
 			}
 
@@ -5114,7 +5191,9 @@ out_unlocked:
  */
 bool
 heap_acquire_tuplock(Relation relation, ItemPointer tid, LockTupleMode mode,
-					 LockWaitPolicy wait_policy, bool *have_tuple_lock)
+					 LockWaitPolicy wait_policy,
+					 int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
+					 bool *have_tuple_lock)
 {
 	if (*have_tuple_lock)
 		return true;
@@ -5137,6 +5216,39 @@ heap_acquire_tuplock(Relation relation, ItemPointer tid, LockTupleMode mode,
 						 errmsg("could not obtain lock on row in relation \"%s\"",
 								RelationGetRelationName(relation))));
 			break;
+		/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+		case LockWaitNBlock:
+		{
+			TimestampTz now;
+			TimestampTz fin_time;
+			int 	elapsed_min;
+
+			/* first get the current time. */
+			now = GetCurrentTimestamp();
+
+			while(1)
+			{
+				if (!ConditionalLockTupleTuplock(relation, tid, mode))
+				{
+					fin_time = GetCurrentTimestamp();
+
+					/* elapsed_min is seconds */
+					elapsed_min = (fin_time - now) / 1000000.0;
+
+					/* if the time is less than wait time speicify in WAIT integer clause, continue */
+					if (elapsed_min < wait_integer)
+						continue;
+
+					ereport(ERROR,
+							(errcode(ERRCODE_LOCK_NOT_AVAILABLE),
+						errmsg("could not obtain lock on row in relation \"%s\"",
+							   RelationGetRelationName(relation))));
+				}
+				break;
+			}
+		}
+			break;
+		/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 	}
 	*have_tuple_lock = true;
 

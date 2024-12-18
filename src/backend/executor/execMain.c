@@ -893,6 +893,7 @@ InitPlan(QueryDesc *queryDesc, int eflags)
 			erm->markType = rc->markType;
 			erm->strength = rc->strength;
 			erm->waitPolicy = rc->waitPolicy;
+			erm->waitInteger = rc->waitInteger;/* BUG#M0000470:FOR UPDATE WAIT integer */
 			erm->ermActive = false;
 			ItemPointerSetInvalid(&(erm->curCtid));
 			erm->ermExtra = NULL;

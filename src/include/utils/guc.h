@@ -426,6 +426,9 @@ extern bool enable_compatible_const_integer_operator;
 extern bool enable_compatible_numeric_division_result;
 /* End - BUG#Z00001452 */
 
+/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+extern PGDLLIMPORT bool allow_forupdate_in_subquery;
+/* End - BUG#M0000470: SELECT FOR UPDATE */
 
 
 #define ORADATE_MASK			0x01
