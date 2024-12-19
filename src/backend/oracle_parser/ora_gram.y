@@ -6644,6 +6644,7 @@ AlterDatabaseLinkStmt: ALTER opt_public DATABASE_LINK LINK name
 						pw = $11;
 						pwlen = strlen(pw);
 						ad->servername = $5;
+						ad->username = $8;	/* BUG#Z1433 */
 						ad->options = list_make1(makeDefElemExtended(NULL, "password",
 												 (Node *)list_make1(makeString(identifier_case_transform(pw, pwlen))), DEFELEM_SET, @11));
 
