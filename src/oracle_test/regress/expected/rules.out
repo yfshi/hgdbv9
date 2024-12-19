@@ -3315,7 +3315,7 @@ Rules:
     r1 AS
     ON UPDATE TO rules_src DO  INSERT INTO rules_log (f1, f2, tag, id) VALUES (old.f1,old.f2,'old'::text,DEFAULT), (new.f1,new.f2,'new'::text,DEFAULT)
     r2 AS
-    ON UPDATE TO rules_src DO  VALUES (old.f1,old.f2,'old'::text), (new.f1,new.f2,'new'::text)
+    ON UPDATE TO rules_src DO  VALUES (old.f1,old.f2,'old'::varchar2), (new.f1,new.f2,'new'::varchar2)
     r3 AS
     ON INSERT TO rules_src DO  INSERT INTO rules_log (f1, f2, tag, id) VALUES (NULL::integer,NULL::integer,'-'::text,DEFAULT), (new.f1,new.f2,'new'::text,DEFAULT)
     r4 AS

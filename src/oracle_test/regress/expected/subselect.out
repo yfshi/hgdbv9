@@ -234,13 +234,13 @@ SELECT *, pg_typeof(f1) FROM
 
 -- ... unless there's context to suggest differently
 explain (verbose, costs off) select '42' union all select '43';
-         QUERY PLAN         
-----------------------------
+           QUERY PLAN           
+--------------------------------
  Append
    ->  Result
-         Output: '42'::text
+         Output: '42'::varchar2
    ->  Result
-         Output: '43'::text
+         Output: '43'::varchar2
 (5 rows)
 
 explain (verbose, costs off) select '42' union all select 43;
@@ -1726,25 +1726,27 @@ with recursive x(a) as
     select z.a || z1.a as a from z cross join z as z1
     where length(z.a || z1.a) < 5))
 select * from x;
-                        QUERY PLAN                        
-----------------------------------------------------------
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
  CTE Scan on x
    Output: x.a
    CTE x
      ->  Recursive Union
            ->  Values Scan on "*VALUES*"
                  Output: "*VALUES*".column1
-           ->  Nested Loop
-                 Output: (z.a || z1.a)
-                 Join Filter: (length((z.a || z1.a)) < 5)
-                 CTE z
-                   ->  WorkTable Scan on x x_1
-                         Output: x_1.a
-                 ->  CTE Scan on z
-                       Output: z.a
-                 ->  CTE Scan on z z1
-                       Output: z1.a
-(16 rows)
+           ->  Subquery Scan on "*SELECT* 2"
+                 Output: "*SELECT* 2".a
+                 ->  Nested Loop
+                       Output: ((z.a)::varchar2 || (z1.a)::varchar2)
+                       Join Filter: (length(((z.a)::varchar2 || (z1.a)::varchar2)) < 5)
+                       CTE z
+                         ->  WorkTable Scan on x x_1
+                               Output: x_1.a
+                       ->  CTE Scan on z
+                             Output: z.a
+                       ->  CTE Scan on z z1
+                             Output: z1.a
+(18 rows)
 
 with recursive x(a) as
   ((values ('a'), ('b'))
@@ -1787,18 +1789,20 @@ with recursive x(a) as
     select z.a || z.a as a from z
     where length(z.a || z.a) < 5))
 select * from x;
-                       QUERY PLAN                       
---------------------------------------------------------
+                                      QUERY PLAN                                      
+--------------------------------------------------------------------------------------
  CTE Scan on x
    Output: x.a
    CTE x
      ->  Recursive Union
            ->  Values Scan on "*VALUES*"
                  Output: "*VALUES*".column1
-           ->  WorkTable Scan on x x_1
-                 Output: (x_1.a || x_1.a)
-                 Filter: (length((x_1.a || x_1.a)) < 5)
-(9 rows)
+           ->  Subquery Scan on "*SELECT* 2"
+                 Output: "*SELECT* 2".a
+                 ->  WorkTable Scan on x x_1
+                       Output: ((x_1.a)::varchar2 || (x_1.a)::varchar2)
+                       Filter: (length(((x_1.a)::varchar2 || (x_1.a)::varchar2)) < 5)
+(11 rows)
 
 with recursive x(a) as
   ((values ('a'), ('b'))

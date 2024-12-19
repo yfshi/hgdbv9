@@ -172,3 +172,10 @@ end;
 /
 call proc_z1438();
 /* End - BUG#Z1438 */
+
+/* Begin - BUG#Z1506 */
+create table test_z1506(a number);
+insert into test_z1506 select case when 1=1 then '1' else '2' end from dual;
+select case '1' when a then '1' else '2' end from test_z1506;
+drop table test_z1506;
+/* End - BUG#Z1506 */
