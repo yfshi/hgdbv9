@@ -58,7 +58,7 @@ SHLIB_LINK = $(perl_embed_ldflags)
 REGRESS_OPTS = --dbname=$(PL_TESTDB) --dlpath=$(top_builddir)/src/test/regress
 REGRESS = plperl_setup plperl plperl_lc plperl_trigger plperl_shared \
 	plperl_elog plperl_util plperl_init plperlu plperl_array \
-	plperl_call plperl_transaction
+	plperl_call plperl_transaction plperl_env
 # Begin - BUGM0000301
 ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB)
 ORA_REGRESS = ivy_plperl_setup ivy_plperl plperl_lc ivy_plperl_trigger ivy_plperl_shared \
@@ -69,7 +69,7 @@ ORA_REGRESS = ivy_plperl_setup ivy_plperl plperl_lc ivy_plperl_trigger ivy_plper
 MYSQL_REGRESS_OPTS = --dbname=$(PL_TESTDB)
 MYS_REGRESS = mys_plperl_setup mys_plperl mys_plperl_lc mys_plperl_trigger mys_plperl_shared \
 	mys_plperl_elog mys_plperl_util mys_plperl_init mys_plperlu mys_plperl_array \
-	mys_plperl_call mys_plperl_transaction plperl_env
+	mys_plperl_call mys_plperl_transaction
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 # if Perl can support two interpreters in one backend,
 # test plperl-and-plperlu cases
