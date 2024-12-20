@@ -3442,6 +3442,22 @@ stmt_open		: K_OPEN cursor_variable
 
 									do
 									{
+										/* Begin - BUG#Z0001351 */
+										/* support using in xxx */
+										tok = yylex();
+										if (tok == K_IN)
+										{
+											tok = yylex();
+											if (tok == K_OUT)
+												yyerror("OUT and IN/OUT modes cannot be used in this context");
+											plisql_push_back_token(tok);
+										}
+										else if (tok == K_OUT)
+											yyerror("OUT and IN/OUT modes cannot be used in this context");
+										else
+											plisql_push_back_token(tok);
+										/* End - BUG#Z00001351 */
+
 										expr = read_sql_expression2(',', ';',
 																	", or ;",
 																	&endtoken);
