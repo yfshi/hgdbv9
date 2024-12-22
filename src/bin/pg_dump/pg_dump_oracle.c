@@ -7988,8 +7988,30 @@ getRules(Archive *fout, int *numRules)
 	int			i_ev_type;
 	int			i_is_instead;
 	int			i_ev_enabled;
-
-	if (fout->remoteVersion >= 80300)
+	/* Begin - BUGZ1344 */
+	PGresult	*res_pgobject;
+	PQExpBuffer	temp_query = createPQExpBuffer();
+	res_pgobject = ExecuteSqlQuery(fout, "SELECT oid FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+	if (DumpM != NULL)
+	{
+		if(strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)
+			appendPQExpBuffer(temp_query, "LEFT JOIN pg_object ON ev_class = obj_oid WHERE obj_oid IS NULL");
+		else if(strcmp(DumpM, "o") == 0 || strcmp(DumpM, "oracle") == 0)
+			appendPQExpBuffer(temp_query, "LEFT JOIN pg_object ON ev_class = obj_oid WHERE obj_oid IS NOT NULL");
+		else
+			;
+	}
+	else
+		;
+	if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+		appendPQExpBuffer(query, "SELECT "
+							"'pg_rewrite'::regclass::oid AS tableoid, oid, rulename, "
+							"ev_class AS ruletable, ev_type, is_instead, "
+							"ev_enabled "
+							"FROM pg_rewrite %s "
+							"ORDER BY oid", temp_query->data);
+	else if (fout->remoteVersion >= 80300)
+	/* End - BUGZ1344 */
 	{
 		appendPQExpBufferStr(query, "SELECT "
 							 "tableoid, oid, rulename, "
@@ -8075,7 +8097,10 @@ getRules(Archive *fout, int *numRules)
 	PQclear(res);
 
 	destroyPQExpBuffer(query);
-
+	/* Begin - BUGZ1344 */
+	PQclear(res_pgobject);
+	destroyPQExpBuffer(temp_query);
+	/* End - BUGZ1344 */
 	return ruleinfo;
 }
 
