@@ -454,6 +454,7 @@ typedef struct _archiveOpts
 	const char	ident_case;		/* BUG#M0000323 */
 	const char *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 	const char *User_binary_upgrade; /* BUGZ1398 */
+	const char *user_type;	/* BUGZ1408 */
 } ArchiveOpts;
 #define ARCHIVE_OPTS(...) &(ArchiveOpts){__VA_ARGS__}
 /* Called to add a TOC entry */

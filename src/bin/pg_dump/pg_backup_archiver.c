@@ -2806,6 +2806,7 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 	newToc->d.oracle.ident_case = opts->ident_case;		/* BUG#M0000323 SRS-MYSQL-PGDUMP*/
 	newToc->compatible_mode = opts->compatible_mode ? pg_strdup(opts->compatible_mode) : NULL;	/* ReqID:SRS-CMD-PGDUMP */
 	newToc->d.oracle.User_binary_upgrade = opts->User_binary_upgrade ? pg_strdup(opts->User_binary_upgrade) : NULL; /* BUGZ1398 */
+	newToc->d.oracle.usertype = opts->user_type ? pg_strdup(opts->user_type) : NULL;	/* BUGZ1408 */
 	if (opts->nDeps > 0)
 	{
 		newToc->dependencies = (DumpId *) pg_malloc(opts->nDeps * sizeof(DumpId));
@@ -4211,7 +4212,8 @@ get_desc_ownerto(ArchiveHandle *AH, TocEntry *te)
 		strcmp(te->desc, "PUBLICATION") == 0 ||
 		strcmp(te->desc, "PACKAGE") == 0 ||
 		strcmp(te->desc, "TABLESPACE") == 0 ||
-		strcmp(te->desc, "SUBSCRIPTION") == 0)
+		strcmp(te->desc, "SUBSCRIPTION") == 0 ||
+		strcmp(te->desc, "POLICY") == 0)	/* BUGZ1408 */
 	{
 		int utype = 0;
 
@@ -5532,7 +5534,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\\parser\n\n");
 				}
-				else if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != PG_PARSER && strcmp(te->desc, "ACL") == 0)	/* BUG#M0000404 */
+				else if (strcmp(te->compatible_mode,"p") == 0 && compatible_mode != ORA_PARSER && strcmp(te->desc, "ACL") == 0)	/* BUG#M0000404 */	/* BUGZ1408 */
 				{
 					ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
 					compatible_mode = ORA_PARSER;
@@ -5619,9 +5621,42 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			}
 			/* End - ReqID:SRS-SQL-FORCEVIEW */
 			else
+			/* Begin - BUGZ1408 */
+			{
+				if(database_mode == DB_ORACLE &&
+					getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG &&
+					strcmp(te->desc, "POLICY") == 0)
+				{
+					if ((strcmp(te->d.oracle.usertype, "DATABASEUSER") == 0) && (CurUser == INSTANCE))
+					{
+						if (compatible_mode == PG_PARSER)
+						{
+							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
+							compatible_mode = ORA_PARSER;
+							if (AH->format == archNull || AH->connection == NULL)
+								ahprintf(AH, "\\parser\n\n");
+						}
+						ahprintf(AH, "set session authorization %s;\n\n", fmtId(te->owner));
+						CurUser = DB;
+					}
+					else if((strcmp(te->d.oracle.usertype, "INSTANCEUSER") == 0) && (CurUser == DB))
+					{
+						if(compatible_mode == ORA_PARSER)
+						{
+							ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+							compatible_mode = PG_PARSER;
+							if (AH->format == archNull || AH->connection == NULL)
+								ahprintf(AH, "\\parser\n\n");
+						}
+						ahprintf(AH, "set session authorization %s;\n\n", fmtId(te->owner));
+						CurUser = INSTANCE;
+					}
+				}
 				ahprintf(AH, "%s\n\n", te->defn);
+			}
+			/* End - BUGZ1408 */
 
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG && database_mode != DB_MYSQL && strcmp(te->desc, "POLICY") != 0)	/* ReqID:SRS-MYSQL-PGDUMP */	/* BUGZ1408 */
 			{
 				if (compatible_mode == PG_PARSER)
 				{
@@ -7628,6 +7663,28 @@ get_owner_type(ArchiveHandle *AH, TocEntry *te)
 		else
 			is_ownerto_database = 0;
 	}
+	/* Begin - BUGZ1408 */
+	else if(strcmp(te->desc, "POLICY") == 0)
+	{
+		appendPQExpBuffer(query_cmd, "SELECT rolowndboid FROM "
+									 "pg_policy p "
+									 "LEFT JOIN pg_class c ON c.oid = p.polrelid "
+									 "LEFT JOIN pg_authid a "
+									 "ON a.oid = c.relowner "
+									 "WHERE p.oid = %d;", te->catalogId.oid);
+		res = PQexec(AH->connection, query_cmd->data);
+		ntups = PQntuples(res);
+		if(ntups == 1)
+		{
+			if(atooid(PQgetvalue(res, 0, 0)) == 0)
+				is_ownerto_database = 1;
+			else
+				is_ownerto_database = 2;
+		}
+		else
+			is_ownerto_database = 0;
+	}
+	/* End - BUGZ1408 */
 	else
 		is_ownerto_database = 0;
 

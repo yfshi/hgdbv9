@@ -3221,6 +3221,11 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	PQExpBuffer query;
 	PQExpBuffer delqry;
 	PQExpBuffer polprefix;
+	/* Begin - BUGZ1408 */
+	PQExpBuffer ownerquery;
+	PGresult   *res;
+	char	   *user_type;
+	/* End - BUGZ1408 */
 	char	   *qtabname;
 	const char *cmd;
 	char	   *tag;
@@ -3280,7 +3285,17 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	query = createPQExpBuffer();
 	delqry = createPQExpBuffer();
 	polprefix = createPQExpBuffer();
-
+	/* Begin - BUGZ1408 */
+	ownerquery = createPQExpBuffer();
+	appendPQExpBuffer(ownerquery, "SELECT rolowndboid "
+									"FROM pg_policy p "
+									"LEFT JOIN pg_class c ON c.oid = p.polrelid "
+									"LEFT JOIN pg_authid a ON a.oid = c.relowner "
+									"WHERE p.oid = %d; ", polinfo->dobj.catId.oid);
+	res = ExecuteSqlQuery(fout, ownerquery->data, PGRES_TUPLES_OK);
+	
+	user_type = atooid(PQgetvalue(res, 0, 0)) == 0 ? "INSTANCEUSER" : "DATABASEUSER";
+	/* End - BUGZ1408 */
 	qtabname = pg_strdup(fmtId(tbinfo->dobj.name));
 
 	appendPQExpBuffer(query, "CREATE POLICY %s", fmtId(polinfo->polname));
@@ -3315,7 +3330,8 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 								  .description = "POLICY",
 								  .section = SECTION_POST_DATA,
 								  .createStmt = query->data,
-								  .dropStmt = delqry->data));
+								  .dropStmt = delqry->data,
+								  .user_type = user_type));/* BUGZ1408 */
 
 	if (polinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
 		dumpComment(fout, polprefix->data, qtabname,
@@ -3327,6 +3343,10 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	destroyPQExpBuffer(delqry);
 	destroyPQExpBuffer(polprefix);
 	free(qtabname);
+	/* Begin - BUGZ1408 */
+	PQclear(res);
+	destroyPQExpBuffer(ownerquery);
+	/* End - BUGZ1408 */
 }
 
 /*
