@@ -33,6 +33,7 @@
 
 /* Begin - ReqID:SRS-SQL-DBLINK */
 #ifdef WIN32
+#include <stdio.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
@@ -2256,7 +2257,7 @@ get_host_ipv4(StringInfo buf)
 
 					if (sa_in->sin_addr.S_un.S_addr != htonl(INADDR_LOOPBACK))
 					{
-						inet_ntop(AF_INET, &(sa_in->sin_addr), ip, INET_ADDRSTRLEN);
+						pg_inet_net_ntop(AF_INET, &(sa_in->sin_addr), 32, ip, INET_ADDRSTRLEN);
 						appendStringInfo(buf, "%s", ip);
 						if (pUnicast->Next)
 							appendStringInfo(buf, "%s", " ");
@@ -2354,7 +2355,7 @@ get_host_ipv6(StringInfo buf)
 					struct sockaddr_in6 *sa_in = (struct sockaddr_in6 *)pUnicast->Address.lpSockaddr;
 					if (!IN6_IS_ADDR_LOOPBACK(&sa_in->sin6_addr))
 					{
-						inet_ntop(AF_INET6, &(sa_in->sin6_addr), ip, INET6_ADDRSTRLEN);
+						pg_inet_net_ntop(AF_INET6, &(sa_in->sin6_addr), 128, ip, INET6_ADDRSTRLEN);
 						appendStringInfo(buf, "%s", ip);
 						if (pUnicast->Next)
 							appendStringInfo(buf, "%s", " ");

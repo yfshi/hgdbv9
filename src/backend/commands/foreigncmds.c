@@ -45,6 +45,7 @@
 
 #include "nodes/makefuncs.h"	/* ReqID:SRS-SQL-DBLINK */
 #include "parser/pg_object_hook.h"	/* BUG#Z1317 */
+#include "parser/scansup.h"			/* BUG#Z1427 */
 
 typedef struct
 {
@@ -1887,6 +1888,10 @@ AlterDatabaseLink(AlterDatabaseLinkStmt *stmt)
 	Oid			umId;
 	ForeignServer *srv;
 	ObjectAddress address;
+	/* Begin - BUG#Z1433 */
+	List		  *umpoptions = NIL;
+	char		  *username = NULL;
+	/* End - BUG#Z1433 */
 	RoleSpec   *role = (RoleSpec *) stmt->user;
 
 	rel = table_open(UserMappingRelationId, RowExclusiveLock);
@@ -1954,6 +1959,15 @@ AlterDatabaseLink(AlterDatabaseLinkStmt *stmt)
 								&isnull);
 		if (isnull)
 			datum = PointerGetDatum(NULL);
+		else
+		{
+			/* Begin - BUG#Z1433 */
+			umpoptions = untransformRelOptions(datum);
+			get_usermapping_name(umpoptions, &username);
+			if (username && strcmp(stmt->username, username) !=0)
+				elog(ERROR, "user names cannot be changed in ALTER DATABASE LINK command"); // ORA-32598
+			/* End - BUG#Z1433 */
+		}
 
 		/* Prepare the options array */
 		datum = transformGenericOptions(UserMappingRelationId,
@@ -2306,7 +2320,7 @@ buildCreateForeignTablequeryString(List *tupattrs, char *fname, char *relname,
 	int 			i;
 
 	initStringInfo(&buf);
-	appendStringInfo(&buf, "CREATE FOREIGN TABLE %s \n(", fname);
+	appendStringInfo(&buf, "CREATE FOREIGN TABLE \"%s\" \n(", fname);	/* BUG#Z1427 */
 
 	i = 1;
 	foreach(att, tupattrs)
@@ -2314,8 +2328,14 @@ buildCreateForeignTablequeryString(List *tupattrs, char *fname, char *relname,
 		TupdescNatts	*tp = lfirst(att);
 
 		format_type = format_type_extended(tp->coltypid, tp->coltypmod, FORMAT_TYPE_TYPEMOD_GIVEN);
-
-		appendStringInfo(&buf, " %s %s", tp->colname, format_type);
+		/* Begin - BUG#Z1427 */
+		if (fdw_type == ORA_FDW)
+		{
+			appendStringInfo(&buf, " %s %s", identifier_case_transform(tp->colname, strlen(tp->colname)), format_type);
+		}
+		if (fdw_type == PG_FDW)
+			appendStringInfo(&buf, " %s %s", quote_identifier(tp->colname), format_type);
+		/* End - BUG#Z1427 */
 
 		if (i < list_length(tupattrs))
 			appendStringInfoString(&buf, ",\n");
@@ -2330,7 +2350,10 @@ buildCreateForeignTablequeryString(List *tupattrs, char *fname, char *relname,
 		appendStringInfoString(&buf, "schema ");
 		appendStringInfo(&buf, "'%s'", relnspname);
 		appendStringInfoString(&buf, ", table ");
-		appendStringInfo(&buf, "'%s'", upper_character(relname, strlen(relname)));
+		/* Begin - BUG#Z1427 */
+		appendStringInfo(&buf, "'%s'", identifier_case_transform(relname, strlen(relname)));
+		appendStringInfo(&buf, ", lob_prefetch '%s'", "1048576");
+		/* End - BUG#Z1427 */
 	}
 	else if (fdw_type == PG_FDW)
 	{

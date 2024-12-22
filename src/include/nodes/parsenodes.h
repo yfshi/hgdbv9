@@ -2754,6 +2754,7 @@ typedef struct AlterDatabaseLinkStmt
 	NodeTag		type;
 	RoleSpec   *user;			/* user role */
 	char	   *servername;		/* server name */
+	char 	   *username;		/* connect to user name, BUG#Z1433 */
 	List	   *options;		/* generic options to server */
 	bool		is_public;
 } AlterDatabaseLinkStmt;
