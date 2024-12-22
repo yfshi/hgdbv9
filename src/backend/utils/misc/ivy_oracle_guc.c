@@ -327,6 +327,10 @@ static bool max_string_size_check(int *newval, void **extra, GucSource source);
 /* Begin - ReqID:SRS-SQL-DBLINK */
 static bool dblink_using_fdw_check(char **newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SQL-DBLINK */
+/* Begin - BUG#Z0001310 */
+static bool plsql_warnings_check(char **newval, void **extra, GucSource source);
+/* End - BUG#Z00001310 */
+
 #endif
 
 #if 0
@@ -1011,8 +1015,8 @@ static struct config_string Ivy_ConfigureNamesString[] =
 			GUC_LIST_INPUT
 		},
 		&plsql_warnings,
-		"",
-		NULL, NULL, NULL
+		"DISABLE:ALL", /* bug#Z1309 */
+		plsql_warnings_check, NULL, NULL
 	},
 	/* End - ReqID:SRS-PLSQL-EXCEPTION */
 #endif
@@ -1611,4 +1615,221 @@ dblink_using_fdw_check(char **newval, void **extra, GucSource source)
 
    return true;
 }
+
+/* Begin - BUG#Z0001310 */
+/*
+ * check plsql_warnings is legal
+ */
+static bool
+plsql_warnings_check(char **newval, void **extra, GucSource source)
+{
+	if (*newval != NULL)
+	{
+		ListCell *lc;
+		List *warning_list;
+		char *newval_p = pstrdup(*newval);
+
+		if (!SplitStringIgnoreSpaceAndBracket(newval_p, ',', &warning_list))
+		{
+			GUC_check_errdetail("plsql_warings must be 'value_cluase' [,'value_clause']"
+				" and value_clause must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+			 return false;
+		}
+
+		if (warning_list == NIL)
+		{
+			GUC_check_errdetail("plsql_warings must be 'value_cluase' [,'value_clause']"
+				" and value_clause must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+			 return false;
+		}
+
+		foreach (lc, warning_list)
+		{
+			char	   *one_warning = (char *) lfirst(lc);
+			List		*codelist;
+			char		*warning_type;
+			char		*warning_code;
+			int			i;
+			int			startloc = -1;
+			bool		has_bracket = false;
+			bool		is_head = true;
+			size_t		warning_type_len;
+			size_t		warning_code_len;
+
+			if (!SplitStringIgnoreSpaceAndBracket(one_warning, ':', &codelist))
+			{
+				GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+				return false;
+			}
+
+			if (list_length(codelist) != 2)
+			{
+				GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+				return false;
+			}
+			warning_type = (char *) linitial(codelist);
+			warning_code = (char *) lsecond(codelist);
+			list_free(codelist);
+			if (warning_type == NULL ||
+				warning_code == NULL)
+			{
+				GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+				return false;
+			}
+
+			/* rtrim some space */
+			warning_type_len = strlen(warning_type);
+			for (i = warning_type_len - 1; i > 0; i--)
+			{
+				if (!scanner_isspace(warning_type[i]))
+					break;
+			}
+
+			if (i != warning_type_len - 1)
+				warning_type[i + 1] = '\0';
+
+			warning_code_len = strlen(warning_code);
+			for (i = warning_code_len - 1; i > 0; i--)
+			{
+				if (!scanner_isspace(warning_code[i]))
+					break;
+			}
+
+			if (i != warning_code_len - 1)
+				warning_code[i + 1] = '\0';
+
+			/* warning_type must be enable|disable|error */
+			if (pg_strcasecmp(warning_type, "enable") != 0 &&
+				pg_strcasecmp(warning_type, "disable") != 0 &&
+				pg_strcasecmp(warning_type, "error") != 0)
+			{
+				GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+				"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+				return false;
+			}
+			/* waring_code must be {ALL|SEVER|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}} */
+			if (pg_strcasecmp(warning_code, "all") == 0)
+				continue;
+			if (pg_strcasecmp(warning_code, "severe") == 0)
+				continue;
+			if (pg_strcasecmp(warning_code, "informational") == 0)
+				continue;
+			if (pg_strcasecmp(warning_code, "performance") == 0)
+				continue;
+			/* maybe integer or (integer,integer...) */
+			for (i = 0; i < strlen(warning_code); i++)
+			{
+				if (is_head &&
+					scanner_isspace(warning_code[i]))
+					continue;
+
+				if (!has_bracket &&
+					warning_code[i] == '(')
+					has_bracket = true;
+				else
+				{
+					is_head = false;
+
+					/* bracket close */
+					if (has_bracket &&
+						warning_code[i] == ')')
+					{
+						char *inter_str;
+						int inter_value;
+
+						if (startloc == -1)
+						{
+							GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+							"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+							return false;
+						}
+
+						inter_str = palloc0(i - startloc + 1);
+						memcpy(inter_str, &warning_code[startloc], i - startloc);
+
+						/* check inter_str is integer */
+						/* check inter_str is integer */
+						if (!parse_int(inter_str, &inter_value, 0, NULL))
+						{
+							GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+							"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+							return false;
+						}
+						is_head = true;
+						startloc = -1;
+						pfree(inter_str);
+						continue;
+					}
+
+					/* array integer */
+					if (warning_code[i] == ',')
+					{
+						char *inter_str;
+						int inter_value;
+
+						if (!has_bracket)
+						{
+							GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+							"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+							return false;
+						}
+
+						if (startloc == -1)
+						{
+							GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+							"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+							return false;
+						}
+
+						inter_str = palloc0(i - startloc + 1);
+						memcpy(inter_str, &warning_code[startloc], i - startloc);
+
+						/* check inter_str is integer */
+						if (!parse_int(inter_str, &inter_value, 0, NULL))
+						{
+							GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+							"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+							return false;
+						}
+
+						is_head = true;
+						startloc = -1;
+						pfree(inter_str);
+						continue;
+					}
+					/* record startloc */
+					if (startloc == -1)
+						startloc = i;
+				}
+			}
+			if (startloc != -1)
+			{
+				char *inter_str;
+				int inter_value;
+
+				inter_str = palloc0(i - startloc + 1);
+				memcpy(inter_str, &warning_code[startloc], i - startloc);
+
+				/* check inter_str is integer */
+				if (!parse_int(inter_str, &inter_value, 0, NULL))
+				{
+					GUC_check_errdetail("plsql_warings must be {ENABLE|DISABLE|ERROR}:"
+					"{ALL|SEVERE|INFORMATIONAL|PERFORMANCE|{integer|(integer[,integer]..)}}");
+					return false;
+				}
+				pfree(inter_str);
+			}
+		}
+		pfree(newval_p);
+		list_free(warning_list);
+	}
+	return true;
+}
+/* End - BUG#Z00001310 */
+
 #endif

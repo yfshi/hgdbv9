@@ -34,6 +34,11 @@ extern int	varstr_levenshtein_less_equal(const char *source, int slen,
 extern List *textToQualifiedNameList(text *textval);
 extern bool SplitIdentifierString(char *rawstring, char separator,
 								  List **namelist);
+/* Begin - BUG#Z0001310 */
+extern bool SplitStringIgnoreSpaceAndBracket(char *rawstring, char separator,
+						 List **namelist);
+/* End - BUG#Z00001310 */
+
 /* Begin - BUG#0000049 */
 extern bool SplitIdentifierStringForSearchPath(char *rawstring, char separator,
 					  				List **namelist);

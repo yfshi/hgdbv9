@@ -1241,7 +1241,7 @@ HINT:  No procedure matches the given name and argument types. You might need to
 QUERY:  call test_p(3.14, b)
 CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
 alter procedure test_p(IN a int, OUT b int) int is number;
--- error, need convert int to number(38) within anonymous.
+--ok
 DECLARE
  b int;
 BEGIN
@@ -1249,9 +1249,9 @@ BEGIN
   RAISE NOTICE 'b: %', b;
 END;
 /
-ERROR:  procedure parameter "b" is an output parameter but corresponding argument is not writable
-CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
--- error, need convert int to number(38) within anonymous.
+NOTICE:  a: 3, b: <NULL>
+NOTICE:  b: 6
+--ok
 DECLARE
  b int;
 BEGIN
@@ -1259,8 +1259,8 @@ BEGIN
   RAISE NOTICE 'b: %', b;
 END;
 /
-ERROR:  procedure parameter "b" is an output parameter but corresponding argument is not writable
-CONTEXT:  PL/iSQL function inline_code_block line 4 at CALL
+NOTICE:  a: 3.14, b: <NULL>
+NOTICE:  b: 6
 set ivorysql.convert_plisql_anonymous_int_to_number to on;
 alter procedure test_p(IN a int, OUT b int) int is number;	-- recompile, make chache invalid.
 -- ok

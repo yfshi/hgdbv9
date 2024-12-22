@@ -1098,7 +1098,7 @@ END;
 
 alter procedure test_p(IN a int, OUT b int) int is number;
 
--- error, need convert int to number(38) within anonymous.
+--ok
 DECLARE
  b int;
 BEGIN
@@ -1107,7 +1107,7 @@ BEGIN
 END;
 /
 
--- error, need convert int to number(38) within anonymous.
+--ok
 DECLARE
  b int;
 BEGIN
