@@ -253,6 +253,10 @@ typedef struct ModifyTable
 	List	   *upsertCols;		/* Record updated columns */
 	Index		upexclRelRTIndex;	/* RTI of the EXCLUDED pseudo relation */
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	bool		isReplace;
+	List	   *partOids;
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */

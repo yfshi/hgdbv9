@@ -329,6 +329,7 @@ static	void			check_raise_parameters(PLmySQL_stmt_raise *stmt);
 %token <keyword>	K_PRIOR
 %token <keyword>	K_QUERY
 %token <keyword>	K_RAISE
+%token <keyword>	K_REPLACE	/* ReqID:SRS-MYSQL-SQL-REPLACE */
 %token <keyword>	K_RELATIVE
 %token <keyword>	K_RETURN
 %token <keyword>	K_RETURNED_SQLSTATE
@@ -2002,6 +2003,12 @@ stmt_execsql	: K_IMPORT
 					{
 						$$ = make_execsql_stmt(K_INSERT, @1);
 					}
+				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+				| K_REPLACE
+					{
+						$$ = make_execsql_stmt(K_REPLACE, @1);
+					}
+				/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 				| K_MERGE
 					{
 						$$ = make_execsql_stmt(K_MERGE, @1);
@@ -3005,6 +3012,10 @@ make_execsql_stmt(int firsttoken, int location)
 			yyerror("unexpected end of function definition");
 		if (tok == K_INTO)
 		{
+			/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+			if (prev_tok == K_REPLACE)
+				continue;		/* REPLACE INTO is not an INTO-target */
+			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 			if (prev_tok == K_INSERT)
 				continue;		/* INSERT INTO is not an INTO-target */
 			if (prev_tok == K_MERGE)

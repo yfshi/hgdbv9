@@ -537,9 +537,24 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 	 */
 	if (partrel->rd_rel->relhasindex &&
 		leaf_part_rri->ri_IndexRelationDescs == NULL)
-		ExecOpenIndices(leaf_part_rri,
-						(node != NULL &&
-						 node->onConflictAction != ONCONFLICT_NONE));
+	{
+		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+		if (node && DB_MYSQL == compatible_db &&
+			node->isReplace)
+			ExecOpenIndices(leaf_part_rri,
+							(node->isReplace &&
+							node != NULL));
+		else if (node && DB_MYSQL == compatible_db &&
+				 node->upsertAction != UPSERT_NONE)
+			ExecOpenIndices(leaf_part_rri,
+							(node != NULL &&
+							 node->upsertAction != UPSERT_NONE));
+		else
+			ExecOpenIndices(leaf_part_rri,
+							(node != NULL &&
+							 node->onConflictAction != ONCONFLICT_NONE));
+		/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	}
 
 	/* Init storage for partitioned global temporary table in current backend */
 	init_gtt_storage(mtstate->operation, leaf_part_rri);

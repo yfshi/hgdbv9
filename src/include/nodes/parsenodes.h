@@ -198,6 +198,10 @@ typedef struct Query
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	UpsertExpr *upsertClause; /* DUPLICATE KEY UPDATE... */
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	bool		isReplace;
+	List	   *partOids;
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level
@@ -1708,6 +1712,7 @@ typedef struct InsertStmt
 	OverridingKind override;	/* OVERRIDING clause */
 	/* ReqID:SRS-MYSQL-SQL-INSERT */
 	UpsertClause *upsertClause; /* DUPLICATE KEY UPDATE clause */
+	bool		isReplace;	/* ReqID:SRS-MYSQL-SQL-REPLACE */
 } InsertStmt;
 
 /* ----------------------

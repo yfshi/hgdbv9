@@ -1,0 +1,46 @@
+<!--
+doc/src/sgml/ref/insert.sgml
+-->
+
+<refentry id="sql-replace">
+ <indexterm zone="sql-replace">
+  <primary>REPLACE</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>REPLACE</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>REPLACE</refname>
+  <refpurpose>insert new row or replace rows in a table</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+[NOTICE:REPLACE only has gained support in MySQL compatibility!]
+REPLACE [LOW_PRIORITY | DELAYED]
+    [INTO] tbl_name 
+    [PARTITION(partition_name [,partition_name] ...)]
+    [(col_name[,col_name...])]
+    {VALUES | VALUE ({expr},...),...},...
+OR:
+REPLACE [LOW_PRIORITY | DELAYED]
+    [INTO] tbl_name
+    [PARTITION(partition_name [,partition_name] ...)]
+    SET col_name={expr},...
+OR:
+REPLACE [LOW_PRIORITY | DELAYED]
+    [INTO] tbl_name [(col_name,...)]
+    [PARTITION(partition_name [,partition_name] ...)]
+    [(col_name[,col_name...])]
+    SELECT...
+
+Note:
+REPLACE delete the old rows when the new row conflict with the old row which contains PRIMARY KEY or a UNIQUE index, and then insert the new row.
+
+</synopsis>
+</refsynopsisdiv>
+</refentry>

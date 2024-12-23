@@ -30,6 +30,7 @@
 #include "storage/shmem.h"
 #include "storage/smgr.h"
 
+#include "utils/ora_compatible.h" /* ReqID:SRS-MYSQL-SQL-REPLACE */
 /*
  * Constants to control the behavior of block allocation to parallel workers
  * during a parallel seqscan.  Technically these values do not need to be
@@ -81,7 +82,15 @@ table_slot_callbacks(Relation relation)
 		 */
 		Assert(relation->rd_rel->relkind == RELKIND_VIEW ||
 			   relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE);
-		tts_cb = &TTSOpsVirtual;
+		/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+		/* To support insert partition table on duplicate key update. */
+		if (DB_MYSQL == compatible_db &&
+			relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE &&
+			relation->rd_onduplicate)
+			tts_cb = &TTSOpsBufferHeapTuple;
+		else
+			tts_cb = &TTSOpsVirtual;
+		/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	}
 
 	return tts_cb;

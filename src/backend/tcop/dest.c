@@ -41,7 +41,10 @@
 #include "libpq/pqformat.h"
 #include "utils/portal.h"
 
-
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 /* ----------------
  *		dummy DestReceiver functions
  * ----------------
@@ -190,10 +193,20 @@ EndCommand(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_o
 			tagname = GetCommandTagName(tag);
 
 			if (command_tag_display_rowcount(tag) && !force_undecorated_output)
-				snprintf(completionTag, COMPLETION_TAG_BUFSIZE,
-						 tag == CMDTAG_INSERT ?
-						 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,
-						 tagname, qc->nprocessed);
+			{
+				/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+				if (tag == CMDTAG_REPLACE && DB_MYSQL == compatible_db)
+					snprintf(completionTag, COMPLETION_TAG_BUFSIZE,
+							 tag == CMDTAG_REPLACE ?
+							 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,
+							 tagname, qc->nprocessed);
+				else
+					snprintf(completionTag, COMPLETION_TAG_BUFSIZE,
+							 tag == CMDTAG_INSERT ?
+							 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,
+							 tagname, qc->nprocessed);
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 			else
 				snprintf(completionTag, COMPLETION_TAG_BUFSIZE, "%s", tagname);
 			pq_putmessage('C', completionTag, strlen(completionTag) + 1);

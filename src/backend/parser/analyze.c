@@ -61,7 +61,10 @@
 #include "utils/lsyscache.h"	/* ReqID:SRS-MYSQL-UPDATE */
 /* Begin - BUG#Z1435 */
 #include "rewrite/rewriteHandler.h"
+#include "catalog/pg_constraint.h"
 /* End - BUG#Z1435 */
+#include "catalog/partition.h" /* ReqID:SRS-MYSQL-SQL-REPLACE */
+
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
 
@@ -134,6 +137,10 @@ static void transformCollistInFromcClause(List *rangevarlist, List *collist);
 static void transformAliasInTargetlist(RangeVar *rel, List *targetList);
 static void transformRemoveschemaInTargetlist(RangeVar *rel, List **targetList);
 /* End - BUG#Z1324 */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+static void transformGetpartionRelationOid(Query            *qry, RangeVar  *relation);
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 
 /*
@@ -991,8 +998,8 @@ GetTableOidInSubquery(RangeTblEntry* rte)
 static void
 transformCheckTemptableIsMultiUse(List* rtable, List* subrtable)
 {
-	char		relpersistence;
-	char		subrelpersistence;
+	char		relpersistence = '0';
+	char		subrelpersistence = '0';
 	ListCell   *lc = NULL;
 	ListCell   *sublc = NULL;
 	Oid			reloid = InvalidOid;
@@ -1043,6 +1050,56 @@ transformCheckTemptableIsMultiUse(List* rtable, List* subrtable)
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
 
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+/*
+ * transformGetpartiontable
+ * Get the specified partition table information and get the partition table oid.
+ */
+static void
+transformGetpartionRelationOid(Query            *qry, RangeVar *relation)
+{
+	ListCell   *lc = NULL;
+	List	   *partitionoid = NIL;
+	Oid			relid = InvalidOid;
+	/* Get partition relation Oid. */
+	if (relation->schemaname)
+		relid = get_relname_relid(relation->relname, get_namespace_oid(relation->schemaname, false));
+	else
+		relid = RelnameGetRelid(relation->relname);
+	/* Get the partition OID based on the partition name. */
+	foreach(lc, relation->partitionnamelist)
+	{
+		Node   *node = (Node*)lfirst(lc);
+		if (IsA(node, String))
+		{
+			char   *relname = strVal(node);
+			Oid		reloid = InvalidOid;
+			if (relation->schemaname)
+				reloid = get_relname_relid(relname, get_namespace_oid(relation->schemaname, false));
+			else
+				reloid = RelnameGetRelid(relname);
+			/* Record partition Oid. */
+			if (OidIsValid(reloid))
+			{
+				/* lookup pg_inherits, Check whether the partition table and partition correspond. */
+				if (get_partition_parent(reloid, true) != relid)
+					ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_TABLE),
+								 errmsg("Partition relation \"%s\" does not exist in %s.", relname, relation->relname)));
+				partitionoid = lappend_oid(partitionoid, reloid);
+			}
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_TABLE),
+						 errmsg("Partition relation \"%s\" does not exist", relname)));
+		}
+	}
+	qry->partOids = partitionoid;
+	return;
+}
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
+
 /*
  * transformInsertStmt -
  *	  transform an Insert Statement
@@ -1071,6 +1128,20 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	qry->commandType = CMD_INSERT;
 	pstate->p_is_insert = true;
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	if (DB_MYSQL == compatible_db)
+	{
+		qry->isReplace = stmt->isReplace;
+		if (stmt->relation && stmt->relation->ispartition)
+		{
+			/* Get the specified partition table information. */
+			transformGetpartionRelationOid(qry, stmt->relation);
+			if (!stmt->cols && stmt->relation->colnamelist)
+				stmt->cols = stmt->relation->colnamelist;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	/* process the WITH clause independently of all else */
 	if (stmt->withClause)
@@ -3534,6 +3605,8 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 			if (stmt->relation->alias)
 				transformAliasInTargetlist(stmt->relation, stmt->targetList);
 			/* End - BUG#Z1324 */
+			if (stmt->relation->ispartition)
+				transformGetpartionRelationOid(qry, stmt->relation);
 		}
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */

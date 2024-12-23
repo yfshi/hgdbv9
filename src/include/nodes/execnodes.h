@@ -1369,6 +1369,10 @@ typedef struct ModifyTableState
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	UpsertState   *mt_upsert; 			/* DUPLICATE KEY UPDATE evaluation state */
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	bool		isReplace;
+	List	   *mt_partOids;
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 } ModifyTableState;
 
 /* ----------------

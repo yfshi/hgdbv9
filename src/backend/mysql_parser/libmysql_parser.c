@@ -227,7 +227,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	mys_base_yy_extra_type *yyextra = pg_yyget_extra(yyscanner);
 	int			cur_token;
 	int			next_token;
-	int			third_token; /* ReqID:SRS-MYSQL-SQL-DELETE */
+	int			third_token = 0; /* ReqID:SRS-MYSQL-SQL-DELETE */
 	int			cur_token_length;
 	YYLTYPE		cur_yylloc;
 

@@ -450,6 +450,10 @@ static void checkMultiDelete(DeleteStmt *stmt);
 %type <str>		opt_quick
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+%type <range>	insert_partition_clause update_delete_partition_clause
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 %type <node>	opt_routine_body
 %type <groupclause> group_clause
 %type <list>	group_by_list
@@ -514,6 +518,11 @@ static void checkMultiDelete(DeleteStmt *stmt);
 %type <str>		opt_highpriority
 %type <boolean>	opt_delayed
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+%type <keyword>	replace_empty
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
 
 %type <infer>	opt_conf_expr
 %type <onconflict> opt_on_conflict
@@ -11275,7 +11284,21 @@ DeallocateStmt: DEALLOCATE name
 						$$ = (Node *) n;
 					}
 		;
-
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+insert_partition_clause: update_delete_partition_clause
+					{
+						$$ = $1;
+					}
+				| /* EMPTY */	{ $$ = NULL; }
+		;
+update_delete_partition_clause: PARTITION '(' name_list ')'
+					{
+						$$ = makeRangeVar(NULL, NULL, @3);
+						$$->partitionnamelist = $3;
+						$$->ispartition = true;
+					}
+		;
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 /*****************************************************************************
  *
  *		QUERY:
@@ -11314,7 +11337,29 @@ InsertStmt:
 					$9->withClause = $1;
 					$$ = (Node *) $9;
 				}
+/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+			| REPLACE replace_empty insert_target insert_mysql_rest
+				{
+					$4->relation = $3;
+					$4->isReplace = true;
+					$$ = (Node *) $4;
+				}
 		;
+
+replace_empty:DELAYED opt_into
+				{
+					$$ = $1;
+				}
+			| LOW_PRIORITY opt_into
+				{
+					$$ = $1;
+				}
+			| opt_into
+				{
+					$$ = $1;
+				}
+		;
+/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 /*
  * Can't easily make AS optional here, because VALUES in insert_rest would
@@ -11323,10 +11368,18 @@ InsertStmt:
  * divergence from other places.  So just require AS for now.
  */
 insert_target:
-			qualified_name
+			/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+			qualified_name insert_partition_clause
 				{
+					if ($2)
+					{
+						$1->partitionnamelist = $2->partitionnamelist;
+						$1->ispartition = $2->ispartition;
+						$1->colnamelist = $2->colnamelist;
+					}
 					$$ = $1;
 				}
+			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 			| qualified_name AS ColId
 				{
 					$1->alias = makeAlias($3, NIL);

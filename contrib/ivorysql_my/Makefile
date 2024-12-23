@@ -30,6 +30,7 @@ cleansql:
 MYS_REGRESS = multi_update \
 			  insert_update \
 			  multi_delete \
+			  replace \
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
