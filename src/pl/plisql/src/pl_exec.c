@@ -5123,6 +5123,15 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 
 				errlevel = (stmt->strict || stmt->mod_stmt) ? ERROR : too_many_rows_level;
 
+				/* Begin - BUG#Z0001349 */
+				/*
+				 * when exception happend, oracle sql%rowcount will
+				 * return 1
+				 */
+				if (errlevel == ERROR)
+					exec_set_implicit_cursor_attribute(estate, 1);
+				/* End - BUG#Z00001349 */
+
 				ereport(errlevel,
 						(errcode(ERRCODE_TOO_MANY_ROWS),
 						 errmsg("query returned more than one row"),

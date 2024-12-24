@@ -9521,3 +9521,235 @@ INFO:  (1)
 --clean data
 DROP TABLE test_mdss;
 DROP type test_mds;
+--bug#Z1349
+SET plisql.plisql_default_into_strict = true;
+create table tb1(id number(4), name varchar2(30));
+insert into tb1 values (10, 'smith');
+insert into tb1 values (20, 'allen');
+insert into tb1 values (30, 'ward');
+create table tb2(t_id number(4), t_name varchar2(30));
+--ok and print sql is found
+declare
+	c number(4);
+	count number(4);
+begin
+	select id into c from tb1;
+exception
+when too_many_rows then
+	count := sql%rowcount;
+	if (sql%isopen) then
+	   raise info '%','sql is open';
+	end if;
+	if (sql%found) then
+	   raise info '%','sql is found';
+	end if;
+	insert into tb2 values (count, 'scott');
+end;
+/
+INFO:  sql is found
+--1 scott
+select * from tb2;
+ t_id | t_name 
+------+--------
+ 1    | scott
+(1 row)
+
+--bug#Z1351
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using in '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using '20','allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using IN '20',IN 'allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using IN '20','allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--ok
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using '20',IN 'allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+--error
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using out '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+ERROR:  OUT and IN/OUT modes cannot be used in this context at or near "out"
+LINE 6: ...for 'select id, name from tb1 where id = :1' using out '20';
+                                                              ^
+QUERY:  declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using out '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end
+--error
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using in out '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+ERROR:  OUT and IN/OUT modes cannot be used in this context at or near "out"
+LINE 6: ... 'select id, name from tb1 where id = :1' using in out '20';
+                                                              ^
+QUERY:  declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1' using in out '20';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end
+--error
+declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using '20',out 'allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end;
+/
+ERROR:  OUT and IN/OUT modes cannot be used in this context at or near "out"
+LINE 6: ... from tb1 where id = :1 and name = :2' using '20',out 'allen...
+                                                             ^
+QUERY:  declare
+	c1 sys_refcursor;
+	v_id tb1.id%type;
+	v_name tb1.name%type;
+begin
+	open c1 for 'select id, name from tb1 where id = :1 and name = :2' using '20',out 'allen';
+	loop
+		fetch c1 into v_id, v_name;
+		exit when c1%notfound;
+		insert into tb2 values(v_id, v_name);
+	end loop;
+	close c1;
+end
+SELECT * FROM tb2 ORDER BY t_id;
+ t_id | t_name 
+------+--------
+ 1    | scott
+ 20   | allen
+ 20   | allen
+ 20   | allen
+ 20   | allen
+ 20   | allen
+ 20   | allen
+(7 rows)
+
+--clean data
+DROP TABLE tb2;
+DROP TABLE tb1;
