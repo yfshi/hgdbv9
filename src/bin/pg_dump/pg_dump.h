@@ -876,7 +876,7 @@ extern int	numCatalogIds;
 /* BEGIN - ReqID:SRS-CMD-pg2highgo */
 extern char day_time[MAXDATELEN + 1];
 /* END - ReqID:SRS-CMD-pg2highgo */
-
+extern char *passwordforUser;/* BUGZ1579 */
 /*
  *	common utility functions
  */
