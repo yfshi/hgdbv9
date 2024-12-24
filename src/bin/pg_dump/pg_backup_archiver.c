@@ -5481,7 +5481,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		{
 			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0))			/*  bug#z680 */
 			{	/* BEGIN - BUGZ1398 */
-				if(strlen(te->d.oracle.User_binary_upgrade) != 0)	/* BUGZ1450 */
+				if((te->d.oracle.User_binary_upgrade != NULL) &&	/* BUGZ1582 */
+					(strlen(te->d.oracle.User_binary_upgrade) != 0))	/* BUGZ1450 */
 				{
 					ahprintf(AH, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
 					ahprintf(AH, "%s", te->d.oracle.User_binary_upgrade);

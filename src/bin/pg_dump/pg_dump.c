@@ -234,7 +234,7 @@ const char *mysqldumpoptions[] = {"pg", "mysql", "p", "m"};
 /* BEGIN - ReqID:SRS-CMD-pg2highgo */
 char day_time[MAXDATELEN + 1];
 /* END - ReqID:SRS-CMD-pg2highgo */
-
+char *passwordforUser;/* BUGZ1579 */
 /*
  * The default number of rows per INSERT when
  * --inserts is specified without --rows-per-insert
@@ -759,7 +759,10 @@ main(int argc, char **argv)
 	fout->maxRemoteVersion = (PG_VERSION_NUM / 100) * 100 + 99;
 
 	fout->numWorkers = numWorkers;
-
+	/* Begin - BUGZ1579 */
+	if(passwordforUser != NULL)
+		((ArchiveHandle *)fout)->savedPassword = passwordforUser;
+	/* End - BUGZ1579 */
 	/*
 	 * Open the database using the Archiver, so it knows about it. Errors mean
 	 * death.
@@ -1274,7 +1277,10 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 	}
 
 	getDatabaseMode(connforonce);
-
+	/* Begin - BUGZ1579 */
+	if(password != NULL)
+		passwordforUser = password;
+	/* End - BUGZ1579 */
 	switch(database_mode)
 	{
 		case DB_ORACLE:
