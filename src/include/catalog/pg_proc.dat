@@ -11809,7 +11809,11 @@
   prosrc => 'ora_open_cursors' },
 
 # /* End - ReqID:SRS-PLSQL-CURSOR */
-
+# /* Begin - BUGM341 */
+{ oid => '9119', descr => 'true if server is in binary-upgrade mode',
+  proname => 'pg_is_in_upgrade', provolatile => 'v', prorettype => 'bool',
+  proargtypes => '', prosrc => 'pg_is_in_upgrade' },
+# /* End - BUGM341 */
 /*END Oracle Compatibility Metadatas*/
 
 ]

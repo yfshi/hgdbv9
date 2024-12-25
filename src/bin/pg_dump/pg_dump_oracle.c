@@ -18684,7 +18684,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		appendPQExpBuffer(query, " SESSION");
 	/* End - ReqID:SRS-SQL-SEQ */
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-	if (strcmp(option, "") != 0)
+	if ((option != NULL) && (strcmp(option, "") != 0))/* BUGM479 */
 	{
 		PQExpBuffer optquery = createPQExpBuffer();
 		/* The following Boolean variables are only used temporarily. */

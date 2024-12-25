@@ -667,7 +667,13 @@ pg_wal_lsn_diff(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(result);
 }
-
+/* Begin - BUGM431 */
+Datum
+pg_is_in_upgrade(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_BOOL(IsBinaryUpgrade);
+}
+/* End - BUGM431 */
 /*
  * Returns bool with current on-line backup mode, a global state.
  */
