@@ -4308,8 +4308,12 @@ check_inplace_rel_lock(HeapTuple oldtup)
 
 	if (!LockOrStrongerHeldByMe(&tag, ShareUpdateExclusiveLock))
 		elog(WARNING,
-			 "missing lock for relation \"%s\" ",
-			 NameStr(classForm->relname));
+			 "missing lock for relation \"%s\" (OID %u, relkind %c) @ TID (%u,%u)",
+			 NameStr(classForm->relname),
+			 relid,
+			 classForm->relkind,
+			 ItemPointerGetBlockNumber(&oldtup->t_self),
+			 ItemPointerGetOffsetNumber(&oldtup->t_self));
 }
 #endif
 
