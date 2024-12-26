@@ -21,6 +21,9 @@ our $config = {
 	#/* Begin - ReqID:SRS-MISC-LICENSE */
 	license   => 0,		   # --with-license
 	#/* End - ReqID:SRS-MISC-LICENSE */
+	#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+	numa	  => undef,	   # --enable-numa
+	#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>

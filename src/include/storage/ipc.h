@@ -79,4 +79,12 @@ extern PGDLLIMPORT shmem_startup_hook_type shmem_startup_hook;
 
 extern void CreateSharedMemoryAndSemaphores(void);
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+typedef Size (*wal_hugepage_shmem_size_hook_type) (void);
+extern PGDLLIMPORT wal_hugepage_shmem_size_hook_type wal_hugepage_shmem_size_hook;
+
+#endif		/* PERF_NUMA */
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 #endif							/* IPC_H */

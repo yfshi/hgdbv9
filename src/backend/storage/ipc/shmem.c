@@ -79,9 +79,17 @@ static void *ShmemAllocRaw(Size size, Size *allocated_size);
 
 /* shared memory global variables */
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+PGShmemHeader *ShmemSegHdr;	/* shared mem segment header */
+
+void *ShmemBase;			/* start address of shared memory */
+#else
 static PGShmemHeader *ShmemSegHdr;	/* shared mem segment header */
 
 static void *ShmemBase;			/* start address of shared memory */
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 static void *ShmemEnd;			/* end+1 address of shared memory */
 

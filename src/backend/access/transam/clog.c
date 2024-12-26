@@ -449,8 +449,15 @@ TransactionGroupUpdateXidStatus(TransactionId xid, XidStatus status,
 		 * updates.  This isn't likely and will still work, just maybe a bit
 		 * less efficiently.
 		 */
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		if (nextidx != INVALID_PGPROCNO &&
+			ProcGlobal->allProcs[nextidx]->clogGroupMemberPage != proc->clogGroupMemberPage)
+#else
 		if (nextidx != INVALID_PGPROCNO &&
 			ProcGlobal->allProcs[nextidx].clogGroupMemberPage != proc->clogGroupMemberPage)
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		{
 			/*
 			 * Ensure that this proc is not a member of any clog group that
@@ -516,7 +523,13 @@ TransactionGroupUpdateXidStatus(TransactionId xid, XidStatus status,
 	/* Walk the list and update the status of all XIDs. */
 	while (nextidx != INVALID_PGPROCNO)
 	{
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[nextidx];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[nextidx];
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		/*
 		 * Transactions with more than THRESHOLD_SUBTRANS_CLOG_OPT sub-XIDs
@@ -545,7 +558,13 @@ TransactionGroupUpdateXidStatus(TransactionId xid, XidStatus status,
 	 */
 	while (wakeidx != INVALID_PGPROCNO)
 	{
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[wakeidx];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[wakeidx];
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		wakeidx = pg_atomic_read_u32(&proc->clogGroupNext);
 		pg_atomic_write_u32(&proc->clogGroupNext, INVALID_PGPROCNO);

@@ -2743,7 +2743,13 @@ FastPathTransferRelationLocks(LockMethod lockMethodTable, const LOCKTAG *locktag
 	 */
 	for (i = 0; i < ProcGlobal->allProcCount; i++)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[i];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[i];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		uint32		f;
 
 		LWLockAcquire(&proc->fpInfoLock, LW_EXCLUSIVE);
@@ -2986,7 +2992,13 @@ GetLockConflicts(const LOCKTAG *locktag, LOCKMODE lockmode, int *countp)
 		 */
 		for (i = 0; i < ProcGlobal->allProcCount; i++)
 		{
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			PGPROC	   *proc = ProcGlobal->allProcs[i];
+#else
 			PGPROC	   *proc = &ProcGlobal->allProcs[i];
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 			uint32		f;
 
 			/* A backend never blocks itself */
@@ -3682,7 +3694,13 @@ GetLockStatusData(void)
 	 */
 	for (i = 0; i < ProcGlobal->allProcCount; ++i)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[i];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[i];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		uint32		f;
 
 		LWLockAcquire(&proc->fpInfoLock, LW_SHARED);

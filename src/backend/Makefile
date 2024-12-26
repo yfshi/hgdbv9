@@ -59,6 +59,12 @@ ifeq ($(with_systemd),yes)
 LIBS += -lsystemd
 endif
 
+# BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
+ifeq ($(enable_numa), yes)
+LIBS += -lnuma
+endif
+# END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
+
 ##########################################################################
 
 all: submake-libpgport submake-catalog-headers submake-utils-headers postgres $(POSTGRES_IMP)

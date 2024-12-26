@@ -239,7 +239,13 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state)
 		 * actually fine because procLatch isn't ever freed, so we just can
 		 * potentially set the wrong process' (or no process') latch.
 		 */
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		SetLatch(&ProcGlobal->allProcs[bgwprocno]->procLatch);
+#else
 		SetLatch(&ProcGlobal->allProcs[bgwprocno].procLatch);
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	}
 
 	/*

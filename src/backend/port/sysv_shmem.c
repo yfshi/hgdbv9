@@ -41,6 +41,11 @@
 #include "utils/guc.h"
 #include "utils/pidfile.h"
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+bool hugePageAvailable = false;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /*
  * As of PostgreSQL 9.3, we normally allocate only a very small amount of
@@ -571,8 +576,23 @@ CreateAnonymousSegment(Size *size)
 	void	   *ptr = MAP_FAILED;
 	int			mmap_errno = 0;
 
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+#ifdef __linux__
+	hugePageAvailable = true;
+#else
+	hugePageAvailable = false;
+#endif	/* __linux__ */
+#endif	/* PERF_NUMA */
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 #ifndef MAP_HUGETLB
 	/* PGSharedMemoryCreate should have dealt with this case */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	hugePageAvailable = false;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	Assert(huge_pages != HUGE_PAGES_ON);
 #else
 	if (huge_pages == HUGE_PAGES_ON || huge_pages == HUGE_PAGES_TRY)
@@ -592,8 +612,19 @@ CreateAnonymousSegment(Size *size)
 				   PG_MMAP_FLAGS | mmap_flags, -1, 0);
 		mmap_errno = errno;
 		if (huge_pages == HUGE_PAGES_TRY && ptr == MAP_FAILED)
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		{
+			hugePageAvailable = false;
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 			elog(DEBUG1, "mmap(%zu) with MAP_HUGETLB failed, huge pages disabled: %m",
 				 allocsize);
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		}
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	}
 #endif
 
@@ -603,6 +634,11 @@ CreateAnonymousSegment(Size *size)
 		 * Use the original size, not the rounded-up value, when falling back
 		 * to non-huge pages.
 		 */
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		hugePageAvailable = false;
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		allocsize = *size;
 		ptr = mmap(NULL, allocsize, PROT_READ | PROT_WRITE,
 				   PG_MMAP_FLAGS, -1, 0);
