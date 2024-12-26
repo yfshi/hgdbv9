@@ -932,6 +932,20 @@ fi
 AC_MSG_RESULT([$enable_thread_safety])
 AC_SUBST(enable_thread_safety)
 
+# BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
+#
+# Enable NUMA performance
+#
+AC_MSG_CHECKING([enable NUMA performance])
+PGAC_ARG_BOOL(enable, numa, no, [enable NUMA performance])
+if test "$enable_numa" = yes; then                          
+  AC_DEFINE([PERF_NUMA], 1,
+            [Define to 1 to enable NUMA performance. (--enable-numa)])
+fi
+AC_MSG_RESULT([$enable_numa])
+AC_SUBST(enable_numa)
+# END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
+
 #
 # ICU
 #

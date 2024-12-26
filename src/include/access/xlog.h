@@ -408,4 +408,100 @@ extern SessionBackupState get_backup_status(void);
 /* files to signal promotion to primary */
 #define PROMOTE_SIGNAL_FILE		"promote"
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+typedef struct pg_atomic_uint32_type
+{
+	volatile uint32 value;
+} pg_atomic_uint32_type;
+
+typedef struct proclist_head_type
+{
+	int			head;			/* pgprocno of the head PGPROC */
+	int			tail;			/* pgprocno of the tail PGPROC */
+} proclist_head_type;
+
+typedef struct LWLockType
+{
+	uint16		tranche;		/* tranche ID */
+	pg_atomic_uint32_type state;		/* state of exclusive/nonexclusive lockers */
+	proclist_head_type waiters;		/* list of waiting PGPROCs */
+#ifdef LOCK_DEBUG
+	pg_atomic_uint32_type nwaiters;	/* number of waiters */
+	struct PGPROC *owner;		/* last exclusive owner of the lock */
+#endif
+} LWLockType;
+
+typedef struct
+{
+	LWLockType	lock;
+	XLogRecPtr	insertingAt;
+	XLogRecPtr	lastImportantAt;
+} WALInsertLockType;
+
+typedef union WALInsertLockPaddedType
+{
+	WALInsertLockType l;
+	char		pad[PG_CACHE_LINE_SIZE];
+} WALInsertLockPaddedType;
+
+//typedef void (*_hook_type) (Size lockSize);
+//extern PGDLLIMPORT _hook_type _hook;
+typedef void (*wal_insert_lock_size_hook_type) (Size lockSize);
+extern PGDLLIMPORT wal_insert_lock_size_hook_type wal_insert_lock_size_hook;
+
+typedef Size (*xlog_shmem_hook_type) (void);
+extern PGDLLIMPORT xlog_shmem_hook_type xlog_shmem_hook;
+
+typedef void (*xlog_shmem_init_hook_type) (WALInsertLockPaddedType ***insertLockGroupPtr,
+										WALInsertLockPaddedType **WALInsertLocks,
+										WALInsertLockPaddedType ***XLOGWALInsertLocks,
+										WALInsertLockPaddedType ***GlobalWALInsertLocks,
+										WALInsertLockPaddedType **LocalGroupWALInsertLocks,
+										char **allocptr);
+extern PGDLLIMPORT xlog_shmem_init_hook_type xlog_shmem_init_hook;
+
+typedef void (*xlog_insert_record_hook_type) (int lockno,
+											bool holdingAllLocks,
+											WALInsertLockPaddedType **WALInsertLocks,
+											WALInsertLockPaddedType ***GlobalWALInsertLocks,
+											XLogRecPtr StartPos);
+extern PGDLLIMPORT xlog_insert_record_hook_type xlog_insert_record_hook;
+
+typedef void (*wal_insert_lock_acquire_hook_type) (int *MyLockNo,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT wal_insert_lock_acquire_hook_type wal_insert_lock_acquire_hook;
+
+typedef void (*wal_insert_lock_acquire_ex_hook_type) (bool *holdingAllLocks,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT wal_insert_lock_acquire_ex_hook_type wal_insert_lock_acquire_ex_hook;
+
+typedef void (*wal_insert_lock_release_hook_type) (bool *holdingAllLocks,
+												int MyLockNo,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT wal_insert_lock_release_hook_type wal_insert_lock_release_hook;
+
+typedef void (*wal_insert_lock_uia_hook_type) (XLogRecPtr insertingAt,
+												bool holdingAllLocks,
+												int MyLockNo,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT wal_insert_lock_uia_hook_type wal_insert_lock_uia_hook;
+
+typedef XLogRecPtr (*wal_insert_lock_tofin_hook_type) (XLogRecPtr upto,
+												XLogRecPtr finishedUpto,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT wal_insert_lock_tofin_hook_type wal_insert_lock_tofin_hook;
+
+typedef void (*get_last_important_rec_ptr_hook_type) (XLogRecPtr *res,
+												WALInsertLockPaddedType **WALInsertLocks,
+												WALInsertLockPaddedType ***GlobalWALInsertLocks);
+extern PGDLLIMPORT get_last_important_rec_ptr_hook_type get_last_important_rec_ptr_hook;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 #endif							/* XLOG_H */

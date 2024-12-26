@@ -78,8 +78,16 @@ NON_EXEC_STATIC slock_t *ProcStructLock = NULL;
 
 /* Pointers to shared-memory structures */
 PROC_HDR   *ProcGlobal = NULL;
+
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+NON_EXEC_STATIC PGPROC **AuxiliaryProcs = NULL;
+PGPROC	   **PreparedXactProcs = NULL;
+#else
 NON_EXEC_STATIC PGPROC *AuxiliaryProcs = NULL;
 PGPROC	   *PreparedXactProcs = NULL;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /* If we are waiting for a lock, this points to the associated LOCALLOCK */
 static LOCALLOCK *lockAwaited = NULL;
@@ -94,6 +102,18 @@ static void ProcKill(int code, Datum arg);
 static void AuxiliaryProcKill(int code, Datum arg);
 static void CheckDeadLock(void);
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+proc_global_shmem_size_hook_type proc_global_shmem_size_hook = NULL;
+proc_global_shmem_init_hook_type proc_global_shmem_init_hook = NULL;
+init_process_hook_type init_process_hook = NULL;
+
+bool enable_numa = false;
+bool hugepage_debug = false;
+bool sp_numa = false;
+bool enable_bind_numa_core = false;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /*
  * Report shared-memory space needed by InitProcGlobal.
@@ -114,6 +134,13 @@ ProcGlobalShmemSize(void)
 	size = add_size(size, mul_size(TotalProcs, sizeof(*ProcGlobal->subxidStates)));
 	size = add_size(size, mul_size(TotalProcs, sizeof(*ProcGlobal->statusFlags)));
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	if(proc_global_shmem_size_hook)
+		size = add_size(size, (*proc_global_shmem_size_hook)(TotalProcs));
+	size = add_size(size, mul_size(TotalProcs, sizeof(PGPROC*)));
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	return size;
 }
 
@@ -158,7 +185,13 @@ ProcGlobalSemas(void)
 void
 InitProcGlobal(void)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	PGPROC	  **procs = NULL;
+#else
 	PGPROC	   *procs;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	int			i,
 				j;
 	bool		found;
@@ -193,9 +226,26 @@ InitProcGlobal(void)
 	 * dedicated to exactly one of these purposes, and they do not move
 	 * between groups.
 	 */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	if(proc_global_shmem_init_hook)
+		ProcGlobal->allProcs = procs = (*proc_global_shmem_init_hook)(procs, TotalProcs);
+	else
+	{
+		procs = (PGPROC **)ShmemAlloc(TotalProcs * sizeof(PGPROC *));
+		for(i = 0; i < TotalProcs; i++)
+		{
+			procs[i] = (PGPROC *) ShmemAlloc(sizeof(PGPROC));
+			MemSet(procs[i], 0, sizeof(PGPROC));
+		}
+		ProcGlobal->allProcs = procs;
+	}
+#else
 	procs = (PGPROC *) ShmemAlloc(TotalProcs * sizeof(PGPROC));
 	MemSet(procs, 0, TotalProcs * sizeof(PGPROC));
 	ProcGlobal->allProcs = procs;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	/* XXX allProcCount isn't really all of them; it excludes prepared xacts */
 	ProcGlobal->allProcCount = MaxBackends + NUM_AUXILIARY_PROCS;
 
@@ -225,11 +275,21 @@ InitProcGlobal(void)
 		 */
 		if (i < MaxBackends + NUM_AUXILIARY_PROCS)
 		{
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		procs[i]->sem = PGSemaphoreCreate();
+			InitSharedLatch(&(procs[i]->procLatch));
+			LWLockInitialize(&(procs[i]->fpInfoLock), LWTRANCHE_LOCK_FASTPATH);
+		}
+		procs[i]->pgprocno = i;
+#else
 			procs[i].sem = PGSemaphoreCreate();
 			InitSharedLatch(&(procs[i].procLatch));
 			LWLockInitialize(&(procs[i].fpInfoLock), LWTRANCHE_LOCK_FASTPATH);
 		}
 		procs[i].pgprocno = i;
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		/*
 		 * Newly created PGPROCs for normal backends, autovacuum and bgworkers
@@ -242,34 +302,81 @@ InitProcGlobal(void)
 		if (i < MaxConnections)
 		{
 			/* PGPROC for normal backend, add to freeProcs list */
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			procs[i]->links.next = (SHM_QUEUE *) ProcGlobal->freeProcs;
+			ProcGlobal->freeProcs = procs[i];
+			procs[i]->procgloballist = &ProcGlobal->freeProcs;
+#else
 			procs[i].links.next = (SHM_QUEUE *) ProcGlobal->freeProcs;
 			ProcGlobal->freeProcs = &procs[i];
 			procs[i].procgloballist = &ProcGlobal->freeProcs;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
 		else if (i < MaxConnections + autovacuum_max_workers + 1)
 		{
 			/* PGPROC for AV launcher/worker, add to autovacFreeProcs list */
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			procs[i]->links.next = (SHM_QUEUE *) ProcGlobal->autovacFreeProcs;
+			ProcGlobal->autovacFreeProcs = procs[i];
+			procs[i]->procgloballist = &ProcGlobal->autovacFreeProcs;
+#else
 			procs[i].links.next = (SHM_QUEUE *) ProcGlobal->autovacFreeProcs;
 			ProcGlobal->autovacFreeProcs = &procs[i];
 			procs[i].procgloballist = &ProcGlobal->autovacFreeProcs;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
 		else if (i < MaxConnections + autovacuum_max_workers + 1 + max_worker_processes)
 		{
 			/* PGPROC for bgworker, add to bgworkerFreeProcs list */
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			procs[i]->links.next = (SHM_QUEUE *) ProcGlobal->bgworkerFreeProcs;
+			ProcGlobal->bgworkerFreeProcs = procs[i];
+			procs[i]->procgloballist = &ProcGlobal->bgworkerFreeProcs;
+#else
 			procs[i].links.next = (SHM_QUEUE *) ProcGlobal->bgworkerFreeProcs;
 			ProcGlobal->bgworkerFreeProcs = &procs[i];
 			procs[i].procgloballist = &ProcGlobal->bgworkerFreeProcs;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
 		else if (i < MaxBackends)
 		{
 			/* PGPROC for walsender, add to walsenderFreeProcs list */
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			procs[i]->links.next = (SHM_QUEUE *) ProcGlobal->walsenderFreeProcs;
+			ProcGlobal->walsenderFreeProcs = procs[i];
+			procs[i]->procgloballist = &ProcGlobal->walsenderFreeProcs;
+#else
 			procs[i].links.next = (SHM_QUEUE *) ProcGlobal->walsenderFreeProcs;
 			ProcGlobal->walsenderFreeProcs = &procs[i];
 			procs[i].procgloballist = &ProcGlobal->walsenderFreeProcs;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		}
 
 		/* Initialize myProcLocks[] shared memory queues. */
 		for (j = 0; j < NUM_LOCK_PARTITIONS; j++)
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			SHMQueueInit(&(procs[i]->myProcLocks[j]));
+
+		/* Initialize lockGroupMembers list. */
+		dlist_init(&procs[i]->lockGroupMembers);
+
+		/*
+		 * Initialize the atomic variables, otherwise, it won't be safe to
+		 * access them for backends that aren't currently in use.
+		 */
+		pg_atomic_init_u32(&(procs[i]->procArrayGroupNext), INVALID_PGPROCNO);
+		pg_atomic_init_u32(&(procs[i]->clogGroupNext), INVALID_PGPROCNO);
+		pg_atomic_init_u64(&(procs[i]->waitStart), 0);
+#else
 			SHMQueueInit(&(procs[i].myProcLocks[j]));
 
 		/* Initialize lockGroupMembers list. */
@@ -282,6 +389,8 @@ InitProcGlobal(void)
 		pg_atomic_init_u32(&(procs[i].procArrayGroupNext), INVALID_PGPROCNO);
 		pg_atomic_init_u32(&(procs[i].clogGroupNext), INVALID_PGPROCNO);
 		pg_atomic_init_u64(&(procs[i].waitStart), 0);
+#endif		/* PERF_NUMA */
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	}
 
 	/*
@@ -364,6 +473,15 @@ InitProcess(void)
 				(errcode(ERRCODE_TOO_MANY_CONNECTIONS),
 				 errmsg("sorry, too many clients already")));
 	}
+
+/* BEGIN - ReqID:SRS-Performance-NUMA-NODESCHEDULE */
+/* BEGIN - ReqID:SRS-Performance-CPU-BACKENDBIND */
+#ifdef PERF_NUMA
+	if(init_process_hook)
+		(*init_process_hook)(MyProc);
+#endif
+/* END - ReqID:SRS-Performance-CPU-BACKENDBIND */
+/* END - ReqID:SRS-Performance-NUMA-NODESCHEDULE */
 
 	/*
 	 * Cross-check that the PGPROC is of the type we expect; if this were not
@@ -551,7 +669,13 @@ InitAuxiliaryProcess(void)
 	 */
 	for (proctype = 0; proctype < NUM_AUXILIARY_PROCS; proctype++)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		auxproc = AuxiliaryProcs[proctype];
+#else
 		auxproc = &AuxiliaryProcs[proctype];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		if (auxproc->pid == 0)
 			break;
 	}
@@ -969,7 +1093,13 @@ AuxiliaryProcKill(int code, Datum arg)
 	if (MyProc->pid != (int) getpid())
 		elog(PANIC, "AuxiliaryProcKill() called in child process");
 
-	auxproc = &AuxiliaryProcs[proctype];
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		auxproc = AuxiliaryProcs[proctype];
+#else
+		auxproc = &AuxiliaryProcs[proctype];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 	Assert(MyProc == auxproc);
 
@@ -1015,7 +1145,13 @@ AuxiliaryPidGetProc(int pid)
 
 	for (index = 0; index < NUM_AUXILIARY_PROCS; index++)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = AuxiliaryProcs[index];
+#else
 		PGPROC	   *proc = &AuxiliaryProcs[index];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->pid == pid)
 		{

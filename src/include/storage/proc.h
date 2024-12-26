@@ -35,6 +35,12 @@
  */
 #define PGPROC_MAX_CACHED_SUBXIDS 64	/* XXX guessed-at value */
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+#define PGPROC_ALIGN_SIZE 1024
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 typedef struct XidCacheStatus
 {
 	/* number of cached subxids, never more than PGPROC_MAX_CACHED_SUBXIDS */
@@ -162,6 +168,13 @@ struct PGPROC
 								 * data mirrored from this PGPROC */
 	int			pgprocno;
 
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	unsigned int numaNode;		/* NUMA node id */
+	unsigned int cpuNo;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 	/* These fields are zero while a backend is still starting up: */
 	BackendId	backendId;		/* This backend's backend ID (if assigned) */
 	Oid			databaseId;		/* OID of database this backend is using */
@@ -267,7 +280,14 @@ struct PGPROC
 	PGPROC	   *lockGroupLeader;	/* lock group leader, if I'm a member */
 	dlist_head	lockGroupMembers;	/* list of members, if I'm a leader */
 	dlist_node	lockGroupLink;	/* my member link, if I'm a member */
+
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+}__attribute__ ((aligned (PGPROC_ALIGN_SIZE)));
+#else
 };
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /* NOTE: "typedef struct PGPROC PGPROC" appears in storage/lock.h. */
 
@@ -331,7 +351,13 @@ extern PGDLLIMPORT PGPROC *MyProc;
 typedef struct PROC_HDR
 {
 	/* Array of PGPROC structures (not including dummies for prepared txns) */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	PGPROC	  **allProcs;
+#else
 	PGPROC	   *allProcs;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 	/* Array mirroring PGPROC.xid for each PGPROC currently in the procarray */
 	TransactionId *xids;
@@ -379,10 +405,19 @@ typedef struct PROC_HDR
 
 extern PGDLLIMPORT PROC_HDR *ProcGlobal;
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+extern PGPROC **PreparedXactProcs;
+
+/* Accessor for PGPROC given a pgprocno. */
+#define GetPGProcByNumber(n) (ProcGlobal->allProcs[(n)])
+#else
 extern PGPROC *PreparedXactProcs;
 
 /* Accessor for PGPROC given a pgprocno. */
 #define GetPGProcByNumber(n) (&ProcGlobal->allProcs[(n)])
+#endif		/* PERF_NUMA */
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /*
  * We set aside some extra PGPROC structures for auxiliary processes,
@@ -435,5 +470,18 @@ extern PGPROC *AuxiliaryPidGetProc(int pid);
 
 extern void BecomeLockGroupLeader(void);
 extern bool BecomeLockGroupMember(PGPROC *leader, int pid);
+
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+typedef Size (*proc_global_shmem_size_hook_type) (Size TotalProcs);
+extern PGDLLIMPORT proc_global_shmem_size_hook_type  proc_global_shmem_size_hook;
+
+typedef PGPROC** (*proc_global_shmem_init_hook_type) (PGPROC **procs, uint32 TotalProcs);
+extern PGDLLIMPORT proc_global_shmem_init_hook_type  proc_global_shmem_init_hook;
+
+typedef void (*init_process_hook_type) (PGPROC *MyProc);
+extern PGDLLIMPORT init_process_hook_type  init_process_hook;
+#endif		/* PERF_NUMA */
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 #endif							/* _PROC_H_ */

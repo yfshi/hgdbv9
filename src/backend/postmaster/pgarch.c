@@ -218,7 +218,13 @@ PgArchWakeup(void)
 	 * be relaunched shortly and will start archiving.
 	 */
 	if (arch_pgprocno != INVALID_PGPROCNO)
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		SetLatch(&ProcGlobal->allProcs[arch_pgprocno]->procLatch);
+#else
 		SetLatch(&ProcGlobal->allProcs[arch_pgprocno].procLatch);
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 }
 
 

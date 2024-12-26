@@ -58,6 +58,12 @@ shmem_startup_hook_type shmem_startup_hook = NULL;
 static Size total_addin_request = 0;
 static bool addin_request_allowed = true;
 
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+wal_hugepage_shmem_size_hook_type wal_hugepage_shmem_size_hook = NULL;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+
 
 /*
  * RequestAddinShmemSpace
@@ -129,6 +135,12 @@ CreateSharedMemoryAndSemaphores(void)
 		size = add_size(size, PredicateLockShmemSize());
 		size = add_size(size, ProcGlobalShmemSize());
 		size = add_size(size, XLOGShmemSize());
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		if(wal_hugepage_shmem_size_hook)
+			size = add_size(size, (*wal_hugepage_shmem_size_hook)());
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		size = add_size(size, CLOGShmemSize());
 		size = add_size(size, CommitTsShmemSize());
 		size = add_size(size, SUBTRANSShmemSize());

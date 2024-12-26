@@ -131,7 +131,26 @@ int			wal_segment_size = DEFAULT_XLOG_SEG_SIZE;
  * to happen concurrently, but adds some CPU overhead to flushing the WAL,
  * which needs to iterate all the locks.
  */
+/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+wal_insert_lock_size_hook_type wal_insert_lock_size_hook = NULL;
+xlog_shmem_hook_type xlog_shmem_hook = NULL;
+xlog_shmem_init_hook_type xlog_shmem_init_hook = NULL;
+xlog_insert_record_hook_type xlog_insert_record_hook = NULL;
+wal_insert_lock_acquire_hook_type wal_insert_lock_acquire_hook = NULL;
+wal_insert_lock_acquire_ex_hook_type wal_insert_lock_acquire_ex_hook = NULL;
+wal_insert_lock_release_hook_type wal_insert_lock_release_hook = NULL;
+wal_insert_lock_uia_hook_type wal_insert_lock_uia_hook = NULL;
+wal_insert_lock_tofin_hook_type wal_insert_lock_tofin_hook = NULL;
+get_last_important_rec_ptr_hook_type get_last_important_rec_ptr_hook = NULL;
+#endif
+
+#ifdef PERF_NUMA
+int num_xloginsert_locks = 16;
+#else
 #define NUM_XLOGINSERT_LOCKS  8
+#endif
+/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 
 /*
  * Max distance from last checkpoint, before triggering a new xlog-based
@@ -604,7 +623,13 @@ typedef struct XLogCtlInsert
 	/*
 	 * WAL insertion locks.
 	 */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	WALInsertLockPadded **WALInsertLocks;
+#else
 	WALInsertLockPadded *WALInsertLocks;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 } XLogCtlInsert;
 
 /*
@@ -756,6 +781,13 @@ static XLogCtlData *XLogCtl = NULL;
 
 /* a private copy of XLogCtl->Insert.WALInsertLocks, for convenience */
 static WALInsertLockPadded *WALInsertLocks = NULL;
+/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+static WALInsertLockPadded **GlobalWALInsertLocks = NULL;
+static WALInsertLockPadded *LocalGroupWALInsertLocks = NULL;
+static WALInsertLockPadded **insertLockGroupPtr = NULL;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 
 /*
  * We maintain an image of pg_control in shared memory.
@@ -1162,8 +1194,20 @@ XLogInsertRecord(XLogRecData *rdata,
 		if ((flags & XLOG_MARK_UNIMPORTANT) == 0)
 		{
 			int			lockno = holdingAllLocks ? 0 : MyLockNo;
-
+			/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+			if(xlog_insert_record_hook)
+				(*xlog_insert_record_hook)(lockno, 
+										holdingAllLocks, 
+										(WALInsertLockPaddedType **)&WALInsertLocks, 
+										(WALInsertLockPaddedType ***)&GlobalWALInsertLocks, 
+										StartPos);
+			else
+				WALInsertLocks[lockno].l.lastImportantAt = StartPos;
+#else
 			WALInsertLocks[lockno].l.lastImportantAt = StartPos;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 		}
 	}
 	else
@@ -1683,6 +1727,28 @@ CopyXLogRecordToWAL(int write_len, bool isLogSwitch, XLogRecData *rdata,
 static void
 WALInsertLockAcquire(void)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_acquire_hook)
+		(*wal_insert_lock_acquire_hook)(&MyLockNo, 
+									(WALInsertLockPaddedType **)&WALInsertLocks, 
+									(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	else
+	{
+		bool		immed;
+		static int	lockToTry = -1;
+
+		if (lockToTry == -1)
+			lockToTry = MyProc->pgprocno % num_xloginsert_locks;
+		MyLockNo = lockToTry;
+		immed = LWLockAcquire(&WALInsertLocks[MyLockNo].l.lock, LW_EXCLUSIVE);
+		if (!immed)
+		{
+			lockToTry = (lockToTry + 1) % num_xloginsert_locks;
+		}
+	}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	bool		immed;
 
 	/*
@@ -1719,6 +1785,9 @@ WALInsertLockAcquire(void)
 		 */
 		lockToTry = (lockToTry + 1) % NUM_XLOGINSERT_LOCKS;
 	}
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 }
 
 /*
@@ -1728,6 +1797,29 @@ WALInsertLockAcquire(void)
 static void
 WALInsertLockAcquireExclusive(void)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_acquire_ex_hook)
+		(*wal_insert_lock_acquire_ex_hook)(&holdingAllLocks, 
+										(WALInsertLockPaddedType **)&WALInsertLocks, 
+										(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	else
+	{
+		int			i;
+		for (i = 0; i < num_xloginsert_locks - 1; i++)
+		{
+			LWLockAcquire(&WALInsertLocks[i].l.lock, LW_EXCLUSIVE);
+			LWLockUpdateVar(&WALInsertLocks[i].l.lock,
+							&WALInsertLocks[i].l.insertingAt,
+							PG_UINT64_MAX);
+		}
+		/* Variable value reset to 0 at release */
+		LWLockAcquire(&WALInsertLocks[i].l.lock, LW_EXCLUSIVE);
+
+		holdingAllLocks = true;
+	}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	int			i;
 
 	/*
@@ -1746,6 +1838,9 @@ WALInsertLockAcquireExclusive(void)
 	LWLockAcquire(&WALInsertLocks[i].l.lock, LW_EXCLUSIVE);
 
 	holdingAllLocks = true;
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 }
 
 /*
@@ -1757,6 +1852,35 @@ WALInsertLockAcquireExclusive(void)
 static void
 WALInsertLockRelease(void)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_release_hook)
+		(*wal_insert_lock_release_hook)(&holdingAllLocks, 
+										MyLockNo, 
+										(WALInsertLockPaddedType **)&WALInsertLocks, 
+										(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	else
+	{
+		if (holdingAllLocks)
+		{
+			int			i;
+
+			for (i = 0; i < num_xloginsert_locks; i++)
+				LWLockReleaseClearVar(&WALInsertLocks[i].l.lock,
+									&WALInsertLocks[i].l.insertingAt,
+									0);
+
+			holdingAllLocks = false;
+		}
+		else
+		{
+			LWLockReleaseClearVar(&WALInsertLocks[MyLockNo].l.lock,
+								&WALInsertLocks[MyLockNo].l.insertingAt,
+								0);
+		}
+	}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	if (holdingAllLocks)
 	{
 		int			i;
@@ -1774,6 +1898,9 @@ WALInsertLockRelease(void)
 							  &WALInsertLocks[MyLockNo].l.insertingAt,
 							  0);
 	}
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 }
 
 /*
@@ -1783,6 +1910,33 @@ WALInsertLockRelease(void)
 static void
 WALInsertLockUpdateInsertingAt(XLogRecPtr insertingAt)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_uia_hook)
+		(*wal_insert_lock_uia_hook)(insertingAt, 
+									holdingAllLocks, 
+									MyLockNo, 
+									(WALInsertLockPaddedType **)&WALInsertLocks, 
+									(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	else
+	{
+		if (holdingAllLocks)
+		{
+			/*
+			* We use the last lock to mark our actual position, see comments in
+			* WALInsertLockAcquireExclusive.
+			*/
+			LWLockUpdateVar(&WALInsertLocks[num_xloginsert_locks - 1].l.lock,
+							&WALInsertLocks[num_xloginsert_locks - 1].l.insertingAt,
+							insertingAt);
+		}
+		else
+			LWLockUpdateVar(&WALInsertLocks[MyLockNo].l.lock,
+							&WALInsertLocks[MyLockNo].l.insertingAt,
+							insertingAt);
+	}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	if (holdingAllLocks)
 	{
 		/*
@@ -1797,6 +1951,9 @@ WALInsertLockUpdateInsertingAt(XLogRecPtr insertingAt)
 		LWLockUpdateVar(&WALInsertLocks[MyLockNo].l.lock,
 						&WALInsertLocks[MyLockNo].l.insertingAt,
 						insertingAt);
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 }
 
 /*
@@ -1857,6 +2014,36 @@ WaitXLogInsertionsToFinish(XLogRecPtr upto)
 	 * out for any insertion that's still in progress.
 	 */
 	finishedUpto = reservedUpto;
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_tofin_hook)
+		return (*wal_insert_lock_tofin_hook)(upto, 
+											finishedUpto, 
+											(WALInsertLockPaddedType **)&WALInsertLocks, 
+											(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	for (i = 0; i < num_xloginsert_locks; i++)
+	{
+		XLogRecPtr	insertingat = InvalidXLogRecPtr;
+
+		do
+		{
+			if (LWLockWaitForVar(&WALInsertLocks[i].l.lock,
+								&WALInsertLocks[i].l.insertingAt,
+								insertingat, &insertingat))
+			{
+				/* the lock was free, so no insertion in progress */
+				insertingat = InvalidXLogRecPtr;
+				break;
+			}
+
+		} while (insertingat < upto);
+
+		if (insertingat != InvalidXLogRecPtr && insertingat < finishedUpto)
+			finishedUpto = insertingat;
+	}
+	return finishedUpto;
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	for (i = 0; i < NUM_XLOGINSERT_LOCKS; i++)
 	{
 		XLogRecPtr	insertingat = InvalidXLogRecPtr;
@@ -1894,6 +2081,9 @@ WaitXLogInsertionsToFinish(XLogRecPtr upto)
 			finishedUpto = insertingat;
 	}
 	return finishedUpto;
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 }
 
 /*
@@ -5163,6 +5353,12 @@ XLOGShmemSize(void)
 	 * NBuffers has received its final value, and must do it before using the
 	 * value of XLOGbuffers to do anything important.
 	 */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(wal_insert_lock_size_hook)
+		(*wal_insert_lock_size_hook)(sizeof(WALInsertLockPadded));
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	if (XLOGbuffers == -1)
 	{
 		char		buf[32];
@@ -5176,7 +5372,15 @@ XLOGShmemSize(void)
 	size = sizeof(XLogCtlData);
 
 	/* WAL insertion locks, plus alignment */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(xlog_shmem_hook)
+		size = add_size(size, (*xlog_shmem_hook)());
+	size = add_size(size, mul_size(sizeof(WALInsertLockPadded), num_xloginsert_locks + 1));
+#else
 	size = add_size(size, mul_size(sizeof(WALInsertLockPadded), NUM_XLOGINSERT_LOCKS + 1));
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	/* xlblocks array */
 	size = add_size(size, mul_size(sizeof(XLogRecPtr), XLOGbuffers));
 	/* extra alignment padding for XLOG I/O buffers */
@@ -5232,7 +5436,15 @@ XLOGShmemInit(void)
 		Assert(foundCFile && foundXLog);
 
 		/* Initialize local copy of WALInsertLocks */
+		/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+		WALInsertLocks = (WALInsertLockPadded *)XLogCtl->Insert.WALInsertLocks;
+		GlobalWALInsertLocks = XLogCtl->Insert.WALInsertLocks;
+		LocalGroupWALInsertLocks = GlobalWALInsertLocks[MyProc->numaNode];
+#else
 		WALInsertLocks = XLogCtl->Insert.WALInsertLocks;
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 
 		if (localControlFile)
 			pfree(localControlFile);
@@ -5262,6 +5474,32 @@ XLOGShmemInit(void)
 
 
 	/* WAL insertion locks. Ensure they're aligned to the full padded size */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(xlog_shmem_init_hook)
+		(*xlog_shmem_init_hook)((WALInsertLockPaddedType ***)&insertLockGroupPtr,
+								(WALInsertLockPaddedType **)&WALInsertLocks, 
+								(WALInsertLockPaddedType ***)&(XLogCtl->Insert.WALInsertLocks), 
+								(WALInsertLockPaddedType ***)&GlobalWALInsertLocks, 
+								(WALInsertLockPaddedType **)&LocalGroupWALInsertLocks, 
+								&allocptr);
+	else
+	{
+		allocptr += sizeof(WALInsertLockPadded) -
+			((uintptr_t) allocptr) % sizeof(WALInsertLockPadded);
+		XLogCtl->Insert.WALInsertLocks = (WALInsertLockPadded **) allocptr;
+		WALInsertLocks = (WALInsertLockPadded *)XLogCtl->Insert.WALInsertLocks;
+		allocptr += sizeof(WALInsertLockPadded) * num_xloginsert_locks;
+
+		for (i = 0; i < num_xloginsert_locks; i++)
+		{
+			LWLockInitialize(&WALInsertLocks[i].l.lock, LWTRANCHE_WAL_INSERT);
+			WALInsertLocks[i].l.insertingAt = InvalidXLogRecPtr;
+			WALInsertLocks[i].l.lastImportantAt = InvalidXLogRecPtr;
+		}
+	}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	allocptr += sizeof(WALInsertLockPadded) -
 		((uintptr_t) allocptr) % sizeof(WALInsertLockPadded);
 	WALInsertLocks = XLogCtl->Insert.WALInsertLocks =
@@ -5274,6 +5512,9 @@ XLOGShmemInit(void)
 		WALInsertLocks[i].l.insertingAt = InvalidXLogRecPtr;
 		WALInsertLocks[i].l.lastImportantAt = InvalidXLogRecPtr;
 	}
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 
 	/*
 	 * Align the start of the page buffers to a full xlog block size boundary.
@@ -8907,7 +9148,31 @@ GetLastImportantRecPtr(void)
 {
 	XLogRecPtr	res = InvalidXLogRecPtr;
 	int			i;
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#ifdef PERF_NUMA
+	if(get_last_important_rec_ptr_hook)
+		(*get_last_important_rec_ptr_hook)(&res, 
+										(WALInsertLockPaddedType **)&WALInsertLocks, 
+										(WALInsertLockPaddedType ***)&GlobalWALInsertLocks);
+	else
+		for (i = 0; i < num_xloginsert_locks; i++)
+		{
+			XLogRecPtr	last_important;
 
+			/*
+			* Need to take a lock to prevent torn reads of the LSN, which are
+			* possible on some of the supported platforms. WAL insert locks only
+			* support exclusive mode, so we have to use that.
+			*/
+			LWLockAcquire(&WALInsertLocks[i].l.lock, LW_EXCLUSIVE);
+			last_important = WALInsertLocks[i].l.lastImportantAt;
+			LWLockRelease(&WALInsertLocks[i].l.lock);
+
+			if (res < last_important)
+				res = last_important;
+		}
+#else
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	for (i = 0; i < NUM_XLOGINSERT_LOCKS; i++)
 	{
 		XLogRecPtr	last_important;
@@ -8924,7 +9189,9 @@ GetLastImportantRecPtr(void)
 		if (res < last_important)
 			res = last_important;
 	}
-
+	/* BEGIN - ReqID:SRS-Performance-NUMA-WALLOCK */
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-WALLOCK */
 	return res;
 }
 

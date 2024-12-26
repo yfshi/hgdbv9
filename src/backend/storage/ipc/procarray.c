@@ -276,8 +276,13 @@ typedef enum KAXCompressReason
 
 
 static ProcArrayStruct *procArray;
-
+/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+static PGPROC **allProcs;
+#else
 static PGPROC *allProcs;
+#endif
+/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 /*
  * Cache to reduce overhead of repeated calls to TransactionIdIsInProgress()
@@ -520,7 +525,13 @@ ProcArrayAdd(PGPROC *proc)
 		int			procno PG_USED_FOR_ASSERTS_ONLY = arrayP->pgprocnos[index];
 
 		Assert(procno >= 0 && procno < (arrayP->maxProcs + NUM_AUXILIARY_PROCS));
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		Assert(allProcs[procno]->pgxactoff == index);
+#else
 		Assert(allProcs[procno].pgxactoff == index);
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		/* If we have found our right position in the array, break */
 		if (arrayP->pgprocnos[index] > proc->pgprocno)
@@ -556,9 +567,17 @@ ProcArrayAdd(PGPROC *proc)
 		int			procno = arrayP->pgprocnos[index];
 
 		Assert(procno >= 0 && procno < (arrayP->maxProcs + NUM_AUXILIARY_PROCS));
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		Assert(allProcs[procno]->pgxactoff == index - 1);
+
+		allProcs[procno]->pgxactoff = index;
+#else
 		Assert(allProcs[procno].pgxactoff == index - 1);
 
 		allProcs[procno].pgxactoff = index;
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	}
 
 	/*
@@ -599,7 +618,13 @@ ProcArrayRemove(PGPROC *proc, TransactionId latestXid)
 	myoff = proc->pgxactoff;
 
 	Assert(myoff >= 0 && myoff < arrayP->numProcs);
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	Assert(ProcGlobal->allProcs[arrayP->pgprocnos[myoff]]->pgxactoff == myoff);
+#else
 	Assert(ProcGlobal->allProcs[arrayP->pgprocnos[myoff]].pgxactoff == myoff);
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 	if (TransactionIdIsValid(latestXid))
 	{
@@ -654,9 +679,17 @@ ProcArrayRemove(PGPROC *proc, TransactionId latestXid)
 		int			procno = arrayP->pgprocnos[index];
 
 		Assert(procno >= 0 && procno < (arrayP->maxProcs + NUM_AUXILIARY_PROCS));
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		Assert(allProcs[procno]->pgxactoff - 1 == index);
+
+		allProcs[procno]->pgxactoff = index;
+#else
 		Assert(allProcs[procno].pgxactoff - 1 == index);
 
 		allProcs[procno].pgxactoff = index;
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	}
 
 	/*
@@ -879,7 +912,13 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 	/* Walk the list and clear all XIDs. */
 	while (nextidx != INVALID_PGPROCNO)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *nextproc = allProcs[nextidx];
+#else
 		PGPROC	   *nextproc = &allProcs[nextidx];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		ProcArrayEndTransactionInternal(nextproc, nextproc->procArrayGroupMemberXid);
 
@@ -899,8 +938,13 @@ ProcArrayGroupClearXid(PGPROC *proc, TransactionId latestXid)
 	 */
 	while (wakeidx != INVALID_PGPROCNO)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *nextproc = allProcs[wakeidx];
+#else
 		PGPROC	   *nextproc = &allProcs[wakeidx];
-
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		wakeidx = pg_atomic_read_u32(&nextproc->procArrayGroupNext);
 		pg_atomic_write_u32(&nextproc->procArrayGroupNext, INVALID_PGPROCNO);
 
@@ -1540,7 +1584,13 @@ TransactionIdIsInProgress(TransactionId xid)
 		pxids = other_subxidstates[pgxactoff].count;
 		pg_read_barrier();		/* pairs with barrier in GetNewTransactionId() */
 		pgprocno = arrayP->pgprocnos[pgxactoff];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		proc = allProcs[pgprocno];
+#else
 		proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		for (j = pxids - 1; j >= 0; j--)
 		{
 			/* Fetch xid just once - see GetNewTransactionId */
@@ -1669,7 +1719,13 @@ TransactionIdIsActive(TransactionId xid)
 	for (i = 0; i < arrayP->numProcs; i++)
 	{
 		int			pgprocno = arrayP->pgprocnos[i];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		TransactionId pxid;
 
 		/* Fetch xid just once - see GetNewTransactionId */
@@ -1815,7 +1871,13 @@ ComputeXidHorizons(ComputeXidHorizonsResult *h)
 	for (int index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		int8		statusFlags = ProcGlobal->statusFlags[index];
 		TransactionId xid;
 		TransactionId xmin;
@@ -2371,8 +2433,13 @@ GetSnapshotData(Snapshot snapshot)
 			/* Fetch xid just once - see GetNewTransactionId */
 			TransactionId xid = UINT32_ACCESS_ONCE(other_xids[pgxactoff]);
 			uint8		statusFlags;
-
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			Assert(allProcs[arrayP->pgprocnos[pgxactoff]]->pgxactoff == pgxactoff);
+#else
 			Assert(allProcs[arrayP->pgprocnos[pgxactoff]].pgxactoff == pgxactoff);
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 			/*
 			 * If the transaction has no XID assigned, we can skip it; it
@@ -2446,7 +2513,13 @@ GetSnapshotData(Snapshot snapshot)
 					if (nsubxids > 0)
 					{
 						int			pgprocno = pgprocnos[pgxactoff];
+						/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+						PGPROC	   *proc = allProcs[pgprocno];
+#else
 						PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+						/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 						pg_read_barrier();	/* pairs with GetNewTransactionId */
 
@@ -2650,7 +2723,13 @@ ProcArrayInstallImportedXmin(TransactionId xmin,
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		int			statusFlags = ProcGlobal->statusFlags[index];
 		TransactionId xid;
 
@@ -2892,7 +2971,13 @@ GetRunningTransactionData(void)
 		for (index = 0; index < arrayP->numProcs; index++)
 		{
 			int			pgprocno = arrayP->pgprocnos[index];
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			PGPROC	   *proc = allProcs[pgprocno];
+#else
 			PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 			int			nsubxids;
 
 			/*
@@ -3142,7 +3227,13 @@ GetVirtualXIDsDelayingChkptGuts(int *nvxids, int type)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (((type & DELAY_CHKPT_START) && proc->delayChkpt) ||
 			((type & DELAY_CHKPT_COMPLETE) && proc->delayChkptEnd))
@@ -3205,7 +3296,13 @@ HaveVirtualXIDsDelayingChkptGuts(VirtualTransactionId *vxids, int nvxids,
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		VirtualTransactionId vxid;
 
 		GET_VXID_FROM_PGPROC(vxid, *proc);
@@ -3298,7 +3395,13 @@ BackendPidGetProcWithLock(int pid)
 
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[arrayP->pgprocnos[index]];
+#else
 		PGPROC	   *proc = &allProcs[arrayP->pgprocnos[index]];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->pid == pid)
 		{
@@ -3339,7 +3442,13 @@ BackendXidGetPid(TransactionId xid)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (other_xids[index] == xid)
 		{
@@ -3410,7 +3519,13 @@ GetCurrentVirtualXIDs(TransactionId limitXmin, bool excludeXmin0,
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		uint8		statusFlags = ProcGlobal->statusFlags[index];
 
 		if (proc == MyProc)
@@ -3507,7 +3622,13 @@ GetConflictingVirtualXIDs(TransactionId limitXmin, Oid dbOid)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		/* Exclude prepared transactions */
 		if (proc->pid == 0)
@@ -3572,7 +3693,13 @@ SignalVirtualTransaction(VirtualTransactionId vxid, ProcSignalReason sigmode,
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		VirtualTransactionId procvxid;
 
 		GET_VXID_FROM_PGPROC(procvxid, *proc);
@@ -3627,7 +3754,13 @@ MinimumActiveBackends(int min)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		/*
 		 * Since we're not holding a lock, need to be prepared to deal with
@@ -3673,7 +3806,13 @@ CountDBBackends(Oid databaseid)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->pid == 0)
 			continue;			/* do not count prepared xacts */
@@ -3703,7 +3842,13 @@ CountDBConnections(Oid databaseid)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->pid == 0)
 			continue;			/* do not count prepared xacts */
@@ -3734,7 +3879,13 @@ CancelDBBackends(Oid databaseid, ProcSignalReason sigmode, bool conflictPending)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (databaseid == InvalidOid || proc->databaseId == databaseid)
 		{
@@ -3774,7 +3925,13 @@ CountUserBackends(Oid roleid)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->pid == 0)
 			continue;			/* do not count prepared xacts */
@@ -3837,7 +3994,13 @@ CountOtherDBBackends(Oid databaseId, int *nbackends, int *nprepared)
 		for (index = 0; index < arrayP->numProcs; index++)
 		{
 			int			pgprocno = arrayP->pgprocnos[index];
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			PGPROC	   *proc = allProcs[pgprocno];
+#else
 			PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 			uint8		statusFlags = ProcGlobal->statusFlags[index];
 
 			if (proc->databaseId != databaseId)
@@ -3903,7 +4066,13 @@ TerminateOtherDBBackends(Oid databaseId)
 	for (i = 0; i < procArray->numProcs; i++)
 	{
 		int			pgprocno = arrayP->pgprocnos[i];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = allProcs[pgprocno];
+#else
 		PGPROC	   *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc->databaseId != databaseId)
 			continue;
@@ -5448,7 +5617,13 @@ list_all_backend_gtt_frozenxids(int max_size, int *pids, uint32 *xids, int *n)
 	for (index = 0; index < arrayP->numProcs; index++)
 	{
 		int			pgprocno = arrayP->pgprocnos[index];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		volatile PGPROC *proc = allProcs[pgprocno];
+#else
 		volatile PGPROC *proc = &allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		uint8           statusFlags = ProcGlobal->statusFlags[index];
 
 		if (statusFlags & flags)
@@ -5495,7 +5670,13 @@ SendSignalToAllBackends(ProcSignalReason reason)
 	for (i = 0; i < numProcs; i++)
 	{
 		int pgprocno = arrayP->pgprocnos[i];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC *proc = ProcGlobal->allProcs[pgprocno];
+#else
 		PGPROC *proc = &ProcGlobal->allProcs[pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 		if (proc != NULL && proc->pid != 0 && proc->databaseId == MyDatabaseId)
 		{

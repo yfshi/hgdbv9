@@ -539,6 +539,9 @@ sub GenerateFiles
 		#/*Begin - Bug#Z1064*/
 		USE_NORMAL_OBJECT_ID	   => undef,
 		#/*End - Bug#Z1064*/
+		#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+		PERF_NUMA       			=> $self->{options}->{numa} ? 1 : undef,
+		#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
@@ -1367,6 +1370,9 @@ sub GetFakeConfigure
 	#/* Begin - Bug#M0000315 */
 	$cfg .= ' --enable-root' 	 	if ($self->{options}->{administrator});
 	#/* End - Bug#M0000315 */
+	#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+	$cfg .= ' --enable-numa' 		if ($self->{options}->{numa});
+	#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	$cfg .= ' --with-ldap'        if ($self->{options}->{ldap});
 	$cfg .= ' --without-zlib' unless ($self->{options}->{zlib});
 	$cfg .= ' --with-extra-version' if ($self->{options}->{extraver});

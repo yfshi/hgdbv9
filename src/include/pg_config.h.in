@@ -1059,3 +1059,5 @@
 
 /* Define to how the compiler spells `typeof'. */
 #undef typeof
+
+#undef PERF_NUMA

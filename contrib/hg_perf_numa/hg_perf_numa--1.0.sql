@@ -1,0 +1,1 @@
+\echo Use "CREATE EXTENSION hg_perf_numa" to load this file. \quit

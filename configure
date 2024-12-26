@@ -725,6 +725,7 @@ with_tcl
 ICU_LIBS
 ICU_CFLAGS
 with_icu
+enable_numa
 enable_thread_safety
 INCLUDES
 autodepend
@@ -856,6 +857,7 @@ enable_cassert
 enable_root
 enable_normalobjectid
 enable_thread_safety
+enable_numa
 with_icu
 with_tcl
 with_tclconfig
@@ -1546,6 +1548,7 @@ Optional Features:
   --enable-root           enable can be run as root user
   --enable-normalobjectid use first normal object id, default 32767
   --disable-thread-safety disable thread-safety in client libraries
+  --enable-numa           enable NUMA performance
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -8436,6 +8439,42 @@ $as_echo "#define ENABLE_THREAD_SAFETY 1" >>confdefs.h
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_thread_safety" >&5
 $as_echo "$enable_thread_safety" >&6; }
+
+#
+# Enable NUMA performance
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking enable NUMA performance" >&5
+$as_echo_n "checking enable NUMA performance... " >&6; }
+
+
+# Check whether --enable-numa was given.
+if test "${enable_numa+set}" = set; then :
+  enableval=$enable_numa;
+  case $enableval in
+    yes)
+      :
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-numa option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_numa=no
+
+fi
+
+
+if test "$enable_numa" = yes; then
+
+$as_echo "#define PERF_NUMA 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_numa" >&5
+$as_echo "$enable_numa" >&6; }
 
 
 #

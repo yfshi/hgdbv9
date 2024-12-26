@@ -280,7 +280,13 @@ TwoPhaseShmemInit(void)
 			TwoPhaseState->freeGXacts = &gxacts[i];
 
 			/* associate it with a PGPROC assigned by InitProcGlobal */
+			/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+			gxacts[i].pgprocno = PreparedXactProcs[i]->pgprocno;
+#else
 			gxacts[i].pgprocno = PreparedXactProcs[i].pgprocno;
+#endif
+			/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 			/*
 			 * Assign a unique ID for each dummy proc, so that the range of
@@ -453,7 +459,13 @@ MarkAsPreparingGuts(GlobalTransaction gxact, TransactionId xid, const char *gid,
 	Assert(LWLockHeldByMeInMode(TwoPhaseStateLock, LW_EXCLUSIVE));
 
 	Assert(gxact != NULL);
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 	proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 	/* Initialize the PGPROC entry */
 	MemSet(proc, 0, sizeof(PGPROC));
@@ -520,7 +532,13 @@ static void
 GXactLoadSubxactData(GlobalTransaction gxact, int nsubxacts,
 					 TransactionId *children)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	PGPROC	   *proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 	PGPROC	   *proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 
 	/* We need no extra lock since the GXACT isn't valid yet */
 	if (nsubxacts > PGPROC_MAX_CACHED_SUBXIDS)
@@ -557,7 +575,13 @@ MarkAsPrepared(GlobalTransaction gxact, bool lock_held)
 	 * Put it into the global ProcArray so TransactionIdIsInProgress considers
 	 * the XID as still running.
 	 */
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	ProcArrayAdd(ProcGlobal->allProcs[gxact->pgprocno]);
+#else
 	ProcArrayAdd(&ProcGlobal->allProcs[gxact->pgprocno]);
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 }
 
 /*
@@ -581,8 +605,13 @@ LockGXact(const char *gid, Oid user)
 	for (i = 0; i < TwoPhaseState->numPrepXacts; i++)
 	{
 		GlobalTransaction gxact = TwoPhaseState->prepXacts[i];
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[gxact->pgprocno];
-
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		/* Ignore not-yet-valid GIDs */
 		if (!gxact->valid)
 			continue;
@@ -777,7 +806,13 @@ pg_prepared_xact(PG_FUNCTION_ARGS)
 	while (status->array != NULL && status->currIdx < status->ngxacts)
 	{
 		GlobalTransaction gxact = &status->array[status->currIdx++];
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		PGPROC	   *proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 		PGPROC	   *proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		Datum		values[5];
 		bool		nulls[5];
 		HeapTuple	tuple;
@@ -884,7 +919,13 @@ TwoPhaseGetXidByVirtualXID(VirtualTransactionId vxid,
 
 		if (!gxact->valid)
 			continue;
+		/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+		proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 		proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+		/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		GET_VXID_FROM_PGPROC(proc_vxid, *proc);
 		if (VirtualTransactionIdEquals(vxid, proc_vxid))
 		{
@@ -961,8 +1002,13 @@ PGPROC *
 TwoPhaseGetDummyProc(TransactionId xid, bool lock_held)
 {
 	GlobalTransaction gxact = TwoPhaseGetGXact(xid, lock_held);
-
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	return ProcGlobal->allProcs[gxact->pgprocno];
+#else
 	return &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 }
 
 /************************************************************************/
@@ -1069,7 +1115,13 @@ save_state_data(const void *data, uint32 len)
 void
 StartPrepare(GlobalTransaction gxact)
 {
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	PGPROC	   *proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 	PGPROC	   *proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	TransactionId xid = gxact->xid;
 	TwoPhaseFileHeader hdr;
 	TransactionId *children;
@@ -1522,7 +1574,13 @@ FinishPreparedTransaction(const char *gid, bool isCommit)
 	 * try to commit the same GID at once.
 	 */
 	gxact = LockGXact(gid, GetUserId());
+	/* BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+#ifdef PERF_NUMA
+	proc = ProcGlobal->allProcs[gxact->pgprocno];
+#else
 	proc = &ProcGlobal->allProcs[gxact->pgprocno];
+#endif
+	/* END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	xid = gxact->xid;
 
 	/*
