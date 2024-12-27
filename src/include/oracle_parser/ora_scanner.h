@@ -143,6 +143,9 @@ extern int	ora_scanner_errposition(int location, ora_core_yyscan_t yyscanner);
 extern void ora_setup_scanner_errposition_callback(OraScannerCallbackState *scbstate,
 											   ora_core_yyscan_t yyscanner,
 											   int location);
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+extern char *ora_scanner_str_byposition(int start, int end, ora_core_yyscan_t yyscanner);
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
 extern void ora_cancel_scanner_errposition_callback(OraScannerCallbackState *scbstate);
 extern void ora_scanner_yyerror(const char *message, ora_core_yyscan_t yyscanner) pg_attribute_noreturn();
 

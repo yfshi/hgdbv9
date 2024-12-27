@@ -36,7 +36,8 @@ OBJS = \
 	scan.o \
 	scansup.o \
 	parse_package.o \
-	pg_object_hook.o
+	pg_object_hook.o \
+	parse_connectby.o
 
 include $(top_srcdir)/src/backend/common.mk
 

@@ -358,6 +358,17 @@ add_vars_to_targetlist(PlannerInfo *root, List *vars,
 					count_rel->max_attr = list_length(count_rel->reltarget->exprs);
 					break;
 				}
+				/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+				case PSEUDOCOL_KIND_LEVEL:
+					elog(ERROR, "doesn't support level");
+					break;
+				case PSEUDOCOL_KIND_ISLEAF:
+					elog(ERROR, "doesn't support connect_by_isleaf");
+					break;
+				case PSEUDOCOL_KIND_ISCYCLE:
+					elog(ERROR, "doesn't support connect_by_iscycle");
+					break;
+				/* End - ReqID:SRS-SQL-HierarchicalQueries */
 				default:
 					Assert(false);
 					break;

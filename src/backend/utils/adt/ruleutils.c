@@ -1603,6 +1603,24 @@ pg_get_statisticsobjdef_string(Oid statextid)
 	return pg_get_statisticsobj_worker(statextid, false, false);
 }
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+/*
+ * get query def string
+ */
+char *
+ivy_get_query_def(Query *query)
+{
+	StringInfoData data;
+
+	initStringInfo(&data);
+
+	get_query_def(query, &data, NIL, NULL, true, PRETTYFLAG_INDENT, 0, 0);
+
+	return data.data;
+}
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /*
  * pg_get_statisticsobjdef_columns
  *		Get columns and expressions for an extended statistics object

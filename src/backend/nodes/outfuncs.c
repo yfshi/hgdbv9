@@ -1837,6 +1837,62 @@ _outUpsertExpr(StringInfo str, const UpsertExpr *node)
 }
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+static void
+_outHierarQueryClause(StringInfo str, const HierarQueryClause *node)
+{
+	WRITE_NODE_TYPE("HIERARQUERYCLAUSE");
+
+	WRITE_NODE_FIELD(start_with);
+	WRITE_BOOL_FIELD(is_nocycle);
+	WRITE_NODE_FIELD(connect_by);
+	WRITE_LOCATION_FIELD(location);
+}
+
+
+static void
+_outSysConnectPath(StringInfo str, const SysConnectPath *node)
+{
+	WRITE_NODE_TYPE("SYSCONNECTPATH");
+
+	WRITE_NODE_FIELD(colnode);
+	WRITE_STRING_FIELD(joinOp);
+	WRITE_STRING_FIELD(alias);
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outConnectByRoot(StringInfo str, const ConnectByRoot *node)
+{
+	WRITE_NODE_TYPE("CONNECRBYROOT");
+
+	WRITE_NODE_FIELD(colnode);
+	WRITE_STRING_FIELD(alias);
+	WRITE_LOCATION_FIELD(location);
+}
+
+
+static void
+_outConnectByIsCycle(StringInfo str, const ConnectByIsCycle *node)
+{
+	WRITE_NODE_TYPE("CONNECTBYISCYCLE");
+
+	WRITE_LOCATION_FIELD(location);
+}
+
+static void
+_outPriorAexpr(StringInfo str, const PriorAexpr *node)
+{
+	WRITE_NODE_TYPE("PRIORAEXPR");
+
+	WRITE_NODE_FIELD(arg);
+	WRITE_LOCATION_FIELD(location);
+}
+
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
+
 
 /*****************************************************************************
  *
@@ -2965,6 +3021,9 @@ _outSelectStmt(StringInfo str, const SelectStmt *node)
 	WRITE_ENUM_FIELD(limitOption, LimitOption);
 	WRITE_NODE_FIELD(lockingClause);
 	WRITE_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	WRITE_NODE_FIELD(connect_by);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	WRITE_ENUM_FIELD(op, SetOperation);
 	WRITE_BOOL_FIELD(all);
 	WRITE_NODE_FIELD(larg);
@@ -3786,6 +3845,9 @@ _outSortBy(StringInfo str, const SortBy *node)
 	WRITE_ENUM_FIELD(sortby_dir, SortByDir);
 	WRITE_ENUM_FIELD(sortby_nulls, SortByNulls);
 	WRITE_NODE_FIELD(useOp);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	WRITE_BOOL_FIELD(siblings);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -4850,6 +4912,25 @@ outNode(StringInfo str, const void *obj)
 				_outUpsertExpr(str, obj);
 				break;
 			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			case T_HierarQueryClause:
+				_outHierarQueryClause(str, obj);
+				break;
+			case T_SysConnectPath:
+				_outSysConnectPath(str, obj);
+				break;
+			case T_ConnectByIsCycle:
+				_outConnectByIsCycle(str, obj);
+				break;
+			case T_PriorAexpr:
+				_outPriorAexpr(str, obj);
+				break;
+			case T_ConnectByRoot:
+				_outConnectByRoot(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 			default:
 
 				/*

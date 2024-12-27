@@ -54,6 +54,10 @@
 #include "catalog/pg_foreign_table.h"
 #include "parser/scansup.h"
 /* End - ReqID:SRS-SQL-DBLINK */
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+#include "parser/parse_connectby.h"
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
@@ -3851,6 +3855,17 @@ expandNSItemAttrs(ParseState *pstate, ParseNamespaceItem *nsitem,
 		char	   *label = strVal(lfirst(name));
 		Var		   *varnode = (Var *) lfirst(var);
 		TargetEntry *te;
+
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		/* doesn't consider pseudo column procducted by connect by */
+		if (pstate->p_connectby_names)
+		{
+			if (checkLevelQueryName(pstate->p_connectby_names, label))
+			{
+				continue;
+			}
+		}
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 		te = makeTargetEntry((Expr *) varnode,
 							 (AttrNumber) pstate->p_next_resno++,

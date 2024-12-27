@@ -48,4 +48,9 @@ extern char *get_range_partbound_string(List *bound_datums);
 
 extern char *pg_get_statisticsobjdef_string(Oid statextid);
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+extern char *ivy_get_query_def(Query *query);
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 #endif							/* RULEUTILS_H */

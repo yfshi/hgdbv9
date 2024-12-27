@@ -3078,6 +3078,9 @@ _copySortBy(const SortBy *from)
 	COPY_SCALAR_FIELD(sortby_dir);
 	COPY_SCALAR_FIELD(sortby_nulls);
 	COPY_NODE_FIELD(useOp);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	COPY_SCALAR_FIELD(siblings);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -3527,6 +3530,9 @@ _copySelectStmt(const SelectStmt *from)
 	COPY_SCALAR_FIELD(limitOption);
 	COPY_NODE_FIELD(lockingClause);
 	COPY_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	COPY_NODE_FIELD(connect_by);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	COPY_SCALAR_FIELD(op);
 	COPY_SCALAR_FIELD(all);
 	COPY_NODE_FIELD(larg);
@@ -4754,6 +4760,69 @@ _copyAlterSessionCloseDblinkStmt(const AlterSessionCloseDblinkStmt * from)
 	return newnode;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+static HierarQueryClause *
+_copyHierarQueryClause(const HierarQueryClause *from)
+{
+	HierarQueryClause *newnode = makeNode(HierarQueryClause);
+
+	COPY_NODE_FIELD(start_with);
+	COPY_SCALAR_FIELD(is_nocycle);
+	COPY_NODE_FIELD(connect_by);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static SysConnectPath *
+_copySysConnectPath(const SysConnectPath *from)
+{
+	SysConnectPath *newnode = makeNode(SysConnectPath);
+
+	COPY_NODE_FIELD(colnode);
+	COPY_STRING_FIELD(joinOp);
+	COPY_STRING_FIELD(alias);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static ConnectByRoot *
+_copyConnectByRoot(const ConnectByRoot *from)
+{
+	ConnectByRoot *newnode = makeNode(ConnectByRoot);
+
+	COPY_NODE_FIELD(colnode);
+	COPY_STRING_FIELD(alias);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static ConnectByIsCycle *
+_copyConnectByIsCycle(const ConnectByIsCycle *from)
+{
+	ConnectByIsCycle *newnode = makeNode(ConnectByIsCycle);
+
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+static PriorAexpr *
+_copyPriorAexpr(const PriorAexpr *from)
+{
+	PriorAexpr *newnode = makeNode(PriorAexpr);
+
+	COPY_NODE_FIELD(arg);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 static CreateTransformStmt *
 _copyCreateTransformStmt(const CreateTransformStmt *from)
@@ -6127,6 +6196,23 @@ copyObjectImpl(const void *from)
 			retval = _copyAlterSessionCloseDblinkStmt(from);
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_HierarQueryClause:
+			retval = _copyHierarQueryClause(from);
+			break;
+		case T_SysConnectPath:
+			retval = _copySysConnectPath(from);
+			break;
+		case T_ConnectByIsCycle:
+			retval = _copyConnectByIsCycle(from);
+			break;
+		case T_ConnectByRoot:
+			retval = _copyConnectByRoot(from);
+			break;
+		case T_PriorAexpr:
+			retval = _copyPriorAexpr(from);
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		case T_CreateTransformStmt:
 			retval = _copyCreateTransformStmt(from);
 			break;

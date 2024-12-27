@@ -5883,6 +5883,9 @@ parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_join
 	{
 		Node *v1 = NULL;
 		v1 = (Node *)lfirst(l);
+
+HANDLE_ORIGN_NODE:
+
 		if (is_notclause(v1) && hasPlusFlag(v1))
 		{
 			Node	   *copyv1;
@@ -5893,7 +5896,15 @@ parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_join
 
 			if(is_orclause(v1) && list_cell_number(boolexpr->args, l) != 0 && hasPlusFlag(v1))
 				elog(ERROR, "outer join operator (+) not allowed in operand of OR or IN");
-			parseBoolexpr((BoolExpr *)v1, singlevar_list, multi_outer_joins, return_args);
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			/*
+			 * there eval_const_expression maybe not return a BoolExpr
+			 */
+			if (IsA(v1, BoolExpr))
+				parseBoolexpr((BoolExpr *)v1, singlevar_list, multi_outer_joins, return_args);
+			else
+				goto HANDLE_ORIGN_NODE;
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		}
 		else if (IsA(v1, BoolExpr) && hasPlusFlag(v1))
 		{

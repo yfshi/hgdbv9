@@ -218,6 +218,11 @@ typedef enum PseudoColumnKind
 {
 	/* Belongs to Count Execute Node */
 	PSEUDOCOL_KIND_ROWNUM,
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	PSEUDOCOL_KIND_LEVEL,
+	PSEUDOCOL_KIND_ISLEAF,
+	PSEUDOCOL_KIND_ISCYCLE
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 } PseudoColumnKind;
 
 /*

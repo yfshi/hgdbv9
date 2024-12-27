@@ -1503,3 +1503,62 @@ begin
 end;
 $$ LANGUAGE plisql SECURITY INVOKER;
 /* End - SYS_CONTEXT */
+
+
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+CREATE OR REPLACE FUNCTION cycle_check(array_path anyarray, node anyelement, nocycle bool)
+RETURNS bool AS
+$$
+BEGIN
+	IF node = ANY (array_path) THEN
+		IF nocycle = true THEN
+			RETURN FALSE;
+		ELSE
+			RAISE 'CONNECT BY loop in user data.';
+		END IF;
+	END IF;
+	RETURN TRUE;
+END;
+$$ LANGUAGE plisql;
+
+
+create or replace function _connect_by_rownum_query(initsql varchar2,connect_bysql varchar2) return
+setof record  authid CURRENT_USER IS
+$$
+   row_num number(38,0);
+   var1 sys_refcursor;
+   r record;
+   level_var int;
+begin
+   row_num := 1;
+   level_var := 1;
+   open var1 for initsql;
+   LOOP
+     fetch var1 into r;
+     exit when var1%notfound;
+     return next r;
+     row_num := row_num + 1;
+     declare
+        var2 sys_refcursor;
+        r1 record;
+     begin
+       level_var := level_var + 1;
+        open var2 for connect_bysql using row_num,level_var;
+	Loop
+	  fetch var2 into r1;
+	  exit when var2 %notfound;
+	  return next r1;
+	  row_num := row_num + 1;
+	  close var2;
+	  level_var := level_var + 1;
+	  open var2 for connect_bysql using row_num,level_var;
+	end loop;
+	close var2;
+     end;
+   end loop;
+   close var1;
+     return;
+ end;
+ $$ LANGUAGE plisql;
+/* End - ReqID:SRS-SQL-HierarchicalQueries */

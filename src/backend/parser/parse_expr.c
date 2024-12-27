@@ -164,7 +164,6 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 		case T_ColumnRef:
 			result = transformColumnRef(pstate, (ColumnRef *) expr);
 			break;
-
 		/* Begin - ReqID:SRS-SQL-ROWNUM */
 		case T_PseudoColumnRef:
 			result = transformPseudoColumnRef(pstate, (PseudoColumnRef *) expr);
@@ -416,6 +415,43 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 				break;
 			}
 		/* End - BUG0000331 */
+
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_PriorAexpr:
+			/* no connect by,should raise error */
+			if (!pstate->p_check_connectby)
+				elog(ERROR, "CONNECT BY clause required in this query block");
+			result = transformExprRecurse(pstate, ((PriorAexpr *) expr)->arg);
+			break;
+		case T_ConnectByRoot:
+			if (!pstate->p_check_connectby)
+				elog(ERROR, "CONNECT BY clause required in this query block");
+			/* only check grammer, so simple check is colnode */
+			result = transformExprRecurse(pstate, ((ConnectByRoot *) expr)->colnode);
+			break;
+		case T_ConnectByIsCycle:
+			{
+				PseudoColVar	*pv = makeNode(PseudoColVar);
+
+				if (!pstate->p_check_connectby)
+					elog(ERROR, "CONNECT BY clause required in this query block");
+
+				/* only for grammer check */
+				pv->pvartype = NUMBEROID;
+				pv->pvarkind = PSEUDOCOL_KIND_ISCYCLE;
+				pv->pvartypmod = -1;
+
+				result = (Node *) pv;
+				break;
+			}
+		case T_SysConnectPath:
+			if (!pstate->p_check_connectby)
+				elog(ERROR, "CONNECT BY clause required in this query block");
+			/* only check grammer, so simple check is colnode */
+			((SysConnectPath *) expr)->colnode = transformExprRecurse(pstate, ((SysConnectPath *) expr)->colnode);
+			result = expr;
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 		default:
 			/* should not reach here */
@@ -775,6 +811,31 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 					/* Try to identify as an unqualified column */
 					node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
+
+				/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+				/*
+				 * The connect by query performs special processing on the level or connect_by_isleaf
+				 * column, which is currently being used for syntax detection.
+				 */
+				if (pstate->p_check_connectby &&
+					(pg_strcasecmp(colname, "level") == 0 ||
+					pg_strcasecmp(colname, "connect_by_isleaf") == 0))
+				{
+					/*
+					 * only for grammer check, so we make a pseduocolvar
+					 */
+					PseudoColVar	*pv = makeNode(PseudoColVar);
+
+					pv->pvartype = NUMBEROID;
+					if (pg_strcasecmp(colname, "level") == 0)
+						pv->pvarkind = PSEUDOCOL_KIND_LEVEL;
+					else
+						pv->pvarkind = PSEUDOCOL_KIND_ISLEAF;
+					pv->pvartypmod = -1;
+
+					node = (Node *) pv;
+				}
+				/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 				if (node == NULL)
 				{
@@ -1177,6 +1238,27 @@ transformColumnRef(ParseState *pstate, ColumnRef *cref)
 	return transformColumnRefInternal(pstate, cref, false);
 }
 /* End - ReqID:SRS-SQL-PROC */
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+/*
+ * ivorysql transform columnref for missing_ok is true
+ */
+Node*
+IvyTransformColumnRef(ParseState *pstate, ColumnRef *cref, bool missing_ok)
+{
+	ParseExprKind expr_kind = pstate->p_expr_kind;
+	Node *retNode;
+
+	if (pstate->p_expr_kind == EXPR_KIND_NONE)
+		pstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
+
+	retNode = transformColumnRefInternal(pstate, cref, missing_ok);
+	pstate->p_expr_kind = expr_kind;
+
+	return retNode;
+}
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 static Node *
 transformParamRef(ParseState *pstate, ParamRef *pref)
@@ -2412,7 +2494,13 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	newc = makeNode(CaseExpr);
 
 	/* transform the test expression, if any */
-	arg = transformExprRecurse(pstate, (Node *) c->arg);
+	/*
+	 * ReqID:SRS-SQL-HierarchicalQueries:
+	 * there, maybe c->args has sublink, if we don't
+	 * copyit, maybe it has change its struct for SelectStmt
+	 * to Query
+	 */
+	arg = transformExprRecurse(pstate, (Node *) copyObject(c->arg));
 
 	whenexprs = NIL;
 	if (database_mode == DB_ORACLE)

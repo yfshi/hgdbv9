@@ -29,6 +29,11 @@
 /* Begin - BUG#Z828 */
 #include "parser/parse_type.h"
 /* End - BUG#Z828 */
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 static bool expression_returns_set_walker(Node *node, void *context);
 static int	leftmostLoc(int loc1, int loc2);
@@ -286,6 +291,16 @@ exprType(const Node *expr)
 			type = UNKNOWNOID;
 			break;
 		/* End - ReqID:SRS-SQL-FUNCOUT */
+
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_SysConnectPath:
+			if (nls_length_semantics == NLS_LENGTH_CHAR)
+				type = ORAVARCHARBYTEOID;
+			else
+				type = ORAVARCHARCHAROID;
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			type = InvalidOid;	/* keep compiler quiet */
@@ -1221,6 +1236,11 @@ exprSetCollation(Node *expr, Oid collation)
 			/* NextValueExpr's result is an integer type ... */
 			Assert(!OidIsValid(collation)); /* ... so never set a collation */
 			break;
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_SysConnectPath:
+			/* not use a collation */
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			break;
@@ -1680,6 +1700,25 @@ exprLocation(const Node *expr)
 		case T_PartitionRangeDatum:
 			loc = ((const PartitionRangeDatum *) expr)->location;
 			break;
+
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_HierarQueryClause:
+			loc = ((const HierarQueryClause *) expr)->location;
+			break;
+		case T_SysConnectPath:
+			loc = ((const SysConnectPath *) expr)->location;
+			break;
+		case T_ConnectByIsCycle:
+			loc = ((const ConnectByIsCycle *) expr)->location;
+			break;
+		case T_ConnectByRoot:
+			loc = ((const ConnectByRoot *) expr)->location;
+			break;
+		case T_PriorAexpr:
+			loc = ((const PriorAexpr *) expr)->location;
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 		default:
 			/* for any other node type it's just unknown... */
 			loc = -1;
@@ -2410,6 +2449,18 @@ expression_tree_walker(Node *node,
 					return true;
 			}
 			break;
+
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_SysConnectPath:
+			{
+				SysConnectPath *syspath = (SysConnectPath *) node;
+
+				if (walker(syspath->colnode, context))
+					return true;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
@@ -4136,6 +4187,26 @@ raw_expression_tree_walker(Node *node,
 		case T_CommonTableExpr:
 			/* search_clause and cycle_clause are not interesting here */
 			return walker(((CommonTableExpr *) node)->ctequery, context);
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_PseudoColumnRef:
+			break;
+		case T_ConnectByRoot:
+			/* ORA-30007 */
+			elog(ERROR, "CONNECT BY ROOT operator is not allowed here");
+			break;
+			/* ORA-30002 */
+		case T_SysConnectPath:
+			elog(ERROR, "SYS_CONNECT_BY_PATH function is not allowed here");
+			break;
+		case T_ConnectByIsCycle:
+			/* ORA-00976 */
+			elog(ERROR, "CONNECT_BY_ISCYCLE pseudocolumn not allowed here");
+			break;
+		case T_PriorAexpr:
+			/* ORA-00976 */
+			elog(ERROR, "PRIOR operator not allowed here");
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
