@@ -10316,7 +10316,7 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 		get_rule_expr_paren(arg2, context, true, (Node *) expr);
 		/* BEGIN - BUG#Z1333 */
 		if (location != 0 &&
-			arg2->type == T_FuncExpr &&
+			(buf->len - location - 12 > 0) &&
 			compatible_db == ORA_PARSER &&
 			enable_emptystring_to_NULL == true)
 		{

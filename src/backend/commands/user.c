@@ -402,7 +402,7 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 									stmt->role)));
 				}
 			}
-			else
+			else if(!IsBinaryUpgrade)	/* BUGM431 */
 			{
 				/*
 				 * Begin - bug: z536

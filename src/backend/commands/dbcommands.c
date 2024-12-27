@@ -772,7 +772,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Both sys and system are created when the database is created
 	 */
-	if (DB_ORACLE == database_mode && dbname )
+	if (DB_ORACLE == database_mode && dbname && !IsBinaryUpgrade)	/* BUGM431 */
 	{
 		createsysrole("sys", dboid, get_database_oid(dbtemplate, true));
 		createsysrole("system", dboid, get_database_oid(dbtemplate, true));

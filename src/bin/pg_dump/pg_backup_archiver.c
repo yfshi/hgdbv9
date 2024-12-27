@@ -153,7 +153,7 @@ static char *getInstanceSuperuser(PGconn *conn);
 
 /* End - ReqID:SRS-MISC-USER */
 static char *getInstanceIdentifier_case_switch(PGconn *conn);	/* ReqID:SRS-SQL-FORCEVIEW */
-
+bool if_createsystem = false;/* BUGM431 */
 /*
  * Allocate a new DumpOptions block containing all default values.
  */
@@ -2490,7 +2490,10 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 						if (restoremode)
 						{
 							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-							ahprintf(AH, "set session authorization system;\n");
+							/* Begin - BUGM431 */
+							if(PQntuples(ExecuteSqlQuery(((Archive *)AH), "SELECT rolname FROM pg_authid a LEFT JOIN pg_database d ON a.rolowndboid = d.oid WHERE rolname = 'system' AND datname = CURRENT_DATABASE();", PGRES_TUPLES_OK)))
+								ahprintf(AH, "set session authorization system;\n");
+							/* End - BUGM431 */
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
 							if ((AH->format == archNull))
@@ -2510,6 +2513,31 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 		}
 	}
 
+	/* Begin - BUGM431 */
+	if(database_mode == DB_ORACLE && !if_createsystem && AH->connection && ((AH->public.dopt->binary_upgrade) ||
+		(strcmp(PQgetvalue(ExecuteSqlQuery(((Archive *)AH), "SELECT PG_IS_IN_UPGRADE();", PGRES_TUPLES_OK), 0, 0), "t") == 0)))
+	{
+		TocEntry *te1;
+		ahprintf(AH,"set ivorysql.compatible_mode to oracle;\n");
+		compatible_mode = ORA_PARSER;
+		if_createsystem = true;
+		for(te1 = AH->toc->next; te1 != AH->toc; te1 = te1->next)
+		{
+			if (strcmp(te1->desc, "DATABASEROLE") == 0 &&
+				(strcmp(fmtId(te1->tag), "system") == 0 ||
+				strcmp(fmtId(te1->tag), "\"system\"") == 0 ||
+				strcmp(fmtId(te1->tag), "sys") == 0 ||
+				strcmp(fmtId(te1->tag), "\"sys\"") == 0))
+			{
+				ahprintf(AH, "SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%d'::pg_catalog.oid);\n", te1->catalogId.oid);
+				ahprintf(AH, "CREATE USER %s WITH SUPERUSER;\n\n", fmtId(te1->tag));
+				if (strcmp(fmtId(te1->tag), "system") == 0 ||
+					strcmp(fmtId(te1->tag), "\"system\"") == 0)
+					break;
+			}
+		}
+	}
+	/* End - BUGM431*/
 	/*
 	 * If it has a data component that we want, then process that
 	 */
@@ -5049,7 +5077,7 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 				setNLSdateFormat(AH->connection);							/* BUG:z774 */
 
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.compatible_mode to oracle;\n");
-				if(CurrentUserIsInstanceSuperuser && haveDBuser)
+				if (PQntuples(ExecuteSqlQuery(((Archive *)AH), "SELECT rolname FROM pg_authid a LEFT JOIN pg_database d ON a.rolowndboid = d.oid WHERE rolname = 'system' AND datname = CURRENT_DATABASE();", PGRES_TUPLES_OK)))/* BUGM431 */
 					appendPQExpBufferStr(&connectbuf, "set session authorization system;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.grant_usertype to oracle;\n");
@@ -5456,7 +5484,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				if (AH->format == archNull || AH->connection == NULL)
 					ahprintf(AH, "\\parser\n");
 
-				ahprintf(AH, "set session authorization \"%s\";\n", getInstanceSuperuser(AH->connection));
+				ahprintf(AH, "set session authorization \"%s\";\n", AH->connection == NULL ? fmtId(te->owner) : getInstanceSuperuser(AH->connection));	/* BUGM431 */
 				CurUser = INSTANCE;
 				compatible_mode = PG_PARSER;
 			}
@@ -5479,7 +5507,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser && 
 			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))			/*  bug#M0000261 */	/* BUG:z680,z538 */
 		{
-			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0))			/*  bug#z680 */
+			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0) && (strcmp( fmtId(te->tag), "\"system\"") != 0) && (strcmp( fmtId(te->tag), "\"sys\"") != 0))			/*  bug#z680 *//* BUGM431 */
 			{	/* BEGIN - BUGZ1398 */
 				if((te->d.oracle.User_binary_upgrade != NULL) &&	/* BUGZ1582 */
 					(strlen(te->d.oracle.User_binary_upgrade) != 0))	/* BUGZ1450 */
