@@ -7749,69 +7749,36 @@ group_by_has_partkey(RelOptInfo *input_rel,
 			Expr	   *partexpr = lfirst(lc);
 			Oid			partcoll = input_rel->part_scheme->partcollation[cnt];
 
-			/* Begin - Req:SRS-SQL-NLSSORT */
-			if (enable_partitionwise_qual_force_pushdown)
+			foreach(lg, groupexprs)
 			{
-				ListCell   *lg;
-				Oid			partcoll = input_rel->part_scheme->partcollation[cnt];
+				Expr	   *groupexpr = lfirst(lg);
+				Oid			groupcoll = exprCollation((Node *) groupexpr);
 
-				foreach (lg, groupexprs)
+				/*
+				 * Note: we can assume there is at most one RelabelType node;
+				 * eval_const_expressions() will have simplified if more than
+				 * one.
+				 */
+				if (IsA(groupexpr, RelabelType))
+					groupexpr = ((RelabelType *) groupexpr)->arg;
+
+				if (equal(groupexpr, partexpr))
 				{
-					Expr *groupexpr = lfirst(lg);
-					Oid   groupcoll = exprCollation((Node *) groupexpr);
-
 					/*
-					 * GROUP BY xx COLLATE xxx
-					 * Set collation in group by clause using COLLATE syntax,
-					 * AND the collation IS NOT equal to column's default collation.
+					 * Reject a match if the grouping collation does not match
+					 * the partitioning collation.
 					 */
-					if (IsA(groupexpr, RelabelType))
-						groupexpr = ((RelabelType *) groupexpr)->arg;
+					if (OidIsValid(partcoll) && OidIsValid(groupcoll) &&
+						partcoll != groupcoll)
+						return false;
 
-					if (equal(groupexpr, partexpr) && partcoll == groupcoll)
-					{
-						found = true;
-						break;
-					}
-				}
-
-				if (found)
+					found = true;
 					break;
-			}
-			/* End - Req:SRS-SQL-NLSSORT */
-			else
-			{
-				foreach(lg, groupexprs)
-				{
-					Expr	   *groupexpr = lfirst(lg);
-					Oid			groupcoll = exprCollation((Node *) groupexpr);
-
-					/*
-					 * Note: we can assume there is at most one RelabelType node;
-					 * eval_const_expressions() will have simplified if more than
-					 * one.
-					 */
-					if (IsA(groupexpr, RelabelType))
-						groupexpr = ((RelabelType *) groupexpr)->arg;
-
-					if (equal(groupexpr, partexpr))
-					{
-						/*
-						 * Reject a match if the grouping collation does not match
-						 * the partitioning collation.
-						 */
-						if (OidIsValid(partcoll) && OidIsValid(groupcoll) &&
-							partcoll != groupcoll)
-							return false;
-
-						found = true;
-						break;
-					}
 				}
-
-				if (found)
-					break;
 			}
+
+			if (found)
+				break;
 		}
 
 		/*

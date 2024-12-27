@@ -655,16 +655,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	{
-		{"ivorysql.enable_ora_default_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("whether allow to set default collation in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
-		},
-		&enable_ora_default_collation,
-		false,
-		NULL, NULL, NULL
-	},
-	{
 		{"ivorysql.default_collation_is_c", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("whether the default collation(100) is C collation in oracle compatible mode."),
 			NULL,
@@ -672,6 +662,16 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		},
 		&default_collation_is_c,
 		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.subquery_with_raw_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Reset subquery resultset collation after doing pseudo-collation replace."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&subquery_with_raw_collation,
+		false,
 		NULL, NULL, NULL
 	},
 	{
