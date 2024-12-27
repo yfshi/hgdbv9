@@ -14,31 +14,31 @@ INSERT INTO TIMESTAMPTZ_TBL VALUES ('tomorrow');
 INSERT INTO TIMESTAMPTZ_TBL VALUES ('tomorrow EST');
 INSERT INTO TIMESTAMPTZ_TBL VALUES ('tomorrow zulu');
 SELECT count(*) AS One FROM TIMESTAMPTZ_TBL WHERE d1 = timestamp with time zone 'today';
- one 
+ One 
 -----
    1
 (1 row)
 
 SELECT count(*) AS One FROM TIMESTAMPTZ_TBL WHERE d1 = timestamp with time zone 'tomorrow';
- one 
+ One 
 -----
    1
 (1 row)
 
 SELECT count(*) AS One FROM TIMESTAMPTZ_TBL WHERE d1 = timestamp with time zone 'yesterday';
- one 
+ One 
 -----
    1
 (1 row)
 
 SELECT count(*) AS One FROM TIMESTAMPTZ_TBL WHERE d1 = timestamp with time zone 'tomorrow EST';
- one 
+ One 
 -----
    1
 (1 row)
 
 SELECT count(*) AS One FROM TIMESTAMPTZ_TBL WHERE d1 = timestamp with time zone 'tomorrow zulu';
- one 
+ One 
 -----
    1
 (1 row)
