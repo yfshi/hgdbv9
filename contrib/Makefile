@@ -56,7 +56,8 @@ SUBDIRS = \
 		ora_btree_gin	\
 		pg_object	\
 		ivorysql_my	\
-		uuid-ossp
+		uuid-ossp \
+		hg_misc
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo
@@ -94,9 +95,6 @@ else
 ALWAYS_SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
 endif
 
-ifeq ($(with_license),yes)
-SUBDIRS += hg_misc
-endif
 
 
 # Missing:

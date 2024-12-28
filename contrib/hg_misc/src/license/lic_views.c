@@ -3,17 +3,17 @@
  * File: lic_views.c
  *
  * Abstract:
- * 	  Create views of license info.
+ *		Create views of license info. 
+ *		Display the version of the Highgo database.
  *
  * Copyright:
  * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
- *		contrib/hg_misc/lic_views.c
+ *		contrib/hg_misc/src/license/lic_views.c
  *
  * Requirement description:
  *		ReqID:SRS-MISC-LICENSE
- 
  *------------------------------------------------------------------
  */
 #include "postgres.h"
@@ -42,29 +42,18 @@
 
 /*---- Function declarations ----*/
 
-void		_PG_init(void);
-void		_PG_fini(void);
 
 PG_FUNCTION_INFO_V1(get_lic_baseinfo);
 PG_FUNCTION_INFO_V1(get_lic_funcinfo);
+PG_FUNCTION_INFO_V1(highgo_version);
 
-/*
- * Module load callback
- */
-void
-_PG_init(void)
+
+Datum highgo_version(PG_FUNCTION_ARGS)
 {
-	/*add code for init*/
+	hg_set_is_with_title(false);
+	PG_RETURN_TEXT_P(cstring_to_text(hg_get_highgoVersion()));
 }
 
-/*
- * Module unload callback
- */
-void
-_PG_fini(void)
-{
-	/*add code for fini */
-}
 
 /*
  * Get license base info from license module. Depends on encoding show

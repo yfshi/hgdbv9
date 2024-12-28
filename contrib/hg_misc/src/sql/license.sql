@@ -1,7 +1,3 @@
-/* contrib/hg_misc/hg_misc--1.0.sql */
---complain if script is sourced in psql rather than via ALTER EXTENSION
-\echo Use "CREATE EXTENSION hg_misc" to load this file. \quit
-
 /* Begin - ReqID:SRS-MISC-LICENSE */
 CREATE FUNCTION highgo_version()
 RETURNS text

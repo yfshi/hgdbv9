@@ -24,6 +24,9 @@ our $config = {
 	#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	numa	  => undef,	   # --enable-numa
 	#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+	# Begin - ReqID:SRS-Performance-GUC
+	internal_guc => undef,
+	# End - ReqID:SRS-Performance-GUC
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>

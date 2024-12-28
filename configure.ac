@@ -947,6 +947,18 @@ AC_SUBST(enable_numa)
 # END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
 
 #
+# Enable hg_misc/internal, ReqID:SRS-Performance-GUC
+#
+AC_MSG_CHECKING([enable internal GUC performance])
+PGAC_ARG_BOOL(enable, internal-guc, no, [enable internal GUC performance])
+if test "$enable_internal_guc" = yes; then
+  AC_DEFINE([MISC_INTERNAL], 1,
+            [Define to 1 to enable internal GUC performance. (--enable-internal-guc)])
+fi
+AC_MSG_RESULT([$enable_internal_guc])
+AC_SUBST(enable_internal_guc)
+
+#
 # ICU
 #
 AC_MSG_CHECKING([whether to build with ICU support])
@@ -2678,6 +2690,8 @@ AC_SUBST(vpath_build)
 
 
 AC_CONFIG_FILES([GNUmakefile src/Makefile.global])
+
+AC_CONFIG_FILES([contrib/hg_misc/hg_misc.global])
 
 AC_CONFIG_LINKS([
   src/backend/port/pg_sema.c:${SEMA_IMPLEMENTATION}

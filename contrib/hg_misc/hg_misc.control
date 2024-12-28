@@ -1,5 +1,5 @@
 #hg_misc extension
-comment = 'miscellaneous information about highgo version'
+comment = 'miscellaneous feature of highgo database'
 default_version = '1.0'
 module_pathname = '$libdir/hg_misc'
 relocatable = false

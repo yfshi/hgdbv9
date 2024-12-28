@@ -578,6 +578,10 @@ extern void RestoreGUCState(void *gucstate);
 
 /* Support for messages reported from GUC check hooks */
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+extern void SetConfigFile(char *name, char *value);
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 extern PGDLLIMPORT char *GUC_check_errmsg_string;
 extern PGDLLIMPORT char *GUC_check_errdetail_string;
 extern PGDLLIMPORT char *GUC_check_errhint_string;

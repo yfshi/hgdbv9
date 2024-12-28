@@ -156,6 +156,11 @@
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+pdbg_log_hook_type pdbg_log_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 /*
  * Possible types of a backend. Beyond being the possible bkend_type values in
  * struct bkend, these are OR-able request flag bits for SignalSomeChildren()
@@ -3075,6 +3080,9 @@ SIGHUP_handler(SIGNAL_ARGS)
 
 	if (Shutdown <= SmartShutdown)
 	{
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+		if (pdbg_log_hook != NULL && pdbg_log_hook())
+#endif /* End - ReqID:SRS-Performance-GUC */
 		ereport(LOG,
 				(errmsg("received SIGHUP, reloading configuration files")));
 		ProcessConfigFile(PGC_SIGHUP);

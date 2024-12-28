@@ -24,6 +24,11 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+skip_special_indexoid_hook_type skip_special_indexoid_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 
 static void _bt_drop_lock_and_maybe_pin(IndexScanDesc scan, BTScanPos sp);
 static OffsetNumber _bt_binsrch(Relation rel, BTScanInsert key, Buffer buf);
@@ -1546,6 +1551,9 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 	int			itemIndex;
 	bool		continuescan;
 	int			indnatts;
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+	bool		rcontinue = true;
+#endif /* End - ReqID:SRS-Performance-GUC */
 
 	/*
 	 * We must have the buffer pinned and locked, but the usual macro can't be
@@ -1631,6 +1639,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 					/* Remember it */
 					_bt_saveitem(so, itemIndex, offnum, itup);
 					itemIndex++;
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+					/* If the index is specific, skip related page read. */
+					if (skip_special_indexoid_hook)
+						rcontinue = skip_special_indexoid_hook(scan);
+#endif /* End - ReqID:SRS-Performance-GUC */
 				}
 				else
 				{
@@ -1656,7 +1669,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 				}
 			}
 			/* When !continuescan, there can't be any more matches, so stop */
+#ifdef MISC_INTERNAL /* Modify - ReqID:SRS-Performance-GUC */
+			if (!continuescan || !rcontinue)
+#else 
 			if (!continuescan)
+#endif
 				break;
 
 			offnum = OffsetNumberNext(offnum);
@@ -1673,7 +1690,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 		 * only appear on non-pivot tuples on the right sibling page are
 		 * common.
 		 */
+#ifdef MISC_INTERNAL /* Modify - ReqID:SRS-Performance-GUC */
+		if (continuescan && rcontinue && !P_RIGHTMOST(opaque))
+#else
 		if (continuescan && !P_RIGHTMOST(opaque))
+#endif
 		{
 			ItemId		iid = PageGetItemId(page, P_HIKEY);
 			IndexTuple	itup = (IndexTuple) PageGetItem(page, iid);
@@ -1683,7 +1704,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 			_bt_checkkeys(scan, itup, truncatt, dir, &continuescan);
 		}
 
+#ifdef MISC_INTERNAL /* Modify - ReqID:SRS-Performance-GUC */
+		if (!continuescan || !rcontinue)
+#else
 		if (!continuescan)
+#endif
 			so->currPos.moreRight = false;
 
 		Assert(itemIndex <= MaxTIDsPerBTreePage);
@@ -1741,6 +1766,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 					/* Remember it */
 					itemIndex--;
 					_bt_saveitem(so, itemIndex, offnum, itup);
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+					if (skip_special_indexoid_hook)
+						/* If the index is specific, skip related page read. */
+						rcontinue = skip_special_indexoid_hook(scan);
+#endif /* End - ReqID:SRS-Performance-GUC */
 				}
 				else
 				{
@@ -1771,7 +1801,11 @@ _bt_readpage(IndexScanDesc scan, ScanDirection dir, OffsetNumber offnum)
 					}
 				}
 			}
+#ifdef MISC_INTERNAL /* Modify - ReqID:SRS-Performance-GUC */
+			if (!continuescan || !rcontinue)
+#else
 			if (!continuescan)
+#endif
 			{
 				/* there can't be any more matches, so stop */
 				so->currPos.moreLeft = false;

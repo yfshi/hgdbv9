@@ -67,6 +67,12 @@
 #include "utils/snapmgr.h"
 #include "utils/guc.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+snapshot_lock_acquire_hook_type snapshot_lock_acquire_hook = NULL;
+snapshot_lock_release_hook_type snapshot_lock_release_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
 /* Our shared memory area */
@@ -2386,10 +2392,20 @@ GetSnapshotData(Snapshot snapshot)
 	 * It is sufficient to get shared lock on ProcArrayLock, even if we are
 	 * going to set MyProc->xmin.
 	 */
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+	if (snapshot_lock_acquire_hook)
+		snapshot_lock_acquire_hook(LW_SHARED);
+	else
+#endif /* End - ReqID:SRS-Performance-GUC */
 	LWLockAcquire(ProcArrayLock, LW_SHARED);
 
 	if (GetSnapshotDataReuse(snapshot))
 	{
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+		if (snapshot_lock_release_hook)
+			snapshot_lock_release_hook();
+		else
+#endif /* End - ReqID:SRS-Performance-GUC */
 		LWLockRelease(ProcArrayLock);
 		return snapshot;
 	}
@@ -2582,6 +2598,11 @@ GetSnapshotData(Snapshot snapshot)
 	if (!TransactionIdIsValid(MyProc->xmin))
 		MyProc->xmin = TransactionXmin = xmin;
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+	if (snapshot_lock_release_hook)
+		snapshot_lock_release_hook();
+	else
+#endif /* End - ReqID:SRS-Performance-GUC */
 	LWLockRelease(ProcArrayLock);
 
 	/* maintain state for GlobalVis* */
