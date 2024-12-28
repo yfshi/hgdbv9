@@ -137,6 +137,12 @@ static void transformCollistInFromcClause(List *rangevarlist, List *collist);
 static void transformAliasInTargetlist(RangeVar *rel, List *targetList);
 static void transformRemoveschemaInTargetlist(RangeVar *rel, List **targetList);
 /* End - BUG#Z1324 */
+/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+static void checkForUpdateInSubqury(ParseState *pstate, LockingClause *lc);
+static void applyLockingTable(Query *qry, Oid relid,
+				LockingClause *lockclause,
+				bool pushedDown);
+/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 static void transformGetpartionRelationOid(Query            *qry, RangeVar  *relation);
@@ -5080,6 +5086,10 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 	Index		i;
 	LockingClause *allrels;
 
+	/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+	checkForUpdateInSubqury(pstate, lc);
+	/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
 	CheckSelectLocking(qry, lc->strength);
 
 	/* make a clause we can pass down to subqueries to select all rels */
@@ -5087,6 +5097,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 	allrels->lockedRels = NIL;	/* indicates all rels */
 	allrels->strength = lc->strength;
 	allrels->waitPolicy = lc->waitPolicy;
+	allrels->waitInteger = lc->waitInteger;	/* BUG#M0000470:FOR UPDATE WAIT integer */
 
 	if (lockedRels == NIL)
 	{
@@ -5110,11 +5121,15 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 			{
 				case RTE_RELATION:
 					applyLockingClause(qry, i, lc->strength, lc->waitPolicy,
+									   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+									   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   pushedDown);
 					rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
 					break;
 				case RTE_SUBQUERY:
 					applyLockingClause(qry, i, lc->strength, lc->waitPolicy,
+									   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+									   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   pushedDown);
 
 					/*
@@ -5140,25 +5155,59 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 		 * relation regardless of alias-visibility rules, so we need to
 		 * examine inFromCl to exclude OLD/NEW.
 		 */
+		/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+		List       *updaterteidlist = NIL;
+		/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
 		foreach(l, lockedRels)
 		{
 			RangeVar   *thisrel = (RangeVar *) lfirst(l);
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+			char 		*colOrRelname = NULL;
+			bool		matched = false;
+			List       *lockedColumns = NIL;
+			/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
-			/* For simplicity we insist on unqualified alias names here */
-			if (thisrel->catalogname || thisrel->schemaname)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-				/*------
-				  translator: %s is a SQL row locking clause such as FOR UPDATE */
-						 errmsg("%s must specify unqualified relation names",
-								LCS_asString(lc->strength)),
-						 parser_errposition(pstate, thisrel->location)));
+			if (ORA_PARSER != compatible_db)
+			{
+				/* For simplicity we insist on unqualified alias names here */
+				if (thisrel->catalogname || thisrel->schemaname)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+					/*------
+					  translator: %s is a SQL row locking clause such as FOR UPDATE */
+							 errmsg("%s must specify unqualified relation names",
+									LCS_asString(lc->strength)),
+							 parser_errposition(pstate, thisrel->location)));
+			}
+
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+			/* unqualified names may be table name or column name */
+			if (ORA_PARSER == compatible_db)
+			{
+				colOrRelname = thisrel->relname;
+
+				/*
+				 * The lockedColumns is locked column name in the FOR UPDATE OF clause.
+				 * It is used when pg_dump dumps a view definiation.
+				 */
+				lockedColumns = lcons(makeString(thisrel->relname), lockedColumns);
+				if (thisrel->schemaname)
+					lockedColumns = lcons(makeString(thisrel->schemaname), lockedColumns);
+				if (thisrel->catalogname)
+					lockedColumns = lcons(makeString(thisrel->catalogname), lockedColumns);
+			}
+			/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
 			i = 0;
 			foreach(rt, qry->rtable)
 			{
 				RangeTblEntry *rte = (RangeTblEntry *) lfirst(rt);
 				char	   *rtename;
+				/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+				bool		isColumn = false;
+				Oid			lockrelid = InvalidOid;
+				/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 
 				++i;
 				if (!rte->inFromCl)
@@ -5179,21 +5228,179 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 				else
 					rtename = rte->eref->aliasname;
 
-				if (strcmp(rtename, thisrel->relname) == 0)
+				/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+				if (ORA_PARSER == compatible_db)
+				{
+					if (!thisrel->catalogname && !thisrel->schemaname)
+					{
+						/*
+						 * Supports "FOR UPDATE OF table.column" and
+						 * "FOR UPDATE OF schema.table.column".
+						 * Check if it is a column name or a table name.
+						 * The columns in the OF clause only indicate which
+						 * table or view rows are locked.
+						 */
+						if (pg_strcasecmp(rtename, colOrRelname) == 0)
+							matched = true;
+						else if (rte->rtekind == RTE_RELATION &&
+							get_attnum(rte->relid, colOrRelname) != InvalidAttrNumber)
+						{
+							ListCell	*l;
+							Oid			columnrelid;
+
+							/*
+							 * If there are multiple tables, they cannot have the same column names
+							 * that appear in the FOR UPDATE OF column statement.
+							 */
+							columnrelid = rte->relid;
+							foreach(l, qry->rtable)
+							{
+								RangeTblEntry *tmprte = (RangeTblEntry *) lfirst(l);
+								if (tmprte->relid == columnrelid)
+									continue;
+
+								if (tmprte->rtekind == RTE_RELATION &&
+									get_attnum(tmprte->relid, colOrRelname) != InvalidAttrNumber)
+									ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("column ambiguously defined"),
+										 parser_errposition(pstate, thisrel->location)));
+							}
+							matched = true;
+							isColumn = true;
+						}
+						else if (rte->rtekind == RTE_SUBQUERY)
+						{
+							Query 		*subqry = rte->subquery;
+							ListCell	*lc;
+
+							foreach(lc, subqry->targetList)
+							{
+								TargetEntry *te = (TargetEntry *)lfirst(lc);
+
+								if (pg_strcasecmp(te->resname, colOrRelname) == 0)
+								{
+									if (te->resorigtbl == InvalidOid)
+										ereport(ERROR,
+												(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+												 errmsg("virtual column not allowed here"),
+												 parser_errposition(pstate, thisrel->location)));
+
+									lockrelid = te->resorigtbl;
+									matched = true;
+									isColumn = true;
+									break;
+								}
+							}
+						}
+					}
+					else if (rte->rtekind == RTE_RELATION &&
+						get_attnum(rte->relid, colOrRelname) != InvalidAttrNumber)
+					{
+						/*
+						 * It may be table.column or schema.table.column.
+						 * The columns in the OF clause only indicate which
+						 * table or view rows are locked.
+						 */
+						if (thisrel->schemaname != NULL &&
+							pg_strcasecmp(thisrel->schemaname, rtename) == 0)
+						{
+							if (thisrel->catalogname == NULL)
+							{
+								matched = true;
+								isColumn = true;
+							}
+							else if (pg_strcasecmp(thisrel->catalogname, get_namespace_name(get_rel_namespace(rte->relid))) == 0)
+							{
+								matched = true;
+								isColumn = true;
+							}
+						}
+					}
+				}
+				/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
+				if ((ORA_PARSER != compatible_db && strcmp(rtename, thisrel->relname) == 0) ||
+					(ORA_PARSER == compatible_db && matched))
 				{
 					switch (rte->rtekind)
 					{
 						case RTE_RELATION:
-							applyLockingClause(qry, i, lc->strength,
-											   lc->waitPolicy, pushedDown);
-							rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
+							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+							if (ORA_PARSER != compatible_db)
+							{
+							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+								applyLockingClause(qry, i, lc->strength,
+												   lc->waitPolicy,
+												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   pushedDown);
+								rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
+							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+							}
+							else
+							{
+								if (!isColumn)
+								{
+									if (updaterteidlist != NIL)
+										ereport(ERROR,
+												(errcode(ERRCODE_SYNTAX_ERROR),
+										/*------
+										  translator: %s is a SQL row locking clause such as FOR UPDATE */
+												 errmsg("%s can't specify unqualified relation names and column name together",
+														LCS_asString(lc->strength)),
+												 parser_errposition(pstate, thisrel->location)));
+
+									applyLockingClause(qry, i, lc->strength,
+													   lc->waitPolicy,
+													   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+													   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
+													   pushedDown);
+									rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
+								}
+								else if (updaterteidlist == NIL || !list_member_oid(updaterteidlist, rte->relid))
+								{
+									updaterteidlist = lappend_oid(updaterteidlist, rte->relid);
+									applyLockingClause(qry, i, lc->strength,
+													   lc->waitPolicy,
+													   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+													   lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
+													   pushedDown);
+									rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
+									list_free(lockedColumns);
+								}
+							}
+							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 							break;
 						case RTE_SUBQUERY:
-							applyLockingClause(qry, i, lc->strength,
-											   lc->waitPolicy, pushedDown);
-							/* see comment above */
-							transformLockingClause(pstate, rte->subquery,
-												   allrels, true);
+							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+							if (ORA_PARSER != compatible_db ||
+								!isColumn)
+							{
+							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+								applyLockingClause(qry, i, lc->strength,
+												   lc->waitPolicy,
+												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   pushedDown);
+								/* see comment above */
+								transformLockingClause(pstate, rte->subquery,
+													   allrels, true);
+							/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+							}
+							else if (updaterteidlist == NIL || !list_member_oid(updaterteidlist, rte->relid))
+							{
+								updaterteidlist = lappend_oid(updaterteidlist, lockrelid);
+								applyLockingClause(qry, i, lc->strength,
+												   lc->waitPolicy,
+												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
+												   pushedDown);
+								/* find the rte in subquery, and then set required access permissions.*/
+								applyLockingTable(rte->subquery, lockrelid, lc, pushedDown);
+								list_free(lockedColumns);
+							}
+							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 							break;
 						case RTE_JOIN:
 							ereport(ERROR,
@@ -5260,7 +5467,38 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 					break;		/* out of foreach loop */
 				}
 			}
-			if (rt == NULL)
+			/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+			if (ORA_PARSER == compatible_db && !matched)
+			{
+				if (!thisrel->catalogname && !thisrel->schemaname)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+					/*------
+					  translator: %s is a SQL row locking clause such as FOR UPDATE */
+							 errmsg("\"%s\" invalid identifier",
+									colOrRelname),
+							 parser_errposition(pstate, thisrel->location)));
+				if (thisrel->catalogname)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+					/*------
+					  translator: %s is a SQL row locking clause such as FOR UPDATE */
+							 errmsg("\"%s\".\"%s\".\"%s\" invalid identifier",
+									thisrel->catalogname, thisrel->schemaname, colOrRelname),
+							 parser_errposition(pstate, thisrel->location)));
+				if (thisrel->schemaname)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+					/*------
+					  translator: %s is a SQL row locking clause such as FOR UPDATE */
+							 errmsg("\"%s\".\"%s\" invalid identifier",
+									thisrel->schemaname, colOrRelname),
+							 parser_errposition(pstate, thisrel->location)));
+			}
+			/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
+
+			if (rt == NULL &&
+				ORA_PARSER != compatible_db /* BUG#M0000470: SELECT FOR UPDATE OF column */)
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_TABLE),
 				/*------
@@ -5270,6 +5508,10 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 								LCS_asString(lc->strength)),
 						 parser_errposition(pstate, thisrel->location)));
 		}
+		/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+		if (updaterteidlist != NIL)
+			list_free(updaterteidlist);
+		/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
 	}
 }
 
@@ -5279,6 +5521,8 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 void
 applyLockingClause(Query *qry, Index rtindex,
 				   LockClauseStrength strength, LockWaitPolicy waitPolicy,
+				   int32 waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
+				   List *lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
 				   bool pushedDown)
 {
 	RowMarkClause *rc;
@@ -5313,6 +5557,8 @@ applyLockingClause(Query *qry, Index rtindex,
 		 */
 		rc->strength = Max(rc->strength, strength);
 		rc->waitPolicy = Max(rc->waitPolicy, waitPolicy);
+		rc->waitInteger = waitInteger; /* BUG#M0000470:FOR UPDATE WAIT integer */
+		rc->lockedColumns = list_copy(lockedColumns); /* BUG#M0000470:FOR UPDATE WAIT integer */
 		rc->pushedDown &= pushedDown;
 		return;
 	}
@@ -5322,6 +5568,8 @@ applyLockingClause(Query *qry, Index rtindex,
 	rc->rti = rtindex;
 	rc->strength = strength;
 	rc->waitPolicy = waitPolicy;
+	rc->waitInteger = waitInteger; /* BUG#M0000470:FOR UPDATE WAIT integer */
+	rc->lockedColumns = list_copy(lockedColumns); /* BUG#M0000470:FOR UPDATE WAIT integer */
 	rc->pushedDown = pushedDown;
 	qry->rowMarks = lappend(qry->rowMarks, rc);
 }
@@ -5545,3 +5793,81 @@ transformIvyUpdateTargetList(ParseState *pstate, List *origTlist)
 	return tlist;
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - BUG#M0000470: SELECT FOR UPDATE OF column */
+/*
+ * Check if it is allowed FOR UPDATE clause in a subqury.
+ * It is allowed if set the allow_forupdate_in_subquery to true,
+ * it is not allowed if if set the allow_forupdate_in_subquery to false.
+ */
+static void
+checkForUpdateInSubqury(ParseState *pstate, LockingClause *lc)
+{
+	if (!allow_forupdate_in_subquery &&
+		pstate->parentParseState != NULL &&
+		lc->strength == LCS_FORUPDATE)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("SELECT FOR UPATE clause only appears in a top-level SELECT statement, not in subqueries"),
+				 parser_errposition(pstate,
+									exprLocation((Node *) lc))));
+}
+
+/*
+ * In the SELECT xx FROM subquery FOR UPATE OF column statement,
+ * find the rte in subquery, and then set required access permission
+ * ACL_SELECT_FOR_UPDATE.
+ */
+static void
+applyLockingTable(Query *qry, Oid relid,
+				LockingClause *lockclause,
+				bool pushedDown)
+{
+	int			i;
+	ListCell	*l;
+	bool		foundrel = false;
+
+	i = 0;
+	foreach(l, qry->rtable)
+	{
+		RangeTblEntry *rte = (RangeTblEntry *) lfirst(l);
+
+		++i;
+		if (!rte->inFromCl)
+			continue;
+
+		if (rte->rtekind == RTE_RELATION)
+		{
+			if (rte->relid == relid)
+			{
+				applyLockingClause(qry, i, lockclause->strength,
+								   lockclause->waitPolicy, lockclause->waitInteger,
+								   lockclause->lockedRels,
+								   pushedDown);
+				rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
+
+				foundrel = true;
+				break;
+			}
+		}
+		else if (rte->rtekind == RTE_SUBQUERY)
+		{
+			applyLockingTable(rte->subquery, relid, lockclause, pushedDown);
+			foundrel = true;
+			break;
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("%s cannot be applied",
+							LCS_asString(lockclause->strength))));
+	}
+
+	if (!foundrel)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYSTEM_ERROR),
+				 errmsg("cannot find the relation")));
+
+	return;
+}
+/* End - BUG#M0000470: SELECT FOR UPDATE OF column */

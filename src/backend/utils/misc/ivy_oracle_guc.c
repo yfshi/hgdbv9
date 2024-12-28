@@ -191,6 +191,10 @@ bool enable_compatible_numeric_division_result = false;
 
 bool hex_bytea = false; /* Bug#z1457 */
 
+/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+bool allow_forupdate_in_subquery = true;
+/* End - BUG#M0000470: SELECT FOR UPDATE */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -747,6 +751,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z00001452 */
+	/* Begin - BUG#M0000470: SELECT FOR UPDATE */
+	{
+		{"ivorysql.allow_forupdate_in_subquery", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether to allow the FOR UPDATE clause in a subquery."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&allow_forupdate_in_subquery,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000470: SELECT FOR UPDATE */
 #endif
 #if 0
 	/* End-of-list marker */

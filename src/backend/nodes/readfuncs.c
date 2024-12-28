@@ -422,6 +422,8 @@ _readRowMarkClause(void)
 	READ_UINT_FIELD(rti);
 	READ_ENUM_FIELD(strength, LockClauseStrength);
 	READ_ENUM_FIELD(waitPolicy, LockWaitPolicy);
+	READ_INT_FIELD(waitInteger); /* BUG#M0000470:FOR UPDATE WAIT integer */
+	READ_NODE_FIELD(lockedColumns); /* BUG#M0000470:FOR UPDATE WAIT integer */
 	READ_BOOL_FIELD(pushedDown);
 
 	READ_DONE();
@@ -2683,6 +2685,7 @@ _readPlanRowMark(void)
 	READ_INT_FIELD(allMarkTypes);
 	READ_ENUM_FIELD(strength, LockClauseStrength);
 	READ_ENUM_FIELD(waitPolicy, LockWaitPolicy);
+	READ_UINT_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 	READ_BOOL_FIELD(isParent);
 
 	READ_DONE();

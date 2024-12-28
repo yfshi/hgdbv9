@@ -534,6 +534,7 @@ typedef struct TableAmRoutine
 							   CommandId cid,
 							   LockTupleMode mode,
 							   LockWaitPolicy wait_policy,
+							   int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							   uint8 flags,
 							   TM_FailureData *tmfd);
 
@@ -1547,11 +1548,14 @@ table_tuple_update(Relation rel, ItemPointer otid, TupleTableSlot *slot,
 static inline TM_Result
 table_tuple_lock(Relation rel, ItemPointer tid, Snapshot snapshot,
 				 TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
-				 LockWaitPolicy wait_policy, uint8 flags,
+				 LockWaitPolicy wait_policy,
+				 int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
+				 uint8 flags,
 				 TM_FailureData *tmfd)
 {
 	return rel->rd_tableam->tuple_lock(rel, tid, snapshot, slot,
 									   cid, mode, wait_policy,
+									   wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   flags, tmfd);
 }
 

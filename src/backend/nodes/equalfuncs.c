@@ -2992,6 +2992,7 @@ _equalLockingClause(const LockingClause *a, const LockingClause *b)
 	COMPARE_NODE_FIELD(lockedRels);
 	COMPARE_SCALAR_FIELD(strength);
 	COMPARE_SCALAR_FIELD(waitPolicy);
+	COMPARE_SCALAR_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
 
 	return true;
 }
@@ -3126,6 +3127,8 @@ _equalRowMarkClause(const RowMarkClause *a, const RowMarkClause *b)
 	COMPARE_SCALAR_FIELD(strength);
 	COMPARE_SCALAR_FIELD(waitPolicy);
 	COMPARE_SCALAR_FIELD(pushedDown);
+	COMPARE_SCALAR_FIELD(waitInteger);/* BUG#M0000470:FOR UPDATE WAIT integer */
+	COMPARE_NODE_FIELD(lockedColumns);/* BUG#M0000470:FOR UPDATE WAIT integer */
 
 	return true;
 }

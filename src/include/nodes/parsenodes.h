@@ -835,6 +835,9 @@ typedef struct LockingClause
 	List	   *lockedRels;		/* FOR [KEY] UPDATE/SHARE relations */
 	LockClauseStrength strength;
 	LockWaitPolicy waitPolicy;	/* NOWAIT and SKIP LOCKED */
+	/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+	int32		waitInteger;	/* WAIT integer: wait up to the specified number of seconds to acquire a DML lock */
+	/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 } LockingClause;
 
 /*
@@ -1489,6 +1492,10 @@ typedef struct RowMarkClause
 	Index		rti;			/* range table index of target relation */
 	LockClauseStrength strength;
 	LockWaitPolicy waitPolicy;	/* NOWAIT and SKIP LOCKED */
+	/* Begin - BUG#M0000470:FOR UPDATE WAIT integer */
+	int32		waitInteger;	/* WAIT integer: wait up to the specified number of seconds to acquire a DML lock */
+	List 		*lockedColumns;	/* the for update of columns */
+	/* End - BUG#M0000470:FOR UPDATE WAIT integer */
 	bool		pushedDown;		/* pushed down from higher query level? */
 } RowMarkClause;
 

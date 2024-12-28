@@ -593,6 +593,7 @@ expand_single_inheritance_child(PlannerInfo *root, RangeTblEntry *parentrte,
 		childrc->allMarkTypes = (1 << childrc->markType);
 		childrc->strength = top_parentrc->strength;
 		childrc->waitPolicy = top_parentrc->waitPolicy;
+		childrc->waitInteger = top_parentrc->waitInteger;/* BUG#M0000470:FOR UPDATE WAIT integer */
 
 		/*
 		 * We mark RowMarks for partitioned child tables as parent RowMarks so

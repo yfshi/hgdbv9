@@ -3162,7 +3162,7 @@ update rules_base set f2 = f2 + 1;
 
 create or replace rule r1 as on update to rules_base do instead
   select * from rules_base where f1 = 11 for update of old; -- error
-ERROR:  relation "old" in FOR UPDATE clause not found in FROM clause
+ERROR:  "old" invalid identifier
 LINE 2:   select * from rules_base where f1 = 11 for update of old;
                                                                ^
 drop table rules_base;

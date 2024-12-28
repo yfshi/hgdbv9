@@ -186,6 +186,7 @@ lnext:
 		test = table_tuple_lock(erm->relation, &tid, estate->es_snapshot,
 								markSlot, estate->es_output_cid,
 								lockmode, erm->waitPolicy,
+								erm->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 								lockflags,
 								&tmfd);
 
