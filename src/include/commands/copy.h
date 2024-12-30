@@ -61,6 +61,7 @@ typedef struct CopyFormatOptions
 	char	   *taskid;		/* current bulkload task id */
         char	   *filename;		/* used for error output */
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	bool	   skipbad;		/* BUG#Z1616 */
 	/* Begin - BUG#Z1087 */
 	char	   *logbad;
 	bool	   log_bad;

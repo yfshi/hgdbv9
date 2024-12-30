@@ -224,3 +224,7 @@ test: copy_skip
 #/* Begin - ReqID:SRS-SQL-SCHEMA */
 test: ora_schema
 #/* End - ReqID:SRS-SQL-SCHEMA */
+
+#/* Begin - BUG#Z1616 */
+test: copy_skipbadR
+#/* End - BUG#Z1616 */

@@ -602,6 +602,18 @@ ProcessCopyOptions(ParseState *pstate,
 						parser_errposition(pstate, defel->location)));
 		}
 		/* End - BUG#Z1087 */
+		/* Begin - BUG#Z1616 */
+		else if (strcmp(defel->defname, "skipbad") == 0)
+		{
+			if (opts_out->skipbad)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->skipbad = defGetBoolean(defel);
+			opts_out->tolerate = true;
+		}
+		/* End - BUG#Z1616 */
 		/* Begin - BUG:M0000368 */
 		else if (strcmp(defel->defname, "skiplist") == 0)
 		{
@@ -808,11 +820,6 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Text and Binary file type is not support for sharding"))); 
 
-	/* tolerate mode, task id is necessary opt */
-	if ((opts_out->tolerate) && (!opts_out->taskid)) /* BUG#M0000406 */
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("Tolerate mode, taskid is necessary opts")));	
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 	/* Begin - BUG#Z1087 */
 	if ( (!opts_out->tolerate) && opts_out->log_bad )
@@ -820,6 +827,36 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Feature logbad only support under Tolerate mode")));
 	/* End - BUG#Z1087 */
+	/* Begin - BUG#Z1616 */
+	/*
+	 * tolerate is on
+	 * if skipbad is false, taskid filename is necessary opt
+	 * if skipbad is true, taskid is not necessart opt, so did not check
+	 */
+	if (opts_out->tolerate && !opts_out->skipbad)
+	{
+		if (!opts_out->taskid)
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Tolerate mode, taskid is necessary opts")));
+	}
+	if (opts_out->skipbad && (opts_out->badfile || opts_out->badtable))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Feature skip bad column did not support under BADFILE or BADTABLE is on")));
+	if ( opts_out->skipbad && !is_from )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column only available using COPY FROM")));
+	if ( (opts_out->skiplist) && opts_out->skipbad )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column did not support when skiplist is on")));
+	if ( (!opts_out->csv_mode) && opts_out->skipbad )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column just for CSV mode")));
+	/* End - BUG#Z1616 */
 	/* Begin - BUG:M0000368 */
 	if ( (opts_out->skiplist) && !is_from )
 		ereport(ERROR,

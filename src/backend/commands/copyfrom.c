@@ -400,8 +400,18 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 					simple_heap_delete(resultRelInfo->ri_RelationDesc, &buffer->slots[i]->tts_tid);
 					cstate->error_num ++;
 
-					/* output the error record to file or table */
-					OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+					}
 					cstate->num_errors++; /* BUG#Z1087 */
 
 					goto bypass_record;
@@ -681,6 +691,8 @@ CheckTriggerForTolerate(Relation rel,ResultRelInfo *relinfo,CopyFromState cstate
 				estate->schema_name = cstate->schema_name;
 				estate->cur_relname = cstate->cur_relname;
 				estate->delimiter = cstate->opts.delim;
+
+				estate->skipbad_fk = cstate->opts.skipbad;	/* BUG#Z1616 */
 			}
 		}
         }
@@ -1098,8 +1110,18 @@ CopyFrom(CopyFromState cstate)
 				/* End - BUG:M0000383 */
 				else
 				{
-					/* output the error record to file or table */
-					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					}
 					error_flag = true;
 					cstate->num_errors++; /* BUG#Z1087 */
 				}
@@ -1162,7 +1184,18 @@ CopyFrom(CopyFromState cstate)
 				{
 					MemoryContextSwitchTo(current_cxt);
 
-					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					}
 					error_flag = true;
 
 					cstate->num_errors++; /* BUG#Z1087 */
@@ -1361,8 +1394,19 @@ CopyFrom(CopyFromState cstate)
 						MemoryContextSwitchTo(current_cxt);
 						FlushErrorState();
 
-						/* output the error record to file or table */
-						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+						/* Begin - BUG#Z1616 */
+						if (cstate->opts.skipbad)
+						{
+							/* no need to store the error record */
+							/* just continue */
+						}
+						/* End - BUG#Z1616 */
+						else
+						{
+							/* output the error record to file or table */
+							OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+						}
+
 						error_flag = true;
 						cstate->num_errors++; /* BUG#Z1087 */
 					}
@@ -1454,8 +1498,18 @@ CopyFrom(CopyFromState cstate)
 									/* delete the record by tid */
 									simple_heap_delete(resultRelInfo->ri_RelationDesc,&myslot->tts_tid);
 
-									/* output the error record to file or table */
-									OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
+									/* Begin - BUG#Z1616 */
+									if (cstate->opts.skipbad)
+									{
+										/* no need to store the error record */
+										/* just continue */
+									}
+									/* End - BUG#Z1616 */
+									else
+									{
+										/* output the error record to file or table */
+										OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
+									}
 									
 									error_flag = true;
 									cstate->num_errors++; /* BUG#Z1087 */

@@ -742,6 +742,7 @@ typedef struct EState
 	const char	*schema_name;
 	const char	*cur_relname;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	bool	skipbad_fk;
 	int		result_rel_index;	/* ReqID:SRS-MYSQL-UPDATE */
 
 } EState;
