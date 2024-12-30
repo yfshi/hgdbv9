@@ -201,6 +201,39 @@ sub AddDir
 	my ($self, $reldir) = @_;
 	my $mf = read_makefile($reldir);
 
+	# Begin - ReqID:SRS-Performance-GUC
+	my @contrib_files_exclude;
+
+	if ($reldir eq 'contrib/hg_misc')
+	{
+		if (!$self->{solution}->{options}->{internal_guc})
+		{
+			push @contrib_files_exclude, 'src/internal_guc/internal.c';
+		}
+
+		if (!$self->{solution}->{options}->{license})
+		{
+			push @contrib_files_exclude, 'src/license/lic_views.c';
+		}
+
+		my $source_sql_file = "contrib/hg_misc/src/sql/hg_misc.in";
+		my $output_sql_file = "contrib/hg_misc/hg_misc--1.0.sql";
+		my %sql_marcos = (
+			MISC_INTERNAL    => $self->{solution}->{options}->{internal_guc} ? 1 : undef,
+			USE_LICENSE      => $self->{solution}->{options}->{license} ? 1 : undef,
+		);
+		my @cmd_merge_sql = ('cl', '/P');
+		foreach my $sql_marco (keys %sql_marcos)
+		{
+			push @cmd_merge_sql, "/D$sql_marco=" . ($sql_marcos{$sql_marco} // "");
+		}
+		push @cmd_merge_sql, "/Fi$output_sql_file", $source_sql_file;
+
+		print "Executing sql merge command for hg_misc: ", join(" ", @cmd_merge_sql), "\n";
+		system(@cmd_merge_sql) == 0 or print "Failed to preprocess file: $?";
+	}
+	# End - ReqID:SRS-Performance-GUC
+
 	$mf =~ s{\\\r?\n}{}g;
 	if ($mf =~ m{^(?:SUB)?DIRS[^=]*=\s*(.*)$}mg)
 	{
@@ -256,6 +289,10 @@ sub AddDir
 			  ;    # Remove trailing comma that can show up from filter stuff
 			next unless $f =~ /.*\.o$/;
 			$f =~ s/\.o$/\.c/;
+			# Begin - ReqID:SRS-Performance-GUC
+			# Determine whether the modules in hg_misc need to be compile
+			next if (grep { /^$f$/ } @contrib_files_exclude);
+			#  End - ReqID:SRS-Performance-GUC
 			if ($f =~ /^\$\(top_builddir\)\/(.*)/)
 			{
 				$f = $1;
