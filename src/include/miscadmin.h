@@ -372,6 +372,7 @@ extern void SetCurrentRoleId(Oid roleid, bool is_superuser);
 extern bool superuser(void);	/* current user is superuser */
 extern bool superuser_arg(Oid roleid);	/* given user is superuser */
 extern char GetPortConnmode(void);
+extern bool UserIdIsValid(void);	/* current user is valid */
 
 
 /*****************************************************************************

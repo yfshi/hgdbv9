@@ -509,6 +509,11 @@ GetPortConnmode(void)
 	return 'u';
 }
 
+bool
+UserIdIsValid(void)
+{
+	return OidIsValid(CurrentUserId);
+}
 
 /*
  * GetUserId - get the current effective user ID.
