@@ -7487,6 +7487,7 @@ set_config_option(const char *name, const char *value,
 	void	   *newextra = NULL;
 	bool		prohibitValueChange = false;
 	bool		makeDefault;
+	bool		enable_tmp_backdoor = false; /* BUG#M0000475 */
 
 	if (elevel == 0)
 	{
@@ -7709,7 +7710,23 @@ set_config_option(const char *name, const char *value,
 	 * it. Also keep going if makeDefault is true, since we may want to set
 	 * the reset/stacked values even if we can't set the variable itself.
 	 */
-	if (record->source > source)
+	/* Begin - BUG#M0000475 */
+	if (alter_database_set_special &&
+		name &&
+		strcmp(name, "ivorysql.identifier_case_switch") == 0 &&
+		record->source == PGC_S_OVERRIDE &&
+		record->source > source)
+	{
+		if (changeVal && !makeDefault)
+		{
+			elog(DEBUG3, "\"%s\": setting ignored because previous source is higher priority",
+				 name);
+			return -1;
+		}
+		enable_tmp_backdoor = true;
+	}
+	/* End - BUG#M0000475 */
+	else if (record->source > source)
 	{
 		if (changeVal && !makeDefault)
 		{
@@ -8181,17 +8198,41 @@ set_config_option(const char *name, const char *value,
 
 				if (changeVal)
 				{
-					/* Save old value to support transaction abort */
-					if (!makeDefault)
-						push_old_value(&conf->gen, action);
+					/* Begin - BUG#M0000475 */
+					if (enable_tmp_backdoor)
+					{
+						/* Save old value to support transaction abort */
+						if (!makeDefault)
+							push_old_value(&conf->gen, action);
 
-					if (conf->assign_hook)
-						conf->assign_hook(newval, newextra);
-					*conf->variable = newval;
-					set_extra_field(&conf->gen, &conf->gen.extra,
-									newextra);
-					conf->gen.source = source;
-					conf->gen.scontext = context;
+						if (conf->assign_hook)
+							(*conf->assign_hook) (newval, newextra);
+						*conf->variable = newval;
+						set_extra_field(&conf->gen, &conf->gen.extra,
+										newextra);
+						/*
+						 * It's a very temporary backdoor, We may not want
+						 * to change the source and context of GUC?
+						 */
+						//conf->gen.source = source;
+						//conf->gen.scontext = context;
+
+					}
+					/* End - BUG#M0000475 */
+					else
+					{
+						/* Save old value to support transaction abort */
+						if (!makeDefault)
+							push_old_value(&conf->gen, action);
+
+						if (conf->assign_hook)
+							conf->assign_hook(newval, newextra);
+						*conf->variable = newval;
+						set_extra_field(&conf->gen, &conf->gen.extra,
+										newextra);
+						conf->gen.source = source;
+						conf->gen.scontext = context;
+					}
 				}
 				if (makeDefault)
 				{

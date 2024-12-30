@@ -268,9 +268,7 @@ SELECT
     generate_series(1,10),
     generate_series('2020-10-01'::timestamp, '2020-10-10'::timestamp, interval '1 day'),
     generate_series('2020-10-01'::timestamptz, '2020-10-10'::timestamptz, interval '1 day');
-ERROR:  syntax error at or near ")"
-LINE 5: ...-01'::timestamp, '2020-10-10'::timestamp, interval '1 day'),
-                                                                     ^
+ERROR:  missing or invalid datetime field.
 ANALYZE ab1;
 DROP TABLE ab1;
 -- Verify supported object types for extended statistics

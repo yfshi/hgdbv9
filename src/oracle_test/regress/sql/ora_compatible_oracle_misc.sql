@@ -179,3 +179,16 @@ insert into test_z1506 select case when 1=1 then '1' else '2' end from dual;
 select case '1' when a then '1' else '2' end from test_z1506;
 drop table test_z1506;
 /* End - BUG#Z1506 */
+
+/* Begin - BUG#M0000475 */
+set ivorysql.enable_pg_interval_datatype to off;
+select interval(2) '1 days';
+select interval '1 days';
+create table test_m475(a interval);
+set ivorysql.enable_pg_interval_datatype to on;
+select interval(2) '1 days';
+select interval '1 days';
+create table test_m475(a interval);
+drop table test_m475;
+reset ivorysql.enable_pg_interval_datatype;
+/* End - BUG#M0000475 */

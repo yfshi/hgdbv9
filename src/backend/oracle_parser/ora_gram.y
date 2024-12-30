@@ -784,7 +784,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER PACKAGES /* ReqID:SRS-SQL-PACKAGE */
 
-	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PGEXTRACT PLACING PLANS POLICY
+	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD EXTRACT PLACING PLANS POLICY
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLIC PUBLICATION PURGE	/* BUG:M0000118 */
 
@@ -16464,8 +16464,17 @@ SimpleTypename:
 			| LongTypename 							{ $$ = $1; }	/* BUGID:0000649 */
 			| ConstInterval opt_interval_type	/* ReqID:SRS-GKC-DATATYPE_001 */
 				{
+					/* Begin - BUG#M0000475 */
+					if (ORA_PARSER == compatible_db &&
+						enable_pg_interval_datatype &&
+						$2 == NIL)
+					{
+						$$ = $1;
+						$$->typmods = $2;
+					}
+					/* End - BUG#M0000475 */
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					else if (ORA_PARSER == compatible_db)
 					{
 						List *typmods = $2;
 						A_Const *n;
@@ -17670,6 +17679,10 @@ opt_interval:
 					}
 				}
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			/* Begin - BUG#M0000475 */
+			| /*EMPTY*/
+				{ $$ = NIL; }
+			/* End - BUG#M0000475 */
 		;
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
@@ -18967,7 +18980,7 @@ func_expr_common_subexpr:
 			| CAST '(' a_expr AS Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
 			/* Begin - ReqID:SRS-SQL-XML */
-			| PGEXTRACT '(' extract_list ')'
+			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
 											   $3,
@@ -18975,6 +18988,19 @@ func_expr_common_subexpr:
 											   @1);
 				}
 			/* End - ReqID:SRS-SQL-XML */
+			/* Begin - BUG#M0000475 */
+			| EXTRACT '(' func_arg_list_opt ')'
+				{
+					/*
+					 * allow functions named extract() to be called without
+					 * special syntax
+					 */
+					$$ = (Node *) makeFuncCall(list_make1(makeString("extract")),
+											   $3,
+											   COERCE_EXPLICIT_CALL,
+											   @1);
+				}
+			/* End - BUG#M0000475 */
 			| NORMALIZE '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("normalize"),
@@ -20566,8 +20592,18 @@ AexprConst: Iconst
 				}
 			| ConstInterval Sconst opt_interval
 				{
+					/* Begin - BUG#M0000475 */
+					if (ORA_PARSER == compatible_db &&
+						enable_pg_interval_datatype &&
+						$3 == NIL)
+					{
+						TypeName *t = $1;
+						t->typmods = $3;
+						$$ = makeStringConstCast($2, @2, t);
+					}
+					/* End - BUG#M0000475 */
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					else if (ORA_PARSER == compatible_db)
 					{
 						TypeName *t;
 						List *typmods = $3;
@@ -20610,7 +20646,7 @@ AexprConst: Iconst
 			| ConstInterval '(' Iconst ')' Sconst
 				{
 					/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-					if (ORA_PARSER == compatible_db)
+					if (ORA_PARSER == compatible_db && !enable_pg_interval_datatype /* BUG#M0000475 */)
 					{
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -21389,6 +21425,7 @@ col_name_keyword:
 			| DECIMAL_P
 			| DECODE		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| EXISTS
+			| EXTRACT		/* BUG#M0000475 */
 			| FLOAT_P
 			| GREATEST
 			| GROUPING
@@ -21410,7 +21447,6 @@ col_name_keyword:
 			| NVL2			/* ReqID:SRS-GKC-DATATYPE_001 */
 			| OUT_P
 			| OVERLAY
-			| PGEXTRACT		/* ReqID:SRS-SQL-XML */
 			| POSITION
 			| PRECISION
 			| REAL
@@ -21743,6 +21779,7 @@ bare_label_keyword:
 			| EXTEND	/* ReqID:SRS-SQL-SEQ */
 			| EXTENSION
 			| EXTERNAL
+			| EXTRACT /* BUG#M0000475 */
 			| FALSE_P
 			| FAMILY
 			| FILENAME /* ReqID:SRS-MISC-BULKLOAD */
@@ -21910,7 +21947,6 @@ bare_label_keyword:
 			| PARTITION
 			| PASSING
 			| PASSWORD
-			| PGEXTRACT /* ReqID:SRS-SQL-XML */
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PLACING
 			| PLANS

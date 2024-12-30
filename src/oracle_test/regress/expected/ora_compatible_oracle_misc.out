@@ -345,3 +345,28 @@ select case '1' when a then '1' else '2' end from test_z1506;
 
 drop table test_z1506;
 /* End - BUG#Z1506 */
+/* Begin - BUG#M0000475 */
+set ivorysql.enable_pg_interval_datatype to off;
+select interval(2) '1 days';
+ERROR:  missing or invalid datetime field.
+select interval '1 days';
+ERROR:  missing or invalid datetime field.
+create table test_m475(a interval);
+ERROR:  missing or invalid datetime field.
+set ivorysql.enable_pg_interval_datatype to on;
+select interval(2) '1 days';
+ interval 
+----------
+ @ 1 day
+(1 row)
+
+select interval '1 days';
+ interval 
+----------
+ @ 1 day
+(1 row)
+
+create table test_m475(a interval);
+drop table test_m475;
+reset ivorysql.enable_pg_interval_datatype;
+/* End - BUG#M0000475 */

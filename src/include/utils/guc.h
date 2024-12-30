@@ -430,6 +430,8 @@ extern bool enable_compatible_numeric_division_result;
 extern PGDLLIMPORT bool allow_forupdate_in_subquery;
 /* End - BUG#M0000470: SELECT FOR UPDATE */
 
+extern PGDLLIMPORT bool enable_pg_interval_datatype; /* BUG#M0000475 */
+extern PGDLLIMPORT bool	alter_database_set_special;  /* BUG#M0000475 */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
