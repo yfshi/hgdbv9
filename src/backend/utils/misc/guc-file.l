@@ -19,6 +19,10 @@
 #include "storage/fd.h"
 #include "utils/guc.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 
 /*
  * flex emits a yy_fatal_error() function that it calls in response to
@@ -451,6 +455,9 @@ ProcessConfigFileInternal(GucContext context, bool applySettings, int elevel)
 				if (!post_value)
 					post_value = "";
 				if (strcmp(pre_value, post_value) != 0)
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+					if (pdbg_log_hook != NULL && pdbg_log_hook())
+#endif /* End - ReqID:SRS-Performance-GUC */
 					ereport(elevel,
 							(errmsg("parameter \"%s\" changed to \"%s\"",
 									item->name, item->value)));

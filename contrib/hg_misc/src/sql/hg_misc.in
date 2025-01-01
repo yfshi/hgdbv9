@@ -1,0 +1,17 @@
+/*
+ * This file is used to generate hg_misc--1.0.sql.
+ *
+ * Create your module's foo.sql file, and add below within a macro's control
+ * the macro(s) are passed in by Makefile, remember change it too.
+ */
+
+--complain if script is sourced in psql rather than via ALTER EXTENSION
+\echo Use "CREATE EXTENSION hg_misc" to load this file. \quit
+
+#ifdef USE_LICENSE
+#include "license.sql"
+#endif
+
+#ifdef MISC_INTERNAL
+#include "internal_guc.sql"
+#endif

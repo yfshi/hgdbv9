@@ -542,6 +542,9 @@ sub GenerateFiles
 		#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 		PERF_NUMA       			=> $self->{options}->{numa} ? 1 : undef,
 		#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+		# Begin - ReqID:SRS-Performance-GUC
+		MISC_INTERNAL              => $self->{options}->{internal_guc} ? 1 : undef,
+		# End - ReqID:SRS-Performance-GUC
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
@@ -1373,6 +1376,9 @@ sub GetFakeConfigure
 	#/* Begin - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
 	$cfg .= ' --enable-numa' 		if ($self->{options}->{numa});
 	#/* End - ReqID:SRS-Performance-NUMA-DATASTRUCTURE */
+	# Begin - ReqID:SRS-Performance-GUC
+	$cfg .= ' --enable-internal-guc' if ($self->{options}->{internal_guc});
+	# End - ReqID:SRS-Performance-GUC
 	$cfg .= ' --with-ldap'        if ($self->{options}->{ldap});
 	$cfg .= ' --without-zlib' unless ($self->{options}->{zlib});
 	$cfg .= ' --with-extra-version' if ($self->{options}->{extraver});

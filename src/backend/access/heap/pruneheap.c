@@ -27,6 +27,11 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+haep_page_prune_hook_type haep_page_prune_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 /* Working data for heap_page_prune and subroutines */
 typedef struct
 {
@@ -203,6 +208,12 @@ heap_page_prune_opt(Relation relation, Buffer buffer)
 		if (PageIsFull(page) || PageGetHeapFreeSpace(page) < minfree)
 		{
 			/* OK to prune */
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+			if (haep_page_prune_hook)
+				haep_page_prune_hook(relation, buffer, vistest,
+									 limited_xmin, limited_ts);
+			else
+#endif /* End - ReqID:SRS-Performance-GUC */
 			(void) heap_page_prune(relation, buffer, InvalidTransactionId,
 								   vistest,
 								   limited_xmin, limited_ts,

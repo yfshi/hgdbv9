@@ -684,7 +684,6 @@ sub mkvcbuild
 			next if ($d =~ /^\./);
 			next unless (-f "$subdir/$d/Makefile");
 			next if (grep { /^$d$/ } @contrib_excludes);
-			next if (!$solution->{options}->{license} && $d eq 'hg_misc');
 			AddContrib($subdir, $d);
 		}
 		closedir($D);

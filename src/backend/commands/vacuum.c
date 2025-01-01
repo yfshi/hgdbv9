@@ -56,6 +56,11 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+pdbg_vacuum_hook_type pdbg_vacuum_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 
 /*
  * GUC parameters
@@ -1999,6 +2004,15 @@ vacuum_rel(Oid relid, RangeVar *relation, VacuumParams *params)
 		rel->rd_rel->relkind != RELKIND_TOASTVALUE &&
 		rel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
 	{
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+		if (pdbg_vacuum_hook)
+		{
+			if (rel->rd_rel->relkind == RELKIND_INDEX ||
+				rel->rd_rel->relkind == RELKIND_PARTITIONED_INDEX)
+				pdbg_vacuum_hook(rel);
+		}
+		else
+#endif /* End - ReqID:SRS-Performance-GUC */
 		ereport(WARNING,
 				(errmsg("skipping \"%s\" --- cannot vacuum non-tables or special system tables",
 						RelationGetRelationName(rel))));

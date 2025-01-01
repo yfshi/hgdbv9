@@ -726,6 +726,7 @@ ICU_LIBS
 ICU_CFLAGS
 with_icu
 enable_numa
+enable_internal_guc
 enable_thread_safety
 INCLUDES
 autodepend
@@ -858,6 +859,7 @@ enable_root
 enable_normalobjectid
 enable_thread_safety
 enable_numa
+enable_internal_guc
 with_icu
 with_tcl
 with_tclconfig
@@ -1549,6 +1551,7 @@ Optional Features:
   --enable-normalobjectid use first normal object id, default 32767
   --disable-thread-safety disable thread-safety in client libraries
   --enable-numa           enable NUMA performance
+  --enable-internal-guc   enable internal GUC performance
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -3335,7 +3338,7 @@ elif test "$default_ora_port" -lt "1" -o "$default_ora_port" -gt "65535"; then
   as_fn_error $? "invalid --with-oraport specification: must be between 1 and 65535" "$LINENO" 5
 fi
 
-# Begin - ReqID:SRS-MISC-MYSQL-FRAME 
+# Begin - ReqID:SRS-MISC-MYSQL-FRAME
 # Default port number (--with-mysport), default 3306
 #
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for default port number in mysql compatible mode" >&5
@@ -8475,6 +8478,43 @@ $as_echo "#define PERF_NUMA 1" >>confdefs.h
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_numa" >&5
 $as_echo "$enable_numa" >&6; }
+
+
+#
+# Enable hg_misc/internal, ReqID:SRS-Performance-GUC
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking enable internal GUC performance" >&5
+$as_echo_n "checking enable internal GUC performance... " >&6; }
+
+
+# Check whether --enable-internal-guc was given.
+if test "${enable_internal_guc+set}" = set; then :
+  enableval=$enable_internal_guc;
+  case $enableval in
+    yes)
+      :
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-internal-guc option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_internal_guc=no
+
+fi
+
+
+if test "$enable_internal_guc" = yes; then
+
+$as_echo "#define MISC_INTERNAL 1" >>confdefs.h
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_internal_guc" >&5
+$as_echo "$enable_internal_guc" >&6; }
 
 
 #
@@ -20439,6 +20479,9 @@ fi
 ac_config_files="$ac_config_files GNUmakefile src/Makefile.global"
 
 
+ac_config_files="$ac_config_files contrib/hg_misc/hg_misc.global"
+
+
 ac_config_links="$ac_config_links src/backend/port/pg_sema.c:${SEMA_IMPLEMENTATION} src/interfaces/libpq/ivy_sema.c:${LIBPQ_SEMA_IMPLEMENTATION} src/backend/port/pg_shmem.c:${SHMEM_IMPLEMENTATION} src/include/pg_config_os.h:src/include/port/${template}.h src/Makefile.port:src/makefiles/Makefile.${template}"
 
 
@@ -21161,6 +21204,7 @@ do
     "src/backend/port/tas.s") CONFIG_LINKS="$CONFIG_LINKS src/backend/port/tas.s:src/backend/port/tas/${tas_file}" ;;
     "GNUmakefile") CONFIG_FILES="$CONFIG_FILES GNUmakefile" ;;
     "src/Makefile.global") CONFIG_FILES="$CONFIG_FILES src/Makefile.global" ;;
+    "contrib/hg_misc/hg_misc.global") CONFIG_FILES="$CONFIG_FILES contrib/hg_misc/hg_misc.global" ;;
     "src/backend/port/pg_sema.c") CONFIG_LINKS="$CONFIG_LINKS src/backend/port/pg_sema.c:${SEMA_IMPLEMENTATION}" ;;
     "src/interfaces/libpq/ivy_sema.c") CONFIG_LINKS="$CONFIG_LINKS src/interfaces/libpq/ivy_sema.c:${LIBPQ_SEMA_IMPLEMENTATION}" ;;
     "src/backend/port/pg_shmem.c") CONFIG_LINKS="$CONFIG_LINKS src/backend/port/pg_shmem.c:${SHMEM_IMPLEMENTATION}" ;;

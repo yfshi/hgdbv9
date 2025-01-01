@@ -8904,6 +8904,182 @@ AlterSystemSetConfigFile(AlterSystemStmt *altersysstmt)
 	LWLockRelease(AutoFileLock);
 }
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+void
+SetConfigFile(char *name, char *value)
+{
+	bool		resetall = false;
+	ConfigVariable *head = NULL;
+	ConfigVariable *tail = NULL;
+	volatile int Tmpfd;
+	char		AutoConfFileName[MAXPGPATH];
+	char		AutoConfTmpFileName[MAXPGPATH];
+
+	/*
+	 * Unless it's RESET_ALL, validate the target variable and value
+	 */
+	if (!resetall)
+	{
+		struct config_generic *record;
+
+		record = find_option(name, false, false, ERROR);
+		Assert(record != NULL);
+
+		/*
+		 * Don't allow parameters that can't be set in configuration files to
+		 * be set in PG_AUTOCONF_FILENAME file.
+		 */
+		if ((record->context == PGC_INTERNAL) ||
+			(record->flags & GUC_DISALLOW_IN_FILE) ||
+			(record->flags & GUC_DISALLOW_IN_AUTO_FILE))
+			ereport(ERROR,
+					(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
+					 errmsg("parameter \"%s\" cannot be changed",
+							name)));
+
+		/*
+		 * If a value is specified, verify that it's sane.
+		 */
+		if (value)
+		{
+			union config_var_val newval;
+			void	   *newextra = NULL;
+
+			/* Check that it's acceptable for the indicated parameter */
+			if (!parse_and_validate_value(record, name, value,
+										  PGC_S_FILE, ERROR,
+										  &newval, &newextra))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("invalid value for parameter \"%s\": \"%s\"",
+								name, value)));
+
+			if (record->vartype == PGC_STRING && newval.stringval != NULL)
+				free(newval.stringval);
+			if (newextra)
+				free(newextra);
+
+			/*
+			 * We must also reject values containing newlines, because the
+			 * grammar for config files doesn't support embedded newlines in
+			 * string literals.
+			 */
+			if (strchr(value, '\n'))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("parameter value for ALTER SYSTEM must not contain a newline")));
+		}
+	}
+
+	/*
+	 * PG_AUTOCONF_FILENAME and its corresponding temporary file are always in
+	 * the data directory, so we can reference them by simple relative paths.
+	 */
+	snprintf(AutoConfFileName, sizeof(AutoConfFileName), "%s",
+			 PG_AUTOCONF_FILENAME);
+	snprintf(AutoConfTmpFileName, sizeof(AutoConfTmpFileName), "%s.%s",
+			 AutoConfFileName,
+			 "tmp");
+
+	/*
+	 * Only one backend is allowed to operate on PG_AUTOCONF_FILENAME at a
+	 * time.  Use AutoFileLock to ensure that.  We must hold the lock while
+	 * reading the old file contents.
+	 */
+	LWLockAcquire(AutoFileLock, LW_EXCLUSIVE);
+
+	/*
+	 * If we're going to reset everything, then no need to open or parse the
+	 * old file.  We'll just write out an empty list.
+	 */
+	if (!resetall)
+	{
+		struct stat st;
+
+		if (stat(AutoConfFileName, &st) == 0)
+		{
+			/* open old file PG_AUTOCONF_FILENAME */
+			FILE	   *infile;
+
+			infile = AllocateFile(AutoConfFileName, "r");
+			if (infile == NULL)
+				ereport(ERROR,
+						(errcode_for_file_access(),
+						 errmsg("could not open file \"%s\": %m",
+								AutoConfFileName)));
+
+			/* parse it */
+			if (!ParseConfigFp(infile, AutoConfFileName, 0, LOG, &head, &tail))
+				ereport(ERROR,
+						(errcode(ERRCODE_CONFIG_FILE_ERROR),
+						 errmsg("could not parse contents of file \"%s\"",
+								AutoConfFileName)));
+
+			FreeFile(infile);
+		}
+
+		/*
+		 * Now, replace any existing entry with the new value, or add it if
+		 * not present.
+		 */
+		replace_auto_config_value(&head, &tail, name, value);
+	}
+
+	/*
+	 * To ensure crash safety, first write the new file data to a temp file,
+	 * then atomically rename it into place.
+	 *
+	 * If there is a temp file left over due to a previous crash, it's okay to
+	 * truncate and reuse it.
+	 */
+	Tmpfd = BasicOpenFile(AutoConfTmpFileName,
+						  O_CREAT | O_RDWR | O_TRUNC);
+	if (Tmpfd < 0)
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("could not open file \"%s\": %m",
+						AutoConfTmpFileName)));
+
+	/*
+	 * Use a TRY block to clean up the file if we fail.  Since we need a TRY
+	 * block anyway, OK to use BasicOpenFile rather than OpenTransientFile.
+	 */
+	PG_TRY();
+	{
+		/* Write and sync the new contents to the temporary file */
+		write_auto_conf_file(Tmpfd, AutoConfTmpFileName, head);
+
+		/* Close before renaming; may be required on some platforms */
+		close(Tmpfd);
+		Tmpfd = -1;
+
+		/*
+		 * As the rename is atomic operation, if any problem occurs after this
+		 * at worst it can lose the parameters set by last ALTER SYSTEM
+		 * command.
+		 */
+		durable_rename(AutoConfTmpFileName, AutoConfFileName, ERROR);
+	}
+	PG_CATCH();
+	{
+		/* Close file first, else unlink might fail on some platforms */
+		if (Tmpfd >= 0)
+			close(Tmpfd);
+
+		/* Unlink, but ignore any error */
+		(void) unlink(AutoConfTmpFileName);
+
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	FreeConfigVariables(head);
+
+	LWLockRelease(AutoFileLock);
+}
+#endif /* End - ReqID:SRS-Performance-GUC */
+
+
 /*
  * SET command
  */

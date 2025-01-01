@@ -44,6 +44,11 @@
 #include "storage/proc.h"
 #include "storage/sync.h"
 
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+#include "hg_misc.h"
+clog_shmem_buffers_hook_type clog_shmem_buffers_hook = NULL;
+#endif /* End - ReqID:SRS-Performance-GUC */
+
 /*
  * Defines for CLOG page sizes.  A page is the same BLCKSZ as is used
  * everywhere else in Postgres.
@@ -700,6 +705,11 @@ TransactionIdGetStatus(TransactionId xid, XLogRecPtr *lsn)
 Size
 CLOGShmemBuffers(void)
 {
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+	if (clog_shmem_buffers_hook)
+		return clog_shmem_buffers_hook();
+	else
+#endif /* End - ReqID:SRS-Performance-GUC */
 	return Min(128, Max(4, NBuffers / 512));
 }
 

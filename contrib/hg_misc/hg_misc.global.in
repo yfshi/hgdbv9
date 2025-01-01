@@ -1,0 +1,6 @@
+#
+# Feature control for contrib/hg_misc via configure
+#
+
+with_license = @with_license@
+enable_internal_guc = @enable_internal_guc@
