@@ -70,6 +70,7 @@
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_param.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+#include "miscadmin.h"	/* BUG#z1603 */
 
 
 /*
@@ -2735,7 +2736,14 @@ alter_table_cmd:
 					Constraint *c = makeNode(Constraint);
 
 					c->contype = CONSTR_IDENTITY;
-					c->generated_when = $6;
+					/* Begin - Bug#z1603 */
+					if ($6 == ATTRIBUTE_IDENTITY_ALWAYS && IsBinaryUpgrade)
+						c->generated_when = ATTRIBUTE_ORA_IDENTITY_ALWAYS;
+					else if ($6 == ATTRIBUTE_IDENTITY_BY_DEFAULT && IsBinaryUpgrade)
+						c->generated_when = ATTRIBUTE_ORA_IDENTITY_BY_DEFAULT;
+					else
+						c->generated_when = $6;
+					/* End - Bug#z1603 */
 					c->options = $9;
 					c->location = @5;
 
