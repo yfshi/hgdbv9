@@ -222,9 +222,10 @@ sub AddDir
 			MISC_INTERNAL    => $self->{solution}->{options}->{internal_guc} ? 1 : undef,
 			USE_LICENSE      => $self->{solution}->{options}->{license} ? 1 : undef,
 		);
-		my @cmd_merge_sql = ('cl', '/P');
+		my @cmd_merge_sql = ('cl', '/EP', '/P');
 		foreach my $sql_marco (keys %sql_marcos)
 		{
+			next unless (defined $sql_marcos{$sql_marco});
 			push @cmd_merge_sql, "/D$sql_marco=" . ($sql_marcos{$sql_marco} // "");
 		}
 		push @cmd_merge_sql, "/Fi$output_sql_file", $source_sql_file;
