@@ -74,7 +74,7 @@ begin
 
   -- report time waited in postmaster log (where it won't change test output)
   raise log 'wait_for_stats delayed % seconds',
-    PGEXTRACT(epoch from clock_timestamp() - start_time);
+    EXTRACT(epoch from clock_timestamp() - start_time);
 end
 $$ language plpgsql;
 /
@@ -156,10 +156,10 @@ RESET enable_bitmapscan;
 -- wait for stats collector to update
 SELECT wait_for_stats();
 ERROR:  function pg_catalog.extract(unknown, interval day to second) does not exist
-LINE 1: PGEXTRACT(epoch from clock_timestamp() - start_time)
+LINE 1: EXTRACT(epoch from clock_timestamp() - start_time)
         ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-QUERY:  PGEXTRACT(epoch from clock_timestamp() - start_time)
+QUERY:  EXTRACT(epoch from clock_timestamp() - start_time)
 CONTEXT:  PL/pgSQL function wait_for_stats() line 48 at RAISE
 -- check effects
 SELECT relname, n_tup_ins, n_tup_upd, n_tup_del, n_live_tup, n_dead_tup

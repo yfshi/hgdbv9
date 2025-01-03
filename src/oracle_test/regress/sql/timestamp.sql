@@ -312,18 +312,18 @@ SELECT d1 as "timestamp",
 -- extract implementation is mostly the same as date_part, so only
 -- test a few cases for additional coverage.
 SELECT d1 as "timestamp",
-   PGEXTRACT(microseconds from d1) AS microseconds,
-   PGEXTRACT(milliseconds from d1) AS milliseconds,
-   PGEXTRACT(seconds from d1) AS seconds,
-   round(PGEXTRACT(julian from d1)) AS julian,
-   PGEXTRACT(epoch from d1) AS epoch
+   EXTRACT(microseconds from d1) AS microseconds,
+   EXTRACT(milliseconds from d1) AS milliseconds,
+   EXTRACT(seconds from d1) AS seconds,
+   round(EXTRACT(julian from d1)) AS julian,
+   EXTRACT(epoch from d1) AS epoch
    FROM TIMESTAMP_TBL;
 
 -- value near upper bound uses special case in code
 SELECT date_part('epoch', '294270-01-01 00:00:00'::timestamp);
-SELECT PGEXTRACT(epoch from '294270-01-01 00:00:00'::timestamp);
+SELECT EXTRACT(epoch from '294270-01-01 00:00:00'::timestamp);
 -- another internal overflow test case
-SELECT PGEXTRACT(epoch from '5000-01-01 00:00:00'::timestamp);
+SELECT EXTRACT(epoch from '5000-01-01 00:00:00'::timestamp);
 
 -- TO_CHAR()
 SELECT to_char(d1, 'DAY Day day DY Dy dy MONTH Month month RM MON Mon mon')

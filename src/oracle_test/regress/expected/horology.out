@@ -212,13 +212,9 @@ ERROR:  syntax error at or near "with"
 LINE 1: SELECT date '2001-02-03' + time with time zone '04:05:06 UTC...
                                         ^
 SELECT date '1991-02-03' + interval '2 years' AS "Add Two Years";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT date '1991-02-03' + interval '2 years' AS "Add Two Ye...
-                                                      ^
+ERROR:  missing or invalid datetime field.
 SELECT date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT date '2001-12-13' - interval '2 years' AS "Subtract T...
-                                                      ^
+ERROR:  missing or invalid datetime field.
 -- subtract time from date should not make sense; use interval instead
 SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
       Subtract Time       
@@ -338,13 +334,9 @@ ERROR:  syntax error at or near "with"
 LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
                                                    ^
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL;
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL...
-                                      ^
+ERROR:  missing or invalid datetime field.
 SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMP_TBL;
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMP_TBL...
-                                      ^
+ERROR:  missing or invalid datetime field.
 SELECT timestamp with time zone '1996-03-01' - interval '1 second' AS "Feb 29";
 ERROR:  syntax error at or near "with"
 LINE 1: SELECT timestamp with time zone '1996-03-01' - interval '1 s...
@@ -426,46 +418,30 @@ ERROR:  syntax error at or near "with"
 LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
                                                    ^
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_T...
-                                      ^
+ERROR:  missing or invalid datetime field.
 SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_T...
-                                      ^
+ERROR:  missing or invalid datetime field.
 --
 -- time, interval arithmetic
 --
 SELECT CAST(time '01:02' AS interval) AS "+01:02";
 ERROR:  missing or invalid datetime field.
 SELECT CAST(interval '02:03' AS time) AS "02:03:00";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT CAST(interval '02:03' AS time) AS "02:03:00";
-                                     ^
+ERROR:  missing or invalid datetime field.
 SELECT time '01:30' + interval '02:01' AS "03:31:00";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT time '01:30' + interval '02:01' AS "03:31:00";
-                                               ^
+ERROR:  missing or invalid datetime field.
 SELECT time '01:30' - interval '02:01' AS "23:29:00";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT time '01:30' - interval '02:01' AS "23:29:00";
-                                               ^
+ERROR:  missing or invalid datetime field.
 SELECT time '02:30' + interval '36:01' AS "14:31:00";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT time '02:30' + interval '36:01' AS "14:31:00";
-                                               ^
+ERROR:  missing or invalid datetime field.
 SELECT time '03:30' + interval '1 month 04:01' AS "07:31:00";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT time '03:30' + interval '1 month 04:01' AS "07:31:00"...
-                                                       ^
+ERROR:  missing or invalid datetime field.
 SELECT CAST(time with time zone '01:02-08' AS interval) AS "+00:01";
 ERROR:  syntax error at or near "with"
 LINE 1: SELECT CAST(time with time zone '01:02-08' AS interval) AS "...
                          ^
 SELECT CAST(interval '02:03' AS time with time zone) AS "02:03:00-08";
-ERROR:  syntax error at or near "AS"
-LINE 1: SELECT CAST(interval '02:03' AS time with time zone) AS "02:...
-                                     ^
+ERROR:  missing or invalid datetime field.
 SELECT time with time zone '01:30-08' - interval '02:01' AS "23:29:00-08";
 ERROR:  syntax error at or near "with"
 LINE 1: SELECT time with time zone '01:30-08' - interval '02:01' AS ...
@@ -582,22 +558,16 @@ SELECT (time '00:00', time '01:00')
 
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '00:30', interval '1 hour') AS "True";
-ERROR:  syntax error at or near ")"
-LINE 1: SELECT (time '00:00', interval '1 hour')
-                                               ^
+ERROR:  missing or invalid datetime field.
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '01:30', interval '1 hour') AS "False";
-ERROR:  syntax error at or near ")"
-LINE 1: SELECT (time '00:00', interval '1 hour')
-                                               ^
+ERROR:  missing or invalid datetime field.
 -- SQL99 seems to want this to be false (and we conform to the spec).
 -- istm that this *should* return true, on the theory that time
 -- intervals can wrap around the day boundary - thomas 2001-09-25
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '01:30', interval '1 day') AS "False";
-ERROR:  syntax error at or near ")"
-LINE 1: SELECT (time '00:00', interval '1 hour')
-                                               ^
+ERROR:  missing or invalid datetime field.
 CREATE TABLE TEMP_TIMESTAMP (f1 timestamp with time zone);
 -- get some candidate input values
 INSERT INTO TEMP_TIMESTAMP (f1)

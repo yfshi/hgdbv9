@@ -195,6 +195,9 @@ bool hex_bytea = false; /* Bug#z1457 */
 bool allow_forupdate_in_subquery = true;
 /* End - BUG#M0000470: SELECT FOR UPDATE */
 
+bool enable_pg_interval_datatype = false; /* BUG#M0000475 */
+bool alter_database_set_special = false; /* BUG#M0000475 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -763,6 +766,30 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000470: SELECT FOR UPDATE */
+
+	/* Begin - BUG#M0000475 */
+	{
+		{"ivorysql.enable_pg_interval_datatype", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to allow the use of PG's interval type syntax in Oracle compatibility mode."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_pg_interval_datatype,
+		false,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"ivorysql.alter_database_set_special", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to allow ALTER DATABASE SET to set identifier_case_switch."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&alter_database_set_special,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000475 */
 #endif
 #if 0
 	/* End-of-list marker */

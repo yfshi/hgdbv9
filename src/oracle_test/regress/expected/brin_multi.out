@@ -43,9 +43,7 @@ INSERT INTO brintest_multi SELECT
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
 FROM tenk1 ORDER BY unique2 LIMIT 100;
-ERROR:  syntax error at or near ","
-LINE 14:  time '01:20:30' + thousand * interval '18.5 second',
-                                                             ^
+ERROR:  missing or invalid datetime field.
 -- throw in some NULL's and different values
 INSERT INTO brintest_multi (inetcol, cidrcol) SELECT
 	inet 'fe80::6e40:8ff:fea9:8c46' + tenthous,
@@ -353,9 +351,7 @@ INSERT INTO brintest_multi SELECT
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
 FROM tenk1 ORDER BY unique2 LIMIT 5 OFFSET 5;
-ERROR:  syntax error at or near ","
-LINE 14:  time '01:20:30' + thousand * interval '18.5 second',
-                                                             ^
+ERROR:  missing or invalid datetime field.
 SELECT brin_desummarize_range('brinidx_multi', 0);
 ERROR:  relation "brinidx_multi" does not exist
 LINE 1: SELECT brin_desummarize_range('brinidx_multi', 0);

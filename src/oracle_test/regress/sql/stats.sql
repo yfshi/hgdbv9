@@ -73,7 +73,7 @@ begin
 
   -- report time waited in postmaster log (where it won't change test output)
   raise log 'wait_for_stats delayed % seconds',
-    PGEXTRACT(epoch from clock_timestamp() - start_time);
+    EXTRACT(epoch from clock_timestamp() - start_time);
 end
 $$ language plpgsql;
 /
