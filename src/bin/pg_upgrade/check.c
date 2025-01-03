@@ -1281,7 +1281,7 @@ check_for_composite_data_type_usage(ClusterInfo *cluster)
 	bool		found;
 	Oid			firstUserOid;
 	char		output_path[MAXPGPATH];
-	char	   *base_query;
+	PQExpBufferData base_query;
 
 	prep_status("Checking for system-defined composite types in user tables");
 
@@ -1300,14 +1300,31 @@ check_for_composite_data_type_usage(ClusterInfo *cluster)
 	 */
 	firstUserOid = 16384;
 
-	base_query = psprintf("SELECT t.oid FROM pg_catalog.pg_type t "
+	initPQExpBuffer(&base_query);
+	appendPQExpBuffer(&base_query,"SELECT t.oid FROM pg_catalog.pg_type t "
 						  "LEFT JOIN pg_catalog.pg_namespace n ON t.typnamespace = n.oid "
 						  " WHERE typtype = 'c' AND (t.oid < %u OR nspname = 'information_schema')",
 						  firstUserOid);
 
-	found = check_for_data_types_usage(cluster, base_query, output_path);
+/*
+	Native PostgreSQL does not support composite types. However,
+	in Oracle mode, it can support scenarios where `urowid` and `rowid` store the `tableid`,
+	as the `tableoid` remains unchanged. The following scenarios are not supported:
 
-	free(base_query);
+	1. `urowid` and `rowid` store the OID of functions or stored procedures.
+	2. `urowid` and `rowid` store the original database OIDs, such as:
+	    `template0`, `template1`, `postgres`.
+	3. Major version upgrades of the V9 kernel, such as upgrading to PG15 or PG16,
+	    because major version upgrades may modify the OIDs of system tables.
+*/
+	if (cluster->controldata.database_mode == DB_ORACLE)
+	{
+		appendPQExpBuffer(&base_query,"AND (typname != 'rowid' AND typname != 'urowid')");
+	}
+
+	found = check_for_data_types_usage(cluster, base_query.data, output_path);
+
+	termPQExpBuffer(&base_query);
 
 	if (found)
 	{
