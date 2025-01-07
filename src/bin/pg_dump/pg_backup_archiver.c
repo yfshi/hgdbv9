@@ -1185,6 +1185,7 @@ RestoreArchivePg(Archive *AHX)
 				
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 				CurUser = DB;
@@ -1684,6 +1685,7 @@ RestoreArchiveOracle(Archive *AHX)
 				
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 
@@ -2517,6 +2519,7 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 							/* End - BUGM431 */
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+							ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 							if ((AH->format == archNull))
 								ahprintf(AH, "\\parser\n");
 							ahprintf(AH, "\n\n");
@@ -5121,6 +5124,7 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 					appendPQExpBufferStr(&connectbuf, "set session authorization system;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.grant_usertype to oracle;\n");
+				appendPQExpBufferStr(&connectbuf, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if ((AH->format == archNull))
 					appendPQExpBufferStr(&connectbuf, "\\parser\n");
 				//appendPQExpBufferStr(&connectbuf, "\\parser\n");
@@ -5879,6 +5883,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					ahprintf(AH, "set session authorization system;\n");
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
+				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if ((AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 				ahprintf(AH, "\n\n");

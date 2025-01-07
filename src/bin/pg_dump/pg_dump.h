@@ -715,6 +715,10 @@ typedef struct _DatabaseRolesInfo
 	bool			rolbypassrls;
 	char		   *rolpassword;
 	char		   *rolcomment;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	char		   *roldefcollation;	/* schema's default collation */
+	char		   *roldeftablespace;	/* schema's default tablesapce */
+	/* End - ReqID:SRS-SQL-SCHEMA */
 } DatabaseRolesInfo;
 
 /* Begin - bug:z836*/

@@ -871,6 +871,12 @@ execute_extension_script(Oid extensionOid, ExtensionControlFile *control,
 	int			save_nestlevel;
 	StringInfoData pathbuf;
 	ListCell   *lc;
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+		objectOwner = get_namespace_owner(schemaOid);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Enforce superuser-ness if appropriate.  We postpone these checks until
@@ -1013,7 +1019,7 @@ execute_extension_script(Oid extensionOid, ExtensionControlFile *control,
 		 */
 		if (strstr(c_sql, "@extowner@"))
 		{
-			Oid			uid = switch_to_superuser ? save_userid : GetUserId();
+			Oid			uid = switch_to_superuser ? save_userid : objectOwner;	/* ReqID:SRS-SQL-SCHEMA */
 			const char *userName = GetUserNameFromId(uid, false);
 			const char *qUserName = quote_identifier(userName);
 
@@ -1439,6 +1445,13 @@ CreateExtensionInternal(char *extensionName,
 	bool		mys_case_switch_change_flg = false;
 	bool		currentmyenable_case_switch = myenable_case_switch;
 	/* End - ReqID:SRS-MYSQL-CASE */
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = extowner;
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
+
 	/*
 	 * Read the primary control file.  Note we assume that it does not contain
 	 * any non-ASCII data, so there is no need to worry about encoding at this
@@ -1664,6 +1677,23 @@ CreateExtensionInternal(char *extensionName,
 			MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
 
 		/*
+		 * Begin - ReqID:SRS-SQL-SCHEMA
+		 *
+		 * swith to target namespace
+		 */
+		if (ORA_USER_SCHEMA_ENABLED(extowner))
+		{
+			char *nspname = get_namespace_name(schemaOid);
+
+			objectOwner = get_namespace_owner(schemaOid);
+			save_nestlevel = NewGUCNestLevel();
+			(void) set_config_option("search_path", nspname,
+									 PGC_USERSET, PGC_S_SESSION,
+									 GUC_ACTION_SAVE, true, 0, false);
+		}
+		/* End - ReqID:SRS-SQL-SCHEMA */
+
+		/*
 		* We don't check creation rights on the target namespace here.  If the
 		* extension script actually creates any objects there, it will fail if
 		* the user doesn't have such permissions.  But there are cases such as
@@ -1698,7 +1728,7 @@ CreateExtensionInternal(char *extensionName,
 		/*
 		* Insert new tuple into pg_extension, and create dependency entries.
 		*/
-		address = InsertExtensionTuple(control->name, extowner,
+		address = InsertExtensionTuple(control->name, objectOwner,	/* ReqID:SRS-SQL-SCHEMA */
 									schemaOid, control->relocatable,
 									versionName,
 									PointerGetDatum(NULL),
@@ -1728,7 +1758,15 @@ CreateExtensionInternal(char *extensionName,
 							versionName, updateVersions,
 							origSchemaName, cascade, is_create);
 
-		
+		/*
+		 * Begin - ReqID:SRS-SQL-SCHEMA
+		 *
+		 * Roll back any GUC changes
+		 */
+		if (set_namespace)
+			AtEOXact_GUC(false, save_nestlevel);
+		/* End - ReqID:SRS-SQL-SCHEMA */
+
 		/* begin - bug:z676,z776 */
 		/* Begin - BUG#Z830 */
 	}

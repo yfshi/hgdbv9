@@ -3840,6 +3840,32 @@ get_namespace_name_or_temp(Oid nspid)
 		return get_namespace_name(nspid);
 }
 
+/*
+ * Begin - ReqID:SRS-SQL-SCHEMA
+ *
+ * get_namespace_owner
+ *		Returns the oid of a given namespace's owner.
+ */
+Oid
+get_namespace_owner(Oid nspid)
+{
+	HeapTuple			tp;
+	Form_pg_namespace	nsptuple;
+	Oid					owner;
+
+	tp = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(nspid));
+	if (!HeapTupleIsValid(tp))
+		elog(ERROR, "cache lookup failed for schema %u", nspid);
+
+	nsptuple = (Form_pg_namespace) GETSTRUCT(tp);
+
+	owner = nsptuple->nspowner;
+	ReleaseSysCache(tp);
+
+	return owner;
+}
+/* End - ReqID:SRS-SQL-SCHEMA */
+
 /*				---------- PG_RANGE CACHES ----------				 */
 
 /*

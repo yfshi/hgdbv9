@@ -78,4 +78,9 @@ extern Oid  GetRelationCollation(Relation relation);
 extern void SetRelationCollation(char *relname, Oid namespaceId, Oid coll, ObjectAddress address);
 extern void UpdateRelationCollation(char *relname, Oid namespaceId, Oid coll, ObjectAddress address);
 /* End - Req:SRS-SQL-NLSSORT */
+
+/* Begin - ReqID:SRS-SQL-SCHEMA */
+extern void	SetNamespaceTablespace(char *namespaceName, Oid namespaceId, Oid tablespace, ObjectAddress address);
+extern Oid	GetNamespaceTablespace(Oid namespaceId, char relpersistence, bool partitioned);
+/* End - ReqID:SRS-SQL-SCHEMA */
 #endif

@@ -42,6 +42,14 @@
 #include "libpq/libpq-be.h"
 #include "utils/snapmgr.h"
 #include "access/tableam.h"
+/* Begin - ReqID:SRS-SQL-SCHEMA */
+#include "catalog/namespace.h"
+#include "catalog/pg_namespace.h"
+#include "commands/schemacmds.h"
+#include "commands/tablespace.h"
+#include "parser/pg_object_hook.h"
+#include "utils/lsyscache.h"
+/* End - ReqID:SRS-SQL-SCHEMA */
 
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
@@ -110,6 +118,14 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	DefElem    *dadminmembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	char	   *defCollation = NULL;
+	Oid			defCollationOid = InvalidOid;
+	char	   *defTablespace = NULL;
+	Oid			defTablespaceOid = InvalidOid;
+	DefElem	   *ddefCollation = NULL;
+	DefElem	   *ddefTablespace = NULL;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 	/*
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Determine the type of the current user
@@ -260,6 +276,26 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 						 parser_errposition(pstate, defel->location)));
 			dbypassRLS = defel;
 		}
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		else if (strcmp(defel->defname, "defaultCollation") == 0)
+		{
+			if (ddefCollation)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			ddefCollation = defel;
+		}
+		else if (strcmp(defel->defname, "defaultTablespace") == 0)
+		{
+			if (ddefTablespace)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			ddefTablespace = defel;
+		}
+		/* End - ReqID:SRS-SQL-SCHEMA */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -297,6 +333,12 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg) != 0;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ddefCollation)
+		defCollation = strVal(ddefCollation->arg);
+	if (ddefTablespace)
+		defTablespace = strVal(ddefTablespace->arg);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Check some permissions first */
 	if (issuper)
@@ -480,6 +522,19 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 								validUntil_datum,
 								validUntil_null);
 
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (defCollation)
+	{
+		defCollationOid = CollationGetCollid(defCollation);
+		if (!OidIsValid(defCollationOid))
+			ereport(ERROR,
+					errmsg("collation \"%s\" does not exist", defCollation));
+	}
+
+	if (defTablespace)
+		defTablespaceOid = get_tablespace_oid(defTablespace, false);
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	/*
 	 * Build a tuple to insert
 	 */
@@ -652,6 +707,49 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	 */
 	table_close(pg_authid_rel, NoLock);
 
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * For database level user, create a schema with the same name.
+	 */
+	if (!is_instance_user && (ORA_PARSER == compatible_db) && enable_ora_user_schema)
+	{
+		Oid				nspid;
+		ObjectAddress	address;
+		bool			setnamespace = false;
+
+		CommandCounterIncrement();
+
+		/* create namespace */
+		nspid = NamespaceCreate(stmt->role, roleid, false);
+
+		/* save default collation to pg_object->option */
+		if (OidIsValid(defCollationOid))
+		{
+			ObjectAddressSet(address, NamespaceRelationId, nspid);
+			SetNamespaceCollation(stmt->role, nspid, defCollationOid, address);
+			setnamespace = true;
+		}
+
+		/* save default tablespace to pg_object->option */
+		if (OidIsValid(defTablespaceOid))
+		{
+			if (setnamespace)
+				CommandCounterIncrement();
+			ObjectAddressSet(address, NamespaceRelationId, nspid);
+			SetNamespaceTablespace(stmt->role, nspid, defTablespaceOid, address);
+			setnamespace = true;
+		}
+
+		/* save a namespace tuple without option to pg_object */
+		if (!setnamespace && pg_object_create_obj_hook)
+		{
+			ObjectAddressSet(address, NamespaceRelationId, nspid);
+			pg_object_create_obj_hook(stmt->role, nspid, true, PG_OBJECT_SCHEMA, address, NULL, NULL);
+		}
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	return roleid;
 }
 
@@ -701,6 +799,14 @@ AlterRole(AlterRoleStmt *stmt)
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
 	Oid			roleid;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	char	   *defCollation = NULL;
+	Oid			defCollationOid = InvalidOid;
+	char	   *defTablespace = NULL;
+	Oid			defTablespaceOid = InvalidOid;
+	DefElem	   *ddefCollation = NULL;
+	DefElem	   *ddefTablespace = NULL;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 	/*
 	 * Begin - ReqID:SRS-MISC-USER
 	 * Find a specific type of user
@@ -833,6 +939,24 @@ AlterRole(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dbypassRLS = defel;
 		}
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		else if (strcmp(defel->defname, "defaultCollation") == 0)
+		{
+			if (ddefCollation)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			ddefCollation = defel;
+		}
+		else if (strcmp(defel->defname, "defaultTablespace") == 0)
+		{
+			if (ddefTablespace)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			ddefTablespace = defel;
+		}
+		/* End - ReqID:SRS-SQL-SCHEMA */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -866,6 +990,12 @@ AlterRole(AlterRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ddefCollation)
+		defCollation = strVal(ddefCollation->arg);
+	if (ddefTablespace)
+		defTablespace = strVal(ddefTablespace->arg);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - bug:z535 */
 	if ((ORA_PARSER == compatible_db) && createdb > 0 && 
@@ -980,6 +1110,19 @@ AlterRole(AlterRoleStmt *stmt)
 								get_password_type(password),
 								validUntil_datum,
 								validUntil_null);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (defCollation)
+	{
+		defCollationOid = CollationGetCollid(defCollation);
+		if (!OidIsValid(defCollationOid))
+			ereport(ERROR,
+					errmsg("collation \"%s\" does not exist", defCollation));
+	}
+
+	if (defTablespace)
+		defTablespaceOid = get_tablespace_oid(defTablespace, false);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Build an updated tuple, perusing the information just obtained
@@ -1105,6 +1248,34 @@ AlterRole(AlterRoleStmt *stmt)
 	 * Close pg_authid, but keep lock till commit.
 	 */
 	table_close(pg_authid_rel, NoLock);
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 * For database level user, create a schema with the same name.
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		Oid				nspid;
+		ObjectAddress	address;
+
+		/* get namespace by the role name */
+		nspid = get_namespace_oid(rolename, false);
+
+		/* save default collation to pg_object->option */
+		if (OidIsValid(defCollationOid))
+		{
+			ObjectAddressSet(address, NamespaceRelationId, nspid);
+			SetNamespaceCollation(rolename, nspid, defCollationOid, address);
+		}
+
+		/* save default tablespace to pg_object->option */
+		if (OidIsValid(defTablespaceOid))
+		{
+			ObjectAddressSet(address, NamespaceRelationId, nspid);
+			SetNamespaceTablespace(rolename, nspid, defTablespaceOid, address);
+		}
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return roleid;
 }
@@ -1310,6 +1481,32 @@ DropRole(DropRoleStmt *stmt)
 		 * her.  We keep the lock until the end of transaction.
 		 */
 		LockSharedObject(AuthIdRelationId, roleid, 0, AccessExclusiveLock);
+
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+		{
+			/*
+			 * If CASCADE then delete all object owned by the user, else
+			 * delete the schema only.
+			 */
+			if (DROP_CASCADE == stmt->behavior)
+			{
+				/* Ok, do it */
+				shdepDropOwned(list_make1_oid(roleid), stmt->behavior);
+			}
+			else
+			{
+				ObjectAddress	object;
+
+				object.classId = NamespaceRelationId;
+				object.objectId = get_namespace_oid(rolspec->rolename, false);
+				object.objectSubId = 0;
+				performDeletion(&object, stmt->behavior, 0);
+			}
+
+			CommandCounterIncrement();
+		}
+		/* End - ReqID:SRS-SQL-SCHEMA */
 
 		/* Check for pg_shdepend entries depending on this role */
 		if (checkSharedDependencies(AuthIdRelationId, roleid,
@@ -1575,6 +1772,18 @@ RenameRole(const char *oldname, const char *newname)
 	 * Close pg_authid, but keep lock till commit.
 	 */
 	table_close(rel, NoLock);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		Oid nspid =  get_namespace_oid(oldname, false);
+
+		if (get_namespace_owner(nspid) != roleid)
+			elog(ERROR, "schema \"%s\" is not owned by user \"%s\"", oldname, oldname);
+
+		RenameSchema(oldname, newname);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }

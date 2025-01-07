@@ -4632,6 +4632,7 @@ dumpDatabasesNative(PGconn *conn)
 							fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
+						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 						fprintf(OPF, "\n\n");
 					}
 					else
@@ -4746,6 +4747,7 @@ dumpDatabasesOracle(PGconn *conn)
 						fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
+						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 						fprintf(OPF, "\n\n");
 					}
 					else
@@ -4861,6 +4863,7 @@ dumpDatabasesPg(PGconn *conn)
 							fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
+						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 						fprintf(OPF, "\n\n");
 					}
 					else

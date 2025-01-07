@@ -4433,6 +4433,62 @@ get_force_view_ident_case(Archive *AHX, Oid viewOid)
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
+/* Begin - ReqID:SRS-SQL-SCHEMA */
+static char *
+get_user_schema_default_collation(Archive *fout, Oid userid)
+{
+	PQExpBuffer  query;
+	PGresult   	*res;
+	char 		*result = NULL;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT coll.collname "
+							 "FROM pg_object oj, pg_namespace nsp, pg_collation coll "
+							 "WHERE nsp.nspowner = %u "
+							 "	AND nsp.nspname = pg_get_userbyid(%u) "
+							 "	AND oj.obj_oid = nsp.oid "
+							 "	AND (oj.option ->> 'collation')::OID = coll.oid", 
+							 userid, userid);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	if (PQntuples(res) == 1)
+		result = pg_strdup(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	return result;
+}
+
+static char *
+get_user_schema_default_tablespace(Archive *fout, Oid userid)
+{
+	PQExpBuffer  query;
+	PGresult   	*res;
+	char 		*result = NULL;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT spc.spcname "
+							 "FROM pg_object oj, pg_namespace nsp, pg_tablespace spc "
+							 "WHERE nsp.nspowner = %u "
+							 "	AND nsp.nspname = pg_get_userbyid(%u) "
+							 "	AND oj.obj_oid = nsp.oid "
+							 "	AND (oj.option ->> 'collation')::OID = spc.oid", 
+							 userid, userid);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	if (PQntuples(res) == 1)
+		result = pg_strdup(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+	return result;
+}
+/* End - ReqID:SRS-SQL-SCHEMA */
+
 /*
  * getExtensions:
  *	  read all extensions in the system catalogs and return them in the
@@ -10183,6 +10239,14 @@ dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
 		if (dbrinfo->rolvaliduntil)			/*  bug#z680 */
 			appendPQExpBuffer(query, " VALID UNTIL '%s'", dbrinfo->rolvaliduntil );
 
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		if (dbrinfo->roldefcollation)
+			appendPQExpBuffer(query, " DEFAULT COLLATION '%s'", dbrinfo->roldefcollation);
+
+		if (dbrinfo->roldeftablespace)
+			appendPQExpBuffer(query, " DEFAULT TABLESPACE '%s'", dbrinfo->roldeftablespace);
+		/* End - ReqID:SRS-SQL-SCHEMA */
+
 		appendPQExpBufferStr(query, ";\n");
 
 		if (dbrinfo->rolcomment)			/*  bug#z680 */
@@ -10322,6 +10386,11 @@ getDbRoles(Archive *fout, int *numRoles)
 		}
 		else
 			dbrinfo[i].rolcomment = NULL;
+
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		dbrinfo[i].roldefcollation = get_user_schema_default_collation(fout, dbrinfo[i].dobj.catId.oid);
+		dbrinfo[i].roldeftablespace = get_user_schema_default_tablespace(fout, dbrinfo[i].dobj.catId.oid);
+		/* End - ReqID:SRS-SQL-SCHEMA */
 
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(dbrinfo[i].dobj), fout);
