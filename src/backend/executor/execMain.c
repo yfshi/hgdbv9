@@ -2990,6 +2990,10 @@ EvalPlanQualStart(EPQState *epqstate, Plan *planTree)
 	rcestate->es_plannedstmt = parentestate->es_plannedstmt;
 	rcestate->es_junkFilter = parentestate->es_junkFilter;
 	rcestate->es_output_cid = parentestate->es_output_cid;
+	/* Begin - BUG#M0000490 */
+	if (parentestate->count != NULL)
+		rcestate->count = (int64*)palloc0(sizeof(int64)*parentestate->es_plannedstmt->countnode_num);
+	/* End - BUG#M0000490 */
 
 	/*
 	 * ResultRelInfos needed by subplans are initialized from scratch when the

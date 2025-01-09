@@ -139,6 +139,8 @@ CreateExecutorState(void)
 
 	estate->es_resultrelinfo_extra = NIL;
 
+	estate->count = NULL;	/* BUG#M0000490 */
+
 	estate->es_param_list_info = NULL;
 	estate->es_param_exec_vals = NULL;
 
