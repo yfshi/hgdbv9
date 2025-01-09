@@ -97,7 +97,8 @@ ORA_REGRESS = \
 	orarefcursor \
 	dm_compatible \
 	ora_dbms_job \
-	decode
+	decode \
+	ora_dbms_metadata
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
