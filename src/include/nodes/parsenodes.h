@@ -1211,6 +1211,7 @@ typedef struct RangeTblEntry
 	List	   *linkrelattrs;
 	char	   *linkrelname;
 	char	   *linkrelnsname;
+	int			fdwtype;	/* BUG#M0000489 */
 	/* End - ReqID:SRS-SQL-DBLINK */
 
 	/*

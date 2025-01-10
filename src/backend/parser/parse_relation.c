@@ -52,6 +52,7 @@
 #include "miscadmin.h"
 #include "access/genam.h"
 #include "catalog/pg_foreign_table.h"
+#include "parser/scansup.h"
 /* End - ReqID:SRS-SQL-DBLINK */
 
 /*
@@ -883,6 +884,11 @@ scanRTEForColumn(ParseState *pstate, RangeTblEntry *rte,
 	foreach(c, eref->colnames)
 	{
 		const char *attcolname = strVal(lfirst(c));
+
+		/* Begin - BUG#M0000489 */
+		if (rte->fdwtype == ORA_FDW)
+			attcolname = downcase_identifier(attcolname, strlen(attcolname), true, true);
+		/* End - BUG#M0000489 */
 
 		attnum++;
 		if (strcmp(attcolname, colname) == 0)
@@ -1721,6 +1727,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 					rel->relattrlists = tupnatts;
 					rel->relname = relation->relname;
 					rel->relnspname = imstmt->remote_schema;
+					rel->fdwtype = fdw_type;	/* BUG#M0000489 */
 					rel->rel_from_dblink = true;
 
 					cancel_parser_errposition_callback(&pcbstate);
@@ -1881,6 +1888,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				rel->relattrlists = mdtupnatts_changed;
 				rel->relname = relation->relname;
 				rel->relnspname = relnspname;
+				rel->fdwtype = fdw_type;	/* BUG#M0000489 */
 				rel->rel_from_dblink = true;
 			}
 			else
@@ -1889,6 +1897,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 				rel->relattrlists = tupnatts;
 				rel->relname = relation->relname;
 				rel->relnspname = relnspname;
+				rel->fdwtype = fdw_type;	/* BUG#M0000489 */
 				rel->rel_from_dblink = true;
 			}
 		}
@@ -1898,6 +1907,7 @@ parserOpenTable(ParseState *pstate, const RangeVar *relation, int lockmode)
 			rel->relattrlists = tupnatts;
 			rel->relname = relation->relname;
 			rel->relnspname = relnspname;
+			rel->fdwtype = fdw_type;	/* BUG#M0000489 */
 			rel->rel_from_dblink = true;
 		}
 	}
@@ -1924,10 +1934,17 @@ addRangeTableEntry(ParseState *pstate,
 				   bool inFromCl)
 {
 	RangeTblEntry *rte = makeNode(RangeTblEntry);
-	char	   *refname = alias ? alias->aliasname : relation->relname;
+	char	   *refname = NULL;
 	LOCKMODE	lockmode;
 	Relation	rel;
 	ParseNamespaceItem *nsitem;
+
+	/* Begin - BUG#M0000489 */
+	if (relation->srvname)
+		refname = alias ? alias->aliasname : relation->lnkrelname;
+	/* End - BUG#M0000489 */
+	else
+		refname = alias ? alias->aliasname : relation->relname;
 
 	Assert(pstate != NULL);
 
@@ -1995,6 +2012,7 @@ addRangeTableEntry(ParseState *pstate,
 		rte->linkrelname = rel->relname;
 		rte->linkrelnsname = rel->relnspname;
 		rte->linkrelattrs = rel->relattrlists;
+		rte->fdwtype = rel->fdwtype;
 	}/* End - ReqID:SRS-SQL-DBLINK */
 	else
 	{

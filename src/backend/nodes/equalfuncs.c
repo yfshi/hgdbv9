@@ -111,6 +111,7 @@ _equalRangeVar(const RangeVar *a, const RangeVar *b)
 	COMPARE_STRING_FIELD(schemaname);
 	COMPARE_STRING_FIELD(relname);
 	COMPARE_STRING_FIELD(srvname);	/* BUG#M0000374 */
+	COMPARE_STRING_FIELD(lnkrelname);	/* BUG#M0000489 */
 	COMPARE_SCALAR_FIELD(inh);
 	COMPARE_SCALAR_FIELD(relpersistence);
 	COMPARE_NODE_FIELD(alias);
@@ -2250,6 +2251,7 @@ _equalDropDatabaseLinkStmt(const DropDatabaseLinkStmt*a,
 {
 	COMPARE_STRING_FIELD(linkname);
 	COMPARE_SCALAR_FIELD(behavior);
+	COMPARE_SCALAR_FIELD(is_public);
 
 	return true;
 }

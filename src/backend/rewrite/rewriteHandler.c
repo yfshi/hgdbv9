@@ -157,7 +157,8 @@ static bool setNewRteIfExist(Query* parsetree, Oid base_relid, int result_relati
 void
 AcquireRewriteLocks(Query *parsetree,
 					bool forExecute,
-					bool forUpdatePushedDown)
+					bool forUpdatePushedDown,
+					bool skipCreateFtmptab)	/* BUG#M0000489 */
 {
 	ListCell   *l;
 	int			rt_index;
@@ -231,6 +232,11 @@ AcquireRewriteLocks(Query *parsetree,
 					bool		find_failed = false;
 					char 		*query_string;
 					MemoryContext   current_cxt = CurrentMemoryContext;
+
+					/* Begin - BUG#M0000489 */
+					if (skipCreateFtmptab)
+						break;
+					/* End - BUG#M0000489 */
 
 					if (!forExecute)
 						lockmode = AccessShareLock;
@@ -395,7 +401,8 @@ AcquireRewriteLocks(Query *parsetree,
 				AcquireRewriteLocks(rte->subquery,
 									forExecute,
 									(forUpdatePushedDown ||
-									 get_parse_rowmark(parsetree, rt_index) != NULL));
+									 get_parse_rowmark(parsetree, rt_index) != NULL),
+									 false); /* BUG#M0000489 */
 				break;
 
 			default:
@@ -409,7 +416,7 @@ AcquireRewriteLocks(Query *parsetree,
 	{
 		CommonTableExpr *cte = (CommonTableExpr *) lfirst(l);
 
-		AcquireRewriteLocks((Query *) cte->ctequery, forExecute, false);
+		AcquireRewriteLocks((Query *) cte->ctequery, forExecute, false, false); /* BUG#M0000489 */
 	}
 
 	/*
@@ -436,7 +443,8 @@ acquireLocksOnSubLinks(Node *node, acquireLocksOnSubLinks_context *context)
 		/* Do what we came for */
 		AcquireRewriteLocks((Query *) sub->subselect,
 							context->for_execute,
-							false);
+							false,
+							false); /* BUG#M0000489 */
 		/* Fall through to process lefthand args of SubLink */
 	}
 
@@ -493,7 +501,7 @@ rewriteRuleAction(Query *parsetree,
 	/*
 	 * Acquire necessary locks and fix any deleted JOIN RTE entries.
 	 */
-	AcquireRewriteLocks(rule_action, true, false);
+	AcquireRewriteLocks(rule_action, true, false, false); /* BUG#M0000489 */
 	(void) acquireLocksOnSubLinks(rule_qual, &context);
 
 	current_varno = rt_index;
@@ -2058,7 +2066,7 @@ ApplyRetrieveRule(Query *parsetree,
 	 */
 	rule_action = copyObject(linitial(rule->actions));
 
-	AcquireRewriteLocks(rule_action, true, (rc != NULL));
+	AcquireRewriteLocks(rule_action, true, (rc != NULL), false); /* BUG#M0000489 */
 
 	/*
 	 * If FOR [KEY] UPDATE/SHARE of view, mark all the contained tables as

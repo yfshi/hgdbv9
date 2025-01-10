@@ -282,6 +282,7 @@ typedef struct RelationData
 	Oid         serverOid;
 	char        *relname;
 	char        *relnspname;
+	int			 fdwtype;
 	bool        rel_from_dblink;
 	/* End - ReqID:SRS-SQL-DBLINK */
 

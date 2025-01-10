@@ -706,7 +706,7 @@ init_sql_fcache(FunctionCallInfo fcinfo, Oid collation, bool lazyEvalOK)
 			Query	   *parsetree = lfirst_node(Query, lc);
 			List	   *queryTree_sublist;
 
-			AcquireRewriteLocks(parsetree, true, false);
+			AcquireRewriteLocks(parsetree, true, false, false);	/* BUG#M0000489 */
 			queryTree_sublist = pg_rewrite_query(parsetree);
 			queryTree_list = lappend(queryTree_list, queryTree_sublist);
 		}

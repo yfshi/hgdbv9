@@ -1124,7 +1124,7 @@ fmgr_sql_validator(PG_FUNCTION_ARGS)
 				 * validator function cannot assume that it's only called in
 				 * that context.
 				 */
-				AcquireRewriteLocks(parsetree, true, false);
+				AcquireRewriteLocks(parsetree, true, false, false);	/* BUG#M0000489 */
 				querytree_sublist = pg_rewrite_query(parsetree);
 				querytree_list = lappend(querytree_list, querytree_sublist);
 			}

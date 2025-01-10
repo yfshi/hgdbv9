@@ -5629,7 +5629,7 @@ inline_set_returning_function(PlannerInfo *root, RangeTblEntry *rte)
 		querytree = linitial(querytree_list);
 
 		/* Acquire necessary locks, then apply rewriter. */
-		AcquireRewriteLocks(querytree, true, false);
+		AcquireRewriteLocks(querytree, true, false, false);	/* BUG#M0000489 */
 		querytree_list = pg_rewrite_query(querytree);
 		if (list_length(querytree_list) != 1)
 			goto fail;

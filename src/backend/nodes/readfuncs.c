@@ -574,6 +574,7 @@ _readRangeVar(void)
 	READ_STRING_FIELD(schemaname);
 	READ_STRING_FIELD(relname);
 	READ_STRING_FIELD(srvname);		/* BUG#M0000374 */
+	READ_STRING_FIELD(lnkrelname);	/* BUG#M0000489 */
 	READ_BOOL_FIELD(inh);
 	READ_CHAR_FIELD(relpersistence);
 	READ_NODE_FIELD(alias);
@@ -1582,6 +1583,7 @@ _readRangeTblEntry(void)
 			READ_NODE_FIELD(linkrelattrs);
 			READ_STRING_FIELD(linkrelname);
 			READ_STRING_FIELD(linkrelnsname);
+			READ_INT_FIELD(fdwtype);	/* BUG#M0000489 */
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
 		case RTE_SUBQUERY:

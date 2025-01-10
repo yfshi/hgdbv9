@@ -428,6 +428,7 @@ makeRangeVar(char *schemaname, char *relname, int location)
 	r->schemaname = schemaname;
 	r->relname = relname;
 	r->srvname = NULL;		/* BUG#M0000374 */
+	r->lnkrelname = NULL;	/* BUG#M0000489 */
 	r->inh = true;
 	r->relpersistence = RELPERSISTENCE_PERMANENT;
 	r->alias = NULL;

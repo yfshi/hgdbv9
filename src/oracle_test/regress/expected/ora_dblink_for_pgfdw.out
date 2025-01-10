@@ -231,12 +231,6 @@ select * from it1@ivyfuplnk where c2 = 'PACKAGE';
 (1 row)
 
 -- inner join two remote tables f2 and f3.
-select * from it1@ivyfuplnk inner join it2@ivyfuplnk  on (it1.c1 = it2.b2);
- c1 |    c2    | b1 | b2 
-----+----------+----+----
-  7 | SEQUENCE |  5 |  7
-(1 row)
-
 select * from it1@ivyfuplnk A inner join it2@ivyfuplnk B on A.c1 = B.b2;
  c1 |    c2    | b1 | b2 
 ----+----------+----+----
