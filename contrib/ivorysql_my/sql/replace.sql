@@ -169,3 +169,15 @@ select * from text_hashp;
 select * from text_hashp0;
 select * from text_hashp1;
 drop table text_hashp;
+
+--BUG#Z1622
+drop table if exists test;
+CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50) UNIQUE);
+REPLACE INTO test VALUES (1, 'Alice');
+REPLACE INTO test VALUES (2, 'Bob');
+REPLACE INTO test VALUES (1, 'Duplicate Alice');
+REPLACE INTO test VALUES (4, 'Bob');
+select * from test;
+REPLACE INTO test VALUES (1, 'Bob');
+select * from test;
+drop table test;

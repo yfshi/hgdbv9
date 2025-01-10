@@ -336,3 +336,26 @@ select * from text_hashp1;
 (2 rows)
 
 drop table text_hashp;
+--BUG#Z1622
+drop table if exists test;
+NOTICE:  table "test" does not exist, skipping
+CREATE TABLE test (id INT PRIMARY KEY, name VARCHAR(50) UNIQUE);
+REPLACE INTO test VALUES (1, 'Alice');
+REPLACE INTO test VALUES (2, 'Bob');
+REPLACE INTO test VALUES (1, 'Duplicate Alice');
+REPLACE INTO test VALUES (4, 'Bob');
+select * from test;
+ id |      name       
+----+-----------------
+  1 | Duplicate Alice
+  4 | Bob
+(2 rows)
+
+REPLACE INTO test VALUES (1, 'Bob');
+select * from test;
+ id | name 
+----+------
+  1 | Bob
+(1 row)
+
+drop table test;
