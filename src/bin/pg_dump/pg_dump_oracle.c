@@ -10261,7 +10261,7 @@ getDbRoles(Archive *fout, int *numRoles)
 						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
 						  "rolname = current_user AS is_current_user "
 						  "FROM pg_authid a, pg_database d "
-						  "WHERE rolname !~ '^pg_' AND "
+						  "WHERE a.rolname !~ '^pg_' AND "
 						  "d.datname = current_database() AND "
 						  "a.rolowndboid = d.oid "
 						  "ORDER BY 2");
@@ -20530,7 +20530,7 @@ getDbTablespace(Archive *fout, int *numTablespaces)
 							   "FROM pg_catalog.pg_tablespace t "
 							   "LEFT JOIN pg_catalog.pg_authid a on (a.oid = spcowner) "
 							   "LEFT JOIN pg_catalog.pg_database d on (d.oid = a.rolowndboid) "
-							   "WHERE spcname !~ '^pg_' "
+							   "WHERE t.spcname !~ '^pg_' "
 							   "AND d.datname = current_database() "
 							   "ORDER BY 1");
 	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);

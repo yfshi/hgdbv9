@@ -1107,6 +1107,7 @@ _outRangeVar(StringInfo str, const RangeVar *node)
 	WRITE_STRING_FIELD(schemaname);
 	WRITE_STRING_FIELD(relname);
 	WRITE_STRING_FIELD(srvname);	/* BUG#M0000374 */
+	WRITE_STRING_FIELD(lnkrelname);	/* BUG#M0000489 */
 	WRITE_BOOL_FIELD(inh);
 	WRITE_CHAR_FIELD(relpersistence);
 	WRITE_NODE_FIELD(alias);
@@ -3426,6 +3427,7 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 			WRITE_NODE_FIELD(linkrelattrs);
 			WRITE_STRING_FIELD(linkrelname);
 			WRITE_STRING_FIELD(linkrelnsname);
+			WRITE_INT_FIELD(fdwtype);	/* BUG#M0000489 */
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
 		case RTE_SUBQUERY:

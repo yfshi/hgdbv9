@@ -67,6 +67,7 @@ typedef struct RangeVar
 	char	   *schemaname;		/* the schema name, or NULL */
 	char	   *relname;		/* the relation/sequence name */
 	char	   *srvname;		/* DBLINK server name for BUG#M0000374*/
+	char	   *lnkrelname;	/* BUG#M0000489 */
 	bool		inh;			/* expand rel by inheritance? recursively act
 								 * on children? */
 	char		relpersistence; /* see RELPERSISTENCE_* in pg_class.h */

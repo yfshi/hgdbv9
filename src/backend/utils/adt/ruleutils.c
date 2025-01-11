@@ -90,6 +90,7 @@
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
+#include "foreign/foreign.h"
 
 /* ----------
  * Pretty formatting constants
@@ -4027,7 +4028,7 @@ print_function_sqlbody(StringInfo buf, HeapTuple proctup)
 			Query	   *query = lfirst_node(Query, lc);
 
 			/* It seems advisable to get at least AccessShareLock on rels */
-			AcquireRewriteLocks(query, false, false);
+			AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
 			get_query_def(query, buf, list_make1(&dpns), NULL, false,
 						  PRETTYFLAG_INDENT, WRAP_COLUMN_DEFAULT, 1);
 			appendStringInfoChar(buf, ';');
@@ -4041,7 +4042,7 @@ print_function_sqlbody(StringInfo buf, HeapTuple proctup)
 		Query	   *query = castNode(Query, n);
 
 		/* It seems advisable to get at least AccessShareLock on rels */
-		AcquireRewriteLocks(query, false, false);
+		AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
 		get_query_def(query, buf, list_make1(&dpns), NULL, false,
 					  0, WRAP_COLUMN_DEFAULT, 0);
 	}
@@ -5769,7 +5770,7 @@ make_ruledef(StringInfo buf, HeapTuple ruletup, TupleDesc rulettc,
 		query = getInsertSelectQuery(query, NULL);
 
 		/* Must acquire locks right away; see notes in get_query_def() */
-		AcquireRewriteLocks(query, false, false);
+		AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
 
 		context.buf = buf;
 		context.namespaces = list_make1(&dpns);
@@ -5937,7 +5938,7 @@ get_query_def(Query *query, StringInfo buf, List *parentnamespace,
 	 * We are only deparsing the query (we are not about to execute it), so we
 	 * only need AccessShareLock on the relations it mentions.
 	 */
-	AcquireRewriteLocks(query, false, false);
+	AcquireRewriteLocks(query, false, false, true);	/* BUG#M0000489 */
 
 	context.buf = buf;
 	context.namespaces = lcons(&dpns, list_copy(parentnamespace));
@@ -7898,11 +7899,23 @@ get_variable(Var *var, int levelsup, bool istoplevel, deparse_context *context)
 
 	if (refname && (context->varprefix || attname == NULL))
 	{
-		appendStringInfoString(buf, quote_identifier(refname));
-		appendStringInfoChar(buf, '.');
+		/* Begin - BUG#M0000489 */
+		if (rte->rtekind != RTE_DBLINK)
+		{
+			appendStringInfoString(buf, quote_identifier(refname));
+			appendStringInfoChar(buf, '.');
+		}
+		/* End - BUG#M0000489 */
 	}
 	if (attname)
-		appendStringInfoString(buf, quote_identifier(attname));
+	{
+		/* Begin - BUG#M0000489 */
+		if (rte->rtekind == RTE_DBLINK)
+			appendStringInfoString(buf, attname);
+		/* End - BUG#M0000489 */
+		else
+			appendStringInfoString(buf, quote_identifier(attname));
+	}
 	else
 	{
 		appendStringInfoChar(buf, '*');
@@ -11581,6 +11594,16 @@ get_from_clause_item(Node *jtnode, Query *query, deparse_context *context)
 								 generate_relation_name(rte->relid,
 														context->namespaces));
 				break;
+			/* Begin - BUG#M0000489 */
+			case RTE_DBLINK:
+				{
+					ForeignServer * fs = GetForeignServer(rte->serverOid);
+					appendStringInfo(buf, "%s%s@%s",
+									 only_marker(rte),
+									 rte->linkrelname, fs->servername);
+				}
+				break;
+			/* End - BUG#M0000489 */
 			case RTE_SUBQUERY:
 				/* Subquery RTE */
 				appendStringInfoChar(buf, '(');

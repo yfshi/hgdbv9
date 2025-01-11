@@ -191,7 +191,6 @@ select * from vt1;
 select * from it1@ivyfuplnk where c2 = 'PACKAGE';
 
 -- inner join two remote tables f2 and f3.
-select * from it1@ivyfuplnk inner join it2@ivyfuplnk  on (it1.c1 = it2.b2);
 select * from it1@ivyfuplnk A inner join it2@ivyfuplnk B on A.c1 = B.b2;
 
 

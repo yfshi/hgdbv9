@@ -1417,6 +1417,7 @@ _copyRangeVar(const RangeVar *from)
 	COPY_STRING_FIELD(schemaname);
 	COPY_STRING_FIELD(relname);
 	COPY_STRING_FIELD(srvname);		/* BUG#M0000374 */
+	COPY_STRING_FIELD(lnkrelname);	/* BUG#M0000489 */
 	COPY_SCALAR_FIELD(inh);
 	COPY_SCALAR_FIELD(relpersistence);
 	COPY_NODE_FIELD(alias);
@@ -2574,6 +2575,7 @@ _copyRangeTblEntry(const RangeTblEntry *from)
 	COPY_NODE_FIELD(linkrelattrs);
 	COPY_STRING_FIELD(linkrelname);
 	COPY_STRING_FIELD(linkrelnsname);
+	COPY_SCALAR_FIELD(fdwtype);		/* BUG#M0000489 */
 	/* End - ReqID:SRS-SQL-DBLINK */
 	COPY_NODE_FIELD(alias);
 	COPY_NODE_FIELD(eref);
@@ -4723,6 +4725,7 @@ _copyDropDatabaseLinkStmt(const DropDatabaseLinkStmt * from)
 
 	COPY_STRING_FIELD(linkname);
 	COPY_SCALAR_FIELD(behavior);
+	COPY_SCALAR_FIELD(is_public);
 
 	return newnode;
 }
