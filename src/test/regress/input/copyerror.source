@@ -652,6 +652,31 @@ SELECT * FROM table_quote_bad where taskid = 'table_2_2';
 
 -- End - BUG:M0000370
 
+-- Begin - BUG:M0000379
+CREATE TABLE M379(id int, name varchar(20));
+-- logbad is off, no NOTICE messasge
+COPY M379 FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin');
+1,hangao
+2,gaohao
+\.
+
+-- logbad is on, having NOTICE message
+COPY M379 FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin', logbad 'true');
+1,hangao
+2,gaohao
+\.
+
+-- logbad is on, table name have special chars, NOTICE message have double quote
+CREATE TABLE "m^%'$3""7_\>9"(id int, name varchar(20));
+COPY "m^%'$3""7_\>9" FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin', logbad 'true');
+1,hangao
+2,gaohao
+\.
+
+DROP TABLE M379;
+DROP TABLE "m^%'$3""7_\>9";
+-- End - BUG:M0000379
+
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

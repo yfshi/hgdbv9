@@ -965,6 +965,56 @@ NextCopyFromRawFields(CopyFromState cstate, char ***fields, int *nfields)
 }
 
 /* Begin - ReqID:SRS-MISC-BULKLOAD */
+
+/* Begin - BUG:M0000379 */
+
+/*
+ * check single-quote
+ */
+int
+check_single_quote(const char *buffer, int len)
+{
+	int quote_count = 0;
+	const char *tmp = buffer;
+
+	for (int i = 0; i < len; i++)
+	{
+		if (tmp[i] == '\'')
+		{
+			quote_count++;
+		}
+	}
+
+	return quote_count;	
+}
+
+bool
+check_need_quote(const char *rawid)
+{
+	const char	*cp;
+	bool	need_quote = false;
+	if (!((rawid[0] >= 'a' && rawid[0] <= 'z') || rawid[0] == '_'))
+		need_quote = true;
+	else
+	{
+		/* otherwise check the entire string */
+		for (cp = rawid; *cp; cp++)
+		{
+			if (!((*cp >= 'a' && *cp <= 'z')
+				  || (*cp >= '0' && *cp <= '9')
+				  || (*cp == '_')))
+			{
+				need_quote = true;
+				break;
+			}
+		}		
+	}
+
+	return need_quote;
+}
+
+/* End - BUG:M0000379 */
+
 /*
  * Insert the bad record to the file or table
  * bad record include: 
@@ -1048,9 +1098,66 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 	{
 
 		int single_quote_count = 0; /* BUG:M0000370 */
+		/* Begin - BUG:M0000379 */
+		int schema_quote_count = 0;
+		int table_quote_count = 0;
+		int len = 0;
+		char *schema_new = NULL;
+		char *table_new = NULL;
+		/* End - BUG:M0000379 */
 
 		/* SPI call */
 		initStringInfo(&query);
+
+		/* Begin - BUG:M0000379 */
+		/* 
+		 * check if there have single quote in the schema string
+		 * then double single-quote 
+		 */
+		len = strlen(cstate->schema_name);
+		schema_quote_count = check_single_quote(cstate->schema_name, len);
+		schema_new = (char*) palloc (len+schema_quote_count+1);
+		memset(schema_new, 0, len+schema_quote_count+1);
+		if (schema_quote_count)
+		{
+			for (int i = 0, j=0; i < len; i++,j++)
+			{
+				if (cstate->schema_name[i] == '\'')
+				{
+					schema_new[j] = '\'';
+					schema_new[++j] = '\'';
+				}
+				else
+					schema_new[j] = cstate->schema_name[i];
+			}
+		}
+		else
+			memcpy(schema_new, cstate->schema_name, len);
+
+		/*
+		 * check if there have single-quote in the relname string
+		 * then double single-quote
+		 */
+		len = strlen(cstate->cur_relname);
+		table_quote_count = check_single_quote(cstate->cur_relname, len);
+		table_new = (char*) palloc (len+table_quote_count+1);
+		memset(table_new, 0, len+table_quote_count+1);
+		if (table_quote_count)
+		{
+			for (int i = 0, j = 0; i < len; i++, j++)
+			{
+				if (cstate->cur_relname[i] == '\'')
+				{
+					table_new[j] = '\'';
+					table_new[++j] = '\'';
+				}
+				else
+					table_new[j] = cstate->cur_relname[i];
+			}
+		}
+		else
+			memcpy(table_new, cstate->cur_relname, len);
+		/* End - BUG:M0000379 */
 
 		/* Begin - BUG:M0000370 */
 		/*
@@ -1078,7 +1185,7 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 		{
 			appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
 				cstate->opts.badtable,
-				cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
+				cstate->opts.taskid, schema_new, table_new,
 				cstate->opts.filename, type,
 				line_no, linebuf_cut->data);
 		}
@@ -1106,15 +1213,21 @@ OutputBadRecord (CopyFromState cstate,uint64 lineno,StringInfoData *linebuf,char
 					new_str[j++] = linebuf_cut->data[i];
 
 			}
-			new_str[j] = '\0';
 
 			appendStringInfo(&query, "insert into %s values('%s', '%s', '%s', '%s', '%c', %ld, '%s');",
 				  	 cstate->opts.badtable,
-					 cstate->opts.taskid, cstate->schema_name, cstate->cur_relname,
+					 cstate->opts.taskid, schema_new, table_new,
 					 cstate->opts.filename, type,
 					 line_no, new_str);
 			pfree (new_str);
 		}
+
+		/* Begin - BUG:M0000379 */
+		if (schema_quote_count)
+			pfree(schema_new);
+		if (table_quote_count)
+			pfree(table_new);
+		/* End - BUG:M0000379 */
 
 		if (SPI_connect() != SPI_OK_CONNECT)
 			elog(ERROR, "SPI_connect failed");
