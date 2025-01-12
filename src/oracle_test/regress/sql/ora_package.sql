@@ -6319,7 +6319,6 @@ DROP package test_pkg;
 
 --clean data
 RESET ivorysql.allow_out_parameter_const;
-DROP FUNCTION test_event_trigger;
 DROP TABLE mds;
 DROP TABLE mdss;
 
