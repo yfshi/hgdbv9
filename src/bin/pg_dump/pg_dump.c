@@ -1384,7 +1384,15 @@ static void DatabaseCheckMoption(const char *options)
 /* Begin - bugz1402 */
 static void DatabaseCheckoptions(const char *options)
 {
-	if (database_mode == DB_MYSQL && options != NULL)
-		fatal("MySQL database does not support the -m option");
+	/* Begin - BUGZ1621 */
+	if (options == NULL)
+		return;
+	if (database_mode == DB_MYSQL)
+		fatal("Can't use -m when dbmode is MySQL");
+	else if (database_mode == DB_PG)
+		fatal("Can't use -m when dbmode is pg");
+	else if (database_mode == DB_NATIVE)
+		fatal("Can't use -m when dbmode is native-pg");
+	/* End - BUGZ1621 */
 }
 /* End - bugz1402 */
