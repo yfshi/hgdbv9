@@ -433,6 +433,8 @@ extern PGDLLIMPORT bool allow_forupdate_in_subquery;
 extern PGDLLIMPORT bool enable_pg_interval_datatype; /* BUG#M0000475 */
 extern PGDLLIMPORT bool	alter_database_set_special;  /* BUG#M0000475 */
 
+extern bool package_security_define_compare_user;	/* BUG#M496 */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

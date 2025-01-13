@@ -3258,6 +3258,23 @@ ExecuteCallStmt(CallStmt *stmt, ParamListInfo params, bool atomic, DestReceiver 
 		callcontext = makeNode(CallContext);
 		callcontext->atomic = atomic;
 
+		/* Begin - BUG#M496 */
+		/*
+		 * check wether package invoke define and has
+		 * change user when invoking
+		 */
+		if (fexpr->function_from == FUNC_FROM_PACKAGE)
+		{
+			Oid define_user;
+			Oid			current_user = GetUserId();
+
+			if (package_invoke_by_define(fexpr->pkgoid, &define_user) &&
+				(!package_security_define_compare_user ||
+				define_user != current_user))
+				callcontext->atomic = true;
+		}
+		/* End - BUG#M496 */
+
 		goto SKIP_PG_PROC_CHECK;
 	}
 	/* End - SRS-PLSQL-SUBPROC */

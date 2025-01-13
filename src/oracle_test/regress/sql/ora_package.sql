@@ -7301,3 +7301,303 @@ select test_pkg.test_f_d(1+1),id from test_imm;
 --clean data
 drop table test_imm;
 drop package test_pkg;
+
+
+--bug#M496
+create user enrol11 superuser;
+create user enrol22 superuser;
+
+\c - enrol11
+
+CREATE TABLE test_id(id integer,name varchar2(256));
+
+create or replace package test_pkg is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_pkg is
+  procedure test_p(id integer) is
+    var1 integer;
+    var2 integer;
+  begin
+    for var1 in 1 .. 5 LOOP
+      var2 := var1 + 1;
+	  INSERT INTO test_id VALUES(var2, 'one');
+      commit;
+    end loop;
+  end;
+end;
+/
+
+--ok
+call test_pkg.test_p(23);
+
+SET ivorysql.package_security_define_compare_user = false;
+
+--error
+call test_pkg.test_p(23);
+
+--reset
+reset ivorysql.package_security_define_compare_user;
+
+SELECT * FROM test_id ORDER BY id;
+
+create or replace function test_u1(id integer) return integer is
+begin
+  test_pkg.test_p(23);
+  return 23;
+end;
+/
+
+
+create or replace procedure test_p(id integer) is
+begin
+  test_pkg.test_p(23);
+end;
+/
+
+create or replace procedure test_pp(id integer) is
+begin
+  commit;
+end;
+/
+
+create or replace package test_pkg1 is
+ procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_pkg1 is
+  procedure test_p(id integer) is
+  begin
+    test_pp(id);
+  end;
+end;
+/
+
+--subproc function
+CREATE OR REPLACE PROCEDURE test_ppp(id integer) IS
+  PROCEDURE test_sub_proc(id integer) IS
+  BEGIN
+    INSERT INTO test_id VALUES(25,'two tables');
+	commit;
+	INSERT INTO test_id VALUES(26,'more two tables');
+  end;
+BEGIN
+  test_sub_proc(id);
+end;
+/
+
+create or replace package test_pkg2 is
+  procedure test_p(id integer);
+  PROCEDURE pkg_p(id integer);
+end;
+/
+
+create or replace package body test_pkg2 is
+  procedure test_p(id integer) is
+    var1 integer;
+    var2 integer;
+  begin
+    for var1 in 1 .. 5 LOOP
+      var2 := var1 + 1;
+	  INSERT INTO test_id VALUES(var2, 'one');
+	  pkg_p(var2);
+      commit;
+    end loop;
+  end;
+ PROCEDURE pkg_p(id integer)
+ IS
+   var1 integer;
+   var2 integer;
+ BEGIN
+    for var1 in 1 .. 5 LOOP
+      var2 := var1 + 1;
+	  INSERT INTO test_id VALUES(var2, 'one');
+      commit;
+    end loop;
+ end;
+end;
+/
+
+create or replace package test_pkg3 AUTHID CURRENT_USER is
+  procedure test_p(id integer);
+end;
+/
+
+create or replace package body test_pkg3 is
+  procedure test_p(id integer) is
+    var1 integer;
+    var2 integer;
+  begin
+    for var1 in 1 .. 5 LOOP
+      var2 := var1 + 1;
+	  INSERT INTO test_id VALUES(var2, 'one');
+      commit;
+    end loop;
+  end;
+end;
+/
+
+--ok
+call test_pkg3.test_p(23);
+
+--ok
+call test_pkg2.test_p(23);
+
+--error
+call test_ppp(23);
+
+--error
+call test_pp(23);
+
+--raise error
+call test_pkg1.test_p(23);
+
+
+SET ivorysql.package_security_define_compare_user = false;
+
+--ok
+call test_pkg3.test_p(23);
+
+--error
+call test_pkg2.test_p(23);
+
+--error
+call test_ppp(23);
+
+--error
+call test_pp(23);
+
+--raise error
+call test_pkg1.test_p(23);
+
+
+--trigger
+create table test_trigs(id integer,name varchar2(256));
+
+create function test_trig() returns trigger as $$
+begin
+        raise notice '% % % %', TG_TABLE_NAME, TG_OP, TG_WHEN, TG_LEVEL;
+	test_pkg.test_p(23);
+        return new;
+end;$$ language plisql;
+/
+
+create trigger test_row_trig before insert or update or delete on test_trigs
+for each row execute procedure test_trig();
+
+
+SET ivorysql.package_security_define_compare_user = true;
+
+--error
+insert into test_trigs values(1,'one');
+
+SET ivorysql.package_security_define_compare_user = false;
+
+--error
+insert into test_trigs values(1,'one');
+
+DROP TRIGGER test_row_trig ON test_trigs;
+DROP FUNCTION test_trig;
+
+
+create function test_trig() returns TRIGGER SECURITY INVOKER as $$
+begin
+        raise notice '% % % %', TG_TABLE_NAME, TG_OP, TG_WHEN, TG_LEVEL;
+		test_pkg.test_p(23);
+        return new;
+end;$$ language plisql;
+/
+
+create trigger test_row_trig before insert or update or delete on test_trigs
+for each row execute procedure test_trig();
+
+SET ivorysql.package_security_define_compare_user = true;
+
+--error
+insert into test_trigs values(1,'one');
+
+SET ivorysql.package_security_define_compare_user = false;
+
+--error
+insert into test_trigs values(1,'one');
+
+\c - enrol22
+
+--raise error
+call test_pkg.test_p(23);
+
+--raise error
+call test_pkg1.test_p(23);
+
+--raise error
+call test_pkg2.test_p(23);
+
+--ok
+call test_pkg3.test_p(23);
+
+--error
+declare
+  var1 integer;
+begin
+  var1 := test_u1(23);
+end;
+/
+
+--error
+begin
+  test_p(23);
+end;
+/
+
+SET ivorysql.package_security_define_compare_user = false;
+
+--raise error
+call test_pkg.test_p(23);
+
+--raise error
+call test_pkg1.test_p(23);
+
+--raise error
+call test_pkg2.test_p(23);
+
+--ok
+call test_pkg3.test_p(23);
+
+--error
+declare
+  var1 integer;
+begin
+  var1 := test_u1(23);
+end;
+/
+
+
+--error
+begin
+  test_p(23);
+end;
+/
+
+
+\c - enrol11
+
+--clean data
+DROP TRIGGER test_row_trig ON test_trigs;
+DROP FUNCTION test_trig;
+DROP TABLE test_trigs;
+DROP package test_pkg1;
+DROP PROCEDURE test_pp;
+DROP PROCEDURE test_p;
+DROP FUNCTION test_u1;
+DROP package test_pkg;
+DROP TABLE test_id;
+DROP USER enrol22;
+DROP PROCEDURE test_ppp;
+DROP package test_pkg2;
+DROP package test_pkg3;
+
+\c - system
+DROP USER enrol11;
