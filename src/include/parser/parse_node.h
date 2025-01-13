@@ -305,6 +305,7 @@ struct ParseState
 	List	   *p_delrellist;
 	List	   *p_deleteRangerVars;
 	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+	bool		p_isreplace; /* BUG#Z1626 */
 };
 
 /*
