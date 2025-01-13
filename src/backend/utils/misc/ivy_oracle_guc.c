@@ -198,6 +198,8 @@ bool allow_forupdate_in_subquery = true;
 bool enable_pg_interval_datatype = false; /* BUG#M0000475 */
 bool alter_database_set_special = false; /* BUG#M0000475 */
 
+bool package_security_define_compare_user = true; /* BUG#M496 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -790,6 +792,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000475 */
+	/* Begin - BUG#M496 */
+	{
+		{"ivorysql.package_security_define_compare_user", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Whether to compare users when the package uses define invoke."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&package_security_define_compare_user,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M496 */
 #endif
 #if 0
 	/* End-of-list marker */

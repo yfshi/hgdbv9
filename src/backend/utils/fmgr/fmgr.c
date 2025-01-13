@@ -189,7 +189,8 @@ fmgr_subproc_info_cxt_security(Oid functionId, FmgrInfo *finfo,
 	if (!ignore_security &&
 		function_from == FUNC_FROM_PACKAGE &&
 		package_invoke_by_define(pkgoid, &define_user) &&
-		define_user != current_user)
+		(!package_security_define_compare_user || /* BUG#M496 */
+		define_user != current_user))
 	{
 		finfo->fn_addr = fmgr_package_security_definer;
 		finfo->fn_stats = TRACK_FUNC_ALL;		/* ie, never track */
