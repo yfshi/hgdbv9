@@ -181,3 +181,12 @@ select * from test;
 REPLACE INTO test VALUES (1, 'Bob');
 select * from test;
 drop table test;
+--BUG#Z1626
+CREATE TABLE test2(a int , b varchar(50));
+REPLACE INTO test2(a,b) VALUES(1);
+REPLACE INTO test2(a,b) VALUES(1,'aa',3);
+REPLACE INTO test2 VALUES(3);
+REPLACE INTO test2 VALUES(4,'aa',3);
+REPLACE INTO test2(a,b) VALUES(1,'aa',1),(2,'bb',1),(3,'cc',1);
+REPLACE INTO test2(a,b) VALUES(1,'aa',1),(2,'bb'),(3,'cc');
+drop table test2;

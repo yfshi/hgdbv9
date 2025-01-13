@@ -1139,6 +1139,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	if (DB_MYSQL == compatible_db)
 	{
 		qry->isReplace = stmt->isReplace;
+		pstate->p_isreplace = stmt->isReplace; /* BUG#Z1626 */
 		if (stmt->relation && stmt->relation->ispartition)
 		{
 			/* Get the specified partition table information. */
@@ -1661,12 +1662,24 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 	 * that could expand '*' into multiple items.
 	 */
 	if (list_length(exprlist) > list_length(icolumns))
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("INSERT has more expressions than target columns"),
-				 parser_errposition(pstate,
-									exprLocation(list_nth(exprlist,
-														  list_length(icolumns))))));
+	/* Begin - BUG#Z1626 */
+	{
+		if (pstate->p_isreplace && DB_MYSQL == compatible_db)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("REPLACE has more expressions than target columns"),
+					 parser_errposition(pstate,
+										exprLocation(list_nth(exprlist,
+															  list_length(icolumns))))));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("INSERT has more expressions than target columns"),
+					 parser_errposition(pstate,
+										exprLocation(list_nth(exprlist,
+															  list_length(icolumns))))));
+	}
+	/* End - BUG#Z1626 */
 	if (stmtcols != NIL &&
 		list_length(exprlist) < list_length(icolumns))
 	{
@@ -1679,16 +1692,30 @@ transformInsertRow(ParseState *pstate, List *exprlist,
 		 * mismatch, which is less misleading so we don't worry about giving a
 		 * hint in that case.)
 		 */
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("INSERT has more target columns than expressions"),
-				 ((list_length(exprlist) == 1 &&
-				   count_rowexpr_columns(pstate, linitial(exprlist)) ==
-				   list_length(icolumns)) ?
-				  errhint("The insertion source is a row expression containing the same number of columns expected by the INSERT. Did you accidentally use extra parentheses?") : 0),
-				 parser_errposition(pstate,
-									exprLocation(list_nth(icolumns,
-														  list_length(exprlist))))));
+		/* Begin - BUG#Z1626 */
+		if (pstate->p_isreplace && DB_MYSQL == compatible_db)
+						ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg(" REPLACE has more target columns than expressions"),
+					 ((list_length(exprlist) == 1 &&
+					   count_rowexpr_columns(pstate, linitial(exprlist)) ==
+					   list_length(icolumns)) ?
+					  errhint("The replace source is a row expression containing the same number of columns expected by the REPLACE. Did you accidentally use extra parentheses?") : 0),
+					 parser_errposition(pstate,
+										exprLocation(list_nth(icolumns,
+															  list_length(exprlist))))));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("INSERT has more target columns than expressions"),
+					 ((list_length(exprlist) == 1 &&
+					   count_rowexpr_columns(pstate, linitial(exprlist)) ==
+					   list_length(icolumns)) ?
+					  errhint("The insertion source is a row expression containing the same number of columns expected by the INSERT. Did you accidentally use extra parentheses?") : 0),
+					 parser_errposition(pstate,
+										exprLocation(list_nth(icolumns,
+															  list_length(exprlist))))));
+		/* End - BUG#Z1626 */
 	}
 
 	/*
