@@ -10448,8 +10448,10 @@ getDbRoleMembership(Archive *fout, int *numRolesMembership)
 		dbrinfo[i].dobj.objType = DO_DATABASEROLEMEMBERSHIP;
 		dbrinfo[i].dobj.catId.tableoid = tableoid;
 		dbrinfo[i].dobj.catId.oid = roleoidoid;
-		dbrinfo[i].dobj.name = pg_strdup(roleid);
+		/* Begin - BUG#M0000499 BUG#Z836 */
 		AssignDumpId(&dbrinfo[i].dobj);
+		dbrinfo[i].dobj.name = pg_strdup(roleid);
+		/* End - BUG#M0000499 BUG#Z836 */
 		dbrinfo[i].rolename = pg_strdup(roleid);
 		dbrinfo[i].member = pg_strdup(member);
 
