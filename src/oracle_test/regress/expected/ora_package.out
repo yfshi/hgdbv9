@@ -7558,6 +7558,95 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -7576,6 +7665,17 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -7745,7 +7845,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(2181 rows)
+(2281 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                          text                                                                                                          
@@ -9744,6 +9844,95 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -9762,6 +9951,17 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -9931,7 +10131,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(2181 rows)
+(2281 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name    |     type     | line |                                 text                                  
@@ -10024,8 +10224,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -10038,7 +10250,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(46 rows)
+(58 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
@@ -10075,8 +10287,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -10089,7 +10313,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(46 rows)
+(58 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -10205,9 +10429,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -10220,7 +10457,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(113 rows)
+(126 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -10323,9 +10560,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -10338,7 +10588,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(113 rows)
+(126 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -12352,6 +12602,95 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -12370,6 +12709,17 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -12539,7 +12889,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(2181 rows)
+(2281 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                          text                                                                                                          
@@ -14029,6 +14379,95 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -14047,6 +14486,17 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -14187,7 +14637,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(1643 rows)
+(1743 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
  name | type | line | text 
@@ -14229,8 +14679,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -14243,7 +14705,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(46 rows)
+(58 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
@@ -14267,8 +14729,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -14276,7 +14750,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(28 rows)
+(40 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid 
@@ -14384,9 +14858,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -14399,7 +14886,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(113 rows)
+(126 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -14464,9 +14951,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -14475,7 +14975,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(71 rows)
+(84 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -16482,6 +16982,95 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -16500,6 +17089,17 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -16669,7 +17269,7 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(2181 rows)
+(2281 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                          text                                                                                                          
@@ -18159,6 +18759,95 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_metadata | PACKAGE BODY | 1462 |     RETURN ddl;
  dbms_metadata | PACKAGE BODY | 1463 |   END;
  dbms_metadata | PACKAGE BODY | 1464 | END;
+ dbms_random   | PACKAGE      | 1    | PACKAGE dbms_random IS
+ dbms_random   | PACKAGE      | 2    | 
+ dbms_random   | PACKAGE      | 3    |     PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE      | 4    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 5    |     );
+ dbms_random   | PACKAGE      | 6    |     FUNCTION NORMAL return NUMBER;
+ dbms_random   | PACKAGE      | 7    |     FUNCTION RANDOM return INTEGER;
+ dbms_random   | PACKAGE      | 8    |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 9    |         val IN INTEGER
+ dbms_random   | PACKAGE      | 10   |     );
+ dbms_random   | PACKAGE      | 11   |     PROCEDURE SEED (
+ dbms_random   | PACKAGE      | 12   |         val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE      | 13   |     );
+ dbms_random   | PACKAGE      | 14   |     FUNCTION STRING (opt CHAR, len NUMBER) return VARCHAR2;
+ dbms_random   | PACKAGE      | 15   |     PROCEDURE TERMINATE;
+ dbms_random   | PACKAGE      | 16   |     FUNCTION VALUE return NUMBER;
+ dbms_random   | PACKAGE      | 17   |     FUNCTION VALUE(low NUMBER, high NUMBER) return NUMBER;
+ dbms_random   | PACKAGE      | 18   | END;
+ dbms_random   | PACKAGE BODY | 1    | PACKAGE BODY dbms_random IS
+ dbms_random   | PACKAGE BODY | 2    | 
+ dbms_random   | PACKAGE BODY | 3    | 
+ dbms_random   | PACKAGE BODY | 4    | PROCEDURE INITIALIZE (
+ dbms_random   | PACKAGE BODY | 5    |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 6    | ) IS
+ dbms_random   | PACKAGE BODY | 7    | BEGIN
+ dbms_random   | PACKAGE BODY | 8    |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 9    | END INITIALIZE;
+ dbms_random   | PACKAGE BODY | 10   | 
+ dbms_random   | PACKAGE BODY | 11   | FUNCTION NORMAL RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 12   | BEGIN
+ dbms_random   | PACKAGE BODY | 13   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 14   | END;
+ dbms_random   | PACKAGE BODY | 15   | 
+ dbms_random   | PACKAGE BODY | 16   | FUNCTION RANDOM RETURN INTEGER IS
+ dbms_random   | PACKAGE BODY | 17   | BEGIN
+ dbms_random   | PACKAGE BODY | 18   |     RETURN floor(pg_catalog.random() * power(2,32) - power(2,31))::bigint;
+ dbms_random   | PACKAGE BODY | 19   | END;
+ dbms_random   | PACKAGE BODY | 20   | 
+ dbms_random   | PACKAGE BODY | 21   | 
+ dbms_random   | PACKAGE BODY | 22   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 23   |     val IN INTEGER
+ dbms_random   | PACKAGE BODY | 24   | ) IS
+ dbms_random   | PACKAGE BODY | 25   | BEGIN
+ dbms_random   | PACKAGE BODY | 26   |     select setseed(val);
+ dbms_random   | PACKAGE BODY | 27   | END SEED;
+ dbms_random   | PACKAGE BODY | 28   | 
+ dbms_random   | PACKAGE BODY | 29   | PROCEDURE SEED (
+ dbms_random   | PACKAGE BODY | 30   |     val IN VARCHAR2(2000)
+ dbms_random   | PACKAGE BODY | 31   | ) IS
+ dbms_random   | PACKAGE BODY | 32   | BEGIN
+ dbms_random   | PACKAGE BODY | 33   |     select NULL;
+ dbms_random   | PACKAGE BODY | 34   | END SEED;
+ dbms_random   | PACKAGE BODY | 35   | 
+ dbms_random   | PACKAGE BODY | 36   | 
+ dbms_random   | PACKAGE BODY | 37   | FUNCTION STRING (opt CHAR, len NUMBER) RETURN VARCHAR2 IS
+ dbms_random   | PACKAGE BODY | 38   | BEGIN
+ dbms_random   | PACKAGE BODY | 39   |     IF upper(opt) = 'A' THEN
+ dbms_random   | PACKAGE BODY | 40   |         RETURN random_mixed_case_string(len);
+ dbms_random   | PACKAGE BODY | 41   |     ELSIF upper(opt) = 'L' THEN
+ dbms_random   | PACKAGE BODY | 42   |         RETURN random_lower_case_string(len);
+ dbms_random   | PACKAGE BODY | 43   |     ELSIF upper(opt) = 'X' THEN
+ dbms_random   | PACKAGE BODY | 44   |         RETURN random_case_number_string(len);
+ dbms_random   | PACKAGE BODY | 45   |     ELSIF upper(opt) = 'P' THEN
+ dbms_random   | PACKAGE BODY | 46   |         RETURN random_print_case_string(len);
+ dbms_random   | PACKAGE BODY | 47   |     ELSE 
+ dbms_random   | PACKAGE BODY | 48   |         RETURN random_upper_case_string(len);
+ dbms_random   | PACKAGE BODY | 49   |     END IF;
+ dbms_random   | PACKAGE BODY | 50   | END;
+ dbms_random   | PACKAGE BODY | 51   | 
+ dbms_random   | PACKAGE BODY | 52   | PROCEDURE TERMINATE IS
+ dbms_random   | PACKAGE BODY | 53   | BEGIN
+ dbms_random   | PACKAGE BODY | 54   |     select NULL as TERMINATE;
+ dbms_random   | PACKAGE BODY | 55   | END TERMINATE;
+ dbms_random   | PACKAGE BODY | 56   | 
+ dbms_random   | PACKAGE BODY | 57   | FUNCTION VALUE RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 58   | BEGIN
+ dbms_random   | PACKAGE BODY | 59   |     RETURN pg_catalog.random();
+ dbms_random   | PACKAGE BODY | 60   | END;
+ dbms_random   | PACKAGE BODY | 61   | 
+ dbms_random   | PACKAGE BODY | 62   | FUNCTION VALUE (low NUMBER, high NUMBER) RETURN NUMBER IS
+ dbms_random   | PACKAGE BODY | 63   | BEGIN
+ dbms_random   | PACKAGE BODY | 64   |     IF low < high THEN
+ dbms_random   | PACKAGE BODY | 65   |         RETURN pg_catalog.random()*(high - low) + low;
+ dbms_random   | PACKAGE BODY | 66   |     ELSE
+ dbms_random   | PACKAGE BODY | 67   |         RETURN pg_catalog.random()*(low - high) + high;
+ dbms_random   | PACKAGE BODY | 68   |     END IF;
+ dbms_random   | PACKAGE BODY | 69   | END;
+ dbms_random   | PACKAGE BODY | 70   | 
+ dbms_random   | PACKAGE BODY | 71   | END;
  dbms_standard | PACKAGE      | 1    | PACKAGE dbms_standard IS
  dbms_standard | PACKAGE      | 2    | 
  dbms_standard | PACKAGE      | 3    |          procedure raise_application_error(num integer, msg varchar2,
@@ -18177,6 +18866,17 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  dbms_standard | PACKAGE BODY | 11   |                 END if;
  dbms_standard | PACKAGE BODY | 12   |          end;
  dbms_standard | PACKAGE BODY | 13   | end;
+ dbms_utility  | PACKAGE      | 1    | PACKAGE dbms_utility IS
+ dbms_utility  | PACKAGE      | 2    | 
+ dbms_utility  | PACKAGE      | 3    |     FUNCTION GET_TIME RETURN NUMBER;
+ dbms_utility  | PACKAGE      | 4    | END;
+ dbms_utility  | PACKAGE BODY | 1    | PACKAGE BODY dbms_utility IS
+ dbms_utility  | PACKAGE BODY | 2    | 
+ dbms_utility  | PACKAGE BODY | 3    |     FUNCTION GET_TIME RETURN NUMBER IS
+ dbms_utility  | PACKAGE BODY | 4    |     BEGIN
+ dbms_utility  | PACKAGE BODY | 5    |         RETURN floor(EXTRACT(EPOCH FROM (now() - pg_postmaster_start_time())*100));
+ dbms_utility  | PACKAGE BODY | 6    |     END;
+ dbms_utility  | PACKAGE BODY | 7    | END;
  standard      | PACKAGE      | 1    | PACKAGE standard IS
  standard      | PACKAGE      | 2    | 
  standard      | PACKAGE      | 3    |  /********** Predefined constants **********/
@@ -18346,7 +19046,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 14   |      return id;
  test_pkg1     | PACKAGE BODY | 15   |   end;
  test_pkg1     | PACKAGE BODY | 16   | end;
-(1672 rows)
+(1772 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name   |     type     | line |                            text                            
@@ -18417,8 +19117,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -18431,7 +19143,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(46 rows)
+(58 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
@@ -18455,8 +19167,20 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  dbms_metadata | get_view_ddl            | 4             | PACKAGE     | CURRENT_USER
  dbms_metadata | is_supper_user          | 3             | PACKAGE     | CURRENT_USER
  dbms_metadata |                         | 0             | PACKAGE     | CURRENT_USER
+ dbms_random   | initialize              | 1             | PACKAGE     | CURRENT_USER
+ dbms_random   | normal                  | 2             | PACKAGE     | CURRENT_USER
+ dbms_random   | random                  | 3             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 4             | PACKAGE     | CURRENT_USER
+ dbms_random   | seed                    | 5             | PACKAGE     | CURRENT_USER
+ dbms_random   | string                  | 6             | PACKAGE     | CURRENT_USER
+ dbms_random   | terminate               | 7             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 8             | PACKAGE     | CURRENT_USER
+ dbms_random   | value                   | 9             | PACKAGE     | CURRENT_USER
+ dbms_random   |                         | 0             | PACKAGE     | CURRENT_USER
  dbms_standard | raise_application_error | 1             | PACKAGE     | DEFINER
  dbms_standard |                         | 0             | PACKAGE     | DEFINER
+ dbms_utility  | get_time                | 1             | PACKAGE     | CURRENT_USER
+ dbms_utility  |                         | 0             | PACKAGE     | CURRENT_USER
  standard      | sqlcode                 | 1             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 2             | PACKAGE     | CURRENT_USER
  standard      | sqlerrm                 | 3             | PACKAGE     | CURRENT_USER
@@ -18469,7 +19193,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(33 rows)
+(45 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -18582,9 +19306,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -18597,7 +19334,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(113 rows)
+(126 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -18662,9 +19399,22 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  get_ddl                 | dbms_metadata | 18            | model          | 4        | 5        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | version        | 5        | 6        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
  get_ddl                 | dbms_metadata | 18            | transform      | 6        | 7        | varchar2  | Y         | IN     | 63          |                |       | CHAR_CS
+ initialize              | dbms_random   | 1             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ normal                  | dbms_random   | 2             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ random                  | dbms_random   | 3             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 4             | val            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
+ seed                    | dbms_random   | 5             | val            | 1        | 1        | varchar2  | N         | IN     | 2000        |                |       | CHAR_CS
+ string                  | dbms_random   | 6             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | opt            | 1        | 2        | char      | N         | IN     | 1           |                |       | CHAR_CS
+ string                  | dbms_random   | 6             | len            | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 8             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | low            | 1        | 2        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
+ value                   | dbms_random   | 9             | high           | 2        | 3        | NUMBER    | N         | IN     | 22          | 65535          | 10    | 
  raise_application_error | dbms_standard | 1             | num            | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  raise_application_error | dbms_standard | 1             | msg            | 2        | 2        | varchar2  | N         | IN     |             |                |       | CHAR_CS
  raise_application_error | dbms_standard | 1             | keeperrorstack | 3        | 3        | boolean   | Y         | IN     |             |                |       | 
+ get_time                | dbms_utility  | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 65535          | 10    | 
  sqlcode                 | standard      | 1             |                | 0        | 1        | NUMBER    | N         | OUT    | 22          | 38             | 10    | 
  sqlerrm                 | standard      | 2             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
  sqlerrm                 | standard      | 3             |                | 0        | 1        | varchar2  | N         | OUT    |             |                |       | CHAR_CS
@@ -18677,7 +19427,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER    | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2  | Y         | IN     |             |                |       | CHAR_CS
-(75 rows)
+(88 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
