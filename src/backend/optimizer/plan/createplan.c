@@ -1156,6 +1156,26 @@ is_async_capable_plan(Plan *plan, Path *path)
 	return false;
 }
 
+static bool
+CheckPartitionOidIsexist(Oid relid, List *partOids)
+{
+	bool		partflag = false;
+	ListCell   *lc = NULL;
+
+	/* Traverse all specified partitions relation and report an error if not found. */
+	foreach(lc, partOids)
+	{
+		Oid		partoid = lfirst_int(lc);
+		if (partoid == relid)
+		{
+			partflag = true;
+			break;
+		}
+	}
+	return partflag;
+}
+
+
 /*
  * create_append_plan
  *	  Create an Append plan for 'best_path' and (recursively) plans
@@ -1182,6 +1202,7 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 	Oid		   *nodeCollations = NULL;
 	bool	   *nodeNullsFirst = NULL;
 	bool		consider_async = false;
+	bool		is_notexistsubplans = false;
 
 	/*
 	 * The subpaths list could be empty, if every child was proven empty by
@@ -1250,11 +1271,42 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 					  !best_path->path.parallel_safe &&
 					  list_length(best_path->subpaths) > 1);
 
+redo_actsubplans:;
 	/* Build the plan for each child */
 	foreach(subpaths, best_path->subpaths)
 	{
 		Path	   *subpath = (Path *) lfirst(subpaths);
 		Plan	   *subplan;
+
+		/* Begin - ReqID:SRS-MYSQL-UPDATE */
+		/* Check whether it is the specified partition.
+		 * If so, append the partition. If not, skip it.
+		 */
+		if (!is_notexistsubplans && DB_MYSQL == compatible_db)
+		{
+			if (root->parse->partreloids)
+			{
+				bool		is_part_exist = false;
+				ListCell   *lc = NULL;
+				RangeTblEntry	   *rte = rt_fetch(subpath->parent->relid, root->parse->rtable);
+				foreach(lc, root->parse->partreloids)
+				{
+					List   *partreloid = (List *)lfirst(lc);
+					is_part_exist = CheckPartitionOidIsexist(rte->relid, partreloid);
+					if (is_part_exist)
+						break;
+				}
+				if (!is_part_exist)
+					continue;
+			}
+			else if (root->parse->partOids)
+			{
+				RangeTblEntry	   *rte = rt_fetch(subpath->parent->relid, root->parse->rtable);
+				if(!CheckPartitionOidIsexist(rte->relid, root->parse->partOids))
+					continue;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-UPDATE */
 
 		/* Must insist that all children return the same tlist */
 		subplan = create_plan_recurse(root, subpath, CP_EXACT_TLIST);
@@ -1326,6 +1378,17 @@ create_append_plan(PlannerInfo *root, AppendPath *best_path, int flags)
 		}
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	/* If no subplans are generated, it means that the specified partition 
+	 * does not meet the conditions and the subplans need to be regenerated.
+	 */
+	if (DB_MYSQL == compatible_db && !subplans &&
+		(root->parse->partreloids || root->parse->partOids))
+	{
+		is_notexistsubplans = true;
+		goto redo_actsubplans;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * If any quals exist, they may be useful to perform further partition
 	 * pruning during execution.  Gather information needed by the executor to
@@ -7125,6 +7188,9 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	node->rowMarks = rowMarks;
 	node->mergeActionLists = mergeActionLists;
 	node->epqParam = epqParam;
+	node->rootRelations = root->rootRelations;
+	node->partresultRelations = root->partresultRelations;
+//	node->partupdateColnos = root->partupdateColnos;
 
 	/*
 	 * For each result relation that is a foreign table, allow the FDW to

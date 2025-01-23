@@ -12568,12 +12568,21 @@ limit_clause:
 				}
 			| LIMIT select_limit_value ',' select_offset_value
 				{
-					/* Disabled because it was too confusing, bjm 2002-02-18 */
-					ereport(ERROR,
-							(errcode(ERRCODE_SYNTAX_ERROR),
-							 errmsg("LIMIT #,# syntax is not supported"),
-							 errhint("Use separate LIMIT and OFFSET clauses."),
-							 parser_errposition(@1)));
+					if (MYS_PARSER == compatible_db)
+					{
+						SelectLimit *n = (SelectLimit *) palloc(sizeof(SelectLimit));
+						n->limitOffset = $2;
+						n->limitCount = $4;
+						n->limitOption = LIMIT_OPTION_COUNT;
+						$$ = n;
+					}
+					else
+						/* Disabled because it was too confusing, bjm 2002-02-18 */
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("LIMIT #,# syntax is not supported"),
+								 errhint("Use separate LIMIT and OFFSET clauses."),
+								 parser_errposition(@1)));
 				}
 			/* SQL:2008 syntax */
 			/* to avoid shift/reduce conflicts, handle the optional value with
@@ -12857,6 +12866,27 @@ from_list:
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 table_ref:	relation_expr		 %prec UMINUS
 				{
+					$$ = (Node *) $1;
+				}
+			| relation_expr PARTITION '(' name_list ')'
+				{
+					$1->ispartition = true;
+					$1->partitionnamelist = $4;
+					$$ = (Node *) $1;
+				}
+			| relation_expr PARTITION '(' name_list ')' index_hint_list
+				{
+					$1->ispartition = true;
+					$1->partitionnamelist = $4;
+					$1->indexhints = $6;
+					$$ = (Node *) $1;
+				}
+			| relation_expr PARTITION '(' name_list ')' alias_clause opt_index_hint_list
+				{
+					$1->ispartition = true;
+					$1->partitionnamelist = $4;
+					$1->indexhints = $7;
+					$1->alias = $6;
 					$$ = (Node *) $1;
 				}
 			| relation_expr index_hint_list
@@ -15932,9 +15962,21 @@ case_arg:	a_expr									{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
-columnref:	ColId
+columnref:	ColId		 %prec UMINUS
 				{
 					$$ = makeColumnRef($1, NIL, @1, yyscanner);
+				}
+			| ColId PARTITION '(' name_list ')'
+				{
+					ColumnRef   *col = NULL;
+					$$ = makeColumnRef($1, NIL, @1, yyscanner);
+					col = (ColumnRef *)$$;
+					if ($4 && compatible_db == MYS_PARSER)
+					{
+						col->partitionnamelist = $4;
+						col->ispartition = true;
+					}
+					$$ = (Node *)col;
 				}
 			| ColId indirection
 				{
@@ -18306,6 +18348,11 @@ transformRelistToRelation(List *rellist)
 	if (schemaname || relname)
 	{
 		relation = makeRangeVar(schemaname, relname, colref->location);
+		if (colref->ispartition)
+		{
+			relation->ispartition = colref->ispartition;
+			relation->partitionnamelist = colref->partitionnamelist;
+		}
 		rellist = NIL;
 	}
 

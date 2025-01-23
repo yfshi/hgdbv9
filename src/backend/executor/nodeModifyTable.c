@@ -70,6 +70,8 @@
 #include "catalog/storage.h"
 /* End - ReqID:SRS-SQL-GTT */
 
+#include "utils/lsyscache.h"
+
 typedef struct MTTargetRelLookup
 {
 	Oid			relationOid;	/* hash key, must be first */
@@ -636,7 +638,19 @@ ExecInitMultilUpdateProjection(ModifyTableState *mtstate, List *targetList,
 
 	EState 	*estate = mtstate->ps.state;
 	TupleDesc	 relDesc = RelationGetDescr(resultRelInfo->ri_RelationDesc);
-	List		*updateColnos = NIL;
+	List	   *updateColnos = NIL;
+
+	if (resultRelInfo->ri_RootResultRelInfo)
+	{
+		for(int i = 0; i < mtstate->mt_nrels; i++)
+		{
+			if (resultRelInfo == (mtstate->resultRelInfo + i))
+			{
+				whichrel = i;
+				break;
+			}
+		}
+	}
 
 	updateColnos = (List *) list_nth(node->updateColnosLists, whichrel);
 
@@ -656,15 +670,28 @@ ExecInitMultilUpdateProjection(ModifyTableState *mtstate, List *targetList,
 	if (mtstate->ps.ps_ExprContext == NULL)
 		ExecAssignExprContext(estate, &mtstate->ps);
 
-	resultRelInfo->ri_projectNew =
-		ExecBuildMutilUpdateProjection(targetList,
-									   false,	 /* subplan did the evaluation */
-									   updateColnos,
-									   relDesc,
-									   mtstate->ps.ps_ExprContext,
-									   resultRelInfo->ri_newTupleSlot,
-									   &mtstate->ps,
-									   resultRelInfo->ri_RangeTableIndex);
+	if (resultRelInfo->ri_RootResultRelInfo)
+	{
+		resultRelInfo->ri_projectNew =
+			ExecBuildMutilUpdateProjection(targetList,
+										   false,	 /* subplan didthe evaluation */
+										   updateColnos,
+										   relDesc,
+										   mtstate->ps.ps_ExprContext,
+										   resultRelInfo->ri_newTupleSlot,
+										   &mtstate->ps,
+										   resultRelInfo->ri_RootResultRelInfo->ri_RangeTableIndex);
+	}
+	else
+		resultRelInfo->ri_projectNew =
+			ExecBuildMutilUpdateProjection(targetList,
+										   false,	 /* subplan did the evaluation */
+										   updateColnos,
+										   relDesc,
+										   mtstate->ps.ps_ExprContext,
+										   resultRelInfo->ri_newTupleSlot,
+										   &mtstate->ps,
+										   resultRelInfo->ri_RangeTableIndex);
 
 	resultRelInfo->ri_projectNewInfoValid = true;
 }
@@ -1944,9 +1971,36 @@ ExecCrossPartitionUpdate(ModifyTableContext *context,
 	bool		tuple_deleted;
 	TupleTableSlot *epqslot = NULL;
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	ResultRelInfo		   *originResultRelInfo = NULL;
+	PartitionTupleRouting  *origin_partition_tuple_routing = NULL;
+	TupleTableSlot		   *origin_root_tuple_slot = NULL;
+	bool		is_replacerootrelinfo = false;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+
 	context->cpUpdateReturningSlot = NULL;
 	context->cpUpdateRetrySlot = NULL;
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && resultRelInfo->ri_RootResultRelInfo)
+	{
+		if (mtstate->rootResultRelInfo != resultRelInfo->ri_RootResultRelInfo)
+		{
+			originResultRelInfo = mtstate->rootResultRelInfo;
+			mtstate->rootResultRelInfo = resultRelInfo->ri_RootResultRelInfo;
+			origin_partition_tuple_routing = mtstate->mt_partition_tuple_routing;
+			origin_root_tuple_slot = mtstate->mt_root_tuple_slot;
+			if (context->estate->result_rel_index > 0 &&
+				mtstate->mt_partition_tuple_routing &&
+				mtstate->mt_root_tuple_slot)
+			{
+				mtstate->mt_partition_tuple_routing = NULL;
+				mtstate->mt_root_tuple_slot = NULL;
+			}
+			is_replacerootrelinfo = true;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * Disallow an INSERT ON CONFLICT DO UPDATE that causes the original row
 	 * to migrate to a different partition.  Maybe this can be implemented
@@ -2072,6 +2126,21 @@ ExecCrossPartitionUpdate(ModifyTableContext *context,
 	 */
 	if (mtstate->mt_transition_capture)
 		mtstate->mt_transition_capture->tcs_original_insert_tuple = NULL;
+
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && is_replacerootrelinfo)
+	{
+		if (!list_member_ptr(mtstate->mt_partition_tuple_routing_list, mtstate->mt_partition_tuple_routing))
+			mtstate->mt_partition_tuple_routing_list = lappend(mtstate->mt_partition_tuple_routing_list,
+														   mtstate->mt_partition_tuple_routing);
+		if (!list_member_ptr(mtstate->mt_root_tuple_slot_list, mtstate->mt_root_tuple_slot))
+			mtstate->mt_root_tuple_slot_list = lappend(mtstate->mt_root_tuple_slot_list,
+													   mtstate->mt_root_tuple_slot);
+		mtstate->rootResultRelInfo = originResultRelInfo;
+		mtstate->mt_partition_tuple_routing = origin_partition_tuple_routing;
+		mtstate->mt_root_tuple_slot = origin_root_tuple_slot;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/* We're done moving. */
 	return true;
@@ -3866,11 +3935,24 @@ fireBSTriggers(ModifyTableState *node)
 			{
 				for(i = 0; i < resultRelationNum; i++)
 				{
-					if (resultRelInfo->ri_RootResultRelInfo)
-						resultRelInfo->ri_RootResultRelInfo = NULL;
-
-					ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
-					resultRelInfo++;
+					if (node->mt_partresultRelInfo)
+					{
+						ResultRelInfo   *curresultRelInfo;
+						curresultRelInfo = list_nth(node->mt_partresultRelInfo, i);
+						if (curresultRelInfo->ri_RootResultRelInfo)
+							resultRelInfo = curresultRelInfo->ri_RootResultRelInfo;
+						else
+							resultRelInfo = curresultRelInfo;
+						ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
+					}
+					else
+					{
+						if (resultRelInfo->ri_RootResultRelInfo && 
+							(node->mt_isexits_rootrel || !node->mt_partresultRelInfo))
+							resultRelInfo->ri_RootResultRelInfo = NULL;
+						ExecBSUpdateTriggers(node->ps.state, resultRelInfo);
+						resultRelInfo++;
+					}
 				}
 			}
 			else
@@ -3883,8 +3965,21 @@ fireBSTriggers(ModifyTableState *node)
 			{
 				for(i = 0; i < resultRelationNum; i++)
 				{
-					ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
-					resultRelInfo++;
+					if (node->mt_partresultRelInfo)
+					{
+						ResultRelInfo   *curresultRelInfo;
+						curresultRelInfo = list_nth(node->mt_partresultRelInfo, i);
+						if (curresultRelInfo->ri_RootResultRelInfo)
+							resultRelInfo = curresultRelInfo->ri_RootResultRelInfo;
+						else
+							resultRelInfo = curresultRelInfo;
+						ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
+					}
+					else
+					{
+						ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
+						resultRelInfo++;
+					}
 				}
 			}
 			else
@@ -3950,15 +4045,27 @@ fireASTriggers(ModifyTableState *node)
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
 			if (multirel)
 			{
-				for (i = 0; i < resultRelationNum; i++)
+				for(i = 0; i < resultRelationNum; i++)
 				{
-					if (resultRelInfo->ri_RootResultRelInfo)
-						resultRelInfo->ri_RootResultRelInfo = NULL;
-
-					ExecASUpdateTriggers(node->ps.state, resultRelInfo,
+					if (node->mt_partresultRelInfo)
+					{
+						ResultRelInfo   *curresultRelInfo;
+						curresultRelInfo = list_nth(node->mt_partresultRelInfo, i);
+						if (curresultRelInfo->ri_RootResultRelInfo)
+							resultRelInfo = curresultRelInfo->ri_RootResultRelInfo;
+						else
+							resultRelInfo = curresultRelInfo;
+						ExecASUpdateTriggers(node->ps.state, resultRelInfo,
 										 node->mt_transition_capture);
-
-					resultRelInfo++;
+					}
+					else
+					{
+						if (resultRelInfo->ri_RootResultRelInfo && node->mt_isexits_rootrel)
+							resultRelInfo->ri_RootResultRelInfo = NULL;
+						ExecASUpdateTriggers(node->ps.state, resultRelInfo,
+										 node->mt_transition_capture);
+						resultRelInfo++;
+					}
 				}
 			}
 			else
@@ -3972,9 +4079,23 @@ fireASTriggers(ModifyTableState *node)
 			{
 				for(i = 0; i < resultRelationNum; i++)
 				{
-					ExecASDeleteTriggers(node->ps.state, resultRelInfo,
-								 node->mt_transition_capture);
-					resultRelInfo++;
+					if (node->mt_partresultRelInfo)
+					{
+						ResultRelInfo   *curresultRelInfo;
+						curresultRelInfo = list_nth(node->mt_partresultRelInfo, i);
+						if (curresultRelInfo->ri_RootResultRelInfo)
+							resultRelInfo = curresultRelInfo->ri_RootResultRelInfo;
+						else
+							resultRelInfo = curresultRelInfo;
+						ExecASUpdateTriggers(node->ps.state, resultRelInfo,
+										 node->mt_transition_capture);
+					}
+					else
+					{
+						ExecASDeleteTriggers(node->ps.state, resultRelInfo,
+									 node->mt_transition_capture);
+						resultRelInfo++;
+					}
 				}
 			}
 			else
@@ -4197,7 +4318,7 @@ ExecModifyTable(PlanState *pstate)
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	int					resultRelationNum = 0;
 	TupleTableSlot	   *tmpslot;
-	int					res = 0;
+	int					res = 0, tblnum = 0;
 	bool				first_fetch_slot;
 
 	if (DB_MYSQL == compatible_db && node->mt_ResultTupleSlots)
@@ -4266,7 +4387,16 @@ ExecModifyTable(PlanState *pstate)
 	{
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		if (DB_MYSQL == compatible_db && resultRelationNum)
-			resultRelInfo = node->resultRelInfo + estate->result_rel_index;
+		{
+			if (node->mt_partresultRelInfo)
+			{
+				resultRelInfo = list_nth(node->mt_partresultRelInfo, estate->result_rel_index);
+				node->mt_isexits_rootrel = true;
+			}
+			else
+				resultRelInfo = node->resultRelInfo + estate->result_rel_index;
+//			node->mt_lastResultOid = InvalidOid;
+		}
 		/* End - ReqID:SRS-MYSQL-UPDATE */
 		/*
 		 * Reset the per-output-tuple exprcontext.  This is needed because
@@ -4287,16 +4417,18 @@ ExecModifyTable(PlanState *pstate)
 		/* Begin - SRS-MYSQL-UPDATE */
 		if (DB_MYSQL == compatible_db && resultRelationNum)
 		{
-			planSlot = FetchPlanSlot(subplanstate, node->mt_ProjInfos, resultRelInfo->ri_RowIdAttNo,
-									 &res, resultRelInfo, &tmpslot, estate, &first_fetch_slot);
+			planSlot = FetchPlanSlot(subplanstate, node, &res, &tblnum, &resultRelInfo,
+												&tmpslot, estate, &first_fetch_slot);
 
 			if(estate->result_rel_index && !node->mt_ProjInfos[estate->result_rel_index]->pi_fetch_slot)
 			{
 				if (estate->result_rel_index == resultRelationNum - 1)
+				{
 					estate->result_rel_index = 0;
+					node->mt_lastResultOid = InvalidOid;
+				}
 				else
 					estate->result_rel_index++;
-
 				continue;
 			}
 		}
@@ -4342,14 +4474,42 @@ ExecModifyTable(PlanState *pstate)
 					continue;	/* no RETURNING support yet */
 				}
 
-				elog(ERROR, "tableoid is NULL");
+				/* Begin - ReqID:SRS-MYSQL-UPDATE */
+				if (DB_MYSQL == compatible_db)
+					continue;
+				else
+					elog(ERROR, "tableoid is NULL");
+				/* End - ReqID:SRS-MYSQL-UPDATE */
 			}
 			resultoid = DatumGetObjectId(datum);
 
 			/* If it's not the same as last time, we need to locate the rel */
 			if (resultoid != node->mt_lastResultOid)
+			{
+				/* Begin - ReqID:SRS-MYSQL-UPDATE */
+				if (DB_MYSQL == compatible_db && !resultRelationNum)
+				{
+					/* If the matching partition is not the specified partition,
+					 * no update is performed,and this cycle is skipped.
+					 */
+					bool		flag = false;
+					for (int ndx = 0; ndx < node->mt_nrels; ndx++)
+					{
+						ResultRelInfo *rInfo = node->resultRelInfo + ndx;
+
+						if (RelationGetRelid(rInfo->ri_RelationDesc) == resultoid)
+						{
+							flag = true;
+							break;
+						}
+					}
+					if (!flag)
+						continue;
+				}
+				/* End - ReqID:SRS-MYSQL-UPDATE */
 				resultRelInfo = ExecLookupResultRelByOid(node, resultoid,
 														 false, true);
+			}
 		}
 
 		/*
@@ -4560,11 +4720,6 @@ ExecModifyTable(PlanState *pstate)
 					context.GetUpdateNewTuple = internalGetUpdateNewTuple;
 					context.relaction = NULL;
 
-					if (DB_MYSQL == compatible_db && node->mt_partOids)
-					{
-						if (!CheckPartitionRelationIsexist(resultRelInfo, node->mt_partOids))
-							continue;
-					}
 					slot = ExecUpdate(&context, resultRelInfo, tupleid, oldtuple,
 									  slot, node->canSetTag);
 				}
@@ -4721,6 +4876,56 @@ ExecLookupResultRelByOid(ModifyTableState *node, Oid resultoid,
 	return NULL;
 }
 
+/*
+ * ExecInitCheckpartitionResultInfo
+ * Find the corresponding rootResultRelInfo for the partition.
+ */
+static ResultRelInfo *
+ExecInitCheckpartitionResultInfo(ModifyTableState *mtstate, ModifyTable *node, Index resultRelation)
+{
+	ListCell	   *lc = NULL;
+	ListCell	   *lc1 = NULL;
+	int				i= 0;
+
+	foreach(lc, node->partresultRelations)
+	{
+		List	   *partlist = (List *)lfirst(lc);
+		foreach(lc1, partlist)
+		{
+			Index	relidx = lfirst_int(lc1);
+			if (relidx == resultRelation)
+			{
+				return mtstate->mt_rootResultRelInfos + i;
+			}
+		}
+		i++;
+	}
+	return NULL;
+}
+
+
+/*
+ * CheckSamerootResultRelInfo
+ * Check if the partitions have the same rootResultRelInfo.
+ */
+static bool
+CheckSamerootResultRelInfo(List *partresultRelInfo, ResultRelInfo *resultRelInfo)
+{
+	ListCell   *lc = NULL;
+	if (!partresultRelInfo)
+		return true;
+	else
+	{
+		foreach(lc, partresultRelInfo)
+		{
+			ResultRelInfo	*relinfo = lfirst(lc);
+			if (relinfo->ri_RootResultRelInfo == resultRelInfo->ri_RootResultRelInfo)
+				return false;
+		}
+	}
+	return true;
+}
+
 /* ----------------------------------------------------------------
  *		ExecInitModifyTable
  * ----------------------------------------------------------------
@@ -4793,22 +4998,47 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 * is the sole relation in the node->resultRelations list.
 	 *----------
 	 */
-	if (node->rootRelation > 0)
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && node->rootRelations)
 	{
-		mtstate->rootResultRelInfo = makeNode(ResultRelInfo);
-		ExecInitResultRelation(estate, mtstate->rootResultRelInfo,
-							   node->rootRelation);
+		ListCell		   *lc = NULL;
+		ResultRelInfo	   *rootresultRelInfo = NULL;
+		int					nrootrel = list_length(node->rootRelations);
+		mtstate->mt_rootResultRelInfos= (ResultRelInfo *)
+								palloc(nrootrel *sizeof(ResultRelInfo));
+		rootresultRelInfo = mtstate->mt_rootResultRelInfos;
+		foreach(lc, node->rootRelations)
+		{
+			int		rootrelation = lfirst_int(lc);
+			if (rootrelation > 0)
+			{
+				ExecInitResultRelation(estate, rootresultRelInfo,
+									   rootrelation);
+			}
+			rootresultRelInfo++;
+		}
+		mtstate->rootResultRelInfo = mtstate->mt_rootResultRelInfos + 0;
 	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	else
 	{
-		/* Begin - ReqID:SRS-MYSQL-UPDATE */
-		if(!(DB_MYSQL == compatible_db && node->parseresultrelations &&
-		list_length(node->parseresultrelations) > 1))
-			Assert(list_length(node->resultRelations) == 1);
-		/* End - ReqID:SRS-MYSQL-UPDATE */
-		mtstate->rootResultRelInfo = mtstate->resultRelInfo;
-		ExecInitResultRelation(estate, mtstate->resultRelInfo,
-							   linitial_int(node->resultRelations));
+		if (node->rootRelation > 0)
+		{
+			mtstate->rootResultRelInfo = makeNode(ResultRelInfo);
+			ExecInitResultRelation(estate, mtstate->rootResultRelInfo,
+								   node->rootRelation);
+		}
+		else
+		{
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if(!(DB_MYSQL == compatible_db && node->parseresultrelations &&
+			list_length(node->parseresultrelations) > 1))
+				Assert(list_length(node->resultRelations) == 1);
+			/* End - ReqID:SRS-MYSQL-UPDATE */
+			mtstate->rootResultRelInfo = mtstate->resultRelInfo;
+			ExecInitResultRelation(estate, mtstate->resultRelInfo,
+								   linitial_int(node->resultRelations));
+		}
 	}
 
 	/* set up epqstate with dummy subplan data for the moment */
@@ -4845,7 +5075,29 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			 * look at the query's original target relation but don't have the
 			 * mtstate handy.
 			 */
-			resultRelInfo->ri_RootResultRelInfo = mtstate->rootResultRelInfo;
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			if (DB_MYSQL == compatible_db && node->rootRelations)
+			{
+				/* check resultRelation is partition relation. */
+				resultRelInfo->ri_RootResultRelInfo = ExecInitCheckpartitionResultInfo(mtstate, node, resultRelation);
+				if (!resultRelInfo->ri_RootResultRelInfo)
+					mtstate->mt_partresultRelInfo = lappend(mtstate->mt_partresultRelInfo, resultRelInfo);
+				else
+				{
+					if (CheckSamerootResultRelInfo(mtstate->mt_partresultRelInfo, resultRelInfo))
+						mtstate->mt_partresultRelInfo = lappend(mtstate->mt_partresultRelInfo, resultRelInfo);
+				}
+			}
+			else
+			{
+				if (!get_rel_relispartition(resultRelInfo->ri_RelationDesc->rd_id) && DB_MYSQL == compatible_db)
+				{
+					resultRelInfo->ri_RootResultRelInfo = NULL;
+				}
+				else
+					resultRelInfo->ri_RootResultRelInfo = mtstate->rootResultRelInfo;
+			}
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 		}
 
 		/* Initialize the usesFdwDirectModify flag */
@@ -4906,7 +5158,24 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			{
 				/* Begin - ReqID:SRS-MYSQL-UPDATE */
 				if (node->targetlists && DB_MYSQL == compatible_db)
-					multilist = list_nth(node->targetlists, i);
+				{
+					if (node->rootRelations &&
+						resultRelInfo->ri_RootResultRelInfo)
+					{
+						ListCell   *lc = NULL;
+						int			j = 0;
+						foreach(lc, node->parseresultrelations)
+						{
+							Index	resultrelation = lfirst_int(lc);
+							if (resultrelation == resultRelInfo->ri_RootResultRelInfo->ri_RangeTableIndex)
+								break;
+							j++;
+						}
+						multilist = list_nth(node->targetlists, j);
+					}
+					else
+						multilist = list_nth(node->targetlists, i);
+				}
 				else
 					multilist = subplan->targetlist;
 				resultRelInfo->ri_RowIdAttNo =
@@ -5235,7 +5504,15 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			mtlookup = (MTTargetRelLookup *)
 				hash_search(mtstate->mt_resultOidHash, &hashkey,
 							HASH_ENTER, &found);
-			Assert(!found);
+			/* Begin - ReqID:SRS-MYSQL-UPDATE */
+			/* check partition is duplicated. */
+			if (DB_MYSQL == compatible_db && found)
+				ereport(ERROR,
+						(errcode(ERRCODE_DUPLICATE_TABLE),
+						 errmsg("The partition relation %s is duplicated.", RelationGetRelationName(resultRelInfo->ri_RelationDesc))));
+			else
+				Assert(!found);
+			/* End - ReqID:SRS-MYSQL-UPDATE */
 			mtlookup->relationIndex = i;
 		}
 	}
@@ -5288,6 +5565,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			if (mtstate->ps.ps_ExprContext == NULL)
 				ExecAssignExprContext(estate, &mtstate->ps);
 			InitMultipleModify(mtstate, list_length(node->resultRelations));
+			mtstate->mt_parseresultrelations = node->parseresultrelations;
 		}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -5362,6 +5640,19 @@ ExecEndModifyTable(ModifyTableState *node)
 			ExecDropSingleTupleTableSlot(node->mt_root_tuple_slot);
 	}
 
+	if (DB_MYSQL == compatible_db && node->mt_partition_tuple_routing_list)
+	{
+		ListCell   *lc = NULL;
+		ListCell   *lc1 = NULL;
+		forboth(lc, node->mt_partition_tuple_routing_list,
+				lc1,node->mt_root_tuple_slot_list)
+		{
+			PartitionTupleRouting	   *partition_tuple_routing = lfirst(lc);
+			TupleTableSlot			   *root_tuple_slot = lfirst(lc1);
+			ExecCleanupTupleRouting(node, partition_tuple_routing);
+			ExecDropSingleTupleTableSlot(root_tuple_slot);
+		}
+	}
 	/*
 	 * Free the exprcontext
 	 */

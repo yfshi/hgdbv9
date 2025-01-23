@@ -26,6 +26,9 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
+#include "utils/ora_compatible.h"
+#include "utils/guc.h"
+
 
 typedef struct
 {
@@ -650,6 +653,26 @@ adjust_inherited_attnums_multilevel(PlannerInfo *root, List *attnums,
 {
 	AppendRelInfo *appinfo = root->append_rel_array[child_relid];
 
+	/* rebulid attnums list. */
+	if (DB_MYSQL == compatible_db)
+	{
+		ListCell   *lc = NULL;
+		List	   *tmpattnums = NIL;
+		foreach(lc, root->processed_tlist)
+		{
+			TargetEntry *tle = (TargetEntry *) lfirst(lc);
+			if (tle->resjunk)
+				continue;
+			if (tle->rtindex == appinfo->parent_relid)
+				tmpattnums = lappend_int(tmpattnums, tle->relattno);
+		}
+		if (tmpattnums)
+		{
+			attnums = NIL;
+			attnums = tmpattnums;
+		}
+	}
+
 	if (!appinfo)
 		elog(ERROR, "child rel %d not found in append_rel_array", child_relid);
 
@@ -789,6 +812,18 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 		return;
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && list_length(root->parse->resultRelations) > 1)
+	{
+		/* When list partitions, leaf_result_relids will not be generated. */
+		if (rtindex <= list_length(root->parse->resultRelations))
+		{
+			if (!root->leaf_result_relids_arr[rtindex])
+				return;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+
 	/*
 	 * Otherwise, rtindex should reference a leaf target relation that's being
 	 * added to the query during expand_inherited_rtentry().
@@ -844,7 +879,13 @@ add_row_identity_var(PlannerInfo *root, Var *orig_var,
 						  list_length(root->processed_tlist) + 1,
 						  pstrdup(rowid_name),
 						  true);
-	root->processed_tlist = lappend(root->processed_tlist, tle);
+	if (DB_MYSQL == compatible_db)
+	{
+		if (!root->all_result_relids_list)
+			root->processed_tlist = lappend(root->processed_tlist, tle);
+	}
+	else
+		root->processed_tlist = lappend(root->processed_tlist, tle);
 }
 
 /*
@@ -954,55 +995,117 @@ distribute_row_identity_vars(PlannerInfo *root)
 		Assert(root->row_identity_vars == NIL);
 		return;
 	}
-	target_rte = rt_fetch(result_relation, parse->rtable);
-	if (!target_rte->inh)
+
+	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
 	{
-		Assert(root->row_identity_vars == NIL);
-		return;
-	}
-
-	/*
-	 * Ordinarily, we expect that leaf result relation(s) will have added some
-	 * ROWID_VAR Vars to the query.  However, it's possible that constraint
-	 * exclusion suppressed every leaf relation.  The executor will get upset
-	 * if the plan has no row identity columns at all, even though it will
-	 * certainly process no rows.  Handle this edge case by re-opening the top
-	 * result relation and adding the row identity columns it would have used,
-	 * as preprocess_targetlist() would have done if it weren't marked "inh".
-	 * (This is a bit ugly, but it seems better to confine the ugliness and
-	 * extra cycles to this unusual corner case.)  We needn't worry about
-	 * fixing the rel's reltarget, as that won't affect the finished plan.
-	 */
-	if (root->row_identity_vars == NIL)
-	{
-		Relation	target_relation;
-
-		target_relation = table_open(target_rte->relid, NoLock);
-		add_row_identity_columns(root, result_relation,
-								 target_rte, target_relation);
-		table_close(target_relation, NoLock);
-		return;
-	}
-
-	/*
-	 * Dig through the processed_tlist to find the ROWID_VAR reference Vars,
-	 * and forcibly copy them into the reltarget list of the topmost target
-	 * relation.  That's sufficient because they'll be copied to the
-	 * individual leaf target rels (with appropriate translation) later,
-	 * during appendrel expansion --- see set_append_rel_size().
-	 */
-	target_rel = find_base_rel(root, result_relation);
-
-	foreach(lc, root->processed_tlist)
-	{
-		TargetEntry *tle = lfirst(lc);
-		Var		   *var = (Var *) tle->expr;
-
-		if (var && IsA(var, Var) && var->varno == ROWID_VAR)
+		foreach(lc, parse->resultRelations)
 		{
-			target_rel->reltarget->exprs =
-				lappend(target_rel->reltarget->exprs, copyObject(var));
-			/* reltarget cost and width will be computed later */
+			result_relation = lfirst_int(lc);
+			target_rte = rt_fetch(result_relation, parse->rtable);
+			if (!target_rte->inh)
+			{
+//				Assert(root->row_identity_vars == NIL);
+				return;
+			}
+			/*
+			 * Ordinarily, we expect that leaf result relation(s) will have added some
+			 * ROWID_VAR Vars to the query.  However, it's possible that constraint
+			 * exclusion suppressed every leaf relation.  The executor will get upset
+			 * if the plan has no row identity columns at all, even though it will
+			 * certainly process no rows.  Handle this edge case by re-opening the top
+			 * result relation and adding the row identity columns it would have used,
+			 * as preprocess_targetlist() would have done if it weren't marked "inh".
+			 * (This is a bit ugly, but it seems better to confine the ugliness and
+			 * extra cycles to this unusual corner case.)  We needn't worry about
+			 * fixing the rel's reltarget, as that won't affect the finished plan.
+			 */
+			if (root->row_identity_vars == NIL)
+			{
+				Relation	target_relation;
+
+				target_relation = table_open(target_rte->relid, NoLock);
+				add_row_identity_columns(root, result_relation,
+										 target_rte, target_relation);
+				table_close(target_relation, NoLock);
+				return;
+			}
+
+			/*
+			 * Dig through the processed_tlist to find the ROWID_VAR reference Vars,
+			 * and forcibly copy them into the reltarget list of the topmost target
+			 * relation.  That's sufficient because they'll be copied to the
+			 * individual leaf target rels (with appropriate translation) later,
+			 * during appendrel expansion --- see set_append_rel_size().
+			 */
+			target_rel = find_base_rel(root, result_relation);
+
+			foreach(lc, root->processed_tlist)
+			{
+				TargetEntry *tle = lfirst(lc);
+				Var		   *var = (Var *) tle->expr;
+
+				if (var && IsA(var, Var) && var->varno == ROWID_VAR)
+				{
+					target_rel->reltarget->exprs =
+						lappend(target_rel->reltarget->exprs, copyObject(var));
+					/* reltarget cost and width will be computed later */
+				}
+			}
+		}
+		
+	}
+	else
+	{
+		target_rte = rt_fetch(result_relation, parse->rtable);
+		if (!target_rte->inh)
+		{
+			Assert(root->row_identity_vars == NIL);
+			return;
+		}
+
+		/*
+		 * Ordinarily, we expect that leaf result relation(s) will have added some
+		 * ROWID_VAR Vars to the query.  However, it's possible that constraint
+		 * exclusion suppressed every leaf relation.  The executor will get upset
+		 * if the plan has no row identity columns at all, even though it will
+		 * certainly process no rows.  Handle this edge case by re-opening the top
+		 * result relation and adding the row identity columns it would have used,
+		 * as preprocess_targetlist() would have done if it weren't marked "inh".
+		 * (This is a bit ugly, but it seems better to confine the ugliness and
+		 * extra cycles to this unusual corner case.)  We needn't worry about
+		 * fixing the rel's reltarget, as that won't affect the finished plan.
+		 */
+		if (root->row_identity_vars == NIL)
+		{
+			Relation	target_relation;
+
+			target_relation = table_open(target_rte->relid, NoLock);
+			add_row_identity_columns(root, result_relation,
+									 target_rte, target_relation);
+			table_close(target_relation, NoLock);
+			return;
+		}
+
+		/*
+		 * Dig through the processed_tlist to find the ROWID_VAR reference Vars,
+		 * and forcibly copy them into the reltarget list of the topmost target
+		 * relation.  That's sufficient because they'll be copied to the
+		 * individual leaf target rels (with appropriate translation) later,
+		 * during appendrel expansion --- see set_append_rel_size().
+		 */
+		target_rel = find_base_rel(root, result_relation);
+
+		foreach(lc, root->processed_tlist)
+		{
+			TargetEntry *tle = lfirst(lc);
+			Var		   *var = (Var *) tle->expr;
+
+			if (var && IsA(var, Var) && var->varno == ROWID_VAR)
+			{
+				target_rel->reltarget->exprs =
+					lappend(target_rel->reltarget->exprs, copyObject(var));
+				/* reltarget cost and width will be computed later */
+			}
 		}
 	}
 }

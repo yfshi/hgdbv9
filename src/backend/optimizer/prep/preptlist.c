@@ -155,10 +155,10 @@ preprocess_targetlist(PlannerInfo *root)
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	if(multirelsflag)
 	{
+		tmp_relation = root->parse->resultRelation;
 		foreach (lc, parse->resultRelations)
 		{
 			result_relation = lfirst_int(lc);
-			tmp_relation = root->parse->resultRelation;
 			root->parse->resultRelation = result_relation;
 			target_rte = rt_fetch(result_relation, range_table);
 

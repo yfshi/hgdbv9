@@ -441,6 +441,12 @@ _outModifyTable(StringInfo str, const ModifyTable *node)
 	WRITE_NODE_FIELD(upsertCols);
 	WRITE_UINT_FIELD(upexclRelRTIndex);
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
+	WRITE_BOOL_FIELD(isReplace);
+	WRITE_NODE_FIELD(partOids);
+	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	WRITE_NODE_FIELD(rootRelations);
+	WRITE_NODE_FIELD(partresultRelations);
 }
 
 static void
@@ -3230,6 +3236,9 @@ _outQuery(StringInfo str, const Query *node)
 	WRITE_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	WRITE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
+	WRITE_BOOL_FIELD(isReplace);
+	WRITE_NODE_FIELD(partOids);
+	WRITE_NODE_FIELD(partreloids);
 	WRITE_LOCATION_FIELD(stmt_location);
 	WRITE_INT_FIELD(stmt_len);
 }

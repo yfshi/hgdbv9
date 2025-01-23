@@ -3187,30 +3187,56 @@ EvalPlanQualEnd(EPQState *epqstate)
  * Get the ctid corresponding to multiple relationships, Obtained from the first execution of ExecProcNode.
  */
 TupleTableSlot
-*FetchPlanSlot(PlanState *subPlanState, ProjectionInfo **projInfos, int num, int *res, ResultRelInfo *resultRelInfo,
+*FetchPlanSlot(PlanState *subPlanState, ModifyTableState *node, int *res, int *tblnum, ResultRelInfo **resultRelInfo,
 				   TupleTableSlot **tmpslot, EState *estate, bool *first_fetch_slot)
 {
 	TupleTableSlot	   *slot = NULL;
 	TupleTableSlot	   *oldTupleSlot = NULL;
 	TupleTableSlot	   *tmpTupleSlot = NULL;
 	int					result_rel_index = subPlanState->state->result_rel_index;
+	int					num = (*resultRelInfo)->ri_RowIdAttNo;
+	ProjectionInfo	  **projInfos = node->mt_ProjInfos;
 
 	if (result_rel_index > 0)
 	{
 		ItemPointer			tmp;
 		Relation			relation;
-		ProjectionInfo	   *pro;
+		ProjectionInfo	   *pro = NULL;
 		List			   *tmplist = NIL;
-		int					i = 0;
+		int					i = 0, j = 0;
 		int					len = (*tmpslot)->tts_nvalid;
 
 		if (result_rel_index == 1)
 		{
 			for (i = 0; i < len; i++)
 			{
-				if (strcmp((*tmpslot)->tts_tupleDescriptor->attrs[i].attname.data, "ctid2") == 0)
+				if (pg_strcasecmp((*tmpslot)->tts_tupleDescriptor->attrs[i].attname.data, "ctid2") == 0)
 				{
 					*res = i;
+					break;
+				}
+			}
+		}
+
+		if ((*resultRelInfo)->ri_RootResultRelInfo && (*tblnum) == 0)
+		{
+			StringInfoData		buf;
+			ListCell		   *lc = NULL;
+			initStringInfo(&buf);
+			foreach(lc, node->mt_parseresultrelations)
+			{
+				int		result = lfirst_int(lc);
+				j++;
+				if ((*resultRelInfo)->ri_RootResultRelInfo->ri_RangeTableIndex == result)
+					break;
+				
+			}
+			appendStringInfo(&buf, "%s%d", "tableoid", j);
+			for(; i < len; i++)
+			{
+				if (pg_strcasecmp((*tmpslot)->tts_tupleDescriptor->attrs[i].attname.data, buf.data) == 0)
+				{
+					*tblnum = i;
 					break;
 				}
 			}
@@ -3223,10 +3249,30 @@ TupleTableSlot
 		}
 		else
 		{
-			oldTupleSlot = table_slot_create(resultRelInfo->ri_RelationDesc, &tmplist);
+			if (*tblnum > 0)
+			{
+				ResultRelInfo  *tmpResultRelInfo = NULL;
+				Oid				reloid = DatumGetObjectId((*tmpslot)->tts_values[*tblnum]);
+				int				nrel = 0;
+				if (reloid != (*resultRelInfo)->ri_RelationDesc->rd_id)
+				{
+					for (nrel = 0; nrel < node->mt_nrels; nrel++)
+					{
+						tmpResultRelInfo = node->resultRelInfo + nrel;
+						if (reloid == tmpResultRelInfo->ri_RelationDesc->rd_id)
+						{
+							(*resultRelInfo) = tmpResultRelInfo;
+							break;
+						}
+					}
+				}
+				(*tblnum)++;
+			}
+
+			oldTupleSlot = table_slot_create((*resultRelInfo)->ri_RelationDesc, &tmplist);
 			projInfos[result_rel_index]->pi_fetch_slot = false;
 
-			relation = resultRelInfo->ri_RelationDesc;
+			relation = (*resultRelInfo)->ri_RelationDesc;
 			tmp = (ItemPointer) DatumGetPointer((*tmpslot)->tts_values[*res]);
 			pro = projInfos[result_rel_index];
 			if (tmp != 0)
@@ -3286,6 +3332,7 @@ TupleTableSlot
 		slot = ExecProcNode(subPlanState);
 		*tmpslot = slot;
 		*res = 0;
+		(*tblnum) = 0;
 	}
 	return slot;
 }

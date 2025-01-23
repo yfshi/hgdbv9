@@ -31,6 +31,7 @@ MYS_REGRESS = multi_update \
 			  insert_update \
 			  multi_delete \
 			  replace \
+			  multi_partition \
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

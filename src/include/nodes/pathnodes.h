@@ -277,10 +277,6 @@ struct PlannerInfo
 	 */
 	Relids		all_result_relids;	/* set of all result relids */
 	Relids		leaf_result_relids; /* set of all leaf relids */
-	/* Begin - ReqID:SRS-MYSQL-UPDATE */
-	List	   *leaf_result_relids_list;
-	List	   *all_result_relids_list;
-	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/*
 	 * Note: for AppendRelInfos describing partitions of a partitioned table,
@@ -389,6 +385,13 @@ struct PlannerInfo
 	Index		countRI;
 	List		*count_required_vars;	/* The vars Count node needs */
 	/* End - ReqID:SRS-SQL-ROWNUM */
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	Relids	   *leaf_result_relids_arr;
+	List	   *all_result_relids_list;
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	List	   *rootRelations;
+	List	   *partresultRelations;
+	List	   *partupdateColnos;
 };
 
 

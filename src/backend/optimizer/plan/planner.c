@@ -652,12 +652,15 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	if(DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
 	{
+		int		num = list_length(parse->resultRelations) + 1;
 		foreach(lc, parse->resultRelations)
 		{
 				int		resultrelation = lfirst_int(lc);
 				root->all_result_relids_list = lappend(root->all_result_relids_list,
 													   bms_make_singleton(resultrelation));
 		}
+		root->leaf_result_relids_arr = (Relids *)palloc(num * sizeof(Relids));
+		MemSet(root->leaf_result_relids_arr, 0x0, num * sizeof(Relids));
 	}
 	else
 	{
@@ -795,6 +798,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	 */
 	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
 	{
+		int		i = 0;
 		foreach(lc, parse->resultRelations)
 		{
 			int					resultrelation = lfirst_int(lc);
@@ -802,7 +806,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 			if (!rte->inh)
 			{
 				Relids relids = bms_make_singleton(parse->resultRelation);
-				root->leaf_result_relids_list = lappend(root->leaf_result_relids_list, relids);
+				root->leaf_result_relids_arr[i++] = relids;
 			}
 		}
 	}
@@ -1123,6 +1127,12 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	 * the decision, though it's unlikely that will change anything.)
 	 */
 	set_cheapest(final_rel);
+
+	if (DB_MYSQL == compatible_db && list_length(parse->resultRelations) > 1)
+	{
+		if (root->leaf_result_relids_arr)
+			pfree(root->leaf_result_relids_arr);
+	}
 
 	return root;
 }
@@ -1838,22 +1848,26 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 			List	   *rowMarks;
 
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
-			ListCell   *lc;
-			ListCell   *lc1;
-			ListCell   *lc2;
+			ListCell   *lc = NULL;
+			ListCell   *lc1 = NULL;
 			int			mutilresultion = 0;
+			int			num = 0;
+
+			List	   *rootRelations = NIL;
+			List	   *partresultRelations = NIL;
+			List	   *partresultRelationslist = NIL;
 
 			if (DB_MYSQL == compatible_db && list_length(root->all_result_relids_list) > 1)
 			{
-				forthree(lc, root->all_result_relids_list, lc1, root->leaf_result_relids_list,
-						lc2, root->parse->resultRelations)
+				forboth(lc, root->all_result_relids_list, lc1, root->parse->resultRelations)
 				{
 					Relids	all_relids = (Relids)lfirst(lc);
-					Relids	leaf_relids = (Relids)lfirst(lc1);
-					int		result_rel = lfirst_int(lc2);
+					int		result_rel = lfirst_int(lc1);
+					Relids	leaf_relids = root->leaf_result_relids_arr[num];
 
-					if(!mutilresultion)
-						mutilresultion = result_rel;
+					num++;
+					partresultRelations = NIL;
+
 					if (bms_membership(all_relids) == BMS_MULTIPLE)
 					{
 						/* Inherited UPDATE/DELETE */
@@ -1876,9 +1890,38 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 							if (IS_DUMMY_REL(this_result_rel))
 								continue;
 
+							if (root->parse->partreloids && DB_MYSQL == compatible_db)
+							{
+								ListCell   *lc = NULL;
+								bool		is_part = false;
+								RangeTblEntry	   *rte = rt_fetch(result_rel, parse->rtable);
+								foreach(lc, root->parse->partreloids)
+								{
+									List	   *partoids = lfirst(lc);
+									Oid			rootreloid = list_nth_oid(partoids, 0);
+									if (rootreloid == rte->relid)
+									{
+										RangeTblEntry	   *rte1 = rt_fetch(resultRelation, parse->rtable);
+										foreach(lc1, partoids)
+										{
+											Oid		partreloid = lfirst_oid(lc1);
+											if (partreloid == rte1->relid)
+											{
+												is_part = true;
+												break;
+											}
+										}
+									}
+								}
+								if (!is_part)
+									continue;
+							}
+
 							/* Build per-target-rel lists needed by ModifyTable */
 							resultRelations = lappend_int(resultRelations,
 														  resultRelation);
+							partresultRelations = lappend_int(partresultRelations,
+															  resultRelation);
 							if (parse->commandType == CMD_UPDATE)
 							{
 								List	   *update_colnos = root->update_colnos;
@@ -2007,11 +2050,28 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 					 */
 					if (rt_fetch(result_rel, parse->rtable)->relkind ==
 						RELKIND_PARTITIONED_TABLE)
+					{
 						rootRelation = result_rel;
+						rootRelations = lappend_int(rootRelations, result_rel);
+					}
 					else
 						rootRelation = 0;
-				}
+					/* Record part child relation info. */
+					if (partresultRelations)
+						partresultRelationslist = lappend(partresultRelationslist, partresultRelations);
 
+					if(!mutilresultion)
+					{
+						mutilresultion = result_rel;
+					}
+				}
+				/* Record partition tables and partitions. */
+				root->rootRelations = copyObject(rootRelations);
+				root->partresultRelations = partresultRelationslist;
+				if (root->rootRelations)
+				{
+					rootRelation = (int)linitial_int(root->rootRelations);
+				}
 				/*
 				 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
 				 * will have dealt with fetching non-locked marked rows, else we
@@ -2068,6 +2128,27 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 						 */
 						if (IS_DUMMY_REL(this_result_rel))
 							continue;
+
+						/* Begin - ReqID:SRS-MYSQL-UPDATE */
+						if (root->parse->partOids && DB_MYSQL == compatible_db)
+						{
+							/* Check whether the current partition is the specified partition. */
+							ListCell   *lc = NULL;
+							bool		is_part = false;
+							RangeTblEntry	   *rte = rt_fetch(resultRelation, parse->rtable);
+							foreach(lc, root->parse->partOids)
+							{
+								Oid		partreloid = lfirst_oid(lc);
+								if (partreloid == rte->relid)
+								{
+									is_part = true;
+									break;
+								}
+							}
+							if (!is_part)
+								continue;
+						}
+						/* End - ReqID:SRS-MYSQL-UPDATE */
 
 						/* Build per-target-rel lists needed by ModifyTable */
 						resultRelations = lappend_int(resultRelations,
