@@ -54,12 +54,10 @@ parseCommandLine(int argc, char *argv[])
 		/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 		{"old-oraport", required_argument, NULL, 'q'},
 		{"new-oraport", required_argument, NULL, 'Q'},
-		{"using-ora-pg", no_argument, NULL, 'g'},
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 		/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 		{"old-mysport", required_argument, NULL, 'y'},
 		{"new-mysport", required_argument, NULL, 'Y'},
-		{"using-mys-pg", no_argument, NULL, 'M'},
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 		{"username", required_argument, NULL, 'U'},
 		{"check", no_argument, NULL, 'c'},
@@ -139,7 +137,7 @@ parseCommandLine(int argc, char *argv[])
 #endif
 /* End - Bug#M0000315 */
 
-	while ((option = getopt_long(argc, argv, "d:D:gb:B:cj:ko:O:p:P:q:Q:y:Y:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME */
+	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME */
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)
@@ -163,18 +161,6 @@ parseCommandLine(int argc, char *argv[])
 			case 'D':
 				new_cluster.pgdata = pg_strdup(optarg);
 				break;
-
-			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			case 'g':
-				pg_cluster_within_oracle_mode = true;
-				break;
-			/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
-			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-			case 'M':
-				pg_cluster_within_mysql_mode = true;
-				break;
-			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 			case 'j':
 				user_opts.jobs = atoi(optarg);
@@ -378,7 +364,6 @@ usage(void)
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	printf(_("  -q, --old-oraport=PORT        old cluster oracle port number (default %d)\n"), old_cluster.oraport);
 	printf(_("  -Q, --new-oraport=PORT        new cluster oracle port number (default %d)\n"), new_cluster.oraport);
-	printf(_("  -g, --using-ora-pg            upgrade the PG cluster in Oracle mode, please use this option\n"));
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	printf(_("  -r, --retain                  retain SQL and log files after success\n"));
 	printf(_("  -s, --socketdir=DIR           socket directory to use (default current dir.)\n"));
@@ -393,7 +378,6 @@ usage(void)
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	printf(_("	-y, --old-mysport=PORT		  old cluster mysql port number (default %d)\n"), old_cluster.mysport);
 	printf(_("	-Y, --new-mysport=PORT		  new cluster mysql port number (default %d)\n"), new_cluster.mysport);
-	printf(_("	-M, --using-mys-pg			  upgrade the PG cluster in MySQL mode, please use this option\n"));
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	printf(_("  --clone                       clone instead of copying files to new cluster\n"));
 	printf(_("  -?, --help                    show this help, then exit\n"));

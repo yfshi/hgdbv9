@@ -70,9 +70,7 @@ OSInfo		os_info;
  * we cannot automatically check the old cluster and the new cluster are compatibility,
  * which is currently the responsibility of the caller.
  */
-bool		pg_cluster_within_oracle_mode = false;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
-bool		pg_cluster_within_mysql_mode = false;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
 char	   *output_files[] = {
 	SERVER_LOG_FILE,
