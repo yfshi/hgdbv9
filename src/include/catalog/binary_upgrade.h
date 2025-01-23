@@ -22,7 +22,7 @@ extern PGDLLIMPORT Oid binary_upgrade_next_mrng_array_pg_type_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_heap_pg_class_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_index_pg_class_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_toast_pg_class_oid;
-
+extern PGDLLIMPORT Oid binary_upgrade_next_sequence_pg_class_oid;/* BUGZ1641 */
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_enum_oid;
 extern PGDLLIMPORT Oid binary_upgrade_next_pg_authid_oid;
 

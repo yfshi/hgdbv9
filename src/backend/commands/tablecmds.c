@@ -1398,7 +1398,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/*
 	 * Build a default types index on rowid column, if it exist
 	 */
-	if (rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
+	if (!IsBinaryUpgrade && rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
 	{
 		IndexElem   *iparam;
 		const FormData_pg_attribute *from;

@@ -16774,8 +16774,27 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					   qrelname);
 
 	if (dopt->binary_upgrade)
+	{/* Begin - BUGZ1641 */
 		binary_upgrade_set_type_oids_by_rel_oid(fout, q,
 												tbinfo->dobj.catId.oid);
+		if (tbinfo->relhasrowid)
+		{
+			PQExpBuffer tmp_seq = createPQExpBuffer();
+			PGresult *seq_res;
+			Oid seq_oid;
+			appendPQExpBuffer(tmp_seq, "SELECT oid FROM pg_class WHERE relname = '%s_rowid_seq';", tbinfo->dobj.name);
+			seq_res = ExecuteSqlQuery(fout, tmp_seq->data, PGRES_TUPLES_OK);
+			if(PQntuples(seq_res) == 1)
+			{
+				seq_oid = atooid(PQgetvalue(seq_res, 0, 0));
+				appendPQExpBuffer(q, "\nSELECT pg_catalog.binary_upgrade_set_next_sequence_pg_class_oid('%d'::pg_catalog.oid);",
+										seq_oid);
+			}
+			if(seq_res)
+				PQclear(seq_res);
+			destroyPQExpBuffer(tmp_seq);
+		}
+	}/* End - BUGZ1641 */
 
 	/* Is it a table or a view? */
 	if (tbinfo->relkind == RELKIND_VIEW)
@@ -17569,7 +17588,25 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	if (tbinfo->forcerowsec)
 		appendPQExpBuffer(q, "\nALTER TABLE ONLY %s FORCE ROW LEVEL SECURITY;\n",
 						  qualrelname);
-
+	/* Begin - BUGZ1641 */
+	if (tbinfo->relhasrowid && dopt->binary_upgrade)
+	{
+		PQExpBuffer tmp_idx = createPQExpBuffer();
+		PGresult *idx_res;
+		Oid idx_oid;
+		appendPQExpBuffer(tmp_idx, "SELECT oid FROM pg_class WHERE relname = '%s_%d_rowid_idx';", tbinfo->dobj.name, tbinfo->dobj.catId.oid);
+		idx_res = ExecuteSqlQuery(fout, tmp_idx->data, PGRES_TUPLES_OK);
+		if(PQntuples(idx_res) == 1)
+		{
+			idx_oid = atooid(PQgetvalue(idx_res, 0, 0));
+			appendPQExpBuffer(q, "\nSELECT pg_catalog.binary_upgrade_set_next_index_pg_class_oid('%d'::pg_catalog.oid);"
+								 "\nCREATE INDEX %s_%d_rowid_idx ON %s (rowid);", idx_oid, tbinfo->dobj.name, tbinfo->dobj.catId.oid, tbinfo->dobj.name);
+		}
+		if(idx_res)
+			PQclear(idx_res);
+		destroyPQExpBuffer(tmp_idx);
+	}
+	/* End - BUGZ1641 */
 	if (dopt->binary_upgrade)
 		binary_upgrade_extension_member(q, &tbinfo->dobj,
 										reltypename, qrelname,
