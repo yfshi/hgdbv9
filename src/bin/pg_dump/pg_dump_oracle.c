@@ -4432,43 +4432,6 @@ get_force_view_ident_case(Archive *AHX, Oid viewOid)
 	return ident_case;
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
-/* Begin - Req: SRS-SQL-NLSSORT */
-static char *
-get_table_default_collation(Archive *fout, Oid relid)
-{
-	PQExpBuffer  query;
-	PGresult   	*res;
-	char 		*result = NULL;
-
-	query = createPQExpBuffer();
-
-	appendPQExpBuffer(query, "SELECT\n"
-								"collname\n"
-							"FROM\n"
-								"PG_COLLATION\n"
-							"WHERE\n"
-								"oid = (\n"
-									"SELECT\n"
-										"(option->>'collation')::OID\n"
-									"FROM\n"
-										"pg_object\n"
-									"WHERE\n"
-										"obj_oid = %u    AND\n"
-										"refclassid = %u AND\n"
-										"objsubid = 0	 AND\n"
-										"objkind = 'r'  AND\n"
-										"compatible_mode = 'o');", relid, RelationRelationId);
-
-	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-	if (PQntuples(res) == 1)
-		result = pg_strdup(PQgetvalue(res, 0, 0));
-
-	PQclear(res);
-	destroyPQExpBuffer(query);
-	return result;
-}
-/* End - Req: SRS-SQL-NLSSORT */
 
 /*
  * getExtensions:
@@ -6042,6 +6005,7 @@ getTables(Archive *fout, int *numTables)
 	int			i_ispartition;
 	int			i_amname;
 	int			i_compatible_mode;
+	int			i_default_collation; /* BUG#M478 */
 
 	/*
 	 * Find all the tables and table-like objects.
@@ -6189,7 +6153,8 @@ getTables(Archive *fout, int *numTables)
 						  "))"
 						  "AS changed_acl, "
 						  "%s AS ispartition, "
-						  "oj.compatible_mode AS compatible_mode "
+						  "oj.compatible_mode AS compatible_mode, "
+						  "oj.option->>'collation' as default_collation " /* BUG#M478 */
 						  "FROM pg_class c "
 						  "LEFT JOIN pg_depend d ON "
 						  "(c.relkind = '%c' AND "
@@ -6876,6 +6841,7 @@ getTables(Archive *fout, int *numTables)
 	i_ispartition = PQfnumber(res, "ispartition");
 	i_amname = PQfnumber(res, "amname");
 	i_compatible_mode = PQfnumber(res, "compatible_mode");
+	i_default_collation = PQfnumber(res, "default_collation"); /* BUG#M478 */
 
 	if (dopt->lockWaitTimeout)
 	{
@@ -7002,8 +6968,12 @@ getTables(Archive *fout, int *numTables)
 
 		/* foreign server */
 		tblinfo[i].foreign_server = atooid(PQgetvalue(res, i, i_foreignserver));
+		
 		/* Begin - Req:SRS-SQL-NLSSORT */
-		tblinfo[i].default_collation = get_table_default_collation(fout, tblinfo[i].dobj.catId.oid);
+		if (PQgetisnull(res, i, i_default_collation))
+			tblinfo[i].default_collation = InvalidOid;
+		else
+			tblinfo[i].default_collation = atooid(PQgetvalue(res, i, i_default_collation)); /* BUG#M478 */
 		/* End - Req:SRS-SQL-NLSSORT */
 
 		/*
@@ -8918,7 +8888,17 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 								 "CASE WHEN a.attcollation <> t.typcollation "
 								 "THEN a.attcollation ELSE 0 END AS attcollation,\n");
 			#endif
-			appendPQExpBufferStr(q, "a.attcollation AS attcollation,\n");
+			/**
+			 * Begin - BUG#M478
+			 * If ivorysql.enable_ora_default_collation is off when create this table,
+			 * pg_object.option->>'collation' will be NULL.
+			 * When ivorysql.enable_ora_default_collation is off, we use datatype's collation as column's default collation.
+			 */
+			appendPQExpBufferStr(q,
+								 "CASE WHEN a.attcollation <> "
+								 "(CASE WHEN oj.option->>'collation' is null THEN t.typcollation ELSE (oj.option->>'collation')::oid END) "
+								 "THEN a.attcollation ELSE 0 END AS attcollation,\n");
+			/* End - BUG#M478 */
 		}
 		else
 			appendPQExpBufferStr(q,
@@ -8976,6 +8956,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		appendPQExpBuffer(q,
 						  "FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_type t "
 						  "ON a.atttypid = t.oid\n"
+						  "LEFT JOIN pg_object oj ON (a.attrelid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass) " /* BUG#Z478 */
 						  "WHERE a.attrelid = '%u'::pg_catalog.oid "
 						  "AND a.attnum > 0::pg_catalog.int2\n"
 						  "ORDER BY a.attnum",
@@ -17168,9 +17149,12 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 
 		/* Begin - BUG:M0000393 */
 		if (strcmp(reltypename, "TABLE") == 0 && 
-			tbinfo->default_collation)
+			OidIsValid(tbinfo->default_collation))
 		{
-			appendPQExpBuffer(q, "\nDEFAULT COLLATION \"%s\" ", tbinfo->default_collation);
+			CollInfo *coll = findCollationByOid(tbinfo->default_collation);
+
+			if (coll)
+				appendPQExpBuffer(q, "\nDEFAULT COLLATION %s ", fmtQualifiedId(NULL, coll->dobj.name));
 		}
 		/* End - BUG:M0000393 */
 

@@ -428,11 +428,11 @@ SELECT * FROM ft1 WHERE false;
 
 -- with WHERE clause
 EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE t1.c1 = 101 AND t1.c6 = '1' AND t1.c7 >= '1';
-                                           QUERY PLAN                                            
--------------------------------------------------------------------------------------------------
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
  Foreign Scan on public.ft1 t1
    Output: c1, c2, c3, c4, c5, c6, c7, c8
-   Filter: ((t1.c7 >= '1'::oracharbyte) AND (t1.c1 = '101'::number) AND (t1.c6 = '1'::varchar2))
+   Filter: (((t1.c7)::char(10) >= '1'::oracharbyte) AND (t1.c1 = '101'::number) AND ((t1.c6)::varchar2(10) = '1'::varchar2))
    Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (4 rows)
 
@@ -860,7 +860,7 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE c6 = E'foo''s\\bar';  --
 -------------------------------------------------------------------------
  Foreign Scan on public.ft1 t1
    Output: c1, c2, c3, c4, c5, c6, c7, c8
-   Filter: (t1.c6 = 'foo''s\bar'::varchar2)
+   Filter: ((t1.c6)::varchar2(10) = 'foo''s\bar'::varchar2)
    Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (4 rows)
 
@@ -3151,7 +3151,7 @@ SELECT * FROM local_tbl LEFT JOIN (SELECT ft1.* FROM ft1 INNER JOIN ft2 ON (ft1.
    Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, local_tbl.ctid, ft1.*, ft2.*
    ->  Nested Loop Left Join
          Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, local_tbl.ctid, ft1.*, ft2.*
-         Join Filter: (local_tbl.c3 = (ft1.c3)::text)
+         Join Filter: ((local_tbl.c3)::text = (ft1.c3)::text)
          ->  Index Scan using local_tbl_pkey on public.local_tbl
                Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, local_tbl.ctid
          ->  Materialize
@@ -4492,13 +4492,13 @@ ORDER BY ref_0."C 1";
                Index Cond: (ref_0."C 1" < '10'::number)
          ->  Foreign Scan on public.ft1 ref_1
                Output: ref_1.c3, ref_0.c2
-               Filter: (ref_1.c3 = '00001'::varchar2 COLLATE using_nls_comp)
+               Filter: ((ref_1.c3)::varchar2(1024) = '00001'::varchar2 COLLATE "binary")
                Remote SQL: SELECT c3 FROM "S 1"."T 1"
    ->  Materialize
          Output: ref_3.c3
          ->  Foreign Scan on public.ft2 ref_3
                Output: ref_3.c3
-               Filter: (ref_3.c3 = '00001'::varchar2 COLLATE using_nls_comp)
+               Filter: ((ref_3.c3)::varchar2(1024) = '00001'::varchar2 COLLATE "binary")
                Remote SQL: SELECT c3 FROM "S 1"."T 1"
 (17 rows)
 
@@ -5321,30 +5321,30 @@ explain (verbose, costs off) select * from ft3 where f1 COLLATE "C" = 'foo';
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 where f2 = 'foo';
-                    QUERY PLAN                     
----------------------------------------------------
+                       QUERY PLAN                       
+--------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: (ft3.f2 = 'foo'::varchar2)
+   Filter: ((ft3.f2)::varchar2(1024) = 'foo'::varchar2)
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 where f3 = 'foo';
-                    QUERY PLAN                     
----------------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Foreign Scan on public.ft3
    Output: f1, f2, f3
-   Filter: (ft3.f3 = 'foo'::varchar2)
+   Filter: ((ft3.f3)::varchar2(10) = 'foo'::varchar2)
    Remote SQL: SELECT f1, f2, f3 FROM public.loct3
 (4 rows)
 
 explain (verbose, costs off) select * from ft3 f, loct3 l
   where f.f3 = l.f3 and l.f1 = 'foo';
-                       QUERY PLAN                        
----------------------------------------------------------
+                          QUERY PLAN                          
+--------------------------------------------------------------
  Nested Loop
    Output: f.f1, f.f2, f.f3, l.f1, l.f2, l.f3
-   Join Filter: (f.f3 = l.f3)
+   Join Filter: ((f.f3)::varchar2(10) = (l.f3)::varchar2(10))
    ->  Index Scan using loct3_f1_key on public.loct3 l
          Output: l.f1, l.f2, l.f3
          Index Cond: (l.f1 = 'foo'::varchar2)
@@ -10076,20 +10076,20 @@ IMPORT FOREIGN SCHEMA import_source FROM SERVER loopback INTO import_dest1;
 (7 rows)
 
 \d import_dest1.*
-                       Foreign table "import_dest1.t1"
- Column |     Type     | Collation | Nullable | Default |    FDW options     
---------+--------------+-----------+----------+---------+--------------------
- c1     | number(38,0) |           |          |         | (column_name 'c1')
- c2     | varchar2(64) |           | not null |         | (column_name 'c2')
+                         Foreign table "import_dest1.t1"
+ Column |     Type     |   Collation    | Nullable | Default |    FDW options     
+--------+--------------+----------------+----------+---------+--------------------
+ c1     | number(38,0) |                |          |         | (column_name 'c1')
+ c2     | varchar2(64) | using_nls_comp | not null |         | (column_name 'c2')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't1')
 
-                        Foreign table "import_dest1.t2"
- Column |      Type      | Collation | Nullable | Default |    FDW options     
---------+----------------+-----------+----------+---------+--------------------
- c1     | number(38,0)   |           |          |         | (column_name 'c1')
- c2     | varchar2(64)   |           |          |         | (column_name 'c2')
- c3     | varchar2(1024) | POSIX     |          |         | (column_name 'c3')
+                          Foreign table "import_dest1.t2"
+ Column |      Type      |   Collation    | Nullable | Default |    FDW options     
+--------+----------------+----------------+----------+---------+--------------------
+ c1     | number(38,0)   |                |          |         | (column_name 'c1')
+ c2     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c2')
+ c3     | varchar2(1024) | POSIX          |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't2')
 
@@ -10108,12 +10108,12 @@ FDW options: (schema_name 'import_source', table_name 't3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't4')
 
-                        Foreign table "import_dest1.x 4"
- Column |      Type      | Collation | Nullable | Default |     FDW options     
---------+----------------+-----------+----------+---------+---------------------
- c1     | binary_double  |           |          |         | (column_name 'c1')
- C 2    | varchar2(1024) |           |          |         | (column_name 'C 2')
- c3     | varchar2(64)   |           |          |         | (column_name 'c3')
+                          Foreign table "import_dest1.x 4"
+ Column |      Type      |   Collation    | Nullable | Default |     FDW options     
+--------+----------------+----------------+----------+---------+---------------------
+ c1     | binary_double  |                |          |         | (column_name 'c1')
+ C 2    | varchar2(1024) | using_nls_comp |          |         | (column_name 'C 2')
+ c3     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 'x 4')
 
@@ -10149,20 +10149,20 @@ IMPORT FOREIGN SCHEMA import_source FROM SERVER loopback INTO import_dest2
 (7 rows)
 
 \d import_dest2.*
-                       Foreign table "import_dest2.t1"
- Column |     Type     | Collation | Nullable | Default |    FDW options     
---------+--------------+-----------+----------+---------+--------------------
- c1     | number(38,0) |           |          |         | (column_name 'c1')
- c2     | varchar2(64) |           | not null |         | (column_name 'c2')
+                         Foreign table "import_dest2.t1"
+ Column |     Type     |   Collation    | Nullable | Default |    FDW options     
+--------+--------------+----------------+----------+---------+--------------------
+ c1     | number(38,0) |                |          |         | (column_name 'c1')
+ c2     | varchar2(64) | using_nls_comp | not null |         | (column_name 'c2')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't1')
 
-                        Foreign table "import_dest2.t2"
- Column |      Type      | Collation | Nullable | Default |    FDW options     
---------+----------------+-----------+----------+---------+--------------------
- c1     | number(38,0)   |           |          | 42      | (column_name 'c1')
- c2     | varchar2(64)   |           |          |         | (column_name 'c2')
- c3     | varchar2(1024) | POSIX     |          |         | (column_name 'c3')
+                          Foreign table "import_dest2.t2"
+ Column |      Type      |   Collation    | Nullable | Default |    FDW options     
+--------+----------------+----------------+----------+---------+--------------------
+ c1     | number(38,0)   |                |          | 42      | (column_name 'c1')
+ c2     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c2')
+ c3     | varchar2(1024) | POSIX          |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't2')
 
@@ -10181,12 +10181,12 @@ FDW options: (schema_name 'import_source', table_name 't3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't4')
 
-                        Foreign table "import_dest2.x 4"
- Column |      Type      | Collation | Nullable | Default |     FDW options     
---------+----------------+-----------+----------+---------+---------------------
- c1     | binary_double  |           |          |         | (column_name 'c1')
- C 2    | varchar2(1024) |           |          |         | (column_name 'C 2')
- c3     | varchar2(64)   |           |          |         | (column_name 'c3')
+                          Foreign table "import_dest2.x 4"
+ Column |      Type      |   Collation    | Nullable | Default |     FDW options     
+--------+----------------+----------------+----------+---------+---------------------
+ c1     | binary_double  |                |          |         | (column_name 'c1')
+ C 2    | varchar2(1024) | using_nls_comp |          |         | (column_name 'C 2')
+ c3     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 'x 4')
 
@@ -10221,20 +10221,20 @@ IMPORT FOREIGN SCHEMA import_source FROM SERVER loopback INTO import_dest3
 (7 rows)
 
 \d import_dest3.*
-                       Foreign table "import_dest3.t1"
- Column |     Type     | Collation | Nullable | Default |    FDW options     
---------+--------------+-----------+----------+---------+--------------------
- c1     | number(38,0) |           |          |         | (column_name 'c1')
- c2     | varchar2(64) |           |          |         | (column_name 'c2')
+                         Foreign table "import_dest3.t1"
+ Column |     Type     |   Collation    | Nullable | Default |    FDW options     
+--------+--------------+----------------+----------+---------+--------------------
+ c1     | number(38,0) |                |          |         | (column_name 'c1')
+ c2     | varchar2(64) | using_nls_comp |          |         | (column_name 'c2')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't1')
 
-                        Foreign table "import_dest3.t2"
- Column |      Type      | Collation | Nullable | Default |    FDW options     
---------+----------------+-----------+----------+---------+--------------------
- c1     | number(38,0)   |           |          |         | (column_name 'c1')
- c2     | varchar2(64)   |           |          |         | (column_name 'c2')
- c3     | varchar2(1024) |           |          |         | (column_name 'c3')
+                          Foreign table "import_dest3.t2"
+ Column |      Type      |   Collation    | Nullable | Default |    FDW options     
+--------+----------------+----------------+----------+---------+--------------------
+ c1     | number(38,0)   |                |          |         | (column_name 'c1')
+ c2     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c2')
+ c3     | varchar2(1024) | using_nls_comp |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't2')
 
@@ -10253,12 +10253,12 @@ FDW options: (schema_name 'import_source', table_name 't3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 't4')
 
-                        Foreign table "import_dest3.x 4"
- Column |      Type      | Collation | Nullable | Default |     FDW options     
---------+----------------+-----------+----------+---------+---------------------
- c1     | binary_double  |           |          |         | (column_name 'c1')
- C 2    | varchar2(1024) |           |          |         | (column_name 'C 2')
- c3     | varchar2(64)   |           |          |         | (column_name 'c3')
+                          Foreign table "import_dest3.x 4"
+ Column |      Type      |   Collation    | Nullable | Default |     FDW options     
+--------+----------------+----------------+----------+---------+---------------------
+ c1     | binary_double  |                |          |         | (column_name 'c1')
+ C 2    | varchar2(1024) | using_nls_comp |          |         | (column_name 'C 2')
+ c3     | varchar2(64)   | using_nls_comp |          |         | (column_name 'c3')
 Server: loopback
 FDW options: (schema_name 'import_source', table_name 'x 4')
 
@@ -11952,7 +11952,7 @@ SELECT * FROM local_tbl, async_pt WHERE local_tbl.a = async_pt.a AND local_tbl.c
          Output: local_tbl.a, local_tbl.b, local_tbl.c
          ->  Seq Scan on public.local_tbl
                Output: local_tbl.a, local_tbl.b, local_tbl.c
-               Filter: (local_tbl.c = 'bar'::varchar2)
+               Filter: ((local_tbl.c)::varchar2(1024) = 'bar'::varchar2)
 (17 rows)
 
 EXPLAIN (ANALYZE, COSTS OFF, SUMMARY OFF, TIMING OFF)
@@ -11968,7 +11968,7 @@ SELECT * FROM local_tbl, async_pt WHERE local_tbl.a = async_pt.a AND local_tbl.c
    ->  Hash (actual rows=1 loops=1)
          Buckets: 1024  Batches: 1  Memory Usage: 9kB
          ->  Seq Scan on local_tbl (actual rows=1 loops=1)
-               Filter: (c = 'bar'::varchar2)
+               Filter: ((c)::varchar2(1024) = 'bar'::varchar2)
                Rows Removed by Filter: 1
 (11 rows)
 
@@ -12157,18 +12157,20 @@ CREATE FOREIGN TABLE insert_tbl (a number(38,0), b number(38,0), c varchar2(1024
   SERVER loopback OPTIONS (table_name 'base_tbl4');
 EXPLAIN (VERBOSE, COSTS OFF)
 INSERT INTO insert_tbl (SELECT * FROM local_tbl UNION ALL SELECT * FROM remote_tbl);
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Insert on public.insert_tbl
    Remote SQL: INSERT INTO public.base_tbl4(a, b, c) VALUES ($1, $2, $3)
    Batch Size: 1
-   ->  Append
-         ->  Seq Scan on public.local_tbl
-               Output: local_tbl.a, local_tbl.b, local_tbl.c
-         ->  Async Foreign Scan on public.remote_tbl
-               Output: remote_tbl.a, remote_tbl.b, remote_tbl.c
-               Remote SQL: SELECT a, b, c FROM public.base_tbl3
-(9 rows)
+   ->  Result
+         Output: local_tbl.a, local_tbl.b, ((local_tbl.c)::varchar2(1024))
+         ->  Append
+               ->  Seq Scan on public.local_tbl
+                     Output: local_tbl.a, local_tbl.b, local_tbl.c
+               ->  Async Foreign Scan on public.remote_tbl
+                     Output: remote_tbl.a, remote_tbl.b, remote_tbl.c
+                     Remote SQL: SELECT a, b, c FROM public.base_tbl3
+(11 rows)
 
 INSERT INTO insert_tbl (SELECT * FROM local_tbl UNION ALL SELECT * FROM remote_tbl);
 SELECT * FROM insert_tbl ORDER BY a;

@@ -1087,14 +1087,15 @@ explain (costs off)
   UNION ALL
   SELECT * FROM t2) t
  WHERE ab = 'ab';
-                 QUERY PLAN                  
----------------------------------------------
- Append
-   ->  Index Scan using t1_ab_idx on t1
-         Index Cond: ((a || b) = 'ab'::text)
-   ->  Index Only Scan using t2_pkey on t2
-         Index Cond: (ab = 'ab'::text)
-(5 rows)
+                        QUERY PLAN                         
+-----------------------------------------------------------
+ Result
+   ->  Append
+         ->  Index Scan using t1_ab_idx on t1
+               Index Cond: (((a || b))::text = 'ab'::text)
+         ->  Index Only Scan using t2_pkey on t2
+               Index Cond: (ab = 'ab'::text)
+(6 rows)
 
 explain (costs off)
  SELECT * FROM
@@ -1102,16 +1103,17 @@ explain (costs off)
   UNION
   SELECT * FROM t2) t
  WHERE ab = 'ab';
-                    QUERY PLAN                     
----------------------------------------------------
- HashAggregate
-   Group Key: ((t1.a || t1.b))
-   ->  Append
-         ->  Index Scan using t1_ab_idx on t1
-               Index Cond: ((a || b) = 'ab'::text)
-         ->  Index Only Scan using t2_pkey on t2
-               Index Cond: (ab = 'ab'::text)
-(7 rows)
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Subquery Scan on "*SELECT* PseudoCollationReplace 3"
+   ->  HashAggregate
+         Group Key: (((t1.a || t1.b))::text)
+         ->  Append
+               ->  Index Scan using t1_ab_idx on t1
+                     Index Cond: (((a || b))::text = 'ab'::text)
+               ->  Index Only Scan using t2_pkey on t2
+                     Index Cond: (ab = 'ab'::text)
+(8 rows)
 
 --
 -- Test that ORDER BY for UNION ALL can be pushed down to inheritance
@@ -1131,12 +1133,12 @@ explain (costs off)
    UNION ALL
    SELECT ab FROM t2) t
   ORDER BY 1 LIMIT 8;
-                        QUERY PLAN                         
------------------------------------------------------------
+                            QUERY PLAN                             
+-------------------------------------------------------------------
  Limit
    ->  Result
          ->  Merge Append
-               Sort Key: ((t1.a || t1.b)) COLLATE "binary"
+               Sort Key: (((t1.a || t1.b))::text) COLLATE "binary"
                ->  Index Scan using t1_ab_idx on t1
                ->  Index Scan using t1c_ab_idx on t1c t1_1
                ->  Index Scan using t2_pkey on t2

@@ -56,8 +56,9 @@ char	   *nls_numeric_characters = "";
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
 /* Begin - SRS-SQL-NLSSORT */
-bool		 enable_ora_default_collation = true;
+bool		 enable_ora_default_collation = false;
 bool		 enable_partitionwise_qual_force_pushdown = true;
+bool		 subquery_with_raw_collation = true;
 bool		 default_collation_is_c = true;
 char		*nls_sort_str;
 char		*nls_comp_str;
@@ -660,6 +661,16 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
 		},
 		&default_collation_is_c,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"ivorysql.subquery_with_raw_collation", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Reset subquery resultset collation after doing pseudo-collation replace."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&subquery_with_raw_collation,
 		true,
 		NULL, NULL, NULL
 	},

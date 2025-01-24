@@ -15,7 +15,7 @@ DATA = bloom--1.0.sql
 PGFILEDESC = "bloom access method - signature file based index"
 
 REGRESS = bloom
-ORA_REGRESS = bloom
+ORA_REGRESS = ora_bloom
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
 MYS_REGRESS = mys_bloom
 #End - ReqID:SRS-MISC-MYSQL-FRAME

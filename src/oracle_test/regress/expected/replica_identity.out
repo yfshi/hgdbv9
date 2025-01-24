@@ -75,13 +75,13 @@ SELECT relreplident FROM pg_class WHERE oid = 'test_replica_identity'::regclass;
 (1 row)
 
 \d test_replica_identity
-                            Table "public.test_replica_identity"
- Column |  Type   | Collation | Nullable |                      Default                      
---------+---------+-----------+----------+---------------------------------------------------
- id     | integer |           | not null | nextval('test_replica_identity_id_seq'::regclass)
- keya   | text    |           | not null | 
- keyb   | text    |           | not null | 
- nonkey | text    |           |          | 
+                               Table "public.test_replica_identity"
+ Column |  Type   |   Collation    | Nullable |                      Default                      
+--------+---------+----------------+----------+---------------------------------------------------
+ id     | integer |                | not null | nextval('test_replica_identity_id_seq'::regclass)
+ keya   | text    | using_nls_comp | not null | 
+ keyb   | text    | using_nls_comp | not null | 
+ nonkey | text    | using_nls_comp |          | 
 Indexes:
     "test_replica_identity_pkey" PRIMARY KEY, btree (id) REPLICA IDENTITY
     "test_replica_identity_expr" UNIQUE, btree (keya, keyb, (3))
@@ -89,7 +89,7 @@ Indexes:
     "test_replica_identity_keyab" btree (keya, keyb)
     "test_replica_identity_keyab_key" UNIQUE, btree (keya, keyb)
     "test_replica_identity_nonkey" UNIQUE, btree (keya, nonkey)
-    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE keyb <> '3'::text
+    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE (keyb COLLATE "binary") <> '3'::text
     "test_replica_identity_unique_defer" UNIQUE CONSTRAINT, btree (keya, keyb) DEFERRABLE
     "test_replica_identity_unique_nondefer" UNIQUE CONSTRAINT, btree (keya, keyb)
 
@@ -105,13 +105,13 @@ SELECT relreplident FROM pg_class WHERE oid = 'test_replica_identity'::regclass;
 (1 row)
 
 \d test_replica_identity
-                            Table "public.test_replica_identity"
- Column |  Type   | Collation | Nullable |                      Default                      
---------+---------+-----------+----------+---------------------------------------------------
- id     | integer |           | not null | nextval('test_replica_identity_id_seq'::regclass)
- keya   | text    |           | not null | 
- keyb   | text    |           | not null | 
- nonkey | text    |           |          | 
+                               Table "public.test_replica_identity"
+ Column |  Type   |   Collation    | Nullable |                      Default                      
+--------+---------+----------------+----------+---------------------------------------------------
+ id     | integer |                | not null | nextval('test_replica_identity_id_seq'::regclass)
+ keya   | text    | using_nls_comp | not null | 
+ keyb   | text    | using_nls_comp | not null | 
+ nonkey | text    | using_nls_comp |          | 
 Indexes:
     "test_replica_identity_pkey" PRIMARY KEY, btree (id)
     "test_replica_identity_expr" UNIQUE, btree (keya, keyb, (3))
@@ -119,7 +119,7 @@ Indexes:
     "test_replica_identity_keyab" btree (keya, keyb)
     "test_replica_identity_keyab_key" UNIQUE, btree (keya, keyb) REPLICA IDENTITY
     "test_replica_identity_nonkey" UNIQUE, btree (keya, nonkey)
-    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE keyb <> '3'::text
+    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE (keyb COLLATE "binary") <> '3'::text
     "test_replica_identity_unique_defer" UNIQUE CONSTRAINT, btree (keya, keyb) DEFERRABLE
     "test_replica_identity_unique_nondefer" UNIQUE CONSTRAINT, btree (keya, keyb)
 
@@ -153,13 +153,13 @@ SELECT relreplident FROM pg_class WHERE oid = 'test_replica_identity'::regclass;
 (1 row)
 
 \d+ test_replica_identity
-                                                Table "public.test_replica_identity"
- Column |  Type   | Collation | Nullable |                      Default                      | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------------------------------------------------+----------+--------------+-------------
- id     | integer |           | not null | nextval('test_replica_identity_id_seq'::regclass) | plain    |              | 
- keya   | text    |           | not null |                                                   | extended |              | 
- keyb   | text    |           | not null |                                                   | extended |              | 
- nonkey | text    |           |          |                                                   | extended |              | 
+                                                   Table "public.test_replica_identity"
+ Column |  Type   |   Collation    | Nullable |                      Default                      | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------------------------------------------------+----------+--------------+-------------
+ id     | integer |                | not null | nextval('test_replica_identity_id_seq'::regclass) | plain    |              | 
+ keya   | text    | using_nls_comp | not null |                                                   | extended |              | 
+ keyb   | text    | using_nls_comp | not null |                                                   | extended |              | 
+ nonkey | text    | using_nls_comp |          |                                                   | extended |              | 
 Indexes:
     "test_replica_identity_pkey" PRIMARY KEY, btree (id)
     "test_replica_identity_expr" UNIQUE, btree (keya, keyb, (3))
@@ -167,7 +167,7 @@ Indexes:
     "test_replica_identity_keyab" btree (keya, keyb)
     "test_replica_identity_keyab_key" UNIQUE, btree (keya, keyb)
     "test_replica_identity_nonkey" UNIQUE, btree (keya, nonkey)
-    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE keyb <> '3'::text
+    "test_replica_identity_partial" UNIQUE, btree (keya, keyb) WHERE (keyb COLLATE "binary") <> '3'::text
     "test_replica_identity_unique_defer" UNIQUE CONSTRAINT, btree (keya, keyb) DEFERRABLE
     "test_replica_identity_unique_nondefer" UNIQUE CONSTRAINT, btree (keya, keyb)
 Replica Identity: FULL

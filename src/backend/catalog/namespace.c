@@ -5457,3 +5457,46 @@ PseudoCollationReplace3(Oid collid)
 		
 	return nls_sort_oid;
 }
+
+Oid
+PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll)
+{
+	switch (a->kind)
+	{
+		case AEXPR_OP:
+			{
+				char *oprname = strVal(linitial(a->name));
+				if (!strcmp(oprname, "=") 	||
+					!strcmp(oprname, "<>") 	||
+					!strcmp(oprname, ">") 	||
+					!strcmp(oprname, "<") 	||
+					!strcmp(oprname, ">=") 	||
+					!strcmp(oprname, "<="))
+				{
+					coll = PseudoCollationReplace3(coll);
+				}
+
+				break;
+			}
+		case AEXPR_IN:
+		case AEXPR_BETWEEN:
+		case AEXPR_NOT_BETWEEN:
+		case AEXPR_BETWEEN_SYM:
+		case AEXPR_NOT_BETWEEN_SYM:
+			{
+				coll = PseudoCollationReplace3(coll);
+				break;
+			}
+		case AEXPR_LIKE:
+		case AEXPR_ILIKE:
+		case AEXPR_SIMILAR:
+			{
+				coll = PseudoCollationReplace1(coll);
+				break;
+			}
+		default:
+			break;
+	}
+
+	return coll;
+}

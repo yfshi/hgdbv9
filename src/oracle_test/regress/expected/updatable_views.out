@@ -156,7 +156,7 @@ DETAIL:  Views that return window functions are not automatically updatable.
 HINT:  To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.
 DELETE FROM ro_view6;
 ERROR:  cannot delete from view "ro_view6"
-DETAIL:  Views containing UNION, INTERSECT, or EXCEPT are not automatically updatable.
+DETAIL:  Views that do not select from a single table or view are not automatically updatable.
 HINT:  To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.
 UPDATE ro_view7 SET a=a+1;
 ERROR:  cannot update view "ro_view7"
@@ -2151,28 +2151,28 @@ DELETE FROM rw_view1 WHERE NOT snoop(person);
 NOTICE:  snooped value: Tom
 NOTICE:  snooped value: Harry
 EXPLAIN (costs off) SELECT * FROM rw_view1 WHERE snoop(person);
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Subquery Scan on rw_view1
    Filter: snoop(rw_view1.person)
    ->  Seq Scan on base_tbl
-         Filter: (visibility = 'public'::text)
+         Filter: ((visibility)::text = 'public'::text)
 (4 rows)
 
 EXPLAIN (costs off) UPDATE rw_view1 SET person=person WHERE snoop(person);
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                QUERY PLAN                                 
+---------------------------------------------------------------------------
  Update on base_tbl
    ->  Seq Scan on base_tbl
-         Filter: ((visibility = 'public'::text) AND snoop(person))
+         Filter: (((visibility)::text = 'public'::text) AND snoop(person))
 (3 rows)
 
 EXPLAIN (costs off) DELETE FROM rw_view1 WHERE NOT snoop(person);
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Delete on base_tbl
    ->  Seq Scan on base_tbl
-         Filter: ((visibility = 'public'::text) AND (NOT snoop(person)))
+         Filter: (((visibility)::text = 'public'::text) AND (NOT snoop(person)))
 (3 rows)
 
 -- security barrier view on top of security barrier view
@@ -2225,30 +2225,30 @@ NOTICE:  snooped value: Tom
 NOTICE:  snooped value: Harry
 NOTICE:  snooped value: Harry
 EXPLAIN (costs off) SELECT * FROM rw_view2 WHERE snoop(person);
-                     QUERY PLAN                      
------------------------------------------------------
+                         QUERY PLAN                          
+-------------------------------------------------------------
  Subquery Scan on rw_view2
    Filter: snoop(rw_view2.person)
    ->  Subquery Scan on rw_view1
          Filter: snoop(rw_view1.person)
          ->  Seq Scan on base_tbl
-               Filter: (visibility = 'public'::text)
+               Filter: ((visibility)::text = 'public'::text)
 (6 rows)
 
 EXPLAIN (costs off) UPDATE rw_view2 SET person=person WHERE snoop(person);
-                                     QUERY PLAN                                      
--------------------------------------------------------------------------------------
+                                         QUERY PLAN                                          
+---------------------------------------------------------------------------------------------
  Update on base_tbl
    ->  Seq Scan on base_tbl
-         Filter: ((visibility = 'public'::text) AND snoop(person) AND snoop(person))
+         Filter: (((visibility)::text = 'public'::text) AND snoop(person) AND snoop(person))
 (3 rows)
 
 EXPLAIN (costs off) DELETE FROM rw_view2 WHERE NOT snoop(person);
-                                        QUERY PLAN                                         
--------------------------------------------------------------------------------------------
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
  Delete on base_tbl
    ->  Seq Scan on base_tbl
-         Filter: ((visibility = 'public'::text) AND snoop(person) AND (NOT snoop(person)))
+         Filter: (((visibility)::text = 'public'::text) AND snoop(person) AND (NOT snoop(person)))
 (3 rows)
 
 DROP TABLE base_tbl CASCADE;
@@ -2809,12 +2809,12 @@ insert into uv_iocu_view (aa,bb) values (1,'y')
    where excluded.aa > 0
    and excluded.bb != ''
    and excluded.cc is not null;
-                                               QUERY PLAN                                                
----------------------------------------------------------------------------------------------------------
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
  Insert on uv_iocu_tab
    Conflict Resolution: UPDATE
    Conflict Arbiter Indexes: uv_iocu_tab_a_key
-   Conflict Filter: ((excluded.a > 0) AND (excluded.b <> ''::text) AND ((excluded.*)::text IS NOT NULL))
+   Conflict Filter: ((excluded.a > 0) AND ((excluded.b)::text <> ''::text) AND ((excluded.*)::text IS NOT NULL))
    ->  Result
 (5 rows)
 

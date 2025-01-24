@@ -491,22 +491,22 @@ CREATE TABLE fail () INHERITS (partitioned2);
 ERROR:  cannot inherit from partitioned table "partitioned2"
 -- Partition key in describe output
 \d partitioned
-      Partitioned table "public.partitioned"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
- d      | text    |           |          | 
+         Partitioned table "public.partitioned"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
+ d      | text    | using_nls_comp |          | 
 Partition key: RANGE (a oid_ops, plusone(b), c COLLATE "default", d COLLATE "C")
 Number of partitions: 0
 
 \d+ partitioned2
-                          Partitioned table "public.partitioned2"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------+----------+--------------+-------------
- a      | integer |           |          |         | plain    |              | 
- b      | text    |           |          |         | extended |              | 
+                            Partitioned table "public.partitioned2"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------+----------+--------------+-------------
+ a      | integer |                |          |         | plain    |              | 
+ b      | text    | using_nls_comp |          |         | extended |              | 
 Partition key: RANGE (((a + 1)), substr(b, 1, 5) COLLATE "binary")
 Number of partitions: 0
 
@@ -515,11 +515,11 @@ ERROR:  no partition of relation "partitioned2" found for row
 DETAIL:  Partition key of the failing row contains ((a + 1), substr(b, 1, 5)) = (2, hello).
 CREATE TABLE part2_1 PARTITION OF partitioned2 FOR VALUES FROM (-1, 'aaaaa') TO (100, 'ccccc');
 \d+ part2_1
-                                  Table "public.part2_1"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------+----------+--------------+-------------
- a      | integer |           |          |         | plain    |              | 
- b      | text    |           |          |         | extended |              | 
+                                     Table "public.part2_1"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------+----------+--------------+-------------
+ a      | integer |                |          |         | plain    |              | 
+ b      | text    | using_nls_comp |          |         | extended |              | 
 Partition of: partitioned2 FOR VALUES FROM ('-1', 'aaaaa') TO (100, 'ccccc')
 Partition constraint: (((a + 1) IS NOT NULL) AND (substr(b, 1, 5) IS NOT NULL) AND (((a + 1) > '-1'::integer) OR (((a + 1) = '-1'::integer) AND ((substr(b, 1, 5))::varchar2 >= 'aaaaa'::varchar2 COLLATE "binary"))) AND (((a + 1) < 100) OR (((a + 1) = 100) AND ((substr(b, 1, 5))::varchar2 < 'ccccc'::varchar2 COLLATE "binary"))))
 
@@ -1061,21 +1061,21 @@ create table test_part_coll_cast2 partition of test_part_coll_posix for values f
 drop table test_part_coll_posix;
 -- Partition bound in describe output
 \d+ part_b
-                                   Table "public.part_b"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------+----------+--------------+-------------
- a      | text    |           |          |         | extended |              | 
- b      | integer |           | not null | 1       | plain    |              | 
+                                     Table "public.part_b"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------+----------+--------------+-------------
+ a      | text    | using_nls_comp |          |         | extended |              | 
+ b      | integer |                | not null | 1       | plain    |              | 
 Partition of: parted FOR VALUES IN ('b')
 Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'b'::text COLLATE "binary"))
 
 -- Both partition bound and partition key in describe output
 \d+ part_c
-                             Partitioned table "public.part_c"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------+----------+--------------+-------------
- a      | text    |           |          |         | extended |              | 
- b      | integer |           | not null | 0       | plain    |              | 
+                               Partitioned table "public.part_c"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------+----------+--------------+-------------
+ a      | text    | using_nls_comp |          |         | extended |              | 
+ b      | integer |                | not null | 0       | plain    |              | 
 Partition of: parted FOR VALUES IN ('c')
 Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'c'::text COLLATE "binary"))
 Partition key: RANGE (b)
@@ -1083,11 +1083,11 @@ Partitions: part_c_1_10 FOR VALUES FROM (1) TO (10)
 
 -- a level-2 partition's constraint will include the parent's expressions
 \d+ part_c_1_10
-                                Table "public.part_c_1_10"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+---------+-----------+----------+---------+----------+--------------+-------------
- a      | text    |           |          |         | extended |              | 
- b      | integer |           | not null | 0       | plain    |              | 
+                                   Table "public.part_c_1_10"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+---------+----------------+----------+---------+----------+--------------+-------------
+ a      | text    | using_nls_comp |          |         | extended |              | 
+ b      | integer |                | not null | 0       | plain    |              | 
 Partition of: part_c FOR VALUES FROM (1) TO (10)
 Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'c'::text COLLATE "binary") AND (b IS NOT NULL) AND (b >= 1) AND (b < 10))
 
@@ -1096,11 +1096,11 @@ Partition constraint: ((a IS NOT NULL) AND ((a)::text = 'c'::text COLLATE "binar
 -- output could vary depending on the order in which partition oids are
 -- returned.
 \d parted
-         Partitioned table "public.parted"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | text    |           |          | 
- b      | integer |           | not null | 0
+           Partitioned table "public.parted"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | text    | using_nls_comp |          | 
+ b      | integer |                | not null | 0
 Partition key: LIST (a COLLATE "binary")
 Number of partitions: 3 (Use \d+ to list them.)
 
@@ -1188,11 +1188,11 @@ SELECT obj_description('parted_col_comment'::regclass);
 (1 row)
 
 \d+ parted_col_comment
-                        Partitioned table "public.parted_col_comment"
- Column |  Type   | Collation | Nullable | Default | Storage  | Stats target |  Description  
---------+---------+-----------+----------+---------+----------+--------------+---------------
- a      | integer |           |          |         | plain    |              | Partition key
- b      | text    |           |          |         | extended |              | 
+                          Partitioned table "public.parted_col_comment"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Stats target |  Description  
+--------+---------+----------------+----------+---------+----------+--------------+---------------
+ a      | integer |                |          |         | plain    |              | Partition key
+ b      | text    | using_nls_comp |          |         | extended |              | 
 Partition key: LIST (a)
 Number of partitions: 0
 

@@ -310,13 +310,13 @@ SELECT c_bigint, c_text FROM T WHERE c_text = 'hello' LIMIT 1;
 (1 row)
 
 EXPLAIN (VERBOSE TRUE, COSTS FALSE) SELECT c_bigint, c_text FROM T WHERE c_text = 'hello' LIMIT 1;
-                 QUERY PLAN                 
---------------------------------------------
+                     QUERY PLAN                     
+----------------------------------------------------
  Limit
    Output: c_bigint, c_text
    ->  Seq Scan on fast_default.t
          Output: c_bigint, c_text
-         Filter: (t.c_text = 'hello'::text)
+         Filter: ((t.c_text)::text = 'hello'::text)
 (5 rows)
 
 -- COALESCE

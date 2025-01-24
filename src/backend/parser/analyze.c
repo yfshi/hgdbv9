@@ -25,6 +25,7 @@
 #include "postgres.h"
 
 #include "access/sysattr.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "miscadmin.h"
@@ -2851,6 +2852,120 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	if (pstate->p_hasAggs || qry->groupClause || qry->groupingSets || qry->havingQual)
 		parseCheckAggregates(pstate, qry);
 
+	/**
+	 * Begin - BUG#Z1461 
+	 * For example,
+	 * 	CREATE TABLE tbl AS SELECT val FROM tbl1 UNION SELECT val FROM tbl2.
+	 * The collation of column `val` in `tbl1` & `tbl2` is USING_NLS_COMP.
+	 * 
+	 * According to the pseudo-collation replace rule, we will trans the statement to this:
+	 * 	CREATE TABLE tbl AS SELECT val COLLATE BINARY FROM tbl1 UNION SELECT val COLLATE BINARY FROM tbl2.
+	 * 
+	 * However, this statement will create tbl.val with BINARY collation. In oracle, 
+	 * The collation of tbl.val is USING_NLS_COMP.
+	 * 
+	 * So, we add following logic to handle this case.
+	 * With this logic, we will trans raw statement to this:
+	 *  CREATE TABLE tbl AS SELECT val COLLATE USING_NLS_COMP FROM (SELECT val COLLATE BINARY FROM tbl1 UNION SELECT val COLLATE BINARY FROM tbl2).
+	 */
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation && 
+		subquery_with_raw_collation)
+	{
+		ListCell *cc, *rcc;
+		bool donePseudoCollationReplace = false;
+		
+		forboth(cc,  sostmt->colCollations,
+				rcc, sostmt->rawcolCollations)
+		{
+			Oid	colCollation = lfirst_oid(cc);
+			Oid	rawcolCollation = lfirst_oid(rcc);
+
+			if (colCollation != rawcolCollation)
+			{
+				donePseudoCollationReplace = true;
+				break;
+			}
+		}
+
+		if (donePseudoCollationReplace)
+		{
+			char 			selectName[64];
+			int				varattno = 0;
+			Alias	   		*eref;
+			List			*targetList = NIL;
+			ListCell   		*tlistitem;
+			Query 			*newquery = makeNode(Query);
+			RangeTblEntry 	*rte = makeNode(RangeTblEntry);
+			RangeTblRef 	*rtr = makeNode(RangeTblRef);
+
+			rtr->rtindex = 1;
+
+			forboth(tlistitem, qry->targetList,
+					rcc, sostmt->rawcolCollations)
+			{
+				TargetEntry *newtle;
+				TargetEntry *tle = (TargetEntry *) lfirst(tlistitem);
+				
+				Oid	rawcolCollation = lfirst_oid(rcc);
+
+				if (OidIsValid(exprCollation((Node *) tle->expr)))
+				{
+					Node *expr = (Node *) tle->expr;
+
+					if (IsA(expr, CollateExpr))
+						exprSetCollation(expr, rawcolCollation);
+					else
+						expr = makePseudoCollationReplaceNode(expr, rawcolCollation);
+
+					newtle = makeTargetEntry((Expr *) expr,
+											 tle->resno,
+											 tle->resname,
+											 false);
+
+					targetList = lappend(targetList, newtle);
+				}
+				else
+					targetList = lappend(targetList, tle);
+			}
+
+			snprintf(selectName, sizeof(selectName), "*SELECT* PseudoCollationReplace %d", list_length(pstate->p_rtable) + 1);
+			
+			newquery->commandType = CMD_SELECT;
+			newquery->querySource = qry->querySource;
+			newquery->rtable = list_make1(rte);
+			newquery->jointree = makeFromExpr(list_make1(rtr), NULL);
+			
+			rte->rtekind = RTE_SUBQUERY;
+			rte->subquery = qry;
+			rte->alias = makeAlias(selectName, NIL);
+
+			eref = copyObject(rte->alias);
+
+			foreach(tlistitem, qry->targetList)
+			{
+				char	   	*attrname;
+				TargetEntry *te = (TargetEntry *) lfirst(tlistitem);
+				
+				if (te->resjunk)
+					continue;
+				
+				varattno++;
+
+				attrname = pstrdup(te->resname);
+				eref->colnames = lappend(eref->colnames, makeString(attrname));
+			}
+
+			rte->eref = eref;
+
+			newquery->targetList = targetList;
+			newquery->rtable = list_make1(rte);
+			newquery->jointree = makeFromExpr(list_make1(rtr), NULL);
+
+			qry = newquery;
+		}
+	}
+	/* End - BUG#Z1461 */
+
 	return qry;
 }
 
@@ -3107,6 +3222,7 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			Oid			rescoltype;
 			int32		rescoltypmod;
 			Oid			rescolcoll;
+			Oid			rawcolcoll = InvalidOid; /* BUG#Z1461 */
 
 			/* select common type, same as CASE et al */
 			rescoltype = select_common_type(pstate,
@@ -3164,6 +3280,31 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 				rtle->expr = (Expr *) rcolnode;
 			}
 
+			/* Begin - BUG#Z1461 */
+			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+			{
+				Node *lcopy = copyObject(lcolnode);
+				Node *rcopy = copyObject(rcolnode);
+
+				// will do assign_expr_collations
+				rawcolcoll = select_common_collation(pstate,
+												 	 list_make2(lcopy, rcopy),
+													 (op->op == SETOP_UNION && op->all));
+
+				if (IsPseudoCollation(exprCollation(lcopy)))
+				{
+					lcolnode = makePseudoCollationReplaceNode(lcolnode, PseudoCollationReplace1(exprCollation(lcopy)));
+					ltle->expr = (Expr *) lcolnode;
+				}
+
+				if (IsPseudoCollation(exprCollation(rcopy)))
+				{
+					rcolnode = makePseudoCollationReplaceNode(rcolnode, PseudoCollationReplace1(exprCollation(rcopy)));
+					rtle->expr = (Expr *) rcolnode;
+				}
+			}
+			/* End - BUG#Z1461 */
+
 			rescoltypmod = select_common_typmod(pstate,
 												list_make2(lcolnode, rcolnode),
 												rescoltype);
@@ -3185,6 +3326,13 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			op->colTypes = lappend_oid(op->colTypes, rescoltype);
 			op->colTypmods = lappend_int(op->colTypmods, rescoltypmod);
 			op->colCollations = lappend_oid(op->colCollations, rescolcoll);
+			
+			/*
+			 * Begin - BUG#Z1461 
+			 * Record targetlist's collation before do pseudo-collation replacement.
+			 */
+			op->rawcolCollations = lappend_oid(op->rawcolCollations, OidIsValid(rawcolcoll) ? rawcolcoll : rescolcoll);
+			/* End - BUG#Z1461 */
 
 			/*
 			 * For all cases except UNION ALL, identify the grouping operators
@@ -3273,6 +3421,17 @@ determineRecursiveColTypes(ParseState *pstate, Node *larg, List *nrtargetlist)
 
 		Assert(!lefttle->resjunk);
 		colName = pstrdup(lefttle->resname);
+
+		/* Begin - BUG#Z1461 */
+		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+		{
+			Node 	*expr = (Node *) nrtle->expr;
+			Oid		 colcoll = exprCollation(expr);
+			if (IsPseudoCollation(colcoll))
+				nrtle->expr = (Expr *) makePseudoCollationReplaceNode(expr, PseudoCollationReplace1(colcoll));
+		}
+		/* End - BUG#Z1461 */
+
 		tle = makeTargetEntry(nrtle->expr,
 							  next_resno++,
 							  colName,

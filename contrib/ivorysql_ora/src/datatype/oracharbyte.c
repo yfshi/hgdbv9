@@ -20,6 +20,7 @@
 
 #include "access/detoast.h"
 #include "access/hash.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "fmgr.h"
 #include "libpq/pqformat.h"
@@ -573,7 +574,7 @@ oracharbyte_larger(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PG_GET_COLLATION());
+					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp >= 0) ? arg1 : arg2);
 }
@@ -592,7 +593,7 @@ oracharbyte_smaller(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PG_GET_COLLATION());
+					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp <= 0) ? arg1 : arg2);
 }
@@ -678,7 +679,8 @@ oracharbytehash(PG_FUNCTION_ARGS)
 	{
 		/* Begin - Req: SRS-SQL-NLSSORT */
 		if (nlssort_hook && 
-			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			!IsPseudoCollation(collid) &&
+			collid != ORA_COLL_OID(BINARY) && 
 			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, true);

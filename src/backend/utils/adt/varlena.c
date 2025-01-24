@@ -2263,6 +2263,20 @@ nlssortfastcmp_internal_with_collid(const char *arg1, int32_t len1, const char *
 
 	assert(nlssort_hook != NULL);
 
+	/**
+	 * Direct use pseudo-collation is illegal.
+	 * So we replace it to DEFAULT_COLLATION_OID.
+	 */
+	if (IsPseudoCollation(collid))
+	{
+		result = memcmp(arg1, arg2, Min(len1, len2));
+		
+		if ((result == 0) && (len1 != len2))
+			result = (len1 < len2) ? -1 : 1;
+
+		return result;
+	}
+
 	k1 = nlssort_hook(arg1, len1, collid, trim);
 	k2 = nlssort_hook(arg2, len2, collid, trim);
 

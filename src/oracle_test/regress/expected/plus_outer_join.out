@@ -2731,15 +2731,15 @@ select *from v1;
 (2 rows)
 
 \d+ v1
-                                View "public.v1"
- Column |     Type     | Collation | Nullable | Default | Storage  | Description 
---------+--------------+-----------+----------+---------+----------+-------------
- i1     | integer      |           |          |         | plain    | 
- j1     | integer      |           |          |         | plain    | 
- k1     | varchar2(10) |           |          |         | extended | 
- i2     | integer      |           |          |         | plain    | 
- j2     | integer      |           |          |         | plain    | 
- k2     | varchar2(10) |           |          |         | extended | 
+                                   View "public.v1"
+ Column |     Type     |   Collation    | Nullable | Default | Storage  | Description 
+--------+--------------+----------------+----------+---------+----------+-------------
+ i1     | integer      |                |          |         | plain    | 
+ j1     | integer      |                |          |         | plain    | 
+ k1     | varchar2(10) | using_nls_comp |          |         | extended | 
+ i2     | integer      |                |          |         | plain    | 
+ j2     | integer      |                |          |         | plain    | 
+ k2     | varchar2(10) | using_nls_comp |          |         | extended | 
 View definition:
  SELECT toj1.id AS i1,
     toj1.id2 AS j1,
@@ -2761,18 +2761,18 @@ select *from v1;
 (2 rows)
 
 \d+ v1
-                                View "public.v1"
- Column |     Type     | Collation | Nullable | Default | Storage  | Description 
---------+--------------+-----------+----------+---------+----------+-------------
- i1     | integer      |           |          |         | plain    | 
- j1     | integer      |           |          |         | plain    | 
- k1     | varchar2(10) |           |          |         | extended | 
- i2     | integer      |           |          |         | plain    | 
- j2     | integer      |           |          |         | plain    | 
- k2     | varchar2(10) |           |          |         | extended | 
- i3     | integer      |           |          |         | plain    | 
- j3     | integer      |           |          |         | plain    | 
- k3     | varchar2(10) |           |          |         | extended | 
+                                   View "public.v1"
+ Column |     Type     |   Collation    | Nullable | Default | Storage  | Description 
+--------+--------------+----------------+----------+---------+----------+-------------
+ i1     | integer      |                |          |         | plain    | 
+ j1     | integer      |                |          |         | plain    | 
+ k1     | varchar2(10) | using_nls_comp |          |         | extended | 
+ i2     | integer      |                |          |         | plain    | 
+ j2     | integer      |                |          |         | plain    | 
+ k2     | varchar2(10) | using_nls_comp |          |         | extended | 
+ i3     | integer      |                |          |         | plain    | 
+ j3     | integer      |                |          |         | plain    | 
+ k3     | varchar2(10) | using_nls_comp |          |         | extended | 
 View definition:
  SELECT toj1.id AS i1,
     toj1.id2 AS j1,
@@ -2797,15 +2797,15 @@ select *from v1;
 (2 rows)
 
 \d+ v1
-                                View "public.v1"
- Column |     Type     | Collation | Nullable | Default | Storage  | Description 
---------+--------------+-----------+----------+---------+----------+-------------
- i1     | integer      |           |          |         | plain    | 
- j1     | integer      |           |          |         | plain    | 
- k1     | varchar2(10) |           |          |         | extended | 
- i2     | integer      |           |          |         | plain    | 
- j2     | integer      |           |          |         | plain    | 
- k2     | varchar2(10) |           |          |         | extended | 
+                                   View "public.v1"
+ Column |     Type     |   Collation    | Nullable | Default | Storage  | Description 
+--------+--------------+----------------+----------+---------+----------+-------------
+ i1     | integer      |                |          |         | plain    | 
+ j1     | integer      |                |          |         | plain    | 
+ k1     | varchar2(10) | using_nls_comp |          |         | extended | 
+ i2     | integer      |                |          |         | plain    | 
+ j2     | integer      |                |          |         | plain    | 
+ k2     | varchar2(10) | using_nls_comp |          |         | extended | 
 View definition:
  SELECT toj1.id AS i1,
     toj1.id2 AS j1,

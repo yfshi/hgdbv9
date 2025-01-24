@@ -1919,6 +1919,7 @@ typedef struct SetOperationStmt
 	List	   *colCollations;	/* OID list of output column collation OIDs */
 	List	   *groupClauses;	/* a list of SortGroupClause's */
 	/* groupClauses is NIL if UNION ALL, but must be set otherwise */
+	List	   *rawcolCollations; /* BUG#Z1461, record column's collation before doing pseudo-collation replace */
 } SetOperationStmt;
 
 

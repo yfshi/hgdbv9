@@ -1108,3 +1108,16 @@ assign_hypothetical_collations(Aggref *aggref,
 	}
 	Assert(h_cell == NULL && s_cell == NULL);
 }
+
+/* Begin - BUG#Z1461 */
+Node *
+makePseudoCollationReplaceNode(Node *expr, Oid targetcoll)
+{
+	CollateExpr *newc = makeNode(CollateExpr);
+	newc->arg = (Expr *) expr;
+	newc->collOid = targetcoll;
+	newc->location = exprLocation(expr);
+
+	return (Node *) newc;
+}
+/* End - BUG#Z1461 */

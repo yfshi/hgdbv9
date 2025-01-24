@@ -384,7 +384,7 @@ explain (costs off) SELECT * FROM TEST_ORACHAR WHERE a='111';
                      QUERY PLAN                     
 ----------------------------------------------------
  Index Scan using test_orachar_hash on test_orachar
-   Index Cond: (a = '111'::oracharbyte)
+   Index Cond: ((a)::char(5) = '111'::oracharbyte)
 (2 rows)
 
 --VARCHAR2
@@ -402,10 +402,10 @@ SELECT * FROM TEST_ORAVARCHAR WHERE a='111';
 VACUUM ANALYZE TEST_ORAVARCHAR;
 --SET enable_bitmapscan = off;
 explain (costs off) SELECT * FROM TEST_ORAVARCHAR WHERE a='111';
-                      QUERY PLAN                       
--------------------------------------------------------
+                       QUERY PLAN                        
+---------------------------------------------------------
  Index Scan using test_oravarchar_b on test_oravarchar
-   Index Cond: (a = '111'::varchar2)
+   Index Cond: ((a)::varchar2(5 char) = '111'::varchar2)
 (2 rows)
 
 -- drop table
@@ -452,17 +452,17 @@ alter table test_varchar2_alter alter column a type nvarchar2;	-- error
 ERROR:  missing left parenthesis
 alter table test_varchar2_alter alter column a type varchar2(10);	-- ok
 \d test_varchar2_alter
-           Table "public.test_varchar2_alter"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | varchar2(10) |           |          | 
+             Table "public.test_varchar2_alter"
+ Column |     Type     |   Collation    | Nullable | Default 
+--------+--------------+----------------+----------+---------
+ a      | varchar2(10) | using_nls_comp |          | 
 
 alter table test_varchar2_alter alter column a type nvarchar2(20);	-- ok
 \d test_varchar2_alter
-           Table "public.test_varchar2_alter"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | varchar2(20) |           |          | 
+             Table "public.test_varchar2_alter"
+ Column |     Type     |   Collation    | Nullable | Default 
+--------+--------------+----------------+----------+---------
+ a      | varchar2(20) | using_nls_comp |          | 
 
 alter table test_varchar2_alter add column b varchar2;	-- error
 ERROR:  missing left parenthesis
@@ -471,12 +471,12 @@ ERROR:  missing left parenthesis
 alter table test_varchar2_alter add column b varchar2(10);	-- ok
 alter table test_varchar2_alter add column c nvarchar2(20);	-- ok
 \d test_varchar2_alter
-           Table "public.test_varchar2_alter"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | varchar2(20) |           |          | 
- b      | varchar2(10) |           |          | 
- c      | varchar2(20) |           |          | 
+             Table "public.test_varchar2_alter"
+ Column |     Type     |   Collation    | Nullable | Default 
+--------+--------------+----------------+----------+---------
+ a      | varchar2(20) | using_nls_comp |          | 
+ b      | varchar2(10) | using_nls_comp |          | 
+ c      | varchar2(20) | using_nls_comp |          | 
 
 -- ok
 create or replace function test_varchar2(a varchar2, b nvarchar2) return varchar2
@@ -721,10 +721,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::varchar2(64 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::varchar2(64 char))
 (2 rows)
 
 -- varchar2(n char) = varchar2(n byte)
@@ -735,10 +735,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::varchar2(64))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::varchar2(64))
 (2 rows)
 
 -- varchar2(n char) = char(n char)
@@ -749,10 +749,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::char(5 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::char(5 char))
 (2 rows)
 
 -- varchar2(n char) = char(n char)
@@ -762,10 +762,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa '::char(6 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa '::char(6 char))
 (2 rows)
 
 -- varchar2(n char) = char(n byte)
@@ -776,10 +776,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::char(5))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::char(5))
 (2 rows)
 
 -- varchar2(n char) = char(n byte)
@@ -789,10 +789,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa '::char(6))
+   Index Cond: ((a)::varchar2(24 char) = 'testa '::char(6))
 (2 rows)
 
 -- varchar2(n byte) = varchar2(n byte)
@@ -803,10 +803,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::varchar2(64))
+   Index Cond: ((b)::varchar2(24) = 'testb'::varchar2(64))
 (2 rows)
 
 -- varchar2(n byte) = varchar2(n char)
@@ -817,10 +817,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::varchar2(64 char))
+   Index Cond: ((b)::varchar2(24) = 'testb'::varchar2(64 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n char)
@@ -831,10 +831,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::char(5 char))
+   Index Cond: ((b)::varchar2(24) = 'testb'::char(5 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n char)
@@ -844,10 +844,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb '::char(6 char))
+   Index Cond: ((b)::varchar2(24) = 'testb '::char(6 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n byte)
@@ -858,10 +858,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::char(5))
+   Index Cond: ((b)::varchar2(24) = 'testb'::char(5))
 (2 rows)
 
 -- varchar2(n byte) = char(n byte)
@@ -871,10 +871,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb '::char(6))
+   Index Cond: ((b)::varchar2(24) = 'testb '::char(6))
 (2 rows)
 
 -- char(n char) = char(n char)
@@ -885,10 +885,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc   '::char(8 char))
+   Index Cond: ((c)::char(24 char) = 'testc   '::char(8 char))
 (2 rows)
 
 -- char(n char) = char(n byte)
@@ -899,10 +899,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc   '::char(8))
+   Index Cond: ((c)::char(24 char) = 'testc   '::char(8))
 (2 rows)
 
 -- char(n char) = varchar2(n char)
@@ -912,10 +912,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc'::varchar2(64 char))
+   Index Cond: ((c)::char(24 char) = 'testc'::varchar2(64 char))
 (2 rows)
 
 -- char(n char) = varchar2(n char)
@@ -926,10 +926,10 @@ SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);	-- using index scan.
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc                   '::varchar2(64 char))
+   Index Cond: ((c)::char(24 char) = 'testc                   '::varchar2(64 char))
 (2 rows)
 
 -- char(n char) = varchar2(n byte)
@@ -939,10 +939,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc'::varchar2(64))
+   Index Cond: ((c)::char(24 char) = 'testc'::varchar2(64))
 (2 rows)
 
 -- char(n char) = varchar2(n byte)
@@ -953,10 +953,10 @@ SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);	-- using index scan.
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc                   '::varchar2(64))
+   Index Cond: ((c)::char(24 char) = 'testc                   '::varchar2(64))
 (2 rows)
 
 -- char(n byte) = char(n byte)
@@ -967,10 +967,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd   '::char(8))
+   Index Cond: ((d)::char(24) = 'testd   '::char(8))
 (2 rows)
 
 -- char(n byte) = char(n char)
@@ -981,10 +981,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd   '::char(8 char))
+   Index Cond: ((d)::char(24) = 'testd   '::char(8 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n char)
@@ -994,10 +994,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd'::varchar2(64 char))
+   Index Cond: ((d)::char(24) = 'testd'::varchar2(64 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n char)
@@ -1008,10 +1008,10 @@ SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);	-- using index scan.
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd                   '::varchar2(64 char))
+   Index Cond: ((d)::char(24) = 'testd                   '::varchar2(64 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n byte)
@@ -1021,10 +1021,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd'::varchar2(64))
+   Index Cond: ((d)::char(24) = 'testd'::varchar2(64))
 (2 rows)
 
 -- char(n byte) = varchar2(n byte)
@@ -1035,10 +1035,10 @@ SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);	-- using index scan.
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd                   '::varchar2(64))
+   Index Cond: ((d)::char(24) = 'testd                   '::varchar2(64))
 (2 rows)
 
 DROP TABLE test_m262;
@@ -1070,10 +1070,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                             QUERY PLAN                              
+---------------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::varchar2(64 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::varchar2(64 char))
 (2 rows)
 
 -- varchar2(n char) = varchar2(n byte)
@@ -1084,10 +1084,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::varchar2(64))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::varchar2(64))
 (2 rows)
 
 -- varchar2(n char) = char(n char)
@@ -1098,10 +1098,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::char(5 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::char(5 char))
 (2 rows)
 
 -- varchar2(n char) = char(n char)
@@ -1111,10 +1111,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa '::char(6 char))
+   Index Cond: ((a)::varchar2(24 char) = 'testa '::char(6 char))
 (2 rows)
 
 -- varchar2(n char) = char(n byte)
@@ -1125,10 +1125,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(5 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa'::char(5))
+   Index Cond: ((a)::varchar2(24 char) = 'testa'::char(5))
 (2 rows)
 
 -- varchar2(n char) = char(n byte)
@@ -1138,10 +1138,10 @@ SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE a = 'testa'::char(6 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_a on test_m262
-   Index Cond: (a = 'testa '::char(6))
+   Index Cond: ((a)::varchar2(24 char) = 'testa '::char(6))
 (2 rows)
 
 -- varchar2(n byte) = varchar2(n byte)
@@ -1152,10 +1152,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::varchar2(64))
+   Index Cond: ((b)::varchar2(24) = 'testb'::varchar2(64))
 (2 rows)
 
 -- varchar2(n byte) = varchar2(n char)
@@ -1166,10 +1166,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);						-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                           QUERY PLAN                           
+----------------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::varchar2(64 char))
+   Index Cond: ((b)::varchar2(24) = 'testb'::varchar2(64 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n char)
@@ -1180,10 +1180,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                         
+-----------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::char(5 char))
+   Index Cond: ((b)::varchar2(24) = 'testb'::char(5 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n char)
@@ -1193,10 +1193,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb '::char(6 char))
+   Index Cond: ((b)::varchar2(24) = 'testb '::char(6 char))
 (2 rows)
 
 -- varchar2(n byte) = char(n byte)
@@ -1207,10 +1207,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(5 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                      
+------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb'::char(5))
+   Index Cond: ((b)::varchar2(24) = 'testb'::char(5))
 (2 rows)
 
 -- varchar2(n byte) = char(n byte)
@@ -1220,10 +1220,10 @@ SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);							-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE b = 'testb'::char(6 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Index Scan using idx_test_m262_b on test_m262
-   Index Cond: (b = 'testb '::char(6))
+   Index Cond: ((b)::varchar2(24) = 'testb '::char(6))
 (2 rows)
 
 -- char(n char) = char(n char)
@@ -1234,10 +1234,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc   '::char(8 char))
+   Index Cond: ((c)::char(24 char) = 'testc   '::char(8 char))
 (2 rows)
 
 -- char(n char) = char(n byte)
@@ -1248,10 +1248,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::char(8 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc   '::char(8))
+   Index Cond: ((c)::char(24 char) = 'testc   '::char(8))
 (2 rows)
 
 -- char(n char) = varchar2(n char)
@@ -1261,10 +1261,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc'::varchar2(64 char))
+   Index Cond: ((c)::char(24 char) = 'testc'::varchar2(64 char))
 (2 rows)
 
 -- char(n char) = varchar2(n char)
@@ -1275,10 +1275,10 @@ SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 char);	-- using index scan.
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc                   '::varchar2(64 char))
+   Index Cond: ((c)::char(24 char) = 'testc                   '::varchar2(64 char))
 (2 rows)
 
 -- char(n char) = varchar2(n byte)
@@ -1288,10 +1288,10 @@ SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc'::varchar2(64))
+   Index Cond: ((c)::char(24 char) = 'testc'::varchar2(64))
 (2 rows)
 
 -- char(n char) = varchar2(n byte)
@@ -1302,10 +1302,10 @@ SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE c = 'testc                   '::varchar2(64 byte);	-- using index scan.
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Index Scan using idx_test_m262_c on test_m262
-   Index Cond: (c = 'testc                   '::varchar2(64))
+   Index Cond: ((c)::char(24 char) = 'testc                   '::varchar2(64))
 (2 rows)
 
 -- char(n byte) = char(n byte)
@@ -1316,10 +1316,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 byte);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                     QUERY PLAN                      
+-----------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd   '::char(8))
+   Index Cond: ((d)::char(24) = 'testd   '::char(8))
 (2 rows)
 
 -- char(n byte) = char(n char)
@@ -1330,10 +1330,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);							-- 1 line.
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::char(8 char);		-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                        QUERY PLAN                        
+----------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd   '::char(8 char))
+   Index Cond: ((d)::char(24) = 'testd   '::char(8 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n char)
@@ -1343,10 +1343,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 char);	-- using index scan.
-                   QUERY PLAN                   
-------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd'::varchar2(64 char))
+   Index Cond: ((d)::char(24) = 'testd'::varchar2(64 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n char)
@@ -1357,10 +1357,10 @@ SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 char);	-- using index scan.
-                            QUERY PLAN                             
--------------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd                   '::varchar2(64 char))
+   Index Cond: ((d)::char(24) = 'testd                   '::varchar2(64 char))
 (2 rows)
 
 -- char(n byte) = varchar2(n byte)
@@ -1370,10 +1370,10 @@ SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);						-- 0 line.
 (0 rows)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd'::varchar2(64 byte);	-- using index scan.
-                  QUERY PLAN                   
------------------------------------------------
+                      QUERY PLAN                       
+-------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd'::varchar2(64))
+   Index Cond: ((d)::char(24) = 'testd'::varchar2(64))
 (2 rows)
 
 -- char(n byte) = varchar2(n byte)
@@ -1384,10 +1384,10 @@ SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);
 (1 row)
 
 EXPLAIN (costs off) SELECT * FROM test_m262 WHERE d = 'testd                   '::varchar2(64 byte);	-- using index scan.
-                          QUERY PLAN                          
---------------------------------------------------------------
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
  Index Scan using idx_test_m262_d on test_m262
-   Index Cond: (d = 'testd                   '::varchar2(64))
+   Index Cond: ((d)::char(24) = 'testd                   '::varchar2(64))
 (2 rows)
 
 DROP TABLE test_m262;

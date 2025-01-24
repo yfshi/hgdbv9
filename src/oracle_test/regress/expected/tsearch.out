@@ -528,11 +528,11 @@ CREATE INDEX wowidx1 ON test_tsvector USING gist (a tsvector_ops(siglen=100, sig
 ERROR:  parameter "siglen" specified more than once
 CREATE INDEX wowidx2 ON test_tsvector USING gist (a tsvector_ops(siglen=1));
 \d test_tsvector
-            Table "public.test_tsvector"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- t      | text     |           |          | 
- a      | tsvector |           |          | 
+              Table "public.test_tsvector"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ t      | text     | using_nls_comp |          | 
+ a      | tsvector |                |          | 
 Indexes:
     "wowidx" gist (a)
     "wowidx2" gist (a tsvector_ops (siglen='1'))
@@ -695,11 +695,11 @@ SELECT count(*) FROM test_tsvector WHERE a @@ '!wd:D';
 DROP INDEX wowidx2;
 CREATE INDEX wowidx ON test_tsvector USING gist (a tsvector_ops(siglen=484));
 \d test_tsvector
-            Table "public.test_tsvector"
- Column |   Type   | Collation | Nullable | Default 
---------+----------+-----------+----------+---------
- t      | text     |           |          | 
- a      | tsvector |           |          | 
+              Table "public.test_tsvector"
+ Column |   Type   |   Collation    | Nullable | Default 
+--------+----------+----------------+----------+---------
+ t      | text     | using_nls_comp |          | 
+ a      | tsvector |                |          | 
 Indexes:
     "wowidx" gist (a tsvector_ops (siglen='484'))
 

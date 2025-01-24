@@ -14,6 +14,7 @@
 #ifndef NAMESPACE_H
 #define NAMESPACE_H
 
+#include "nodes/parsenodes.h"
 #include "nodes/primnodes.h"
 #include "storage/lock.h"
 
@@ -202,11 +203,12 @@ extern char *namespace_search_path;
 extern List *fetch_search_path(bool includeImplicit);
 extern int	fetch_search_path_array(Oid *sarray, int sarray_len);
 
-/* Begin Req:SRS-SQL-NLSSORT */
+/* Begin - Req:SRS-SQL-NLSSORT */
 extern Oid IndexCollationPersistent(Oid collid);
 extern Oid PseudoCollationReplace1(Oid collid);
 extern Oid PseudoCollationReplace2(Oid collid);
 extern Oid PseudoCollationReplace3(Oid collid);
-/* End Req:SRS-SQL-NLSSORT */
+extern Oid PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll);
+/* End - Req:SRS-SQL-NLSSORT */
 
 #endif							/* NAMESPACE_H */

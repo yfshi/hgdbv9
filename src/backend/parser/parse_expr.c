@@ -15,6 +15,7 @@
 
 #include "postgres.h"
 
+#include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "commands/dbcommands.h"
 #include "miscadmin.h"
@@ -245,6 +246,35 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 						result = NULL;	/* keep compiler quiet */
 						break;
 				}
+
+				/** 
+				 * Begin - Req: SRS-SQL-NLSSORT
+				 * Replace pseudo collation for "=, !=, >, <, >=, <=, BETWEEN, NOT BETWEEN, IN, NOT IN, REGEXP_LIKE, LIKE" conditions.
+				 */
+				if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+				{
+					Oid 	 coll;
+					Node 	*copy = copyObject(result);
+
+					assign_expr_collations(pstate, copy);
+
+					coll = exprCollation(copy);
+
+					if (!OidIsValid(coll))
+						coll = exprInputCollation(copy);
+
+					if (IsPseudoCollation(coll))
+					{
+						Oid targetcoll = PseudoCollationReplaceForAExpr(a, coll);
+
+						if (targetcoll != coll)
+							pseudo_collation_replace(pstate, result, NULL, targetcoll);
+					}
+
+					pfree(copy);
+				}
+				/* End - Req: SRS-SQL-NLSSORT */
+
 				break;
 			}
 

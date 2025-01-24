@@ -9675,8 +9675,10 @@ default_collation_clause:
 				/* Begin - ReqID:SRS-SQL-NLSSORT */
 				char *collname = strVal(linitial($3));
 
-				if(ORA_PARSER == compatible_db) {
-					if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED) {
+				if (ORA_PARSER == compatible_db)
+				{
+					if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED)
+					{
 						elog(ERROR, "ORA-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.");
 					}
 				}

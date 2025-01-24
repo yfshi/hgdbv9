@@ -4008,7 +4008,7 @@ select t1.* from
    Hash Cond: (i8.q2 = i4.f1)
    ->  Nested Loop Left Join
          Output: t1.f1, i8.q2
-         Join Filter: (t1.f1 = '***'::text)
+         Join Filter: ((t1.f1)::text = '***'::text)
          ->  Seq Scan on public.text_tbl t1
                Output: t1.f1
          ->  Materialize
@@ -4069,7 +4069,7 @@ select t1.* from
    Hash Cond: (i8.q2 = i4.f1)
    ->  Nested Loop Left Join
          Output: t1.f1, i8.q2
-         Join Filter: (t1.f1 = '***'::text)
+         Join Filter: ((t1.f1)::text = '***'::text)
          ->  Seq Scan on public.text_tbl t1
                Output: t1.f1
          ->  Materialize
@@ -4135,7 +4135,7 @@ select t1.* from
    Hash Cond: (i8.q2 = i4.f1)
    ->  Nested Loop Left Join
          Output: t1.f1, i8.q2
-         Join Filter: (t1.f1 = '***'::text)
+         Join Filter: ((t1.f1)::text = '***'::text)
          ->  Seq Scan on public.text_tbl t1
                Output: t1.f1
          ->  Materialize
@@ -4195,8 +4195,8 @@ select * from
   on t1.f1 = 'doh!'
   left join int4_tbl i4
   on i8.q1 = i4.f1;
-                       QUERY PLAN                       
---------------------------------------------------------
+                         QUERY PLAN                         
+------------------------------------------------------------
  Nested Loop Left Join
    Output: t1.f1, i8.q1, i8.q2, t2.f1, i4.f1
    ->  Seq Scan on public.text_tbl t2
@@ -4215,7 +4215,7 @@ select * from
                            Output: i4.f1
                ->  Seq Scan on public.text_tbl t1
                      Output: t1.f1
-                     Filter: (t1.f1 = 'doh!'::text)
+                     Filter: ((t1.f1)::text = 'doh!'::text)
 (19 rows)
 
 select * from
@@ -4246,7 +4246,7 @@ where t1.f1 = ss.f1;
 --------------------------------------------------
  Nested Loop
    Output: t1.f1, i8.q1, i8.q2, (i8.q1), t2.f1
-   Join Filter: (t1.f1 = t2.f1)
+   Join Filter: ((t1.f1)::text = (t2.f1)::text)
    ->  Nested Loop Left Join
          Output: t1.f1, i8.q1, i8.q2
          ->  Seq Scan on public.text_tbl t1
@@ -4289,7 +4289,7 @@ where t1.f1 = ss2.f1;
 -------------------------------------------------------------------
  Nested Loop
    Output: t1.f1, i8.q1, i8.q2, (i8.q1), t2.f1, ((i8.q1)), (t2.f1)
-   Join Filter: (t1.f1 = (t2.f1))
+   Join Filter: ((t1.f1)::text = ((t2.f1))::text)
    ->  Nested Loop
          Output: t1.f1, i8.q1, i8.q2, (i8.q1), t2.f1
          ->  Nested Loop Left Join
@@ -4339,8 +4339,8 @@ select 1 from
   left join text_tbl as tt4 on (tt3.f1 = tt4.f1),
   lateral (select tt4.f1 as c0 from text_tbl as tt5 limit 1) as ss1
 where tt1.f1 = ss1.c0;
-                                   QUERY PLAN                                    
----------------------------------------------------------------------------------
+                                    QUERY PLAN                                     
+-----------------------------------------------------------------------------------
  Nested Loop
    Output: 1
    ->  Nested Loop Left Join
@@ -4349,27 +4349,27 @@ where tt1.f1 = ss1.c0;
                Output: tt1.f1
                ->  Seq Scan on public.text_tbl tt1
                      Output: tt1.f1
-                     Filter: (tt1.f1 = 'foo'::text COLLATE using_nls_comp)
+                     Filter: ((tt1.f1)::text = 'foo'::text COLLATE "binary")
                ->  Seq Scan on public.text_tbl tt2
                      Output: tt2.f1
          ->  Materialize
                Output: tt4.f1
                ->  Nested Loop Left Join
                      Output: tt4.f1
-                     Join Filter: (tt3.f1 = tt4.f1)
+                     Join Filter: ((tt3.f1)::text = (tt4.f1)::text)
                      ->  Seq Scan on public.text_tbl tt3
                            Output: tt3.f1
-                           Filter: (tt3.f1 = 'foo'::text)
+                           Filter: ((tt3.f1)::text = 'foo'::text)
                      ->  Seq Scan on public.text_tbl tt4
                            Output: tt4.f1
-                           Filter: (tt4.f1 = 'foo'::text COLLATE using_nls_comp)
+                           Filter: ((tt4.f1)::text = 'foo'::text COLLATE "binary")
    ->  Memoize
          Output: ss1.c0
          Cache Key: tt4.f1
          Cache Mode: binary
          ->  Subquery Scan on ss1
                Output: ss1.c0
-               Filter: (ss1.c0 = 'foo'::text COLLATE using_nls_comp)
+               Filter: ((ss1.c0)::text = 'foo'::text COLLATE "binary")
                ->  Limit
                      Output: (tt4.f1)
                      ->  Seq Scan on public.text_tbl tt5
@@ -4829,10 +4829,10 @@ from
      left join uniquetbl u1 ON u1.f1 = t1.string4) ss
   on t0.f1 = ss.case1
 where ss.stringu2 !~* ss.case1;
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
+                                            QUERY PLAN                                             
+---------------------------------------------------------------------------------------------------
  Nested Loop
-   Join Filter: ((CASE t1.ten WHEN 0 THEN 'doh!'::text ELSE NULL::text END)::text = t0.f1)
+   Join Filter: ((CASE t1.ten WHEN 0 THEN 'doh!'::text ELSE NULL::text END)::text = (t0.f1)::text)
    ->  Nested Loop
          ->  Seq Scan on int4_tbl i4
          ->  Index Scan using tenk1_unique2 on tenk1 t1

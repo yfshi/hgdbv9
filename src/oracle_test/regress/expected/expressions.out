@@ -228,15 +228,15 @@ create view bpchar_view as
     f2, f2::character(14) as f214, f2::char as f2n
   from bpchar_tbl;
 \d+ bpchar_view
-                          View "public.bpchar_view"
- Column |   Type   | Collation | Nullable | Default | Storage  | Description 
---------+----------+-----------+----------+---------+----------+-------------
- f1     | char(16) |           |          |         | extended | 
- f114   | char(14) |           |          |         | extended | 
- f1n    | char(1)  |           |          |         | extended | 
- f2     | char(1)  |           |          |         | extended | 
- f214   | char(14) |           |          |         | extended | 
- f2n    | char(1)  |           |          |         | extended | 
+                            View "public.bpchar_view"
+ Column |   Type   |   Collation    | Nullable | Default | Storage  | Description 
+--------+----------+----------------+----------+---------+----------+-------------
+ f1     | char(16) | using_nls_comp |          |         | extended | 
+ f114   | char(14) | using_nls_comp |          |         | extended | 
+ f1n    | char(1)  | using_nls_comp |          |         | extended | 
+ f2     | char(1)  | using_nls_comp |          |         | extended | 
+ f214   | char(14) | using_nls_comp |          |         | extended | 
+ f2n    | char(1)  | using_nls_comp |          |         | extended | 
 View definition:
  SELECT bpchar_tbl.f1,
     bpchar_tbl.f1::char(14) AS f114,
