@@ -655,7 +655,7 @@ sub upgradecheck
 	print "\nSetting up new cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nRunning pg_upgrade\n\n";
-	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-q', $ora_port, '-Q', $ora_port, '--using-ora-pg', '-O', '-c ivorysql.enable_ora_default_collation=on');
+	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-q', $ora_port, '-Q', $ora_port, '-O', '-c ivorysql.enable_ora_default_collation=on');
 	system(@args) == 0 or exit 1;
 	print "\nStarting new cluster\n\n";
 	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -o $ora_port", 'start');

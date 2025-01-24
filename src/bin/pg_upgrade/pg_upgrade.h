@@ -36,8 +36,6 @@
 
 extern char *output_files[];
 
-extern bool pg_cluster_within_oracle_mode;	/* ReqID:SRS-GKC-DATATYPE_001 */
-extern bool pg_cluster_within_mysql_mode;	/* ReqID:SRS-MISC-MYSQL-FRAME */
 extern bool same_version;					/* ReqID:SRS-CMD-pg2highgo */
 
 /*

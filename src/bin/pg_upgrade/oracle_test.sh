@@ -253,7 +253,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade -g $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT" -O "-c ivorysql.enable_ora_default_collation=on"
+pg_upgrade -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -q "$ORAPORT" -Q "$ORAPORT" -O "-c ivorysql.enable_ora_default_collation=on"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.
