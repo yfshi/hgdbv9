@@ -39,6 +39,7 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-SQL-ROWNUM */
+#include "parser/parsetree.h"
 
 
 /* These parameters are set by GUC */
@@ -151,22 +152,72 @@ add_other_rels_to_query(PlannerInfo *root)
 {
 	int			rti;
 
-	for (rti = 1; rti < root->simple_rel_array_size; rti++)
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	if (DB_MYSQL == compatible_db && list_length(root->all_result_relids_list) > 1)
 	{
-		RelOptInfo *rel = root->simple_rel_array[rti];
-		RangeTblEntry *rte = root->simple_rte_array[rti];
+		int		tmpresult = root->parse->resultRelation;
+		for (rti = 1; rti < root->simple_rel_array_size; rti++)
+		{
+			RelOptInfo *rel = root->simple_rel_array[rti];
+			RangeTblEntry *rte = root->simple_rte_array[rti];
 
-		/* there may be empty slots corresponding to non-baserel RTEs */
-		if (rel == NULL)
-			continue;
+			/* there may be empty slots corresponding to non-baserel RTEs */
+			if (rel == NULL)
+				continue;
 
-		/* Ignore any "otherrels" that were already added. */
-		if (rel->reloptkind != RELOPT_BASEREL)
-			continue;
+			/* Ignore any "otherrels" that were already added. */
+			if (rel->reloptkind != RELOPT_BASEREL)
+				continue;
 
-		/* If it's marked as inheritable, look for children. */
-		if (rte->inh)
-			expand_inherited_rtentry(root, rel, rte, rti);
+			/* If it's marked as inheritable, look for children. */
+			if (rte->inh)
+			{
+				ListCell   *lc = NULL;
+				int			i = 0;
+				/* Get all_result_relids of the corresponding relation. */
+				foreach(lc, root->parse->resultRelations)
+				{
+					Index			resultrelation = lfirst_int(lc);
+					RangeTblEntry  *tmprte = rt_fetch(resultrelation, root->parse->rtable);
+					if (equal(tmprte, rte))
+					{
+						root->parse->resultRelation = resultrelation;
+						break;
+					}
+					i++;
+				}
+				root->all_result_relids = list_nth(root->all_result_relids_list, i);
+
+				expand_inherited_rtentry(root, rel, rte, rti);
+				if (root->leaf_result_relids)
+				{
+					root->leaf_result_relids_arr[i] = root->leaf_result_relids;
+					root->leaf_result_relids = NULL;
+				}
+			}
+		}
+		root->parse->resultRelation = tmpresult;
+	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
+	else
+	{
+		for (rti = 1; rti < root->simple_rel_array_size; rti++)
+		{
+			RelOptInfo *rel = root->simple_rel_array[rti];
+			RangeTblEntry *rte = root->simple_rte_array[rti];
+
+			/* there may be empty slots corresponding to non-baserel RTEs */
+			if (rel == NULL)
+				continue;
+
+			/* Ignore any "otherrels" that were already added. */
+			if (rel->reloptkind != RELOPT_BASEREL)
+				continue;
+
+			/* If it's marked as inheritable, look for children. */
+			if (rte->inh)
+				expand_inherited_rtentry(root, rel, rte, rti);
+		}
 	}
 }
 

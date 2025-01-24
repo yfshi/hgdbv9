@@ -257,6 +257,8 @@ typedef struct ModifyTable
 	bool		isReplace;
 	List	   *partOids;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	List	   *rootRelations;
+	List	   *partresultRelations;
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */

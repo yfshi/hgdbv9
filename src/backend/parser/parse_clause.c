@@ -118,10 +118,6 @@ static Node *transformFrameOffset(ParseState *pstate, int frameOptions,
 static void check_funcexpr_outparams(List *funcexprs);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
-/* Begin - ReqID:SRS-MYSQL-UPDATE */
-List *transfromRelationposition(ParseState *pstate, List *frmList);
-/* End - ReqID:SRS-MYSQL-UPDATE */
-
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 static JoinExpr *outer_join_Recurse(ParseState *pstate, List **multi_outer_joins,
 									JoinExpr *join, Outer_join_vars *plus_var);
@@ -1471,6 +1467,9 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		*namespace = list_make1(nsitem);
 		rtr = makeNode(RangeTblRef);
 		rtr->rtindex = nsitem->p_rtindex;
+
+		if (DB_MYSQL == compatible_db && rv->ispartition)
+			pstate->p_addupdatedeleterv = lappend(pstate->p_addupdatedeleterv, rv);
 
 		/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
 		if (DB_MYSQL == compatible_db && pstate->p_addDeleteTable &&

@@ -146,6 +146,8 @@ static void applyLockingTable(Query *qry, Oid relid,
 
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 static void transformGetpartionRelationOid(Query            *qry, RangeVar  *relation);
+static void transformGetpartionRelationOids(Query *qry, List *relations);
+
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 
@@ -703,6 +705,8 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 			transformCollistInFromcClause(list_make1(stmt->relation), stmt->collist);
 			stmt->relationList = NIL;
 		}
+		if (DB_MYSQL == compatible_db && stmt->relation->ispartition)
+			transformGetpartionRelationOid(qry, stmt->relation);
 		qry->resultRelation = setTargetTable(pstate, stmt->relation,
 											 stmt->relation->inh,
 											 true,
@@ -724,6 +728,20 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 	 * USING keyword is used rather than FROM because FROM is already a
 	 * keyword in the DELETE syntax.
 	 */
+	if (DB_MYSQL == compatible_db &&
+		(stmt->usingClause || stmt->relationList))
+	{
+		if (qry->cteList)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					errmsg("Un-support feature"),
+					errdetail("mutilple-relations delete doesn't support with clause.")));
+		if (stmt->usingClause)
+			stmt->usingClause = transfromRelationposition(pstate, stmt->usingClause);
+		else
+			stmt->relationList = transfromRelationposition(pstate, stmt->relationList);
+	}
+
 	transformFromClause(pstate, stmt->usingClause);
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
@@ -741,6 +759,9 @@ transformDeleteStmt(ParseState *pstate, DeleteStmt *stmt)
 		/* Support for other situations, eg:delete from t,t1 using t; */
 		else if (pstate->p_delrellist && (stmt->relationList || stmt->usingClause))
 			transformCollistInFromcClause(stmt->relationList ? stmt->relationList : stmt->usingClause, pstate->p_delrellist);
+
+		if (pstate->p_addupdatedeleterv)
+			transformGetpartionRelationOids(qry, pstate->p_addupdatedeleterv);
 
 		if (pstate->p_updateRelations)
 		{
@@ -1092,7 +1113,13 @@ transformGetpartionRelationOid(Query            *qry, RangeVar *relation)
 					ereport(ERROR,
 								(errcode(ERRCODE_UNDEFINED_TABLE),
 								 errmsg("Partition relation \"%s\" does not exist in %s.", relname, relation->relname)));
-				partitionoid = lappend_oid(partitionoid, reloid);
+				if (get_rel_relkind(reloid) == RELKIND_PARTITIONED_TABLE)
+					ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("Un-support feature"),
+								 errdetail("The specified partition %s cannot be a partition table!", relname)));
+				if (!list_member_oid(partitionoid, reloid))
+					partitionoid = lappend_oid(partitionoid, reloid);
 			}
 			else
 				ereport(ERROR,
@@ -1104,6 +1131,35 @@ transformGetpartionRelationOid(Query            *qry, RangeVar *relation)
 	return;
 }
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+
+static void
+transformGetpartionRelationOids(Query *qry, List *relations)
+{
+	ListCell   *lc = NULL;
+	foreach(lc, relations)
+	{
+		Node   *node = lfirst(lc);
+		if (IsA(node, RangeVar))
+		{
+			RangeVar *rel = (RangeVar *)node;
+
+			Oid		reloid = InvalidOid;
+			if (rel->schemaname)
+				reloid = get_relname_relid(rel->relname, get_namespace_oid(rel->schemaname, false));
+			else
+				reloid = RelnameGetRelid(rel->relname);
+			
+			if (rel->ispartition)
+			{
+				transformGetpartionRelationOid(qry, rel);
+				qry->partOids = lcons_oid(reloid, qry->partOids);
+				qry->partreloids = lappend(qry->partreloids, qry->partOids);
+				qry->partOids = NIL;
+			}
+		}
+	}
+	return;
+}
 
 
 /*
@@ -3662,9 +3718,14 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	if (DB_MYSQL == compatible_db && stmt->relationClause)
 	{
+		if (qry->cteList)
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Un-support feature"),
+				errdetail("mutilple-relations modifying doesn't support %s with claues.", "update")));
 		pstate->p_addUpdateTable = true;
 		/* Adjust the position of the relationship and put the base table in front */
-		stmt->relationClause = transfromRelationposition(pstate,stmt->relationClause);
+		stmt->relationClause = transfromRelationposition(pstate, stmt->relationClause);
 		/* Process the FROM clause and add items to the query's range table,
 		 * joinlist, and namespace. get rtable index of target relation for update stmt.
 		 */
@@ -3743,6 +3804,8 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		if (DB_MYSQL == compatible_db && stmt->relationClause)
 		{
+			if (pstate->p_addupdatedeleterv)
+				transformGetpartionRelationOids(qry, pstate->p_addupdatedeleterv);
 			qry->targetList = transformMultiUpdateTargetList(pstate, stmt->targetList, qry->resultRelations);
 			qry->resultRelations = remove_update_redundant_relation(qry->resultRelations, pstate->p_target_rangetblentry);
 			pstate->p_updateRelations = copyObject(qry->resultRelations);

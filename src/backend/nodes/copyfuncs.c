@@ -242,6 +242,8 @@ _copyModifyTable(const ModifyTable *from)
 	COPY_SCALAR_FIELD(isReplace);
 	COPY_NODE_FIELD(partOids);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_NODE_FIELD(rootRelations);
+	COPY_NODE_FIELD(partresultRelations);
 
 	return newnode;
 }
@@ -3407,6 +3409,7 @@ _copyQuery(const Query *from)
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COPY_SCALAR_FIELD(isReplace);
 	COPY_NODE_FIELD(partOids);
+	COPY_NODE_FIELD(partreloids);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);

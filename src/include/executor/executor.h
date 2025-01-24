@@ -313,8 +313,9 @@ extern ProjectionInfo *ExecBuildMutilUpdateProjection(List *targetList,
 												 PlanState *parent,
 												 int Index);
 TupleTableSlot
-*FetchPlanSlot(PlanState *subPlanState, ProjectionInfo **projInfos, int num, int *res, ResultRelInfo *resultRelInfo,
-				   TupleTableSlot **tmpslot, EState *estate, bool *first_fetch_slot);
+*FetchPlanSlot(PlanState *subPlanState, ModifyTableState *node, int *res, int *tblnum, ResultRelInfo **resultRelInfo,
+					TupleTableSlot **tmpslot, EState *estate, bool *first_fetch_slot);
+
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
 extern ExprState *ExecPrepareExpr(Expr *node, EState *estate);

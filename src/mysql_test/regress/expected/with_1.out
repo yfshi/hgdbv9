@@ -3352,7 +3352,8 @@ SELECT * FROM parent;
 
 WITH rcte AS ( SELECT max(id) AS maxid FROM parent )
 DELETE FROM parent USING rcte WHERE id = maxid;
-ERROR:  Unknown table parent in MULTI DELETE
+ERROR:  Un-support feature
+DETAIL:  mutilple-relations delete doesn't support with clause.
 SELECT * FROM parent;
  id | val 
 ----+-----
@@ -3374,7 +3375,8 @@ SELECT * FROM parent;
 EXPLAIN (VERBOSE, COSTS OFF)
 WITH wcte AS ( INSERT INTO int8_tbl VALUES ( 42, 47 ) RETURNING q2 )
 DELETE FROM a USING wcte WHERE aa = q2;
-ERROR:  Unknown table a in MULTI DELETE
+ERROR:  Un-support feature
+DETAIL:  mutilple-relations delete doesn't support with clause.
 -- error cases
 -- data-modifying WITH tries to use its own output
 WITH RECURSIVE t AS (

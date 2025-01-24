@@ -301,6 +301,9 @@ _readQuery(void)
 	READ_NODE_FIELD(indexhintList);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	READ_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
+	READ_BOOL_FIELD(isReplace);
+	READ_NODE_FIELD(partOids);
+	READ_NODE_FIELD(partreloids);
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 
@@ -1863,6 +1866,8 @@ _readModifyTable(void)
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 	READ_BOOL_FIELD(isReplace);
 	READ_NODE_FIELD(partOids);
+	READ_NODE_FIELD(rootRelations);
+	READ_NODE_FIELD(partresultRelations);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
 	READ_DONE();

@@ -1376,6 +1376,12 @@ typedef struct ModifyTableState
 	bool		isReplace;
 	List	   *mt_partOids;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	List	   *mt_partresultRelInfo;
+	List	   *mt_parseresultrelations;
+	bool		mt_isexits_rootrel;
+	ResultRelInfo *mt_rootResultRelInfos;
+	List	   *mt_partition_tuple_routing_list;
+	List	   *mt_root_tuple_slot_list;
 } ModifyTableState;
 
 /* ----------------

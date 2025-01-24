@@ -549,7 +549,7 @@ fix_assign_targetlists(ModifyTable* plan, Plan* subplan)
 {
 	ListCell	   *lcrr = NULL;
 	ListCell	   *lctl = NULL;
-	List		   *resultRelation = plan->resultRelations;
+	List		   *resultRelation = plan->parseresultrelations;
 	int				resultRelationNum = list_length(resultRelation);
 	List		   **temp = (List**)palloc0(resultRelationNum * sizeof(List*));
 	int				i = 0;
@@ -1173,11 +1173,15 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 					lfirst_int(l) += rtoffset;
 				}
 				/* Begin - ReqID:SRS-MYSQL-UPDATE */
-				if(list_length(splan->resultRelations) > 1)
+				if(list_length(splan->parseresultrelations) > 1)
 				{
 					if (subplan->type == T_NestLoop || subplan->type == T_HashJoin || subplan->type == T_MergeJoin ||
 						subplan->type == T_Result)
-						fix_assign_targetlists(splan, subplan);
+					{
+							if (splan->operation == CMD_UPDATE ||
+								splan->operation == CMD_DELETE)
+							fix_assign_targetlists(splan, subplan);
+					}
 				}
 				/* End - ReqID:SRS-MYSQL-UPDATE */
 				foreach(l, splan->rowMarks)

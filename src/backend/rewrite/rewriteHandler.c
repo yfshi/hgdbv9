@@ -3954,6 +3954,85 @@ rewriteTargetView(Query *parsetree, Relation view)
 }
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
+/* 
+ * rewriteTargetListUD
+ * Generate ctid and talbeoid of the partition table.
+ */
+static void
+rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte, Relation target_relation, int rtindex)
+{
+	Var			   *var = NULL;
+	const char	   *attrname = NULL;
+	TargetEntry	   *tle = NULL;
+
+	if (target_relation->rd_rel->relkind == RELKIND_RELATION ||
+		target_relation->rd_rel->relkind == RELKIND_MATVIEW ||
+		target_relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+		/*
+		 * Emit CTID so that executor can find the row to update or delete.
+		 */
+		var = makeVar(rtindex, SelfItemPointerAttributeNumber, TIDOID, -1, InvalidOid, 0);
+
+		attrname = "ctid";
+	}
+	else
+	{
+		/*
+		 * Emit whole-row Var so that executor will have the "old" view row to
+		 * pass to the INSTEAD OF trigger.
+		 */
+		var = makeWholeRowVar(target_rte, rtindex, 0, false);
+		if (var == NULL)
+		{
+			ereport(ERROR,(errcode(ERRCODE_UNDEFINED_FILE),
+					errmsg("Fail to get  the previous view row.")));
+			return;
+		}
+		attrname = "wholerow";
+	}
+
+	tle = makeTargetEntry((Expr*)var, list_length(parsetree->targetList) + 1, pstrdup(attrname), true);
+	tle->rtindex = rtindex;
+
+	/* if a partitioned table , need get tableOid column */
+	if (target_relation->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+		parsetree->targetList = lappend(parsetree->targetList, tle);
+		var = makeVar(rtindex, TableOidAttributeNumber, OIDOID, -1, InvalidOid, 0);
+		attrname = "tableoid";
+
+		tle = makeTargetEntry((Expr*)var, list_length(parsetree->targetList) + 1, pstrdup(attrname), true);
+		tle->rtindex = rtindex;
+		parsetree->targetList = lappend(parsetree->targetList, tle);
+	}
+	return;
+}
+
+/*
+ * rewriteTargetListMutilUD
+ * Generate corresponding attribute columns for delete and update of multi-partition tables.
+ */
+static void
+rewriteTargetListMutilUD(Query *parsetree, List *rtable, List *resultRelations)
+{
+	ListCell	   *lc = NULL;
+	int				result_relation;
+	RangeTblEntry  *rt_entry = NULL;
+	Relation		rt_entry_relation;
+
+	foreach (lc, resultRelations)
+	{
+		result_relation = lfirst_int(lc);
+		rt_entry = rt_fetch(result_relation, rtable);
+		Assert(rt_entry->rtekind == RTE_RELATION);
+		rt_entry_relation = relation_open(rt_entry->relid, NoLock);
+		rewriteTargetListUD(parsetree, rt_entry, rt_entry_relation, result_relation);
+		relation_close(rt_entry_relation, NoLock);
+	}
+	return;
+}
+
 /*
  * rewriteTargetListMultiUpdate
  * For multi-relations update, rewrite the target column.
@@ -4126,6 +4205,8 @@ rewriteTargetListMultiUpdate(Query *parsetree, List *rtable, List *resultRelatio
 
 	parsetree->targetList = new_tlist;
 
+	rewriteTargetListMutilUD(parsetree, rtable, resultRelations);
+	return;
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -4412,6 +4493,8 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length)
 		}
 		else if (event == CMD_DELETE)
 		{
+			if (list_length(parsetree->resultRelations) > 1 && DB_MYSQL == compatible_db)
+				rewriteTargetListMutilUD(parsetree, parsetree->rtable, parsetree->resultRelations);
 			/* Nothing to do here */
 		}
 		else

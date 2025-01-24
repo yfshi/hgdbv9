@@ -201,6 +201,7 @@ typedef struct Query
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 	bool		isReplace;
 	List	   *partOids;
+	List	   *partreloids;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	/*
 	 * The following two fields identify the portion of the source text string
@@ -272,6 +273,9 @@ typedef struct ColumnRef
 	List	   *fields;			/* field names (Value strings) or A_Star */
 	int			location;		/* token location, or -1 if unknown */
 	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	List	   *partitionnamelist;
+	bool		ispartition;
+	List	   *colnamelist;
 } ColumnRef;
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */

@@ -1061,6 +1061,7 @@ _equalQuery(const Query *a, const Query *b)
 	/* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COMPARE_SCALAR_FIELD(isReplace);
 	COMPARE_NODE_FIELD(partOids);
+	COMPARE_NODE_FIELD(partreloids);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COMPARE_LOCATION_FIELD(stmt_location);
 	COMPARE_SCALAR_FIELD(stmt_len);
