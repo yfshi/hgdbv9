@@ -11814,6 +11814,12 @@
   proname => 'pg_is_in_upgrade', provolatile => 'v', prorettype => 'bool',
   proargtypes => '', prosrc => 'pg_is_in_upgrade' },
 # /* End - BUGM341 */
+# /* Begin - BUGZ1641 */
+{ oid => '9118', descr => 'for use by pg_upgrade',
+  proname => 'binary_upgrade_set_next_sequence_pg_class_oid', provolatile => 'v',
+  proparallel => 'r', prorettype => 'void', proargtypes => 'oid',
+  prosrc => 'binary_upgrade_set_next_sequence_pg_class_oid' },
+# /* End - BUGZ1641 */
 /*END Oracle Compatibility Metadatas*/
 
 ]

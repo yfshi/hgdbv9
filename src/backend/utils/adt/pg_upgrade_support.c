@@ -83,7 +83,18 @@ binary_upgrade_set_next_heap_pg_class_oid(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+/* Begin - BUGZ1641 */
+Datum
+binary_upgrade_set_next_sequence_pg_class_oid(PG_FUNCTION_ARGS)
+{
+	Oid			reloid = PG_GETARG_OID(0);
 
+	CHECK_IS_BINARY_UPGRADE;
+	binary_upgrade_next_sequence_pg_class_oid = reloid;
+
+	PG_RETURN_VOID();
+}
+/* End - BUGZ1641 */
 Datum
 binary_upgrade_set_next_index_pg_class_oid(PG_FUNCTION_ARGS)
 {

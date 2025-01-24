@@ -98,6 +98,7 @@
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
 Oid			binary_upgrade_next_toast_pg_class_oid = InvalidOid;
+Oid			binary_upgrade_next_sequence_pg_class_oid = InvalidOid;/* BUGZ1641 */
 
 static void AddNewRelationTuple(Relation pg_class_desc,
 								Relation new_rel_desc,
@@ -1304,9 +1305,16 @@ heap_create_with_catalog(const char *relname,
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 						 errmsg("pg_class heap OID value not set when in binary upgrade mode")));
-
-			relid = binary_upgrade_next_heap_pg_class_oid;
-			binary_upgrade_next_heap_pg_class_oid = InvalidOid;
+			if (OidIsValid(binary_upgrade_next_sequence_pg_class_oid))
+			{
+				relid = binary_upgrade_next_sequence_pg_class_oid;
+				binary_upgrade_next_sequence_pg_class_oid = InvalidOid;
+			}
+			else
+			{
+				relid = binary_upgrade_next_heap_pg_class_oid;
+				binary_upgrade_next_heap_pg_class_oid = InvalidOid;
+			}
 		}
 		/* There might be no TOAST table, so we have to test for it. */
 		else if (IsBinaryUpgrade &&
