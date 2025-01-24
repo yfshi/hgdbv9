@@ -82,21 +82,21 @@ create index idxparti on idxpart (a);
 create index idxparti2 on idxpart (b, c);
 create table idxpart1 (like idxpart);
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 
 alter table idxpart attach partition idxpart1 for values from (0) to (10);
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 Partition of: idxpart FOR VALUES FROM (0) TO (10)
 Indexes:
     "idxpart1_a_idx" btree (a)
@@ -382,13 +382,13 @@ create index idxparti on idxpart (a);
 create index idxparti2 on idxpart (b, c);
 create table idxpart1 (like idxpart including indexes);
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
- d      | boolean |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
+ d      | boolean |                |          | 
 Indexes:
     "idxpart1_a_idx" btree (a)
     "idxpart1_b_c_idx" btree (b, c)
@@ -409,13 +409,13 @@ select relname, relkind, inhparent::regclass
 
 alter table idxpart attach partition idxpart1 for values from (0) to (10);
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
- d      | boolean |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
+ d      | boolean |                |          | 
 Partition of: idxpart FOR VALUES FROM (0) TO (10)
 Indexes:
     "idxpart1_a_idx" btree (a)
@@ -438,13 +438,13 @@ select relname, relkind, inhparent::regclass
 -- While here, also check matching when creating an index after the fact.
 create index on idxpart1 ((a+b)) where d = true;
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
- d      | boolean |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
+ d      | boolean |                |          | 
 Partition of: idxpart FOR VALUES FROM (0) TO (10)
 Indexes:
     "idxpart1_a_idx" btree (a)
@@ -468,13 +468,13 @@ select relname, relkind, inhparent::regclass
 
 create index idxparti3 on idxpart ((a+b)) where d = true;
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | text    |           |          | 
- d      | boolean |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
+ d      | boolean |                |          | 
 Partition of: idxpart FOR VALUES FROM (0) TO (10)
 Indexes:
     "idxpart1_a_idx" btree (a)
@@ -1004,12 +1004,12 @@ ERROR:  unique constraint on partitioned table must include all partitioning col
 DETAIL:  PRIMARY KEY constraint on table "idxpart" lacks column "b" which is part of the partition key.
 alter table idxpart add primary key (a, b);	-- this works
 \d idxpart
-        Partitioned table "public.idxpart"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           | not null | 
- b      | integer |           | not null | 
- c      | text    |           |          | 
+           Partitioned table "public.idxpart"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                | not null | 
+ b      | integer |                | not null | 
+ c      | text    | using_nls_comp |          | 
 Partition key: RANGE (a, b)
 Indexes:
     "idxpart_pkey" PRIMARY KEY, btree (a, b)
@@ -1017,12 +1017,12 @@ Number of partitions: 0
 
 create table idxpart1 partition of idxpart for values from (0, 0) to (1000, 1000);
 \d idxpart1
-              Table "public.idxpart1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           | not null | 
- b      | integer |           | not null | 
- c      | text    |           |          | 
+                Table "public.idxpart1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                | not null | 
+ b      | integer |                | not null | 
+ c      | text    | using_nls_comp |          | 
 Partition of: idxpart FOR VALUES FROM (0, 0) TO (1000, 1000)
 Indexes:
     "idxpart1_pkey" PRIMARY KEY, btree (a, b)
@@ -1287,23 +1287,23 @@ create table idxpart1 partition of idxpart for values from (0) to (100000);
 set enable_seqscan to off;
 create index idxpart_brin on idxpart using brin(b);
 explain (costs off) select * from idxpart where b = 'abcd';
-                QUERY PLAN                 
--------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Bitmap Heap Scan on idxpart1 idxpart
-   Recheck Cond: (b = 'abcd'::text)
+   Recheck Cond: ((b)::text = 'abcd'::text)
    ->  Bitmap Index Scan on idxpart1_b_idx
-         Index Cond: (b = 'abcd'::text)
+         Index Cond: ((b)::text = 'abcd'::text)
 (4 rows)
 
 drop index idxpart_brin;
 create index idxpart_spgist on idxpart using spgist(b);
 explain (costs off) select * from idxpart where b = 'abcd';
-                QUERY PLAN                 
--------------------------------------------
+                   QUERY PLAN                   
+------------------------------------------------
  Bitmap Heap Scan on idxpart1 idxpart
-   Recheck Cond: (b = 'abcd'::text)
+   Recheck Cond: ((b)::text = 'abcd'::text)
    ->  Bitmap Index Scan on idxpart1_b_idx
-         Index Cond: (b = 'abcd'::text)
+         Index Cond: ((b)::text = 'abcd'::text)
 (4 rows)
 
 drop index idxpart_spgist;

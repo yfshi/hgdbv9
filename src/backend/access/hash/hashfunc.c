@@ -52,9 +52,10 @@ hashchar(PG_FUNCTION_ARGS)
 	/* Begin - Req: SRS-SQL-NLSSORT */
 	Oid		collid = PG_GET_COLLATION();
 
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook &&
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		char	 chr = PG_GETARG_CHAR(0);
@@ -78,9 +79,10 @@ hashcharextended(PG_FUNCTION_ARGS)
 	/* Begin - Req: SRS-SQL-NLSSORT */
 	Oid		collid = PG_GET_COLLATION();
 
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook &&
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		char	 chr = PG_GETARG_CHAR(0);
@@ -298,9 +300,10 @@ hashname(PG_FUNCTION_ARGS)
 	int			len = strlen(key);
 	Oid			collid = PG_GET_COLLATION();
 	
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook &&
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		bytea *k = nlssort_hook(key, len, collid, false);
@@ -322,9 +325,10 @@ hashnameextended(PG_FUNCTION_ARGS)
 	int			len = strlen(key);
 	Oid			collid = PG_GET_COLLATION();
 
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook &&
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		bytea *k = nlssort_hook(key, len, collid, false);
@@ -365,7 +369,8 @@ hashtext(PG_FUNCTION_ARGS)
 		keylen = VARSIZE_ANY_EXHDR(key);
 
 		if (nlssort_hook && 
-			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			!IsPseudoCollation(collid) &&
+			collid != ORA_COLL_OID(BINARY) && 
 			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, false);
@@ -439,7 +444,8 @@ hashtextextended(PG_FUNCTION_ARGS)
 		keylen = VARSIZE_ANY_EXHDR(key);
 
 		if (nlssort_hook && 
-			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+			!IsPseudoCollation(collid) &&
+			collid != ORA_COLL_OID(BINARY) && 
 			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, false);
@@ -502,9 +508,10 @@ hashvarlena(PG_FUNCTION_ARGS)
 	int			keylen = VARSIZE_ANY_EXHDR(key);
 	Oid			collid = PG_GET_COLLATION();
 	
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook && 
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		bytea *k = nlssort_hook(keydata, keylen, collid, false);
@@ -534,9 +541,10 @@ hashvarlenaextended(PG_FUNCTION_ARGS)
 	int			keylen = VARSIZE_ANY_EXHDR(key);
 	Oid			collid = PG_GET_COLLATION();
 	
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook && 
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		bytea *k = nlssort_hook(keydata, keylen, collid, false);

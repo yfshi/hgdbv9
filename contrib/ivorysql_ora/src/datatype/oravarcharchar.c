@@ -682,9 +682,10 @@ hashoravarchar(PG_FUNCTION_ARGS)
 	keylen = varchar2_Truelen(key); /* BUG#M0000262 */
 
 	/* Begin - Req: SRS-SQL-NLSSORT */
-	if (OidIsValid(collid) && 
-		nlssort_hook &&
-		collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+	if (nlssort_hook &&
+		OidIsValid(collid) && 
+		!IsPseudoCollation(collid) &&
+		collid != ORA_COLL_OID(BINARY) && 
 		get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 	{
 		bytea *k = nlssort_hook(keydata, keylen, collid, false);
@@ -752,7 +753,7 @@ oravarchar_larger(PG_FUNCTION_ARGS)
 	VarChar	   *arg2 = PG_GETARG_VARCHAR_PP(1);
 	VarChar	   *result;
 
-	result = ((oravarcharchar_cmp(arg1, arg2, PG_GET_COLLATION()) > 0) ? arg1 : arg2);
+	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */) > 0) ? arg1 : arg2);
 
 	PG_RETURN_VARCHAR_P(result);
 }
@@ -764,7 +765,7 @@ oravarchar_smaller(PG_FUNCTION_ARGS)
 	VarChar	   *arg2 = PG_GETARG_VARCHAR_PP(1);
 	VarChar	   *result;
 
-	result = ((oravarcharchar_cmp(arg1, arg2, PG_GET_COLLATION()) < 0) ? arg1 : arg2);
+	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */) < 0) ? arg1 : arg2);
 
 	PG_RETURN_VARCHAR_P(result);
 }

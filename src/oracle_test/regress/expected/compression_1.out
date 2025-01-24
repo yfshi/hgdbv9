@@ -6,10 +6,10 @@ CREATE TABLE cmdata(f1 text COMPRESSION pglz);
 CREATE INDEX idx ON cmdata(f1);
 INSERT INTO cmdata VALUES(repeat('1234567890', 1000));
 \d+ cmdata
-                                        Table "public.cmdata"
- Column | Type | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
---------+------+-----------+----------+---------+----------+-------------+--------------+-------------
- f1     | text |           |          |         | extended | pglz        |              | 
+                                           Table "public.cmdata"
+ Column | Type |   Collation    | Nullable | Default | Storage  | Compression | Stats target | Description 
+--------+------+----------------+----------+---------+----------+-------------+--------------+-------------
+ f1     | text | using_nls_comp |          |         | extended | pglz        |              | 
 Indexes:
     "idx" btree (f1)
 
@@ -47,10 +47,10 @@ LINE 1: SELECT SUBSTR(f1, 2000, 50) FROM cmdata1;
 -- copy with table creation
 SELECT * INTO cmmove1 FROM cmdata;
 \d+ cmmove1
-                                        Table "public.cmmove1"
- Column | Type | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
---------+------+-----------+----------+---------+----------+-------------+--------------+-------------
- f1     | text |           |          |         | extended |             |              | 
+                                          Table "public.cmmove1"
+ Column | Type |   Collation    | Nullable | Default | Storage  | Compression | Stats target | Description 
+--------+------+----------------+----------+---------+----------+-------------+--------------+-------------
+ f1     | text | using_nls_comp |          |         | extended |             |              | 
 
 SELECT pg_column_compression(f1) FROM cmmove1;
  pg_column_compression 
@@ -142,10 +142,10 @@ CREATE TABLE cmdata2 (f1 int);
 
 ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar(4000);
 \d+ cmdata2
-                                             Table "public.cmdata2"
- Column |      Type      | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+-------------+--------------+-------------
- f1     | varchar2(4000) |           |          |         | extended |             |              | 
+                                               Table "public.cmdata2"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Compression | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+-------------+--------------+-------------
+ f1     | varchar2(4000) | using_nls_comp |          |         | extended |             |              | 
 
 ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE int USING f1::integer;
 \d+ cmdata2
@@ -159,17 +159,17 @@ ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE int USING f1::integer;
 ALTER TABLE cmdata2 ALTER COLUMN f1 TYPE varchar(4000);
 ALTER TABLE cmdata2 ALTER COLUMN f1 SET COMPRESSION pglz;
 \d+ cmdata2
-                                             Table "public.cmdata2"
- Column |      Type      | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+-------------+--------------+-------------
- f1     | varchar2(4000) |           |          |         | extended | pglz        |              | 
+                                               Table "public.cmdata2"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Compression | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+-------------+--------------+-------------
+ f1     | varchar2(4000) | using_nls_comp |          |         | extended | pglz        |              | 
 
 ALTER TABLE cmdata2 ALTER COLUMN f1 SET STORAGE plain;
 \d+ cmdata2
-                                            Table "public.cmdata2"
- Column |      Type      | Collation | Nullable | Default | Storage | Compression | Stats target | Description 
---------+----------------+-----------+----------+---------+---------+-------------+--------------+-------------
- f1     | varchar2(4000) |           |          |         | plain   | pglz        |              | 
+                                               Table "public.cmdata2"
+ Column |      Type      |   Collation    | Nullable | Default | Storage | Compression | Stats target | Description 
+--------+----------------+----------------+----------+---------+---------+-------------+--------------+-------------
+ f1     | varchar2(4000) | using_nls_comp |          |         | plain   | pglz        |              | 
 
 INSERT INTO cmdata2 VALUES (repeat('123456789', 800));
 ERROR:  value too long for type varchar2(4000 byte)
@@ -244,10 +244,10 @@ DETAIL:  This functionality requires the server to be built with lz4 support.
 HINT:  You need to rebuild PostgreSQL using --with-lz4.
 INSERT INTO cmdata VALUES (repeat('123456789', 4004));
 \d+ cmdata
-                                        Table "public.cmdata"
- Column | Type | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
---------+------+-----------+----------+---------+----------+-------------+--------------+-------------
- f1     | text |           |          |         | extended | pglz        |              | 
+                                           Table "public.cmdata"
+ Column | Type |   Collation    | Nullable | Default | Storage  | Compression | Stats target | Description 
+--------+------+----------------+----------+---------+----------+-------------+--------------+-------------
+ f1     | text | using_nls_comp |          |         | extended | pglz        |              | 
 Indexes:
     "idx" btree (f1)
 
@@ -260,10 +260,10 @@ SELECT pg_column_compression(f1) FROM cmdata;
 
 ALTER TABLE cmdata2 ALTER COLUMN f1 SET COMPRESSION default;
 \d+ cmdata2
-                                            Table "public.cmdata2"
- Column |      Type      | Collation | Nullable | Default | Storage | Compression | Stats target | Description 
---------+----------------+-----------+----------+---------+---------+-------------+--------------+-------------
- f1     | varchar2(4000) |           |          |         | plain   |             |              | 
+                                               Table "public.cmdata2"
+ Column |      Type      |   Collation    | Nullable | Default | Storage | Compression | Stats target | Description 
+--------+----------------+----------------+----------+---------+---------+-------------+--------------+-------------
+ f1     | varchar2(4000) | using_nls_comp |          |         | plain   |             |              | 
 
 -- test alter compression method for materialized views
 ALTER MATERIALIZED VIEW compressmv ALTER COLUMN x SET COMPRESSION lz4;

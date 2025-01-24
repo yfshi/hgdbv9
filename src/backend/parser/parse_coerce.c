@@ -1647,7 +1647,7 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 	ListCell   *lc;
 	/* Begin - Bug#M0000331 */
 	bool		issetop = false;
-	if(context && (strcmp(context,"UNION") == 0 || strcmp(context,"INTERSECT") == 0 || strcmp(context,"EXCEPT") == 0) )
+	if (context && (strcmp(context, "UNION") == 0 || strcmp(context, "INTERSECT") == 0 || strcmp(context, "EXCEPT") == 0))
 		issetop = true;
 	/* End - Bug#M0000331 */
 

@@ -21,12 +21,14 @@
 #include "fmgr.h"
 
 #include "access/detoast.h"
+#include "catalog/namespace.h"
 #include "lib/stringinfo.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 #include "regex/regex.h"    /* SRS-CKC-Oracle-SupportOra_Regexp_245 */
 #include "utils/builtins.h"
 #include "utils/numeric.h"
+#include "utils/varlena.h"
 
 #include "../include/common_datatypes.h"
 
@@ -101,7 +103,7 @@ static int	text_position_prev(int start_pos, TextPositionState *state);
 static void appendStringInfoText(StringInfo str, const text *t);
 /* Begin - BUG:M0000084 */
 static text *ora_substr(Datum str, int start, int len);
-static int ora_instr(text *txt, text *pattern, int start, int nth);
+static int ora_instr(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */);
 /* End - BUG:M0000084 */
 
 /*
@@ -1847,7 +1849,7 @@ oracle_instr2 (PG_FUNCTION_ARGS)
 	text *arg1 = PG_GETARG_TEXT_PP(0);
 	text *arg2 = PG_GETARG_TEXT_PP(1);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, 1, 1));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, 1, 1, PseudoCollationReplace1(PG_GET_COLLATION())));
 }
 
 Datum
@@ -1857,7 +1859,7 @@ oracle_instr3 (PG_FUNCTION_ARGS)
 	text *arg2 = PG_GETARG_TEXT_PP(1);
 	int arg3 = PG_GETARG_INT32(2);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, 1));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, 1, PseudoCollationReplace1(PG_GET_COLLATION())));
 }
 
 Datum
@@ -1868,7 +1870,7 @@ oracle_instr4 (PG_FUNCTION_ARGS)
 	int arg3 = PG_GETARG_INT32(2);
 	int arg4 = PG_GETARG_INT32(3);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, arg4));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, arg4, PseudoCollationReplace1(PG_GET_COLLATION())));
 }
 
 static int
@@ -1904,7 +1906,7 @@ ora_mb_strlen(text *str, char **sizes, int **positions)
 }
 
 static int
-ora_instr_mb(text *txt, text *pattern, int start, int nth)
+ora_instr_mb(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */)
 {
 	int			c_len_txt, c_len_pat;
 	int			b_len_pat;
@@ -1937,7 +1939,7 @@ ora_instr_mb(text *txt, text *pattern, int start, int nth)
 
 	for (i = beg; i != end; i += dx)
 	{
-		if (memcmp(str_txt + pos_txt[i], str_pat, b_len_pat) == 0)
+		if (varstr_cmp(str_txt + pos_txt[i], b_len_pat, str_pat, b_len_pat, coll) == 0) /* BUG#Z1463 */
 		{
 			if (--nth == 0)
 				return i + 1;
@@ -1948,7 +1950,7 @@ ora_instr_mb(text *txt, text *pattern, int start, int nth)
 }
 
 static int
-ora_instr(text *txt, text *pattern, int start, int nth)
+ora_instr(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */)
 {
 	int			len_txt, len_pat;
 	const char *str_txt, *str_pat;
@@ -1962,7 +1964,7 @@ ora_instr(text *txt, text *pattern, int start, int nth)
 
 	/* Forward for multibyte strings */
 	if (pg_database_encoding_max_length() > 1)
-		return ora_instr_mb(txt, pattern, start, nth);
+		return ora_instr_mb(txt, pattern, start, nth, coll /* BUG#Z1463 */);
 
 	str_txt = VARDATA_ANY(txt);
 	len_txt = VARSIZE_ANY_EXHDR(txt);
@@ -1988,7 +1990,7 @@ ora_instr(text *txt, text *pattern, int start, int nth)
 
 	for (i = beg; i != end; i += dx)
 	{
-		if (memcmp(str_txt + i, str_pat, len_pat) == 0)
+		if (varstr_cmp(str_txt + i, len_pat, str_pat, len_pat, coll) == 0) /* BUG#Z1463 */
 		{
 			if (--nth == 0)
 				return i + 1;

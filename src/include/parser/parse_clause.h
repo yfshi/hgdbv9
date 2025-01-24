@@ -84,4 +84,7 @@ extern int setMultiTargetTable(ParseState* pstate, RangeVar* relRv, bool inh,
 extern List *transfromRelationposition(ParseState *pstate, List *frmList);
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - ReqID:SRS-SQL-NLSSORT */
+extern void pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll);
+/* End - ReqID:SRS-SQL-NLSSORT */
 #endif							/* PARSE_CLAUSE_H */

@@ -995,13 +995,13 @@ create table pp1 (f1 int);
 create table cc1 (f2 text, f3 int) inherits (pp1);
 alter table pp1 add column a1 int check (a1 > 0);
 \d cc1
-                Table "public.cc1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- f1     | integer |           |          | 
- f2     | text    |           |          | 
- f3     | integer |           |          | 
- a1     | integer |           |          | 
+                   Table "public.cc1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ f1     | integer |                |          | 
+ f2     | text    | using_nls_comp |          | 
+ f3     | integer |                |          | 
+ a1     | integer |                |          | 
 Check constraints:
     "pp1_a1_check" CHECK (a1 > 0)
 Inherits: pp1
@@ -1010,14 +1010,14 @@ create table cc2(f4 float) inherits(pp1,cc1);
 NOTICE:  merging multiple inherited definitions of column "f1"
 NOTICE:  merging multiple inherited definitions of column "a1"
 \d cc2
-                     Table "public.cc2"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- f1     | integer          |           |          | 
- a1     | integer          |           |          | 
- f2     | text             |           |          | 
- f3     | integer          |           |          | 
- f4     | double precision |           |          | 
+                       Table "public.cc2"
+ Column |       Type       |   Collation    | Nullable | Default 
+--------+------------------+----------------+----------+---------
+ f1     | integer          |                |          | 
+ a1     | integer          |                |          | 
+ f2     | text             | using_nls_comp |          | 
+ f3     | integer          |                |          | 
+ f4     | double precision |                |          | 
 Check constraints:
     "pp1_a1_check" CHECK (a1 > 0)
 Inherits: pp1,
@@ -1027,15 +1027,15 @@ alter table pp1 add column a2 int check (a2 > 0);
 NOTICE:  merging definition of column "a2" for child "cc2"
 NOTICE:  merging constraint "pp1_a2_check" with inherited definition
 \d cc2
-                     Table "public.cc2"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- f1     | integer          |           |          | 
- a1     | integer          |           |          | 
- f2     | text             |           |          | 
- f3     | integer          |           |          | 
- f4     | double precision |           |          | 
- a2     | integer          |           |          | 
+                       Table "public.cc2"
+ Column |       Type       |   Collation    | Nullable | Default 
+--------+------------------+----------------+----------+---------
+ f1     | integer          |                |          | 
+ a1     | integer          |                |          | 
+ f2     | text             | using_nls_comp |          | 
+ f3     | integer          |                |          | 
+ f4     | double precision |                |          | 
+ a2     | integer          |                |          | 
 Check constraints:
     "pp1_a1_check" CHECK (a1 > 0)
     "pp1_a2_check" CHECK (a2 > 0)
@@ -1158,33 +1158,33 @@ drop cascades to table inht4
 CREATE TABLE test_constraints (id int, val1 varchar(4000), val2 int, UNIQUE(val1, val2));
 CREATE TABLE test_constraints_inh () INHERITS (test_constraints);
 \d+ test_constraints
-                                 Table "public.test_constraints"
- Column |      Type      | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+--------------+-------------
- id     | integer        |           |          |         | plain    |              | 
- val1   | varchar2(4000) |           |          |         | extended |              | 
- val2   | integer        |           |          |         | plain    |              | 
+                                    Table "public.test_constraints"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+--------------+-------------
+ id     | integer        |                |          |         | plain    |              | 
+ val1   | varchar2(4000) | using_nls_comp |          |         | extended |              | 
+ val2   | integer        |                |          |         | plain    |              | 
 Indexes:
     "test_constraints_val1_val2_key" UNIQUE CONSTRAINT, btree (val1, val2)
 Child tables: test_constraints_inh
 
 ALTER TABLE ONLY test_constraints DROP CONSTRAINT test_constraints_val1_val2_key;
 \d+ test_constraints
-                                 Table "public.test_constraints"
- Column |      Type      | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+--------------+-------------
- id     | integer        |           |          |         | plain    |              | 
- val1   | varchar2(4000) |           |          |         | extended |              | 
- val2   | integer        |           |          |         | plain    |              | 
+                                    Table "public.test_constraints"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+--------------+-------------
+ id     | integer        |                |          |         | plain    |              | 
+ val1   | varchar2(4000) | using_nls_comp |          |         | extended |              | 
+ val2   | integer        |                |          |         | plain    |              | 
 Child tables: test_constraints_inh
 
 \d+ test_constraints_inh
-                               Table "public.test_constraints_inh"
- Column |      Type      | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+--------------+-------------
- id     | integer        |           |          |         | plain    |              | 
- val1   | varchar2(4000) |           |          |         | extended |              | 
- val2   | integer        |           |          |         | plain    |              | 
+                                  Table "public.test_constraints_inh"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+--------------+-------------
+ id     | integer        |                |          |         | plain    |              | 
+ val1   | varchar2(4000) | using_nls_comp |          |         | extended |              | 
+ val2   | integer        |                |          |         | plain    |              | 
 Inherits: test_constraints
 
 DROP TABLE test_constraints_inh;
@@ -1831,27 +1831,27 @@ explain (costs off) select * from list_parted where a is not null;
 (7 rows)
 
 explain (costs off) select * from list_parted where a in ('ab', 'cd', 'ef');
-                      QUERY PLAN                      
-------------------------------------------------------
+                               QUERY PLAN                               
+------------------------------------------------------------------------
  Append
    ->  Seq Scan on part_ab_cd list_parted_1
-         Filter: (a = ANY ('{ab,cd,ef}'::varchar2[]))
+         Filter: ((a)::varchar2(4000) = ANY ('{ab,cd,ef}'::varchar2[]))
    ->  Seq Scan on part_ef_gh list_parted_2
-         Filter: (a = ANY ('{ab,cd,ef}'::varchar2[]))
+         Filter: ((a)::varchar2(4000) = ANY ('{ab,cd,ef}'::varchar2[]))
 (5 rows)
 
 explain (costs off) select * from list_parted where a = 'ab' or a in (null, 'cd');
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                                                 QUERY PLAN                                                  
+-------------------------------------------------------------------------------------------------------------
  Seq Scan on part_ab_cd list_parted
-   Filter: ((a = 'ab'::varchar2) OR (a = ANY ('{NULL,cd}'::varchar2[])))
+   Filter: (((a)::varchar2(4000) = 'ab'::varchar2) OR ((a)::varchar2(4000) = ANY ('{NULL,cd}'::varchar2[])))
 (2 rows)
 
 explain (costs off) select * from list_parted where a = 'ab';
-             QUERY PLAN             
-------------------------------------
+                    QUERY PLAN                    
+--------------------------------------------------
  Seq Scan on part_ab_cd list_parted
-   Filter: (a = 'ab'::varchar2)
+   Filter: ((a)::varchar2(4000) = 'ab'::varchar2)
 (2 rows)
 
 create table range_list_parted (
@@ -1901,25 +1901,25 @@ explain (costs off) select * from range_list_parted where b = 'ab';
 ------------------------------------------------------
  Append
    ->  Seq Scan on part_1_10_ab range_list_parted_1
-         Filter: (b = 'ab'::oracharbyte)
+         Filter: ((b)::char(2) = 'ab'::oracharbyte)
    ->  Seq Scan on part_10_20_ab range_list_parted_2
-         Filter: (b = 'ab'::oracharbyte)
+         Filter: ((b)::char(2) = 'ab'::oracharbyte)
    ->  Seq Scan on part_21_30_ab range_list_parted_3
-         Filter: (b = 'ab'::oracharbyte)
+         Filter: ((b)::char(2) = 'ab'::oracharbyte)
    ->  Seq Scan on part_40_inf_ab range_list_parted_4
-         Filter: (b = 'ab'::oracharbyte)
+         Filter: ((b)::char(2) = 'ab'::oracharbyte)
 (9 rows)
 
 explain (costs off) select * from range_list_parted where a between 3 and 23 and b in ('ab');
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Append
    ->  Seq Scan on part_1_10_ab range_list_parted_1
-         Filter: ((a >= 3) AND (a <= 23) AND (b = 'ab'::oracharbyte))
+         Filter: ((a >= 3) AND (a <= 23) AND ((b)::char(2) = 'ab'::oracharbyte))
    ->  Seq Scan on part_10_20_ab range_list_parted_2
-         Filter: ((a >= 3) AND (a <= 23) AND (b = 'ab'::oracharbyte))
+         Filter: ((a >= 3) AND (a <= 23) AND ((b)::char(2) = 'ab'::oracharbyte))
    ->  Seq Scan on part_21_30_ab range_list_parted_3
-         Filter: ((a >= 3) AND (a <= 23) AND (b = 'ab'::oracharbyte))
+         Filter: ((a >= 3) AND (a <= 23) AND ((b)::char(2) = 'ab'::oracharbyte))
 (7 rows)
 
 /* Should select no rows because range partition key cannot be null */

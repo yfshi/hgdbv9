@@ -91,11 +91,11 @@ SELECT count(*) FROM varchar2tmp WHERE a <> '31a';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM varchar2tmp WHERE a <> '31a'::varchar2(32 char);
-                        QUERY PLAN                         
------------------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Aggregate
    ->  Index Only Scan using varcharbyteidx on varchar2tmp
-         Filter: (a <> '31a'::varchar2(32 char))
+         Filter: ((a)::varchar2(32) <> '31a'::varchar2(32 char))
 (3 rows)
 
 -- varcharchar check
@@ -191,10 +191,10 @@ SELECT count(*) FROM varchar2test WHERE a <> '31a';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM varchar2test WHERE a <> '31a'::varchar2(32 byte);
-                         QUERY PLAN                         
-------------------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Aggregate
    ->  Index Only Scan using varcharcharidx on varchar2test
-         Filter: (a <> '31a'::varchar2(32))
+         Filter: ((a)::varchar2(32 char) <> '31a'::varchar2(32))
 (3 rows)
 

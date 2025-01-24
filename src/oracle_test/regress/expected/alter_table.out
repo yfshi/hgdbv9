@@ -2094,30 +2094,30 @@ insert into at_part_2 values ('1.234', 1024);
 create index on at_partitioned (b);
 create index on at_partitioned (a);
 \d at_part_1
-             Table "public.at_part_1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | text    |           |          | 
+                Table "public.at_part_1"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | text    | using_nls_comp |          | 
 Partition of: at_partitioned FOR VALUES FROM (0) TO (1000)
 Indexes:
     "at_part_1_a_idx" btree (a)
     "at_part_1_b_idx" btree (b)
 
 \d at_part_2
-             Table "public.at_part_2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- b      | text    |           |          | 
- a      | integer |           |          | 
+                Table "public.at_part_2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ b      | text    | using_nls_comp |          | 
+ a      | integer |                |          | 
 
 alter table at_partitioned attach partition at_part_2 for values from (1000) to (2000);
 \d at_part_2
-             Table "public.at_part_2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- b      | text    |           |          | 
- a      | integer |           |          | 
+                Table "public.at_part_2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ b      | text    | using_nls_comp |          | 
+ a      | integer |                |          | 
 Partition of: at_partitioned FOR VALUES FROM (1000) TO (2000)
 Indexes:
     "at_part_2_a_idx" btree (a)
@@ -2280,11 +2280,11 @@ select reltoastrelid <> 0 as has_toast_table
 create index test_storage_idx on test_storage (b, a);
 alter table test_storage alter column a set storage external;
 \d+ test_storage
-                                     Table "public.test_storage"
- Column |  Type   | Collation | Nullable |      Default      | Storage  | Stats target | Description 
---------+---------+-----------+----------+-------------------+----------+--------------+-------------
- a      | text    |           |          |                   | external |              | 
- b      | integer |           |          | random()::integer | plain    |              | 
+                                       Table "public.test_storage"
+ Column |  Type   |   Collation    | Nullable |      Default      | Storage  | Stats target | Description 
+--------+---------+----------------+----------+-------------------+----------+--------------+-------------
+ a      | text    | using_nls_comp |          |                   | external |              | 
+ b      | integer |                |          | random()::integer | plain    |              | 
 Indexes:
     "test_storage_idx" btree (b, a)
 
@@ -2474,11 +2474,11 @@ ALTER TABLE check_fk_presence_2 DROP CONSTRAINT check_fk_presence_2_id_fkey;
 ANALYZE check_fk_presence_2;
 ROLLBACK;
 \d check_fk_presence_2
-        Table "public.check_fk_presence_2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- id     | integer |           |          | 
- t      | text    |           |          | 
+           Table "public.check_fk_presence_2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ id     | integer |                |          | 
+ t      | text    | using_nls_comp |          | 
 Foreign-key constraints:
     "check_fk_presence_2_id_fkey" FOREIGN KEY (id) REFERENCES check_fk_presence_1(id)
 
@@ -2489,23 +2489,23 @@ insert into at_base_table values (23, 'skidoo');
 create view at_view_1 as select * from at_base_table bt;
 create view at_view_2 as select *, to_json(v1) as j from at_view_1 v1;
 \d+ at_view_1
-                          View "public.at_view_1"
- Column |  Type   | Collation | Nullable | Default | Storage  | Description 
---------+---------+-----------+----------+---------+----------+-------------
- id     | integer |           |          |         | plain    | 
- stuff  | text    |           |          |         | extended | 
+                             View "public.at_view_1"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------+----------------+----------+---------+----------+-------------
+ id     | integer |                |          |         | plain    | 
+ stuff  | text    | using_nls_comp |          |         | extended | 
 View definition:
  SELECT bt.id,
     bt.stuff
    FROM at_base_table bt;
 
 \d+ at_view_2
-                          View "public.at_view_2"
- Column |  Type   | Collation | Nullable | Default | Storage  | Description 
---------+---------+-----------+----------+---------+----------+-------------
- id     | integer |           |          |         | plain    | 
- stuff  | text    |           |          |         | extended | 
- j      | json    |           |          |         | extended | 
+                             View "public.at_view_2"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------+----------------+----------+---------+----------+-------------
+ id     | integer |                |          |         | plain    | 
+ stuff  | text    | using_nls_comp |          |         | extended | 
+ j      | json    |                |          |         | extended | 
 View definition:
  SELECT v1.id,
     v1.stuff,
@@ -2527,12 +2527,12 @@ select * from at_view_2;
 
 create or replace view at_view_1 as select *, 2+2 as more from at_base_table bt;
 \d+ at_view_1
-                          View "public.at_view_1"
- Column |  Type   | Collation | Nullable | Default | Storage  | Description 
---------+---------+-----------+----------+---------+----------+-------------
- id     | integer |           |          |         | plain    | 
- stuff  | text    |           |          |         | extended | 
- more   | integer |           |          |         | plain    | 
+                             View "public.at_view_1"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------+----------------+----------+---------+----------+-------------
+ id     | integer |                |          |         | plain    | 
+ stuff  | text    | using_nls_comp |          |         | extended | 
+ more   | integer |                |          |         | plain    | 
 View definition:
  SELECT bt.id,
     bt.stuff,
@@ -2540,12 +2540,12 @@ View definition:
    FROM at_base_table bt;
 
 \d+ at_view_2
-                          View "public.at_view_2"
- Column |  Type   | Collation | Nullable | Default | Storage  | Description 
---------+---------+-----------+----------+---------+----------+-------------
- id     | integer |           |          |         | plain    | 
- stuff  | text    |           |          |         | extended | 
- j      | json    |           |          |         | extended | 
+                             View "public.at_view_2"
+ Column |  Type   |   Collation    | Nullable | Default | Storage  | Description 
+--------+---------+----------------+----------+---------+----------+-------------
+ id     | integer |                |          |         | plain    | 
+ stuff  | text    | using_nls_comp |          |         | extended | 
+ j      | json    |                |          |         | extended | 
 View definition:
  SELECT v1.id,
     v1.stuff,
@@ -3048,21 +3048,21 @@ ALTER TYPE nosuchtype ADD ATTRIBUTE b text; -- fails
 ERROR:  relation "nosuchtype" does not exist
 ALTER TYPE test_type ADD ATTRIBUTE b text;
 \d test_type
-         Composite type "public.test_type"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | text    |           |          | 
+           Composite type "public.test_type"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | text    | using_nls_comp |          | 
 
 ALTER TYPE test_type ADD ATTRIBUTE b text; -- fails
 ERROR:  column "b" of relation "test_type" already exists
 ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE varchar(4000);
 \d test_type
-            Composite type "public.test_type"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- a      | integer        |           |          | 
- b      | varchar2(4000) |           |          | 
+               Composite type "public.test_type"
+ Column |      Type      |   Collation    | Nullable | Default 
+--------+----------------+----------------+----------+---------
+ a      | integer        |                |          | 
+ b      | varchar2(4000) | using_nls_comp |          | 
 
 ALTER TYPE test_type ALTER ATTRIBUTE b SET DATA TYPE integer;
 \d test_type
@@ -3135,20 +3135,20 @@ ERROR:  cannot alter type "test_type2" because it is the type of a typed table
 HINT:  Use ALTER ... CASCADE to alter the typed tables too.
 ALTER TYPE test_type2 ADD ATTRIBUTE c text CASCADE;
 \d test_type2
-        Composite type "public.test_type2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | text    |           |          | 
- c      | text    |           |          | 
+           Composite type "public.test_type2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | text    |                |          | 
+ c      | text    | using_nls_comp |          | 
 
 \d test_tbl2
-             Table "public.test_tbl2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | text    |           |          | 
- c      | text    |           |          | 
+                Table "public.test_tbl2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ b      | text    |                |          | 
+ c      | text    | using_nls_comp |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
@@ -3157,20 +3157,20 @@ ERROR:  cannot alter type "test_type2" because it is the type of a typed table
 HINT:  Use ALTER ... CASCADE to alter the typed tables too.
 ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar(4000) CASCADE;
 \d test_type2
-            Composite type "public.test_type2"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- a      | integer        |           |          | 
- b      | varchar2(4000) |           |          | 
- c      | text           |           |          | 
+              Composite type "public.test_type2"
+ Column |      Type      |   Collation    | Nullable | Default 
+--------+----------------+----------------+----------+---------
+ a      | integer        |                |          | 
+ b      | varchar2(4000) | using_nls_comp |          | 
+ c      | text           | using_nls_comp |          | 
 
 \d test_tbl2
-                 Table "public.test_tbl2"
- Column |      Type      | Collation | Nullable | Default 
---------+----------------+-----------+----------+---------
- a      | integer        |           |          | 
- b      | varchar2(4000) |           |          | 
- c      | text           |           |          | 
+                   Table "public.test_tbl2"
+ Column |      Type      |   Collation    | Nullable | Default 
+--------+----------------+----------------+----------+---------
+ a      | integer        |                |          | 
+ b      | varchar2(4000) | using_nls_comp |          | 
+ c      | text           | using_nls_comp |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
@@ -3179,18 +3179,18 @@ ERROR:  cannot alter type "test_type2" because it is the type of a typed table
 HINT:  Use ALTER ... CASCADE to alter the typed tables too.
 ALTER TYPE test_type2 DROP ATTRIBUTE b CASCADE;
 \d test_type2
-        Composite type "public.test_type2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- c      | text    |           |          | 
+           Composite type "public.test_type2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 
 \d test_tbl2
-             Table "public.test_tbl2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- c      | text    |           |          | 
+                Table "public.test_tbl2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ a      | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
@@ -3199,27 +3199,27 @@ ERROR:  cannot alter type "test_type2" because it is the type of a typed table
 HINT:  Use ALTER ... CASCADE to alter the typed tables too.
 ALTER TYPE test_type2 RENAME ATTRIBUTE a TO aa CASCADE;
 \d test_type2
-        Composite type "public.test_type2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- aa     | integer |           |          | 
- c      | text    |           |          | 
+           Composite type "public.test_type2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ aa     | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 
 \d test_tbl2
-             Table "public.test_tbl2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- aa     | integer |           |          | 
- c      | text    |           |          | 
+                Table "public.test_tbl2"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ aa     | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 \d test_tbl2_subclass
-         Table "public.test_tbl2_subclass"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- aa     | integer |           |          | 
- c      | text    |           |          | 
+           Table "public.test_tbl2_subclass"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ aa     | integer |                |          | 
+ c      | text    | using_nls_comp |          | 
 Inherits: test_tbl2
 
 DROP TABLE test_tbl2_subclass, test_tbl2;
@@ -3923,12 +3923,12 @@ ALTER TABLE ataddindex
   ALTER f1 SET DATA TYPE TEXT,
   ADD EXCLUDE ((f1 LIKE 'a') WITH =);
 \d ataddindex
-           Table "public.ataddindex"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
+              Table "public.ataddindex"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
 Indexes:
-    "ataddindex_expr_excl" EXCLUDE USING btree ((f1 ~~ 'a'::text) WITH =)
+    "ataddindex_expr_excl" EXCLUDE USING btree (((f1 COLLATE "binary") ~~ 'a'::text) WITH =)
 
 DROP TABLE ataddindex;
 CREATE TABLE ataddindex(id int, ref_id int);

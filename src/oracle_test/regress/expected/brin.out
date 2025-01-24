@@ -564,9 +564,9 @@ SELECT * FROM brintest_3 WHERE b < '0';
                    QUERY PLAN                   
 ------------------------------------------------
  Bitmap Heap Scan on brintest_3
-   Recheck Cond: (b < '0'::text)
+   Recheck Cond: ((b)::text < '0'::text)
    ->  Bitmap Index Scan on brin_test_toast_idx
-         Index Cond: (b < '0'::text)
+         Index Cond: ((b)::text < '0'::text)
 (4 rows)
 
 SELECT * FROM brintest_3 WHERE b < '0';

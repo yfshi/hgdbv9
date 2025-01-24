@@ -15,11 +15,13 @@
  */
 #include "postgres.h"
 
+#include "catalog/namespace.h"
 #include "common/int.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
+#include "utils/varlena.h"
 
 static text *dotrim(const char *string, int stringlen,
 					const char *set, int setlen,
@@ -847,7 +849,7 @@ translate(PG_FUNCTION_ARGS)
 		{
 			len = pg_mblen(&from_ptr[i]);
 			if (len == source_len &&
-				memcmp(source, &from_ptr[i], len) == 0)
+				varstr_cmp(source, len, &from_ptr[i], len, PseudoCollationReplace1(PG_GET_COLLATION())) == 0 /* BUG#Z1468 */)
 				break;
 
 			from_index++;

@@ -386,6 +386,7 @@ enum
 };
 
 extern PGDLLIMPORT bool enable_ora_default_collation;
+extern PGDLLIMPORT bool subquery_with_raw_collation;
 extern PGDLLIMPORT bool enable_partitionwise_qual_force_pushdown;
 extern PGDLLIMPORT bool default_collation_is_c;
 extern PGDLLIMPORT int	max_string_size;

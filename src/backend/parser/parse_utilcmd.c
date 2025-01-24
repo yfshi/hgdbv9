@@ -3252,6 +3252,31 @@ transformStatsStmt(Oid relid, CreateStatsStmt *stmt, const char *queryString)
 
 			/* We have to fix its collations too */
 			assign_expr_collations(pstate, selem->expr);
+
+			/** 
+			 * Begin - Req: SRS-SQL-NLSSORT 
+			 * Keep pace with A_Expr's pseudo-collation rule.
+			 */
+			if (ORA_PARSER == compatible_db && enable_ora_default_collation && IsA(selem->expr, A_Expr))
+			{
+				A_Expr *a = (A_Expr *) selem->expr;
+				Oid coll = exprCollation((Node *) a);
+
+				if (!OidIsValid(coll))
+					coll = exprInputCollation((Node *) a);
+
+				if (IsPseudoCollation(coll))
+				{
+					Oid targetcoll = PseudoCollationReplaceForAExpr(a, coll);
+
+					if (targetcoll != coll)
+					{
+						pseudo_collation_replace(pstate, selem->expr, NULL, targetcoll);
+						assign_expr_collations(pstate, selem->expr);
+					}
+				}
+			}
+			/* End - Req: SRS-SQL-NLSSORT */
 		}
 	}
 

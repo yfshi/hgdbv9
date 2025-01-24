@@ -534,8 +534,11 @@ nlssort_internal_with_pseudo_collation(const char *src, int32_t len, Oid collid,
     if(trim)
         len = remove_trailing_spaces(src, len);
 
+    /**
+     * Do pseudo-collation replace pre call nlssort_hook().
+     */
     if (IsPseudoCollation(collid))
-        collid = PseudoCollationReplace3(collid);
+        ereport(ERROR, errmsg("cannot use pseudo-collation in NLSSORT()."));
     
     coll = pick_collation_with_oid(collid);
 

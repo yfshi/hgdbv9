@@ -2698,7 +2698,7 @@ rtest_vcomp| SELECT x.part,
     (x.size * y.factor) AS size_in_cm
    FROM rtest_comp x,
     rtest_unitfact y
-  WHERE (x.unit = y.unit);
+  WHERE ((x.unit COLLATE "binary") = (y.unit COLLATE "binary"));
 rtest_vview1| SELECT x.a,
     x.b
    FROM rtest_view1 x
@@ -2736,7 +2736,7 @@ shoe| SELECT sh.shoename,
     sh.slunit
    FROM shoe_data sh,
     unit un
-  WHERE (sh.slunit = un.un_name);
+  WHERE ((sh.slunit COLLATE "binary") = (un.un_name COLLATE "binary"));
 shoe_ready| SELECT rsh.shoename,
     rsh.sh_avail,
     rsl.sl_name,
@@ -2744,7 +2744,7 @@ shoe_ready| SELECT rsh.shoename,
     int4smaller(rsh.sh_avail, rsl.sl_avail) AS total_avail
    FROM shoe rsh,
     shoelace rsl
-  WHERE ((rsl.sl_color = rsh.slcolor) AND (rsl.sl_len_cm >= rsh.slminlen_cm) AND (rsl.sl_len_cm <= rsh.slmaxlen_cm));
+  WHERE (((rsl.sl_color COLLATE "binary") = (rsh.slcolor COLLATE "binary")) AND (rsl.sl_len_cm >= rsh.slminlen_cm) AND (rsl.sl_len_cm <= rsh.slmaxlen_cm));
 shoelace| SELECT s.sl_name,
     s.sl_avail,
     s.sl_color,
@@ -2753,7 +2753,7 @@ shoelace| SELECT s.sl_name,
     (s.sl_len * u.un_fact) AS sl_len_cm
    FROM shoelace_data s,
     unit u
-  WHERE (s.sl_unit = u.un_name);
+  WHERE ((s.sl_unit COLLATE "binary") = (u.un_name COLLATE "binary"));
 shoelace_candelete| SELECT shoelace_obsolete.sl_name,
     shoelace_obsolete.sl_avail,
     shoelace_obsolete.sl_color,
@@ -2771,7 +2771,7 @@ shoelace_obsolete| SELECT shoelace.sl_name,
    FROM shoelace
   WHERE (NOT (EXISTS ( SELECT shoe.shoename
            FROM shoe
-          WHERE (shoe.slcolor = shoelace.sl_color))));
+          WHERE ((shoe.slcolor COLLATE "binary") = (shoelace.sl_color COLLATE "binary")))));
 street| SELECT r.name,
     r.thepath,
     c.cname
@@ -2832,21 +2832,21 @@ rtest_order1|rtest_order_r4|CREATE RULE rtest_order_r4 AS
   VALUES (new.a, nextval('rtest_seq'::regclass), 'rule 4 - this should run 4th'::text);
 rtest_person|rtest_pers_del|CREATE RULE rtest_pers_del AS
     ON DELETE TO public.rtest_person DO  DELETE FROM rtest_admin
-  WHERE (rtest_admin.pname = old.pname);
+  WHERE ((rtest_admin.pname COLLATE "binary") = (old.pname COLLATE "binary"));
 rtest_person|rtest_pers_upd|CREATE RULE rtest_pers_upd AS
     ON UPDATE TO public.rtest_person DO  UPDATE rtest_admin SET pname = new.pname
-  WHERE (rtest_admin.pname = old.pname);
+  WHERE ((rtest_admin.pname COLLATE "binary") = (old.pname COLLATE "binary"));
 rtest_system|rtest_sys_del|CREATE RULE rtest_sys_del AS
     ON DELETE TO public.rtest_system DO ( DELETE FROM rtest_interface
-  WHERE (rtest_interface.sysname = old.sysname);
+  WHERE ((rtest_interface.sysname COLLATE "binary") = (old.sysname COLLATE "binary"));
  DELETE FROM rtest_admin
-  WHERE (rtest_admin.sysname = old.sysname);
+  WHERE ((rtest_admin.sysname COLLATE "binary") = (old.sysname COLLATE "binary"));
 );
 rtest_system|rtest_sys_upd|CREATE RULE rtest_sys_upd AS
     ON UPDATE TO public.rtest_system DO ( UPDATE rtest_interface SET sysname = new.sysname
-  WHERE (rtest_interface.sysname = old.sysname);
+  WHERE ((rtest_interface.sysname COLLATE "binary") = (old.sysname COLLATE "binary"));
  UPDATE rtest_admin SET sysname = new.sysname
-  WHERE (rtest_admin.sysname = old.sysname);
+  WHERE ((rtest_admin.sysname COLLATE "binary") = (old.sysname COLLATE "binary"));
 );
 rtest_t4|rtest_t4_ins1|CREATE RULE rtest_t4_ins1 AS
     ON INSERT TO public.rtest_t4
@@ -2875,16 +2875,16 @@ rtest_v1|rtest_v1_upd|CREATE RULE rtest_v1_upd AS
   WHERE (rtest_t1.a = old.a);
 shoelace|shoelace_del|CREATE RULE shoelace_del AS
     ON DELETE TO public.shoelace DO INSTEAD  DELETE FROM shoelace_data
-  WHERE (shoelace_data.sl_name = old.sl_name);
+  WHERE ((shoelace_data.sl_name COLLATE "binary") = (old.sl_name COLLATE "binary"));
 shoelace|shoelace_ins|CREATE RULE shoelace_ins AS
     ON INSERT TO public.shoelace DO INSTEAD  INSERT INTO shoelace_data (sl_name, sl_avail, sl_color, sl_len, sl_unit)
   VALUES (new.sl_name, new.sl_avail, new.sl_color, new.sl_len, new.sl_unit);
 shoelace|shoelace_upd|CREATE RULE shoelace_upd AS
     ON UPDATE TO public.shoelace DO INSTEAD  UPDATE shoelace_data SET sl_name = new.sl_name, sl_avail = new.sl_avail, sl_color = new.sl_color, sl_len = new.sl_len, sl_unit = new.sl_unit
-  WHERE (shoelace_data.sl_name = old.sl_name);
+  WHERE ((shoelace_data.sl_name COLLATE "binary") = (old.sl_name COLLATE "binary"));
 shoelace_ok|shoelace_ok_ins|CREATE RULE shoelace_ok_ins AS
     ON INSERT TO public.shoelace_ok DO INSTEAD  UPDATE shoelace SET sl_avail = (shoelace.sl_avail + new.ok_quant)
-  WHERE (shoelace.sl_name = new.ok_name);
+  WHERE ((shoelace.sl_name COLLATE "binary") = (new.ok_name COLLATE "binary"));
 -- restore normal output mode
 \a\t
 --
@@ -3168,51 +3168,51 @@ LINE 2:   select * from rules_base where f1 = 11 for update of old;
 drop table rules_base;
 -- test various flavors of pg_get_viewdef()
 select pg_get_viewdef('shoe'::regclass) as unpretty;
-                    unpretty                    
-------------------------------------------------
-  SELECT sh.shoename,                          +
-     sh.sh_avail,                              +
-     sh.slcolor,                               +
-     sh.slminlen,                              +
-     (sh.slminlen * un.un_fact) AS slminlen_cm,+
-     sh.slmaxlen,                              +
-     (sh.slmaxlen * un.un_fact) AS slmaxlen_cm,+
-     sh.slunit                                 +
-    FROM shoe_data sh,                         +
-     unit un                                   +
-   WHERE (sh.slunit = un.un_name);
+                                unpretty                                 
+-------------------------------------------------------------------------
+  SELECT sh.shoename,                                                   +
+     sh.sh_avail,                                                       +
+     sh.slcolor,                                                        +
+     sh.slminlen,                                                       +
+     (sh.slminlen * un.un_fact) AS slminlen_cm,                         +
+     sh.slmaxlen,                                                       +
+     (sh.slmaxlen * un.un_fact) AS slmaxlen_cm,                         +
+     sh.slunit                                                          +
+    FROM shoe_data sh,                                                  +
+     unit un                                                            +
+   WHERE ((sh.slunit COLLATE "binary") = (un.un_name COLLATE "binary"));
 (1 row)
 
 select pg_get_viewdef('shoe'::regclass,true) as pretty;
-                    pretty                    
-----------------------------------------------
-  SELECT sh.shoename,                        +
-     sh.sh_avail,                            +
-     sh.slcolor,                             +
-     sh.slminlen,                            +
-     sh.slminlen * un.un_fact AS slminlen_cm,+
-     sh.slmaxlen,                            +
-     sh.slmaxlen * un.un_fact AS slmaxlen_cm,+
-     sh.slunit                               +
-    FROM shoe_data sh,                       +
-     unit un                                 +
-   WHERE sh.slunit = un.un_name;
+                                pretty                                 
+-----------------------------------------------------------------------
+  SELECT sh.shoename,                                                 +
+     sh.sh_avail,                                                     +
+     sh.slcolor,                                                      +
+     sh.slminlen,                                                     +
+     sh.slminlen * un.un_fact AS slminlen_cm,                         +
+     sh.slmaxlen,                                                     +
+     sh.slmaxlen * un.un_fact AS slmaxlen_cm,                         +
+     sh.slunit                                                        +
+    FROM shoe_data sh,                                                +
+     unit un                                                          +
+   WHERE (sh.slunit COLLATE "binary") = (un.un_name COLLATE "binary");
 (1 row)
 
 select pg_get_viewdef('shoe'::regclass,0) as prettier;
-                   prettier                   
-----------------------------------------------
-  SELECT sh.shoename,                        +
-     sh.sh_avail,                            +
-     sh.slcolor,                             +
-     sh.slminlen,                            +
-     sh.slminlen * un.un_fact AS slminlen_cm,+
-     sh.slmaxlen,                            +
-     sh.slmaxlen * un.un_fact AS slmaxlen_cm,+
-     sh.slunit                               +
-    FROM shoe_data sh,                       +
-     unit un                                 +
-   WHERE sh.slunit = un.un_name;
+                               prettier                                
+-----------------------------------------------------------------------
+  SELECT sh.shoename,                                                 +
+     sh.sh_avail,                                                     +
+     sh.slcolor,                                                      +
+     sh.slminlen,                                                     +
+     sh.slminlen * un.un_fact AS slminlen_cm,                         +
+     sh.slmaxlen,                                                     +
+     sh.slmaxlen * un.un_fact AS slmaxlen_cm,                         +
+     sh.slunit                                                        +
+    FROM shoe_data sh,                                                +
+     unit un                                                          +
+   WHERE (sh.slunit COLLATE "binary") = (un.un_name COLLATE "binary");
 (1 row)
 
 --
@@ -3533,7 +3533,7 @@ SELECT definition FROM pg_rules WHERE tablename = 'hats' ORDER BY rulename;
  CREATE RULE hat_nosert AS                                                                  +
      ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)        +
    VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name COLLATE "C" bpchar_pattern_ops)+
-   WHERE (hat_color = 'green'::oracharbyte) DO NOTHING                                      +
+   WHERE ((hat_color COLLATE "binary") = 'green'::oracharbyte) DO NOTHING                   +
    RETURNING hat_data.hat_name,                                                             +
      hat_data.hat_color;
 (1 row)
@@ -3558,7 +3558,7 @@ SELECT tablename, rulename, definition FROM pg_rules
  hats      | hat_nosert | CREATE RULE hat_nosert AS                                                                  +
            |            |     ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)        +
            |            |   VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name COLLATE "C" bpchar_pattern_ops)+
-           |            |   WHERE (hat_color = 'green'::oracharbyte) DO NOTHING                                      +
+           |            |   WHERE ((hat_color COLLATE "binary") = 'green'::oracharbyte) DO NOTHING                   +
            |            |   RETURNING hat_data.hat_name,                                                             +
            |            |     hat_data.hat_color;
 (1 row)
@@ -3608,7 +3608,7 @@ SELECT definition FROM pg_rules WHERE tablename = 'hats' ORDER BY rulename;
  CREATE RULE hat_upsert AS                                                                                                              +
      ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)                                                    +
    VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name) DO UPDATE SET hat_name = hat_data.hat_name, hat_color = excluded.hat_color+
-   WHERE ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                                              +
+   WHERE (((excluded.hat_color COLLATE "binary") <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                           +
    RETURNING hat_data.hat_name,                                                                                                         +
      hat_data.hat_color;
 (1 row)
@@ -3656,19 +3656,19 @@ SELECT tablename, rulename, definition FROM pg_rules
  hats      | hat_upsert | CREATE RULE hat_upsert AS                                                                                                              +
            |            |     ON INSERT TO public.hats DO INSTEAD  INSERT INTO hat_data (hat_name, hat_color)                                                    +
            |            |   VALUES (new.hat_name, new.hat_color) ON CONFLICT(hat_name) DO UPDATE SET hat_name = hat_data.hat_name, hat_color = excluded.hat_color+
-           |            |   WHERE ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                                              +
+           |            |   WHERE (((excluded.hat_color COLLATE "binary") <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))                           +
            |            |   RETURNING hat_data.hat_name,                                                                                                         +
            |            |     hat_data.hat_color;
 (1 row)
 
 -- ensure explain works for on insert conflict rules
 explain (costs off) INSERT INTO hats VALUES ('h8', 'forbidden') RETURNING *;
-                                              QUERY PLAN                                              
-------------------------------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
  Insert on hat_data
    Conflict Resolution: UPDATE
    Conflict Arbiter Indexes: hat_data_unique_idx
-   Conflict Filter: ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
+   Conflict Filter: (((excluded.hat_color)::char(10) <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
    ->  Result
 (5 rows)
 
@@ -3696,12 +3696,12 @@ WITH data(hat_name, hat_color) AS MATERIALIZED (
 INSERT INTO hats
     SELECT * FROM data
 RETURNING *;
-                                              QUERY PLAN                                              
-------------------------------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
  Insert on hat_data
    Conflict Resolution: UPDATE
    Conflict Arbiter Indexes: hat_data_unique_idx
-   Conflict Filter: ((excluded.hat_color <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
+   Conflict Filter: (((excluded.hat_color)::char(10) <> 'forbidden'::oracharbyte) AND (hat_data.* <> excluded.*))
    CTE data
      ->  Values Scan on "*VALUES*"
    ->  CTE Scan on data

@@ -93,6 +93,7 @@ ORA_REGRESS = \
 	ora_nlssort_utf8 \
 	ora_nlssort_gbk \
 	ora_nlssort_gb18030 \
+	ora_nlssort_bug \
 	ora_default_collation \
 	orarefcursor \
 	dm_compatible \

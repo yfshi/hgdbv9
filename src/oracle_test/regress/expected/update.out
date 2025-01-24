@@ -746,14 +746,14 @@ DROP TRIGGER d15_insert_trig ON part_d_15_20;
 :init_range_parted;
 create table part_def partition of range_parted default;
 \d+ part_def
-                                     Table "public.part_def"
- Column |      Type      | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+----------------+-----------+----------+---------+----------+--------------+-------------
- a      | text           |           |          |         | extended |              | 
- b      | bigint         |           |          |         | plain    |              | 
- c      | numeric        |           |          |         | main     |              | 
- d      | integer        |           |          |         | plain    |              | 
- e      | varchar2(4000) |           |          |         | extended |              | 
+                                        Table "public.part_def"
+ Column |      Type      |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+--------+----------------+----------------+----------+---------+----------+--------------+-------------
+ a      | text           | using_nls_comp |          |         | extended |              | 
+ b      | bigint         |                |          |         | plain    |              | 
+ c      | numeric        |                |          |         | main     |              | 
+ d      | integer        |                |          |         | plain    |              | 
+ e      | varchar2(4000) | using_nls_comp |          |         | extended |              | 
 Partition of: range_parted DEFAULT
 Partition constraint: (NOT ((a IS NOT NULL) AND (b IS NOT NULL) AND ((((a)::text = 'a'::text COLLATE "binary") AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR (((a)::text = 'a'::text COLLATE "binary") AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '1'::bigint) AND (b < '10'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '10'::bigint) AND (b < '20'::bigint)) OR (((a)::text = 'b'::text COLLATE "binary") AND (b >= '20'::bigint) AND (b < '30'::bigint)))))
 

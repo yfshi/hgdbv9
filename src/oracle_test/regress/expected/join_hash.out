@@ -921,7 +921,7 @@ WHERE
  Hash Join
    Output: hjtest_1.a, hjtest_2.a, (hjtest_1.tableoid)::regclass, (hjtest_2.tableoid)::regclass
    Hash Cond: ((hjtest_1.id = (SubPlan 1)) AND ((SubPlan 2) = (SubPlan 3)))
-   Join Filter: (hjtest_1.a <> hjtest_2.b)
+   Join Filter: ((hjtest_1.a)::text <> (hjtest_2.b)::text)
    ->  Seq Scan on public.hjtest_1
          Output: hjtest_1.a, hjtest_1.tableoid, hjtest_1.id, hjtest_1.b
          Filter: ((SubPlan 4) < 50)
@@ -975,7 +975,7 @@ WHERE
  Hash Join
    Output: hjtest_1.a, hjtest_2.a, (hjtest_1.tableoid)::regclass, (hjtest_2.tableoid)::regclass
    Hash Cond: (((SubPlan 1) = hjtest_1.id) AND ((SubPlan 3) = (SubPlan 2)))
-   Join Filter: (hjtest_1.a <> hjtest_2.b)
+   Join Filter: ((hjtest_1.a)::text <> (hjtest_2.b)::text)
    ->  Seq Scan on public.hjtest_2
          Output: hjtest_2.a, hjtest_2.tableoid, hjtest_2.id, hjtest_2.c, hjtest_2.b
          Filter: ((SubPlan 5) < 55)

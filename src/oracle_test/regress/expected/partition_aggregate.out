@@ -163,7 +163,7 @@ EXPLAIN (COSTS OFF)
 SELECT c, sum(a) FROM pagg_tab WHERE c = 'x' GROUP BY c;
            QUERY PLAN           
 --------------------------------
- HashAggregate
+ GroupAggregate
    Group Key: (c)::text
    ->  Result
          One-Time Filter: false

@@ -224,7 +224,7 @@ SELECT * FROM strtest s1 INNER JOIN strtest s2 ON s1.t >= s2.t;', false);
          Cache Mode: binary
          Hits: 3  Misses: 3  Evictions: Zero  Overflows: 0  Memory Usage: NkB
          ->  Index Scan using strtest_t_idx on strtest s2 (actual rows=4 loops=N)
-               Index Cond: (t <= s1.t)
+               Index Cond: ((t)::text <= (s1.t)::text)
 (8 rows)
 
 DROP TABLE strtest;

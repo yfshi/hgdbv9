@@ -1289,11 +1289,11 @@ ERROR:  duplicate key value violates unique constraint "func_index_index"
 DETAIL:  Key (textcat(f1, f2))=(QWERTY) already exists.
 -- while we're here, see that the metadata looks sane
 \d func_index_heap
-         Table "public.func_index_heap"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
- f2     | text |           |          | 
+           Table "public.func_index_heap"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
+ f2     | text | using_nls_comp |          | 
 Indexes:
     "func_index_index" UNIQUE, btree (textcat(f1, f2))
 
@@ -1323,11 +1323,11 @@ ERROR:  duplicate key value violates unique constraint "func_index_index"
 DETAIL:  Key ((f1 || f2))=(QWERTY) already exists.
 -- while we're here, see that the metadata looks sane
 \d func_index_heap
-         Table "public.func_index_heap"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
- f2     | text |           |          | 
+           Table "public.func_index_heap"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
+ f2     | text | using_nls_comp |          | 
 Indexes:
     "func_index_index" UNIQUE, btree ((f1 || f2))
 
@@ -1426,34 +1426,34 @@ DETAIL:  Key (f2)=(b) is duplicated.
 DELETE FROM concur_heap WHERE f1 = 'b';
 VACUUM FULL concur_heap;
 \d concur_heap
-           Table "public.concur_heap"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
- f2     | text |           |          | 
+             Table "public.concur_heap"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
+ f2     | text | using_nls_comp |          | 
 Indexes:
     "concur_heap_expr_idx" btree ((f2 || f1))
     "concur_index1" btree (f2, f1)
     "concur_index2" UNIQUE, btree (f1)
     "concur_index3" UNIQUE, btree (f2) INVALID
-    "concur_index4" btree (f2) WHERE f1 = 'a'::text
-    "concur_index5" btree (f2) WHERE f1 = 'x'::text
+    "concur_index4" btree (f2) WHERE (f1 COLLATE "binary") = 'a'::text
+    "concur_index5" btree (f2) WHERE (f1 COLLATE "binary") = 'x'::text
     "std_index" btree (f2)
 
 REINDEX TABLE concur_heap;
 \d concur_heap
-           Table "public.concur_heap"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
- f2     | text |           |          | 
+             Table "public.concur_heap"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
+ f2     | text | using_nls_comp |          | 
 Indexes:
     "concur_heap_expr_idx" btree ((f2 || f1))
     "concur_index1" btree (f2, f1)
     "concur_index2" UNIQUE, btree (f1)
     "concur_index3" UNIQUE, btree (f2)
-    "concur_index4" btree (f2) WHERE f1 = 'a'::text
-    "concur_index5" btree (f2) WHERE f1 = 'x'::text
+    "concur_index4" btree (f2) WHERE (f1 COLLATE "binary") = 'a'::text
+    "concur_index5" btree (f2) WHERE (f1 COLLATE "binary") = 'x'::text
     "std_index" btree (f2)
 
 -- Temporary tables with concurrent builds and on-commit actions
@@ -1501,11 +1501,11 @@ DROP INDEX CONCURRENTLY "concur_index5";
 DROP INDEX CONCURRENTLY "concur_index1";
 DROP INDEX CONCURRENTLY "concur_heap_expr_idx";
 \d concur_heap
-           Table "public.concur_heap"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- f1     | text |           |          | 
- f2     | text |           |          | 
+             Table "public.concur_heap"
+ Column | Type |   Collation    | Nullable | Default 
+--------+------+----------------+----------+---------
+ f1     | text | using_nls_comp |          | 
+ f2     | text | using_nls_comp |          | 
 Indexes:
     "std_index" btree (f2)
 
@@ -1519,12 +1519,12 @@ INSERT INTO cwi_test VALUES(1, 2), (3, 4), (5, 6);
 CREATE UNIQUE INDEX cwi_uniq_idx ON cwi_test(a , b);
 ALTER TABLE cwi_test ADD primary key USING INDEX cwi_uniq_idx;
 \d cwi_test
-                Table "public.cwi_test"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | integer      |           | not null | 
- b      | varchar2(10) |           | not null | 
- c      | char(1)      |           |          | 
+                   Table "public.cwi_test"
+ Column |     Type     |   Collation    | Nullable | Default 
+--------+--------------+----------------+----------+---------
+ a      | integer      |                | not null | 
+ b      | varchar2(10) | using_nls_comp | not null | 
+ c      | char(1)      | using_nls_comp |          | 
 Indexes:
     "cwi_uniq_idx" PRIMARY KEY, btree (a, b)
 
@@ -1542,12 +1542,12 @@ ALTER TABLE cwi_test DROP CONSTRAINT cwi_uniq_idx,
 		USING INDEX cwi_uniq2_idx;
 NOTICE:  ALTER TABLE / ADD CONSTRAINT USING INDEX will rename index "cwi_uniq2_idx" to "cwi_replaced_pkey"
 \d cwi_test
-                Table "public.cwi_test"
- Column |     Type     | Collation | Nullable | Default 
---------+--------------+-----------+----------+---------
- a      | integer      |           | not null | 
- b      | varchar2(10) |           | not null | 
- c      | char(1)      |           |          | 
+                   Table "public.cwi_test"
+ Column |     Type     |   Collation    | Nullable | Default 
+--------+--------------+----------------+----------+---------
+ a      | integer      |                | not null | 
+ b      | varchar2(10) | using_nls_comp | not null | 
+ c      | char(1)      | using_nls_comp |          | 
 Indexes:
     "cwi_replaced_pkey" PRIMARY KEY, btree (b, a)
 
@@ -2517,11 +2517,11 @@ REINDEX SCHEMA CONCURRENTLY pg_catalog;
 WARNING:  cannot reindex system catalogs concurrently, skipping all
 -- Check the relation status, there should not be invalid indexes
 \d concur_reindex_tab
-         Table "public.concur_reindex_tab"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- c1     | integer |           | not null | 
- c2     | text    |           |          | 
+           Table "public.concur_reindex_tab"
+ Column |  Type   |   Collation    | Nullable | Default 
+--------+---------+----------------+----------+---------
+ c1     | integer |                | not null | 
+ c2     | text    | using_nls_comp |          | 
 Indexes:
     "concur_reindex_ind1" PRIMARY KEY, btree (c1)
     "concur_reindex_ind2" btree (c2)

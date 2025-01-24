@@ -2104,12 +2104,8 @@ describeOneTableDetails(const char *schemaname,
 		attnotnull_col = cols++;
 		if (pset.sversion >= 90100)
 		{
-			#if 0 /* Req: SRS-SQL-NLSSORT */
 			appendPQExpBufferStr(&buf, ",\n  (SELECT c.collname FROM pg_catalog.pg_collation c, pg_catalog.pg_type t\n"
-								 "   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation) AS attcollation");				
-			#endif 
-			appendPQExpBuffer(&buf, ",\n  (SELECT c.collname FROM pg_catalog.pg_collation c, pg_catalog.pg_type t\n"
-								 "   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation AND a.attcollation <> %d) AS attcollation", ORA_COLL_OID(USING_NLS_COMP));
+								"   WHERE c.oid = a.attcollation AND t.oid = a.atttypid AND a.attcollation <> t.typcollation) AS attcollation");
 		}
 		else
 			appendPQExpBufferStr(&buf, ",\n  NULL AS attcollation");

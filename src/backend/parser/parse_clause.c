@@ -65,7 +65,6 @@ typedef struct
 	ParseState 		*pstate;
 	Node			*base;
 	Oid				 targetcoll;
-	ParseExprKind 	 exprKind;
 } pseudo_collation_replace_context;
 /* End - ReqID:SRS-SQL-NLSSORT */
 
@@ -129,8 +128,6 @@ static void make_one_outerjoin(ParseState *pstate, List *innerjoin_list, Var *pl
 static void parseBoolexpr(BoolExpr *boolexpr, List **singlevar_list, List **multi_outer_joins, List **return_args);
 static void dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType boolop);
 /* Begin - ReqID:SRS-SQL-NLSSORT */
-static Node *makePseudoCollationReplaceNode(Node *expr, Oid targetcoll);
-static void pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll, ParseExprKind exprKind);
 static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context);
 /* End - ReqID:SRS-SQL-NLSSORT */
 
@@ -145,13 +142,6 @@ static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace
 	!pg_strcasecmp(get_opname(((OpExpr *)expr)->opno), "!~~"))
 
 /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
-
-/* Begin - Req:SRS-SQL-NLSSORT */
-#define ENABLE_PSEUDO_COLLATION_REPLACE(expr) (( \
-							  ORA_PARSER == compatible_db && \
-							  enable_ora_default_collation && \
-							  IsPseudoCollation(exprCollation(expr))))
-/* End - Req:SRS-SQL-NLSSORT */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
 static bool transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref);
@@ -1969,6 +1959,35 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 			/* CROSS JOIN: no quals */
 		}
 
+		/**
+		 * Begin - BUG#M497
+		 * replace pseudo-collation in JOIN clause.
+		 */
+		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
+		{			
+			if (j->quals)
+			{
+				Oid 	 coll;
+				Node 	*copy = copyObject(j->quals);
+
+				assign_expr_collations(pstate, copy);
+				
+				coll = exprCollation(copy);
+
+				if (!OidIsValid(coll))
+					coll = exprInputCollation(copy);
+
+				if (IsPseudoCollation(coll))
+				{
+					Oid	targetcoll = PseudoCollationReplace1(coll);
+					pseudo_collation_replace(pstate, (Node *) j->quals, NULL, targetcoll);
+				}
+				
+				pfree(copy);
+			}
+		}
+		/* Begin - BUG#Z497 */
+
 		/* Add remaining columns from each side to the output columns */
 		res_colindex +=
 			extractRemainingColumns(l_nscolumns, l_colnames, &l_colnos,
@@ -2280,23 +2299,31 @@ transformWhereClause(ParseState *pstate, Node *clause,
 	 * having clause also do parseCheckAggregates() check,
 	 * so we replace Pseudo-collation-Var occured in having clause.
 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation &&
-		exprKind == EXPR_KIND_HAVING)
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{
-		ListCell *lc;
+		Oid 	 coll;
+		Node 	*copy = copyObject(qual);
 
-		if (nodeTag(qual) == T_OpExpr)
+		assign_expr_collations(pstate, copy);
+
+		coll = exprCollation(copy);
+
+		/**
+		 * Such as express 'a > b', which will be parsed to OpExpr,
+		 * it's result BOOL type, and exprCollation(OpExpr) is 0, 
+		 * but exprInputCollation(OpExpr) is not 0.
+		 */
+		if (!OidIsValid(coll))
+			coll = exprInputCollation(copy);
+
+		if (exprKind == EXPR_KIND_HAVING && IsPseudoCollation(coll))
 		{
-			foreach(lc, ((OpExpr *)qual)->args)
-			{
-				Node *node = (Node *) lfirst(lc);
-
-				if (IsPseudoCollation(exprCollation(node)))
-					lfirst(lc) = makePseudoCollationReplaceNode((Node *) node, 
-																PseudoCollationReplace1(exprCollation(node)));
-			}
+			// We have to replace pseudo-collation-node recursively.
+			Oid	targetcoll = PseudoCollationReplace1(coll);
+			pseudo_collation_replace(pstate, (Node *) qual, NULL, targetcoll);	
 		}
+		
+		pfree(copy);
 	}
 	/* End - SRS: SQL-SQL-NLSSORT */
 
@@ -2841,20 +2868,24 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			if (target_result != NULL)
 			{
 				/* Begin - Req: SRS-SQL-NLSSORT */
-				Node *copy = copyObject((Node *) target_result->expr);
-				assign_expr_collations(pstate, copy);
-				/* End - Req: SRS-SQL-NLSSORT */
-				
-				/* return the first match, after suitable validation */
-				checkTargetlistEntrySQL92(pstate, target_result, exprKind);
-
-				/* Begin - Req: SRS-SQL-NLSSORT */
-				if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+				if (compatible_db == ORA_PARSER && enable_ora_default_collation)
 				{
+					Node *copy = copyObject((Node *) target_result->expr);
+					assign_expr_collations(pstate, copy);
+
+					/* return the first match, after suitable validation */
+					checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+				
+					if (IsPseudoCollation(exprCollation(copy)))	
+						target_result = findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
+					
 					pfree(copy);
-					return findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
 				}
 				/* End - Req: SRS-SQL-NLSSORT */
+				else
+					/* return the first match, after suitable validation */
+					checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+
 				return target_result;
 			}
 		}
@@ -2922,20 +2953,24 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			if (target_result != NULL)
 			{
 				/* Begin - Req: SRS-SQL-NLSSORT */
-				Node *copy = copyObject((Node *) target_result->expr);
-				assign_expr_collations(pstate, copy);
-				/* End - Req: SRS-SQL-NLSSORT */
-				
-				/* return the first match, after suitable validation */
-				checkTargetlistEntrySQL92(pstate, target_result, exprKind);
-
-				/* Begin - Req: SRS-SQL-NLSSORT */
-				if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+				if (compatible_db == ORA_PARSER && enable_ora_default_collation)
 				{
+					Node *copy = copyObject((Node *) target_result->expr);
+					assign_expr_collations(pstate, copy);
+					
+					/* return the first match, after suitable validation */
+					checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+
+					if (IsPseudoCollation(exprCollation(copy)))						
+						target_result = findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
+
 					pfree(copy);
-					return findTargetlistEntrySQL99(pstate, (Node *) target_result, tlist, exprKind);
 				}
 				/* End - Req: SRS-SQL-NLSSORT */
+				else
+					/* return the first match, after suitable validation */
+					checkTargetlistEntrySQL92(pstate, target_result, exprKind);
+
 				return target_result;
 			}
 		}
@@ -2976,20 +3011,24 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 				if (++targetlist_pos == target_pos)
 				{
 					/* Begin - Req: SRS-SQL-NLSSORT */
-					Node *copy = copyObject((Node *) tle->expr);
-					assign_expr_collations(pstate, copy);
-					/* End - Req: SRS-SQL-NLSSORT */
-					
-					/* return the unique match, after suitable validation */
-					checkTargetlistEntrySQL92(pstate, tle, exprKind);
-					
-					/* Begin - Req: SRS-SQL-NLSSORT */
-					if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+					if (compatible_db == ORA_PARSER && enable_ora_default_collation)
 					{
+						Node *copy = copyObject((Node *) tle->expr);
+						assign_expr_collations(pstate, copy);
+						
+						/* return the unique match, after suitable validation */
+						checkTargetlistEntrySQL92(pstate, tle, exprKind);
+						
+						if (IsPseudoCollation(exprCollation(copy)))
+							tle = findTargetlistEntrySQL99(pstate, (Node *) tle, tlist, exprKind);
+						
 						pfree(copy);
-						return findTargetlistEntrySQL99(pstate, (Node *) tle, tlist, exprKind);
 					}
 					/* End - Req: SRS-SQL-NLSSORT */
+					else
+						/* return the unique match, after suitable validation */
+						checkTargetlistEntrySQL92(pstate, tle, exprKind);
+
 					return tle;
 				}
 			}
@@ -3015,107 +3054,98 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 	return findTargetlistEntrySQL99(pstate, node, tlist, exprKind);
 }
 
-static Node *
-makePseudoCollationReplaceNode(Node *expr, Oid targetcoll)
-{
-	CollateExpr *newc = makeNode(CollateExpr);
-	newc->arg = (Expr *) expr;
-	newc->collOid = targetcoll;
-	newc->location = exprLocation(expr);
+/* Begin - Req: SRS-SQL-NLSSORT */
+#define REPLACE_PSEUDO_COLLATION(T, expr) do { \
+		if (!context->base) \
+		{ \
+			if (IsPseudoCollation(exprCollation((Node *) expr))) \
+				expr = (T *) makePseudoCollationReplaceNode((Node *) expr, context->targetcoll); \
+			else \
+				pseudo_collation_replace_walker((Node *) expr, context); \
+		} \
+		else \
+		{ \
+			if (equal(expr, context->base)) \
+				expr = (T *) makePseudoCollationReplaceNode((Node *) expr, context->targetcoll); \
+			else \
+				pseudo_collation_replace_walker((Node *) expr, context); \
+		} \
+	} while (0);
 
-	return (Node *) newc;
-}
+#define REPLACE_EXPR_PSEUDO_COLLATION(expr) REPLACE_PSEUDO_COLLATION(Expr, expr);
+#define REPLACE_NODE_PSEUDO_COLLATION(node) REPLACE_PSEUDO_COLLATION(Node, node);
+#define REPLACE_CTESEARCH_PSEUDO_COLLATION(node) REPLACE_PSEUDO_COLLATION(CTESearchClause, node);
+#define REPLACE_CTECYCLECLAUSE_PSEUDO_COLLATION(node) REPLACE_PSEUDO_COLLATION(CTECycleClause, node);
+#define REPLACE_PLACEHOLDERVAR_PSEUDO_COLLATION(node) REPLACE_PSEUDO_COLLATION(PlaceHolderVar, node);
+
+#define REPLACE_LIST_PSEUDO_COLLATION(list) \
+	(pseudo_collation_replace_walker((Node *) list, context));
+/* End - Req: SRS-SQL-NLSSORT */
 
 static inline void 
 pseudo_collation_replace_WindowFunc(WindowFunc *wfunc, pseudo_collation_replace_context *context)
 {
-	if (equal(wfunc->aggfilter, context->base))
-		wfunc->aggfilter = (Expr *) makePseudoCollationReplaceNode((Node *) wfunc->aggfilter, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) wfunc->aggfilter, context);
-
-	pseudo_collation_replace_walker((Node *) wfunc->args, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(wfunc->aggfilter);
+	REPLACE_LIST_PSEUDO_COLLATION(wfunc->args);
 }
 
 static inline void 
 pseudo_collation_replace_FuncExpr(FuncExpr *func, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) func->args, context);
+	ListCell *lc;
+	
+	foreach(lc, func->args)
+	{
+		Node *node = (Node *) lfirst(lc);
+
+		if (!IsA(node, Var))
+			REPLACE_EXPR_PSEUDO_COLLATION(lfirst(lc));
+	}
 }
 
 static inline void 
 pseudo_collation_replace_OpExpr(OpExpr *op, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) op->args, context);
+	REPLACE_LIST_PSEUDO_COLLATION(op->args);
 }
 
 static inline void 
 pseudo_collation_replace_RelabelType(RelabelType *relab, pseudo_collation_replace_context *context)
 {
-	RelabelType *target = (RelabelType *) context->base;
-
-	if (equal(relab->arg, target))
-		relab->arg = (Expr *) makePseudoCollationReplaceNode((Node *) relab->arg, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) relab->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(relab->arg);
 }
 
 static inline void 
 pseudo_collation_replace_CoerceViaIO(CoerceViaIO *iocoerce, pseudo_collation_replace_context *context)
 {
-	/* Begin - BUG#Z1491 */
-	if (equal(iocoerce->arg, context->base))
-		iocoerce->arg = (Expr *) makePseudoCollationReplaceNode((Node *) iocoerce->arg, context->targetcoll);
-	/* End - BUG#Z1491 */
-	else
-		pseudo_collation_replace_walker((Node *) iocoerce->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(iocoerce->arg);
 }
 
 static inline void 
 pseudo_collation_replace_ArrayCoerceExpr(ArrayCoerceExpr *acoerce, pseudo_collation_replace_context *context)
 {
-	/* Begin - BUG#Z1491 */
-	if (equal(acoerce->arg, context->base))
-		acoerce->arg = (Expr *) makePseudoCollationReplaceNode((Node *) acoerce->arg, context->targetcoll);
-	/* End - BUG#Z1491 */
-	else
-		pseudo_collation_replace_walker((Node *) acoerce->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(acoerce->arg);
 }
 
 static inline void 
 pseudo_collation_replace_ConvertRowtypeExpr(ConvertRowtypeExpr *cvt, pseudo_collation_replace_context *context)
 {
-	/* Begin - BUG#Z1491 */
-	if (equal(cvt->arg, context->base))
-		cvt->arg = (Expr *) makePseudoCollationReplaceNode((Node *) cvt->arg, context->targetcoll);
-	/* End - BUG#Z1491 */
-	else
-		pseudo_collation_replace_walker((Node *) cvt->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(cvt->arg);
 }
 
 static inline void 
 pseudo_collation_replace_CollateExpr(CollateExpr *coll, pseudo_collation_replace_context *context)
 {
-	if (equal(coll->arg, context->base))
-	{
-		if (coll->collOid == context->targetcoll)
-			return;
-		
-		coll->arg = (Expr *) makePseudoCollationReplaceNode((Node *) coll->arg, context->targetcoll);
-	}
-	else
-		pseudo_collation_replace_walker((Node *) coll->arg, context);
+	if (equal(coll->arg, context->base) && coll->collOid == context->targetcoll)
+		return;
+
+	REPLACE_EXPR_PSEUDO_COLLATION(coll->arg);
 }
 
 static inline void 
 pseudo_collation_replace_CoerceToDomain(CoerceToDomain *cd, pseudo_collation_replace_context *context)
 {
-	/* Begin - BUG#Z1491 */
-	if (equal(cd->arg, context->base))
-		cd->arg = (Expr *) makePseudoCollationReplaceNode((Node *) cd->arg, context->targetcoll);
-	/* End - BUG#Z1491 */
-	else
-		pseudo_collation_replace_walker((Node *) cd->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(cd->arg);
 }
 
 static inline void 
@@ -3123,12 +3153,10 @@ pseudo_collation_replace_TargetEntry(TargetEntry *tle, pseudo_collation_replace_
 {
 	Node *texpr = strip_implicit_coercions((Node *) tle->expr);
 
-	if (equal(texpr, context->base) &&
-		equal(tle->expr, context->base))
+	if (equal(texpr, context->base) && equal(tle->expr, context->base))
 		tle->expr = (Expr *) makePseudoCollationReplaceNode((Node *) tle->expr, context->targetcoll);
 	else
 		pseudo_collation_replace_walker((Node *)tle->expr, context);
-	
 }
 
 static inline void 
@@ -3138,12 +3166,7 @@ pseudo_collation_replace_List(List *list, pseudo_collation_replace_context *cont
 	
 	foreach(lc, list)
 	{
-		Node *node = (Node *) lfirst(lc);
-		
-		if (equal(node, context->base))
-			lfirst(lc) = makePseudoCollationReplaceNode((Node *) node, context->targetcoll);
-		else
-			pseudo_collation_replace_walker(node, context);
+		REPLACE_EXPR_PSEUDO_COLLATION(lfirst(lc));
 	}
 }
 
@@ -3151,7 +3174,7 @@ pseudo_collation_replace_List(List *list, pseudo_collation_replace_context *cont
 static inline void
 pseudo_collation_replace_CoalesceExpr(CoalesceExpr *expr, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) expr->args, context);
+	REPLACE_LIST_PSEUDO_COLLATION(expr->args);
 }
 /* End - BUG#M0000424 */
 
@@ -3159,69 +3182,275 @@ pseudo_collation_replace_CoalesceExpr(CoalesceExpr *expr, pseudo_collation_repla
 static inline void 
 pseudo_collation_replace_ResTarget(ResTarget *res, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker(res->val, context);
+	REPLACE_NODE_PSEUDO_COLLATION(res->val);
 }
 
 static inline void 
 pseudo_collation_replace_CaseExpr(CaseExpr *c, pseudo_collation_replace_context *context)
 {
-	if (equal(c->arg, context->base))
-		c->arg = (Expr *) makePseudoCollationReplaceNode((Node *) c->arg, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) c->arg, context);
-
-	pseudo_collation_replace_walker((Node *) c->args, context);
-	
-	if (equal(c->defresult, context->base))
-		c->defresult = (Expr *) makePseudoCollationReplaceNode((Node *) c->defresult, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) c->defresult, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(c->arg);
+	REPLACE_LIST_PSEUDO_COLLATION(c->args);
+	REPLACE_EXPR_PSEUDO_COLLATION(c->defresult);
 }
 
 static inline void 
 pseudo_collation_replace_CaseWhen(CaseWhen *cw, pseudo_collation_replace_context *context)
 {
-	if (equal(cw->expr, context->base))
-		cw->expr = (Expr *) makePseudoCollationReplaceNode((Node *) cw->expr, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) cw->expr, context);
-
-	if (equal(cw->orig_expr, context->base))
-		cw->orig_expr = (Expr *) makePseudoCollationReplaceNode((Node *) cw->orig_expr, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) cw->orig_expr, context);
-
-	if (equal(cw->result, context->base))
-		cw->result = (Expr *) makePseudoCollationReplaceNode((Node *) cw->result, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) cw->result, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(cw->expr);
+	REPLACE_EXPR_PSEUDO_COLLATION(cw->orig_expr);
+	REPLACE_EXPR_PSEUDO_COLLATION(cw->result);
 }
 
 static inline void 
 pseudo_collation_replace_BoolExpr(BoolExpr *b, pseudo_collation_replace_context *context)
 {
-	pseudo_collation_replace_walker((Node *) b->args, context);
+	REPLACE_LIST_PSEUDO_COLLATION(b->args);	
 }
 
 static inline void 
 pseudo_collation_replace_TypeCast(TypeCast *t, pseudo_collation_replace_context *context)
 {
-	if (equal(t->arg, context->base))
-		t->arg = makePseudoCollationReplaceNode((Node *) t->arg, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) t->arg, context);
+	REPLACE_NODE_PSEUDO_COLLATION(t->arg);
 }
 
 static inline void 
 pseudo_collation_replace_NullTest(NullTest *nt, pseudo_collation_replace_context *context)
 {
-	if (equal(nt->arg, context->base))
-		nt->arg = (Expr *) makePseudoCollationReplaceNode((Node *) nt->arg, context->targetcoll);
-	else
-		pseudo_collation_replace_walker((Node *) nt->arg, context);
+	REPLACE_EXPR_PSEUDO_COLLATION(nt->arg);
+}
+/* End - BUG#Z1420 */
+
+static inline void 
+pseudo_collation_replace_SubLink(SubLink *sublink, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(sublink->testexpr);
+	REPLACE_NODE_PSEUDO_COLLATION(sublink->subselect);
 }
 
-/* End - BUG#Z1420 */
+static inline void 
+pseudo_collation_replace_WithCheckOption(WithCheckOption *wco, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(wco->qual);
+}
+
+static inline void 
+pseudo_collation_replace_GroupingFunc(GroupingFunc *gfunc, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(gfunc->args);
+}
+
+static inline void 
+pseudo_collation_replace_SubscriptingRef(SubscriptingRef *sref, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(sref->refupperindexpr);
+	REPLACE_LIST_PSEUDO_COLLATION(sref->reflowerindexpr);
+	REPLACE_EXPR_PSEUDO_COLLATION(sref->refexpr);
+	REPLACE_EXPR_PSEUDO_COLLATION(sref->refassgnexpr);
+}
+
+static inline void 
+pseudo_collation_replace_NamedArgExpr(NamedArgExpr *na, pseudo_collation_replace_context *context)
+{
+	REPLACE_EXPR_PSEUDO_COLLATION(na->arg);
+}
+
+static inline void 
+pseudo_collation_replace_ScalarArrayOpExpr(ScalarArrayOpExpr *sao, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(sao->args);
+}
+
+static inline void 
+pseudo_collation_replace_SubPlan(SubPlan *splan, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(splan->testexpr);
+	REPLACE_LIST_PSEUDO_COLLATION(splan->args);
+}
+
+static inline void 
+pseudo_collation_replace_AlternativeSubPlan(AlternativeSubPlan *asplan, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(asplan->subplans);
+}
+
+static inline void 
+pseudo_collation_replace_FieldSelect(FieldSelect *fselect, pseudo_collation_replace_context *context)
+{
+	REPLACE_EXPR_PSEUDO_COLLATION(fselect->arg);
+}
+
+static inline void 
+pseudo_collation_replace_FieldStore(FieldStore *fstore, pseudo_collation_replace_context *context)
+{
+	REPLACE_EXPR_PSEUDO_COLLATION(fstore->arg);
+	REPLACE_LIST_PSEUDO_COLLATION(fstore->newvals);
+}
+
+static inline void 
+pseudo_collation_replace_ArrayExpr(ArrayExpr *a, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(a->elements);
+}
+
+static inline void 
+pseudo_collation_replace_RowExpr(RowExpr *r, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(r->args);
+}
+
+static inline void 
+pseudo_collation_replace_RowCompareExpr(RowCompareExpr *rc, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(rc->largs);
+	REPLACE_LIST_PSEUDO_COLLATION(rc->rargs);
+}
+
+static inline void 
+pseudo_collation_replace_MinMaxExpr(MinMaxExpr *minmaxexpr, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(minmaxexpr->args);
+}
+
+static inline void 
+pseudo_collation_replace_XmlExpr(XmlExpr *xexpr, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(xexpr->named_args);
+	REPLACE_LIST_PSEUDO_COLLATION(xexpr->args);
+}
+
+static inline void 
+pseudo_collation_replace_BooleanTest(BooleanTest *btest, pseudo_collation_replace_context *context)
+{
+	REPLACE_EXPR_PSEUDO_COLLATION(btest->arg);
+}
+
+static inline void 
+pseudo_collation_replace_WindowClause(WindowClause *wc, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(wc->partitionClause);
+	REPLACE_LIST_PSEUDO_COLLATION(wc->orderClause);
+	REPLACE_NODE_PSEUDO_COLLATION(wc->startOffset);
+	REPLACE_NODE_PSEUDO_COLLATION(wc->endOffset);
+}
+
+static inline void 
+pseudo_collation_replace_CTECycleClause(CTECycleClause *cc, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(cc->cycle_mark_value);
+	REPLACE_NODE_PSEUDO_COLLATION(cc->cycle_mark_default);
+}
+
+static inline void 
+pseudo_collation_replace_CTESearchClause(CTESearchClause *csc, pseudo_collation_replace_context *context)
+{
+	// do nothing
+}
+
+static inline void 
+pseudo_collation_replace_CommonTableExpr(CommonTableExpr *cte, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(cte->ctequery);
+	REPLACE_CTESEARCH_PSEUDO_COLLATION(cte->search_clause);
+	REPLACE_CTECYCLECLAUSE_PSEUDO_COLLATION(cte->cycle_clause);
+}
+
+static inline void 
+pseudo_collation_replace_FromExpr(FromExpr *from, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(from->fromlist);
+	REPLACE_NODE_PSEUDO_COLLATION(from->quals);
+}
+
+static inline void 
+pseudo_collation_replace_OnConflictExpr(OnConflictExpr *onconflict, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(onconflict->arbiterElems);
+	REPLACE_NODE_PSEUDO_COLLATION(onconflict->arbiterWhere);
+	REPLACE_LIST_PSEUDO_COLLATION(onconflict->onConflictSet);
+	REPLACE_NODE_PSEUDO_COLLATION(onconflict->onConflictWhere);
+	REPLACE_LIST_PSEUDO_COLLATION(onconflict->exclRelTlist);
+}
+
+static inline void 
+pseudo_collation_replace_MergeAction(MergeAction *ma, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(ma->targetList);
+	REPLACE_NODE_PSEUDO_COLLATION(ma->qual);
+}
+
+static inline void 
+pseudo_collation_replace_PartitionPruneStepOp(PartitionPruneStepOp *opstep, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(opstep->exprs);
+}
+
+static inline void 
+pseudo_collation_replace_JoinExpr(JoinExpr *j, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(j->larg);
+	REPLACE_NODE_PSEUDO_COLLATION(j->rarg);
+	REPLACE_NODE_PSEUDO_COLLATION(j->quals);
+}
+
+static inline void 
+pseudo_collation_replace_SetOperationStmt(SetOperationStmt *setop, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(setop->larg);
+	REPLACE_NODE_PSEUDO_COLLATION(setop->rarg);
+}
+
+static inline void 
+pseudo_collation_replace_IndexClause(IndexClause *iclause, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(iclause->indexquals);
+}
+
+static inline void 
+pseudo_collation_replace_PlaceHolderVar(PlaceHolderVar *phv, pseudo_collation_replace_context *context)
+{
+	REPLACE_EXPR_PSEUDO_COLLATION(phv->phexpr);
+}
+
+static inline void 
+pseudo_collation_replace_InferenceElem(InferenceElem *ielem, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(ielem->expr);
+}
+
+static inline void 
+pseudo_collation_replace_AppendRelInfo(AppendRelInfo *appinfos, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(appinfos->translated_vars);
+}
+
+static inline void 
+pseudo_collation_replace_PlaceHolderInfo(PlaceHolderInfo *phinfo, pseudo_collation_replace_context *context)
+{
+	REPLACE_PLACEHOLDERVAR_PSEUDO_COLLATION(phinfo->ph_var);
+}
+
+static inline void 
+pseudo_collation_replace_RangeTblFunction(RangeTblFunction *rtfunc, pseudo_collation_replace_context *context)
+{
+	REPLACE_NODE_PSEUDO_COLLATION(rtfunc->funcexpr);
+}
+
+static inline void 
+pseudo_collation_replace_TableSampleClause(TableSampleClause *tsc, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(tsc->args);
+	REPLACE_EXPR_PSEUDO_COLLATION(tsc->repeatable);
+}
+
+static inline void 
+pseudo_collation_replace_TableFunc(TableFunc *tfunc, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(tfunc->ns_uris);
+	REPLACE_NODE_PSEUDO_COLLATION(tfunc->docexpr);
+	REPLACE_NODE_PSEUDO_COLLATION(tfunc->rowexpr);
+	REPLACE_LIST_PSEUDO_COLLATION(tfunc->colexprs);
+	REPLACE_LIST_PSEUDO_COLLATION(tfunc->coldefexprs);
+}
 
 static bool 
 pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context)
@@ -3313,7 +3542,108 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 			pseudo_collation_replace_NullTest((NullTest *) node, context);
 			break;
 		/* End - BUG#Z1420 */
-		
+		case T_SubLink:
+			pseudo_collation_replace_SubLink((SubLink *) node, context);
+			break;
+		case T_WithCheckOption:
+			pseudo_collation_replace_WithCheckOption((WithCheckOption *) node, context);
+			break;
+		case T_GroupingFunc:
+			pseudo_collation_replace_GroupingFunc((GroupingFunc *) node, context);
+			break;
+		case T_SubscriptingRef:
+			pseudo_collation_replace_SubscriptingRef((SubscriptingRef *) node, context);
+			break;
+		case T_NamedArgExpr:
+			pseudo_collation_replace_NamedArgExpr((NamedArgExpr *) node, context);
+			break;
+		case T_ScalarArrayOpExpr:
+			pseudo_collation_replace_ScalarArrayOpExpr((ScalarArrayOpExpr *) node, context);
+			break;
+		case T_SubPlan:
+			pseudo_collation_replace_SubPlan((SubPlan *) node, context);
+			break;
+		case T_AlternativeSubPlan:
+			pseudo_collation_replace_AlternativeSubPlan((AlternativeSubPlan *) node, context);
+			break;
+		case T_FieldSelect:
+			pseudo_collation_replace_FieldSelect((FieldSelect *) node, context);
+			break;
+		case T_FieldStore:
+			pseudo_collation_replace_FieldStore((FieldStore *) node, context);
+			break;
+		case T_ArrayExpr:
+			pseudo_collation_replace_ArrayExpr((ArrayExpr *) node, context);
+			break;
+		case T_RowExpr:
+			pseudo_collation_replace_RowExpr((RowExpr *) node, context);
+			break;
+		case T_RowCompareExpr:
+			pseudo_collation_replace_RowCompareExpr((RowCompareExpr *) node, context);
+			break;
+		case T_MinMaxExpr:
+			pseudo_collation_replace_MinMaxExpr((MinMaxExpr *) node, context);
+			break;
+		case T_XmlExpr:
+			pseudo_collation_replace_XmlExpr((XmlExpr *) node, context);
+			break;
+		case T_BooleanTest:
+			pseudo_collation_replace_BooleanTest((BooleanTest *) node, context);
+			break;
+		case T_WindowClause:
+			pseudo_collation_replace_WindowClause((WindowClause *) node, context);
+			break;
+		case T_CTECycleClause:
+			pseudo_collation_replace_CTECycleClause((CTECycleClause *) node, context);
+			break;
+		case T_CTESearchClause:
+			pseudo_collation_replace_CTESearchClause((CTESearchClause *) node, context);
+			break;
+		case T_CommonTableExpr:
+			pseudo_collation_replace_CommonTableExpr((CommonTableExpr *) node, context);
+			break;
+		case T_FromExpr:
+			pseudo_collation_replace_FromExpr((FromExpr *) node, context);
+			break;
+		case T_OnConflictExpr:
+			pseudo_collation_replace_OnConflictExpr((OnConflictExpr *) node, context);
+			break;
+		case T_MergeAction:
+			pseudo_collation_replace_MergeAction((MergeAction *) node, context);
+			break;
+		case T_PartitionPruneStepOp:
+			pseudo_collation_replace_PartitionPruneStepOp((PartitionPruneStepOp *) node, context);
+			break;
+		case T_JoinExpr:
+			pseudo_collation_replace_JoinExpr((JoinExpr *) node, context);
+			break;
+		case T_SetOperationStmt:
+			pseudo_collation_replace_SetOperationStmt((SetOperationStmt *) node, context);
+			break;
+		case T_IndexClause:
+			pseudo_collation_replace_IndexClause((IndexClause *) node, context);
+			break;
+		case T_PlaceHolderVar:
+			pseudo_collation_replace_PlaceHolderVar((PlaceHolderVar *) node, context);
+			break;
+		case T_InferenceElem:
+			pseudo_collation_replace_InferenceElem((InferenceElem *) node, context);
+			break;
+		case T_AppendRelInfo:
+			pseudo_collation_replace_AppendRelInfo((AppendRelInfo *) node, context);
+			break;
+		case T_PlaceHolderInfo:
+			pseudo_collation_replace_PlaceHolderInfo((PlaceHolderInfo *) node, context);
+			break;
+		case T_RangeTblFunction:
+			pseudo_collation_replace_RangeTblFunction((RangeTblFunction *) node, context);
+			break;
+		case T_TableSampleClause:
+			pseudo_collation_replace_TableSampleClause((TableSampleClause *) node, context);
+			break;
+		case T_TableFunc:
+			pseudo_collation_replace_TableFunc((TableFunc *) node, context);
+			break;
 		default:
 			break;
 	}
@@ -3321,13 +3651,12 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 	return false;
 }
 
-static void
-pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll, ParseExprKind exprKind)
+void
+pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll)
 {
 	pseudo_collation_replace_context context;
 	context.pstate = pstate;
 	context.base = base;
-	context.exprKind = exprKind;
 	context.targetcoll = targetcoll;
 
 	// start with TargetEntry List
@@ -3376,13 +3705,12 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 	 * We assgin collation on expr's copy to check whether it is pseudo collation,
 	 * meanwhile do not change expr's value.
 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation)
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{
 		Node *copy = copyObject(expr);
 		assign_expr_collations(pstate, copy);
 	
-		if (ENABLE_PSEUDO_COLLATION_REPLACE(copy))
+		if (IsPseudoCollation(exprCollation(copy)))
 		{
 			if (exprKind == EXPR_KIND_ORDER_BY ||
 				exprKind == EXPR_KIND_WINDOW_ORDER)
@@ -3392,7 +3720,7 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 			else if (exprKind == EXPR_KIND_SET_ORDER)
 			{
 				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
 				expr = makePseudoCollationReplaceNode(expr, targetcoll);
 			}
 			else if (exprKind == EXPR_KIND_DISTINCT_ORDER)
@@ -3402,19 +3730,19 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 				 * but need recurse to do deep replace.
 				 */ 
 				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
 				expr = makePseudoCollationReplaceNode(expr, targetcoll);
 			}		
 			else if (exprKind == EXPR_KIND_GROUP_BY)
 			{
 				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
 				expr = makePseudoCollationReplaceNode(expr, targetcoll);
 			}
 			else if (exprKind == EXPR_KIND_WINDOW_PARTITION)
 			{
 				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll, exprKind);
+				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
 				expr = makePseudoCollationReplaceNode(expr, targetcoll);
 			}
 		}

@@ -24,4 +24,5 @@ extern void assign_expr_collations(ParseState *pstate, Node *expr);
 
 extern Oid	select_common_collation(ParseState *pstate, List *exprs, bool none_ok);
 
+extern Node *makePseudoCollationReplaceNode(Node *expr, Oid targetcoll); /* BUG#Z1461 */
 #endif							/* PARSE_COLLATE_H */

@@ -115,14 +115,14 @@ CREATE POLICY p1r ON document AS RESTRICTIVE TO regress_rls_dave
 (3 rows)
 
 \d document
-        Table "regress_rls_schema.document"
- Column  |  Type   | Collation | Nullable | Default 
----------+---------+-----------+----------+---------
- did     | integer |           | not null | 
- cid     | integer |           |          | 
- dlevel  | integer |           | not null | 
- dauthor | name    |           |          | 
- dtitle  | text    |           |          | 
+           Table "regress_rls_schema.document"
+ Column  |  Type   |   Collation    | Nullable | Default 
+---------+---------+----------------+----------+---------
+ did     | integer |                | not null | 
+ cid     | integer |                |          | 
+ dlevel  | integer |                | not null | 
+ dauthor | name    |                |          | 
+ dtitle  | text    | using_nls_comp |          | 
 Indexes:
     "document_pkey" PRIMARY KEY, btree (did)
 Foreign-key constraints:
@@ -809,13 +809,14 @@ SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, b, tableoid::regclas
 (5 rows)
 
 EXPLAIN (COSTS OFF) SELECT a, b, tableoid::regclass FROM t2 UNION ALL SELECT a, b, tableoid::regclass FROM t3;
-          QUERY PLAN           
--------------------------------
- Append
-   ->  Seq Scan on t2
-         Filter: ((a % 2) = 1)
-   ->  Seq Scan on t3
-(4 rows)
+             QUERY PLAN              
+-------------------------------------
+ Result
+   ->  Append
+         ->  Seq Scan on t2
+               Filter: ((a % 2) = 1)
+         ->  Seq Scan on t3
+(5 rows)
 
 -- superuser is allowed to bypass RLS checks
 RESET SESSION AUTHORIZATION;
@@ -940,14 +941,14 @@ CREATE POLICY pp1 ON part_document AS PERMISSIVE
 CREATE POLICY pp1r ON part_document AS RESTRICTIVE TO regress_rls_dave
     USING (cid < 55);
 \d+ part_document
-                    Partitioned table "regress_rls_schema.part_document"
- Column  |  Type   | Collation | Nullable | Default | Storage  | Stats target | Description 
----------+---------+-----------+----------+---------+----------+--------------+-------------
- did     | integer |           |          |         | plain    |              | 
- cid     | integer |           |          |         | plain    |              | 
- dlevel  | integer |           | not null |         | plain    |              | 
- dauthor | name    |           |          |         | plain    |              | 
- dtitle  | text    |           |          |         | extended |              | 
+                      Partitioned table "regress_rls_schema.part_document"
+ Column  |  Type   |   Collation    | Nullable | Default | Storage  | Stats target | Description 
+---------+---------+----------------+----------+---------+----------+--------------+-------------
+ did     | integer |                |          |         | plain    |              | 
+ cid     | integer |                |          |         | plain    |              | 
+ dlevel  | integer |                | not null |         | plain    |              | 
+ dauthor | name    |                |          |         | plain    |              | 
+ dtitle  | text    | using_nls_comp |          |         | extended |              | 
 Partition key: RANGE (cid)
 Policies:
     POLICY "pp1"
@@ -1439,13 +1440,13 @@ NOTICE:  f_leak => a87ff679a2f3e71d9181a67b7542122c
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM only s1 WHERE f_leak(b);
-                        QUERY PLAN                         
------------------------------------------------------------
+                            QUERY PLAN                             
+-------------------------------------------------------------------
  Seq Scan on s1
    Filter: ((hashed SubPlan 1) AND f_leak(b))
    SubPlan 1
      ->  Seq Scan on s2
-           Filter: (((x % 2) = 0) AND (y ~~ '%2f%'::text))
+           Filter: (((x % 2) = 0) AND ((y)::text ~~ '%2f%'::text))
 (5 rows)
 
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -1461,13 +1462,13 @@ NOTICE:  f_leak => 1679091c5a880faf6fb5e6087eb1b2dc
 (2 rows)
 
 EXPLAIN (COSTS OFF) SELECT * FROM s1 WHERE f_leak(b);
-                        QUERY PLAN                         
------------------------------------------------------------
+                            QUERY PLAN                             
+-------------------------------------------------------------------
  Seq Scan on s1
    Filter: ((hashed SubPlan 1) AND f_leak(b))
    SubPlan 1
      ->  Seq Scan on s2
-           Filter: (((x % 2) = 0) AND (y ~~ '%af%'::text))
+           Filter: (((x % 2) = 0) AND ((y)::text ~~ '%af%'::text))
 (5 rows)
 
 SELECT (SELECT x FROM s1 LIMIT 1) xx, * FROM s2 WHERE y like '%28%';
@@ -1479,17 +1480,17 @@ SELECT (SELECT x FROM s1 LIMIT 1) xx, * FROM s2 WHERE y like '%28%';
 (3 rows)
 
 EXPLAIN (COSTS OFF) SELECT (SELECT x FROM s1 LIMIT 1) xx, * FROM s2 WHERE y like '%28%';
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Seq Scan on s2
-   Filter: (((x % 2) = 0) AND (y ~~ '%28%'::text))
+   Filter: (((x % 2) = 0) AND ((y)::text ~~ '%28%'::text))
    SubPlan 2
      ->  Limit
            ->  Seq Scan on s1
                  Filter: (hashed SubPlan 1)
                  SubPlan 1
                    ->  Seq Scan on s2 s2_1
-                         Filter: (((x % 2) = 0) AND (y ~~ '%af%'::text))
+                         Filter: (((x % 2) = 0) AND ((y)::text ~~ '%af%'::text))
 (9 rows)
 
 SET SESSION AUTHORIZATION regress_rls_alice;
@@ -1775,7 +1776,7 @@ AND f_leak(t2_1.b) AND f_leak(t2_2.b) RETURNING *, t2_1, t2_2;
 -----------------------------------------------------------------
  Update on t2 t2_1
    ->  Nested Loop
-         Join Filter: (t2_1.b = t2_2.b)
+         Join Filter: ((t2_1.b)::text = (t2_2.b)::text)
          ->  Seq Scan on t2 t2_1
                Filter: ((a = 3) AND ((a % 2) = 1) AND f_leak(b))
          ->  Seq Scan on t2 t2_2
@@ -1802,7 +1803,7 @@ AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
    Update on t2 t1_1_2
    Update on t3 t1_1_3
    ->  Nested Loop
-         Join Filter: (t1_1.b = t1_2.b)
+         Join Filter: ((t1_1.b)::text = (t1_2.b)::text)
          ->  Append
                ->  Seq Scan on t1 t1_1_1
                      Filter: ((a = 4) AND ((a % 2) = 0) AND f_leak(b))
@@ -2713,7 +2714,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM y2 JOIN test_qual_pushdown ON (b = abc) WHERE 
                                QUERY PLAN                                
 -------------------------------------------------------------------------
  Hash Join
-   Hash Cond: (test_qual_pushdown.abc = y2.b)
+   Hash Cond: ((test_qual_pushdown.abc)::text = (y2.b)::text)
    ->  Seq Scan on test_qual_pushdown
          Filter: f_leak(abc)
    ->  Hash
@@ -2744,7 +2745,7 @@ EXPLAIN (COSTS OFF) SELECT * FROM y2 JOIN test_qual_pushdown ON (b = abc) WHERE 
                                        QUERY PLAN                                        
 -----------------------------------------------------------------------------------------
  Hash Join
-   Hash Cond: (test_qual_pushdown.abc = y2.b)
+   Hash Cond: ((test_qual_pushdown.abc)::text = (y2.b)::text)
    ->  Seq Scan on test_qual_pushdown
    ->  Hash
          ->  Seq Scan on y2

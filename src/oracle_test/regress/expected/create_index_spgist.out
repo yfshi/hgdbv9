@@ -1097,13 +1097,13 @@ SELECT count(*) FROM kd_point_tbl WHERE p ~= '(4585, 365)';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdef';
-                        QUERY PLAN                         
------------------------------------------------------------
+                            QUERY PLAN                             
+-------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t = 'P0123456789abcdef'::text)
+         Recheck Cond: ((t)::text = 'P0123456789abcdef'::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t = 'P0123456789abcdef'::text)
+               Index Cond: ((t)::text = 'P0123456789abcdef'::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdef';
@@ -1114,13 +1114,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdef';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcde';
-                        QUERY PLAN                        
-----------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t = 'P0123456789abcde'::text)
+         Recheck Cond: ((t)::text = 'P0123456789abcde'::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t = 'P0123456789abcde'::text)
+               Index Cond: ((t)::text = 'P0123456789abcde'::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcde';
@@ -1131,13 +1131,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcde';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdefF';
-                         QUERY PLAN                         
-------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t = 'P0123456789abcdefF'::text)
+         Recheck Cond: ((t)::text = 'P0123456789abcdefF'::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t = 'P0123456789abcdefF'::text)
+               Index Cond: ((t)::text = 'P0123456789abcdefF'::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdefF';
@@ -1148,13 +1148,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t = 'P0123456789abcdefF';
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t <    'Aztec                         Ct  ';
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t < 'Aztec                         Ct  '::text)
+         Recheck Cond: ((t)::text < 'Aztec                         Ct  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t < 'Aztec                         Ct  '::text)
+               Index Cond: ((t)::text < 'Aztec                         Ct  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t <    'Aztec                         Ct  ';
@@ -1182,13 +1182,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t ~<~  'Aztec                         
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t <=   'Aztec                         Ct  ';
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t <= 'Aztec                         Ct  '::text)
+         Recheck Cond: ((t)::text <= 'Aztec                         Ct  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t <= 'Aztec                         Ct  '::text)
+               Index Cond: ((t)::text <= 'Aztec                         Ct  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t <=   'Aztec                         Ct  ';
@@ -1216,13 +1216,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t ~<=~ 'Aztec                         
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t =    'Aztec                         Ct  ';
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t = 'Aztec                         Ct  '::text)
+         Recheck Cond: ((t)::text = 'Aztec                         Ct  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t = 'Aztec                         Ct  '::text)
+               Index Cond: ((t)::text = 'Aztec                         Ct  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t =    'Aztec                         Ct  ';
@@ -1233,13 +1233,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t =    'Aztec                         
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t =    'Worth                         St  ';
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t = 'Worth                         St  '::text)
+         Recheck Cond: ((t)::text = 'Worth                         St  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t = 'Worth                         St  '::text)
+               Index Cond: ((t)::text = 'Worth                         St  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t =    'Worth                         St  ';
@@ -1250,13 +1250,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t =    'Worth                         
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t >=   'Worth                         St  ';
-                                 QUERY PLAN                                  
------------------------------------------------------------------------------
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t >= 'Worth                         St  '::text)
+         Recheck Cond: ((t)::text >= 'Worth                         St  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t >= 'Worth                         St  '::text)
+               Index Cond: ((t)::text >= 'Worth                         St  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t >=   'Worth                         St  ';
@@ -1284,13 +1284,13 @@ SELECT count(*) FROM radix_text_tbl WHERE t ~>=~ 'Worth                         
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM radix_text_tbl WHERE t >    'Worth                         St  ';
-                                 QUERY PLAN                                 
-----------------------------------------------------------------------------
+                                     QUERY PLAN                                     
+------------------------------------------------------------------------------------
  Aggregate
    ->  Bitmap Heap Scan on radix_text_tbl
-         Recheck Cond: (t > 'Worth                         St  '::text)
+         Recheck Cond: ((t)::text > 'Worth                         St  '::text)
          ->  Bitmap Index Scan on sp_radix_ind
-               Index Cond: (t > 'Worth                         St  '::text)
+               Index Cond: ((t)::text > 'Worth                         St  '::text)
 (5 rows)
 
 SELECT count(*) FROM radix_text_tbl WHERE t >    'Worth                         St  ';

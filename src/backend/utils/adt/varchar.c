@@ -1007,8 +1007,9 @@ hashbpchar(PG_FUNCTION_ARGS)
 	if (!mylocale || mylocale->deterministic)
 	{
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		if (nlssort_hook &&
-			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
+		if (nlssort_hook && 
+			!IsPseudoCollation(collid) &&
+			collid != ORA_COLL_OID(BINARY) && 
 			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, true);
@@ -1080,9 +1081,10 @@ hashbpcharextended(PG_FUNCTION_ARGS)
 	if (!mylocale || mylocale->deterministic)
 	{
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		if (nlssort_hook &&
-			collid != ORA_COLL_OID(BINARY) && /* lc_collate_is_c(BINARY) == true */
-			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+		if (nlssort_hook && 
+			!IsPseudoCollation(collid) &&
+			collid != ORA_COLL_OID(BINARY) && 
+			get_collation_provider(collid) == COLLPROVIDER_ORACLE)		
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, true);
 
