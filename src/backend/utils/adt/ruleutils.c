@@ -10407,7 +10407,12 @@ get_oper_expr(OpExpr *expr, deparse_context *context)
 			enable_emptystring_to_NULL == true)
 		{
 			tmp_expr = palloc(buf->len - location - 12);
-			memcpy(tmp_expr, buf->data + location + 12, buf->len - location - 12);
+			/* Begin - BUGZ1630 */
+			if (quote_all_identifiers)
+				memcpy(tmp_expr, buf->data + location + 14, buf->len - location - 14);
+			else
+			/* End - BUGZ1630 */
+				memcpy(tmp_expr, buf->data + location + 12, buf->len - location - 12);
 			for(int i = 0; i < strlen(tmp_expr); i++)
 			{
 				if (tmp_expr[i] == ',')
