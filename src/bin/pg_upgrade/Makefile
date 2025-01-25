@@ -35,7 +35,7 @@ pg2highgo_OBJS = \
 	file.o \
 	function.o \
 	info.o \
-	option.o \
+	pg2hg_option.o \
 	parallel.o \
 	pg2highgo.o \
 	relfilenode.o \
@@ -55,7 +55,7 @@ highgo2pg_OBJS = \
 	file.o \
 	function.o \
 	info.o \
-	option.o \
+	hg2pg_option.o \
 	parallel.o \
 	highgo2pg.o \
 	relfilenode.o \
@@ -79,6 +79,7 @@ pg_upgrade: $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
 PG2HG_LINK_FILE := pg2highgo.c
 CONTROL_LINK_FILE := pg2hg_controldata.c
 PG2HG_SPACE_LINK_FILE := pg2hg_tablespace.c
+PG2HG_OPTION_LINK_FILE := pg2hg_option.c
 
 create_link_pg2hg:
 	@if [ ! -e $(PG2HG_LINK_FILE) ]; then \
@@ -90,6 +91,9 @@ create_link_pg2hg:
 	@if [ ! -e $(PG2HG_SPACE_LINK_FILE) ]; then \
 		ln -s tablespace.c $(PG2HG_SPACE_LINK_FILE) ;\
 	fi
+	@if [ ! -e $(PG2HG_OPTION_LINK_FILE) ]; then \
+		ln -s option.c $(PG2HG_OPTION_LINK_FILE) ;\
+	fi
 
 
 pg2highgo_FLAGS := -DPG2HG
@@ -97,6 +101,7 @@ pg2highgo_FLAGS := -DPG2HG
 pg2highgo.c: $(create_link_pg2hg)
 pg2hg_controldata.c:$(create_link_pg2hg)
 pg2hg_tablespace.c:$(create_link_pg2hg)
+pg2hg_option.c:$(create_link_pg2hg)
 
 pg2highgo.o: pg2highgo.c | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(pg2highgo_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
@@ -105,6 +110,9 @@ pg2hg_controldata.o: pg2hg_controldata.c | submake-libpq submake-libpgport subma
 	$(CC) $(CFLAGS) $(pg2highgo_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
 
 pg2hg_tablespace.o: pg2hg_tablespace.c | submake-libpq submake-libpgport submake-libpgfeutils
+	$(CC) $(CFLAGS) $(pg2highgo_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
+
+pg2hg_option.o: pg2hg_option.c | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(pg2highgo_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
 
 pg2highgo: $(pg2highgo_OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
@@ -117,6 +125,7 @@ DUMP_LINK_FILE := hg2pg_dump.c
 EXEC_LINK_FILE := hg2pg_exec.c
 HG_CONTROL_LINK_FILE := hg2pg_controldata.c
 HG2PG_SPACE_LINK_FILE := hg2pg_tablespace.c
+HG2PG_OPTION_LINK_FILE := hg2pg_option.c
 
 create_link_hg2pg:
 	@if [ ! -e $(HG2PG_LINK_FILE) ]; then \
@@ -134,6 +143,9 @@ create_link_hg2pg:
 	@if [ ! -e $(HG2PG_SPACE_LINK_FILE) ]; then \
 		ln -s tablespace.c $(HG2PG_SPACE_LINK_FILE) ;\
 	fi
+	@if [ ! -e $(HG2PG_OPTION_LINK_FILE) ]; then \
+		ln -s option.c $(HG2PG_OPTION_LINK_FILE) ;\
+	fi
 
 
 highgo2pg_FLAGS := -DHG2PG
@@ -143,6 +155,7 @@ hg2pg_dump.c: $(create_link_hg2pg)
 hg2pg_exec.c: $(create_link_hg2pg)
 hg2pg_controldata.c: $(create_link_hg2pg)
 hg2pg_tablespace.c: $(create_link_hg2pg)
+hg2pg_option.c: $(create_link_hg2pg)
 
 highgo2pg.o: highgo2pg.c | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(highgo2pg_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
@@ -153,6 +166,8 @@ hg2pg_exec.o: hg2pg_exec.c | submake-libpq submake-libpgport submake-libpgfeutil
 hg2pg_controldata.o: hg2pg_controldata.c | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(highgo2pg_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
 hg2pg_tablespace.o: hg2pg_tablespace.c | submake-libpq submake-libpgport submake-libpgfeutils
+	$(CC) $(CFLAGS) $(highgo2pg_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
+hg2pg_option.o: hg2pg_option.c | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $(highgo2pg_FLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) $(LDFLAGS_INTERNAL) $(CPPFLAGS) -c $< -o $@
 
 highgo2pg: $(highgo2pg_OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
@@ -181,7 +196,8 @@ clean distclean maintainer-clean:
 	       pg_upgrade_dump_globals.sql \
 	       pg_upgrade_dump_*.custom pg_upgrade_*.log
 	rm -f pg2highgo* highgo2pg* hg2pg_dump.c hg2pg_exec.c pg2hg_controldata.c hg2pg_dump.o hg2pg_exec.o pg2hg_controldata.o \
-		hg2pg_controldata.o  pg2hg_controldata.c hg2pg_controldata.c hg2pg_tablespace.o hg2pg_tablespace.c pg2hg_tablespace.c pg2hg_tablespace.o
+		hg2pg_controldata.o  pg2hg_controldata.c hg2pg_controldata.c hg2pg_tablespace.o hg2pg_tablespace.c pg2hg_tablespace.c pg2hg_tablespace.o \
+		pg2hg_option.c pg2hg_option.o hg2pg_option.c hg2pg_option.o
 
 # When $(MAKE) is present, make automatically infers that this is a
 # recursive make. which is not actually what we want here, as that

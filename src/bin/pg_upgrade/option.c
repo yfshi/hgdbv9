@@ -112,7 +112,16 @@ parseCommandLine(int argc, char *argv[])
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
+/* Begin - Bug# Z1636 */
+#ifdef PG2HG
+			puts("pg2highgo (PostgreSQL) " PG_VERSION);
+#elif HG2PG
+			puts("highgo2pg (PostgreSQL) " PG_VERSION);
+#else
 			puts("pg_upgrade (PostgreSQL) " PG_VERSION);
+#endif
+/* End - Bug# Z1636 */
+
 			exit(0);
 		}
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
@@ -120,7 +129,16 @@ parseCommandLine(int argc, char *argv[])
 		if (strcmp(argv[1], "--highgo-version") == 0 || strcmp(argv[1], "-G") == 0)
 		{
 			hg_load_client_license(argv[0]);
+/* Begin - Bug# Z1636 */
+#ifdef PG2HG
+			printf("pg2highgo %s\n", hg_get_highgoVersion());
+#elif HG2PG
+			printf("highgo2pg %s\n", hg_get_highgoVersion());
+#else
 			printf("pg_upgrade %s\n", hg_get_highgoVersion());
+#endif
+/* End - Bug# Z1636 */
+
 			exit(0);
 		}
 #endif
@@ -345,13 +363,37 @@ parseCommandLine(int argc, char *argv[])
 static void
 usage(void)
 {
+/* Begin - Bug# Z1636 */
+#ifdef PG2HG
+	printf(_("pg2highgo upgrades a PostgreSQL cluster to a ivorysql cluster.\n\n"));
+	printf(_("Usage:\n"));
+	printf(_("  pg2highgo [OPTION]...\n\n"));
+	printf(_("Options:\n"));
+	printf(_("  -b, --old-bindir=BINDIR       old cluster executable directory\n"));
+	printf(_("  -B, --new-bindir=BINDIR       new cluster executable directory (default\n"
+			 "                                same directory as pg2highgo)\n"));
+
+#elif HG2PG
+	printf(_("highgo2pg upgrades a ivorysql cluster to a PostgreSQL cluster .\n\n"));
+	printf(_("Usage:\n"));
+	printf(_("  highgo2pg [OPTION]...\n\n"));
+	printf(_("Options:\n"));
+	printf(_("  -b, --old-bindir=BINDIR       old cluster executable directory\n"));
+	printf(_("  -B, --new-bindir=BINDIR       new cluster executable directory (default\n"
+			 "                                same directory as highgo2pg)\n"));
+
+#else
 	printf(_("pg_upgrade upgrades a PostgreSQL cluster to a different major version.\n\n"));
 	printf(_("Usage:\n"));
 	printf(_("  pg_upgrade [OPTION]...\n\n"));
 	printf(_("Options:\n"));
 	printf(_("  -b, --old-bindir=BINDIR       old cluster executable directory\n"));
 	printf(_("  -B, --new-bindir=BINDIR       new cluster executable directory (default\n"
-			 "                                same directory as pg_upgrade)\n"));
+	 		"                                same directory as pg_upgrade)\n"));
+
+#endif
+/* End - Bug# Z1636 */
+
 	printf(_("  -c, --check                   check clusters only, don't change any data\n"));
 	printf(_("  -d, --old-datadir=DATADIR     old cluster data directory\n"));
 	printf(_("  -D, --new-datadir=DATADIR     new cluster data directory\n"));
@@ -372,15 +414,79 @@ usage(void)
 	printf(_("  -V, --version                 display version information, then exit\n"));
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	printf(_("  -G, --highgo-version		  output version of highgo information, then exit\n"));
+	printf(_("  -G, --highgo-version          output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	printf(_("	-y, --old-mysport=PORT		  old cluster mysql port number (default %d)\n"), old_cluster.mysport);
-	printf(_("	-Y, --new-mysport=PORT		  new cluster mysql port number (default %d)\n"), new_cluster.mysport);
+	printf(_("  -y, --old-mysport=PORT        old cluster mysql port number (default %d)\n"), old_cluster.mysport);
+	printf(_("  -Y, --new-mysport=PORT        new cluster mysql port number (default %d)\n"), new_cluster.mysport);
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	printf(_("  --clone                       clone instead of copying files to new cluster\n"));
 	printf(_("  -?, --help                    show this help, then exit\n"));
+/* Begin - Bug# Z1636 */
+#ifdef PG2HG
+	printf(_("\n"
+			 "Before running pg2highgo you must:\n"
+			 "  create a new database cluster (using the new version of initdb)\n"
+			 "  shutdown the postmaster servicing the old cluster\n"
+			 "  shutdown the postmaster servicing the new cluster\n"));
+	printf(_("\n"
+			 "When you run pg2highgo, you must provide the following information:\n"
+			 "  the data directory for the old cluster  (-d DATADIR)\n"
+			 "  the data directory for the new cluster  (-D DATADIR)\n"
+			 "  the \"bin\" directory for the old version (-b BINDIR)\n"
+			 "  the \"bin\" directory for the new version (-B BINDIR)\n"));
+	printf(_("\n"
+			 "For example:\n"
+			 "  pg2highgo -d oldCluster/data -D newCluster/data -b oldCluster/bin -B newCluster/bin\n"
+			 "or\n"));
+
+#ifndef WIN32
+	 printf(_("  $ export PGDATAOLD=oldCluster/data\n"
+			  "  $ export PGDATANEW=newCluster/data\n"
+			  "  $ export PGBINOLD=oldCluster/bin\n"
+			  "  $ export PGBINNEW=newCluster/bin\n"
+			  "  $ pg2highgo\n"));
+#else
+	 printf(_("  C:\\> set PGDATAOLD=oldCluster/data\n"
+			  "  C:\\> set PGDATANEW=newCluster/data\n"
+			  "  C:\\> set PGBINOLD=oldCluster/bin\n"
+			  "  C:\\> set PGBINNEW=newCluster/bin\n"
+			  "  C:\\> pg2highgo\n"));
+#endif
+
+
+#elif HG2PG
+	printf(_("\n"
+			 "Before running highgo2pg you must:\n"
+			 "  create a new database cluster (using the new version of initdb)\n"
+			 "  shutdown the postmaster servicing the old cluster\n"
+			 "  shutdown the postmaster servicing the new cluster\n"));
+	printf(_("\n"
+			 "When you run highgo2pg, you must provide the following information:\n"
+			 "  the data directory for the old cluster  (-d DATADIR)\n"
+			 "  the data directory for the new cluster  (-D DATADIR)\n"
+			 "  the \"bin\" directory for the old version (-b BINDIR)\n"
+			 "  the \"bin\" directory for the new version (-B BINDIR)\n"));
+	printf(_("\n"
+			 "For example:\n"
+			 "  highgo2pg -d oldCluster/data -D newCluster/data -b oldCluster/bin -B newCluster/bin\n"
+			 "or\n"));
+#ifndef WIN32
+	printf(_("  $ export PGDATAOLD=oldCluster/data\n"
+			 "  $ export PGDATANEW=newCluster/data\n"
+			 "  $ export PGBINOLD=oldCluster/bin\n"
+			 "  $ export PGBINNEW=newCluster/bin\n"
+			 "  $ highgo2pg\n"));
+#else
+	printf(_("  C:\\> set PGDATAOLD=oldCluster/data\n"
+			 "  C:\\> set PGDATANEW=newCluster/data\n"
+			 "  C:\\> set PGBINOLD=oldCluster/bin\n"
+			 "  C:\\> set PGBINNEW=newCluster/bin\n"
+			 "  C:\\> highgo2pg\n"));
+#endif
+
+#else
 	printf(_("\n"
 			 "Before running pg_upgrade you must:\n"
 			 "  create a new database cluster (using the new version of initdb)\n"
@@ -409,6 +515,10 @@ usage(void)
 			 "  C:\\> set PGBINNEW=newCluster/bin\n"
 			 "  C:\\> pg_upgrade\n"));
 #endif
+
+#endif
+/* End - Bug# Z1636 */
+
 	printf(_("\nReport bugs to <%s>.\n"), PACKAGE_BUGREPORT);
 	printf(_("%s home page: <%s>\n"), PACKAGE_NAME, PACKAGE_URL);
 }
