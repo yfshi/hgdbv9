@@ -2032,15 +2032,15 @@ typedef enum ObjectType
 
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
 typedef enum {
-    OPT_CHARACTERSET,
-    OPT_COLLATE
+	OPT_CHARACTERSET,
+	OPT_COLLATE
 } OptType;
 
 typedef struct MysCollateCharacterOpt
 {
-    NodeTag type;
-    OptType opt_type;
-    char * name;
+	NodeTag type;
+	OptType opt_type;
+	char * name;
 } MysCollateCharacterOpt;
 /* End - ReqID: SRS-MYSQL-SQL-USE */
 /* ----------------------
@@ -2058,7 +2058,7 @@ typedef struct CreateSchemaStmt
 	RoleSpec   *authrole;		/* the owner of the created schema */
 	List	   *schemaElts;		/* schema components (list of parsenodes) */
 	bool		if_not_exists;	/* just do nothing if schema already exists? */
-    MysCollateCharacterOpt *mys_opt; /* ReqID:SRS-MYSQL-SQL-USE */
+	MysCollateCharacterOpt *mys_opt; /* ReqID:SRS-MYSQL-SQL-USE */
 } CreateSchemaStmt;
 
 typedef enum DropBehavior

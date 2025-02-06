@@ -29,5 +29,6 @@ extern void getDbCompatibleMode(PGconn *conn);
 
 /* Functions */
 extern const char *mys_fmtId(const char *identifier);
+extern void get_mysql_objname(PGconn *conn, Oid oid, char **objname, char **nspname);
 
 #endif							/* MYS_STRING_UTILS_H */

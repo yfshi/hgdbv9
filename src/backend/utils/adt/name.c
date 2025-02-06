@@ -30,6 +30,9 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 /*****************************************************************************
@@ -252,7 +255,12 @@ namestrcmp(Name name, const char *str)
 		return -1;				/* NULL < anything */
 	if (!str)
 		return 1;				/* NULL < anything */
-	return strncmp(NameStr(*name), str, NAMEDATALEN);
+	/* BEGIN - mysql case sensitive indentify */
+	if (mysql_switch_hook && mysql_switch_hook())
+		return pg_strncasecmp(NameStr(*name), str, NAMEDATALEN);
+	else
+		return strncmp(NameStr(*name), str, NAMEDATALEN);
+	/* End - mysql case sensitive indentify */
 }
 
 

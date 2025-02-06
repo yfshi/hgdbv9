@@ -148,6 +148,16 @@ typedef struct _dumpableObject
 	int			allocDeps;		/* allocated size of dependencies[] */
 	char	   *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 	char 	   *User_binary_upgrade;	/* BUGZ1398 */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	union
+	{
+		struct
+		{
+			char   *oriname;
+			int		caselowernum;
+		}		mysql;
+	}addoptions;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
 } DumpableObject;
 
 typedef struct _namespaceInfo

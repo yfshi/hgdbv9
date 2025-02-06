@@ -104,6 +104,9 @@
 #include "utils/jsonb.h"
 #include "catalog/objectaddress.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
@@ -596,12 +599,26 @@ interpret_function_parameter_list(ParseState *pstate,
 					(fpmode == FUNC_PARAM_OUT ||
 					 fpmode == FUNC_PARAM_TABLE))
 					continue;
-				if (prevfp->name && prevfp->name[0] &&
-					strcmp(prevfp->name, fp->name) == 0)
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
-							 errmsg("parameter name \"%s\" used more than once",
-									fp->name)));
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (mysql_switch_hook && mysql_switch_hook())
+				{
+					if (prevfp->name && prevfp->name[0] &&
+						pg_strcasecmp(prevfp->name, fp->name) == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+								 errmsg("parameter name \"%s\" used more than once",
+										fp->name)));
+				}
+				else
+				{
+					if (prevfp->name && prevfp->name[0] &&
+						strcmp(prevfp->name, fp->name) == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+								 errmsg("parameter name \"%s\" used more than once",
+										fp->name)));
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
 			}
 
 			paramNames[i] = CStringGetTextDatum(fp->name);
@@ -1523,6 +1540,28 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	char		*rettypeName = NULL;
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
+	char	   *orifuncname = NULL;	/* ReqID:SRS-MYSQL-CASE */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
+		orifuncname = pstrdup(strVal(llast(stmt->funcname)));
+
+	if (mysql_switch_hook && mysql_lower_hook &&
+		mysql_list_case_hook && mysql_string_case_hook)
+	{
+		if (mysql_lower_hook())
+		{
+			mysql_list_case_hook(stmt->funcname);
+		}
+		else if (mysql_switch_hook())
+		{
+			ListCell *cell = llast(stmt->funcname);
+
+			if (IsA(cell, String))
+				strVal(cell) = mysql_string_case_hook(strVal(cell));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->funcname,
@@ -1809,6 +1848,27 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	{
 		pg_object_create_obj_hook(funcname, namespaceId, stmt->replace, stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION), address, NULL, NULL);
 	}
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	{
+		StringInfoData buf;
+		Jsonb	*attr = NULL;
+
+		initStringInfo(&buf);
+
+		if (myenable_case_switch)
+		{
+			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+		}
+		pg_object_create_obj_hook(orifuncname, namespaceId, stmt->replace,
+								  stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION),
+								  address,
+								  attr, NULL);
+
+		pfree(buf.data);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	return address;
 	/* END - ReqID:SRS-CMD-PGDUMP */
@@ -2298,6 +2358,24 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 	ObjectAddress address;
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	{
+		/*orifuncname = pstrdup(strVal(llast(stmt->funcname)));*/
+		if (mysql_lower_hook())
+		{
+			mysql_list_case_hook(stmt->func->objname);
+		}
+		else if (mysql_switch_hook())
+		{
+			ListCell *cell = llast(stmt->func->objname);
+
+			if (IsA(cell, String))
+				strVal(cell) = mysql_string_case_hook(strVal(cell));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	funcOid = LookupFuncWithArgs(stmt->objtype, stmt->func, false);
 

@@ -122,6 +122,9 @@
 #include "utils/jsonb.h"
 #include "catalog/objectaddress.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 #include "catalog/dependency.h" /* BUG#Z1279 */
 
@@ -712,7 +715,17 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	const char *accessMethod = NULL;
 	Oid			accessMethodId = InvalidOid;
 	OnCommitAction	oncommit_action = ONCOMMIT_NOOP;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *orirelname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (stmt->relation->relname != NULL)
+		orirelname = pstrdup(stmt->relation->relname);
+
+	if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+		stmt->relation->relname = mysql_string_case_hook(stmt->relation->relname);
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Truncate relname to appropriate length (probably a waste of time, as
@@ -1077,6 +1090,45 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 										  false,
 										  InvalidOid,
 										  typaddress);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (pg_object_create_obj_hook &&
+		 compatible_db == MYS_PARSER &&
+		 stmt->relation->relpersistence != RELPERSISTENCE_TEMP)
+	{
+		char newrelkind = relkind;
+
+		if (relkind == RELKIND_PARTITIONED_TABLE)
+			newrelkind = PG_OBJECT_PARTITION_RELATION;
+		else if (relkind == RELKIND_FOREIGN_TABLE)
+			newrelkind = PG_OBJECT_FOREIGN_RELATION;
+		else
+			newrelkind = relkind;
+
+		if (relkind == RELKIND_RELATION || relkind == RELKIND_VIEW ||
+			relkind == RELKIND_MATVIEW || relkind == RELKIND_PARTITIONED_TABLE ||
+			relkind == RELKIND_FOREIGN_TABLE || relkind == RELKIND_SEQUENCE)
+		{
+			ObjectAddress addrs;
+			StringInfoData buf;
+			Jsonb	*attr = NULL;
+
+			initStringInfo(&buf);
+
+			if (myenable_case_switch)
+			{
+				appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+				attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+			}
+			ObjectAddressSet(addrs, RelationRelationId, relationId);
+			pg_object_create_obj_hook(orirelname, namespaceId, false,
+									  newrelkind, addrs,
+									  attr, NULL);
+
+			pfree(buf.data);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * We must bump the command counter to make the newly-created relation
@@ -2737,28 +2789,58 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 		{
 			ColumnDef  *restdef = list_nth_node(ColumnDef, schema, restpos);
 
-			if (strcmp(coldef->colname, restdef->colname) == 0)
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_switch_hook && mysql_switch_hook())
 			{
-				if (coldef->is_from_type)
+				if (pg_strcasecmp(coldef->colname, restdef->colname) == 0)
 				{
-					/*
-					 * merge the column options into the column from the type
-					 */
-					coldef->is_not_null = restdef->is_not_null;
-					coldef->raw_default = restdef->raw_default;
-					coldef->cooked_default = restdef->cooked_default;
-					coldef->constraints = restdef->constraints;
-					coldef->is_from_type = false;
-					schema = list_delete_nth_cell(schema, restpos);
+					if (coldef->is_from_type)
+					{
+						/*
+						 * merge the column options into the column from the type
+						 */
+						coldef->is_not_null = restdef->is_not_null;
+						coldef->raw_default = restdef->raw_default;
+						coldef->cooked_default = restdef->cooked_default;
+						coldef->constraints = restdef->constraints;
+						coldef->is_from_type = false;
+						schema = list_delete_nth_cell(schema, restpos);
+					}
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_DUPLICATE_COLUMN),
+								 errmsg("column \"%s\" specified more than once",
+										coldef->colname)));
 				}
 				else
-					ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_COLUMN),
-							 errmsg("column \"%s\" specified more than once",
-									coldef->colname)));
+					restpos++;
 			}
 			else
-				restpos++;
+			{
+				if (strcmp(coldef->colname, restdef->colname) == 0)
+				{
+					if (coldef->is_from_type)
+					{
+						/*
+						 * merge the column options into the column from the type
+						 */
+						coldef->is_not_null = restdef->is_not_null;
+						coldef->raw_default = restdef->raw_default;
+						coldef->cooked_default = restdef->cooked_default;
+						coldef->constraints = restdef->constraints;
+						coldef->is_from_type = false;
+						schema = list_delete_nth_cell(schema, restpos);
+					}
+					else
+						ereport(ERROR,
+								(errcode(ERRCODE_DUPLICATE_COLUMN),
+								 errmsg("column \"%s\" specified more than once",
+										coldef->colname)));
+				}
+				else
+					restpos++;
+			}
+			/* End - ReqID:SRS-MYSQL-CASE */
 		}
 	}
 
@@ -4201,6 +4283,22 @@ RenameRelation(RenameStmt *stmt)
 	bool		is_index_stmt = stmt->renameType == OBJECT_INDEX;
 	Oid			relid;
 	ObjectAddress address;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *oriname;
+	/* End - ReqID:SRS-MYSQL-CASE */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	oriname = pstrdup(stmt->newname);
+	if (mysql_string_case_hook && mysql_lower_hook && mysql_lower_hook())
+	{
+		if (stmt->renameType == OBJECT_TABLE || stmt->renameType == OBJECT_VIEW ||
+			 stmt->renameType == OBJECT_MATVIEW || stmt->renameType == OBJECT_FOREIGN_TABLE ||
+			 stmt->renameType == OBJECT_SEQUENCE)
+		{
+			stmt->newname = mysql_string_case_hook(stmt->newname);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Grab an exclusive lock on the target table, index, sequence, view,
@@ -4269,6 +4367,16 @@ RenameRelation(RenameStmt *stmt)
 			pg_object_alter_obj_hook(address, stmt->newname, objinf->orischema, objinf->orioption, NULL);
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook &&
+			 compatible_db == MYS_PARSER)
+	{
+		PgObjectInfo oriinf = NULL;
+
+		if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
+			pg_object_alter_obj_hook(address, oriname, oriinf->orischema, oriinf->orioption, NULL);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	return address;
 }
@@ -7891,6 +7999,42 @@ check_for_column_name_collision(Relation rel, const char *colname,
 {
 	HeapTuple	attTuple;
 	int			attnum;
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook())
+	{
+		TupleDesc	tupdesc = NULL;
+
+		tupdesc = RelationGetDescr(rel);
+		if (tupdesc)
+		{
+			int i;
+
+			for (i = 0; i < tupdesc->natts; i++)
+			{
+				Form_pg_attribute att = TupleDescAttr(tupdesc, i);
+
+				if (!pg_strcasecmp(colname, NameStr(att->attname)))
+				{
+
+					if (if_not_exists)
+					{
+						ereport(NOTICE,
+								(errcode(ERRCODE_DUPLICATE_COLUMN),
+								 errmsg("column \"%s\" of relation \"%s\" already exists, skipping",
+										colname, RelationGetRelationName(rel))));
+						return false;
+					}
+
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_COLUMN),
+							 errmsg("column \"%s\" of relation \"%s\" already exists",
+									colname, RelationGetRelationName(rel))));
+				}
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * this test is deliberately not attisdropped-aware, since if one tries to
@@ -17630,6 +17774,18 @@ AlterTableNamespace(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 	ObjectAddresses *objsMoved;
 	ObjectAddress myself;
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_string_case_hook && mysql_lower_hook && mysql_lower_hook())
+	{
+		/*if (stmt->objectType == OBJECT_TABLE || stmt->objectType == OBJECT_VIEW ||
+			 stmt->objectType == OBJECT_MATVIEW || stmt->objectType == OBJECT_FOREIGN_TABLE ||
+			 stmt->objectType == OBJECT_SEQUENCE)
+		{*/
+		stmt->newschema = mysql_string_case_hook(stmt->newschema);
+		//}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	relid = RangeVarGetRelidExtended(stmt->relation, AccessExclusiveLock,
 									 stmt->missing_ok ? RVR_MISSING_OK : 0,
 									 RangeVarCallbackForAlterRelation,
@@ -17681,6 +17837,16 @@ AlterTableNamespace(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 
 	/* close rel, but keep lock until commit */
 	relation_close(rel, NoLock);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
+	{
+		PgObjectInfo oriinf = NULL;
+
+		if ((oriinf = pg_object_get_ori_infor_hook(myself)) != NULL)
+			pg_object_alter_obj_hook(myself, oriinf->oriname, nspOid, oriinf->orioption, NULL);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	return myself;
 }

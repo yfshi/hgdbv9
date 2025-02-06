@@ -15,6 +15,7 @@ override CPPFLAGS := -I. -I$(srcdir) $(CPPFLAGS)
 OBJS = \
 	analyze.o \
 	gram.o \
+	../mysql_parser/mys_case_sensitive.o \
 	parse_agg.o \
 	parse_clause.o \
 	parse_coerce.o \

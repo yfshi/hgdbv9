@@ -36,6 +36,9 @@
 #include "utils/pg_locale.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 typedef struct
@@ -74,6 +77,10 @@ DefineCollation(ParseState *pstate, List *names, List *parameters, bool if_not_e
 	ObjectAddress address;
 
 	collNamespace = QualifiedNameGetCreationNamespace(names, &collName);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+		collName = strVal(llast(names));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	aclresult = pg_namespace_aclcheck(collNamespace, GetUserId(), ACL_CREATE);
 	if (aclresult != ACLCHECK_OK)

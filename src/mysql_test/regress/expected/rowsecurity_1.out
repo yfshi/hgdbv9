@@ -3428,26 +3428,32 @@ SAVEPOINT q;
 DROP ROLE regress_rls_eve; --fails due to dependency on POLICY p
 ERROR:  role "regress_rls_eve" cannot be dropped because some objects depend on it
 DETAIL:  privileges for table tbl1
-target of policy p on table tbl1
+target of policy P on table tbl1
 ROLLBACK TO q;
 ALTER POLICY p ON tbl1 TO regress_rls_frank USING (true);
+ERROR:  policy "p" for table "tbl1" does not exist
 SAVEPOINT q;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DROP ROLE regress_rls_eve; --fails due to dependency on GRANT SELECT
-ERROR:  role "regress_rls_eve" cannot be dropped because some objects depend on it
-DETAIL:  privileges for table tbl1
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 REVOKE ALL ON TABLE tbl1 FROM regress_rls_eve;
 SAVEPOINT q;
 DROP ROLE regress_rls_eve; --succeeds
+ERROR:  role "regress_rls_eve" cannot be dropped because some objects depend on it
+DETAIL:  target of policy P on table tbl1
 ROLLBACK TO q;
 SAVEPOINT q;
 DROP ROLE regress_rls_frank; --fails due to dependency on POLICY p
 ERROR:  role "regress_rls_frank" cannot be dropped because some objects depend on it
-DETAIL:  target of policy p on table tbl1
+DETAIL:  target of policy P on table tbl1
 ROLLBACK TO q;
 DROP POLICY p ON tbl1;
+ERROR:  policy "p" for table "tbl1" does not exist
 SAVEPOINT q;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DROP ROLE regress_rls_frank; -- succeeds
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ROLLBACK; -- cleanup
 --

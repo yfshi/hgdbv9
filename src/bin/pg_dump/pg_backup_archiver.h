@@ -367,6 +367,8 @@ struct _archiveHandle
 	RestorePass restorePass;	/* used only during parallel restore */
 	struct _tocEntry *currentTE;
 	struct _tocEntry *lastErrorTE;
+	char	   *compatible_mode;	/* ReqID:SRS-MYSQL-CASE */
+	int			caselowernum;		/* ReqID:SRS-MYSQL-CASE */
 };
 
 struct _tocEntry
@@ -419,12 +421,11 @@ struct _tocEntry
 			char	ident_case;		/* ReqID:SRS-SQL-FORCEVIEW */
 			char   *User_binary_upgrade;	/* BUGZ1398 */
 		}			oracle;
-		/*
 		struct
 		{
-			
+			char   *oriname;		/* ReqID:SRS-MYSQL-CASE */
+			int		caselowernum;	/* ReqID:SRS-MYSQL-CASE */
 		}			mysql;
-		*/
 	}			d;
 	/* END - ReqID:SRS-MYSQL-PGDUMP */
 };
@@ -455,6 +456,7 @@ typedef struct _archiveOpts
 	const char *compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 	const char *User_binary_upgrade; /* BUGZ1398 */
 	const char *user_type;	/* BUGZ1408 */
+	int caselowernum;	/* ReqID:SRS-MYSQL-CASE */
 } ArchiveOpts;
 #define ARCHIVE_OPTS(...) &(ArchiveOpts){__VA_ARGS__}
 /* Called to add a TOC entry */

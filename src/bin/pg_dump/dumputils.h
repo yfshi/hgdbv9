@@ -18,6 +18,9 @@
 #include "libpq-fe.h"
 #include "pqexpbuffer.h"
 #include "utils/ora_compatible.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "pg_backup.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * Preferred strftime(3) format specifier for printing timestamps in pg_dump
@@ -36,6 +39,12 @@
 #define PGDUMP_STRFTIME_FMT  "%Y-%m-%d %H:%M:%S"
 #endif
 
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#define MYS_LOWRE_CASE_TABLE_NAMES_ZERO 0
+#define MYS_LOWRE_CASE_TABLE_NAMES_ONE 1
+#define MYS_LOWRE_CASE_TABLE_NAMES_TWO 2
+/* End - ReqID:SRS-MYSQL-CASE */
+
 /* BEGIN - ReqID:SRS-MISC-USER */
 extern bool CurrentUserIsInstanceSuperuser;
 extern bool CurrentUserIsDatabaseSuperuser;				/* BUG:z680,z538 */
@@ -50,6 +59,8 @@ extern bool haveDBuser;					/*  bug#M0000261 */
 extern DBParser compatible_mode;	/* ReqID:SRS-CMD-PGDUMP */
 extern DBUser	CurUser;		/* ReqID:SRS-CMD-PGDUMP */
 extern const char *DumpM;	/* ReqID:SRS-CMD-PGDUMP */
+extern int caselowernum;	/* ReqID:SRS-MYSQL-CASE */
+
 extern bool buildACLCommands(const char *name, const char *subname, const char *nspname,
 							 const char *type, const char *acls, const char *racls,
 							 const char *owner, const char *prefix, int remoteVersion,
@@ -96,5 +107,8 @@ extern void SetDumptypeMode(PGconn *conn);
 extern void ReSetDumptypeMode(PGconn *conn);
 extern Oid FindUserLevelbyoid(PGconn *conn, Oid oid);
 /* END - ReqID:SRS-MISC-USER */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+extern void GetMySQLCompPara(Archive *AHX);
+/* End - ReqID:SRS-MYSQL-CASE */
 
 #endif							/* DUMPUTILS_H */

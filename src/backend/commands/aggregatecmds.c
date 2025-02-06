@@ -36,6 +36,12 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "parser/pg_object_hook.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 static char extractModify(DefElem *defel);
@@ -99,6 +105,30 @@ DefineAggregate(ParseState *pstate,
 	char		mtransTypeType = 0;
 	char		proparallel = PROPARALLEL_UNSAFE;
 	ListCell   *pl;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	ObjectAddress address;
+	char	   *orifuncname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (name != NIL && IsA(llast(name), String))
+			orifuncname = pstrdup(strVal(llast(name)));
+
+	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	{
+		if (mysql_lower_hook())
+		{
+			mysql_list_case_hook(name);
+		}
+		else if (mysql_switch_hook())
+		{
+			ListCell *cell = llast(name);
+
+			if (IsA(cell, String))
+				strVal(cell) = mysql_string_case_hook(strVal(cell));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Convert list of names to a name and namespace */
 	aggNamespace = QualifiedNameGetCreationNamespace(name, &aggName);
@@ -447,10 +477,11 @@ DefineAggregate(ParseState *pstate,
 					 errmsg("parameter \"parallel\" must be SAFE, RESTRICTED, or UNSAFE")));
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
 	/*
 	 * Most of the argument-checking is done inside of AggregateCreate
 	 */
-	return AggregateCreate(aggName, /* aggregate name */
+	address = AggregateCreate(aggName, /* aggregate name */
 						   aggNamespace,	/* namespace */
 						   replace,
 						   aggKind,
@@ -482,6 +513,29 @@ DefineAggregate(ParseState *pstate,
 						   initval, /* initial condition */
 						   minitval,	/* initial condition */
 						   proparallel);	/* parallel safe? */
+
+	if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	{
+		StringInfoData buf;
+		Jsonb	*attr = NULL;
+
+		initStringInfo(&buf);
+
+		if (myenable_case_switch)
+		{
+			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+		}
+		pg_object_create_obj_hook(orifuncname, aggNamespace,
+								  replace, PROKIND_AGGREGATE,
+								  address,
+								  attr, NULL);
+
+		pfree(buf.data);
+	}
+
+	return address;
+	/* End - ReqID:SRS-MYSQL-CASE */
 }
 
 /*

@@ -75,6 +75,7 @@
 #include "utils/ruleutils.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
 
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -665,11 +666,20 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 			RangeVarAdjustRelationPersistence(cxt->relation, snamespaceid);
 		}
 		snamespace = get_namespace_name(snamespaceid);
-		sname = ChooseRelationName(cxt->relation->relname,
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_objlower_hook && mysql_string_case_hook && lower_two == mysql_objlower_hook())
+			sname = ChooseRelationName(mysql_string_case_hook(cxt->relation->relname),
 								   column->colname,
 								   "seq",
 								   snamespaceid,
 								   false);
+		else
+			sname = ChooseRelationName(cxt->relation->relname,
+									   column->colname,
+									   "seq",
+									   snamespaceid,
+									   false);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 
 	ereport(DEBUG1,
@@ -796,27 +806,56 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	{
 		char	   *typname = strVal(linitial(column->typeName->names));
 
-		if (strcmp(typname, "smallserial") == 0 ||
-			strcmp(typname, "serial2") == 0)
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_switch_hook && mysql_switch_hook())
 		{
-			is_serial = true;
-			column->typeName->names = NIL;
-			column->typeName->typeOid = INT2OID;
+			if (pg_strcasecmp(typname, "smallserial") == 0 ||
+				pg_strcasecmp(typname, "serial2") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT2OID;
+			}
+			else if (pg_strcasecmp(typname, "serial") == 0 ||
+					 pg_strcasecmp(typname, "serial4") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT4OID;
+			}
+			else if (pg_strcasecmp(typname, "bigserial") == 0 ||
+					 pg_strcasecmp(typname, "serial8") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT8OID;
+			}
 		}
-		else if (strcmp(typname, "serial") == 0 ||
-				 strcmp(typname, "serial4") == 0)
+		else
 		{
-			is_serial = true;
-			column->typeName->names = NIL;
-			column->typeName->typeOid = INT4OID;
+			if (strcmp(typname, "smallserial") == 0 ||
+				strcmp(typname, "serial2") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT2OID;
+			}
+			else if (strcmp(typname, "serial") == 0 ||
+					 strcmp(typname, "serial4") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT4OID;
+			}
+			else if (strcmp(typname, "bigserial") == 0 ||
+					 strcmp(typname, "serial8") == 0)
+			{
+				is_serial = true;
+				column->typeName->names = NIL;
+				column->typeName->typeOid = INT8OID;
+			}
 		}
-		else if (strcmp(typname, "bigserial") == 0 ||
-				 strcmp(typname, "serial8") == 0)
-		{
-			is_serial = true;
-			column->typeName->names = NIL;
-			column->typeName->typeOid = INT8OID;
-		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/*
 		 * We have to reject "serial[]" explicitly, because once we've set

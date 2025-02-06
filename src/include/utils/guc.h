@@ -462,6 +462,11 @@ extern PGDLLIMPORT bool enable_indexhint;
 extern PGDLLIMPORT bool enable_ignore_columns_list;
 /* End - BUG#Z1434 */
 
+/* Begin - ReqID:SRS-MYSQL-CASE */
+extern PGDLLIMPORT int lower_case_table_names;
+extern PGDLLIMPORT bool myenable_case_switch;
+/* End - ReqID:SRS-MYSQL-CASE */
+
 /*
  * Functions exported by guc.c
  */

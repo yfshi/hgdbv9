@@ -293,6 +293,19 @@ deleteObjectsInList(ObjectAddresses *targetObjects, Relation *depRel,
 			continue;
 
 		deleteOneObject(thisobj, depRel, flags);
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (compatible_db == MYS_PARSER && pg_object_drop_obj_hook)
+		{
+			ObjectAddress address;
+
+			ObjectAddressSubSet(address,
+								(targetObjects->refs + i)->classId,
+								(targetObjects->refs + i)->objectId,
+								(targetObjects->refs + i)->objectSubId);
+			pg_object_drop_obj_hook(address);
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 }
 

@@ -72,6 +72,11 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "parser/pg_object_hook.h"
+/* End - ReqID:SRS-MYSQL-CASE */
+
 
 static Oid	AlterObjectNamespace_internal(Relation rel, Oid objid, Oid nspOid);
 
@@ -358,7 +363,34 @@ ExecRenameStmt(RenameStmt *stmt)
 			return RenameRole(stmt->subname, stmt->newname);
 
 		case OBJECT_SCHEMA:
-			return RenameSchema(stmt->subname, stmt->newname);
+		{
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			char		   *newname;
+			bool			alterobj = false;
+			ObjectAddress	address;
+			/* End - ReqID:SRS-MYSQL-CASE */
+
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_string_case_hook && mysql_objlower_hook &&
+				lower_two == mysql_objlower_hook())
+			{
+				alterobj = true;
+				newname = pstrdup(stmt->newname);
+				stmt->newname = mysql_string_case_hook(stmt->newname);
+			}
+
+			address =  RenameSchema(stmt->subname, stmt->newname);
+			if (alterobj && pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
+			{
+				PgObjectInfo oriinf = NULL;
+
+				if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
+					pg_object_alter_obj_hook(address, newname, oriinf->orischema, oriinf->orioption, NULL);
+			}
+
+			return address;
+			/* End - ReqID:SRS-MYSQL-CASE */
+		}
 
 		case OBJECT_TABLESPACE:
 			return RenameTableSpace(stmt->subname, stmt->newname);
@@ -415,6 +447,24 @@ ExecRenameStmt(RenameStmt *stmt)
 				ObjectAddress address;
 				Relation	catalog;
 				Relation	relation;
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				char	   *newname = NULL;
+				bool		alterobj = false;
+				/* End - ReqID:SRS-MYSQL-CASE */
+
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+				{
+					if (stmt->renameType == OBJECT_AGGREGATE ||
+						stmt->renameType == OBJECT_FUNCTION ||
+						stmt->renameType == OBJECT_PROCEDURE)
+					{
+						newname = pstrdup(stmt->newname);
+						stmt->newname = mysql_string_case_hook(stmt->newname);
+						alterobj = true;
+					}
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
 
 				address = get_object_address(stmt->renameType,
 											 stmt->object,
@@ -427,6 +477,16 @@ ExecRenameStmt(RenameStmt *stmt)
 										   address.objectId,
 										   stmt->newname);
 				table_close(catalog, RowExclusiveLock);
+
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (alterobj && pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
+				{
+					PgObjectInfo oriinf = NULL;
+
+					if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
+						pg_object_alter_obj_hook(address, newname, oriinf->orischema, oriinf->orioption, NULL);
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
 
 				return address;
 			}
@@ -563,6 +623,15 @@ ExecAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt,
 				Oid			classId;
 				Oid			nspOid;
 
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (mysql_switch_hook && mysql_objlower_hook &&
+					mysql_string_case_hook && mysql_switch_hook())
+				{
+					if ((lower_two == mysql_objlower_hook()))
+						stmt->newschema = mysql_string_case_hook(stmt->newschema);
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
+
 				address = get_object_address(stmt->objectType,
 											 stmt->object,
 											 &relation,
@@ -575,6 +644,22 @@ ExecAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt,
 
 				oldNspOid = AlterObjectNamespace_internal(catalog, address.objectId,
 														  nspOid);
+
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
+				{
+					if (stmt->objectType == OBJECT_AGGREGATE ||
+						stmt->objectType == OBJECT_FUNCTION ||
+						stmt->objectType == OBJECT_PROCEDURE)
+					{
+						PgObjectInfo oriinf = NULL;
+
+						if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
+							pg_object_alter_obj_hook(address, oriinf->oriname, nspOid, oriinf->orioption, NULL);
+					}
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
+
 				table_close(catalog, RowExclusiveLock);
 			}
 			break;

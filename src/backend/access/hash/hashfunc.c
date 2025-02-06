@@ -34,6 +34,9 @@
 #include "utils/pg_locale.h"
 #include "utils/lsyscache.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * Datatype-specific hash functions.
@@ -356,6 +359,17 @@ hashtext(PG_FUNCTION_ARGS)
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = hash_text_by_builtin_colltions((unsigned char *)VARDATA_ANY(key),
+												VARSIZE_ANY_EXHDR(key), collid);
+		PG_FREE_IF_COPY(key, 0);
+
+		return result;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
 
@@ -430,6 +444,18 @@ hashtextextended(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_INDETERMINATE_COLLATION),
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = hash_any_extended((unsigned char *) VARDATA_ANY(key),
+								   VARSIZE_ANY_EXHDR(key),
+								   PG_GETARG_INT64(1));
+
+		PG_FREE_IF_COPY(key, 0);
+		return result;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);

@@ -29,6 +29,9 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * CREATE CONVERSION
@@ -52,6 +55,11 @@ CreateConversionCommand(CreateConversionStmt *stmt)
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->conversion_name,
 													&conversion_name);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->conversion_name))
+		conversion_name = strVal(llast(stmt->conversion_name));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(namespaceId, GetUserId(), ACL_CREATE);

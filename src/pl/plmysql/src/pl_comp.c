@@ -35,6 +35,10 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
+
 
 /* ----------
  * Our own local and global variables
@@ -1621,6 +1625,12 @@ plmysql_parse_wordtype(char *ident)
 	TypeName   *typeName;
 	HeapTuple	typeTup;
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+	{
+		ident = mysql_string_case_hook(ident);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	/*
 	 * Do a lookup in the current namespace stack
 	 */
@@ -1698,6 +1708,11 @@ plmysql_parse_cwordtype(List *idents)
 
 	if (list_length(idents) == 2)
 	{
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+			strVal(linitial(idents)) = mysql_string_case_hook(strVal(linitial(idents)));
+		/* End - ReqID:SRS-MYSQL-CASE */
+	
 		/*
 		 * Do a lookup in the current namespace stack. We don't need to check
 		 * number of names matched, because we will only consider scalar
@@ -1726,6 +1741,11 @@ plmysql_parse_cwordtype(List *idents)
 	else if (list_length(idents) == 3)
 	{
 		RangeVar   *relvar;
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+			strVal(lsecond(idents)) = mysql_string_case_hook(strVal(lsecond(idents)));
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		relvar = makeRangeVar(strVal(linitial(idents)),
 							  strVal(lsecond(idents)),
@@ -2278,26 +2298,58 @@ plmysql_parse_err_condition(char *condname)
 	 * OTHERS is represented as code 0 (which would map to '00000', but we
 	 * have no need to represent that as an exception condition).
 	 */
-	if (strcmp(condname, "others") == 0)
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook())
 	{
-		new = palloc(sizeof(PLmySQL_condition));
-		new->sqlerrstate = 0;
-		new->condname = condname;
-		new->next = NULL;
-		return new;
+		if (pg_strcasecmp(condname, "others") == 0)
+		{
+			new = palloc(sizeof(PLmySQL_condition));
+			new->sqlerrstate = 0;
+			new->condname = condname;
+			new->next = NULL;
+			return new;
+		}
 	}
+	else
+	{
+		if (strcmp(condname, "others") == 0)
+		{
+			new = palloc(sizeof(PLmySQL_condition));
+			new->sqlerrstate = 0;
+			new->condname = condname;
+			new->next = NULL;
+			return new;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	prev = NULL;
 	for (i = 0; exception_label_map[i].label != NULL; i++)
 	{
-		if (strcmp(condname, exception_label_map[i].label) == 0)
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_switch_hook && mysql_switch_hook())
 		{
-			new = palloc(sizeof(PLmySQL_condition));
-			new->sqlerrstate = exception_label_map[i].sqlerrstate;
-			new->condname = condname;
-			new->next = prev;
-			prev = new;
+			if (pg_strcasecmp(condname, exception_label_map[i].label) == 0)
+			{
+				new = palloc(sizeof(PLmySQL_condition));
+				new->sqlerrstate = exception_label_map[i].sqlerrstate;
+				new->condname = condname;
+				new->next = prev;
+				prev = new;
+			}
 		}
+		else
+		{
+			if (strcmp(condname, exception_label_map[i].label) == 0)
+			{
+				new = palloc(sizeof(PLmySQL_condition));
+				new->sqlerrstate = exception_label_map[i].sqlerrstate;
+				new->condname = condname;
+				new->next = prev;
+				prev = new;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 
 	if (!prev)

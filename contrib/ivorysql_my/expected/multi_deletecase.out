@@ -1,0 +1,1531 @@
+--单表
+drop table if exists T,T1,T2;
+NOTICE:  table "T" does not exist, skipping
+NOTICE:  table "T1" does not exist, skipping
+NOTICE:  table "T2" does not exist, skipping
+create table T(id int,name varchar(10));
+create table T1(id int,name varchar(10));
+create table T2(id int,name varchar(10));
+insert into T values(1,'aa'),(2,'bb');
+insert into T1 values(1,'aa'),(2,'bb'); 
+insert into T2 values(1,'aa'),(2,'bb'); 
+select * from T;
+ id | name 
+----+------
+  1 | aa
+  2 | bb
+(2 rows)
+
+delete from T as AA;--error
+ERROR:  syntax error at or near "as"
+LINE 1: delete from T as AA;
+                      ^
+delete from T AA;--error
+ERROR:  syntax error at or near "AA"
+LINE 1: delete from T AA;
+                      ^
+begin;
+delete from T order by id limit 1;
+select * from T;
+ id | name 
+----+------
+  2 | bb
+(1 row)
+
+delete from T where id = 2;
+select * from T;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+--多表
+delete from T using T2;--error
+ERROR:  Unknown table T in MULTI DELETE
+begin;
+delete from T using T,T2;
+select * from T;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE T, T1 FROM T INNER JOIN T1 INNER JOIN T2
+WHERE T.id=T1.id AND T1.id=T2.id;
+select * from T;
+ id | name 
+----+------
+(0 rows)
+
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+  1 | aa
+  2 | bb
+(2 rows)
+
+rollback;
+begin;
+DELETE T.*, T1 FROM T , T1 INNER JOIN T2
+WHERE T.id=T1.id AND T1.id=T2.id;
+select * from T;
+ id | name 
+----+------
+(0 rows)
+
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+  1 | aa
+  2 | bb
+(2 rows)
+
+rollback;
+begin;
+DELETE FROM T, T1 using T INNER JOIN T1 INNER JOIN T2
+WHERE T.id=T1.id AND T1.id=T2.id;
+select * from T;
+ id | name 
+----+------
+(0 rows)
+
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+  1 | aa
+  2 | bb
+(2 rows)
+
+rollback;
+begin;
+DELETE T1 FROM T1 left join T2 on T1.id=T2.id 
+where T2.id is not NULL ;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+  1 | aa
+  2 | bb
+(2 rows)
+
+rollback;
+begin;
+DELETE A1, A2 FROM T1 AS A1 INNER JOIN T2 AS A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE FROM A1, A2 USING T1 AS A1 INNER JOIN T2 AS A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE FROM A1, A2 USING T1 AS A1 CROSS JOIN T2 AS A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE FROM A1.*, A2 USING T1 A1,T2 A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE FROM A1.*, A2.* USING T1 A1,T2 A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+begin;
+DELETE A1.*, A2.* FROM T1 A1,T2 A2
+WHERE A1.id=A2.id;
+select * from T1;
+ id | name 
+----+------
+(0 rows)
+
+select * from T2;
+ id | name 
+----+------
+(0 rows)
+
+rollback;
+--error 别名的规则
+DELETE T1 AS A1, T2 AS A2 FROM T1 INNER JOIN T2
+WHERE A1.id=A2.id;
+ERROR:  syntax error at or near "AS"
+LINE 1: DELETE T1 AS A1, T2 AS A2 FROM T1 INNER JOIN T2
+                  ^
+DELETE FROM T1 AS A1, T2 AS A2 USING T1 INNER JOIN T2
+WHERE A1.id=A2.id;
+ERROR:  syntax error at or near "AS"
+LINE 1: DELETE FROM T1 AS A1, T2 AS A2 USING T1 INNER JOIN T2
+                       ^
+--pbe
+create table tt(id int primary key,num int);
+insert tt  value(2, 3),(5, 6);
+PREPARE del (int) AS
+	delete from tt where id = $1;
+EXECUTE del(5);
+select * from tt;
+ id | num 
+----+-----
+  2 |   3
+(1 row)
+
+drop table tt;
+PREPARE del1  AS
+	DELETE A1.*, A2.* FROM T1 A1,T2 A2
+	WHERE A1.id=A2.id;
+begin;
+execute del1;
+end;
+--单表使用indexhint
+--error
+create index idk on T1(id);
+create index idk2 on T2(id);
+delete from T1 use index(idk);--error
+ERROR:  syntax error at or near "use"
+LINE 1: delete from T1 use index(idk);
+                       ^
+--多表语法使用indexhint
+explain (costs false) delete T1 from T1 use index(idk);
+       QUERY PLAN       
+------------------------
+ Delete on "T1"
+   ->  Seq Scan on "T1"
+(2 rows)
+
+explain (costs false) delete from T1 using T1  use index(idk);
+       QUERY PLAN       
+------------------------
+ Delete on "T1"
+   ->  Seq Scan on "T1"
+(2 rows)
+
+explain (costs false) delete T1,T2 from T1 use index(idk),T2 use index (idk2) where T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index(idk) inner join  T2 use index (idk2) on  T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index(idk) left join  T2 use index (idk2) on  T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Left Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index(idk) right join  T2 use index (idk2) on  T1.id = T2.id;
+                   QUERY PLAN                   
+------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Left Join
+         Merge Cond: ("T2".id = "T1".id)
+         ->  Index Scan using idk2 on "T2"
+         ->  Materialize
+               ->  Index Scan using idk on "T1"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 ignore index(idk) left join  T2 use index (idk2) on  T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Left Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index(idk) cross join  T2 use index (idk2) on  T1.id = T2.id;--error
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index for join (idk),T2 use index (idk2) where T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index for order by (idk),T2 use index (idk2) where T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+explain (costs false) delete T1,T2 from T1 use index for group by (idk),T2 use index (idk2) where T1.id = T2.id;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Delete on MULTI-RELATION
+   Delete on "T1"
+   Delete on "T2"
+   ->  Merge Join
+         Merge Cond: ("T1".id = "T2".id)
+         ->  Index Scan using idk on "T1"
+         ->  Materialize
+               ->  Index Scan using idk2 on "T2"
+(8 rows)
+
+drop table if exists T,T1,T2;
+create table T1(a int);
+create table T2(b int);
+insert into T1 values(1),(2);
+insert into T2 values(3),(4);
+create view V1 as select * from T1;
+--表和视图是同一个
+begin;
+delete from T1,V1 using T1,V1;
+select * from V1;
+ a 
+---
+(0 rows)
+
+rollback;
+--表和视图非同一个
+begin;
+delete from T2,V1 using T2,V1;
+select * from T2;
+ b 
+---
+(0 rows)
+
+select * from V1;
+ a 
+---
+(0 rows)
+
+rollback;
+create view V2 as select * from T1,T2;
+delete from V2;--error
+ERROR:  cannot delete from view "V2"
+DETAIL:  Views that do not select from a single table or view are not automatically updatable.
+HINT:  To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.
+delete V2,T1 from V2,T1;--error
+ERROR:  cannot delete from view "V2"
+DETAIL:  Views that do not select from a single table or view are not automatically updatable.
+HINT:  To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.
+delete quick from T1.*;--error
+ERROR:  multi-relation delete is a syntax error in *.
+delete quick from T1.* using T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete ignore from T1.*;--error
+ERROR:  multi-relation delete is a syntax error in *.
+delete ignore from T1 using T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete ignore from T1.* using T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete LOW_PRIORITY T1 from T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete T1 from T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete T1.* from T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete from T1,T2;--error
+ERROR:  multi-relation delete must specify the table to delete.
+HINT:  Please note whether it's compatible with MySQL mode.
+delete from T1 using T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete from T1.* using T2;--error
+ERROR:  Unknown table T1 in MULTI DELETE
+delete T1,T2 from T1;--error
+ERROR:  Unknown table T2 in MULTI DELETE
+delete T1.*,T2 from T1;--error
+ERROR:  Unknown table T2 in MULTI DELETE
+delete from T1,T2 using T1;--error
+ERROR:  Unknown table T2 in MULTI DELETE
+delete from T1.*,T2.* using T1;--error
+ERROR:  Unknown table T2 in MULTI DELETE
+delete T1.* from T1,T2 using T2;--error
+ERROR:  multi-relation delete Cannot support both using clause and from clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+drop view V2;
+create view V2 as select * from T2;
+begin;
+delete from V1,V2 using V1,V2;
+select * from V1;
+ a 
+---
+(0 rows)
+
+select * from V2;
+ b 
+---
+(0 rows)
+
+rollback;
+begin;
+delete V1,V2.* from V1 inner join V2;
+select * from V1;
+ a 
+---
+(0 rows)
+
+select * from V2;
+ b 
+---
+(0 rows)
+
+rollback;
+delete T1 from T1,T2;
+delete from T2.* using T1,T2;
+select * from T1;
+ a 
+---
+(0 rows)
+
+select * from T2;
+ b 
+---
+ 3
+ 4
+(2 rows)
+
+drop view V1,V2;
+drop table T1,T2;
+drop table if exists T1;
+NOTICE:  table "T1" does not exist, skipping
+drop table if exists T2;
+NOTICE:  table "T2" does not exist, skipping
+drop table if exists t3;
+NOTICE:  table "t3" does not exist, skipping
+drop table if exists t4;
+NOTICE:  table "t4" does not exist, skipping
+create table T1 (a int NOT NULL, b int);
+create table T2 (a int NOT NULL, b int);
+create table t3 (a int NOT NULL, b int);
+create table t4 (a int NOT NULL, b int);
+INSERT INTO T1 values (1, 11),(2, 22),(3, 33);
+INSERT INTO T2 values (2, 22),(2, 33),(3, 44);
+INSERT INTO t3 values (1, 22),(3, 33),(2, 44);
+INSERT INTO t4 values (1, 11),(3, 22),(3, 33);
+begin;
+DELETE T1.*,T2,t3 FROM T2 left join t3 on T2.b =t3.b left join T1 on  T1.a =T2.a left join t4 on T2.b =t4.b ;
+select * from T1;
+ a | b  
+---+----
+ 1 | 11
+(1 row)
+
+select * from T2;
+ a | b 
+---+---
+(0 rows)
+
+select * from t3;
+ a | b 
+---+---
+(0 rows)
+
+rollback;
+begin;
+DELETE T1.*,T2,t3 FROM T2 join t3 on T2.b =t3.b join T1 on T1.a =T2.a join t4 on T2.b =t4.b ;
+select * from T1;
+ a | b  
+---+----
+ 1 | 11
+ 3 | 33
+(2 rows)
+
+select * from T2;
+ a | b  
+---+----
+ 3 | 44
+(1 row)
+
+select * from t3;
+ a | b  
+---+----
+ 2 | 44
+(1 row)
+
+rollback;
+begin;
+DELETE t4,T2,t3 FROM T2 join t3 on T2.b =t3.b join T1 on T1.a =T2.a join t4 on T2.b =t4.b ;
+select * from T2;
+ a | b  
+---+----
+ 3 | 44
+(1 row)
+
+select * from t3;
+ a | b  
+---+----
+ 2 | 44
+(1 row)
+
+select * from t4;
+ a | b  
+---+----
+ 1 | 11
+(1 row)
+
+rollback;
+begin;
+DELETE T1.*,T2,t3,t4.* FROM T2 join t3 on T2.b =t3.b join T1 on T1.a =T2.a join t4 on T2.b =t4.b ;
+select * from T1;
+ a | b  
+---+----
+ 1 | 11
+ 3 | 33
+(2 rows)
+
+select * from T2;
+ a | b  
+---+----
+ 3 | 44
+(1 row)
+
+select * from t3;
+ a | b  
+---+----
+ 2 | 44
+(1 row)
+
+select * from t4;
+ a | b  
+---+----
+ 1 | 11
+(1 row)
+
+rollback;
+drop table T1,T2,t3,t4;
+drop table if exists CT_T_MUTIL_T1;
+NOTICE:  table "CT_T_MUTIL_T1" does not exist, skipping
+drop table if exists T_T_MUTIL_T2;
+drop table if exists T_T_MUTIL_T3;
+create table CT_T_MUTIL_T1(col1 int,col2 int);
+create table T_T_MUTIL_T2(col1 int,col2 int);
+create table T_T_MUTIL_T3(col1 int,col2 int);
+insert into CT_T_MUTIL_T1 values(1,1),(1,1);
+insert into T_T_MUTIL_T2 values(1,1),(1,2);
+insert into T_T_MUTIL_T3 values(1,1),(1,3);
+-- subselect
+begin;
+delete CT_T_MUTIL_T1,T_T_MUTIL_T2 from (select * from T_T_MUTIL_T3) as a;--error
+ERROR:  The target table a of the DELETE is not updatable
+rollback;
+begin;
+delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b,T_T_MUTIL_T3 c where a.col2=b.col2 and b.col2=c.col2;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b,T_T_MUTIL_T3 c wh...
+                                  ^
+select * from CT_T_MUTIL_T1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+select * from T_T_MUTIL_T2;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+select * from T_T_MUTIL_T3;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+rollback;
+-- delete xx from xxx;
+begin;
+delete CT_T_MUTIL_T1 A from T_T_MUTIL_T2 B,T_T_MUTIL_T3 C where A.col2=B.col2 and B.col2=C.col2;--error
+ERROR:  syntax error at or near "A"
+LINE 1: delete CT_T_MUTIL_T1 A from T_T_MUTIL_T2 B,T_T_MUTIL_T3 C wh...
+                             ^
+rollback;
+begin;
+delete A from CT_T_MUTIL_T1 A,T_T_MUTIL_T2 B,T_T_MUTIL_T3 C where A.col2=B.col2 and B.col2=C.col2;
+rollback;
+begin;
+delete CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b from T_T_MUTIL_T3 c where a.col2=b.col2 and b.col2=c.col2;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b from T_T_MUTIL_T3 c wh...
+                             ^
+rollback;
+begin;
+delete a,b from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b,T_T_MUTIL_T3 c where a.col2=b.col2 and b.col2=c.col2;
+rollback;
+begin;
+delete a from CT_T_MUTIL_T1 a left join T_T_MUTIL_T2 b on a.col2=b.col2;
+rollback;
+delete a from CT_T_MUTIL_T1 a left join T_T_MUTIL_T2 b on a.col2=b.col2 limit 1; --error
+ERROR:  multi-relation delete is not supported limit clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+delete a from CT_T_MUTIL_T1 a left join T_T_MUTIL_T2 b on a.col2=b.col2 order by a.col2; --error
+ERROR:  multi-relation delete is not supported order by clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+delete a from CT_T_MUTIL_T1 a left join T_T_MUTIL_T2 b on a.col2=b.col2 returning *; --error
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+delete CT_T_MUTIL_T1 a from CT_T_MUTIL_T1 a left join T_T_MUTIL_T2 b on a.col2=b.col2 limit 1; --error
+ERROR:  syntax error at or near "a"
+LINE 1: delete CT_T_MUTIL_T1 a from CT_T_MUTIL_T1 a left join T_T_MU...
+                             ^
+-- condition is false
+delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col1 = 1 and a.col1 = 2;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col1 = 1 ...
+                                  ^
+--alias erro
+delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.co...
+                                  ^
+-- left join
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int,col2 int);
+create table T_MUTIL_T2(col1 int,col2 int);
+insert into T_MUTIL_T1 values(1,2),(1,4);
+insert into T_MUTIL_T2 values(2,3),(3,3);
+delete from T_MUTIL_T1,T_MUTIL_T2 using T_MUTIL_T2 left join T_MUTIL_T1 on T_MUTIL_T1.col2=T_MUTIL_T2.col1;
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+(1 row)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+(0 rows)
+
+-- procedure
+CREATE OR REPLACE PROCEDURE proc_mutil
+(
+c1 int,
+c2 int
+)
+as $$
+BEGIN
+	delete from a,b using CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=c1 and b.col2=c2;
+END;
+$$ language plmysql;
+begin;
+CALL proc_mutil(1,2);
+select * from CT_T_MUTIL_T1;
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    1
+(1 row)
+
+rollback;
+--schema.tb_name
+CREATE SCHEMA CMULTIBLOCK2;
+drop table if exists CMULTIBLOCK2.T_D_MUTIL_BC_1;
+NOTICE:  table "T_D_MUTIL_BC_1" does not exist, skipping
+drop table if exists CMULTIBLOCK2.T_D_MUTIL_BC_2;
+NOTICE:  table "T_D_MUTIL_BC_2" does not exist, skipping
+CREATE TABLE CMULTIBLOCK2.T_D_MUTIL_BC_1(col1 int, col2 int);
+CREATE TABLE CMULTIBLOCK2.T_D_MUTIL_BC_2(col1 int, col2 int);
+insert into CMULTIBLOCK2.T_D_MUTIL_BC_1 values(1,2),(2,2);
+insert into CMULTIBLOCK2.T_D_MUTIL_BC_2 values(2,2),(3,3);
+delete a.*,b.* from CMULTIBLOCK2.T_D_MUTIL_BC_1 a,CMULTIBLOCK2.T_D_MUTIL_BC_2 b where a.col2=b.col2;
+select * from CMULTIBLOCK2.T_D_MUTIL_BC_1;
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from CMULTIBLOCK2.T_D_MUTIL_BC_2;
+ col1 | col2 
+------+------
+    3 |    3
+(1 row)
+
+DROP SCHEMA CMULTIBLOCK2 CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table "CMULTIBLOCK2"."T_D_MUTIL_BC_1"
+drop cascades to table "CMULTIBLOCK2"."T_D_MUTIL_BC_2"
+-- subquery
+delete a.*,b.* from CT_T_MUTIL_T1 a,(select * from T_T_MUTIL_T2) b where a.col1=b.col1; --error
+ERROR:  The target table b of the DELETE is not updatable
+--mateview
+CREATE MATERIALIZED VIEW MATE_MULTIVIEW1 as select * from CT_T_MUTIL_T1;
+CREATE MATERIALIZED VIEW MATE_MULTIVIEW2 as select * from T_T_MUTIL_T2;
+delete a,b,c from CT_T_MUTIL_T1 a,MATE_MULTIVIEW1 b,MATE_MULTIVIEW2 c ;
+ERROR:  cannot change materialized view "MATE_MULTIVIEW1"
+drop MATERIALIZED VIEW MATE_MULTIVIEW1;
+drop MATERIALIZED VIEW MATE_MULTIVIEW2;
+--explain plan
+explain delete a,b from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
+ Delete on MULTI-RELATION  (cost=317.01..711.38 rows=25538 width=24)
+   Delete on "CT_T_MUTIL_T1" a
+   Delete on "T_T_MUTIL_T2" b
+   ->  Merge Join  (cost=317.01..711.38 rows=25538 width=24)
+         Merge Cond: (a.col2 = b.col2)
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Sort Key: a.col2
+               ->  Seq Scan on "CT_T_MUTIL_T1" a  (cost=0.00..32.60 rows=2260 width=10)
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Sort Key: b.col2
+               ->  Seq Scan on "T_T_MUTIL_T2" b  (cost=0.00..32.60 rows=2260 width=10)
+(11 rows)
+
+explain(verbose) delete a,b from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;
+                                          QUERY PLAN                                           
+-----------------------------------------------------------------------------------------------
+ Delete on MULTI-RELATION  (cost=317.01..711.38 rows=25538 width=24)
+   Delete on public."CT_T_MUTIL_T1" a
+   Delete on public."T_T_MUTIL_T2" b
+   ->  Merge Join  (cost=317.01..711.38 rows=25538 width=24)
+         Output: a.ctid, a.ctid, b.ctid
+         Merge Cond: (a.col2 = b.col2)
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Output: a.ctid, a.col2
+               Sort Key: a.col2
+               ->  Seq Scan on public."CT_T_MUTIL_T1" a  (cost=0.00..32.60 rows=2260 width=10)
+                     Output: a.ctid, a.col2
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Output: b.ctid, b.col2
+               Sort Key: b.col2
+               ->  Seq Scan on public."T_T_MUTIL_T2" b  (cost=0.00..32.60 rows=2260 width=10)
+                     Output: b.ctid, b.col2
+(16 rows)
+
+explain(format xml) delete a,b from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ <explain xmlns="http://www.postgresql.org/2009/explain">          +
+   <Query>                                                         +
+     <Plan>                                                        +
+       <Node-Type>ModifyTable</Node-Type>                          +
+       <Operation>Delete</Operation>                               +
+       <Parallel-Aware>false</Parallel-Aware>                      +
+       <Async-Capable>false</Async-Capable>                        +
+       <Relation-Name>MULTI-RELATION</Relation-Name>               +
+       <Startup-Cost>317.01</Startup-Cost>                         +
+       <Total-Cost>711.38</Total-Cost>                             +
+       <Plan-Rows>25538</Plan-Rows>                                +
+       <Plan-Width>24</Plan-Width>                                 +
+       <Target-Tables>                                             +
+         <Target-Table>                                            +
+           <Relation-Name>CT_T_MUTIL_T1</Relation-Name>            +
+           <Alias>a</Alias>                                        +
+         </Target-Table>                                           +
+         <Target-Table>                                            +
+           <Relation-Name>T_T_MUTIL_T2</Relation-Name>             +
+           <Alias>b</Alias>                                        +
+         </Target-Table>                                           +
+       </Target-Tables>                                            +
+       <Plans>                                                     +
+         <Plan>                                                    +
+           <Node-Type>Merge Join</Node-Type>                       +
+           <Parent-Relationship>Outer</Parent-Relationship>        +
+           <Parallel-Aware>false</Parallel-Aware>                  +
+           <Async-Capable>false</Async-Capable>                    +
+           <Join-Type>Inner</Join-Type>                            +
+           <Startup-Cost>317.01</Startup-Cost>                     +
+           <Total-Cost>711.38</Total-Cost>                         +
+           <Plan-Rows>25538</Plan-Rows>                            +
+           <Plan-Width>24</Plan-Width>                             +
+           <Inner-Unique>false</Inner-Unique>                      +
+           <Merge-Cond>(a.col2 = b.col2)</Merge-Cond>              +
+           <Plans>                                                 +
+             <Plan>                                                +
+               <Node-Type>Sort</Node-Type>                         +
+               <Parent-Relationship>Outer</Parent-Relationship>    +
+               <Parallel-Aware>false</Parallel-Aware>              +
+               <Async-Capable>false</Async-Capable>                +
+               <Startup-Cost>158.51</Startup-Cost>                 +
+               <Total-Cost>164.16</Total-Cost>                     +
+               <Plan-Rows>2260</Plan-Rows>                         +
+               <Plan-Width>10</Plan-Width>                         +
+               <Sort-Key>                                          +
+                 <Item>a.col2</Item>                               +
+               </Sort-Key>                                         +
+               <Plans>                                             +
+                 <Plan>                                            +
+                   <Node-Type>Seq Scan</Node-Type>                 +
+                   <Parent-Relationship>Outer</Parent-Relationship>+
+                   <Parallel-Aware>false</Parallel-Aware>          +
+                   <Async-Capable>false</Async-Capable>            +
+                   <Relation-Name>CT_T_MUTIL_T1</Relation-Name>    +
+                   <Alias>a</Alias>                                +
+                   <Startup-Cost>0.00</Startup-Cost>               +
+                   <Total-Cost>32.60</Total-Cost>                  +
+                   <Plan-Rows>2260</Plan-Rows>                     +
+                   <Plan-Width>10</Plan-Width>                     +
+                 </Plan>                                           +
+               </Plans>                                            +
+             </Plan>                                               +
+             <Plan>                                                +
+               <Node-Type>Sort</Node-Type>                         +
+               <Parent-Relationship>Inner</Parent-Relationship>    +
+               <Parallel-Aware>false</Parallel-Aware>              +
+               <Async-Capable>false</Async-Capable>                +
+               <Startup-Cost>158.51</Startup-Cost>                 +
+               <Total-Cost>164.16</Total-Cost>                     +
+               <Plan-Rows>2260</Plan-Rows>                         +
+               <Plan-Width>10</Plan-Width>                         +
+               <Sort-Key>                                          +
+                 <Item>b.col2</Item>                               +
+               </Sort-Key>                                         +
+               <Plans>                                             +
+                 <Plan>                                            +
+                   <Node-Type>Seq Scan</Node-Type>                 +
+                   <Parent-Relationship>Outer</Parent-Relationship>+
+                   <Parallel-Aware>false</Parallel-Aware>          +
+                   <Async-Capable>false</Async-Capable>            +
+                   <Relation-Name>T_T_MUTIL_T2</Relation-Name>     +
+                   <Alias>b</Alias>                                +
+                   <Startup-Cost>0.00</Startup-Cost>               +
+                   <Total-Cost>32.60</Total-Cost>                  +
+                   <Plan-Rows>2260</Plan-Rows>                     +
+                   <Plan-Width>10</Plan-Width>                     +
+                 </Plan>                                           +
+               </Plans>                                            +
+             </Plan>                                               +
+           </Plans>                                                +
+         </Plan>                                                   +
+       </Plans>                                                    +
+     </Plan>                                                       +
+   </Query>                                                        +
+ </explain>
+(1 row)
+
+explain(format json) delete a,b from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;
+                     QUERY PLAN                      
+-----------------------------------------------------
+ [                                                  +
+   {                                                +
+     "Plan": {                                      +
+       "Node Type": "ModifyTable",                  +
+       "Operation": "Delete",                       +
+       "Parallel Aware": false,                     +
+       "Async Capable": false,                      +
+       "Relation Name": "MULTI-RELATION",           +
+       "Startup Cost": 317.01,                      +
+       "Total Cost": 711.38,                        +
+       "Plan Rows": 25538,                          +
+       "Plan Width": 24,                            +
+       "Target Tables": [                           +
+         {                                          +
+           "Relation Name": "CT_T_MUTIL_T1",        +
+           "Alias": "a"                             +
+         },                                         +
+         {                                          +
+           "Relation Name": "T_T_MUTIL_T2",         +
+           "Alias": "b"                             +
+         }                                          +
+       ],                                           +
+       "Plans": [                                   +
+         {                                          +
+           "Node Type": "Merge Join",               +
+           "Parent Relationship": "Outer",          +
+           "Parallel Aware": false,                 +
+           "Async Capable": false,                  +
+           "Join Type": "Inner",                    +
+           "Startup Cost": 317.01,                  +
+           "Total Cost": 711.38,                    +
+           "Plan Rows": 25538,                      +
+           "Plan Width": 24,                        +
+           "Inner Unique": false,                   +
+           "Merge Cond": "(a.col2 = b.col2)",       +
+           "Plans": [                               +
+             {                                      +
+               "Node Type": "Sort",                 +
+               "Parent Relationship": "Outer",      +
+               "Parallel Aware": false,             +
+               "Async Capable": false,              +
+               "Startup Cost": 158.51,              +
+               "Total Cost": 164.16,                +
+               "Plan Rows": 2260,                   +
+               "Plan Width": 10,                    +
+               "Sort Key": ["a.col2"],              +
+               "Plans": [                           +
+                 {                                  +
+                   "Node Type": "Seq Scan",         +
+                   "Parent Relationship": "Outer",  +
+                   "Parallel Aware": false,         +
+                   "Async Capable": false,          +
+                   "Relation Name": "CT_T_MUTIL_T1",+
+                   "Alias": "a",                    +
+                   "Startup Cost": 0.00,            +
+                   "Total Cost": 32.60,             +
+                   "Plan Rows": 2260,               +
+                   "Plan Width": 10                 +
+                 }                                  +
+               ]                                    +
+             },                                     +
+             {                                      +
+               "Node Type": "Sort",                 +
+               "Parent Relationship": "Inner",      +
+               "Parallel Aware": false,             +
+               "Async Capable": false,              +
+               "Startup Cost": 158.51,              +
+               "Total Cost": 164.16,                +
+               "Plan Rows": 2260,                   +
+               "Plan Width": 10,                    +
+               "Sort Key": ["b.col2"],              +
+               "Plans": [                           +
+                 {                                  +
+                   "Node Type": "Seq Scan",         +
+                   "Parent Relationship": "Outer",  +
+                   "Parallel Aware": false,         +
+                   "Async Capable": false,          +
+                   "Relation Name": "T_T_MUTIL_T2", +
+                   "Alias": "b",                    +
+                   "Startup Cost": 0.00,            +
+                   "Total Cost": 32.60,             +
+                   "Plan Rows": 2260,               +
+                   "Plan Width": 10                 +
+                 }                                  +
+               ]                                    +
+             }                                      +
+           ]                                        +
+         }                                          +
+       ]                                            +
+     }                                              +
+   }                                                +
+ ]
+(1 row)
+
+explain(format yaml) delete a.*, b.* from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col2=b.col2;
+                   QUERY PLAN                   
+------------------------------------------------
+ - Plan:                                       +
+     Node Type: "ModifyTable"                  +
+     Operation: "Delete"                       +
+     Parallel Aware: false                     +
+     Async Capable: false                      +
+     Relation Name: "MULTI-RELATION"           +
+     Startup Cost: 317.01                      +
+     Total Cost: 711.38                        +
+     Plan Rows: 25538                          +
+     Plan Width: 24                            +
+     Target Tables:                            +
+       - Relation Name: "CT_T_MUTIL_T1"        +
+         Alias: "a"                            +
+       - Relation Name: "T_T_MUTIL_T2"         +
+         Alias: "b"                            +
+     Plans:                                    +
+       - Node Type: "Merge Join"               +
+         Parent Relationship: "Outer"          +
+         Parallel Aware: false                 +
+         Async Capable: false                  +
+         Join Type: "Inner"                    +
+         Startup Cost: 317.01                  +
+         Total Cost: 711.38                    +
+         Plan Rows: 25538                      +
+         Plan Width: 24                        +
+         Inner Unique: false                   +
+         Merge Cond: "(a.col2 = b.col2)"       +
+         Plans:                                +
+           - Node Type: "Sort"                 +
+             Parent Relationship: "Outer"      +
+             Parallel Aware: false             +
+             Async Capable: false              +
+             Startup Cost: 158.51              +
+             Total Cost: 164.16                +
+             Plan Rows: 2260                   +
+             Plan Width: 10                    +
+             Sort Key:                         +
+               - "a.col2"                      +
+             Plans:                            +
+               - Node Type: "Seq Scan"         +
+                 Parent Relationship: "Outer"  +
+                 Parallel Aware: false         +
+                 Async Capable: false          +
+                 Relation Name: "CT_T_MUTIL_T1"+
+                 Alias: "a"                    +
+                 Startup Cost: 0.00            +
+                 Total Cost: 32.60             +
+                 Plan Rows: 2260               +
+                 Plan Width: 10                +
+           - Node Type: "Sort"                 +
+             Parent Relationship: "Inner"      +
+             Parallel Aware: false             +
+             Async Capable: false              +
+             Startup Cost: 158.51              +
+             Total Cost: 164.16                +
+             Plan Rows: 2260                   +
+             Plan Width: 10                    +
+             Sort Key:                         +
+               - "b.col2"                      +
+             Plans:                            +
+               - Node Type: "Seq Scan"         +
+                 Parent Relationship: "Outer"  +
+                 Parallel Aware: false         +
+                 Async Capable: false          +
+                 Relation Name: "T_T_MUTIL_T2" +
+                 Alias: "b"                    +
+                 Startup Cost: 0.00            +
+                 Total Cost: 32.60             +
+                 Plan Rows: 2260               +
+                 Plan Width: 10
+(1 row)
+
+-- temp table
+drop table if exists CT_T_MUTIL_T1;
+create temporary table CT_T_MUTIL_T1(col1 int, col2 int);
+create temporary table T_T_MUTIL_T2(col1 int,col2 int);
+insert into CT_T_MUTIL_T1 values(1,2),(2,2);
+insert into T_T_MUTIL_T2 values(2,2),(3,3);
+delete a.*,b.* from  CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col1=b.col1;
+select * from CT_T_MUTIL_T1;--1,2
+ col1 | col2 
+------+------
+    1 |    2
+(1 row)
+
+select * from T_T_MUTIL_T2;--3,3
+ col1 | col2 
+------+------
+    3 |    3
+(1 row)
+
+drop table if exists CT_T_MUTIL_T1;
+drop table if exists T_T_MUTIL_T2;
+-- order by or limit
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int,col2 int);
+create table T_MUTIL_T2(col1 int,col2 int);
+insert into T_MUTIL_T1 values(1,2),(1,2),(3,3);
+insert into T_MUTIL_T2 values(2,3),(2,3),(1,3);
+delete from a,b using T_MUTIL_T1 a,T_MUTIL_T2 b where a.col1=b.col2 order by a.col2;  --error
+ERROR:  multi-relation delete is not supported order by clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+delete from a,b using T_MUTIL_T1 a,T_MUTIL_T2 b where a.col1=b.col2 limit 1;    --error
+ERROR:  multi-relation delete is not supported limit clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    2
+    1 |    2
+    3 |    3
+(3 rows)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    2 |    3
+    2 |    3
+    1 |    3
+(3 rows)
+
+-- returning
+delete a,b from T_MUTIL_T1 a,T_MUTIL_T2 b where a.col1=b.col2 returning *; --error
+ERROR:  multi-relation delete is not supported returing clause.
+HINT:  Please note whether it's compatible with MySQL mode.
+-- left join
+begin;
+delete from a,b using T_MUTIL_T1 a left join T_MUTIL_T2 b on a.col1=b.col1;
+select * from T_MUTIL_T1;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_MUTIL_T2;--2,3--2,3
+ col1 | col2 
+------+------
+    2 |    3
+    2 |    3
+(2 rows)
+
+rollback;
+--
+drop table if exists T_U_MUTIL_T1;
+NOTICE:  table "T_U_MUTIL_T1" does not exist, skipping
+drop table if exists T_U_MUTIL_T2;
+NOTICE:  table "T_U_MUTIL_T2" does not exist, skipping
+drop table if exists T_U_MUTIL_T3;
+NOTICE:  table "T_U_MUTIL_T3" does not exist, skipping
+create table T_U_MUTIL_T1(col1 int, col2 int);
+create table T_U_MUTIL_T2(col1 int, col2 int);
+create table T_U_MUTIL_T3(col1 int, col2 int);
+insert into T_U_MUTIL_T1 values(1,2);
+insert into T_U_MUTIL_T2 values(1,2);
+insert into T_U_MUTIL_T3 values(1,2);
+delete a,b,c from T_U_MUTIL_T1 a,T_U_MUTIL_T2 b,T_U_MUTIL_T3 c where a.col2=b.col2 and b.col2=c.col2;
+select * from T_U_MUTIL_T1;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_U_MUTIL_T2;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_U_MUTIL_T3;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+-- has index
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int);
+create table T_MUTIL_T2(col1 int, col2 int);
+create index idx1 on T_MUTIL_T1(col1);
+create index idx2 on T_MUTIL_T2(col1);
+insert into T_MUTIL_T1 values(1),(2);
+insert into T_MUTIL_T2 values(2,2),(3,3);
+begin;
+delete a,b from T_MUTIL_T1 a,T_MUTIL_T2 b where a.col1=b.col1;
+select * from T_MUTIL_T1;--1
+ col1 
+------
+    1
+(1 row)
+
+select * from T_MUTIL_T2;--3,3
+ col1 | col2 
+------+------
+    3 |    3
+(1 row)
+
+rollback;
+-- ARdelete trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_delete_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL1 WHERE des1_id1=OLD.src1_id1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_delete_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL2 WHERE des2_id1=OLD.src2_id1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER delete_ar_trigger1
+AFTER delete ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_delete_func1();
+CREATE TRIGGER delete_ar_trigger2
+AFTER delete ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_delete_func2();
+delete a,b from TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b  WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;--empty
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;--empty
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1;--empty
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2;--empty
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+(0 rows)
+
+-- BRdelete trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_delete_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL1;
+RETURN NEW;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_delete_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL2;
+RETURN NEW;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER delete_ar_trigger1
+BEFORE delete ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_delete_func1();
+CREATE TRIGGER delete_ar_trigger2
+BEFORE delete ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_delete_func2();
+delete a.*,b.* from TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+      100 |      200 |      300
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+      300 |      400 |      500
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+(0 rows)
+
+-- BSdelete trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_delete_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_delete_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL2;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER delete_bs_trigger1
+BEFORE delete ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_delete_func1();
+CREATE TRIGGER delete_bs_trigger2
+BEFORE delete ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_delete_func2();
+delete a.*,b.* from TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+(0 rows)
+
+-- ASdelete trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_delete_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_delete_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+delete from TEST_TRIGGER_DES_TBL2;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER delete_ar_trigger1
+AFTER delete ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_delete_func1();
+CREATE TRIGGER delete_ar_trigger2
+AFTER delete ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_delete_func2();
+delete a,b from TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+(0 rows)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+(0 rows)
+
+drop function tri_delete_func1;
+ERROR:  cannot drop function tri_delete_func1() because other objects depend on it
+DETAIL:  trigger delete_ar_trigger1 on table "TEST_TRIGGER_SRC_TBL1" depends on function tri_delete_func1()
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+drop function tri_delete_func2;
+ERROR:  cannot drop function tri_delete_func2() because other objects depend on it
+DETAIL:  trigger delete_ar_trigger2 on table "TEST_TRIGGER_SRC_TBL2" depends on function tri_delete_func2()
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+-- delete alias
+drop table if exists T_T_MUTIL_T2;
+create table CT_T_MUTIL_T1(col1 int,col2 int);
+create table T_T_MUTIL_T2(col1 int,col2 int);
+delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b using CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col1=b.col1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b using CT_T_MUTIL_...
+                                  ^
+delete from a,b using CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b where a.col1=b.col1;
+delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b using a,b where a.col1=b.col1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,T_T_MUTIL_T2 b using a,b where a...
+                                  ^
+delete from CT_T_MUTIL_T1 a where a.col1=1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a where a.col1=1;
+                                  ^
+delete from CT_T_MUTIL_T1 a using a where a.col1=1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a using a where a.col1=1;
+                                  ^
+delete from a using CT_T_MUTIL_T1 a where a.col1=1;
+delete from CT_T_MUTIL_T1 a using T_T_MUTIL_T2 a where a.col1=1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a using T_T_MUTIL_T2 a where a.col...
+                                  ^
+delete from a using CT_T_MUTIL_T1 a where a.col1=1;
+delete from CT_T_MUTIL_T1,CT_T_MUTIL_T1 using CT_T_MUTIL_T1,CT_T_MUTIL_T1 where CT_T_MUTIL_T1.col1=1;--error
+ERROR:  table name "CT_T_MUTIL_T1" specified more than once
+delete from CT_T_MUTIL_T1 using CT_T_MUTIL_T1,CT_T_MUTIL_T1 where CT_T_MUTIL_T1.col1=1;--error
+ERROR:  table name "CT_T_MUTIL_T1" specified more than once
+delete from CT_T_MUTIL_T1 a,CT_T_MUTIL_T1 a where a.col1=1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,CT_T_MUTIL_T1 a where a.col1=1;
+                                  ^
+delete from CT_T_MUTIL_T1 a,CT_T_MUTIL_T1 b where a.col1=1;--error
+ERROR:  syntax error at or near "a"
+LINE 1: delete from CT_T_MUTIL_T1 a,CT_T_MUTIL_T1 b where a.col1=1;
+                                  ^
+-- view
+drop table if exists CT_T_MUTIL_T1;
+drop table if exists T_T_MUTIL_T2;
+drop table if exists T_T_MUTIL_T3;
+create table CT_T_MUTIL_T1(col1 int,col2 int);
+create table T_T_MUTIL_T2(col1 int,col2 int,col3 int);
+create table T_T_MUTIL_T3(col1 int,col2 int);
+insert into CT_T_MUTIL_T1 values(1,1),(1,1);
+insert into T_T_MUTIL_T2(col1,col2) values(1,1),(1,2);
+insert into T_T_MUTIL_T3 values(1,1),(1,3);
+drop view if exists multiview1,multiview2,multiview3;
+NOTICE:  view "multiview1" does not exist, skipping
+NOTICE:  view "multiview2" does not exist, skipping
+NOTICE:  view "multiview3" does not exist, skipping
+create view multiview1 as select * from CT_T_MUTIL_T1;
+create view multiview2 as select * from T_T_MUTIL_T2;
+create view multiview3 as select * from T_T_MUTIL_T3;
+delete a,b,c from multiview1 a,multiview2 b,multiview3 c where a.col1 = b.col1 and b.col2 = c.col2;
+select * from CT_T_MUTIL_T1;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_T_MUTIL_T2;--1,2,NULL
+ col1 | col2 | col3 
+------+------+------
+    1 |    2 |     
+(1 row)
+
+select * from T_T_MUTIL_T3;--1,3
+ col1 | col2 
+------+------
+    1 |    3
+(1 row)
+
+-- left join
+insert into CT_T_MUTIL_T1 values(1,1),(1,1);
+insert into T_T_MUTIL_T2(col1,col2) values(1,1),(1,2);
+delete from multiview1,T_T_MUTIL_T2 using T_T_MUTIL_T2 left join multiview1 on multiview1.col2=T_T_MUTIL_T2.col1;
+select * from CT_T_MUTIL_T1;--empty
+ col1 | col2 
+------+------
+(0 rows)
+
+select * from T_T_MUTIL_T2;--empty
+ col1 | col2 | col3 
+------+------+------
+(0 rows)
+
+drop view multiview1;
+drop view multiview2;
+drop view multiview3;
+drop table T_MUTIL_T1,T_MUTIL_T2;
+drop table CT_T_MUTIL_T1,T_T_MUTIL_T2,T_T_MUTIL_T3;
+drop table T_U_MUTIL_T1,T_U_MUTIL_T2,T_U_MUTIL_T3;
+drop table TEST_TRIGGER_DES_TBL1,TEST_TRIGGER_DES_TBL2,TEST_TRIGGER_SRC_TBL1,TEST_TRIGGER_SRC_TBL2;

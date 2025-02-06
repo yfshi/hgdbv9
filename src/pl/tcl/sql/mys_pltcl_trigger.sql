@@ -373,6 +373,10 @@ create function check_primkey() returns trigger as E'
     # For every trigger/relation pair we create
     # a saved plan and hold them in GD
     #
+	
+    set lowernum 5
+    set $lowernum [spi_exec " select setting::int as lowernum from pg_settings where name = \'lower_case_table_names\' ; "]
+
     set plankey [list "plan" $TG_name $TG_relid]
     set planrel [list "relname" $TG_relid]
 
@@ -380,7 +384,10 @@ create function check_primkey() returns trigger as E'
     # Extract the pkey relation name
     #
     set keyidx [expr [llength $args] / 2]
-    set keyrel [string tolower [lindex $args $keyidx]]
+    if {$lowernum == 0} {
+        set keyrel [lindex $args $keyidx]
+    } else {
+        set keyrel [string tolower [lindex $args $keyidx]] }
 
     if {![info exists GD($plankey)]} {
 	#

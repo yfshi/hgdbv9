@@ -56,7 +56,14 @@ static bool validateSQLNamePattern(PQExpBuffer buf, const char *pattern,
 								   const char *altnamevar,
 								   const char *visibilityrule,
 								   bool *added_clause, int maxparts);
-
+/* Begin - ReqID:SRS-MYSQL-CASE */
+static bool
+mysvalidateSQLNamePattern(PQExpBuffer buf, const char *pattern, bool have_where,
+					   bool force_escape, const char *schemavar,
+					   const char *namevar, const char *altnamevar,
+					   const char *visibilityrule, bool *added_clause,
+					   int maxparts, int kind, int lowernum);
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*----------------
  * Handlers for various slash commands displaying some sort of list
@@ -348,6 +355,11 @@ describeFunctions(const char *functypes, const char *func_pattern,
 
 	/* No "Parallel" column before 9.6 */
 	static const bool translate_columns_pre_96[] = {false, false, false, false, true, true, false, true, false, false, false, false};
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	bool	mysqlf = mysql_case_on_flag();
+	//char	*newfunc_pattern = NULL;
+	int		lowernum;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (strlen(functypes) != strspn(functypes, "anptwS+"))
 	{
@@ -388,11 +400,26 @@ describeFunctions(const char *functypes, const char *func_pattern,
 
 	initPQExpBuffer(&buf);
 
-	printfPQExpBuffer(&buf,
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysqlf)
+		printfPQExpBuffer(&buf,
+					  "SELECT CASE (SELECT mo.objname FROM pg_catalog.pg_object mo where mo.obj_oid = p.pronamespace) IS NOT NULL \n"
+					   "  WHEN TRUE THEN (SELECT mo.objname FROM pg_catalog.pg_object mo where mo.obj_oid = p.pronamespace)"
+					   "  ELSE n.nspname"
+					   "  END as \"%s\",\n"
+					  " CASE (SELECT mo.objname FROM pg_catalog.pg_object mo where mo.obj_oid = p.oid) IS NOT NULL \n"
+					   "  WHEN TRUE THEN (SELECT mo.objname FROM pg_catalog.pg_object mo where mo.obj_oid = p.oid)"
+					   "  ELSE p.proname"
+					   "  END as \"%s\",\n",
+					  gettext_noop("Schema"),
+					  gettext_noop("Name"));
+	else
+		printfPQExpBuffer(&buf,
 					  "SELECT n.nspname as \"%s\",\n"
 					  "  p.proname as \"%s\",\n",
 					  gettext_noop("Schema"),
 					  gettext_noop("Name"));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (pset.sversion >= 110000)
 		appendPQExpBuffer(&buf,
@@ -541,6 +568,21 @@ describeFunctions(const char *functypes, const char *func_pattern,
 						  gettext_noop("Description"));
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	/*if (mysqlf)
+		appendPQExpBuffer(&buf,
+					  ", \n CASE (SELECT mo.created FROM pg_catalog.pg_object mo where mo.oid = p.oid) IS NOT NULL \n"
+					   "  WHEN TRUE THEN (SELECT mo.created FROM pg_catalog.pg_object mo where mo.oid = p.oid)"
+					   "  ELSE NULL"
+					   "  END as \"%s\",\n"
+					  " CASE (SELECT mo.modified FROM pg_catalog.pg_object mo where mo.oid = p.oid) IS NOT NULL \n"
+					   "  WHEN TRUE THEN (SELECT mo.modified FROM pg_catalog.pg_object mo where mo.oid = p.oid)"
+					   "  ELSE NULL"
+					   "  END as \"%s\"\n",
+					  gettext_noop("Create"),
+					  gettext_noop("Modified"));*/
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	appendPQExpBufferStr(&buf,
 						 "\nFROM pg_catalog.pg_proc p"
 						 "\n     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace\n");
@@ -658,11 +700,26 @@ describeFunctions(const char *functypes, const char *func_pattern,
 		appendPQExpBufferStr(&buf, "      )\n");
 	}
 
-	if (!validateSQLNamePattern(&buf, func_pattern, have_where, false,
-								"n.nspname", "p.proname", NULL,
-								"pg_catalog.pg_function_is_visible(p.oid)",
-								NULL, 3))
-		return false;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	//newfunc_pattern = new_pattern(func_pattern, "func");
+	lowernum = mysql_lower_num();
+	if (0 == lowernum || 1 == lowernum || 2 == lowernum )
+	{
+		if (!mysvalidateSQLNamePattern(&buf, func_pattern, have_where, false,
+									"n.nspname", "p.proname", NULL,
+									"pg_catalog.pg_function_is_visible(p.oid)",
+									NULL, 3, 1, lowernum))
+			return false;
+	}
+	else
+	{
+		if (!validateSQLNamePattern(&buf, func_pattern, have_where, false,
+									"n.nspname", "p.proname", NULL,
+									"pg_catalog.pg_function_is_visible(p.oid)",
+									NULL, 3))
+			return false;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	for (int i = 0; i < num_arg_patterns; i++)
 	{
@@ -1069,6 +1126,7 @@ listAllDbs(const char *pattern, bool verbose)
 					  gettext_noop("Name"),
 					  gettext_noop("Owner"),
 					  gettext_noop("Encoding"));
+
 	if (pset.sversion >= 80400)
 		appendPQExpBuffer(&buf,
 						  "       d.datcollate as \"%s\",\n"
@@ -1590,6 +1648,8 @@ describeTableDetails(const char *pattern, bool verbose, bool showSystem)
 	PQExpBufferData buf;
 	PGresult   *res;
 	int			i;
+	//char		   *newpattern;
+	int			lowernum;
 
 	initPQExpBuffer(&buf);
 
@@ -1605,11 +1665,24 @@ describeTableDetails(const char *pattern, bool verbose, bool showSystem)
 							 "      AND n.nspname <> 'information_schema'\n"
 							 "      AND n.nspname <> '%s'\n", ORA_SCHEMA);	/* ReqID:SRS-GKC-DATATYPE_001 */
 
-	if (!validateSQLNamePattern(&buf, pattern, !showSystem && !pattern, false,
+	//newpattern = new_pattern(pattern, "table");
+	lowernum = mysql_lower_num();
+	if (0 == lowernum || 1 == lowernum || 2 == lowernum)
+	{
+		if (!mysvalidateSQLNamePattern(&buf, pattern, !showSystem && !pattern, false,
+								"n.nspname", "c.relname", NULL,
+								"pg_catalog.pg_table_is_visible(c.oid)",
+								NULL, 3, 0, lowernum))
+			return false;
+	}
+	else
+	{
+		if (!validateSQLNamePattern(&buf, pattern, !showSystem && !pattern, false,
 								"n.nspname", "c.relname", NULL,
 								"pg_catalog.pg_table_is_visible(c.oid)",
 								NULL, 3))
-		return false;
+			return false;
+	}
 
 	appendPQExpBufferStr(&buf, "ORDER BY 2, 3;");
 
@@ -4283,6 +4356,7 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 	printQueryOpt myopt = pset.popt;
 	int			cols_so_far;
 	bool		translate_columns[] = {false, false, true, false, false, false, false, false, false};
+	bool		mysqlfg = false;
 
 	/* If tabtypes is empty, we default to \dtvmsE (but see also command.c) */
 	if (!(showTables || showIndexes || showViews || showMatViews || showSeq || showForeign))
@@ -4290,40 +4364,89 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 
 	initPQExpBuffer(&buf);
 
-	/*
-	 * Note: as of Pg 8.2, we no longer use relkind 's' (special), but we keep
-	 * it here for backwards compatibility.
-	 */
-	printfPQExpBuffer(&buf,
-					  "SELECT n.nspname as \"%s\",\n"
-					  "  c.relname as \"%s\",\n"
-					  "  CASE c.relkind"
-					  " WHEN " CppAsString2(RELKIND_RELATION) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_VIEW) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_MATVIEW) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_INDEX) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_SEQUENCE) " THEN '%s'"
-					  " WHEN 's' THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_TOASTVALUE) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_FOREIGN_TABLE) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_PARTITIONED_TABLE) " THEN '%s'"
-					  " WHEN " CppAsString2(RELKIND_PARTITIONED_INDEX) " THEN '%s'"
-					  " END as \"%s\",\n"
-					  "  pg_catalog.pg_get_userbyid(c.relowner) as \"%s\"",
-					  gettext_noop("Schema"),
-					  gettext_noop("Name"),
-					  gettext_noop("table"),
-					  gettext_noop("view"),
-					  gettext_noop("materialized view"),
-					  gettext_noop("index"),
-					  gettext_noop("sequence"),
-					  gettext_noop("special"),
-					  gettext_noop("TOAST table"),
-					  gettext_noop("foreign table"),
-					  gettext_noop("partitioned table"),
-					  gettext_noop("partitioned index"),
-					  gettext_noop("Type"),
-					  gettext_noop("Owner"));
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	mysqlfg = mysql_case_on_flag();
+	if (mysqlfg)
+	{
+		/*
+		 * Note: as of Pg 8.2, we no longer use relkind 's' (special), but we keep
+		 * it here for backwards compatibility.
+		 */
+		printfPQExpBuffer(&buf,
+						  "SELECT CASE (SELECT mo.objname FROM pg_catalog.pg_object as mo where mo.obj_oid= c.relnamespace) IS NULL"
+						   "  WHEN TRUE THEN n.nspname"
+						   "  ELSE (SELECT mo.objname FROM pg_catalog.pg_object as mo where mo.obj_oid = c.relnamespace)"
+						   "  END as \"%s\",\n"
+						  "CASE (SELECT mo.objname FROM pg_catalog.pg_object as mo where mo.obj_oid = c.oid) IS NULL"
+						   "  WHEN TRUE THEN c.relname"
+						   "  ELSE (SELECT mo.objname FROM pg_catalog.pg_object as mo where mo.obj_oid = c.oid)"
+						   "  END as \"%s\",\n"
+						  "  CASE c.relkind"
+						  " WHEN " CppAsString2(RELKIND_RELATION) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_VIEW) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_MATVIEW) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_INDEX) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_SEQUENCE) " THEN '%s'"
+						  " WHEN 's' THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_TOASTVALUE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_FOREIGN_TABLE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_PARTITIONED_TABLE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_PARTITIONED_INDEX) " THEN '%s'"
+						  " END as \"%s\",\n"
+						  "  pg_catalog.pg_get_userbyid(c.relowner) as \"%s\"",
+						  gettext_noop("Schema"),
+						  gettext_noop("Name"),
+						  gettext_noop("table"),
+						  gettext_noop("view"),
+						  gettext_noop("materialized view"),
+						  gettext_noop("index"),
+						  gettext_noop("sequence"),
+						  gettext_noop("special"),
+						  gettext_noop("TOAST table"),
+						  gettext_noop("foreign table"),
+						  gettext_noop("partitioned table"),
+						  gettext_noop("partitioned index"),
+						  gettext_noop("Type"),
+						  gettext_noop("Owner"));
+	}
+	else
+	{
+		/*
+		 * Note: as of Pg 8.2, we no longer use relkind 's' (special), but we keep
+		 * it here for backwards compatibility.
+		 */
+		printfPQExpBuffer(&buf,
+						  "SELECT n.nspname as \"%s\",\n"
+						  "  c.relname as \"%s\",\n"
+						  "  CASE c.relkind"
+						  " WHEN " CppAsString2(RELKIND_RELATION) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_VIEW) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_MATVIEW) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_INDEX) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_SEQUENCE) " THEN '%s'"
+						  " WHEN 's' THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_TOASTVALUE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_FOREIGN_TABLE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_PARTITIONED_TABLE) " THEN '%s'"
+						  " WHEN " CppAsString2(RELKIND_PARTITIONED_INDEX) " THEN '%s'"
+						  " END as \"%s\",\n"
+						  "  pg_catalog.pg_get_userbyid(c.relowner) as \"%s\"",
+						  gettext_noop("Schema"),
+						  gettext_noop("Name"),
+						  gettext_noop("table"),
+						  gettext_noop("view"),
+						  gettext_noop("materialized view"),
+						  gettext_noop("index"),
+						  gettext_noop("sequence"),
+						  gettext_noop("special"),
+						  gettext_noop("TOAST table"),
+						  gettext_noop("foreign table"),
+						  gettext_noop("partitioned table"),
+						  gettext_noop("partitioned index"),
+						  gettext_noop("Type"),
+						  gettext_noop("Owner"));
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	cols_so_far = 4;
 
 	if (showIndexes)
@@ -4386,7 +4509,13 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 						  gettext_noop("Description"));
 	}
 
-	appendPQExpBufferStr(&buf,
+	if (mysqlfg)
+		appendPQExpBufferStr(&buf,
+						 "\nFROM pg_catalog.pg_class c"
+						 "\n     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+						 "\n     LEFT JOIN pg_catalog.pg_object mp ON c.oid = mp.obj_oid");
+	else
+		appendPQExpBufferStr(&buf,
 						 "\nFROM pg_catalog.pg_class c"
 						 "\n     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace");
 
@@ -5325,12 +5454,28 @@ listSchemas(const char *pattern, bool verbose, bool showSystem)
 	PGresult   *res;
 	printQueryOpt myopt = pset.popt;
 
+	int lownum;
+
 	initPQExpBuffer(&buf);
-	printfPQExpBuffer(&buf,
-					  "SELECT n.nspname AS \"%s\",\n"
-					  "  pg_catalog.pg_get_userbyid(n.nspowner) AS \"%s\"",
-					  gettext_noop("Name"),
-					  gettext_noop("Owner"));
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	lownum = mysql_lower_num();
+	if (lownum == 2)
+		printfPQExpBuffer(&buf,
+						  "SELECT CASE mp.obj_oid > 0 \n"
+						  "   WHEN TRUE THEN mp.objname \n"
+						  "   ELSE n.nspname \n"
+					 	  "   END as \"%s\",\n"
+						  "  pg_catalog.pg_get_userbyid(n.nspowner) AS \"%s\"",
+						  gettext_noop("Name"),
+						  gettext_noop("Owner"));
+	else
+		printfPQExpBuffer(&buf,
+						  "SELECT n.nspname AS \"%s\",\n"
+						  "  pg_catalog.pg_get_userbyid(n.nspowner) AS \"%s\"",
+						  gettext_noop("Name"),
+						  gettext_noop("Owner"));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (verbose)
 	{
@@ -5342,7 +5487,8 @@ listSchemas(const char *pattern, bool verbose, bool showSystem)
 	}
 
 	appendPQExpBufferStr(&buf,
-						 "\nFROM pg_catalog.pg_namespace n\n");
+						 "\nFROM pg_catalog.pg_namespace n\n"
+						   "LEFT JOIN pg_catalog.pg_object mp on (mp.obj_oid = n.oid)");
 
 	if (!showSystem && !pattern)
 		appendPQExpBuffer(&buf,
@@ -7227,3 +7373,156 @@ listOpFamilyFunctions(const char *access_method_pattern,
 	PQclear(res);
 	return true;
 }
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+
+/* mysql_case_on_flag()
+ * Check whether the mysql case switch is turned on.
+ *
+ * return
+ */
+bool mysql_case_on_flag(void)
+{
+	PQExpBufferData buf;
+	PGresult   *res;
+	char	   *cell;
+
+	if(db_mode != DB_MYSQL)
+		return false;
+
+	initPQExpBuffer(&buf);
+
+	printfPQExpBuffer(&buf, "show mysql.enable_case_switch");
+
+	res = PSQLexec(buf.data);
+	termPQExpBuffer(&buf);
+	if (!res)
+		return false;
+
+	if (PQntuples(res) != 1)
+		return false;
+
+	cell = PQgetvalue(res, 0, 0);
+	if (strcmp(cell, "on"))
+		return false;
+
+	PQclear(res);
+	return true;
+}
+
+/* mysql_lower_num()
+ * get lower_case_table_names value.
+ *
+ * return
+ */
+int mysql_lower_num(void)
+{
+	if (mysql_case_on_flag())
+	{
+		PQExpBufferData buf;
+		PGresult   *res;
+		char	   *cell;
+		
+		initPQExpBuffer(&buf);
+
+		printfPQExpBuffer(&buf, "show lower_case_table_names;");
+
+		res = PSQLexec(buf.data);
+		termPQExpBuffer(&buf);
+		if (!res)
+			return 3;
+
+		if (PQntuples(res) != 1)
+			return 3;
+
+		cell = PQgetvalue(res, 0, 0);
+		if (!strcmp(cell, "0"))
+			return 0;
+		else if (!strcmp(cell, "1"))
+			return 1;
+		else if (!strcmp(cell, "2"))
+			return 2;
+		
+	}
+
+	return 3;
+}
+
+/* mysql_psql_downcase_identifier()
+ * Convert to lower case.
+ *
+ * return
+ */
+char *
+mysql_psql_downcase_identifier(const char *str, int len)
+{
+	char	   *result;
+	int			i;
+
+	result = (char *) pg_malloc(len + 1);
+	for (i = 0; i < len; i++)
+	{
+		result[i] = (char) pg_tolower((unsigned char) str[i]);
+	}
+
+	result[i] = '\0';
+
+	return result;
+}
+
+/*
+ * mysvalidateSQLNamePattern
+ *
+ * Wrapper around string_utils's processSQLNamePattern which also checks the
+ * pattern's validity.  In addition to that function's parameters, takes a
+ * 'maxparts' parameter specifying the maximum number of dotted names the
+ * pattern is allowed to have, and a 'added_clause' parameter that returns by
+ * reference whether a clause was added to 'buf'.  Returns whether the pattern
+ * passed validation, after logging any errors.
+ *
+ * kind: kind is the object type(table and view is 0. function and procedure is 1)
+ * lowernum: mysql lower_case_table_names value (0~2)
+ */
+static bool
+mysvalidateSQLNamePattern(PQExpBuffer buf, const char *pattern, bool have_where,
+					   bool force_escape, const char *schemavar,
+					   const char *namevar, const char *altnamevar,
+					   const char *visibilityrule, bool *added_clause,
+					   int maxparts, int kind, int lowernum)
+{
+	PQExpBufferData	dbbuf;
+	int			dotcnt;
+	bool		added;
+
+	initPQExpBuffer(&dbbuf);
+	added = mysprocessSQLNamePattern(pset.db, buf, pattern, have_where, force_escape,
+								  schemavar, namevar, altnamevar,
+								  visibilityrule, &dbbuf, &dotcnt, kind, lowernum);
+	if (added_clause != NULL)
+		*added_clause = added;
+
+	if (dotcnt >= maxparts)
+	{
+		pg_log_error("improper qualified name (too many dotted names): %s",
+					 pattern);
+		termPQExpBuffer(&dbbuf);
+		return false;
+	}
+
+	if (maxparts > 1 && dotcnt == maxparts-1)
+	{
+		if (PQdb(pset.db) == NULL)
+		{
+			pg_log_error("You are currently not connected to a database.");
+			return false;
+		}
+		if (strcmp(PQdb(pset.db), dbbuf.data) != 0)
+		{
+			pg_log_error("cross-database references are not implemented: %s",
+						 pattern);
+			return false;
+		}
+	}
+	return true;
+}
+/* End - ReqID:SRS-MYSQL-CASE */

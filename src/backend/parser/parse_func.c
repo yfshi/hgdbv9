@@ -47,6 +47,9 @@
 /* Begin - BUG:M0000079 */
 #include "commands/proclang.h"
 /* End - BUG:M0000079 */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 /* Possible error codes from LookupFuncNameInternal */
@@ -2740,6 +2743,23 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 	int 		raw_argcount = list_length(func->objargs);
 	int 		j = 0;
 	/* End - ReqID:SRS-SQL-FUNCOUT */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	{
+		if (mysql_lower_hook())
+		{
+			mysql_list_case_hook(func->objname);
+		}
+		else if (mysql_switch_hook())
+		{
+			ListCell *cell = llast(func->objname);
+
+			if (IsA(cell, String))
+				strVal(cell) = mysql_string_case_hook(strVal(cell));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	Assert(objtype == OBJECT_AGGREGATE ||
 		   objtype == OBJECT_FUNCTION ||

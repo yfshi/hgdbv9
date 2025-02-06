@@ -68,6 +68,10 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-MYSQL-UPDATE */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "nodes/pg_list.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -1192,39 +1196,9 @@ AlterOptRoleElem:
 					 * the following special-case codes, to avoid bloating the
 					 * size of the main parser.
 					 */
-					if (strcmp($1, "superuser") == 0)
-						$$ = makeDefElem("superuser", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "nosuperuser") == 0)
-						$$ = makeDefElem("superuser", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "createrole") == 0)
-						$$ = makeDefElem("createrole", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "nocreaterole") == 0)
-						$$ = makeDefElem("createrole", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "replication") == 0)
-						$$ = makeDefElem("isreplication", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "noreplication") == 0)
-						$$ = makeDefElem("isreplication", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "createdb") == 0)
-						$$ = makeDefElem("createdb", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "nocreatedb") == 0)
-						$$ = makeDefElem("createdb", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "login") == 0)
-						$$ = makeDefElem("canlogin", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "nologin") == 0)
-						$$ = makeDefElem("canlogin", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "bypassrls") == 0)
-						$$ = makeDefElem("bypassrls", (Node *)makeInteger(true), @1);
-					else if (strcmp($1, "nobypassrls") == 0)
-						$$ = makeDefElem("bypassrls", (Node *)makeInteger(false), @1);
-					else if (strcmp($1, "noinherit") == 0)
-					{
-						/*
-						 * Note that INHERIT is a keyword, so it's handled by main parser, but
-						 * NOINHERIT is handled here.
-						 */
-						$$ = makeDefElem("inherit", (Node *)makeInteger(false), @1);
-					}
-					else
+
+					$$ = MYS_CASE_MAKE_DEFELEN($1, @1);
+					if ($$ == NULL)
 						ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
 								 errmsg("unrecognized role option \"%s\"", $1),
@@ -1448,6 +1422,9 @@ CreateSchemaStmt:
 			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_LOWERONE_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					/* One can omit the schema name or the authorization id. */
 					n->schemaname = $3;
 					n->authrole = $5;
@@ -1458,6 +1435,9 @@ CreateSchemaStmt:
 			| CREATE SCHEMA ColId OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_LOWERONE_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					/* ...but not both */
 					n->schemaname = $3;
 					n->authrole = NULL;
@@ -1466,20 +1446,24 @@ CreateSchemaStmt:
 					$$ = (Node *)n;
 				}
 			| CREATE SCHEMA ColId  mys_create_option
-                {
+				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-                    CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-                	/* ...but not both */
-                	n->schemaname = $3;
-                	n->authrole = NULL;
-                	n->mys_opt = $4;
-                	n->if_not_exists = false;
-                	$$ = (Node *)n;
+					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					$3 = MYS_LOWERONE_STRING_CASE($3);	/* ReqID:SRS-MYSQL-CASE */
+					/* ...but not both */
+					n->schemaname = $3;
+					n->authrole = NULL;
+					n->mys_opt = $4;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
-                }
+				}
 			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					/* schema name can be omitted here, too */
 					n->schemaname = $6;
 					n->authrole = $8;
@@ -1495,6 +1479,9 @@ CreateSchemaStmt:
 			| CREATE SCHEMA IF_P NOT EXISTS ColId OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					/* ...but not here */
 					n->schemaname = $6;
 					n->authrole = NULL;
@@ -1507,10 +1494,11 @@ CreateSchemaStmt:
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
-            | CREATE SCHEMA IF_P NOT EXISTS ColId  mys_create_option
+			| CREATE SCHEMA IF_P NOT EXISTS ColId  mys_create_option
 				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					$6 = MYS_LOWERONE_STRING_CASE($6);	/* ReqID:SRS-MYSQL-CASE */
 					/* ...but not both */
 					n->schemaname = $6;
 					n->authrole = NULL;
@@ -1518,7 +1506,7 @@ CreateSchemaStmt:
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
-			    }
+				}
 		;
 
 OptSchemaName:
@@ -1579,10 +1567,13 @@ VariableSetStmt:
 					n->is_local = false;
 					$$ = (Node *) n;
 				}
-             | USE ColId
-                {
+			| USE ColId
+				{
 					/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 					VariableSetStmt *n = makeNode(VariableSetStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_LOWER_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = VAR_SET_VALUE;
 					n->name = "search_path";
 					n->args = list_make1(makeStringConst($2, -1));
@@ -1590,7 +1581,7 @@ VariableSetStmt:
 					n->is_use=true;
 					$$ = (Node *) n;
 					/* End - ReqID: SRS-MYSQL-SQL-USE */
-                }
+				}
 		;
 
 set_rest:
@@ -1678,6 +1669,9 @@ set_rest_more:	/* Generic SET syntaxes: */
 			| SCHEMA Sconst
 				{
 					VariableSetStmt *n = makeNode(VariableSetStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_LOWER_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = VAR_SET_VALUE;
 					n->name = "search_path";
 					n->args = list_make1(makeStringConst($2, @2));
@@ -2002,6 +1996,9 @@ AlterTableStmt:
 			ALTER TABLE relation_expr alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = $4;
 					n->objtype = OBJECT_TABLE;
@@ -2011,6 +2008,9 @@ AlterTableStmt:
 		|	ALTER TABLE IF_P EXISTS relation_expr alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->cmds = $6;
 					n->objtype = OBJECT_TABLE;
@@ -2020,6 +2020,9 @@ AlterTableStmt:
 		|	ALTER TABLE relation_expr partition_cmd
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = list_make1($4);
 					n->objtype = OBJECT_TABLE;
@@ -2029,6 +2032,9 @@ AlterTableStmt:
 		|	ALTER TABLE IF_P EXISTS relation_expr partition_cmd
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->cmds = list_make1($6);
 					n->objtype = OBJECT_TABLE;
@@ -2060,6 +2066,9 @@ AlterTableStmt:
 		|	ALTER INDEX qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = $4;
 					n->objtype = OBJECT_INDEX;
@@ -2069,6 +2078,9 @@ AlterTableStmt:
 		|	ALTER INDEX IF_P EXISTS qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->cmds = $6;
 					n->objtype = OBJECT_INDEX;
@@ -2078,6 +2090,9 @@ AlterTableStmt:
 		|	ALTER INDEX qualified_name index_partition_cmd
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = list_make1($4);
 					n->objtype = OBJECT_INDEX;
@@ -2109,6 +2124,9 @@ AlterTableStmt:
 		|	ALTER SEQUENCE qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = $4;
 					n->objtype = OBJECT_SEQUENCE;
@@ -2118,6 +2136,9 @@ AlterTableStmt:
 		|	ALTER SEQUENCE IF_P EXISTS qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->cmds = $6;
 					n->objtype = OBJECT_SEQUENCE;
@@ -2127,6 +2148,9 @@ AlterTableStmt:
 		|	ALTER VIEW qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->cmds = $4;
 					n->objtype = OBJECT_VIEW;
@@ -2136,6 +2160,9 @@ AlterTableStmt:
 		|	ALTER VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->cmds = $6;
 					n->objtype = OBJECT_VIEW;
@@ -2145,6 +2172,9 @@ AlterTableStmt:
 		|	ALTER MATERIALIZED VIEW qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $4;
 					n->cmds = $5;
 					n->objtype = OBJECT_MATVIEW;
@@ -2154,6 +2184,9 @@ AlterTableStmt:
 		|	ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $6;
 					n->cmds = $7;
 					n->objtype = OBJECT_MATVIEW;
@@ -2185,6 +2218,9 @@ AlterTableStmt:
 		|	ALTER FOREIGN TABLE relation_expr alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $4;
 					n->cmds = $5;
 					n->objtype = OBJECT_FOREIGN_TABLE;
@@ -2194,6 +2230,9 @@ AlterTableStmt:
 		|	ALTER FOREIGN TABLE IF_P EXISTS relation_expr alter_table_cmds
 				{
 					AlterTableStmt *n = makeNode(AlterTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $6;
 					n->cmds = $7;
 					n->objtype = OBJECT_FOREIGN_TABLE;
@@ -2214,6 +2253,9 @@ partition_cmd:
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_AttachPartition;
 					cmd->name = $3;
 					cmd->bound = $4;
@@ -2228,6 +2270,9 @@ partition_cmd:
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_DetachPartition;
 					cmd->name = $3;
 					cmd->bound = NULL;
@@ -2241,6 +2286,9 @@ partition_cmd:
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_DetachPartitionFinalize;
 					cmd->name = $3;
 					cmd->bound = NULL;
@@ -2257,6 +2305,9 @@ index_partition_cmd:
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_AttachPartition;
 					cmd->name = $3;
 					cmd->bound = NULL;
@@ -2682,6 +2733,9 @@ alter_table_cmd:
 			| INHERIT qualified_name
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_AddInherit;
 					n->def = (Node *) $2;
 					$$ = (Node *)n;
@@ -2690,6 +2744,9 @@ alter_table_cmd:
 			| NO INHERIT qualified_name
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->subtype = AT_DropInherit;
 					n->def = (Node *) $3;
 					$$ = (Node *)n;
@@ -2851,9 +2908,15 @@ reloptions:
 			'(' reloption_list ')'					{ $$ = $2; }
 		;
 
-opt_reloptions:		WITH reloptions					{ $$ = $2; }
-			 |		/* EMPTY */						{ $$ = NIL; }
+/* Begin - ReqID:SRS-MYSQL-CASE */
+opt_reloptions:		WITH reloptions
+			{
+				MYS_CASE_DEFELEM($2);
+				$$ = $2;
+			}
+			|		/* EMPTY */						{ $$ = NIL; }
 		;
+/* End - ReqID:SRS-MYSQL-CASE */
 
 reloption_list:
 			reloption_elem							{ $$ = list_make1($1); }
@@ -3010,6 +3073,9 @@ PartitionBoundSpec:
 hash_partbound_elem:
 		NonReservedWord Iconst
 			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				$1 = MYS_STRING_CASE($1);
+				/* End - ReqID:SRS-MYSQL-CASE */
 				$$ = makeDefElem($1, (Node *)makeInteger($2), @1);
 			}
 		;
@@ -3151,6 +3217,9 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 			copy_options where_clause
 				{
 					CopyStmt *n = makeNode(CopyStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->query = NULL;
 					n->attlist = $4;
@@ -3367,6 +3436,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_LIST_CASE($4, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = $2;
 					n->relation = $4;
 					n->tableElts = $6;
@@ -3386,6 +3458,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptWith OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_LIST_CASE($7, $11);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = $2;
 					n->relation = $7;
 					n->tableElts = $9;
@@ -3405,6 +3480,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptWith OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = $2;
 					n->relation = $4;
 					n->tableElts = $7;
@@ -3425,6 +3503,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptWith OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = $2;
 					n->relation = $7;
 					n->tableElts = $10;
@@ -3445,6 +3526,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			table_access_method_clause OptWith OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_CASE($4, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = $2;
 					n->relation = $4;
 					n->tableElts = $8;
@@ -3465,6 +3549,9 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			table_access_method_clause OptWith OnCommitOption OptTableSpace
 				{
 					CreateStmt *n = makeNode(CreateStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_CASE($7, $10);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = $2;
 					n->relation = $7;
 					n->tableElts = $11;
@@ -3769,6 +3856,9 @@ ColConstraintElem:
 			| REFERENCES qualified_name opt_column_list key_match key_actions
 				{
 					Constraint *n = makeNode(Constraint);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->contype = CONSTR_FOREIGN;
 					n->location = @1;
 					n->pktable			= $2;
@@ -3839,6 +3929,9 @@ TableLikeClause:
 			LIKE qualified_name TableLikeOptionList
 				{
 					TableLikeClause *n = makeNode(TableLikeClause);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $2;
 					n->options = $3;
 					n->relationOid = InvalidOid;
@@ -3980,6 +4073,9 @@ ConstraintElem:
 				opt_column_list key_match key_actions ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->contype = CONSTR_FOREIGN;
 					n->location = @1;
 					n->pktable			= $7;
@@ -4124,6 +4220,9 @@ PartitionSpec: PARTITION BY ColId '(' part_params ')'
 				{
 					PartitionSpec *n = makeNode(PartitionSpec);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->strategy = $3;
 					n->partParams = $5;
 					n->location = @1;
@@ -4343,6 +4442,9 @@ create_as_target:
 			OptWith OnCommitOption OptTableSpace
 				{
 					$$ = makeNode(IntoClause);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$->rel = $1;
 					$$->colNames = $2;
 					$$->accessMethod = $3;
@@ -4401,6 +4503,9 @@ create_mv_target:
 			qualified_name opt_column_list table_access_method_clause opt_reloptions OptTableSpace
 				{
 					$$ = makeNode(IntoClause);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$->rel = $1;
 					$$->colNames = $2;
 					$$->accessMethod = $3;
@@ -4428,6 +4533,9 @@ RefreshMatViewStmt:
 			REFRESH MATERIALIZED VIEW opt_concurrently qualified_name opt_with_data
 				{
 					RefreshMatViewStmt *n = makeNode(RefreshMatViewStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->concurrent = $4;
 					n->relation = $5;
 					n->skipData = !($6);
@@ -4448,6 +4556,9 @@ CreateSeqStmt:
 			CREATE OptTemp SEQUENCE qualified_name OptSeqOptList
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = $2;
 					n->sequence = $4;
 					n->options = $5;
@@ -4458,6 +4569,9 @@ CreateSeqStmt:
 			| CREATE OptTemp SEQUENCE IF_P NOT EXISTS qualified_name OptSeqOptList
 				{
 					CreateSeqStmt *n = makeNode(CreateSeqStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = $2;
 					n->sequence = $7;
 					n->options = $8;
@@ -4471,6 +4585,9 @@ AlterSeqStmt:
 			ALTER SEQUENCE qualified_name SeqOptList
 				{
 					AlterSeqStmt *n = makeNode(AlterSeqStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->sequence = $3;
 					n->options = $4;
 					n->missing_ok = false;
@@ -4479,6 +4596,9 @@ AlterSeqStmt:
 			| ALTER SEQUENCE IF_P EXISTS qualified_name SeqOptList
 				{
 					AlterSeqStmt *n = makeNode(AlterSeqStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->sequence = $5;
 					n->options = $6;
 					n->missing_ok = true;
@@ -4733,6 +4853,9 @@ create_extension_opt_list:
 create_extension_opt_item:
 			SCHEMA name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem("schema", (Node *)makeString($2), @1);
 				}
 			| VERSION_P NonReservedWord_or_Sconst
@@ -5023,6 +5146,9 @@ alter_generic_option_elem:
 generic_option_elem:
 			generic_option_name generic_option_arg
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_SPECIFYOBJECT_CASE($1, $2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem($1, $2, @1);
 				}
 		;
@@ -5131,6 +5257,9 @@ CreateForeignTableStmt:
 			OptInherit SERVER name create_generic_options
 				{
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_LIST_CASE($4, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $4;
 					n->base.tableElts = $6;
@@ -5151,6 +5280,9 @@ CreateForeignTableStmt:
 			OptInherit SERVER name create_generic_options
 				{
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_CREATETB_RVAR_LIST_CASE($7, $11);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $7;
 					n->base.tableElts = $9;
@@ -5171,6 +5303,10 @@ CreateForeignTableStmt:
 			SERVER name create_generic_options
 				{
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($4);
+					MYS_LOWER_ONE_RVARRELNAME_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$4->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $4;
 					n->base.inhRelations = list_make1($7);
@@ -5192,6 +5328,10 @@ CreateForeignTableStmt:
 			SERVER name create_generic_options
 				{
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($7);
+					MYS_LOWER_ONE_RVARRELNAME_CASE($10);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$7->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $7;
 					n->base.inhRelations = list_make1($10);
@@ -5224,6 +5364,10 @@ ImportForeignSchemaStmt:
 		  FROM SERVER name INTO name create_generic_options
 			{
 				ImportForeignSchemaStmt *n = makeNode(ImportForeignSchemaStmt);
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				MYS_LOWER_STRING_CASE($4);
+				MYS_LOWER_STRING_CASE($10);
+				/* End - ReqID:SRS-MYSQL-CASE */
 				n->server_name = $8;
 				n->remote_schema = $4;
 				n->local_schema = $10;
@@ -5351,6 +5495,9 @@ CreatePolicyStmt:
 				RowSecurityOptionalExpr RowSecurityOptionalWithCheck
 				{
 					CreatePolicyStmt *n = makeNode(CreatePolicyStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->policy_name = $3;
 					n->table = $5;
 					n->permissive = $6;
@@ -5367,6 +5514,9 @@ AlterPolicyStmt:
 				RowSecurityOptionalExpr RowSecurityOptionalWithCheck
 				{
 					AlterPolicyStmt *n = makeNode(AlterPolicyStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->policy_name = $3;
 					n->table = $5;
 					n->roles = $6;
@@ -5399,6 +5549,9 @@ RowSecurityOptionalToRole:
 RowSecurityDefaultPermissive:
 			AS IDENT
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					if (strcmp($2, "permissive") == 0)
 						$$ = true;
 					else if (strcmp($2, "restrictive") == 0)
@@ -5462,6 +5615,9 @@ CreateTrigStmt:
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' TriggerFuncArgs ')'
 				{
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->replace = $2;
 					n->isconstraint = false;
 					n->trigname = $4;
@@ -5485,6 +5641,9 @@ CreateTrigStmt:
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' TriggerFuncArgs ')'
 				{
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->replace = $2;
 					if (n->replace) /* not supported, see CreateTrigger */
 						ereport(ERROR,
@@ -5647,7 +5806,16 @@ TriggerFuncArg:
 		;
 
 OptConstrFromTable:
-			FROM qualified_name						{ $$ = $2; }
+			FROM qualified_name	
+			{
+				if ($2 != NULL)
+				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
+				}
+				$$ = $2;
+			}
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
@@ -5947,10 +6115,16 @@ def_list:	def_elem								{ $$ = list_make1($1); }
 
 def_elem:	ColLabel '=' def_arg
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$1 = MYS_DEF_ELEM_CASE($1, $3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem($1, (Node *) $3, @1);
 				}
 			| ColLabel
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$1  = MYS_STRING_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem($1, NULL, @1);
 				}
 		;
@@ -6305,6 +6479,9 @@ ReassignOwnedStmt:
 DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_TBVMFTB_LOWERLIST_CASE($2, $5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->missing_ok = true;
 					n->objects = $5;
@@ -6315,6 +6492,9 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 			| DROP object_type_any_name any_name_list opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_TBVMFTB_LOWERLIST_CASE($2, $3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->missing_ok = false;
 					n->objects = $3;
@@ -6325,6 +6505,9 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 			| DROP drop_type_name IF_P EXISTS name_list opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_SCHEMAANDLANGUAGE_LIST_CASE($2, $5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->missing_ok = true;
 					n->objects = $5;
@@ -6335,6 +6518,9 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 			| DROP drop_type_name name_list opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_SCHEMAANDLANGUAGE_LIST_CASE($2, $3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->missing_ok = false;
 					n->objects = $3;
@@ -6345,6 +6531,9 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 			| DROP object_type_name_on_any_name name ON any_name opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_LIST_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->objects = list_make1(lappend($5, makeString($3)));
 					n->behavior = $6;
@@ -6355,6 +6544,9 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 			| DROP object_type_name_on_any_name IF_P EXISTS name ON any_name opt_drop_behavior
 				{
 					DropStmt *n = makeNode(DropStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_LIST_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->removeType = $2;
 					n->objects = list_make1(lappend($7, makeString($5)));
 					n->behavior = $8;
@@ -6591,6 +6783,9 @@ CommentStmt:
 			| COMMENT ON CONSTRAINT name ON any_name IS comment_text
 				{
 					CommentStmt *n = makeNode(CommentStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_LIST_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objtype = OBJECT_TABCONSTRAINT;
 					n->object = (Node *) lappend($6, makeString($4));
 					n->comment = $8;
@@ -6612,6 +6807,9 @@ CommentStmt:
 			| COMMENT ON object_type_name_on_any_name name ON any_name IS comment_text
 				{
 					CommentStmt *n = makeNode(CommentStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_LIST_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objtype = $3;
 					n->object = (Node *) lappend($6, makeString($4));
 					n->comment = $8;
@@ -7076,6 +7274,9 @@ privilege:	SELECT opt_column_list
 		| ColId opt_column_list
 			{
 				AccessPriv *n = makeNode(AccessPriv);
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				$1 = MYS_STRING_CASE($1);
+				/* End - ReqID:SRS-MYSQL-CASE */
 				n->priv_name = $1;
 				n->cols = $2;
 				$$ = n;
@@ -7090,6 +7291,9 @@ privilege_target:
 			qualified_name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_QUALIFIED_NAME_LIST_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->targtype = ACL_TARGET_OBJECT;
 					n->objtype = OBJECT_TABLE;
 					n->objs = $1;
@@ -7098,6 +7302,9 @@ privilege_target:
 			| TABLE qualified_name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_QUALIFIED_NAME_LIST_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->targtype = ACL_TARGET_OBJECT;
 					n->objtype = OBJECT_TABLE;
 					n->objs = $2;
@@ -7340,6 +7547,9 @@ DefACLOptionList:
 DefACLOption:
 			IN_P SCHEMA name_list
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_LIST_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem("schemas", (Node *)$3, @1);
 				}
 			| FOR ROLE role_list
@@ -7423,6 +7633,9 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 			opt_include opt_reloptions OptTableSpace where_clause
 				{
 					IndexStmt *n = makeNode(IndexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->unique = $2;
 					n->concurrent = $4;
 					n->idxname = $5;
@@ -7453,6 +7666,9 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 			opt_include opt_reloptions OptTableSpace where_clause
 				{
 					IndexStmt *n = makeNode(IndexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($10);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->unique = $2;
 					n->concurrent = $4;
 					n->idxname = $8;
@@ -7496,7 +7712,15 @@ opt_index_name:
 		;
 
 access_method_clause:
-			USING name								{ $$ = $2; }
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			USING name
+				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					$$ = $2;
+				}
+			/* End - ReqID:SRS-MYSQL-CASE */
 			| /*EMPTY*/								{ $$ = DEFAULT_INDEX_TYPE; }
 		;
 
@@ -8130,6 +8354,9 @@ common_func_opt_item:
 				}
 			| PARALLEL ColId
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem("parallel", (Node *)makeString($2), @1);
 				}
 		;
@@ -8141,6 +8368,9 @@ createfunc_opt_item:
 				}
 			| LANGUAGE NonReservedWord_or_Sconst
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$2 = MYS_STRING_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem("language", (Node *)makeString($2), @1);
 				}
 			| TRANSFORM transform_type_list
@@ -8611,6 +8841,10 @@ ReindexStmt:
 			REINDEX reindex_target_type opt_concurrently qualified_name
 				{
 					ReindexStmt *n = makeNode(ReindexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					if ($2 == REINDEX_OBJECT_TABLE)
+						MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = $2;
 					n->relation = $4;
 					n->name = NULL;
@@ -8623,6 +8857,9 @@ ReindexStmt:
 			| REINDEX reindex_target_multitable opt_concurrently name
 				{
 					ReindexStmt *n = makeNode(ReindexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$4 = MYS_REINDEX_TARGET_MULTITABLE_CASE($2, $4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = $2;
 					n->name = $4;
 					n->relation = NULL;
@@ -8635,6 +8872,10 @@ ReindexStmt:
 			| REINDEX '(' utility_option_list ')' reindex_target_type opt_concurrently qualified_name
 				{
 					ReindexStmt *n = makeNode(ReindexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					if ($5 == REINDEX_OBJECT_TABLE)
+						MYS_RVAR_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = $5;
 					n->relation = $7;
 					n->name = NULL;
@@ -8647,6 +8888,9 @@ ReindexStmt:
 			| REINDEX '(' utility_option_list ')' reindex_target_multitable opt_concurrently name
 				{
 					ReindexStmt *n = makeNode(ReindexStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$7 = MYS_REINDEX_TARGET_MULTITABLE_CASE($5, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->kind = $5;
 					n->name = $7;
 					n->relation = NULL;
@@ -8811,6 +9055,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER POLICY name ON qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_POLICY;
 					n->relation = $5;
 					n->subname = $3;
@@ -8821,6 +9068,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER POLICY IF_P EXISTS name ON qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_POLICY;
 					n->relation = $7;
 					n->subname = $5;
@@ -8858,6 +9108,11 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER SCHEMA name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_LOWERONE_STRING_CASE($3);
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					$3 = MYS_LOWERTWO_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_SCHEMA;
 					n->subname = $3;
 					n->newname = $6;
@@ -8885,6 +9140,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE relation_expr RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_TABLE;
 					n->relation = $3;
 					n->subname = NULL;
@@ -8895,6 +9153,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_TABLE;
 					n->relation = $5;
 					n->subname = NULL;
@@ -8905,6 +9166,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER SEQUENCE qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $3;
 					n->subname = NULL;
@@ -8915,6 +9179,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER SEQUENCE IF_P EXISTS qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $5;
 					n->subname = NULL;
@@ -8925,6 +9192,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER VIEW qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_VIEW;
 					n->relation = $3;
 					n->subname = NULL;
@@ -8935,6 +9205,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_VIEW;
 					n->relation = $5;
 					n->subname = NULL;
@@ -8945,6 +9218,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER MATERIALIZED VIEW qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$7 = MYS_ALTERTB_CASE($4, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $4;
 					n->subname = NULL;
@@ -8955,6 +9231,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_ALTERTB_CASE($6, $9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $6;
 					n->subname = NULL;
@@ -8965,6 +9244,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER INDEX qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_INDEX;
 					n->relation = $3;
 					n->subname = NULL;
@@ -8975,6 +9257,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER INDEX IF_P EXISTS qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWERTWO_VARSCHECMA_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_INDEX;
 					n->relation = $5;
 					n->subname = NULL;
@@ -8985,6 +9270,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER FOREIGN TABLE relation_expr RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$7 = MYS_ALTERTB_CASE($4, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
 					n->subname = NULL;
@@ -8995,6 +9283,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_ALTERTB_CASE($6, $9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
 					n->subname = NULL;
@@ -9005,6 +9296,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_TABLE;
 					n->relation = $3;
@@ -9016,6 +9310,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_TABLE;
 					n->relation = $5;
@@ -9027,6 +9324,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER VIEW qualified_name RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_VIEW;
 					n->relation = $3;
@@ -9038,6 +9338,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER VIEW IF_P EXISTS qualified_name RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_VIEW;
 					n->relation = $5;
@@ -9049,6 +9352,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER MATERIALIZED VIEW qualified_name RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9060,6 +9366,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
 					n->relation = $6;
@@ -9071,6 +9380,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE relation_expr RENAME CONSTRAINT name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_TABCONSTRAINT;
 					n->relation = $3;
 					n->subname = $6;
@@ -9081,6 +9393,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME CONSTRAINT name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_TABCONSTRAINT;
 					n->relation = $5;
 					n->subname = $8;
@@ -9091,6 +9406,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER FOREIGN TABLE relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
@@ -9102,6 +9420,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr RENAME opt_column name TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
@@ -9113,6 +9434,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER RULE name ON qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_RULE;
 					n->relation = $5;
 					n->subname = $3;
@@ -9123,6 +9447,9 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER TRIGGER name ON qualified_name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->renameType = OBJECT_TRIGGER;
 					n->relation = $5;
 					n->subname = $3;
@@ -9278,6 +9605,9 @@ AlterObjectDependsStmt:
 			| ALTER TRIGGER name ON qualified_name opt_no DEPENDS ON EXTENSION name
 				{
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TRIGGER;
 					n->relation = $5;
 					n->object = (Node *) list_make1(makeString($3));
@@ -9288,6 +9618,9 @@ AlterObjectDependsStmt:
 			| ALTER MATERIALIZED VIEW qualified_name opt_no DEPENDS ON EXTENSION name
 				{
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
 					n->extname = makeString($9);
@@ -9319,6 +9652,9 @@ AlterObjectSchemaStmt:
 			ALTER AGGREGATE aggregate_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9328,6 +9664,9 @@ AlterObjectSchemaStmt:
 			| ALTER COLLATION any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9337,6 +9676,9 @@ AlterObjectSchemaStmt:
 			| ALTER CONVERSION_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9346,6 +9688,9 @@ AlterObjectSchemaStmt:
 			| ALTER DOMAIN_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_DOMAIN;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9355,6 +9700,9 @@ AlterObjectSchemaStmt:
 			| ALTER EXTENSION name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_EXTENSION;
 					n->object = (Node *) makeString($3);
 					n->newschema = $6;
@@ -9364,6 +9712,9 @@ AlterObjectSchemaStmt:
 			| ALTER FUNCTION function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9373,6 +9724,9 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR operator_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_OPERATOR;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9382,6 +9736,9 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR CLASS any_name USING name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_LOWER_STRING_CASE($9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
 					n->newschema = $9;
@@ -9391,6 +9748,9 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR FAMILY any_name USING name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_LOWER_STRING_CASE($9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_OPFAMILY;
 					n->object = (Node *) lcons(makeString($6), $4);
 					n->newschema = $9;
@@ -9400,6 +9760,13 @@ AlterObjectSchemaStmt:
 			| ALTER PROCEDURE function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					if (mysql_objlower_hook && mysql_string_case_hook)
+					{
+						if (lower_one == mysql_objlower_hook() && $6 != NULL)
+							$6 = mysql_string_case_hook($6);
+					}
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9409,6 +9776,9 @@ AlterObjectSchemaStmt:
 			| ALTER ROUTINE function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9418,6 +9788,9 @@ AlterObjectSchemaStmt:
 			| ALTER TABLE relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TABLE;
 					n->relation = $3;
 					n->newschema = $6;
@@ -9427,6 +9800,9 @@ AlterObjectSchemaStmt:
 			| ALTER TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TABLE;
 					n->relation = $5;
 					n->newschema = $8;
@@ -9436,6 +9812,9 @@ AlterObjectSchemaStmt:
 			| ALTER STATISTICS any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9445,6 +9824,9 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH PARSER any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_LOWER_STRING_CASE($8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TSPARSER;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -9454,6 +9836,9 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH DICTIONARY any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_LOWER_STRING_CASE($8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -9463,6 +9848,9 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH TEMPLATE any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_LOWER_STRING_CASE($8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TSTEMPLATE;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -9472,6 +9860,9 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_LOWER_STRING_CASE($8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -9481,6 +9872,9 @@ AlterObjectSchemaStmt:
 			| ALTER SEQUENCE qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $3;
 					n->newschema = $6;
@@ -9490,6 +9884,9 @@ AlterObjectSchemaStmt:
 			| ALTER SEQUENCE IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $5;
 					n->newschema = $8;
@@ -9499,6 +9896,9 @@ AlterObjectSchemaStmt:
 			| ALTER VIEW qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_ALTERTB_CASE($3, $6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_VIEW;
 					n->relation = $3;
 					n->newschema = $6;
@@ -9508,6 +9908,9 @@ AlterObjectSchemaStmt:
 			| ALTER VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$8 = MYS_ALTERTB_CASE($5, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_VIEW;
 					n->relation = $5;
 					n->newschema = $8;
@@ -9517,6 +9920,9 @@ AlterObjectSchemaStmt:
 			| ALTER MATERIALIZED VIEW qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$7 = MYS_ALTERTB_CASE($4, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
 					n->newschema = $7;
@@ -9526,6 +9932,9 @@ AlterObjectSchemaStmt:
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_ALTERTB_CASE($6, $9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $6;
 					n->newschema = $9;
@@ -9535,6 +9944,9 @@ AlterObjectSchemaStmt:
 			| ALTER FOREIGN TABLE relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$7 = MYS_ALTERTB_CASE($4, $7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
 					n->newschema = $7;
@@ -9544,6 +9956,9 @@ AlterObjectSchemaStmt:
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$9 = MYS_ALTERTB_CASE($6, $9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
 					n->newschema = $9;
@@ -9553,6 +9968,9 @@ AlterObjectSchemaStmt:
 			| ALTER TYPE_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWER_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -9647,6 +10065,9 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 			| ALTER DATABASE name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					//$3 = MYS_LOWER_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_DATABASE;
 					n->object = (Node *) makeString($3);
 					n->newowner = $6;
@@ -9727,6 +10148,9 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 			| ALTER SCHEMA name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_LOWER_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->objectType = OBJECT_SCHEMA;
 					n->object = (Node *) makeString($3);
 					n->newowner = $6;
@@ -10067,6 +10491,9 @@ RuleStmt:	CREATE opt_or_replace RULE name AS
 			DO opt_instead RuleActionList
 				{
 					RuleStmt *n = makeNode(RuleStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($9);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->replace = $2;
 					n->relation = $9;
 					n->rulename = $4;
@@ -10347,6 +10774,9 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->view = $4;
 					n->view->relpersistence = $2;
 					n->aliases = $5;
@@ -10360,6 +10790,9 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->view = $6;
 					n->view->relpersistence = $4;
 					n->aliases = $7;
@@ -10373,6 +10806,9 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->view = $5;
 					n->view->relpersistence = $2;
 					n->aliases = $7;
@@ -10391,6 +10827,9 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 				AS SelectStmt opt_check_option
 				{
 					ViewStmt *n = makeNode(ViewStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_LOWER_ONE_RVARRELNAME_CASE($7);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->view = $7;
 					n->view->relpersistence = $4;
 					n->aliases = $9;
@@ -10445,81 +10884,96 @@ CreatedbStmt:
 						n->dbname = $3;
 						n->options = $5;
 						$$ = (Node *)n;
-				    }
+					}
 					else
-					{ /* Begin - ReqID: SRS-MYSQL-SQL-USE */
+					{
+						/* Begin - ReqID: SRS-MYSQL-SQL-USE */
 						CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+						/* Begin - ReqID:SRS-MYSQL-CASE */
+						$3 = MYS_LOWERONE_STRING_CASE($3);
+						/* End - ReqID:SRS-MYSQL-CASE */
 						n->schemaname = $3;
 						n->authrole = NULL;
 						n->schemaElts = NULL;
 						n->if_not_exists = false;
-                    	$$ = (Node *)n;
+						$$ = (Node *)n;
 					}
 				}
-            | CREATE DATABASE IF_P NOT EXISTS name
- 				{
- 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-                    n->schemaname = $6;
-                    n->authrole = NULL;
-                    n->schemaElts = NULL;
-                    n->mys_opt=NULL;
-                    n->if_not_exists = true;
-                    $$ = (Node *)n;
- 				}
-            | CREATE DATABASE IF_P NOT EXISTS name mys_create_option
- 				{
- 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-                    n->schemaname = $6;
-                    n->authrole = NULL;
-                    n->schemaElts = NULL;
-                    n->mys_opt=$7;
-                    n->if_not_exists = true;
-                    $$ = (Node *)n;
- 				}
-           | CREATE DATABASE name mys_create_option
-                {
+			| CREATE DATABASE IF_P NOT EXISTS name
+				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-                    n->schemaname = $3;
-                    n->authrole = NULL;
-                    n->schemaElts = NULL;
-                    n->mys_opt=$4;
-                    n->if_not_exists = false;
-                    $$ = (Node *)n;
-                }
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->schemaname = $6;
+					n->authrole = NULL;
+					n->schemaElts = NULL;
+					n->mys_opt=NULL;
+					n->if_not_exists = true;
+					$$ = (Node *)n;
+				}
+			| CREATE DATABASE IF_P NOT EXISTS name mys_create_option
+				{
+					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$6 = MYS_LOWERONE_STRING_CASE($6);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->schemaname = $6;
+					n->authrole = NULL;
+					n->schemaElts = NULL;
+					n->mys_opt=$7;
+					n->if_not_exists = true;
+					$$ = (Node *)n;
+				}
+			| CREATE DATABASE name mys_create_option
+				{
+					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
+					
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$3 = MYS_LOWERONE_STRING_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->schemaname = $3;
+					n->authrole = NULL;
+					n->schemaElts = NULL;
+					n->mys_opt=$4;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+				}
 				/* End - ReqID: SRS-MYSQL-SQL-USE */
 		;
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
 mys_create_option:
-        CHARACTER SET '=' name
-            {
+		CHARACTER SET '=' name
+			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
-                n->opt_type = OPT_CHARACTERSET;
-                n->name = $4;
-                $$ = n;
-            }
-        | CHARACTER SET name
-            {
+				n->opt_type = OPT_CHARACTERSET;
+				n->name = $4;
+				$$ = n;
+			}
+		| CHARACTER SET name
+			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
-                n->opt_type = OPT_CHARACTERSET;
-                n->name = $3;
-                $$ = n;
-            }
-        | COLLATE '=' name
+				n->opt_type = OPT_CHARACTERSET;
+				n->name = $3;
+				$$ = n;
+			}
+		| COLLATE '=' name
 			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
 				n->opt_type = OPT_COLLATE;
 				n->name = $3;
 				$$ = n;
 			}
-        | COLLATE name
+		| COLLATE name
 			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
 				n->opt_type = OPT_COLLATE;
 				n->name = $2;
 				$$ = n;
 			}
-           ;
+		;
 /* End - ReqID: SRS-MYSQL-SQL-USE */
+
 createdb_opt_list:
 			createdb_opt_items						{ $$ = $1; }
 			| /* EMPTY */							{ $$ = NIL; }
@@ -10933,6 +11387,9 @@ ClusterStmt:
 			CLUSTER opt_verbose qualified_name cluster_index_specification
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $3;
 					n->indexname = $4;
 					n->params = NIL;
@@ -10944,6 +11401,9 @@ ClusterStmt:
 			| CLUSTER '(' utility_option_list ')' qualified_name cluster_index_specification
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->indexname = $6;
 					n->params = $3;
@@ -10963,6 +11423,9 @@ ClusterStmt:
 			| CLUSTER opt_verbose name ON qualified_name
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->relation = $5;
 					n->indexname = $3;
 					n->params = NIL;
@@ -11056,6 +11519,11 @@ analyze_keyword:
 utility_option_elem:
 			utility_option_name utility_option_arg
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					$1 = MYS_STRING_CASE($1);
+					if ($2 && nodeTag($2) == T_String)
+						strVal($2) = MYS_STRING_CASE(strVal($2));
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem($1, $2, @1);
 				}
 		;
@@ -11097,6 +11565,9 @@ opt_name_list:
 vacuum_relation:
 			qualified_name opt_name_list
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = (Node *) makeVacuumRelation($1, InvalidOid, $2);
 				}
 		;
@@ -11377,12 +11848,18 @@ insert_target:
 						$1->ispartition = $2->ispartition;
 						$1->colnamelist = $2->colnamelist;
 					}
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $1;
 				}
 			/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 			| qualified_name AS ColId
 				{
 					$1->alias = makeAlias($3, NIL);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $1;
 				}
 		;
@@ -11580,6 +12057,9 @@ upsert_clause:
 			ON DUPLICATE_P KEY UPDATE set_clause_list
 				{
 					UpsertClause *uc = makeNode(UpsertClause);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_INSERTUPDATE_CASE($5);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					uc->targetList = $5;
 					uc->location = @1;
 					$$ = (Node *) uc;
@@ -11610,6 +12090,9 @@ DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_ta
 			using_clause where_or_current_clause opt_sort_clause opt_update_limit returning_clause
 				{
 					DeleteStmt *n = makeNode(DeleteStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_DELETE_CLAUSE_DEAL_CASE($6, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->ignore = $5;
 					n->collist = $6;
 					n->relationList= $7;
@@ -11633,6 +12116,9 @@ DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_ta
 			using_clause where_or_current_clause opt_sort_clause opt_update_limit returning_clause
 				{
 					DeleteStmt *n = makeNode(DeleteStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_DELETE_CLAUSE_DEAL_CASE($7, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					n->ignore = $5;
 					n->collist = $7;
 					n->usingClause = $8;
@@ -11787,8 +12273,14 @@ set_clause_list:
 set_clause:
 			set_target '=' a_expr
 				{
+					List *list = NIL;	/* ReqID:SRS-MYSQL-CASE */
+
 					$1->val = (Node *) $3;
-					$$ = list_make1($1);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					list = list_make1($1);
+					MYS_INSERTUPDATE_CASE(list);
+					$$ = list;
+					/* End - ReqID:SRS-MYSQL-CASE */
 				}
 			/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 			/*| set_target '='  VALUES '(' columnref ')'
@@ -11821,6 +12313,9 @@ set_clause:
 					int i = 1;
 					ListCell *col_cell;
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_INSERTUPDATE_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					/* Create a MultiAssignRef source for each target */
 					foreach(col_cell, $2)
 					{
@@ -12244,6 +12739,9 @@ simple_select:
 					ResTarget *rt = makeNode(ResTarget);
 					SelectStmt *n = makeNode(SelectStmt);
 
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					cr->fields = list_make1(makeNode(A_Star));
 					cr->location = -1;
 
@@ -12310,6 +12808,10 @@ cte_list:
 common_table_expr:  name opt_name_list AS opt_materialized '(' PreparableStmt ')' opt_search_clause opt_cycle_clause
 			{
 				CommonTableExpr *n = makeNode(CommonTableExpr);
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				$1 = MYS_LOWER_STRING_CASE($1);
+				MYS_LOWER_LIST_CASE($2);
+				/* End - ReqID:SRS-MYSQL-CASE */
 				n->ctename = $1;
 				n->aliascolnames = $2;
 				n->ctematerialized = $4;
@@ -12409,26 +12911,41 @@ into_clause:
 OptTempTableName:
 			TEMPORARY opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $3;
 					$$->relpersistence = RELPERSISTENCE_TEMP;
 				}
 			| TEMP opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $3;
 					$$->relpersistence = RELPERSISTENCE_TEMP;
 				}
 			| LOCAL TEMPORARY opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $4;
 					$$->relpersistence = RELPERSISTENCE_TEMP;
 				}
 			| LOCAL TEMP opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $4;
 					$$->relpersistence = RELPERSISTENCE_TEMP;
 				}
 			| GLOBAL TEMPORARY opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					ereport(WARNING,
 							(errmsg("GLOBAL is deprecated in temporary table creation"),
 							 parser_errposition(@1)));
@@ -12437,6 +12954,9 @@ OptTempTableName:
 				}
 			| GLOBAL TEMP opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($4);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					ereport(WARNING,
 							(errmsg("GLOBAL is deprecated in temporary table creation"),
 							 parser_errposition(@1)));
@@ -12445,16 +12965,25 @@ OptTempTableName:
 				}
 			| UNLOGGED opt_table qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($3);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $3;
 					$$->relpersistence = RELPERSISTENCE_UNLOGGED;
 				}
 			| TABLE qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($2);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $2;
 					$$->relpersistence = RELPERSISTENCE_PERMANENT;
 				}
 			| qualified_name
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $1;
 					$$->relpersistence = RELPERSISTENCE_PERMANENT;
 				}
@@ -12866,6 +13395,9 @@ from_list:
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 table_ref:	relation_expr		 %prec UMINUS
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = (Node *) $1;
 				}
 			| relation_expr PARTITION '(' name_list ')'
@@ -12891,11 +13423,17 @@ table_ref:	relation_expr		 %prec UMINUS
 				}
 			| relation_expr index_hint_list
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$1->indexhints = $2;
 					$$ = (Node *) $1;
 				}
 			| relation_expr alias_clause opt_index_hint_list
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$1->indexhints = $3;
 					$1->alias = $2;
 					$$ = (Node *) $1;
@@ -12903,6 +13441,9 @@ table_ref:	relation_expr		 %prec UMINUS
 			| relation_expr opt_alias_clause tablesample_clause
 				{
 					RangeTableSample *n = (RangeTableSample *) $3;
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$1->alias = $2;
 					/* relation_expr goes inside the RangeTableSample node */
 					n->relation = (Node *) $1;
@@ -13282,24 +13823,24 @@ alias_clause:
 			AS ColId '(' name_list ')'
 				{
 					$$ = makeNode(Alias);
-					$$->aliasname = $2;
+					$$->aliasname = MYS_LOWER_STRING_CASE($2);	/* Begin - ReqID:SRS-MYSQL-CASE */
 					$$->colnames = $4;
 				}
 			| AS ColId
 				{
 					$$ = makeNode(Alias);
-					$$->aliasname = $2;
+					$$->aliasname = MYS_LOWER_STRING_CASE($2);	/* Begin - ReqID:SRS-MYSQL-CASE */
 				}
 			| ColId '(' name_list ')'
 				{
 					$$ = makeNode(Alias);
-					$$->aliasname = $1;
+					$$->aliasname = MYS_LOWER_STRING_CASE($1);	/* Begin - ReqID:SRS-MYSQL-CASE */
 					$$->colnames = $3;
 				}
 			| ColId
 				{
 					$$ = makeNode(Alias);
-					$$->aliasname = $1;
+					$$->aliasname = MYS_LOWER_STRING_CASE($1);	/* Begin - ReqID:SRS-MYSQL-CASE */
 				}
 		;
 
@@ -13421,8 +13962,20 @@ relation_expr:
 
 
 relation_expr_list:
-			relation_expr							{ $$ = list_make1($1); }
-			| relation_expr_list ',' relation_expr	{ $$ = lappend($1, $3); }
+			relation_expr
+			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				MYS_RVAR_CASE($1);
+				/* End - ReqID:SRS-MYSQL-CASE */
+				$$ = list_make1($1);
+			}
+			| relation_expr_list ',' relation_expr
+			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				MYS_RVAR_CASE($3);
+				/* End - ReqID:SRS-MYSQL-CASE */
+				$$ = lappend($1, $3);
+			}
 		;
 
 
@@ -13437,11 +13990,17 @@ relation_expr_list:
  */
 relation_expr_opt_alias: relation_expr					%prec UMINUS
 				{
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = $1;
 				}
 			| relation_expr ColId
 				{
 					Alias *alias = makeNode(Alias);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					alias->aliasname = $2;
 					$1->alias = alias;
 					$$ = $1;
@@ -13449,6 +14008,9 @@ relation_expr_opt_alias: relation_expr					%prec UMINUS
 			| relation_expr AS ColId
 				{
 					Alias *alias = makeNode(Alias);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($1);
+					/* End - ReqID:SRS-MYSQL-CASE */
 					alias->aliasname = $3;
 					$1->alias = alias;
 					$$ = $1;
@@ -16118,11 +16680,17 @@ qualified_name:
 							$$->catalogname = NULL;
 							$$->schemaname = $1;
 							$$->relname = strVal(linitial($2));
+							/* Begin - ReqID:SRS-MYSQL-CASE */
+							$$->schemaname = MYS_LOWERONE_STRING_CASE($$->schemaname);
+							/* End - ReqID:SRS-MYSQL-CASE */
 							break;
 						case 2:
 							$$->catalogname = $1;
 							$$->schemaname = strVal(linitial($2));
 							$$->relname = strVal(lsecond($2));
+							/* Begin - ReqID:SRS-MYSQL-CASE */
+							$$->schemaname = MYS_LOWERONE_STRING_CASE($$->schemaname);
+							/* End - ReqID:SRS-MYSQL-CASE */
 							break;
 						default:
 							ereport(ERROR,
@@ -16320,24 +16888,52 @@ RoleSpec:	NonReservedWord
 						 * be treated specially here.
 						 */
 						RoleSpec *n;
-						if (strcmp($1, "public") == 0)
+						/* Begin - ReqID:SRS-MYSQL-CASE */
+						if (mysql_switch_hook && mysql_switch_hook())
 						{
-							n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
-							n->roletype = ROLESPEC_PUBLIC;
+							char *str = mysql_string_case_hook(pstrdup($1));
+
+							if (strcmp(str, "public") == 0)
+							{
+								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
+								n->roletype = ROLESPEC_PUBLIC;
+							}
+							else if (strcmp(str, "none") == 0)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_RESERVED_NAME),
+										 errmsg("role name \"%s\" is reserved",
+												"none"),
+										 parser_errposition(@1)));
+							}
+							else
+							{
+								n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+								n->rolename = pstrdup($1);
+							}
 						}
-						else if (strcmp($1, "none") == 0)
+						else 
 						{
-							ereport(ERROR,
-									(errcode(ERRCODE_RESERVED_NAME),
-									 errmsg("role name \"%s\" is reserved",
-											"none"),
-									 parser_errposition(@1)));
+							if (strcmp($1, "public") == 0)
+							{
+								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
+								n->roletype = ROLESPEC_PUBLIC;
+							}
+							else if (strcmp($1, "none") == 0)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_RESERVED_NAME),
+										 errmsg("role name \"%s\" is reserved",
+												"none"),
+										 parser_errposition(@1)));
+							}
+							else
+							{
+								n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+								n->rolename = pstrdup($1);
+							}
 						}
-						else
-						{
-							n = makeRoleSpec(ROLESPEC_CSTRING, @1);
-							n->rolename = pstrdup($1);
-						}
+						/* End - ReqID:SRS-MYSQL-CASE */
 						$$ = n;
 					}
 			| CURRENT_ROLE
@@ -17491,6 +18087,20 @@ makeColumnRef(char *colname, List *indirection,
 	int		nfields = 0;
 	ListCell *l;
 
+	/* Begin - ReqID:SRS-MYSQL-CASE, the trigger in merge.sql */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	{
+		if (!pg_strcasecmp(colname, "tg_name") || !pg_strcasecmp(colname, "tg_when")
+			|| !pg_strcasecmp(colname, "tg_level") || !pg_strcasecmp(colname, "tg_op")
+			|| !pg_strcasecmp(colname, "tg_relid") || !pg_strcasecmp(colname, "tg_relname")
+			|| !pg_strcasecmp(colname, "tg_table_name") || !pg_strcasecmp(colname, "tg_table_schema")
+			|| !pg_strcasecmp(colname, "tg_nargs") || !pg_strcasecmp(colname, "tg_argv")
+			|| !pg_strcasecmp(colname, "tg_event") || !pg_strcasecmp(colname, "tg_tag")
+			|| !pg_strcasecmp(colname, "found") || !pg_strcasecmp(colname, "group_size"))
+			colname = mysql_string_case_hook (colname);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE, the trigger in merge.sql */
+
 	c->location = location;
 	foreach(l, indirection)
 	{
@@ -18344,6 +18954,11 @@ transformRelistToRelation(List *rellist)
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("multi-relation delete is a syntax error in %s.", "*")));
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	schemaname = MYS_LOWER_STRING_CASE(schemaname);
+	relname = MYS_LOWER_STRING_CASE(relname);
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (schemaname || relname)
 	{

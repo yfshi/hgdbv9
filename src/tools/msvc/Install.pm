@@ -160,6 +160,7 @@ sub Install
 			'SQL files',
 			[
 				glob("contrib\\ivorysql_ora\\preload_ora_misc.sql"), # BUG#M0000195
+				glob("contrib\\ivorysql_my\\preload_mys_misc.sql"), # ReqID:SRS-MYSQL-CASE
 				glob("src\\backend\\catalog\\*.sql")
 			],
 			$target . '/share/');

@@ -108,6 +108,16 @@ typedef enum OidOptions
 	fmtQualifiedId((obj)->dobj.namespace->dobj.name, \
 				   (obj)->dobj.name)
 
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#define sysfmtQualifiedDumpable(obj) \
+	fmtQualifiedId((obj)->dobj.namespace->dobj.addoptions.mysql.oriname, \
+				   (obj)->dobj.addoptions.mysql.oriname)
+
+#define mysfmtQualifiedDumpable(obj) \
+	mysfmtQualifiedId((obj)->dobj.namespace->dobj.name, \
+					   (obj)->dobj.name)
+/* End - ReqID:SRS-MYSQL-CASE */
+
 static void setup_connectionMysql(Archive *AH,
 							 const char *dumpencoding, const char *dumpsnapshot,
 							 char *use_role);
@@ -1298,9 +1308,16 @@ dumpTableData_copy(Archive *fout, const void *dcontext)
 	}
 	else
 	{
-		appendPQExpBuffer(q, "COPY %s %s TO stdout;",
-						  fmtQualifiedDumpable(tbinfo),
-						  column_list);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (database_mode == DB_MYSQL && tbinfo->dobj.addoptions.mysql.oriname)
+			appendPQExpBuffer(q, "COPY %s %s TO stdout;",
+							  sysfmtQualifiedDumpable(tbinfo),
+							  column_list);
+		else
+			appendPQExpBuffer(q, "COPY %s %s TO stdout;",
+							  fmtQualifiedDumpable(tbinfo),
+							  column_list);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	res = ExecuteSqlQuery(fout, q->data, PGRES_COPY_OUT);
 	PQclear(res);
@@ -4269,6 +4286,11 @@ getNamespaces(Archive *fout, int *numNamespaces)
 	int			i_rnspacl;
 	int			i_initnspacl;
 	int			i_initrnspacl;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	int			i_compatible_mode;
+	int			i_orinspname;
+	int			i_caselowernum;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	query = createPQExpBuffer();
 
@@ -4282,34 +4304,105 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		PQExpBuffer racl_subquery = createPQExpBuffer();
 		PQExpBuffer init_acl_subquery = createPQExpBuffer();
 		PQExpBuffer init_racl_subquery = createPQExpBuffer();
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		PQExpBuffer moption_query = createPQExpBuffer();
+		PQExpBuffer selectdatabase_query = createPQExpBuffer();
+		Oid			FirstOIDforUser = InvalidOid;
+		bool		checkpgobject = false;
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		buildACLQueries(acl_subquery, racl_subquery, init_acl_subquery,
 						init_racl_subquery, "n.nspacl", "n.nspowner", "'n'",
 						dopt->binary_upgrade);
 
-		appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
-						  "(%s nspowner) AS rolname, "
-						  "%s as nspacl, "
-						  "%s as rnspacl, "
-						  "%s as initnspacl, "
-						  "%s as initrnspacl "
-						  "FROM pg_namespace n "
-						  "LEFT JOIN pg_init_privs pip "
-						  "ON (n.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_namespace'::regclass "
-						  "AND pip.objsubid = 0",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  init_acl_subquery->data,
-						  init_racl_subquery->data);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname <> 'template0' AND datname <> 'template1' ORDER BY oid asc;");
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		if (PQgetisnull(res_firstoid, 0, 0) == 0)
+			FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+
+		PQclear(res_firstoid);
+
+		if (FirstOIDforUser < 16384)
+			FirstOIDforUser = 16384;
+
+		if (DumpM != NULL)
+		{
+			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
+				appendPQExpBuffer(moption_query, "WHERE oj.compatible_mode IS NULL AND n.oid > %d OR n.oid <= %d ", FirstOIDforUser, FirstOIDforUser);
+			else if (strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
+				appendPQExpBuffer(moption_query, "WHERE oj.compatible_mode = 'm' AND n.oid > %d OR n.oid <= %d ", FirstOIDforUser, FirstOIDforUser);
+			else
+				appendPQExpBuffer(moption_query, " ");
+		}
+		else
+			;
+
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+
+		if (checkpgobject)
+			appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
+							  "(%s nspowner) AS rolname, "
+							  "%s as nspacl, "
+							  "%s as rnspacl, "
+							  "%s as initnspacl, "
+							  "%s as initrnspacl, "
+							  "oj.compatible_mode AS compatible_mode, "	/* ReqID:SRS-MYSQL-PGDUMP */
+							  "oj.objname as orinspname, "	/* ReqID:SRS-MYSQL-CASE */
+							  "ivymy.myscaselower('pg_namespace'::regclass::oid, n.oid, 0) as caselowernum "	/* ReqID:SRS-MYSQL-CASE */
+							  "FROM pg_namespace n "
+							  "LEFT JOIN pg_object oj ON "
+							  "(n.oid = oj.obj_oid "
+							  "AND oj.refclassid = 'pg_namespace'::regclass::oid "
+							  "AND  oj.objkind = 's') "	/* ReqID:SRS-MYSQL-CASE */
+							  "LEFT JOIN pg_init_privs pip "
+							  "ON (n.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_namespace'::regclass "
+							  "AND pip.objsubid = 0",
+							  username_subquery,
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  init_acl_subquery->data,
+							  init_racl_subquery->data);
+		else
+			appendPQExpBuffer(query, "SELECT n.tableoid, n.oid, n.nspname, "
+							  "(%s nspowner) AS rolname, "
+							  "%s as nspacl, "
+							  "%s as rnspacl, "
+							  "%s as initnspacl, "
+							  "%s as initrnspacl "
+							  "FROM pg_namespace n "
+							  "LEFT JOIN pg_init_privs pip "
+							  "ON (n.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_namespace'::regclass "
+							  "AND pip.objsubid = 0",
+							  username_subquery,
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  init_acl_subquery->data,
+							  init_racl_subquery->data);
+
+		PQclear(res_pgobject);
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		appendPQExpBufferStr(query, ") ");
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (checkpgobject)
+			appendPQExpBufferStr(query, moption_query->data);
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		destroyPQExpBuffer(acl_subquery);
 		destroyPQExpBuffer(racl_subquery);
 		destroyPQExpBuffer(init_acl_subquery);
 		destroyPQExpBuffer(init_racl_subquery);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		destroyPQExpBuffer(moption_query);
+		destroyPQExpBuffer(selectdatabase_query);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	else
 		appendPQExpBuffer(query, "SELECT tableoid, oid, nspname, "
@@ -4328,6 +4421,11 @@ getNamespaces(Archive *fout, int *numNamespaces)
 	i_tableoid = PQfnumber(res, "tableoid");
 	i_oid = PQfnumber(res, "oid");
 	i_nspname = PQfnumber(res, "nspname");
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	i_compatible_mode = PQfnumber(res, "compatible_mode");
+	i_orinspname = PQfnumber(res, "orinspname");
+	i_caselowernum =  PQfnumber(res, "caselowernum");
+	/* End - ReqID:SRS-MYSQL-CASE */
 	i_rolname = PQfnumber(res, "rolname");
 	i_nspacl = PQfnumber(res, "nspacl");
 	i_rnspacl = PQfnumber(res, "rnspacl");
@@ -4346,7 +4444,13 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		nsinfo[i].rnspacl = pg_strdup(PQgetvalue(res, i, i_rnspacl));
 		nsinfo[i].initnspacl = pg_strdup(PQgetvalue(res, i, i_initnspacl));
 		nsinfo[i].initrnspacl = pg_strdup(PQgetvalue(res, i, i_initrnspacl));
-
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		nsinfo[i].dobj.compatible_mode = PQgetisnull(res, i, i_compatible_mode) ? "p" : pg_strdup(PQgetvalue(res, i, i_compatible_mode));
+		nsinfo[i].dobj.addoptions.mysql.caselowernum = PQgetisnull(res, i, i_caselowernum) ? 3 : atooid(PQgetvalue(res, i, i_caselowernum));
+		if (PQgetisnull(res, i, i_orinspname) == 0)
+			nsinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_orinspname));
+		nsinfo[i].dobj.addoptions.mysql.oriname = pg_strdup(PQgetvalue(res, i, i_nspname));
+		/* Begin - ReqID:SRS-MYSQL-CASE */
 		/* Decide whether to dump this namespace */
 		selectDumpableNamespace(&nsinfo[i], fout);
 
@@ -5221,6 +5325,11 @@ getAggregates(Archive *fout, int *numAggs)
 	int			i_raggacl;
 	int			i_initaggacl;
 	int			i_initraggacl;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	int			i_compatible_mode;
+	int			i_oriproname;
+	int			i_caselowernum;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Find all interesting aggregates.  See comment in getFuncs() for the
@@ -5233,6 +5342,14 @@ getAggregates(Archive *fout, int *numAggs)
 		PQExpBuffer initacl_subquery = createPQExpBuffer();
 		PQExpBuffer initracl_subquery = createPQExpBuffer();
 		const char *agg_check;
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		PQExpBuffer moption_query = createPQExpBuffer();
+		PQExpBuffer selectdatabase_query = createPQExpBuffer();
+		Oid			FirstOIDforUser = InvalidOid;
+		bool		checkpgobject = false;
+		PGresult   *res_pgobject;
+		PGresult   *res_firstoid;
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
 						initracl_subquery, "p.proacl", "p.proowner", "'f'",
@@ -5241,31 +5358,97 @@ getAggregates(Archive *fout, int *numAggs)
 		agg_check = (fout->remoteVersion >= 110000 ? "p.prokind = 'a'"
 					 : "p.proisagg");
 
-		appendPQExpBuffer(query, "SELECT p.tableoid, p.oid, "
-						  "p.proname AS aggname, "
-						  "p.pronamespace AS aggnamespace, "
-						  "p.pronargs, p.proargtypes, "
-						  "(%s p.proowner) AS rolname, "
-						  "%s AS aggacl, "
-						  "%s AS raggacl, "
-						  "%s AS initaggacl, "
-						  "%s AS initraggacl "
-						  "FROM pg_proc p "
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(p.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_proc'::regclass "
-						  "AND pip.objsubid = 0) "
-						  "WHERE %s AND ("
-						  "p.pronamespace != "
-						  "(SELECT oid FROM pg_namespace "
-						  "WHERE nspname = 'pg_catalog') OR "
-						  "p.proacl IS DISTINCT FROM pip.initprivs",
-						  username_subquery,
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data,
-						  agg_check);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		appendPQExpBuffer(selectdatabase_query, "select oid from pg_database where datname <> 'template0' AND datname <> 'template1' ORDER BY oid asc;");
+		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
+		if (PQgetisnull(res_firstoid, 0, 0) == 0)	/* ReqID:SRS-MYSQL-CASE */
+			FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+
+		PQclear(res_firstoid);
+
+		if (FirstOIDforUser < 16384)
+			FirstOIDforUser = 16384;
+
+		if (DumpM != NULL)
+		{
+			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
+				appendPQExpBuffer(moption_query, "AND (oj.compatible_mode IS NULL AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
+			else if (strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
+				appendPQExpBuffer(moption_query, "AND (oj.compatible_mode = 'm' AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
+			else
+				appendPQExpBuffer(moption_query, " ");
+		}
+		else
+			;
+
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+
+		if (checkpgobject)
+			appendPQExpBuffer(query, "SELECT p.tableoid, p.oid, "
+							  "p.proname AS aggname, "
+							  "oj.compatible_mode AS compatible_mode, "
+							  "oj.objname as oriproname, "
+							  "p.pronamespace AS aggnamespace, "
+							  "p.pronargs, p.proargtypes, "
+							  "(%s p.proowner) AS rolname, "
+							  "%s AS aggacl, "
+							  "%s AS raggacl, "
+							  "%s AS initaggacl, "
+							  "%s AS initraggacl, "
+							  "oj.compatible_mode AS compatible_mode, "	/* ReqID: ReqID:SRS-MYSQL-CASE */
+							  "oj.objname as oriproname, "	/* ReqID:SRS-MYSQL-CASE */
+							  "ivymy.myscaselower('pg_proc'::regclass::oid, p.oid, 0) as caselowernum "	/* ReqID:SRS-MYSQL-CASE */
+							  "FROM pg_proc p "
+							  "LEFT JOIN pg_object oj ON "
+							  "(p.oid = oj.obj_oid "
+							  "AND oj.refclassid = 'pg_proc'::regclass::oid) "
+							  "LEFT JOIN pg_init_privs pip ON "
+							  "(p.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_proc'::regclass "
+							  "AND pip.objsubid = 0) "
+							  "WHERE %s AND ("
+							  "p.pronamespace != "
+							  "(SELECT oid FROM pg_namespace "
+							  "WHERE nspname = 'pg_catalog') OR "
+							  "p.proacl IS DISTINCT FROM pip.initprivs",
+							  username_subquery,
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  initacl_subquery->data,
+							  initracl_subquery->data,
+							  agg_check);
+		else
+			appendPQExpBuffer(query, "SELECT p.tableoid, p.oid, "
+							  "p.proname AS aggname, "
+							  "p.pronamespace AS aggnamespace, "
+							  "p.pronargs, p.proargtypes, "
+							  "(%s p.proowner) AS rolname, "
+							  "%s AS aggacl, "
+							  "%s AS raggacl, "
+							  "%s AS initaggacl, "
+							  "%s AS initraggacl "
+							  "FROM pg_proc p "
+							  "LEFT JOIN pg_init_privs pip ON "
+							  "(p.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_proc'::regclass "
+							  "AND pip.objsubid = 0) "
+							  "WHERE %s AND ("
+							  "p.pronamespace != "
+							  "(SELECT oid FROM pg_namespace "
+							  "WHERE nspname = 'pg_catalog') OR "
+							  "p.proacl IS DISTINCT FROM pip.initprivs",
+							  username_subquery,
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  initacl_subquery->data,
+							  initracl_subquery->data,
+							  agg_check);
+
+		PQclear(res_pgobject);
+		/* End - ReqID:SRS-MYSQL-CASE */
+
 		if (dopt->binary_upgrade)
 			appendPQExpBufferStr(query,
 								 " OR EXISTS(SELECT 1 FROM pg_depend WHERE "
@@ -5274,11 +5457,19 @@ getAggregates(Archive *fout, int *numAggs)
 								 "refclassid = 'pg_extension'::regclass AND "
 								 "deptype = 'e')");
 		appendPQExpBufferChar(query, ')');
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (checkpgobject)
+			appendPQExpBufferStr(query, moption_query->data);
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		destroyPQExpBuffer(acl_subquery);
 		destroyPQExpBuffer(racl_subquery);
 		destroyPQExpBuffer(initacl_subquery);
 		destroyPQExpBuffer(initracl_subquery);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		destroyPQExpBuffer(moption_query);
+		destroyPQExpBuffer(selectdatabase_query);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	else if (fout->remoteVersion >= 80200)
 	{
@@ -5331,6 +5522,11 @@ getAggregates(Archive *fout, int *numAggs)
 	i_tableoid = PQfnumber(res, "tableoid");
 	i_oid = PQfnumber(res, "oid");
 	i_aggname = PQfnumber(res, "aggname");
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	i_compatible_mode = PQfnumber(res, "compatible_mode");
+	i_oriproname = PQfnumber(res, "oriproname");
+	i_caselowernum =  PQfnumber(res, "caselowernum");
+	/* End - ReqID:SRS-MYSQL-CASE */
 	i_aggnamespace = PQfnumber(res, "aggnamespace");
 	i_pronargs = PQfnumber(res, "pronargs");
 	i_proargtypes = PQfnumber(res, "proargtypes");
@@ -5370,6 +5566,14 @@ getAggregates(Archive *fout, int *numAggs)
 						  agginfo[i].aggfn.nargs);
 		}
 		agginfo[i].aggfn.postponed_def = false; /* might get set during sort */
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		agginfo[i].aggfn.dobj.compatible_mode = PQgetisnull(res, i, i_compatible_mode) ? "p" : pg_strdup(PQgetvalue(res, i, i_compatible_mode));
+		agginfo[i].aggfn.dobj.addoptions.mysql.caselowernum = PQgetisnull(res, i, i_caselowernum) ? 3 : atooid(PQgetvalue(res, i, i_caselowernum));
+		if (PQgetisnull(res, i, i_oriproname) == 0)
+			agginfo[i].aggfn.dobj.name = pg_strdup(PQgetvalue(res, i, i_oriproname));
+		agginfo[i].aggfn.dobj.addoptions.mysql.oriname = pg_strdup(PQgetvalue(res, i, i_aggname));
+		/* Begin - ReqID:SRS-MYSQL-CASE */
 
 		/* Decide whether we want to dump it */
 		selectDumpableObject(&(agginfo[i].aggfn.dobj), fout);
@@ -5418,6 +5622,10 @@ getFuncs(Archive *fout, int *numFuncs)
 	int			i_initproacl;
 	int			i_initrproacl;
 	int			i_compatible_mode;	/* ReqID:SRS-MYSQL-PGDUMP */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	int			i_oriproname;
+	int			i_caselowernum;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Find all interesting functions.  This is a bit complicated:
@@ -5450,7 +5658,7 @@ getFuncs(Archive *fout, int *numFuncs)
 		PQExpBuffer	temp_query = createPQExpBuffer();		/* ReqID:SRS-MYSQL-PGDUMP */
 		PQExpBuffer	selectdatabase_query = createPQExpBuffer();	/* ReqID:SRS-MYSQL-PGDUMP */
 		const char *not_agg_check;
-		Oid			FirstOIDforUser;	/* ReqID:SRS-MYSQL-PGDUMP */
+		Oid			FirstOIDforUser = InvalidOid;	/* ReqID:SRS-MYSQL-PGDUMP */
 		/* BEGIN - BUG#M0000404 */
 		PGresult   *res_pgobject;
 		PGresult   *res_firstoid;
@@ -5459,11 +5667,13 @@ getFuncs(Archive *fout, int *numFuncs)
 		buildACLQueries(acl_subquery, racl_subquery, initacl_subquery,
 						initracl_subquery, "p.proacl", "p.proowner", "'f'",
 						dopt->binary_upgrade);
-/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
-		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname != 'template0' AND datname != 'template1' ORDER BY oid;");	/* BUGZ1332 */
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname <> 'template0' AND datname <> 'template1' ORDER BY oid asc;");	/* ReqID:SRS-MYSQL-CASE */
 		/* BEGIN - BUG#M0000404 */
 		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
-		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		if (PQgetisnull(res_firstoid, 0, 0) == 0)	/* ReqID:SRS-MYSQL-CASE */
+			FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+
 		PQclear(res_firstoid);
 		/* END - BUG#M0000404 */
 		if (FirstOIDforUser < 16384)
@@ -5472,7 +5682,7 @@ getFuncs(Archive *fout, int *numFuncs)
 		{
 			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode IS NULL AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
-			else if(strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
+			else if (strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode = 'm' AND p.oid > %d OR p.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			else
 				appendPQExpBuffer(temp_query, " ");
@@ -5482,7 +5692,7 @@ getFuncs(Archive *fout, int *numFuncs)
 
 		not_agg_check = (fout->remoteVersion >= 110000 ? "p.prokind <> 'a'"
 						 : "NOT p.proisagg");
-		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */	/* ReqID:SRS-MYSQL-CASE */
 			appendPQExpBuffer(query,
 							"SELECT p.tableoid, p.oid, p.proname, p.prolang, "
 							"p.pronargs, p.proargtypes, p.prorettype, "
@@ -5492,9 +5702,11 @@ getFuncs(Archive *fout, int *numFuncs)
 							"%s AS initrproacl, "
 							"p.pronamespace, "
 							"(%s p.proowner) AS rolname, "
-							"oj.compatible_mode AS compatible_mode "	/* ReqID:SRS-MYSQL-PGDUMP */
+							"oj.compatible_mode AS compatible_mode, "	/* ReqID:SRS-MYSQL-PGDUMP */
+							"oj.objname as oriproname, "	/* ReqID:SRS-MYSQL-CASE */
+							"ivymy.myscaselower('pg_proc'::regclass::oid, p.oid, 0) as caselowernum "	/* ReqID:SRS-MYSQL-CASE */
 							"FROM pg_proc p "
-							"LEFT JOIN pg_object oj ON (p.oid = oj.obj_oid AND oj.refclassid = 'pg_proc'::regclass) "	/* BUG#M0000394 */
+							"LEFT JOIN pg_object oj ON (p.oid = oj.obj_oid AND oj.refclassid = 'pg_proc'::regclass::oid) "	/* BUG#M0000394 */
 							"LEFT JOIN pg_init_privs pip ON "
 							"(p.oid = pip.objoid "
 							"AND pip.classoid = 'pg_proc'::regclass "
@@ -5561,7 +5773,7 @@ getFuncs(Archive *fout, int *numFuncs)
 							not_agg_check,
 							g_last_builtin_oid,
 							g_last_builtin_oid);
-/* END - ReqID:SRS-MYSQL-PGDUMP */
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 		if (dopt->binary_upgrade)
 			appendPQExpBufferStr(query,
@@ -5651,6 +5863,8 @@ getFuncs(Archive *fout, int *numFuncs)
 	i_initproacl = PQfnumber(res, "initproacl");
 	i_initrproacl = PQfnumber(res, "initrproacl");
 	i_compatible_mode = PQfnumber(res, "compatible_mode");	/* ReqID:SRS-MYSQL-PGDUMP */
+	i_oriproname =	PQfnumber(res, "oriproname");		/* ReqID:SRS-MYSQL-CASE */
+	i_caselowernum =  PQfnumber(res, "caselowernum");	/* ReqID:SRS-MYSQL-CASE */
 
 	for (i = 0; i < ntups; i++)
 	{
@@ -5670,6 +5884,13 @@ getFuncs(Archive *fout, int *numFuncs)
 		finfo[i].initrproacl = pg_strdup(PQgetvalue(res, i, i_initrproacl));
 		finfo[i].nargs = atoi(PQgetvalue(res, i, i_pronargs));
 		finfo[i].dobj.compatible_mode = PQgetisnull(res, i, i_compatible_mode) ? "p" : pg_strdup(PQgetvalue(res, i, i_compatible_mode));	/* ReqID:SRS-MYSQL-PGDUMP */
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		finfo[i].dobj.addoptions.mysql.caselowernum = PQgetisnull(res, i, i_caselowernum) ? 3 : atooid(PQgetvalue(res, i, i_caselowernum));
+		if (PQgetisnull(res, i, i_oriproname) == 0)
+			finfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_oriproname));
+		finfo[i].dobj.addoptions.mysql.oriname = pg_strdup(PQgetvalue(res, i, i_proname));
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+
 		if (finfo[i].nargs == 0)
 			finfo[i].argtypes = NULL;
 		else
@@ -5756,6 +5977,11 @@ getTables(Archive *fout, int *numTables)
 	int			i_ispartition;
 	int			i_amname;
 	int			i_compatible_mode;		/* ReqID:SRS-MYSQL-PGDUMP */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	int			i_orirelname;
+	int			i_caselowernum;
+	bool		checkpgobject = false;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Find all the tables and table-like objects.
@@ -5790,7 +6016,7 @@ getTables(Archive *fout, int *numTables)
 	{
 		char	   *ispartition = "false";
 		char	   *relhasoids = "c.relhasoids";
-		Oid	   		FirstOIDforUser;	/* ReqID:SRS-CMD-PGDUMP */
+		Oid	   		FirstOIDforUser = InvalidOid;	/* ReqID:SRS-CMD-PGDUMP */
 
 		PQExpBuffer acl_subquery = createPQExpBuffer();
 		PQExpBuffer racl_subquery = createPQExpBuffer();
@@ -5841,20 +6067,21 @@ getTables(Archive *fout, int *numTables)
 						attinitracl_subquery, "at.attacl", "c.relowner", "'c'",
 						dopt->binary_upgrade);
 
-/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
-		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname != 'template0' AND datname != 'template1' ORDER BY oid;");	/* BUGZ1332 */
-		/* BEGIN - BUG#M0000404 */
+		/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
+		appendPQExpBuffer(selectdatabase_query, "SELECT oid FROM pg_database WHERE datname <> 'template0' AND datname <> 'template1' ORDER BY oid asc;");	/* ReqID:SRS-MYSQL-CASE */
 		res_firstoid = ExecuteSqlQuery(fout, selectdatabase_query->data, PGRES_TUPLES_OK);
-		FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+		if (PQgetisnull(res_firstoid, 0, 0) == 0)	/* ReqID:SRS-MYSQL-CASE */
+			FirstOIDforUser = atooid(PQgetvalue(res_firstoid, 0, 0));
+
 		PQclear(res_firstoid);
-		/* END - BUG#M0000404 */
+
 		if (FirstOIDforUser < 16384)
 			FirstOIDforUser = 16384;
 		if (DumpM != NULL)
 		{
 			if (strcmp(DumpM, "p") == 0 || strcmp(DumpM, "pg") == 0)	/* ReqID:SRS-MYSQL-PGDUMP */
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode IS NULL AND c.oid > %d OR c.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
-			else if(strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
+			else if (strcmp(DumpM, "m") == 0 || strcmp(DumpM, "mysql") == 0)		/* ReqID:SRS-MYSQL-PGDUMP */
 				appendPQExpBuffer(temp_query, "AND (oj.compatible_mode = 'm' AND c.oid > %d OR c.oid <= %d) ", FirstOIDforUser, FirstOIDforUser);
 			else
 				appendPQExpBuffer(temp_query, " ");
@@ -5862,7 +6089,10 @@ getTables(Archive *fout, int *numTables)
 		else
 			;
 
-		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+
+		if (checkpgobject == true)	/* BUG#M0000404 */
 			appendPQExpBuffer(query,
 					"SELECT c.tableoid, c.oid, c.relname, "
 					"%s AS relacl, %s as rrelacl, "
@@ -5901,7 +6131,9 @@ getTables(Archive *fout, int *numTables)
 					"))"
 					"AS changed_acl, "
 					  "%s AS ispartition, "
-					  "oj.compatible_mode AS compatible_mode "	/* ReqID:SRS-MYSQL-PGDUMP */
+					  "oj.compatible_mode AS compatible_mode, "	/* ReqID:SRS-MYSQL-PGDUMP */
+					"oj.objname as orirelname, "	/* ReqID:SRS-MYSQL-CASE */
+					"ivymy.myscaselower('pg_class'::regclass::oid, c.oid, 0) as caselowernum "	/* ReqID:SRS-MYSQL-CASE */
 					"FROM pg_class c "
 					"LEFT JOIN pg_depend d ON "
 					"(c.relkind = '%c' AND "
@@ -5910,7 +6142,7 @@ getTables(Archive *fout, int *numTables)
 					"d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
 					"LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
 					"LEFT JOIN pg_am am ON (c.relam = am.oid) "
-					  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0) "		/* ReqID:SRS-MYSQL-PGDUMP */
+					  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass::oid) "		/* ReqID:SRS-MYSQL-PGDUMP */
 					"LEFT JOIN pg_init_privs pip ON "
 					"(c.oid = pip.objoid "
 					"AND pip.classoid = 'pg_class'::regclass "
@@ -6008,7 +6240,7 @@ getTables(Archive *fout, int *numTables)
 							RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
 							RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE,
 							RELKIND_PARTITIONED_TABLE);
-/* END - ReqID:SRS-MYSQL-PGDUMP */
+		/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 		destroyPQExpBuffer(acl_subquery);
 		destroyPQExpBuffer(racl_subquery);
@@ -6591,6 +6823,8 @@ getTables(Archive *fout, int *numTables)
 	i_ispartition = PQfnumber(res, "ispartition");
 	i_amname = PQfnumber(res, "amname");
 	i_compatible_mode = PQfnumber(res, "compatible_mode");	/* ReqID:SRS-MYSQL-PGDUMP */
+	i_orirelname =	PQfnumber(res, "orirelname");		/* ReqID:SRS-MYSQL-CASE */
+	i_caselowernum =  PQfnumber(res, "caselowernum");	/* ReqID:SRS-MYSQL-CASE */
 
 	if (dopt->lockWaitTimeout)
 	{
@@ -6667,6 +6901,13 @@ getTables(Archive *fout, int *numTables)
 			tblinfo[i].dobj.compatible_mode = pg_strdup(PQgetvalue(res, i, i_compatible_mode));
 		/* END - ReqID:SRS-MYSQL-PGDUMP */
 
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		tblinfo[i].dobj.addoptions.mysql.caselowernum = PQgetisnull(res, i, i_caselowernum) ? 3 : atooid(PQgetvalue(res, i, i_caselowernum));
+		if (PQgetisnull(res, i, i_orirelname) == 0)
+			tblinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_orirelname));
+		tblinfo[i].dobj.addoptions.mysql.oriname = pg_strdup(PQgetvalue(res, i, i_relname));
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+	
 		/* other fields were zeroed above */
 
 		/*
@@ -6726,9 +6967,16 @@ getTables(Archive *fout, int *numTables)
 			(tblinfo[i].dobj.dump & DUMP_COMPONENTS_REQUIRING_LOCK))
 		{
 			resetPQExpBuffer(query);
-			appendPQExpBuffer(query,
-							  "LOCK TABLE %s IN ACCESS SHARE MODE",
-							  fmtQualifiedDumpable(&tblinfo[i]));
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if(checkpgobject)
+				appendPQExpBuffer(query,
+								  "LOCK TABLE %s IN ACCESS SHARE MODE",
+								  sysfmtQualifiedDumpable(&tblinfo[i]));
+			else
+				appendPQExpBuffer(query,
+								  "LOCK TABLE %s IN ACCESS SHARE MODE",
+								  fmtQualifiedDumpable(&tblinfo[i]));
+			/* End - ReqID:SRS-MYSQL-CASE */
 			ExecuteSqlStatement(fout, query->data);
 		}
 
@@ -10255,7 +10503,9 @@ dumpNamespace(Archive *fout, const NamespaceInfo *nspinfo)
 								  .description = "SCHEMA",
 								  .section = SECTION_PRE_DATA,
 								  .createStmt = q->data,
-								  .dropStmt = delq->data));
+								  .dropStmt = delq->data,
+								  .compatible_mode = nspinfo->dobj.compatible_mode,	/* ReqID:SRS-MYSQL-CASE */
+								  .caselowernum = nspinfo->dobj.addoptions.mysql.caselowernum));	/* ReqID:SRS-MYSQL-CASE */
 
 	/* Dump Schema Comments and Security Labels */
 	if (nspinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
@@ -12327,7 +12577,8 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 								  SECTION_POST_DATA : SECTION_PRE_DATA,
 								  .createStmt = q->data,
 								  .dropStmt = delqry->data,
-								  .compatible_mode = finfo->dobj.compatible_mode));	/* ReqID:SRS-MYSQL-PGDUMP */
+								  .compatible_mode = finfo->dobj.compatible_mode,	/* ReqID:SRS-MYSQL-PGDUMP */
+								  .caselowernum = finfo->dobj.addoptions.mysql.caselowernum));	/* ReqID:SRS-MYSQL-CASE */
 
 	/* Dump Function Comments and Security Labels */
 	if (finfo->dobj.dump & DUMP_COMPONENT_COMMENT)
@@ -13017,6 +13268,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	int			i_amproc;
 	int			i_amproclefttype;
 	int			i_amprocrighttype;
+	int 		i_objnamespace;	/* ReqID:SRS-MYSQL-CASE */
 	char	   *opcintype;
 	char	   *opckeytype;
 	char	   *opcdefault;
@@ -13033,6 +13285,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	char	   *amproc;
 	char	   *amproclefttype;
 	char	   *amprocrighttype;
+	char	   *objnamespace;	/* ReqID:SRS-MYSQL-CASE */
 	bool		needComma;
 	int			i;
 
@@ -13048,17 +13301,45 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	/* Get additional fields from the pg_opclass row */
 	if (fout->remoteVersion >= 80300)
 	{
-		appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
-						  "opckeytype::pg_catalog.regtype, "
-						  "opcdefault, opcfamily, "
-						  "opfname AS opcfamilyname, "
-						  "nspname AS opcfamilynsp, "
-						  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
-						  "FROM pg_catalog.pg_opclass c "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE c.oid = '%u'::pg_catalog.oid",
-						  opcinfo->dobj.catId.oid);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		bool		checkpgobject = false;
+		PGresult   *res_pgobject;
+
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+		
+		if (checkpgobject)
+			appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
+							  "opckeytype::pg_catalog.regtype, "
+							  "opcdefault, opcfamily, "
+							  "opfname AS opcfamilyname, "
+							  "nspname AS opcfamilynsp, "
+							  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname, "
+							  "oj.objname as objnamespace "
+							  "FROM pg_catalog.pg_opclass c "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "LEFT JOIN pg_object oj ON (n.oid = oj.obj_oid "
+							  "AND oj.refclassid = 'pg_namespace'::regclass::oid "
+							  "AND  oj.objkind = 's') "
+							  "WHERE c.oid = '%u'::pg_catalog.oid",
+							  opcinfo->dobj.catId.oid);
+		else
+			appendPQExpBuffer(query, "SELECT opcintype::pg_catalog.regtype, "
+							  "opckeytype::pg_catalog.regtype, "
+							  "opcdefault, opcfamily, "
+							  "opfname AS opcfamilyname, "
+							  "nspname AS opcfamilynsp, "
+							  "(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS amname "
+							  "FROM pg_catalog.pg_opclass c "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "WHERE c.oid = '%u'::pg_catalog.oid",
+							  opcinfo->dobj.catId.oid);
+
+		PQclear(res_pgobject);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	else
 	{
@@ -13082,6 +13363,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	i_opcfamilyname = PQfnumber(res, "opcfamilyname");
 	i_opcfamilynsp = PQfnumber(res, "opcfamilynsp");
 	i_amname = PQfnumber(res, "amname");
+	i_objnamespace = PQfnumber(res, "objnamespace");	/* ReqID:SRS-MYSQL-CASE */
 
 	/* opcintype may still be needed after we PQclear res */
 	opcintype = pg_strdup(PQgetvalue(res, 0, i_opcintype));
@@ -13093,6 +13375,12 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	opcfamilynsp = PQgetvalue(res, 0, i_opcfamilynsp);
 	/* amname will still be needed after we PQclear res */
 	amname = pg_strdup(PQgetvalue(res, 0, i_amname));
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (PQgetisnull(res, 0, i_objnamespace) == 0)
+		objnamespace = pg_strdup(PQgetvalue(res, 0, i_objnamespace));
+	else
+		objnamespace = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	appendPQExpBuffer(delq, "DROP OPERATOR CLASS %s",
 					  fmtQualifiedDumpable(opcinfo));
@@ -13110,7 +13398,12 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	if (strlen(opcfamilyname) > 0)
 	{
 		appendPQExpBufferStr(q, " FAMILY ");
-		appendPQExpBuffer(q, "%s.", fmtId(opcfamilynsp));
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (objnamespace != NULL)
+			appendPQExpBuffer(q, "%s.", fmtId(objnamespace));
+		else
+			appendPQExpBuffer(q, "%s.", fmtId(opcfamilynsp));
+		/* End - ReqID:SRS-MYSQL-CASE */
 		appendPQExpBufferStr(q, fmtId(opcfamilyname));
 	}
 	appendPQExpBufferStr(q, " AS\n    ");
@@ -13142,20 +13435,54 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 
 	if (fout->remoteVersion >= 90100)
 	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%s'::pg_catalog.oid "
-						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
-						  opcinfo->dobj.catId.oid,
-						  opcfamily);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		bool		checkpgobject = false;
+		PGresult   *res_pgobject;
+
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+
+		if (checkpgobject)
+		{
+			appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
+							  "amopopr::pg_catalog.regoperator, "
+							  "opfname AS sortfamily, "
+							  "nspname AS sortfamilynsp, "
+							  "oj.objname as objnamespace "
+							  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
+							  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "LEFT JOIN pg_object oj ON (opfnamespace = oj.obj_oid "
+							  "AND oj.refclassid = 'pg_namespace'::regclass::oid "
+							  "AND	oj.objkind = 's') "
+							  "WHERE pg_catalog.pg_depend.refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
+							  "AND refobjid = '%u'::pg_catalog.oid "
+							  "AND amopfamily = '%s'::pg_catalog.oid "
+							  "ORDER BY amopstrategy",
+							  opcinfo->dobj.catId.oid,
+							  opcfamily);
+		}
+		else
+		{
+			appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
+							  "amopopr::pg_catalog.regoperator, "
+							  "opfname AS sortfamily, "
+							  "nspname AS sortfamilynsp "
+							  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
+							  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass "
+							  "AND refobjid = '%u'::pg_catalog.oid "
+							  "AND amopfamily = '%s'::pg_catalog.oid "
+							  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
+							  opcinfo->dobj.catId.oid,
+							  opcfamily);
+		}
+		PQclear(res_pgobject);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	else if (fout->remoteVersion >= 80400)
 	{
@@ -13210,6 +13537,7 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 	i_amopopr = PQfnumber(res, "amopopr");
 	i_sortfamily = PQfnumber(res, "sortfamily");
 	i_sortfamilynsp = PQfnumber(res, "sortfamilynsp");
+	i_objnamespace = PQfnumber(res, "objnamespace");	/* ReqID:SRS-MYSQL-CASE */
 
 	for (i = 0; i < ntups; i++)
 	{
@@ -13218,7 +13546,13 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 		amopopr = PQgetvalue(res, i, i_amopopr);
 		sortfamily = PQgetvalue(res, i, i_sortfamily);
 		sortfamilynsp = PQgetvalue(res, i, i_sortfamilynsp);
-
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (PQgetisnull(res, i, i_objnamespace) == 0)
+			objnamespace = pg_strdup(PQgetvalue(res, i, i_objnamespace));
+		else
+			objnamespace = NULL;
+		/* End - ReqID:SRS-MYSQL-CASE */
+	
 		if (needComma)
 			appendPQExpBufferStr(q, " ,\n    ");
 
@@ -13228,7 +13562,12 @@ dumpOpclass(Archive *fout, const OpclassInfo *opcinfo)
 		if (strlen(sortfamily) > 0)
 		{
 			appendPQExpBufferStr(q, " FOR ORDER BY ");
-			appendPQExpBuffer(q, "%s.", fmtId(sortfamilynsp));
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (objnamespace != NULL)
+				appendPQExpBuffer(q, "%s.", fmtId(objnamespace));
+			else
+				appendPQExpBuffer(q, "%s.", fmtId(sortfamilynsp));
+			/* End - ReqID:SRS-MYSQL-CASE */
 			appendPQExpBufferStr(q, fmtId(sortfamily));
 		}
 
@@ -13385,6 +13724,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 	int			i_amproc;
 	int			i_amproclefttype;
 	int			i_amprocrighttype;
+	int 		i_objnamespace;	/* ReqID:SRS-MYSQL-CASE */
 	char	   *amname;
 	char	   *amopstrategy;
 	char	   *amopreqcheck;
@@ -13395,6 +13735,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 	char	   *amproc;
 	char	   *amproclefttype;
 	char	   *amprocrighttype;
+	char	   *objnamespace;	/* ReqID:SRS-MYSQL-CASE */
 	bool		needComma;
 	int			i;
 
@@ -13419,20 +13760,51 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 	 */
 	if (fout->remoteVersion >= 90100)
 	{
-		appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
-						  "amopopr::pg_catalog.regoperator, "
-						  "opfname AS sortfamily, "
-						  "nspname AS sortfamilynsp "
-						  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
-						  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
-						  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
-						  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
-						  "WHERE refclassid = 'pg_catalog.pg_opfamily'::pg_catalog.regclass "
-						  "AND refobjid = '%u'::pg_catalog.oid "
-						  "AND amopfamily = '%u'::pg_catalog.oid "
-						  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
-						  opfinfo->dobj.catId.oid,
-						  opfinfo->dobj.catId.oid);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		bool		checkpgobject = false;
+		PGresult   *res_pgobject;
+
+		res_pgobject = ExecuteSqlQuery(fout, "SELECT * FROM pg_class WHERE relname = 'pg_object';", PGRES_TUPLES_OK);
+		if (PQgetisnull(res_pgobject, 0, 0) == 0 && atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)
+			checkpgobject = true;
+
+		if (checkpgobject)
+			appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
+							  "amopopr::pg_catalog.regoperator, "
+							  "opfname AS sortfamily, "
+							  "nspname AS sortfamilynsp, "
+							  "oj.objname as objnamespace "
+							  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
+							  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "LEFT JOIN pg_object oj ON (n.oid = oj.obj_oid "
+							  "AND oj.refclassid = 'pg_namespace'::regclass::oid "
+							  "AND oj.objkind = 's') "
+							  "WHERE pg_catalog.pg_depend.refclassid = 'pg_catalog.pg_opfamily'::pg_catalog.regclass "
+							  "AND refobjid = '%u'::pg_catalog.oid "
+							  "AND amopfamily = '%u'::pg_catalog.oid "
+							  "ORDER BY amopstrategy",
+							  opfinfo->dobj.catId.oid,
+							  opfinfo->dobj.catId.oid);
+		else
+			appendPQExpBuffer(query, "SELECT amopstrategy, false AS amopreqcheck, "
+							  "amopopr::pg_catalog.regoperator, "
+							  "opfname AS sortfamily, "
+							  "nspname AS sortfamilynsp "
+							  "FROM pg_catalog.pg_amop ao JOIN pg_catalog.pg_depend ON "
+							  "(classid = 'pg_catalog.pg_amop'::pg_catalog.regclass AND objid = ao.oid) "
+							  "LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = amopsortfamily "
+							  "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = opfnamespace "
+							  "WHERE refclassid = 'pg_catalog.pg_opfamily'::pg_catalog.regclass "
+							  "AND refobjid = '%u'::pg_catalog.oid "
+							  "AND amopfamily = '%u'::pg_catalog.oid "
+							  "ORDER BY amopstrategy, ao.oid", /* BUG#M0000344 */
+							  opfinfo->dobj.catId.oid,
+							  opfinfo->dobj.catId.oid);
+
+		PQclear(res_pgobject);
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	else if (fout->remoteVersion >= 80400)
 	{
@@ -13530,6 +13902,7 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 		i_amopopr = PQfnumber(res_ops, "amopopr");
 		i_sortfamily = PQfnumber(res_ops, "sortfamily");
 		i_sortfamilynsp = PQfnumber(res_ops, "sortfamilynsp");
+		i_objnamespace = PQfnumber(res_ops, "objnamespace");	/* ReqID:SRS-MYSQL-CASE */
 
 		for (i = 0; i < ntups; i++)
 		{
@@ -13538,6 +13911,12 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 			amopopr = PQgetvalue(res_ops, i, i_amopopr);
 			sortfamily = PQgetvalue(res_ops, i, i_sortfamily);
 			sortfamilynsp = PQgetvalue(res_ops, i, i_sortfamilynsp);
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (PQgetisnull(res_ops, i, i_objnamespace) == 0)
+				objnamespace = pg_strdup(PQgetvalue(res_ops, i, i_objnamespace));
+			else
+				objnamespace = NULL;
+			/* End - ReqID:SRS-MYSQL-CASE */
 
 			if (needComma)
 				appendPQExpBufferStr(q, " ,\n    ");
@@ -13548,7 +13927,12 @@ dumpOpfamily(Archive *fout, const OpfamilyInfo *opfinfo)
 			if (strlen(sortfamily) > 0)
 			{
 				appendPQExpBufferStr(q, " FOR ORDER BY ");
-				appendPQExpBuffer(q, "%s.", fmtId(sortfamilynsp));
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				if (objnamespace != NULL)
+					appendPQExpBuffer(q, "%s.", fmtId(objnamespace));
+				else
+					appendPQExpBuffer(q, "%s.", fmtId(sortfamilynsp));
+				/* End - ReqID:SRS-MYSQL-CASE */
 				appendPQExpBufferStr(q, fmtId(sortfamily));
 			}
 
@@ -14220,7 +14604,9 @@ dumpAgg(Archive *fout, const AggInfo *agginfo)
 								  .description = "AGGREGATE",
 								  .section = SECTION_PRE_DATA,
 								  .createStmt = q->data,
-								  .dropStmt = delq->data));
+								  .dropStmt = delq->data,
+								  .compatible_mode = agginfo->aggfn.dobj.compatible_mode,	/* ReqID:SRS-MYSQL-CASE */
+								  .caselowernum = agginfo->aggfn.dobj.addoptions.mysql.caselowernum));	/* ReqID:SRS-MYSQL-CASE */
 
 	/* Dump Aggregate Comments */
 	if (agginfo->aggfn.dobj.dump & DUMP_COMPONENT_COMMENT)
@@ -16337,7 +16723,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 								  SECTION_POST_DATA : SECTION_PRE_DATA,
 								  .createStmt = q->data,
 								  .dropStmt = delq->data,
-								  .compatible_mode = tbinfo->dobj.compatible_mode));	/* ReqID:SRS-MYSQL-PGDUMP */
+								  .compatible_mode = tbinfo->dobj.compatible_mode,	/* ReqID:SRS-MYSQL-PGDUMP */
+								  .caselowernum = tbinfo->dobj.addoptions.mysql.caselowernum));		/* ReqID:SRS-MYSQL-CASE */
 	}
 
 	/* Dump Table Comments */
@@ -17312,7 +17699,9 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 								  .description = "SEQUENCE",
 								  .section = SECTION_PRE_DATA,
 								  .createStmt = query->data,
-								  .dropStmt = delqry->data));
+								  .dropStmt = delqry->data,
+								  .compatible_mode = tbinfo->dobj.compatible_mode,	/* ReqID:SRS-MYSQL-CASE */
+								  .caselowernum = tbinfo->dobj.addoptions.mysql.caselowernum));		/* ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * If the sequence is owned by a table column, emit the ALTER for it as a
@@ -17388,9 +17777,19 @@ dumpSequenceData(Archive *fout, const TableDataInfo *tdinfo)
 	bool		called;
 	PQExpBuffer query = createPQExpBuffer();
 
-	appendPQExpBuffer(query,
-					  "SELECT last_value, is_called FROM %s",
-					  fmtQualifiedDumpable(tbinfo));
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (tbinfo->dobj.namespace->dobj.addoptions.mysql.oriname != NULL &&
+		(strcmp(tbinfo->dobj.namespace->dobj.name, 
+				tbinfo->dobj.namespace->dobj.addoptions.mysql.oriname) != 0 ||
+		 strcmp(tbinfo->dobj.name, tbinfo->dobj.addoptions.mysql.oriname) != 0))
+		appendPQExpBuffer(query,
+						  "SELECT last_value, is_called FROM %s",
+						  sysfmtQualifiedDumpable(tbinfo));
+	else
+		appendPQExpBuffer(query,
+						  "SELECT last_value, is_called FROM %s",
+						  fmtQualifiedDumpable(tbinfo));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 

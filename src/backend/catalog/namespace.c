@@ -75,6 +75,7 @@
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-TYPE */
+#include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
 
 /*
  * The namespace search path is a possibly-empty list of namespace OIDs.
@@ -1091,6 +1092,17 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 	{
 		/* use exact schema given */
 		namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_objlower_hook && mysql_string_case_hook && !OidIsValid(namespaceId))
+		{
+			if (lower_one == mysql_objlower_hook() || lower_two == mysql_objlower_hook())
+			{
+				schemaname = mysql_string_case_hook(schemaname);
+				namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
+
 		if (!OidIsValid(namespaceId))
 			return NULL;
 	}
@@ -1100,6 +1112,26 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 		namespaceId = InvalidOid;
 		recomputeNamespacePath();
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook)
+	{
+		bool nottransfor = false;
+
+		if (!strcmp(funcname, "RI_FKey_check_ins") || !strcmp(funcname, "RI_FKey_check_upd") ||
+			!strcmp(funcname, "RI_FKey_cascade_del") || !strcmp(funcname, "RI_FKey_cascade_upd") ||
+			!strcmp(funcname, "RI_FKey_restrict_del") || !strcmp(funcname, "RI_FKey_restrict_upd") ||
+			!strcmp(funcname, "RI_FKey_setnull_del") || !strcmp(funcname, "RI_FKey_setnull_upd") ||
+			!strcmp(funcname, "RI_FKey_setdefault_del") || !strcmp(funcname, "RI_FKey_setdefault_upd") ||
+			!strcmp(funcname, "RI_FKey_noaction_del") || !strcmp(funcname, "RI_FKey_noaction_upd"))
+		{
+			nottransfor = true;
+		}
+
+		if (mysql_switch_hook() && !nottransfor)
+			funcname = mysql_string_case_hook(funcname);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Search syscache by name only */
 	catlist = SearchSysCacheList1(PROCNAMEARGSNSP, CStringGetDatum(funcname));
@@ -3302,6 +3334,7 @@ DeconstructQualifiedName(List *names,
 			/*
 			 * We check the catalog name and then ignore it.
 			 */
+
 			if (strcmp(catalogname, get_database_name(MyDatabaseId)) != 0)
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -3316,6 +3349,10 @@ DeconstructQualifiedName(List *names,
 			break;
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+		schemaname = mysql_string_case_hook(schemaname);
+	/* End - ReqID:SRS-MYSQL-CASE */
 	*nspname_p = schemaname;
 	*objname_p = objname;
 }
@@ -3517,6 +3554,10 @@ get_namespace_oid(const char *nspname, bool missing_ok)
 
 	oid = GetSysCacheOid1(NAMESPACENAME, Anum_pg_namespace_oid,
 						  CStringGetDatum(nspname));
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_getoid_hook && !OidIsValid(oid))
+		oid = mysql_getoid_hook(nspname);
+	/* End - ReqID:SRS-MYSQL-CASE */
 	if (!OidIsValid(oid) && !missing_ok)
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_SCHEMA),
@@ -4278,11 +4319,11 @@ recomputeNamespacePath(void)
 	Oid			firstNS;
 	bool		pathChanged;
 	MemoryContext oldcxt;
-    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-    Oid			mys_schema_id;
-    bool        is_use = false;
-    int			count = 0;
-    /* End - ReqID: SRS-MYSQL-SQL-USE */
+	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+	Oid			mys_schema_id;
+	bool		is_use = false;
+	int			count = 0;
+	/* End - ReqID: SRS-MYSQL-SQL-USE */
 	/* Do nothing if an override search spec is active. */
 	if (overrideStack)
 		return;
@@ -4315,7 +4356,7 @@ recomputeNamespacePath(void)
 		char	   *curname = (char *) lfirst(l);
 		Oid			namespaceId;
 
-        count++;	/* ReqID:SRS-MYSQL-SQL-USE */
+		count++;	/* ReqID:SRS-MYSQL-SQL-USE */
 		
 		if ((compatible_db == DB_ORACLE && enable_case_switch && identifier_case_switch != NORMAL) ?	/* case sensitive indentify */
 			pg_strcasecmp(curname, "$user") == 0 : strcmp(curname, "$user") == 0)
@@ -4368,32 +4409,32 @@ recomputeNamespacePath(void)
 		}
 	}
 
-    /*
+	/*
 	 * Begin - ReqID: SRS-MYSQL-SQL-USE
-     * If it's a path set by use, or a single path set only one
-     * value will exist. So it's assigned to firstNS.
-     */
+	 * If it's a path set by use, or a single path set only one
+	 * value will exist. So it's assigned to firstNS.
+	 */
 	#define  USE_LABLE 	1
-    if (compatible_db == MYS_PARSER && oidlist && list_length(oidlist) == USE_LABLE && count == USE_LABLE)
-    {
-        mys_schema_id = linitial_oid(oidlist);
-        oidlist = list_delete_first(oidlist);
-        is_use = true;
-    }
-    /*
+	if (compatible_db == MYS_PARSER && oidlist && list_length(oidlist) == USE_LABLE && count == USE_LABLE)
+	{
+		mys_schema_id = linitial_oid(oidlist);
+		oidlist = list_delete_first(oidlist);
+		is_use = true;
+	}
+	/*
 	 * Remember the first member of the explicit list.  (Note: this is
 	 * nominally wrong if temp_missing, but we need it anyway to distinguish
 	 * explicit from implicit mention of pg_catalog.)
 	 */
-    if (compatible_db == MYS_PARSER && is_use && mys_schema_id)
-        firstNS = mys_schema_id;
-    else
-    {	/* End - ReqID: SRS-MYSQL-SQL-USE */
-        if (oidlist == NIL)
-            firstNS = InvalidOid;
-        else
-            firstNS = linitial_oid(oidlist);
-    }
+	if (compatible_db == MYS_PARSER && is_use && mys_schema_id)
+		firstNS = mys_schema_id;
+	else
+	{	/* End - ReqID: SRS-MYSQL-SQL-USE */
+		if (oidlist == NIL)
+			firstNS = InvalidOid;
+		else
+			firstNS = linitial_oid(oidlist);
+	}
 	/*
 	 * Add any implicitly-searched namespaces to the list.  Note these go on
 	 * the front, not the back; also notice that we do not check USAGE
@@ -4402,16 +4443,16 @@ recomputeNamespacePath(void)
 	if (!list_member_oid(oidlist, PG_CATALOG_NAMESPACE))
 		oidlist = lcons_oid(PG_CATALOG_NAMESPACE, oidlist);
 
-    /*
+	/*
 	 * Begin - ReqID: SRS-MYSQL-SQL-USE
-     * In mysql mode, the schema set by the user will be accessed first,
-     * so it should be higher than any other schema. If you want objects
-     * in other paths to be used by the current schema except for 'schema.obj',
-     * they need to take priority over this schema.
-     * */
-    if(compatible_db == MYS_PARSER && mys_schema_id && !list_member_oid(oidlist, mys_schema_id) && is_use)
-        oidlist = lcons_oid(mys_schema_id, oidlist);
-    /* End - ReqID: SRS-MYSQL-SQL-USE */
+	 * In mysql mode, the schema set by the user will be accessed first,
+	 * so it should be higher than any other schema. If you want objects
+	 * in other paths to be used by the current schema except for 'schema.obj',
+	 * they need to take priority over this schema.
+	 * */
+	if(compatible_db == MYS_PARSER && mys_schema_id && !list_member_oid(oidlist, mys_schema_id) && is_use)
+		oidlist = lcons_oid(mys_schema_id, oidlist);
+	/* End - ReqID: SRS-MYSQL-SQL-USE */
 	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 	if (IsNormalProcessingMode() && ORA_PARSER == compatible_db)
 	{

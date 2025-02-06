@@ -58,6 +58,9 @@
 #include "catalog/pg_namespace_d.h"
 #include "common/fe_memutils.h"
 /* End - ReqID:SRS-SQL-SEQ */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * We don't want to log each fetching of a value from a sequence,
@@ -2639,6 +2642,13 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 
 		/* Open and lock rel to ensure it won't go away meanwhile */
 		rel = makeRangeVarFromNameList(relname);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_objlower_hook && mysql_string_case_hook && mysql_rvar_case_hook)
+		{
+			if (lower_zero != mysql_objlower_hook() && rel != NULL)
+				mysql_rvar_case_hook(rel);
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 		tablerel = relation_openrv(rel, AccessShareLock);
 
 		/* Must be a regular or foreign table */

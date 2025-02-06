@@ -77,6 +77,11 @@ extern void generate_operator_clause(fmStringInfo buf,
 									 const char *leftop, Oid leftoptype,
 									 Oid opoid,
 									 const char *rightop, Oid rightoptype);
+extern char *mysquote_qualified_identifier(const char *qualifier,
+										const char *ident);
+extern  char *mysquote_qualified_identifierrestrict(const char *qualifier, const char *ident,
+											bool objnsp, bool objname);
+
 
 /* varchar.c */
 extern int	bpchartruelen(char *s, int len);

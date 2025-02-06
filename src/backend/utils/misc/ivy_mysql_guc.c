@@ -21,6 +21,10 @@
 	static void assign_sql_mode(const char *newval, void *extra);
 	static bool check_sql_mode(char **newval, void **extra, GucSource source);
 	static const char *show_sql_mode(void);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	bool check_lower_case_table_names(int *newval, void **extra, GucSource source);
+	void assign_lower_case_table_names(int newval, void *extra);
+	/* End - ReqID:SRS-MYSQL-CASE */
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -36,6 +40,18 @@ static char *sql_mode_str = NULL;
 /* Begin - BUG#Z1434 */
 bool		enable_ignore_columns_list = false;
 /* End - BUG#Z1434 */
+int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
+bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#define MIN_LOWER_NUM 0
+#define MAX_LOWER_NUM 2
+#ifdef WIN32
+	#define DEF_LOWER_NUM 1
+#else
+	#define DEF_LOWER_NUM 0
+#endif
+/* End - ReqID:SRS-MYSQL-CASE */
 
 #endif
 #ifdef IVY_MY_GUC_BOOL_PARAMS
@@ -62,6 +78,17 @@ bool		enable_ignore_columns_list = false;
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z1434 */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	{
+		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
+			NULL
+		},
+		&myenable_case_switch,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-CASE */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
@@ -77,7 +104,19 @@ bool		enable_ignore_columns_list = false;
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	{
+		{"lower_case_table_names", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("MySQL case sensitive parameter."),
+			NULL
+		},
+		&lower_case_table_names,
+		DEF_LOWER_NUM, MIN_LOWER_NUM, MAX_LOWER_NUM,
+		check_lower_case_table_names, assign_lower_case_table_names, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-CASE */
 #endif
+
 #ifdef IVY_MY_GUC_STRING_PARAMS
 
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
@@ -355,5 +394,39 @@ show_sql_mode(void)
 
 	return str->data;
 }
-#endif
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+/*
+ * check_lower_case_table_names
+ *   guc parameter value calculation
+ *
+ * Different environments have different values.
+ *
+ */
+bool
+check_lower_case_table_names(int *newval, void **extra, GucSource source)
+{
+#ifdef WIN32
+	*newval = *newval;
+#else
+	*newval = *newval % 2;
+#endif
+
+	return true;
+}
+
+/*
+ * assign_lower_case_table_names
+ *   assign value for guc parameter.
+ *
+ * Assign a value to lower_case_table_names.
+ *
+ */
+void
+assign_lower_case_table_names(int newval, void *extra)
+{
+	lower_case_table_names = newval;
+}
+/* End - ReqID:SRS-MYSQL-CASE */
+#endif

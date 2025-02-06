@@ -187,6 +187,7 @@ static bool output_failed = false;
 static int	output_errno = 0;
 static char *pgdata_native;
 static char *preload_ora_misc;	/* BUG#M0000195 */
+static char *preload_mys_misc;	/* ReqID:SRS-MYSQL-CASE */
 
 /* BEGIN - case sensitive indentify */
 static char  *switchmode = "interchange";
@@ -2899,6 +2900,7 @@ setup_data_file_paths(void)
 	else if(database_mode == DB_MYSQL)
 	{
 		set_input(&mys_conf_file, "ivorysql.mysql.conf.sample");
+		set_input(&preload_mys_misc, "preload_mys_misc.sql");	/* ReqID:SRS-MYSQL-CASE */
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */
@@ -2940,6 +2942,7 @@ setup_data_file_paths(void)
 	else if(database_mode == DB_MYSQL)
 	{
 		check_input(mys_conf_file);
+		check_input(preload_mys_misc);	/* ReqID:SRS-MYSQL-CASE */
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 }
@@ -3361,6 +3364,7 @@ initialize_data_directory(void)
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	else if (database_mode == DB_MYSQL)
 	{
+		setup_run_file(cmdfd, preload_mys_misc);	/* ReqID:SRS-MYSQL-CASE */
 		load_plmysql(cmdfd);
 		load_ivorysql_my(cmdfd);
 	}

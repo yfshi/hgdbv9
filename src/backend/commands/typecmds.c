@@ -73,6 +73,9 @@
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 /* result structure for get_rels_with_domain() */
@@ -218,6 +221,11 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 
 	/* Convert list of names to a name and namespace */
 	typeNamespace = QualifiedNameGetCreationNamespace(names, &typeName);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+		typeName = mysql_string_case_hook(typeName);
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 #ifdef NOT_USED
 	/* XXX this is unnecessary given the superuser check above */
@@ -735,6 +743,11 @@ DefineDomain(CreateDomainStmt *stmt)
 	domainNamespace = QualifiedNameGetCreationNamespace(stmt->domainname,
 														&domainName);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+		domainName = mysql_string_case_hook(domainName);
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(domainNamespace, GetUserId(),
 									  ACL_CREATE);
@@ -1151,6 +1164,11 @@ DefineEnum(CreateEnumStmt *stmt)
 	enumNamespace = QualifiedNameGetCreationNamespace(stmt->typeName,
 													  &enumName);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+		enumName = mysql_string_case_hook(enumName);
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(enumNamespace, GetUserId(), ACL_CREATE);
 	if (aclresult != ACLCHECK_OK)
@@ -1366,6 +1384,27 @@ DefineRange(CreateRangeStmt *stmt)
 	ObjectAddress address;
 	ObjectAddress mltrngaddress PG_USED_FOR_ASSERTS_ONLY;
 	Oid			castFuncOid;
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	/* All created types must be converted to lowercase,
+	 * and the schema depends on the situation.
+	 */
+	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	{
+		/*orifuncname = pstrdup(strVal(llast(stmt->typeName)));*/
+		if (mysql_lower_hook())
+		{
+			mysql_list_case_hook(stmt->typeName);
+		}
+		else if (mysql_switch_hook())
+		{
+			ListCell *cell = llast(stmt->typeName);
+
+			if (IsA(cell, String))
+				strVal(cell) = mysql_string_case_hook(strVal(cell));
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Convert list of names to a name and namespace */
 	typeNamespace = QualifiedNameGetCreationNamespace(stmt->typeName,
@@ -2560,6 +2599,11 @@ DefineCompositeType(RangeVar *typevar, List *coldeflist)
 	createStmt->oncommit = ONCOMMIT_NOOP;
 	createStmt->tablespacename = NULL;
 	createStmt->if_not_exists = false;
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+		createStmt->relation->relname = mysql_string_case_hook(createStmt->relation->relname);
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Check for collision with an existing type name. If there is one and

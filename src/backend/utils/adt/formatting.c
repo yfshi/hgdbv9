@@ -99,6 +99,9 @@
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/pg_locale.h"
 #include <time.h>		/* ReqID:SRS-SQL-SYSFUNC */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* ----------
  * Convenience macros for error handling
@@ -1729,6 +1732,12 @@ str_tolower(const char *buff, size_t nbytes, Oid collid)
 	{
 		result = asc_tolower(buff, nbytes);
 	}
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collid))
+	{
+		result = asc_tolower(buff, nbytes);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		pg_locale_t mylocale = 0;
@@ -1853,6 +1862,12 @@ str_toupper(const char *buff, size_t nbytes, Oid collid)
 	{
 		result = asc_toupper(buff, nbytes);
 	}
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collid))
+	{
+		result = asc_toupper(buff, nbytes);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		pg_locale_t mylocale = 0;
@@ -1978,6 +1993,12 @@ str_initcap(const char *buff, size_t nbytes, Oid collid)
 	{
 		result = asc_initcap(buff, nbytes);
 	}
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collid))
+	{
+		result = asc_initcap(buff, nbytes);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		pg_locale_t mylocale = 0;
