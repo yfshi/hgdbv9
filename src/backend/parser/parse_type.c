@@ -34,6 +34,9 @@
 #include "catalog/pg_class.h"
 #include "access/table.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 static int32 typenameTypeMod(ParseState *pstate, const TypeName *typeName,
 							 Type typ);
@@ -195,48 +198,58 @@ LookupTypeNameExtended(ParseState *pstate,
 		/* deconstruct the name list */
 		DeconstructQualifiedName(typeName->names, &schemaname, &typname);
 
-		if (schemaname)
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_switch_hook && mysql_get_typoid_hook && mysql_switch_hook())
 		{
-			/* Look in specific schema only */
-			Oid			namespaceId;
-			ParseCallbackState pcbstate;
-
-			setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
-
-			/* Begin - BUG#Z1308 */
-			if (ORA_PARSER == compatible_db)
-				missing_ok = true;
-			/* End - BUG#Z1308 */
-			namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
-			if (OidIsValid(namespaceId))
-				typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
-										 PointerGetDatum(typname),
-										 ObjectIdGetDatum(namespaceId));
-			else
-			{
-				/* Begin - BUG#Z1308 */
-				/*
-				 * can't find the schemaname as a schema,
-				 * try to find the schemaname as a package,
-				 * if references a package object, raise an error.
-				 */
-				if (OidIsValid(PkgnameGetPkgid(schemaname)))
-					ereport(ERROR,
-							(errcode(ERRCODE_UNDEFINED_COLUMN),
-							 errmsg("invalid datatype"),
-							 parser_errposition(pstate, typeName->location)));
-				else
-				/* End - BUG#Z1308 */
-					typoid = InvalidOid;
-			}
-
-			cancel_parser_errposition_callback(&pcbstate);
+			typoid = mysql_get_typoid_hook(pstate, typeName, temp_ok,
+										   schemaname, typname, missing_ok);
 		}
 		else
 		{
-			/* Unqualified type name, so search the search path */
-			typoid = TypenameGetTypidExtended(typname, temp_ok);
+			if (schemaname)
+			{
+				/* Look in specific schema only */
+				Oid			namespaceId;
+				ParseCallbackState pcbstate;
+
+				setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
+
+				/* Begin - BUG#Z1308 */
+				if (ORA_PARSER == compatible_db)
+					missing_ok = true;
+				/* End - BUG#Z1308 */
+				namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
+				if (OidIsValid(namespaceId))
+					typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
+											 PointerGetDatum(typname),
+											 ObjectIdGetDatum(namespaceId));
+				else
+				{
+					/* Begin - BUG#Z1308 */
+					/*
+					 * can't find the schemaname as a schema,
+					 * try to find the schemaname as a package,
+					 * if references a package object, raise an error.
+					 */
+					if (OidIsValid(PkgnameGetPkgid(schemaname)))
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_COLUMN),
+								 errmsg("invalid datatype"),
+								 parser_errposition(pstate, typeName->location)));
+					else
+					/* End - BUG#Z1308 */
+						typoid = InvalidOid;
+				}
+
+				cancel_parser_errposition_callback(&pcbstate);
+			}
+			else
+			{
+				/* Unqualified type name, so search the search path */
+				typoid = TypenameGetTypidExtended(typname, temp_ok);
+			}
 		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/* If an array reference, return the array type instead */
 		if (typeName->arrayBounds != NIL)
@@ -1057,29 +1070,39 @@ LookupOraTypeNameExtended(ParseState *pstate,
 		/* deconstruct the name list */
 		DeconstructQualifiedName(typeName->names, &schemaname, &typname);
 
-		if (schemaname)
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_switch_hook && mysql_get_typoid_hook && mysql_switch_hook())
 		{
-			/* Look in specific schema only */
-			Oid			namespaceId;
-			ParseCallbackState pcbstate;
-
-			setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
-
-			namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
-			if (OidIsValid(namespaceId))
-				typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
-										 PointerGetDatum(typname),
-										 ObjectIdGetDatum(namespaceId));
-			else
-				typoid = InvalidOid;
-
-			cancel_parser_errposition_callback(&pcbstate);
+			typoid = mysql_get_typoid_hook(pstate, typeName, temp_ok,
+										   schemaname, typname, missing_ok);
 		}
 		else
 		{
-			/* Unqualified type name, so search the search path */
-			typoid = TypenameGetTypidExtended(typname, temp_ok);
+			if (schemaname)
+			{
+				/* Look in specific schema only */
+				Oid			namespaceId;
+				ParseCallbackState pcbstate;
+
+				setup_parser_errposition_callback(&pcbstate, pstate, typeName->location);
+
+				namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
+				if (OidIsValid(namespaceId))
+					typoid = GetSysCacheOid2(TYPENAMENSP, Anum_pg_type_oid,
+											 PointerGetDatum(typname),
+											 ObjectIdGetDatum(namespaceId));
+				else
+					typoid = InvalidOid;
+
+				cancel_parser_errposition_callback(&pcbstate);
+			}
+			else
+			{
+				/* Unqualified type name, so search the search path */
+				typoid = TypenameGetTypidExtended(typname, temp_ok);
+			}
 		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/* If an array reference, return the array type instead */
 		if (typeName->arrayBounds != NIL)

@@ -91,6 +91,10 @@
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
 #include "foreign/foreign.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "catalog/pg_namespace.h"
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* ----------
  * Pretty formatting constants
@@ -1003,6 +1007,7 @@ pg_get_triggerdef_worker(Oid trigid, bool pretty)
 					 pretty ?
 					 generate_relation_name(trigrec->tgrelid, NIL) :
 					 generate_qualified_relation_name(trigrec->tgrelid));
+	/* end - ReqID:SRS-MYSQL-CASE */
 
 	if (OidIsValid(trigrec->tgconstraint))
 	{
@@ -1684,6 +1689,20 @@ pg_get_statisticsobj_worker(Oid statextid, bool columns_only, bool missing_ok)
 	if (!columns_only)
 	{
 		nsp = get_namespace_name(statextrec->stxnamespace);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_get_objnameinfo_hook && mysql_switch_hook && mysql_switch_hook())
+		{
+			char	*objname;
+			char	*schema;
+			ObjectAddress address;
+
+			ObjectAddressSet(address, NamespaceRelationId, statextrec->stxnamespace);
+			mysql_get_objnameinfo_hook(address, &objname, &schema);
+			if (objname)
+				nsp = objname;
+		}
+		/* end - ReqID:SRS-MYSQL-CASE */
+
 		appendStringInfo(&buf, "CREATE STATISTICS %s",
 						 quote_qualified_identifier(nsp,
 													NameStr(statextrec->stxname)));
@@ -2761,6 +2780,10 @@ pg_get_serial_sequence(PG_FUNCTION_ARGS)
 
 	/* Look up table name.  Can't lock it - we might not have privileges. */
 	tablerv = makeRangeVarFromNameList(textToQualifiedNameList(tablename));
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_lower_hook && mysql_rvar_case_hook && mysql_lower_hook())
+		mysql_rvar_case_hook(tablerv);
+	/* End - ReqID:SRS-MYSQL-CASE */
 	tableOid = RangeVarGetRelid(tablerv, NoLock, false);
 
 	/* Get the number of the column */
@@ -2914,6 +2937,23 @@ pg_get_functiondef_internal(PG_FUNCTION_ARGS)
 	 * replaced.
 	 */
 	nsp = get_namespace_name(proc->pronamespace);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_get_objnameinfo_hook && mysql_switch_hook())
+	{
+		char	   *fucname = NULL;
+		char	   *fucschema = NULL;
+		ObjectAddress address;
+
+		ObjectAddressSet(address, ProcedureRelationId, proc->oid);
+		mysql_get_objnameinfo_hook(address, &fucname, &fucschema);
+		if (fucname)
+			name = pstrdup(fucname);
+		if (fucschema)
+			nsp = pstrdup(fucschema);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	appendStringInfo(&buf, "CREATE OR REPLACE %s %s(",
 					 isfunction ? "FUNCTION" : "PROCEDURE",
 					 quote_qualified_identifier(nsp, name));
@@ -12438,6 +12478,10 @@ generate_relation_name(Oid relid, List *namespaces)
 	char	   *relname;
 	char	   *nspname;
 	char	   *result;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *objrelname = NULL;
+	char	   *objrelschname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	tp = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
 	if (!HeapTupleIsValid(tp))
@@ -12475,6 +12519,22 @@ generate_relation_name(Oid relid, List *namespaces)
 	else
 		nspname = NULL;
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+	{
+		ObjectAddress address;
+
+		ObjectAddressSet(address, RelationRelationId, relid);
+		mysql_get_objnameinfo_hook(address, &objrelname, &objrelschname);
+		if (objrelname != NULL && objrelschname != NULL)
+		{
+			relname = objrelname;
+			if (need_qual && nspname != NULL)
+				nspname = objrelschname;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	result = quote_qualified_identifier(nspname, relname);
 
 	ReleaseSysCache(tp);
@@ -12496,6 +12556,10 @@ generate_qualified_relation_name(Oid relid)
 	char	   *relname;
 	char	   *nspname;
 	char	   *result;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *objrelname = NULL;
+	char	   *objrelschname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	tp = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
 	if (!HeapTupleIsValid(tp))
@@ -12508,6 +12572,20 @@ generate_qualified_relation_name(Oid relid)
 		elog(ERROR, "cache lookup failed for namespace %u",
 			 reltup->relnamespace);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+	{
+		ObjectAddress address;
+
+		ObjectAddressSet(address, RelationRelationId, relid);
+		mysql_get_objnameinfo_hook(address, &objrelname, &objrelschname);
+		if (objrelname != NULL && objrelschname != NULL)
+		{
+			relname = objrelname;
+			nspname = objrelschname;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	result = quote_qualified_identifier(nspname, relname);
 
 	ReleaseSysCache(tp);
@@ -12549,6 +12627,10 @@ generate_function_name(Oid funcid, int nargs, List *argnames, Oid *argtypes,
 	Oid			p_vatype;
 	Oid		   *p_true_typeids;
 	bool		force_qualify = false;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *procname = NULL;
+	char	   *proschname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcid));
 	if (!HeapTupleIsValid(proctup))
@@ -12616,6 +12698,22 @@ generate_function_name(Oid funcid, int nargs, List *argnames, Oid *argtypes,
 		nspname = NULL;
 	else
 		nspname = get_namespace_name(procform->pronamespace);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+	{
+		ObjectAddress address;
+
+		ObjectAddressSet(address, ProcedureRelationId, funcid);
+		mysql_get_objnameinfo_hook(address, &procname, &proschname);
+		if (procname != NULL && proschname != NULL)
+		{
+			proname = procname;
+			if (nspname != NULL)
+				nspname = proschname;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	result = quote_qualified_identifier(nspname, proname);
 
@@ -13144,6 +13242,10 @@ pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate **tupstore,
 		RangeVar   *rel;
 
 		DeconstructQualifiedName(typeName->names, &schema_name, &relname);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+			relname = mysql_string_case_hook(relname);
+		/* End - ReqID:SRS-MYSQL-CASE */
 		rel = makeRangeVar(schema_name, relname, typeName->location);
 		relid = RangeVarGetRelid(rel, NoLock, false);
 		is_rowtype = true;
@@ -13306,3 +13408,57 @@ pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate **tupstore,
 	pfree(typeName);
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+/*
+ * quote_qualified_identifier	- Quote a possibly-qualified identifier
+ *
+ * Return a name of the form qualifier.ident, or just ident if qualifier
+ * is NULL, quoting each component if necessary.  The result is palloc'd.
+ */
+char *
+mysquote_qualified_identifier(const char *qualifier,
+																				const char *ident)
+{
+		StringInfoData buf;
+
+		initStringInfo(&buf);
+
+		if (qualifier)
+				appendStringInfo(&buf, "%s.", qualifier);
+		appendStringInfoString(&buf, ident);
+
+		return buf.data;
+}
+
+/*
+ * quote_qualified_identifier	- Quote a possibly-qualified identifier
+ *
+ * Return a name of the form qualifier.ident, or just ident if qualifier
+ * is NULL, quoting each component if necessary.  The result is palloc'd.
+ */
+char *
+mysquote_qualified_identifierrestrict(const char *qualifier,
+																								   const char *ident,
+																								   bool objnsp,
+																								   bool objname)
+{
+		StringInfoData buf;
+
+		initStringInfo(&buf);
+		if (qualifier)
+		{
+				if (objnsp)
+						appendStringInfo(&buf, "%s.", qualifier);
+				else
+						appendStringInfo(&buf, "%s.", quote_identifier(qualifier));
+		}
+
+		if (objname)
+				appendStringInfoString(&buf, ident);
+		else
+				appendStringInfoString(&buf, quote_identifier(ident));
+
+		return buf.data;
+}
+/* End - ReqID:SRS-MYSQL-CASE */

@@ -60,6 +60,9 @@
 #include "access/table.h"
 #include "access/heapam.h"
 /* End - ReqID:SRS-SQL-DBLINK */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* Hook for plugins to get control in get_attavgwidth() */
 get_attavgwidth_hook_type get_attavgwidth_hook = NULL;
@@ -2189,9 +2192,32 @@ get_func_support(Oid funcid)
 Oid
 get_relname_relid(const char *relname, Oid relnamespace)
 {
-	return GetSysCacheOid2(RELNAMENSP, Anum_pg_class_oid,
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	Oid relid = InvalidOid;
+
+	relid = GetSysCacheOid2(RELNAMENSP, Anum_pg_class_oid,
 						   PointerGetDatum(relname),
 						   ObjectIdGetDatum(relnamespace));
+
+	if (!OidIsValid(relid) && mysql_lower_hook &&
+		mysql_string_case_hook && mysql_lower_hook())
+	{
+		HeapTuple tup;
+		tup = SearchSysCache2(RELNAMENSP,
+						PointerGetDatum(mysql_string_case_hook(pstrdup(relname))),
+						ObjectIdGetDatum(relnamespace));
+		if (HeapTupleIsValid(tup))
+		{
+			Form_pg_class pgclass = (Form_pg_class)GETSTRUCT(tup);
+			if (pgclass->relkind != 'i' || pgclass->relkind != 'I')
+				relid = pgclass->oid;
+
+			ReleaseSysCache(tup);
+		}
+	}
+
+	return relid;
+	/* End - ReqID:SRS-MYSQL-CASE */
 }
 
 #ifdef NOT_USED

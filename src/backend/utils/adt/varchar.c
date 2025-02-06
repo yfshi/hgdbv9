@@ -28,6 +28,9 @@
 #include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* common code for bpchartypmodin and varchartypmodin */
 static int32
@@ -754,6 +757,17 @@ bpchareq(PG_FUNCTION_ARGS)
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = (varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
+							 collid) == 0);
+		PG_FREE_IF_COPY(arg1, 0);
+		PG_FREE_IF_COPY(arg2, 1);
+
+		PG_RETURN_BOOL(result);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	if (locale && locale->deterministic)
 	{
 		/*
@@ -796,6 +810,17 @@ bpcharne(PG_FUNCTION_ARGS)
 	len1 = bcTruelen(arg1);
 	len2 = bcTruelen(arg2);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = (varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
+							 collid) != 0);
+		PG_FREE_IF_COPY(arg1, 0);
+		PG_FREE_IF_COPY(arg2, 1);
+
+		PG_RETURN_BOOL(result);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	if (locale && locale->deterministic)
 	{
 		/*
@@ -1001,6 +1026,18 @@ hashbpchar(PG_FUNCTION_ARGS)
 	keydata = VARDATA_ANY(key);
 	keylen = bcTruelen(key);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = hash_text_by_builtin_colltions((unsigned char *)VARDATA_ANY(key),
+												 keylen, collid);
+		/* Avoid leaking memory for toasted inputs */
+		PG_FREE_IF_COPY(key, 0);
+
+		return result;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
 
@@ -1074,6 +1111,17 @@ hashbpcharextended(PG_FUNCTION_ARGS)
 
 	keydata = VARDATA_ANY(key);
 	keylen = bcTruelen(key);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = hash_any_extended((unsigned char *) keydata, keylen,
+								   PG_GETARG_INT64(1));
+
+		PG_FREE_IF_COPY(key, 0);
+		return result;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);

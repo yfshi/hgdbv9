@@ -40,6 +40,9 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 static char *ChooseExtendedStatisticName(const char *name1, const char *name2,
@@ -163,8 +166,14 @@ CreateStatistics(CreateStatsStmt *stmt)
 	 * it.
 	 */
 	if (stmt->defnames)
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	{
 		namespaceId = QualifiedNameGetCreationNamespace(stmt->defnames,
 														&namestr);
+		if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->defnames))
+				namestr = strVal(llast(stmt->defnames));
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		namespaceId = RelationGetNamespace(rel);

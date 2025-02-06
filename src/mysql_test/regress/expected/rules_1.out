@@ -2690,34 +2690,34 @@ pg_views| SELECT n.nspname AS schemaname,
 rtest_v1| SELECT rtest_t1.a,
     rtest_t1.b
    FROM rtest_t1;
-rtest_vcomp| SELECT x.part,
-    (x.size * y.factor) AS size_in_cm
-   FROM rtest_comp x,
-    rtest_unitfact y
-  WHERE (x.unit = y.unit);
-rtest_vview1| SELECT x.a,
-    x.b
-   FROM rtest_view1 x
+rtest_vcomp| SELECT "X".part,
+    ("X".size * "Y".factor) AS size_in_cm
+   FROM rtest_comp "X",
+    rtest_unitfact "Y"
+  WHERE ("X".unit = "Y".unit);
+rtest_vview1| SELECT "X".a,
+    "X".b
+   FROM rtest_view1 "X"
   WHERE (0 < ( SELECT count(*) AS count
-           FROM rtest_view2 y
-          WHERE (y.a = x.a)));
+           FROM rtest_view2 "Y"
+          WHERE ("Y".a = "X".a)));
 rtest_vview2| SELECT rtest_view1.a,
     rtest_view1.b
    FROM rtest_view1
   WHERE rtest_view1.v;
-rtest_vview3| SELECT x.a,
-    x.b
-   FROM rtest_vview2 x
+rtest_vview3| SELECT "X".a,
+    "X".b
+   FROM rtest_vview2 "X"
   WHERE (0 < ( SELECT count(*) AS count
-           FROM rtest_view2 y
-          WHERE (y.a = x.a)));
-rtest_vview4| SELECT x.a,
-    x.b,
-    count(y.a) AS refcount
-   FROM rtest_view1 x,
-    rtest_view2 y
-  WHERE (x.a = y.a)
-  GROUP BY x.a, x.b;
+           FROM rtest_view2 "Y"
+          WHERE ("Y".a = "X".a)));
+rtest_vview4| SELECT "X".a,
+    "X".b,
+    count("Y".a) AS refcount
+   FROM rtest_view1 "X",
+    rtest_view2 "Y"
+  WHERE ("X".a = "Y".a)
+  GROUP BY "X".a, "X".b;
 rtest_vview5| SELECT rtest_view1.a,
     rtest_view1.b,
     rtest_viewfunc1(rtest_view1.a) AS refcount
@@ -3423,7 +3423,7 @@ View definition:
  SELECT rule_t1.a
    FROM rule_t1;
 Rules:
- newinsertrule AS
+ "NewInsertRule" AS
     ON INSERT TO rule_v1 DO INSTEAD  INSERT INTO rule_t1 (a)
   VALUES (new.a)
 
@@ -3431,7 +3431,7 @@ Rules:
 -- error conditions for alter rename rule
 --
 ALTER RULE InsertRule ON rule_v1 RENAME TO NewInsertRule; -- doesn't exist
-ERROR:  rule "insertrule" for relation "rule_v1" does not exist
+ERROR:  rule "InsertRule" for relation "rule_v1" does not exist
 ALTER RULE NewInsertRule ON rule_v1 RENAME TO "_RETURN"; -- already exists
 ERROR:  rule "_RETURN" for relation "rule_v1" already exists
 ALTER RULE "_RETURN" ON rule_v1 RENAME TO abc; -- ON SELECT rule cannot be renamed
@@ -3734,7 +3734,7 @@ SELECT pg_get_functiondef('func_with_set_params()'::regprocedure);
   RETURNS integer                                                                                                                                                        +
   LANGUAGE sql                                                                                                                                                           +
   IMMUTABLE STRICT                                                                                                                                                       +
-  SET search_path TO 'pg_catalog'                                                                                                                                        +
+  SET search_path TO 'PG_CATALOG'                                                                                                                                        +
   SET extra_float_digits TO '2'                                                                                                                                          +
   SET work_mem TO '4MB'                                                                                                                                                  +
   SET "DateStyle" TO 'iso, mdy'                                                                                                                                          +

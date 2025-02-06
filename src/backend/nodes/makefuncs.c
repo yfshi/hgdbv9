@@ -20,6 +20,9 @@
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "utils/lsyscache.h"
+/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-SRS-MYSQL-CASE */
 
 
 /*
@@ -561,6 +564,13 @@ DefElem *
 makeDefElem(char *name, Node *arg, int location)
 {
 	DefElem    *res = makeNode(DefElem);
+
+	/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	{
+		name = mysql_string_case_hook (name);
+	}
+	/* End - ReqID:SRS-SRS-MYSQL-CASE */
 
 	res->defnamespace = NULL;
 	res->defname = name;

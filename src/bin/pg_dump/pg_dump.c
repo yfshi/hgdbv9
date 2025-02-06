@@ -725,7 +725,6 @@ main(int argc, char **argv)
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	ConnectDatabasefordatabase_mode(&dopt.cparams, false, NULL);
 	/* END - ReqID:SRS-CMD-PGDUMP */
-
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP SRS-MYSQL-PGDUMP */
 	/* The reason for checking here is to provide
 	 * different option values according to
@@ -805,6 +804,9 @@ main(int argc, char **argv)
 	}
 	dM->setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	GetMySQLCompPara(fout);
+	/* End - ReqID:SRS-MYSQL-CASE */
 	/*
 	 * Disable security label support if server version < v9.1.x (prevents
 	 * access to nonexistent pg_seclabel catalog)

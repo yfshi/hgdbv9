@@ -20,6 +20,13 @@ extern char *downcase_truncate_identifier(const char *ident, int len,
 extern char *downcase_identifier(const char *ident, int len,
 								 bool warn, bool truncate);
 
+/* BEGIN - MySQL case sensitive indentify */
+extern char *original_truncate_identifier(const char *ident, int len,
+										   bool warn);
+extern char *original_identifier(const char *ident, int len,
+								 bool warn, bool truncate);
+/* END - MySQL case sensitive indentify */
+
 /* BEGIN - case sensitive indentify */
 extern char *upcase_identifier(const char *ident, int len,
 							   bool warn, bool truncate);

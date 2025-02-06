@@ -41,6 +41,10 @@
 #include "utils/pg_locale.h"
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 PGDLLIMPORT nlssort_hook_type nlssort_hook;
 
@@ -180,6 +184,10 @@ static void text_format_string_conversion(StringInfo buf, char conversion,
 										  int flags, int width);
 static void text_format_append_string(StringInfo buf, const char *str,
 									  int flags, int width);
+/* Begin - ReqID:SRS-MYSQL-CASE */
+static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup);
+static int varstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup);
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 /*****************************************************************************
@@ -1241,16 +1249,27 @@ text_position_setup(text *t1, text *t2, Oid collid, TextPositionState *state)
 	int			len1 = VARSIZE_ANY_EXHDR(t1);
 	int			len2 = VARSIZE_ANY_EXHDR(t2);
 	pg_locale_t mylocale = 0;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	bool		mysqlcollate = false;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	check_collation_set(collid);
 
-	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
-		mylocale = pg_newlocale_from_collation(collid);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+		mysqlcollate = true;
 
-	if (mylocale && !mylocale->deterministic)
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("nondeterministic collations are not supported for substring searches")));
+	if (!mysqlcollate)
+	{
+		if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
+			mylocale = pg_newlocale_from_collation(collid);
+
+		if (mylocale && !mylocale->deterministic)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("nondeterministic collations are not supported for substring searches")));
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	Assert(len1 > 0);
 	Assert(len2 > 0);
@@ -1603,6 +1622,12 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
 	}
 	/* End - SRS-SQL-NLSSORT */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collid))
+	{
+		result = varstr_cmp_by_builtin_collations(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		char		a1buf[TEXTBUFLEN];
@@ -1834,6 +1859,14 @@ texteq(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = texteq_with_collation(fcinfo);
+		PG_RETURN_BOOL(result);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		locale = pg_newlocale_from_collation(collid);
 
@@ -1889,6 +1922,14 @@ textne(PG_FUNCTION_ARGS)
 	pg_locale_t locale = 0;
 
 	check_collation_set(collid);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		result = !(texteq_with_collation(fcinfo));
+		PG_RETURN_BOOL(result);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		locale = pg_newlocale_from_collation(collid);
@@ -2003,6 +2044,26 @@ text_starts_with(PG_FUNCTION_ARGS)
 				len2;
 
 	check_collation_set(collid);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (is_mysql_format_collation(collid))
+	{
+		text	   *targ1;
+		text	   *targ2;
+
+		len1 = toast_raw_datum_size(arg1);
+		len2 = toast_raw_datum_size(arg2);
+		targ1 = text_substring(arg1, 1, len2, false);
+		targ2 = DatumGetTextPP(arg2);
+
+		if (len2 > len1)
+			result = false;
+		else
+			result = (text_cmp(targ1, targ2, collid) == 0);
+
+		PG_RETURN_BOOL(result);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		mylocale = pg_newlocale_from_collation(collid);
@@ -2129,6 +2190,18 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		collate_c = true;
 	}
 	/* End - SRS-SQL-NLSSORT */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collid))
+	{
+		if (typid != BPCHAROID)
+			ssup->comparator = bpvarstrfastcmp_builtin;
+		else
+			ssup->comparator = varstrfastcmp_builtin;
+
+		//collate_builtin = true;
+		abbreviate = false;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		/*
@@ -3999,7 +4072,12 @@ SplitIdentifierString(char *rawstring, char separator,
 			 * something about this someday.
 			 */
 			len = endp - curname;
-			downname = downcase_truncate_identifier(curname, len, false);
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+				downname = original_truncate_identifier(curname, len, false);
+			else
+				downname = downcase_truncate_identifier(curname, len, false);
+			/* End - ReqID:SRS-MYSQL-CASE */
 			Assert(strlen(downname) <= len);
 			strncpy(curname, downname, len);	/* strncpy is required here */
 			pfree(downname);
@@ -7251,3 +7329,54 @@ invalid_pair:
 			 errmsg("invalid Unicode surrogate pair")));
 	PG_RETURN_NULL();			/* keep compiler quiet */
 }
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
+{
+	BpChar* arg1 = DatumGetBpCharPP(x);
+	BpChar* arg2 = DatumGetBpCharPP(y);
+	int len1, len2;
+	int result;
+	char* a1p = VARDATA_ANY(arg1);
+	char* a2p = VARDATA_ANY(arg2);
+
+	len1 = bpchartruelen(a1p, VARSIZE_ANY_EXHDR(arg1));
+	len2 = bpchartruelen(a2p, VARSIZE_ANY_EXHDR(arg2));
+
+	result = varstr_cmp_by_builtin_collations(a1p, len1, a2p, len2, ssup->ssup_collation);
+
+	/* We can't afford to leak memory here. */
+	if (PointerGetDatum(arg1) != x)
+		pfree(arg1);
+
+	if (PointerGetDatum(arg2) != y)
+		pfree(arg2);
+
+	return result;
+}
+
+static int varstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
+{
+	text* arg1 = DatumGetTextPP(x);
+	text* arg2 = DatumGetTextPP(y);
+	char *a1p = NULL, *a2p = NULL;
+	size_t len1, len2;
+	int result;
+
+	a1p = VARDATA_ANY(arg1);
+	a2p = VARDATA_ANY(arg2);
+	len1 = VARSIZE_ANY_EXHDR(arg1);
+	len2 = VARSIZE_ANY_EXHDR(arg2);
+
+	result = varstr_cmp_by_builtin_collations(a1p, len1, a2p, len2, ssup->ssup_collation);
+
+	/* We can't afford to leak memory here. */
+	if (PointerGetDatum(arg1) != x)
+		pfree(arg1);
+
+	if (PointerGetDatum(arg2) != y)
+		pfree(arg2);
+
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-CASE */

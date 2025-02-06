@@ -45,6 +45,9 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* END - case sensitive indentify */
+/* BEGIN - mysql case sensitive indentify */
+#include "mysql_parser/mys_case_sensitive.h"
+/* END - mysql case sensitive indentify */
 }
 
 %{
@@ -855,7 +858,10 @@ other			.
 					/* throw back all but the initial u/U */
 					yyless(1);
 					/* and treat it as {identifier} */
-					ident = downcase_truncate_identifier(yytext, yyleng, true);
+					if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+						ident = original_truncate_identifier(yytext, yyleng, true);
+					else
+						ident = downcase_truncate_identifier(yytext, yyleng, true);
 					yylval->str = ident;
 					return IDENT;
 				}
@@ -1078,7 +1084,10 @@ other			.
 					 * No.  Convert the identifier to lower case, and truncate
 					 * if necessary.
 					 */
-					ident = downcase_truncate_identifier(yytext, yyleng, true);
+					if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+						ident = original_truncate_identifier(yytext, yyleng, true);
+					else
+						ident = downcase_truncate_identifier(yytext, yyleng, true);
 					yylval->str = ident;
 					return IDENT;
 				}

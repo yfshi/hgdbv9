@@ -45,6 +45,9 @@
 #include "utils/fmgroids.h"
 #include "access/htup_details.h"
 /* End - BUGID:0000536 */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* GUC parameters */
 bool		Transform_null_equals = false;
@@ -805,6 +808,14 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				Assert(IsA(field1, String));
 				relname = strVal(field1);
 
+				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
+				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+					relname = mysql_string_case_hook(relname);
+				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
+					!pg_strcasecmp(relname, "excluded"))
+					relname = mysql_string_case_hook(relname);
+				/* End - ReqID:SRS-SRS-MYSQL-CASE */
+
 				/* Locate the referenced nsitem */
 				nsitem = refnameNamespaceItem(pstate, nspname, relname,
 											  cref->location,
@@ -875,6 +886,17 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				nspname = strVal(field1);
 				Assert(IsA(field2, String));
 				relname = strVal(field2);
+
+				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
+				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+				{
+					nspname = mysql_string_case_hook(nspname);
+					relname = mysql_string_case_hook(relname);
+				}
+				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
+					!pg_strcasecmp(relname, "excluded"))
+					relname = mysql_string_case_hook(relname);
+				/* End - ReqID:SRS-SRS-MYSQL-CASE */
 
 				/* Locate the referenced nsitem */
 				nsitem = refnameNamespaceItem(pstate, nspname, relname,
@@ -962,6 +984,17 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				Assert(IsA(field3, String));
 				relname = strVal(field3);
 
+				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
+				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook()
+					&& !pg_strcasecmp(relname, "excluded"))
+				{
+					nspname = mysql_string_case_hook(nspname);
+					relname = mysql_string_case_hook(relname);
+				}
+				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
+					!pg_strcasecmp(relname, "excluded"))
+					relname = mysql_string_case_hook(relname);
+				/* End - ReqID:SRS-SRS-MYSQL-CASE */
 				/*
 				 * We check the catalog name and then ignore it.
 				 */
@@ -1824,6 +1857,42 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 		}
 	}
 	/* End - BUG#M0000376 */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (fn->funcname != NIL && mysql_string_case_hook &&
+		mysql_lower_hook && mysql_lower_hook())
+	{
+		if (list_length(fn->funcname) == 1 ||
+			(list_length(fn->funcname) == 2 && IsA(linitial(fn->funcname), String) &&
+			 !pg_strcasecmp(strVal(linitial(fn->funcname)), "pg_catalog")))
+		{
+			if (IsA(llast(fn->funcname), String) &&
+				(!pg_strcasecmp(strVal(llast(fn->funcname)), "nextval") ||
+				 !pg_strcasecmp(strVal(llast(fn->funcname)), "currval")))
+			{
+				if (fn->args != NIL && list_length(fn->args) == 1 &&
+					IsA(llast(fn->args), A_Const))
+				{
+					A_Const *aconst = (A_Const *)llast(fn->args);
+
+					if (aconst->val.type == T_String)
+					aconst->val.val.str = mysql_string_case_hook(aconst->val.val.str);
+				}
+			}
+			else if (IsA(llast(fn->funcname), String) &&
+					 (!pg_strcasecmp(strVal(llast(fn->funcname)), "setval")))
+			{
+				if (fn->args != NIL && (list_length(fn->args) == 2 || list_length(fn->args) == 3) &&
+					IsA(linitial(fn->args), A_Const))
+				{
+					A_Const *aconst = (A_Const *)linitial(fn->args);
+					if (aconst->val.type == T_String)
+						aconst->val.val.str = mysql_string_case_hook(aconst->val.val.str);
+				}
+			}
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Transform the list of arguments ... */
 	targs = NIL;

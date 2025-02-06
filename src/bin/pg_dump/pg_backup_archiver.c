@@ -584,7 +584,7 @@ RestoreArchive(Archive *AHX)
 		RestoreArchiveOracle(AHX);
 	/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
 	else if (database_mode == DB_MYSQL)
-			RestoreArchiveMysql(AHX);
+		RestoreArchiveMysql(AHX);
 	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		RestoreArchiveNative(AHX);
@@ -2126,6 +2126,27 @@ RestoreArchiveMysql(Archive *AHX)
 	 */
 	_doSetFixedOutputState(AH);
 
+	if(!native_PG)
+	{
+		getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
+		getDatabaseMode(((ArchiveHandle *) AHX)->connection);
+	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if(DB_MYSQL == database_mode && AH->compatible_mode != NULL &&
+		strcmp(AH->compatible_mode, "m") == 0)
+	{
+		if (AH->caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_ZERO ||
+			AH->caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_ONE ||
+			AH->caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_TWO)
+		{
+			ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
+			ahprintf(AH, "set lower_case_table_names = %d;\n",
+					 AH->caselowernum);
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	AH->stage = STAGE_PROCESSING;
 
 	/*
@@ -2835,6 +2856,12 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 	newToc->compatible_mode = opts->compatible_mode ? pg_strdup(opts->compatible_mode) : NULL;	/* ReqID:SRS-CMD-PGDUMP */
 	newToc->d.oracle.User_binary_upgrade = opts->User_binary_upgrade ? pg_strdup(opts->User_binary_upgrade) : NULL; /* BUGZ1398 */
 	newToc->d.oracle.usertype = opts->user_type ? pg_strdup(opts->user_type) : NULL;	/* BUGZ1408 */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (opts->caselowernum == 0 || opts->caselowernum == 1 || opts->caselowernum == 2)
+		newToc->d.mysql.caselowernum = opts->caselowernum;
+	else
+		newToc->d.mysql.caselowernum = 3;
+	/* End - ReqID:SRS-MYSQL-CASE */
 	if (opts->nDeps > 0)
 	{
 		newToc->dependencies = (DumpId *) pg_malloc(opts->nDeps * sizeof(DumpId));
@@ -3990,6 +4017,11 @@ _allocAH(const char *FileSpec, const ArchiveFormat fmt,
 
 	AH->version = K_VERS_SELF;
 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	AH->compatible_mode = NULL;
+	AH->caselowernum = 3;	/* The normal range of values ​​is 0, 1, 2 */
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	/* initialize for backwards compatible string processing */
 	AH->public.encoding = 0;	/* PG_SQL_ASCII */
 	AH->public.std_strings = false;
@@ -4316,6 +4348,10 @@ WriteToc(ArchiveHandle *AH)
 		/* BEGIN - BUGZ1398 */
 		WriteStr(AH, te->d.oracle.User_binary_upgrade);
 		/* END - BUGZ1398 */
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (te->compatible_mode != NULL && !strcmp(te->compatible_mode, "m"))
+			WriteInt(AH, te->d.mysql.caselowernum);
+		/* End - ReqID:SRS-MYSQL-CASE */
 		/* Dump list of dependencies */
 		for (i = 0; i < te->nDeps; i++)
 		{
@@ -4444,6 +4480,10 @@ ReadToc(ArchiveHandle *AH)
 		if (AH->version >= K_VERS_1_17)
 			te->d.oracle.User_binary_upgrade = ReadStr(AH);
 		/* END - BUGZ1398 */
+		 /* Begin - ReqID:SRS-MYSQL-CASE */
+		if (te->compatible_mode != NULL && !strcmp(te->compatible_mode, "m"))
+			te->d.mysql.caselowernum = ReadInt(AH);
+		/* End - ReqID:SRS-MYSQL-CASE */
 		/* Read TOC entry dependencies */
 		if (AH->version >= K_VERS_1_5)
 		{
@@ -5411,6 +5451,9 @@ static void
 _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 {
 	RestoreOptions *ropt = AH->public.ropt;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	//bool			dumpparachange = false;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Select owner, schema, tablespace and default AM as necessary */
 	_becomeOwner(AH, te);
@@ -5491,6 +5534,42 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 		}
 		/* END - ReqID:SRS-MISC-USER */
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (database_mode == DB_MYSQL && te->defn != NULL && strlen(te->defn) > 0)
+	{
+		if (te->compatible_mode != NULL)
+		{
+			if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER
+					&& strcmp(te->desc, "ACL") != 0)
+			{
+				ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
+				compatible_mode = PG_PARSER;
+				if (AH->format == archNull || AH->connection == NULL)
+					ahprintf(AH, "\\parser\n\n");
+			}
+			else if (strcmp(pg_strdup(te->compatible_mode),"m") == 0 && compatible_mode != MYS_PARSER)
+			{
+				ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
+				compatible_mode = MYS_PARSER;
+				if (AH->format == archNull || AH->connection == NULL)
+					ahprintf(AH, "\\parser\n\n");
+
+				if (caselowernum != te->d.mysql.caselowernum &&
+					(te->d.mysql.caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_ZERO ||
+					 te->d.mysql.caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_ONE ||
+					 te->d.mysql.caselowernum == MYS_LOWRE_CASE_TABLE_NAMES_TWO))
+				{
+					ahprintf(AH, "set lower_case_table_names = %d;\n", te->d.mysql.caselowernum);
+					caselowernum = te->d.mysql.caselowernum;
+				}
+			}
+			else
+				;
+		}
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	/*
 	 * Actually print the definition.
 	 *
@@ -5572,41 +5651,6 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				}
 				/* END - ReqID:SRS-CMD-PGDUMP */
 			}
-
-			/* BEGIN - ReqID:SRS-MYSQL-PGDUMP */
-			/*
-			 * fix a non-existent error，keep the code for the following reasons.
-			 * 1. This code may be used later. When splicing alter, the syntax is 
-			 * different from the native one. If it is used under the native parser, 
-			 * the syntax will not be recognized.
-			 * 2. When dumping SQL statements, the parser status may be switched.
-			 */
-			/*if (database_mode == DB_MYSQL && te->compatible_mode != NULL)
-			{
-				if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER
-						&& strcmp(te->desc, "ACL") != 0)
-				{
-					ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-					compatible_mode = PG_PARSER;
-					if (AH->format == archNull || AH->connection == NULL)
-						ahprintf(AH, "\\parser\n\n");
-				}
-				else if (strcmp(pg_strdup(te->compatible_mode),"m") == 0 && compatible_mode != MYS_PARSER)
-				{
-					ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
-					compatible_mode = MYS_PARSER;
-					if (AH->format == archNull || AH->connection == NULL)
-						ahprintf(AH, "\\parser\n\n");
-				}
-				else if (strcmp(pg_strdup(te->compatible_mode),"p") == 0 && compatible_mode != PG_PARSER && strcmp(te->desc, "ACL") == 0)
-				{
-					ahprintf(AH, "set ivorysql.compatible_mode to mysql;\n");
-					compatible_mode = MYS_PARSER;
-					if (AH->format == archNull || AH->connection == NULL)
-						ahprintf(AH, "\\parser\n\n");
-				}
-			}*/
-			/* END - ReqID:SRS-MYSQL-PGDUMP */
 
 			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 			if (strcmp(te->desc, "VIEW") == 0 && database_mode == DB_ORACLE)	/* ReqID:SRS-CMD-PGDUMP */
@@ -5910,6 +5954,18 @@ WriteHead(ArchiveHandle *AH)
 	if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))			/*  bug#M0000261 */
 		AH->WriteBytePtr(AH, 'O');
 	/* END - bug#M0000238 */
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (database_mode == DB_MYSQL)
+	{
+		if (AH->compatible_mode != NULL)
+			WriteStr(AH, AH->compatible_mode);
+		else
+			WriteStr(AH, "None");
+		WriteInt(AH, AH->caselowernum);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
 	AH->WriteBytePtr(AH, ARCHIVE_MAJOR(AH->version));
 	AH->WriteBytePtr(AH, ARCHIVE_MINOR(AH->version));
 	AH->WriteBytePtr(AH, ARCHIVE_REV(AH->version));
@@ -5977,6 +6033,14 @@ ReadHead(ArchiveHandle *AH)
 			fatal("did not find magic string in file header");
 		/* END - ReqID:SRS-CMD-PGDUMP */
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (database_mode == DB_MYSQL)
+	{
+		AH->compatible_mode = ReadStr(AH);
+		AH->caselowernum = ReadInt(AH);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	tmp1 = AH->ReadBytePtr(AH);
 

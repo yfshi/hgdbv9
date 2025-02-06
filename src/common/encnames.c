@@ -196,6 +196,11 @@ static const pg_encname pg_encname_tbl[] =
 	{
 		"utf8", PG_UTF8
 	},							/* alias for UTF8 */
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	{
+		"utf8mb4", PG_UTF8
+	},							/* alias for UTF8 */
+	/* End - ReqID:SRS-MYSQL-CASE */
 	{
 		"vscii", PG_WIN1258
 	},							/* alias for WIN1258 */

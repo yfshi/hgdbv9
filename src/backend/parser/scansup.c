@@ -230,3 +230,39 @@ scanner_isspace(char ch)
 		return true;
 	return false;
 }
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+char *
+original_truncate_identifier(const char *ident, int len, bool warn)
+{
+	return original_identifier(ident, len, warn, true);
+}
+
+/*
+ * a workhorse for original_truncate_identifier
+ */
+char *
+original_identifier(const char *ident, int len, bool warn, bool truncate)
+{
+	char	   *result;
+	int			i;
+
+	result = palloc(len + 1);
+
+	/*
+	 * Keep the string output as it is, without case conversion.
+	 */
+	for (i = 0; i < len; i++)
+	{
+		unsigned char ch = (unsigned char) ident[i];
+
+		result[i] = (char) ch;
+	}
+	result[i] = '\0';
+
+	if (i >= NAMEDATALEN && truncate)
+		truncate_identifier(result, i, warn);
+
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-CASE */

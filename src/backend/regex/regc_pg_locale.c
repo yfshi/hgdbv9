@@ -17,6 +17,9 @@
 
 #include "catalog/pg_collation.h"
 #include "utils/pg_locale.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * To provide as much functionality as possible on a variety of platforms,
@@ -238,6 +241,15 @@ pg_set_regex_collation(Oid collation)
 		pg_regex_locale = 0;
 		pg_regex_collation = C_COLLATION_OID;
 	}
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collation))
+	{
+		/* C/POSIX collations use this path regardless of database encoding */
+		pg_regex_strategy = PG_REGEX_LOCALE_C;
+		pg_regex_locale = 0;
+		pg_regex_collation = C_COLLATION_OID;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 	{
 		if (collation == DEFAULT_COLLATION_OID)

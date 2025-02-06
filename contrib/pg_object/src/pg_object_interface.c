@@ -120,6 +120,10 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 	/* Objects created in that compatibility mode */
 	if (compatible_db == ORA_PARSER)
 		compatible_mode = 'o';
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (compatible_db == MYS_PARSER)
+		compatible_mode = 'm';
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else
 		compatible_mode = 'p';
 

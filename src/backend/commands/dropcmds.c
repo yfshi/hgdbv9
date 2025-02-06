@@ -30,6 +30,9 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 static void does_not_exist_skipping(ObjectType objtype,

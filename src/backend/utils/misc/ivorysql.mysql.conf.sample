@@ -8,4 +8,4 @@
 					# (change requires restart)
 #mysql.port = 3306		# (change requires restart)
 
-shared_preload_libraries = 'libmysql_parser, pg_object'		# (change requires restart)
+shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'		# (change requires restart)

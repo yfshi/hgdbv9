@@ -48,6 +48,10 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
+
 
 static void AlterOpFamilyAdd(AlterOpFamilyStmt *stmt,
 							 Oid amoid, Oid opfamilyoid,
@@ -360,6 +364,10 @@ DefineOpClass(CreateOpClassStmt *stmt)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(stmt->opclassname,
 													 &opcname);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->opclassname))
+		opcname = strVal(llast(stmt->opclassname));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(namespaceoid, GetUserId(), ACL_CREATE);
@@ -779,6 +787,11 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(stmt->opfamilyname,
 													 &opfname);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->opfamilyname))
+		opfname = strVal(llast(stmt->opfamilyname));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(namespaceoid, GetUserId(), ACL_CREATE);

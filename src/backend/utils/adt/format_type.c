@@ -28,6 +28,12 @@
 #include "utils/syscache.h"
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "catalog/pg_namespace.h"
+#include "catalog/pg_class.h"
+
+/* End - ReqID:SRS-MYSQL-CASE */
 
 static char *printTypmod(const char *typname, int32 typmod, Oid typmodout);
 
@@ -476,10 +482,46 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			TypeIsVisible(type_oid))
 			nspname = NULL;
 		else
+		{
 			nspname = get_namespace_name_or_temp(typeform->typnamespace);
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+			{
+				ObjectAddress address;
+				char	   *schemaname = NULL;
+				char	   *schschname = NULL;
+
+				ObjectAddressSet(address, NamespaceRelationId, typeform->typnamespace);
+				mysql_get_objnameinfo_hook(address, &schemaname, &schschname);
+				if (schemaname != NULL &&
+					strcmp(nspname, schemaname) && !pg_strcasecmp(nspname, schemaname))
+				{
+					nspname = schemaname;
+				}
+			}
+			/* End - ReqID:SRS-MYSQL-CASE */
+		}
 
 		typname = NameStr(typeform->typname);
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+		{
+			ObjectAddress address;
+			char	   *schemaname = NULL;
+			char	   *objtypname = NULL;
 
+			if (OidIsValid(typeform->typrelid) && typeform->typrelid > FirstGenbkiObjectId)
+			{
+				ObjectAddressSet(address, RelationRelationId, typeform->typrelid);
+				mysql_get_objnameinfo_hook(address, &objtypname, &schemaname);
+				if (objtypname != NULL &&
+					strcmp(typname, objtypname) && !pg_strcasecmp(typname, objtypname))
+				{
+					typname = objtypname;
+				}
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 		buf = quote_qualified_identifier(nspname, typname);
 
 		if (with_typemod)

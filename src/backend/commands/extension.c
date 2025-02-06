@@ -92,6 +92,9 @@ typedef struct ExtensionControlFile
 	int			encoding;		/* encoding of the script file, or -1 */
 	List	   *requires;		/* names of prerequisite extensions */
 	char	   *parse_options;	/* can be create by pg/oracle parser  bug:z676,z776*/
+	bool		mys_case_switch;	/* When creating an extension,
+									 * whether mysql case is turned on,
+									 * the default is off. ReqID:SRS-MYSQL-CASE*/
 } ExtensionControlFile;
 
 /*
@@ -602,6 +605,16 @@ parse_extension_control_file(ExtensionControlFile *control,
 			control->parse_options = pstrdup(item->value);
 		}
 		/* end - bug:z676,z776  */
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		else if (strcmp(item->name, "mys_case_switch") == 0)
+		{
+			if (!parse_bool(item->value, &control->mys_case_switch))
+				ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							 errmsg("parameter \"%s\" requires a Boolean value",
+									item->name)));
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -637,6 +650,7 @@ read_extension_control_file(const char *extname)
 	control->trusted = false;
 	control->encoding = -1;
 	control->parse_options = NULL;		/* bug: z676,z776*/
+	control->mys_case_switch = false;	/* ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Parse the primary control file.
@@ -1421,7 +1435,10 @@ CreateExtensionInternal(char *extensionName,
 	ObjectAddress address;
 	ListCell   *lc;
 	volatile bool	modify_flag = false;	/* BUG#Z830 */
-
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	bool		mys_case_switch_change_flg = false;
+	bool		currentmyenable_case_switch = myenable_case_switch;
+	/* End - ReqID:SRS-MYSQL-CASE */
 	/*
 	 * Read the primary control file.  Note we assume that it does not contain
 	 * any non-ASCII data, so there is no need to worry about encoding at this
@@ -1485,6 +1502,27 @@ CreateExtensionInternal(char *extensionName,
 			}
 		}
 		/* end - bug:z676,z776 */
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (DB_MYSQL == database_mode && MYS_PARSER == compatible_db)
+		{
+			if (pcontrol->mys_case_switch == true)
+			{
+				if (myenable_case_switch == false)
+				{
+					SetConfigOption("mysql.enable_case_switch", "on", PGC_USERSET, PGC_S_OVERRIDE);
+					mys_case_switch_change_flg = true;
+				}
+			}
+			else
+			{
+				if (myenable_case_switch == true)
+				{
+					SetConfigOption("mysql.enable_case_switch", "off", PGC_USERSET, PGC_S_OVERRIDE);
+					mys_case_switch_change_flg = true;
+				}
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/*
 		* Determine the version to install
@@ -1708,6 +1746,21 @@ CreateExtensionInternal(char *extensionName,
 		/* End - BUG#Z830 */
 			modify_flag = false;
 		}
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (database_mode == DB_MYSQL &&
+			MYS_PARSER == compatible_db &&
+			mys_case_switch_change_flg)
+		{
+			/* The parameter is on at the beginning and should be on at the end.*/
+			if (currentmyenable_case_switch == true)
+				SetConfigOption("mysql.enable_case_switch", "on", PGC_USERSET, PGC_S_OVERRIDE);
+			else
+				SetConfigOption("mysql.enable_case_switch", "off", PGC_USERSET, PGC_S_OVERRIDE);
+
+			mys_case_switch_change_flg = false;
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 	PG_END_TRY();
 	/* end - bug:z676,z776 */
@@ -2248,8 +2301,8 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 	{
 		ExtensionVersionInfo *evi = (ExtensionVersionInfo *) lfirst(lc);
 		ExtensionControlFile *control;
-		Datum		values[9];
-		bool		nulls[9];
+		Datum		values[10];	/* ReqID:SRS-MYSQL-CASE */
+		bool		nulls[10];	/* ReqID:SRS-MYSQL-CASE */
 		ListCell   *lc2;
 
 		if (!evi->installable)
@@ -2297,6 +2350,10 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 		else
 			values[8] = CStringGetTextDatum(control->parse_options);
 		/* end - bug:z676,z776 */
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		values[9] = BoolGetDatum(control->mys_case_switch);
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 

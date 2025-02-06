@@ -54,6 +54,9 @@
 #include "utils/pg_locale.h"
 #include "utils/selfuncs.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 typedef enum
@@ -990,6 +993,10 @@ like_fixed_prefix(Const *patt_const, bool case_insensitive, Oid collation,
 		/* If case-insensitive, we need locale info */
 		if (lc_ctype_is_c(collation))
 			locale_is_c = true;
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		else if (is_mysql_format_collation(collation))
+			locale_is_c = true;
+		/* End - ReqID:SRS-MYSQL-CASE */
 		else if (collation != DEFAULT_COLLATION_OID)
 		{
 			if (!OidIsValid(collation))

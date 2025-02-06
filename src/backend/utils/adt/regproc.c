@@ -45,6 +45,10 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "catalog/pg_namespace.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 static void parseNameAndArgTypes(const char *string, bool allowNone,
@@ -150,6 +154,10 @@ regprocout(PG_FUNCTION_ARGS)
 	RegProcedure proid = PG_GETARG_OID(0);
 	char	   *result;
 	HeapTuple	proctup;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	char	   *procname = NULL;
+	char	   *proschname = NULL;
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (proid == InvalidOid)
 	{
@@ -163,6 +171,19 @@ regprocout(PG_FUNCTION_ARGS)
 	{
 		Form_pg_proc procform = (Form_pg_proc) GETSTRUCT(proctup);
 		char	   *proname = NameStr(procform->proname);
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+		{
+			ObjectAddress address;
+
+			ObjectAddressSet(address, ProcedureRelationId, proid);
+			mysql_get_objnameinfo_hook(address, &procname, &proschname);
+			if (procname != NULL && proname != NULL &&
+				strcmp(proname, procname) && !pg_strcasecmp(proname, procname))
+				proname = procname;
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/*
 		 * In bootstrap mode, skip the fancy namespace stuff and just return
@@ -186,7 +207,24 @@ regprocout(PG_FUNCTION_ARGS)
 				clist->oid == proid)
 				nspname = NULL;
 			else
+			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				char		   *schschname = NULL;
+				ObjectAddress	address;
+
 				nspname = get_namespace_name(procform->pronamespace);
+
+				if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+				{
+					proschname = NULL;
+					ObjectAddressSet(address, NamespaceRelationId, procform->pronamespace);
+					mysql_get_objnameinfo_hook(address, &proschname, &schschname);
+					if (proschname != NULL && nspname != NULL &&
+						strcmp(nspname, proschname) && !pg_strcasecmp(nspname, proschname))
+						nspname = proschname;
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
+			}
 
 			result = quote_qualified_identifier(nspname, proname);
 		}
@@ -371,6 +409,10 @@ format_procedure_extended(Oid procedure_oid, bits16 flags)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		char		**p_argtypeNames = NULL;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		char	   *procname = NULL;
+		char	   *proschname = NULL;
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/* XXX no support here for bootstrap mode */
 		Assert(!IsBootstrapProcessingMode());
@@ -386,6 +428,22 @@ format_procedure_extended(Oid procedure_oid, bits16 flags)
 			nspname = NULL;
 		else
 			nspname = get_namespace_name(procform->pronamespace);
+
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+		{
+			ObjectAddress address;
+
+			ObjectAddressSet(address, ProcedureRelationId, procedure_oid);
+			mysql_get_objnameinfo_hook(address, &procname, &proschname);
+			if (procname != NULL && proschname != NULL)
+			{
+				proname = procname;
+				if (nspname != NULL)
+					nspname = proschname;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		appendStringInfo(&buf, "%s(",
 						 quote_qualified_identifier(nspname, proname));
@@ -1083,6 +1141,26 @@ regclassout(PG_FUNCTION_ARGS)
 		else
 		{
 			char	   *nspname;
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			char	   *objrelname = NULL;
+			char	   *objrelschname = NULL;
+			/* End - ReqID:SRS-MYSQL-CASE */
+
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+			{
+				ObjectAddress address;
+
+				ObjectAddressSet(address, RelationRelationId, classid);
+				mysql_get_objnameinfo_hook(address, &objrelname, &objrelschname);
+				if (objrelname != NULL && classname != NULL)
+				{
+					if (strcmp(objrelname, classname) &&
+						!pg_strcasecmp(objrelname, classname))
+						classname = objrelname;
+				}
+			}
+			/* End - ReqID:SRS-MYSQL-CASE */
 
 			/*
 			 * Would this class be found by regclassin? If not, qualify it.
@@ -1090,7 +1168,25 @@ regclassout(PG_FUNCTION_ARGS)
 			if (RelationIsVisible(classid))
 				nspname = NULL;
 			else
+			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				char		   *relschname = NULL;
+				ObjectAddress	address;
+
 				nspname = get_namespace_name(classform->relnamespace);
+
+				if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+				{
+					objrelschname = NULL;
+
+					ObjectAddressSet(address, NamespaceRelationId, classform->relnamespace);
+					mysql_get_objnameinfo_hook(address, &objrelschname, &relschname);
+					if (objrelschname != NULL && nspname != NULL &&
+						strcmp(nspname, objrelschname) && !pg_strcasecmp(nspname, objrelschname))
+						nspname = objrelschname;
+				}
+				/* End - ReqID:SRS-MYSQL-CASE */
+			}
 
 			result = quote_qualified_identifier(nspname, classname);
 		}

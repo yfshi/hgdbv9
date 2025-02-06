@@ -76,6 +76,10 @@
 #include "parser/pg_object_hook.h"
 #include "catalog/objectaddress.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
+
 /* non-export function prototypes */
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
 static void CheckPredicate(Expr *predicate);
@@ -1869,6 +1873,13 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 
 			Assert(attribute->expr == NULL);
 			atttuple = SearchSysCacheAttName(relId, attribute->name);
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (!HeapTupleIsValid(atttuple))
+			{
+				if (mysql_switch_hook && mysql_get_attName_hook && mysql_switch_hook())
+					atttuple = mysql_get_attName_hook(relId, attribute->name);
+			}
+			/* End - ReqID:SRS-MYSQL-CASE */
 			if (!HeapTupleIsValid(atttuple))
 			{
 				/* difference in error message spellings is historical */

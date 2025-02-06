@@ -19,6 +19,7 @@
 #include "dumputils.h"
 #include "fe_utils/string_utils.h"
 #include "oracle_fe_utils/ora_string_utils.h"			/*  BUG: M0000332 */
+#include "pg_backup_archiver.h"			/* ReqID:SRS-MYSQL-CASE */
 
 
 static bool parseAclItem(const char *item, const char *type,
@@ -44,6 +45,8 @@ bool haveDBuser = false;			/*  bug#M0000261 */
 DBParser compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
 DBUser	CurUser = INSTANCE;		/* ReqID:SRS-CMD-PGDUMP */
 const char *DumpM = NULL;		/* ReqID:SRS-CMD-PGDUMP */
+int			caselowernum = 3;		/* ReqID:SRS-MYSQL-CASE */
+
 /*
  * Build GRANT/REVOKE command(s) for an object.
  *
@@ -1636,3 +1639,39 @@ FindUserLevelbyoid(PGconn *conn, Oid oid)
 	return userdboid;
 }
 
+/* Begin - ReqID:SRS-MYSQL-CASE */
+/*
+ * GetMySQLCompPara
+ * get mysql compatibel mode and Case-sensitive parameters
+ */
+void
+GetMySQLCompPara(Archive *AHX)
+{
+	ArchiveHandle *AH = (ArchiveHandle *) AHX;
+	PGconn *conn = AH->connection;
+	PGresult *res = NULL;
+	int lowerval = 3;
+
+	if (DB_MYSQL == database_mode)
+	{
+		AH->compatible_mode = pg_strdup("m");
+
+		res = PQexec(conn, "show lower_case_table_names;");
+		if (PQresultStatus(res) == PGRES_TUPLES_OK)
+		{
+			lowerval = atoi(PQgetvalue(res, 0, 0));
+			if (lowerval == MYS_LOWRE_CASE_TABLE_NAMES_ZERO ||
+				lowerval == MYS_LOWRE_CASE_TABLE_NAMES_ONE ||
+				lowerval == MYS_LOWRE_CASE_TABLE_NAMES_TWO)
+				AH->caselowernum = lowerval;
+
+			if (res)
+				PQclear(res);
+		}
+
+		getDbCompatibleMode(AH->connection);
+		if (db_mode == DB_MYSQL)
+			AH->compatible_mode = pg_strdup("m");
+	}
+}
+/* End - ReqID:SRS-MYSQL-CASE */

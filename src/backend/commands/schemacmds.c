@@ -38,6 +38,12 @@
 #include "utils/ora_compatible.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "parser/pg_object_hook.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 static void AlterSchemaOwner_internal(HeapTuple tup, Relation rel, Oid newOwnerId);
 
@@ -66,19 +72,31 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	AclResult	aclresult;
 	ObjectAddress address;
 	StringInfoData pathbuf;
+	char	   *orischemaName = NULL;	/* ReqID:SRS-MYSQL-CASE */
 
 	GetUserIdAndSecContext(&saved_uid, &save_sec_context);
 
-    /* Begin - ReqID: SRS-MYSQL-SQL-USE */
-    if (compatible_db == MYS_PARSER && 
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (stmt->schemaname != NULL)
+		orischemaName = pstrdup(stmt->schemaname);
+	if (mysql_objlower_hook && mysql_string_case_hook &&
+		stmt->schemaname != NULL && (lower_two == mysql_objlower_hook()))
+	{
+		stmt->schemaname = mysql_string_case_hook(stmt->schemaname);
+		schemaName = stmt->schemaname;
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
+	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
+	if (compatible_db == MYS_PARSER && 
 		stmt->mys_opt && 
 		(stmt->mys_opt->opt_type == OPT_CHARACTERSET || 
 		 stmt->mys_opt->opt_type == OPT_COLLATE))
 	{
-        ereport(WARNING,
-                (errmsg(" COLLATE or CHARACTER SET nonsupport : '%s'",stmt->mys_opt->name)));
+		ereport(WARNING,
+				(errmsg(" COLLATE or CHARACTER SET nonsupport : '%s'",stmt->mys_opt->name)));
 	}
-    /* End - ReqID: SRS-MYSQL-SQL-USE */
+	/* End - ReqID: SRS-MYSQL-SQL-USE */
 
 	/*
 	 * Who is supposed to own the new schema?
@@ -209,18 +227,7 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	 */
 	parsetree_list = transformCreateSchemaStmtElements(stmt->schemaElts,
 													   schemaName);
-	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-    if (compatible_db == MYS_PARSER && pg_object_create_obj_hook)
-    {
-        pg_object_create_obj_hook(stmt->schemaname,
-								  namespaceId,
-								  false,
-								  PG_OBJECT_SCHEMA,
-								  address,
-								  DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("null"))),
-								  NULL);
-    }
-    /* End - ReqID: SRS-MYSQL-SQL-USE */
+
 	/*
 	 * Execute each command contained in the CREATE SCHEMA.  Since the grammar
 	 * allows only utility commands in CREATE SCHEMA, there is no need to pass
@@ -261,6 +268,56 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 
 	/* Reset current user and security context */
 	SetUserIdAndSecContext(saved_uid, save_sec_context);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (pg_object_create_obj_hook && compatible_db == MYS_PARSER)
+	{
+		ObjectAddress	addrs;
+		StringInfoData	buf;
+		bool	needbracket = false;
+		Jsonb	*attr = NULL;
+
+		initStringInfo(&buf);
+
+		if (myenable_case_switch)
+		{
+			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"", lower_case_table_names);
+			needbracket = true;
+		}
+
+		if(stmt->mys_opt != NULL && stmt->mys_opt->name != NULL &&
+			(stmt->mys_opt->opt_type == OPT_CHARACTERSET || stmt->mys_opt->opt_type == OPT_COLLATE))
+		{
+			if (needbracket)
+				appendStringInfoString(&buf, ", \"mysoption\" : ");
+			else
+			{
+				appendStringInfoString(&buf, "{\"mysoption\" : ");
+				needbracket = true;
+			}
+
+			if (stmt->mys_opt->opt_type == OPT_CHARACTERSET)
+				appendStringInfo(&buf, "\"CHARACTER SET %s\"", stmt->mys_opt->name);
+			else if (stmt->mys_opt->opt_type == OPT_COLLATE)
+				appendStringInfo(&buf, "\"COLLATE %s\"", stmt->mys_opt->name);
+			else
+				;
+		}
+
+		if (needbracket)
+		{
+			appendStringInfoString(&buf, "}");
+			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+		}
+
+		ObjectAddressSet(addrs, NamespaceRelationId, namespaceId);
+		pg_object_create_obj_hook(orischemaName, namespaceId,
+								  false, PG_OBJECT_SCHEMA,
+								  addrs, attr, NULL);
+
+		pfree(buf.data);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	return namespaceId;
 }

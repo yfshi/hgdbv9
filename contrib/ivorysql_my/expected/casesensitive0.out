@@ -1,0 +1,1038 @@
+/*
+ * MySQL case sensitive test.
+ */
+--parameter settings 
+set ivorysql.compatible_mode to mysql;
+set mysql.enable_case_switch to on;
+set lower_case_table_names = 0;
+--create schema
+create schema TESTSCHEMA0;
+create schema TESTschema0;
+create schema testschema0;
+--select oid, objname, caseobjname, refclassid, schemaoid, objkind from pg_myobject; --no data
+--renmae schema
+alter schema TESTSCHEMA0 rename to NEWTESTSCHEMA0;
+alter schema TESTschema0 rename to NEWTESTschema0;
+alter schema testschema0 rename to newtestschema0;
+--select oid, objname, caseobjname, refclassid, schemaoid, objkind from pg_myobject; --no data
+--create table, You can create tables with 
+--the same name but different capitalization
+--
+create table TB0(sId int);
+create table Tb0(sId int, sName text);
+create table tB0(sId int, sName text, Hight INT);
+create table tb0(sId int, sName text, Hight INT, Weight Int);
+--insert data
+insert into TB0 values (1);
+insert into TB0 values (2);
+insert into TB0 values (3,'zhangsanfeng'); --err
+ERROR:  INSERT has more expressions than target columns
+LINE 1: insert into TB0 values (3,'zhangsanfeng');
+                                  ^
+insert into Tb0 values (1, 'zhangsanfeng');
+insert into Tb0 values (2, 'songyuanqiao');
+insert into Tb0 values (3, 'yulianzhou', 180); --err
+ERROR:  INSERT has more expressions than target columns
+LINE 1: insert into Tb0 values (3, 'yulianzhou', 180);
+                                                 ^
+insert into tB0 values (1, 'zhangsanfeng', 180);
+insert into tB0 values (2, 'songyuanqiao', 180);
+insert into tB0 values (3, 'yulianzhou', 180, 90); --err
+ERROR:  INSERT has more expressions than target columns
+LINE 1: insert into tB0 values (3, 'yulianzhou', 180, 90);
+                                                      ^
+insert into tb0 values (1, 'zhangsanfeng', 180, 80);
+insert into tb0 values (2, 'songyuanqiao', 180, 85);
+insert into tb0 values (3, 'yulianzhou');
+--query table
+select * from TB0;  --two record
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select * from Tb0;  --two record
+ sId |    sName     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select * from tB0;  --two record
+ sId |    sName     | Hight 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select * from tb0;  --three record
+ sId |    sName     | Hight | Weight 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+select SID from TB0;
+ SID 
+-----
+   1
+   2
+(2 rows)
+
+select SID, SNAME from Tb0;
+ SID |    SNAME     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select SID, SNAME, HIGHT from tB0;
+ SID |    SNAME     | HIGHT 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select SID, SNAME, HIGHT, WEIGHT from tb0;
+ SID |    SNAME     | HIGHT | WEIGHT 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+select sid from TB0;
+ sid 
+-----
+   1
+   2
+(2 rows)
+
+select sid, sname from Tb0;
+ sid |    sname     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select sid, sname, hight from tB0;
+ sid |    sname     | hight 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select sid, sname, hight, weighT from tb0;
+ sid |    sname     | hight | weighT 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+--alter table name;
+alter table TB0 rename to NEWTB0;
+alter table Tb0 rename to NEWTb0;
+alter table tB0 rename to newtB0;
+alter table tb0 rename to newtb0;
+--query table
+select * from NEWTB0;  --two record
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select * from NEWTb0;  --two record
+ sId |    sName     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select * from newtB0;  --two record
+ sId |    sName     | Hight 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select * from newtb0;  --three record
+ sId |    sName     | Hight | Weight 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+--use column query                       
+select SID from NEWTB0;
+ SID 
+-----
+   1
+   2
+(2 rows)
+
+select SID, SNAME from NEWTb0;
+ SID |    SNAME     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select SID, SNAME, HIGHT from newtB0;
+ SID |    SNAME     | HIGHT 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select SID, SNAME, HIGHT, WEIGHT from newtb0;
+ SID |    SNAME     | HIGHT | WEIGHT 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+select sid from NEWTB0;
+ sid 
+-----
+   1
+   2
+(2 rows)
+
+select sid, sname from NEWTb0;
+ sid |    sname     
+-----+--------------
+   1 | zhangsanfeng
+   2 | songyuanqiao
+(2 rows)
+
+select sid, sname, hight from newtB0;
+ sid |    sname     | hight 
+-----+--------------+-------
+   1 | zhangsanfeng |   180
+   2 | songyuanqiao |   180
+(2 rows)
+
+select sid, sname, hight, weight from newtb0;
+ sid |    sname     | hight | weight 
+-----+--------------+-------+--------
+   1 | zhangsanfeng |   180 |     80
+   2 | songyuanqiao |   180 |     85
+   3 | yulianzhou   |       |       
+(3 rows)
+
+--modify table schema
+alter table NEWTB0 set schema newtestschema0;
+--query
+select * from NEWTB0; --err
+ERROR:  relation "NEWTB0" does not exist
+LINE 1: select * from NEWTB0;
+                      ^
+select * from newtestschema0.NEWTB0;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select SID, sid, sID from newtestschema0.NEWTB0;
+ SID | sid | sID 
+-----+-----+-----
+   1 |   1 |   1
+   2 |   2 |   2
+(2 rows)
+
+select SID, sid, sID from NEWTESTSCHEMA0.NEWTB0; --err
+ERROR:  relation "NEWTESTSCHEMA0.NEWTB0" does not exist
+LINE 1: select SID, sid, sID from NEWTESTSCHEMA0.NEWTB0;
+                                  ^
+--create view
+create view v_tb0 as select * from newtestschema0.NEWTB0;
+create view V_tb0 as select * from newtestschema0.NEWTB0;
+create view newtestschema0.V_tb0 as select * from newtestschema0.NEWTB0;
+--query view
+select * from v_tb0;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select SID, sid, sID  from v_tb0;
+ SID | sid | sID 
+-----+-----+-----
+   1 |   1 |   1
+   2 |   2 |   2
+(2 rows)
+
+select * from V_tb0;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select SID, sid, sID  from V_tb0;
+ SID | sid | sID 
+-----+-----+-----
+   1 |   1 |   1
+   2 |   2 |   2
+(2 rows)
+
+select * from newtestschema0.V_tb0;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select SID, sid, sID  from newtestschema0.V_tb0;
+ SID | sid | sID 
+-----+-----+-----
+   1 |   1 |   1
+   2 |   2 |   2
+(2 rows)
+
+--modify view schema
+alter view v_tb0 set schema newtestschema0;
+--query view
+select * from newtestschema0.v_tb0;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+select SID, sid, sID  from newtestschema0.v_tb0;
+ SID | sid | sID 
+-----+-----+-----
+   1 |   1 |   1
+   2 |   2 |   2
+(2 rows)
+
+select * from NEWTESTSCHEMA0.v_newtb; --err
+ERROR:  relation "NEWTESTSCHEMA0.v_newtb" does not exist
+LINE 1: select * from NEWTESTSCHEMA0.v_newtb;
+                      ^
+select SID, sid, sID  from NEWTESTSCHEMA0.v_tb0; --err
+ERROR:  relation "NEWTESTSCHEMA0.v_tb0" does not exist
+LINE 1: select SID, sid, sID  from NEWTESTSCHEMA0.v_tb0;
+                                   ^
+--alter view name
+alter view newtestschema0.v_tb0 rename to v_newtb;
+--query view
+select * from newtestschema0.v_tb0; --err
+ERROR:  relation "newtestschema0.v_tb0" does not exist
+LINE 1: select * from newtestschema0.v_tb0;
+                      ^
+select * from newtestschema0.v_newtb;
+ sId 
+-----
+   1
+   2
+(2 rows)
+
+--modify view schema
+alter view newtestschema0.v_newtb set schema public;
+alter view newtestschema0.V_tb0 set schema public; --err
+ERROR:  relation "V_tb0" already exists in schema "public"
+--modify table schema
+alter table newtestschema0.NEWTB0 set schema public;
+--alter table name
+alter table NEWTB0 rename to TB0; 
+alter table NEWTb0 rename to Tb0;
+alter table newtB0 rename to tB0;
+alter table newtb0 rename to tb0;
+--renmae schema
+alter schema NEWTESTSCHEMA0 rename to TESTSCHEMA0;
+alter schema NEWTESTschema0 rename to TESTschema0;
+alter schema newtestschema0 rename to testschema0;   
+--drop object
+drop view newtestschema0.V_tb0;
+ERROR:  schema "newtestschema0" does not exist
+drop view V_tb0;
+drop view v_newtb;
+drop view testschema0.V_tb0;
+drop table TB0;
+drop table Tb0;
+drop table tB0;
+drop table tb0;
+drop schema TESTSCHEMA0;
+drop schema TESTschema0;
+drop schema testschema0;
+--create table and index
+create table test0(sId int, sName text collate utf8mb4_general_ci);
+create index idx_Text on test0(sname);
+--insert data
+insert into test0 select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test0 values (100001, 'zhangsan99999');
+insert into test0 values (100002, 'ZHANGsan99999');
+--query table
+select * from test0 where sNAme = 'zhangsan99999';
+  sId   |     sName     
+--------+---------------
+  99999 | zhangsan99999
+ 100001 | zhangsan99999
+ 100002 | ZHANGsan99999
+(3 rows)
+
+explain select * from test0 where sNAme = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test0  (cost=19.55..612.72 rows=404 width=36)
+   Recheck Cond: ("sName" = 'zhangsan99999'::text)
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
+         Index Cond: ("sName" = 'zhangsan99999'::text)
+(4 rows)
+
+--drop table
+drop table test0;
+CREATE SCHEMA sc;
+CREATE SEQUENCE SERIAL START 101;
+CREATE SEQUENCE sc.SERIAL START 101;
+CREATE TABLE TESTB(id int, name text);
+CREATE SEQUENCE S_SEQQ MINVALUE 1 START WITH 1 OWNED BY TESTB.id;
+CREATE TABLE sc.TESTTB(id int, name text);
+CREATE SEQUENCE sc.S_SEQTB MINVALUE 1 START WITH 1 OWNED BY sc.TESTTB.id;
+CREATE TABLE sC.TESTTB1(id int, name text); --err
+ERROR:  schema "sC" does not exist
+LINE 1: CREATE TABLE sC.TESTTB1(id int, name text);
+                     ^
+insert into sc.TESTTB values (nextval('sc.S_SEQTB'), 'aaaaa');
+insert into sc.TESTTB values (nextval('sc.S_SEQTB'), 'bbb');
+insert into sc.TESTTB values (nextval('sc.S_SEQTB'), 'ccccc');
+insert into sc.TESTTB values (nextval('sc.S_SEQTb'), 'ddddd'); --err
+ERROR:  relation "sc.S_SEQTb" does not exist
+LINE 1: insert into sc.TESTTB values (nextval('sc.S_SEQTb'), 'ddddd'...
+                                              ^
+select currval('sc.S_SEQTB');
+ currval 
+---------
+       3
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+select nextval('sc.SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select nextval('sc.SERIAL');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('sc.SERIAL');
+ currval 
+---------
+     102
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       1
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       2
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       3
+(1 row)
+
+select currval('S_SEQQ');
+ currval 
+---------
+       3
+(1 row)
+
+DROP SEQUENCE SERIAL;
+DROP SEQUENCE sc.SERIAL;
+DROP SEQUENCE S_SEQQ;
+DROP TABLE TESTB;
+DROP SEQUENCE sc.S_SEQTB;
+DROP TABLE sc.TESTTB;
+DROP SCHEMA sc;
+--rename sequence and set new schema
+CREATE SEQUENCE SERIAL START 101;
+select count(*) from pg_object where objname = 'SERIAL';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+alter SEQUENCE SERIAL rename to NEWSEQUENCE;
+select count(*) from pg_object where objname = 'NEWSEQUENCE';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('NEWSEQUENCE');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('NEWSEQUENCE');
+ currval 
+---------
+     102
+(1 row)
+
+create schema sc;
+alter SEQUENCE NEWSEQUENCE set schema SC; --err
+ERROR:  schema "SC" does not exist
+alter SEQUENCE NEWSEQUENCE set schema sc;
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'sc'; --1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'SC'; --0
+ count 
+-------
+     0
+(1 row)
+
+select nextval('sc.NEWSEQUENCE');
+ nextval 
+---------
+     103
+(1 row)
+
+select currval('sc.NEWSEQUENCE');
+ currval 
+---------
+     103
+(1 row)
+
+DROP SEQUENCE SC.NEWSEQUENCE;	--err
+ERROR:  schema "SC" does not exist
+DROP SEQUENCE sc.NEWSEQUENCE;
+DROP SCHEMA sc;
+CREATE SCHEMA sC;
+CREATE SEQUENCE SERIAL START 101;
+CREATE SEQUENCE sC.SERIAL START 101;
+CREATE TABLE TESTB(id int, name text);
+CREATE SEQUENCE S_SEQQ MINVALUE 1 START WITH 1 OWNED BY TESTB.id;
+CREATE TABLE sC.TESTTB(id int, name text);
+CREATE SEQUENCE sC.S_SEQTB MINVALUE 1 START WITH 1 OWNED BY sC.TESTTB.id;
+CREATE TABLE sc.TESTTB1(id int, name text);  --err
+ERROR:  schema "sc" does not exist
+LINE 1: CREATE TABLE sc.TESTTB1(id int, name text);
+                     ^
+insert into sC.TESTTB values (nextval('sC.S_SEQTB'), 'aaaaa');
+insert into sC.TESTTB values (nextval('sC.S_SEQTB'), 'bbb');
+insert into sC.TESTTB values (nextval('sC.S_SEQTB'), 'ccccc');
+insert into sC.TESTTB values (nextval('sC.S_SEQTb'), 'ddddd'); --err
+ERROR:  relation "sC.S_SEQTb" does not exist
+LINE 1: insert into sC.TESTTB values (nextval('sC.S_SEQTb'), 'ddddd'...
+                                              ^
+select currval('sC.S_SEQTB');
+ currval 
+---------
+       3
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+select nextval('sC.SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select nextval('sC.SERIAL');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('sC.SERIAL');
+ currval 
+---------
+     102
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       1
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       2
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       3
+(1 row)
+
+select currval('S_SEQQ');
+ currval 
+---------
+       3
+(1 row)
+
+DROP SEQUENCE SERIAL;
+DROP SEQUENCE sC.SERIAL;
+DROP SEQUENCE S_SEQQ;
+DROP TABLE TESTB;
+DROP SEQUENCE sC.S_SEQTB;
+DROP TABLE sC.TESTTB;
+DROP SCHEMA sC;
+--rename sequence and set new schema
+CREATE SEQUENCE SERIAL START 101;
+select count(*) from pg_object where objname = 'SERIAL';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+alter SEQUENCE SERIAL rename to NEWSEQUENCE;
+select count(*) from pg_object where objname = 'NEWSEQUENCE';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('NEWSEQUENCE');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('NEWSEQUENCE');
+ currval 
+---------
+     102
+(1 row)
+
+create schema sC;
+alter SEQUENCE NEWSEQUENCE set schema SC; --err
+ERROR:  schema "SC" does not exist
+alter SEQUENCE NEWSEQUENCE set schema sC;
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'sC'; --1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'SC'; --0
+ count 
+-------
+     0
+(1 row)
+
+select nextval('sC.NEWSEQUENCE');
+ nextval 
+---------
+     103
+(1 row)
+
+select currval('sC.NEWSEQUENCE');
+ currval 
+---------
+     103
+(1 row)
+
+DROP SEQUENCE SC.NEWSEQUENCE;	--err
+ERROR:  schema "SC" does not exist
+DROP SEQUENCE sC.NEWSEQUENCE;
+DROP SCHEMA sC;
+CREATE SCHEMA Sc;
+CREATE SEQUENCE SERIAL START 101;
+CREATE SEQUENCE Sc.SERIAL START 101;
+CREATE TABLE TESTB(id int, name text);
+CREATE SEQUENCE S_SEQQ MINVALUE 1 START WITH 1 OWNED BY TESTB.id;
+CREATE TABLE Sc.TESTTB(id int, name text);
+CREATE SEQUENCE Sc.S_SEQTB MINVALUE 1 START WITH 1 OWNED BY Sc.TESTTB.id;
+CREATE TABLE SC.TESTTB(id int, name text);  --err
+ERROR:  schema "SC" does not exist
+LINE 1: CREATE TABLE SC.TESTTB(id int, name text);
+                     ^
+insert into Sc.TESTTB values (nextval('Sc.S_SEQTB'), 'aaaaa');
+insert into Sc.TESTTB values (nextval('Sc.S_SEQTB'), 'bbb');
+insert into Sc.TESTTB values (nextval('Sc.S_SEQTB'), 'ccccc');
+insert into Sc.TESTTB values (nextval('Sc.S_SEQTb'), 'ddddd'); --err
+ERROR:  relation "Sc.S_SEQTb" does not exist
+LINE 1: insert into Sc.TESTTB values (nextval('Sc.S_SEQTb'), 'ddddd'...
+                                              ^
+select currval('Sc.S_SEQTB');
+ currval 
+---------
+       3
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+select nextval('Sc.SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select nextval('Sc.SERIAL');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('Sc.SERIAL');
+ currval 
+---------
+     102
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       1
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       2
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       3
+(1 row)
+
+select currval('S_SEQQ');
+ currval 
+---------
+       3
+(1 row)
+
+DROP SEQUENCE SERIAL;
+DROP SEQUENCE Sc.SERIAL;
+DROP SEQUENCE S_SEQQ;
+DROP TABLE TESTB;
+DROP SEQUENCE Sc.S_SEQTB;
+DROP TABLE Sc.TESTTB;
+DROP SCHEMA Sc;
+--rename sequence and set new schema
+CREATE SEQUENCE SERIAL START 101;
+select count(*) from pg_object where objname = 'SERIAL';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+alter SEQUENCE SERIAL rename to NEWSEQUENCE;
+select count(*) from pg_object where objname = 'NEWSEQUENCE';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('NEWSEQUENCE');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('NEWSEQUENCE');
+ currval 
+---------
+     102
+(1 row)
+
+create schema Sc;
+alter SEQUENCE NEWSEQUENCE set schema SC; --err
+ERROR:  schema "SC" does not exist
+alter SEQUENCE NEWSEQUENCE set schema Sc;
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'Sc'; --1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'SC'; --0
+ count 
+-------
+     0
+(1 row)
+
+select nextval('Sc.NEWSEQUENCE');
+ nextval 
+---------
+     103
+(1 row)
+
+select currval('Sc.NEWSEQUENCE');
+ currval 
+---------
+     103
+(1 row)
+
+DROP SEQUENCE SC.NEWSEQUENCE;	--err
+ERROR:  schema "SC" does not exist
+DROP SEQUENCE Sc.NEWSEQUENCE;
+DROP SCHEMA Sc;
+CREATE SCHEMA SC;
+CREATE SEQUENCE SERIAL START 101;
+CREATE SEQUENCE SC.SERIAL START 101;
+CREATE TABLE TESTB(id int, name text);
+CREATE SEQUENCE S_SEQQ MINVALUE 1 START WITH 1 OWNED BY TESTB.id;
+CREATE TABLE SC.TESTTB(id int, name text);
+CREATE SEQUENCE SC.S_SEQTB MINVALUE 1 START WITH 1 OWNED BY SC.TESTTB.id;
+CREATE TABLE sC.TESTTB(id int, name text);  --err
+ERROR:  schema "sC" does not exist
+LINE 1: CREATE TABLE sC.TESTTB(id int, name text);
+                     ^
+insert into SC.TESTTB values (nextval('SC.S_SEQTB'), 'aaaaa');
+insert into SC.TESTTB values (nextval('SC.S_SEQTB'), 'bbb');
+insert into SC.TESTTB values (nextval('SC.S_SEQTB'), 'ccccc');
+insert into SC.TESTTB values (nextval('SC.S_SEQTb'), 'ddddd'); --err
+ERROR:  relation "SC.S_SEQTb" does not exist
+LINE 1: insert into SC.TESTTB values (nextval('SC.S_SEQTb'), 'ddddd'...
+                                              ^
+select currval('SC.S_SEQTB');
+ currval 
+---------
+       3
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+select nextval('SC.SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select nextval('SC.SERIAL');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('SC.SERIAL');
+ currval 
+---------
+     102
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       1
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       2
+(1 row)
+
+select nextval('S_SEQQ');
+ nextval 
+---------
+       3
+(1 row)
+
+select currval('S_SEQQ');
+ currval 
+---------
+       3
+(1 row)
+
+DROP SEQUENCE SERIAL;
+DROP SEQUENCE SC.SERIAL;
+DROP SEQUENCE S_SEQQ;
+DROP TABLE TESTB;
+DROP SEQUENCE SC.S_SEQTB;
+DROP TABLE SC.TESTTB;
+DROP SCHEMA SC;
+--rename sequence and set new schema
+CREATE SEQUENCE SERIAL START 101;
+select count(*) from pg_object where objname = 'SERIAL';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('SERIAL');
+ nextval 
+---------
+     101
+(1 row)
+
+select currval('SERIAL');
+ currval 
+---------
+     101
+(1 row)
+
+alter SEQUENCE SERIAL rename to NEWSEQUENCE;
+select count(*) from pg_object where objname = 'NEWSEQUENCE';
+ count 
+-------
+     1
+(1 row)
+
+select nextval('NEWSEQUENCE');
+ nextval 
+---------
+     102
+(1 row)
+
+select currval('NEWSEQUENCE');
+ currval 
+---------
+     102
+(1 row)
+
+create schema SC;
+alter SEQUENCE NEWSEQUENCE set schema sc; --err
+ERROR:  schema "sc" does not exist
+alter SEQUENCE NEWSEQUENCE set schema SC;
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'SC'; --1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from pg_object ob, pg_namespace n where ob.objname = 'NEWSEQUENCE' and ob.schemaoid = n.oid and n.nspname = 'sc'; --0
+ count 
+-------
+     0
+(1 row)
+
+select nextval('SC.NEWSEQUENCE');
+ nextval 
+---------
+     103
+(1 row)
+
+select currval('SC.NEWSEQUENCE');
+ currval 
+---------
+     103
+(1 row)
+
+DROP SEQUENCE sc.NEWSEQUENCE;	--err
+ERROR:  schema "sc" does not exist
+DROP SEQUENCE SC.NEWSEQUENCE;
+DROP SCHEMA SC;
+---
+CREATE SCHEMA sc;
+CREATE SCHEMA sC;
+CREATE SCHEMA Sc;
+CREATE SCHEMA SC;
+CREATE SEQUENCE sc.SERIAL START 101;
+CREATE SEQUENCE sC.SERIAL START 101;
+CREATE SEQUENCE Sc.SERIAL START 101;
+CREATE SEQUENCE SC.SERIAL START 101;
+DROP SCHEMA sc cascade;
+NOTICE:  drop cascades to sequence sc."SERIAL"
+DROP SCHEMA sC cascade;
+NOTICE:  drop cascades to sequence "sC"."SERIAL"
+DROP SCHEMA Sc cascade;
+NOTICE:  drop cascades to sequence "Sc"."SERIAL"
+DROP SCHEMA SC cascade;
+NOTICE:  drop cascades to sequence "SC"."SERIAL"
+reset ivorysql.compatible_mode;
+reset mysql.enable_case_switch;
+reset lower_case_table_names;

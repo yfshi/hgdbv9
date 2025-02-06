@@ -55,6 +55,12 @@
 #include "parser/scansup.h"
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-CASE */
+
 /*
  * Support for fuzzily matching columns.
  *
@@ -215,18 +221,38 @@ scanNameSpaceForRefname(ParseState *pstate, const char *refname, int location)
 		if (nsitem->p_lateral_only && !pstate->p_lateral_active)
 			continue;
 
-		if (strcmp(nsitem->p_names->aliasname, refname) == 0)
+		/* Begin - ReqID:SRS-MYSQL-CASESENSITIVE */
+		if (mysql_lower_hook && mysql_lower_hook())
 		{
-			if (result)
-				ereport(ERROR,
-						(errcode(ERRCODE_AMBIGUOUS_ALIAS),
-						 errmsg("table reference \"%s\" is ambiguous",
-								refname),
-						 parser_errposition(pstate, location)));
-			check_lateral_ref_ok(pstate, nsitem, location);
-			result = nsitem;
+			if (pg_strcasecmp(nsitem->p_names->aliasname, refname) == 0)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_ALIAS),
+							 errmsg("table reference \"%s\" is ambiguous",
+									refname),
+							 parser_errposition(pstate, location)));
+				check_lateral_ref_ok(pstate, nsitem, location);
+				result = nsitem;
+			}
 		}
+		else
+		{
+			if (strcmp(nsitem->p_names->aliasname, refname) == 0)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_ALIAS),
+							 errmsg("table reference \"%s\" is ambiguous",
+									refname),
+							 parser_errposition(pstate, location)));
+				check_lateral_ref_ok(pstate, nsitem, location);
+				result = nsitem;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASESENSITIVE */
 	}
+
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	if (compatible_db == DB_MYSQL && !result)
 	{
@@ -891,16 +917,34 @@ scanRTEForColumn(ParseState *pstate, RangeTblEntry *rte,
 		/* End - BUG#M0000489 */
 
 		attnum++;
-		if (strcmp(attcolname, colname) == 0)
+		/* Begin - ReqID:SRS-MYSQL-CASE */
+		if (mysql_switch_hook && mysql_switch_hook())
 		{
-			if (result)
-				ereport(ERROR,
-						(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-						 errmsg("column reference \"%s\" is ambiguous",
-								colname),
-						 parser_errposition(pstate, location)));
-			result = attnum;
+			if (pg_strcasecmp(attcolname, colname) == 0)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+							 errmsg("column reference \"%s\" is ambiguous",
+									colname),
+							 parser_errposition(pstate, location)));
+				result = attnum;
+			}
 		}
+		else
+		{
+			if (strcmp(attcolname, colname) == 0)
+			{
+				if (result)
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+							 errmsg("column reference \"%s\" is ambiguous",
+									colname),
+							 parser_errposition(pstate, location)));
+				result = attnum;
+			}
+		}
+		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/* Update fuzzy match state, if provided. */
 		if (fuzzystate != NULL)

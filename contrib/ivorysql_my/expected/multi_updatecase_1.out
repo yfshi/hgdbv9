@@ -1,0 +1,1816 @@
+\h update
+Command:     UPDATE
+Description: update rows of a table
+Syntax:
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+UPDATE [ ONLY ] table_name [ * ] [ [ AS ] alias ]
+    SET { column_name = { expression | DEFAULT } |
+          ( column_name [, ...] ) = [ ROW ] ( { expression | DEFAULT } [, ...] ) |
+          ( column_name [, ...] ) = ( sub-SELECT )
+        } [, ...]
+    [ FROM from_item [, ...] ]
+    [ WHERE condition | WHERE CURRENT OF cursor_name ]
+    [ RETURNING { * | output_expression [ [ AS ] output_name ] } [, ...] ]
+
+In MySQL mode:
+UPDATE Multiple-Relation Syntax:
+[ WITH [ RECURSIVE ] with_query [, ...] ]
+UPDATE [LOW_PRIORITY] [IGNORE]table_list
+SET {column_name = { expression | DEFAULT } 
+    |( column_name [, ...] ) = {( { expression | DEFAULT } [, ...] ) |sub_query }}[, ...]
+    [ FROM from_list] [ WHERE condition ];
+
+where sub_query can be:
+SELECT [ ALL | DISTINCT [ ON ( expression [, ...] ) ] ]
+{ * | {expression [ [ AS ] output_name ]} [, ...] }
+[ FROM from_item [, ...] ]
+[ WHERE condition ]
+[ GROUP BY grouping_element [, ...] ]
+[ HAVING condition [, ...] ]
+
+URL: https://www.postgresql.org/docs/14/sql-update.html
+
+---ten table
+drop table if exists T1;
+NOTICE:  table "t1" does not exist, skipping
+drop table if exists T2;
+NOTICE:  table "t2" does not exist, skipping
+drop table if exists T3;
+NOTICE:  table "t3" does not exist, skipping
+drop table if exists T4;
+NOTICE:  table "t4" does not exist, skipping
+drop table if exists T5;
+NOTICE:  table "t5" does not exist, skipping
+drop table if exists T6;
+NOTICE:  table "t6" does not exist, skipping
+drop table if exists T7;
+NOTICE:  table "t7" does not exist, skipping
+drop table if exists T8;
+NOTICE:  table "t8" does not exist, skipping
+drop table if exists T9;
+NOTICE:  table "t9" does not exist, skipping
+drop table if exists T10;
+NOTICE:  table "t10" does not exist, skipping
+create table T1(a int,b int);
+create table T2(c int ,d int);
+create table T3(e int, f int);
+create table T4(g int, h int);
+create table T5(i int, j int);
+create table T6(h int, k int);
+create table T7(m int, n int);
+create table T8(q int, w int);
+create table T9(x int, y int);
+create table T10(o int, p int);
+insert into  T1 values(1,2),(2,3);
+insert into T2 values(1,2),(2,3);
+insert into T3 values(1,2),(2,3);
+insert into T4 values(1,2),(2,3);
+insert into T5 values(1,2),(2,3);
+insert into T6 values(1,2),(2,3);
+insert into T7 values(1,2),(2,3);
+insert into T8 values(1,2),(2,3);
+insert into T9 values(1,2),(2,3);
+insert into T10 values(1,2),(2,3);
+--subquery
+begin;
+update  T1 ta,(select c,d from T2)tb set ta.a = tb.c + 20 where ta.a = tb.c;
+select * from  T1;
+ a  | b 
+----+---
+ 21 | 2
+ 22 | 3
+(2 rows)
+
+rollback;
+--subquery clonum can not update,error
+update  T1 ta,(select c,d from T2)tb set ta.a = tb.c + 20, tb.d = 33 where ta.a = tb.c;--error
+ERROR:  column "tb.d" of relation "t1" does not exist
+LINE 1: ...1 ta,(select c,d from T2)tb set ta.a = tb.c + 20, tb.d = 33 ...
+                                                             ^
+--LOW_PRIORITY
+begin;
+update LOW_PRIORITY  T1,T2 set  T1.a = T2.d,T2.c = T2.c * 2
+where  T1.a = T2.c ;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c | d 
+---+---
+ 2 | 2
+ 4 | 3
+(2 rows)
+
+rollback;
+--IGNORE
+begin;
+update IGNORE  T1,T2 set  T1.a = T2.d,T2.c = T2.c * 2
+where  T1.a = T2.c ;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c | d 
+---+---
+ 2 | 2
+ 4 | 3
+(2 rows)
+
+rollback;
+begin;
+update  T1,T2 set  T1.a = T2.d,T2.c = T2.c * 2
+where  T1.a = T2.c ;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c | d 
+---+---
+ 2 | 2
+ 4 | 3
+(2 rows)
+
+rollback;
+begin;
+update  T1,T2,T3 set  T1.a = T2.d,T2.c = T2.c + 12,T3.f =  T3.f + 22
+where  T1.a = T2.c;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 13 | 2
+ 14 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 24
+ 2 | 25
+(2 rows)
+
+rollback;
+begin;
+update  T1,T2,T3,T4 set  T1.a = T2.d,T2.c = T2.c + 12,T3.f =  T3.f + 22,T4.h = 33
+where  T1.a = T2.c;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 13 | 2
+ 14 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 24
+ 2 | 25
+(2 rows)
+
+select * from T4;
+ g | h  
+---+----
+ 1 | 33
+ 2 | 33
+(2 rows)
+
+rollback;
+begin;
+update  T1,T2,T3,T4,T5 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44
+where  T1.a = T2.c and  T1.a = T3.e and T5.i = T2.c and T4.g = T3.e ;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 12 | 2
+ 12 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 22
+ 2 | 22
+(2 rows)
+
+select * from T4;
+ g | h  
+---+----
+ 1 | 33
+ 2 | 33
+(2 rows)
+
+select * from T5;
+ i | j  
+---+----
+ 1 | 44
+ 2 | 44
+(2 rows)
+
+rollback;
+begin;
+update T2, T1,T3,T4,T5 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44
+where  T1.a = T2.c and  T1.a = T3.e;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 12 | 2
+ 12 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 22
+ 2 | 22
+(2 rows)
+
+select * from T4;
+ g | h  
+---+----
+ 1 | 33
+ 2 | 33
+(2 rows)
+
+select * from T5;
+ i | j  
+---+----
+ 1 | 44
+ 2 | 44
+(2 rows)
+
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55
+where  T1.a = T2.c and  T1.a = T3.e;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 12 | 2
+ 12 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 22
+ 2 | 22
+(2 rows)
+
+select * from T4;
+ g | h  
+---+----
+ 1 | 33
+ 2 | 33
+(2 rows)
+
+select * from T5;
+ i | j  
+---+----
+ 1 | 44
+ 2 | 44
+(2 rows)
+
+select * from T6;
+ h  | k 
+----+---
+ 55 | 2
+ 55 | 3
+(2 rows)
+
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55
+where  T1.a = T2.c and  T1.a = T3.e;
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6,T7 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55,T7.m = 66
+where  T1.a = T2.c and  T1.a = T3.e;
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6,T7,T8 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55,T7.m = 66,
+T8.q = 77
+where  T1.a = T2.c and  T1.a = T3.e;
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6,T7,T8,T9 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55,T7.m = 66,
+T8.q = 77,T9.x = 88
+where  T1.a = T2.c and  T1.a = T3.e;
+rollback;
+begin;
+update T2, T1,T3,T4,T5,T6,T7,T8,T9,T10 set  T1.a = T2.d,T2.c = 12,T3.f = 22,T4.h = 33,T5.j = 44,T6.h = 55,
+T7.m = 66,T8.q = 77,T9.x = 88,T10.o = 99 
+where  T1.a = T2.c and  T1.a = T3.e and T7.m = T10.o;
+select * from  T1;
+ a | b 
+---+---
+ 2 | 2
+ 3 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 12 | 2
+ 12 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 22
+ 2 | 22
+(2 rows)
+
+select * from T4;
+ g | h  
+---+----
+ 1 | 33
+ 2 | 33
+(2 rows)
+
+select * from T5;
+ i | j  
+---+----
+ 1 | 44
+ 2 | 44
+(2 rows)
+
+select * from T6;
+ h  | k 
+----+---
+ 55 | 2
+ 55 | 3
+(2 rows)
+
+select * from T7;
+ m  | n 
+----+---
+ 66 | 2
+ 66 | 3
+(2 rows)
+
+select * from T8;
+ q  | w 
+----+---
+ 77 | 2
+ 77 | 3
+(2 rows)
+
+select * from T9;
+ x  | y 
+----+---
+ 88 | 2
+ 88 | 3
+(2 rows)
+
+select * from T10;
+ o  | p 
+----+---
+ 99 | 2
+ 99 | 3
+(2 rows)
+
+rollback;
+begin;
+update  T1 left join T2 on  T1.a = T2.c left join T3 on  T1.a = T3.e set  T1.a = T2.d + 5,T2.c = 12,T3.f = 22;
+select * from  T1;
+ a | b 
+---+---
+ 7 | 2
+ 8 | 3
+(2 rows)
+
+select * from T2;
+ c  | d 
+----+---
+ 12 | 2
+ 12 | 3
+(2 rows)
+
+select * from T3;
+ e | f  
+---+----
+ 1 | 22
+ 2 | 22
+(2 rows)
+
+rollback;
+drop table  T1,T2,T3,T4,T5,T6,T7,T8,T9,T10;
+create table TT(id int);
+insert into TT select generate_series(1,1000000);
+create index tt_idx on TT(id);
+create table CTT1(id int);
+insert into CTT1 select generate_series(1,1000000);
+create index tt1_idx on CTT1(id);
+analyze TT;
+analyze CTT1;
+explain (costs false) update TT,CTT1 set TT.id = TT.id + 11,CTT1.id = CTT1.id + 10 where TT.id = CTT1.id and TT.id = 88;
+                  QUERY PLAN                  
+----------------------------------------------
+ Update on MULTI-RELATION
+   Update on tt
+   Update on ctt1
+   ->  Nested Loop
+         ->  Index Scan using tt_idx on tt
+               Index Cond: (id = 88)
+         ->  Index Scan using tt1_idx on ctt1
+               Index Cond: (id = 88)
+(8 rows)
+
+begin;
+update TT,CTT1 set TT.id = TT.id + 11,CTT1.id = CTT1.id + 10 where TT.id = CTT1.id and TT.id = 88;
+select * from TT where id = 99;
+ id 
+----
+ 99
+ 99
+(2 rows)
+
+select * from CTT1 where id = 98;
+ id 
+----
+ 98
+ 98
+(2 rows)
+
+end;
+--index hint
+analyze TT;
+explain (costs false)update TT use index(tt_idx)   set id = id + 4 where id = 99;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 99)
+(3 rows)
+
+explain (costs false)update TT ignore index(tt_idx) set id = id + 4 where id = 99;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 99)
+(3 rows)
+
+explain (costs false)update TT  force index(tt_idx) set id = id + 4 where id = 99;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 99)
+(3 rows)
+
+explain (costs false)update TT use index(tt_idx) set id = id + 4 where id = 199;    
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT use key(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT use index for join(tt_idx) set id = id + 4 where id = 399;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 399)
+(3 rows)
+
+explain (costs false)update TT use index for order by (tt_idx) set id = id + 4 where id = 399;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 399)
+(3 rows)
+
+explain (costs false)update TT use index for group by (tt_idx) set id = id + 4 where id = 399;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 399)
+(3 rows)
+
+explain (costs false)update TT  ignore index(tt_idx) set id = id + 4 where id = 299;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 299)
+(3 rows)
+
+explain (costs false)update TT  ignore key(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  ignore index for join(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  ignore index for order by (tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  ignore index for group by(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  force index(tt_idx) set id = id + 4 where id = 299;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 299)
+(3 rows)
+
+explain (costs false)update TT  force key(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  force key for join(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  force key for order by (tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  force key for group by(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT use index(tt_idx)  set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT ignore index(tt_idx)  set id = id + 4 where id = 199;  
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT use index(tt_idx)  set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  ignore index(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+explain (costs false)update TT  force index(tt_idx) set id = id + 4 where id = 199;
+             QUERY PLAN              
+-------------------------------------
+ Update on tt
+   ->  Index Scan using tt_idx on tt
+         Index Cond: (id = 199)
+(3 rows)
+
+drop table TT,CTT1;
+-- three relation
+drop table if exists T_T_MUTIL_T1;
+NOTICE:  table "t_t_mutil_t1" does not exist, skipping
+drop table if exists T_T_MUTIL_T2;
+NOTICE:  table "t_t_mutil_t2" does not exist, skipping
+drop table if exists T_T_MUTIL_T3;
+NOTICE:  table "t_t_mutil_t3" does not exist, skipping
+create table T_T_MUTIL_T1(col1 int,col2 int);
+create table T_T_MUTIL_T2(col1 int,col2 int);
+create table T_T_MUTIL_T3(col1 int,col2 int);
+insert into T_T_MUTIL_T1 values(1,1),(1,1);
+insert into T_T_MUTIL_T2 values(1,1),(1,2);
+insert into T_T_MUTIL_T3 values(1,1),(1,3);
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b,T_T_MUTIL_T3 c set b.col2=5,a.col2=4,c.col2=6 where a.col1=b.col1 and b.col1=c.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+    1 |    4
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    5
+    1 |    5
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col2=7,b.col2=8 where a.col1=b.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    7
+    1 |    7
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    8
+    1 |    8
+(2 rows)
+
+rollback;
+-- subselect
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=5,a.col2=4 where a.col1 in (select col1 from T_T_MUTIL_T2);
+ERROR:  You can't specify target table t_t_mutil_t2 for update in FROM clause.
+rollback;
+-- setof type, report error
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1 = generate_series(2,3), b.col1=1;
+ERROR:  set-returning functions are not allowed in UPDATE
+LINE 1: update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1 = generate_s...
+                                                          ^
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col1 = generate_series(2,3), a.col1=1;
+ERROR:  set-returning functions are not allowed in UPDATE
+LINE 1: update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col1 = generate_s...
+                                                          ^
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1 = generate_series(2,3),b.col1 =123;
+ERROR:  set-returning functions are not allowed in UPDATE
+LINE 1: update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1 = generate_s...
+                                                          ^
+-- condition is false
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1=2,b.col1=2  where a.col1 = 1 and a.col1=2;
+-- duplicate col
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set col1= 3; -- error
+ERROR:  column reference "col1" is ambiguous
+LINE 1: update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set col1= 3;
+                                                 ^
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1=3,T_T_MUTIL_T1.col2=3;
+ERROR:  Unknown column t_t_mutil_t1.col2 in field list 
+rollback;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col1=3,T_T_MUTIL_T1.col1=3; --error
+ERROR:  Unknown column t_t_mutil_t1.col1 in field list 
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col1=5,a.col2=4 where a.col1=b.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+    1 |    4
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    5 |    1
+    5 |    2
+(2 rows)
+
+rollback;
+-- procedure
+CREATE OR REPLACE PROCEDURE proc_mutil
+(
+c1 int,
+c2 int
+)
+as $$ 
+BEGIN
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=c1, a.col2=c2 where a.col1=b.col1;
+END $$ language plmysql;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=5, a.col2=6 where a.col1=b.col1;
+CALL proc_mutil(5,6);
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    5
+    1 |    5
+(2 rows)
+
+-- update one rel of two
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set a.col2 =1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    1
+    1 |    1
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    5
+    1 |    5
+(2 rows)
+
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2 =2;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    1
+    1 |    1
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    1 |    2
+    1 |    2
+(2 rows)
+
+-- hash col
+CREATE SCHEMA CMULTIBLOCK1;
+drop table if exists CMULTIBLOCK1.T_MUTIL_BC_1;
+NOTICE:  table "t_mutil_bc_1" does not exist, skipping
+drop table if exists CMULTIBLOCK1.t_mutil_bc_2;
+NOTICE:  table "t_mutil_bc_2" does not exist, skipping
+CREATE TABLE CMULTIBLOCK1.T_MUTIL_BC_1(col1 int, col2 int);
+CREATE TABLE CMULTIBLOCK1.t_mutil_bc_2(col1 int, col2 int);
+insert into CMULTIBLOCK1.T_MUTIL_BC_1 values(1,2),(2,2);
+insert into CMULTIBLOCK1.t_mutil_bc_2 values(2,2),(3,3);
+update CMULTIBLOCK1.T_MUTIL_BC_1 a,CMULTIBLOCK1.t_mutil_bc_2 b set a.col2=5,b.col2=4 where a.col1=b.col1;
+create table CHASHTABLE(hash int);
+update CMULTIBLOCK1.T_MUTIL_BC_1 a,CHASHTABLE set CHASHTABLE.hash=1;
+select * from CMULTIBLOCK1.T_MUTIL_BC_1;
+ col1 | col2 
+------+------
+    1 |    2
+    2 |    5
+(2 rows)
+
+select * from CMULTIBLOCK1.t_mutil_bc_2;
+ col1 | col2 
+------+------
+    3 |    3
+    2 |    4
+(2 rows)
+
+DROP SCHEMA CMULTIBLOCK1 cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table cmultiblock1.t_mutil_bc_1
+drop cascades to table cmultiblock1.t_mutil_bc_2
+DROP TABLE CHASHTABLE;
+-- subquery
+update T_T_MUTIL_T1 a,(select * from T_T_MUTIL_T2) b set b.col1=5,a.col2=4 where a.col1=b.col1; --error
+ERROR:  column "b.col1" of relation "t_t_mutil_t1" does not exist
+LINE 1: ...T_T_MUTIL_T1 a,(select * from T_T_MUTIL_T2) b set b.col1=5,a...
+                                                             ^
+-- mateview
+CREATE MATERIALIZED VIEW MATE_MULTIVIEW1 as select * from T_T_MUTIL_T1;
+CREATE MATERIALIZED VIEW MATE_MULTIVIEW2 as select * from T_T_MUTIL_T2;
+update T_T_MUTIL_T1 a,MATE_MULTIVIEW1 b,MATE_MULTIVIEW2 c set a.col1 = 4, b.col2 = 5,c.col2 =6; --error
+ERROR:  cannot change materialized view "mate_multiview1"
+drop MATERIALIZED VIEW MATE_MULTIVIEW1;
+drop MATERIALIZED VIEW MATE_MULTIVIEW2;
+-- same relname
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T1 b set a.col2=5,b.col2=4 where a.col1=b.col1;
+ERROR:  multiple assignments to same column "col2"
+select * from T_T_MUTIL_T1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+rollback;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 a set a.col2=5; --error
+ERROR:  table name "a" specified more than once
+-- different explain plan
+explain(verbose) update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col1=5,a.col2=4 where a.col1=b.col1;
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
+ Update on MULTI-RELATION  (cost=317.01..711.38 rows=25538 width=32)
+   Update on public.t_t_mutil_t1 a
+   Update on public.t_t_mutil_t2 b
+   ->  Merge Join  (cost=317.01..711.38 rows=25538 width=32)
+         Output: 4, a.ctid, a.ctid, b.ctid
+         Merge Cond: (a.col1 = b.col1)
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Output: a.ctid, a.col1
+               Sort Key: a.col1
+               ->  Seq Scan on public.t_t_mutil_t1 a  (cost=0.00..32.60 rows=2260 width=10)
+                     Output: a.ctid, a.col1
+         ->  Sort  (cost=158.51..164.16 rows=2260 width=10)
+               Output: b.ctid, b.col1
+               Sort Key: b.col1
+               ->  Seq Scan on public.t_t_mutil_t2 b  (cost=0.00..32.60 rows=2260 width=10)
+                     Output: b.ctid, b.col1
+(16 rows)
+
+explain(format xml) update public.T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=5,a.col2=4 where a.col1=b.col1;
+                             QUERY PLAN                             
+--------------------------------------------------------------------
+ <explain xmlns="http://www.postgresql.org/2009/explain">          +
+   <Query>                                                         +
+     <Plan>                                                        +
+       <Node-Type>ModifyTable</Node-Type>                          +
+       <Operation>Update</Operation>                               +
+       <Parallel-Aware>false</Parallel-Aware>                      +
+       <Async-Capable>false</Async-Capable>                        +
+       <Relation-Name>MULTI-RELATION</Relation-Name>               +
+       <Startup-Cost>317.01</Startup-Cost>                         +
+       <Total-Cost>711.38</Total-Cost>                             +
+       <Plan-Rows>25538</Plan-Rows>                                +
+       <Plan-Width>32</Plan-Width>                                 +
+       <Target-Tables>                                             +
+         <Target-Table>                                            +
+           <Relation-Name>t_t_mutil_t1</Relation-Name>             +
+           <Alias>a</Alias>                                        +
+         </Target-Table>                                           +
+         <Target-Table>                                            +
+           <Relation-Name>t_t_mutil_t2</Relation-Name>             +
+           <Alias>b</Alias>                                        +
+         </Target-Table>                                           +
+       </Target-Tables>                                            +
+       <Plans>                                                     +
+         <Plan>                                                    +
+           <Node-Type>Merge Join</Node-Type>                       +
+           <Parent-Relationship>Outer</Parent-Relationship>        +
+           <Parallel-Aware>false</Parallel-Aware>                  +
+           <Async-Capable>false</Async-Capable>                    +
+           <Join-Type>Inner</Join-Type>                            +
+           <Startup-Cost>317.01</Startup-Cost>                     +
+           <Total-Cost>711.38</Total-Cost>                         +
+           <Plan-Rows>25538</Plan-Rows>                            +
+           <Plan-Width>32</Plan-Width>                             +
+           <Inner-Unique>false</Inner-Unique>                      +
+           <Merge-Cond>(a.col1 = b.col1)</Merge-Cond>              +
+           <Plans>                                                 +
+             <Plan>                                                +
+               <Node-Type>Sort</Node-Type>                         +
+               <Parent-Relationship>Outer</Parent-Relationship>    +
+               <Parallel-Aware>false</Parallel-Aware>              +
+               <Async-Capable>false</Async-Capable>                +
+               <Startup-Cost>158.51</Startup-Cost>                 +
+               <Total-Cost>164.16</Total-Cost>                     +
+               <Plan-Rows>2260</Plan-Rows>                         +
+               <Plan-Width>10</Plan-Width>                         +
+               <Sort-Key>                                          +
+                 <Item>a.col1</Item>                               +
+               </Sort-Key>                                         +
+               <Plans>                                             +
+                 <Plan>                                            +
+                   <Node-Type>Seq Scan</Node-Type>                 +
+                   <Parent-Relationship>Outer</Parent-Relationship>+
+                   <Parallel-Aware>false</Parallel-Aware>          +
+                   <Async-Capable>false</Async-Capable>            +
+                   <Relation-Name>t_t_mutil_t1</Relation-Name>     +
+                   <Alias>a</Alias>                                +
+                   <Startup-Cost>0.00</Startup-Cost>               +
+                   <Total-Cost>32.60</Total-Cost>                  +
+                   <Plan-Rows>2260</Plan-Rows>                     +
+                   <Plan-Width>10</Plan-Width>                     +
+                 </Plan>                                           +
+               </Plans>                                            +
+             </Plan>                                               +
+             <Plan>                                                +
+               <Node-Type>Sort</Node-Type>                         +
+               <Parent-Relationship>Inner</Parent-Relationship>    +
+               <Parallel-Aware>false</Parallel-Aware>              +
+               <Async-Capable>false</Async-Capable>                +
+               <Startup-Cost>158.51</Startup-Cost>                 +
+               <Total-Cost>164.16</Total-Cost>                     +
+               <Plan-Rows>2260</Plan-Rows>                         +
+               <Plan-Width>10</Plan-Width>                         +
+               <Sort-Key>                                          +
+                 <Item>b.col1</Item>                               +
+               </Sort-Key>                                         +
+               <Plans>                                             +
+                 <Plan>                                            +
+                   <Node-Type>Seq Scan</Node-Type>                 +
+                   <Parent-Relationship>Outer</Parent-Relationship>+
+                   <Parallel-Aware>false</Parallel-Aware>          +
+                   <Async-Capable>false</Async-Capable>            +
+                   <Relation-Name>t_t_mutil_t2</Relation-Name>     +
+                   <Alias>b</Alias>                                +
+                   <Startup-Cost>0.00</Startup-Cost>               +
+                   <Total-Cost>32.60</Total-Cost>                  +
+                   <Plan-Rows>2260</Plan-Rows>                     +
+                   <Plan-Width>10</Plan-Width>                     +
+                 </Plan>                                           +
+               </Plans>                                            +
+             </Plan>                                               +
+           </Plans>                                                +
+         </Plan>                                                   +
+       </Plans>                                                    +
+     </Plan>                                                       +
+   </Query>                                                        +
+ </explain>
+(1 row)
+
+explain(format json) update public.T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=5,a.col2=4 where a.col1=b.col1;
+                     QUERY PLAN                     
+----------------------------------------------------
+ [                                                 +
+   {                                               +
+     "Plan": {                                     +
+       "Node Type": "ModifyTable",                 +
+       "Operation": "Update",                      +
+       "Parallel Aware": false,                    +
+       "Async Capable": false,                     +
+       "Relation Name": "MULTI-RELATION",          +
+       "Startup Cost": 317.01,                     +
+       "Total Cost": 711.38,                       +
+       "Plan Rows": 25538,                         +
+       "Plan Width": 32,                           +
+       "Target Tables": [                          +
+         {                                         +
+           "Relation Name": "t_t_mutil_t1",        +
+           "Alias": "a"                            +
+         },                                        +
+         {                                         +
+           "Relation Name": "t_t_mutil_t2",        +
+           "Alias": "b"                            +
+         }                                         +
+       ],                                          +
+       "Plans": [                                  +
+         {                                         +
+           "Node Type": "Merge Join",              +
+           "Parent Relationship": "Outer",         +
+           "Parallel Aware": false,                +
+           "Async Capable": false,                 +
+           "Join Type": "Inner",                   +
+           "Startup Cost": 317.01,                 +
+           "Total Cost": 711.38,                   +
+           "Plan Rows": 25538,                     +
+           "Plan Width": 32,                       +
+           "Inner Unique": false,                  +
+           "Merge Cond": "(a.col1 = b.col1)",      +
+           "Plans": [                              +
+             {                                     +
+               "Node Type": "Sort",                +
+               "Parent Relationship": "Outer",     +
+               "Parallel Aware": false,            +
+               "Async Capable": false,             +
+               "Startup Cost": 158.51,             +
+               "Total Cost": 164.16,               +
+               "Plan Rows": 2260,                  +
+               "Plan Width": 10,                   +
+               "Sort Key": ["a.col1"],             +
+               "Plans": [                          +
+                 {                                 +
+                   "Node Type": "Seq Scan",        +
+                   "Parent Relationship": "Outer", +
+                   "Parallel Aware": false,        +
+                   "Async Capable": false,         +
+                   "Relation Name": "t_t_mutil_t1",+
+                   "Alias": "a",                   +
+                   "Startup Cost": 0.00,           +
+                   "Total Cost": 32.60,            +
+                   "Plan Rows": 2260,              +
+                   "Plan Width": 10                +
+                 }                                 +
+               ]                                   +
+             },                                    +
+             {                                     +
+               "Node Type": "Sort",                +
+               "Parent Relationship": "Inner",     +
+               "Parallel Aware": false,            +
+               "Async Capable": false,             +
+               "Startup Cost": 158.51,             +
+               "Total Cost": 164.16,               +
+               "Plan Rows": 2260,                  +
+               "Plan Width": 10,                   +
+               "Sort Key": ["b.col1"],             +
+               "Plans": [                          +
+                 {                                 +
+                   "Node Type": "Seq Scan",        +
+                   "Parent Relationship": "Outer", +
+                   "Parallel Aware": false,        +
+                   "Async Capable": false,         +
+                   "Relation Name": "t_t_mutil_t2",+
+                   "Alias": "b",                   +
+                   "Startup Cost": 0.00,           +
+                   "Total Cost": 32.60,            +
+                   "Plan Rows": 2260,              +
+                   "Plan Width": 10                +
+                 }                                 +
+               ]                                   +
+             }                                     +
+           ]                                       +
+         }                                         +
+       ]                                           +
+     }                                             +
+   }                                               +
+ ]
+(1 row)
+
+explain(format yaml) update public.T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col2=5,a.col2=4 where a.col1=b.col1;
+                  QUERY PLAN                   
+-----------------------------------------------
+ - Plan:                                      +
+     Node Type: "ModifyTable"                 +
+     Operation: "Update"                      +
+     Parallel Aware: false                    +
+     Async Capable: false                     +
+     Relation Name: "MULTI-RELATION"          +
+     Startup Cost: 317.01                     +
+     Total Cost: 711.38                       +
+     Plan Rows: 25538                         +
+     Plan Width: 32                           +
+     Target Tables:                           +
+       - Relation Name: "t_t_mutil_t1"        +
+         Alias: "a"                           +
+       - Relation Name: "t_t_mutil_t2"        +
+         Alias: "b"                           +
+     Plans:                                   +
+       - Node Type: "Merge Join"              +
+         Parent Relationship: "Outer"         +
+         Parallel Aware: false                +
+         Async Capable: false                 +
+         Join Type: "Inner"                   +
+         Startup Cost: 317.01                 +
+         Total Cost: 711.38                   +
+         Plan Rows: 25538                     +
+         Plan Width: 32                       +
+         Inner Unique: false                  +
+         Merge Cond: "(a.col1 = b.col1)"      +
+         Plans:                               +
+           - Node Type: "Sort"                +
+             Parent Relationship: "Outer"     +
+             Parallel Aware: false            +
+             Async Capable: false             +
+             Startup Cost: 158.51             +
+             Total Cost: 164.16               +
+             Plan Rows: 2260                  +
+             Plan Width: 10                   +
+             Sort Key:                        +
+               - "a.col1"                     +
+             Plans:                           +
+               - Node Type: "Seq Scan"        +
+                 Parent Relationship: "Outer" +
+                 Parallel Aware: false        +
+                 Async Capable: false         +
+                 Relation Name: "t_t_mutil_t1"+
+                 Alias: "a"                   +
+                 Startup Cost: 0.00           +
+                 Total Cost: 32.60            +
+                 Plan Rows: 2260              +
+                 Plan Width: 10               +
+           - Node Type: "Sort"                +
+             Parent Relationship: "Inner"     +
+             Parallel Aware: false            +
+             Async Capable: false             +
+             Startup Cost: 158.51             +
+             Total Cost: 164.16               +
+             Plan Rows: 2260                  +
+             Plan Width: 10                   +
+             Sort Key:                        +
+               - "b.col1"                     +
+             Plans:                           +
+               - Node Type: "Seq Scan"        +
+                 Parent Relationship: "Outer" +
+                 Parallel Aware: false        +
+                 Async Capable: false         +
+                 Relation Name: "t_t_mutil_t2"+
+                 Alias: "b"                   +
+                 Startup Cost: 0.00           +
+                 Total Cost: 32.60            +
+                 Plan Rows: 2260              +
+                 Plan Width: 10
+(1 row)
+
+-- temp table
+drop table if exists T_T_MUTIL_T1;
+drop table if exists T_T_MUTIL_T2;
+create temporary table T_T_MUTIL_T1(col1 int, col2 int);
+create temporary table T_T_MUTIL_T2(col1 int,col2 int);
+insert into T_T_MUTIL_T1 values(1,2),(2,2);
+insert into T_T_MUTIL_T2 values(2,2),(3,3);
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b set b.col1=5,a.col2=4 where a.col1=b.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    2
+    2 |    4
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 
+------+------
+    3 |    3
+    5 |    2
+(2 rows)
+
+-- order by or limit
+drop table if exists T_MUTIL_T1;
+NOTICE:  table "t_mutil_t1" does not exist, skipping
+drop table if exists T_MUTIL_T2;
+NOTICE:  table "t_mutil_t2" does not exist, skipping
+create table T_MUTIL_T1(col1 int,col2 int);
+create table T_MUTIL_T2(col1 int,col2 int);
+insert into T_MUTIL_T1 values(1,2),(1,2);
+insert into T_MUTIL_T2 values(2,3),(2,3);
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col2=4,b.col1=4 where a.col1=b.col2 order by a.col2;  --error
+ERROR:  Un-support feature
+DETAIL:  mutilple-relations modifying doesn't support update ORDER BY
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col2=4,b.col1=4 where a.col1=b.col2 limit 1;    --error
+ERROR:  Un-support feature
+DETAIL:  mutilple-relations modifying doesn't support update LIMIT
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    2
+    1 |    2
+(2 rows)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    2 |    3
+    2 |    3
+(2 rows)
+
+-- returning
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col2=4,b.col1=4 where a.col1=b.col2 returning *; --error
+ERROR:  Un-support feature
+DETAIL:  mutilple-relations modifying doesn't support update returning
+-- left join
+begin;
+update T_MUTIL_T1 a left join T_MUTIL_T2 b on a.col1=b.col1 set a.col2=7,b.col2=8;
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    7
+    1 |    7
+(2 rows)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    2 |    3
+    2 |    3
+(2 rows)
+
+rollback;
+-- default col
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int default 1,col2 int);
+create table T_MUTIL_T2(col1 int,col2 int default 3);
+insert into T_MUTIL_T1 values(default,2);
+insert into T_MUTIL_T2 values(2,default);
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col2=4,b.col1=4 where a.col2=b.col1; 
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+(1 row)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    4 |    3
+(1 row)
+
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col1=5,b.col2=6 where a.col2=b.col1; 
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    5 |    4
+(1 row)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    4 |    6
+(1 row)
+
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col1=default,b.col2=default where a.col2=b.col1; 
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+(1 row)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    4 |    3
+(1 row)
+
+-- generated col
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int generated always as (col2*2) stored,col2 int);
+create table T_MUTIL_T2(col1 int,col2 int generated always as (col1*3) stored);
+insert into T_MUTIL_T1 values(default,2);
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    4 |    2
+(1 row)
+
+update T_MUTIL_T1 set col1 = default,col2=4;
+select * from T_MUTIL_T1;
+ col1 | col2 
+------+------
+    8 |    4
+(1 row)
+
+-- has index
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(col1 int);
+create table T_MUTIL_T2(col1 int,col2 int);
+create index idx1 on T_MUTIL_T1(col1);
+create index idx2 on T_MUTIL_T2(col1);
+insert into T_MUTIL_T1 values(1),(2);
+insert into T_MUTIL_T2 values(2,2),(3,3);
+update T_MUTIL_T1 a,T_MUTIL_T2 b set a.col1=4,b.col1=5 where a.col1=b.col1;
+select * from T_MUTIL_T1;
+ col1 
+------
+    1
+    4
+(2 rows)
+
+select * from T_MUTIL_T2;
+ col1 | col2 
+------+------
+    3 |    3
+    5 |    2
+(2 rows)
+
+-- primary key
+drop table if exists T_MUTIL_PRIMARY;
+create table T_MUTIL_PRIMARY(col1 int primary key);
+insert into T_MUTIL_PRIMARY values(1),(2);
+update T_MUTIL_PRIMARY a,T_MUTIL_PRIMARY b set a.col1=3,b.col1=3;
+ERROR:  multiple assignments to same column "col1"
+-- col of one table is the name of the other table
+drop table if exists T_MUTIL_T1;
+drop table if exists T_MUTIL_T2;
+create table T_MUTIL_T1(T_MUTIL_T2 int);
+create table T_MUTIL_T2(col1 int);
+insert into T_MUTIL_T1 values(1);
+insert into T_MUTIL_T2 values(2);
+update T_MUTIL_T1,T_MUTIL_T2 set T_MUTIL_T1.T_MUTIL_T2=3,T_MUTIL_T2.col1=4;
+select * from T_MUTIL_T1;
+ T_MUTIL_T2 
+------------
+          3
+(1 row)
+
+select * from T_MUTIL_T2;
+ col1 
+------
+    4
+(1 row)
+
+update T_MUTIL_T1,T_MUTIL_T2 set T_MUTIL_T2.col1=4,T_MUTIL_T1.T_MUTIL_T2=3;
+-- duplicate tablename
+update T_MUTIL_T1,T_MUTIL_T1 set T_MUTIL_T1.T_MUTIL_T2 = 5; -- error
+ERROR:  table name "t_mutil_t1" specified more than once
+-- duplicate colname
+update T_MUTIL_T1 set T_MUTIL_T1.T_MUTIL_T2=4,T_MUTIL_T1.T_MUTIL_T2=5; -- error
+update T_MUTIL_T1,T_MUTIL_T2 set T_MUTIL_T1.T_MUTIL_T2=4,T_MUTIL_T1.T_MUTIL_T2=5; -- error
+-- ARupdate trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+NOTICE:  table "test_trigger_src_tbl1" does not exist, skipping
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+NOTICE:  table "test_trigger_src_tbl2" does not exist, skipping
+drop table if exists TEST_TRIGGER_DES_TBL1;
+NOTICE:  table "test_trigger_des_tbl1" does not exist, skipping
+drop table if exists TEST_TRIGGER_DES_TBL2;
+NOTICE:  table "test_trigger_des_tbl2" does not exist, skipping
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL1 SET des1_id3 = NEW.src1_id3 WHERE des1_id1=OLD.src1_id1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_update_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL2 SET des2_id3 = NEW.src2_id3 WHERE des2_id1=OLD.src2_id1;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER update_ar_trigger1
+AFTER UPDATE ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_update_func1();
+CREATE TRIGGER update_ar_trigger2
+AFTER UPDATE ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_update_func2();
+UPDATE TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b SET a.src1_id3=700,b.src2_id1=600 WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+      100 |      200 |      700
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+      600 |      400 |      500
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+      100 |      200 |      700
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+      300 |      400 |      500
+(1 row)
+
+-- BRupdate trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL1 SET des1_id3 = 800;
+RETURN NEW;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_update_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL2 SET des2_id3 = 800;
+RETURN NEW;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER update_ar_trigger1
+BEFORE UPDATE ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_update_func1();
+CREATE TRIGGER update_ar_trigger2
+BEFORE UPDATE ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH ROW
+EXECUTE PROCEDURE tri_update_func2();
+UPDATE TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b SET a.src1_id3=700,b.src2_id1=600 WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+      100 |      200 |      700
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+      600 |      400 |      500
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+      100 |      200 |      800
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+      300 |      400 |      800
+(1 row)
+
+-- BSupdate trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL1 SET des1_id3 = 800;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_update_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL2 SET des2_id3 = 900;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER update_ar_trigger1
+BEFORE UPDATE ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_update_func1();
+CREATE TRIGGER update_ar_trigger2
+BEFORE UPDATE ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_update_func2();
+UPDATE TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b SET a.src1_id3=700,b.src2_id1=600 WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+      100 |      200 |      700
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+      600 |      400 |      500
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+      100 |      200 |      800
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+      300 |      400 |      900
+(1 row)
+
+-- ASupdate trig
+drop table if exists TEST_TRIGGER_SRC_TBL1;
+drop table if exists TEST_TRIGGER_SRC_TBL2;
+drop table if exists TEST_TRIGGER_DES_TBL1;
+drop table if exists TEST_TRIGGER_DES_TBL2;
+CREATE TABLE TEST_TRIGGER_SRC_TBL1(src1_id1 INT, src1_id2 INT, src1_id3 INT);
+CREATE TABLE TEST_TRIGGER_SRC_TBL2(src2_id1 INT, src2_id2 INT, src2_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL1(des1_id1 INT, des1_id2 INT, des1_id3 INT);
+CREATE TABLE TEST_TRIGGER_DES_TBL2(des2_id1 INT, des2_id2 INT, des2_id3 INT);
+CREATE OR REPLACE FUNCTION tri_update_func1() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL1 SET des1_id3 = 800;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+CREATE OR REPLACE FUNCTION tri_update_func2() RETURNS TRIGGER AS
+$$
+DECLARE
+BEGIN
+UPDATE TEST_TRIGGER_DES_TBL2 SET des2_id3 = 900;
+RETURN OLD;
+END
+$$ LANGUAGE PLMYSQL;
+INSERT INTO TEST_TRIGGER_SRC_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_SRC_TBL2 VALUES(300,400,500);
+INSERT INTO TEST_TRIGGER_DES_TBL1 VALUES(100,200,300);
+INSERT INTO TEST_TRIGGER_DES_TBL2 VALUES(300,400,500);
+CREATE TRIGGER update_ar_trigger1
+AFTER UPDATE ON TEST_TRIGGER_SRC_TBL1 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_update_func1();
+CREATE TRIGGER update_ar_trigger2
+AFTER UPDATE ON TEST_TRIGGER_SRC_TBL2 
+FOR EACH STATEMENT
+EXECUTE PROCEDURE tri_update_func2();
+UPDATE TEST_TRIGGER_SRC_TBL1 a,TEST_TRIGGER_SRC_TBL2 b SET a.src1_id3=700,b.src2_id1=600 WHERE a.src1_id3=b.src2_id1;
+SELECT * FROM TEST_TRIGGER_SRC_TBL1;
+ src1_id1 | src1_id2 | src1_id3 
+----------+----------+----------
+      100 |      200 |      700
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_SRC_TBL2;
+ src2_id1 | src2_id2 | src2_id3 
+----------+----------+----------
+      600 |      400 |      500
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL1; 
+ des1_id1 | des1_id2 | des1_id3 
+----------+----------+----------
+      100 |      200 |      800
+(1 row)
+
+SELECT * FROM TEST_TRIGGER_DES_TBL2; 
+ des2_id1 | des2_id2 | des2_id3 
+----------+----------+----------
+      300 |      400 |      900
+(1 row)
+
+drop table if exists T_T_MUTIL_T1;
+drop table if exists T_T_MUTIL_T2;
+drop table if exists T_T_MUTIL_T3;
+create table T_T_MUTIL_T1(col1 int,col2 int);
+create table T_T_MUTIL_T2(col1 int,col2 int,col3 int);
+create table T_T_MUTIL_T3(col1 int,col2 int);
+insert into T_T_MUTIL_T1 values(1,1),(1,1);
+insert into T_T_MUTIL_T2 values(1,1),(1,2);
+insert into T_T_MUTIL_T3 values(1,1),(1,3);
+begin;
+update T_T_MUTIL_T1 a,T_T_MUTIL_T2 b,T_T_MUTIL_T3 c set b.col2=5,a.col2=4 where a.col1=b.col1 and b.col1=c.col1;
+rollback;
+begin;
+update T_T_MUTIL_T1  T1,T_T_MUTIL_T2 T2 set T2.col2 = 3,  T1.col1 = 2;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    2 |    1
+    2 |    1
+(2 rows)
+
+rollback;
+begin;
+update T_T_MUTIL_T1  T1, T_T_MUTIL_T1 T2, T_T_MUTIL_T1 T3 set T2.col2 = 3, T3.col1 = 2;
+rollback;
+begin;
+update T_T_MUTIL_T2  T1, T_T_MUTIL_T2 T2, T_T_MUTIL_T2 T3 set  T1.col1 = 3, T3.col2 = 2, T2.col3 = 3;
+rollback;
+begin;
+update T_T_MUTIL_T1  T1 inner join T_T_MUTIL_T2 T2 on  T1.col1=T2.col1 inner join T_T_MUTIL_T3 T3 on  T1.col1=T3.col1 set  T1.col2=3,T2.col2=4;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    3
+    1 |    3
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    4 |     
+    1 |    4 |     
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    1
+    1 |    3
+(2 rows)
+
+rollback;
+-- view
+create view MULTIVIEW1 as select * from T_T_MUTIL_T1;
+create view MULTIVIEW2 as select * from T_T_MUTIL_T2;
+create view MULTIVIEW3 as select * from T_T_MUTIL_T3;
+begin;
+update MULTIVIEW1 a,MULTIVIEW2 b,MULTIVIEW3 c set a.col2 = 6, b.col2 = 7,c.col2 =8 where a.col1 = b.col1 and a.col1 = c.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    7 |     
+    1 |    7 |     
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    8
+    1 |    8
+(2 rows)
+
+rollback;
+begin;
+update T_T_MUTIL_T1 a,MULTIVIEW2 b,T_T_MUTIL_T3 c set a.col2 = 4, b.col2 = 5,c.col2 = 6 where a.col1 = b.col1 and a.col1 = c.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    4
+    1 |    4
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    5 |     
+    1 |    5 |     
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+rollback;
+begin;
+alter table T_T_MUTIL_T1 alter column col2 set default 999;
+update T_T_MUTIL_T1 a,MULTIVIEW2 b,T_T_MUTIL_T3 c set a.col2 = default, b.col2 = 5,c.col2 = 6 where a.col1 = b.col1 and a.col1 = c.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |  999
+    1 |  999
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    5 |     
+    1 |    5 |     
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+rollback;
+-- left join
+begin;
+update MULTIVIEW1 a left join MULTIVIEW2 b on a.col1=b.col1 set a.col2=7,b.col2=8;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    7
+    1 |    7
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    8 |     
+    1 |    8 |     
+(2 rows)
+
+rollback;
+-- update same relation
+begin;
+update T_T_MUTIL_T1 a,MULTIVIEW2 b,T_T_MUTIL_T2 c,T_T_MUTIL_T3 d set a.col2 = 6, b.col2 = 9, c.col3 = 10, d.col2 = 6 where a.col1 = b.col1 and a.col1 = d.col1;
+select * from T_T_MUTIL_T1;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+select * from T_T_MUTIL_T2;
+ col1 | col2 | col3 
+------+------+------
+    1 |    9 |   10
+    1 |    9 |   10
+(2 rows)
+
+select * from T_T_MUTIL_T3;
+ col1 | col2 
+------+------
+    1 |    6
+    1 |    6
+(2 rows)
+
+rollback;
+drop view MULTIVIEW1;
+drop view MULTIVIEW2;
+drop view MULTIVIEW3;
+-- multi update with join
+drop table if exists  T1;
+NOTICE:  table "t1" does not exist, skipping
+drop table if exists T2;
+NOTICE:  table "t2" does not exist, skipping
+CREATE TABLE  T1 (f1 int);
+CREATE TABLE T2 (f1 int);
+INSERT INTO T2  VALUES (1);
+CREATE VIEW V1 AS SELECT * FROM T2;
+UPDATE T2 AS A NATURAL JOIN V1 B SET B.f1 = 2;
+ERROR:  rel 1 already exists
+select * from V1;
+ f1 
+----
+  1
+(1 row)
+
+drop table  T1;
+drop view V1;
+drop table T2;

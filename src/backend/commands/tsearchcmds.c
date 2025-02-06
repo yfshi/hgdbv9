@@ -47,6 +47,9 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* Single entry of List returned by getTokenTypes() */
 typedef struct
@@ -203,6 +206,10 @@ DefineTSParser(List *names, List *parameters)
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &prsname);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+		prsname = strVal(llast(names));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* initialize tuple fields with name/namespace */
 	memset(values, 0, sizeof(values));
@@ -412,6 +419,10 @@ DefineTSDictionary(List *names, List *parameters)
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &dictname);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+		dictname = strVal(llast(names));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(namespaceoid, GetUserId(), ACL_CREATE);
@@ -708,6 +719,10 @@ DefineTSTemplate(List *names, List *parameters)
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &tmplname);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+		tmplname = strVal(llast(names));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	tmplRel = table_open(TSTemplateRelationId, RowExclusiveLock);
 
@@ -915,6 +930,10 @@ DefineTSConfiguration(List *names, List *parameters, ObjectAddress *copied)
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &cfgname);
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+		cfgname = strVal(llast(names));
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
 	aclresult = pg_namespace_aclcheck(namespaceoid, GetUserId(), ACL_CREATE);

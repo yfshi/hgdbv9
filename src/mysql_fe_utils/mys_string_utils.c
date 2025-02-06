@@ -24,6 +24,8 @@
 #include "mysql_fe_utils/mys_string_utils.h"
 
 #include "mysql_parser/mys_keywords.h"
+#include "libpq-fe.h"
+
 
 
 static PQExpBuffer mysDefaultGetLocalPQExpBuffer(void);
@@ -136,3 +138,47 @@ mys_fmtId(const char *rawid)
 
 	return id_return->data;
 }
+
+/* Begin - ReqID:SRS-MYSQL-CASE */
+void get_mysql_objname(PGconn *conn, Oid oid, char **objname, char **nspname)
+{
+	PQExpBufferData		tmpbuf;
+	PGresult		   *res;
+
+	initPQExpBuffer(&tmpbuf);
+
+	if (!OidIsValid(oid))
+		return;
+
+	appendPQExpBuffer(&tmpbuf, "select * from pg_catalog.pg_object where oid = %d; \n", oid);
+	res = PQexec(conn, tmpbuf.data);
+
+	if (PQntuples(res) == 1)
+	{
+		char	   *tmpnspname = NULL;
+
+		*objname = pg_strdup(PQgetvalue(res, 0, 1));
+		tmpnspname = pg_strdup(PQgetvalue(res, 0, 4));
+		if (tmpnspname)
+		{
+			PQExpBufferData		tmpbuf1;
+			PGresult		   *schres;
+			char			   *tmpstr = NULL;
+
+			initPQExpBuffer(&tmpbuf1);
+
+			appendPQExpBuffer(&tmpbuf1, "select objname from pg_catalog.pg_object where oid = %s::oid; \n", tmpnspname);
+			schres = PQexec(conn, tmpbuf1.data);
+			if (PQntuples(schres) == 1)
+			{
+				tmpstr = PQgetvalue(schres, 0, 0);
+
+				if (tmpstr)
+					*nspname = pg_strdup(tmpstr);
+			}
+			termPQExpBuffer(&tmpbuf1);
+		}
+	}
+	termPQExpBuffer(&tmpbuf);
+}
+/* End - ReqID:SRS-MYSQL-CASE */
