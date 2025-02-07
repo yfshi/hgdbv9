@@ -67,6 +67,9 @@ parseCommandLine(int argc, char *argv[])
 		{"socketdir", required_argument, NULL, 's'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"clone", no_argument, NULL, 1},
+		/* Begin - Bug# Z1638 */
+		{"dbname", required_argument, NULL, 'N'},
+		/* End - Bug# Z1638 */
 
 		{NULL, 0, NULL, 0}
 	};
@@ -93,6 +96,11 @@ parseCommandLine(int argc, char *argv[])
 	old_cluster.mysport = getenv("MYSPORTOLD") ? atoi(getenv("MYSPORTOLD")) : DEF_MYSUPORT;
 	new_cluster.mysport = getenv("MYSPORTNEW") ? atoi(getenv("MYSPORTNEW")) : DEF_MYSUPORT;
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
+	/* Begin - Bug# Z1638 */
+	old_cluster.dbname = "postgres";
+	new_cluster.dbname = "postgres";
+	/* End - Bug# Z1638 */
 
 	os_user_effective_id = get_user_info(&os_info.user);
 	/* we override just the database user name;  we got the OS id above */
@@ -155,7 +163,7 @@ parseCommandLine(int argc, char *argv[])
 #endif
 /* End - Bug#M0000315 */
 
-	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rs:U:v",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME */
+	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rs:U:vN:",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME *//* Bug# Z1638 */
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)
@@ -179,6 +187,14 @@ parseCommandLine(int argc, char *argv[])
 			case 'D':
 				new_cluster.pgdata = pg_strdup(optarg);
 				break;
+
+			/* Begin - Bug# Z1638 */
+			case 'N':
+				/* The names of the old dbname and the new dbname must be the same. */
+				old_cluster.dbname = pg_strdup(optarg);
+				new_cluster.dbname = pg_strdup(optarg);
+				break;
+			/* End - Bug# Z1638 */
 
 			case 'j':
 				user_opts.jobs = atoi(optarg);
@@ -407,6 +423,9 @@ usage(void)
 	printf(_("  -q, --old-oraport=PORT        old cluster oracle port number (default %d)\n"), old_cluster.oraport);
 	printf(_("  -Q, --new-oraport=PORT        new cluster oracle port number (default %d)\n"), new_cluster.oraport);
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+	/* Begin - Bug# Z1638 */
+	printf(_("  -N, --dbname=DBNAME           Specify the name of the dbname to initialize. The default is \"postgres\".\n"));
+	/* End - Bug# Z1638 */
 	printf(_("  -r, --retain                  retain SQL and log files after success\n"));
 	printf(_("  -s, --socketdir=DIR           socket directory to use (default current dir.)\n"));
 	printf(_("  -U, --username=NAME           cluster superuser (default \"%s\")\n"), os_info.user);

@@ -1380,7 +1380,11 @@ msgstr "  -q, --old-oraport=PORT        旧集群 oracle 端口号 (默认值为
 msgid "  -Q, --new-oraport=PORT        new cluster oracle port number (default %d)\n"
 msgstr "  -Q, --new-oraport=PORT        新集群 oracle 端口号 (默认值为 %d)\n"
 
-#: option.c:402
+#: option.c:427
+#,  c-format
+#| msgid "  -d, --dbname=DBNAME      database name to connect to (default: \"%s\")\n"
+msgid "  -N, --dbname=DBNAME           Specify the name of the dbname to initialize. The default is \"postgres\".\n"
+msgstr "  -N, --dbname=DBNAME      指定要初始化的数据库名称。默认值是\"postgres\"\n"
 #, c-format
 msgid "  -r, --retain                  retain SQL and log files after success\n"
 msgstr "  -r, --retain                  成功后保留SQL和日志文件\n"

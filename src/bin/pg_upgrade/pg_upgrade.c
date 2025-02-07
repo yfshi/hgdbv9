@@ -362,10 +362,10 @@ create_new_objects(void)
 				  true,
 				  true,
 				  "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
-				  "--dbname postgres \"%s\"",
+				  "--dbname %s \"%s\"", /* Bug# Z1638 */
 				  old_cluster.bindir,
 				  cluster_conn_opts(&new_cluster),
-				  create_opts,
+				  create_opts,new_cluster.dbname, /* Bug# Z1638 */
 				  sql_file_name);
 #else
 		exec_prog(log_file_name,
@@ -373,10 +373,10 @@ create_new_objects(void)
 				  true,
 				  true,
 				  "\"%s/pg_restore\" %s %s --exit-on-error --verbose "
-				  "--dbname postgres \"%s\"",
+				  "--dbname %s \"%s\"", /* Bug# Z1638 */
 				  new_cluster.bindir,
 				  cluster_conn_opts(&new_cluster),
-				  create_opts,
+				  create_opts, new_cluster.dbname, /* Bug# Z1638 */
 				  sql_file_name);
 #endif
 
@@ -403,7 +403,7 @@ create_new_objects(void)
 		 * tell pg_restore to drop and recreate it; otherwise we would fail to
 		 * propagate its database-level properties.
 		 */
-		if (strcmp(old_db->db_name, "postgres") == 0)
+		if (strcmp(old_db->db_name, old_cluster.dbname) == 0) /* Bug# Z1638 */
 			create_opts = "--clean --create";
 		else
 			create_opts = "--create";

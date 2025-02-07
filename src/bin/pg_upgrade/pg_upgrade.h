@@ -279,6 +279,7 @@ typedef struct
 	char		major_version_str[64];	/* string PG_VERSION of cluster */
 	uint32		bin_version;	/* version returned from pg_ctl */
 	const char *tablespace_suffix;	/* directory specification */
+	char *dbname;					/* db name *//* Bug# Z1638 */
 } ClusterInfo;
 
 
