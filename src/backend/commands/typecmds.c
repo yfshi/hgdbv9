@@ -69,6 +69,7 @@
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
 #include "utils/snapmgr.h"
@@ -202,6 +203,11 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 	Oid			typoid;
 	ListCell   *pl;
 	ObjectAddress address;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();;
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * As of Postgres 8.4, we require superuser privilege to create a base
@@ -221,6 +227,23 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 
 	/* Convert list of names to a name and namespace */
 	typeNamespace = QualifiedNameGetCreationNamespace(names, &typeName);
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(typeNamespace);
+
+		objectOwner = get_namespace_owner(typeNamespace);
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
@@ -268,7 +291,13 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 					(errcode(ERRCODE_DUPLICATE_OBJECT),
 					 errmsg("type \"%s\" already exists", typeName)));
 
-		address = TypeShellMake(typeName, typeNamespace, GetUserId());
+		address = TypeShellMake(typeName, typeNamespace, objectOwner);
+
+		/* Begin - ReqID:SRS-SQL-SCHEMA	 */
+		if (set_namespace)
+			AtEOXact_GUC(false, save_nestlevel);
+		/* End - ReqID:SRS-SQL-SCHEMA */
+
 		return address;
 	}
 
@@ -582,7 +611,7 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 				   typeNamespace,	/* namespace */
 				   InvalidOid,	/* relation oid (n/a here) */
 				   0,			/* relation kind (ditto) */
-				   GetUserId(), /* owner's ID */
+				   objectOwner, /* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 				   internalLength,	/* internal size */
 				   TYPTYPE_BASE,	/* type-type (base type) */
 				   category,	/* type-category */
@@ -624,7 +653,7 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 			   typeNamespace,	/* namespace */
 			   InvalidOid,		/* relation oid (n/a here) */
 			   0,				/* relation kind (ditto) */
-			   GetUserId(),		/* owner's ID */
+			   objectOwner,		/* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 			   -1,				/* internal size (always varlena) */
 			   TYPTYPE_BASE,	/* type-type (base type) */
 			   TYPCATEGORY_ARRAY,	/* type-category (array) */
@@ -653,6 +682,11 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 			   collation);		/* type's collation */
 
 	pfree(array_type);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }
@@ -738,6 +772,11 @@ DefineDomain(CreateDomainStmt *stmt)
 	int32		basetypeMod;
 	Oid			baseColl;
 	ObjectAddress address;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	domainNamespace = QualifiedNameGetCreationNamespace(stmt->domainname,
@@ -754,6 +793,23 @@ DefineDomain(CreateDomainStmt *stmt)
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(domainNamespace));
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(domainNamespace);
+
+		objectOwner = get_namespace_owner(domainNamespace);
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Check for collision with an existing type name.  If there is one and
@@ -1038,7 +1094,7 @@ DefineDomain(CreateDomainStmt *stmt)
 				   domainNamespace, /* namespace */
 				   InvalidOid,	/* relation oid (n/a here) */
 				   0,			/* relation kind (ditto) */
-				   GetUserId(), /* owner's ID */
+				   objectOwner, /* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 				   internalLength,	/* internal size */
 				   TYPTYPE_DOMAIN,	/* type-type (domain type) */
 				   category,	/* type-category */
@@ -1079,7 +1135,7 @@ DefineDomain(CreateDomainStmt *stmt)
 			   domainNamespace, /* namespace */
 			   InvalidOid,		/* relation oid (n/a here) */
 			   0,				/* relation kind (ditto) */
-			   GetUserId(),		/* owner's ID */
+			   objectOwner,		/* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 			   -1,				/* internal size (always varlena) */
 			   TYPTYPE_BASE,	/* type-type (base type) */
 			   TYPCATEGORY_ARRAY,	/* type-category (array) */
@@ -1141,6 +1197,11 @@ DefineDomain(CreateDomainStmt *stmt)
 	 */
 	ReleaseSysCache(typeTup);
 
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	return address;
 }
 
@@ -1159,6 +1220,11 @@ DefineEnum(CreateEnumStmt *stmt)
 	Oid			old_type_oid;
 	Oid			enumArrayOid;
 	ObjectAddress enumTypeAddr;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	enumNamespace = QualifiedNameGetCreationNamespace(stmt->typeName,
@@ -1174,6 +1240,23 @@ DefineEnum(CreateEnumStmt *stmt)
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(enumNamespace));
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(enumNamespace);
+
+		objectOwner = get_namespace_owner(enumNamespace);
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Check for collision with an existing type name.  If there is one and
@@ -1200,7 +1283,7 @@ DefineEnum(CreateEnumStmt *stmt)
 				   enumNamespace,	/* namespace */
 				   InvalidOid,	/* relation oid (n/a here) */
 				   0,			/* relation kind (ditto) */
-				   GetUserId(), /* owner's ID */
+				   objectOwner, /* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 				   sizeof(Oid), /* internal size */
 				   TYPTYPE_ENUM,	/* type-type (enum type) */
 				   TYPCATEGORY_ENUM,	/* type-category (enum type) */
@@ -1241,7 +1324,7 @@ DefineEnum(CreateEnumStmt *stmt)
 			   enumNamespace,	/* namespace */
 			   InvalidOid,		/* relation oid (n/a here) */
 			   0,				/* relation kind (ditto) */
-			   GetUserId(),		/* owner's ID */
+			   objectOwner,		/* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 			   -1,				/* internal size (always varlena) */
 			   TYPTYPE_BASE,	/* type-type (base type) */
 			   TYPCATEGORY_ARRAY,	/* type-category (array) */
@@ -1270,6 +1353,11 @@ DefineEnum(CreateEnumStmt *stmt)
 			   InvalidOid);		/* type's collation */
 
 	pfree(enumArrayName);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return enumTypeAddr;
 }
@@ -1384,6 +1472,12 @@ DefineRange(CreateRangeStmt *stmt)
 	ObjectAddress address;
 	ObjectAddress mltrngaddress PG_USED_FOR_ASSERTS_ONLY;
 	Oid			castFuncOid;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();
+	Oid			objectOwner1 = objectOwner;
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	/* All created types must be converted to lowercase,
@@ -1415,6 +1509,23 @@ DefineRange(CreateRangeStmt *stmt)
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(typeNamespace));
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(typeNamespace);
+
+		objectOwner1 = objectOwner = get_namespace_owner(typeNamespace);
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Look to see if type already exists.
@@ -1575,7 +1686,7 @@ DefineRange(CreateRangeStmt *stmt)
 				   typeNamespace,	/* namespace */
 				   InvalidOid,	/* relation oid (n/a here) */
 				   0,			/* relation kind (ditto) */
-				   GetUserId(), /* owner's ID */
+				   objectOwner, /* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 				   -1,			/* internal size (always varlena) */
 				   TYPTYPE_RANGE,	/* type-type (range type) */
 				   TYPCATEGORY_RANGE,	/* type-category (range type) */
@@ -1636,13 +1747,18 @@ DefineRange(CreateRangeStmt *stmt)
 		multirangeTypeName = makeMultirangeTypeName(typeName, multirangeNamespace);
 	}
 
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (set_namespace && multirangeNamespace != typeNamespace)
+		objectOwner1 = get_namespace_owner(multirangeNamespace);
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	mltrngaddress =
 		TypeCreate(multirangeOid,	/* force assignment of this type OID */
 				   multirangeTypeName,	/* type name */
 				   multirangeNamespace, /* namespace */
 				   InvalidOid,	/* relation oid (n/a here) */
 				   0,			/* relation kind (ditto) */
-				   GetUserId(), /* owner's ID */
+				   objectOwner1, /* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 				   -1,			/* internal size (always varlena) */
 				   TYPTYPE_MULTIRANGE,	/* type-type (multirange type) */
 				   TYPCATEGORY_RANGE,	/* type-category (range type) */
@@ -1685,7 +1801,7 @@ DefineRange(CreateRangeStmt *stmt)
 			   typeNamespace,	/* namespace */
 			   InvalidOid,		/* relation oid (n/a here) */
 			   0,				/* relation kind (ditto) */
-			   GetUserId(),		/* owner's ID */
+			   objectOwner,		/* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 			   -1,				/* internal size (always varlena) */
 			   TYPTYPE_BASE,	/* type-type (base type) */
 			   TYPCATEGORY_ARRAY,	/* type-category (array) */
@@ -1724,7 +1840,7 @@ DefineRange(CreateRangeStmt *stmt)
 			   multirangeNamespace, /* namespace */
 			   InvalidOid,		/* relation oid (n/a here) */
 			   0,				/* relation kind (ditto) */
-			   GetUserId(),		/* owner's ID */
+			   objectOwner1,		/* owner's ID */	/* ReqID:SRS-SQL-SCHEMA */
 			   -1,				/* internal size (always varlena) */
 			   TYPTYPE_BASE,	/* type-type (base type) */
 			   TYPCATEGORY_ARRAY,	/* type-category (array) */
@@ -1762,6 +1878,11 @@ DefineRange(CreateRangeStmt *stmt)
 	CastCreate(typoid, multirangeOid, castFuncOid, 'e', 'f', DEPENDENCY_INTERNAL);
 
 	pfree(multirangeArrayName);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }

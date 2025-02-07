@@ -553,6 +553,38 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	bool		check_option;
 	bool		compile_failed = false; /* ReqID:SRS-SQL-FORCEVIEW */
 	ObjectAddress address;
+	/* Begin - Bug#M459 */
+	Oid			save_userid;
+	int			save_sec_context;
+	int			save_nestlevel = 0;
+	bool		switch_role = false;
+	/* End - Bug#M459 */
+
+	/*
+	 * Begin - Bug#M459
+	 *
+	 * Switch role ahead of  DefineRelation() so that objects in the target
+	 * namespace can be used for sytax parsing.
+	 */
+	if (stmt->view->schemaname && ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		Oid	nspid = RangeVarGetAndCheckCreationNamespace(stmt->view, NoLock, NULL);
+		Oid	nspowner = get_namespace_owner(nspid);
+
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+
+		if (nspowner != save_userid)
+		{
+			SetUserIdAndSecContext(nspowner, save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+			save_nestlevel = NewGUCNestLevel();
+			switch_role = true;
+
+			(void) set_config_option("search_path", stmt->view->schemaname,
+									 PGC_USERSET, PGC_S_SESSION,
+									 GUC_ACTION_SAVE, true, 0, false);
+		}
+	}
+	/* End - Bug#M459 */
 
 	/*
 	 * Run parse analysis to convert the raw parse tree to a Query.  Note this
@@ -626,6 +658,16 @@ DefineView(ViewStmt *stmt, const char *queryString,
 
 		/* oracle always issues this warning */
 		elog(WARNING, "View created with compilation errors");
+
+		/* Begin - Bug#M459 */
+		if (switch_role)
+		{
+			/* Roll back any GUC changes */
+			AtEOXact_GUC(false, save_nestlevel);
+			/* Restore userid and security context */
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+		}
+		/* End - Bug#M459 */
 		return address;
 	}
 	/* End - ReqID:SRS-SQL-FORCEVIEW */
@@ -762,6 +804,16 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	 */
 	address = DefineVirtualRelation(view, viewParse->targetList,
 									stmt->replace, stmt->options, viewParse);
+
+	/* Begin - Bug#M459 */
+	if (switch_role)
+	{
+		/* Roll back any GUC changes */
+		AtEOXact_GUC(false, save_nestlevel);
+		/* Restore userid and security context */
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+	}
+	/* End - Bug#M459 */
 
 	return address;
 }

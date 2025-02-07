@@ -1546,7 +1546,8 @@ SetDumptypeMode(PGconn *conn)
 	PGresult		  *res,
 					  *res1,
 					  *res2,
-					  *res3;
+					  *res3,
+					  *res4;	/* ReqID:SRS-SQL-SCHEMA */
 	
 	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
 	if (res)
@@ -1569,6 +1570,12 @@ SetDumptypeMode(PGconn *conn)
 
 	if (res3)
 		PQclear(res3);
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	res4 = PQexec(conn, "set ivorysql.enable_ora_user_schema to off;");
+	if (res4)
+		PQclear(res4);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 }
 
 

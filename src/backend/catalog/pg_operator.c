@@ -33,7 +33,9 @@
 #include "parser/parse_oper.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -351,6 +353,12 @@ OperatorCreate(const char *operatorName,
 	NameData	oname;
 	int			i;
 	ObjectAddress address;
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+		objectOwner = get_namespace_owner(operatorNamespace);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Sanity checks
@@ -427,7 +435,7 @@ OperatorCreate(const char *operatorName,
 	 * such shell.
 	 */
 	if (OidIsValid(operatorObjectId) &&
-		!pg_oper_ownercheck(operatorObjectId, GetUserId()))
+		!pg_oper_ownercheck(operatorObjectId, objectOwner))	/* ReqID:SRS-SQL-SCHEMA */
 		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_OPERATOR,
 					   operatorName);
 
@@ -447,7 +455,7 @@ OperatorCreate(const char *operatorName,
 
 		/* Permission check: must own other operator */
 		if (OidIsValid(commutatorId) &&
-			!pg_oper_ownercheck(commutatorId, GetUserId()))
+			!pg_oper_ownercheck(commutatorId, objectOwner))	/* ReqID:SRS-SQL-SCHEMA */
 			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_OPERATOR,
 						   NameListToString(commutatorName));
 
@@ -472,7 +480,7 @@ OperatorCreate(const char *operatorName,
 
 		/* Permission check: must own other operator */
 		if (OidIsValid(negatorId) &&
-			!pg_oper_ownercheck(negatorId, GetUserId()))
+			!pg_oper_ownercheck(negatorId, objectOwner))	/* ReqID:SRS-SQL-SCHEMA */
 			aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_OPERATOR,
 						   NameListToString(negatorName));
 	}
@@ -493,7 +501,7 @@ OperatorCreate(const char *operatorName,
 	namestrcpy(&oname, operatorName);
 	values[Anum_pg_operator_oprname - 1] = NameGetDatum(&oname);
 	values[Anum_pg_operator_oprnamespace - 1] = ObjectIdGetDatum(operatorNamespace);
-	values[Anum_pg_operator_oprowner - 1] = ObjectIdGetDatum(GetUserId());
+	values[Anum_pg_operator_oprowner - 1] = ObjectIdGetDatum(objectOwner);	/* ReqID:SRS-SQL-SCHEMA */
 	values[Anum_pg_operator_oprkind - 1] = CharGetDatum(leftTypeId ? 'b' : 'l');
 	values[Anum_pg_operator_oprcanmerge - 1] = BoolGetDatum(canMerge);
 	values[Anum_pg_operator_oprcanhash - 1] = BoolGetDatum(canHash);

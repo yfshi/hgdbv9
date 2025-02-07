@@ -220,3 +220,7 @@ test: ora_dblink_for_pgfdw
 #/* Begin - BUG:M0000368 */
 test: copy_skip
 #/* End - BUG:M0000368 */
+
+#/* Begin - ReqID:SRS-SQL-SCHEMA */
+test: ora_schema
+#/* End - ReqID:SRS-SQL-SCHEMA */

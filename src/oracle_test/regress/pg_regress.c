@@ -2840,7 +2840,7 @@ regression_main(int argc, char *argv[],
 	/*
 	 * Create the test database(s) and role(s)
 	 */
-	if (!use_existing)
+	//if (!use_existing)	/* ReqID:SRS-SQL-SCHEMA move below */
 	{
 		char		portname[16] = "";
 		char		oraportname[16] = "";
@@ -2891,8 +2891,14 @@ regression_main(int argc, char *argv[],
 
 		}
 
-		for (sl = dblist; sl; sl = sl->next)
-			create_database(sl->str);
+		if (!use_existing)	/* ReqID:SRS-SQL-SCHEMA */
+			for (sl = dblist; sl; sl = sl->next)
+				create_database(sl->str);
+
+		/* Begin - ReqID:SRS-SQL-SCHEMA */
+		psql_command_nosys("template1", "alter system set ivorysql.enable_ora_user_schema to off");
+		psql_command_nosys("template1", "select pg_reload_conf()");
+		/* End - ReqID:SRS-SQL-SCHEMA */
 
 		if(port > 0)
 			setenv("PGPORT", oraportname, 1);

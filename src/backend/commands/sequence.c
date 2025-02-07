@@ -157,6 +157,10 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	Datum		pgs_values[Natts_pg_sequence];
 	bool		pgs_nulls[Natts_pg_sequence];
 	int			i;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * If if_not_exists was given and a relation with the same name already
@@ -183,6 +187,21 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 			return InvalidObjectAddress;
 		}
 	}
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (seq->sequence->schemaname && ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", seq->sequence->schemaname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+		set_namespace = true;
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-SQL-GTT */
 	if (seq->sequence->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
@@ -287,6 +306,15 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 
 	heap_freetuple(tuple);
 	table_close(rel, RowExclusiveLock);
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * Roll back any GUC changes
+	 */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }

@@ -1,0 +1,266 @@
+-- test for oracle schema
+
+--
+-- user management
+--
+
+SET ivorysql.enable_ora_user_schema = on;
+SET ivorysql.compatible_mode = pg;
+CREATE SCHEMA reg_u1;
+SET ivorysql.compatible_mode = oracle;
+
+-- create user
+CREATE USER reg_u1; --error
+CREATE USER reg_u2 DEFAULT COLLATION 'default' DEFAULT TABLESPACE 'pg_default';
+CREATE USER reg_u3 DEFAULT COLLATION 'abc'; --error
+CREATE USER reg_u4 DEFAULT TABLESPACE 'abc'; --error
+CREATE USER reg_u5;
+CREATE TABLE reg_u5.reg_t1(id int);
+SELECT nspname,nspowner::regrole FROM pg_namespace WHERE nspname LIKE 'reg\_%' ESCAPE '\' ORDER BY nspname;
+SELECT username,default_tablespace,default_collation FROM user_users WHERE username LIKE 'reg\_%' ESCAPE '\' ORDER BY  username;
+
+-- alter user
+ALTER USER reg_u5 RENAME TO reg_u55;
+ALTER USER reg_u2 DEFAULT COLLATION 'C';
+SELECT nspname,nspowner::regrole FROM pg_namespace WHERE nspname LIKE 'reg\_%' ESCAPE '\' ORDER BY nspname;
+SELECT username,default_tablespace,default_collation FROM user_users WHERE username LIKE 'reg\_%' ESCAPE '\' ORDER BY  username;
+
+-- drop user
+SET ivorysql.compatible_mode = pg;
+DROP SCHEMA reg_u1;
+DROp SCHEMA reg_u2;
+SET ivorysql.compatible_mode = oracle;
+DROP USER reg_u2; --error
+DROP USER reg_u2 CASCADE;
+DROP USER reg_u55; --error
+DROP USER reg_u55 CASCADE;
+SELECT nspname,nspowner::regrole FROM pg_namespace WHERE nspname LIKE 'reg\_%' ESCAPE '\' ORDER BY nspname;
+SELECT username,default_tablespace,default_collation FROM user_users WHERE username LIKE 'reg\_%' ESCAPE '\' ORDER BY  username;
+
+-- clean
+
+
+---
+--- schema management
+---
+
+CREATE SCHEMA reg_nsp1;
+CREATE USER reg_u1;
+CREATE SCHEMA AUTHORIZATION reg_u1 CREATE TABLE reg_t1(id int) CREATE VIEW reg_vt1 AS SELECT * FROM reg_t1;
+ALTER SCHEMA reg_u1 RENAME TO reg_u11;
+ALTER SCHEMA SET OWNER SYS;
+DROP SCHEMA reg_u1;
+GRANT ALL ON SCHEMA reg_u1 TO reg_u1;
+REVOKE ALL ON SCHEMA reg_u1 FROM reg_u1;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA reg_u1 TO reg_u1;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA reg_u1 FROM reg_u1;
+
+-- clean
+DROP USER reg_u1 CASCADE;
+
+
+--
+-- object management
+--
+
+CREATE USER reg_pub SUPERUSER;
+CREATE USER reg_u1;
+SET search_path TO reg_pub;
+
+-- create table
+CREATE TABLE reg_t1(id int, s int);
+CREATE TABLE reg_u1.reg_t1(id int, s int);
+
+-- create sequence
+CREATE TABLE reg_u1.reg_t2(id int, s serial);
+CREATE SEQUENCE reg_seq1 OWNED BY reg_t1.s;
+CREATE SEQUENCE reg_seq1 OWNED BY reg_u1.reg_t1.s;
+CREATE SEQUENCE reg_u1.reg_seq1;
+
+-- create view
+CREATE VIEW reg_v1 AS SELECT * FROM reg_u1.reg_t1;
+CREATE VIEW reg_u1.reg_v1 AS SELECT * FROM reg_u1.reg_t1;
+CREATE FORCE VIEW reg_fv1 AS SELECT * FROM reg_u1.xxx;
+CREATE FORCE VIEW reg_u1.reg_fv1 AS SELECT * FROM xxx;
+CREATE MATERIALIZED VIEW reg_mv1 AS SELECT * FROM reg_u1.reg_t1;
+CREATE MATERIALIZED VIEW reg_u1.reg_mv1 AS SELECT * FROM reg_t1;
+
+-- create index
+CREATE INDEX reg_t1_index ON reg_u1.reg_t1(id);
+CREATE INDEX public.reg_t1_index ON reg_u1.reg_t1(id); --error
+
+-- check relation object
+SELECT relnamespace::regnamespace,relname,relowner::regrole FROM pg_class WHERE relname LIKE 'reg\_%' ESCAPE '\' ORDER BY relnamespace,relname;
+
+-- create type
+CREATE TYPE reg_type1;
+CREATE TYPE reg_u1.reg_type1;
+CREATE TYPE reg_type2 AS ENUM ('red', 'orange', 'yellow', 'green', 'blue', 'purple');
+CREATE TYPE reg_u1.reg_type2 AS ENUM ('red', 'orange', 'yellow', 'green', 'blue', 'purple');
+CREATE TYPE reg_type3 AS RANGE (subtype=text);
+CREATE TYPE reg_u1.reg_type3 AS RANGE (subtype=text);
+CREATE DOMAIN reg_type4 int4;
+CREATE DOMAIN reg_u1.reg_type4 int4;
+CREATE TYPE reg_type5 AS (a int, b text);
+CREATE TYPE reg_u1.reg_type5 AS (a int, b text);
+
+-- check type object
+SELECT typnamespace::regnamespace,typname,typowner::regrole FROM pg_type WHERE typname LIKE 'reg\_type%' ESCAPE '\' ORDER BY typnamespace,typname;
+
+-- create function
+CREATE FUNCTION reg_func1() RETURNS void LANGUAGE SQL AS 'SELECT 1';
+/
+CREATE FUNCTION reg_u1.reg_func1() RETURNS void LANGUAGE SQL AS 'SELECT 1';
+/
+
+-- create procedure
+CREATE PROCEDURE reg_func2()  LANGUAGE SQL AS 'SELECT 1';
+/
+CREATE PROCEDURE reg_u1.reg_func2() LANGUAGE SQL AS 'SELECT 1';
+/
+
+-- create window function
+CREATE OR REPLACE FUNCTION reg_func3(a int) RETURNS int LANGUAGE SQL WINDOW AS 'SELECT $1';
+/
+CREATE OR REPLACE FUNCTION reg_u1.reg_func3(a int) RETURNS int LANGUAGE SQL WINDOW AS 'SELECT $1';
+/
+
+-- create aggregate
+CREATE AGGREGATE reg_func4 (sfunc1 = int4pl, basetype = int4, stype1 = int4, initcond1 = '0');
+CREATE AGGREGATE reg_u1.reg_func4 (sfunc1 = int4pl, basetype = int4, stype1 = int4, initcond1 = '0');
+
+-- check function object
+SELECT pronamespace::regnamespace,proname,proowner::regrole,prokind FROM pg_proc WHERE proname LIKE 'reg\_func%' ESCAPE '\' ORDER BY pronamespace,proname;
+
+-- create oprator
+CREATE OPERATOR @@@@@@@ (rightarg = int8, procedure = factorial);
+CREATE OPERATOR reg_u1.@@@@@@@ (rightarg = int8, procedure = factorial);
+CREATE OPERATOR FAMILY reg_opf1 USING hash;
+CREATE OPERATOR FAMILY reg_u1.reg_opf1 USING hash;
+CREATE OPERATOR CLASS reg_opc1 FOR TYPE uuid USING hash AS STORAGE uuid;
+CREATE OPERATOR CLASS reg_u1.reg_opc1 FOR TYPE uuid USING hash AS STORAGE uuid;
+
+-- check operator object
+SELECT oprnamespace::regnamespace,oprname,oprowner::regrole FROM pg_operator WHERE oprname='@@@@@@@' ORDER BY oprnamespace,oprname;
+SELECT opfnamespace::regnamespace,opfname,opfowner::regrole FROM pg_opfamily WHERE opfname='reg_opf1' ORDER BY opfnamespace,opfname;
+SELECT opcnamespace::regnamespace,opcname,opcowner::regrole FROM pg_opclass WHERE opcname='reg_opc1' ORDER BY opcnamespace,opcname;
+
+-- create package
+CREATE PACKAGE reg_pack1 AS
+END;
+/
+CREATE PACKAGE BODY reg_pack1 AS
+END;
+/
+CREATE PACKAGE reg_u1.reg_pack1 AS
+END;
+/
+CREATE PACKAGE BODY reg_u1.reg_pack1 AS
+END;
+/
+
+-- check package object
+SELECT pkgnamespace::regnamespace,pkgname,pkgowner::regrole FROM pg_package WHERE pkgname='reg_pack1' ORDER BY pkgnamespace,pkgname;
+
+-- ceate text search object
+CREATE TEXT SEARCH CONFIGURATION reg_tsc1 (PARSER = default);
+CREATE TEXT SEARCH CONFIGURATION reg_u1.reg_tsc1 (PARSER = default);
+CREATE TEXT SEARCH DICTIONARY reg_tsd1 (TEMPLATE = simple);
+CREATE TEXT SEARCH DICTIONARY reg_u1.reg_tsd1 (TEMPLATE = simple);
+
+-- check text search object
+SELECT cfgnamespace::regnamespace,cfgname,cfgowner::regrole FROM pg_ts_config WHERE cfgname='reg_tsc1' ORDER BY cfgnamespace,cfgname;
+SELECT dictnamespace::regnamespace,dictname,dictowner::regrole FROM pg_ts_dict WHERE dictname='reg_tsd1' ORDER BY dictnamespace,dictname;
+
+-- ceate collation
+CREATE COLLATION reg_coll1 (LOCALE = 'C');
+CREATE COLLATION reg_u1.reg_coll1 (LOCALE = 'C');
+SELECT collnamespace::regnamespace,collname,collowner::regrole FROM pg_collation WHERE collname='reg_coll1' ORDER BY collnamespace,collname;
+
+-- create conversion
+CREATE CONVERSION reg_conv1 FOR 'LATIN1' TO 'UTF8' FROM iso8859_1_to_utf8;
+CREATE CONVERSION reg_u1.reg_conv1 FOR 'LATIN1' TO 'UTF8' FROM iso8859_1_to_utf8;
+SELECT connamespace::regnamespace,conname,conowner::regrole FROM pg_conversion WHERE conname='reg_conv1' ORDER BY connamespace,conname;
+
+-- create extension
+CREATE EXTENSION test_bloomfilter with schema reg_u1;
+CREATE EXTENSION test_bloomfilter with schema reg_pub;
+SELECT extnamespace::regnamespace,extname,extowner::regrole FROM pg_extension WHERE extname='test_bloomfilter';
+
+-- create statisitc ext
+CREATE STATISTICS reg_stat1 ON ( id + 1 ) FROM reg_t1;
+CREATE STATISTICS reg_u1.reg_stat1 ON ( id + 1 ) FROM reg_t1;
+SELECT stxnamespace::regnamespace,stxname,stxowner::regrole FROM pg_statistic_ext WHERE stxname='reg_stat1' ORDER BY stxnamespace,stxname;
+
+-- set owner, set schema
+ALTER TABLE reg_t1 OWNER TO reg_u1;
+ALTER TABLE reg_t1 SET SCHEMA reg_u1;
+ALTER SEQUENCE reg_seq1 OWNER TO reg_u1;
+ALTER SEQUENCE reg_seq1 SET SCHEMA reg_u1;
+ALTER VIEW reg_v1 OWNER TO reg_u1;
+ALTER VIEW reg_v1 SET SCHEMA reg_u1;
+ALTER MATERIALIZED VIEW reg_mv1 OWNER TO reg_u1;
+ALTER MATERIALIZED VIEW reg_mv1 SET SCHEMA reg_u1;
+ALTER TYPE reg_type1 OWNER TO reg_u1;
+ALTER TYPE reg_type1 SET SCHEMA reg_u1;
+ALTER TYPE reg_type2 OWNER TO reg_u1;
+ALTER TYPE reg_type2 SET SCHEMA reg_u1;
+ALTER TYPE reg_type3 OWNER TO reg_u1;
+ALTER TYPE reg_type3 SET SCHEMA reg_u1;
+ALTER DOMAIN reg_type4 OWNER TO reg_u1;
+ALTER DOMAIN reg_type4 SET SCHEMA reg_u1;
+ALTER TYPE reg_type5 OWNER TO reg_u1;
+ALTER TYPE reg_type5 SET SCHEMA reg_u1;
+ALTER FUNCTION reg_func1 OWNER TO reg_u1;
+ALTER FUNCTION reg_func1 SET SCHEMA reg_u1;
+ALTER PROCEDURE reg_func2 OWNER TO reg_u1;
+ALTER PROCEDURE reg_func2 SET SCHEMA reg_u1;
+ALTER FUNCTION reg_func3 OWNER TO reg_u1;
+ALTER FUNCTION reg_func3 SET SCHEMA reg_u1;
+ALTER AGGREGATE reg_func4 OWNER TO reg_u1;
+ALTER AGGREGATE reg_func4 SET SCHEMA reg_u1;
+ALTER OPERATOR @@@@@@@(none, int8) OWNER TO reg_u1;
+ALTER OPERATOR @@@@@@@(none, int8) SET SCHEMA reg_u1;
+ALTER OPERATOR FAMILY reg_opf1 USING hash OWNER TO reg_u1;
+ALTER OPERATOR FAMILY reg_opf1 USING hash SET SCHEMA reg_u1;
+ALTER OPERATOR CLASS reg_opc1 USING hash OWNER TO reg_u1;
+ALTER OPERATOR CLASS reg_opc1 USING hash SET SCHEMA reg_u1;
+ALTER TEXT SEARCH CONFIGURATION reg_tsc1 OWNER TO reg_u1;
+ALTER TEXT SEARCH CONFIGURATION reg_tsc1 SET SCHEMA reg_u1;
+ALTER TEXT SEARCH DICTIONARY reg_tsd1 OWNER TO reg_u1;
+ALTER TEXT SEARCH DICTIONARY reg_tsd1 SET SCHEMA reg_u1;
+ALTER TEXT SEARCH TEMPLATE simple SET SCHEMA reg_u1;
+ALTER TEXT SEARCH PARSER default SET SCHEMA reg_u1;
+ALTER COLLATION reg_coll1 OWNER TO reg_u1;
+ALTER COLLATION reg_coll1 SET SCHEMA reg_u1;
+ALTER CONVERSION reg_conv1 OWNER TO reg_u1;
+ALTER CONVERSION reg_conv1 SET SCHEMA reg_u1;
+ALTER EXTENSION test_bloomfilter SET SCHEMA reg_u1;
+ALTER STATISTICS reg_stat1 OWNER TO reg_u1;
+ALTER STATISTICS reg_stat1 SET SCHEMA reg_u1;
+
+-- clean
+DROP USER reg_u1 CASCADE;
+DROP USER reg_pub CASCADE;
+
+
+--
+-- default collation and tablespace of schema
+--
+CREATE TABLESPACE reg_tblspc1 LOCATION '@testtablespace@';
+CREATE USER reg_u1 DEFAULT COLLATION 'C' DEFAULT TABLESPACE 'reg_tblspc1';
+CREATE TABLE reg_u1.reg_t1(id int, name varchar(100));
+GRANT CREATE ON TABLESPACE reg_tblspc1 TO reg_u1;
+CREATE TABLE reg_u1.reg_t1(id int, name varchar(100));
+SELECT collname,tsp.spcname
+FROM pg_class cl,pg_object oj,pg_tablespace tsp,pg_collation coll
+WHERE cl.relname = 'reg_t1'
+	AND cl.oid = oj.obj_oid
+	AND cl.relnamespace = oj.schemaoid
+	AND oj.refclassid='pg_class'::regclass
+	AND cl.reltablespace = tsp.oid
+	AND oj.option->>'collation' = coll.oid;
+
+-- clean
+DROP USER reg_u1 CASCADE;
+DROP TABLESPACE reg_tblspc1;

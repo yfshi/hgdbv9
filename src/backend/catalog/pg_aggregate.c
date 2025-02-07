@@ -29,7 +29,9 @@
 #include "parser/parse_oper.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -107,6 +109,7 @@ AggregateCreate(const char *aggName,
 				referenced;
 	ObjectAddresses *addrs;
 	AclResult	aclresult;
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* sanity checks (caller should have caught these) */
 	if (!aggName)
@@ -117,6 +120,11 @@ AggregateCreate(const char *aggName,
 
 	if (numDirectArgs < 0 || numDirectArgs > numArgs)
 		elog(ERROR, "incorrect number of direct arguments for aggregate");
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+		objectOwner = get_namespace_owner(aggNamespace);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Aggregates can have at most FUNC_MAX_ARGS-1 args, else the transfn
@@ -617,7 +625,7 @@ AggregateCreate(const char *aggName,
 							 replace,	/* maybe replacement */
 							 false, /* doesn't return a set */
 							 finaltype, /* returnType */
-							 GetUserId(),	/* proowner */
+							 objectOwner,	/* proowner */	/* ReqID:SRS-SQL-SCHEMA */
 							 INTERNALlanguageId,	/* languageObjectId */
 							 InvalidOid,	/* no validator */
 							 "aggregate_dummy", /* placeholder (no such proc) */

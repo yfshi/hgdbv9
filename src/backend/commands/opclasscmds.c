@@ -45,7 +45,9 @@
 #include "parser/parse_type.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
+#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
@@ -255,6 +257,12 @@ CreateOpFamily(CreateOpFamilyStmt *stmt, const char *opfname,
 	NameData	opfName;
 	ObjectAddress myself,
 				referenced;
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+		objectOwner = get_namespace_owner(namespaceoid);
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	rel = table_open(OperatorFamilyRelationId, RowExclusiveLock);
 
@@ -284,7 +292,7 @@ CreateOpFamily(CreateOpFamilyStmt *stmt, const char *opfname,
 	namestrcpy(&opfName, opfname);
 	values[Anum_pg_opfamily_opfname - 1] = NameGetDatum(&opfName);
 	values[Anum_pg_opfamily_opfnamespace - 1] = ObjectIdGetDatum(namespaceoid);
-	values[Anum_pg_opfamily_opfowner - 1] = ObjectIdGetDatum(GetUserId());
+	values[Anum_pg_opfamily_opfowner - 1] = ObjectIdGetDatum(objectOwner);	/* ReqID:SRS-SQL-SCHEMA */
 
 	tup = heap_form_tuple(rel->rd_att, values, nulls);
 
@@ -360,6 +368,11 @@ DefineOpClass(CreateOpClassStmt *stmt)
 	NameData	opcName;
 	ObjectAddress myself,
 				referenced;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(stmt->opclassname,
@@ -422,6 +435,23 @@ DefineOpClass(CreateOpClassStmt *stmt)
 		ereport(ERROR,
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to create an operator class")));
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(namespaceoid);
+
+		objectOwner = get_namespace_owner(namespaceoid);
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Look up the datatype */
 	typeoid = typenameTypeId(NULL, stmt->datatype);
@@ -666,7 +696,7 @@ DefineOpClass(CreateOpClassStmt *stmt)
 	namestrcpy(&opcName, opcname);
 	values[Anum_pg_opclass_opcname - 1] = NameGetDatum(&opcName);
 	values[Anum_pg_opclass_opcnamespace - 1] = ObjectIdGetDatum(namespaceoid);
-	values[Anum_pg_opclass_opcowner - 1] = ObjectIdGetDatum(GetUserId());
+	values[Anum_pg_opclass_opcowner - 1] = ObjectIdGetDatum(objectOwner);	/* ReqID:SRS-SQL-SCHEMA */
 	values[Anum_pg_opclass_opcfamily - 1] = ObjectIdGetDatum(opfamilyoid);
 	values[Anum_pg_opclass_opcintype - 1] = ObjectIdGetDatum(typeoid);
 	values[Anum_pg_opclass_opcdefault - 1] = BoolGetDatum(stmt->isDefault);
@@ -768,6 +798,15 @@ DefineOpClass(CreateOpClassStmt *stmt)
 
 	table_close(rel, RowExclusiveLock);
 
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * Roll back any GUC changes
+	 */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	return myself;
 }
 
@@ -783,6 +822,11 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 	Oid			amoid,			/* our AM's oid */
 				namespaceoid;	/* namespace to create opfamily in */
 	AclResult	aclresult;
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	ObjectAddress	opfObject;
+	int			save_nestlevel = 0;
+	bool		set_namespace = false;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(stmt->opfamilyname,
@@ -813,8 +857,35 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 				 errmsg("must be superuser to create an operator family")));
 
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * swith to target namespace
+	 */
+	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	{
+		char *nspname = get_namespace_name(namespaceoid);
+
+		save_nestlevel = NewGUCNestLevel();
+		(void) set_config_option("search_path", nspname,
+								 PGC_USERSET, PGC_S_SESSION,
+								 GUC_ACTION_SAVE, true, 0, false);
+	}
+	/* End - ReqID:SRS-SQL-SCHEMA */
+
 	/* Insert pg_opfamily catalog entry */
-	return CreateOpFamily(stmt, opfname, namespaceoid, amoid);
+	opfObject = CreateOpFamily(stmt, opfname, namespaceoid, amoid);	/* ReqID:SRS-SQL-SCHEMA */
+
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * Roll back any GUC changes
+	 */
+	if (set_namespace)
+		AtEOXact_GUC(false, save_nestlevel);
+
+	return opfObject;
+	/* End - ReqID:SRS-SQL-SCHEMA */
 }
 
 

@@ -212,6 +212,7 @@ extern bool get_attstatsslot(AttStatsSlot *sslot, HeapTuple statstuple,
 extern void free_attstatsslot(AttStatsSlot *sslot);
 extern char *get_namespace_name(Oid nspid);
 extern char *get_namespace_name_or_temp(Oid nspid);
+extern Oid	get_namespace_owner(Oid nspid);	/* ReqID:SRS-SQL-SCHEMA */
 extern Oid	get_range_subtype(Oid rangeOid);
 extern Oid	get_range_collation(Oid rangeOid);
 extern Oid	get_range_multirange(Oid rangeOid);
