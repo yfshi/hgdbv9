@@ -204,9 +204,9 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 	ListCell   *pl;
 	ObjectAddress address;
 	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = GetUserId();;
 	int			save_nestlevel = 0;
 	bool		set_namespace = false;
+	Oid			objectOwner = GetUserId();/* BUG#M0000506 */
 	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
