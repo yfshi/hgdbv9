@@ -1482,7 +1482,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/*
 	 * Build a default types index on rowid column, if it exist
 	 */
-	if (!IsBinaryUpgrade && rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
+	if (rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
 	{
 		IndexElem   *iparam;
 		const FormData_pg_attribute *from;
@@ -1607,8 +1607,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * Set table's collation, or inherit from Effective Schema Default Collation,
 	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation &&
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation &&
 		(relkind == RELKIND_RELATION ||
 		 relkind == RELKIND_PARTITIONED_TABLE ||
 		 relkind == RELKIND_FOREIGN_TABLE ||
@@ -10623,8 +10622,7 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	 * If a column belongs to two or more foreign key constraints referencing primary key or unique 
 	 * constraints with different collation specifications, an error is reported.
 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation)
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{
 		Form_pg_attribute 	att;
 		bool 				self_reference = (RelationGetRelid(rel) == RelationGetRelid(pkrel));
@@ -13663,8 +13661,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	 * Begin - Req: SRS-SQL-NLSSORT
 	 * And the collation 
 	 */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation)
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{		
 		if (def->collClause)
 		{
@@ -20574,8 +20571,7 @@ ATExecDefaultCollation(Relation relation, char *collname)
 	ObjectAddress 	address = InvalidObjectAddress;
 
 	/* Begin - BUG#M0000436 */
-	if (ORA_PARSER != compatible_db ||
-		!enable_ora_default_collation)
+	if (ORA_PARSER != compatible_db || !enable_ora_default_collation)
 		return InvalidObjectAddress;
 	/* End - BUG#M0000436 */
 

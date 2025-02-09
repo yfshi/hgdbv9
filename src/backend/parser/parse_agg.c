@@ -181,7 +181,7 @@ transformAggregateCall(ParseState *pstate, Aggref *agg,
 		torder = transformSortClause(pstate,
 									 aggorder,
 									 &tlist,
-									 EXPR_KIND_DISTINCT_ORDER, /* Req: SRS-SQL-NLSSORT */
+									 EXPR_KIND_GROUP_BY_DISTINCT, /* Req: SRS-SQL-NLSSORT */
 									 true /* force SQL99 rules */ );
 
 		/*
@@ -582,10 +582,7 @@ check_agglevels_and_constraints(ParseState *pstate, Node *expr)
 			 * which is sane anyway.
 			 */
 		/* Begin: Req:SRS-SQL-NLSSORT */
-		case EXPR_KIND_DISTINCT_ORDER:
-			/* okay */
-			break;
-		case EXPR_KIND_SET_ORDER:
+		case EXPR_KIND_GROUP_BY_DISTINCT:
 			/* okay */
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */
@@ -992,10 +989,7 @@ transformWindowFuncCall(ParseState *pstate, WindowFunc *wfunc,
 			 * which is sane anyway.
 			 */
 		/* Begin: Req:SRS-SQL-NLSSORT */
-		case EXPR_KIND_DISTINCT_ORDER:
-			/* okay */
-			break;
-		case EXPR_KIND_SET_ORDER:
+		case EXPR_KIND_GROUP_BY_DISTINCT:
 			/* okay */
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */

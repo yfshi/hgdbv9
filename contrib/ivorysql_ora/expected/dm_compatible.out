@@ -2752,7 +2752,7 @@ explain(costs off) select * from between_char where x between 'a ' and 'a    ' o
                                                   QUERY PLAN                                                  
 --------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::char(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_char
          Recheck Cond: (((x)::char(10) >= 'a '::oracharbyte) AND ((x)::char(10) <= 'a    '::oracharbyte))
          ->  Bitmap Index Scan on between_char_pkey
@@ -2763,7 +2763,7 @@ explain(costs off) select * from between_varchar where x between 'a ' and 'a    
                                                    QUERY PLAN                                                   
 ----------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::varchar2(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_varchar
          Recheck Cond: (((x)::varchar2(10) >= 'a '::varchar2) AND ((x)::varchar2(10) <= 'a    '::varchar2))
          ->  Bitmap Index Scan on between_varchar_pkey
@@ -2774,7 +2774,7 @@ explain(costs off) select * from between_text where x between 'a ' and 'a    ' o
                                        QUERY PLAN                                       
 ----------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::text) COLLATE "binary"
    ->  Bitmap Heap Scan on between_text
          Recheck Cond: (((x)::text >= 'a '::text) AND ((x)::text <= 'a    '::text))
          ->  Bitmap Index Scan on between_text_pkey
@@ -2815,7 +2815,7 @@ explain(costs off) select * from between_char where x between 'a ' and 'a    ' o
                                                    QUERY PLAN                                                   
 ----------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::char(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_char
          Recheck Cond: (((x)::char(10) #>= 'a '::oracharbyte) AND ((x)::char(10) #<= 'a    '::oracharbyte))
          ->  Bitmap Index Scan on between_char_pkey
@@ -2826,7 +2826,7 @@ explain(costs off) select * from between_varchar where x between 'a ' and 'a    
                                                     QUERY PLAN                                                    
 ------------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::varchar2(10)) COLLATE "binary"
    ->  Bitmap Heap Scan on between_varchar
          Recheck Cond: (((x)::varchar2(10) #>= 'a '::varchar2) AND ((x)::varchar2(10) #<= 'a    '::varchar2))
          ->  Bitmap Index Scan on between_varchar_pkey
@@ -2837,7 +2837,7 @@ explain(costs off) select * from between_text where x between 'a ' and 'a    ' o
                                         QUERY PLAN                                        
 ------------------------------------------------------------------------------------------
  Sort
-   Sort Key: x COLLATE "binary"
+   Sort Key: ((x)::text) COLLATE "binary"
    ->  Bitmap Heap Scan on between_text
          Recheck Cond: (((x)::text #>= 'a '::text) AND ((x)::text #<= 'a    '::text))
          ->  Bitmap Index Scan on between_text_pkey

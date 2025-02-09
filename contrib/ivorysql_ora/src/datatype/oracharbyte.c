@@ -574,7 +574,7 @@ oracharbyte_larger(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
+					 PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp >= 0) ? arg1 : arg2);
 }
@@ -593,7 +593,7 @@ oracharbyte_smaller(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
+					 PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp <= 0) ? arg1 : arg2);
 }

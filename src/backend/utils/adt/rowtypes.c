@@ -993,8 +993,7 @@ record_cmp(FunctionCallInfo fcinfo)
 			 * if att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
 			 * we use oracle's collation.
 			 */
-			if (ORA_PARSER == compatible_db &&
-				enable_ora_default_collation)
+			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 			{
 				if (att1->attcollation == DEFAULT_COLLATION_OID &&
 					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)
@@ -1265,8 +1264,7 @@ record_eq(PG_FUNCTION_ARGS)
 			 * If att1 or att2's collation is DEFAULT_COLLATION_OID and they not equal, 
 			 * we use oracle's collation.
 			 */
-			if (ORA_PARSER == compatible_db &&
-				enable_ora_default_collation)
+			if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 			{
 				if (att1->attcollation == DEFAULT_COLLATION_OID &&
 					get_collation_provider(att2->attcollation) == COLLPROVIDER_ORACLE)

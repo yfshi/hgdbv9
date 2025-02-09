@@ -20,6 +20,7 @@
 
 #include "access/detoast.h"
 #include "access/toast_compression.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
@@ -81,6 +82,7 @@ typedef struct
 	 */
 	char	   *refpoint;		/* pointer within original haystack string */
 	int			refpos;			/* 0-based character offset of the same point */
+	Oid			coll;			/* BUG#Z1464 */
 } TextPositionState;
 
 typedef struct
@@ -1306,6 +1308,7 @@ text_position_setup(text *t1, text *t2, Oid collid, TextPositionState *state)
 	state->last_match = NULL;
 	state->refpoint = state->str1;
 	state->refpos = 0;
+	state->coll = collid; /* BUG#Z1464 */
 
 	/*
 	 * Prepare the skip table for Boyer-Moore-Horspool searching.  In these
@@ -1457,6 +1460,7 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 	const char *needle = state->str2;
 	const char *haystack_end = &haystack[haystack_len];
 	const char *hptr;
+	Oid			coll = state->coll; /* BUG#Z1464 */
 
 	Assert(start_ptr >= haystack && start_ptr <= haystack_end);
 
@@ -1468,6 +1472,11 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 		hptr = start_ptr;
 		while (hptr < haystack_end)
 		{
+			/* Begin - BUG#Z1464 */
+			if (compatible_db == ORA_PARSER && varstr_cmp(hptr, 1, &nchar, 1, coll) == 0)
+				return (char *) hptr;
+			/* End - BUG#Z1464 */
+
 			if (*hptr == nchar)
 				return (char *) hptr;
 			hptr++;
@@ -1487,12 +1496,27 @@ text_position_next_internal(char *start_ptr, TextPositionState *state)
 
 			nptr = needle_last;
 			p = hptr;
-			while (*nptr == *p)
+			/* Begin - BUG#Z1464 */
+			if (compatible_db == ORA_PARSER)
 			{
-				/* Matched it all?	If so, return 1-based position */
-				if (nptr == needle)
-					return (char *) p;
-				nptr--, p--;
+				while (varstr_cmp(nptr, 1, p, 1, coll) == 0)
+				{
+					/* Matched it all?	If so, return 1-based position */
+					if (nptr == needle)
+						return (char *) p;
+					nptr--, p--;
+				}
+			}
+			/* End - BUG#Z1464 */
+			else
+			{
+				while (*nptr == *p)
+				{
+					/* Matched it all?	If so, return 1-based position */
+					if (nptr == needle)
+						return (char *) p;
+					nptr--, p--;
+				}
 			}
 
 			/*
@@ -4824,6 +4848,7 @@ replace_text(PG_FUNCTION_ARGS)
 	char	   *start_ptr;
 	StringInfoData str;
 	bool		found;
+	Oid			coll = PG_GET_COLLATION(); /* BUG#Z1464 */
 
 	src_text_len = VARSIZE_ANY_EXHDR(src_text);
 	from_sub_text_len = VARSIZE_ANY_EXHDR(from_sub_text);
@@ -4834,7 +4859,12 @@ replace_text(PG_FUNCTION_ARGS)
 		PG_RETURN_TEXT_P(src_text);
 	}
 
-	text_position_setup(src_text, from_sub_text, PG_GET_COLLATION(), &state);
+	/* Begin - BUG#Z1464 */
+	if (compatible_db == ORA_PARSER)
+		coll = PseudoCollationReplace_BNB(coll);
+	/* End - BUG#Z1464 */
+
+	text_position_setup(src_text, from_sub_text, coll, &state);
 
 	found = text_position_next(&state);
 

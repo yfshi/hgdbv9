@@ -431,9 +431,23 @@ rtrim(PG_FUNCTION_ARGS)
 	text	   *string = PG_GETARG_TEXT_PP(0);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	" ", 1,
-				 	false, true);
+				 	false, true,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -821,7 +835,7 @@ oracharchar_larger(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
+					 PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp >= 0) ? arg1 : arg2);
 }
@@ -840,7 +854,7 @@ oracharchar_smaller(PG_FUNCTION_ARGS)
 	len2 = bcTruelen(arg2);
 
 	cmp = varstr_cmp(VARDATA_ANY(arg1), len1, VARDATA_ANY(arg2), len2,
-					 PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */);
+					 PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */);
 
 	PG_RETURN_BPCHAR_P((cmp <= 0) ? arg1 : arg2);
 }

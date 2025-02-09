@@ -190,16 +190,15 @@ explain (costs off) insert into names5 select * from names returning *;
 --
 create table names6 (like names);
 explain (costs off) insert into names6 select * from names order by last_name returning *;
-                           QUERY PLAN                           
-----------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Insert on names6
-   ->  Subquery Scan on "*SELECT*"
-         ->  Gather Merge
-               Workers Planned: 3
-               ->  Sort
-                     Sort Key: names.last_name COLLATE "binary"
-                     ->  Parallel Seq Scan on names
-(7 rows)
+   ->  Gather Merge
+         Workers Planned: 3
+         ->  Sort
+               Sort Key: ((names.last_name)::text) COLLATE "binary"
+               ->  Parallel Seq Scan on names
+(6 rows)
 
 insert into names6 select * from names order by last_name returning *;
  index | first_name |  last_name  
@@ -220,16 +219,15 @@ insert into names6 select * from names order by last_name returning *;
 --
 create table names7 (like names);
 explain (costs off) insert into names7 select * from names order by last_name returning last_name || ', ' || first_name as last_name_then_first_name;
-                           QUERY PLAN                           
-----------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Insert on names7
-   ->  Subquery Scan on "*SELECT*"
-         ->  Gather Merge
-               Workers Planned: 3
-               ->  Sort
-                     Sort Key: names.last_name COLLATE "binary"
-                     ->  Parallel Seq Scan on names
-(7 rows)
+   ->  Gather Merge
+         Workers Planned: 3
+         ->  Sort
+               Sort Key: ((names.last_name)::text) COLLATE "binary"
+               ->  Parallel Seq Scan on names
+(6 rows)
 
 insert into names7 select * from names order by last_name returning last_name || ', ' || first_name as last_name_then_first_name;
  last_name_then_first_name 

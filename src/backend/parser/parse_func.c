@@ -3246,11 +3246,7 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 			 * which is sane anyway.
 			 */
 		/* Begin: Req:SRS-SQL-NLSSORT */
-		case EXPR_KIND_DISTINCT_ORDER:
-			/* okay */
-			pstate->p_hasTargetSRFs = true;
-			break;
-		case EXPR_KIND_SET_ORDER:
+		case EXPR_KIND_GROUP_BY_DISTINCT:
 			/* okay */
 			pstate->p_hasTargetSRFs = true;
 			break;

@@ -306,8 +306,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
  	 * Set table's collation, or inherit from Effective Schema Default Collation,
 	 * Which is depended on schema's collation and DEFAULT_COLLATION session paramerter
  	 */
-	if (ORA_PARSER == compatible_db && 
-		enable_ora_default_collation)
+	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{
 		Oid	relColl;		
 
@@ -4299,8 +4298,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 		 * NCLOB columns is always USING_NLS_COMP and it does not depend on 
 		 * the table default collation.
 		 */
-		if (ORA_PARSER == compatible_db &&
-			enable_ora_default_collation)
+		if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 		{
 			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID) 
 			{
@@ -4322,8 +4320,7 @@ transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 		 * The `column->collOid` may be COVERED if the column has foreign key 
 		 * constraints at transformFKConstraintsCollation();
 		 */
-		if (ORA_PARSER == compatible_db &&
-			enable_ora_default_collation) 
+		if (ORA_PARSER == compatible_db && enable_ora_default_collation) 
 		{
 			if (typtup->oid == CLOBOID || typtup->oid == NCLOBOID)
 				column->collOid = ORA_COLL_OID(USING_NLS_COMP);

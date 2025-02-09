@@ -94,6 +94,68 @@ reset NLS_SORT;
 DROP TABLE employees;
 -- End BUG#Z1463
 
+-- Begin BUG#Z1464
+ALTER SESSION SET NLS_COMP = 'LINGUISTIC';
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+
+---- result is 'AbCdEfG'
+select replace('AbCdEfG' collate using_nls_comp, 'D', 'o') from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+
+---- result is 'AbCoEfG'
+select replace('AbCdEfG' collate using_nls_comp, 'D', 'o') from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+
+---- result is 'AbCdEfG'
+select replace('AbCdEfG'::varchar2 collate using_nls_comp, 'D', 'o') from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+
+---- result is 'AbCoEfG'
+select replace('AbCdEfG'::varchar2 collate using_nls_comp, 'D', 'o') from dual;
+
+reset NLS_COMP;
+reset NLS_SORT;
+-- End BUG#Z1464
+
+-- Begin BUG#Z1465
+ALTER SESSION SET NLS_COMP = 'LINGUISTIC';
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+---- result is 'abcdE'
+select trim('e' collate using_nls_comp from 'abcdE') from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+---- result is 'abcd'
+select trim('e' collate using_nls_comp from 'abcdE') from dual;
+
+reset NLS_COMP;
+reset NLS_SORT;
+-- End BUG#Z1465
+
+-- Begin BUG#Z1465
+ALTER SESSION SET NLS_COMP = 'LINGUISTIC';
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+---- result is 'aaaabbbbaaaa'
+select ltrim('aaaabbbbaaaa' collate using_nls_comp, 'A') from dual;
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+---- result is 'bbbbaaaa'
+select ltrim('aaaabbbbaaaa' collate using_nls_comp, 'A') from dual;
+ALTER SESSION SET NLS_SORT = 'BINARY';
+---- result is 'aaaabbbbaaaa'
+select rtrim('aaaabbbbaaaa' collate using_nls_comp, 'A') from dual;
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+---- result is 'aaaabbbb'
+select rtrim('aaaabbbbaaaa' collate using_nls_comp, 'A') from dual;
+
+reset NLS_COMP;
+reset NLS_SORT;
+-- End BUG#Z1465
+
 -- Begin BUG#Z1468
 create table test(val varchar2(10));
 insert into test values ('AbCdEfG');
@@ -108,6 +170,31 @@ reset NLS_COMP;
 reset NLS_SORT;
 drop table test;
 -- End BUG#Z1468
+
+-- Begin BUG#Z1471
+CREATE TABLE employees (
+    employee_id INT,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50)
+);
+
+INSERT INTO employees (employee_id, first_name, last_name) VALUES (1, 'Alice', 'Smith');
+INSERT INTO employees (employee_id, first_name, last_name) VALUES (2, 'Bob', 'Johnson');
+INSERT INTO employees (employee_id, first_name, last_name) VALUES (3, 'charlie', 'Brown');
+INSERT INTO employees (employee_id, first_name, last_name) VALUES (4, 'CHARLIE', 'Brown');
+
+SET enable_hashagg to off;
+ALTER SESSION SET NLS_COMP = 'ANSI';
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+
+-- result is 'Alice, Bob, CHARLIE, charlie'
+select distinct first_name from employees;
+
+reset NLS_COMP;
+reset NLS_SORT;
+reset enable_hashagg;
+DROP TABLE employees;
+-- End BUG#Z1471
 
 -- Begin BUG#Z1473
 CREATE TABLE test_table (
@@ -128,5 +215,35 @@ reset NLS_COMP;
 reset NLS_SORT;
 DROP TABLE test_table;
 -- End BUG#Z1473
+
+-- Begin BUG#Z1474
+ALTER SESSION SET NLS_COMP = 'LINGUISTIC';
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+-- result is 'a'
+select greatest('B' COLLATE using_nls_comp, 'a') as max_char from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+-- result is 'B'
+select greatest('B' COLLATE using_nls_comp, 'a') as max_char from dual;
+
+reset NLS_COMP;
+reset NLS_SORT;
+-- End BUG#Z1474
+
+-- Begin BUG#Z1475
+ALTER SESSION SET NLS_COMP = 'LINGUISTIC';
+
+ALTER SESSION SET NLS_SORT = 'BINARY';
+-- result is 'B'
+select least('B' COLLATE using_nls_comp, 'a') as max_char from dual;
+
+ALTER SESSION SET NLS_SORT = 'BINARY_CI';
+-- result is 'a'
+select least('B' COLLATE using_nls_comp, 'a') as max_char from dual;
+
+reset NLS_COMP;
+reset NLS_SORT;
+-- End BUG#Z1475
 
 reset ivorysql.enable_ora_default_collation

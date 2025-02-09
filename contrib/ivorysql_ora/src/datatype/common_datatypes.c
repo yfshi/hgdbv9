@@ -28,7 +28,8 @@
  * ora_dotrim, perhaps we will modify this function in the future. 
  */
 text *
-ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool doltrim, bool dortrim)
+ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool doltrim, bool dortrim,
+		   Oid coll /* BUG#Z1465 */)
 {
 	int			i;
 
@@ -96,7 +97,7 @@ ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool 
 					for (i = 0; i < setnchars; i++)
 					{
 						if (str_len == setmblen[i] &&
-							memcmp(str_pos, setchars[i], str_len) == 0)
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0 /* BUG#Z1465 */)
 							break;
 					}
 					if (i >= setnchars)
@@ -117,7 +118,7 @@ ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool 
 					for (i = 0; i < setnchars; i++)
 					{
 						if (str_len == setmblen[i] &&
-							memcmp(str_pos, setchars[i], str_len) == 0)
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0 /* BUG#Z1465 */)
 							break;
 					}
 					if (i >= setnchars)

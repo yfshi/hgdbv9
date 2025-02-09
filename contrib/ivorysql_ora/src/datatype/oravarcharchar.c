@@ -753,7 +753,7 @@ oravarchar_larger(PG_FUNCTION_ARGS)
 	VarChar	   *arg2 = PG_GETARG_VARCHAR_PP(1);
 	VarChar	   *result;
 
-	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */) > 0) ? arg1 : arg2);
+	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */) > 0) ? arg1 : arg2);
 
 	PG_RETURN_VARCHAR_P(result);
 }
@@ -765,7 +765,7 @@ oravarchar_smaller(PG_FUNCTION_ARGS)
 	VarChar	   *arg2 = PG_GETARG_VARCHAR_PP(1);
 	VarChar	   *result;
 
-	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace1(PG_GET_COLLATION()) /* BUG#Z1473 */) < 0) ? arg1 : arg2);
+	result = ((oravarcharchar_cmp(arg1, arg2, PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1473 */) < 0) ? arg1 : arg2);
 
 	PG_RETURN_VARCHAR_P(result);
 }

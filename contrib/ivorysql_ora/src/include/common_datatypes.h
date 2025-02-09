@@ -42,7 +42,7 @@
 #define INTERVAL_SECOND_PRECISION(t) ((t) & DSINTERVAL_PRECISION_MASK)
 
 /* common_datatypes.c */
-extern text *ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool doltrim, bool dortrim);
+extern text *ora_dotrim(const char *string, int stringlen, const char *set, int setlen, bool doltrim, bool dortrim, Oid coll);
 
 /* oratimestamp.c */
 extern void OraAdjustTimestampForTypmod(Timestamp *time, int32 typmod);
