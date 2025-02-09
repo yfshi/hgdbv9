@@ -339,11 +339,11 @@ ALTER FOREIGN TABLE ft2 OPTIONS (use_remote_estimate 'true');
 -- ===================================================================
 -- single table without alias
 EXPLAIN (COSTS OFF) SELECT * FROM ft1 ORDER BY c3, c1 OFFSET 100 LIMIT 10;
-                QUERY PLAN                 
--------------------------------------------
+                          QUERY PLAN                           
+---------------------------------------------------------------
  Limit
    ->  Sort
-         Sort Key: c3 COLLATE "binary", c1
+         Sort Key: ((c3)::varchar2(1024)) COLLATE "binary", c1
          ->  Foreign Scan on ft1
 (4 rows)
 
@@ -367,12 +367,12 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 ORDER BY t1.c3, t1.c1, t1.tabl
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Limit
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c3)::varchar2(1024)), tableoid
+   Output: c1, c2, ((c3)::varchar2(1024)), c4, c5, c6, c7, c8, tableoid
    ->  Sort
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c3)::varchar2(1024)), tableoid
-         Sort Key: t1.c3 COLLATE "binary", t1.c1, t1.tableoid
+         Output: c1, c2, ((c3)::varchar2(1024)), c4, c5, c6, c7, c8, tableoid
+         Sort Key: ((t1.c3)::varchar2(1024)) COLLATE "binary", t1.c1, t1.tableoid
          ->  Foreign Scan on public.ft1 t1
-               Output: c1, c2, c3, c4, c5, c6, c7, c8, c3, tableoid
+               Output: c1, c2, c3, c4, c5, c6, c7, c8, tableoid
                Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (8 rows)
 
@@ -4621,17 +4621,17 @@ select c2, sum(c1) from ft1 where c2 < 3 group by cube(c2) order by 1 nulls last
 
 explain (verbose, costs off)
 select c2, c6, sum(c1) from ft1 where c2 < 3 group by grouping sets(c2, c6) order by 1 nulls last, 2 nulls last;
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+                           QUERY PLAN                            
+-----------------------------------------------------------------
  Sort
-   Output: c2, ((c6)::varchar2(10)), (sum(c1)), ((c6)::varchar2(10))
+   Output: c2, ((c6)::varchar2(10)), (sum(c1))
    Sort Key: ft1.c2, ((ft1.c6)::varchar2(10)) COLLATE "binary"
    ->  HashAggregate
-         Output: c2, ((c6)::varchar2(10)), sum(c1), ((c6)::varchar2(10))
+         Output: c2, ((c6)::varchar2(10)), sum(c1)
          Hash Key: ft1.c2
          Hash Key: (ft1.c6)::varchar2(10)
          ->  Foreign Scan on public.ft1
-               Output: c2, c6, c1, c6
+               Output: c2, c6, c1
                Filter: (ft1.c2 < '3'::number)
                Remote SQL: SELECT "C 1", c2, c6 FROM "S 1"."T 1"
 (11 rows)
@@ -7311,12 +7311,12 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 ORDER BY c6 DESC NULLS LAST, c1 O
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Limit
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
+   Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
    ->  Sort
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
-         Sort Key: ft1.c6 COLLATE "binary" DESC NULLS LAST, ft1.c1
+         Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
+         Sort Key: ((ft1.c6)::varchar2(10)) COLLATE "binary" DESC NULLS LAST, ft1.c1
          ->  Foreign Scan on public.ft1
-               Output: c1, c2, c3, c4, c5, c6, c7, c8, c6
+               Output: c1, c2, c3, c4, c5, c6, c7, c8
                Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (8 rows)
 
@@ -7340,12 +7340,12 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 ORDER BY c6 DESC NULLS FIRST, c1 
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Limit
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
+   Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
    ->  Sort
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
-         Sort Key: ft1.c6 COLLATE "binary" DESC, ft1.c1
+         Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
+         Sort Key: ((ft1.c6)::varchar2(10)) COLLATE "binary" DESC, ft1.c1
          ->  Foreign Scan on public.ft1
-               Output: c1, c2, c3, c4, c5, c6, c7, c8, c6
+               Output: c1, c2, c3, c4, c5, c6, c7, c8
                Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (8 rows)
 
@@ -7369,12 +7369,12 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 ORDER BY c6 ASC NULLS FIRST, c1 O
                                      QUERY PLAN                                      
 -------------------------------------------------------------------------------------
  Limit
-   Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
+   Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
    ->  Sort
-         Output: c1, c2, c3, c4, c5, c6, c7, c8, ((c6)::varchar2(10))
-         Sort Key: ft1.c6 COLLATE "binary" NULLS FIRST, ft1.c1
+         Output: c1, c2, c3, c4, c5, ((c6)::varchar2(10)), c7, c8
+         Sort Key: ((ft1.c6)::varchar2(10)) COLLATE "binary" NULLS FIRST, ft1.c1
          ->  Foreign Scan on public.ft1
-               Output: c1, c2, c3, c4, c5, c6, c7, c8, c6
+               Output: c1, c2, c3, c4, c5, c6, c7, c8
                Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1"
 (8 rows)
 
@@ -10433,7 +10433,7 @@ SELECT t1.a,t2.b,t3.c FROM fprt1 t1 INNER JOIN fprt2 t2 ON (t1.a = t2.b) INNER J
                               QUERY PLAN                              
 ----------------------------------------------------------------------
  Sort
-   Sort Key: t1.a, t3.c COLLATE "binary"
+   Sort Key: t1.a, ((t3.c)::character varying(42)) COLLATE "binary"
    ->  Append
          ->  Nested Loop
                Join Filter: (t1_1.a = t3_1.a)
@@ -10465,13 +10465,13 @@ SELECT t1.a,t2.b,t3.c FROM fprt1 t1 INNER JOIN fprt2 t2 ON (t1.a = t2.b) INNER J
 -- left outer join + nullable clause
 EXPLAIN (VERBOSE, COSTS OFF)
 SELECT t1.a,t2.b,t2.c FROM fprt1 t1 LEFT JOIN (SELECT * FROM fprt2 WHERE a < 10) t2 ON (t1.a = t2.b and t1.b = t2.a) WHERE t1.a < 10 ORDER BY 1,2,3;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
  Sort
-   Output: t1.a, fprt2.b, fprt2.c, ((fprt2.c)::character varying(42))
-   Sort Key: t1.a, fprt2.b, fprt2.c COLLATE "binary"
+   Output: t1.a, fprt2.b, ((fprt2.c)::character varying(42))
+   Sort Key: t1.a, fprt2.b, ((fprt2.c)::character varying(42)) COLLATE "binary"
    ->  Merge Left Join
-         Output: t1.a, fprt2.b, fprt2.c, fprt2.c
+         Output: t1.a, fprt2.b, fprt2.c
          Merge Cond: ((t1.a = fprt2.b) AND (t1.b = fprt2.a))
          ->  Sort
                Output: t1.a, t1.b

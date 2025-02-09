@@ -16,6 +16,7 @@
 #include "postgres.h"
 
 #include "catalog/namespace.h"
+#include "catalog/pg_collation.h"
 #include "common/int.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
@@ -25,7 +26,8 @@
 
 static text *dotrim(const char *string, int stringlen,
 					const char *set, int setlen,
-					bool doltrim, bool dortrim);
+					bool doltrim, bool dortrim,
+					Oid coll /* BUG#Z1467 */);
 static bytea *dobyteatrim(bytea *string, bytea *set,
 						  bool doltrim, bool dortrim);
 
@@ -343,9 +345,23 @@ btrim(PG_FUNCTION_ARGS)
 	text	   *set = PG_GETARG_TEXT_PP(1);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 true, true);
+				 true, true,
+				 coll /* BUG#Z1467 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -362,9 +378,23 @@ btrim1(PG_FUNCTION_ARGS)
 	text	   *string = PG_GETARG_TEXT_PP(0);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 " ", 1,
-				 true, true);
+				 true, true,
+				 coll /* BUG#Z1467 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -375,7 +405,8 @@ btrim1(PG_FUNCTION_ARGS)
 static text *
 dotrim(const char *string, int stringlen,
 	   const char *set, int setlen,
-	   bool doltrim, bool dortrim)
+	   bool doltrim, bool dortrim,
+	   Oid coll /* BUG#Z1467 */)
 {
 	int			i;
 
@@ -443,7 +474,7 @@ dotrim(const char *string, int stringlen,
 					for (i = 0; i < setnchars; i++)
 					{
 						if (str_len == setmblen[i] &&
-							memcmp(str_pos, setchars[i], str_len) == 0)
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0 /* BUG#Z1467 */)
 							break;
 					}
 					if (i >= setnchars)
@@ -464,7 +495,7 @@ dotrim(const char *string, int stringlen,
 					for (i = 0; i < setnchars; i++)
 					{
 						if (str_len == setmblen[i] &&
-							memcmp(str_pos, setchars[i], str_len) == 0)
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0 /* BUG#Z1467 */)
 							break;
 					}
 					if (i >= setnchars)
@@ -699,9 +730,23 @@ ltrim(PG_FUNCTION_ARGS)
 	text	   *set = PG_GETARG_TEXT_PP(1);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 true, false);
+				 true, false,
+				 coll /* BUG#Z1467 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -718,9 +763,23 @@ ltrim1(PG_FUNCTION_ARGS)
 	text	   *string = PG_GETARG_TEXT_PP(0);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 " ", 1,
-				 true, false);
+				 true, false,
+				 coll /* BUG#Z1467 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -747,9 +806,23 @@ rtrim(PG_FUNCTION_ARGS)
 	text	   *set = PG_GETARG_TEXT_PP(1);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 false, true);
+				 false, true,
+				 coll /* BUG#Z1467 */);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -766,9 +839,23 @@ rtrim1(PG_FUNCTION_ARGS)
 	text	   *string = PG_GETARG_TEXT_PP(0);
 	text	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+
 	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 " ", 1,
-				 false, true);
+				 false, true,
+				 coll);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -849,7 +936,7 @@ translate(PG_FUNCTION_ARGS)
 		{
 			len = pg_mblen(&from_ptr[i]);
 			if (len == source_len &&
-				varstr_cmp(source, len, &from_ptr[i], len, PseudoCollationReplace1(PG_GET_COLLATION())) == 0 /* BUG#Z1468 */)
+				varstr_cmp(source, len, &from_ptr[i], len, PseudoCollationReplace_BNB(PG_GET_COLLATION())) == 0 /* BUG#Z1468 */)
 				break;
 
 			from_index++;

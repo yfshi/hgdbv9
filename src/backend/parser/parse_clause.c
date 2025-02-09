@@ -1978,7 +1978,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 
 				if (IsPseudoCollation(coll))
 				{
-					Oid	targetcoll = PseudoCollationReplace1(coll);
+					Oid	targetcoll = PseudoCollationReplace_BNB(coll);
 					pseudo_collation_replace(pstate, (Node *) j->quals, NULL, targetcoll);
 				}
 				
@@ -2318,7 +2318,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 		if (exprKind == EXPR_KIND_HAVING && IsPseudoCollation(coll))
 		{
 			// We have to replace pseudo-collation-node recursively.
-			Oid	targetcoll = PseudoCollationReplace1(coll);
+			Oid	targetcoll = PseudoCollationReplace_BNB(coll);
 			pseudo_collation_replace(pstate, (Node *) qual, NULL, targetcoll);	
 		}
 		
@@ -2732,10 +2732,7 @@ checkTargetlistEntrySQL92(ParseState *pstate, TargetEntry *tle,
 			/* no extra checks needed */
 			break;
 		/* Begin: Req:SRS-SQL-NLSSORT */
-		case EXPR_KIND_DISTINCT_ORDER:
-			/* no extra checks needed */
-			break;
-		case EXPR_KIND_SET_ORDER:
+		case EXPR_KIND_GROUP_BY_DISTINCT:
 			/* no extra checks needed */
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */
@@ -3042,8 +3039,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 
 	/* Begin - BUG#M0000217 */
 	if (exprKind == EXPR_KIND_ORDER_BY || 
-		exprKind == EXPR_KIND_DISTINCT_ORDER ||
-		exprKind == EXPR_KIND_SET_ORDER)
+		exprKind == EXPR_KIND_GROUP_BY_DISTINCT)
 		pstate->p_targetlist = tlist;
 	/* End - BUG#M0000217 */
 
@@ -3706,41 +3702,34 @@ findTargetlistEntrySQL99(ParseState *pstate, Node *node, List **tlist,
 	 */
 	if (ORA_PARSER == compatible_db && enable_ora_default_collation)
 	{
-		Node *copy = copyObject(expr);
+		Oid 	 coll;
+		Node 	*copy = copyObject(expr);
+
 		assign_expr_collations(pstate, copy);
+
+		coll = exprCollation(copy);
 	
-		if (IsPseudoCollation(exprCollation(copy)))
+		if (IsPseudoCollation(coll))
 		{
+			Oid targetcoll = InvalidOid;
+			
 			if (exprKind == EXPR_KIND_ORDER_BY ||
-				exprKind == EXPR_KIND_WINDOW_ORDER)
+				exprKind == EXPR_KIND_WINDOW_ORDER ||
+				exprKind == EXPR_KIND_GROUP_BY_DISTINCT)
 			{
-				expr = makePseudoCollationReplaceNode(expr, PseudoCollationReplace2(exprCollation(copy)));
+				targetcoll = PseudoCollationReplace_NNN(coll);
 			}
-			else if (exprKind == EXPR_KIND_SET_ORDER)
-			{
-				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
-				expr = makePseudoCollationReplaceNode(expr, targetcoll);
-			}
-			else if (exprKind == EXPR_KIND_DISTINCT_ORDER)
-			{
-				/*
-				 * Replace rule is the same as EXPR_KIND_ORER_BY,
-				 * but need recurse to do deep replace.
-				 */ 
-				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
-				expr = makePseudoCollationReplaceNode(expr, targetcoll);
-			}		
 			else if (exprKind == EXPR_KIND_GROUP_BY)
 			{
-				Oid	targetcoll = PseudoCollationReplace1(exprCollation(copy));
-				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
-				expr = makePseudoCollationReplaceNode(expr, targetcoll);
+				targetcoll = PseudoCollationReplace_BNB(coll);
 			}
 			else if (exprKind == EXPR_KIND_WINDOW_PARTITION)
 			{
-				Oid	targetcoll = PseudoCollationReplace2(exprCollation(copy));
+				targetcoll = PseudoCollationReplace_NNN(coll);
+			}
+
+			if (targetcoll)
+			{
 				pseudo_collation_replace(pstate, (Node *) *tlist, expr, targetcoll);
 				expr = makePseudoCollationReplaceNode(expr, targetcoll);
 			}

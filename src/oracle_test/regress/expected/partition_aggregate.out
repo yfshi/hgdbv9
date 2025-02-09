@@ -948,10 +948,10 @@ SET max_parallel_workers_per_gather TO 2;
 -- is not partial agg safe.
 EXPLAIN (COSTS OFF)
 SELECT a, sum(b), array_agg(distinct c), count(*) FROM pagg_tab_ml GROUP BY a HAVING avg(b) < 3 ORDER BY 1, 2, 3;
-                                              QUERY PLAN                                               
--------------------------------------------------------------------------------------------------------
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), (array_agg(DISTINCT pagg_tab_ml.c)) COLLATE "binary"
+   Sort Key: pagg_tab_ml.a, (sum(pagg_tab_ml.b)), ((array_agg(DISTINCT pagg_tab_ml.c))::text[]) COLLATE "binary"
    ->  Gather
          Workers Planned: 2
          ->  Parallel Append

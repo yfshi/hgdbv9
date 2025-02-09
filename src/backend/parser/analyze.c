@@ -2282,18 +2282,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	 * that these functions can also change the targetList, so it's passed to
 	 * them by reference.
 	 */
-	/* Begin - Req: SRS-SQL-NLSSORT */
-	if (ORA_PARSER == compatible_db &&
-		enable_ora_default_collation) 
-		qry->sortClause = transformSortClause(pstate,
-										  stmt->sortClause,
-										  &qry->targetList,
-										  (stmt->distinctClause == NIL || linitial(stmt->distinctClause) != NULL) ? 
-											EXPR_KIND_ORDER_BY : EXPR_KIND_DISTINCT_ORDER,
-										  false /* allow SQL92 rules */ );
-	/* End - Req: SRS-SQL-NLSSORT */
-	else
-		qry->sortClause = transformSortClause(pstate,
+	qry->sortClause = transformSortClause(pstate,
 										  stmt->sortClause,
 										  &qry->targetList,
 										  EXPR_KIND_ORDER_BY,
@@ -2304,7 +2293,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 											&qry->groupingSets,
 											&qry->targetList,
 											qry->sortClause,
-											EXPR_KIND_GROUP_BY,
+											stmt->groupDistinct ? EXPR_KIND_GROUP_BY_DISTINCT : EXPR_KIND_GROUP_BY, /* SRS-SQL-NLSSORT */
 											false /* allow SQL92 rules */ );
 	qry->groupDistinct = stmt->groupDistinct;
 
@@ -2331,6 +2320,25 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 														qry->sortClause);
 		qry->hasDistinctOn = true;
 	}
+
+	/**
+	 * Begin - Req: SRS-SQL-NLSSORT
+	 * Replace pseudo-collation in subquery with DISTINCT clause.
+	 */
+	foreach(l, qry->distinctClause)
+	{
+		SortGroupClause *sgc = (SortGroupClause *) lfirst(l);
+		TargetEntry 	*tle = get_sortgroupclause_tle(sgc, qry->targetList);
+		Node	   		*expr = (Node *) tle->expr;
+		Oid			 	 coll = exprCollation(expr);
+
+		if (IsPseudoCollation(coll))
+		{
+			tle->expr = (Expr *) makePseudoCollationReplaceNode(expr, 
+																PseudoCollationReplace_BNB(coll));
+		}
+	}
+	/* End - Req: SRS-SQL-NLSSORT */
 
 	/* transform LIMIT */
 	qry->limitOffset = transformLimitClause(pstate, stmt->limitOffset,
@@ -2808,7 +2816,7 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	qry->sortClause = transformSortClause(pstate,
 										  sortClause,
 										  &qry->targetList,
-										  EXPR_KIND_SET_ORDER, /* Req: SRS-SQL-NLSSORT */
+										  EXPR_KIND_ORDER_BY, /* Req: SRS-SQL-NLSSORT */
 										  false /* allow SQL92 rules */ );
 
 	/* restore namespace, remove join RTE from rtable */
@@ -3293,13 +3301,13 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 
 				if (IsPseudoCollation(exprCollation(lcopy)))
 				{
-					lcolnode = makePseudoCollationReplaceNode(lcolnode, PseudoCollationReplace1(exprCollation(lcopy)));
+					lcolnode = makePseudoCollationReplaceNode(lcolnode, PseudoCollationReplace_BNB(exprCollation(lcopy)));
 					ltle->expr = (Expr *) lcolnode;
 				}
 
 				if (IsPseudoCollation(exprCollation(rcopy)))
 				{
-					rcolnode = makePseudoCollationReplaceNode(rcolnode, PseudoCollationReplace1(exprCollation(rcopy)));
+					rcolnode = makePseudoCollationReplaceNode(rcolnode, PseudoCollationReplace_BNB(exprCollation(rcopy)));
 					rtle->expr = (Expr *) rcolnode;
 				}
 			}
@@ -3428,7 +3436,7 @@ determineRecursiveColTypes(ParseState *pstate, Node *larg, List *nrtargetlist)
 			Node 	*expr = (Node *) nrtle->expr;
 			Oid		 colcoll = exprCollation(expr);
 			if (IsPseudoCollation(colcoll))
-				nrtle->expr = (Expr *) makePseudoCollationReplaceNode(expr, PseudoCollationReplace1(colcoll));
+				nrtle->expr = (Expr *) makePseudoCollationReplaceNode(expr, PseudoCollationReplace_BNB(colcoll));
 		}
 		/* End - BUG#Z1461 */
 

@@ -209,6 +209,10 @@ extern Oid PseudoCollationReplace1(Oid collid);
 extern Oid PseudoCollationReplace2(Oid collid);
 extern Oid PseudoCollationReplace3(Oid collid);
 extern Oid PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll);
+
+#define PseudoCollationReplace_BNB PseudoCollationReplace1
+#define PseudoCollationReplace_NNN PseudoCollationReplace2
+#define PseudoCollationReplace_BNN PseudoCollationReplace3
 /* End - Req:SRS-SQL-NLSSORT */
 
 #endif							/* NAMESPACE_H */

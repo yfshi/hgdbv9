@@ -81,8 +81,7 @@ typedef enum ParseExprKind
 	EXPR_KIND_COPY_WHERE,		/* WHERE condition in COPY FROM */
 	EXPR_KIND_GENERATED_COLUMN, /* generation expression for a column */
 	EXPR_KIND_CYCLE_MARK,		/* cycle mark value */
-	EXPR_KIND_DISTINCT_ORDER,	/* Req: SRS-SQL-NLSSORT, used to distinguish `DISTINCT xx ORDER BY` xx when do pseudo collation replace */
-	EXPR_KIND_SET_ORDER,		/* Req: SRS-SQL-NLSSORT, used to distinguish `ORDER BY` xx when do pseudo collation replace in transformSetOperationStmt() */
+	EXPR_KIND_GROUP_BY_DISTINCT,	/* Req: SRS-SQL-NLSSORT, used to distinguish `DISTINCT xx ORDER BY` xx when do pseudo collation replace */
 } ParseExprKind;
 
 

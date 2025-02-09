@@ -3,14 +3,15 @@
 #------------------------------------------------------------------------------
 
 #ivorysql.listen_addresses = 'localhost'		# what IP address(es) of Oracle mode to listen on;
-					# comma-separated list of addresses;
-					# defaults to 'localhost'; use '*' for all
-					# (change requires restart)
-#ivorysql.port = 1521		# (change requires restart)
+												# comma-separated list of addresses;
+												# defaults to 'localhost'; use '*' for all
+												# (change requires restart)
+#ivorysql.port = 1521							# (change requires restart)
 
-ivorysql.enable_emptystring_to_NULL = 'on'				# BUG#Z031
+ivorysql.enable_emptystring_to_NULL = 'on'
 shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'		# (change requires restart)
-ivorysql.identifier_case_switch = interchange   				#set the case conversion mode.  range [normal,interchange,lowercase]
-#ivorysql.enable_blankspace_compare = on				# set to ignore blank space while in query
+ivorysql.identifier_case_switch = interchange   				# set the case conversion mode.  range [normal,interchange,lowercase]
+#ivorysql.default_collation_is_c = on
+#ivorysql.enable_blankspace_compare = on						# set to ignore blank space while in query
 #ivorysql.enable_ora_default_collation = off
-#ivorysql.subquery_with_raw_collation = on				# Replace pseudo-collation back in Set subquery
+#ivorysql.subquery_with_raw_collation = on						# Replace pseudo-collation back in Set subquery

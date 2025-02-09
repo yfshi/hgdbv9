@@ -5316,8 +5316,7 @@ IndexCollationPersistent(Oid collid)
 {
 	Oid		realcoll;
 
-	if (ORA_PARSER != compatible_db ||
-		!enable_ora_default_collation)
+	if (ORA_PARSER != compatible_db || !enable_ora_default_collation)
 	{
 		if (IsPseudoCollation(collid))
 			elog(NOTICE, "do not use pseudo-collation in persistent object");
@@ -5514,7 +5513,7 @@ PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll)
 					!strcmp(oprname, ">=") 	||
 					!strcmp(oprname, "<="))
 				{
-					coll = PseudoCollationReplace3(coll);
+					coll = PseudoCollationReplace_BNN(coll);
 				}
 
 				break;
@@ -5525,14 +5524,14 @@ PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll)
 		case AEXPR_BETWEEN_SYM:
 		case AEXPR_NOT_BETWEEN_SYM:
 			{
-				coll = PseudoCollationReplace3(coll);
+				coll = PseudoCollationReplace_BNN(coll);
 				break;
 			}
 		case AEXPR_LIKE:
 		case AEXPR_ILIKE:
 		case AEXPR_SIMILAR:
 			{
-				coll = PseudoCollationReplace1(coll);
+				coll = PseudoCollationReplace_BNB(coll);
 				break;
 			}
 		default:

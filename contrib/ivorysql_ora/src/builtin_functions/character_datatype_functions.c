@@ -22,6 +22,7 @@
 
 #include "access/detoast.h"
 #include "catalog/namespace.h"
+#include "catalog/pg_collation.h"
 #include "lib/stringinfo.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
@@ -92,13 +93,14 @@ typedef struct
 	/* Skip table for Boyer-Moore-Horspool search algorithm: */
 	int			skiptablemask;	/* mask for ANDing with skiptable subscripts */
 	int			skiptable[256]; /* skip distance for given mismatched char */
+	Oid			coll;			/* BUG#Z1464 */
 } TextPositionState;
 
 static text *text_substring_byte(Datum str, int32 start, int32 length, bool length_not_specified);
-static void text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte);
+static void text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte, Oid coll);
 static void text_position_cleanup(TextPositionState *state);
 static int	text_position_next(int start_pos, TextPositionState *state);
-static int text_instring(text *str, text *search_str, int32 position, int32 occurrence, bool isByte);
+static int text_instring(text *str, text *search_str, int32 position, int32 occurrence, bool isByte, Oid coll);
 static int	text_position_prev(int start_pos, TextPositionState *state);
 static void appendStringInfoText(StringInfo str, const text *t);
 /* Begin - BUG:M0000084 */
@@ -169,9 +171,23 @@ rtrim1(PG_FUNCTION_ARGS)
 	VarChar	*string = PG_GETARG_VARCHAR_P(0);
 	VarChar *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	" ", 1,
-				 	false, true);
+				 	false, true,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -183,9 +199,23 @@ rtrim2(PG_FUNCTION_ARGS)
 	VarChar	*set = PG_GETARG_VARCHAR_P(1);
 	VarChar *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 	false, true);
+				 	false, true,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -197,9 +227,23 @@ ltrim2(PG_FUNCTION_ARGS)
 	VarChar	   *set = PG_GETARG_VARCHAR_P(1);
 	VarChar	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 	true, false);
+				 	true, false,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -210,9 +254,23 @@ ltrim1(PG_FUNCTION_ARGS)
 	VarChar	   *string = PG_GETARG_VARCHAR_P(0);
 	VarChar	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	" ", 1,
-				 	true, false);
+				 	true, false,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -226,9 +284,23 @@ trim2(PG_FUNCTION_ARGS)
 	VarChar	   *set = PG_GETARG_VARCHAR_P(1);
 	VarChar	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	VARDATA_ANY(set), VARSIZE_ANY_EXHDR(set),
-				 	true, true);
+				 	true, true,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -239,9 +311,23 @@ trim1(PG_FUNCTION_ARGS)
 	VarChar	   *string = PG_GETARG_VARCHAR_P(0);
 	VarChar	   *ret;
 
+	/**
+	 * Begin - BUG#Z1467
+	 * If we wanna convert char(n) to text, we will call text() function,
+	 * whose oid is 401 and collation is 0.
+	 * However, we will through error when collation is 0 in varstr_cmp(),
+	 * so we use C_COLLATION_OID as collation to ensure logic is same as before this bug.
+	 */
+	Oid 		coll = PseudoCollationReplace_BNB(PG_GET_COLLATION());
+
+	if (!OidIsValid(coll))
+		coll = C_COLLATION_OID;
+	/* End - BUG#Z1467 */
+	
 	ret = ora_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
 				 	" ", 1,
-				 	true, true);
+				 	true, true,
+					coll /* BUG#Z1465 */);
 
 	PG_RETURN_VARCHAR_P(ret);
 }
@@ -971,15 +1057,18 @@ ora_replace(PG_FUNCTION_ARGS)
 	 */
 	if (PG_ARGISNULL(0))
 		PG_RETURN_NULL();
-	else if (PG_ARGISNULL(1))
+	
+	if (PG_ARGISNULL(1))
 		PG_RETURN_TEXT_P(PG_GETARG_TEXT_PP(0));
 	
 	src_text = PG_GETARG_TEXT_PP(0);
 	from_sub_text = PG_GETARG_TEXT_PP(1);
+
 	if (!PG_ARGISNULL(2))
 		to_sub_text = PG_GETARG_TEXT_PP(2);
 
-	text_position_setup(src_text, from_sub_text, &state, false);
+	text_position_setup(src_text, from_sub_text, &state, false, 
+						PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1464 */);
 
 	/*
 	 * Note: we check the converted string length, not the original, because
@@ -1073,7 +1162,8 @@ ora_instrb(PG_FUNCTION_ARGS)
 								  search_str,
 								  position,
 								  occurrence,
-								  true));
+								  true,
+								  PseudoCollationReplace_BNB(PG_GET_COLLATION()) /* BUG#Z1464 */));
 }
 
 
@@ -1305,7 +1395,7 @@ text_substring_byte(Datum str, int32 start, int32 length, bool length_not_specif
  *	in single byte encoding.
  */
 static void
-text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte)
+text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte, Oid coll)
 {
 	int			len1 = VARSIZE_ANY_EXHDR(t1);
 	int			len2 = VARSIZE_ANY_EXHDR(t2);
@@ -1321,6 +1411,10 @@ text_position_setup(text *t1, text *t2, TextPositionState *state, bool isbyte)
 	state->skiptablemask = 0;
 	memset(state->skiptable, (int) 0, 255);
 	/* End - BUG#M0000207 */
+
+	/* Begin - BUG#Z1464 */
+	state->coll = coll;
+	/* End - BUG#Z1464 */
 
 	if (pg_database_encoding_max_length() == 1 || 
 		isbyte)	/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -1445,6 +1539,7 @@ text_position_next(int start_pos, TextPositionState *state)
 	int			haystack_len = state->len1;
 	int			needle_len = state->len2;
 	int			skiptablemask = state->skiptablemask;
+	Oid			coll = state->coll; /* BUG#Z1464 */
 
 	Assert(start_pos > 0);		/* else caller error */
 
@@ -1473,7 +1568,7 @@ text_position_next(int start_pos, TextPositionState *state)
 			hptr = &haystack[start_pos];
 			while (hptr < haystack_end)
 			{
-				if (*hptr == nchar)
+				if (varstr_cmp(hptr, 1, &nchar, 1, coll) == 0) /* BUG#Z1464 */
 					return hptr - haystack + 1;
 				hptr++;
 			}
@@ -1492,7 +1587,7 @@ text_position_next(int start_pos, TextPositionState *state)
 
 				nptr = needle_last;
 				p = hptr;
-				while (*nptr == *p)
+				while (varstr_cmp(nptr, 1, p, 1, coll) == 0) /* BUG#Z1464 */
 				{
 					/* Matched it all?	If so, return 1-based position */
 					if (nptr == needle)
@@ -1529,7 +1624,7 @@ text_position_next(int start_pos, TextPositionState *state)
 			hptr = &haystack[start_pos];
 			while (hptr < haystack_end)
 			{
-				if (*hptr == nchar)
+				if (varstr_cmp((char *) hptr, sizeof (pg_wchar), (char *) &nchar, sizeof (pg_wchar), coll) == 0) /* BUG#Z1464 */
 					return hptr - haystack + 1;
 				hptr++;
 			}
@@ -1548,7 +1643,7 @@ text_position_next(int start_pos, TextPositionState *state)
 
 				nptr = needle_last;
 				p = hptr;
-				while (*nptr == *p)
+				while (varstr_cmp((char *) nptr, sizeof (pg_wchar), (char *) p, sizeof (pg_wchar), coll) == 0) /* BUG#Z1464 */
 				{
 					/* Matched it all?	If so, return 1-based position */
 					if (nptr == needle)
@@ -1579,7 +1674,7 @@ text_position_next(int start_pos, TextPositionState *state)
  *	Does the real work for ora_instr() and ora_instrb().
  */
 static int
-text_instring(text *str, text *search_str, int32 position, int32 occurrence, bool isByte)
+text_instring(text *str, text *search_str, int32 position, int32 occurrence, bool isByte, Oid coll)
 {
 	int32	maxTimes;
 	int32	i;
@@ -1588,7 +1683,7 @@ text_instring(text *str, text *search_str, int32 position, int32 occurrence, boo
 	int32	result;
 	TextPositionState	state;
 
-	text_position_setup(str, search_str, &state, isByte);
+	text_position_setup(str, search_str, &state, isByte, coll);
 
 	src_text_len = state.len1;
 	sub_text_len = state.len2;
@@ -1849,7 +1944,7 @@ oracle_instr2 (PG_FUNCTION_ARGS)
 	text *arg1 = PG_GETARG_TEXT_PP(0);
 	text *arg2 = PG_GETARG_TEXT_PP(1);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, 1, 1, PseudoCollationReplace1(PG_GET_COLLATION())));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, 1, 1, PseudoCollationReplace_BNB(PG_GET_COLLATION())));
 }
 
 Datum
@@ -1859,7 +1954,7 @@ oracle_instr3 (PG_FUNCTION_ARGS)
 	text *arg2 = PG_GETARG_TEXT_PP(1);
 	int arg3 = PG_GETARG_INT32(2);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, 1, PseudoCollationReplace1(PG_GET_COLLATION())));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, 1, PseudoCollationReplace_BNB(PG_GET_COLLATION())));
 }
 
 Datum
@@ -1870,7 +1965,7 @@ oracle_instr4 (PG_FUNCTION_ARGS)
 	int arg3 = PG_GETARG_INT32(2);
 	int arg4 = PG_GETARG_INT32(3);
 
-	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, arg4, PseudoCollationReplace1(PG_GET_COLLATION())));
+	PG_RETURN_INT32(ora_instr(arg1, arg2, arg3, arg4, PseudoCollationReplace_BNB(PG_GET_COLLATION())));
 }
 
 static int

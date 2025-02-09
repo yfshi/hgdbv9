@@ -4730,7 +4730,7 @@ SELECT t1.a, t1.c, t2.a, t2.c, t3.a, t3.c FROM (plt1_adv t1 LEFT JOIN plt2_adv t
                                                                                   QUERY PLAN                                                                                   
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  Sort
-   Sort Key: t1.c COLLATE "binary", t1.a, t2.a, t3.a
+   Sort Key: ((t1.c)::text) COLLATE "binary", t1.a, t2.a, t3.a
    ->  Append
          ->  Hash Full Join
                Hash Cond: ((t1_1.c)::text = (t3_1.c)::text)

@@ -31,6 +31,7 @@
 #include "postgres.h"
 
 #include "access/nbtree.h"
+#include "catalog/namespace.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_type.h"
 #include "executor/execExpr.h"
@@ -2446,7 +2447,7 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				fmgr_info(typentry->cmp_proc, finfo);
 				fmgr_info_set_expr((Node *) node, finfo);
 				InitFunctionCallInfoData(*fcinfo, finfo, 2,
-										 minmaxexpr->inputcollid, NULL, NULL);
+										 PseudoCollationReplace_BNB(minmaxexpr->inputcollid) /* BUG#Z1475 */, NULL, NULL);
 
 				scratch.opcode = EEOP_MINMAX;
 				/* allocate space to store arguments */
