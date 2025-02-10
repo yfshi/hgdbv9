@@ -1482,7 +1482,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/*
 	 * Build a default types index on rowid column, if it exist
 	 */
-	if (rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)
+	if (!IsBinaryUpgrade && rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)/* BUG#M508 */
 	{
 		IndexElem   *iparam;
 		const FormData_pg_attribute *from;
@@ -7732,11 +7732,16 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 		ObjectAddressSubSet(address, AttributeRelationId, myrelid, newattnum);
 		ObjectAddressSubSet(address_paraent, RelationRelationId, myrelid, 0);
 		objori = pg_object_get_ori_infor_hook(address_paraent);
-		pg_object_create_obj_hook(colDef->colname, RelationGetNamespace(rel), true,
-											 'c',
-											 address,DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"fill zeor\": 5}"))),
-											 NULL);
-		pg_object_alter_obj_hook(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
+		/* Begin - BUG#Z1662 */
+		if (objori != NULL)
+		{
+			pg_object_create_obj_hook(colDef->colname, RelationGetNamespace(rel), true,
+												 'c',
+												 address,DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"fill zeor\": 5}"))),
+												 NULL);
+			pg_object_alter_obj_hook(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
+		}
+		/* End - BUG#Z1662 */
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
 

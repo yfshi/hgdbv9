@@ -233,3 +233,6 @@ test: copy_skipbadR
 test: ora_copy_double
 test: ora_copy_null
 #/* End - BUG#M0000414 */
+#/* Begin - BUG#M508 */
+test: ora_rowid
+#/* End - BUG#M508 */

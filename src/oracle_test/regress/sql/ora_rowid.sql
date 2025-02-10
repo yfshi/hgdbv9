@@ -29,25 +29,25 @@ select * from t2;
 select * from t3;
 
 -- select with rowid pseudo
-select rowid, * from t2;
-select rowid, * from t2 where rowid = '(16387,3)';
+select (rowid).rowno, * from t2;
+select (rowid).rowno, * from t2 where (rowid).rowno = 3;
 
-select rowid, * from t3;
-select rowid, * from t3 where rowid = '(16392,2)';
+select (rowid).rowno, * from t3;
+select (rowid).rowno, * from t3 where (rowid).rowno = 2;
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
 
 -- test update rowid column
 update t2 set rowid = 100 where a = 20; --error
 
 -- test update using rowid
-update t2 set a = a + 100 where rowid = '(16387,3)';
-select rowid, * from t2;
+update t2 set a = a + 100 where (rowid).rowno = 3;
+select (rowid).rowno, * from t2;
 
 --test delete using rowid
-delete from t2 where rowid = '(16387,1)';
-select rowid, * from t2;
+delete from t2 where (rowid).rowno = 1;
+select (rowid).rowno, * from t2;
 
 -- test insert rowid column
 insert into t2(rowid, a, b) values(50, 2, 3); --error
@@ -82,24 +82,24 @@ select * from t2;
 select * from t3;
 
 -- select with rowid pseudo
-select rowid, * from t2;
-select rowid, * from t2 where rowid = '(16396,2)';
-select rowid, * from t3;
-select rowid, * from t3 where rowid = '(16403,1)';
+select (rowid).rowno, * from t2;
+select (rowid).rowno, * from t2 where (rowid).rowno = 2;
+select (rowid).rowno, * from t3;
+select (rowid).rowno, * from t3 where (rowid).rowno = 1;
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
 
 -- test update rowid column
 update t2 set rowid = 100 where a = 20; --error
 
 -- test update using rowid
-update t2 set a = a + 100 where rowid = '(16396,3)';
-select rowid, * from t2;
+update t2 set a = a + 100 where (rowid).rowno = 3;
+select (rowid).rowno, * from t2;
 
 --test delete using rowid
-delete from t2 where rowid = '(16396,1)';
-select rowid, * from t2;
+delete from t2 where (rowid).rowno = 1;
+select (rowid).rowno, * from t2;
 
 -- test insert rowid column
 insert into t2(rowid, a, b) values(50, 2, 3); --error
@@ -109,7 +109,7 @@ insert into t2(rowid, a, b) values(50, 2, 3); --error
 --
 alter table t2 set without rowid;
 
-select rowid, * from t2;
+select (rowid).rowno, * from t2;
 
 -- clearup
 drop table t2;
@@ -135,13 +135,13 @@ select * from t2;
 select * from t3;
 
 -- select with rowid pseudo
-select rowid, * from t2;
-select rowid, * from t2 where rowid = '(16414,1)';
-select rowid, * from t3;
-select rowid, * from t3 where rowid = '(16419,2)';
+select (rowid).rowno, * from t2;
+select (rowid).rowno, * from t2 where (rowid).rowno = 1;
+select (rowid).rowno, * from t3;
+select (rowid).rowno, * from t3 where (rowid).rowno = 2;
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
 
 drop table t2;
 drop table t3;
@@ -158,7 +158,7 @@ declare
     rr rowid;
 begin
     select rowid from t2 into rr;
-    raise info 'rr.rowoid = %, rr.rowno = %', rr.rowoid, rr.rowno;
+    raise info 'rr.rowno = %', rr.rowno;
 	return 1;
 end;
 /
@@ -183,9 +183,9 @@ insert into ptable values(6,'2021-08-06');
 insert into ptable values(7,'2021-08-06');
 insert into ptable values(8,'2021-08-06');
 
-select rowid, * from ptable;
-select rowid, * from pt_01;
-select rowid, * from pt_02;
+select (rowid).rowno, * from ptable;
+select (rowid).rowno, * from pt_01;
+select (rowid).rowno, * from pt_02;
 
 drop table ptable;
 
@@ -196,9 +196,9 @@ create table t2(mystr varchar2(100), id int) with rowid;
 
 insert into t2 SELECT 'INSERT table t2 WITH ROWID', generate_series(1,20000);
 
-select rowid, * from t2 limit 10;
+select (rowid).rowno, * from t2 limit 10;
 
-explain (COSTS OFF) select rowid, * from t2 where rowid = '(16442,9)';
+explain (COSTS OFF) select (rowid).rowno, * from t2 where (rowid).rowno = 9;
 
 drop table t2;
 
@@ -211,7 +211,7 @@ insert into t2_like values(20, 3);
 insert into t2_like values(5, 7);
 insert into t2_like values(4, 9);
 
-select rowid, * from t2_like;
+select (rowid).rowno, * from t2_like;
 
 drop table t2_like;
 drop table t2;
@@ -226,7 +226,7 @@ create temp table t3(
 
 insert into t3 SELECT 'INSERT TEMP table t3 WITH ROWID', generate_series(1,200);
 
-select rowid, * from t3 limit 5;
+select (rowid).rowno, * from t3 limit 5;
 
 drop table t3;
 
@@ -240,7 +240,7 @@ create global temporary table t4(
 
 insert into t4 SELECT 'INSERT GTT table t4 WITH ROWID', generate_series(1,200);
 
-select rowid, * from t4 limit 5;
+select (rowid).rowno, * from t4 limit 5;
 
 truncate table t4;
 drop table t4;
@@ -253,9 +253,9 @@ create table t2(mystr varchar2(100), id int) with rowid;
 	
 insert into t2 SELECT 'INSERT table t2 WITH ROWID', generate_series(1,5);
 
-create view v1 as select * from t2;
+create view v1 as select (rowid).rowno,* from t2;
 
-select rowid from v1;
+select rowno from v1;
 
 select * from v1;
 
@@ -294,3 +294,7 @@ FROM (
 drop table tw;
 drop user test;
 /* End - Bug#Z928 */
+/* Begin - BUG#M508 */
+-- add a table with rowid to test BUGZ1641 for pg_upgrade
+CREATE TABLE test_bugz1641(a int, b text) WITH ROWID;
+/* End - BUG#M508 */
