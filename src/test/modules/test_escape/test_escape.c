@@ -497,6 +497,7 @@ static pe_test_vector pe_test_vectors[] =
 
 	/* GB18030's 4 byte encoding requires a 2nd byte limited values */
 	TV("GB18030", "\x90\x31"),
+//	TV("GB18030", "\\\x81\x5c'"),
 	TV("GB18030", "\\\x81\x5c\""),
 //	TV("GB18030", "\\\x81\x5c\0'"),
 
@@ -513,7 +514,8 @@ static pe_test_vector pe_test_vectors[] =
 	 */
 //	TV("GB18030", "\\\x81\\';"),
 	TV("GB18030", "\\\x81\\\";"),
-//	TV("GB18030", "\\\x81'\0"),
+//  TV("GB18030", "\\\x81\0'"),
+//  TV("GB18030", "\\\x81'\0"),
 
 	TV("SJIS", "\xF0\x40;"),
 
