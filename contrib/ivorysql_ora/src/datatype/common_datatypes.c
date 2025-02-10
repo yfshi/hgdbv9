@@ -19,6 +19,7 @@
 
 #include "mb/pg_wchar.h"
 #include "utils/builtins.h"
+#include "utils/varlena.h"/* BUG#M508 */
 
 #include "../include/common_datatypes.h"
 

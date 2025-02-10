@@ -40,61 +40,61 @@ select * from t3;
 (3 rows)
 
 -- select with rowid pseudo
-select rowid, * from t2;
-   rowid   | a  | b 
------------+----+---
- (16387,1) | 20 | 3
- (16387,2) |  5 | 7
- (16387,3) |  4 | 9
+select (rowid).rowno, * from t2;
+ rowno | a  | b 
+-------+----+---
+     1 | 20 | 3
+     2 |  5 | 7
+     3 |  4 | 9
 (3 rows)
 
-select rowid, * from t2 where rowid = '(16387,3)';
-   rowid   | a | b 
------------+---+---
- (16387,3) | 4 | 9
+select (rowid).rowno, * from t2 where (rowid).rowno = 3;
+ rowno | a | b 
+-------+---+---
+     3 | 4 | 9
 (1 row)
 
-select rowid, * from t3;
-   rowid   | a  | b  
------------+----+----
- (16392,1) |  2 |  6
- (16392,2) | 15 | 17
- (16392,3) |  5 | 30
+select (rowid).rowno, * from t3;
+ rowno | a  | b  
+-------+----+----
+     1 |  2 |  6
+     2 | 15 | 17
+     3 |  5 | 30
 (3 rows)
 
-select rowid, * from t3 where rowid = '(16392,2)';
-   rowid   | a  | b  
------------+----+----
- (16392,2) | 15 | 17
+select (rowid).rowno, * from t3 where (rowid).rowno = 2;
+ rowno | a  | b  
+-------+----+----
+     2 | 15 | 17
 (1 row)
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
-   rowid   |   rowid   
------------+-----------
- (16387,2) | (16392,3)
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
+ rowno | rowno 
+-------+-------
+     2 |     3
 (1 row)
 
 -- test update rowid column
 update t2 set rowid = 100 where a = 20; --error
 ERROR:  cannot specify system column name "rowid"
 -- test update using rowid
-update t2 set a = a + 100 where rowid = '(16387,3)';
-select rowid, * from t2;
-   rowid   |  a  | b 
------------+-----+---
- (16387,1) |  20 | 3
- (16387,2) |   5 | 7
- (16387,3) | 104 | 9
+update t2 set a = a + 100 where (rowid).rowno = 3;
+select (rowid).rowno, * from t2;
+ rowno |  a  | b 
+-------+-----+---
+     1 |  20 | 3
+     2 |   5 | 7
+     3 | 104 | 9
 (3 rows)
 
 --test delete using rowid
-delete from t2 where rowid = '(16387,1)';
-select rowid, * from t2;
-   rowid   |  a  | b 
------------+-----+---
- (16387,2) |   5 | 7
- (16387,3) | 104 | 9
+delete from t2 where (rowid).rowno = 1;
+select (rowid).rowno, * from t2;
+ rowno |  a  | b 
+-------+-----+---
+     2 |   5 | 7
+     3 | 104 | 9
 (2 rows)
 
 -- test insert rowid column
@@ -136,61 +136,61 @@ select * from t3;
 (3 rows)
 
 -- select with rowid pseudo
-select rowid, * from t2;
-   rowid   | a  | b 
------------+----+---
- (16396,1) | 20 | 3
- (16396,2) |  5 | 7
- (16396,3) |  4 | 9
+select (rowid).rowno, * from t2;
+ rowno | a  | b 
+-------+----+---
+     1 | 20 | 3
+     2 |  5 | 7
+     3 |  4 | 9
 (3 rows)
 
-select rowid, * from t2 where rowid = '(16396,2)';
-   rowid   | a | b 
------------+---+---
- (16396,2) | 5 | 7
+select (rowid).rowno, * from t2 where (rowid).rowno = 2;
+ rowno | a | b 
+-------+---+---
+     2 | 5 | 7
 (1 row)
 
-select rowid, * from t3;
-   rowid   | a  | b  
------------+----+----
- (16403,1) |  2 |  6
- (16403,2) | 15 | 17
- (16403,3) |  5 | 30
+select (rowid).rowno, * from t3;
+ rowno | a  | b  
+-------+----+----
+     1 |  2 |  6
+     2 | 15 | 17
+     3 |  5 | 30
 (3 rows)
 
-select rowid, * from t3 where rowid = '(16403,1)';
-   rowid   | a | b 
------------+---+---
- (16403,1) | 2 | 6
+select (rowid).rowno, * from t3 where (rowid).rowno = 1;
+ rowno | a | b 
+-------+---+---
+     1 | 2 | 6
 (1 row)
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
-   rowid   |   rowid   
------------+-----------
- (16396,2) | (16403,3)
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
+ rowno | rowno 
+-------+-------
+     2 |     3
 (1 row)
 
 -- test update rowid column
 update t2 set rowid = 100 where a = 20; --error
 ERROR:  cannot specify system column name "rowid"
 -- test update using rowid
-update t2 set a = a + 100 where rowid = '(16396,3)';
-select rowid, * from t2;
-   rowid   |  a  | b 
------------+-----+---
- (16396,1) |  20 | 3
- (16396,2) |   5 | 7
- (16396,3) | 104 | 9
+update t2 set a = a + 100 where (rowid).rowno = 3;
+select (rowid).rowno, * from t2;
+ rowno |  a  | b 
+-------+-----+---
+     1 |  20 | 3
+     2 |   5 | 7
+     3 | 104 | 9
 (3 rows)
 
 --test delete using rowid
-delete from t2 where rowid = '(16396,1)';
-select rowid, * from t2;
-   rowid   |  a  | b 
------------+-----+---
- (16396,2) |   5 | 7
- (16396,3) | 104 | 9
+delete from t2 where (rowid).rowno = 1;
+select (rowid).rowno, * from t2;
+ rowno |  a  | b 
+-------+-----+---
+     2 |   5 | 7
+     3 | 104 | 9
 (2 rows)
 
 -- test insert rowid column
@@ -202,10 +202,10 @@ LINE 1: insert into t2(rowid, a, b) values(50, 2, 3);
 -- ALTER TABLE ... SET WITHOUT ROWID
 --
 alter table t2 set without rowid;
-select rowid, * from t2;
+select (rowid).rowno, * from t2;
 ERROR:  "rowid": invalid identifier
-LINE 1: select rowid, * from t2;
-               ^
+LINE 1: select (rowid).rowno, * from t2;
+                ^
 -- clearup
 drop table t2;
 drop table t3;
@@ -238,39 +238,39 @@ select * from t3;
 (3 rows)
 
 -- select with rowid pseudo
-select rowid, * from t2;
-   rowid   | a  | b 
------------+----+---
- (16414,1) | 20 | 3
- (16414,2) |  5 | 7
- (16414,3) |  4 | 9
+select (rowid).rowno, * from t2;
+ rowno | a  | b 
+-------+----+---
+     1 | 20 | 3
+     2 |  5 | 7
+     3 |  4 | 9
 (3 rows)
 
-select rowid, * from t2 where rowid = '(16414,1)';
-   rowid   | a  | b 
------------+----+---
- (16414,1) | 20 | 3
+select (rowid).rowno, * from t2 where (rowid).rowno = 1;
+ rowno | a  | b 
+-------+----+---
+     1 | 20 | 3
 (1 row)
 
-select rowid, * from t3;
-   rowid   | a  | b  
------------+----+----
- (16419,1) |  2 |  6
- (16419,2) | 15 | 17
- (16419,3) |  5 | 30
+select (rowid).rowno, * from t3;
+ rowno | a  | b  
+-------+----+----
+     1 |  2 |  6
+     2 | 15 | 17
+     3 |  5 | 30
 (3 rows)
 
-select rowid, * from t3 where rowid = '(16419,2)';
-   rowid   | a  | b  
------------+----+----
- (16419,2) | 15 | 17
+select (rowid).rowno, * from t3 where (rowid).rowno = 2;
+ rowno | a  | b  
+-------+----+----
+     2 | 15 | 17
 (1 row)
 
 -- test join
-select t2.rowid, t3.rowid from t2 INNER join t3 on (t2.a = t3.a);
-   rowid   |   rowid   
------------+-----------
- (16414,2) | (16419,3)
+select (t2.rowid).rowno, (t3.rowid).rowno from t2 INNER join t3 on (t2.a = t3.a);
+ rowno | rowno 
+-------+-------
+     2 |     3
 (1 row)
 
 drop table t2;
@@ -286,12 +286,12 @@ declare
     rr rowid;
 begin
     select rowid from t2 into rr;
-    raise info 'rr.rowoid = %, rr.rowno = %', rr.rowoid, rr.rowno;
+    raise info 'rr.rowno = %', rr.rowno;
 	return 1;
 end;
 /
 select tf_r() from dual;
-INFO:  rr.rowoid = 16424, rr.rowno = 1
+INFO:  rr.rowno = 1
  tf_r 
 ------
     1
@@ -313,35 +313,35 @@ insert into ptable values(5,'2021-08-06');
 insert into ptable values(6,'2021-08-06');
 insert into ptable values(7,'2021-08-06');
 insert into ptable values(8,'2021-08-06');
-select rowid, * from ptable;
-   rowid   | id |     td     
------------+----+------------
- (16434,1) |  1 | 2021-08-05
- (16434,2) |  2 | 2021-08-05
- (16434,3) |  3 | 2021-08-05
- (16434,4) |  4 | 2021-08-05
- (16438,1) |  5 | 2021-08-06
- (16438,2) |  6 | 2021-08-06
- (16438,3) |  7 | 2021-08-06
- (16438,4) |  8 | 2021-08-06
+select (rowid).rowno, * from ptable;
+ rowno | id |     td     
+-------+----+------------
+     1 |  1 | 2021-08-05
+     2 |  2 | 2021-08-05
+     3 |  3 | 2021-08-05
+     4 |  4 | 2021-08-05
+     1 |  5 | 2021-08-06
+     2 |  6 | 2021-08-06
+     3 |  7 | 2021-08-06
+     4 |  8 | 2021-08-06
 (8 rows)
 
-select rowid, * from pt_01;
-   rowid   | id |     td     
------------+----+------------
- (16434,1) |  1 | 2021-08-05
- (16434,2) |  2 | 2021-08-05
- (16434,3) |  3 | 2021-08-05
- (16434,4) |  4 | 2021-08-05
+select (rowid).rowno, * from pt_01;
+ rowno | id |     td     
+-------+----+------------
+     1 |  1 | 2021-08-05
+     2 |  2 | 2021-08-05
+     3 |  3 | 2021-08-05
+     4 |  4 | 2021-08-05
 (4 rows)
 
-select rowid, * from pt_02;
-   rowid   | id |     td     
------------+----+------------
- (16438,1) |  5 | 2021-08-06
- (16438,2) |  6 | 2021-08-06
- (16438,3) |  7 | 2021-08-06
- (16438,4) |  8 | 2021-08-06
+select (rowid).rowno, * from pt_02;
+ rowno | id |     td     
+-------+----+------------
+     1 |  5 | 2021-08-06
+     2 |  6 | 2021-08-06
+     3 |  7 | 2021-08-06
+     4 |  8 | 2021-08-06
 (4 rows)
 
 drop table ptable;
@@ -350,29 +350,27 @@ drop table ptable;
 --
 create table t2(mystr varchar2(100), id int) with rowid;
 insert into t2 SELECT 'INSERT table t2 WITH ROWID', generate_series(1,20000);
-select rowid, * from t2 limit 10;
-   rowid    |           mystr            | id 
-------------+----------------------------+----
- (16442,1)  | INSERT table t2 WITH ROWID |  1
- (16442,2)  | INSERT table t2 WITH ROWID |  2
- (16442,3)  | INSERT table t2 WITH ROWID |  3
- (16442,4)  | INSERT table t2 WITH ROWID |  4
- (16442,5)  | INSERT table t2 WITH ROWID |  5
- (16442,6)  | INSERT table t2 WITH ROWID |  6
- (16442,7)  | INSERT table t2 WITH ROWID |  7
- (16442,8)  | INSERT table t2 WITH ROWID |  8
- (16442,9)  | INSERT table t2 WITH ROWID |  9
- (16442,10) | INSERT table t2 WITH ROWID | 10
+select (rowid).rowno, * from t2 limit 10;
+ rowno |           mystr            | id 
+-------+----------------------------+----
+     1 | INSERT table t2 WITH ROWID |  1
+     2 | INSERT table t2 WITH ROWID |  2
+     3 | INSERT table t2 WITH ROWID |  3
+     4 | INSERT table t2 WITH ROWID |  4
+     5 | INSERT table t2 WITH ROWID |  5
+     6 | INSERT table t2 WITH ROWID |  6
+     7 | INSERT table t2 WITH ROWID |  7
+     8 | INSERT table t2 WITH ROWID |  8
+     9 | INSERT table t2 WITH ROWID |  9
+    10 | INSERT table t2 WITH ROWID | 10
 (10 rows)
 
-explain (COSTS OFF) select rowid, * from t2 where rowid = '(16442,9)';
-                    QUERY PLAN                    
---------------------------------------------------
- Bitmap Heap Scan on t2
-   Recheck Cond: (rowid = '(16442,9)'::rowid)
-   ->  Bitmap Index Scan on t2_16442_rowid_idx
-         Index Cond: (rowid = '(16442,9)'::rowid)
-(4 rows)
+explain (COSTS OFF) select (rowid).rowno, * from t2 where (rowid).rowno = 9;
+          QUERY PLAN           
+-------------------------------
+ Seq Scan on t2
+   Filter: ((rowid).rowno = 9)
+(2 rows)
 
 drop table t2;
 --
@@ -383,12 +381,12 @@ create table t2_like (LIKE t2);
 insert into t2_like values(20, 3);
 insert into t2_like values(5, 7);
 insert into t2_like values(4, 9);
-select rowid, * from t2_like;
-   rowid   | a  | b 
------------+----+---
- (16452,1) | 20 | 3
- (16452,2) |  5 | 7
- (16452,3) |  4 | 9
+select (rowid).rowno, * from t2_like;
+ rowno | a  | b 
+-------+----+---
+     1 | 20 | 3
+     2 |  5 | 7
+     3 |  4 | 9
 (3 rows)
 
 drop table t2_like;
@@ -401,14 +399,14 @@ create temp table t3(
     id      int
 ) with rowid;
 insert into t3 SELECT 'INSERT TEMP table t3 WITH ROWID', generate_series(1,200);
-select rowid, * from t3 limit 5;
-   rowid   |              mystr              | id 
------------+---------------------------------+----
- (16459,1) | INSERT TEMP table t3 WITH ROWID |  1
- (16459,2) | INSERT TEMP table t3 WITH ROWID |  2
- (16459,3) | INSERT TEMP table t3 WITH ROWID |  3
- (16459,4) | INSERT TEMP table t3 WITH ROWID |  4
- (16459,5) | INSERT TEMP table t3 WITH ROWID |  5
+select (rowid).rowno, * from t3 limit 5;
+ rowno |              mystr              | id 
+-------+---------------------------------+----
+     1 | INSERT TEMP table t3 WITH ROWID |  1
+     2 | INSERT TEMP table t3 WITH ROWID |  2
+     3 | INSERT TEMP table t3 WITH ROWID |  3
+     4 | INSERT TEMP table t3 WITH ROWID |  4
+     5 | INSERT TEMP table t3 WITH ROWID |  5
 (5 rows)
 
 drop table t3;
@@ -420,14 +418,14 @@ create global temporary table t4(
     id      int
 ) with rowid ON COMMIT PRESERVE ROWS;
 insert into t4 SELECT 'INSERT GTT table t4 WITH ROWID', generate_series(1,200);
-select rowid, * from t4 limit 5;
-   rowid   |             mystr              | id 
------------+--------------------------------+----
- (16466,1) | INSERT GTT table t4 WITH ROWID |  1
- (16466,2) | INSERT GTT table t4 WITH ROWID |  2
- (16466,3) | INSERT GTT table t4 WITH ROWID |  3
- (16466,4) | INSERT GTT table t4 WITH ROWID |  4
- (16466,5) | INSERT GTT table t4 WITH ROWID |  5
+select (rowid).rowno, * from t4 limit 5;
+ rowno |             mystr              | id 
+-------+--------------------------------+----
+     1 | INSERT GTT table t4 WITH ROWID |  1
+     2 | INSERT GTT table t4 WITH ROWID |  2
+     3 | INSERT GTT table t4 WITH ROWID |  3
+     4 | INSERT GTT table t4 WITH ROWID |  4
+     5 | INSERT GTT table t4 WITH ROWID |  5
 (5 rows)
 
 truncate table t4;
@@ -438,26 +436,65 @@ drop table t4;
 create table t2(mystr varchar2(100), id int) with rowid;
 	
 insert into t2 SELECT 'INSERT table t2 WITH ROWID', generate_series(1,5);
-create view v1 as select * from t2;
-select rowid from v1;
-   rowid   
------------
- (16473,1)
- (16473,2)
- (16473,3)
- (16473,4)
- (16473,5)
+create view v1 as select (rowid).rowno,* from t2;
+select rowno from v1;
+ rowno 
+-------
+     1
+     2
+     3
+     4
+     5
 (5 rows)
 
 select * from v1;
-           mystr            | id |   rowid   
-----------------------------+----+-----------
- INSERT table t2 WITH ROWID |  1 | (16473,1)
- INSERT table t2 WITH ROWID |  2 | (16473,2)
- INSERT table t2 WITH ROWID |  3 | (16473,3)
- INSERT table t2 WITH ROWID |  4 | (16473,4)
- INSERT table t2 WITH ROWID |  5 | (16473,5)
+ rowno |           mystr            | id 
+-------+----------------------------+----
+     1 | INSERT table t2 WITH ROWID |  1
+     2 | INSERT table t2 WITH ROWID |  2
+     3 | INSERT table t2 WITH ROWID |  3
+     4 | INSERT table t2 WITH ROWID |  4
+     5 | INSERT table t2 WITH ROWID |  5
 (5 rows)
 
 drop view v1;
 drop table t2;
+/* Begin - Bug#Z928 */
+create table tw(a int, b int) with rowid;
+create user test;
+alter table tw owner to test;
+-- check if the Owner is consistent
+SELECT
+    CASE
+        WHEN table_owner = rowid_sequence_owner THEN 'true'
+        ELSE 'false'
+    END AS owners_match
+FROM (
+    SELECT
+        relowner AS table_owner
+    FROM
+        pg_class
+    WHERE
+        relname = 'tw'
+) AS tbl,
+(
+    SELECT
+        relowner AS rowid_sequence_owner
+    FROM
+        pg_class
+    WHERE
+        relname = 'tw_rowid_seq'
+) AS seq;
+ owners_match 
+--------------
+ true
+(1 row)
+
+--cleanup
+drop table tw;
+drop user test;
+/* End - Bug#Z928 */
+/* Begin - BUG#M508 */
+-- add a table with rowid to test BUGZ1641 for pg_upgrade
+CREATE TABLE test_bugz1641(a int, b text) WITH ROWID;
+/* End - BUG#M508 */
