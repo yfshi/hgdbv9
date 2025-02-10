@@ -239,14 +239,14 @@ main(int argc, char *argv[])
 	/* No point in trying to use postgres db when creating postgres db. */
 	if (maintenance_db == NULL && strcmp(dbname, "postgres") == 0)
 		maintenance_db = "template1";
-	
+
 	cparams.dbname = maintenance_db;
 	cparams.pghost = host;
 	cparams.pgport = port;
 	cparams.pguser = username;
 	cparams.prompt_password = prompt_password;
 	cparams.override_dbname = NULL;
-	
+
 	conn = connectMaintenanceDatabase(&cparams, progname, echo);
 	/* END - SQL PARSER */
 #endif
