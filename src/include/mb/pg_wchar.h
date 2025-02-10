@@ -282,6 +282,9 @@ typedef enum pg_enc
 	PG_UHC,						/* UHC (Windows-949) */
 	PG_JOHAB,					/* EUC for Korean JOHAB */
 	PG_SHIFT_JIS_2004,			/* Shift-JIS-2004 */
+	PG_UTF8_2,					/* BUG#M0000414 */
+	PG_GB18030_2,				/* BUG#M0000414 */
+	PG_GBK_2,					/* BUG#M0000414 */
 	_PG_LAST_ENCODING_			/* mark only */
 
 } pg_enc;
@@ -401,6 +404,20 @@ extern PGDLLIMPORT gb18030_2022_to_utf8_hook_type gb18030_2022_to_utf8_hook;
 extern PGDLLIMPORT utf8_to_gb18030_2022_hook_type utf8_to_gb18030_2022_hook;
 /* END - SRS-MISC-GB18030*/
 
+/* Begin - BUG#M0000414 */
+typedef int (*gb18030_2022_to_utf8_hook_type_2)(const unsigned char *iso, int len,
+						unsigned char *utf, bool noError,
+						unsigned char *double_s,
+						int *counts);
+typedef int (*utf8_to_gb18030_2022_hook_type_2)(const unsigned char *utf, int len,
+						unsigned char *iso, bool noError,
+						unsigned char *double_s,
+						int *counts);
+extern PGDLLIMPORT gb18030_2022_to_utf8_hook_type_2 gb18030_2022_to_utf8_hook_2;
+extern PGDLLIMPORT utf8_to_gb18030_2022_hook_type_2 utf8_to_gb18030_2022_hook_2;
+/* End - BUG#M0000414 */
+
+
 typedef struct
 {
 	mb2wchar_with_len_converter mb2wchar_with_len;	/* convert a multibyte
@@ -415,6 +432,10 @@ typedef struct
 } pg_wchar_tbl;
 
 extern const pg_wchar_tbl pg_wchar_table[];
+
+/* Begin - BUG#M000414 */
+extern const pg_wchar_tbl pg_wchar_table_new[];
+/* End - BUG#M0000414 */
 
 /*
  * Data structures for conversions between UTF-8 and other encodings
@@ -598,6 +619,11 @@ extern bool pg_utf8_islegal(const unsigned char *source, int length);
 extern int	pg_utf_mblen(const unsigned char *s);
 extern int	pg_mule_mblen(const unsigned char *s);
 
+/* Begin - BUG#M0000414 */
+extern int	pg_encoding_verifymbchar_new(int encoding, const char *mbstr, int len);
+extern int  pg_encoding_verifymbstr_new(int encoding, const char *mbstr, int len);
+/* End - BUG#M0000414 */
+
 /*
  * The remaining functions are backend-only.
  */
@@ -650,6 +676,17 @@ extern int	pg_do_encoding_conversion_buf(Oid proc,
 										  unsigned char *dst, int dstlen,
 										  bool noError);
 
+/* Begin - BUG#M0000414 */
+extern int	pg_do_encoding_conversion_buf_new(Oid proc,
+							  int src_encoding,
+							  int dest_encoding,
+							  unsigned char *src, int srclen,
+							  unsigned char *dst, int dstlen,
+							  bool noError,
+							  unsigned char *double_s,
+							  int *counts);
+/* End - BUG#M0000414 */
+
 extern char *pg_client_to_server(const char *s, int len);
 extern char *pg_server_to_client(const char *s, int len);
 extern char *pg_any_to_server(const char *s, int len, int encoding);
@@ -672,6 +709,26 @@ extern int	LocalToUtf(const unsigned char *iso, int len,
 					   const pg_local_to_utf_combined *cmap, int cmapsize,
 					   utf_local_conversion_func conv_func,
 					   int encoding, bool noError);
+
+/* Begin - BUG#M0000414 */
+extern int	UtfToLocal_2(const unsigned char *utf, int len,
+					   unsigned char *iso,
+					   const pg_mb_radix_tree *map,
+					   const pg_utf_to_local_combined *cmap, int cmapsize,
+					   utf_local_conversion_func conv_func,
+					   int encoding, bool noError,
+					   unsigned char *double_s,
+					   int *counts);
+extern int	LocalToUtf_2(const unsigned char *iso, int len,
+					   unsigned char *utf,
+					   const pg_mb_radix_tree *map,
+					   const pg_local_to_utf_combined *cmap, int cmapsize,
+					   utf_local_conversion_func conv_func,
+					   int encoding, bool noError,
+					   unsigned char *double_s,
+					   int *counts);
+
+/* End - BUG#M0000414 */
 
 extern bool pg_verifymbstr(const char *mbstr, int len, bool noError);
 extern bool pg_verify_mbstr(int encoding, const char *mbstr, int len,

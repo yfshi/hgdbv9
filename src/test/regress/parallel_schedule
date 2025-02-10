@@ -141,3 +141,7 @@ test: copyerror
 #/* Begin - BUG:M0000368 */
 test: copy_skip
 #/* End - BUG:M0000368 */
+
+#/* Begin - BUG#Z1616 */
+test: copy_skipbadR
+#/* End - BUG#Z1616 */

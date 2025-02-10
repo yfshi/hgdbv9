@@ -186,6 +186,7 @@ CreateExecutorState(void)
 	estate->cur_relname = NULL;
 	estate->delimiter = NULL;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	estate->skipbad_fk = false;	/* BUG#Z1616 */
 
 	/*
 	 * Return the executor state structure

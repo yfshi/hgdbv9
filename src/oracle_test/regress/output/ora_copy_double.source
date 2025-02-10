@@ -1,0 +1,595 @@
+-- BUG#M0000414
+-- create database
+create or replace function dbuser_createdb() RETURNS void as
+$$
+declare
+    name text;
+begin
+	select into name 10::regrole;
+    execute format('set session authorization %s;',name);
+	return;
+end;
+$$ language plpgsql;
+/
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_createdb();
+ dbuser_createdb 
+-----------------
+ 
+(1 row)
+
+create database copy_utf8 encoding='UTF8' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gbk encoding='GBK' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gb18030 encoding='GB18030' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ oracle
+(1 row)
+
+-- utf8 --> utf8
+\c copy_utf8;
+create extension pageinspect;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+CREATE TABLE x_double (
+        id int,
+        sch1 char(32 char),
+        sch2 char(32 byte),
+        tab1 varchar2(32 char),
+        tab2 varchar2(32 byte)
+);
+CREATE TABLE x_double_2 (like x_double);
+-- testing using double deli and quotes
+-- printf "100\x80\xaa1234瀚高7890\x80\xaa1234瀚高7890\x80\xaa1234瀚高7890\x80\xaa1234瀚高7890\x0A200\x80\xaa\x80\xbb1234'\"\"瀚高7890\x80\xbb\x80\xaa1234\\\瀚高7890\x80\xaa1234瀚高7890\x80\xaa1234瀚高7890\x0A" > ora_copy_double_utf8.data
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8.data' with(format csv, doubdeli '0x800xaa', quotes '0x800xbb');
+SELECT * FROM x_double;
+ id  |                sch1                |              sch2              |     tab1     |     tab2     
+-----+------------------------------------+--------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                   | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                  | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                       t_data                                                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004b31323334e7809ae9ab9837383930202020202020202020202020202020202020202020204331323334e7809ae9ab98373839302020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+ \xc80000004b31323334272222e7809ae9ab98373839302020202020202020202020202020202020202043313233345ce7809ae9ab983738393020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+(2 rows)
+
+-- gbk --> gbk
+-- testing using double deli and quotes
+-- \x80\xaa   \x80\xbb
+-- printf "100\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x0A200\x80\xaa\x80\xbb\x31\x32\x33\x34\x27\x22\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xbb\x80\xaa\x31\x32\x33\x34\x5c\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xaa\x80\xBB\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xBB\x0A" > ora_copy_double_gbk.data
+\c copy_gbk;
+create extension pageinspect;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+CREATE TABLE x_double (
+        id int,
+        sch1 char(32 char),
+        sch2 char(32 byte),
+        tab1 varchar2(32 char),
+        tab2 varchar2(32 byte)
+);
+CREATE TABLE x_double_2 (like x_double);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gbk.data' with(format csv, encoding 'gbk', doubdeli '0x800xaa', quotes '0x800xbb');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gb18030 --> gb18030
+-- \x80\xAA  \x80\xBB
+-- printf "100\x80\xaa\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x0A200\x80\xAA\x80\xBB\x31\x32\x33\x34\x27\x22\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xBB\x80\xAA\x31\x32\x33\x34\x5c\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x0A" > ora_copy_double_gb18030.data
+\c copy_gb18030;
+create extension pageinspect;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+CREATE TABLE x_double (
+        id int,
+        sch1 char(32 char),
+        sch2 char(32 byte),
+        tab1 varchar2(32 char),
+        tab2 varchar2(32 byte)
+);
+CREATE TABLE x_double_2 (like x_double);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030.data' with(format csv, encoding 'gb18030', doubdeli '0x800xaa', quotes '0x800xbb');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- utf8 --> gbk
+-- \x80\xAA  \x80\xBB
+\c copy_gbk;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8.data' with(format csv, encoding 'utf8', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- utf8 --> gb18030
+-- \x80\xAA  \x80\xBB
+\c copy_gb18030;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8.data' with(format csv, encoding 'utf8', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gbk --> gb18030
+-- \x80\xAA  \x80\xBB
+\c copy_gb18030;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gbk.data' with(format csv, encoding 'gbk', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gb18030 --> gbk
+-- \x80\xAA  \x80\xBB
+\c copy_gbk;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gb18030_2022 --> gb18030_2022
+\c copy_gb18030;
+LOAD 'gb18030_2022';
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gbk --> gb18030_2022
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gbk.data' with(format csv, encoding 'gbk', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- utf8 --> gb18030_2022
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8.data' with(format csv, encoding 'utf8', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- gb18030_2022 --> utf8
+\c copy_utf8;
+LOAD 'gb18030_2022';
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |              sch2              |     tab1     |     tab2     
+-----+------------------------------------+--------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                   | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                  | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                       t_data                                                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004b31323334e7809ae9ab9837383930202020202020202020202020202020202020202020204331323334e7809ae9ab98373839302020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+ \xc80000004b313233342722e7809ae9ab9837383930202020202020202020202020202020202020202043313233345ce7809ae9ab983738393020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+(2 rows)
+
+-- gb18030_2022 --> gbk
+\c copy_gbk;
+LOAD 'gb18030_2022';
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚高7890                       | 1234瀚高7890                     | 1234瀚高7890 | 1234瀚高7890
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e5abb8df37383930202020202020202020202020202020202020202020204331323334e5abb8df3738393020202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \xc800000047313233342722e5abb8df37383930202020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- utf8 --> gbk, include \0
+-- printf "100\x80\xaa1234瀚\x00高7890\x80\xaa1234瀚高78\x0090\x80\xaa1234瀚\x00高7890\x80\xaa1234瀚高78\x0090\x0A200\x80\xaa\x80\xbb1234'\"\"瀚高7890\x80\xbb\x80\xaa1234\\\瀚高7890\x80\xaa1234瀚高7890\x80\xaa1234瀚 高790\x0A" > ora_copy_double_utf8_2.data
+\c copy_gbk;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+-- if not setting ivorysql.enable_store_nullterminator_char
+-- \0 checking passed, but will not store \0 and the following data
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ off
+(1 row)
+
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8_2.data' with(format csv, encoding 'utf8', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1     |     tab2     
+-----+------------------------------------+----------------------------------+--------------+--------------
+ 100 | 1234瀚                             | 1234瀚高78                       | 1234瀚       | 1234瀚高78
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                 t_data                                                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004531323334e5ab2020202020202020202020202020202020202020202020202020204331323334e5abb8df3738202020202020202020202020202020202020202020200f31323334e5ab1731323334e5abb8df3738
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+(2 rows)
+
+-- setting ivorysql.enable_store_nullterminator_char, store \0 and the following data
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_utf8_2.data' with(format csv, encoding 'utf8', doubdeli '0x800xAA', quotes '0x800xBB');
+insert into x_double values(100,'1234瀚|高7890','1234瀚高78|90','1234瀚|高7890','1234瀚高78|90');
+SELECT * FROM x_double;
+ id  |                sch1                |               sch2               |     tab1      |     tab2      
+-----+------------------------------------+----------------------------------+---------------+---------------
+ 100 | 1234瀚                             | 1234瀚高78                       | 1234瀚        | 1234瀚高78
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890  | 1234瀚高7890
+ 100 | 1234瀚                             | 1234瀚高78                       | 1234瀚        | 1234瀚高78
+ 200 | 1234'""瀚高7890                    | 1234\瀚高7890                    | 1234瀚高7890  | 1234瀚高7890
+ 100 | 1234瀚|高7890                      | 1234瀚高78|90                    | 1234瀚|高7890 | 1234瀚高78|90
+(5 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                   t_data                                                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004531323334e5ab2020202020202020202020202020202020202020202020202020204331323334e5abb8df3738202020202020202020202020202020202020202020200f31323334e5ab1731323334e5abb8df3738
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \x640000004731323334e5ab00b8df373839302020202020202020202020202020202020202020204331323334e5abb8df3738003930202020202020202020202020202020202020201d31323334e5ab00b8df373839301d31323334e5abb8df3738003930
+ \xc80000004731323334272222e5abb8df373839302020202020202020202020202020202020202043313233345ce5abb8df37383930202020202020202020202020202020202020201b31323334e5abb8df373839301b31323334e5abb8df37383930
+ \x640000004731323334e5ab7cb8df373839302020202020202020202020202020202020202020204331323334e5abb8df37387c3930202020202020202020202020202020202020201d31323334e5ab7cb8df373839301d31323334e5abb8df37387c3930
+(5 rows)
+
+-- gb18030 --> utf8, including \0
+-- \x80\xAA  \x80\xBB
+-- printf "100\x80\xaa\x31\x32\x33\x34\xe5\xab\x00\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x00\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\x00\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x00\x39\x30\x0A200\x80\xAA\x80\xBB\x31\x32\x33\x34\x27\x22\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xBB\x80\xAA\x31\x32\x33\x34\x5c\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x80\xAA\x31\x32\x33\x34\xe5\xab\xb8\xdf\x37\x38\x39\x30\x0A" > ora_copy_double_gb18030_2.data
+\c copy_utf8;
+set client_encoding to 'utf8';
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ off
+(1 row)
+
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030_2.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+SELECT * FROM x_double;
+ id  |                sch1                |              sch2              |     tab1     |     tab2     
+-----+------------------------------------+--------------------------------+--------------+--------------
+ 100 | 1234瀚                             | 1234瀚高78                     | 1234瀚       | 1234瀚高78
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                  | 1234瀚高7890 | 1234瀚高7890
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                       t_data                                                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004731323334e7809a2020202020202020202020202020202020202020202020202020204331323334e7809ae9ab98373820202020202020202020202020202020202020201131323334e7809a1b31323334e7809ae9ab983738
+ \xc80000004b313233342722e7809ae9ab9837383930202020202020202020202020202020202020202043313233345ce7809ae9ab983738393020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+(2 rows)
+
+-- set enable_store_nullterminator_char
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+DROP TABLE x_double;
+CREATE TABLE x_double (like x_double_2);
+COPY x_double FROM '@abs_srcdir@/data/ora_copy_double_gb18030_2.data' with(format csv, encoding 'gb18030', doubdeli '0x800xAA', quotes '0x800xBB');
+insert into x_double values(100,'1234瀚|高7890','1234瀚高78|90','1234瀚|高7890','1234瀚高78|90');
+insert into x_double values(200,'1234''"瀚高7890','1234\瀚高7890','1234瀚高7890','1234瀚高7890');
+SELECT * FROM x_double;
+ id  |                sch1                |              sch2              |     tab1      |     tab2      
+-----+------------------------------------+--------------------------------+---------------+---------------
+ 100 | 1234瀚                             | 1234瀚高78                     | 1234瀚        | 1234瀚高78
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                  | 1234瀚高7890  | 1234瀚高7890
+ 100 | 1234瀚|高7890                      | 1234瀚高78|90                  | 1234瀚|高7890 | 1234瀚高78|90
+ 200 | 1234'"瀚高7890                     | 1234\瀚高7890                  | 1234瀚高7890  | 1234瀚高7890
+(4 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_double', 0));
+                                                                                                         t_data                                                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x640000004b31323334e7809a00e9ab98373839302020202020202020202020202020202020202020204331323334e7809ae9ab98373800393020202020202020202020202020202020202131323334e7809a00e9ab98373839302131323334e7809ae9ab983738003930
+ \xc80000004b313233342722e7809ae9ab9837383930202020202020202020202020202020202020202043313233345ce7809ae9ab983738393020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+ \x640000004b31323334e7809a7ce9ab98373839302020202020202020202020202020202020202020204331323334e7809ae9ab9837387c393020202020202020202020202020202020202131323334e7809a7ce9ab98373839302131323334e7809ae9ab9837387c3930
+ \xc80000004b313233342722e7809ae9ab9837383930202020202020202020202020202020202020202043313233345ce7809ae9ab983738393020202020202020202020202020202020201f31323334e7809ae9ab98373839301f31323334e7809ae9ab9837383930
+(4 rows)
+
+--- cleanup
+\c regression system
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_createdb();
+ dbuser_createdb 
+-----------------
+ 
+(1 row)
+
+DROP DATABASE copy_utf8;
+DROP DATABASE copy_gbk;
+DROP DATABASE copy_gb18030;
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ oracle
+(1 row)
+
+drop function dbuser_createdb;

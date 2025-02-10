@@ -33,7 +33,8 @@ OBJS = \
 	src/nlssort/nlssort.o \
 	src/orarefcursor/orarefcursor.o \
 	src/builtin_packages/dbms_job/ora_dbms_job.o \
-	src/builtin_packages/dbms_job/ora_dbms_jobparse.o
+	src/builtin_packages/dbms_job/ora_dbms_jobparse.o \
+	src/datatype/orachar_varchar.o
 
 EXTENSION = ivorysql_ora
 

@@ -19,6 +19,11 @@ gb18030_2022_to_utf8_hook_type gb18030_2022_to_utf8_hook = NULL;
 utf8_to_gb18030_2022_hook_type utf8_to_gb18030_2022_hook = NULL;
 /* END - SRS-MISC-GB18030 */
 
+/* Begin - BUG#M0000414 */
+gb18030_2022_to_utf8_hook_type_2 gb18030_2022_to_utf8_hook_2 = NULL;
+utf8_to_gb18030_2022_hook_type_2 utf8_to_gb18030_2022_hook_2 = NULL;
+/* End - BUG#M0000414 */
+
 /*
  * Operations on multi-byte encodings are driven by a table of helper
  * functions.
@@ -2142,3 +2147,251 @@ pg_encoding_max_length(int encoding)
 
 	return pg_wchar_table[encoding].maxmblen;
 }
+
+
+/* Begin - BUG#M0000414 */
+
+/*
+ * For this part, ref to pg_utf8_verifychar(), pg_utf8_verifystr()
+ * if need support more encoding, ref to pg_wchar_table[]
+ * for one encoding type, need adding two new functions to bypass the checking for \0
+ */
+
+static int
+pg_utf8_verifychar_new(const unsigned char *s, int len)
+{
+	int                     l;
+
+	if ((*s & 0x80) == 0)
+	{
+		if (*s == '\0')
+			return -1;
+		return 1;
+	}
+	else if ((*s & 0xe0) == 0xc0)
+		l = 2;
+	else if ((*s & 0xf0) == 0xe0)
+		l = 3;
+	else if ((*s & 0xf8) == 0xf0)
+		l = 4;
+	else
+		l = 1;
+
+	if (l > len)
+		return -1;
+
+#if 0
+	if (!pg_utf8_islegal(s, l))
+		return -1;
+#endif
+
+	return l;
+}
+
+static int
+pg_utf8_verifystr_new(const unsigned char *s, int len)
+{
+	const unsigned char *start = s;
+
+	while (len > 0)
+	{
+		int                     l;
+
+		/* fast path for ASCII-subset characters */
+		if (!IS_HIGHBIT_SET(*s))
+		{
+#if 0
+			if (*s == '\0')
+				break;
+#endif
+			l = 1;
+		}
+		else
+		{
+			l = pg_utf8_verifychar_new(s, len);
+			if (l == -1)
+				break;
+		}
+		s += l;
+		len -= l;
+	}
+
+	return s - start;
+}
+
+
+static int
+pg_gb18030_verifychar_new(const unsigned char *s, int len)
+{
+	int			l;
+
+	if (!IS_HIGHBIT_SET(*s))
+		l = 1;					/* ASCII */
+	else if (len >= 4 && *(s + 1) >= 0x30 && *(s + 1) <= 0x39)
+	{
+		/* Should be 4-byte, validate remaining bytes */
+		if (*s >= 0x81 && *s <= 0xfe &&
+			*(s + 2) >= 0x81 && *(s + 2) <= 0xfe &&
+			*(s + 3) >= 0x30 && *(s + 3) <= 0x39)
+			l = 4;
+		else
+			l = -1;
+	}
+	/* else if (len >= 2 && *s >= 0x81 && *s <= 0xfe) */
+	else if (len >= 2 && *s >= 0x80 && *s <= 0xfe)
+	{
+		/* Should be 2-byte, validate */
+		if ((*(s + 1) >= 0x40 && *(s + 1) <= 0x7e) ||
+			(*(s + 1) >= 0x80 && *(s + 1) <= 0xfe))
+			l = 2;
+		else
+			l = -1;
+	}
+	else
+		l = -1;
+	return l;
+}
+
+static int
+pg_gb18030_verifystr_new(const unsigned char *s, int len)
+{
+	const unsigned char *start = s;
+
+	while (len > 0)
+	{
+		int			l;
+
+		/* fast path for ASCII-subset characters */
+		if (!IS_HIGHBIT_SET(*s))
+		{
+#if 0
+			if (*s == '\0')
+				break;
+#endif
+			l = 1;
+		}
+		else
+		{
+			l = pg_gb18030_verifychar_new(s, len);
+			if (l == -1)
+				break;
+		}
+		s += l;
+		len -= l;
+	}
+
+	return s - start;
+}
+
+
+static int
+pg_gbk_verifychar_new(const unsigned char *s, int len)
+{
+	int			l,
+				mbl;
+
+	l = mbl = pg_gbk_mblen(s);
+
+	if (len < l)
+		return -1;
+
+	while (--l > 0)
+	{
+		if (*++s == '\0')
+			return -1;
+	}
+
+	return mbl;
+}
+
+static int
+pg_gbk_verifystr_new(const unsigned char *s, int len)
+{
+	const unsigned char *start = s;
+
+	while (len > 0)
+	{
+		int			l;
+
+		/* fast path for ASCII-subset characters */
+		if (!IS_HIGHBIT_SET(*s))
+		{
+#if 0
+			if (*s == '\0')
+				break;
+#endif
+			l = 1;
+		}
+		else
+		{
+			l = pg_gbk_verifychar_new(s, len);
+			if (l == -1)
+				break;
+		}
+		s += l;
+		len -= l;
+	}
+
+	return s - start;
+}
+
+
+const pg_wchar_tbl pg_wchar_table_new[] = {
+	{pg_ascii2wchar_with_len, pg_wchar2single_with_len, pg_ascii_mblen, pg_ascii_dsplen, pg_ascii_verifychar, pg_ascii_verifystr, 1},       /* PG_SQL_ASCII */
+	{pg_utf2wchar_with_len, pg_wchar2utf_with_len, pg_utf_mblen, pg_utf_dsplen, pg_utf8_verifychar_new, pg_utf8_verifystr_new, 4},      /* PG_UTF8 */
+	{pg_gb180302wchar_with_len, pg_wchar2gb18030_with_len, pg_gb18030_mblen, pg_gb18030_dsplen, pg_gb18030_verifychar_new, pg_gb18030_verifystr_new, 4},    /* PG_GB18030,SRS-MISC-GB18030 */
+    {pg_gbk2wchar_with_len, pg_wchar2gbk_with_len, pg_gbk_mblen, pg_gbk_dsplen, pg_gbk_verifychar_new, pg_gbk_verifystr_new, 2},    /* PG_GBK,SRS-MISC-GB18030 */
+};
+
+/*
+ * Verify that a string is valid for the given encoding.
+ * Returns the number of input bytes (<= len) that form a valid string.
+ * (See comments above for full details of the mbverifystr API.)
+ */
+int
+pg_encoding_verifymbstr_new(int encoding, const char *mbstr, int len)
+{
+#if 0
+        return (PG_VALID_ENCODING(encoding) ?
+                        pg_wchar_table[encoding].mbverifystr((const unsigned char *) mbstr, len) :
+                        pg_wchar_table[PG_SQL_ASCII].mbverifystr((const unsigned char *) mbstr, len));
+#endif
+
+	if (encoding == PG_UTF8)
+		return (pg_wchar_table_new[1].mbverifystr((const unsigned char *) mbstr, len));
+	else if (encoding == PG_GB18030)
+		return (pg_wchar_table_new[2].mbverifystr((const unsigned char *) mbstr, len));
+	else if (encoding == PG_GBK)
+		return (pg_wchar_table_new[3].mbverifystr((const unsigned char *) mbstr, len));
+	else
+		return (pg_wchar_table_new[0].mbverifystr((const unsigned char *) mbstr, len));
+
+}
+
+
+/*
+ * Verify the first multibyte character of the given string.
+ * Return its byte length if good, -1 if bad.  (See comments above for
+ * full details of the mbverifychar API.)
+ */
+int
+pg_encoding_verifymbchar_new(int encoding, const char *mbstr, int len)
+{
+#if 0
+	return (PG_VALID_ENCODING(encoding) ?
+			pg_wchar_table[encoding].mbverifychar((const unsigned char *) mbstr, len) :
+			pg_wchar_table[PG_SQL_ASCII].mbverifychar((const unsigned char *) mbstr, len));
+#endif
+
+	if (encoding == PG_UTF8)
+		return (pg_wchar_table_new[1].mbverifychar((const unsigned char *) mbstr, len));
+	else if (encoding == PG_GB18030)
+		return (pg_wchar_table_new[2].mbverifychar((const unsigned char *) mbstr, len));
+	else if (encoding == PG_GBK)
+		return (pg_wchar_table_new[3].mbverifychar((const unsigned char *) mbstr, len));
+	else
+		return (pg_wchar_table_new[0].mbverifychar((const unsigned char *) mbstr, len));
+
+}
+
+/* End - BUG#M0000414 */

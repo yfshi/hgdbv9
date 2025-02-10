@@ -4418,6 +4418,16 @@ AfterTriggerExecute(EState *estate,
 			MemoryContextSwitchTo(current_cxt);
 			FlushErrorState();
 
+			/* Begin - BUG#Z1616 */
+			if (estate->skipbad_fk)
+			{
+				/* no need to store the error record */
+				/* just continue */
+				goto skipbad_continue;
+			}
+			/* End - BUG#Z1616 */
+
+
 			/* output the error record to file or table */
 			tupDesc = RelationGetDescr(relInfo->ri_RelationDesc);
 			num_phys_attrs = tupDesc->natts;
@@ -4592,6 +4602,8 @@ AfterTriggerExecute(EState *estate,
 			ExecDropSingleTupleTableSlot(slot);
 
 			pfree(out_functions);
+
+skipbad_continue:	/* BUG#Z1616 */
 
 			/* delete the record by tid */
 			simple_heap_delete(relInfo->ri_RelationDesc,&(event->ate_ctid1));

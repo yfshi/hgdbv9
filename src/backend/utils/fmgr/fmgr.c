@@ -1773,6 +1773,48 @@ InputFunctionCall(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod)
 	return result;
 }
 
+/* Begin - BUG#M0000414 */
+Datum
+InputFunctionCall_2(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int32 lens)
+{
+	LOCAL_FCINFO(fcinfo, 4);
+	Datum		result;
+
+	if (str == NULL && flinfo->fn_strict)
+		return (Datum) 0;		/* just return null result */
+
+	InitFunctionCallInfoData(*fcinfo, flinfo, 4, InvalidOid, NULL, NULL);
+
+	fcinfo->args[0].value = CStringGetDatum(str);
+	fcinfo->args[0].isnull = false;
+	fcinfo->args[1].value = ObjectIdGetDatum(typioparam);
+	fcinfo->args[1].isnull = false;
+	fcinfo->args[2].value = Int32GetDatum(typmod);
+	fcinfo->args[2].isnull = false;
+	fcinfo->args[3].value = Int32GetDatum(lens);
+	fcinfo->args[2].isnull = false;
+
+
+	result = FunctionCallInvoke(fcinfo);
+
+	/* Should get null result if and only if str is NULL */
+	if (str == NULL)
+	{
+		if (!fcinfo->isnull)
+			elog(ERROR, "input function %u returned non-NULL",
+				 flinfo->fn_oid);
+	}
+	else
+	{
+		if (fcinfo->isnull)
+			elog(ERROR, "input function %u returned NULL",
+				 flinfo->fn_oid);
+	}
+
+	return result;
+}
+/* End - BUG#M0000414 */
+
 /*
  * Call a previously-looked-up datatype output function.
  *

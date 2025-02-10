@@ -21,6 +21,12 @@ PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(gb18030_to_utf8);
 PG_FUNCTION_INFO_V1(utf8_to_gb18030);
+
+/* Begin - BUG#M0000414 */
+PG_FUNCTION_INFO_V1(gb18030_to_utf8_2);
+PG_FUNCTION_INFO_V1(utf8_to_gb18030_2);
+/* End - BUG#M0000414 */
+
 /*
  * Convert 4-byte GB18030 characters to and from a linear code space
  *
@@ -238,3 +244,66 @@ utf8_to_gb18030(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT32(converted);
 }
+
+
+
+/* Begin - BUG#M0000414 */
+Datum
+gb18030_to_utf8_2(PG_FUNCTION_ARGS)
+{
+	unsigned char *src = (unsigned char *) PG_GETARG_CSTRING(2);
+	unsigned char *dest = (unsigned char *) PG_GETARG_CSTRING(3);
+	int			len = PG_GETARG_INT32(4);
+	bool		noError = PG_GETARG_BOOL(5);
+	unsigned char *double_s = (unsigned char *) PG_GETARG_CSTRING(6);
+	int			*counts = (int *) PG_GETARG_POINTER(7);
+	int			converted;
+
+	CHECK_ENCODING_CONVERSION_ARGS(PG_GB18030, PG_UTF8);
+	/* BEGIN - SRS-MISC-GB18030,if created extension gb18030_2022,return hook func */
+	if (gb18030_2022_to_utf8_hook_2)
+		converted= gb18030_2022_to_utf8_hook_2(src,len,dest,noError,double_s,counts);
+	/* END - SRS-MISC-GB18030 */
+	else
+		converted = LocalToUtf_2(src, len, dest,
+							&gb18030_to_unicode_tree,
+							NULL, 0,
+							conv_18030_to_utf8,
+							PG_GB18030,
+							noError,
+							double_s,
+							counts);
+
+	PG_RETURN_INT32(converted);
+}
+
+Datum
+utf8_to_gb18030_2(PG_FUNCTION_ARGS)
+{
+	unsigned char *src = (unsigned char *) PG_GETARG_CSTRING(2);
+	unsigned char *dest = (unsigned char *) PG_GETARG_CSTRING(3);
+	int			len = PG_GETARG_INT32(4);
+	bool		noError = PG_GETARG_BOOL(5);
+	unsigned char *double_s = (unsigned char *) PG_GETARG_CSTRING(6);
+	int			*counts = (int *) PG_GETARG_POINTER(7);
+	int			converted;
+
+	CHECK_ENCODING_CONVERSION_ARGS(PG_UTF8, PG_GB18030);
+	/* BEGIN - SRS-MISC-GB18030,if created extension gb18030_2022,return hook func */
+	if (utf8_to_gb18030_2022_hook_2)
+		return utf8_to_gb18030_2022_hook_2(src,len,dest,noError, double_s, counts);
+	/* END - SRS-MISC-GB18030 */
+	else
+		converted = UtfToLocal_2(src, len, dest,
+							&gb18030_from_unicode_tree,
+							NULL, 0,
+							conv_utf8_to_18030,
+							PG_GB18030,
+							noError,
+							double_s,
+							counts);
+
+	PG_RETURN_INT32(converted);
+}
+
+/* End - BUG#M0000414 */

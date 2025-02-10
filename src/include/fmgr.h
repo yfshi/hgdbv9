@@ -696,6 +696,12 @@ extern Datum OidFunctionCall9Coll(Oid functionId, Oid collation,
 /* Special cases for convenient invocation of datatype I/O functions. */
 extern Datum InputFunctionCall(FmgrInfo *flinfo, char *str,
 							   Oid typioparam, int32 typmod);
+
+/* Begin - BUG#M0000414 */
+extern Datum InputFunctionCall_2(FmgrInfo *flinfo, char *str,
+					Oid typioparam, int32 typmod, int32 lens);
+/* End - BUG#M0000414 */
+
 extern Datum OidInputFunctionCall(Oid functionId, char *str,
 								  Oid typioparam, int32 typmod);
 extern char *OutputFunctionCall(FmgrInfo *flinfo, Datum val);

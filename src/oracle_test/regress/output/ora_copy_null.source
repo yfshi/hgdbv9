@@ -1,0 +1,772 @@
+-- BUG#M0000414
+-- create database
+create or replace function dbuser_createdb() RETURNS void as
+$$
+declare
+    name text;
+begin
+	select into name 10::regrole;
+    execute format('set session authorization %s;',name);
+	return;
+end;
+$$ language plpgsql;
+/
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_createdb();
+ dbuser_createdb 
+-----------------
+ 
+(1 row)
+
+create database copy_utf8 encoding='UTF8' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gbk encoding='GBK' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gb18030 encoding='GB18030' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ oracle
+(1 row)
+
+-- generate data
+-- utf8
+-- insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf "10,狜狝\x00gda\x00sgds瀚高\x00基'础,猉猋(\"\"\"\x00猌猍gf\x00saf㓿㔀㔂㔃s\"\"2a\"猏,gdai@\x00#&sgds\x00f,猔\"\"\"\x00g猟\ng\"\"\"\x00猠" > ora_copy_null_utf8_fixed.data
+-- gbk
+-- insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\xa3\xbf\xa3\xbf\xa3\xbf\xa3\xbf\x73\x22\x22\x22\x32\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gbk_fixed.data
+-- gb18030
+-- insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\x82\x30\x8a\x32\x82\x30\x8a\x33\x82\x30\x8a\x35\x82\x30\x8a\x36\x73\x22\x22\x22\x00\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gb18030_fixed.data
+-- gb18030 have, but gbk did not have
+-- 㓿㔀㔂㔃 4-byte
+-- insert into x_gb18030_fixed_2 values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2safs"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\x73\x22\x22\x22\x00\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gb18030_fixed_2.data
+-- utf8 to utf8
+\c copy_utf8
+create table x_utf8_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_utf8_fixed_2(like x_utf8_fixed);
+create table x_utf8(
+    id int, 
+    c1 char(128), 
+    c2 char(128 char), 
+    v1 varchar(128), 
+    v2 varchar(128 char));
+CREATE TABLE x_utf8_2(like x_utf8);
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+create extension pageinspect;
+--
+-- If need to confirm the output of the printf, can using hexdump -C xxx.data
+--
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+-- enable_store_nullterminator_char off,check error for \0
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ off
+(1 row)
+
+-- COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with (format csv, encoding 'utf8');
+-- if "en_US.UTF-8", ERROR:  invalid byte sequence for encoding "GBK": 0x00
+-- if "zh_CN.UTF-8", 错误:  无效的 "GBK" 编码字节顺序: 0x00
+-- enable_store_nullterminator_char on,check pass for \0
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with (format csv, encoding 'utf8');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+SELECT * from x_utf8_fixed;
+  id  |             c1             |                    c2                     |       v1       |   v2    
+------+----------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                       | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础    | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                            |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+                                                                                                                       t_data                                                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043e78b9ce78b9d006764610073676473e7809ae9ab9800e59fba27e7a18020202067e78c89e78c8b282200e78c8ce78c8d676600736166e393bfe39480e39482e3948373223261e78c8f202020202020202020201f676461694000232673676473006623e78c94220067e78c9f0a672200e78ca0
+ \xe803000043e78b9ce78b9d316764613173676473e7809ae9ab9831e59fba27e7a18020202067e78c89e78c8b282232e78c8ce78c8d676632736166e393bfe39480e39482e3948373223261e78c8f202020202020202020201f676461694033232673676473336623e78c94223467e78c9f0a672234e78ca0
+(2 rows)
+
+DROP TABLE x_utf8_fixed;
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * from x_utf8;
+ id  |                                                c1                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+--------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe00e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca400e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8800e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db000e78db1
+ \xc800000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe31e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca432e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8833e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db034e78db1
+(2 rows)
+
+DROP TABLE x_utf8;
+-- gbk to utf8
+-- gbk did not support 㓿㔀㔂㔃
+-- source input including 㓿㔀㔂㔃
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with (format csv, encoding 'gbk');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * from x_utf8_fixed;
+  id  |             c1             |                    c2                     |       v1       |   v2    
+------+----------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                       | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础    | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                            |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+                                                                                                                       t_data                                                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043e78b9ce78b9d006764610073676473e7809ae9ab9800e59fba27e7a18020202067e78c89e78c8b282200e78c8ce78c8d676600736166efbc9fefbc9fefbc9fefbc9f73223261e78c8f202020202020202020201f676461694000232673676473006623e78c94220067e78c9f0a672200e78ca0
+ \xe803000043e78b9ce78b9d316764613173676473e7809ae9ab9831e59fba27e7a18020202067e78c89e78c8b282232e78c8ce78c8d676632736166e393bfe39480e39482e3948373223261e78c8f202020202020202020201f676461694033232673676473336623e78c94223467e78c9f0a672234e78ca0
+(2 rows)
+
+DROP TABLE x_utf8_fixed;
+CREATE TABLE x_utf8(like x_utf8_2);
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+SELECT * FROM x_utf8;
+ id  |                                                c1                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+--------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe00e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca400e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8800e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db000e78db1
+ \xc800000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe31e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca432e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8833e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db034e78db1
+(2 rows)
+
+DROP TABLE x_utf8;
+-- gb18030 to utf8
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with (format csv, encoding 'gb18030');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * from x_utf8_fixed;
+  id  |             c1             |                    c2                     |       v1       |   v2    
+------+----------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                       | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础    | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                            |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+                                                                                                                       t_data                                                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043e78b9ce78b9d006764610073676473e7809ae9ab9800e59fba27e7a18020202067e78c89e78c8b282200e78c8ce78c8d676600736166e393bfe39480e39482e3948373220061e78c8f202020202020202020201f676461694000232673676473006623e78c94220067e78c9f0a672200e78ca0
+ \xe803000043e78b9ce78b9d316764613173676473e7809ae9ab9831e59fba27e7a18020202067e78c89e78c8b282232e78c8ce78c8d676632736166e393bfe39480e39482e3948373223261e78c8f202020202020202020201f676461694033232673676473336623e78c94223467e78c9f0a672234e78ca0
+(2 rows)
+
+DROP TABLE x_utf8_fixed;
+CREATE TABLE x_utf8(like x_utf8_2);
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+set client_encoding to gb18030;
+show client_encoding;
+ client_encoding 
+-----------------
+ GB18030
+(1 row)
+
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv);
+set client_encoding to utf8;
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+SELECT * FROM x_utf8;
+ id  |                                                c1                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+--------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+DROP TABLE x_utf8;
+-- gbk to gbk
+\c copy_gbk;
+create table x_gbk_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_gbk_fixed_2(like x_gbk_fixed);
+create table x_gbk(
+    id int,
+    c1 char(128),
+    c2 char(128 char),
+    v1 varchar(128),
+    v2 varchar(128 char));
+CREATE TABLE x_gbk_2(like x_gbk);
+create extension pageinspect;
+show server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+-- COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+-- if "en_US.UTF-8", ERROR:  invalid byte sequence for encoding "GBK": 0x00
+-- if "zh_CN.UTF-8", 错误:  无效的 "GBK" 编码字节顺序: 0x00
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+-- as gbk did not support 㓿㔀㔂㔃
+-- so when insert 㓿㔀㔂㔃 as utf8, server transfer to \xa3bf
+-- in source input, if there have \xa3bf, store it
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf？？？？s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+                                                                                                           t_data                                                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202055aa58aa59282200aa5aaa5b676600736166a3bfa3bfa3bfa3bf73223261aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202055aa58aa59282232aa5aaa5b676632736166a3bfa3bfa3bfa3bf73223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gbk_fixed;
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gbk;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gbk;
+-- utf8 to gbk
+-- utf8 for 㓿㔀㔂㔃 is e393bf e39480 e39482 e3948
+-- transfer to gbk is a3bf
+CREATE TABLE x_gbk_fixed(like x_gbk_fixed_2);
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf？？？？s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+                                                                                                           t_data                                                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202055aa58aa59282200aa5aaa5b676600736166a3bfa3bfa3bfa3bf73223261aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202055aa58aa59282232aa5aaa5b676632736166a3bfa3bfa3bfa3bf73223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gbk_fixed;
+CREATE TABLE x_gbk(like x_gbk_2);
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gbk;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gbk;
+-- gb18030 to gbk
+-- gbk did not support 㓿㔀㔂㔃, but gb18030 support
+-- gb18030 for 㓿㔀㔂㔃 is 82308a32 82308a33 82308a35 82308a36
+CREATE TABLE x_gbk_fixed(like x_gbk_fixed_2);
+-- COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+-- if "en_US.UTF-8", ERROR:  character with byte sequence 0x82 0x30 0x8a 0x32 in encoding GB18030 has no equivalent in encoding GBK
+-- if "zh_CN.UTF-8", 错误:  character with byte sequence 0x82 0x30 0x8a 0x32 in encoding GB18030 has no equivalent in encoding GBK
+-- copy_null_gb18030_fixed_2.data without 㓿㔀㔂㔃
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed_2.data' with(format csv, encoding 'gb18030');
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2safxxs"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+  id  |                c1                |                  c2                   |       v1       |   v2    
+------+----------------------------------+---------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2safxxs"2a猏             | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                       |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+                                                                                                       t_data                                                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a12020202020202020204daa58aa59282200aa5aaa5b67660073616673220061aa5c20202020202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a12020202020202020204daa58aa59282232aa5aaa5b676632736166787873223261aa5c2020202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gbk_fixed;
+CREATE TABLE x_gbk(like x_gbk_2);
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gbk;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gbk;
+-- clean
+DROP TABLE x_gbk_fixed_2;
+DROP TABLE x_gbk_2;
+-- gb18030 to gb18030
+\c copy_gb18030;
+create table x_gb18030_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_gb18030_fixed_2(like x_gb18030_fixed);
+create table x_gb18030(
+    id int,
+    c1 char(128),
+    c2 char(128 char),
+    v1 varchar(128),
+    v2 varchar(128 char));
+CREATE TABLE x_gb18030_2(like x_gb18030);
+create extension pageinspect;
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+                                                                                                                   t_data                                                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202065aa58aa59282200aa5aaa5b67660073616682308a3282308a3382308a3582308a3673220061aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202065aa58aa59282232aa5aaa5b67663273616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gb18030_fixed;
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gb18030;
+-- utf8 to gb18030
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+                                                                                                                   t_data                                                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202065aa58aa59282200aa5aaa5b67660073616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202065aa58aa59282232aa5aaa5b67663273616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gb18030_fixed;
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gb18030;
+-- gbk to gb18030
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+                                                                                                                   t_data                                                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202055aa58aa59282200aa5aaa5b676600736166a3bfa3bfa3bfa3bf73223261aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202065aa58aa59282232aa5aaa5b67663273616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gb18030_fixed;
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gb18030;
+-- gb18030_2022
+-- gb18030_2022 to gb18030_2022
+\c copy_gb18030;
+LOAD 'gb18030_2022';
+--create extension pageinspect;
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+                                                                                                                   t_data                                                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202065aa58aa59282200aa5aaa5b67660073616682308a3282308a3382308a3582308a3673220061aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202065aa58aa59282232aa5aaa5b67663273616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gb18030_fixed;
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gb18030;
+-- gb18030_2022 to utf8
+\c copy_utf8;
+show server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_utf8_fixed;
+  id  |             c1             |                    c2                     |       v1       |   v2    
+------+----------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                       | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础    | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                            |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+                                                                                                                       t_data                                                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043e78b9ce78b9d006764610073676473e7809ae9ab9800e59fba27e7a18020202067e78c89e78c8b282200e78c8ce78c8d676600736166e393bfe39480e39482e3948373220061e78c8f202020202020202020201f676461694000232673676473006623e78c94220067e78c9f0a672200e78ca0
+ \xe803000043e78b9ce78b9d316764613173676473e7809ae9ab9831e59fba27e7a18020202067e78c89e78c8b282232e78c8ce78c8d676632736166e393bfe39480e39482e3948373223261e78c8f202020202020202020201f676461694033232673676473336623e78c94223467e78c9f0a672234e78ca0
+(2 rows)
+
+DROP TABLE x_utf8_fixed;
+CREATE TABLE x_utf8(like x_utf8_2);
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_utf8;
+ id  |                                                c1                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+--------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+                                                                                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe00e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca400e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8800e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db000e78db1
+ \xc800000010020000e78b9ce78b9de78b9fe78ba2e78ba3e78ba4e78ba5e78ba6e78ba7e78baae78babe78bb5e78bb6e78bb9e78bbde78bbe31e78bbfe78c80e78c82e78c84e78c85e78c86e78c87e78c88e78c89e78c8be78c8ce78c8de78c8fe78c90e78c91e78c922020202020202020202020202020202020202020202020202020202020202090020000e78c94e78c98e78c99e78c9ae78c9fe78ca0e78ca3e78ca432e78ca6e78ca7e78ca8e78cade78cafe78cb0e78cb2e78cb3202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020bfe78cb5e78cb6e78cbae78cbbe78cbce78cbde78d80e78d81e78d82e78d83e78d84e78d85e78d86e78d87e78d8833e78d89e78d8ae78d8be78d8ce78d8ee78d8fe78d91e78d93e78d94e78d95e78d96e78d98e78d99e78d9ae78d9be78d9c6be78d9de78d9ee78d9fe78da1e78da2e78da3e78da4e78da5e78da6e78da7e78da8e78da9e78daae78dabe78daee78db034e78db1
+(2 rows)
+
+DROP TABLE x_utf8;
+-- utf8 to gb18030_2022
+\c copy_gb18030;
+show server_encoding;
+ server_encoding 
+-----------------
+ GB18030
+(1 row)
+
+set client_encoding to utf8;
+show client_encoding;
+ client_encoding 
+-----------------
+ UTF8
+(1 row)
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ on
+(1 row)
+
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+  id  |                c1                |                    c2                     |       v1       |   v2    
+------+----------------------------------+-------------------------------------------+----------------+---------
+   10 | 狜狝                             | 猉猋("                                    | gdai@          | 猔"
+ 1000 | 狜狝1gda1sgds瀚高1基'础          | 猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏           | gdai@3#&sgds3f | 猔"4g猟+
+      |                                  |                                           |                | g"4猠
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+                                                                                                                   t_data                                                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x0a00000043aa40aa41006764610073676473e5abb8df00bbf927b4a120202020202020202065aa58aa59282200aa5aaa5b67660073616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169400023267367647300661daa60220067aa640a672200aa65
+ \xe803000043aa40aa41316764613173676473e5abb8df31bbf927b4a120202020202020202065aa58aa59282232aa5aaa5b67663273616682308a3282308a3382308a3582308a3673223261aa5c202020202020202020201f67646169403323267367647333661daa60223467aa640a672234aa65
+(2 rows)
+
+DROP TABLE x_gb18030_fixed;
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+ id  |                                                                c1                                                                |                                                                        c2                                                                        |                               v1                                |                 v2                  
+-----+----------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------+-------------------------------------
+ 100 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾                                                                                                 | 猔猘猙猚猟猠猣猤                                                                                                                                 | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈                                  | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰
+ 200 | 狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒                                                                | 猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳                                                                                                                | 猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜 | 獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱
+(2 rows)
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+                                                                                                                                                                                                                                                                                                                                                                                               t_data                                                                                                                                                                                                                                                                                                                                                                                               
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x6400000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f00aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6700aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e00aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f00aaa0
+ \xc800000010020000aa40aa41aa42aa43aa44aa45aa46aa47aa48aa49aa4aaa4baa4caa4daa4eaa4f31aa50aa51aa52aa53aa54aa55aa56aa57aa58aa59aa5aaa5baa5caa5daa5eaa5f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202050020000aa60aa61aa62aa63aa64aa65aa66aa6732aa68aa69aa6aaa6baa6caa6daa6eaa6f20202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202081aa70aa71aa72aa73aa74aa75aa76aa77aa78aa79aa7aaa7baa7caa7daa7e33aa80aa81aa82aa83aa84aa85aa86aa87aa88aa89aa8aaa8baa8caa8daa8eaa8f49aa90aa91aa92aa93aa94aa95aa96aa97aa98aa99aa9aaa9baa9caa9daa9eaa9f34aaa0
+(2 rows)
+
+DROP TABLE x_gb18030;
+--- cleanup
+\c regression system
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ pg
+(1 row)
+
+select dbuser_createdb();
+ dbuser_createdb 
+-----------------
+ 
+(1 row)
+
+DROP DATABASE copy_utf8;
+DROP DATABASE copy_gbk;
+DROP DATABASE copy_gb18030;
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+ ivorysql.compatible_mode 
+--------------------------
+ oracle
+(1 row)
+
+drop function dbuser_createdb;

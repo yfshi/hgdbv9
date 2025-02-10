@@ -20,6 +20,7 @@
 #include "tcop/dest.h"
 
 #define MAX_SKIP_COUNT  128     /* BUG:M0000368 */
+#define MAX_FILENAME_LEN  128	/* BUG#M0000406 */
 
 /*
  * A struct to hold COPY options, in a parsed form. All of these are related
@@ -60,6 +61,7 @@ typedef struct CopyFormatOptions
 	char	   *taskid;		/* current bulkload task id */
         char	   *filename;		/* used for error output */
 	/* End - ReqID:SRS-MISC-BULKLOAD */
+	bool	   skipbad;		/* BUG#Z1616 */
 	/* Begin - BUG#Z1087 */
 	char	   *logbad;
 	bool	   log_bad;
@@ -72,6 +74,13 @@ typedef struct CopyFormatOptions
 	// skip_list[0] did not used
 	bool	   skip_list[MaxHeapAttributeNumber + MAX_SKIP_COUNT + 1];
 	/* End - BUG:M0000368 */
+
+	/* Begin - BUG#M0000414 */
+	bool	   spcode;
+	char       *doubdeli;
+	char	   *quotes;
+	char	   double_s[5];
+	/* End - BUG#M0000414 */
 
 } CopyFormatOptions;
 

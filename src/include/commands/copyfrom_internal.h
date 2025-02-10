@@ -116,6 +116,7 @@ typedef struct CopyFromStateData
 
 	int			max_fields;
 	char	  **raw_fields;
+	uint32		  *raw_fields_lens;	/* BUG#M0000414 */
 
 	/*
 	 * Similarly, line_buf holds the whole input line being processed. The

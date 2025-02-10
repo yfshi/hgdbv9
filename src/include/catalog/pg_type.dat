@@ -886,6 +886,38 @@
   typalign => 'i' },
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - BUG#M0000414 */
+ { oid => '9052', array_type_oid => '9053',
+  descr => 'Oracle CHAR datatype, blank-padded string, fixed storage length',
+  typname => 'oracharchar_2', typnamespace => 'sys', typlen => '-1', typbyval => 'f',
+  typcategory => 'S', typinput => '-', typoutput => '-', typreceive => '-',
+  typsend => '-', typmodin => '-', typmodout => '-', typalign => 'i',
+  typstorage => 'x', typcollation => 'default' },
+
+ { oid => '9054', array_type_oid => '9055',
+  descr => 'Oracle CHAR datatype, blank-padded string, fixed storage length',
+  typname => 'oracharbyte_2', typnamespace => 'sys', typlen => '-1', typbyval => 'f',
+  typcategory => 'S', typinput => '-', typoutput => '-', typreceive => '-',
+  typsend => '-', typmodin => '-', typmodout => '-', typalign => 'i',
+  typstorage => 'x', typcollation => 'default' },
+
+ { oid => '9056', array_type_oid => '9057',
+  descr => 'Oracle VARCHAR2 datatype, non-blank-padded string, variable storage length',
+  typname => 'oravarcharchar_2', typnamespace => 'sys', typlen => '-1', typbyval => 'f',
+  typcategory => 'S', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage => 'x', typcollation => 'default' },
+
+ { oid => '9058', array_type_oid => '9059',
+  descr => 'Oracle VARCHAR2 datatype, non-blank-padded string, variable storage length',
+  typname => 'oravarcharbyte_2', typnamespace => 'sys', typlen => '-1', typbyval => 'f',
+  typcategory => 'S', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage => 'x', typcollation => 'default' },
+/* End - BUG#M0000414 */
+
 /*END Oracle Compatibility Metadatas*/
 
 ]

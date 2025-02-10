@@ -206,6 +206,10 @@ bool alter_database_set_special = false; /* BUG#M0000475 */
 
 bool package_security_define_compare_user = true; /* BUG#M496 */
 
+/* Begin - BUG#M0000414 */
+bool enable_store_nullterminator_char = false;
+/* End - BUG#M0000414 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -784,7 +788,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000470: SELECT FOR UPDATE */
-
 	/* Begin - BUG#M0000475 */
 	{
 		{"ivorysql.enable_pg_interval_datatype", PGC_USERSET, DEVELOPER_OPTIONS,
@@ -820,7 +823,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M496 */
-
 	/* Begin - ReqID:SRS-SQL-SCHEMA */
 	{
 		{"ivorysql.enable_ora_user_schema", PGC_USERSET, DEVELOPER_OPTIONS,
@@ -843,6 +845,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SQL-SCHEMA */
+	/* Begin - BUG#M0000414 */
+	{
+		{"ivorysql.enable_store_nullterminator_char", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether store null terminator as a char like oracle."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&enable_store_nullterminator_char,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000414 */
 #endif
 #if 0
 	/* End-of-list marker */

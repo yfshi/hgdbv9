@@ -53,11 +53,15 @@
 #include "utils/portal.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
+/* Begin - BUG#M0000414 */
+#include "utils/ora_compatible.h"
+/* End - BUG#M0000414 */
 
 /* Begin - ReqID:SRS-MISC-BULKLOAD */
 #include "lib/stringinfo.h"
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-MISC-BULKLOAD */
+
 
 /*
  * No more than this many tuples per CopyMultiInsertBuffer
@@ -400,8 +404,18 @@ CopyMultiInsertBufferFlush(CopyMultiInsertInfo *miinfo,
 					simple_heap_delete(resultRelInfo->ri_RelationDesc, &buffer->slots[i]->tts_tid);
 					cstate->error_num ++;
 
-					/* output the error record to file or table */
-					OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,buffer->line_bufs[i],BAD_RECORD_I);
+					}
 					cstate->num_errors++; /* BUG#Z1087 */
 
 					goto bypass_record;
@@ -681,6 +695,8 @@ CheckTriggerForTolerate(Relation rel,ResultRelInfo *relinfo,CopyFromState cstate
 				estate->schema_name = cstate->schema_name;
 				estate->cur_relname = cstate->cur_relname;
 				estate->delimiter = cstate->opts.delim;
+
+				estate->skipbad_fk = cstate->opts.skipbad;	/* BUG#Z1616 */
 			}
 		}
         }
@@ -1098,8 +1114,18 @@ CopyFrom(CopyFromState cstate)
 				/* End - BUG:M0000383 */
 				else
 				{
-					/* output the error record to file or table */
-					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					}
 					error_flag = true;
 					cstate->num_errors++; /* BUG#Z1087 */
 				}
@@ -1162,7 +1188,18 @@ CopyFrom(CopyFromState cstate)
 				{
 					MemoryContextSwitchTo(current_cxt);
 
-					OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					/* Begin - BUG#Z1616 */
+					if (cstate->opts.skipbad)
+					{
+						/* no need to store the error record */
+						/* just continue */
+					}
+					/* End - BUG#Z1616 */
+					else
+					{
+						/* output the error record to file or table */
+						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+					}
 					error_flag = true;
 
 					cstate->num_errors++; /* BUG#Z1087 */
@@ -1361,8 +1398,19 @@ CopyFrom(CopyFromState cstate)
 						MemoryContextSwitchTo(current_cxt);
 						FlushErrorState();
 
-						/* output the error record to file or table */
-						OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+						/* Begin - BUG#Z1616 */
+						if (cstate->opts.skipbad)
+						{
+							/* no need to store the error record */
+							/* just continue */
+						}
+						/* End - BUG#Z1616 */
+						else
+						{
+							/* output the error record to file or table */
+							OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_R);
+						}
+
 						error_flag = true;
 						cstate->num_errors++; /* BUG#Z1087 */
 					}
@@ -1454,8 +1502,18 @@ CopyFrom(CopyFromState cstate)
 									/* delete the record by tid */
 									simple_heap_delete(resultRelInfo->ri_RelationDesc,&myslot->tts_tid);
 
-									/* output the error record to file or table */
-									OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
+									/* Begin - BUG#Z1616 */
+									if (cstate->opts.skipbad)
+									{
+										/* no need to store the error record */
+										/* just continue */
+									}
+									/* End - BUG#Z1616 */
+									else
+									{
+										/* output the error record to file or table */
+										OutputBadRecord(cstate,cstate->cur_lineno,&cstate->line_buf,BAD_RECORD_I);
+									}
 									
 									error_flag = true;
 									cstate->num_errors++; /* BUG#Z1087 */
@@ -1756,14 +1814,41 @@ BeginCopyFrom(ParseState *pstate,
 	else
 	{
 		cstate->need_transcoding = true;
+
 		cstate->conversion_proc = FindDefaultConversionProc(cstate->file_encoding,
-															GetDatabaseEncoding());
+									GetDatabaseEncoding());
 		if (!OidIsValid(cstate->conversion_proc))
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_FUNCTION),
 					 errmsg("default conversion function for encoding \"%s\" to \"%s\" does not exist",
 							pg_encoding_to_char(cstate->file_encoding),
 							pg_encoding_to_char(GetDatabaseEncoding()))));
+
+		/* Begin - BUG#M0000414 */
+		/* when conversion, using conversion_proc function to do the real wrok*/
+		if (database_mode == DB_ORACLE && (cstate->opts.spcode || enable_store_nullterminator_char))
+		{
+			/* utf8 to gbk */
+			if (cstate->conversion_proc == 4371)
+				cstate->conversion_proc = 4663;
+			/* gbk to utf8 */
+			else if (cstate->conversion_proc == 4370)
+				cstate->conversion_proc = 4664;
+			/* uft8 to gb18030*/
+			else if (cstate->conversion_proc == 4369)
+				cstate->conversion_proc = 4665;
+			/* gb18030 to utf8 */
+			else if (cstate->conversion_proc == 4368)
+				cstate->conversion_proc = 4666;
+			/* gbk to gb18030 */
+			else if (cstate->conversion_proc == 4651)
+				cstate->conversion_proc = 4667;
+			/* gb18030 to gbk */
+			else if (cstate->conversion_proc == 4650)
+				cstate->conversion_proc = 4668;
+		}
+		/* End - BUG#M0000414 */
+
 	}
 
 	cstate->copy_src = COPY_FILE;	/* default */
@@ -1851,6 +1936,37 @@ BeginCopyFrom(ParseState *pstate,
 		else
 			getTypeInputInfo(att->atttypid,
 							 &in_func_oid, &typioparams[attnum - 1]);
+		
+		/* Begin - BUG#M0000414 */
+		if (enable_store_nullterminator_char)
+		{
+			switch (att->atttypid)
+			{
+				/* 9000 */
+				case ORACHARCHAROID:
+					getTypeInputInfo(9052,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9001 */
+				case ORACHARBYTEOID:
+					getTypeInputInfo(9054,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9002 */
+				case ORAVARCHARCHAROID:
+					getTypeInputInfo(9056,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+				/* 9003 */
+				case ORAVARCHARBYTEOID:
+					getTypeInputInfo(9058,
+							&in_func_oid, &typioparams[attnum - 1]);
+					break;
+			}
+		}
+		
+		/* End - BUG#M0000414 */
+
 		fmgr_info(in_func_oid, &in_functions[attnum - 1]);
 
 		/* Get default info if needed */
@@ -1970,6 +2086,13 @@ BeginCopyFrom(ParseState *pstate,
 			ReceiveCopyBegin(cstate);
 		else
 			cstate->copy_file = stdin;
+
+		/* Begin - BUG#M0000406 */
+		if (cstate->opts.tolerate && !cstate->opts.filename)
+		{
+			cstate->opts.filename = pstrdup("stdin");
+		}
+		/* End - BUG#M0000406 */
 	}
 	else
 	{
@@ -1978,6 +2101,16 @@ BeginCopyFrom(ParseState *pstate,
 		if (cstate->is_program)
 		{
 			progress_vals[1] = PROGRESS_COPY_TYPE_PROGRAM;
+			/* Begin - BUG#M0000406 */
+			if (cstate->opts.tolerate && !cstate->opts.filename)
+			{
+				cstate->opts.filename = pstrdup(filename);
+				if (cstate->opts.badtable && strlen(cstate->opts.filename) > MAX_FILENAME_LEN)
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("Tolerate mode(badtable), file name(from command) is too long(more than 128), using option filename to assgin a short one")));
+			}
+			/* End - BUG#M0000406 */
 			cstate->copy_file = OpenPipeStream(cstate->filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
@@ -1990,6 +2123,18 @@ BeginCopyFrom(ParseState *pstate,
 			struct stat st;
 
 			progress_vals[1] = PROGRESS_COPY_TYPE_FILE;
+
+			/* Begin - BUG#M0000406 */
+			if (cstate->opts.tolerate && !cstate->opts.filename)
+			{
+				cstate->opts.filename = pstrdup(filename);
+				if ( cstate->opts.badtable && strlen(cstate->opts.filename) > MAX_FILENAME_LEN)
+					ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("Tolerate mode(badtable), file name(from inputfile) is too long(more than 128), using option filename to assgin a short one")));
+			}
+			/* End - BUG#M0000406 */
+
 			cstate->copy_file = AllocateFile(cstate->filename, PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 			{
@@ -2017,6 +2162,7 @@ BeginCopyFrom(ParseState *pstate,
 						 errmsg("\"%s\" is a directory", cstate->filename)));
 
 			progress_vals[2] = st.st_size;
+
 		}
 	}
 
@@ -2035,6 +2181,8 @@ BeginCopyFrom(ParseState *pstate,
 
 		cstate->max_fields = attr_count;
 		cstate->raw_fields = (char **) palloc(attr_count * sizeof(char *));
+
+		cstate->raw_fields_lens = (uint32 *) palloc(attr_count * sizeof(uint32));	/* BUG#M0000414 */
 	}
 
 	/* ReqID:SRS-MISC-BULKLOAD */

@@ -1,0 +1,433 @@
+-- BUG#M0000414
+
+-- create database
+create or replace function dbuser_createdb() RETURNS void as
+$$
+declare
+    name text;
+begin
+	select into name 10::regrole;
+    execute format('set session authorization %s;',name);
+	return;
+end;
+$$ language plpgsql;
+/
+
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+
+select dbuser_createdb();
+
+create database copy_utf8 encoding='UTF8' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gbk encoding='GBK' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+create database copy_gb18030 encoding='GB18030' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+
+-- generate data
+-- utf8
+-- insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf "10,狜狝\x00gda\x00sgds瀚高\x00基'础,猉猋(\"\"\"\x00猌猍gf\x00saf㓿㔀㔂㔃s\"\"2a\"猏,gdai@\x00#&sgds\x00f,猔\"\"\"\x00g猟\ng\"\"\"\x00猠" > ora_copy_null_utf8_fixed.data
+
+-- gbk
+-- insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\xa3\xbf\xa3\xbf\xa3\xbf\xa3\xbf\x73\x22\x22\x22\x32\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gbk_fixed.data
+
+-- gb18030
+-- insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\x82\x30\x8a\x32\x82\x30\x8a\x33\x82\x30\x8a\x35\x82\x30\x8a\x36\x73\x22\x22\x22\x00\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gb18030_fixed.data
+
+-- gb18030 have, but gbk did not have
+-- 㓿㔀㔂㔃 4-byte
+-- insert into x_gb18030_fixed_2 values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2safs"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+-- printf '10,\xaa\x40\xaa\x41\x00\x67\x64\x61\x00\x73\x67\x64\x73\xe5\xab\xb8\xdf\x00\xbb\xf9\x27\xb4\xa1,\xaa\x58\xaa\x59\x28\x22\x22\x22\x00\xaa\x5a\xaa\x5b\x67\x66\x00\x73\x61\x66\x73\x22\x22\x22\x00\x61\xaa\x5c,\x67\x64\x61\x69\x40\x00\x23\x26\x73\x67\x64\x73\x00\x66,\xaa\x60\x22\x22\x22\x00\x67\xaa\x64\x0a\x67\x22\x22\x22\x00\xaa\x65' > ora_copy_null_gb18030_fixed_2.data
+
+-- utf8 to utf8
+
+\c copy_utf8
+
+create table x_utf8_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_utf8_fixed_2(like x_utf8_fixed);
+
+
+create table x_utf8(
+    id int, 
+    c1 char(128), 
+    c2 char(128 char), 
+    v1 varchar(128), 
+    v2 varchar(128 char));
+CREATE TABLE x_utf8_2(like x_utf8);
+
+show server_encoding;
+create extension pageinspect;
+
+--
+-- If need to confirm the output of the printf, can using hexdump -C xxx.data
+--
+set client_encoding to utf8;
+show client_encoding;
+
+-- enable_store_nullterminator_char off,check error for \0
+show ivorysql.enable_store_nullterminator_char;
+-- COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with (format csv, encoding 'utf8');
+-- if "en_US.UTF-8", ERROR:  invalid byte sequence for encoding "GBK": 0x00
+-- if "zh_CN.UTF-8", 错误:  无效的 "GBK" 编码字节顺序: 0x00
+
+-- enable_store_nullterminator_char on,check pass for \0
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with (format csv, encoding 'utf8');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+set client_encoding to utf8;
+show client_encoding;
+SELECT * from x_utf8_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+DROP TABLE x_utf8_fixed;
+
+
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * from x_utf8;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+DROP TABLE x_utf8;
+
+
+-- gbk to utf8
+-- gbk did not support 㓿㔀㔂㔃
+
+-- source input including 㓿㔀㔂㔃
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with (format csv, encoding 'gbk');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * from x_utf8_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+DROP TABLE x_utf8_fixed;
+
+
+CREATE TABLE x_utf8(like x_utf8_2);
+show ivorysql.enable_store_nullterminator_char;
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+show client_encoding;
+SELECT * FROM x_utf8;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+DROP TABLE x_utf8;
+
+-- gb18030 to utf8
+
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with (format csv, encoding 'gb18030');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * from x_utf8_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+DROP TABLE x_utf8_fixed;
+
+
+CREATE TABLE x_utf8(like x_utf8_2);
+show ivorysql.enable_store_nullterminator_char;
+set client_encoding to gb18030;
+show client_encoding;
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv);
+set client_encoding to utf8;
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+show client_encoding;
+SELECT * FROM x_utf8;
+DROP TABLE x_utf8;
+
+
+-- gbk to gbk
+\c copy_gbk;
+
+create table x_gbk_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_gbk_fixed_2(like x_gbk_fixed);
+
+create table x_gbk(
+    id int,
+    c1 char(128),
+    c2 char(128 char),
+    v1 varchar(128),
+    v2 varchar(128 char));
+CREATE TABLE x_gbk_2(like x_gbk);
+
+create extension pageinspect;
+
+show server_encoding;
+set client_encoding to utf8;
+show client_encoding;
+
+-- COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+-- if "en_US.UTF-8", ERROR:  invalid byte sequence for encoding "GBK": 0x00
+-- if "zh_CN.UTF-8", 错误:  无效的 "GBK" 编码字节顺序: 0x00
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+-- as gbk did not support 㓿㔀㔂㔃
+-- so when insert 㓿㔀㔂㔃 as utf8, server transfer to \xa3bf
+-- in source input, if there have \xa3bf, store it
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+set client_encoding to utf8;
+show client_encoding;
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+DROP TABLE x_gbk_fixed;
+
+
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+SELECT * FROM x_gbk;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+DROP TABLE x_gbk;
+
+
+-- utf8 to gbk
+
+-- utf8 for 㓿㔀㔂㔃 is e393bf e39480 e39482 e3948
+-- transfer to gbk is a3bf
+CREATE TABLE x_gbk_fixed(like x_gbk_fixed_2);
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+DROP TABLE x_gbk_fixed;
+
+
+CREATE TABLE x_gbk(like x_gbk_2);
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gbk;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+DROP TABLE x_gbk;
+
+
+-- gb18030 to gbk
+
+-- gbk did not support 㓿㔀㔂㔃, but gb18030 support
+-- gb18030 for 㓿㔀㔂㔃 is 82308a32 82308a33 82308a35 82308a36
+
+CREATE TABLE x_gbk_fixed(like x_gbk_fixed_2);
+-- COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+-- if "en_US.UTF-8", ERROR:  character with byte sequence 0x82 0x30 0x8a 0x32 in encoding GB18030 has no equivalent in encoding GBK
+-- if "zh_CN.UTF-8", 错误:  character with byte sequence 0x82 0x30 0x8a 0x32 in encoding GB18030 has no equivalent in encoding GBK
+
+-- copy_null_gb18030_fixed_2.data without 㓿㔀㔂㔃
+COPY x_gbk_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed_2.data' with(format csv, encoding 'gb18030');
+insert into x_gbk_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2safxxs"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gbk_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk_fixed', 0));
+DROP TABLE x_gbk_fixed;
+
+
+CREATE TABLE x_gbk(like x_gbk_2);
+COPY x_gbk FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gbk values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gbk;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gbk', 0));
+DROP TABLE x_gbk;
+
+
+-- clean
+DROP TABLE x_gbk_fixed_2;
+DROP TABLE x_gbk_2;
+
+
+
+
+-- gb18030 to gb18030
+\c copy_gb18030;
+
+create table x_gb18030_fixed(
+    id int,
+    c1 char(32),
+    c2 char(32 char),
+    v1 varchar(32),
+    v2 varchar(32 char));
+CREATE TABLE x_gb18030_fixed_2(like x_gb18030_fixed);
+
+create table x_gb18030(
+    id int,
+    c1 char(128),
+    c2 char(128 char),
+    v1 varchar(128),
+    v2 varchar(128 char));
+CREATE TABLE x_gb18030_2(like x_gb18030);
+
+create extension pageinspect;
+show server_encoding;
+set client_encoding to utf8;
+show client_encoding;
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+DROP TABLE x_gb18030_fixed;
+
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+SELECT * FROM x_gb18030;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+
+DROP TABLE x_gb18030;
+
+
+-- utf8 to gb18030
+
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+DROP TABLE x_gb18030_fixed;
+
+
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+SELECT * FROM x_gb18030;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+
+DROP TABLE x_gb18030;
+
+-- gbk to gb18030
+
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gbk_fixed.data' with(format csv, encoding 'gbk');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+DROP TABLE x_gb18030_fixed;
+
+
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gbk.data' with(format csv, encoding 'gbk');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+SELECT * FROM x_gb18030;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+
+DROP TABLE x_gb18030;
+
+
+
+-- gb18030_2022
+
+-- gb18030_2022 to gb18030_2022
+\c copy_gb18030;
+LOAD 'gb18030_2022';
+
+--create extension pageinspect;
+
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+show server_encoding;
+set client_encoding to utf8;
+show client_encoding;
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+DROP TABLE x_gb18030_fixed;
+
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_gb18030;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+DROP TABLE x_gb18030;
+
+
+-- gb18030_2022 to utf8
+\c copy_utf8;
+
+show server_encoding;
+set client_encoding to utf8;
+show client_encoding;
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+CREATE TABLE x_utf8_fixed(like x_utf8_fixed_2);
+COPY x_utf8_fixed FROM '@abs_srcdir@/data/ora_copy_null_gb18030_fixed.data' with(format csv, encoding 'gb18030');
+insert into x_utf8_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_utf8_fixed;
+
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8_fixed', 0));
+DROP TABLE x_utf8_fixed;
+
+CREATE TABLE x_utf8(like x_utf8_2);
+COPY x_utf8 FROM '@abs_srcdir@/data/ora_copy_null_gb18030.data' with(format csv, encoding 'gb18030');
+insert into x_utf8 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+SELECT * FROM x_utf8;
+SELECT t_data FROM heap_page_items(get_raw_page('x_utf8', 0));
+DROP TABLE x_utf8;
+
+-- utf8 to gb18030_2022
+\c copy_gb18030;
+
+show server_encoding;
+set client_encoding to utf8;
+show client_encoding;
+
+set ivorysql.enable_store_nullterminator_char = true;
+show ivorysql.enable_store_nullterminator_char;
+
+CREATE TABLE x_gb18030_fixed(like x_gb18030_fixed_2);
+COPY x_gb18030_fixed FROM '@abs_srcdir@/data/ora_copy_null_utf8_fixed.data' with(format csv, encoding 'utf8');
+insert into x_gb18030_fixed values(1000,'狜狝1gda1sgds瀚高1基''础','猉猋("2猌猍gf2saf㓿㔀㔂㔃s"2a猏','gdai@3#&sgds3f',E'猔"4g猟\ng"4猠');
+SELECT * FROM x_gb18030_fixed;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030_fixed', 0));
+DROP TABLE x_gb18030_fixed;
+
+
+CREATE TABLE x_gb18030(like x_gb18030_2);
+COPY x_gb18030 FROM '@abs_srcdir@/data/ora_copy_null_utf8.data' with(format csv, encoding 'utf8');
+insert into x_gb18030 values(200,'狜狝狟狢狣狤狥狦狧狪狫狵狶狹狽狾1狿猀猂猄猅猆猇猈猉猋猌猍猏猐猑猒','猔猘猙猚猟猠猣猤2猦猧猨猭猯猰猲猳','猵猶猺猻猼猽獀獁獂獃獄獅獆獇獈3獉獊獋獌獎獏獑獓獔獕獖獘獙獚獛獜','獝獞獟獡獢獣獤獥獦獧獨獩獪獫獮獰4獱');
+
+SELECT * FROM x_gb18030;
+SELECT t_data FROM heap_page_items(get_raw_page('x_gb18030', 0));
+
+DROP TABLE x_gb18030;
+
+
+--- cleanup
+\c regression system
+
+set ivorysql.compatible_mode to pg;
+show ivorysql.compatible_mode;
+
+select dbuser_createdb();
+
+DROP DATABASE copy_utf8;
+DROP DATABASE copy_gbk;
+DROP DATABASE copy_gb18030;
+
+set ivorysql.compatible_mode to oracle;
+show ivorysql.compatible_mode;
+
+drop function dbuser_createdb;

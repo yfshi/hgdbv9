@@ -41,6 +41,11 @@
 #include "utils/rel.h"
 #include "utils/rls.h"
 
+/* Begin - BUG#M0000414 */
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
+/* End - BUG#M0000414 */
+
 /*
  *	 DoCopy executes the SQL COPY statement
  *
@@ -349,11 +354,19 @@ ProcessCopyOptions(ParseState *pstate,
 	bool		current_shard_specified = false;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 
+	/* Begin - BUG#M0000414 */
+	bool	double_delimiter_specified = false;
+	bool	quotes_specified = false;
+	/* End - BUG#M0000414 */
+
 	/* Support external use for option sanity checking */
 	if (opts_out == NULL)
 		opts_out = (CopyFormatOptions *) palloc0(sizeof(CopyFormatOptions));
 
 	opts_out->file_encoding = -1;
+
+	/* BUG#M0000414 */
+	opts_out->spcode = false;
 
 	/* Extract options from the statement node tree */
 	foreach(option, options)
@@ -602,6 +615,18 @@ ProcessCopyOptions(ParseState *pstate,
 						parser_errposition(pstate, defel->location)));
 		}
 		/* End - BUG#Z1087 */
+		/* Begin - BUG#Z1616 */
+		else if (strcmp(defel->defname, "skipbad") == 0)
+		{
+			if (opts_out->skipbad)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->skipbad = defGetBoolean(defel);
+			opts_out->tolerate = true;
+		}
+		/* End - BUG#Z1616 */
 		/* Begin - BUG:M0000368 */
 		else if (strcmp(defel->defname, "skiplist") == 0)
 		{
@@ -621,6 +646,47 @@ ProcessCopyOptions(ParseState *pstate,
 
 		}
 		/* End - BUG:M0000368 */
+		/* Begin - BUG#M0000414 */
+		else if (strcmp(defel->defname, "doubdeli") == 0)
+		{
+			char    tmp[5] = {0};
+
+			if (double_delimiter_specified)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->doubdeli = defGetString(defel);
+			double_delimiter_specified = true;
+			opts_out->spcode = true;
+
+			memcpy(tmp, opts_out->doubdeli, 4);
+			opts_out->double_s[0] = (char)strtol(tmp, NULL, 16);
+			memcpy(tmp, &opts_out->doubdeli[4], 4);
+			opts_out->double_s[1] = (char)strtol(tmp, NULL, 16);
+		}
+		else if (strcmp(defel->defname, "quotes") == 0)
+		{
+
+			char    tmp[5] = {0};
+
+			if (quotes_specified)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("conflicting or redundant options"),
+						parser_errposition(pstate, defel->location)));
+			opts_out->quotes = defGetString(defel);
+			quotes_specified = true;
+
+
+			memcpy(tmp, opts_out->quotes, 4);
+			// opts_out->double_s[2] = (unsigned char)strtol(tmp, NULL, 16);
+			opts_out->double_s[2] = (char)strtol(tmp, NULL, 16);
+			memcpy(tmp, &opts_out->quotes[4], 4);
+			opts_out->double_s[3] = (char)strtol(tmp, NULL, 16);
+
+		}
+		/* End - BUG#M0000414 */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -808,11 +874,6 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Text and Binary file type is not support for sharding"))); 
 
-	/* tolerate mode, task id and filename is necessary opt */
-	if ( (opts_out->tolerate ) && (!opts_out->taskid || !opts_out->filename) )
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("Tolerate mode, taskid and filename is necessary opts")));	
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 	/* Begin - BUG#Z1087 */
 	if ( (!opts_out->tolerate) && opts_out->log_bad )
@@ -820,6 +881,36 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("Feature logbad only support under Tolerate mode")));
 	/* End - BUG#Z1087 */
+	/* Begin - BUG#Z1616 */
+	/*
+	 * tolerate is on
+	 * if skipbad is false, taskid filename is necessary opt
+	 * if skipbad is true, taskid is not necessart opt, so did not check
+	 */
+	if (opts_out->tolerate && !opts_out->skipbad)
+	{
+		if (!opts_out->taskid)
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Tolerate mode, taskid is necessary opts")));
+	}
+	if (opts_out->skipbad && (opts_out->badfile || opts_out->badtable))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Feature skip bad column did not support under BADFILE or BADTABLE is on")));
+	if ( opts_out->skipbad && !is_from )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column only available using COPY FROM")));
+	if ( (opts_out->skiplist) && opts_out->skipbad )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column did not support when skiplist is on")));
+	if ( (!opts_out->csv_mode) && opts_out->skipbad )
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("COPY skip bad column just for CSV mode")));
+	/* End - BUG#Z1616 */
 	/* Begin - BUG:M0000368 */
 	if ( (opts_out->skiplist) && !is_from )
 		ereport(ERROR,
@@ -830,6 +921,28 @@ ProcessCopyOptions(ParseState *pstate,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("COPY skiplist support just for CSV mode")));
 	/* End - BUG:M0000368 */
+	/* Begin - BUG#M0000414 */
+	if (!opts_out->csv_mode && (opts_out->doubdeli || opts_out->quotes))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Text and Binary file type is not support for double deli and quote")));
+	if (!opts_out->doubdeli && opts_out->quotes)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("CSV type is not support for only quotes as no doubdeli")));
+	if (opts_out->doubdeli && strlen(opts_out->doubdeli) != 8)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Double delimiters(doubdeli) must be 8 length")));
+	if (opts_out->quotes && strlen(opts_out->quotes) != 8)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Double quotes(quotes) must be 8 length")));
+	if (ORA_PARSER != compatible_db && quotes_specified == true)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				errmsg("Double quotes(quotes) just support in ora port")));
+	/* End - BUG#00000000414 */
 }
 
 /*

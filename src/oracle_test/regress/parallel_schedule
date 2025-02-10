@@ -224,3 +224,12 @@ test: copy_skip
 #/* Begin - ReqID:SRS-SQL-SCHEMA */
 test: ora_schema
 #/* End - ReqID:SRS-SQL-SCHEMA */
+
+#/* Begin - BUG#Z1616 */
+test: copy_skipbadR
+#/* End - BUG#Z1616 */
+
+#/* Begin - BUG#M0000414 */
+test: ora_copy_double
+test: ora_copy_null
+#/* End - BUG#M0000414 */
