@@ -7727,20 +7727,13 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	if (pg_object_create_obj_hook && compatible_db == ORA_PARSER)
 	{
-		ObjectAddress address, address_paraent;
+		ObjectAddress 	address_paraent;/* BUGZ1662 */
 		PgObjectInfo	objori;
-		ObjectAddressSubSet(address, AttributeRelationId, myrelid, newattnum);
 		ObjectAddressSubSet(address_paraent, RelationRelationId, myrelid, 0);
 		objori = pg_object_get_ori_infor_hook(address_paraent);
 		/* Begin - BUG#Z1662 */
 		if (objori != NULL)
-		{
-			pg_object_create_obj_hook(colDef->colname, RelationGetNamespace(rel), true,
-												 'c',
-												 address,DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum("{\"fill zeor\": 5}"))),
-												 NULL);
 			pg_object_alter_obj_hook(address_paraent, RelationGetRelationName(rel), RelationGetNamespace(rel), objori->orioption, NULL);
-		}
 		/* End - BUG#Z1662 */
 	}
 	/* END - ReqID:SRS-CMD-PGDUMP */
