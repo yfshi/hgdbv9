@@ -4507,7 +4507,7 @@ AfterTriggerExecute(EState *estate,
 				fprintf(bad_file,"%s: %s: %s: %s: %c: %s: %s\n",	/* BUG#Z1149 */
 					estate->taskid, estate->schema_name, estate->cur_relname,
 					estate->filename, BAD_RECORD_F,
-					curlineno_str, linebuf_cut->data); 
+					curlineno_str, linebuf_cut->data);
 
 				/* close the file */
 				if (fclose(bad_file)!=0)
@@ -4593,7 +4593,7 @@ AfterTriggerExecute(EState *estate,
 					(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 					errmsg("no validate output for error when tolerate is true")));
 
-			/* 
+			/*
 			 * buffer refcount leak
 			 * and TupleDesc reference leak
 			 */
@@ -5085,10 +5085,10 @@ MakeTransitionCaptureState(TriggerDesc *trigdesc, Oid relid, CmdType cmdType)
 
 	/* Now build the TransitionCaptureState struct, in caller's context */
 	state = (TransitionCaptureState *) palloc0(sizeof(TransitionCaptureState));
-	state->tcs_delete_old_table = trigdesc->trig_delete_old_table;
-	state->tcs_update_old_table = trigdesc->trig_update_old_table;
-	state->tcs_update_new_table = trigdesc->trig_update_new_table;
-	state->tcs_insert_new_table = trigdesc->trig_insert_new_table;
+	state->tcs_delete_old_table = need_old_del;
+	state->tcs_update_old_table = need_old_upd;
+	state->tcs_update_new_table = need_new_upd;
+	state->tcs_insert_new_table = need_new_ins;
 	state->tcs_private = table;
 
 	return state;
