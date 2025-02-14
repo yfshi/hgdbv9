@@ -217,8 +217,12 @@ pg2hg_check: pg2hg_test.sh all temp-install
 hg2pg_check: hg2pg_test.sh all temp-install
 	MAKE=$(NOTSUBMAKEMAKE) $(with_temp_install) bindir=$(abs_top_builddir)/tmp_install/$(bindir) EXTRA_REGRESS_OPTS="$(EXTRA_REGRESS_OPTS)" $(SHELL) $<
 
+#BUG - M514
+EXTRA_INSTALL=contrib/amcheck contrib/pageinspect
+
 #BEGIN - SQL PARSER
 oracle-check: oracle_test.sh all temp-install
+	$(if $(EXTRA_INSTALL),for extra in $(EXTRA_INSTALL); do $(MAKE) -C '$(top_builddir)'/$$extra DESTDIR='$(abs_top_builddir)'/tmp_install install || exit; done)
 	MAKE=$(NOTSUBMAKEMAKE) $(with_temp_install) bindir=$(abs_top_builddir)/tmp_install/$(bindir) EXTRA_REGRESS_OPTS="$(EXTRA_REGRESS_OPTS)" $(SHELL) $<
 #END - SQL PARSER
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
