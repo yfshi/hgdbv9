@@ -224,10 +224,6 @@ extern void select_best_grantor(Oid roleId, AclMode privileges,
 								Oid *grantorId, AclMode *grantOptions);
 
 extern void initialize_acl(void);
-extern Oid get_instancerol_oid(const RoleSpec *role);
-extern Oid get_databaserol_oid(const RoleSpec *role);
-extern Oid get_databaseuser_oid(const char *rolename, Oid dboid);
-extern Oid get_instanceuser_oid(const char *rolename);
 
 /*
  * prototypes for functions in aclchk.c

@@ -765,11 +765,6 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	}
 	else if (IsBackgroundWorker)
 	{
-		/* Look up the username */
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Find a specific type of user
-		 */
 		if (username == NULL && !OidIsValid(useroid))
 		{
 			InitializeSessionUserIdStandalone();
@@ -777,69 +772,17 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 		}
 		else
 		{
-			if (in_dbname != NULL && strcmp(in_dbname,"") != 0)
-			{
-				HeapTuple	tuple;
-				Form_pg_database dbform;
-
-				tuple = GetDatabaseTuple(in_dbname);
-				if (!HeapTupleIsValid(tuple))
-					ereport(FATAL,
-							(errcode(ERRCODE_UNDEFINED_DATABASE),
-							errmsg("database \"%s\" does not exist", in_dbname)));
-				dbform = (Form_pg_database) GETSTRUCT(tuple);
-				MyDatabaseId = dbform->oid;
-			}
-			else if(dboid != 0)
-			{
-				MyDatabaseId = dboid;
-			}
-
-			if ((in_dbname != NULL && strcmp(in_dbname,"") != 0) || (dboid != 0))
-				InitializeSessionUserId(username, useroid, MyDatabaseId);
-			else 
-				InitializeSessionUserId(username, useroid, 0);
+			InitializeSessionUserId(username, useroid);
 			am_superuser = superuser();
 		}
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
 	}
 	else
 	{
 		/* normal multiuser case */
 		Assert(MyProcPort != NULL);
-		/*
-		 * Begin - ReqID:SRS-MISC-USER 
-		 */
-
-		if (in_dbname != NULL && strcmp(in_dbname,"") != 0)
-		{
-			HeapTuple	tuple;
-			Form_pg_database dbform;
-
-			tuple = GetDatabaseTuple(in_dbname);
-			if (!HeapTupleIsValid(tuple))
-				ereport(FATAL,
-						(errcode(ERRCODE_UNDEFINED_DATABASE),
-						errmsg("database \"%s\" does not exist", in_dbname)));
-			dbform = (Form_pg_database) GETSTRUCT(tuple);
-			MyDatabaseId = dbform->oid;
-		}
-		else if(dboid != 0)
-		{
-			MyDatabaseId = dboid;
-		}
-
 		PerformAuthentication(MyProcPort);
-		if ((in_dbname != NULL && strcmp(in_dbname,"") != 0) || (dboid != 0))
-			InitializeSessionUserId(username, useroid, MyDatabaseId);
-		else 
-			InitializeSessionUserId(username, useroid, 0);
+		InitializeSessionUserId(username, useroid);
 		am_superuser = superuser();
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
 	}
 
 	/*

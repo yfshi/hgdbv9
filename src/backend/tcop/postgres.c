@@ -4563,6 +4563,23 @@ PostgresMain(int argc, char *argv[],
 	if (am_walsender)
 		InitWalSender();
 
+	/* Begin - ROLLBACK_SRS-MISC-USER */
+	/*
+	 * If it is a walsender process here,
+	 * turn off the case switch, because the syntax of repl is not
+	 * compatible with upper and lower case, and the logical assignment
+	 * may be between native pg and ivorysql.
+	 * It is better for walsend to be compatible with pg.
+	 *
+	 * TODO:maybe other compatibile gucs should be closed
+	 */
+	if (am_walsender &&
+		database_mode == DB_ORACLE &&
+		compatible_db == ORA_PARSER)
+		SetConfigOption("ivorysql.identifier_case_switch", "normal",
+				PGC_USERSET, PGC_S_OVERRIDE);
+	/* End - ROLLBACK_SRS-MISC-USER */
+
 	/*
 	 * process any libraries that should be preloaded at backend start (this
 	 * likewise can't be done until GUC settings are complete)

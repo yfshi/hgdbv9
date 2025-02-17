@@ -29,7 +29,7 @@ REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_am;
 ERROR:  cannot reindex system catalogs concurrently
 -- shared catalog, fail
 REINDEX (TABLESPACE regress_tblspace) TABLE pg_authid;
-ERROR:  cannot move system relation "pg_authid_rolname_owndboid_index"
+ERROR:  cannot move system relation "pg_authid_rolname_index"
 REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_authid;
 ERROR:  cannot reindex system catalogs concurrently
 -- toast relations, fail
@@ -43,7 +43,7 @@ REINDEX (TABLESPACE regress_tblspace) TABLE CONCURRENTLY pg_toast.pg_toast_1260;
 ERROR:  cannot reindex system catalogs concurrently
 -- system catalog, fail
 REINDEX (TABLESPACE pg_global) TABLE pg_authid;
-ERROR:  cannot move system relation "pg_authid_rolname_owndboid_index"
+ERROR:  cannot move system relation "pg_authid_rolname_index"
 REINDEX (TABLESPACE pg_global) TABLE CONCURRENTLY pg_authid;
 ERROR:  cannot reindex system catalogs concurrently
 -- table with toast relation
@@ -880,7 +880,7 @@ INSERT INTO testschema.atable VALUES(1);	-- fail (checks index)
 ERROR:  duplicate key value violates unique constraint "anindex"
 DETAIL:  Key (column1)=(1) already exists.
 SELECT COUNT(*) FROM testschema.atable;		-- checks heap
- count 
+ COUNT 
 -------
      3
 (1 row)

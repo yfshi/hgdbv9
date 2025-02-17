@@ -317,9 +317,6 @@ struct dumpMethods dumpMethodsNative = {
 	.ConnectDatabase = ConnectDatabaseNative,
 	.getDbCompatibleMode = NULL,
 	.getDatabaseMode = NULL,
-	.haveDatabaseUser = NULL,
-	.getcurrentuserisInstanceSupperuser = NULL,
-	.getcurrentuserisDatabaseSupperuser = NULL,
 	.setIdentifierCaseSwitch = NULL,
 	.setNLSdateFormat = NULL,
 	.setup_connection = setup_connectionNative,
@@ -9874,9 +9871,6 @@ dumpDumpableObjectNative(Archive *fout, const DumpableObject *dobj)
 			break;
 		case DO_PRE_DATA_BOUNDARY:
 		case DO_POST_DATA_BOUNDARY:
-		case DO_DATABASEROLE:
-		case DO_DATABASEROLEMEMBERSHIP:
-		case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 		case DO_PACKAGE:
 			/* never dumped, nothing to do */
 			break;
@@ -18143,9 +18137,6 @@ addBoundaryDependenciesNative(DumpableObject **dobjs, int numObjs,
 				/* must come after the pre-data boundary */
 				addObjectDependency(dobj, preDataBound->dumpId);
 				break;
-			case DO_DATABASEROLE:
-			case DO_DATABASEROLEMEMBERSHIP:
-			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_PACKAGE:
 				/* nothing to do */
 				break;

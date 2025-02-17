@@ -1,6 +1,8 @@
 --
 -- DBMS_JOB PACKAGE.
 --
+CREATE USER system WITH superuser;
+\c - system
 /* Begin - ReqID:SRS-PLSQL-DBMS_JOB */
 DECLARE
   job_number INTEGER;
@@ -338,3 +340,11 @@ revoke execute on package sys.dbms_job from test;
 drop schema test;
 drop user test;
 /* END - BUG#M0000412 */
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+DROP USER system;

@@ -83,8 +83,6 @@ extern void getPublicationTables(Archive *fout, TableInfo tblinfo[],
 extern void getSubscriptions(Archive *fout);
 
 extern TableInfo *getTables(Archive *fout, int *numTables);
-extern DatabaseRolesInfo *getDbRoles(Archive *fout, int *numRoles);
-extern DbRolesMembershipInfo *getDbRoleMembership(Archive *fout, int *numRolesMembership);
 
 extern Archive *CreateArchiveOracle(const char *FileSpec, const ArchiveFormat fmt,
 									  const int compression, bool dosync, ArchiveMode mode,
@@ -94,6 +92,5 @@ extern void	ConnectDatabaseOracle(Archive *AHX,
 									bool isReconnect);
 extern void	ProcessArchiveRestoreOptionsOracle(Archive *AHX);
 extern void	RestoreArchiveOracle(Archive *AHX);
-extern DbTableSpaceInfo *getDbTablespace(Archive *fout, int *numTablespaces);	/* BUGZ1343 */
 
 #endif							/* PG_DUMP_ORACLE_H */

@@ -146,14 +146,9 @@ static void mark_create_done(ArchiveHandle *AH, TocEntry *te);
 static void inhibit_data_for_failed_table(ArchiveHandle *AH, TocEntry *te);
 
 static void StrictNamesCheck(RestoreOptions *ropt);
-/* BEGIN - ReqID:SRS-MISC-USER */
-static int get_owner_type(ArchiveHandle *AH, TocEntry *te);
-static void get_desc_ownerto(ArchiveHandle *AH, TocEntry *te);
-static char *getInstanceSuperuser(PGconn *conn);
 
-/* End - ReqID:SRS-MISC-USER */
 static char *getInstanceIdentifier_case_switch(PGconn *conn);	/* ReqID:SRS-SQL-FORCEVIEW */
-bool if_createsystem = false;/* BUGM431 */
+
 /*
  * Allocate a new DumpOptions block containing all default values.
  */
@@ -997,8 +992,7 @@ RestoreArchivePg(Archive *AHX)
 	ArchiveHandle *AH = (ArchiveHandle *) AHX;
 	RestoreOptions *ropt = AH->public.ropt;
 	bool		parallel_mode;
-	TocEntry   *te,
-			   *te1;
+	TocEntry   *te, *te1;
 	OutputContext sav;
 	bool		iscreatetable = false;
 
@@ -1064,27 +1058,9 @@ RestoreArchivePg(Archive *AHX)
 		AHX->maxRemoteVersion = 9999999;
 
 		ConnectDatabase(AHX, &ropt->cparams, false);
-		/* BEGIN - ReqID:SRS-MISC-USER */
+
 		getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
 		getDatabaseMode(((ArchiveHandle *) AHX)->connection);
-
-		/* BEGIN - BUG:z680,z538 */
-		if (DB_ORACLE == database_mode)
-		{
-			if (ropt->use_role != NULL)
-				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
-			else
-				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
-		}
-		if ((DB_ORACLE == database_mode) && (DB_ORACLE == db_mode))
-		{
-			if (ropt->use_role != NULL)
-				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
-			else
-				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
-		}
-		/* END - BUG:z680,z538 */
-		/* END - SQL PARSER */
 
 		/*
 		 * If we're talking to the DB directly, don't send comments since they
@@ -1169,7 +1145,6 @@ RestoreArchivePg(Archive *AHX)
 	if (AH->connection)
 	{
 		getDatabaseMode(AH->connection);
-		haveDatabaseUserPg(AH->connection);			/*  bug#M0000261 */
 	}
 	if ((DB_ORACLE == database_mode) && !iscreatetable)
 	{
@@ -1179,13 +1154,8 @@ RestoreArchivePg(Archive *AHX)
 			if(restoremode)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-			
-				if(CurrentUserIsInstanceSuperuser && haveDBuser)
-					ahprintf(AH, "set session authorization system;\n");
 				
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 				CurUser = DB;
@@ -1491,8 +1461,7 @@ RestoreArchiveOracle(Archive *AHX)
 	ArchiveHandle *AH = (ArchiveHandle *) AHX;
 	RestoreOptions *ropt = AH->public.ropt;
 	bool		parallel_mode;
-	TocEntry   *te,
-			   *te1;
+	TocEntry   *te, *te1;
 	OutputContext sav;
 	bool		iscreatetable = false;
 
@@ -1558,32 +1527,12 @@ RestoreArchiveOracle(Archive *AHX)
 		AHX->maxRemoteVersion = 9999999;
 
 		ConnectDatabase(AHX, &ropt->cparams, false);
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		/* BEGIN - BUG: M0000332 */
+
 		if(!native_PG)
 		{
 			getDbCompatibleMode(((ArchiveHandle *) AHX)->connection);
 			getDatabaseMode(((ArchiveHandle *) AHX)->connection);
 		}
-		/* END - BUG: M0000332 */
-
-		/* BEGIN - BUG:z680,z538 */
-		if (DB_ORACLE == database_mode)
-		{
-			if (ropt->use_role != NULL)
-				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
-			else
-				getcurrentuserisInstanceSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
-		}
-		if ((DB_ORACLE == database_mode) && (DB_ORACLE == db_mode))
-		{
-			if (ropt->use_role != NULL)
-				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, ropt->use_role);
-			else
-				getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) AHX)->connection, NULL);
-		}
-		/* END - BUG:z680,z538 */
-		/* END - SQL PARSER */
 
 		/*
 		 * If we're talking to the DB directly, don't send comments since they
@@ -1669,7 +1618,6 @@ RestoreArchiveOracle(Archive *AHX)
 	if(!native_PG)
 	{
 		getDatabaseMode(AH->connection);
-		haveDatabaseUserOracle(AH->connection);			/*  bug#M0000261 */
 	}
 	/* END - BUG: M0000332 */
 	if ((DB_ORACLE == database_mode) && !iscreatetable)
@@ -1680,12 +1628,9 @@ RestoreArchiveOracle(Archive *AHX)
 			if(restoremode)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-			
-				ahprintf(AH, "set session authorization system;\n");
 				
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
+
 				if (( AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 
@@ -1818,13 +1763,8 @@ RestoreArchiveOracle(Archive *AHX)
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
 								else
-								/*BEGIN - BUGZ1362 */
-									if(strcmp(te->desc, "DATABASEROLE") == 0)
-										snprintf(buffer, sizeof(buffer), "DROP ROLE");
-									else
-								/* END - BUGZ1362 */
-										snprintf(buffer, sizeof(buffer), "DROP %s",
-												te->desc);
+									snprintf(buffer, sizeof(buffer), "DROP %s",
+											te->desc);
 								mark = strstr(dropStmt, buffer);
 
 								if (mark)
@@ -1967,7 +1907,7 @@ RestoreArchiveOracle(Archive *AHX)
 	{
 		if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 		{
-			ahprintf(AH, "reset ivorysql.compatible_mode;\nset session authorization DEFAULT;\n");
+			ahprintf(AH, "reset ivorysql.compatible_mode;\n");
 		}
 		
 	}
@@ -2513,13 +2453,8 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 						if (restoremode)
 						{
 							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-							/* Begin - BUGM431 */
-							if(PQntuples(ExecuteSqlQuery(((Archive *)AH), "SELECT rolname FROM pg_authid a LEFT JOIN pg_database d ON a.rolowndboid = d.oid WHERE rolname = 'system' AND datname = CURRENT_DATABASE();", PGRES_TUPLES_OK)))
-								ahprintf(AH, "set session authorization system;\n");
-							/* End - BUGM431 */
 							ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-							ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-							ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
+
 							if ((AH->format == archNull))
 								ahprintf(AH, "\\parser\n");
 							ahprintf(AH, "\n\n");
@@ -2537,31 +2472,6 @@ restore_toc_entry(ArchiveHandle *AH, TocEntry *te, bool is_parallel)
 		}
 	}
 
-	/* Begin - BUGM431 */
-	if(database_mode == DB_ORACLE && !if_createsystem && AH->connection && ((AH->public.dopt->binary_upgrade) ||
-		(strcmp(PQgetvalue(ExecuteSqlQuery(((Archive *)AH), "SELECT PG_IS_IN_UPGRADE();", PGRES_TUPLES_OK), 0, 0), "t") == 0)))
-	{
-		TocEntry *te1;
-		ahprintf(AH,"set ivorysql.compatible_mode to oracle;\n");
-		compatible_mode = ORA_PARSER;
-		if_createsystem = true;
-		for(te1 = AH->toc->next; te1 != AH->toc; te1 = te1->next)
-		{
-			if (strcmp(te1->desc, "DATABASEROLE") == 0 &&
-				(strcmp(fmtId(te1->tag), "system") == 0 ||
-				strcmp(fmtId(te1->tag), "\"system\"") == 0 ||
-				strcmp(fmtId(te1->tag), "sys") == 0 ||
-				strcmp(fmtId(te1->tag), "\"sys\"") == 0))
-			{
-				ahprintf(AH, "SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%d'::pg_catalog.oid);\n", te1->catalogId.oid);
-				ahprintf(AH, "CREATE USER %s WITH SUPERUSER;\n\n", fmtId(te1->tag));
-				if (strcmp(fmtId(te1->tag), "system") == 0 ||
-					strcmp(fmtId(te1->tag), "\"system\"") == 0)
-					break;
-			}
-		}
-	}
-	/* End - BUGM431*/
 	/*
 	 * If it has a data component that we want, then process that
 	 */
@@ -2857,8 +2767,7 @@ ArchiveEntry(Archive *AHX, CatalogId catalogId, DumpId dumpId,
 	newToc->copyStmt = opts->copyStmt ? pg_strdup(opts->copyStmt) : NULL;
 	newToc->d.oracle.ident_case = opts->ident_case;		/* BUG#M0000323 SRS-MYSQL-PGDUMP*/
 	newToc->compatible_mode = opts->compatible_mode ? pg_strdup(opts->compatible_mode) : NULL;	/* ReqID:SRS-CMD-PGDUMP */
-	newToc->d.oracle.User_binary_upgrade = opts->User_binary_upgrade ? pg_strdup(opts->User_binary_upgrade) : NULL; /* BUGZ1398 */
-	newToc->d.oracle.usertype = opts->user_type ? pg_strdup(opts->user_type) : NULL;	/* BUGZ1408 */
+	newToc->d.oracle.User_binary_upgrade = NULL;
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (opts->caselowernum == 0 || opts->caselowernum == 1 || opts->caselowernum == 2)
 		newToc->d.mysql.caselowernum = opts->caselowernum;
@@ -4239,57 +4148,6 @@ WriteDataChunksForTocEntry(ArchiveHandle *AH, TocEntry *te)
 	AH->currToc = NULL;
 }
 
-/*
- * get_desc_ownerto  ReqID:SRS-MISC-USE
- *
- * get desc owner 
- */
-static void
-get_desc_ownerto(ArchiveHandle *AH, TocEntry *te)
-{
-	if (strcmp(te->desc, "AGGREGATE") == 0 ||
-		strcmp(te->desc, "BLOB") == 0 ||
-		strcmp(te->desc, "COLLATION") == 0 ||
-		strcmp(te->desc, "CONVERSION") == 0 ||
-		strcmp(te->desc, "DATABASE") == 0 ||
-		strcmp(te->desc, "DOMAIN") == 0 ||
-		strcmp(te->desc, "FUNCTION") == 0 ||
-		strcmp(te->desc, "OPERATOR") == 0 ||
-		strcmp(te->desc, "OPERATOR CLASS") == 0 ||
-		strcmp(te->desc, "OPERATOR FAMILY") == 0 ||
-		strcmp(te->desc, "PROCEDURE") == 0 ||
-		strcmp(te->desc, "PROCEDURAL LANGUAGE") == 0 ||
-		strcmp(te->desc, "SCHEMA") == 0 ||
-		strcmp(te->desc, "EVENT TRIGGER") == 0 ||
-		strcmp(te->desc, "TABLE") == 0 ||
-		strcmp(te->desc, "TYPE") == 0 ||
-		strcmp(te->desc, "VIEW") == 0 ||
-		strcmp(te->desc, "MATERIALIZED VIEW") == 0 ||
-		strcmp(te->desc, "SEQUENCE") == 0 ||
-		strcmp(te->desc, "FOREIGN TABLE") == 0 ||
-		strcmp(te->desc, "TEXT SEARCH DICTIONARY") == 0 ||
-		strcmp(te->desc, "TEXT SEARCH CONFIGURATION") == 0 ||
-		strcmp(te->desc, "FOREIGN DATA WRAPPER") == 0 ||
-		strcmp(te->desc, "SERVER") == 0 ||
-		strcmp(te->desc, "STATISTICS") == 0 ||
-		strcmp(te->desc, "PUBLICATION") == 0 ||
-		strcmp(te->desc, "PACKAGE") == 0 ||
-		strcmp(te->desc, "TABLESPACE") == 0 ||
-		strcmp(te->desc, "SUBSCRIPTION") == 0 ||
-		strcmp(te->desc, "POLICY") == 0)	/* BUGZ1408 */
-	{
-		int utype = 0;
-
-		if (te->owner && te->catalogId.oid && te->tag)
-			utype = get_owner_type(AH,te);
-		
-		if (utype == 2)
-			WriteStr(AH, "DATABASEUSER");
-		else if (utype == 1)
-			WriteStr(AH, "INSTANCEUSER");
-	}
-}
-
 void
 WriteToc(ArchiveHandle *AH)
 {
@@ -4333,23 +4191,13 @@ WriteToc(ArchiveHandle *AH)
 		WriteStr(AH, te->namespace);
 		WriteStr(AH, te->tablespace);
 		WriteStr(AH, te->tableam);
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		/* BEGIN - BUG: M0000332 */
-		if(!native_PG)
-		{
-			if (AH->connection)
-				getDatabaseMode(AH->connection);
-			if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-				get_desc_ownerto(AH, te);
-		}
-		/* END - BUG: M0000332 */
-		/* END - ReqID:SRS-MISC-USER */
 		WriteStr(AH, te->owner);
 		WriteStr(AH, "false");
 		WriteInt(AH, te->d.oracle.ident_case);/* ReqID:SRS-SQL-FORCEVIEW SRS-MYSQL-PGDUMP */
 		WriteStr(AH, te->compatible_mode);	/* ReqID:SRS-CMD-PGDUMP */
 		/* BEGIN - BUGZ1398 */
-		WriteStr(AH, te->d.oracle.User_binary_upgrade);
+		if (database_mode == DB_ORACLE)
+			WriteStr(AH, te->d.oracle.User_binary_upgrade);
 		/* END - BUGZ1398 */
 		/* Begin - ReqID:SRS-MYSQL-CASE */
 		if (te->compatible_mode != NULL && !strcmp(te->compatible_mode, "m"))
@@ -4377,7 +4225,6 @@ ReadToc(ArchiveHandle *AH)
 	int			depIdx;
 	int			depSize;
 	TocEntry   *te;
-	char	   *tmp1;
 
 	AH->tocCount = ReadInt(AH);
 	AH->maxDumpId = 0;
@@ -4457,16 +4304,7 @@ ReadToc(ArchiveHandle *AH)
 		if (AH->version >= K_VERS_1_14)
 			te->tableam = ReadStr(AH);
 
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		tmp1 = ReadStr(AH);
-		if(tmp1 && (pg_strcasecmp(tmp1, "DATABASEUSER") == 0 || pg_strcasecmp(tmp1, "INSTANCEUSER") == 0 ))
-		{
-			te->d.oracle.usertype = tmp1;	/* ReqID:SRS-MYSQL-PGDUMP */
-			te->owner = ReadStr(AH);
-		}
-		else if(tmp1)
-			te->owner = tmp1;
-		/* END - ReqID:SRS-MISC-USER */
+		te->owner = ReadStr(AH);
 
 		if (AH->version < K_VERS_1_9 || strcmp(ReadStr(AH), "true") == 0)
 			pg_log_warning("restoring tables WITH OIDS is not supported anymore");
@@ -4480,7 +4318,7 @@ ReadToc(ArchiveHandle *AH)
 			te->compatible_mode = ReadStr(AH);
 		/* END - ReqID:SRS-CMD-PGDUMP */
 		/* BEGIN - BUGZ1398 */
-		if (AH->version >= K_VERS_1_17)
+		if (AH->version >= K_VERS_1_17 && database_mode == DB_ORACLE)
 			te->d.oracle.User_binary_upgrade = ReadStr(AH);
 		/* END - BUGZ1398 */
 		 /* Begin - ReqID:SRS-MYSQL-CASE */
@@ -5121,23 +4959,20 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 				getDatabaseMode(AH->connection);
 		}
 		/* END - BUG: M0000332 */
+
 		if ((DB_ORACLE == database_mode))
 		{
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 			{
 				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
-				//ExecuteSqlStatement((Archive *)AH, "set ivorysql.identifier_case_switch = normal;");
-				setNLSdateFormat(AH->connection);							/* BUG:z774 */
+				setNLSdateFormat(AH->connection);				/* BUG:z774 */
 
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.compatible_mode to oracle;\n");
-				if (PQntuples(ExecuteSqlQuery(((Archive *)AH), "SELECT rolname FROM pg_authid a LEFT JOIN pg_database d ON a.rolowndboid = d.oid WHERE rolname = 'system' AND datname = CURRENT_DATABASE();", PGRES_TUPLES_OK)))/* BUGM431 */
-					appendPQExpBufferStr(&connectbuf, "set session authorization system;\n");
 				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");
-				appendPQExpBufferStr(&connectbuf, "set ivorysql.grant_usertype to oracle;\n");
-				appendPQExpBufferStr(&connectbuf, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
+
 				if ((AH->format == archNull))
 					appendPQExpBufferStr(&connectbuf, "\\parser\n");
-				//appendPQExpBufferStr(&connectbuf, "\\parser\n");
+
 				appendPQExpBufferStr(&connectbuf, "\n\n");
 				compatible_mode = ORA_PARSER;
 				CurUser = DB;
@@ -5147,6 +4982,7 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 				ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
 			}
 		}
+
 		ahprintf(AH, "%s\n", connectbuf.data);
 		/* End - ReqID:SRS-MISC-USER */
 		termPQExpBuffer(&connectbuf);
@@ -5532,6 +5368,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	}
 	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{
+		#if 0
 		/* BEGIN - ReqID:SRS-MISC-USER */
 		if ((strcmp(te->desc, "DATABASE") == 0) && (DB_ORACLE == database_mode) && (strcmp(te->tag, "template1") !=0 ))
 		{ 
@@ -5547,6 +5384,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			}
 		}
 		/* END - ReqID:SRS-MISC-USER */
+		#endif
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -5595,45 +5433,6 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 	{
 		ahprintf(AH, "CREATE SCHEMA %s;\n\n\n", fmtId(te->tag));
 	}
-	else if (strcmp(te->desc, "DATABASEROLE") == 0 && (DB_ORACLE == database_mode))
-	{
-		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser && 
-			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))			/*  bug#M0000261 */	/* BUG:z680,z538 */
-		{
-			if((strcmp( fmtId(te->tag), "system") != 0) && (strcmp( fmtId(te->tag), "sys") != 0) && (strcmp( fmtId(te->tag), "\"system\"") != 0) && (strcmp( fmtId(te->tag), "\"sys\"") != 0))			/*  bug#z680 *//* BUGM431 */
-			{	/* BEGIN - BUGZ1398 */
-				if((te->d.oracle.User_binary_upgrade != NULL) &&	/* BUGZ1582 */
-					(strlen(te->d.oracle.User_binary_upgrade) != 0))	/* BUGZ1450 */
-				{
-					ahprintf(AH, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
-					ahprintf(AH, "%s", te->d.oracle.User_binary_upgrade);
-				}
-				/* END - BUGZ1398 */
-				ahprintf(AH, "CREATE ROLE %s;\n", fmtId(te->tag));
-			}
-			ahprintf(AH, "%s\n\n", te->defn);
-		}
-	}
-	else if (strcmp(te->desc, "DATABASEROLEMEMBERSHIP") == 0 && (DB_ORACLE == database_mode))
-	{
-		if ((getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser && 
-			(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))	
-		{
-			ahprintf(AH, "%s\n\n", te->defn);
-		}
-	}
-	/* BEGIN - BUGZ1343 */
-	else if(strcmp(te->desc, "DATABASETABLESPACE") == 0 && (DB_ORACLE == database_mode))
-	{
-		if (CurUser == INSTANCE)
-		{
-			ahprintf(AH, "set session authorization %s;\n", fmtId(te->owner));
-			CurUser = DB;
-		}
-		ahprintf(AH, "%s\n\n", te->defn);
-
-	}
-	/* END - BUGZ1343 */
 	else
 	{
 		if (te->defn && strlen(te->defn) > 0)
@@ -5710,40 +5509,11 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			else
 			/* Begin - BUGZ1408 */
 			{
-				if(database_mode == DB_ORACLE &&
-					getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG &&
-					strcmp(te->desc, "POLICY") == 0)
-				{
-					if ((strcmp(te->d.oracle.usertype, "DATABASEUSER") == 0) && (CurUser == INSTANCE))
-					{
-						if (compatible_mode == PG_PARSER)
-						{
-							ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-							compatible_mode = ORA_PARSER;
-							if (AH->format == archNull || AH->connection == NULL)
-								ahprintf(AH, "\\parser\n\n");
-						}
-						ahprintf(AH, "set session authorization %s;\n\n", fmtId(te->owner));
-						CurUser = DB;
-					}
-					else if((strcmp(te->d.oracle.usertype, "INSTANCEUSER") == 0) && (CurUser == DB))
-					{
-						if(compatible_mode == ORA_PARSER)
-						{
-							ahprintf(AH, "set ivorysql.compatible_mode to pg;\n");
-							compatible_mode = PG_PARSER;
-							if (AH->format == archNull || AH->connection == NULL)
-								ahprintf(AH, "\\parser\n\n");
-						}
-						ahprintf(AH, "set session authorization %s;\n\n", fmtId(te->owner));
-						CurUser = INSTANCE;
-					}
-				}
 				ahprintf(AH, "%s\n\n", te->defn);
 			}
 			/* End - BUGZ1408 */
 
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG && database_mode != DB_MYSQL && strcmp(te->desc, "POLICY") != 0)	/* ReqID:SRS-MYSQL-PGDUMP */	/* BUGZ1408 */
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */	/* BUGZ1408 */
 			{
 				if (compatible_mode == PG_PARSER)
 				{
@@ -5751,23 +5521,6 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 					if (AH->format == archNull || AH->connection == NULL)
 						ahprintf(AH, "\n\\parser\n");
 					compatible_mode = ORA_PARSER;					
-				}
-			}
-			if (strcmp(te->desc, "INDEX") != 0 && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
-			{
-				if (getDumpMode(DumpMode) == ASSIGNDUMPMODE_PG)
-				{
-					int user_type = get_owner_type(AH,te); /* 1 is instanceuser, 2 is databaseuser */
-					if ((user_type == 2) && (CurUser == INSTANCE))
-					{
-						ahprintf(AH, "set session authorization %s;\n", fmtId(te->owner));
-						CurUser = DB;
-					}
-					else if((user_type == 1) && (CurUser == DB))
-					{
-						ahprintf(AH, "set session authorization %s;\n", fmtId(te->owner));
-						CurUser = INSTANCE;
-					}
 				}
 			}
 
@@ -5819,31 +5572,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			appendPQExpBufferStr(temp, "ALTER ");
 			_getObjectDescription(temp, te);
 
-			/* BEGIN - ReqID:SRS-MISC-USER */
-			if (DB_ORACLE == database_mode)
-			{
-				if(!RestoringToDB(AH))
-				{	
-					int utype = get_owner_type(AH,te);
-
-					if((utype == 2) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						appendPQExpBuffer(temp, " OWNER TO DATABASEUSER %s;", fmtId(te->owner));
-					else if((utype == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						appendPQExpBuffer(temp, " OWNER TO INSTANCEUSER %s;", fmtId(te->owner));
-					else 
-						appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
-				}
-				else
-				{
-					if ((te->d.oracle.usertype) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 SRS-MYSQL-PGDUMP */
-						appendPQExpBuffer(temp, " OWNER TO %s %s;", te->d.oracle.usertype, fmtId(te->owner));		/* ReqID:SRS-MYSQL-PGDUMP */
-					else
-						appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
-				}
-				
-			}
-			else
-				appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
+			appendPQExpBuffer(temp, " OWNER TO %s;", fmtId(te->owner));
 			/* END - ReqID:SRS-MISC-USER */
 
 			ahprintf(AH, "%s\n\n", temp->data);
@@ -5881,6 +5610,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			free(AH->currUser);
 		AH->currUser = NULL;
 	}
+
 	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP */
 	{
 		/* BEGIN - ReqID:SRS-MISC-USER */
@@ -5889,11 +5619,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
-				if(CurrentUserIsInstanceSuperuser && haveDBuser)
-					ahprintf(AH, "set session authorization system;\n");
 				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
-				ahprintf(AH, "set ivorysql.grant_usertype to oracle;\n");
-				ahprintf(AH, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 				if ((AH->format == archNull))
 					ahprintf(AH, "\\parser\n");
 				ahprintf(AH, "\n\n");
@@ -5965,6 +5691,7 @@ WriteHead(ArchiveHandle *AH)
 	/* END - ReqID:SRS-MYSQL-PGDUMP */
 	else
 		AH->WriteBufPtr(AH, "PGDMP", 5);
+
 	/* BEGIN - bug#M0000238 */
 	if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))			/*  bug#M0000261 */
 		AH->WriteBytePtr(AH, 'O');
@@ -6070,6 +5797,8 @@ ReadHead(ArchiveHandle *AH)
 	else
 		vmaj = AH->ReadBytePtr(AH);
 	/* END - bug#M0000238 */
+
+
 	vmin = AH->ReadBytePtr(AH);
 
 	if (vmaj > 1 || (vmaj == 1 && vmin > 0))	/* Version > 1.0 */
@@ -7323,508 +7052,6 @@ DeCloneArchive(ArchiveHandle *AH)
 	free(AH);
 }
 
-
-/*
- * get_owner_type  ReqID:SRS-MISC-USE
- * 
- * get owner type
- */
-static int  
-get_owner_type(ArchiveHandle *AH, TocEntry *te)
-{
-	PQExpBuffer query_cmd;
-	
-	int		is_ownerto_database = 0;
-	int			ntups;
-	PGresult   *res = NULL;	/* BUGZ1296 */
-
-	if(!haveDBuser)		/*  bug#M0000261 */
-		return 1;
-
-	if(((Archive *)AH)->remoteVersion < 140008)
-		return 1;
-
-	query_cmd = createPQExpBuffer();
-
-	if (strcmp(te->desc, "TABLE") == 0 ||
-			strcmp(te->desc, "VIEW") == 0 ||
-			strcmp(te->desc, "MATERIALIZED VIEW") == 0 ||
-			strcmp(te->desc, "SEQUENCE") == 0 ||
-			strcmp(te->desc, "FOREIGN TABLE") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_class c "
-								"left join ivory_user a on c.relowner = a.usesysid "
-								"where c.oid = %u and c.relname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "FOREIGN DATA WRAPPER") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_foreign_data_wrapper fdw " 
-								"left join ivory_user a on fdw.fdwowner = a.usesysid "
-								"where fdw.oid = %d and fdw.fdwname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "SERVER") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_foreign_server fs " 
-								"left join ivory_user a on fs.srvowner = a.usesysid "
-								"where fs.oid = %d and fs.srvname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "STATISTICS") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_statistic_ext ste " 
-								"left join ivory_user a on ste.stxowner = a.usesysid "
-								"where ste.oid = %d and ste.stxname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "CONVERSION") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_conversion c " 
-								"left join ivory_user a on c.conowner = a.usesysid "
-								"where c.oid = %d and c.conname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "TEXT SEARCH DICTIONARY") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_ts_dict tsd " 
-								"left join ivory_user a on tsd.dictowner = a.usesysid "
-								"where tsd.oid = %d and tsd.dictname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "TEXT SEARCH CONFIGURATION") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid  from pg_catalog.pg_ts_config tsc " 
-								"left join ivory_user a on tsc.cfgowner = a.usesysid "
-								"where tsc.oid = %d and tsc.cfgname  = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "EVENT TRIGGER") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_event_trigger et " 
-								"left join ivory_user a on et.evtowner = a.usesysid "
-								"where et.oid = %d and et.evtname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "COLLATION") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_collation c " 
-								"left join ivory_user a on c.collowner = a.usesysid "
-								"where c.oid = %d and c.collname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "PUBLICATION") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_publication p " 
-								"left join ivory_user a on p.pubowner = a.usesysid "
-								"where p.oid = %d and p.pubname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "SUBSCRIPTION") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_subscription s " 
-								"left join ivory_user a on s.subowner = a.usesysid "
-								"where s.oid = %d and s.subname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "DATABASE") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_database d " 
-								"left join ivory_user a on d.datdba = a.usesysid "
-								"where d.oid = %d and a.usename = '%s'",
-								te->catalogId.oid, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 0;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "DOMAIN") == 0 ||
-			strcmp(te->desc, "TYPE") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_type t " 
-								"left join ivory_user a on t.typowner = a.usesysid "
-								"where t.oid = %d and t.typname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "BLOB") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_largeobject_metadata lm " 
-								"left join ivory_user a on lm.lomowner = a.usesysid "
-								"where lm.oid = %d and a.usename = '%s'",
-								te->catalogId.oid, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "OPERATOR") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_operator o " 
-								"left join ivory_user a on o.oprowner = a.usesysid "
-								"where o.oid = %d and o.oprname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "FUNCTION") == 0 ||
-			strcmp(te->desc, "AGGREGATE") == 0 ||
-			strcmp(te->desc, "PROCEDURE") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_proc p " 
-								"left join ivory_user a on p.proowner = a.usesysid "
-								"where p.oid = %d and a.usename = '%s'",
-								te->catalogId.oid, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "PROCEDURAL LANGUAGE") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_language l " 
-								"left join ivory_user a on l.lanowner = a.usesysid "
-								"where l.oid = %d and a.usename = '%s'",
-								te->catalogId.oid, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "OPERATOR FAMILY") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_opfamily op " 
-								"left join ivory_user a on op.opfowner = a.usesysid "
-								"where op.oid = %d and op.opfname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "OPERATOR CLASS") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_opclass op " 
-								"left join ivory_user a on op.opcowner = a.usesysid "
-								"where op.oid = %d and op.opcname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "SCHEMA") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_namespace n " 
-								"left join ivory_user a on n.nspowner = a.usesysid "
-								"where n.oid = %d and n.nspname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "PACKAGE") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_package pa " 
-								"left join ivory_user a on pa.pkgowner = a.usesysid "
-								"where pa.oid = %d and pa.pkgname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	else if(strcmp(te->desc, "TABLESPACE") == 0 )
-	{
-		appendPQExpBuffer(query_cmd, "select a.dboid from pg_catalog.pg_tablespace tsp " 
-								"left join ivory_user a on tsp.spcowner = a.usesysid "
-								"where tsp.oid = %d and tsp.spcname = '%s' and a.usename = '%s'",
-								te->catalogId.oid, te->tag, te->owner);
-		
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if (ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else 
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	/* Begin - BUGZ1408 */
-	else if(strcmp(te->desc, "POLICY") == 0)
-	{
-		appendPQExpBuffer(query_cmd, "SELECT rolowndboid FROM "
-									 "pg_policy p "
-									 "LEFT JOIN pg_class c ON c.oid = p.polrelid "
-									 "LEFT JOIN pg_authid a "
-									 "ON a.oid = c.relowner "
-									 "WHERE p.oid = %d;", te->catalogId.oid);
-		res = PQexec(AH->connection, query_cmd->data);
-		ntups = PQntuples(res);
-		if(ntups == 1)
-		{
-			if(atooid(PQgetvalue(res, 0, 0)) == 0)
-				is_ownerto_database = 1;
-			else
-				is_ownerto_database = 2;
-		}
-		else
-			is_ownerto_database = 0;
-	}
-	/* End - BUGZ1408 */
-	else
-		is_ownerto_database = 0;
-
-	if(res)	/* BUGZ1296 */
-		PQclear(res);
-	
-	destroyPQExpBuffer(query_cmd);
-
-	return is_ownerto_database;
-}
-
-
-/*
- * getInstanceSuperuser  ReqID:SRS-MISC-USE
- * 
- * get InstanceSuperuser
- */
-static char * 
-getInstanceSuperuser(PGconn *conn)
-{
-	PGresult *res;
-	PQExpBuffer q_cmd = createPQExpBuffer();
-	char *instancesu = NULL;
-
-	appendPQExpBufferStr(q_cmd, "select usename from pg_user where usesysid=10;");
-	res = PQexec(conn, q_cmd->data);	
-	instancesu = pg_strdup(PQgetvalue(res, 0, 0));
-	PQclear(res);
-	destroyPQExpBuffer(q_cmd);
-	
-	return instancesu;
-}
 
 /* Begin - ReqID:SRS-SQL-FORCEVIEW */
 /*

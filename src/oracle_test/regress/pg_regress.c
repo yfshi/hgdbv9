@@ -127,7 +127,6 @@ static void make_directory(const char *dir);
 static void header(const char *fmt,...) pg_attribute_printf(1, 2);
 static void status(const char *fmt,...) pg_attribute_printf(1, 2);
 static void psql_command(const char *database, const char *query,...) pg_attribute_printf(2, 3);
-static void psql_command_nosys(const char *database, const char *query,...) pg_attribute_printf(2, 3);
 
 /*
  * allow core files if possible.
@@ -1132,8 +1131,6 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
 	 */
 	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 			   accountname, domainname, fmtHba(superuser_name)) >= 0);
-	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
-			   accountname, domainname, fmtHba("system")) >= 0);
 	/* Begin - BUG#M0000227 */
 	/*
 	 * oracle_test regression test used owner
@@ -1143,6 +1140,9 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
 	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
 			   accountname, domainname, fmtHba("enrol22")) >= 0);
 	/* End - BUG#M0000227 */
+	/* regresion use system user */
+	CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
+			   accountname, domainname, fmtHba("system")) >= 0);
 
 	for (sl = extraroles; sl; sl = sl->next)
 		CW(fprintf(ident, "regress  \"%s@%s\"  %s\n",
@@ -1158,7 +1158,7 @@ config_sspi_auth(const char *pgdata, const char *superuser_name)
  * Since we use system(), this doesn't return until the operation finishes
  */
 static void
-psql_command_nosys(const char *database, const char *query,...)
+psql_command(const char *database, const char *query,...)
 {
 	char		query_formatted[1024];
 	char		query_escaped[2048];
@@ -1189,7 +1189,7 @@ psql_command_nosys(const char *database, const char *query,...)
 	}
 	*d = '\0';
 
-/* BEGIN - BUG#M0000239 */
+	/* BEGIN - BUG#M0000239 */
 #ifndef WIN32
 	if(port == (0xC000 | (PG_VERSION_NUM & 0x3FFF)))
 	{
@@ -1214,11 +1214,11 @@ psql_command_nosys(const char *database, const char *query,...)
 	else
 	{
 		snprintf(psql_cmd, sizeof(psql_cmd),
-			"\"%s%spsql\" -p %d -U system -X -t -c \"show port\" \"%s\"",
-			bindir ? bindir : "",
-			bindir ? "/" : "",
-			port,
-			database);
+				 "\"%s%spsql\" -p %d -X -t -c \"show port\" \"%s\"",
+				 bindir ? bindir : "",
+				 bindir ? "/" : "",
+				 port,
+				 database);
 
 		fp = popen(psql_cmd, "r");
 		temp_p = fgets(pg_port, sizeof(pg_port), fp);
@@ -1229,12 +1229,12 @@ psql_command_nosys(const char *database, const char *query,...)
 
 		/* Now do make oracle-installcheck */
 		snprintf(psql_cmd, sizeof(psql_cmd),
-			"\"%s%spsql\" -p %d -X -c \"%s\" \"%s\"",
-			bindir ? bindir : "",
-			bindir ? "/" : "",
-			port_pg,
-			query_escaped,
-			database);
+				 "\"%s%spsql\" -p %d -X -c \"%s\" \"%s\"",
+				 bindir ? bindir : "",
+				 bindir ? "/" : "",
+				 port_pg,
+				 query_escaped,
+				 database);
 		if (system(psql_cmd) != 0)
 		{
 			/* psql probably already reported the error */
@@ -1245,67 +1245,6 @@ psql_command_nosys(const char *database, const char *query,...)
 	}
 #endif
 /* END - BUG#M0000239 */
-}
-
-/*
- * Issue a command via psql, connecting to the specified database
- *
- * Since we use system(), this doesn't return until the operation finishes
- */
-static void
-psql_command(const char *database, const char *query,...)
-{
-	char		query_formatted[1024];
-	char		query_escaped[2048];
-	char		psql_cmd[MAXPGPATH + 2048];
-	va_list		args;
-	char	   *s;
-	char	   *d;
-
-	/* Generate the query with insertion of sprintf arguments */
-	va_start(args, query);
-	vsnprintf(query_formatted, sizeof(query_formatted), query, args);
-	va_end(args);
-
-	/* Now escape any shell double-quote metacharacters */
-	d = query_escaped;
-	for (s = query_formatted; *s; s++)
-	{
-		if (strchr("\\\"$`", *s))
-			*d++ = '\\';
-		*d++ = *s;
-	}
-	*d = '\0';
-
-	/* And now we can build and execute the shell command */
-
-/* BEGIN - ReqID:SRS-MISC-USER */
-	/* 
-	 *If it is port 1521, we need to use a database-level super user 
-	 * system to psql the database 
-	 */
-#ifndef WIN32
-	snprintf(psql_cmd, sizeof(psql_cmd),
-			 "\"%s%spsql\" -X -U system -c \"%s\" \"%s\"",
-			 bindir ? bindir : "",
-			 bindir ? "/" : "",
-			 query_escaped,
-			 database);
-#else
-	snprintf(psql_cmd, sizeof(psql_cmd),
-			 "\"%s%spsql\" -U system -X -c \"%s\" \"%s\"",
-			 bindir ? bindir : "",
-			 bindir ? "/" : "",
-			 query_escaped,
-			 database);
-#endif
-/* END- ReqID:SRS-MISC-USER */
-	if (system(psql_cmd) != 0)
-	{
-		/* psql probably already reported the error */
-		fprintf(stderr, _("command failed: %s\n"), psql_cmd);
-		exit(2);
-	}
 }
 
 /*
@@ -2144,7 +2083,7 @@ static void
 drop_database_if_exists(const char *dbname)
 {
 	header(_("dropping database \"%s\""), dbname);
-	psql_command_nosys("postgres", "DROP DATABASE IF EXISTS \"%s\"", dbname);
+	psql_command("postgres", "DROP DATABASE IF EXISTS \"%s\"", dbname);
 }
 
 static void
@@ -2158,12 +2097,12 @@ create_database(const char *dbname)
 	 */
 	header(_("creating database \"%s\""), dbname);
 	if (encoding)
-		psql_command_nosys("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0 ENCODING='%s'%s", dbname, encoding,
+		psql_command("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0 ENCODING='%s'%s", dbname, encoding,
 					 (nolocale) ? " LC_COLLATE='C' LC_CTYPE='C'" : "");
 	else
-		psql_command_nosys("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0%s", dbname,
+		psql_command("postgres", "CREATE DATABASE \"%s\" TEMPLATE=template0%s", dbname,
 					 (nolocale) ? " LC_COLLATE='C' LC_CTYPE='C'" : "");
-	psql_command_nosys(dbname,
+	psql_command(dbname,
 				 "ALTER DATABASE \"%s\" SET lc_messages TO 'C';"
 				 "ALTER DATABASE \"%s\" SET lc_monetary TO 'C';"
 				 "ALTER DATABASE \"%s\" SET lc_numeric TO 'C';"
@@ -2179,7 +2118,7 @@ create_database(const char *dbname)
 	for (sl = loadextension; sl != NULL; sl = sl->next)
 	{
 		header(_("installing %s"), sl->str);
-		psql_command_nosys(dbname, "CREATE EXTENSION IF NOT EXISTS \"%s\"", sl->str);
+		psql_command(dbname, "CREATE EXTENSION IF NOT EXISTS \"%s\"", sl->str);
 	}
 }
 
@@ -2194,15 +2133,12 @@ static void
 create_role(const char *rolename, const _stringlist *granted_dbs)
 {
 	header(_("creating role \"%s\""), rolename);
-	/* begin - bug:z925 */
 	psql_command("postgres", "CREATE ROLE \"%s\" WITH LOGIN", rolename);
 	for (; granted_dbs != NULL; granted_dbs = granted_dbs->next)
 	{
-		psql_command(granted_dbs->str, "CREATE ROLE \"%s\" WITH LOGIN",  rolename);
 		psql_command(granted_dbs->str, "GRANT ALL ON DATABASE \"%s\" TO \"%s\"",
 					 granted_dbs->str, rolename);
 	}
-	/* end - bug:z925 */
 }
 
 static void
@@ -2591,25 +2527,12 @@ regression_main(int argc, char *argv[],
 		/*
 		 * Check if there is a postmaster running already.
 		 */
-/* BEGIN - ReqID:SRS-MISC-USER */
-		/* 
-		 *If it is port 1521, we need to use a database-level super user 
-		 * system to psql the database 
-		 */
-#ifndef WIN32
 		snprintf(buf2, sizeof(buf2),
-				 "\"%s%spsql\" -X postgres -U system<%s 2>%s",
+				 "\"%s%spsql\" -X postgres <%s 2>%s",
 				 bindir ? bindir : "",
 				 bindir ? "/" : "",
 				 DEVNULL, DEVNULL);
-#else
-		snprintf(buf2, sizeof(buf2),
-				 "\"%s%spsql\" -U system -X postgres<%s 2>%s",
-				 bindir ? bindir : "",
-				 bindir ? "/" : "",
-				 DEVNULL, DEVNULL);
-#endif
-/* END - ReqID:SRS-MISC-USER */
+
 		for (i = 0; i < 16; i++)
 		{
 			if (system(buf2) == 0)
@@ -2771,67 +2694,8 @@ regression_main(int argc, char *argv[],
 		 */
 		if (!use_existing)
 		{
-			char		portname[16] = "";
-			char		oraportname[16] = "";
-			char		envport[16] = "";
-			char		*envoraport = NULL;
-			int				envport_s = 0;
-			int				envoraport_s = 0;
-
-			/* BEGIN - ReqID:SRS-MISC-USER */
-			/* 
-			 * database-level users cannot create and delete databases, 
-			 * so you need to use instance-level users to connect databases
-			 * 
-			 */
-			if(oraPort)
-			{
-				sprintf(portname, "%d", port);
-				sprintf(oraportname, "%d", oraPort);
-			}
-			else
-			{
-				sprintf(portname, "%d", port-1);
-				sprintf(oraportname, "%d", port);
-			}
-
-			if(port > 0)
-				setenv("PGPORT", portname, 1);
-			else
-			{
-				envoraport = pg_strdup(getenv("PGPORT"));
-				envoraport_s = atoi(envoraport);
-				
-				if(envoraport_s == 1521)
-				{
-					envport_s = 5432;
-					sprintf(envport, "%d", envport_s);
-				}
-				else
-				{
-					envport_s = envoraport_s -1;
-					sprintf(envport, "%d", envport_s);
-
-				}
-
-				if(envoraport_s > 0)
-					setenv("PGPORT", envport, 1);
-
-			}
 			for (sl = dblist; sl; sl = sl->next)
 				drop_database_if_exists(sl->str);
-
-			if(port > 0)
-				setenv("PGPORT", oraportname, 1);
-			else
-			{
-				if(envoraport_s > 0)
-					setenv("PGPORT", envoraport, 1);
-			}
-
-			pg_free(envoraport);
-			/* END - ReqID:SRS-MISC-USER */
-
 			for (sl = extraroles; sl; sl = sl->next)
 				drop_role_if_exists(sl->str);
 		}
@@ -2840,86 +2704,17 @@ regression_main(int argc, char *argv[],
 	/*
 	 * Create the test database(s) and role(s)
 	 */
-	//if (!use_existing)	/* ReqID:SRS-SQL-SCHEMA move below */
+	if (!use_existing)
 	{
-		char		portname[16] = "";
-		char		oraportname[16] = "";
-		char		envport[16] = "";
-		char		*envoraport = NULL;
-		int				envport_s = 0;
-		int				envoraport_s = 0;
-
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		/* 
-		 * database-level users cannot create and delete databases, 
-		 * so you need to use instance-level users to connect databases
-		 * 
-		 */
-		if(oraPort)
-		{
-			sprintf(portname, "%d", port);
-			sprintf(oraportname, "%d", oraPort);
-		}
-		else
-		{
-			sprintf(portname, "%d", port-1);
-			sprintf(oraportname, "%d", port);
-		}
-		
-
-		if(port > 0)
-			setenv("PGPORT", portname, 1);
-		else
-		{
-
-			envoraport = pg_strdup(getenv("PGPORT"));
-			envoraport_s = atoi(envoraport);
-			if(envoraport_s == 1521)
-			{
-				envport_s = 5432;
-				sprintf(envport, "%d", envport_s);
-			}
-			else
-			{
-				envport_s = envoraport_s -1;
-				sprintf(envport, "%d", envport_s);
-
-			}
-			
-			if(envoraport_s > 0)
-				setenv("PGPORT", envport, 1);
-
-		}
-
-		if (!use_existing)	/* ReqID:SRS-SQL-SCHEMA */
-			for (sl = dblist; sl; sl = sl->next)
-				create_database(sl->str);
-
 		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		psql_command_nosys("template1", "alter system set ivorysql.enable_ora_user_schema to off");
-		psql_command_nosys("template1", "select pg_reload_conf()");
+		psql_command("template1", "alter system set ivorysql.enable_ora_user_schema to off");
+		psql_command("template1", "select pg_reload_conf()");
 		/* End - ReqID:SRS-SQL-SCHEMA */
-
-		if(port > 0)
-			setenv("PGPORT", oraportname, 1);
-		else
-		{
-			if(envoraport_s > 0)
-				setenv("PGPORT", envoraport, 1);
-		}
-
-		if (envoraport != NULL)
-		{
-			pg_free(envoraport);
-			envoraport = NULL;
-		}
-		/* END - ReqID:SRS-MISC-USER */
-
+		for (sl = dblist; sl; sl = sl->next)
+			create_database(sl->str);
 		for (sl = extraroles; sl; sl = sl->next)
 			create_role(sl->str, dblist);
 	}
-
-	setenv("PGUSER", "system", 1);
 
 	/*
 	 * Ready to run the tests

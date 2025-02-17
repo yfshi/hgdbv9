@@ -128,10 +128,8 @@ static void expand_dbname_patternsPg(PGconn *conn, SimpleStringList *patterns,
 static void expand_dbname_patternsMysql(PGconn *conn, SimpleStringList *patterns,
 								   SimpleStringList *names);
 /* END - ReqID:SRS-MYSQL-PGDUMP */
-/* BEGIN - ReqID:SRS-MISC-USER */
-static void ResetCompatible(PQExpBuffer buf, PGconn *conn);
-static char *getInstanceSuperuser(PGconn *conn);
-/* END - ReqID:SRS-MISC-USER */
+
+
 static char pg_dump_bin[MAXPGPATH];
 static const char *progname;
 static PQExpBuffer pgdumpopts;
@@ -224,7 +222,7 @@ DumpAllMethods dumpallMethodsNative = {
 DumpAllMethods dumpallMethodsOracle = {
 	.mode = "o",
 	.getDatabaseMode = getDatabaseMode,
-	.haveDatabaseUser = haveDatabaseUserOracle,
+	.haveDatabaseUser = NULL,
 	.getDbCompatibleMode = getDbCompatibleMode,
 	.expand_dbname_patterns = expand_dbname_patternsOracle,
 	.dropDBs = dropDBsOracle,
@@ -239,7 +237,7 @@ DumpAllMethods dumpallMethodsOracle = {
 DumpAllMethods dumpallMethodsPg = {
 	.mode = "p",
 	.getDatabaseMode = getDatabaseMode,
-	.haveDatabaseUser = haveDatabaseUserPg,
+	.haveDatabaseUser = NULL,
 	.getDbCompatibleMode = getDbCompatibleMode,
 	.expand_dbname_patterns = expand_dbname_patternsPg,
 	.dropDBs = dropDBsPg,
@@ -705,18 +703,6 @@ main(int argc, char *argv[])
 	if (strcmp(DAM->mode,"n") != 0 && strcmp(DAM->mode,"m") != 0)	/* ReqID:SRS-MYSQL-PGDUMP, Add not equal to MySQL judgment condition. */
 	{
 		DAM->getDatabaseMode(conn);
-		DAM->haveDatabaseUser(conn);				/* begin - bug:M0000261 */
-	}
-	/* END - ReqID:SRS-CMD-PGDUMP */
-	if (DB_ORACLE == database_mode)
-	{
-		Oid			cdboid = InvalidOid;
-		cdboid = FindUserLevelbyoid(conn , InvalidOid);
-		if (OidIsValid(cdboid))
-		{
-			pg_log_error("Cannot execute pg_dumpall with a DATABASEUSER");	/* BUGZ1346 */
-			exit_nicely(1);
-		}
 	}
 
 	/* BEGIN - bug#M0000261 */
@@ -869,19 +855,11 @@ main(int argc, char *argv[])
 			DAM->dumpRoles(conn);
 
 			/* Dump role memberships --- need different method for pre-8.1 */
-			/* BEGIN - ReqID:SRS-MISC-USER */
-			if (server_version >= 140008 )
-			{
-				if ((DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && haveDBuser)		/*  bug#M0000261 */
-					OradumpRoleMembership(conn);
-				else
-					dumpRoleMembership(conn);
-			}
-			else if (server_version >= 80100)
+
+			if (server_version >= 80100)
 				dumpRoleMembership(conn);
 			else
 				DAM->dumpGroups(conn);
-			/* END - ReqID:SRS-MISC-USER */
 		}
 
 		/* Dump tablespaces */
@@ -1062,24 +1040,8 @@ dropRolesOracle(PGconn *conn)
 	PGresult   *res;
 	int			i_rolname;
 	int			i;
-	/* BEGIN - BUGZ1362 */
-	if (server_version >= 140008)
-		if (no_role_passwords)
-			printfPQExpBuffer(buf,
-							"SELECT rolname "
-							"FROM %s "
-							"WHERE rolname !~ '^pg_' "
-							"AND dboid = 0 "
-							"ORDER BY 1", role_catalog);
-		else
-			printfPQExpBuffer(buf,
-							"SELECT rolname "
-							"FROM %s "
-							"WHERE rolname !~ '^pg_' "
-							"AND rolowndboid = 0 "
-							"ORDER BY 1", role_catalog);
-	/* END - BUGZ1362 */
-	else if (server_version >= 90600)
+
+	if (server_version >= 90600)
 		printfPQExpBuffer(buf,
 						  "SELECT rolname "
 						  "FROM %s "
@@ -1510,7 +1472,6 @@ dumpRolesOracle(PGconn *conn)
 				i_rolcreatedb,
 				i_rolcanlogin,
 				i_rolconnlimit,
-				i_rolowndboid,
 				i_rolpassword,
 				i_rolvaliduntil,
 				i_rolreplication,
@@ -1520,51 +1481,11 @@ dumpRolesOracle(PGconn *conn)
 	int			i;
 
 	/* note: rolconfig is dumped later */
-	if (server_version >= 140008)				/* bug:z683 */
-	{
-		if(haveDBuser)			/*  bug#M0000261 */
-		{/* BEGIN - BUGZ1364 */
-			if (!no_role_passwords)
-				printfPQExpBuffer(buf,
-								"SELECT oid, rolname, rolsuper, rolinherit, "
-								"rolcreaterole, rolcreatedb, "
-								"rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-								"rolvaliduntil, rolreplication, rolbypassrls, "
-								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-								"rolname = current_user AS is_current_user "
-								"FROM %s "
-								"WHERE rolname !~ '^pg_' "
-								"ORDER BY 2", role_catalog, role_catalog);
-			else
-				printfPQExpBuffer(buf,
-								"SELECT oid, rolname, rolsuper, rolinherit, "
-								"rolcreaterole, rolcreatedb, "
-								"rolcanlogin, rolconnlimit, dboid AS rolowndboid, rolpassword, "
-								"rolvaliduntil, rolreplication, rolbypassrls, "
-								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-								"rolname = current_user AS is_current_user "
-								"FROM %s "
-								"WHERE rolname !~ '^pg_' "
-								"ORDER BY 2", role_catalog, role_catalog);
-
-		}/* END - BUGZ1364 */
-		else
-			printfPQExpBuffer(buf,
-							  "SELECT oid, rolname, rolsuper, rolinherit, "
-							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
-							  "rolvaliduntil, rolreplication, rolbypassrls, "
-							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-							  "rolname = current_user AS is_current_user "
-							  "FROM %s "
-							  "WHERE rolname !~ '^pg_' "
-							  "ORDER BY 2", role_catalog, role_catalog);
-	}
-	else if (server_version >= 90600)
+	if (server_version >= 90600)
 		printfPQExpBuffer(buf,
 							  "SELECT oid, rolname, rolsuper, rolinherit, "
 							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+							  "rolcanlogin, rolconnlimit, rolpassword, "
 							  "rolvaliduntil, rolreplication, rolbypassrls, "
 							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
 							  "rolname = current_user AS is_current_user "
@@ -1575,7 +1496,7 @@ dumpRolesOracle(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, rolreplication, rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
 						  "rolname = current_user AS is_current_user "
@@ -1585,7 +1506,7 @@ dumpRolesOracle(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -1596,7 +1517,7 @@ dumpRolesOracle(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -1607,7 +1528,7 @@ dumpRolesOracle(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "null as rolcomment, "
@@ -1623,7 +1544,6 @@ dumpRolesOracle(PGconn *conn)
 						  "usecreatedb as rolcreatedb, "
 						  "true as rolcanlogin, "
 						  "-1 as rolconnlimit, "
-						  "0 as rolowndboid,"
 						  "passwd as rolpassword, "
 						  "valuntil as rolvaliduntil, "
 						  "false as rolreplication, "
@@ -1660,7 +1580,6 @@ dumpRolesOracle(PGconn *conn)
 	i_rolcreatedb = PQfnumber(res, "rolcreatedb");
 	i_rolcanlogin = PQfnumber(res, "rolcanlogin");
 	i_rolconnlimit = PQfnumber(res, "rolconnlimit");
-	i_rolowndboid = PQfnumber(res, "rolowndboid");
 	i_rolpassword = PQfnumber(res, "rolpassword");
 	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
 	i_rolreplication = PQfnumber(res, "rolreplication");
@@ -1674,11 +1593,9 @@ dumpRolesOracle(PGconn *conn)
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		const char *rolename;
-		Oid			auth_oid = InvalidOid,
-					dboid = InvalidOid;
+		Oid			auth_oid = InvalidOid;
 
 		auth_oid = atooid(PQgetvalue(res, i, i_oid));
-		dboid = atooid(PQgetvalue(res, i, i_rolowndboid));
 		rolename = PQgetvalue(res, i, i_rolname);
 
 		if (strncmp(rolename, "pg_", 3) == 0)
@@ -1688,19 +1605,10 @@ dumpRolesOracle(PGconn *conn)
 			continue;
 		}
 
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		if ((dboid != 0) && (DB_ORACLE == database_mode))
-			continue;
-		/* BEGIN - ReqID:SRS-MISC-USER */
-
 		resetPQExpBuffer(buf);
 
 		if (binary_upgrade)
 		{
-			/* BEGIN - ReqID:SRS-MISC-USER   bug#M0000261  */
-			if (databasename && strcmp(databasename, "template1") != 0 && (DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))
-				ResetCompatible(buf, conn);
-			/* BEGIN - ReqID:SRS-MISC-USER */
 			
 			appendPQExpBufferStr(buf, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
 			appendPQExpBuffer(buf,
@@ -1819,7 +1727,6 @@ dumpRolesPg(PGconn *conn)
 				i_rolcreatedb,
 				i_rolcanlogin,
 				i_rolconnlimit,
-				i_rolowndboid,
 				i_rolpassword,
 				i_rolvaliduntil,
 				i_rolreplication,
@@ -1829,51 +1736,11 @@ dumpRolesPg(PGconn *conn)
 	int			i;
 
 	/* note: rolconfig is dumped later */
-	if (server_version >= 140008)				/* bug:z683 */
-	{
-		if(haveDBuser)			/*  bug#M0000261 */
-		{/* BEGIN - BUGZ1364 */
-			if (!no_role_passwords)
-				printfPQExpBuffer(buf,
-								"SELECT oid, rolname, rolsuper, rolinherit, "
-								"rolcreaterole, rolcreatedb, "
-								"rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-								"rolvaliduntil, rolreplication, rolbypassrls, "
-								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-								"rolname = current_user AS is_current_user "
-								"FROM %s "
-								"WHERE rolname !~ '^pg_' "
-								"ORDER BY 2", role_catalog, role_catalog);
-			else
-				printfPQExpBuffer(buf,
-								"SELECT oid, rolname, rolsuper, rolinherit, "
-								"rolcreaterole, rolcreatedb, "
-								"rolcanlogin, rolconnlimit, dboid AS rolowndboid, rolpassword, "
-								"rolvaliduntil, rolreplication, rolbypassrls, "
-								"pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-								"rolname = current_user AS is_current_user "
-								"FROM %s "
-								"WHERE rolname !~ '^pg_' "
-								"ORDER BY 2", role_catalog, role_catalog);
-
-		}/* END - BUGZ1364 */
-		else
-			printfPQExpBuffer(buf,
-							  "SELECT oid, rolname, rolsuper, rolinherit, "
-							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
-							  "rolvaliduntil, rolreplication, rolbypassrls, "
-							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
-							  "rolname = current_user AS is_current_user "
-							  "FROM %s "
-							  "WHERE rolname !~ '^pg_' "
-							  "ORDER BY 2", role_catalog, role_catalog);
-	}
-	else if (server_version >= 90600)
+	if (server_version >= 90600)
 		printfPQExpBuffer(buf,
 							  "SELECT oid, rolname, rolsuper, rolinherit, "
 							  "rolcreaterole, rolcreatedb, "
-							  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+							  "rolcanlogin, rolconnlimit, rolpassword, "
 							  "rolvaliduntil, rolreplication, rolbypassrls, "
 							  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
 							  "rolname = current_user AS is_current_user "
@@ -1884,7 +1751,7 @@ dumpRolesPg(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, rolreplication, rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
 						  "rolname = current_user AS is_current_user "
@@ -1894,7 +1761,7 @@ dumpRolesPg(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -1905,7 +1772,7 @@ dumpRolesPg(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "pg_catalog.shobj_description(oid, '%s') as rolcomment, "
@@ -1916,7 +1783,7 @@ dumpRolesPg(PGconn *conn)
 		printfPQExpBuffer(buf,
 						  "SELECT oid, rolname, rolsuper, rolinherit, "
 						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, 0 as rolowndboid, rolpassword, "
+						  "rolcanlogin, rolconnlimit, rolpassword, "
 						  "rolvaliduntil, false as rolreplication, "
 						  "false as rolbypassrls, "
 						  "null as rolcomment, "
@@ -1932,7 +1799,6 @@ dumpRolesPg(PGconn *conn)
 						  "usecreatedb as rolcreatedb, "
 						  "true as rolcanlogin, "
 						  "-1 as rolconnlimit, "
-						  "0 as rolowndboid,"
 						  "passwd as rolpassword, "
 						  "valuntil as rolvaliduntil, "
 						  "false as rolreplication, "
@@ -1969,7 +1835,6 @@ dumpRolesPg(PGconn *conn)
 	i_rolcreatedb = PQfnumber(res, "rolcreatedb");
 	i_rolcanlogin = PQfnumber(res, "rolcanlogin");
 	i_rolconnlimit = PQfnumber(res, "rolconnlimit");
-	i_rolowndboid = PQfnumber(res, "rolowndboid");
 	i_rolpassword = PQfnumber(res, "rolpassword");
 	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
 	i_rolreplication = PQfnumber(res, "rolreplication");
@@ -1983,11 +1848,9 @@ dumpRolesPg(PGconn *conn)
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		const char *rolename;
-		Oid			auth_oid = InvalidOid,
-					dboid = InvalidOid;
+		Oid			auth_oid = InvalidOid;
 
 		auth_oid = atooid(PQgetvalue(res, i, i_oid));
-		dboid = atooid(PQgetvalue(res, i, i_rolowndboid));
 		rolename = PQgetvalue(res, i, i_rolname);
 
 		if (strncmp(rolename, "pg_", 3) == 0)
@@ -1997,20 +1860,10 @@ dumpRolesPg(PGconn *conn)
 			continue;
 		}
 
-		/* BEGIN - ReqID:SRS-MISC-USER */
-		if ((dboid != 0) && (DB_ORACLE == database_mode))
-			continue;
-		/* BEGIN - ReqID:SRS-MISC-USER */
-
 		resetPQExpBuffer(buf);
 
 		if (binary_upgrade)
 		{
-			/* BEGIN - ReqID:SRS-MISC-USER   bug#M0000261  */
-			if (databasename && strcmp(databasename, "template1") != 0 && (DB_ORACLE == database_mode) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))
-				ResetCompatible(buf, conn);
-			/* BEGIN - ReqID:SRS-MISC-USER */
-			
 			appendPQExpBufferStr(buf, "\n-- For binary upgrade, must preserve pg_authid.oid\n");
 			appendPQExpBuffer(buf,
 							  "SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
@@ -2543,6 +2396,8 @@ dumpRoleMembershipPg(PGconn *conn)
 	fprintf(OPF, "\n\n");
 }
 /* END - ReqID:SRS-CMD-PGDUMP */
+
+
 /*
  * OradumpRoleMembership  ReqID:SRS-MISC-USE
  * 
@@ -2561,10 +2416,7 @@ OradumpRoleMembership(PGconn *conn)
 	printfPQExpBuffer(buf, "SELECT ur.rolname AS roleid, "
 					  "um.rolname AS member, "
 					  "a.admin_option, "
-					  "ug.rolname AS grantor, "
-					  "a.roleid AS roleoidoid, "
-					  "a.member AS memberoid, "
-					  "a.grantor AS grantoroid "
+					  "ug.rolname AS grantor "
 					  "FROM pg_auth_members a "
 					  "LEFT JOIN %s ur on ur.oid = a.roleid "
 					  "LEFT JOIN %s um on um.oid = a.member "
@@ -2574,41 +2426,16 @@ OradumpRoleMembership(PGconn *conn)
 	res = executeQuery(conn, buf->data);
 
 	if (PQntuples(res) > 0)
-		fprintf(OPF, "--\n-- Database Role memberships\n--\n\n");
+		fprintf(OPF, "--\n-- Role memberships\n--\n\n");
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		Oid			rdboid = InvalidOid,
-					gdboid = InvalidOid,
-					mdboid = InvalidOid;
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
-		Oid			roleoidoid = atooid(PQgetvalue(res, i, 4));
-		Oid			memberoid = atooid(PQgetvalue(res, i, 5));
-		Oid			grantoroid = atooid(PQgetvalue(res, i, 6));
-
-
-		rdboid = FindUserLevelbyoid(conn, roleoidoid);
-		mdboid = FindUserLevelbyoid(conn, memberoid);
-		if (!PQgetisnull(res, i, 3))
-		{
-			gdboid = FindUserLevelbyoid(conn, grantoroid);
-			if(OidIsValid(rdboid) || OidIsValid(gdboid))
-				continue;
-		}
-		else
-		{
-			if(OidIsValid(rdboid))
-				continue;
-		}
-
-		if (OidIsValid(mdboid))
-			continue;
 
 		fprintf(OPF, "GRANT %s", fmtId(roleid));
 		fprintf(OPF, " TO %s", fmtId(member));
-		
 		if (*option == 't')
 			fprintf(OPF, " WITH ADMIN OPTION");
 
@@ -3146,71 +2973,34 @@ dumpTablespacesNative(PGconn *conn)
 	 */
 	if (server_version >= 90600)
 	{
-		/* Begin - ReqID:SRS-MISC-USER */
-		if(DB_ORACLE == database_mode)
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
-							   "spcowner as spcownerid "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		else
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		/* End - ReqID:SRS-MISC-USER */
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "pg_catalog.pg_tablespace_location(oid), "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "     WITH ORDINALITY AS perm(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(acldefault('t',spcowner)) "
+						   "       AS init(init_acl) "
+						   "     WHERE acl = init_acl)) AS spcacls) "
+						   " AS spcacl, "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(acldefault('t',spcowner)) "
+						   "     WITH ORDINALITY AS initp(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "       AS permp(orig_acl) "
+						   "     WHERE acl = orig_acl)) AS rspcacls) "
+						   " AS rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
 	}
 	else if (server_version >= 90200)
 		res = executeQuery(conn, "SELECT oid, spcname, "
@@ -3247,7 +3037,6 @@ dumpTablespacesNative(PGconn *conn)
 						   "FROM pg_catalog.pg_tablespace "
 						   "WHERE spcname !~ '^pg_' "
 						   "ORDER BY 1");
-
 	if (PQntuples(res) > 0)
 		fprintf(OPF, "--\n-- Tablespaces\n--\n\n");
 
@@ -3271,19 +3060,10 @@ dumpTablespacesNative(PGconn *conn)
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
 		char	   *fspcname;
-		Oid			spcownerid = InvalidOid;
-		Oid			spcownerdboid = InvalidOid;
+
 		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		char tablespace_path[MAXPGPATH + 1];
 		/* END - ReqID:SRS-CMD-pg2highgo */
-
-		if(DB_ORACLE == database_mode)
-		{
-			spcownerid = atooid(PQgetvalue(res, i, 8));
-			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
-			if (spcownerdboid)
-				continue;
-		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
@@ -3393,71 +3173,34 @@ dumpTablespacesOracle(PGconn *conn)
 	 */
 	if (server_version >= 90600)
 	{
-		/* Begin - ReqID:SRS-MISC-USER */
-		if(DB_ORACLE == database_mode)
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
-							   "spcowner as spcownerid "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		else
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		/* End - ReqID:SRS-MISC-USER */
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "pg_catalog.pg_tablespace_location(oid), "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "     WITH ORDINALITY AS perm(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(acldefault('t',spcowner)) "
+						   "       AS init(init_acl) "
+						   "     WHERE acl = init_acl)) AS spcacls) "
+						   " AS spcacl, "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(acldefault('t',spcowner)) "
+						   "     WITH ORDINALITY AS initp(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "       AS permp(orig_acl) "
+						   "     WHERE acl = orig_acl)) AS rspcacls) "
+						   " AS rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
 	}
 	else if (server_version >= 90200)
 		res = executeQuery(conn, "SELECT oid, spcname, "
@@ -3518,20 +3261,10 @@ dumpTablespacesOracle(PGconn *conn)
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
 		char	   *fspcname;
-		Oid			spcownerid = InvalidOid;
-		Oid			spcownerdboid = InvalidOid;
+
 		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		char tablespace_path[MAXPGPATH + 1];
 		/* END - ReqID:SRS-CMD-pg2highgo */
-
-		if(DB_ORACLE == database_mode)
-		{
-			spcownerid = atooid(PQgetvalue(res, i, 8));
-			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
-
-			if (spcownerdboid)
-				continue;
-		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
@@ -3653,71 +3386,34 @@ dumpTablespacesPg(PGconn *conn)
 	 */
 	if (server_version >= 90600)
 	{
-		/* Begin - ReqID:SRS-MISC-USER */
-		if(DB_ORACLE == database_mode)
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace'), "
-							   "spcowner as spcownerid "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		else
-		{
-			res = executeQuery(conn, "SELECT oid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(oid), "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', '),"
-							   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
-							   "FROM pg_catalog.pg_tablespace "
-							   "WHERE spcname !~ '^pg_' "
-							   "ORDER BY 1");
-		}
-		/* End - ReqID:SRS-MISC-USER */
+		res = executeQuery(conn, "SELECT oid, spcname, "
+						   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
+						   "pg_catalog.pg_tablespace_location(oid), "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "     WITH ORDINALITY AS perm(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(acldefault('t',spcowner)) "
+						   "       AS init(init_acl) "
+						   "     WHERE acl = init_acl)) AS spcacls) "
+						   " AS spcacl, "
+						   "(SELECT array_agg(acl ORDER BY row_n) FROM "
+						   "  (SELECT acl, row_n FROM "
+						   "     unnest(acldefault('t',spcowner)) "
+						   "     WITH ORDINALITY AS initp(acl,row_n) "
+						   "   WHERE NOT EXISTS ( "
+						   "     SELECT 1 "
+						   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
+						   "       AS permp(orig_acl) "
+						   "     WHERE acl = orig_acl)) AS rspcacls) "
+						   " AS rspcacl, "
+						   "array_to_string(spcoptions, ', '),"
+						   "pg_catalog.shobj_description(oid, 'pg_tablespace') "
+						   "FROM pg_catalog.pg_tablespace "
+						   "WHERE spcname !~ '^pg_' "
+						   "ORDER BY 1");
 	}
 	else if (server_version >= 90200)
 		res = executeQuery(conn, "SELECT oid, spcname, "
@@ -3778,19 +3474,11 @@ dumpTablespacesPg(PGconn *conn)
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
 		char	   *fspcname;
-		Oid			spcownerid = InvalidOid;
-		Oid			spcownerdboid = InvalidOid;
+
 		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		char tablespace_path[MAXPGPATH + 1];
 		/* END - ReqID:SRS-CMD-pg2highgo */
 
-		if(DB_ORACLE == database_mode)
-		{
-			spcownerid = atooid(PQgetvalue(res, i, 8));
-			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
-			if (spcownerdboid)
-				continue;
-		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
@@ -4000,19 +3688,10 @@ dumpTablespacesMysql(PGconn *conn)
 		char	   *spcoptions = PQgetvalue(res, i, 6);
 		char	   *spccomment = PQgetvalue(res, i, 7);
 		char	   *fspcname;
-		Oid			spcownerid = InvalidOid;
-		Oid			spcownerdboid = InvalidOid;
+
 		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
 		char tablespace_path[MAXPGPATH + 1];
 		/* END - ReqID:SRS-CMD-pg2highgo */
-
-		if(DB_ORACLE == database_mode)
-		{
-			spcownerid = atooid(PQgetvalue(res, i, 8));
-			spcownerdboid = FindUserLevelbyoid(conn, spcownerid);
-			if (spcownerdboid)
-				continue;
-		}
 
 		/* needed for buildACLCommands() */
 		fspcname = pg_strdup(fmtId(spcname));
@@ -4621,24 +4300,6 @@ dumpDatabasesNative(PGconn *conn)
 				create_opts = "";
 				/* Since pg_dump won't emit a \connect command, we must */
 				fprintf(OPF, "\\connect %s\n\n", dbname);
-				
-				/* BEGIN - ReqID:SRS-MISC-USER */
-				if (DB_ORACLE == database_mode) 
-				{
-					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
-					{
-						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						if(CurrentUserIsInstanceSuperuser && haveDBuser)
-							fprintf(OPF, "set session authorization system;\n");
-						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
-						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
-						fprintf(OPF, "\n\n");
-					}
-					else
-						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
-				}
-				/* END - ReqID:SRS-MISC-USER */
 			}
 		}
 		else
@@ -4737,17 +4398,14 @@ dumpDatabasesOracle(PGconn *conn)
 				create_opts = "";
 				/* Since pg_dump won't emit a \connect command, we must */
 				fprintf(OPF, "\\connect %s\n\n", dbname);
-				
+
 				/* BEGIN - ReqID:SRS-MISC-USER */
 				if (DB_ORACLE == database_mode) 
 				{
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
-						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 						fprintf(OPF, "\n\n");
 					}
 					else
@@ -4852,18 +4510,14 @@ dumpDatabasesPg(PGconn *conn)
 				create_opts = "";
 				/* Since pg_dump won't emit a \connect command, we must */
 				fprintf(OPF, "\\connect %s\n\n", dbname);
-				
+
 				/* BEGIN - ReqID:SRS-MISC-USER */
 				if (DB_ORACLE == database_mode) 
 				{
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
-						if(CurrentUserIsInstanceSuperuser && haveDBuser)
-							fprintf(OPF, "set session authorization system;\n");
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
-						fprintf(OPF, "set ivorysql.grant_usertype to oracle;\n");
-						fprintf(OPF, "set ivorysql.enable_ora_user_schema to off;\n");	/* ReqID:SRS-SQL-SCHEMA */
 						fprintf(OPF, "\n\n");
 					}
 					else
@@ -5387,41 +5041,4 @@ dumpTimestamp(const char *msg)
 
 	if (strftime(buf, sizeof(buf), PGDUMP_STRFTIME_FMT, localtime(&now)) != 0)
 		fprintf(OPF, "-- %s %s\n\n", msg, buf);
-}
-
-
-/*
- * ResetCompatible  ReqID:SRS-MISC-USE
- * 
- */
-static void 
-ResetCompatible(PQExpBuffer buf, PGconn *conn)
-{
-	appendPQExpBufferStr(buf, "set ivorysql.compatible_mode to pg;\n");
-
-	if(CurrentUserIsInstanceSuperuser)
-	{
-		appendPQExpBufferStr(buf, "set session authorization \"");
-		appendPQExpBufferStr(buf,  getInstanceSuperuser(conn));
-		appendPQExpBufferStr(buf, "\";\n\n");
-	}
-}
-
-/*
- * getInstanceSuperuser  ReqID:SRS-MISC-USE
- * 
- */
-static char * 
-getInstanceSuperuser(PGconn *conn)
-{
-	PGresult *res;
-
-	char *instancesu = NULL;
-
-	res = PQexec(conn, "select usename from pg_user where usesysid = 10;");	
-	if(PQntuples(res))
-		instancesu = pg_strdup(PQgetvalue(res, 0, 0));
-	PQclear(res);
-	
-	return instancesu;
 }

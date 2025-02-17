@@ -341,7 +341,6 @@ void		create_data_directory(void);
 void		create_xlog_or_symlink(void);
 void		warn_on_mount_point(int error);
 void		initialize_data_directory(void);
-static void setup_ora_auth(FILE *cmdfd);
 
 /*
  * macros for running pipes to postgres
@@ -373,17 +372,6 @@ do { \
 		output_failed = true, output_errno = errno; \
 } while (0)
 
-/*
-	* Begin - ReqID:SRS-MISC-USER
-	*/
-#define PG_CMD_PRINTF1(fmt, arg1) \
-do { \
-	if (fprintf(cmdfd, fmt, arg1) < 0 || fflush(cmdfd) < 0) \
-		output_failed = true, output_errno = errno; \
-} while (0)
-/*
-	* End - ReqID:SRS-MISC-USER
-	*/
 /*
  * Escape single quotes and backslashes, suitably for insertions into
  * configuration files or SQL E'' strings.
@@ -1662,36 +1650,6 @@ setup_auth(FILE *cmdfd)
 	if (superuser_password)
 		PG_CMD_PRINTF("ALTER USER \"%s\" WITH PASSWORD E'%s';\n\n",
 					  username, escape_quotes(superuser_password));
-}
-
-/*
- * setup_ora_auth ReqID:SRS-MISC-USE
- *
- * set up the shadow password table
- */
-static void
-setup_ora_auth(FILE *cmdfd)
-{
-	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
-
-	PG_CMD_PUTS("create user SYS SUPERUSER;\n\n");
-	PG_CMD_PUTS("create user SYSTEM SUPERUSER;\n\n");		
-	
-	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
-	
-	if (superuser_password)
-	{
-		PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");
-	
-		PG_CMD_PRINTF1("ALTER USER \"SYS\" WITH PASSWORD E'%s';\n\n",
-					   escape_quotes(superuser_password));
-
-		PG_CMD_PRINTF1("ALTER USER \"SYSTEM\" WITH PASSWORD E'%s';\n\n",
-					   escape_quotes(superuser_password));			
-		PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");
-	
-	}
-
 }
 
 
@@ -3309,11 +3267,6 @@ initialize_data_directory(void)
 	setup_run_file(cmdfd, system_functions_file);
 
 	setup_depend(cmdfd);
-
-	/* BEGIN - ReqID:SRS-MISC-USER */
-	if (database_mode == DB_ORACLE)
-		setup_ora_auth(cmdfd);
-	/* END - ReqID:SRS-MISC-USER */
 
 	/*
 	 * Note that no objects created after setup_depend() will be "pinned".

@@ -2393,11 +2393,11 @@ GRANT SELECT ON SYS.DBA_DB_LINKS TO PUBLIC;
 --
 -- V$DBLINK
 --
+
 CREATE OR REPLACE VIEW sys.V$DBLINK as
   SELECT DISTINCT
     i.lnkname::VARCHAR2(128) as DB_LINK,
-    (select iu.usesysid  from ivory_user iu LEFT JOIN pg_database d
-      ON iu.dboid = d.oid WHERE iu.usename = session_user AND d.datname = current_database)::INT8::NUMBER as OWNER_ID,
+    (SELECT oid from pg_roles WHERE rolname = session_user)::INT8::NUMBER as OWNER_ID,
     'yes'::VARCHAR2(3) as LOGGED_ON,
     'no'::VARCHAR2(3) as HETEROGENEOUS,
     'unkn'::VARCHAR2(6) as PROTOCOL,
@@ -2413,6 +2413,7 @@ CREATE OR REPLACE VIEW sys.V$DBLINK as
                    FROM pg_namespace
                    WHERE oid = pg_my_temp_schema());
 GRANT SELECT ON SYS.V$DBLINK TO PUBLIC;
+
 --
 -- GV$DBLINK
 --
@@ -2436,9 +2437,11 @@ CREATE OR REPLACE VIEW sys.GV$DBLINK as
                    FROM pg_namespace
                    WHERE oid = pg_my_temp_schema());
 GRANT SELECT ON SYS.GV$DBLINK TO PUBLIC;
+
 --
 -- DBA_DB_LINK_SOURCES
 --
+
 CREATE OR REPLACE VIEW sys.dba_db_link_sources AS
 SELECT
     1::NUMBER AS source_id,
@@ -2449,16 +2452,15 @@ SELECT
     (SELECT (string_to_array(ivy_get_host_ipv4, ' '))[1])::VARCHAR2(128) AS ip_address,
     'tcp'::VARCHAR2(64) AS protocol,
     (SELECT current_user)::VARCHAR2(128) AS username,
-    iu.usesysid::INT4::NUMBER AS "user#",
+    iu.oid::INT4::NUMBER AS "user#",
     current_timestamp::TIMESTAMP(6) AS first_logon_time,
     current_timestamp::TIMESTAMP(6) AS last_logon_time,
     1::NUMBER AS logon_count
 FROM
-    ivory_user iu LEFT JOIN pg_database d ON iu.dboid = d.oid
-    WHERE iu.usename = current_user AND d.datname = current_database;
+    pg_roles iu, pg_database d
+    WHERE iu.rolname = current_user AND d.datname = current_database;
 GRANT SELECT ON SYS.dba_db_link_sources TO PUBLIC;
 /* End - ReqID:SRS-SQL-DBLINK */
-
 
 /* Begin - ReqID:SRS-SQL-SCHEMA */
 /* CREATE VIEW */
@@ -2485,10 +2487,7 @@ SELECT
 	'N'::VARCHAR2(1) AS editions_enabled,
 	'PASSWORD'::VARCHAR2(8) AS authentication_type,
 	'N'::VARCHAR2(1) AS proxy_only_connect,
-	CASE
-		WHEN pg_authid.rolowndboid != 0 THEN 'NO'
-		ELSE 'YES'
-	END::VARCHAR(3) AS common,
+	'YES'::VARCHAR(3) AS common,
 	NULL::TIMESTAMPTZ AS last_login,
 	CASE
 		WHEN pg_authid.rolsuper THEN 'Y'
@@ -2507,15 +2506,7 @@ FROM
 		JOIN pg_object ON pg_namespace.oid = pg_object.obj_oid
 	) ON pg_authid.rolname = pg_namespace.nspname
 WHERE
-    pg_authid.rolcanlogin
-    AND (
-        pg_authid.rolowndboid = 0
-        OR pg_authid.rolowndboid = (
-            SELECT oid
-            FROM pg_database
-            WHERE datname = current_database()
-        )
-    );
+    pg_authid.rolcanlogin;
 
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
 GRANT SELECT ON SYS.DBA_USERS TO PUBLIC;
@@ -2539,10 +2530,7 @@ SELECT
 	NULL::VARCHAR2(128) AS initial_rsrc_consumer_group,
 	NULL::VARCHAR2(4000) AS external_name,
 	'N'::VARCHAR2(1) AS proxy_only_connect,
-	CASE
-		WHEN pg_authid.rolowndboid != 0 THEN 'NO'
-		ELSE 'YES'
-	END::VARCHAR(3) AS common,
+	'YES'::VARCHAR(3) AS common,
 	CASE
 		WHEN pg_authid.rolsuper THEN 'Y'
 		ELSE 'N'
@@ -2560,15 +2548,7 @@ FROM
 		JOIN pg_object ON pg_namespace.oid = pg_object.obj_oid
 	) ON pg_authid.rolname = pg_namespace.nspname
 WHERE
-    pg_authid.rolcanlogin
-    AND (
-        pg_authid.rolowndboid = 0
-        OR pg_authid.rolowndboid = (
-            SELECT oid
-            FROM pg_database
-            WHERE datname = current_database()
-        )
-    );
+    pg_authid.rolcanlogin;
 
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
 GRANT SELECT ON SYS.USER_USERS TO PUBLIC;
@@ -2579,10 +2559,7 @@ SELECT
 	ORA_CASE_TRANS(pg_authid.rolname::VARCHAR2)::VARCHAR2(128) AS username,
 	pg_authid.oid::BIGINT::NUMBER AS user_id,
 	oratimestamp_oradate(pg_object.created) AS created,
-	CASE
-		WHEN pg_authid.rolowndboid != 0 THEN 'NO'
-		ELSE 'YES'
-	END::VARCHAR(3) AS common,
+	'YES'::VARCHAR(3) AS common,
 	CASE
 		WHEN pg_authid.rolsuper THEN 'Y'
 		ELSE 'N'
@@ -2599,15 +2576,7 @@ FROM
 		JOIN pg_object ON pg_namespace.oid = pg_object.obj_oid
 	) ON pg_authid.rolname = pg_namespace.nspname
 WHERE
-    pg_authid.rolcanlogin
-    AND (
-        pg_authid.rolowndboid = 0
-        OR pg_authid.rolowndboid = (
-            SELECT oid
-            FROM pg_database
-            WHERE datname = current_database()
-        )
-    );
+    pg_authid.rolcanlogin;
 
 /* GRANT SELECT PRIVILEGE TO PUBLIC */
 GRANT SELECT ON SYS.ALL_USERS TO PUBLIC;

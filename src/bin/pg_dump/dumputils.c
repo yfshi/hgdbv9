@@ -29,19 +29,11 @@ static bool parseAclItem(const char *item, const char *type,
 static char *copyAclUserName(PQExpBuffer output, char *input);
 static void AddAcl(PQExpBuffer aclbuf, const char *keyword,
 				   const char *subname);
-static int grantee_type(char *att);
 
-/* BEGIN - ReqID:SRS-MISC-USER */
-bool CurrentUserIsInstanceSuperuser = false;
-bool CurrentUserIsDatabaseSuperuser = false;					/* BUG:z680,z538 */
-const char *CurrentSessionUserName = NULL;
-DBMode database_mode = DB_PG;
 bool restoremode = true; 					/*  bug#M0000238 */
-DBGrantUser grant_usertype = PG_GRANTUSER;
-DBDump dumppgtype = PG_DUMP;
-const char *DumpMode = NULL;				/*  bug#M0000261 */
-bool haveDBuser = false;			/*  bug#M0000261 */
-/* END - ReqID:SRS-MISC-USER */
+const char *DumpMode = NULL;
+DBMode database_mode = DB_PG;
+
 DBParser compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
 DBUser	CurUser = INSTANCE;		/* ReqID:SRS-CMD-PGDUMP */
 const char *DumpM = NULL;		/* ReqID:SRS-CMD-PGDUMP */
@@ -204,61 +196,13 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 				else if (strncmp(grantee->data, "group ",
 								 strlen("group ")) == 0)
 				{
-					/* BEGIN - ReqID:SRS-MISC-USER */
-					/*
-					 * This phase occurs during the assembly phase of an sql statement.
-					 * ratt_result is determined by the aclitemout () function,
-					 * which assembles the sql step by step after obtaining grant/revoke
-					 */
-					if (DB_ORACLE == database_mode) 
-					{
-						int ratt_result = -1;
-								ratt_result = grantee_type(grantee->data + strlen("group "));
-						if ((ratt_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						{
-							appendPQExpBuffer(firstsql, "GROUP INSTANCEUSER %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
-
-						}
-						else if ((ratt_result == 0)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						{
-							appendPQExpBuffer(firstsql, "GROUP DATABASEUSER %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
-
-						}
-						else
-							appendPQExpBuffer(firstsql, "GROUP %s;\n",
-										  fmtId(grantee->data + strlen("group ")));
-					}
-					else
-						appendPQExpBuffer(firstsql, "GROUP %s;\n",
-									  fmtId(grantee->data + strlen("group ")));
-					/* END - ReqID:SRS-MISC-USER */
+					appendPQExpBuffer(firstsql, "GROUP %s;\n",
+								  fmtId(grantee->data + strlen("group ")));
 				}
 				else
 				{
-					/* BEGIN - ReqID:SRS-MISC-USER */
-					if (DB_ORACLE == database_mode) 
-					{
-						int ratt_result = -1;
-								ratt_result = grantee_type(grantee->data);
-						if ((ratt_result == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						{
-							appendPQExpBuffer(firstsql, "INSTANCEUSER %s;\n",
-											  fmtId(grantee->data));	
-						}
-						else if ((ratt_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-						{
-							appendPQExpBuffer(firstsql, "DATABASEUSER %s;\n",
-											  fmtId(grantee->data));	
-						}
-						else
-							appendPQExpBuffer(firstsql, "%s;\n",
-											  fmtId(grantee->data));
-					}else
-						appendPQExpBuffer(firstsql, "%s;\n",
-										   fmtId(grantee->data));
-					/* END - ReqID:SRS-MISC-USER */
+					appendPQExpBuffer(firstsql, "%s;\n",
+									   fmtId(grantee->data));
 				}
 					
 			}
@@ -330,29 +274,10 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 										  prefix, privs->data, type);
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode) 
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data);
-							if ((att_result == 1)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(firstsql,
-												"%s TO INSTANCEUSER %s;\n",
-												name, fmtId(grantee->data));
-							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(firstsql,
-												"%s TO DATABASEUSER %s;\n",
-												name, fmtId(grantee->data));
-							else
-								appendPQExpBuffer(firstsql,
-												"%s TO %s;\n",
-												name, fmtId(grantee->data));
-						}
-						else
-							appendPQExpBuffer(firstsql,
-											  "%s TO %s;\n",
-											  name, fmtId(grantee->data));	
-						/* END - ReqID:SRS-MISC-USER */
+
+						appendPQExpBuffer(firstsql,
+										  "%s TO %s;\n",
+										  name, fmtId(grantee->data));
 					}
 					
 					if (privswgo->len > 0)
@@ -362,29 +287,10 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 										  prefix, privswgo->data, type);
 						if (nspname && *nspname)
 							appendPQExpBuffer(firstsql, "%s.", fmtId(nspname));
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode)
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data);
-							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(firstsql,
-												"%s TO INSTANCEUSER %s WITH GRANT OPTION;\n",
-												name, fmtId(grantee->data));
-							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(firstsql,
-												"%s TO DATABASEUSER %s WITH GRANT OPTION;\n",
-												name, fmtId(grantee->data));
-							else
-								appendPQExpBuffer(firstsql,
-												"%s TO %s WITH GRANT OPTION;\n",
-												name, fmtId(grantee->data));
-						}
-						else
-							appendPQExpBuffer(firstsql,
-											"%s TO %s WITH GRANT OPTION;\n",
-											name, fmtId(grantee->data));
-						/* END - ReqID:SRS-MISC-USER */
+
+						appendPQExpBuffer(firstsql,
+										"%s TO %s WITH GRANT OPTION;\n",
+										name, fmtId(grantee->data));
 					}
 				}
 			}
@@ -416,45 +322,12 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					else if (strncmp(grantee->data, "group ",
 									 strlen("group ")) == 0)
 					{
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode) 
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data + strlen("group "));
-
-							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s;\n",
-														fmtId(grantee->data + strlen("group ")));
-							else if ((att_result == 0)&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s;\n",
-														fmtId(grantee->data + strlen("group ")));
-							else
-								appendPQExpBuffer(secondsql, "GROUP %s;\n",
-													   fmtId(grantee->data + strlen("group ")));							
-							
-						}
-						else
-							appendPQExpBuffer(secondsql, "GROUP %s;\n",
-											fmtId(grantee->data + strlen("group ")));
-						/* END - ReqID:SRS-MISC-USER */
+						appendPQExpBuffer(secondsql, "GROUP %s;\n",
+										fmtId(grantee->data + strlen("group ")));
 					}
 					else
 					{
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode)
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data);
-							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "INSTANCEUSER %s;\n", fmtId(grantee->data));
-							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "DATABASEUSER %s;\n", fmtId(grantee->data));
-							else
-								appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
-						}
-						else
-							appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
-						/* END - ReqID:SRS-MISC-USER */
+						appendPQExpBuffer(secondsql, "%s;\n", fmtId(grantee->data));
 					}
 						
 				}
@@ -470,44 +343,12 @@ buildACLCommands(const char *name, const char *subname, const char *nspname,
 					else if (strncmp(grantee->data, "group ",
 									 strlen("group ")) == 0)
 					{
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode) 
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data + strlen("group "));
-							if ((att_result == 1) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "GROUP INSTANCEUSER %s",
-														fmtId(grantee->data + strlen("group ")));
-							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "GROUP DATABASEUSER %s",
-														fmtId(grantee->data + strlen("group ")));
-							else
-								appendPQExpBuffer(secondsql, "GROUP %s",
-													   fmtId(grantee->data + strlen("group ")));
-							
-						}
-						else
-							appendPQExpBuffer(secondsql, "GROUP %s",
-												   fmtId(grantee->data + strlen("group ")));
-						/* END - ReqID:SRS-MISC-USER */
+						appendPQExpBuffer(secondsql, "GROUP %s",
+											   fmtId(grantee->data + strlen("group ")));
 					}
 					else
 					{
-						/* BEGIN - ReqID:SRS-MISC-USER */
-						if (DB_ORACLE == database_mode) 
-						{
-							int att_result = -1;
-								att_result = grantee_type(grantee->data);
-							if ((att_result == 1 )&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "INSTANCEUSER %s", fmtId(grantee->data));
-							else if ((att_result == 0) && (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG))		/*  bug#M0000261 */
-								appendPQExpBuffer(secondsql, "DATABASEUSER %s", fmtId(grantee->data));
-							else
-								appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
-						}
-						else
-							appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
-						/* END - ReqID:SRS-MISC-USER */
+						appendPQExpBuffer(secondsql, "%s", fmtId(grantee->data));
 					}
 					appendPQExpBufferStr(secondsql, " WITH GRANT OPTION;\n");
 				}
@@ -1235,148 +1076,6 @@ makeAlterConfigCommand(PGconn *conn, const char *configitem,
 	pg_free(mine);
 }
 
-/*
- * grantee_type  ReqID:SRS-MISC-USE
- *
- * get user type
- */
-static int 
-grantee_type(char *att)
-{
-	char	   *p = NULL;
-	int			att_grant;
-
-	p = att;
-	if(*p == '0')
-	{
-		att_grant = 0;
-		while(*(p))
-		{
-			*p = *(p+1);
-			p++;
-		}
-	}
-	else if(*p == '1')
-	{
-		att_grant = 1;
-		while(*(p))
-		{
-			*p = *(p+1);
-			p++;
-		}
-	}
-	else 
-		att_grant = -1;
-
-	return att_grant;
-}
-
-/*
- * getCurrentuserisInstanceSupperuser  ReqID:SRS-MISC-USE
- *
- * get Currentuser is Instance Supperuser
- * 
- * Usually we judge the current user, that is, get the current user's dboid, 
- * but again, we may specify the user name, then we need to judge by the 
- * user name and dboid
- * 
- */
-void
-getcurrentuserisInstanceSupperuser(PGconn *conn, char *name)
-{
-	PGresult *res;
-	PQExpBuffer cmd1 = createPQExpBuffer();
-
-	/* Begin - BUG#M229 */
-	/* When the database mode is pg, you needn't to get it 
-	 * ivory_user is a new view, and it was created after version 14.5.
-	 * if you want to select the message from the view ,you should be sure
-	 * that we have the view. It is judged by haveDBuser.
-	 */
-	if (haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
-	{
-		if (name != NULL)
-			appendPQExpBuffer(cmd1, "select usesuper from ivory_user where "
-							"usename = '%s' and dboid = 0;\n", name);	/* BUGZ1365 */
-		else
-			appendPQExpBufferStr(cmd1, "select usesuper from ivory_user where "
-							"usesysid = current_userid() and dboid = 0;\n");
-
-		res = PQexec(conn, cmd1->data);	
-
-		if (PQntuples(res))
-			CurrentUserIsInstanceSuperuser = *(PQgetvalue(res, 0, 0))== 't';
-		else
-			CurrentUserIsInstanceSuperuser = false;
-	}
-	else 			/* Begin - BUG#M686 */
-	{
-		if (name != NULL)
-			appendPQExpBuffer(cmd1, "select usesuper from pg_user where "
-							"usename = '%s';\n", name);	/* BUGZ1365 */
-		else
-			appendPQExpBufferStr(cmd1, "select usesuper from pg_user where "
-							"usesysid = current_user::regrole;\n");
-
-		res = PQexec(conn, cmd1->data);	
-
-		if (PQntuples(res))
-			CurrentUserIsInstanceSuperuser = *(PQgetvalue(res, 0, 0))== 't';
-	}				/* End - BUG#M686 */
-
-	if (res)
-		PQclear(res);
-	destroyPQExpBuffer(cmd1);
-	/* End - BUG#M229 */
-}
-
-/*
- * CurrentuserisDatabaseSupperuser  ReqID:SRS-MISC-USE	 BUG:z680,z538 
- *
- * currentuser is Database Supperuser
- */
-void
-getcurrentuserisDatabaseSupperuser(PGconn *conn, char *name)
-{
-	PGresult	   *res;
-	PQExpBuffer		cmd1 = createPQExpBuffer();
-
-	/* Begin - BUG#M229 */
-	/* When the database mode is pg, you needn't to get it 
-	 * ivory_user is a new view, and it was created after version 14.5.
-	 * if you want to select the message from the view ,you should be sure
-	 * that we have the view. It is judged by haveDBuser.
-	 */
-	if(haveDBuser && (database_mode == DB_ORACLE))		/*  bug#M0000261 */
-	{
-		if (name != NULL)
-			appendPQExpBuffer(cmd1, 
-								 "select usesuper from ivory_user u, pg_database d "
-								 "where u.dboid = d.oid and "
-								 "u.usename = '%s' "	/* BUGZ1365 */
-								 "and d.datname = current_database();", name);
-		else
-			appendPQExpBufferStr(cmd1, 
-								 "select usesuper from ivory_user u, pg_database d "
-								 "where u.dboid = d.oid and "
-								 "u.usesysid = current_userid() "
-								 "and d.datname = current_database();");
-
-		res = PQexec(conn, cmd1->data);	
-
-		if (PQntuples(res))
-			CurrentUserIsDatabaseSuperuser = *(PQgetvalue(res, 0, 0))== 't';
-		else
-			CurrentUserIsDatabaseSuperuser = false;
-
-		PQclear(res);
-	}				/* End - BUG#M686 */
-	else
-		CurrentUserIsDatabaseSuperuser = false;
-
-	destroyPQExpBuffer(cmd1);
-	/* End - BUG#M229 */
-}
 
 /*
  * getDatabaseMode  ReqID:SRS-MISC-USE
@@ -1414,6 +1113,7 @@ getDatabaseMode(PGconn *conn)
 	if (res)
 		PQclear(res);
 }
+
 
 /*
  *  setIdentifierCaseSwitch - BUG#M229 
@@ -1483,58 +1183,7 @@ getDumpMode(const char *dumpmode)
 
 }
 
-/*
- * haveDatabaseUser  ReqID:SRS-MISC-USE bug:M0000261
- *
- * Check whether the ivory_user view exists in the current database. 
- * If it does not exist, return false. This is to ensure compatibility 
- * with databases of earlier versions
- */
-/* BEGIN - ReqID:SRS-CMD-PGDUMP */
-bool 
-haveDatabaseUserPg(PGconn *conn)
-{
-	PGresult *res;
 
-	/* When the database mode is pg, you do not need to get it */
-	if(database_mode == DB_PG)
-		return false;
-
-	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");
-
-	if (PQntuples(res))
-	{
-		haveDBuser = true;		/*  bug#M0000261 */
-		PQclear(res);
-		return true;
-	}
-
-	PQclear(res);
-	return false;
-}
-
-bool
-haveDatabaseUserOracle(PGconn *conn)
-{
-	PGresult *res;
-
-	/* When the database mode is pg, you do not need to get it */
-	if(database_mode == DB_PG)
-		return false;
-
-	res = PQexec(conn, "select * from pg_views where viewname = 'ivory_user';");
-
-	if (PQntuples(res))
-	{
-		haveDBuser = true;		/*  bug#M0000261 */
-		PQclear(res);
-		return true;
-	}
-
-	PQclear(res);
-	return false;
-}
-/* END - ReqID:SRS-CMD-PGDUMP */
 /*
  * SetDumptypeMode  ReqID:SRS-MISC-USE
  * 
@@ -1544,40 +1193,16 @@ void
 SetDumptypeMode(PGconn *conn)
 {
 	PGresult		  *res,
-					  *res1,
-					  *res2,
-					  *res3,
-					  *res4;	/* ReqID:SRS-SQL-SCHEMA */
+					  *res2;
 	
 	res = PQexec(conn, "set ivorysql.compatible_mode to oracle;");
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsInstanceSuperuser && haveDBuser)
-	{
-		res1 = PQexec(conn, "set session authorization system;");	
-
-		CurrentSessionUserName = "system";
-		if (res1)
-			PQclear(res1);
-	}
-
 	res2 = PQexec(conn, "set ivorysql.dumppgtype to oracle;");
 	if (res2)
 		PQclear(res2);
-
-	res3 = PQexec(conn, "set ivorysql.grant_usertype to oracle;");
-
-	if (res3)
-		PQclear(res3);
-
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	res4 = PQexec(conn, "set ivorysql.enable_ora_user_schema to off;");
-	if (res4)
-		PQclear(res4);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 }
-
 
 /*
  * ReSetDumptypeMode  ReqID:SRS-MISC-USE
@@ -1588,63 +1213,17 @@ void
 ReSetDumptypeMode(PGconn *conn)
 {
 	PGresult		  *res,
-					  *res1,
-					  *res2,
-					  *res3;
+					  *res2;
 	
 	res = PQexec(conn, "reset ivorysql.compatible_mode;");
 	if (res)
 		PQclear(res);
 
-	if(CurrentUserIsInstanceSuperuser)
-	{
-		res1 = PQexec(conn, "reset session authorization;");	
-
-		CurrentSessionUserName = NULL;
-		if (res1)
-			PQclear(res1);
-	}
-
 	res2 = PQexec(conn, "reset ivorysql.dumppgtype;");	
 	if (res2)
 		PQclear(res2);
-
-	res3 = PQexec(conn, "reset ivorysql.grant_usertype;");	
-
-	if (res3)
-		PQclear(res3);
 }
 
-/*
- * FindUserLevelbyoid  ReqID:SRS-MISC-USE
- * 
- */
-Oid 
-FindUserLevelbyoid(PGconn *conn, Oid oid)
-{
-	PGresult	   *res;
-	PQExpBuffer		query_cmd;
-	Oid				userdboid = InvalidOid;
-
-	if (!haveDBuser)			/*  bug#M0000261 */
-		return userdboid;
-
-	query_cmd = createPQExpBuffer();
-	if (OidIsValid(oid))
-	{
-		appendPQExpBuffer(query_cmd, "select dboid from ivory_user where usesysid = %u", oid);
-		res = PQexec(conn, query_cmd->data);
-	}
-	else
-		res = PQexec(conn, "select dboid from ivory_user where usesysid = get_current_userid();");
-
-	if (PQntuples(res))	
-		userdboid = atooid(PQgetvalue(res, 0, 0));
-	PQclear(res);
-	destroyPQExpBuffer(query_cmd);
-	
-	return userdboid;
-}
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 /*

@@ -200,8 +200,6 @@ extern char postgres_exec_path[];
  */
 extern PGDLLIMPORT Oid MyDatabaseId;
 
-extern PGDLLIMPORT Oid CurrentUserOid;
-
 extern PGDLLIMPORT Oid MyDatabaseTableSpace;
 
 /*
@@ -361,7 +359,7 @@ extern bool InSecurityRestrictedOperation(void);
 extern bool InNoForceRLSOperation(void);
 extern void GetUserIdAndContext(Oid *userid, bool *sec_def_context);
 extern void SetUserIdAndContext(Oid userid, bool sec_def_context);
-extern void InitializeSessionUserId(const char *rolename, Oid useroid, Oid dboid);
+extern void InitializeSessionUserId(const char *rolename, Oid useroid);
 extern void InitializeSessionUserIdStandalone(void);
 extern void SetSessionAuthorization(Oid userid, bool is_superuser);
 extern Oid	GetCurrentRoleId(void);

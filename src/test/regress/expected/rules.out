@@ -1291,35 +1291,6 @@ iexit| SELECT ih.name,
    FROM ihighway ih,
     ramp r
   WHERE (ih.thepath ## r.thepath);
-ivory_roles| SELECT pg_authid.rolname,
-    pg_authid.rolsuper,
-    pg_authid.rolinherit,
-    pg_authid.rolcreaterole,
-    pg_authid.rolcreatedb,
-    pg_authid.rolcanlogin,
-    pg_authid.rolreplication,
-    pg_authid.rolconnlimit,
-    '********'::text AS rolpassword,
-    pg_authid.rolvaliduntil,
-    pg_authid.rolbypassrls,
-    s.setconfig AS rolconfig,
-    pg_authid.oid,
-    pg_authid.rolowndboid AS dboid
-   FROM (pg_authid
-     LEFT JOIN pg_db_role_setting s ON (((pg_authid.oid = s.setrole) AND (s.setdatabase = (0)::oid))));
-ivory_user| SELECT pg_authid.rolname AS usename,
-    pg_authid.oid AS usesysid,
-    pg_authid.rolcreatedb AS usecreatedb,
-    pg_authid.rolsuper AS usesuper,
-    pg_authid.rolreplication AS userepl,
-    pg_authid.rolbypassrls AS usebypassrls,
-    '********'::text AS passwd,
-    pg_authid.rolvaliduntil AS valuntil,
-    s.setconfig AS useconfig,
-    pg_authid.rolowndboid AS dboid
-   FROM (pg_authid
-     LEFT JOIN pg_db_role_setting s ON (((pg_authid.oid = s.setrole) AND (s.setdatabase = (0)::oid))))
-  WHERE pg_authid.rolcanlogin;
 key_dependent_view| SELECT view_base_table.key,
     view_base_table.data
    FROM view_base_table

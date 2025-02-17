@@ -295,8 +295,6 @@ extern void shdepDropOwned(List *relids, DropBehavior behavior);
 
 extern void shdepReassignOwned(List *relids, Oid newrole);
 
-extern void dropUserDependencies(Oid userId);		/* ReqID:SRS-MISC-USER */
-
 extern void ivy_check_rowid_seq_depend(Oid seqid, char *seqname); /* BUG#Z1279 */
 
 #endif							/* DEPENDENCY_H */

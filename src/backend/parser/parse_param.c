@@ -797,7 +797,6 @@ pl_calculate_questionmarknumber(void)
 	if (CurrentOraParamNode->questionmark_count >= CurrentOraParamNode->questionmark_max)
 	{
 		CurrentOraParamNode->QuestionMarkNumbers = (int *) repalloc(CurrentOraParamNode->QuestionMarkNumbers, sizeof(int)* CurrentOraParamNode->questionmark_max * 2);
-		CurrentOraParamNode->param_max *= 2;
 		CurrentOraParamNode->questionmark_max *= 2;	/* BUG:Z1661 */
 	}
 

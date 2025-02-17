@@ -26,6 +26,9 @@
 --6 all_arguments system views
 --7 others
 --
+CREATE USER system WITH superuser;
+
+\c - system
 
 CREATE TABLE employees(first_name varchar(20) not null, 
 last_name varchar(20) not null,
@@ -2903,3 +2906,14 @@ RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 --
 --clean up
 DROP TABLE employees;
+
+--drop system user
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;

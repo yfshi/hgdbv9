@@ -720,7 +720,7 @@ has_rolreplication(Oid roleid)
  * Initialize user identity during normal backend startup
  */
 void
-InitializeSessionUserId(const char *rolename, Oid roleid, Oid dboid)
+InitializeSessionUserId(const char *rolename, Oid roleid)
 {
 	HeapTuple	roleTup;
 	Form_pg_authid rform;
@@ -745,27 +745,11 @@ InitializeSessionUserId(const char *rolename, Oid roleid, Oid dboid)
 	if (rolename != NULL)
 	{
 		/* Look up the username */
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Find a specific type of user
-		 */
-		Port	   *port = MyProcPort;
-		if ((DB_ORACLE == database_mode) && (port->connmode == 'o'))
-			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(rolename), 
-									ObjectIdGetDatum(dboid));
-		else
-			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(rolename), 
-									Int32GetDatum(0));
-		
+		roleTup = SearchSysCache1(AUTHNAME, CStringGetDatum(rolename));
 		if (!HeapTupleIsValid(roleTup))
 			ereport(FATAL,
 					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 					 errmsg("role \"%s\" does not exist", rolename)));
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
 	}
 	else
 	{
@@ -779,20 +763,10 @@ InitializeSessionUserId(const char *rolename, Oid roleid, Oid dboid)
 	rform = (Form_pg_authid) GETSTRUCT(roleTup);
 	roleid = rform->oid;
 	rname = NameStr(rform->rolname);
-	MyDatabaseId = dboid;
-	CurrentUserOid = roleid;
 
 	AuthenticatedUserId = roleid;
 	AuthenticatedUserIsSuperuser = rform->rolsuper;
-/*
-	if (rolename != NULL)
-	{
-		if(rform->rolowndboid)
-			compatible_db = ORA_PARSER;
-		printf("compatible_db:%d\n", compatible_db);
-	}
-	printf("compatible_db:%d\n", compatible_db);
-*/
+
 	/* This sets OuterUserId/CurrentUserId too */
 	SetSessionUserId(roleid, AuthenticatedUserIsSuperuser);
 

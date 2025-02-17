@@ -1450,20 +1450,20 @@ end;
 /
 INFO:  last_name:guang
 --one row
-SELECT user_name,sql_text FROM v$open_cursor ORDER BY sql_text;
- user_name |            sql_text             
------------+---------------------------------
- system    | SELECT last_name FROM employees+
-           |     WHERE ROWNUM < 11          +
-           |     OR
+SELECT sql_text FROM v$open_cursor ORDER BY sql_text;
+            sql_text             
+---------------------------------
+ SELECT last_name FROM employees+
+     WHERE ROWNUM < 11          +
+     OR
 (1 row)
 
 --drop package
 DROP package test_pkg;
 --none row
-SELECT user_name,sql_text FROM v$open_cursor ORDER BY sql_text;
- user_name | sql_text 
------------+----------
+SELECT sql_text FROM v$open_cursor ORDER BY sql_text;
+ sql_text 
+----------
 (0 rows)
 
 --package private global cursor is global?

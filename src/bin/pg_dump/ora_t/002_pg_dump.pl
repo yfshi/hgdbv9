@@ -434,7 +434,7 @@ my %tests = (
 		regexp => qr/^
 			\QALTER DEFAULT PRIVILEGES \E
 			\QFOR ROLE regress_dump_test_role IN SCHEMA dump_test \E
-			\QGRANT SELECT ON TABLES  TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT SELECT ON TABLES  TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_post_data => 1, },
@@ -453,7 +453,7 @@ my %tests = (
 		regexp => qr/^
 			\QALTER DEFAULT PRIVILEGES \E
 			\QFOR ROLE regress_dump_test_role IN SCHEMA dump_test \E
-			\QGRANT ALL ON FUNCTIONS  TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON FUNCTIONS  TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_post_data => 1, },
@@ -486,10 +486,10 @@ my %tests = (
 		regexp => qr/^
 			\QALTER DEFAULT PRIVILEGES \E
 			\QFOR ROLE regress_dump_test_role \E
-			\QREVOKE ALL ON TABLES  FROM INSTANCEUSER regress_dump_test_role;\E\n
+			\QREVOKE ALL ON TABLES  FROM regress_dump_test_role;\E\n
 			\QALTER DEFAULT PRIVILEGES \E
 			\QFOR ROLE regress_dump_test_role \E
-			\QGRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLES  TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLES  TO regress_dump_test_role;\E
 			/xm,
 		like => { %full_runs, section_post_data => 1, },
 		unlike => { no_privs => 1, },
@@ -3129,7 +3129,7 @@ my %tests = (
 		create_sql   => 'GRANT USAGE ON SCHEMA dump_test_second_schema
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT USAGE ON SCHEMA dump_test_second_schema TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT USAGE ON SCHEMA dump_test_second_schema TO regress_dump_test_role;\E
 			/xm,
 		like => {
 			%full_runs,
@@ -3144,7 +3144,7 @@ my %tests = (
 		create_sql   => 'GRANT USAGE ON FOREIGN DATA WRAPPER dummy
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON FOREIGN DATA WRAPPER dummy TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON FOREIGN DATA WRAPPER dummy TO regress_dump_test_role;\E
 			/xm,
 		like => { %full_runs, section_pre_data => 1, },
 		unlike => { no_privs => 1, },
@@ -3155,7 +3155,7 @@ my %tests = (
 		create_sql   => 'GRANT USAGE ON FOREIGN SERVER s1
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON FOREIGN SERVER s1 TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON FOREIGN SERVER s1 TO regress_dump_test_role;\E
 			/xm,
 		like => { %full_runs, section_pre_data => 1, },
 		unlike => { no_privs => 1, },
@@ -3166,7 +3166,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT USAGE ON DOMAIN dump_test.us_postal_code TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON TYPE dump_test.us_postal_code TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON TYPE dump_test.us_postal_code TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
@@ -3181,7 +3181,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT USAGE ON TYPE dump_test.int42 TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON TYPE dump_test.int42 TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON TYPE dump_test.int42 TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
@@ -3196,7 +3196,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT USAGE ON TYPE dump_test.planets TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON TYPE dump_test.planets TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON TYPE dump_test.planets TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
@@ -3211,7 +3211,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT USAGE ON TYPE dump_test.textrange TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON TYPE dump_test.textrange TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON TYPE dump_test.textrange TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
@@ -3226,7 +3226,7 @@ my %tests = (
 		create_sql =>
 		  'GRANT CREATE ON DATABASE dump_test TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT CREATE ON DATABASE dump_test TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT CREATE ON DATABASE dump_test TO regress_dump_test_role;\E
 			/xm,
 		like => { pg_dumpall_dbprivs => 1, },
 	},
@@ -3236,7 +3236,7 @@ my %tests = (
 		create_sql   => 'GRANT SELECT ON TABLE dump_test.test_table
 						   TO regress_dump_test_role;',
 		regexp =>
-		  qr/^\QGRANT SELECT ON TABLE dump_test.test_table TO INSTANCEUSER regress_dump_test_role;\E/m,
+		  qr/^\QGRANT SELECT ON TABLE dump_test.test_table TO regress_dump_test_role;\E/m,
 		like => {
 			%full_runs,
 			%dump_test_schema_runs,
@@ -3256,7 +3256,7 @@ my %tests = (
 						   TABLE dump_test.measurement
 						   TO regress_dump_test_role;',
 		regexp =>
-		  qr/^\QGRANT SELECT ON TABLE dump_test.measurement TO INSTANCEUSER regress_dump_test_role;\E/m,
+		  qr/^\QGRANT SELECT ON TABLE dump_test.measurement TO regress_dump_test_role;\E/m,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
 		unlike => {
@@ -3274,7 +3274,7 @@ my %tests = (
 						   dump_test_second_schema.measurement_y2006m5
 						   TO regress_dump_test_role;',
 		regexp =>
-		  qr/^\QGRANT SELECT ON TABLE dump_test_second_schema.measurement_y2006m2 TO INSTANCEUSER regress_dump_test_role;\E/m,
+		  qr/^\QGRANT SELECT ON TABLE dump_test_second_schema.measurement_y2006m2 TO regress_dump_test_role;\E/m,
 		like => {
 			%full_runs,
 			role             => 1,
@@ -3293,7 +3293,7 @@ my %tests = (
 						 END;
 						 $$;',
 		regexp => qr/^
-			\QGRANT ALL ON LARGE OBJECT \E[0-9]+\Q TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON LARGE OBJECT \E[0-9]+\Q TO regress_dump_test_role;\E
 			/xm,
 		like => {
 			%full_runs,
@@ -3317,7 +3317,7 @@ my %tests = (
 		  'GRANT INSERT (col1) ON TABLE dump_test.test_second_table
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT INSERT(col1) ON TABLE dump_test.test_second_table TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT INSERT(col1) ON TABLE dump_test.test_second_table TO regress_dump_test_role;\E
 			/xm,
 		like =>
 		  { %full_runs, %dump_test_schema_runs, section_pre_data => 1, },
@@ -3332,7 +3332,7 @@ my %tests = (
 		create_sql   => 'GRANT EXECUTE ON FUNCTION pg_sleep(float8)
 						   TO regress_dump_test_role;',
 		regexp => qr/^
-			\QGRANT ALL ON FUNCTION pg_catalog.pg_sleep(double precision) TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT ALL ON FUNCTION pg_catalog.pg_sleep(double precision) TO regress_dump_test_role;\E
 			/xm,
 		like => { %full_runs, section_pre_data => 1, },
 		unlike => { no_privs => 1, },
@@ -3465,7 +3465,7 @@ my %tests = (
 		regexp       => qr/^
 			\QREVOKE CONNECT,TEMPORARY ON DATABASE dump_test FROM PUBLIC;\E\n
 			\QGRANT TEMPORARY ON DATABASE dump_test TO PUBLIC;\E\n
-			\QGRANT CREATE ON DATABASE dump_test TO INSTANCEUSER regress_dump_test_role;\E
+			\QGRANT CREATE ON DATABASE dump_test TO regress_dump_test_role;\E
 			/xm,
 		like => { pg_dumpall_dbprivs => 1, },
 	},

@@ -93,13 +93,11 @@ SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, r
  regress_test_def_createdb | f        | t          | f             | f           | f           | f              | f            |           -1 |             | 
 (1 row)
 
-CREATE ROLE regress_test_createdb WITH CREATEDB;  --error
-ERROR:  database user cannot be granted the createdb permission
-CREATE ROLE regress_test_createdb WITH NOCREATEDB;
+CREATE ROLE regress_test_createdb WITH CREATEDB;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_createdb';
         rolname        | rolsuper | rolinherit | rolcreaterole | rolcreatedb | rolcanlogin | rolreplication | rolbypassrls | rolconnlimit | rolpassword | rolvaliduntil 
 -----------------------+----------+------------+---------------+-------------+-------------+----------------+--------------+--------------+-------------+---------------
- regress_test_createdb | f        | t          | f             | f           | f           | f              | f            |           -1 |             | 
+ regress_test_createdb | f        | t          | f             | t           | f           | f              | f            |           -1 |             | 
 (1 row)
 
 ALTER ROLE regress_test_createdb WITH NOCREATEDB;
@@ -109,12 +107,11 @@ SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, r
  regress_test_createdb | f        | t          | f             | f           | f           | f              | f            |           -1 |             | 
 (1 row)
 
-ALTER ROLE regress_test_createdb WITH CREATEDB;  --error
-ERROR:  database user cannot be granted the createdb permission
+ALTER ROLE regress_test_createdb WITH CREATEDB;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_createdb';
         rolname        | rolsuper | rolinherit | rolcreaterole | rolcreatedb | rolcanlogin | rolreplication | rolbypassrls | rolconnlimit | rolpassword | rolvaliduntil 
 -----------------------+----------+------------+---------------+-------------+-------------+----------------+--------------+--------------+-------------+---------------
- regress_test_createdb | f        | t          | f             | f           | f           | f              | f            |           -1 |             | 
+ regress_test_createdb | f        | t          | f             | t           | f           | f              | f            |           -1 |             | 
 (1 row)
 
 -- default for can login is false for role

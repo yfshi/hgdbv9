@@ -183,9 +183,6 @@ test: ora_sort
 test: ora_cast_as_int
 #/* End - BUG#M0000194 */
 
-#/* BEGIN - ReqID:SRS-MISC-USER */
-test: dbuser
-#/* BEGIN - ReqID:SRS-MISC-USER */
 
 #/* Begin - BUG#M0000217 */
 test: ora_compatible_oracle_misc
@@ -220,10 +217,6 @@ test: ora_dblink_for_pgfdw
 #/* Begin - BUG:M0000368 */
 test: copy_skip
 #/* End - BUG:M0000368 */
-
-#/* Begin - ReqID:SRS-SQL-SCHEMA */
-test: ora_schema
-#/* End - ReqID:SRS-SQL-SCHEMA */
 
 #/* Begin - BUG#Z1616 */
 test: copy_skipbadR

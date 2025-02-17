@@ -83,12 +83,6 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/varlena.h"
-/* Begin - ReqID:SRS-MISC-USER */
-#include "utils/guc.h"
-#include "utils/ora_compatible.h"
-#include "commands/user.h"
-/* End - ReqID:SRS-MISC-USER */
-
 
 /* GUC variables */
 char	   *default_tablespace = NULL;
@@ -238,31 +232,10 @@ CreateTableSpace(CreateTableSpaceStmt *stmt)
 	
 
 	/* However, the eventual owner of the tablespace need not be */
-	/* Begin - ReqID:SRS-MISC-USER bug:z561  */
 	if (stmt->owner)
-	{
-		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
-		{
-			switch (stmt->utype)
-			{
-				case DATABASE_USER:
-					ownerId = get_databaserol_oid(stmt->owner);
-					break;
-				case INSTANCE_USER:
-					ownerId = get_instancerol_oid(stmt->owner);
-					break;
-				case UNKNOWN_USER:
-					ownerId = get_rolespec_oid(stmt->owner, false);
-					break;
-			}
-		}
-		else
-			ownerId = get_rolespec_oid(stmt->owner, false);
-	}
+		ownerId = get_rolespec_oid(stmt->owner, false);
 	else
 		ownerId = GetUserId();
-
-	/* End - ReqID:SRS-MISC-USER bug:z561  */
 
 	/* Unix-ify the offered path, and strip any trailing slashes */
 	location = pstrdup(stmt->location);

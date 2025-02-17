@@ -238,25 +238,12 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		8
 	},
-#if 0
 	{AuthIdRelationId,			/* AUTHNAME */
 		AuthIdRolnameIndexId,
 		1,
 		{
 			Anum_pg_authid_rolname,
 			0,
-			0,
-			0
-		},
-		8
-	},
-#endif
-	{AuthIdRelationId,			/* AUTHNAMEDBOID */
-		AuthIdRolnameDboidIndexId,
-		2,
-		{
-			Anum_pg_authid_rolname,
-			Anum_pg_authid_rolowndboid,
 			0,
 			0
 		},

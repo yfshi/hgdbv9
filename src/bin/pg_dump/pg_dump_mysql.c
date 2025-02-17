@@ -336,9 +336,6 @@ struct dumpMethods dumpMethodsMysql = {
 	.ConnectDatabase = ConnectDatabaseMysql,
 	.getDbCompatibleMode = getDbCompatibleMode,
 	.getDatabaseMode = getDatabaseMode,
-	.haveDatabaseUser = NULL,
-	.getcurrentuserisInstanceSupperuser = NULL,
-	.getcurrentuserisDatabaseSupperuser = NULL,
 	.setIdentifierCaseSwitch = NULL,
 	.setNLSdateFormat = NULL,
 	.setup_connection = setup_connectionMysql,
@@ -10458,9 +10455,6 @@ dumpDumpableObjectMysql(Archive *fout, const DumpableObject *dobj)
 			break;
 		case DO_PRE_DATA_BOUNDARY:
 		case DO_POST_DATA_BOUNDARY:
-		case DO_DATABASEROLE:
-		case DO_DATABASEROLEMEMBERSHIP:
-		case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 		case DO_PACKAGE:
 			/* never dumped, nothing to do */
 			break;
@@ -18880,9 +18874,6 @@ addBoundaryDependenciesMysql(DumpableObject **dobjs, int numObjs,
 				/* must come after the pre-data boundary */
 				addObjectDependency(dobj, preDataBound->dumpId);
 				break;
-			case DO_DATABASEROLE:
-			case DO_DATABASEROLEMEMBERSHIP:
-			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_PACKAGE:
 				/* nothing to do */
 				break;

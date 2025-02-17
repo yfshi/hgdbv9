@@ -80,45 +80,6 @@ static bool on_commit_launcher_wakeup = false;
 
 Datum		pg_stat_get_subscription(PG_FUNCTION_ARGS);
 
-
-/* 
- * getusrdboid
- * bug:z854 
- */
-static Oid
-getusrdboid(Oid roleid)
-{
-	HeapTuple		roleTup;
-	Form_pg_authid	rform;
-	Oid				dboid = InvalidOid;
-	bool			own_xact = false;
-
-	if (!IsTransactionOrTransactionBlock())
-	{
-		StartTransactionCommand();
-		(void) GetTransactionSnapshot();
-		own_xact = true;
-	}
-
-	roleTup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(roleid));
-	if (HeapTupleIsValid(roleTup))
-	{
-		rform = (Form_pg_authid) GETSTRUCT(roleTup);
-		dboid = rform->rolowndboid;
-	}
-	else
-		ereport(FATAL,
-					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-					 errmsg("role with OID %u does not exist", roleid)));
-
-	ReleaseSysCache(roleTup);
-
-	if (own_xact)
-		CommitTransactionCommand();
-	
-	return dboid;
-}	
-
 /*
  * Load the list of subscriptions.
  *
@@ -450,18 +411,6 @@ retry:
 	bgw.bgw_notify_pid = MyProcPid;
 	bgw.bgw_main_arg = Int32GetDatum(slot);
 
-	/* BEGIN - bug:z854 */
-	/*
-	 * The reason for the modification of part of the code block is 
-	 * that in the logical backup time, the child process forked out 
-	 * by pg_ctl main process does not have connmode, but at this 
-	 * time, the useroid is clear, so the value of 
-	 * connmode is assigned through the user's dboid
-	 */
-	if(userid && getusrdboid(userid))
-		bgw.connmode = 'o';
-	/* END - bug:z854 */
-
 	if (!RegisterDynamicBackgroundWorker(&bgw, &bgw_handle))
 	{
 		/* Failed to start worker, so clean up the worker slot. */
@@ -772,15 +721,6 @@ ApplyLauncherRegister(void)
 	bgw.bgw_restart_time = 5;
 	bgw.bgw_notify_pid = 0;
 	bgw.bgw_main_arg = (Datum) 0;
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * mode of a process
-	 */
-	if(bgw.connmode != 'o')
-		bgw.connmode = 'u';
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 
 	RegisterBackgroundWorker(&bgw);
 }

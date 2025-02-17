@@ -97,7 +97,6 @@ static bool have_createdb_privilege(void);
 static void remove_dbtablespaces(Oid db_id);
 static bool check_db_file_conflict(Oid db_id);
 static int	errdetail_busy_db(int notherbackends, int npreparedxacts);
-static void dropsrolowndboid(Oid db_id);
 
 
 /*
@@ -150,31 +149,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	int			notherbackends;
 	int			npreparedxacts;
 	createdb_failure_params fparms;
-
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * database should be created by instance-level use when compatible_db is oracle
-	 */
-	if( DB_ORACLE == database_mode)
-	{
-		if(PG_PARSER == compatible_db)
-		{
-			bool	result = isinstancelevel();
-
-			if(!result)
-			{
-				elog(ERROR,"database should be created by instance-level user");
-			}
-		}
-		else if(ORA_PARSER == compatible_db)
-		{
-			elog(ERROR,"database cannot be created when compatible_db is oracle");
-		}
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
 
 	/* Extract options from the statement node tree */
 	foreach(option, stmt->options)
@@ -768,18 +742,6 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	PG_END_ENSURE_ERROR_CLEANUP(createdb_failure_callback,
 								PointerGetDatum(&fparms));
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Both sys and system are created when the database is created
-	 */
-	if (DB_ORACLE == database_mode && dbname && !IsBinaryUpgrade)	/* BUGM431 */
-	{
-		createsysrole("sys", dboid, get_database_oid(dbtemplate, true));
-		createsysrole("system", dboid, get_database_oid(dbtemplate, true));
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 	return dboid;
 }
 
@@ -913,31 +875,6 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	if (!pg_database_ownercheck(db_id, GetUserId()))
 		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_DATABASE,
 					   dbname);
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * database should be droped by instance-level use when compatible_db is oracle
-	 */
-	if( DB_ORACLE == database_mode)
-	{
-		if(PG_PARSER == compatible_db)
-		{
-			bool	result = isinstancelevel();
-
-			if(!result)
-			{
-				table_close(pgdbrel, NoLock);
-				elog(ERROR,"database should be drop by instance-level user");
-			}
-		}
-		else if(ORA_PARSER == compatible_db)
-		{
-			table_close(pgdbrel, NoLock);
-			elog(ERROR,"database cannot be droped when compatible_db is oracle");
-		}
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 
 	/* DROP hook for the database being removed */
 	InvokeObjectDropHook(DatabaseRelationId, db_id, 0);
@@ -1110,16 +1047,6 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	table_close(pgdbrel, NoLock);
 
 	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * BUG: Z530
-	 */
-	CommandCounterIncrement();
-	dropsrolowndboid(db_id);
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */	
-
-	/*
 	 * Force synchronous commit, thus minimizing the window between removal of
 	 * the database files and committal of the transaction. If we crash before
 	 * committing, we'll have a DB that's gone on disk but still there
@@ -1127,99 +1054,6 @@ dropdb(const char *dbname, bool missing_ok, bool force)
 	 */
 	ForceSyncCommit();
 }
-
-/* 
- * ReqID:SRS-MISC-USER
- * 
- * dropsrolowndboid : When deleting a database, we also delete database-users
- */
-static void dropsrolowndboid(Oid db_id)
-{
-	Relation	pg_authid_rel,
-				pg_auth_members_rel;
-	ScanKeyData skey;
-	SysScanDesc sscan_auth;
-	HeapTuple	tuple;
-
-	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
-	pg_auth_members_rel = table_open(AuthMemRelationId, RowExclusiveLock);
-
-	ScanKeyInit(&skey,
-				Anum_pg_authid_rolowndboid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(db_id));
-
-	sscan_auth = systable_beginscan(pg_authid_rel, AuthIdRolnameDboidIndexId, true,
-							   NULL, 1, &skey);
-	while (HeapTupleIsValid(tuple = systable_getnext(sscan_auth)))
-	{
-		HeapTuple	tmp_tuple;
-		Form_pg_authid roleform;
-		ScanKeyData scankey;
-		SysScanDesc sscan;
-		Oid			roleid;
-		char	   *detail = NULL;
-		char	   *detail_log = NULL;
-
-		roleform = (Form_pg_authid) GETSTRUCT(tuple);
-		roleid = roleform->oid;
-
-		/* DROP hook for the role being removed */
-		InvokeObjectDropHook(AuthIdRelationId, roleid, 0);
-
-		LockSharedObject(AuthIdRelationId, roleid, 0, AccessExclusiveLock);
-
-		/* Check for pg_shdepend entries depending on this role */
-		if (checkSharedDependencies(AuthIdRelationId, roleid,
-									&detail, &detail_log))
-			ereport(ERROR,
-					(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
-					 errmsg("role \"%s\" cannot be dropped because some objects depend on it",
-							NameStr(roleform->rolname)),
-					 errdetail_internal("%s", detail),
-					 errdetail_log("%s", detail_log)));
-
-		CatalogTupleDelete(pg_authid_rel, &tuple->t_self);
-
-		ScanKeyInit(&scankey,
-					Anum_pg_auth_members_roleid,
-					BTEqualStrategyNumber, F_OIDEQ,
-					ObjectIdGetDatum(roleid));
-
-		sscan = systable_beginscan(pg_auth_members_rel, AuthMemRoleMemIndexId,
-								   true, NULL, 1, &scankey);
-
-		while (HeapTupleIsValid(tmp_tuple = systable_getnext(sscan)))
-		{
-			CatalogTupleDelete(pg_auth_members_rel, &tmp_tuple->t_self);
-		}
-
-		systable_endscan(sscan);
-
-		ScanKeyInit(&scankey,
-					Anum_pg_auth_members_member,
-					BTEqualStrategyNumber, F_OIDEQ,
-					ObjectIdGetDatum(roleid));
-
-		sscan = systable_beginscan(pg_auth_members_rel, AuthMemMemRoleIndexId,
-								   true, NULL, 1, &scankey);
-
-		while (HeapTupleIsValid(tmp_tuple = systable_getnext(sscan)))
-		{
-			CatalogTupleDelete(pg_auth_members_rel, &tmp_tuple->t_self);
-		}
-		systable_endscan(sscan);
-		DeleteSharedComments(roleid, AuthIdRelationId);
-		DeleteSharedSecurityLabel(roleid, AuthIdRelationId);
-		DropSetting(InvalidOid, roleid);
-		CommandCounterIncrement();
-	}
-	systable_endscan(sscan_auth);
-	table_close(pg_auth_members_rel, NoLock);
-	table_close(pg_authid_rel, NoLock);
-}
-
-
 
 /*
  * Rename database
@@ -1233,24 +1067,6 @@ RenameDatabase(const char *oldname, const char *newname)
 	int			notherbackends;
 	int			npreparedxacts;
 	ObjectAddress address;
-
-	/* If the current user is a database user, this operation is not allowed */
-	/* Begin - bug:z528  bug:530 */
-	if( DB_ORACLE == database_mode)
-	{
-		if(PG_PARSER == compatible_db)
-		{
-			if(!isinstancelevel())
-			{
-				elog(ERROR,"database should be renamed by instance-level user");
-			}
-		}
-		else if(ORA_PARSER == compatible_db)
-		{
-			elog(ERROR,"database cannot be renamed when compatible_db is oracle");
-		}
-	}
-	/* End - bug:z528 bug:530 */
 
 	/*
 	 * Look up the target database's OID, and get exclusive lock on it. We
@@ -1890,7 +1706,7 @@ AlterDatabaseSet(AlterDatabaseSetStmt *stmt)
 	bool		is_global_names = false;
 
 	/* Begin - ReqID:SRS-SQL-DBLINK */
-	if (strcmp(stmt->setstmt->name, "global_names") == 0)
+	if (stmt->setstmt->name && strcmp(stmt->setstmt->name, "global_names") == 0)
 	{
 		is_global_names = true;
 		set_valuestr = ExtractSetVariableArgs(stmt->setstmt);
