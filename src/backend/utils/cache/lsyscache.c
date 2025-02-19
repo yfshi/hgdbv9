@@ -3864,6 +3864,26 @@ get_namespace_owner(Oid nspid)
 
 	return owner;
 }
+
+bool
+fit_namespace_owner(Oid nspid, Oid *owner)
+{
+	char *nspname = NULL;
+
+	if(ORA_PARSER != compatible_db || !enable_ora_user_schema)
+		return false;
+
+	nspname = get_namespace_name_or_temp(nspid);
+	if (nspname == NULL ||
+		strcmp(nspname, "pg_temp") == 0 ||
+		strcmp(nspname, "public") == 0)
+		return false;
+
+	if (owner != NULL)
+		*owner = get_namespace_owner(nspid);
+
+	return true;
+}
 /* End - ReqID:SRS-SQL-SCHEMA */
 
 /*				---------- PG_RANGE CACHES ----------				 */

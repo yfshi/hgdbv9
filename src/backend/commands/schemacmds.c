@@ -35,6 +35,7 @@
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/jsonb.h"
+#include "utils/lsyscache.h"
 #include "utils/ora_compatible.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -73,7 +74,6 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	ObjectAddress address;
 	StringInfoData pathbuf;
 	char	   *orischemaName = NULL;	/* ReqID:SRS-MYSQL-CASE */
-	bool		ora_schema = false;	/* ReqID:SRS-SQL-SCHEMA */
 
 	GetUserIdAndSecContext(&saved_uid, &save_sec_context);
 
@@ -107,21 +107,6 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	else
 		owner_uid = saved_uid;
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * For database user in oracle mode, creating schema is not allowed and
-	 * only batch operations are processed.
-	 */
-	ora_schema = ORA_USER_SCHEMA_ENABLED(owner_uid);
-	if (ora_schema)
-	{
-		Assert(!stmt->if_not_exists);
-		Assert(!schemaName);
-		schemaName = GetUserNameFromId(owner_uid, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
 	/* fill schema name with the user name if not specified */
 	if (!schemaName)
 	{
@@ -142,27 +127,15 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	 * The latter provision guards against "giveaway" attacks.  Note that a
 	 * superuser will always have both of these privileges a fortiori.
 	 */
-	if (ora_schema)	/* ReqID:SRS-SQL-SCHEMA check schema permision */
-	{
-		namespaceId = get_namespace_oid(schemaName, true);
-
-		/* Check namespace permissions. */
-		aclresult = pg_namespace_aclcheck(namespaceId, saved_uid, ACL_CREATE);
-		if (aclresult != ACLCHECK_OK)
-			aclcheck_error(aclresult, OBJECT_SCHEMA, schemaName);
-	}
-	else
-	{
-		aclresult = pg_database_aclcheck(MyDatabaseId, saved_uid, ACL_CREATE);
-		if (aclresult != ACLCHECK_OK)
-			aclcheck_error(aclresult, OBJECT_DATABASE,
-						   get_database_name(MyDatabaseId));
-	}
+	aclresult = pg_database_aclcheck(MyDatabaseId, saved_uid, ACL_CREATE);
+	if (aclresult != ACLCHECK_OK)
+		aclcheck_error(aclresult, OBJECT_DATABASE,
+						get_database_name(MyDatabaseId));
 
 	check_is_member_of_role(saved_uid, owner_uid);
 
 	/* Additional check to protect reserved schema names */
-	if (!allowSystemTableMods && IsReservedName(schemaName) && !ora_schema)	/* ReqID:SRS-SQL-SCHEMA */
+	if (!allowSystemTableMods && IsReservedName(schemaName))
 		ereport(ERROR,
 				(errcode(ERRCODE_RESERVED_NAME),
 				 errmsg("unacceptable schema name \"%s\"", schemaName),
@@ -208,7 +181,26 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 		SetUserIdAndSecContext(owner_uid,
 							   save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
 
-	if (!ora_schema)	/* ReqID:SRS-SQL-SCHEMA */
+	/*
+	 * Begin - ReqID:SRS-SQL-SCHEMA
+	 *
+	 * CREATE SCHEMA AUTHORIZATION schema ...
+	 * Allow existing schema in oracle mode.
+	 */
+	if (ORA_PARSER == compatible_db && enable_ora_user_schema &&
+		stmt->schemaElts != NULL && stmt->schemaname == NULL)
+	{
+		if (stmt->authrole == NULL)
+			elog(ERROR, "authorization role must be specified");
+
+		namespaceId = get_namespace_oid(schemaName, true);
+		if (OidIsValid(namespaceId) &&
+			get_namespace_owner(namespaceId) != owner_uid)
+			elog(ERROR, "authorization role \"%s\" must be the owner of schema \"%s\"", stmt->authrole->rolename, schemaName);
+	}
+
+	if (!OidIsValid(namespaceId))
+	/* End - ReqID:SRS-SQL-SCHEMA */
 	{
 		/* Create the schema's namespace */
 		namespaceId = NamespaceCreate(schemaName, owner_uid, false);

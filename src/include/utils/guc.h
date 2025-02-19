@@ -435,13 +435,8 @@ extern PGDLLIMPORT bool enable_pg_interval_datatype; /* BUG#M0000475 */
 extern PGDLLIMPORT bool	alter_database_set_special;  /* BUG#M0000475 */
 
 extern bool package_security_define_compare_user;	/* BUG#M496 */
-/* Begin - ReqID:SRS-SQL-SCHEMA */
-extern PGDLLIMPORT bool enable_ora_user_schema;
-extern PGDLLIMPORT bool enable_ora_default_tablespace;
 
-#define ORA_USER_SCHEMA_ENABLED(_current_user) \
-	(ORA_PARSER == compatible_db && enable_ora_user_schema && !is_instanceuser(_current_user))
-/* End - ReqID:SRS-SQL-SCHEMA */
+extern PGDLLIMPORT bool enable_ora_user_schema;		/* ReqID:SRS-SQL-SCHEMA */
 
 /* Begin - BUG#M0000414 */
 extern bool enable_store_nullterminator_char;

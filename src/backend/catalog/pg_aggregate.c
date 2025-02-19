@@ -29,9 +29,7 @@
 #include "parser/parse_oper.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -121,10 +119,7 @@ AggregateCreate(const char *aggName,
 	if (numDirectArgs < 0 || numDirectArgs > numArgs)
 		elog(ERROR, "incorrect number of direct arguments for aggregate");
 
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-		objectOwner = get_namespace_owner(aggNamespace);
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(aggNamespace, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Aggregates can have at most FUNC_MAX_ARGS-1 args, else the transfn

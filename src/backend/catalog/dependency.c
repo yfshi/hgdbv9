@@ -1908,20 +1908,6 @@ doDeletion(const ObjectAddress *object, int flags)
 			RemoveUserMappingById(object->objectId);
 			break;
 
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		case OCLASS_SCHEMA:
-			{
-				DropObjectById(object);
-				/* delete item in pg_object */
-				if (pg_object_drop_obj_hook)
-				{
-					if (pg_object_get_ori_infor_hook(*object))
-						pg_object_drop_obj_hook(*object);
-				}
-				break;
-			}
-		/* End - ReqID:SRS-SQL-SCHEMA */
-
 		case OCLASS_CAST:
 		case OCLASS_COLLATION:
 		case OCLASS_CONVERSION:
@@ -1931,7 +1917,7 @@ doDeletion(const ObjectAddress *object, int flags)
 		case OCLASS_AM:
 		case OCLASS_AMOP:
 		case OCLASS_AMPROC:
-		//case OCLASS_SCHEMA:	/* ReqID:SRS-SQL-SCHEMA move above */
+		case OCLASS_SCHEMA:
 		case OCLASS_TSPARSER:
 		case OCLASS_TSDICT:
 		case OCLASS_TSTEMPLATE:

@@ -1541,11 +1541,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
 	char	   *orifuncname = NULL;	/* ReqID:SRS-MYSQL-CASE */
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = GetUserId();
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
@@ -1578,22 +1574,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(namespaceId));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		objectOwner = get_namespace_owner(namespaceId);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceId, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/* Set default attributes */
 	as_clause = NIL;
@@ -1890,16 +1871,6 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 
 		pfree(buf.data);
 	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 	/* END - ReqID:SRS-CMD-PGDUMP */

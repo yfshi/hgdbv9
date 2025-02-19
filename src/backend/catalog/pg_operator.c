@@ -33,9 +33,7 @@
 #include "parser/parse_oper.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -355,10 +353,7 @@ OperatorCreate(const char *operatorName,
 	ObjectAddress address;
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 	
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-		objectOwner = get_namespace_owner(operatorNamespace);
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(operatorNamespace, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Sanity checks

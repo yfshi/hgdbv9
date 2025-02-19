@@ -46,9 +46,7 @@
 #include "parser/parse_type.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -87,11 +85,6 @@ DefineOperator(List *names, List *parameters)
 	Oid			typeId[2];		/* to hold left and right arg */
 	int			nargs;
 	ListCell   *pl;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	ObjectAddress	oprObject;
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	oprNamespace = QualifiedNameGetCreationNamespace(names, &oprName);
@@ -101,22 +94,6 @@ DefineOperator(List *names, List *parameters)
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(oprNamespace));
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(oprNamespace);
-
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * loop over the definition list and extract the information we need.
@@ -273,7 +250,7 @@ DefineOperator(List *names, List *parameters)
 	/*
 	 * now have OperatorCreate do all the work..
 	 */
-	oprObject = 	/* ReqID:SRS-SQL-SCHEMA */
+	return
 		OperatorCreate(oprName, /* operator name */
 					   oprNamespace,	/* namespace */
 					   typeId1, /* left type id */
@@ -285,13 +262,6 @@ DefineOperator(List *names, List *parameters)
 					   joinOid, /* optional join sel. function name */
 					   canMerge,	/* operator merges */
 					   canHash);	/* operator hashes */
-
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-
-	return oprObject;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 }
 
 /*

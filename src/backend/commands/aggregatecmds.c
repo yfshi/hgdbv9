@@ -34,9 +34,7 @@
 #include "parser/parse_type.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
@@ -111,10 +109,6 @@ DefineAggregate(ParseState *pstate,
 	ObjectAddress address;
 	char	   *orifuncname = NULL;
 	/* End - ReqID:SRS-MYSQL-CASE */
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (name != NIL && IsA(llast(name), String))
@@ -156,23 +150,6 @@ DefineAggregate(ParseState *pstate,
 			numDirectArgs = 0;
 		args = linitial_node(List, args);
 	}
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(aggNamespace);
-
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-		set_namespace = true;
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Examine aggregate's definition clauses */
 	foreach(pl, parameters)
@@ -556,15 +533,6 @@ DefineAggregate(ParseState *pstate,
 
 		pfree(buf.data);
 	}
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 	/* End - ReqID:SRS-MYSQL-CASE */

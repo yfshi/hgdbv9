@@ -873,10 +873,7 @@ execute_extension_script(Oid extensionOid, ExtensionControlFile *control,
 	ListCell   *lc;
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-		objectOwner = get_namespace_owner(schemaOid);
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(schemaOid, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Enforce superuser-ness if appropriate.  We postpone these checks until
@@ -1445,11 +1442,7 @@ CreateExtensionInternal(char *extensionName,
 	bool		mys_case_switch_change_flg = false;
 	bool		currentmyenable_case_switch = myenable_case_switch;
 	/* End - ReqID:SRS-MYSQL-CASE */
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = extowner;
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = extowner;	/* ReqID:SRS-SQL-SCHEMA */
 
 
 	/*
@@ -1676,22 +1669,7 @@ CreateExtensionInternal(char *extensionName,
 		if (isTempNamespace(schemaOid))
 			MyXactFlags |= XACT_FLAGS_ACCESSEDTEMPNAMESPACE;
 
-		/*
-		 * Begin - ReqID:SRS-SQL-SCHEMA
-		 *
-		 * swith to target namespace
-		 */
-		if (ORA_USER_SCHEMA_ENABLED(extowner))
-		{
-			char *nspname = get_namespace_name(schemaOid);
-
-			objectOwner = get_namespace_owner(schemaOid);
-			save_nestlevel = NewGUCNestLevel();
-			(void) set_config_option("search_path", nspname,
-									 PGC_USERSET, PGC_S_SESSION,
-									 GUC_ACTION_SAVE, true, 0, false);
-		}
-		/* End - ReqID:SRS-SQL-SCHEMA */
+		(void) fit_namespace_owner(schemaOid, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 		/*
 		* We don't check creation rights on the target namespace here.  If the
@@ -1757,15 +1735,6 @@ CreateExtensionInternal(char *extensionName,
 		ApplyExtensionUpdates(extensionOid, pcontrol,
 							versionName, updateVersions,
 							origSchemaName, cascade, is_create);
-
-		/*
-		 * Begin - ReqID:SRS-SQL-SCHEMA
-		 *
-		 * Roll back any GUC changes
-		 */
-		if (set_namespace)
-			AtEOXact_GUC(false, save_nestlevel);
-		/* End - ReqID:SRS-SQL-SCHEMA */
 
 		/* begin - bug:z676,z776 */
 		/* Begin - BUG#Z830 */

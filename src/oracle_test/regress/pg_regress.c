@@ -2706,15 +2706,16 @@ regression_main(int argc, char *argv[],
 	 */
 	if (!use_existing)
 	{
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		psql_command("template1", "alter system set ivorysql.enable_ora_user_schema to off");
-		psql_command("template1", "select pg_reload_conf()");
-		/* End - ReqID:SRS-SQL-SCHEMA */
 		for (sl = dblist; sl; sl = sl->next)
 			create_database(sl->str);
 		for (sl = extraroles; sl; sl = sl->next)
 			create_role(sl->str, dblist);
 	}
+
+	/* Begin - ReqID:SRS-SQL-SCHEMA */
+	psql_command("template1", "alter system set ivorysql.enable_ora_user_schema to off");
+	psql_command("template1", "select pg_reload_conf()");
+	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Ready to run the tests

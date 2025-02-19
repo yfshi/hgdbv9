@@ -566,12 +566,13 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	 * Switch role ahead of  DefineRelation() so that objects in the target
 	 * namespace can be used for sytax parsing.
 	 */
-	if (stmt->view->schemaname && ORA_USER_SCHEMA_ENABLED(GetUserId()))
+	if (stmt->view->schemaname && ORA_PARSER == compatible_db && enable_ora_user_schema)
 	{
 		Oid	nspid = RangeVarGetAndCheckCreationNamespace(stmt->view, NoLock, NULL);
-		Oid	nspowner = get_namespace_owner(nspid);
+		Oid	nspowner = GetUserId();
 
 		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+		(void) fit_namespace_owner(nspid, &nspowner);
 
 		if (nspowner != save_userid)
 		{

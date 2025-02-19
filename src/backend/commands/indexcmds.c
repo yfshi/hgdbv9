@@ -792,21 +792,9 @@ DefineIndex(Oid relationId,
 	}
 	else
 	{
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		tablespaceId = InvalidOid;
-
-		/* use the schema's default tablespace */
-		if (ORA_PARSER == compatible_db)
-			tablespaceId = GetNamespaceTablespace(namespaceId,
-												  rel->rd_rel->relpersistence,
-												  partitioned);
-
-		/* still nothing? use the default */
-		if (!OidIsValid(tablespaceId))
-			tablespaceId = GetDefaultTablespace(rel->rd_rel->relpersistence,
-												partitioned);
+		tablespaceId = GetDefaultTablespace(rel->rd_rel->relpersistence,
+											partitioned);
 		/* note InvalidOid is OK in this case */
-		/* End - ReqID:SRS-SQL-SCHEMA */
 	}
 
 	/* Check tablespace permissions */
