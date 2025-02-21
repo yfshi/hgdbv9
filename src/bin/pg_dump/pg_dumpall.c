@@ -730,7 +730,7 @@ main(int argc, char *argv[])
 		{
 			/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 			if (DB_MYSQL == database_mode)
-				pg_log_error("Can't use -m when dbmode is mysql.");
+				pg_log_error("Can't use -m when dbmode is MySQL.");	/* BUG#Z4251 */
 			else
 				pg_log_error("Can't use -m when dbmode is pg.");
 			/* END - ReqID:SRS-MISC-MYSQL-FRAME */

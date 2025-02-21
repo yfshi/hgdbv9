@@ -1390,7 +1390,7 @@ static void DatabaseCheckoptions(const char *options)
 	if (options == NULL)
 		return;
 	if (database_mode == DB_MYSQL)
-		fatal("Can't use -m when dbmode is MySQL");
+		fatal("Can't use -m when dbmode is MySQL.");	/* BUG#Z4251 */
 	else if (database_mode == DB_PG)
 		fatal("Can't use -m when dbmode is pg");
 	else if (database_mode == DB_NATIVE)
