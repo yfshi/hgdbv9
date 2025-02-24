@@ -443,11 +443,13 @@ extern PGDLLIMPORT bool enable_ora_default_tablespace;
 	(ORA_PARSER == compatible_db && enable_ora_user_schema && !is_instanceuser(_current_user))
 /* End - ReqID:SRS-SQL-SCHEMA */
 
-
-
 /* Begin - BUG#M0000414 */
 extern bool enable_store_nullterminator_char;
 /* End - BUG#M0000414 */
+
+/* Begin - BUG#z1616 */
+extern PGDLLIMPORT bool convert_gbk_to_utf8_question_mark;
+/* End - BUG#z1616 */
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

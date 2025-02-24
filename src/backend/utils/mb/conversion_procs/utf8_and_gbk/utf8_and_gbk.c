@@ -45,6 +45,26 @@ PG_FUNCTION_INFO_V1(utf8_to_gbk_2);
  * Returns the number of bytes successfully converted.
  * ----------
  */
+
+/* Begin - BUG#z1616 */
+/*
+ * When no match is found, it is converted to 0xA3BF
+ * which is question mark
+ */
+static uint32
+conv_gbk_to_utf8(uint32 code)
+{
+        uint32 ucode = 0;
+
+        /* guc is set */
+        if (convert_gbk_to_utf8_question_mark &&
+                database_mode == DB_ORACLE)
+                // ucode =  0xA3BF;
+                ucode = 0xefbc9f;
+        return ucode;
+}
+/* End - BUG#z1616 */
+
 Datum
 gbk_to_utf8(PG_FUNCTION_ARGS)
 {
@@ -59,7 +79,7 @@ gbk_to_utf8(PG_FUNCTION_ARGS)
 	converted = LocalToUtf(src, len, dest,
 						   &gbk_to_unicode_tree,
 						   NULL, 0,
-						   NULL,
+						   conv_gbk_to_utf8, /* BUG#z1616 */
 						   PG_GBK,
 						   noError);
 
@@ -84,7 +104,6 @@ conv_utf8_to_gbk(uint32 code)
 	return ucode;
 }
 /* End - BUG#Z00001269 */
-
 
 Datum
 utf8_to_gbk(PG_FUNCTION_ARGS)

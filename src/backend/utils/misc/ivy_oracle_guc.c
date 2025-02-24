@@ -210,6 +210,10 @@ bool package_security_define_compare_user = true; /* BUG#M496 */
 bool enable_store_nullterminator_char = false;
 /* End - BUG#M0000414 */
 
+/* Begin - BUG#z1616 */
+bool   convert_gbk_to_utf8_question_mark = true;
+/* End - BUG#z1616 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -857,6 +861,17 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#M0000414 */
+        /* Begin - BUG#Z0001269 */
+        {
+		{"ivorysql.convert_gbk_to_utf8_question_mark", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether convert the encoding which cannot been converted from GBK to UTF8 to question mark."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&convert_gbk_to_utf8_question_mark,
+		false,
+		NULL, NULL, NULL
+	},
 #endif
 #if 0
 	/* End-of-list marker */
