@@ -1,0 +1,33 @@
+create table z1616_gbk_2_utf8(obj_id number(38,0),userlabel varchar2(255),setup double precision,f float, i int);
+show ivorysql.convert_gbk_to_utf8_question_mark;
+ ivorysql.convert_gbk_to_utf8_question_mark 
+--------------------------------------------
+ off
+(1 row)
+
+copy z1616_gbk_2_utf8 from '@abs_srcdir@/data/gbk_2_utf8.csv' with(format csv, delimiter '|', encoding 'gbk');
+ERROR:  character with byte sequence 0xaf 0xe5 in encoding "GBK" has no equivalent in encoding "UTF8"
+CONTEXT:  COPY z1616_gbk_2_utf8, line 1
+copy z1616_gbk_2_utf8 from '@abs_srcdir@/data/gbk_2_utf8.csv' with(format csv, delimiter '|', encoding 'gbk', skipbad);
+ERROR:  character with byte sequence 0xaf 0xe5 in encoding "GBK" has no equivalent in encoding "UTF8"
+CONTEXT:  COPY z1616_gbk_2_utf8, line 1
+set ivorysql.convert_gbk_to_utf8_question_mark = true;
+show ivorysql.convert_gbk_to_utf8_question_mark;
+ ivorysql.convert_gbk_to_utf8_question_mark 
+--------------------------------------------
+ on
+(1 row)
+
+copy z1616_gbk_2_utf8 from '@abs_srcdir@/data/gbk_2_utf8.csv' with(format csv, delimiter '|', encoding 'gbk');
+ERROR:  invalid input syntax for type double precision: "\N"
+CONTEXT:  COPY z1616_gbk_2_utf8, line 2, column setup: "\N"
+copy z1616_gbk_2_utf8 from '@abs_srcdir@/data/gbk_2_utf8.csv' with(format csv, delimiter '|', encoding 'gbk', skipbad);
+select * from z1616_gbk_2_utf8;
+        obj_id        |               userlabel                | setup | f | i 
+----------------------+----------------------------------------+-------+---+---
+ -2209672306462570842 | TSLUB1396璺？寳鍖哄嚖绁ュ洯寰？珯2ZFW1 |       |   |  
+ 3176726434964478238  | TSLUB1396璺？寳鍖哄嚖绁ュ洯寰？珯2ZFW2 |       |   |  
+(2 rows)
+
+drop table z1616_gbk_2_utf8;
+set ivorysql.convert_gbk_to_utf8_question_mark = false;

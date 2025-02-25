@@ -236,3 +236,8 @@ test: ora_copy_null
 #/* Begin - BUG#M508 */
 test: ora_rowid
 #/* End - BUG#M508 */
+
+#/* Begin - BUG#z1616 */
+test: ora_copy_gbk_2_utf8
+#/* End - BUG#z1616 */
+

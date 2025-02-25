@@ -403,18 +403,34 @@ CopyGetData(CopyFromState cstate, void *databuf, int minread, int maxread)
 				}while(load_more);
 
 				if (ferror(cstate->copy_file))
+				{
+					/* Begin - BUG#z1616 */
+					/* if read file error, break the PG_CATCH() in copyfrom() */
+					if(cstate->opts.tolerate)
+						cstate->copy_fail_message = true;
+					/* End - BUG#z1616 */
+
 					ereport(ERROR,
 						(errcode_for_file_access(),
 						errmsg("could not read from COPY file: %m")));
+				}
 			}
 			/* End - BUG:M0000348 */
 			else
 			{
 				bytesread = fread(databuf, 1, maxread, cstate->copy_file);
 				if (ferror(cstate->copy_file))
+				{
+					/* Begin - BUG#z1616 */
+					/* if read file error, break the PG_CATCH() in copyfrom() */
+					if(cstate->opts.tolerate)
+						cstate->copy_fail_message = true;
+					/* End - BUG#z1616 */
+
 					ereport(ERROR,
 						(errcode_for_file_access(),
 						 errmsg("could not read from COPY file: %m")));
+				}
 			}
 have_loading_data_rest:
 			if (bytesread == 0)
@@ -436,9 +452,16 @@ have_loading_data_rest:
 					pq_startmsgread();
 					mtype = pq_getbyte();
 					if (mtype == EOF)
+					{
+						/* Begin - BUG#z1616 */
+						/* if read file error, break the PG_CATCH() in copyfrom() */
+						if(cstate->opts.tolerate)
+							cstate->copy_fail_message = true;
+						/* End - BUG#z1616 */	
 						ereport(ERROR,
 								(errcode(ERRCODE_CONNECTION_FAILURE),
 								 errmsg("unexpected EOF on client connection with an open transaction")));
+					}
 					/* Validate message type and set packet size limit */
 					switch (mtype)
 					{
@@ -452,6 +475,10 @@ have_loading_data_rest:
 							maxmsglen = PQ_SMALL_MESSAGE_LIMIT;
 							break;
 						default:
+							/* Begin - BUG#z1616 */
+							if(cstate->opts.tolerate)
+								cstate->copy_fail_message = true;
+							/* End - BUG#z1616 */	
 							ereport(ERROR,
 									(errcode(ERRCODE_PROTOCOL_VIOLATION),
 									 errmsg("unexpected message type 0x%02X during COPY from stdin",
@@ -461,9 +488,15 @@ have_loading_data_rest:
 					}
 					/* Now collect the message body */
 					if (pq_getmessage(cstate->fe_msgbuf, maxmsglen))
+					{
+						/* Begin - BUG#z1616 */
+						if(cstate->opts.tolerate)
+							cstate->copy_fail_message = true;
+						/* End - BUG#z1616 */
 						ereport(ERROR,
 								(errcode(ERRCODE_CONNECTION_FAILURE),
 								 errmsg("unexpected EOF on client connection with an open transaction")));
+					}
 					RESUME_CANCEL_INTERRUPTS();
 					/* ... and process it */
 					switch (mtype)

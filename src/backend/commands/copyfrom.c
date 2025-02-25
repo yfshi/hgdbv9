@@ -1094,6 +1094,17 @@ CopyFrom(CopyFromState cstate)
 			}
 			PG_CATCH();
 			{
+
+				/* Begin - BUG#z1616 */
+				/* Convert error */
+				if (cstate->input_reached_error)
+					PG_RE_THROW();
+
+				/* read file error */
+				if (cstate->copy_fail_message && cstate->tmp_copy_fail_message.len == 0)
+					PG_RE_THROW();
+				/* End - BUG#z1616 */
+
 				/* flush the error */
 				MemoryContextSwitchTo(current_cxt);
 				FlushErrorState();
