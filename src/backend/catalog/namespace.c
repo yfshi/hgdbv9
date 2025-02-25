@@ -4320,7 +4320,7 @@ recomputeNamespacePath(void)
 	bool		pathChanged;
 	MemoryContext oldcxt;
 	/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-	Oid			mys_schema_id;
+	Oid			mys_schema_id = InvalidOid; /* BUG#M516 */
 	bool		is_use = false;
 	int			count = 0;
 	/* End - ReqID: SRS-MYSQL-SQL-USE */

@@ -5038,6 +5038,16 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 		ahprintf(AH, "SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
 		ahprintf(AH, "SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
 		/* End - bug:z774 */
+		/* Begin - BUG#M516 */
+		if (database_mode != DB_PG)
+		{
+			ahprintf(AH, "SET ivorysql.compatible_mode to oracle;\n");
+			ahprintf(AH, "SET ivorysql.dumppgtype to oracle;\n");
+			ahprintf(AH, "SET ivorysql.grant_usertype to oracle;\n");
+			ahprintf(AH, "SET ivorysql.enable_ora_user_schema to off;\n");
+			ahprintf(AH, "RESET ivorysql.compatible_mode;\n");
+		}
+		/* End - BUG#M516 */
 	}
 
 	ahprintf(AH, "\n");
