@@ -165,6 +165,19 @@ typedef struct
 	Oid				objectId;		/* function, package and package body to be invalid --- MUST BE FIRST */
 	ObjectClass		flags;			/* flags used to distinguish function, package and package body */
 } ObjectFunOrPkg;
+
+/*
+ * Begin - BUG#Z1670
+ *
+ * A sets of "ObjectFunOrPkg".
+ */
+typedef struct
+{
+	ObjectFunOrPkg *objects;	/* array to store functions or pakcages in pg_depend */
+	int		num;				/* number of object */
+	int		maxnum;				/* max number of object */
+} ObjectFunOrPkgSets;
+/* End - BUG#Z1670 */
 /* End - ReqID:SRS-PLSQL-TYPE */
 
 /* in dependency.c */
@@ -208,6 +221,12 @@ extern void sort_object_addresses(ObjectAddresses *addrs);
 extern void free_object_addresses(ObjectAddresses *addrs);
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 extern int object_funpkgoid_comparator(const void *a, const void *b);
+/* Begin - BUG#Z1670 */
+extern ObjectFunOrPkgSets *ObjectFunOrPkgSetsInit(void);
+extern void ObjectFunOrPkgSetsDestroy(ObjectFunOrPkgSets **set);
+extern void ObjectFunOrPkgSetsAppend(ObjectFunOrPkgSets *set, Oid objectId, ObjectClass flags);
+extern void ObjectFunOrPkgSetsProcess(ObjectFunOrPkgSets *set);
+/* End - BUG#Z1670 */
 /* End - ReqID:SRS-PLSQL-TYPE */
 
 /* in pg_depend.c */
