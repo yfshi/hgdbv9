@@ -1912,6 +1912,10 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 											}
 										}
 									}
+									/* Begin - BUG#Z4250 */
+									else
+										is_part = true;
+									/* End - BUG#Z4250 */
 								}
 								if (!is_part)
 									continue;

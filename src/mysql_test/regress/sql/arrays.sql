@@ -661,11 +661,10 @@ select array(select array['Hello', i::text] from generate_series(9,11) i);
 
 -- Insert/update on a column that is array of composite
 
-create temp table t1 (f1 int8_tbl[]);
-insert into t1 (f1[5].q1) values(42);
-select * from t1;
-update t1 set f1[5].q2 = 43;
-select * from t1;
+create temp table mys_t1 (f1 int8_tbl[]);
+insert into mys_t1 (f1[5].q1) values(42);
+update mys_t1 set f1[5].q2 = 43;
+select * from mys_t1;
 
 -- Check that arrays of composites are safely detoasted when needed
 

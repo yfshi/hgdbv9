@@ -5640,19 +5640,26 @@ ExecEndModifyTable(ModifyTableState *node)
 			ExecDropSingleTupleTableSlot(node->mt_root_tuple_slot);
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	if (DB_MYSQL == compatible_db && node->mt_partition_tuple_routing_list)
 	{
 		ListCell   *lc = NULL;
 		ListCell   *lc1 = NULL;
-		forboth(lc, node->mt_partition_tuple_routing_list,
-				lc1,node->mt_root_tuple_slot_list)
+		foreach(lc, node->mt_partition_tuple_routing_list)
 		{
 			PartitionTupleRouting	   *partition_tuple_routing = lfirst(lc);
-			TupleTableSlot			   *root_tuple_slot = lfirst(lc1);
 			ExecCleanupTupleRouting(node, partition_tuple_routing);
-			ExecDropSingleTupleTableSlot(root_tuple_slot);
+		}
+		if (node->mt_root_tuple_slot_list)
+		{
+			foreach(lc1, node->mt_root_tuple_slot_list)
+			{
+				TupleTableSlot			   *root_tuple_slot = lfirst(lc1);
+				ExecDropSingleTupleTableSlot(root_tuple_slot);
+			}
 		}
 	}
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/*
 	 * Free the exprcontext
 	 */

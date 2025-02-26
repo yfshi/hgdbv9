@@ -1462,6 +1462,7 @@ create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
 	ListCell   *subpaths;
 	RelOptInfo *rel = best_path->path.parent;
 	PartitionPruneInfo *partpruneinfo = NULL;
+	bool		is_notexistsubplans = false; /* BUGZ4237 */
 
 	/*
 	 * We don't have the actual creation of the MergeAppend node split out
@@ -1493,6 +1494,7 @@ create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
 									  &node->nullsFirst);
 	tlist_was_changed = (orig_tlist_length != list_length(plan->targetlist));
 
+redo_actmegsubplans:; /* BUGZ4237 */
 	/*
 	 * Now prepare the child plans.  We must apply prepare_sort_from_pathkeys
 	 * even to subplans that don't need an explicit sort, to make sure they
@@ -1507,6 +1509,36 @@ create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
 		Oid		   *sortOperators;
 		Oid		   *collations;
 		bool	   *nullsFirst;
+
+		/* Begin - BUG#Z4237 */
+		/* Check whether it is the specified partition.
+		 * If so, append the partition. If not, skip it.
+		 */
+		if (!is_notexistsubplans && DB_MYSQL == compatible_db)
+		{
+			if (root->parse->partreloids)
+			{
+				bool		is_part_exist = false;
+				ListCell   *lc = NULL;
+				RangeTblEntry	   *rte = rt_fetch(subpath->parent->relid, root->parse->rtable);
+				foreach(lc, root->parse->partreloids)
+				{
+					List   *partreloid = (List *)lfirst(lc);
+					is_part_exist = CheckPartitionOidIsexist(rte->relid, partreloid);
+					if (is_part_exist)
+						break;
+				}
+				if (!is_part_exist)
+					continue;
+			}
+			else if (root->parse->partOids)
+			{
+				RangeTblEntry	   *rte = rt_fetch(subpath->parent->relid, root->parse->rtable);
+				if(!CheckPartitionOidIsexist(rte->relid, root->parse->partOids))
+					continue;
+			}
+		}
+		/* End - BUG#Z4237 */
 
 		/* Build the child plan */
 		/* Must insist that all children return the same tlist */
@@ -1554,6 +1586,18 @@ create_merge_append_plan(PlannerInfo *root, MergeAppendPath *best_path,
 		subplans = lappend(subplans, subplan);
 	}
 
+
+	/* Begin - BUG#Z4237 */
+	/* If no subplans are generated, it means that the specified partition 
+	 * does not meet the conditions and the subplans need to be regenerated.
+	 */
+	if (DB_MYSQL == compatible_db && !subplans &&
+		(root->parse->partreloids || root->parse->partOids))
+	{
+		is_notexistsubplans = true;
+		goto redo_actmegsubplans;
+	}
+	/* End - BUG#Z4237 */
 	/*
 	 * If any quals exist, they may be useful to perform further partition
 	 * pruning during execution.  Gather information needed by the executor to
