@@ -1197,7 +1197,9 @@ CopyFrom(CopyFromState cstate)
 				}
 				PG_CATCH();
 				{
+					/* flush the error */
 					MemoryContextSwitchTo(current_cxt);
+					FlushErrorState();	/* BUG#z1616 */
 
 					/* Begin - BUG#Z1616 */
 					if (cstate->opts.skipbad)
