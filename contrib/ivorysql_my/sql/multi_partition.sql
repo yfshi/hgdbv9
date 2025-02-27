@@ -191,81 +191,81 @@ drop table test_p,test_p1,test_p2,test,test1;
 
 create table test(a int,b int);
 insert into test value(1,2),(150,20);
-create table idxpart1 (a int, b int, primary key (a)) partition by range (a);
-create table idxpart12 partition of idxpart1 for values from (0) to (1000) partition by range (a);
-create table idxpart13 partition of idxpart12 for values from (0) to (100);
-create table idxpart14 partition of idxpart12 for values from (101) to (200);
-insert into idxpart12 partition(idxpart13,idxpart14)(a,b) values(1,2),(150,20);
+create table mysidxpart1 (a int, b int, primary key (a)) partition by range (a);
+create table mysidxpart12 partition of mysidxpart1 for values from (0) to (1000) partition by range (a);
+create table mysidxpart13 partition of mysidxpart12 for values from (0) to (100);
+create table mysidxpart14 partition of mysidxpart12 for values from (101) to (200);
+insert into mysidxpart12 partition(mysidxpart13,mysidxpart14)(a,b) values(1,2),(150,20);
 
-create table idxpart11 (a int, b int, primary key (a)) partition by range (a);
-create table idxpart21 partition of idxpart11 for values from (0) to (1000) partition by range (a);
-create table idxpart31 partition of idxpart21 for values from (0) to (100);
-create table idxpart41 partition of idxpart21 for values from (101) to (200);
-insert into idxpart21 partition(idxpart31,idxpart41)(a,b) values(1,2),(150,20);
+create table mysidxpart11 (a int, b int, primary key (a)) partition by range (a);
+create table mysidxpart21 partition of mysidxpart11 for values from (0) to (1000) partition by range (a);
+create table mysidxpart31 partition of mysidxpart21 for values from (0) to (100);
+create table mysidxpart41 partition of mysidxpart21 for values from (101) to (200);
+insert into mysidxpart21 partition(mysidxpart31,mysidxpart41)(a,b) values(1,2),(150,20);
 
-update idxpart12 partition(idxpart13) aa use index(idxpart12_pkey),idxpart21 partition (idxpart31) bb set aa.a = aa.a + 10,bb.a = bb.a + 10 where aa.b = bb.b;
-select * from idxpart12;
-select * from idxpart21;
+update mysidxpart12 partition(mysidxpart13) aa use index(mysidxpart12_pkey),mysidxpart21 partition (mysidxpart31) bb set aa.a = aa.a + 10,bb.a = bb.a + 10 where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
 
 begin;
-delete aa,bb from idxpart12 partition(idxpart13) aa,idxpart21 partition (idxpart31) bb
+delete aa,bb from mysidxpart12 partition(mysidxpart13) aa,mysidxpart21 partition (mysidxpart31) bb
 where aa.b = bb.b;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
 begin;
-update idxpart1 aa,idxpart11 bb set aa.a = aa.a + 1,bb.a = bb.a + 1 where aa.b = bb.b;
-select * from idxpart12;
-select * from idxpart21;
-update idxpart1 aa ,idxpart11 bb set aa.a = aa.a + 1,bb.a = bb.a + 1 where aa.b = bb.b;
-select * from idxpart12;
-select * from idxpart21;
+update mysidxpart1 aa,mysidxpart11 bb set aa.a = aa.a + 1,bb.a = bb.a + 1 where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
+update mysidxpart1 aa ,mysidxpart11 bb set aa.a = aa.a + 1,bb.a = bb.a + 1 where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 --single table delete
 begin;
-delete from idxpart12 partition(idxpart13);
-select * from idxpart12;
+delete from mysidxpart12 partition(mysidxpart13);
+select * from mysidxpart12;
 rollback;
 
 --partition relation and base relation
 begin;
-delete from aa,bb,cc using idxpart12 partition(idxpart13) aa ,idxpart21 partition (idxpart31) bb ,test cc
+delete from aa,bb,cc using mysidxpart12 partition(mysidxpart13) aa ,mysidxpart21 partition (mysidxpart31) bb ,test cc
 where aa.b = bb.b and aa.b = cc.b;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 select * from test;
 rollback;
 
 begin;
-delete from aa,bb,cc using idxpart12 partition(idxpart13,idxpart14) aa ,idxpart21 partition (idxpart31,idxpart41) bb ,test cc
+delete from aa,bb,cc using mysidxpart12 partition(mysidxpart13,mysidxpart14) aa ,mysidxpart21 partition (mysidxpart31,mysidxpart41) bb ,test cc
 where aa.b = bb.b and aa.b = cc.b;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 select * from test;
 rollback;
 
 --pbe
 PREPARE multi_part_del AS
-	delete aa,bb from idxpart12 partition(idxpart13) aa,idxpart21 partition (idxpart31) bb where aa.b = bb.b;
+	delete aa,bb from mysidxpart12 partition(mysidxpart13) aa,mysidxpart21 partition (mysidxpart31) bb where aa.b = bb.b;
 begin;
 EXECUTE multi_part_del;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
 --procedure
 CREATE OR REPLACE PROCEDURE proc_mutil_del()
 as $$ 
 BEGIN
-	delete from aa,bb,cc using idxpart12 partition(idxpart13,idxpart14) aa ,idxpart21 partition (idxpart31,idxpart41) bb ,test cc
+	delete from aa,bb,cc using mysidxpart12 partition(mysidxpart13,mysidxpart14) aa ,mysidxpart21 partition (mysidxpart31,mysidxpart41) bb ,test cc
 	where aa.b = bb.b and aa.b = cc.b;
 END $$ language plmysql;
 
 begin;
 CALL proc_mutil_del();
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 select * from test;
 rollback;
 drop PROCEDURE proc_mutil_del();
@@ -292,25 +292,25 @@ RETURN OLD;
 END
 $$ LANGUAGE PLMYSQL;
 CREATE TRIGGER deletear_trigger1
-AFTER DELETE ON idxpart12
+AFTER DELETE ON mysidxpart12
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func1();
 
 CREATE TRIGGER deletear_trigger2
-AFTER DELETE ON idxpart21
+AFTER DELETE ON mysidxpart21
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func2();
 begin;
-delete from aa,bb using idxpart12 partition(idxpart13,idxpart14) aa ,idxpart21 partition (idxpart31,idxpart41) bb
+delete from aa,bb using mysidxpart12 partition(mysidxpart13,mysidxpart14) aa ,mysidxpart21 partition (mysidxpart31,mysidxpart41) bb
 	where aa.b = bb.b;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
-drop trigger deletear_trigger1 on idxpart12 cascade;
-drop trigger deletear_trigger2 on idxpart21 cascade;
+drop trigger deletear_trigger1 on mysidxpart12 cascade;
+drop trigger deletear_trigger2 on mysidxpart21 cascade;
 drop function tridelete_func1();
 drop function tridelete_func2();
 drop table if exists test_trigger_src;
@@ -336,25 +336,25 @@ RETURN NEW;
 END
 $$ LANGUAGE PLMYSQL;
 CREATE TRIGGER deletear_trigger1
-AFTER DELETE ON idxpart12
+AFTER DELETE ON mysidxpart12
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func1();
 
 CREATE TRIGGER deletear_trigger2
-AFTER DELETE ON idxpart21
+AFTER DELETE ON mysidxpart21
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func2();
 begin;
-delete from aa,bb using idxpart12 partition(idxpart13,idxpart14) aa ,idxpart21 partition (idxpart31,idxpart41) bb
+delete from aa,bb using mysidxpart12 partition(mysidxpart13,mysidxpart14) aa ,mysidxpart21 partition (mysidxpart31,mysidxpart41) bb
 	where aa.b = bb.b;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
-drop trigger deletear_trigger1 on idxpart12 cascade;
-drop trigger deletear_trigger2 on idxpart21 cascade;
+drop trigger deletear_trigger1 on mysidxpart12 cascade;
+drop trigger deletear_trigger2 on mysidxpart21 cascade;
 drop function tridelete_func1();
 drop function tridelete_func2();
 
@@ -381,26 +381,26 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER deletebf_trigger1
-BEFORE DELETE ON idxpart12
+BEFORE DELETE ON mysidxpart12
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func1();
 
 CREATE TRIGGER deletebf_trigger2
-BEFORE DELETE ON idxpart21
+BEFORE DELETE ON mysidxpart21
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func2();
 begin;
-select * from idxpart12;
-select * from idxpart21;
-delete aa,bb from idxpart12 partition(idxpart14) aa,idxpart21 partition (idxpart41) bb where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
+delete aa,bb from mysidxpart12 partition(mysidxpart14) aa,mysidxpart21 partition (mysidxpart41) bb where aa.b = bb.b;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
-drop trigger deletebf_trigger1 on idxpart12 cascade;
-drop trigger deletebf_trigger2 on idxpart21 cascade;
+drop trigger deletebf_trigger1 on mysidxpart12 cascade;
+drop trigger deletebf_trigger2 on mysidxpart21 cascade;
 drop function tridelete_func1();
 drop function tridelete_func2();
 drop table if exists test_trigger_src;
@@ -426,79 +426,79 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER deletebf_trigger1
-BEFORE DELETE ON idxpart12
+BEFORE DELETE ON mysidxpart12
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func1();
 
 CREATE TRIGGER deletebf_trigger2
-BEFORE DELETE ON idxpart21
+BEFORE DELETE ON mysidxpart21
 FOR EACH ROW
 EXECUTE PROCEDURE tridelete_func2();
 begin;
-select * from idxpart12;
-select * from idxpart21;
-delete aa,bb from idxpart12 partition(idxpart14) aa,idxpart21 partition (idxpart41) bb where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
+delete aa,bb from mysidxpart12 partition(mysidxpart14) aa,mysidxpart21 partition (mysidxpart41) bb where aa.b = bb.b;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
 begin;
-select * from idxpart12;
-select * from idxpart21;
-delete aa,bb from idxpart12 aa,idxpart21 bb where aa.b = bb.b;
+select * from mysidxpart12;
+select * from mysidxpart21;
+delete aa,bb from mysidxpart12 aa,mysidxpart21 bb where aa.b = bb.b;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-select * from idxpart12;
-select * from idxpart21;
+select * from mysidxpart12;
+select * from mysidxpart21;
 rollback;
 
-drop trigger deletebf_trigger1 on idxpart12 cascade;
-drop trigger deletebf_trigger2 on idxpart21 cascade;
+drop trigger deletebf_trigger1 on mysidxpart12 cascade;
+drop trigger deletebf_trigger2 on mysidxpart21 cascade;
 drop function tridelete_func1();
 drop function tridelete_func2();
 drop table test_trigger_src,test_trigger_src1;
-drop table idxpart1,idxpart11,test;
+drop table mysidxpart1,mysidxpart11,test;
 
-drop table if exists idxpart,idxpart2;
-create table idxpart (a int, b int, primary key (a)) partition by range (a);
-create table idxpart2 partition of idxpart for values from (0) to (1000) partition by range (a);
-create table idxpart3 partition of idxpart2 for values from (0) to (100);
-create table idxpart4 partition of idxpart2 for values from (101) to (200);
-create table idxpart5 partition of idxpart2 for values from (201) to (300);
-create table idxpart6 partition of idxpart2 for values from (301) to (400);
-create table idxpart7 partition of idxpart2 for values from (401) to (500);
+drop table if exists mysidxpart,mysidxpart2;
+create table mysidxpart (a int, b int, primary key (a)) partition by range (a);
+create table mysidxpart2 partition of mysidxpart for values from (0) to (1000) partition by range (a);
+create table mysidxpart3 partition of mysidxpart2 for values from (0) to (100);
+create table mysidxpart4 partition of mysidxpart2 for values from (101) to (200);
+create table mysidxpart5 partition of mysidxpart2 for values from (201) to (300);
+create table mysidxpart6 partition of mysidxpart2 for values from (301) to (400);
+create table mysidxpart7 partition of mysidxpart2 for values from (401) to (500);
 
-insert into idxpart2 partition(idxpart3)(a,b) values(1,2),(150,10);--error
-insert into idxpart2 partition(idxpart3,idxpart4)(a,b) values(1,2),(150,10);
-select * from idxpart2;
-insert into idxpart2 partition(idxpart3)(a,b) values(1,5) on duplicate key update a = a + 1;
-select * from idxpart2;
-insert into idxpart2 partition(idxpart3)(a,b) values(150,5) on duplicate key update a = a + 10;--error
-insert into idxpart2 partition(idxpart3,idxpart4,idxpart5)(a,b) values(150,5) on duplicate key update a = a + 10;
-select * from idxpart2;
-insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) values(220,15),(330,20),(440,25);
-select * from idxpart2;
+insert into mysidxpart2 partition(mysidxpart3)(a,b) values(1,2),(150,10);--error
+insert into mysidxpart2 partition(mysidxpart3,mysidxpart4)(a,b) values(1,2),(150,10);
+select * from mysidxpart2;
+insert into mysidxpart2 partition(mysidxpart3)(a,b) values(1,5) on duplicate key update a = a + 1;
+select * from mysidxpart2;
+insert into mysidxpart2 partition(mysidxpart3)(a,b) values(150,5) on duplicate key update a = a + 10;--error
+insert into mysidxpart2 partition(mysidxpart3,mysidxpart4,mysidxpart5)(a,b) values(150,5) on duplicate key update a = a + 10;
+select * from mysidxpart2;
+insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) values(220,15),(330,20),(440,25);
+select * from mysidxpart2;
 --pbe
 begin;
 PREPARE multi_part_insert(int,int) AS
-	insert into idxpart values($1,$2) on duplicate key update a = a + 20;
+	insert into mysidxpart values($1,$2) on duplicate key update a = a + 20;
 EXECUTE multi_part_insert(160,20);
-select * from idxpart;
+select * from mysidxpart;
 rollback;
 
 --procedure
 CREATE OR REPLACE PROCEDURE proc_mutil_insert()
 as $$ 
 BEGIN
-	insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) 
+	insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) 
 	values(220,15),(330,20),(440,25) on duplicate key update a = values(a) + values(b);
 END $$ language plmysql;
 
 begin;
 CALL proc_mutil_insert();
-select * from idxpart;
+select * from mysidxpart;
 rollback;
 drop PROCEDURE proc_mutil_insert();
 --aftrigger
@@ -517,7 +517,7 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertar_trigger1
-AFTER INSERT ON idxpart2 
+AFTER INSERT ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func1();
 
@@ -531,25 +531,25 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertar_trigger2
-AFTER UPDATE ON idxpart2 
+AFTER UPDATE ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func2();
 
 begin;
-select * from idxpart2;
-insert into idxpart2 values(5,3);
-select * from idxpart2;
+select * from mysidxpart2;
+insert into mysidxpart2 values(5,3);
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) 
+insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) 
 	values(220,15),(330,20) on duplicate key update a = values(a) + values(b);
-select * from idxpart2;
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
 rollback;
 
-drop trigger insertar_trigger1 on idxpart2 cascade;
-drop trigger insertar_trigger2 on idxpart2 cascade;
+drop trigger insertar_trigger1 on mysidxpart2 cascade;
+drop trigger insertar_trigger2 on mysidxpart2 cascade;
 drop function trinsert_func1();
 drop function trinsert_func2();
 
@@ -568,7 +568,7 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertar_trigger1
-AFTER INSERT ON idxpart2 
+AFTER INSERT ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func1();
 
@@ -582,25 +582,25 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertar_trigger2
-AFTER UPDATE ON idxpart2 
+AFTER UPDATE ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func2();
 
 begin;
-select * from idxpart2;
-insert into idxpart2 values(5,3);
-select * from idxpart2;
+select * from mysidxpart2;
+insert into mysidxpart2 values(5,3);
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) 
+insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) 
 	values(220,15),(330,20) on duplicate key update a = values(a) + values(b);
-select * from idxpart2;
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
 rollback;
 
-drop trigger insertar_trigger1 on idxpart2 cascade;
-drop trigger insertar_trigger2 on idxpart2 cascade;
+drop trigger insertar_trigger1 on mysidxpart2 cascade;
+drop trigger insertar_trigger2 on mysidxpart2 cascade;
 drop function trinsert_func1();
 drop function trinsert_func2();
 
@@ -619,7 +619,7 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertbf_trigger1
-BEFORE INSERT ON idxpart2 
+BEFORE INSERT ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func1();
 
@@ -633,25 +633,25 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertbf_trigger2
-BEFORE UPDATE ON idxpart2 
+BEFORE UPDATE ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func2();
 
 begin;
-select * from idxpart2;
-insert into idxpart2 values(5,3);
-select * from idxpart2;
+select * from mysidxpart2;
+insert into mysidxpart2 values(5,3);
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) 
+insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) 
 	values(220,15),(330,20) on duplicate key update a = values(a) + values(b);
-select * from idxpart2;
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
 rollback;
 
-drop trigger insertbf_trigger1 on idxpart2 cascade;
-drop trigger insertbf_trigger2 on idxpart2 cascade;
+drop trigger insertbf_trigger1 on mysidxpart2 cascade;
+drop trigger insertbf_trigger2 on mysidxpart2 cascade;
 drop function trinsert_func1();
 drop function trinsert_func2();
 
@@ -670,7 +670,7 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertbf_trigger1
-BEFORE INSERT ON idxpart2 
+BEFORE INSERT ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func1();
 
@@ -684,25 +684,71 @@ END
 $$ LANGUAGE PLMYSQL;
 
 CREATE TRIGGER insertbf_trigger2
-BEFORE UPDATE ON idxpart2 
+BEFORE UPDATE ON mysidxpart2 
 FOR EACH ROW
 EXECUTE PROCEDURE trinsert_func2();
 
 begin;
-select * from idxpart2;
-insert into idxpart2 values(5,3);
-select * from idxpart2;
+select * from mysidxpart2;
+insert into mysidxpart2 values(5,3);
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
-insert into idxpart2 partition(idxpart5,idxpart6,idxpart7) 
+insert into mysidxpart2 partition(mysidxpart5,mysidxpart6,mysidxpart7) 
 	values(220,15),(330,20) on duplicate key update a = values(a) + values(b);
-select * from idxpart2;
+select * from mysidxpart2;
 select * from test_trigger_src;
 select * from test_trigger_src1;
 rollback;
 
-drop trigger insertbf_trigger1 on idxpart2 cascade;
-drop trigger insertbf_trigger2 on idxpart2 cascade;
+drop trigger insertbf_trigger1 on mysidxpart2 cascade;
+drop trigger insertbf_trigger2 on mysidxpart2 cascade;
 drop function trinsert_func1();
 drop function trinsert_func2();
-drop table idxpart,test_trigger_src,test_trigger_src1;
+drop table mysidxpart,test_trigger_src,test_trigger_src1;
+
+--BUG#Z4250
+create table t1(num int,name text,salary int) partition by range (num);
+create table p1 partition of t1 for values from (0) to (100);  
+create table t2(num int,name text,score int) partition by range(num);
+create table p11 partition of t2 for values from (0) to (100);	
+insert into  t1 values(1,'a',200),(2,'b',300),(3,'c',100);
+insert into t2 values(1,'xxx',60),(2,'b',90),(5,'zzz',70);
+update t1 partition(p1) cross join t2  set t1.salary = t1.salary * 2;select  salary from t1;
+update t1 partition(p1) a cross join t2 b on b.num = a.num set a.num=3,b.num = 6;
+select count(*) from t1 where num =3;select count(*) from t2 where num =6;
+drop table t1,t2;
+--BUG#Z4273
+CREATE TABLE pt1
+(
+	id SERIAL NOT NULL,
+	name VARCHAR NOT NULL
+) PARTITION BY LIST (name);
+CREATE TABLE pt2
+(
+	id SERIAL NOT NULL,
+	name VARCHAR NOT NULL
+) PARTITION BY LIST (name);
+
+create index index_id ON pt1 (id);
+create index index_id2 ON pt2 (id);
+
+create table pt1_1
+partition of pt1 for values in ('张三','李四');
+create table pt1_2
+partition of pt1 for values in ('王五','赵六');
+create table pt2_1
+partition of pt2 for values in ('张三','李四');
+create table pt2_2
+partition of pt2 for values in ('王五','赵六');
+
+insert into pt1(id, "name")
+values(1,'张三'),(2,'李四'),(3,'王五'),(4,'赵六');
+insert into pt2 (id, "name")
+values(1,'张三'),(2,'李四'),(3,'王五'),(4,'赵六'); 
+select * from pt1_1;
+select * from pt2_1;
+delete aa,bb from pt1 partition(pt1_1) aa use index(index_id),pt2 partition (pt2_1) bb use index(index_id2)   where aa.id = bb.id; 
+select * from pt1_1;
+select * from pt2_1;
+drop table pt1,pt2;
