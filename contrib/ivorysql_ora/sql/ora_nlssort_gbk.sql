@@ -16,7 +16,6 @@ create database nlssort_gbk encoding='GBK' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE=
 load 'gb18030_2022';
 
 set ivorysql.compatible_mode to oracle;
-set role system;
 
 SET client_encoding=GBK;
 

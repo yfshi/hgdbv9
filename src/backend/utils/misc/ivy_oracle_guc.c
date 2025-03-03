@@ -192,10 +192,7 @@ bool enable_compatible_numeric_division_result = false;
 
 bool hex_bytea = false; /* Bug#z1457 */
 
-/* Begin - ReqID:SRS-SQL-SCHEMA */
-bool enable_ora_user_schema = true;
-bool enable_ora_default_tablespace = true;
-/* End - ReqID:SRS-SQL-SCHEMA */
+bool enable_ora_user_schema = true;	/* ReqID:SRS-SQL-SCHEMA */
 
 /* Begin - BUG#M0000470: SELECT FOR UPDATE */
 bool allow_forupdate_in_subquery = true;
@@ -835,16 +832,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
 		&enable_ora_user_schema,
-		true,
-		NULL, NULL, NULL
-	},
-	{
-		{"ivorysql.enable_ora_default_tablespace", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("whether allow to set default tablespace in oracle compatible mode."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&enable_ora_default_tablespace,
 		true,
 		NULL, NULL, NULL
 	},

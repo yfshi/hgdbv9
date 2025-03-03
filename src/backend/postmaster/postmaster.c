@@ -6183,23 +6183,6 @@ BackgroundWorkerInitializeConnectionByOid(Oid dboid, Oid useroid, uint32 flags)
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
 				 errmsg("database connection requirement not indicated during registration")));
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * mode of a process
-	 * The guc parameter sql_raw_parser cannot be successfully modified by direct assignment
-	 */
-	if(worker->connmode == 'o')
-		SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if(worker->connmode == 'm')
-		SetConfigOption("ivorysql.compatible_mode", "mysql", PGC_USERSET, PGC_S_OVERRIDE);
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	else
-		SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
 	InitPostgres(NULL, dboid, NULL, useroid, NULL, (flags & BGWORKER_BYPASS_ALLOWCONN) != 0);
 
 	/* it had better not gotten out of "init" mode yet */

@@ -27,10 +27,10 @@ DO $d$
 $d$;
 
 CREATE USER MAPPING FOR public SERVER testserver1
-	OPTIONS (user 'system');
-CREATE USER MAPPING FOR system SERVER loopback OPTIONS (user 'system');
-CREATE USER MAPPING FOR system SERVER loopback2 OPTIONS (user 'system');
-CREATE USER MAPPING FOR public SERVER loopback3 OPTIONS (user 'system');
+	OPTIONS (user 'value', password 'value');
+CREATE USER MAPPING FOR current_user SERVER loopback;
+CREATE USER MAPPING FOR current_user SERVER loopback2;
+CREATE USER MAPPING FOR public SERVER loopback3;
 
 -- ===================================================================
 -- create objects used through FDW loopback server
@@ -261,9 +261,7 @@ ALTER SERVER testserver1 OPTIONS (ADD extensions 'foo, bar');
 ALTER SERVER testserver1 OPTIONS (DROP extensions);
 
 ALTER USER MAPPING FOR public SERVER testserver1
-	OPTIONS (DROP user);
-ALTER USER MAPPING FOR public SERVER testserver1
-	OPTIONS (ADD user 'system');
+	OPTIONS (DROP user, DROP password);
 
 -- Attempt to add a valid option that's not allowed in a user mapping
 ALTER USER MAPPING FOR public SERVER testserver1
@@ -745,7 +743,7 @@ DROP TABLE local_tbl;
 
 -- check join pushdown in situations where multiple userids are involved
 CREATE ROLE regress_view_owner SUPERUSER;
-CREATE USER MAPPING FOR regress_view_owner SERVER loopback OPTIONS (user 'system');
+CREATE USER MAPPING FOR regress_view_owner SERVER loopback;
 GRANT SELECT ON ft4 TO regress_view_owner;
 GRANT SELECT ON ft5 TO regress_view_owner;
 
@@ -2976,8 +2974,8 @@ DO $d$
 $d$;
 
 -- But creation of user mappings for non-superusers should fail
-CREATE USER MAPPING FOR public SERVER loopback_nopw OPTIONS (user 'system');
-CREATE USER MAPPING FOR CURRENT_USER SERVER loopback_nopw OPTIONS (user 'system');
+CREATE USER MAPPING FOR public SERVER loopback_nopw;
+CREATE USER MAPPING FOR CURRENT_USER SERVER loopback_nopw;
 
 CREATE FOREIGN TABLE ft1_nopw (
 	c1 number(38,0) NOT NULL,
@@ -3162,8 +3160,8 @@ SELECT server_name FROM postgres_fdw_get_connections() ORDER BY 1;
 -- =============================================================================
 CREATE ROLE regress_multi_conn_user1 SUPERUSER;
 CREATE ROLE regress_multi_conn_user2 SUPERUSER;
-CREATE USER MAPPING FOR regress_multi_conn_user1 SERVER loopback OPTIONS (user 'system');
-CREATE USER MAPPING FOR regress_multi_conn_user2 SERVER loopback OPTIONS (user 'system');
+CREATE USER MAPPING FOR regress_multi_conn_user1 SERVER loopback;
+CREATE USER MAPPING FOR regress_multi_conn_user2 SERVER loopback;
 
 BEGIN;
 -- Will cache loopback connection with user mapping for regress_multi_conn_user1

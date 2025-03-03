@@ -47,7 +47,6 @@
 #include "utils/guc.h"
 #include "utils/packagecache.h"
 #include "utils/catcache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "commands/packagecmds.h"
 #include "commands/proclang.h"
 #include "commands/extension.h"
@@ -590,11 +589,6 @@ CreatePackage(CreatePackageStmt *stmt)
 	/* Begin - BUG#Z206 Z208  */
 	bool		editable = true;
 	/* End - BUG#Z206 Z208 */
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	ObjectAddress	packObject;
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	ownerId = GetUserId();
 
@@ -639,22 +633,7 @@ CreatePackage(CreatePackageStmt *stmt)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(namespaceId));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		ownerId = get_namespace_owner(namespaceId);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceId, &ownerId); /* ReqID:SRS-SQL-SCHEMA */
 
 	/* package depends on plsql language */
 	languageTuple = SearchSysCache1(LANGNAME, PointerGetDatum(language));
@@ -691,7 +670,8 @@ CreatePackage(CreatePackageStmt *stmt)
 	/* handle package proper */
 	handle_package_proper(stmt->propers, &define_invok, &access_source, &use_collation);
 
-	packObject = CreatePackage_internal(pkgname,	/* ReqID:SRS-SQL-SCHEMA */
+	return
+		 CreatePackage_internal(pkgname,
 								namespaceId,
 								ownerId,
 								stmt->pkgsrc,
@@ -700,13 +680,6 @@ CreatePackage(CreatePackageStmt *stmt)
 								editable, /* BUG#Z206 Z208 */
 								access_source,
 								use_collation);
-
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-
-	return packObject;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 }
 
 /*
@@ -718,11 +691,6 @@ CreatePackageBody(CreatePackageBodyStmt *stmt)
 	char	   *pkgname;
 	Oid			namespaceId;
 	AclResult	aclresult;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	ObjectAddress	pbObject;
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->pkgname,
@@ -734,34 +702,13 @@ CreatePackageBody(CreatePackageBodyStmt *stmt)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					get_namespace_name(namespaceId));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
-	pbObject = CreatePackageBody_internal(pkgname,
+	return
+		 CreatePackageBody_internal(pkgname,
 									namespaceId,
 									stmt->bodysrc,
 									stmt->replace,
 									stmt->editable);
 
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-
-	return pbObject;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 }
 
 /*

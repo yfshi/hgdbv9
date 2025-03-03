@@ -18,7 +18,6 @@ create database nlssort_gb18030 encoding='gb18030' LC_COLLATE='C' LC_CTYPE='C' T
 \c nlssort_gb18030
 LOAD 'gb18030_2022';
 set ivorysql.compatible_mode to oracle;
-set role system;
 SET client_encoding=GB18030;
 CREATE TABLE nlssort_gb18030 (id serial, val varchar(8));
 INSERT INTO nlssort_gb18030(val) VALUES ('°¡');

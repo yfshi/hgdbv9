@@ -40,9 +40,6 @@
 typedef enum
 {
 	/* When modifying this enum, update priority tables in pg_dump_sort.c! */
-	DO_DATABASEROLE,
-	DO_DATABASEROLEMEMBERSHIP,
-	DO_DATABASETABLESPACE,		/* BUGZ1343 */
 	DO_NAMESPACE,
 	DO_EXTENSION,
 	DO_TYPE,
@@ -700,53 +697,7 @@ typedef struct _extensionMemberId
 	ExtensionInfo *ext;			/* owning extension */
 } ExtensionMemberId;
 
-/* Begin - ReqID:SRS-MISC-USER */
-typedef struct _DatabaseRolesInfo
-{
-	DumpableObject dobj;
-	bool			rolsuper;
-	bool			rolinherit;
-	bool			rolcreaterole;
-	bool			rolcreatedb;
-	bool			rolcanlogin;
-	int				rolconnlimit;
-	char		   *rolvaliduntil;
-	bool			rolreplication;
-	bool			rolbypassrls;
-	char		   *rolpassword;
-	char		   *rolcomment;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	char		   *roldefcollation;	/* schema's default collation */
-	char		   *roldeftablespace;	/* schema's default tablesapce */
-	/* End - ReqID:SRS-SQL-SCHEMA */
-} DatabaseRolesInfo;
 
-/* Begin - bug:z836*/
-typedef struct DbRolesMembershipInfo
-{
-	DumpableObject dobj;
-	char		   *rolename;
-	char		   *member;
-	char		   *grantor;
-	bool			admin_option;
-} DbRolesMembershipInfo;
-/* End - bug:z836*/
-/* End - ReqID:SRS-MISC-USER */
-/* BEGIN - BUGZ1343 */
-typedef struct DbTableSpaceInfo
-{
-	DumpableObject	dobj;
-	Oid				spcoid;
-	char			*spcname;
-	char			*spclocation;
-	char			*spcowner;
-	char			*spcacl;
-	char			*rspcacl;
-	char			*spcoptions;
-	char			*spccomment;
-	char			*fspcname;
-} DbTableSpaceInfo;
-/* END - BUGZ1343 */
 /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 /*
  * The function pointers used in the dump process are maintained here. If
@@ -766,9 +717,6 @@ typedef struct dumpMethods
 											bool isReconnect);
 	void			(*getDbCompatibleMode)(PGconn *conn);
 	void 			(*getDatabaseMode)(PGconn *conn);
-	bool 			(*haveDatabaseUser)(PGconn *conn);
-	void			(*getcurrentuserisInstanceSupperuser)(PGconn *conn, char *name);
-	void			(*getcurrentuserisDatabaseSupperuser)(PGconn *conn, char *name);
 	void 			(*setIdentifierCaseSwitch)(PGconn *conn);
 	void 			(*setNLSdateFormat)(PGconn *conn);
 	void			(*setup_connection)(Archive *AH, const char *dumpencoding,
@@ -874,7 +822,6 @@ extern int	numExtensions;
 extern int	numPublications;
 extern int	numRoles;
 extern int	numRolesMembership;
-extern int  numTablespaces;/* BUGZ1343 */
 extern ExtensionMemberId *extmembers;
 extern int	numextmembers;
 

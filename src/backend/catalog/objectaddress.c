@@ -382,7 +382,7 @@ static const ObjectPropertyType ObjectProperty[] =
 		AuthIdRelationId,
 		AuthIdOidIndexId,
 		AUTHOID,
-		AUTHNAMEDBOID, /* AUTHNAME */
+		AUTHNAME,
 		Anum_pg_authid_oid,
 		Anum_pg_authid_rolname,
 		InvalidAttrNumber,
@@ -1895,27 +1895,7 @@ get_object_address_usermapping(List *object, bool missing_ok)
 		userid = InvalidOid;
 	else
 	{
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * The user's search based on the current mode
-		 */
-		Oid			dboid;
-
-		dboid = CurrentUserOwnDboid();
-
-		if(DB_ORACLE == database_mode)
-		{
-			tp = SearchSysCache2(AUTHNAMEDBOID, 
-								CStringGetDatum(username), 
-								ObjectIdGetDatum(dboid));
-		}
-		else
-			tp = SearchSysCache2(AUTHNAMEDBOID, 
-								CStringGetDatum(username), 
-								ObjectIdGetDatum(0));
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
+		tp = SearchSysCache1(AUTHNAME, CStringGetDatum(username));
 		if (!HeapTupleIsValid(tp))
 		{
 			if (!missing_ok)
@@ -2027,16 +2007,7 @@ get_object_address_defacl(List *object, bool missing_ok)
 	char		objtype;
 	char	   *objtype_str;
 	ObjectAddress address;
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Gets the dboid of the current user
-	 */
-	Oid			dboid;
 
-	dboid = CurrentUserOwnDboid();
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 	ObjectAddressSet(address, DefaultAclRelationId, InvalidOid);
 
 	/*
@@ -2087,23 +2058,7 @@ get_object_address_defacl(List *object, bool missing_ok)
 	 * Look up user ID.  Behave as "default ACL not found" if the user doesn't
 	 * exist.
 	 */
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * The user's search based on the current mode
-	 */
-	if(DB_ORACLE == database_mode)
-	{
-		tp = SearchSysCache2(AUTHNAMEDBOID, 
-							CStringGetDatum(username), 
-							ObjectIdGetDatum(dboid));
-	}
-	else
-		tp = SearchSysCache2(AUTHNAMEDBOID, 
-							CStringGetDatum(username), 
-							ObjectIdGetDatum(0));
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
+	tp = SearchSysCache1(AUTHNAME, CStringGetDatum(username));
 	if (!HeapTupleIsValid(tp))
 		goto not_found;
 	userid = ((Form_pg_authid) GETSTRUCT(tp))->oid;

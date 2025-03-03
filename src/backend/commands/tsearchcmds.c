@@ -44,9 +44,7 @@
 #include "tsearch/ts_utils.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
@@ -418,11 +416,7 @@ DefineTSDictionary(List *names, List *parameters)
 	AclResult	aclresult;
 	char	   *dictname;
 	ObjectAddress address;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = GetUserId();
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &dictname);
@@ -437,22 +431,7 @@ DefineTSDictionary(List *names, List *parameters)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(namespaceoid));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceoid);
-
-		objectOwner = get_namespace_owner(namespaceoid);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceoid, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * loop over the definition list and extract the information we need.
@@ -517,15 +496,6 @@ DefineTSDictionary(List *names, List *parameters)
 	heap_freetuple(tup);
 
 	table_close(dictRel, RowExclusiveLock);
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }
@@ -960,11 +930,7 @@ DefineTSConfiguration(List *names, List *parameters, ObjectAddress *copied)
 	Oid			cfgOid;
 	ListCell   *pl;
 	ObjectAddress address;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = GetUserId();
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &cfgname);
@@ -979,22 +945,7 @@ DefineTSConfiguration(List *names, List *parameters, ObjectAddress *copied)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(namespaceoid));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceoid);
-
-		objectOwner = get_namespace_owner(namespaceoid);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceoid, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * loop over the definition list and extract the information we need.
@@ -1130,15 +1081,6 @@ DefineTSConfiguration(List *names, List *parameters, ObjectAddress *copied)
 	if (mapRel)
 		table_close(mapRel, RowExclusiveLock);
 	table_close(cfgRel, RowExclusiveLock);
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	return address;
 }

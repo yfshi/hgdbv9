@@ -135,10 +135,7 @@ ReconnectToServerPg(ArchiveHandle *AH, const char *dbname)
 	getDbCompatibleMode(AH->connection);
 	/* END - SQL PARSER */
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
-	haveDatabaseUserPg(AH->connection);
-	/* END - ReqID:SRS-MISC-USER */
 	
 	PQfinish(oldConn);
 }
@@ -169,10 +166,7 @@ ReconnectToServerOracle(ArchiveHandle *AH, const char *dbname)
 	getDbCompatibleMode(AH->connection);
 	/* END - SQL PARSER */
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
-	haveDatabaseUserOracle(AH->connection);
-	/* END - ReqID:SRS-MISC-USER */
 	
 	PQfinish(oldConn);
 }
@@ -341,7 +335,6 @@ ConnectDatabaseNative(Archive *AHX,
 	/* check for version mismatch */
 	_check_database_version(AH);
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
 	if ((DB_ORACLE == database_mode) && (!RestoringToDB(AH)))
 	{
@@ -350,8 +343,6 @@ ConnectDatabaseNative(Archive *AHX,
 			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
 			{
 				SetDumptypeMode(AH->connection);
-
-				//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
 				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
 				setNLSdateFormat(AH->connection);				/* BUG:z774 */
 			}
@@ -364,7 +355,6 @@ ConnectDatabaseNative(Archive *AHX,
 			}
 		}
 	}
-	/* END - ReqID:SRS-MISC-USER */
 	
 	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
 
@@ -478,17 +468,14 @@ ConnectDatabasePg(Archive *AHX,
 	/* check for version mismatch */
 	_check_database_version(AH);
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
 	if ((DB_ORACLE == database_mode) && (!RestoringToDB(AH)))
 	{
 		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
 			{
 				SetDumptypeMode(AH->connection);
-
-				//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
 				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
 				setNLSdateFormat(AH->connection);				/* BUG:z774 */
 			}
@@ -501,7 +488,6 @@ ConnectDatabasePg(Archive *AHX,
 			}
 		}
 	}
-	/* END - ReqID:SRS-MISC-USER */
 	
 	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
 
@@ -615,17 +601,14 @@ ConnectDatabaseOracle(Archive *AHX,
 	/* check for version mismatch */
 	_check_database_version(AH);
 
-	/* BEGIN - ReqID:SRS-MISC-USER */
 	getDatabaseMode(AH->connection);
 	if ((DB_ORACLE == database_mode) && (!RestoringToDB(AH)))
 	{
 		if((cparams->dbname == NULL) || (cparams->dbname && strcmp(cparams->dbname,"template1") != 0 && strstr(cparams->dbname, "dbname=template1") == 0))
 		{
-			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)			/*  bug#M0000261 */
+			if (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)		/*  bug#M0000261 */
 			{
 				SetDumptypeMode(AH->connection);
-
-				//ExecuteSqlStatement(AHX, "set ivorysql.identifier_case_switch = normal;");
 				setIdentifierCaseSwitch(AH->connection);		/* BUG#M229 */
 				setNLSdateFormat(AH->connection);				/* BUG:z774 */
 			}
@@ -638,7 +621,6 @@ ConnectDatabaseOracle(Archive *AHX,
 			}
 		}
 	}
-	/* END - ReqID:SRS-MISC-USER */
 	
 	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
 
@@ -1138,5 +1120,3 @@ RestoringToDB(ArchiveHandle *AH)
 
 	return (ropt && ropt->useDB && AH->connection);
 }
-
-

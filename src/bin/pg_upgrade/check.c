@@ -700,33 +700,13 @@ check_is_install_user(ClusterInfo *cluster)
 	prep_status("Checking database user is the install user");
 
 	/* Can't use pg_authid because only superusers can view it. */
-	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-	/* ivorysql pro */
-	if (cluster->controldata.database_mode == DB_ORACLE)
-	{
-	/* END - ReqID:SRS-CMD-pg2highgo */
-		res = executeQueryOrDie(conn,
-								"SELECT r.rolsuper, r.oid "
-								"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
-								"WHERE r.rolname = current_user "
-								"AND d.datname = current_database() "
-								"AND r.rolname !~ '^pg_' "
-								"AND "
-								"CASE WHEN current_user = 'system' "
-								"  THEN d.oid = r.dboid "
-								"  ELSE r.rolname !='sys' AND r.rolname != 'system' END ");
-	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-	}
-	/* pg */
-	else
-	{
-		res = executeQueryOrDie(conn,
-								"SELECT rolsuper, oid "
-								"FROM pg_catalog.pg_roles "
-								"WHERE rolname = current_user "
-								"AND rolname !~ '^pg_'");
-	}
-	/* END - ReqID:SRS-CMD-pg2highgo */
+
+	res = executeQueryOrDie(conn,
+							"SELECT rolsuper, oid "
+							"FROM pg_catalog.pg_roles "
+							"WHERE rolname = current_user "
+							"AND rolname !~ '^pg_'");
+
 
 	/*
 	 * We only allow the install user in the new cluster (see comment below)
@@ -740,29 +720,10 @@ check_is_install_user(ClusterInfo *cluster)
 
 	PQclear(res);
 
-	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-	if (cluster->controldata.database_mode == DB_ORACLE)
-	{
-	/* END - ReqID:SRS-CMD-pg2highgo */
-		res = executeQueryOrDie(conn,
-								"SELECT COUNT(*) "
-								"FROM pg_catalog.ivory_roles r, pg_catalog.pg_database d "
-								"WHERE r.rolname !~ '^pg_' "
-								"AND d.datname = current_database()  "
-								"AND "
-								"CASE WHEN current_user= 'system' "
-								"  THEN d.oid = r.dboid "
-								"  ELSE r.rolname != 'sys' AND r.rolname != 'system' END ");
-	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-	}
-	else
-	{
-		res = executeQueryOrDie(conn,
-							"SELECT COUNT(*) "
-							"FROM pg_catalog.pg_roles "
-							"WHERE rolname !~ '^pg_'");
-	}
-	/* END - ReqID:SRS-CMD-pg2highgo */
+	res = executeQueryOrDie(conn,
+						"SELECT COUNT(*) "
+						"FROM pg_catalog.pg_roles "
+						"WHERE rolname !~ '^pg_'");
 
 	if (PQntuples(res) != 1)
 		pg_fatal("could not determine the number of users\n");

@@ -1,3 +1,8 @@
+--add system user
+CREATE USER system WITH superuser;
+
+\c - system
+
 -- BUG#M0000414
 
 -- create database
@@ -293,3 +298,6 @@ set ivorysql.compatible_mode to oracle;
 show ivorysql.compatible_mode;
 
 drop function dbuser_createdb;
+
+--drop system user
+drop user system

@@ -32,12 +32,11 @@ SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, r
 -- default for create database is false
 CREATE ROLE regress_test_def_createdb;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_def_createdb';
-CREATE ROLE regress_test_createdb WITH CREATEDB;  --error
-CREATE ROLE regress_test_createdb WITH NOCREATEDB;
+CREATE ROLE regress_test_createdb WITH CREATEDB;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_createdb';
 ALTER ROLE regress_test_createdb WITH NOCREATEDB;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_createdb';
-ALTER ROLE regress_test_createdb WITH CREATEDB;  --error
+ALTER ROLE regress_test_createdb WITH CREATEDB;
 SELECT rolname, rolsuper, rolinherit, rolcreaterole, rolcreatedb, rolcanlogin, rolreplication, rolbypassrls, rolconnlimit, rolpassword, rolvaliduntil FROM pg_authid WHERE rolname = 'regress_test_createdb';
 
 -- default for can login is false for role

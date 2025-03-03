@@ -15,6 +15,9 @@
 ----package, package body
 ----dblink
 ----sequence
+CREATE USER system WITH superuser;
+
+\c - system
 
 SET ivorysql.identifier_case_switch = interchange;
 
@@ -632,3 +635,14 @@ DROP SEQUENCE seq_shard2;
 create sequence seq_shard3 shard extend ;
 SELECT dbms_metadata.get_ddl('SEQUENCE','SEQ_SHARD3', 'PUBLIC') from dual;
 DROP SEQUENCE seq_shard3;
+
+--drop user sytsem
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;

@@ -5,6 +5,11 @@
  *
  ****************************************************************/
 
+--add system user
+CREATE USER system WITH superuser;
+
+\c - system
+
 create or replace function dbuser_createdb() RETURNS void as
 $$
 declare
@@ -313,3 +318,14 @@ set ivorysql.compatible_mode to oracle;
 show ivorysql.compatible_mode;
 
 drop function dbuser_createdb;
+
+--drop system user
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;

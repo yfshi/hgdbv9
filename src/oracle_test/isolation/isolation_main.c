@@ -98,7 +98,7 @@ isolation_start_test(const char *testname,
 	}
 
 	offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
-					   "\"%s\" \"dbname=%s user=system\"< \"%s\" > \"%s\" 2>&1",
+					   "\"%s\" \"dbname=%s\" < \"%s\" > \"%s\" 2>&1",
 					   isolation_exec,
 					   dblist->str,
 					   infile,

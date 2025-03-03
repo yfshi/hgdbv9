@@ -1,0 +1,307 @@
+-- test for oracle schema
+SET ivorysql.enable_ora_user_schema = on;
+--
+-- user management
+--
+-- create user
+CREATE SCHEMA sc_u2;
+CREATE USER sc_u1;
+CREATE USER sc_u2; -- error
+ERROR:  schema "sc_u2" already exists
+CREATE TABLE sc_u1.t1(id int);
+\dn sc_u1
+List of schemas
+ Name  | Owner 
+-------+-------
+ sc_u1 | sc_u1
+(1 row)
+
+-- alter user
+ALTER USER sc_u1 RENAME TO sc_u11;
+\dn sc_u11
+List of schemas
+ Name | Owner 
+------+-------
+(0 rows)
+
+\dn sc_u1
+List of schemas
+ Name  | Owner  
+-------+--------
+ sc_u1 | sc_u11
+(1 row)
+
+-- drop user
+DROP USER sc_u11; --error
+ERROR:  role "sc_u11" cannot be dropped because some objects depend on it
+DETAIL:  owner of schema sc_u1
+owner of table sc_u1.t1
+DROP SCHEMA sc_u1 CASCADE;
+NOTICE:  drop cascades to table sc_u1.t1
+DROP USER sc_u11;
+-- clean
+DROP SCHEMA sc_u2;
+---
+--- schema management
+---
+CREATE USER sc_u1;
+CREATE SCHEMA AUTHORIZATION sc_u1 CREATE TABLE t1(id int) CREATE VIEW vt1 AS SELECT * FROM t1;
+DROP SCHEMA sc_u1 CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table sc_u1.t1
+drop cascades to view sc_u1.vt1
+CREATE SCHEMA AUTHORIZATION sc_u1 CREATE TABLE t1(id int) CREATE VIEW vt1 AS SELECT * FROM t1;
+-- clean
+DROP SCHEMA sc_u1 CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table sc_u1.t1
+drop cascades to view sc_u1.vt1
+DROP USER sc_u1;
+--
+-- object management
+--
+CREATE USER sc_pub SUPERUSER;
+DROP SCHEMA sc_pub;
+CREATE USER sc_u1;
+SET SESSION AUTHORIZATION sc_pub;
+SET ivorysql.enable_ora_user_schema = on;
+-- create table
+CREATE TABLE obj_t1(id int, s int);
+CREATE TABLE sc_u1.obj_t1(id int, s int);
+-- create sequence
+CREATE TABLE sc_u1.obj_t2(id int, s serial);
+CREATE SEQUENCE obj_seq1 OWNED BY obj_t1.s;
+CREATE SEQUENCE obj_seq1 OWNED BY sc_u1.obj_t1.s;
+ERROR:  relation "obj_seq1" already exists
+CREATE SEQUENCE sc_u1.obj_seq1;
+-- create view
+CREATE VIEW obj_v1 AS SELECT * FROM sc_u1.obj_t1;
+CREATE VIEW sc_u1.obj_v1 AS SELECT * FROM sc_u1.obj_t1;
+CREATE FORCE VIEW obj_fv1 AS SELECT * FROM sc_u1.xxx;
+WARNING:  View created with compilation errors
+CREATE FORCE VIEW sc_u1.obj_fv1 AS SELECT * FROM xxx;
+WARNING:  View created with compilation errors
+CREATE MATERIALIZED VIEW sc_mv1 AS SELECT * FROM sc_u1.obj_t1;
+CREATE MATERIALIZED VIEW sc_u1.sc_mv1 AS SELECT * FROM obj_t1;
+-- create index
+CREATE INDEX obj_t1_index ON obj_t1(id);
+CREATE INDEX obj_t1_index ON sc_u1.obj_t1(id);
+-- check relation object
+SELECT relnamespace::regnamespace,relname,relowner::regrole FROM pg_class WHERE relname LIKE 'obj\_%' ESCAPE '\' ORDER BY relnamespace,relname;
+ relnamespace |   relname    | relowner 
+--------------+--------------+----------
+ public       | obj_fv1      | sc_pub
+ public       | obj_seq1     | sc_pub
+ public       | obj_t1       | sc_pub
+ public       | obj_t1_index | sc_pub
+ public       | obj_v1       | sc_pub
+ sc_u1        | obj_fv1      | sc_u1
+ sc_u1        | obj_seq1     | sc_u1
+ sc_u1        | obj_t1       | sc_u1
+ sc_u1        | obj_t1_index | sc_u1
+ sc_u1        | obj_t2       | sc_u1
+ sc_u1        | obj_t2_s_seq | sc_u1
+ sc_u1        | obj_v1       | sc_u1
+(12 rows)
+
+-- create type
+CREATE TYPE obj_type1;
+CREATE TYPE sc_u1.obj_type1;
+CREATE TYPE obj_type2 AS ENUM ('red', 'orange', 'yellow', 'green', 'blue', 'purple');
+CREATE TYPE sc_u1.obj_type2 AS ENUM ('red', 'orange', 'yellow', 'green', 'blue', 'purple');
+CREATE TYPE obj_type3 AS RANGE (subtype=text);
+CREATE TYPE sc_u1.obj_type3 AS RANGE (subtype=text);
+CREATE DOMAIN obj_type4 int4;
+CREATE DOMAIN sc_u1.obj_type4 int4;
+CREATE TYPE obj_type5 AS (a int, b text);
+CREATE TYPE sc_u1.obj_type5 AS (a int, b text);
+-- check type object
+SELECT typnamespace::regnamespace,typname,typowner::regrole FROM pg_type WHERE typname LIKE 'obj\_type%' ESCAPE '\' ORDER BY typnamespace,typname;
+ typnamespace |       typname        | typowner 
+--------------+----------------------+----------
+ public       | obj_type1            | sc_pub
+ public       | obj_type2            | sc_pub
+ public       | obj_type3            | sc_pub
+ public       | obj_type3_multirange | sc_pub
+ public       | obj_type4            | sc_pub
+ public       | obj_type5            | sc_pub
+ sc_u1        | obj_type1            | sc_u1
+ sc_u1        | obj_type2            | sc_u1
+ sc_u1        | obj_type3            | sc_u1
+ sc_u1        | obj_type3_multirange | sc_u1
+ sc_u1        | obj_type4            | sc_u1
+ sc_u1        | obj_type5            | sc_u1
+(12 rows)
+
+-- create function
+CREATE FUNCTION obj_func1() RETURNS void LANGUAGE SQL AS 'SELECT 1';
+/
+CREATE FUNCTION sc_u1.obj_func1() RETURNS void LANGUAGE SQL AS 'SELECT 1';
+/
+-- create procedure
+CREATE PROCEDURE obj_func2()  LANGUAGE SQL AS 'SELECT 1';
+/
+CREATE PROCEDURE sc_u1.obj_func2() LANGUAGE SQL AS 'SELECT 1';
+/
+-- create window function
+CREATE OR REPLACE FUNCTION obj_func3(a int) RETURNS int LANGUAGE SQL WINDOW AS 'SELECT $1';
+/
+CREATE OR REPLACE FUNCTION sc_u1.obj_func3(a int) RETURNS int LANGUAGE SQL WINDOW AS 'SELECT $1';
+/
+-- create aggregate
+CREATE AGGREGATE obj_func4 (sfunc1 = int4pl, basetype = int4, stype1 = int4, initcond1 = '0');
+CREATE AGGREGATE sc_u1.obj_func4 (sfunc1 = int4pl, basetype = int4, stype1 = int4, initcond1 = '0');
+-- check function object
+SELECT pronamespace::regnamespace,proname,proowner::regrole,prokind FROM pg_proc WHERE proname LIKE 'obj\_func%' ESCAPE '\' ORDER BY pronamespace,proname;
+ pronamespace |  proname  | proowner | prokind 
+--------------+-----------+----------+---------
+ public       | obj_func1 | sc_pub   | f
+ public       | obj_func2 | sc_pub   | p
+ public       | obj_func3 | sc_pub   | w
+ public       | obj_func4 | sc_pub   | a
+ sc_u1        | obj_func1 | sc_u1    | f
+ sc_u1        | obj_func2 | sc_u1    | p
+ sc_u1        | obj_func3 | sc_u1    | w
+ sc_u1        | obj_func4 | sc_u1    | a
+(8 rows)
+
+-- create oprator
+CREATE OPERATOR @@@@@@@ (rightarg = int8, procedure = factorial);
+CREATE OPERATOR sc_u1.@@@@@@@ (rightarg = int8, procedure = factorial);
+CREATE OPERATOR FAMILY obj_opf1 USING hash;
+CREATE OPERATOR FAMILY sc_u1.obj_opf1 USING hash;
+CREATE OPERATOR CLASS obj_opc1 FOR TYPE uuid USING hash AS STORAGE uuid;
+CREATE OPERATOR CLASS sc_u1.obj_opc1 FOR TYPE uuid USING hash AS STORAGE uuid;
+-- check operator object
+SELECT oprnamespace::regnamespace,oprname,oprowner::regrole FROM pg_operator WHERE oprname='@@@@@@@' ORDER BY oprnamespace,oprname;
+ oprnamespace | oprname | oprowner 
+--------------+---------+----------
+ public       | @@@@@@@ | sc_pub
+ sc_u1        | @@@@@@@ | sc_u1
+(2 rows)
+
+SELECT opfnamespace::regnamespace,opfname,opfowner::regrole FROM pg_opfamily WHERE opfname='obj_opf1' ORDER BY opfnamespace,opfname;
+ opfnamespace | opfname  | opfowner 
+--------------+----------+----------
+ public       | obj_opf1 | sc_pub
+ sc_u1        | obj_opf1 | sc_u1
+(2 rows)
+
+SELECT opcnamespace::regnamespace,opcname,opcowner::regrole FROM pg_opclass WHERE opcname='obj_opc1' ORDER BY opcnamespace,opcname;
+ opcnamespace | opcname  | opcowner 
+--------------+----------+----------
+ public       | obj_opc1 | sc_pub
+ sc_u1        | obj_opc1 | sc_u1
+(2 rows)
+
+-- create package
+CREATE PACKAGE obj_pack1 AS
+END;
+/
+CREATE PACKAGE BODY obj_pack1 AS
+END;
+/
+CREATE PACKAGE sc_u1.obj_pack1 AS
+END;
+/
+CREATE PACKAGE BODY sc_u1.obj_pack1 AS
+END;
+/
+-- check package object
+SELECT pkgnamespace::regnamespace,pkgname,pkgowner::regrole FROM pg_package WHERE pkgname='obj_pack1' ORDER BY pkgnamespace,pkgname;
+ pkgnamespace |  pkgname  | pkgowner 
+--------------+-----------+----------
+ public       | obj_pack1 | sc_pub
+ sc_u1        | obj_pack1 | sc_u1
+(2 rows)
+
+-- ceate text search object
+CREATE TEXT SEARCH CONFIGURATION obj_tsc1 (PARSER = default);
+CREATE TEXT SEARCH CONFIGURATION sc_u1.obj_tsc1 (PARSER = default);
+CREATE TEXT SEARCH DICTIONARY obj_tsd1 (TEMPLATE = simple);
+CREATE TEXT SEARCH DICTIONARY sc_u1.obj_tsd1 (TEMPLATE = simple);
+-- check text search object
+SELECT cfgnamespace::regnamespace,cfgname,cfgowner::regrole FROM pg_ts_config WHERE cfgname='obj_tsc1' ORDER BY cfgnamespace,cfgname;
+ cfgnamespace | cfgname  | cfgowner 
+--------------+----------+----------
+ public       | obj_tsc1 | sc_pub
+ sc_u1        | obj_tsc1 | sc_u1
+(2 rows)
+
+SELECT dictnamespace::regnamespace,dictname,dictowner::regrole FROM pg_ts_dict WHERE dictname='obj_tsd1' ORDER BY dictnamespace,dictname;
+ dictnamespace | dictname | dictowner 
+---------------+----------+-----------
+ public        | obj_tsd1 | sc_pub
+ sc_u1         | obj_tsd1 | sc_u1
+(2 rows)
+
+-- ceate collation
+CREATE COLLATION obj_coll1 (LOCALE = 'C');
+CREATE COLLATION sc_u1.obj_coll1 (LOCALE = 'C');
+SELECT collnamespace::regnamespace,collname,collowner::regrole FROM pg_collation WHERE collname='obj_coll1' ORDER BY collnamespace,collname;
+ collnamespace | collname  | collowner 
+---------------+-----------+-----------
+ public        | obj_coll1 | sc_pub
+ sc_u1         | obj_coll1 | sc_u1
+(2 rows)
+
+-- create conversion
+CREATE CONVERSION obj_conv1 FOR 'LATIN1' TO 'UTF8' FROM iso8859_1_to_utf8;
+CREATE CONVERSION sc_u1.obj_conv1 FOR 'LATIN1' TO 'UTF8' FROM iso8859_1_to_utf8;
+SELECT connamespace::regnamespace,conname,conowner::regrole FROM pg_conversion WHERE conname='obj_conv1' ORDER BY connamespace,conname;
+ connamespace |  conname  | conowner 
+--------------+-----------+----------
+ public       | obj_conv1 | sc_pub
+ sc_u1        | obj_conv1 | sc_u1
+(2 rows)
+
+-- create extension
+--CREATE EXTENSION test_bloomfilter with schema sc_u1;
+--SELECT extnamespace::regnamespace,extname FROM pg_extension WHERE extname='test_bloomfilter';
+--DROP EXTENSION test_bloomfilter;
+--CREATE EXTENSION test_bloomfilter with schema public;
+--SELECT extnamespace::regnamespace,extname FROM pg_extension WHERE extname='test_bloomfilter';
+-- create statisitc ext
+CREATE STATISTICS obj_stat1 ON ( id + 1 ) FROM obj_t1;
+SELECT stxnamespace::regnamespace,stxname,stxowner::regrole FROM pg_statistic_ext WHERE stxname='obj_stat1' ORDER BY stxnamespace,stxname;
+ stxnamespace |  stxname  | stxowner 
+--------------+-----------+----------
+ public       | obj_stat1 | sc_pub
+(1 row)
+
+DROP STATISTICS obj_stat1;
+CREATE STATISTICS sc_u1.obj_stat1 ON ( id + 1 ) FROM obj_t1;
+SELECT stxnamespace::regnamespace,stxname,stxowner::regrole FROM pg_statistic_ext WHERE stxname='obj_stat1' ORDER BY stxnamespace,stxname;
+ stxnamespace |  stxname  | stxowner 
+--------------+-----------+----------
+ sc_u1        | obj_stat1 | sc_u1
+(1 row)
+
+-- temp object
+CREATE TEMP TABLE obj_t_t1(id int, s serial);
+CREATE TEMP VIEW obj_t_v1 AS SELECT * FROM obj_t1;
+CREATE TEMP SEQUENCE obj_t_seq1;
+SELECT relname FROM pg_class
+    WHERE relname LIKE 'obj\_t\_%' ESCAPE '\'
+    AND relnamespace IN (SELECT oid FROM pg_namespace WHERE nspname LIKE 'pg_temp%')
+    ORDER BY relname;
+    relname     
+----------------
+ obj_t_seq1
+ obj_t_t1
+ obj_t_t1_s_seq
+ obj_t_v1
+(4 rows)
+
+-- clean
+RESET SESSION AUTHORIZATION;
+DROP OWNED BY sc_u1 CASCADE;
+NOTICE:  drop cascades to 5 other objects
+DETAIL:  drop cascades to operator family sc_u1.obj_opf1 for access method hash
+drop cascades to operator family sc_u1.obj_opc1 for access method hash
+drop cascades to statistics object sc_u1.obj_stat1
+drop cascades to view obj_v1
+drop cascades to materialized view sc_mv1
+DROP USER sc_u1;
+DROP OWNED BY sc_pub CASCADE;
+DROP USER sc_pub;

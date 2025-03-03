@@ -1323,13 +1323,13 @@ end;
 /
 
 --one row
-SELECT user_name,sql_text FROM v$open_cursor ORDER BY sql_text;
+SELECT sql_text FROM v$open_cursor ORDER BY sql_text;
 
 --drop package
 DROP package test_pkg;
 
 --none row
-SELECT user_name,sql_text FROM v$open_cursor ORDER BY sql_text;
+SELECT sql_text FROM v$open_cursor ORDER BY sql_text;
 
 --package private global cursor is global?
 CREATE OR REPLACE package test_pkg IS

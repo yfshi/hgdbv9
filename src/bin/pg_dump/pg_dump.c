@@ -198,11 +198,7 @@ int	numCollations;
 int	numNamespaces;
 int	numExtensions;
 int	numPublications;
-/* BEGIN - ReqID:SRS-MISC-USER  BUG:Z538 */
-int	numRoles;
-int	numRolesMembership;
-/* END - ReqID:SRS-MISC-USER  BUG:Z538 */
-int numTablespaces;	/* BUGZ1343 */
+
 /* This is an array of object identities, not actual DumpableObjects */
 ExtensionMemberId *extmembers;
 int	numextmembers;
@@ -767,41 +763,23 @@ main(int argc, char **argv)
 	 * death.
 	 */
 	dM->ConnectDatabase(fout, &dopt.cparams, false);
+
 	if (database_mode != DB_NATIVE && database_mode != DB_MYSQL)	/* ReqID:SRS-MYSQL-PGDUMP, Add not equal to MySQL judgment condition. */
 	{
 		/* BEGIN - SQL PARSER */
 		dM->getDbCompatibleMode(((ArchiveHandle *) fout)->connection);
 		/* END - SQL PARSER */
+
 		/* BEGIN - ReqID:SRS-MISC-USER */
 		dM->getDatabaseMode(((ArchiveHandle *) fout)->connection);
-
-		dM->haveDatabaseUser(((ArchiveHandle *) fout)->connection);
-
-		/* BEGIN - BUG:z680,z538 */
-		if (DB_ORACLE == database_mode)
-		{
-			if (use_role != NULL)
-				dM->getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection, use_role);
-			else
-				dM->getcurrentuserisInstanceSupperuser(((ArchiveHandle *) fout)->connection, NULL);
-		}
-		if ((DB_ORACLE == database_mode) && (DB_ORACLE == db_mode))
-		{
-			if (use_role != NULL)
-				dM->getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) fout)->connection, use_role);
-			else
-				dM->getcurrentuserisDatabaseSupperuser(((ArchiveHandle *) fout)->connection, NULL);
-		}
-		/* END - BUG:z680,z538 */
-
 		/* END - ReqID:SRS-MISC-USER */
 
 		/* Begin - ReqID:SRS-MISC-GUC */
 		dM->setIdentifierCaseSwitch(((ArchiveHandle *) fout)->connection);		/* BUG#M229 */
-		//ExecuteSqlStatement(fout, "set ivorysql.identifier_case_switch = normal;");	/* case sensitive indentify */
 		/* End - ReqID:SRS-MISC-GUC */
 		dM->setNLSdateFormat(((ArchiveHandle *) fout)->connection);				/* BUG:z774 */
 	}
+
 	dM->setup_connection(fout, dumpencoding, dumpsnapshot, use_role);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */

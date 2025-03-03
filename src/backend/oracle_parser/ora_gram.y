@@ -407,12 +407,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 
 %type <str>		iso_level opt_encoding
 %type <rolespec> grantee
-/* Begin - ReqID:ReqID:SRS-MISC-USER */
-%type <list>	grantee_list instance_database_grantee_list instance_database_grantee  
-				instance_database_role_list instance_database_role 
-
-%type <ival>	instance_database instance_database_granted_by instance_database_owner 
-/* End - ReqID:ReqID:SRS-MISC-USER */
+%type <list>	grantee_list
 %type <accesspriv> privilege
 %type <list>	privileges privilege_list
 %type <privtarget> privilege_target
@@ -740,7 +735,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	CURRENT_SHARD /* ReqID:SRS-MISC-BULKLOAD*/
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
-	DATA_P DATABASE DATABASEUSER DATE_P /* ReqID:SRS-GKC-DATATYPE_001 */ DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DECODE /* ReqID:SRS-GKC-DATATYPE_001 */ DEFAULT DEFAULTS
+	DATA_P DATABASE DATE_P /* ReqID:SRS-GKC-DATATYPE_001 */ DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DECODE /* ReqID:SRS-GKC-DATATYPE_001 */ DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
@@ -759,7 +754,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	IDENTIFIED IDENTITY_P IF_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
 
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTANCEUSER INSTEAD INT_P INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
 	INTERSECT INTERVAL INTO INVISIBLE INVOKER IS ISNULL ISOLATION	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 
@@ -1402,21 +1397,6 @@ AlterOptRoleElem:
 				{
 					$$ = makeDefElem("validUntil", (Node *)makeString($3), @1);
 				}
-			/* Begin - ReqID:SRS-SQL-SCHEMA */
-			| DEFAULT COLLATION Sconst
-				{
-					if(max_string_size != ORA_MAX_STRING_SIZE_EXTENDED)
-					{
-						elog(ERROR, "ORA-43929: Collation cannot be specified if parameter MAX_STRING_SIZE=STANDARD is set.");
-					}
-
-					$$ = makeDefElem("defaultCollation", (Node *)makeString($3), @1);
-				}
-			| DEFAULT TABLESPACE Sconst
-				{
-					$$ = makeDefElem("defaultTablespace", (Node *)makeString($3), @1);
-				}
-			/* End - ReqID:SRS-SQL-SCHEMA */
 		/*	Supported but not documented for roles, for use by ALTER GROUP. */
 			| USER role_list
 				{
@@ -1589,52 +1569,46 @@ AlterRoleSetStmt:
  *****************************************************************************/
 
 DropRoleStmt:
-			DROP ROLE role_list opt_drop_behavior				/* ReqID:SRS-SQL-SCHEMA */
+			DROP ROLE role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
-					n->behavior = $4;							/* ReqID:SRS-SQL-SCHEMA */
 					$$ = (Node *)n;
 				}
-			| DROP ROLE IF_P EXISTS role_list opt_drop_behavior	/* ReqID:SRS-SQL-SCHEMA */
+			| DROP ROLE IF_P EXISTS role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
 					n->roles = $5;
-					n->behavior = $6;							/* ReqID:SRS-SQL-SCHEMA */
 					$$ = (Node *)n;
 				}
-			| DROP USER role_list opt_drop_behavior				/* ReqID:SRS-SQL-SCHEMA */
+			| DROP USER role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
-					n->behavior = $4;							/* ReqID:SRS-SQL-SCHEMA */
 					$$ = (Node *)n;
 				}
-			| DROP USER IF_P EXISTS role_list opt_drop_behavior	/* ReqID:SRS-SQL-SCHEMA */
+			| DROP USER IF_P EXISTS role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->roles = $5;
-					n->behavior = $6;							/* ReqID:SRS-SQL-SCHEMA */
 					n->missing_ok = true;
 					$$ = (Node *)n;
 				}
-			| DROP GROUP_P role_list opt_drop_behavior			/* ReqID:SRS-SQL-SCHEMA */
+			| DROP GROUP_P role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
-					n->behavior = $4;							/* ReqID:SRS-SQL-SCHEMA */
 					$$ = (Node *)n;
 				}
-			| DROP GROUP_P IF_P EXISTS role_list opt_drop_behavior
+			| DROP GROUP_P IF_P EXISTS role_list
 				{
-					DropRoleStmt *n = makeNode(DropRoleStmt);	/* ReqID:SRS-SQL-SCHEMA */
+					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
 					n->roles = $5;
-					n->behavior = $6;							/* ReqID:SRS-SQL-SCHEMA */
 					$$ = (Node *)n;
 				}
 			;
@@ -1691,13 +1665,6 @@ CreateSchemaStmt:
 			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema && $3 != NULL)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@3)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					/* One can omit the schema name or the authorization id. */
 					n->schemaname = $3;
 					n->authrole = $5;
@@ -1708,13 +1675,6 @@ CreateSchemaStmt:
 			| CREATE SCHEMA ColId OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@3)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					/* ...but not both */
 					n->schemaname = $3;
 					n->authrole = NULL;
@@ -1725,13 +1685,6 @@ CreateSchemaStmt:
 			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@3)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					/* schema name can be omitted here, too */
 					n->schemaname = $6;
 					n->authrole = $8;
@@ -1747,13 +1700,6 @@ CreateSchemaStmt:
 			| CREATE SCHEMA IF_P NOT EXISTS ColId OptSchemaEltList
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@3)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					/* ...but not here */
 					n->schemaname = $6;
 					n->authrole = NULL;
@@ -3131,43 +3077,10 @@ alter_table_cmd:
 			| OWNER TO RoleSpec
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@1)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->subtype = AT_ChangeOwner;
-					n->utype = UNKNOWN_USER;			/* ReqID:SRS-MISC-USER */
 					n->newowner = $3;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@1)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterTableCmd *n = makeNode(AlterTableCmd);
-						n->subtype = AT_ChangeOwner;
-						n->utype = $3;
-						n->newowner = $4;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			/* End - ReqID:SRS-MISC-USER */
 			/* ALTER TABLE <name> SET TABLESPACE <tablespacename> */
 			| SET TABLESPACE name
 				{
@@ -3250,14 +3163,6 @@ alter_column_default:
 			SET DEFAULT a_expr			{ $$ = $3; }
 			| DROP DEFAULT				{ $$ = NULL; }
 		;
-
-/* Begin - ReqID:SRS-MISC-USER */
-instance_database:
-			DATABASEUSER					{ $$ = DATABASE_USER; }
-			| INSTANCEUSER					{ $$ = INSTANCE_USER; }
-		;
-
-/* End - ReqID:SRS-MISC-USER */
 
 opt_drop_behavior:
 			CASCADE						{ $$ = DROP_CASCADE; }
@@ -5708,44 +5613,16 @@ CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst 
 				{
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
-					n->utype = UNKNOWN_USER;
 					n->owner = $4;
 					n->location = $6;
 					n->options = $7;
 					$$ = (Node *) n;
 				}
-				/* Begin - ReqID:SRS-MISC-USER bug:z561  */
-				| CREATE TABLESPACE name instance_database_owner RoleSpec LOCATION Sconst opt_reloptions
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
-						n->tablespacename = $3; 
-						n->utype = $4;
-						n->owner = $5;
-						n->location = $7;
-						n->options = $8;
-						$$ = (Node *) n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-				/* End - ReqID:SRS-MISC-USER bug:z561  */
 		;
 
 OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 			| /*EMPTY */				{ $$ = NULL; }
 		;
-
-/* Begin - ReqID:SRS-MISC-USER bug:z561  */
-instance_database_owner:
-			OWNER DATABASEUSER					{ $$ = DATABASE_USER; }
-			| OWNER INSTANCEUSER					{ $$ = INSTANCE_USER; }
-		;
-/* End - ReqID:SRS-MISC-USER bug:z561  */
 
 /*****************************************************************************
  *
@@ -7700,13 +7577,6 @@ DropOwnedStmt:
 			DROP OWNED BY role_list opt_drop_behavior
 				{
 					DropOwnedStmt *n = makeNode(DropOwnedStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@2)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->roles = $4;
 					n->behavior = $5;
 					$$ = (Node *)n;
@@ -7938,17 +7808,7 @@ drop_type_name:
 			| FOREIGN DATA_P WRAPPER				{ $$ = OBJECT_FDW; }
 			| opt_procedural LANGUAGE				{ $$ = OBJECT_LANGUAGE; }
 			| PUBLICATION							{ $$ = OBJECT_PUBLICATION; }
-			| SCHEMA
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@1)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					$$ = OBJECT_SCHEMA;
-				}
+			| SCHEMA								{ $$ = OBJECT_SCHEMA; }
 		;
 
 /* object types attached to a table */
@@ -8475,7 +8335,6 @@ GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
 					n->objects = ($4)->objs;
 					n->grantees = $6;
 					n->grant_option = $7;
-					n->grantor_type = UNKNOWN_USER;
 					n->grantor = $8;
 					$$ = (Node*)n;
 				}
@@ -8489,7 +8348,6 @@ GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
 				PrivTarget *pt = (PrivTarget *) palloc(sizeof(PrivTarget));
 				AccessPriv *ap = makeNode(AccessPriv);
 
-				ap->utype = UNKNOWN_USER;
 				ap->priv_name = pstrdup("usage");
 				ap->cols = NIL;
 
@@ -8508,52 +8366,6 @@ GrantStmt:	GRANT privileges ON privilege_target TO grantee_list
 				$$ = (Node*)n;
 			}
 			/* End - BUG#Z1331 */
-			/* Begin - ReqID:SRS-MISC-USER */
-			| GRANT privileges ON privilege_target TO instance_database_grantee_list
-			opt_grant_grant_option
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = true;
-						n->privileges = $2;
-						n->targtype = ($4)->targtype;
-						n->objtype = ($4)->objtype;
-						n->objects = ($4)->objs;
-						n->grantees = $6;
-						n->grant_option = $7;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| GRANT privileges ON privilege_target TO instance_database_grantee_list
-			opt_grant_grant_option instance_database_granted_by RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = true;
-						n->privileges = $2;
-						n->targtype = ($4)->targtype;
-						n->objtype = ($4)->objtype;
-						n->objects = ($4)->objs;
-						n->grantees = $6;
-						n->grant_option = $7;
-						n->grantor_type = $8;
-						n->grantor = $9;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			/* End - ReqID:SRS-MISC-USER */
 		;
 
 RevokeStmt:
@@ -8572,54 +8384,6 @@ RevokeStmt:
 					n->behavior = $8;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| REVOKE privileges ON privilege_target
-			FROM instance_database_grantee_list opt_drop_behavior
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = false;
-						n->grant_option = false;
-						n->privileges = $2;
-						n->targtype = ($4)->targtype;
-						n->objtype = ($4)->objtype;
-						n->objects = ($4)->objs;
-						n->grantees = $6;
-						n->behavior = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| REVOKE privileges ON privilege_target
-			FROM instance_database_grantee_list instance_database_granted_by RoleSpec opt_drop_behavior
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = false;
-						n->grant_option = false;
-						n->privileges = $2;
-						n->targtype = ($4)->targtype;
-						n->objtype = ($4)->objtype;
-						n->objects = ($4)->objs;
-						n->grantees = $6;
-						n->grantor_type = $7;
-						n->grantor = $8;
-						n->behavior = $9;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			/* End - ReqID:SRS-MISC-USER */
 			| REVOKE GRANT OPTION FOR privileges ON privilege_target
 			FROM grantee_list opt_granted_by opt_drop_behavior
 				{
@@ -8645,7 +8409,6 @@ RevokeStmt:
 				PrivTarget *pt = (PrivTarget *) palloc(sizeof(PrivTarget));
 				AccessPriv *ap = makeNode(AccessPriv);
 
-				ap->utype = UNKNOWN_USER;
 				ap->priv_name = pstrdup("usage");
 				ap->cols = NIL;
 
@@ -8711,7 +8474,6 @@ privilege_list:	privilege							{ $$ = list_make1($1); }
 privilege:	SELECT opt_column_list
 			{
 				AccessPriv *n = makeNode(AccessPriv);
-				n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 				n->priv_name = pstrdup($1);
 				n->cols = $2;
 				$$ = n;
@@ -8719,7 +8481,6 @@ privilege:	SELECT opt_column_list
 		| REFERENCES opt_column_list
 			{
 				AccessPriv *n = makeNode(AccessPriv);
-				n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 				n->priv_name = pstrdup($1);
 				n->cols = $2;
 				$$ = n;
@@ -8727,7 +8488,6 @@ privilege:	SELECT opt_column_list
 		| CREATE opt_column_list
 			{
 				AccessPriv *n = makeNode(AccessPriv);
-				n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 				n->priv_name = pstrdup($1);
 				n->cols = $2;
 				$$ = n;
@@ -8735,29 +8495,10 @@ privilege:	SELECT opt_column_list
 		| ColId opt_column_list
 			{
 				AccessPriv *n = makeNode(AccessPriv);
-				n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 				n->priv_name = $1;
 				n->cols = $2;
 				$$ = n;
 			}
-		/* Begin - ReqID:SRS-MISC-USER */
-		| instance_database ColId opt_column_list
-			{
-				if(ORA_GRANTUSER == grant_usertype)
-				{
-					AccessPriv *n = makeNode(AccessPriv);
-					n->utype = $1; 
-					n->priv_name = $2;
-					n->cols = $3;
-					$$ = n;
-				}
-				else
-					ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("This is used for dump when oracle but Postgresql not support.")));
-				
-			}
-		/* End - ReqID:SRS-MISC-USER */
 		;
 
 
@@ -8874,13 +8615,6 @@ privilege_target:
 			| SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@1)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_OBJECT;
 					n->objtype = OBJECT_SCHEMA;
 					n->objs = $2;
@@ -8905,13 +8639,6 @@ privilege_target:
 			| ALL TABLES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_TABLE;
 					n->objs = $5;
@@ -8920,13 +8647,6 @@ privilege_target:
 			| ALL SEQUENCES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_SEQUENCE;
 					n->objs = $5;
@@ -8935,13 +8655,6 @@ privilege_target:
 			| ALL FUNCTIONS IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_FUNCTION;
 					n->objs = $5;
@@ -8951,13 +8664,6 @@ privilege_target:
 			| ALL PACKAGES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_PACKAGE;
 					n->objs = $5;
@@ -8967,13 +8673,6 @@ privilege_target:
 			| ALL PROCEDURES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_PROCEDURE;
 					n->objs = $5;
@@ -8982,13 +8681,6 @@ privilege_target:
 			| ALL ROUTINES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->targtype = ACL_TARGET_ALL_IN_SCHEMA;
 					n->objtype = OBJECT_ROUTINE;
 					n->objs = $5;
@@ -9006,52 +8698,6 @@ grantee:
 			RoleSpec								{ $$ = $1; }
 			| GROUP_P RoleSpec						{ $$ = $2; }
 		;
-		
-/* Begin - ReqID:SRS-MISC-USER */
-instance_database_grantee_list:
-			instance_database_grantee											{ $$ = list_make1($1); }
-			| instance_database_grantee_list ',' instance_database_grantee		{ $$ = lappend($1, $3); }
-		;
-
-instance_database_grantee:
-			DATABASEUSER RoleSpec					
-				{ 
-					if(ORA_GRANTUSER == grant_usertype)
-						$$ = list_make2(makeString("DATABASEUSER"), $2); 
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			| INSTANCEUSER RoleSpec					
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-						$$ = list_make2(makeString("INSTANCEUSER"), $2); 
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			| GROUP_P DATABASEUSER RoleSpec			
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-						$$ = list_make2(makeString("DATABASEUSER"), $3); 
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			| GROUP_P INSTANCEUSER RoleSpec			
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-						$$ = list_make2(makeString("INSTANCEUSER"), $3); 
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-		;
-/* End - ReqID:SRS-MISC-USER */
 
 opt_grant_grant_option:
 			WITH GRANT OPTION { $$ = true; }
@@ -9072,47 +8718,9 @@ GrantRoleStmt:
 					n->granted_roles = $2;
 					n->grantee_roles = $4;
 					n->admin_opt = $5;
-					n->grantor_type = UNKNOWN_USER;
 					n->grantor = $6;
 					$$ = (Node*)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| GRANT privilege_list TO instance_database_role_list opt_grant_admin_option instance_database_granted_by RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantRoleStmt *n = makeNode(GrantRoleStmt);
-						n->is_grant = true;
-						n->granted_roles = $2;
-						n->grantee_roles = $4;
-						n->admin_opt = $5;
-						n->grantor_type = $6;
-						n->grantor = $7;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| GRANT privilege_list TO instance_database_role_list opt_grant_admin_option
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantRoleStmt *n = makeNode(GrantRoleStmt);
-						n->is_grant = true;
-						n->granted_roles = $2;
-						n->grantee_roles = $4;
-						n->admin_opt = $5;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			/* End - ReqID:SRS-MISC-USER */
 		;
 
 RevokeRoleStmt:
@@ -9126,42 +8734,6 @@ RevokeRoleStmt:
 					n->behavior = $6;
 					$$ = (Node*)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| REVOKE privilege_list FROM instance_database_role_list opt_drop_behavior
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantRoleStmt *n = makeNode(GrantRoleStmt);
-						n->is_grant = false;
-						n->admin_opt = false;
-						n->granted_roles = $2;
-						n->grantee_roles = $4;
-						n->behavior = $5;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			| REVOKE privilege_list FROM instance_database_role_list instance_database_granted_by RoleSpec opt_drop_behavior
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantRoleStmt *n = makeNode(GrantRoleStmt);
-						n->is_grant = false;
-						n->admin_opt = false;
-						n->granted_roles = $2;
-						n->grantee_roles = $4;
-						n->behavior = $7;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			/* End - ReqID:SRS-MISC-USER */
 			| REVOKE ADMIN OPTION FOR privilege_list FROM role_list opt_granted_by opt_drop_behavior
 				{
 					GrantRoleStmt *n = makeNode(GrantRoleStmt);
@@ -9182,45 +8754,6 @@ opt_granted_by: GRANTED BY RoleSpec						{ $$ = $3; }
 			| /*EMPTY*/									{ $$ = NULL; }
 		;
 
-/* Begin - ReqID:SRS-MISC-USER */
-instance_database_granted_by: GRANTED BY				{ $$ = UNKNOWN_USER; }
-							| GRANTED BY DATABASEUSER	{ $$ = DATABASE_USER; }
-							| GRANTED BY INSTANCEUSER	{ $$ = INSTANCE_USER; }
-						;
-
-instance_database_role_list:
-		instance_database_role
-			{
-				$$ = list_make1($1);
-			}
-		| instance_database_role_list ',' instance_database_role
-			{
-				$$ = lappend($1, $3);
-			}
-		;
-
-instance_database_role:	
-		DATABASEUSER RoleSpec
-			{
-				if(ORA_GRANTUSER == grant_usertype)
-					$$ = list_make2(makeString("DATABASEUSER"), $2); 
-				else
-					ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								errmsg("This is used for dump when oracle but Postgresql not support.")));
-			}
-		| INSTANCEUSER RoleSpec
-			{ 
-				if(ORA_GRANTUSER == grant_usertype)
-					$$ = list_make2(makeString("INSTANCEUSER"), $2); 
-				else
-					ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								errmsg("This is used for dump when oracle but Postgresql not support.")));
-			}
-		;
-
-/* End - ReqID:SRS-MISC-USER */
 /*****************************************************************************
  *
  * ALTER DEFAULT PRIVILEGES statement
@@ -9275,29 +8808,6 @@ DefACLAction:
 					n->grant_option = $7;
 					$$ = (Node*)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| GRANT privileges ON defacl_privilege_target TO instance_database_grantee_list
-			opt_grant_grant_option
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = true;
-						n->privileges = $2;
-						n->targtype = ACL_TARGET_DEFAULTS;
-						n->objtype = $4;
-						n->objects = NIL;
-						n->grantees = $6;
-						n->grant_option = $7;
-						$$ = (Node*)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			/* End - ReqID:SRS-MISC-USER */
 			| REVOKE privileges ON defacl_privilege_target
 			FROM grantee_list opt_drop_behavior
 				{
@@ -9312,30 +8822,6 @@ DefACLAction:
 					n->behavior = $7;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| REVOKE privileges ON defacl_privilege_target
-			FROM instance_database_grantee_list opt_drop_behavior
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						GrantStmt *n = makeNode(GrantStmt);
-						n->is_grant = false;
-						n->grant_option = false;
-						n->privileges = $2;
-						n->targtype = ACL_TARGET_DEFAULTS;
-						n->objtype = $4;
-						n->objects = NIL;
-						n->grantees = $6;
-						n->behavior = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			/* End - ReqID:SRS-MISC-USER */
 			| REVOKE GRANT OPTION FOR privileges ON defacl_privilege_target
 			FROM grantee_list opt_drop_behavior
 				{
@@ -11655,13 +11141,6 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 			| ALTER SCHEMA name RENAME TO name
 				{
 					RenameStmt *n = makeNode(RenameStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@2)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->renameType = OBJECT_SCHEMA;
 					n->subname = $3;
 					n->newname = $6;
@@ -12123,13 +11602,6 @@ AlterObjectSchemaStmt:
 			ALTER AGGREGATE aggregate_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12139,13 +11611,6 @@ AlterObjectSchemaStmt:
 			| ALTER COLLATION any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12155,13 +11620,6 @@ AlterObjectSchemaStmt:
 			| ALTER CONVERSION_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12171,13 +11629,6 @@ AlterObjectSchemaStmt:
 			| ALTER DOMAIN_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_DOMAIN;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12187,13 +11638,6 @@ AlterObjectSchemaStmt:
 			| ALTER EXTENSION name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_EXTENSION;
 					n->object = (Node *) makeString($3);
 					n->newschema = $6;
@@ -12204,13 +11648,6 @@ AlterObjectSchemaStmt:
 			| ALTER PACKAGE package_names SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_PACKAGE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12221,13 +11658,6 @@ AlterObjectSchemaStmt:
 			| ALTER FUNCTION function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12237,13 +11667,6 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR operator_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPERATOR;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12253,13 +11676,6 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR CLASS any_name USING name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@8)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
 					n->newschema = $9;
@@ -12269,13 +11685,6 @@ AlterObjectSchemaStmt:
 			| ALTER OPERATOR FAMILY any_name USING name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@8)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPFAMILY;
 					n->object = (Node *) lcons(makeString($6), $4);
 					n->newschema = $9;
@@ -12285,13 +11694,6 @@ AlterObjectSchemaStmt:
 			| ALTER PROCEDURE function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12301,13 +11703,6 @@ AlterObjectSchemaStmt:
 			| ALTER ROUTINE function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12317,13 +11712,6 @@ AlterObjectSchemaStmt:
 			| ALTER TABLE relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TABLE;
 					n->relation = $3;
 					n->newschema = $6;
@@ -12333,13 +11721,6 @@ AlterObjectSchemaStmt:
 			| ALTER TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TABLE;
 					n->relation = $5;
 					n->newschema = $8;
@@ -12349,13 +11730,6 @@ AlterObjectSchemaStmt:
 			| ALTER STATISTICS any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12365,13 +11739,6 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH PARSER any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSPARSER;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -12381,13 +11748,6 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH DICTIONARY any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -12397,13 +11757,6 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH TEMPLATE any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSTEMPLATE;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -12413,13 +11766,6 @@ AlterObjectSchemaStmt:
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
 					n->newschema = $8;
@@ -12429,13 +11775,6 @@ AlterObjectSchemaStmt:
 			| ALTER SEQUENCE qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $3;
 					n->newschema = $6;
@@ -12445,13 +11784,6 @@ AlterObjectSchemaStmt:
 			| ALTER SEQUENCE IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $5;
 					n->newschema = $8;
@@ -12461,13 +11793,6 @@ AlterObjectSchemaStmt:
 			| ALTER VIEW qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_VIEW;
 					n->relation = $3;
 					n->newschema = $6;
@@ -12477,13 +11802,6 @@ AlterObjectSchemaStmt:
 			| ALTER VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_VIEW;
 					n->relation = $5;
 					n->newschema = $8;
@@ -12493,13 +11811,6 @@ AlterObjectSchemaStmt:
 			| ALTER MATERIALIZED VIEW qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
 					n->newschema = $7;
@@ -12509,13 +11820,6 @@ AlterObjectSchemaStmt:
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@8)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $6;
 					n->newschema = $9;
@@ -12525,13 +11829,6 @@ AlterObjectSchemaStmt:
 			| ALTER FOREIGN TABLE relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
 					n->newschema = $7;
@@ -12541,13 +11838,6 @@ AlterObjectSchemaStmt:
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@8)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
 					n->newschema = $9;
@@ -12557,13 +11847,6 @@ AlterObjectSchemaStmt:
 			| ALTER TYPE_P any_name SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@5)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -12634,32 +11917,16 @@ AlterTypeStmt:
 AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER COLLATION any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12667,16 +11934,8 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 			| ALTER PACKAGE package_names OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_PACKAGE;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12684,16 +11943,8 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 			| ALTER CONVERSION_P any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12702,39 +11953,22 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_DATABASE;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER DOMAIN_P any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_DOMAIN;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER FUNCTION function_with_argtypes OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12743,7 +11977,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_LANGUAGE;
 					n->object = (Node *) makeString($4);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $7;
 					$$ = (Node *)n;
 				}
@@ -12752,119 +11985,62 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_LARGEOBJECT;
 					n->object = (Node *) $4;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $7;
 					$$ = (Node *)n;
 				}
 			| ALTER OPERATOR operator_with_argtypes OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPERATOR;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER OPERATOR CLASS any_name USING name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $9;
 					$$ = (Node *)n;
 				}
 			| ALTER OPERATOR FAMILY any_name USING name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_OPFAMILY;
 					n->object = (Node *) lcons(makeString($6), $4);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $9;
 					$$ = (Node *)n;
 				}
 			| ALTER PROCEDURE function_with_argtypes OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER ROUTINE function_with_argtypes OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER SCHEMA name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_SCHEMA;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER TYPE_P any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12873,55 +12049,30 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_TABLESPACE;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER STATISTICS any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
 			| ALTER TEXT_P SEARCH DICTIONARY any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $8;
 					$$ = (Node *)n;
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name OWNER TO RoleSpec
 				{
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
 					n->objectType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $8;
 					$$ = (Node *)n;
 				}
@@ -12930,7 +12081,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_FDW;
 					n->object = (Node *) makeString($5);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $8;
 					$$ = (Node *)n;
 				}
@@ -12939,7 +12089,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_FOREIGN_SERVER;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12948,7 +12097,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_EVENT_TRIGGER;
 					n->object = (Node *) makeString($4);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $7;
 					$$ = (Node *)n;
 				}
@@ -12957,7 +12105,6 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_PUBLICATION;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
@@ -12966,548 +12113,9 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_SUBSCRIPTION;
 					n->object = (Node *) makeString($3);
-					n->utype = UNKNOWN_USER;		/* ReqID:SRS-MISC-USER */
 					n->newowner = $6;
 					$$ = (Node *)n;
 				}
-			/* Begin - ReqID:SRS-MISC-USER */
-			| ALTER AGGREGATE aggregate_with_argtypes OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_AGGREGATE;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER COLLATION any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_COLLATION;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER PACKAGE package_names OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_PACKAGE;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-				}
-			| ALTER CONVERSION_P any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_CONVERSION;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER DATABASE name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					n->objectType = OBJECT_DATABASE;
-					n->object = (Node *) makeString($3);
-					n->utype = $6;
-					n->newowner = $7;
-					$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER DOMAIN_P any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_DOMAIN;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER FUNCTION function_with_argtypes OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_FUNCTION;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER opt_procedural LANGUAGE name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-					n->objectType = OBJECT_LANGUAGE;
-					n->object = (Node *) makeString($4);
-					n->utype = $7;
-					n->newowner = $8;
-					$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER LARGE_P OBJECT_P NumericOnly OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_LARGEOBJECT;
-						n->object = (Node *) $4;
-						n->utype = $7;
-						n->newowner = $8;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER OPERATOR operator_with_argtypes OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_OPERATOR;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER OPERATOR CLASS any_name USING name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_OPCLASS;
-						n->object = (Node *) lcons(makeString($6), $4);
-						n->utype = $9;
-						n->newowner = $10;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER OPERATOR FAMILY any_name USING name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@7)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_OPFAMILY;
-						n->object = (Node *) lcons(makeString($6), $4);
-						n->utype = $9;
-						n->newowner = $10;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER PROCEDURE function_with_argtypes OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_PROCEDURE;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER ROUTINE function_with_argtypes OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_ROUTINE;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER SCHEMA name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@2)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_SCHEMA;
-						n->object = (Node *) makeString($3);
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER TYPE_P any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_TYPE;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER TABLESPACE name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_TABLESPACE;
-						n->object = (Node *) makeString($3);
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER STATISTICS any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@4)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_STATISTIC_EXT;
-						n->object = (Node *) $3;
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-					
-				}
-			| ALTER TEXT_P SEARCH DICTIONARY any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_TSDICTIONARY;
-						n->object = (Node *) $5;
-						n->utype = $8;
-						n->newowner = $9;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER TEXT_P SEARCH CONFIGURATION any_name OWNER TO instance_database RoleSpec
-				{
-					/* Begin - ReqID:SRS-SQL-SCHEMA */
-					if (enable_ora_user_schema)
-						ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									errmsg("syntax error"),
-									parser_errposition(@6)));
-					/* End - ReqID:SRS-SQL-SCHEMA */
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						 AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_TSCONFIGURATION;
-						n->object = (Node *) $5;
-						n->utype = $8;
-						n->newowner = $9;
-						$$ = (Node *)n;
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER FOREIGN DATA_P WRAPPER name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_FDW;
-						n->object = (Node *) makeString($5);
-						n->utype = $8;
-						n->newowner = $9;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER SERVER name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_FOREIGN_SERVER;
-						n->object = (Node *) makeString($3);
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER EVENT TRIGGER name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_EVENT_TRIGGER;
-						n->object = (Node *) makeString($4);
-						n->utype = $7;
-						n->newowner = $8;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER PUBLICATION name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_PUBLICATION;
-						n->object = (Node *) makeString($3);
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			| ALTER SUBSCRIPTION name OWNER TO instance_database RoleSpec
-				{
-					if(ORA_GRANTUSER == grant_usertype)
-					{
-						AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
-						n->objectType = OBJECT_SUBSCRIPTION;
-						n->object = (Node *) makeString($3);
-						n->utype = $6;
-						n->newowner = $7;
-						$$ = (Node *)n; 
-					}
-					else
-						ereport(ERROR,
-									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("This is used for dump when oracle but Postgresql not support.")));
-						
-				}
-			/* End - ReqID:SRS-MISC-USER */
 		;
 
 
@@ -22125,7 +20733,6 @@ reserved_keyword:
 			| CURRENT_TIME
 			| CURRENT_TIMESTAMP
 			| CURRENT_USER
-			| DATABASEUSER
 			| DEFAULT
 			| DEFERRABLE
 			| DESC
@@ -22145,7 +20752,6 @@ reserved_keyword:
 			| IN_P
 			| INFINITE_P	/* BUG:Z093 */
 			| INITIALLY
-			| INSTANCEUSER
 			| INTERSECT
 			| INTO
 			| LATERAL_P

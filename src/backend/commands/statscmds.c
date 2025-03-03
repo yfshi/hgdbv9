@@ -38,7 +38,6 @@
 #include "utils/inval.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
@@ -101,11 +100,7 @@ CreateStatistics(CreateStatsStmt *stmt)
 	int			i;
 	ListCell   *cell;
 	ListCell   *cell2;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = stxowner;
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = stxowner;	/* ReqID:SRS-SQL-SCHEMA */
 
 	Assert(IsA(stmt, CreateStatsStmt));
 
@@ -216,22 +211,7 @@ CreateStatistics(CreateStatsStmt *stmt)
 				 errmsg("statistics object \"%s\" already exists", namestr)));
 	}
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(stxowner))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		objectOwner = get_namespace_owner(namespaceId);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceId, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Make sure no more than STATS_MAX_DIMENSIONS columns are used. There
@@ -642,11 +622,6 @@ CreateStatistics(CreateStatsStmt *stmt)
 	if (stmt->stxcomment != NULL)
 		CreateComments(statoid, StatisticExtRelationId, 0,
 					   stmt->stxcomment);
-
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Return stats object's address */
 	return myself;

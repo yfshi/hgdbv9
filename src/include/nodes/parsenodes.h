@@ -2163,15 +2163,6 @@ typedef enum AlterTableType
 	/* End: ReqID:SRS-SQL-NLSSORT */
 } AlterTableType;
 
-/* BEGIN - ReqID:SRS-MISC-USER */
-typedef enum UserType
-{
-	UNKNOWN_USER,
-	DATABASE_USER,
-	INSTANCE_USER
-} UserType;
-/* END - ReqID:SRS-MISC-USER */
-
 typedef struct ReplicaIdentityStmt
 {
 	NodeTag		type;
@@ -2195,7 +2186,6 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	bool		recurse;		/* exec-time recursion */
 	bool        is_rowid;		/* ReqID:SRS-SQL-ROWID */
 	bool		isvisible;		/* ReqID:SRS-SQL-INVISIBLECOL */
-	UserType	utype; 			/* ReqID:SRS-MISC-USER */
 	/* BUG:M0000325
 	 * set logged without copy or not?
 	 * Does the new relation do a data copy or not?
@@ -2265,7 +2255,6 @@ typedef struct GrantStmt
 	/* privileges == NIL denotes ALL PRIVILEGES */
 	List	   *grantees;		/* list of RoleSpec nodes */
 	bool		grant_option;	/* grant or revoke grant option */
-	UserType	grantor_type; 			/* ReqID:SRS-MISC-USER */
 	RoleSpec   *grantor;
 	DropBehavior behavior;		/* drop behavior (for REVOKE) */
 } GrantStmt;
@@ -2306,7 +2295,6 @@ typedef struct ObjectWithArgs
 typedef struct AccessPriv
 {
 	NodeTag		type;
-	UserType	utype; 			/* ReqID:SRS-MISC-USER */
 	char	   *priv_name;		/* string name of privilege */
 	List	   *cols;			/* list of Value strings */
 } AccessPriv;
@@ -2327,7 +2315,6 @@ typedef struct GrantRoleStmt
 	List	   *grantee_roles;	/* list of member roles to add/delete */
 	bool		is_grant;		/* true = GRANT, false = REVOKE */
 	bool		admin_opt;		/* with admin option */
-	UserType	grantor_type; 			/* ReqID:SRS-MISC-USER */
 	RoleSpec   *grantor;		/* set grantor to other than current role */
 	DropBehavior behavior;		/* drop behavior (for REVOKE) */
 } GrantRoleStmt;
@@ -2562,7 +2549,6 @@ typedef struct CreateTableSpaceStmt
 	RoleSpec   *owner;
 	char	   *location;
 	List	   *options;
-	UserType   utype; 			/* ReqID:SRS-MISC-USER  bug:z561 */
 } CreateTableSpaceStmt;
 
 typedef struct DropTableSpaceStmt
@@ -2944,7 +2930,6 @@ typedef struct DropRoleStmt
 	NodeTag		type;
 	List	   *roles;			/* List of roles to remove */
 	bool		missing_ok;		/* skip error if a role is missing? */
-	DropBehavior	behavior;	/* ReqID:SRS-SQL-SCHEMA */
 } DropRoleStmt;
 
 /* ----------------------
@@ -3424,7 +3409,6 @@ typedef struct AlterOwnerStmt
 	RangeVar   *relation;		/* in case it's a table */
 	Node	   *object;			/* in case it's some other object */
 	RoleSpec   *newowner;		/* the new owner */
-	UserType   utype; 			/* ReqID:SRS-MISC-USER */
 } AlterOwnerStmt;
 
 /* ----------------------

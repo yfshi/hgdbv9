@@ -42,14 +42,7 @@
 #include "libpq/libpq-be.h"
 #include "utils/snapmgr.h"
 #include "access/tableam.h"
-/* Begin - ReqID:SRS-SQL-SCHEMA */
-#include "catalog/namespace.h"
-#include "catalog/pg_namespace.h"
-#include "commands/schemacmds.h"
-#include "commands/tablespace.h"
-#include "parser/pg_object_hook.h"
-#include "utils/lsyscache.h"
-/* End - ReqID:SRS-SQL-SCHEMA */
+#include "catalog/pg_namespace.h"	/* ReqID:SRS-SQL-SCHEMA */
 
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
@@ -118,23 +111,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	DefElem    *dadminmembers = NULL;
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	char	   *defCollation = NULL;
-	Oid			defCollationOid = InvalidOid;
-	char	   *defTablespace = NULL;
-	Oid			defTablespaceOid = InvalidOid;
-	DefElem	   *ddefCollation = NULL;
-	DefElem	   *ddefTablespace = NULL;
-	/* End - ReqID:SRS-SQL-SCHEMA */
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Determine the type of the current user
-	 */
-	HeapTuple	tuple1;
-	bool		is_instance_user = isinstancelevel();
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 
 	/* The defaults can vary depending on the original statement type */
 	switch (stmt->stmt_type)
@@ -276,26 +252,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 						 parser_errposition(pstate, defel->location)));
 			dbypassRLS = defel;
 		}
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		else if (strcmp(defel->defname, "defaultCollation") == 0)
-		{
-			if (ddefCollation)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("conflicting or redundant options"),
-						 parser_errposition(pstate, defel->location)));
-			ddefCollation = defel;
-		}
-		else if (strcmp(defel->defname, "defaultTablespace") == 0)
-		{
-			if (ddefTablespace)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("conflicting or redundant options"),
-						 parser_errposition(pstate, defel->location)));
-			ddefTablespace = defel;
-		}
-		/* End - ReqID:SRS-SQL-SCHEMA */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -333,12 +289,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg) != 0;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ddefCollation)
-		defCollation = strVal(ddefCollation->arg);
-	if (ddefTablespace)
-		defTablespace = strVal(ddefTablespace->arg);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* Check some permissions first */
 	if (issuper)
@@ -370,13 +320,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 					 errmsg("permission denied to create role")));
 	}
 
-	/* Begin - bug:z535 */
-	if (!is_instance_user && (DB_ORACLE == database_mode) && createdb > 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("database user cannot be granted the createdb permission")));
-	/* End - bug:z535 */
-
 	/*
 	 * Check that the user is not trying to create a role in the reserved
 	 * "pg_" namespace.
@@ -404,98 +347,11 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
 	pg_authid_dsc = RelationGetDescr(pg_authid_rel);
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Check whether a user of the same name and type already exists
-	 */
-	if (DB_PG == database_mode)
-	{
-		if (OidIsValid(get_role_oid(stmt->role, true)))
-			ereport(ERROR,
-					(errcode(ERRCODE_DUPLICATE_OBJECT),
-					errmsg("role \"%s\" already exists",
-							stmt->role)));
-	}
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (DB_MYSQL == database_mode)
-	{
-		if (OidIsValid(get_role_oid(stmt->role, true)))
-			ereport(ERROR,
-					(errcode(ERRCODE_DUPLICATE_OBJECT),
-					errmsg("role \"%s\" already exists",
-							stmt->role)));
-	}
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	else
-	{
-		if (is_instance_user)
-		{
-			if((strcmp(stmt->role,"sys") != 0) && (strcmp(stmt->role,"system") != 0))
-			{
-				tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(stmt->role), 
-										ObjectIdGetDatum(InvalidOid));
-				if(HeapTupleIsValid(tuple1))
-				{
-					ReleaseSysCache(tuple1);
-					ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_OBJECT),
-							errmsg("role \"%s\" already exists",
-									stmt->role)));
-				}
-			}
-			else if(!IsBinaryUpgrade)	/* BUGM431 */
-			{
-				/*
-				 * Begin - bug: z536
-				 */				
-				if(MyDatabaseId == 1)
-				{
-					tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(stmt->role), 
-									ObjectIdGetDatum(MyDatabaseId));
-					if(HeapTupleIsValid(tuple1))
-					{
-						ReleaseSysCache(tuple1);
-						ereport(ERROR,
-									(errcode(ERRCODE_DUPLICATE_OBJECT),
-									errmsg("The name of the instance-level user cannot be sys or system ,error name: \"%s\" ",
-											stmt->role)));
-					}
-				}
-				else
-				{
-					ereport(ERROR,
-									(errcode(ERRCODE_DUPLICATE_OBJECT),
-									errmsg("The name of the instance-level user cannot be sys or system ,error name: \"%s\" ",
-											stmt->role)));
-				}
-				
-
-				/*
-				 * End - bug: z536
-				 */
-			}
-		}
-		else
-		{
-			tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(stmt->role), 
-									ObjectIdGetDatum(MyDatabaseId));
-
-			if(HeapTupleIsValid(tuple1))
-			{
-				ReleaseSysCache(tuple1);
-				ereport(ERROR,
-						(errcode(ERRCODE_DUPLICATE_OBJECT),
-						errmsg("role \"%s\" already exists",
-								stmt->role)));
-			}
-		}
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
+	if (OidIsValid(get_role_oid(stmt->role, true)))
+		ereport(ERROR,
+				(errcode(ERRCODE_DUPLICATE_OBJECT),
+				errmsg("role \"%s\" already exists",
+						stmt->role)));
 
 	/* Convert validuntil to internal form */
 	if (validUntil)
@@ -522,19 +378,6 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 								validUntil_datum,
 								validUntil_null);
 
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (defCollation)
-	{
-		defCollationOid = CollationGetCollid(defCollation);
-		if (!OidIsValid(defCollationOid))
-			ereport(ERROR,
-					errmsg("collation \"%s\" does not exist", defCollation));
-	}
-
-	if (defTablespace)
-		defTablespaceOid = get_tablespace_oid(defTablespace, false);
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
 	/*
 	 * Build a tuple to insert
 	 */
@@ -546,40 +389,11 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 
 	new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(issuper);
 	new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(inherit);
-	//new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
-	if((strcmp(stmt->role, "system") == 0) || (strcmp(stmt->role, "sys") == 0))
-		new_record[Anum_pg_authid_rolcreaterole - 1] = true;
-	else
-		new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
-
-	if (((strcmp(stmt->role,"sys") == 0) || (strcmp(stmt->role, "system") == 0) )&& is_instance_user)
-		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(false);
-	else
-		new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb);
+	new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(createrole);
+	new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(createdb);
 	new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(canlogin);
 	new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(isreplication);
 	new_record[Anum_pg_authid_rolconnlimit - 1] = Int32GetDatum(connlimit);
-
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Determine the type of user
-	 */
-	if (DB_PG == database_mode)
-		new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(0);
-	else if(DB_ORACLE == database_mode)
-	{
-		if(is_instance_user && (strcmp(stmt->role,"sys") != 0) && (strcmp(stmt->role,"system") != 0))
-			new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(0);
-		else
-			new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(MyDatabaseId);
-	}
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	else if (DB_MYSQL == database_mode)
-		new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(0);
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 
 	if (password)
 	{
@@ -710,43 +524,14 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 	/*
 	 * Begin - ReqID:SRS-SQL-SCHEMA
 	 *
-	 * For database level user, create a schema with the same name.
+	 * Create a schema with the same name.
 	 */
-	if (!is_instance_user && (ORA_PARSER == compatible_db) && enable_ora_user_schema)
+	if (ORA_PARSER == compatible_db && enable_ora_user_schema)
 	{
-		Oid				nspid;
-		ObjectAddress	address;
-		bool			setnamespace = false;
-
 		CommandCounterIncrement();
 
 		/* create namespace */
-		nspid = NamespaceCreate(stmt->role, roleid, false);
-
-		/* save default collation to pg_object->option */
-		if (OidIsValid(defCollationOid))
-		{
-			ObjectAddressSet(address, NamespaceRelationId, nspid);
-			SetNamespaceCollation(stmt->role, nspid, defCollationOid, address);
-			setnamespace = true;
-		}
-
-		/* save default tablespace to pg_object->option */
-		if (OidIsValid(defTablespaceOid))
-		{
-			if (setnamespace)
-				CommandCounterIncrement();
-			ObjectAddressSet(address, NamespaceRelationId, nspid);
-			SetNamespaceTablespace(stmt->role, nspid, defTablespaceOid, address);
-			setnamespace = true;
-		}
-
-		/* save a namespace tuple without option to pg_object */
-		if (!setnamespace && pg_object_create_obj_hook)
-		{
-			ObjectAddressSet(address, NamespaceRelationId, nspid);
-			pg_object_create_obj_hook(stmt->role, nspid, true, PG_OBJECT_SCHEMA, address, NULL, NULL);
-		}
+		NamespaceCreate(stmt->role, roleid, false);
 	}
 	/* End - ReqID:SRS-SQL-SCHEMA */
 
@@ -769,7 +554,7 @@ AlterRole(AlterRoleStmt *stmt)
 	bool		new_record_repl[Natts_pg_authid];
 	Relation	pg_authid_rel;
 	TupleDesc	pg_authid_dsc;
-	HeapTuple	tuple, tuple1,
+	HeapTuple	tuple,
 				new_tuple;
 	Form_pg_authid authform;
 	ListCell   *option;
@@ -799,48 +584,6 @@ AlterRole(AlterRoleStmt *stmt)
 	DefElem    *dvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
 	Oid			roleid;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	char	   *defCollation = NULL;
-	Oid			defCollationOid = InvalidOid;
-	char	   *defTablespace = NULL;
-	Oid			defTablespaceOid = InvalidOid;
-	DefElem	   *ddefCollation = NULL;
-	DefElem	   *ddefTablespace = NULL;
-	/* End - ReqID:SRS-SQL-SCHEMA */
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	Oid			dboid = InvalidOid;
-
-	if(ROLESPEC_CSTRING == stmt->role->roletype)
-	{
-		if (DB_ORACLE == database_mode)
-		{
-			dboid = CurrentUserOwnDboid();
-
-			if(((strcmp(stmt->role->rolename,"system") == 0) || (strcmp(stmt->role->rolename,"sys") == 0)) 
-						&& (GetUserId() == 10) && MyDatabaseId == 1)
-				tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(stmt->role->rolename), 
-										ObjectIdGetDatum(MyDatabaseId));
-			else
-				tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(stmt->role->rolename), 
-										ObjectIdGetDatum(dboid));
-
-
-			if (!HeapTupleIsValid(tuple1))
-				ereport(ERROR,
-						(errcode(ERRCODE_UNDEFINED_OBJECT),
-						errmsg("role \"%s\" does not exist",stmt->role->rolename)));
-
-			ReleaseSysCache(tuple1);
-		}
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 
 	check_rolespec_name(stmt->role,
 						_("Cannot alter reserved roles."));
@@ -939,24 +682,6 @@ AlterRole(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dbypassRLS = defel;
 		}
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		else if (strcmp(defel->defname, "defaultCollation") == 0)
-		{
-			if (ddefCollation)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("conflicting or redundant options")));
-			ddefCollation = defel;
-		}
-		else if (strcmp(defel->defname, "defaultTablespace") == 0)
-		{
-			if (ddefTablespace)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("conflicting or redundant options")));
-			ddefTablespace = defel;
-		}
-		/* End - ReqID:SRS-SQL-SCHEMA */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);
@@ -990,25 +715,6 @@ AlterRole(AlterRoleStmt *stmt)
 		validUntil = strVal(dvalidUntil->arg);
 	if (dbypassRLS)
 		bypassrls = intVal(dbypassRLS->arg);
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ddefCollation)
-		defCollation = strVal(ddefCollation->arg);
-	if (ddefTablespace)
-		defTablespace = strVal(ddefTablespace->arg);
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
-	/* Begin - bug:z535 */
-	if ((ORA_PARSER == compatible_db) && createdb > 0 && 
-		((strcmp(stmt->role->rolename,"system") == 0)||(strcmp(stmt->role->rolename,"sys") == 0)))
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("Sys and system cannot be granted the createdb permission")));
-	
-	if	(dboid && createdb > 0 && (ORA_PARSER == compatible_db))
-		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-					errmsg("database user cannot be granted the createdb permission")));
-	/* Begin - bug:z535 */
 
 	/*
 	 * Scan the pg_authid relation to be certain the user exists.
@@ -1016,26 +722,7 @@ AlterRole(AlterRoleStmt *stmt)
 	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
 	pg_authid_dsc = RelationGetDescr(pg_authid_rel);
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	if((MyDatabaseId == 1) && (GetUserId() == 10) && (DB_ORACLE == database_mode))
-	{
-		if(((strcmp(stmt->role->rolename,"system") == 0) || (strcmp(stmt->role->rolename,"sys") == 0))
-				&& (ROLESPEC_CSTRING == stmt->role->roletype))
-			tuple = SearchSysCache2(AUTHNAMEDBOID, 
-											CStringGetDatum(stmt->role->rolename), 
-											ObjectIdGetDatum(MyDatabaseId));
-		else
-			tuple = get_rolespec_tuple(stmt->role);
-	}
-	 else
-		tuple = get_rolespec_tuple(stmt->role);
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
+	tuple = get_rolespec_tuple(stmt->role);
 	authform = (Form_pg_authid) GETSTRUCT(tuple);
 	rolename = pstrdup(NameStr(authform->rolname));
 	roleid = authform->oid;
@@ -1096,7 +783,7 @@ AlterRole(AlterRoleStmt *stmt)
 	else
 	{
 		/* fetch existing setting in case hook needs it */
-		validUntil_datum = SysCacheGetAttr(AUTHNAMEDBOID, tuple,
+		validUntil_datum = SysCacheGetAttr(AUTHNAME, tuple,
 										   Anum_pg_authid_rolvaliduntil,
 										   &validUntil_null);
 	}
@@ -1110,19 +797,6 @@ AlterRole(AlterRoleStmt *stmt)
 								get_password_type(password),
 								validUntil_datum,
 								validUntil_null);
-
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (defCollation)
-	{
-		defCollationOid = CollationGetCollid(defCollation);
-		if (!OidIsValid(defCollationOid))
-			ereport(ERROR,
-					errmsg("collation \"%s\" does not exist", defCollation));
-	}
-
-	if (defTablespace)
-		defTablespaceOid = get_tablespace_oid(defTablespace, false);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Build an updated tuple, perusing the information just obtained
@@ -1249,34 +923,6 @@ AlterRole(AlterRoleStmt *stmt)
 	 */
 	table_close(pg_authid_rel, NoLock);
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 * For database level user, create a schema with the same name.
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		Oid				nspid;
-		ObjectAddress	address;
-
-		/* get namespace by the role name */
-		nspid = get_namespace_oid(rolename, false);
-
-		/* save default collation to pg_object->option */
-		if (OidIsValid(defCollationOid))
-		{
-			ObjectAddressSet(address, NamespaceRelationId, nspid);
-			SetNamespaceCollation(rolename, nspid, defCollationOid, address);
-		}
-
-		/* save default tablespace to pg_object->option */
-		if (OidIsValid(defTablespaceOid))
-		{
-			ObjectAddressSet(address, NamespaceRelationId, nspid);
-			SetNamespaceTablespace(rolename, nspid, defTablespaceOid, address);
-		}
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
 	return roleid;
 }
 
@@ -1371,7 +1017,6 @@ DropRole(DropRoleStmt *stmt)
 	Relation	pg_authid_rel,
 				pg_auth_members_rel;
 	ListCell   *item;
-	Oid			dboid = InvalidOid;
 
 	if (!have_createrole_privilege())
 		ereport(ERROR,
@@ -1384,8 +1029,6 @@ DropRole(DropRoleStmt *stmt)
 	 */
 	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
 	pg_auth_members_rel = table_open(AuthMemRelationId, RowExclusiveLock);
-
-	dboid = CurrentUserOwnDboid();
 
 	foreach(item, stmt->roles)
 	{
@@ -1406,29 +1049,7 @@ DropRole(DropRoleStmt *stmt)
 					 errmsg("cannot use special role specifier in DROP ROLE")));
 		role = rolspec->rolename;
 
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Find a specific type of user
-		 */
-		if((strcmp(role,"system") == 0) || (strcmp(role,"sys") == 0))
-		{
-			ereport(ERROR,
-						(errcode(ERRCODE_UNDEFINED_OBJECT),
-						 errmsg("role \"%s\" cannot be droped", role)));
-		}
-
-		if (DB_ORACLE == database_mode) 
-			tuple = SearchSysCache2(AUTHNAMEDBOID, 
-								PointerGetDatum(role), 
-								ObjectIdGetDatum(dboid));
-		else 
-			tuple = SearchSysCache2(AUTHNAMEDBOID, 
-								PointerGetDatum(role), 
-								ObjectIdGetDatum(InvalidOid));
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
-
+		tuple = SearchSysCache1(AUTHNAME, PointerGetDatum(role));
 		if (!HeapTupleIsValid(tuple))
 		{
 			if (!stmt->missing_ok)
@@ -1481,32 +1102,6 @@ DropRole(DropRoleStmt *stmt)
 		 * her.  We keep the lock until the end of transaction.
 		 */
 		LockSharedObject(AuthIdRelationId, roleid, 0, AccessExclusiveLock);
-
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-		{
-			/*
-			 * If CASCADE then delete all object owned by the user, else
-			 * delete the schema only.
-			 */
-			if (DROP_CASCADE == stmt->behavior)
-			{
-				/* Ok, do it */
-				shdepDropOwned(list_make1_oid(roleid), stmt->behavior);
-			}
-			else
-			{
-				ObjectAddress	object;
-
-				object.classId = NamespaceRelationId;
-				object.objectId = get_namespace_oid(rolspec->rolename, false);
-				object.objectSubId = 0;
-				performDeletion(&object, stmt->behavior, 0);
-			}
-
-			CommandCounterIncrement();
-		}
-		/* End - ReqID:SRS-SQL-SCHEMA */
 
 		/* Check for pg_shdepend entries depending on this role */
 		if (checkSharedDependencies(AuthIdRelationId, roleid,
@@ -1610,37 +1205,11 @@ RenameRole(const char *oldname, const char *newname)
 	Oid			roleid;
 	ObjectAddress address;
 	Form_pg_authid authform;
-	Oid			dboid = InvalidOid;
 
 	rel = table_open(AuthIdRelationId, RowExclusiveLock);
 	dsc = RelationGetDescr(rel);
 	
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	if (DB_ORACLE == database_mode) 
-	{
-		dboid = CurrentUserOwnDboid();
-
-		if(OidIsValid(dboid) && (strcmp(oldname, "system") == 0 || strcmp(oldname, "sys") == 0))
-		{
-			ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("user \"system and sys\" cannot be renamed")));
-		}
-
-		oldtuple = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(oldname), 
-									ObjectIdGetDatum(dboid));
-	}
-	else
-		oldtuple = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(oldname), 
-									ObjectIdGetDatum(InvalidOid));
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
+	oldtuple = SearchSysCache1(AUTHNAME, CStringGetDatum(oldname));
 	if (!HeapTupleIsValid(oldtuple))
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -1694,31 +1263,10 @@ RenameRole(const char *oldname, const char *newname)
 #endif
 
 	/* make sure the new name doesn't exist */
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	if( DB_ORACLE == database_mode)
-	{
-		if (SearchSysCacheExists2(AUTHNAMEDBOID, 
-								CStringGetDatum(newname), 
-								ObjectIdGetDatum(dboid)))
-			ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_OBJECT),
-							errmsg("role \"%s\" already exists", newname)));
-	}
-	else
-	{
-		if (SearchSysCacheExists2(AUTHNAMEDBOID, 
-								CStringGetDatum(newname), 
-								ObjectIdGetDatum(InvalidOid)))
-			ereport(ERROR,
-							(errcode(ERRCODE_DUPLICATE_OBJECT),
-							errmsg("role \"%s\" already exists", newname)));
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
+	if (SearchSysCacheExists1(AUTHNAME, CStringGetDatum(newname)))
+		ereport(ERROR,
+						(errcode(ERRCODE_DUPLICATE_OBJECT),
+						errmsg("role \"%s\" already exists", newname)));
 
 	/*
 	 * createrole is enough privilege unless you want to mess with a superuser
@@ -1773,18 +1321,6 @@ RenameRole(const char *oldname, const char *newname)
 	 */
 	table_close(rel, NoLock);
 
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		Oid nspid =  get_namespace_oid(oldname, false);
-
-		if (get_namespace_owner(nspid) != roleid)
-			elog(ERROR, "schema \"%s\" is not owned by user \"%s\"", oldname, oldname);
-
-		RenameSchema(oldname, newname);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
-
 	return address;
 }
 
@@ -1801,35 +1337,8 @@ GrantRole(GrantRoleStmt *stmt)
 	List	   *grantee_ids;
 	ListCell   *item;
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
 	if (stmt->grantor)
-	{
-		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
-		{
-			switch (stmt->grantor_type)
-			{
-				case DATABASE_USER:
-					grantor = get_databaserol_oid(stmt->grantor);
-					break;
-				case INSTANCE_USER:
-					grantor = get_instancerol_oid(stmt->grantor);
-					break;
-				case UNKNOWN_USER:
-					grantor = get_rolespec_oid(stmt->grantor, false);
-					break;
-			}
-		}
-		else
-			grantor = get_rolespec_oid(stmt->grantor, false);
-
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-		
+		grantor = get_rolespec_oid(stmt->grantor, false);
 	else
 		grantor = GetUserId();
 
@@ -1857,20 +1366,7 @@ GrantRole(GrantRoleStmt *stmt)
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
 					 errmsg("column names cannot be included in GRANT/REVOKE ROLE")));
 
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Find a specific type of user
-		 */
-		if(INSTANCE_USER == priv->utype)
-			roleid = get_instanceuser_oid(rolename);
-		else if(DATABASE_USER == priv->utype)
-			roleid = get_databaseuser_oid(rolename, InvalidOid);
-		else if(UNKNOWN_USER == priv->utype)
-			roleid = get_role_canlogin_oid(rolename, false);
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */	
-			
+		roleid = get_role_oid(rolename, false);
 		if (stmt->is_grant)
 			AddRoleMems(rolename, roleid,
 						stmt->grantee_roles, grantee_ids,
@@ -1963,58 +1459,10 @@ roleSpecsToIds(List *memberNames)
 
 	foreach(l, memberNames)
 	{
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Determine the type of user before adding to the linked list
-		 */
-		Oid			roleid = InvalidOid;
-		RoleSpec   *rolespec;
-		
-		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
-		{
-			char	   *usertype = NULL;
-			int			clength;
-			ListCell   *cell1,
-					   *cell2;
-			
-			switch (nodeTag(lfirst(l)))
-			{
-				case T_List:
-					{
-						clength = list_length((List *)lfirst(l));
+		RoleSpec   *rolespec = lfirst_node(RoleSpec, l);
+		Oid			roleid;
 
-						if(clength == 2)
-						{
-							cell1 = list_head((List *)lfirst(l));
-							cell2 = list_second_cell((List *)lfirst(l));
-							
-							usertype = strVal(lfirst(cell1));
-							rolespec = lfirst_node(RoleSpec, cell2);
-
-							if(usertype)
-							{
-								if(pg_strcasecmp(usertype, "DATABASEUSER") == 0 )
-									roleid = get_databaserol_oid(rolespec);
-								else if(pg_strcasecmp(usertype, "INSTANCEUSER") == 0 )
-									roleid = get_instancerol_oid(rolespec);	
-							}
-						}
-					}
-					break;
-				default:
-					break;
-			}
-		}
-
-		if(!OidIsValid(roleid))
-		{
-			rolespec = lfirst_node(RoleSpec, l);
-
-			roleid = get_rolespec_oid(rolespec, false);
-		}
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
+		roleid = get_rolespec_oid(rolespec, false);
 		result = lappend_oid(result, roleid);
 
 	}
@@ -2100,59 +1548,13 @@ AddRoleMems(const char *rolename, Oid roleid,
 
 	forboth(specitem, memberSpecs, iditem, memberIds)
 	{
-		//RoleSpec   *memberRole = lfirst_node(RoleSpec, specitem);
-		RoleSpec   *memberRole;
+		RoleSpec   *memberRole = lfirst_node(RoleSpec, specitem);
 		Oid			memberid = lfirst_oid(iditem);
 		HeapTuple	authmem_tuple;
 		HeapTuple	tuple;
 		Datum		new_record[Natts_pg_auth_members];
 		bool		new_record_nulls[Natts_pg_auth_members];
 		bool		new_record_repl[Natts_pg_auth_members];
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Determine the type of user
-		 */
-		char	   *username = NULL;
-
-		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
-		{
-			char	   *usertype = NULL;
-			int			clength;
-			ListCell   *cell1,
-					   *cell2;
-			
-			switch (nodeTag(lfirst(specitem)))
-			{
-				case T_List:
-					{
-						clength = list_length((List *)lfirst(specitem));
-
-						if(clength == 2)
-						{
-							cell1 = list_head((List *)lfirst(specitem));
-							cell2 = list_second_cell((List *)lfirst(specitem));
-
-							usertype = strVal(lfirst(cell1));
-							memberRole = lfirst_node(RoleSpec, cell2);
-
-							if(usertype && ((pg_strcasecmp(usertype, "DATABASEUSER") == 0 ) || (pg_strcasecmp(usertype, "INSTANCEUSER") == 0 )))
-								username = memberRole->rolename;
-						}
-					}
-					break;
-				default:
-					break;
-			}
-		}
-
-		if(!username)
-		{
-			memberRole = lfirst_node(RoleSpec, specitem);
-			username = memberRole->rolename;
-		}
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
 
 		/*
 		 * pg_database_owner is never a role member.  Lifting this restriction
@@ -2176,7 +1578,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 		if (memberid == ROLE_PG_DATABASE_OWNER)
 			ereport(ERROR,
 					errmsg("role \"%s\" cannot be a member of any role",
-						   username));
+						   get_rolespec_name(memberRole)));
 
 		/*
 		 * Refuse creation of membership loops, including the trivial case
@@ -2189,7 +1591,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
 					 errmsg("role \"%s\" is a member of role \"%s\"",
-							rolename, username)));
+							rolename, get_rolespec_name(memberRole))));
 
 		/*
 		 * Check if entry for this role/member already exists; if so, give
@@ -2204,7 +1606,7 @@ AddRoleMems(const char *rolename, Oid roleid,
 		{
 			ereport(NOTICE,
 					(errmsg("role \"%s\" is already a member of role \"%s\"",
-							username, rolename)));
+							get_rolespec_name(memberRole), rolename)));
 			ReleaseSysCache(authmem_tuple);
 			continue;
 		}
@@ -2297,54 +1699,9 @@ DelRoleMems(const char *rolename, Oid roleid,
 
 	forboth(specitem, memberSpecs, iditem, memberIds)
 	{
-		/*
-		 * Begin - ReqID:SRS-MISC-USER
-		 * Determine the type of user
-		 */
-		RoleSpec   *memberRole;
+		RoleSpec   *memberRole = lfirst(specitem);
 		Oid			memberid = lfirst_oid(iditem);
 		HeapTuple	authmem_tuple;
-		char	   *username = NULL;
-
-		if((ORA_GRANTUSER == grant_usertype) && (DB_ORACLE == database_mode))
-		{
-			char	   *usertype = NULL;
-			int			clength;
-			ListCell   *cell1,
-					   *cell2;
-			
-			switch (nodeTag(lfirst(specitem)))
-			{
-				case T_List:
-					{
-						clength = list_length((List *)lfirst(specitem));
-
-						if(clength == 2)
-						{
-							cell1 = list_head((List *)lfirst(specitem));
-							cell2 = list_second_cell((List *)lfirst(specitem));
-
-							usertype = strVal(lfirst(cell1));
-							memberRole = lfirst_node(RoleSpec, cell2);
-
-							if(usertype && ((pg_strcasecmp(usertype, "DATABASEUSER") == 0 ) || (pg_strcasecmp(usertype, "INSTANCEUSER") == 0 )))
-								username = memberRole->rolename;
-						}
-					}
-					break;
-				default:
-					break;
-			}
-		}
-
-		if(!username)
-		{
-			memberRole = lfirst_node(RoleSpec, specitem);
-			username = memberRole->rolename;
-		}
-		/*
-		 * End - ReqID:SRS-MISC-USER
-		 */
 
 		/*
 		 * Find entry for this role/member
@@ -2356,7 +1713,7 @@ DelRoleMems(const char *rolename, Oid roleid,
 		{
 			ereport(WARNING,
 					(errmsg("role \"%s\" is not a member of role \"%s\"",
-							username, rolename)));
+							get_rolespec_name(memberRole), rolename)));
 			continue;
 		}
 
@@ -2397,260 +1754,4 @@ DelRoleMems(const char *rolename, Oid roleid,
 	 * Close pg_authmem, but keep lock till commit.
 	 */
 	table_close(pg_authmem_rel, NoLock);
-}
-
-/*
- * isinstancelevel ReqID:SRS-MISC-USE
- *
- * Check whether the current user is an instance level user, return true if yes, false otherwise
- */
-bool 
-isinstancelevel(void)
-{
-	Oid			dboid;
-	HeapTuple	utup;
-
-	utup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(GetUserId()));
-	if (HeapTupleIsValid(utup))
-	{
-		dboid = ((Form_pg_authid) GETSTRUCT(utup))->rolowndboid;
-		ReleaseSysCache(utup);
-
-		if(!OidIsValid(dboid))
-			return true;
-	}
-	else
-		elog(ERROR,"Can not find user");
-
-	return false;
-}
-
-
-/*
- * createsysrole ReqID:SRS-MISC-USE
- *
- * Create a database superuser
- */
-void 
-createsysrole(const char *srolname, Oid dboid, Oid templateid)
-{
-	Relation	pg_authid_rel;
-	TupleDesc	pg_authid_dsc;
-	HeapTuple	tuple;
-	Datum		new_record[Natts_pg_authid];
-	bool		new_record_nulls[Natts_pg_authid];
-	Oid			roleid;
-	List	   *rolemembers = NIL;	/* roles to be members of this role */
-	List	   *adminmembers = NIL; /* roles to be admins of this role */
-	HeapTuple	tuple1;
-	HeapTuple	roleTup;
-	Datum		datum;
-	bool		isnull;
-	char	   *shadow_pass;
-
-	pg_authid_rel = table_open(AuthIdRelationId, RowExclusiveLock);
-	pg_authid_dsc = RelationGetDescr(pg_authid_rel);
-
-	
-	tuple1 = SearchSysCache2(AUTHNAMEDBOID, 
-							CStringGetDatum(srolname), 
-							ObjectIdGetDatum(dboid));
-	
-	if(HeapTupleIsValid(tuple1))
-	{
-		ReleaseSysCache(tuple1);
-		ereport(ERROR,
-				(errcode(ERRCODE_DUPLICATE_OBJECT),
-				errmsg("role \"%s\" already exists",
-						srolname)));
-	}
-	
-	/*
-	 * Build a tuple to insert
-	 */
-	MemSet(new_record, 0, sizeof(new_record));
-	MemSet(new_record_nulls, false, sizeof(new_record_nulls));
-
-	new_record[Anum_pg_authid_rolname - 1] =
-		DirectFunctionCall1(namein, CStringGetDatum(srolname));
-
-	new_record[Anum_pg_authid_rolsuper - 1] = BoolGetDatum(true);
-	new_record[Anum_pg_authid_rolinherit - 1] = BoolGetDatum(true);
-	new_record[Anum_pg_authid_rolcreaterole - 1] = BoolGetDatum(true);
-	new_record[Anum_pg_authid_rolcreatedb - 1] = BoolGetDatum(false);
-	new_record[Anum_pg_authid_rolcanlogin - 1] = BoolGetDatum(true);
-	new_record[Anum_pg_authid_rolreplication - 1] = BoolGetDatum(false);
-	new_record[Anum_pg_authid_rolconnlimit - 1] = Int32GetDatum(-1);
-	new_record[Anum_pg_authid_rolowndboid - 1] = ObjectIdGetDatum(dboid);
-
-	/*
-	 * When a new database is created, the library super users sys and system are created. 
-	 * The new super users need to set passwords.
-	 * In this case, the password of the template1 is directly copied to the newly created library super user
-	 */
-	roleTup = SearchSysCache2(AUTHNAMEDBOID, CStringGetDatum(srolname), ObjectIdGetDatum(templateid));
-	if (!HeapTupleIsValid(roleTup))
-		elog(ERROR, "no such user \"%s\"", srolname);
-
-	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
-							Anum_pg_authid_rolpassword, &isnull);
-	ReleaseSysCache(roleTup);
-	if (isnull)
-	{
-		/* user has no password */
-		//elog(ERROR, "user \"%s\" has no password ", srolname);
-		new_record[Anum_pg_authid_rolpassword - 1] =  (Datum) 0;
-		new_record_nulls[Anum_pg_authid_rolpassword - 1] = true;
-	}
-	else
-	{
-		shadow_pass = TextDatumGetCString(datum);
-
-		new_record[Anum_pg_authid_rolpassword - 1] = CStringGetTextDatum(shadow_pass);
-	}
-
-	new_record[Anum_pg_authid_rolvaliduntil - 1] =  (Datum) 0;
-	new_record_nulls[Anum_pg_authid_rolvaliduntil - 1] = true;
-
-	new_record[Anum_pg_authid_rolbypassrls - 1] = BoolGetDatum(false);
-
-	roleid = GetNewOidWithIndex(pg_authid_rel, AuthIdOidIndexId,
-									Anum_pg_authid_oid);
-
-	new_record[Anum_pg_authid_oid - 1] = ObjectIdGetDatum(roleid);
-
-	tuple = heap_form_tuple(pg_authid_dsc, new_record, new_record_nulls);
-
-	/*
-	 * Insert new record in the pg_authid table
-	 */
-	CatalogTupleInsert(pg_authid_rel, tuple);
-	/*
-	 * Add the specified members to this new role. adminmembers get the admin
-	 * option, rolemembers don't.
-	 */
-	
-	AddRoleMems(srolname, roleid,
-				adminmembers, roleSpecsToIds(adminmembers),
-				GetUserId(), true);
-	AddRoleMems(srolname, roleid,
-				rolemembers, roleSpecsToIds(rolemembers),
-				GetUserId(), false);
-
-	/* Post creation hook for new role */
-	InvokeObjectPostCreateHook(AuthIdRelationId, roleid, 0);
-
-	/*
-	 * Close pg_authid, but keep lock till commit.
-	 */
-	table_close(pg_authid_rel, NoLock);
-}
-
-
-/*
- * FindUserLevelbyoid ReqID:SRS-MISC-USE
- *
- * Find the type of the user
- */
-Oid 
-FindUserLevelbyoid(Oid useroid)
-{
-	HeapTuple	atttup;
-	Oid			oid = InvalidOid;
-
-	atttup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(useroid));
-	if (HeapTupleIsValid(atttup))
-	{
-		oid = ((Form_pg_authid) GETSTRUCT(atttup))->rolowndboid;
-	}
-	else
-	{
-		elog(ERROR,"cannot find user by oid :%d", useroid);
-	}
-	ReleaseSysCache(atttup);
-
-	return oid;
-
-}
-
-
-/*
- * CurrentUserOwnDboid ReqID:SRS-MISC-USE
- *
- * Find the boid of the current user
- */
-Oid
-CurrentUserOwnDboid(void)
-{
-	HeapTuple	roleTup;
-	Oid			dboid = InvalidOid;
-
-	roleTup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(GetUserId()));
-	if (HeapTupleIsValid(roleTup))
-	{
-		dboid = ((Form_pg_authid) GETSTRUCT(roleTup))->rolowndboid;
-		ReleaseSysCache(roleTup);
-	}
-
-	return dboid;
-}
-
-/*
- * CurrentUsername ReqID:SRS-MISC-USE
- *
- * Find the name of the current user
- */
-char *
-CurrentUsername(void)
-{
-	HeapTuple	roleTup;
-	char	   *rname = NULL;
-
-	roleTup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(GetUserId()));
-	if (HeapTupleIsValid(roleTup))
-	{
-		rname = pstrdup(NameStr(((Form_pg_authid) GETSTRUCT(roleTup))->rolname));
-		ReleaseSysCache(roleTup);
-	}
-
-	return rname;
-}
-
-/*
- * get_role_canlogin ReqID:SRS-MISC-USE
- *
- * Whether the user can login
- */
-bool
-get_role_canlogin(const char *srolname)
-{
-	HeapTuple	roleTup;
-	bool		result = false;
-
-	roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(srolname), 
-										ObjectIdGetDatum(InvalidOid));
-	if (HeapTupleIsValid(roleTup))
-	{
-		result = ((Form_pg_authid) GETSTRUCT(roleTup))->rolcanlogin;
-		ReleaseSysCache(roleTup);
-	}
-	return result;
-}
-
-
-bool
-get_role_canlogin_byoid(Oid userid)
-{
-	HeapTuple	roleTup;
-	bool		result = false;
-
-	roleTup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(userid));
-	if (HeapTupleIsValid(roleTup))
-	{
-		result = ((Form_pg_authid) GETSTRUCT(roleTup))->rolcanlogin;
-		ReleaseSysCache(roleTup);
-	}
-
-	return result;
 }

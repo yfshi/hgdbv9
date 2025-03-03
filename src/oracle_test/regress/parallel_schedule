@@ -183,9 +183,6 @@ test: ora_sort
 test: ora_cast_as_int
 #/* End - BUG#M0000194 */
 
-#/* BEGIN - ReqID:SRS-MISC-USER */
-test: dbuser
-#/* BEGIN - ReqID:SRS-MISC-USER */
 
 #/* Begin - BUG#M0000217 */
 test: ora_compatible_oracle_misc

@@ -276,9 +276,8 @@ IsSharedRelation(Oid relationId)
 		relationId == SubscriptionRelationId)
 		return true;
 	/* These are their indexes */
-	if (/*relationId == AuthIdRolnameIndexId ||*/
+	if (relationId == AuthIdRolnameIndexId ||
 		relationId == AuthIdOidIndexId ||
-		relationId == AuthIdRolnameDboidIndexId ||		/* ReqID:SRS-MISC-USER */
 		relationId == AuthMemRoleMemIndexId ||
 		relationId == AuthMemMemRoleIndexId ||
 		relationId == DatabaseNameIndexId ||

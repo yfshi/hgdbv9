@@ -38,88 +38,6 @@
  * sent to the client, to avoid giving away user information!
  */
 char *
-ora_get_role_password(const char *role, Port *port, char **logdetail)
-{
-	TimestampTz vuntil = 0;
-	HeapTuple	roleTup = NULL;
-	Datum		datum;
-	bool		isnull;
-	char	   *shadow_pass;
-	
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	if(DB_ORACLE == database_mode)
-	{
-		if (port->connmode == 'p')
-		{
-			roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-									CStringGetDatum(role), 
-									ObjectIdGetDatum(0));
-		}
-		else if (port->connmode == 'o')
-		{
-			roleTup = SearchSysCache2(AUTHNAMEDBOID,
-									CStringGetDatum(role),
-									ObjectIdGetDatum(MyDatabaseId));
-		}
-	}
-	else
-		roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-								CStringGetDatum(role), 
-								ObjectIdGetDatum(0));
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
-	if (!HeapTupleIsValid(roleTup))
-	{
-		*logdetail = psprintf(_("Role \"%s\" does not exist."),
-							  role);
-		return NULL;			/* no such user */
-	}
-
-	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
-							Anum_pg_authid_rolpassword, &isnull);
-	if (isnull)
-	{
-		ReleaseSysCache(roleTup);
-		*logdetail = psprintf(_("User \"%s\" has no password assigned."),
-							  role);
-		return NULL;			/* user has no password */
-	}
-	shadow_pass = TextDatumGetCString(datum);
-
-	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
-							Anum_pg_authid_rolvaliduntil, &isnull);
-	if (!isnull)
-		vuntil = DatumGetTimestampTz(datum);
-
-	ReleaseSysCache(roleTup);
-
-	/*
-	 * Password OK, but check to be sure we are not past rolvaliduntil
-	 */
-	if (!isnull && vuntil < GetCurrentTimestamp())
-	{
-		*logdetail = psprintf(_("User \"%s\" has an expired password."),
-							  role);
-		return NULL;
-	}
-
-	return shadow_pass;
-}
-
-
-/*
- * Fetch stored password for a user, for authentication.
- *
- * On error, returns NULL, and stores a palloc'd string describing the reason,
- * for the postmaster log, in *logdetail.  The error reason should *not* be
- * sent to the client, to avoid giving away user information!
- */
-char *
 get_role_password(const char *role, char **logdetail)
 {
 	TimestampTz vuntil = 0;
@@ -127,29 +45,8 @@ get_role_password(const char *role, char **logdetail)
 	Datum		datum;
 	bool		isnull;
 	char	   *shadow_pass;
-	
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Find a specific type of user
-	 */
-	Oid			dboid;
 
-	dboid = CurrentUserOwnDboid();
-
-	if(DB_ORACLE == database_mode)
-	{
-		roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-								CStringGetDatum(role), 
-								ObjectIdGetDatum(dboid));
-	}
-	else
-		roleTup = SearchSysCache2(AUTHNAMEDBOID, 
-							CStringGetDatum(role), 
-							ObjectIdGetDatum(0));
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
+	roleTup = SearchSysCache1(AUTHNAME, CStringGetDatum(role));
 	if (!HeapTupleIsValid(roleTup))
 	{
 		*logdetail = psprintf(_("Role \"%s\" does not exist."),
@@ -157,7 +54,7 @@ get_role_password(const char *role, char **logdetail)
 		return NULL;			/* no such user */
 	}
 
-	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
+	datum = SysCacheGetAttr(AUTHNAME, roleTup,
 							Anum_pg_authid_rolpassword, &isnull);
 	if (isnull)
 	{
@@ -168,7 +65,7 @@ get_role_password(const char *role, char **logdetail)
 	}
 	shadow_pass = TextDatumGetCString(datum);
 
-	datum = SysCacheGetAttr(AUTHNAMEDBOID, roleTup,
+	datum = SysCacheGetAttr(AUTHNAME, roleTup,
 							Anum_pg_authid_rolvaliduntil, &isnull);
 	if (!isnull)
 		vuntil = DatumGetTimestampTz(datum);

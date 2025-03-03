@@ -1110,7 +1110,7 @@ IndexScanOK(CatCache *cache, ScanKey cur_skey)
 			 */
 			return false;
 
-		case AUTHNAMEDBOID:			/* ReqID:SRS-MISC-USER */
+		case AUTHNAME:
 		case AUTHOID:
 		case AUTHMEMMEMROLE:
 		case DATABASEOID:

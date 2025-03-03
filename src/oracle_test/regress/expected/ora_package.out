@@ -1,6 +1,8 @@
 --test ok
 --create a event trigger,package support event trigger
 --test ok
+CREATE USER system WITH superuser;
+\c - system
 create table test_object(event varchar(256), tag varchar(256));
 create function test_event_trigger_f() returns event_trigger as $$
 BEGIN
@@ -21841,3 +21843,12 @@ DROP package test_pkg2;
 DROP package test_pkg3;
 \c - system
 DROP USER enrol11;
+--drop system user
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+DROP USER system;

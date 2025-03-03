@@ -26,9 +26,7 @@
 #include "parser/parse_func.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"				/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/lsyscache.h"
-#include "utils/ora_compatible.h"	/* ReqID:SRS-SQL-SCHEMA */
 #include "utils/rel.h"
 #include "utils/syscache.h"
 /* Begin - ReqID:SRS-MYSQL-CASE */
@@ -53,12 +51,7 @@ CreateConversionCommand(CreateConversionStmt *stmt)
 	static const Oid funcargs[] = {INT4OID, INT4OID, CSTRINGOID, INTERNALOID, INT4OID, BOOLOID};
 	char		result[1];
 	Datum		funcresult;
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	ObjectAddress	conObject;
-	Oid			objectOwner = GetUserId();
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* Convert list of names to a name and namespace */
 	namespaceId = QualifiedNameGetCreationNamespace(stmt->conversion_name,
@@ -75,22 +68,7 @@ CreateConversionCommand(CreateConversionStmt *stmt)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					   get_namespace_name(namespaceId));
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		objectOwner = get_namespace_owner(namespaceId);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceId, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/* Check the encoding names */
 	from_encoding = pg_char_to_encoding(from_encoding_name);
@@ -167,17 +145,7 @@ CreateConversionCommand(CreateConversionStmt *stmt)
 	 * All seem ok, go ahead (possible failure would be a duplicate conversion
 	 * name)
 	 */
-	conObject =  ConversionCreate(conversion_name, namespaceId, objectOwner,	/* ReqID:SRS-SQL-SCHEMA */
+	return ConversionCreate(conversion_name, namespaceId, objectOwner,/* ReqID:SRS-SQL-SCHEMA */
 							from_encoding, to_encoding, funcoid, stmt->def);
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-
-	return conObject;
-	/* End - ReqID:SRS-SQL-SCHEMA */
 }

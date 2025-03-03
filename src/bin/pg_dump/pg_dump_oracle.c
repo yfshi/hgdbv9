@@ -280,10 +280,6 @@ static void setupDumpWorkerOracle(Archive *AHX);
 static void set_restrict_relation_kind(Archive *AH, const char *value);
 static TableInfo *getRootTableInfo(const TableInfo *tbinfo);
 static bool forcePartitionRootLoad(const TableInfo *tbinfo);
-/* Begin - ReqID:SRS-MISC-USER */
-static void dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo);
-static void dumpDbRolesmembership(Archive *fout, const DbRolesMembershipInfo *dbrinfo);
-/* End - ReqID:SRS-MISC-USER */
 
 TableInfo *getSchemaDataOracle(Archive *fout, int *numTablesPtr);
 static bool	shouldPrintColumn(const DumpOptions *dopt, const TableInfo *tbinfo, int colno);
@@ -292,8 +288,6 @@ static bool	shouldPrintColumn(const DumpOptions *dopt, const TableInfo *tbinfo, 
 static char *get_usermapping_options_kv(char *umoptions, char *optname);
 /* End - ReqID:SRS-SQL-DBLINK */
 
-static void dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo);	/* BUGZ1343 */
-
 struct dumpMethods dumpMethodsOracle = {
 	.mode = "o",
 	.setupDumpWorker = setupDumpWorkerOracle,
@@ -301,9 +295,6 @@ struct dumpMethods dumpMethodsOracle = {
 	.ConnectDatabase = ConnectDatabaseOracle,
 	.getDbCompatibleMode = getDbCompatibleMode,
 	.getDatabaseMode = getDatabaseMode,
-	.haveDatabaseUser = haveDatabaseUserOracle,
-	.getcurrentuserisInstanceSupperuser = getcurrentuserisInstanceSupperuser,
-	.getcurrentuserisDatabaseSupperuser = getcurrentuserisDatabaseSupperuser,
 	.setIdentifierCaseSwitch = setIdentifierCaseSwitch,
 	.setNLSdateFormat = setNLSdateFormat,
 	.setup_connection = setup_connectionOracle,
@@ -3221,11 +3212,6 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	PQExpBuffer query;
 	PQExpBuffer delqry;
 	PQExpBuffer polprefix;
-	/* Begin - BUGZ1408 */
-	PQExpBuffer ownerquery;
-	PGresult   *res;
-	char	   *user_type;
-	/* End - BUGZ1408 */
 	char	   *qtabname;
 	const char *cmd;
 	char	   *tag;
@@ -3285,17 +3271,7 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	query = createPQExpBuffer();
 	delqry = createPQExpBuffer();
 	polprefix = createPQExpBuffer();
-	/* Begin - BUGZ1408 */
-	ownerquery = createPQExpBuffer();
-	appendPQExpBuffer(ownerquery, "SELECT rolowndboid "
-									"FROM pg_policy p "
-									"LEFT JOIN pg_class c ON c.oid = p.polrelid "
-									"LEFT JOIN pg_authid a ON a.oid = c.relowner "
-									"WHERE p.oid = %d; ", polinfo->dobj.catId.oid);
-	res = ExecuteSqlQuery(fout, ownerquery->data, PGRES_TUPLES_OK);
 	
-	user_type = atooid(PQgetvalue(res, 0, 0)) == 0 ? "INSTANCEUSER" : "DATABASEUSER";
-	/* End - BUGZ1408 */
 	qtabname = pg_strdup(fmtId(tbinfo->dobj.name));
 
 	appendPQExpBuffer(query, "CREATE POLICY %s", fmtId(polinfo->polname));
@@ -3330,8 +3306,7 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 								  .description = "POLICY",
 								  .section = SECTION_POST_DATA,
 								  .createStmt = query->data,
-								  .dropStmt = delqry->data,
-								  .user_type = user_type));/* BUGZ1408 */
+								  .dropStmt = delqry->data));
 
 	if (polinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
 		dumpComment(fout, polprefix->data, qtabname,
@@ -3343,10 +3318,6 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	destroyPQExpBuffer(delqry);
 	destroyPQExpBuffer(polprefix);
 	free(qtabname);
-	/* Begin - BUGZ1408 */
-	PQclear(res);
-	destroyPQExpBuffer(ownerquery);
-	/* End - BUGZ1408 */
 }
 
 /*
@@ -4433,61 +4404,6 @@ get_force_view_ident_case(Archive *AHX, Oid viewOid)
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
 
-/* Begin - ReqID:SRS-SQL-SCHEMA */
-static char *
-get_user_schema_default_collation(Archive *fout, Oid userid)
-{
-	PQExpBuffer  query;
-	PGresult   	*res;
-	char 		*result = NULL;
-
-	query = createPQExpBuffer();
-
-	appendPQExpBuffer(query, "SELECT coll.collname "
-							 "FROM pg_object oj, pg_namespace nsp, pg_collation coll "
-							 "WHERE nsp.nspowner = %u "
-							 "	AND nsp.nspname = pg_get_userbyid(%u) "
-							 "	AND oj.obj_oid = nsp.oid "
-							 "	AND (oj.option ->> 'collation')::OID = coll.oid", 
-							 userid, userid);
-
-	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-	if (PQntuples(res) == 1)
-		result = pg_strdup(PQgetvalue(res, 0, 0));
-
-	PQclear(res);
-	destroyPQExpBuffer(query);
-	return result;
-}
-
-static char *
-get_user_schema_default_tablespace(Archive *fout, Oid userid)
-{
-	PQExpBuffer  query;
-	PGresult   	*res;
-	char 		*result = NULL;
-
-	query = createPQExpBuffer();
-
-	appendPQExpBuffer(query, "SELECT spc.spcname "
-							 "FROM pg_object oj, pg_namespace nsp, pg_tablespace spc "
-							 "WHERE nsp.nspowner = %u "
-							 "	AND nsp.nspname = pg_get_userbyid(%u) "
-							 "	AND oj.obj_oid = nsp.oid "
-							 "	AND (oj.option ->> 'collation')::OID = spc.oid", 
-							 userid, userid);
-
-	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-	if (PQntuples(res) == 1)
-		result = pg_strdup(PQgetvalue(res, 0, 0));
-
-	PQclear(res);
-	destroyPQExpBuffer(query);
-	return result;
-}
-/* End - ReqID:SRS-SQL-SCHEMA */
 
 /*
  * getExtensions:
@@ -10160,368 +10076,6 @@ getDefaultACLs(Archive *fout, int *numDefaultACLs)
 
 
 /*
- * dumpDbRoles
- *  ReqID:SRS-MISC-USE    BUG#Z538
- * dump Database Roles
- */
-static void
-dumpDbRoles(Archive *fout, const DatabaseRolesInfo *dbrinfo)
-{
-	DumpOptions *dopt = fout->dopt;
-	PQExpBuffer query;
-	PQExpBuffer	user_binary_upgrade_query;	/* BUGZ1398 */
-	PQExpBuffer	delquery;	/* BUGZ1362 */
-	if (dopt->dataOnly)
-		return;
-
-	if (dbrinfo->dobj.name)
-	{
-		query = createPQExpBuffer();
-		/* BEGIN - BUGZ1398 */
-		user_binary_upgrade_query = createPQExpBuffer();
-		if(dopt->binary_upgrade)	/* BUGZ1450 */
-			appendPQExpBuffer(user_binary_upgrade_query,
-								"SELECT pg_catalog.binary_upgrade_set_next_pg_authid_oid('%u'::pg_catalog.oid);\n\n",
-								dbrinfo->dobj.catId.oid);
-
-		/* END - BUGZ1398 */
-		appendPQExpBuffer(query, "ALTER ROLE %s WITH", fmtId(dbrinfo->dobj.name));
-		/* BEGIN - BUGZ1362 */
-		delquery = createPQExpBuffer();
-		if(strcmp(dbrinfo->dobj.name, "sys") != 0 && strcmp(dbrinfo->dobj.name, "system") != 0)
-		{
-			appendPQExpBuffer(delquery, "DROP ROLE %s", fmtId(dbrinfo->dobj.name));
-			appendPQExpBuffer(delquery, ";\n\n");
-		}
-		/* END - BUGZ1362 */
-		if (dbrinfo->rolsuper)
-			appendPQExpBufferStr(query, " SUPERUSER");
-		else
-			appendPQExpBufferStr(query, " NOSUPERUSER");
-
-		if (dbrinfo->rolinherit)
-			appendPQExpBufferStr(query, " INHERIT");
-		else
-			appendPQExpBufferStr(query, " NOINHERIT");
-
-		if (dbrinfo->rolcreaterole)
-			appendPQExpBufferStr(query, " CREATEROLE");
-		else
-			appendPQExpBufferStr(query, " NOCREATEROLE");
-
-		if (dbrinfo->rolcreatedb)
-			appendPQExpBufferStr(query, " CREATEDB");
-		else
-			appendPQExpBufferStr(query, " NOCREATEDB");
-
-		if (dbrinfo->rolcanlogin)
-			appendPQExpBufferStr(query, " LOGIN");
-		else
-			appendPQExpBufferStr(query, " NOLOGIN");
-
-		if (dbrinfo->rolreplication)
-			appendPQExpBufferStr(query, " REPLICATION");
-		else
-			appendPQExpBufferStr(query, " NOREPLICATION");
-
-		if (dbrinfo->rolbypassrls)
-			appendPQExpBufferStr(query, " BYPASSRLS");
-		else
-			appendPQExpBufferStr(query, " NOBYPASSRLS");
-
-		if (dbrinfo->rolconnlimit != -1)
-			appendPQExpBuffer(query, " CONNECTION LIMIT %d", dbrinfo->rolconnlimit );
-
-
-		if (dbrinfo->rolpassword)			/*  bug#z680 */
-			appendPQExpBuffer(query, " PASSWORD %s", dbrinfo->rolpassword);
-
-		if (dbrinfo->rolvaliduntil)			/*  bug#z680 */
-			appendPQExpBuffer(query, " VALID UNTIL '%s'", dbrinfo->rolvaliduntil );
-
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		if (dbrinfo->roldefcollation)
-			appendPQExpBuffer(query, " DEFAULT COLLATION '%s'", dbrinfo->roldefcollation);
-
-		if (dbrinfo->roldeftablespace)
-			appendPQExpBuffer(query, " DEFAULT TABLESPACE '%s'", dbrinfo->roldeftablespace);
-		/* End - ReqID:SRS-SQL-SCHEMA */
-
-		appendPQExpBufferStr(query, ";\n");
-
-		if (dbrinfo->rolcomment)			/*  bug#z680 */
-			appendPQExpBuffer(query, "COMMENT ON ROLE %s IS %s;\n", fmtId(dbrinfo->dobj.name), dbrinfo->rolcomment);
-
-		if (dbrinfo->dobj.dump & DUMP_COMPONENT_POLICY)
-			ArchiveEntry(fout, dbrinfo->dobj.catId, dbrinfo->dobj.dumpId,
-						 ARCHIVE_OPTS(.tag = dbrinfo->dobj.name,
-									  .description = "DATABASEROLE",
-									  .section = SECTION_NONE,
-									  .createStmt = query->data,
-									  .dropStmt = delquery->data,	/* BUGZ1362 */
-									  .User_binary_upgrade = user_binary_upgrade_query->data));	/* BUGZ1398 */
-
-		destroyPQExpBuffer(query);
-		destroyPQExpBuffer(user_binary_upgrade_query);	/* BUGZ1398 */
-		destroyPQExpBuffer(delquery);	/* BUGZ1362 */
-	}
-	return;
-}
-
-/*
- * getDbRoles  ReqID:SRS-MISC-USE
- * 
- * Dump roles
- */
-DatabaseRolesInfo *
-getDbRoles(Archive *fout, int *numRoles)
-{
-	DatabaseRolesInfo *dbrinfo;
-	PQExpBuffer buf = createPQExpBuffer();
-	PGconn	   *conn = GetConnection(fout);
-	PGresult   *res;
-	int			i_tableoid,
-				i_oid,
-				i_rolname,
-				i_rolsuper,
-				i_rolinherit,
-				i_rolcreaterole,
-				i_rolcreatedb,
-				i_rolcanlogin,
-				i_rolconnlimit,
-				i_rolowndboid,
-				i_rolpassword,
-				i_rolvaliduntil,
-				i_rolreplication,
-				i_rolbypassrls,
-				i_rolcomment;
-	int			i = 0;
-	int			ntups = 0;
-
-	printfPQExpBuffer(buf,
-						  "SELECT a.tableoid, a.oid, rolname, rolsuper, rolinherit, "
-						  "rolcreaterole, rolcreatedb, "
-						  "rolcanlogin, rolconnlimit, rolowndboid, rolpassword, "
-						  "rolvaliduntil, rolreplication, rolbypassrls, "
-						  "pg_catalog.shobj_description(a.oid, 'pg_authid') as rolcomment, "
-						  "rolname = current_user AS is_current_user "
-						  "FROM pg_authid a, pg_database d "
-						  "WHERE a.rolname !~ '^pg_' AND "
-						  "d.datname = current_database() AND "
-						  "a.rolowndboid = d.oid "
-						  "ORDER BY 2");
-
-	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
-
-	i_tableoid = PQfnumber(res, "tableoid");
-	i_oid = PQfnumber(res, "oid");
-	i_rolname = PQfnumber(res, "rolname");
-	i_rolsuper = PQfnumber(res, "rolsuper");
-	i_rolinherit = PQfnumber(res, "rolinherit");
-	i_rolcreaterole = PQfnumber(res, "rolcreaterole");
-	i_rolcreatedb = PQfnumber(res, "rolcreatedb");
-	i_rolcanlogin = PQfnumber(res, "rolcanlogin");
-	i_rolconnlimit = PQfnumber(res, "rolconnlimit");
-	i_rolowndboid = PQfnumber(res, "rolowndboid");
-	i_rolpassword = PQfnumber(res, "rolpassword");
-	i_rolvaliduntil = PQfnumber(res, "rolvaliduntil");
-	i_rolreplication = PQfnumber(res, "rolreplication");
-	i_rolbypassrls = PQfnumber(res, "rolbypassrls");
-	i_rolcomment = PQfnumber(res, "rolcomment");
-	
-	ntups = PQntuples(res);
-
-	*numRoles = ntups;
-
-	dbrinfo = (DatabaseRolesInfo *) pg_malloc0(ntups * sizeof(DatabaseRolesInfo));
-
-	for (i = 0; i < ntups; i++)
-	{
-		const char *rolename;
-		Oid			dboid = InvalidOid;
-
-		dboid = atooid(PQgetvalue(res, i, i_rolowndboid));
-		rolename = PQgetvalue(res, i, i_rolname);
-
-		if (strncmp(rolename, "pg_", 3) == 0)
-		{
-			pg_log_warning("role name starting with \"pg_\" skipped (%s)", rolename);
-			continue;
-		}
-
-		if(dboid == 0)
-			continue;
-
-		dbrinfo[i].dobj.objType = DO_DATABASEROLE;
-		dbrinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
-		dbrinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
-		AssignDumpId(&dbrinfo[i].dobj);			/*  bug#z680 bug:z538 */
-		dbrinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_rolname));
-		dbrinfo[i].rolsuper = (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0);
-		dbrinfo[i].rolinherit = (strcmp(PQgetvalue(res, i, i_rolinherit), "t") == 0);
-		dbrinfo[i].rolcreaterole = (strcmp(PQgetvalue(res, i, i_rolcreaterole), "t") == 0);
-		dbrinfo[i].rolcreatedb = (strcmp(PQgetvalue(res, i, i_rolcreatedb), "t") == 0);
-		dbrinfo[i].rolcanlogin = (strcmp(PQgetvalue(res, i, i_rolcanlogin), "t") == 0);
-		dbrinfo[i].rolconnlimit = atoi(PQgetvalue(res, i, i_rolconnlimit));
-		dbrinfo[i].rolreplication = (strcmp(PQgetvalue(res, i, i_rolreplication), "t") == 0);
-		dbrinfo[i].rolbypassrls = (strcmp(PQgetvalue(res, i, i_rolbypassrls), "t") == 0);
-
-		if (!PQgetisnull(res, i, i_rolvaliduntil))
-			dbrinfo[i].rolvaliduntil = pg_strdup(PQgetvalue(res, i, i_rolvaliduntil));
-
-		if (!PQgetisnull(res, i, i_rolpassword) && !no_role_passwords)
-		{
-			resetPQExpBuffer(buf);
-			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolpassword), conn);
-			dbrinfo[i].rolpassword = pg_strdup(buf->data);
-		}
-		else
-			dbrinfo[i].rolpassword = NULL;
-
-		if (!PQgetisnull(res, i, i_rolcomment))
-		{
-			resetPQExpBuffer(buf);
-			appendStringLiteralConn(buf, PQgetvalue(res, i, i_rolcomment), conn);
-			dbrinfo[i].rolcomment = pg_strdup(buf->data);
-		}
-		else
-			dbrinfo[i].rolcomment = NULL;
-
-		/* Begin - ReqID:SRS-SQL-SCHEMA */
-		dbrinfo[i].roldefcollation = get_user_schema_default_collation(fout, dbrinfo[i].dobj.catId.oid);
-		dbrinfo[i].roldeftablespace = get_user_schema_default_tablespace(fout, dbrinfo[i].dobj.catId.oid);
-		/* End - ReqID:SRS-SQL-SCHEMA */
-
-		/* Decide whether we want to dump it */
-		selectDumpableObject(&(dbrinfo[i].dobj), fout);
-
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-	return dbrinfo;
-}
-
-/*
- * dumpDbRolesmembership  ReqID:SRS-MISC-USE
- * 
- * Dump roles member ship
- */
-static void
-dumpDbRolesmembership(Archive *fout, const DbRolesMembershipInfo *dbrinfo)
-{
-	DumpOptions *dopt = fout->dopt;
-	PQExpBuffer query;
-
-	if (dopt->dataOnly)
-		return;
-
-	if (dbrinfo->rolename)
-	{
-		query = createPQExpBuffer();
-
-		appendPQExpBuffer(query, "GRANT %s", fmtId(dbrinfo->rolename));
-		appendPQExpBuffer(query, " TO %s", fmtId(dbrinfo->member));
-
-		if(dbrinfo->admin_option)
-			appendPQExpBuffer(query, " WITH ADMIN OPTION");
-	
-		if(dbrinfo->grantor)
-			appendPQExpBuffer(query, " GRANTED BY %s", fmtId(dbrinfo->grantor));
-		
-		appendPQExpBuffer(query, ";\n");
-
-		if (dbrinfo->dobj.dump & DUMP_COMPONENT_POLICY)
-			ArchiveEntry(fout, dbrinfo->dobj.catId, dbrinfo->dobj.dumpId,
-						 ARCHIVE_OPTS(.tag = "DATABASEROLEMEMBERSHIP",
-									  .description = "DATABASEROLEMEMBERSHIP",
-									  .section = SECTION_NONE,
-									  .createStmt = query->data));
-
-		destroyPQExpBuffer(query);
-	}
-}
-
-/*
- * getDbRoleMembership  ReqID:SRS-MISC-USE
- * 
- * get roles member ship
- */
-DbRolesMembershipInfo *
-getDbRoleMembership(Archive *fout, int *numRolesMembership)
-{
-	DbRolesMembershipInfo *dbrinfo;
-	PQExpBuffer buf = createPQExpBuffer();
-	PGresult   *res;
-	int			i,
-				ntups;
-
-	/*
-	 * begin - bug:z948
-	 * When backing up, you need to be clear about the name of the current 
-	 * linked database, otherwise it will be repeated
-	 */
-	printfPQExpBuffer(buf, "SELECT a.tableoid, ur.rolname AS roleid, "
-					  "um.rolname AS member, "
-					  "a.admin_option, "
-					  "ug.rolname AS grantor, "
-					  "a.roleid AS roleoidoid, "
-					  "a.member AS memberoid, "
-					  "a.grantor AS grantoroid "
-					  "FROM pg_database d ,pg_auth_members a "
-					  "LEFT JOIN pg_authid ur on ur.oid = a.roleid "
-					  "LEFT JOIN pg_authid um on um.oid = a.member "
-					  "LEFT JOIN pg_authid ug on ug.oid = a.grantor "
-					  "WHERE NOT (ur.rolname ~ '^pg_' AND um.rolname ~ '^pg_') "
-					  "AND d.datname = current_database() "
-					  "AND ur.rolowndboid = d.oid "
-					  "AND um.rolowndboid = d.oid "
-					  "AND ug.rolowndboid = d.oid "
-					  "ORDER BY 1,2,3");
-	/*
-	 * end - bug:z948
-	 */
-
-	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
-	ntups = PQntuples(res);
-	*numRolesMembership = ntups;
-
-	dbrinfo = (DbRolesMembershipInfo *) pg_malloc0(ntups * sizeof(DbRolesMembershipInfo));
-
-	for (i = 0; i < ntups; i++)
-	{
-		Oid			tableoid = atooid(PQgetvalue(res, i, 0));
-		char	   *roleid = pg_strdup(PQgetvalue(res, i, 1));
-		char	   *member = pg_strdup(PQgetvalue(res, i, 2));
-		Oid			roleoidoid = atooid(PQgetvalue(res, i, 5));
-
-		dbrinfo[i].dobj.objType = DO_DATABASEROLEMEMBERSHIP;
-		dbrinfo[i].dobj.catId.tableoid = tableoid;
-		dbrinfo[i].dobj.catId.oid = roleoidoid;
-		/* Begin - BUG#M0000499 BUG#Z836 */
-		AssignDumpId(&dbrinfo[i].dobj);
-		dbrinfo[i].dobj.name = pg_strdup(roleid);
-		/* End - BUG#M0000499 BUG#Z836 */
-		dbrinfo[i].rolename = pg_strdup(roleid);
-		dbrinfo[i].member = pg_strdup(member);
-
-		if (!PQgetisnull(res, i, 4))
-		{
-			dbrinfo[i].grantor = pg_strdup(PQgetvalue(res, i, 4));
-		}
-		dbrinfo[i].admin_option = (strcmp(PQgetvalue(res, i, 3), "t") == 0);
-
-		/* Decide whether we want to dump it */
-		selectDumpableObject(&(dbrinfo[i].dobj), fout);
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-	return dbrinfo;
-}
-
-
-/*
  * dumpComment --
  *
  * This routine is used to dump any comments associated with the
@@ -10868,21 +10422,7 @@ dumpDumpableObjectOracle(Archive *fout, const DumpableObject *dobj)
 		case DO_NAMESPACE:
 			dumpNamespace(fout, (const NamespaceInfo *) dobj);
 			break;
-		/* Begin - BUG#Z538  */
-		case DO_DATABASEROLE:
-			dumpDbRoles(fout, (const DatabaseRolesInfo *) dobj);
-			break;
-		/* End - BUG#Z538 */
-		/* Begin - BUG#Z836  */
-		case DO_DATABASEROLEMEMBERSHIP:
-			dumpDbRolesmembership(fout, (const DbRolesMembershipInfo *) dobj);
-			break;
-		/* End - BUG#Z836 */
-		/* BEGIN - BUGZ1343 */
-		case DO_DATABASETABLESPACE:
-			dumpDbTablespace(fout, (const DbTableSpaceInfo *) dobj);
-			break;
-		/* END - BUGZ1343 */
+
 		case DO_EXTENSION:
 			dumpExtension(fout, (const ExtensionInfo *) dobj);
 			break;
@@ -19974,9 +19514,6 @@ addBoundaryDependenciesOracle(DumpableObject **dobjs, int numObjs,
 		switch (dobj->objType)
 		{
 			case DO_NAMESPACE:
-			case DO_DATABASEROLE:
-			case DO_DATABASEROLEMEMBERSHIP:
-			case DO_DATABASETABLESPACE:	/* BUGZ1343 */
 			case DO_EXTENSION:
 			case DO_TYPE:
 			case DO_SHELL_TYPE:
@@ -20325,28 +19862,6 @@ getSchemaDataOracle(Archive *fout, int *numTablesPtr)
 	 * whether other objects are to be dumped.
 	 */
 
-	/* BEGIN - ReqID:SRS-MISC-USER  BUG#Z538 */
-	/*
-	 *When backing up library-level users, we must first determine whether 
-	 * there is a library-level user in the current database, and whether 
-	 * the current user is a super user. The purpose of judging this is 
-	 * to be compatible with the lower version and backup native pg
-	 *
-	 */
-	if(DB_ORACLE == database_mode && haveDBuser && (fout->remoteVersion >= 140008) 
-		&& (getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG) && 
-		(CurrentUserIsInstanceSuperuser || CurrentUserIsDatabaseSuperuser))		/* BUG:z680,z538 */
-	{
-		pg_log_info("reading database user");
-		getDbRoles(fout, &numRoles);
-		getDbRoleMembership(fout, &numRolesMembership);
-		/* BEGIN - BUGZ1343 */
-		pg_log_info("reading database tablespace");
-		getDbTablespace(fout, &numTablespaces);
-		/* END - BUGZ1343 */
-	}
-	/* End - ReqID:SRS-MISC-USER  BUG#Z538 */
-
 	pg_log_info("reading extensions");
 	extinfo = getExtensions(fout, &numExtensions);
 	extinfoindex = buildIndexArray(extinfo, numExtensions, sizeof(ExtensionInfo));
@@ -20574,195 +20089,3 @@ get_usermapping_options_kv(char *umoptions, char *optname)
 	return NULL;
 }
 /* End - ReqID:SRS-SQL-DBLINK */
-/* BEGIN - BUGZ1343 */
-DbTableSpaceInfo *
-getDbTablespace(Archive *fout, int *numTablespaces)
-{
-	DbTableSpaceInfo	*spcinfo;
-	PQExpBuffer	buf = createPQExpBuffer();
-	PGresult	*res;
-	int			i_tableoid,
-				i_spcoid,
-				i_spcname,
-				i_spclocation,
-				i_spcowner,
-				i_spcacl,
-				i_rspcacl,
-				i_spcoptions,
-				i_spccomment;
-	int			i = 0;
-	int			ntups = 0;
-
-	printfPQExpBuffer(buf, "SELECT a.tableoid AS tableoid, t.oid AS spcoid, spcname, "
-							   "pg_catalog.pg_get_userbyid(spcowner) AS spcowner, "
-							   "pg_catalog.pg_tablespace_location(t.oid) AS spclocation, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "     WITH ORDINALITY AS perm(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(acldefault('t',spcowner)) "
-							   "       AS init(init_acl) "
-							   "     WHERE acl = init_acl)) AS spcacls) "
-							   " AS spcacl, "
-							   "(SELECT array_agg(acl ORDER BY row_n) FROM "
-							   "  (SELECT acl, row_n FROM "
-							   "     unnest(acldefault('t',spcowner)) "
-							   "     WITH ORDINALITY AS initp(acl,row_n) "
-							   "   WHERE NOT EXISTS ( "
-							   "     SELECT 1 "
-							   "     FROM unnest(coalesce(spcacl,acldefault('t',spcowner))) "
-							   "       AS permp(orig_acl) "
-							   "     WHERE acl = orig_acl)) AS rspcacls) "
-							   " AS rspcacl, "
-							   "array_to_string(spcoptions, ', ') AS spcoptions,"
-							   "pg_catalog.shobj_description(t.oid, 'pg_tablespace') AS spccomment, "
-							   "a.rolname AS spcowner "
-							   "FROM pg_catalog.pg_tablespace t "
-							   "LEFT JOIN pg_catalog.pg_authid a on (a.oid = spcowner) "
-							   "LEFT JOIN pg_catalog.pg_database d on (d.oid = a.rolowndboid) "
-							   "WHERE t.spcname !~ '^pg_' "
-							   "AND d.datname = current_database() "
-							   "ORDER BY 1");
-	res = ExecuteSqlQuery(fout, buf->data, PGRES_TUPLES_OK);
-
-	i_tableoid = PQfnumber(res, "tableoid");
-	i_spcoid = PQfnumber(res, "spcoid");
-	i_spcname = PQfnumber(res, "spcname");
-	i_spclocation = PQfnumber(res, "spclocation");
-	i_spcowner = PQfnumber(res, "spcowner");
-	i_spcacl = PQfnumber(res, "spcacl");
-	i_rspcacl = PQfnumber(res, "rspcacl");
-	i_spcoptions = PQfnumber(res, "spcoptions");
-	i_spccomment = PQfnumber(res, "spccomment");
-
-	ntups = PQntuples(res);
-
-	*numTablespaces = ntups;
-
-	spcinfo = (DbTableSpaceInfo *) pg_malloc0(ntups * sizeof(DbTableSpaceInfo));
-
-	for(i = 0; i < ntups; i++)
-	{
-		spcinfo[i].dobj.objType = DO_DATABASETABLESPACE;
-		spcinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
-		spcinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_spcoid));
-		AssignDumpId(&spcinfo[i].dobj);
-		spcinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_spcname));
-		spcinfo[i].spcname = pg_strdup(PQgetvalue(res, i, i_spcname));
-		spcinfo[i].spclocation = pg_strdup(PQgetvalue(res, i, i_spclocation));
-		spcinfo[i].spcowner = pg_strdup(PQgetvalue(res, i, i_spcowner));
-		spcinfo[i].spcacl = PQgetisnull(res, i, i_spcacl) ? pg_strdup(""):pg_strdup(PQgetvalue(res, i, i_spcacl));
-		spcinfo[i].rspcacl = PQgetisnull(res, i, i_rspcacl) ? pg_strdup(""):pg_strdup(PQgetvalue(res, i, i_rspcacl));
-		spcinfo[i].spccomment = PQgetisnull(res, i, i_spccomment) ? NULL : pg_strdup(PQgetvalue(res, i, i_spccomment));
-		spcinfo[i].spcoptions = PQgetisnull(res, i, i_spcoptions) ? NULL : pg_strdup(PQgetvalue(res, i, i_spcoptions));
-
-		selectDumpableObject(&(spcinfo[i].dobj), fout);
-	}
-
-	PQclear(res);
-	destroyPQExpBuffer(buf);
-
-	return spcinfo;
-}
-
-static void
-dumpDbTablespace(Archive *fout, const DbTableSpaceInfo *spcinfo)
-{
-	DumpOptions *dopt = fout->dopt;
-	PQExpBuffer	query;
-	/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-	char tablespace_path[MAXPGPATH + 1];
-	/* END - ReqID:SRS-CMD-pg2highgo */
-
-	if(dopt->dataOnly)
-		return;
-
-	if(spcinfo->dobj.name)
-	{
-		char *fspcname;
-		query = createPQExpBuffer();
-
-		fspcname = pg_strdup(fmtId(spcinfo->spcname));
-
-		appendPQExpBuffer(query, "CREATE TABLESPACE %s", fspcname);
-		appendPQExpBuffer(query, " OWNER %s", fmtId(spcinfo->spcowner));
-		appendPQExpBufferStr(query, " LOCATION ");
-
-		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-		if (dopt->binary_upgrade && (fout->remoteVersion >=140000 && fout->remoteVersion <150000))
-		{
-			/* The tablespace exists, and in the case of an in-place upgrade,
-			it is necessary to create the tablespace in a different directory.
-			example: old_tablespace:/tmp/space1 => new_tablespace:/tmp/space1_yymmddhhmmss*/
-			snprintf(tablespace_path, MAXPGPATH, "%s%s",spcinfo->spclocation, day_time);
-			appendStringLiteralAH(query, tablespace_path, fout);
-
-			if (mkdir(tablespace_path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
-			{
-				pg_log_error(" mkdir \"%s\" fail:%s",
-							 tablespace_path, strerror(errno));
-				exit_nicely(1);
-				return;
-			}
-		}
-		else
-		{
-		/* END - ReqID:SRS-CMD-pg2highgo */
-
-			appendStringLiteralAH(query, spcinfo->spclocation, fout);
-
-		/* BEGIN - ReqID:SRS-CMD-pg2highgo */
-		}
-		/* END - ReqID:SRS-CMD-pg2highgo */
-
-		appendPQExpBuffer(query, ";\n");
-
-		if(spcinfo->spcoptions && spcinfo->spcoptions[0] != '\0')
-		{
-			appendPQExpBuffer(query, "ALTER TABLESPACE %s SET (%s);\n", fspcname, spcinfo->spcoptions);
-		}
-
-		if(!fout->dopt->aclsSkip &&
-			!buildACLCommands(fspcname, NULL, NULL, "TABLESPACE",
-								spcinfo->spcacl, spcinfo->rspcacl,
-								spcinfo->spcowner, "", fout->remoteVersion, query))
-		{
-			pg_log_error("could not parse ACL list (%s) for Database Tablespace \"%s\"", spcinfo->spcacl, spcinfo->spcname);
-			exit_nicely(1);
-		}
-
-		if(!fout->dopt->no_comments && spcinfo->spccomment && spcinfo->spccomment[0] != '\0')
-		{
-			appendPQExpBuffer(query, "COMMENT ON TABLESPACE %s IS ", fspcname);
-			appendStringLiteralAH(query, spcinfo->spccomment, fout);
-			appendPQExpBuffer(query, ";\n");
-		}
-
-		if(!fout->dopt->no_security_labels && fout->remoteVersion >= 90200)
-		{
-			PQExpBuffer sql = createPQExpBuffer();
-			PGresult	*res;
-			ArchiveHandle	*AH_tmp = (ArchiveHandle *)fout;
-
-			buildShSecLabelQuery("pg_tablespace", spcinfo->dobj.catId.oid, sql);
-			res = ExecuteSqlQuery(fout, sql->data, PGRES_TUPLES_OK);
-			emitShSecLabels(AH_tmp->connection, res, query, "TABLESPACE", spcinfo->spcname);
-
-			PQclear(res);
-			destroyPQExpBuffer(sql);
-		}
-
-		if(spcinfo->dobj.dump & DUMP_COMPONENT_POLICY)
-			ArchiveEntry(fout, spcinfo->dobj.catId, spcinfo->dobj.dumpId,
-						ARCHIVE_OPTS(.tag = spcinfo->dobj.name,
-									 .description = "DATABASETABLESPACE",
-									 .section = SECTION_NONE,
-									 .createStmt = query->data));
-
-		free(fspcname);
-		destroyPQExpBuffer(query);
-	}
-}
-/* END - BUGZ1343 */

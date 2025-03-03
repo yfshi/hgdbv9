@@ -581,17 +581,11 @@ aclitemout(PG_FUNCTION_ARGS)
 {
 	AclItem    *aip = PG_GETARG_ACLITEM_P(0);
 	char	   *p;
-	char	   *q;
 	char	   *out;
 	HeapTuple	htup;
 	unsigned	i;
-	Oid dboid = InvalidOid;
 
 	out = palloc(strlen("=/") +
-				 2 * N_ACL_RIGHTS +
-				 2 * (2 * NAMEDATALEN + 2) +
-				 1);
-	q = palloc(strlen("=/") +
 				 2 * N_ACL_RIGHTS +
 				 2 * (2 * NAMEDATALEN + 2) +
 				 1);
@@ -599,56 +593,20 @@ aclitemout(PG_FUNCTION_ARGS)
 	p = out;
 	*p = '\0';
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Determine the type of user
-	 */
-	if((ORA_GRANTUSER == grant_usertype) && (ORA_PARSER == compatible_db))
+	if (aip->ai_grantee != ACL_ID_PUBLIC)
 	{
-		if (aip->ai_grantee != ACL_ID_PUBLIC)
+		htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
+		if (HeapTupleIsValid(htup))
 		{
-			htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
-			if (HeapTupleIsValid(htup))
-			{
-				putid(q, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
-				
-				dboid = (((Form_pg_authid) GETSTRUCT(htup))->rolowndboid);
-				
-				if(OidIsValid(dboid))
-					sprintf(p, "0%s", q);
-
-				else
-					sprintf(p, "1%s", q);
-				
-				ReleaseSysCache(htup);
-			}
-			else
-			{
-				/* Generate numeric OID if we don't find an entry */
-				sprintf(p, "%u", aip->ai_grantee);
-			}
+			putid(p, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
+			ReleaseSysCache(htup);
+		}
+		else
+		{
+			/* Generate numeric OID if we don't find an entry */
+			sprintf(p, "%u", aip->ai_grantee);
 		}
 	}
-	else
-	{
-		if (aip->ai_grantee != ACL_ID_PUBLIC)
-		{
-			htup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(aip->ai_grantee));
-			if (HeapTupleIsValid(htup))
-			{
-				putid(p, NameStr(((Form_pg_authid) GETSTRUCT(htup))->rolname));
-				ReleaseSysCache(htup);
-			}
-			else
-			{
-				/* Generate numeric OID if we don't find an entry */
-				sprintf(p, "%u", aip->ai_grantee);
-			}
-		}
-	}
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
 	
 	while (*p)
 		++p;
@@ -5186,29 +5144,9 @@ Oid
 get_role_oid(const char *rolname, bool missing_ok)
 {
 	Oid			oid = InvalidOid;
-	Oid			dboid = InvalidOid;
 
-	/*
-	 * Begin - ReqID:SRS-MISC-USER
-	 * Determine the type of user
-	 */
-	
-	if (DB_ORACLE == database_mode) 
-	{
-		if(GetUserId())
-		{
-			dboid = CurrentUserOwnDboid();
-		}
-		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolname), ObjectIdGetDatum(dboid));
-	}
-	else
-		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolname), ObjectIdGetDatum(0));
-	/*
-	 * End - ReqID:SRS-MISC-USER
-	 */
-
+	oid = GetSysCacheOid2(AUTHNAME, Anum_pg_authid_oid,
+							CStringGetDatum(rolname), ObjectIdGetDatum(0));
 	if (!OidIsValid(oid) && !missing_ok)
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -5224,35 +5162,7 @@ get_role_oid(const char *rolname, bool missing_ok)
 Oid
 get_role_canlogin_oid(const char *rolname, bool missing_ok)
 {
-	Oid			oid = InvalidOid;
-	Oid			dboid = InvalidOid;
-
-	if(GetUserId())
-	{
-		dboid = CurrentUserOwnDboid();
-	}
-	if (DB_ORACLE == database_mode) 
-	{
-		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolname), ObjectIdGetDatum(dboid));
-		if (!OidIsValid(oid))
-		{
-			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolname), ObjectIdGetDatum(0));
-			
-			if(OidIsValid(oid) && (get_role_canlogin(rolname)))
-				oid = InvalidOid;
-		}	
-	}
-	else
-		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolname), ObjectIdGetDatum(0));
-
-	if (!OidIsValid(oid) && !missing_ok)
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_OBJECT),
-				 errmsg("role \"%s\" does not exist", rolname)));
-	return oid;
+	return get_role_oid(rolname, missing_ok);
 }
 
 /*
@@ -5319,44 +5229,12 @@ HeapTuple
 get_rolespec_tuple(const RoleSpec *role)
 {
 	HeapTuple	tuple;
-	Oid			dboid = InvalidOid;
 
 	switch (role->roletype)
 	{
 		case ROLESPEC_CSTRING:
 			Assert(role->rolename);
-			dboid = CurrentUserOwnDboid();
-
-			/*
-			 * Begin - ReqID:SRS-MISC-USER
-			 * Find a specific type of user
-			 */
-			if (DB_ORACLE == database_mode)
-			{
-				tuple = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(role->rolename), 
-										ObjectIdGetDatum(dboid));
-				if (!HeapTupleIsValid(tuple))
-				{
-					tuple = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(role->rolename), 
-										ObjectIdGetDatum(0));
-
-					if(HeapTupleIsValid(tuple) && (get_role_canlogin(role->rolename)))
-					{
-						ReleaseSysCache(tuple);
-						tuple = NULL;
-					}
-				}
-			}
-			else
-				tuple = SearchSysCache2(AUTHNAMEDBOID, 
-										CStringGetDatum(role->rolename), 
-										ObjectIdGetDatum(0));
-			/*
-			 * End - ReqID:SRS-MISC-USER
-			 */
-			
+			tuple = SearchSysCache1(AUTHNAME, CStringGetDatum(role->rolename));
 			if (!HeapTupleIsValid(tuple))
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -5438,102 +5316,6 @@ check_rolespec_name(const RoleSpec *role, const char *detail_msg)
 					 errmsg("role name \"%s\" is reserved",
 							role->rolename)));
 	}
-}
-
-/*
- * get_databaserol_oid ReqID:SRS-MISC-USE
- *
- * get database role oid
- */
-Oid 
-get_databaserol_oid(const RoleSpec *role)
-{
-	Oid			oid = InvalidOid,
-				dboid = InvalidOid;
-
-	if(role->roletype == ROLESPEC_CSTRING)
-		oid = get_databaseuser_oid(role->rolename, dboid);
-	else
-		ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					errmsg("role \"%s\" type is wrong", role->rolename)));	
-
-	return oid;
-}
-
-/*
- * get_databaseuser_oid ReqID:SRS-MISC-USE
- *
- * get database user oid
- */
-Oid 
-get_databaseuser_oid(const char *rolename, Oid dboid)
-{
-	Oid			oid = InvalidOid;
-	Oid			temp_dboid = InvalidOid;
-
-	if(!OidIsValid(dboid))
-	{
-		if(GetUserId())
-			temp_dboid = CurrentUserOwnDboid();
-		if(OidIsValid(temp_dboid))
-			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolename), ObjectIdGetDatum(temp_dboid));
-		else
-			oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-							CStringGetDatum(rolename), ObjectIdGetDatum(MyDatabaseId));
-	}
-	else
-		oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-							CStringGetDatum(rolename), ObjectIdGetDatum(dboid));
-	
-
-	if(!OidIsValid(oid))
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_OBJECT),
-				errmsg("role \"%s\" does not exist", rolename)));		
-
-
-	return oid;
-}
-
-/*
- * get_instancerol_oid ReqID:SRS-MISC-USE
- *
- * get instance role oid
- */
-Oid 
-get_instancerol_oid(const RoleSpec *role)
-{
-	Oid			oid = InvalidOid;
-
-	if(role->roletype == ROLESPEC_CSTRING)
-		oid = get_instanceuser_oid(role->rolename);
-	else
-		ereport(ERROR,
-					(errcode(ERRCODE_UNDEFINED_OBJECT),
-					errmsg("role \"%s\" type is wrong", role->rolename)));
-	return oid;
-}
-
-/*
- * get_instanceuser_oid ReqID:SRS-MISC-USE
- *
- * get instance user oid
- */
-Oid 
-get_instanceuser_oid(const char *rolename)
-{
-	Oid			oid = InvalidOid;
-
-	oid = GetSysCacheOid2(AUTHNAMEDBOID, Anum_pg_authid_oid,
-								CStringGetDatum(rolename), ObjectIdGetDatum(0));
-	if(!OidIsValid(oid))
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_OBJECT),
-				errmsg("role \"%s\" does not exist", rolename)));
-	
-	return oid;
 }
 
 Datum

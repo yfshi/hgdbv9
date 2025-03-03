@@ -718,11 +718,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	char	   *orirelname = NULL;
 	/* End - ReqID:SRS-MYSQL-CASE */
-	/* Begin - ReqID:SRS-SQL-SCHEMA */
-	Oid			objectOwner = OidIsValid(ownerId) ? ownerId : GetUserId();
-	int			save_nestlevel = 0;
-	bool		set_namespace = false;
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	Oid			objectOwner = OidIsValid(ownerId) ? ownerId : GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->relation->relname != NULL)
@@ -767,22 +763,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	namespaceId =
 		RangeVarGetAndCheckCreationNamespace(stmt->relation, NoLock, NULL);
 
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * swith to target namespace
-	 */
-	if (ORA_USER_SCHEMA_ENABLED(GetUserId()))
-	{
-		char *nspname = get_namespace_name(namespaceId);
-
-		objectOwner = get_namespace_owner(namespaceId);
-		save_nestlevel = NewGUCNestLevel();
-		(void) set_config_option("search_path", nspname,
-								 PGC_USERSET, PGC_S_SESSION,
-								 GUC_ACTION_SAVE, true, 0, false);
-	}
-	/* End - ReqID:SRS-SQL-SCHEMA */
+	(void) fit_namespace_owner(namespaceId, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/*
 	 * Security check: disallow creating temp tables from security-restricted
@@ -855,16 +836,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	}
 	else
 		tablespaceId = InvalidOid;
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * still nothing? use the schema's default tablespace
-	 */
-	if (!OidIsValid(tablespaceId) && ORA_PARSER == compatible_db && enable_ora_default_tablespace)
-		tablespaceId = GetNamespaceTablespace(namespaceId, stmt->relation->relpersistence,
-											  partitioned);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* still nothing? use the default */
 	if (!OidIsValid(tablespaceId))
@@ -1532,15 +1503,6 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * visible to anyone else anyway, until commit).
 	 */
 	relation_close(rel, NoLock);
-
-	/*
-	 * Begin - ReqID:SRS-SQL-SCHEMA
-	 *
-	 * Roll back any GUC changes
-	 */
-	if (set_namespace)
-		AtEOXact_GUC(false, save_nestlevel);
-	/* End - ReqID:SRS-SQL-SCHEMA */
 
 	/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 	if(pg_object_create_obj_hook && compatible_db == ORA_PARSER)
@@ -5778,31 +5740,9 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 												(List *) cmd->def, lockmode);
 			break;
 		case AT_ChangeOwner:	/* ALTER OWNER */
-			/*
-			 * Begin - ReqID:SRS-MISC-USER
-			 * Determine the type of user
-			 */
-			switch (cmd->utype)
-			{
-				case DATABASE_USER:
-					ATExecChangeOwner(RelationGetRelid(rel),
-							  get_databaserol_oid(cmd->newowner),
-							  false, lockmode);
-					break;
-				case INSTANCE_USER:
-					ATExecChangeOwner(RelationGetRelid(rel),
-							  get_instancerol_oid(cmd->newowner),
-							  false, lockmode);
-					break;
-				case UNKNOWN_USER:
-					ATExecChangeOwner(RelationGetRelid(rel),
-							  get_rolespec_oid(cmd->newowner, false),
-							  false, lockmode);
-					break;
-			}
-			/*
-			 * End - ReqID:SRS-MISC-USER
-		 	*/
+			ATExecChangeOwner(RelationGetRelid(rel),
+						get_rolespec_oid(cmd->newowner, false),
+						false, lockmode);
 			break;
 		case AT_ClusterOn:		/* CLUSTER ON */
 			address = ATExecClusterOn(rel, cmd->name, lockmode);
