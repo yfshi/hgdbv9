@@ -672,6 +672,31 @@ COPY x FROM '@abs_srcdir@/aaaaaaaaaabbbbbbbbbb/ccccccccccdddddddddd/eeeeeeeeeeff
 DROP TABLE m406;
 -- End - BUG#M0000406
 
+-- Begin - BUG#Z1149
+-- check reference error, if there have bad record, the line number is right
+TRUNCATE x_bad;
+create table p_z1149(pa integer primary key,pb integer,pc integer,pd text);
+insert into p_z1149 values(1,100,100,'a');
+insert into p_z1149 values(2,200,200,'b');
+insert into p_z1149 values(3,300,300,'c');
+insert into p_z1149 values(4,400,400,'d');
+insert into p_z1149 values(5,500,500,'e');
+insert into p_z1149 values(6,600,600,'f');
+
+create table r_z1149(fa integer primary key,fb integer references p_z1149(pa),fc integer);
+
+COPY r_z1149 from '@abs_srcdir@/data/r_z1149.data' with csv delimiter '|' taskid 'z1149' badtable 'x_bad' filename 'r_z1149' sharding 3 current_shard 0;
+SELECT * FROM r_z1149;
+SELECT * FROM x_bad;
+
+COPY r_z1149 from '@abs_srcdir@/data/r_z1149.data' with csv delimiter '|' taskid 'z1149' badtable 'x_bad' filename 'r_z1149' sharding 3 current_shard 2;
+SELECT * FROM r_z1149;
+SELECT * FROM x_bad;
+
+DROP TABLE r_z1149;
+DROP TABLE p_z1149;
+-- End - BUG#Z1149
+
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;

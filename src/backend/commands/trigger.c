@@ -4479,8 +4479,8 @@ AfterTriggerExecute(EState *estate,
 
 			lineno = event->line_no;
 
-			/* if frontend filter the data, cal the line number*/
-			if (estate->copy_src == COPY_FRONTEND && estate->sharding > 1)
+			/* cal the line number */
+			if (estate->sharding > 1)
 			{
 				if (estate->current_shard == 0)
 					line_no = (estate->sharding) * lineno;
