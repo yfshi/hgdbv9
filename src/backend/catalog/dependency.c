@@ -215,6 +215,7 @@ static void findDependentObjects(const ObjectAddress *object,
 								 int flags,
 								 ObjectAddressStack *stack,
 								 ObjectAddresses *targetObjects,
+								 ObjectFunOrPkgSets *dependTypeObjects,	/* BUG#Z1670 */
 								 const ObjectAddresses *pendingObjects,
 								 Relation *depRel);
 static void reportDependentObjects(const ObjectAddresses *targetObjects,
@@ -355,6 +356,9 @@ performDeletion(const ObjectAddress *object,
 	Relation	depRel;
 	ObjectAddresses *targetObjects;
 	bool	need_refinddepobj = false;	/* ReqID:SRS-SQL-FORCEVIEW */
+	ObjectFunOrPkgSets *depTypeObjects = NULL;	/* BUG#Z1670 */
+
+	depTypeObjects = ObjectFunOrPkgSetsInit();	/* BUG#Z1670 */
 
 	/*
 	 * We save some cycles by opening pg_depend just once and passing the
@@ -379,6 +383,7 @@ performDeletion(const ObjectAddress *object,
 						 flags,
 						 NULL,	/* empty stack */
 						 targetObjects,
+						 depTypeObjects,	/* BUG#Z1670 */
 						 NULL,	/* no pendingObjects */
 						 &depRel);
 
@@ -396,16 +401,26 @@ performDeletion(const ObjectAddress *object,
 	{
 		free_object_addresses(targetObjects);
 		targetObjects = new_object_addresses();
+		/* Begin - BUG#Z1670 */
+		ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+		depTypeObjects = ObjectFunOrPkgSetsInit();
+		/* End - BUG#Z1670 */
 
 		findDependentObjects(object,
 							 DEPFLAG_ORIGINAL,
 							 flags,
 							 NULL,	/* empty stack */
 							 targetObjects,
+							 depTypeObjects,	/* BUG#Z1670 */
 							 NULL,	/* no pendingObjects */
 							 &depRel);
 	}
 	/* End - ReqID:SRS-SQL-FORCEVIEW */
+
+	/* Begin - BUG#Z1670 */
+	ObjectFunOrPkgSetsProcess(depTypeObjects);
+	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+	/* End - BUG#Z1670 */
 
 	/* do the deed */
 	deleteObjectsInList(targetObjects, &depRel, flags);
@@ -433,10 +448,13 @@ performMultipleDeletions(const ObjectAddresses *objects,
 	ObjectAddresses *targetObjects;
 	int			i;
 	bool	need_refinddepobj = false;	/* ReqID:SRS-SQL-FORCEVIEW */
+	ObjectFunOrPkgSets *depTypeObjects = NULL;	/* BUG#Z1670 */
 
 	/* No work if no objects... */
 	if (objects->numrefs <= 0)
 		return;
+
+	depTypeObjects = ObjectFunOrPkgSetsInit();	/* BUG#Z1670 */
 
 	/*
 	 * We save some cycles by opening pg_depend just once and passing the
@@ -469,6 +487,7 @@ performMultipleDeletions(const ObjectAddresses *objects,
 							 flags,
 							 NULL,	/* empty stack */
 							 targetObjects,
+							 depTypeObjects,	/* BUG#Z1670 */
 							 objects,
 							 &depRel);
 	}
@@ -490,6 +509,10 @@ performMultipleDeletions(const ObjectAddresses *objects,
 	{
 		free_object_addresses(targetObjects);
 		targetObjects = new_object_addresses();
+		/* Begin - BUG#Z1670 */
+		ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+		depTypeObjects = ObjectFunOrPkgSetsInit();
+		/* End - BUG#Z1670 */
 
 		for (i = 0; i < objects->numrefs; i++)
 		{
@@ -506,11 +529,17 @@ performMultipleDeletions(const ObjectAddresses *objects,
 								 flags,
 								 NULL,	/* empty stack */
 								 targetObjects,
+								 depTypeObjects,	/* BUG#Z1670 */
 								 objects,
 								 &depRel);
 		}
 	}
 	/* End - ReqID:SRS-SQL-FORCEVIEW */
+
+	/* Begin - BUG#Z1670 */
+	ObjectFunOrPkgSetsProcess(depTypeObjects);
+	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+	/* End - BUG#Z1670 */
 
 	/* do the deed */
 	deleteObjectsInList(targetObjects, &depRel, flags);
@@ -560,6 +589,7 @@ findDependentObjects(const ObjectAddress *object,
 					 int flags,
 					 ObjectAddressStack *stack,
 					 ObjectAddresses *targetObjects,
+					 ObjectFunOrPkgSets *dependTypeObjects,
 					 const ObjectAddresses *pendingObjects,
 					 Relation *depRel)
 {
@@ -575,11 +605,6 @@ findDependentObjects(const ObjectAddress *object,
 	int			maxDependentObjects;
 	ObjectAddressStack mystack;
 	ObjectAddressExtra extra;
-	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	ObjectFunOrPkg		*dependentFuncPkgOids;
-	int			numDependentFuncPkgOids;
-	int			maxDependentFuncPkgOids;
-	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * If the target object is already being visited in an outer recursion
@@ -819,6 +844,7 @@ findDependentObjects(const ObjectAddress *object,
 									 flags,
 									 stack,
 									 targetObjects,
+									 dependTypeObjects,	/* BUG#Z1670 */
 									 pendingObjects,
 									 depRel);
 
@@ -939,14 +965,6 @@ findDependentObjects(const ObjectAddress *object,
 	dependentObjects = (ObjectAddressAndFlags *)
 		palloc(maxDependentObjects * sizeof(ObjectAddressAndFlags));
 	numDependentObjects = 0;
-
-	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
-	dependentFuncPkgOids = (ObjectFunOrPkg *)
-		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-	numDependentFuncPkgOids = 0;
-	/* End - ReqID:SRS-PLSQL-TYPE */
-
 
 	ScanKeyInit(&key[0],
 				Anum_pg_depend_refclassid,
@@ -1072,18 +1090,7 @@ findDependentObjects(const ObjectAddress *object,
 					if (foundDep->deptype == DEPENDENCY_TYPE)
 					{
 						/* Add function Oid to the pending-oids list */
-						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-						{
-							/* enlarge array if needed */
-							maxDependentFuncPkgOids *= 2;
-							dependentFuncPkgOids = (ObjectFunOrPkg *)
-								repalloc(dependentFuncPkgOids,
-										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-						}
-
-						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
-						numDependentFuncPkgOids++;
+						ObjectFunOrPkgSetsAppend(dependTypeObjects, foundDep->objid, OCLASS_PROC);	/* BUG#Z1670 */
 
 						/* delete the tuple */
 						CatalogTupleDelete(*depRel, &tup->t_self);
@@ -1095,18 +1102,7 @@ findDependentObjects(const ObjectAddress *object,
 					if (foundDep->deptype == DEPENDENCY_TYPE)
 					{
 						/* Add package Oid to the pending-oids list */
-						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-						{
-							/* enlarge array if needed */
-							maxDependentFuncPkgOids *= 2;
-							dependentFuncPkgOids = (ObjectFunOrPkg *)
-								repalloc(dependentFuncPkgOids,
-										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-						}
-
-						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
-						numDependentFuncPkgOids++;
+						ObjectFunOrPkgSetsAppend(dependTypeObjects, foundDep->objid, OCLASS_PACKAGE);	/* BUG#Z1670 */
 
 						/* delete the tuple */
 						CatalogTupleDelete(*depRel, &tup->t_self);
@@ -1117,18 +1113,7 @@ findDependentObjects(const ObjectAddress *object,
 					if (foundDep->deptype == DEPENDENCY_TYPE)
 					{
 						/* Add package body Oid to the pending-oids list */
-						if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-						{
-							/* enlarge array if needed */
-							maxDependentFuncPkgOids *= 2;
-							dependentFuncPkgOids = (ObjectFunOrPkg *)
-								repalloc(dependentFuncPkgOids,
-										 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-						}
-
-						dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-						dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
-						numDependentFuncPkgOids++;
+						ObjectFunOrPkgSetsAppend(dependTypeObjects, foundDep->objid, OCLASS_PACKAGE_BODY);	/* BUG#Z1670 */
 
 						/* delete the tuple */
 						CatalogTupleDelete(*depRel, &tup->t_self);
@@ -1186,67 +1171,12 @@ findDependentObjects(const ObjectAddress *object,
 							 flags,
 							 &mystack,
 							 targetObjects,
+							 dependTypeObjects,	/* BUG#Z1670 */
 							 pendingObjects,
 							 depRel);
 	}
 
 	pfree(dependentObjects);
-
-	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	/* sort them, just in case OID counter wrapped from high to low */
-	if (numDependentFuncPkgOids > 1)
-	{
-		/* Sort and de-dup OID arrays, so we can use binary search. */
-		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
-				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
-										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-	}
-
-	/*
-	 * Now recurse to the dependent funciton which parameters datatype
-	 * or return datatype reference %TYPE or %ROWTYPE.
-	 */
-	for (int i = 0; i < numDependentFuncPkgOids; i++)
-	{
-		Oid objectId = dependentFuncPkgOids[i].objectId;
-
-		switch (dependentFuncPkgOids[i].flags)
-		{
-			case OCLASS_PROC:
-				{
-					/* invalidate function */
-					plisql_internel_funcs_init();
-					plisql_internal_funcs.function_free(objectId);
-
-					/* change the pg_proc prostatus to PROSTATUS_NA */
-					change_func_prostatus(objectId, PROSTATUS_NA);
-				}
-				break;
-			case OCLASS_PACKAGE:
-				{
-					/* invalidate package */
-					/* Begin - BUG#M0000183 */
-					InvalidPackage(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-			case OCLASS_PACKAGE_BODY:
-				{
-					/* invalidate package body */
-					/* Begin - BUG#M0000183 */
-					InvalidPackageBody(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	pfree(dependentFuncPkgOids);
-	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
 	 * Finally, we can add the target object to targetObjects.  Be careful to
@@ -2918,6 +2848,135 @@ object_funpkgoid_comparator(const void *a, const void *b)
 		return 1;
 
 	return 0;
+}
+
+/*
+ * BUG#Z1670
+ *
+ * init a sets to store all "ObjectFunOrPkg" items.
+ */
+ObjectFunOrPkgSets *
+ObjectFunOrPkgSetsInit(void)
+{
+	ObjectFunOrPkgSets *set = (ObjectFunOrPkgSets *) palloc(sizeof(ObjectFunOrPkgSets));
+
+	set->num = 0;
+	set->maxnum = 128;
+	set->objects = (ObjectFunOrPkg *)
+		palloc(set->maxnum * sizeof(ObjectFunOrPkg));
+
+	return set;
+}
+
+/*
+ * BUG#Z1670
+ *
+ *	destory a "ObjectFunOrPkg" sets.
+ */
+void
+ObjectFunOrPkgSetsDestroy(ObjectFunOrPkgSets **set)
+{
+	if (set == NULL || *set == NULL)
+		return;
+
+	if ((*set)->maxnum > 0)
+		pfree((*set)->objects);
+
+	pfree(*set);
+	*set = NULL;
+}
+
+/*
+ * BUG#Z1670
+ *
+ * insert a object to "ObjectFunOrPkg" sets.
+ */
+void
+ObjectFunOrPkgSetsAppend(ObjectFunOrPkgSets *set, Oid objectId, ObjectClass flags)
+{
+	Assert(set != NULL);
+
+	if (set->num >= set->maxnum)
+	{
+		set->maxnum *= 2;
+		set->objects = (ObjectFunOrPkg *)
+			repalloc(set->objects, set->maxnum * sizeof(ObjectFunOrPkg));
+	}
+
+	set->objects[set->num].objectId = objectId;
+	set->objects[set->num].flags = flags;
+	set->num++;
+}
+
+/*
+ * BUG#Z1670
+ *
+ * process all "ObjectFunOrPkg" items in sets.
+ */
+void
+ObjectFunOrPkgSetsProcess(ObjectFunOrPkgSets *set)
+{
+	int		i;
+	int		count = 0;
+
+	Assert(set != NULL);
+
+	/* sort them, just in case OID counter wrapped from high to low */
+	if (set->num > 1)
+	{
+		/* Sort and de-dup OID arrays, so we can use binary search. */
+		pg_qsort(set->objects, set->num, sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+		set->num = qunique(set->objects, set->num, sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
+	}
+
+	for (i = 0; i < set->num; i++)
+	{
+		Oid			objectId = set->objects[i].objectId;
+		ObjectClass	flags = set->objects[i].flags;
+
+		switch (flags)
+		{
+			case OCLASS_PROC:
+				{
+					/* invalidate function */
+					plisql_internel_funcs_init();
+					plisql_internal_funcs.function_free(objectId);
+
+					/* change the pg_proc prostatus to PROSTATUS_NA */
+					change_func_prostatus(objectId, PROSTATUS_NA);
+					count++;
+				}
+				break;
+			case OCLASS_PACKAGE:
+				{
+					/* invalidate package */
+					/* Begin - BUG#M0000183 */
+					InvalidPackage(objectId);
+					/* End - BUG#M0000183 */
+					count++;
+				}
+				break;
+			case OCLASS_PACKAGE_BODY:
+				{
+					/* invalidate package body */
+					/* Begin - BUG#M0000183 */
+					InvalidPackageBody(objectId);
+					/* End - BUG#M0000183 */
+					count++;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	/*
+	 * increment command id to allow multiple updates of the same tuple
+	 * in a single statment
+	 */
+	if (count > 0)
+		CommandCounterIncrement();
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
 

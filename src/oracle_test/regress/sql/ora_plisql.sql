@@ -2788,3 +2788,23 @@ select * from get_parameter_descr('insert into t_bug453 values(1)');
 
 drop table t_bug453;
 /* End - BUG#M00000453 */
+
+/* Begin -BUG#Z1670 */
+create schema bugz1670;
+create table bugz1670.t1(id int);
+create table bugz1670.t2(id int);
+
+
+create or replace function bugz1670.testfunc return void is
+declare
+	line1 bugz1670.t1%rowtype;
+	line2 bugz1670.t2%rowtype;
+begin
+select * into line1 from bugz1670.t1 limit 1;
+select * into line2 from bugz1670.t2 limit 1;
+end;
+/
+
+drop schema bugz1670;
+drop schema bugz1670 cascade;
+/* End - BUG#Z1670 */

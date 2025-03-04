@@ -13541,9 +13541,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	HeapTuple	depTup;
 	ObjectAddress address;
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	ObjectFunOrPkg		*dependentFuncPkgOids;
-	int			numDependentFuncPkgOids;
-	int			maxDependentFuncPkgOids;
+	ObjectFunOrPkgSets *depTypeObjects = NULL;	/* BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
@@ -13679,10 +13677,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 		defaultexpr = NULL;
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
-	dependentFuncPkgOids = (ObjectFunOrPkg *)
-		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-	numDependentFuncPkgOids = 0;
+	depTypeObjects = ObjectFunOrPkgSetsInit();	/* BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
@@ -13900,18 +13895,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add function Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PROC);	/* BUG#Z1670 */
 				}
 				else
 				/* End - ReqID:SRS-PLSQL-TYPE */
@@ -13976,18 +13960,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package body Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE_BODY);	/* BUG#Z1670 */
 				}
 				else
 				/* End - ReqID:SRS-PLSQL-TYPE */
@@ -14010,18 +13983,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				if (ORA_PARSER == compatible_db && foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE);	/* BUG#Z1670 */
 				}
 				else
 				/* End - ReqID:SRS-PLSQL-TYPE */
@@ -14099,59 +14061,10 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	table_close(depRel, RowExclusiveLock);
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	/* sort them, just in case OID counter wrapped from high to low */
-	if (numDependentFuncPkgOids > 1)
-	{
-		/* Sort and de-dup OID arrays, so we can use binary search. */
-		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
-				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
-										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-	}
-
-	/*
-	 * Now recurse to the dependent funciton which parameters datatype
-	 * or return datatype reference %TYPE or %ROWTYPE.
-	 */
-	for (int i = 0; i < numDependentFuncPkgOids; i++)
-	{
-		Oid objectId = dependentFuncPkgOids[i].objectId;
-
-		switch (dependentFuncPkgOids[i].flags)
-		{
-			case OCLASS_PROC:
-				{
-					/* invalidate function */
-					plisql_internel_funcs_init();
-					plisql_internal_funcs.function_free(objectId);
-
-					/* change the pg_proc prostatus to PROSTATUS_NA */
-					change_func_prostatus(objectId, PROSTATUS_NA);
-				}
-				break;
-			case OCLASS_PACKAGE:
-				{
-					/* invalidate package */
-					/* Begin - BUG#M0000183 */
-					InvalidPackage(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-			case OCLASS_PACKAGE_BODY:
-				{
-					/* invalidate package body */
-					/* Begin - BUG#M0000183 */
-					InvalidPackageBody(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	pfree(dependentFuncPkgOids);
+	/* Begin - BUG#Z1670 */
+	ObjectFunOrPkgSetsProcess(depTypeObjects);
+	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+	/* End - BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	/*
@@ -20893,14 +20806,9 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 {
 	HeapTuple	depTup;
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	ObjectFunOrPkg		*dependentFuncPkgOids;
-	int			numDependentFuncPkgOids;
-	int			maxDependentFuncPkgOids;
+	ObjectFunOrPkgSets *depTypeObjects = NULL;	/* BUG#Z1670 */
 
-	maxDependentFuncPkgOids = 128;	/* arbitrary initial allocation */
-	dependentFuncPkgOids = (ObjectFunOrPkg *)
-		palloc(maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-	numDependentFuncPkgOids = 0;
+	depTypeObjects = ObjectFunOrPkgSetsInit();	/* BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	while (HeapTupleIsValid(depTup = systable_getnext(scan)))
@@ -20922,18 +20830,7 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 				if (foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add function Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PROC;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PROC); /* BUG#Z1670 */
 
 					/* Delete the depend tuples */
 					CatalogTupleDelete(depRel, &depTup->t_self);
@@ -20945,18 +20842,7 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 				if (foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package body Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE_BODY;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE_BODY); /* BUG#Z1670 */
 
 					/* Delete the depend tuples */
 					CatalogTupleDelete(depRel, &depTup->t_self);
@@ -20968,18 +20854,7 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 				if (foundDep->deptype == DEPENDENCY_TYPE)
 				{
 					/* Add package Oid to the pending-oids list */
-					if (numDependentFuncPkgOids >= maxDependentFuncPkgOids)
-					{
-						/* enlarge array if needed */
-						maxDependentFuncPkgOids *= 2;
-						dependentFuncPkgOids = (ObjectFunOrPkg *)
-							repalloc(dependentFuncPkgOids,
-									 maxDependentFuncPkgOids * sizeof(ObjectFunOrPkg));
-					}
-
-					dependentFuncPkgOids[numDependentFuncPkgOids].objectId = foundDep->objid;
-					dependentFuncPkgOids[numDependentFuncPkgOids].flags = OCLASS_PACKAGE;
-					numDependentFuncPkgOids++;
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_PACKAGE);  /* BUG#Z1670 */
 
 					/* Delete the depend tuples */
 					CatalogTupleDelete(depRel, &depTup->t_self);
@@ -20991,59 +20866,10 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 	}
 
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
-	/* sort them, just in case OID counter wrapped from high to low */
-	if (numDependentFuncPkgOids > 1)
-	{
-		/* Sort and de-dup OID arrays, so we can use binary search. */
-		pg_qsort(dependentFuncPkgOids, numDependentFuncPkgOids,
-				 sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-		numDependentFuncPkgOids = qunique((void *)dependentFuncPkgOids, numDependentFuncPkgOids,
-										sizeof(ObjectFunOrPkg), object_funpkgoid_comparator);
-	}
-
-	/*
-	 * Now recurse to the dependent funciton which parameters datatype
-	 * or return datatype reference %TYPE or %ROWTYPE.
-	 */
-	for (int i = 0; i < numDependentFuncPkgOids; i++)
-	{
-		Oid objectId = dependentFuncPkgOids[i].objectId;
-
-		switch (dependentFuncPkgOids[i].flags)
-		{
-			case OCLASS_PROC:
-				{
-					/* invalidate function */
-					plisql_internel_funcs_init();
-					plisql_internal_funcs.function_free(objectId);
-
-					/* change the pg_proc prostatus to PROSTATUS_NA */
-					change_func_prostatus(objectId, PROSTATUS_NA);
-				}
-				break;
-			case OCLASS_PACKAGE:
-				{
-					/* invalidate package */
-					/* Begin - BUG#M0000183 */
-					InvalidPackage(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-			case OCLASS_PACKAGE_BODY:
-				{
-					/* invalidate package body */
-					/* Begin - BUG#M0000183 */
-					InvalidPackageBody(objectId);
-					/* End - BUG#M0000183 */
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	pfree(dependentFuncPkgOids);
+	/* Begin - BUG#Z1670 */
+	ObjectFunOrPkgSetsProcess(depTypeObjects);
+	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
+	/* End - BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
 }
 /* End - ReqID:SRS-PLSQL-TYPE */

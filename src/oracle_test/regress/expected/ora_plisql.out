@@ -3915,3 +3915,28 @@ select * from get_parameter_descr('insert into t_bug453 values(1)');
 
 drop table t_bug453;
 /* End - BUG#M00000453 */
+/* Begin -BUG#Z1670 */
+create schema bugz1670;
+create table bugz1670.t1(id int);
+create table bugz1670.t2(id int);
+create or replace function bugz1670.testfunc return void is
+declare
+	line1 bugz1670.t1%rowtype;
+	line2 bugz1670.t2%rowtype;
+begin
+select * into line1 from bugz1670.t1 limit 1;
+select * into line2 from bugz1670.t2 limit 1;
+end;
+/
+drop schema bugz1670;
+ERROR:  cannot drop schema bugz1670 because other objects depend on it
+DETAIL:  table bugz1670.t1 depends on schema bugz1670
+table bugz1670.t2 depends on schema bugz1670
+function bugz1670.testfunc() depends on schema bugz1670
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+drop schema bugz1670 cascade;
+NOTICE:  drop cascades to 3 other objects
+DETAIL:  drop cascades to table bugz1670.t1
+drop cascades to table bugz1670.t2
+drop cascades to function bugz1670.testfunc()
+/* End - BUG#Z1670 */
