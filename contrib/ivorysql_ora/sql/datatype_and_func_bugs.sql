@@ -132,3 +132,38 @@ drop table hashpart_datetime;
 drop table hashpart_interval;
 drop table hashpart_character;
 /* End - BUG:M0000085 */
+
+
+--bug#Z4327
+CREATE TABLE hh_adds_static_day (
+    id SERIAL PRIMARY KEY,
+    work_hour INT,
+    create_time TIMESTAMP
+);
+
+ INSERT INTO hh_adds_static_day (work_hour, create_time)
+SELECT
+    (RANDOM() * 16)::INT AS work_hour,
+    '2020-09-25 08:00:00'::timestamp + (i * INTERVAL '1' day) AS create_time
+FROM generate_series(0, 1999999) AS s(i);
+
+
+-- encourage use of parallel plans
+set parallel_setup_cost=0;
+set parallel_tuple_cost=0;
+set min_parallel_table_scan_size=0;
+set max_parallel_workers_per_gather=4;
+
+analyze hh_adds_static_day;
+
+EXPLAIN (costs off) WITH result AS (
+    SELECT sum(work_hour) AS work_hour_sum,
+           TO_DATE('2020-10-10','YYYY-MM-DD') - INTERVAL '10' DAY AS create_time
+    FROM hh_adds_static_day
+    WHERE create_time <= TO_DATE('2020-10-10','YYYY-MM-DD') - INTERVAL '10' DAY
+    GROUP BY TO_DATE('2020-10-10','YYYY-MM-DD') - INTERVAL '10' DAY
+)
+SELECT create_time, work_hour_sum FROM result;
+
+--clean data
+drop table hh_adds_static_day;

@@ -2808,3 +2808,559 @@ end;
 drop schema bugz1670;
 drop schema bugz1670 cascade;
 /* End - BUG#Z1670 */
+
+
+--bug#Z4225
+create table t1 (id int, name varchar(100), age int invisible);
+
+insert into t1 (id, name, age) values (1, 'xiexie', 23);
+
+
+--ok
+declare
+  v_t1 t1%rowtype;
+begin
+  select * into v_t1 from t1;
+  raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+begin
+  select id,name,age into v_t1 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+  v_t2 integer;
+begin
+  select id,name,age into v_t1,v_t2 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--ok
+declare
+  v_t1 t1%rowtype;
+begin
+  select id,name into v_t1 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+begin
+  select * into v_t1 from t1;
+  raise info 'age :=  %',v_t1.age;
+end;
+/
+
+
+
+--age failed
+declare
+	v_t1 t1%rowtype;
+begin
+	select * into v_t1 from t1 where id=1;
+	raise notice 'v_t1.id: %', v_t1.id;
+	raise notice ' v_t1.name: %', v_t1.name;
+	raise notice 'v_t1.age: %', v_t1.age;
+end;
+/
+
+
+--another table
+create table t2(id integer,name varchar2(256));
+
+insert into t2 values(1,'sfjsjf');
+
+--ok
+declare
+  var1 t2%rowtype;
+begin
+  select * into var1 from t1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+
+--ok
+declare
+  var1 t1%rowtype;
+  var2 t2%rowtype;
+begin
+  var1.id := 23;
+  var1.name := 'xiexie';
+  var2 := var1;
+  var2.id := var2.id + 1;
+  var2.name := var1.name;
+  var1 := var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+end;
+/
+
+
+drop table t1;
+drop table t2;
+
+
+
+
+create table t1 (id int,  age int invisible, name varchar(100));
+
+insert into t1 (id, name, age) values (1, 'xiexie', 23);
+
+
+--ok
+declare
+  v_t1 t1%rowtype;
+begin
+  select * into v_t1 from t1;
+  raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+begin
+  select id,name,age into v_t1 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+  v_t2 integer;
+begin
+  select id,name,age into v_t1,v_t2 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--ok
+declare
+  v_t1 t1%rowtype;
+begin
+  select id,name into v_t1 from t1;
+   raise info 'id :=  %,name := %', v_t1.id ,v_t1.name;
+end;
+/
+
+
+--failed
+declare
+  v_t1 t1%rowtype;
+begin
+  select * into v_t1 from t1;
+  raise info 'age :=  %',v_t1.age;
+end;
+/
+
+
+
+--age failed
+declare
+	v_t1 t1%rowtype;
+begin
+	select * into v_t1 from t1 where id=1;
+	raise notice 'v_t1.id: %', v_t1.id;
+	raise notice ' v_t1.name: %', v_t1.name;
+	raise notice 'v_t1.age: %', v_t1.age;
+end;
+/
+
+
+--another table
+create table t2(id integer,name varchar2(256));
+
+insert into t2 values(1,'sfjsjf');
+
+--ok
+declare
+  var1 t2%rowtype;
+begin
+  select * into var1 from t1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+
+--ok
+declare
+  var1 t1%rowtype;
+  var2 t2%rowtype;
+begin
+  var1.id := 23;
+  var1.name := 'xiexie';
+  var2 := var1;
+  var2.id := var2.id + 1;
+  var2.name := var1.name;
+  var1 := var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+end;
+/
+
+
+drop table t1;
+drop table t2;
+
+create table t1 (id int,  age int invisible, name varchar(100));
+
+insert into t1 (id, name, age) values (1, 'sfjsf', 23);
+
+
+
+create table t2 (id int, name varchar(100), age int invisible);
+
+insert into t2 (id, name, age) values (2, 'welcome to', 24);
+
+--ok
+declare
+  var1 t2%rowtype;
+begin
+  select * into var1 from t1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+  var2 t2%rowtype;
+begin
+  var1.id := 23;
+  var1.name := 'xiexie';
+  var2 := var1;
+  var2.id := var2.id + 1;
+  var2.name := var1.name;
+  var1 := var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+end;
+/
+
+
+--ok
+declare
+  cursor c1 is select * from t1;
+  cursor c2 is select * from t2;
+  var1 c1%rowtype;
+  var2 c2%rowtype;
+begin
+  open c1;
+  open c2;
+  fetch c1 into var1;
+  fetch c2 into var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+  open c1;
+  open c2;
+  fetch c1 into var2;
+  fetch c2 into var1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t1;
+  insert into t1 values var1;
+end;
+/
+
+--2 rows
+select id,age from t1 order by id,age;
+
+
+delete from t1;
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  insert into t1 values var1;
+end;
+/
+
+--1 row
+select id,name,age from t1;
+
+drop table t1;
+drop table t2;
+
+
+create table t1 (id int,  age varchar2(256) invisible, name varchar(100));
+
+insert into t1 (id, name, age) values (1, 'sfjsf', 'welcome to beijing');
+
+
+
+create table t2 (id int, name varchar(100), age varchar2(256) invisible);
+
+insert into t2 (id, name, age) values (2, 'welcome to', 'ok weclome to');
+
+--ok
+declare
+  var1 t2%rowtype;
+begin
+  select * into var1 from t1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+  var2 t2%rowtype;
+begin
+  var1.id := 23;
+  var1.name := 'xiexie';
+  var2 := var1;
+  var2.id := var2.id + 1;
+  var2.name := var1.name;
+  var1 := var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+end;
+/
+
+
+--ok
+declare
+  cursor c1 is select * from t1;
+  cursor c2 is select * from t2;
+  var1 c1%rowtype;
+  var2 c2%rowtype;
+begin
+  open c1;
+  open c2;
+  fetch c1 into var1;
+  fetch c2 into var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+  open c1;
+  open c2;
+  fetch c1 into var2;
+  fetch c2 into var1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t1;
+  insert into t1 values var1;
+end;
+/
+
+--2 rows
+select id,age from t1 order by id,age;
+
+
+delete from t1;
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  insert into t1 values var1;
+end;
+/
+
+--1 row
+select id,name,age from t1;
+
+drop table t1;
+drop table t2;
+
+
+---test droppped COLUMNS
+create table t1 (id2 integer,id int,  age varchar2(256) invisible, name varchar(100));
+
+insert into t1 (id2,id, name, age) values (1,1, 'sfjsf', 'welcome to beijing');
+
+
+create table t2 (id int, name varchar(100), age varchar2(256) invisible, name1 varchar2(256));
+
+insert into t2 (id, name, age,name1) values (2, 'welcome to', 'ok weclome to', 'testdrop');
+
+--drop column
+alter table t1 drop column id2;
+alter table t2 drop column name1;
+
+--ok
+declare
+  var1 t2%rowtype;
+begin
+  select * into var1 from t1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+  var2 t2%rowtype;
+begin
+  var1.id := 23;
+  var1.name := 'xiexie';
+  var2 := var1;
+  var2.id := var2.id + 1;
+  var2.name := var1.name;
+  var1 := var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+end;
+/
+
+
+--ok
+declare
+  cursor c1 is select * from t1;
+  cursor c2 is select * from t2;
+  var1 c1%rowtype;
+  var2 c2%rowtype;
+begin
+  open c1;
+  open c2;
+  fetch c1 into var1;
+  fetch c2 into var2;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+  open c1;
+  open c2;
+  fetch c1 into var2;
+  fetch c2 into var1;
+  raise info 'id :=  %,name := %', var1.id ,var1.name;
+  raise info 'id :=  %,name := %', var2.id ,var2.name;
+  close c1;
+  close c2;
+end;
+/
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t1;
+  insert into t1 values var1;
+end;
+/
+
+--2 rows
+select id,age from t1 order by id,age;
+
+
+delete from t1;
+
+
+--ok
+declare
+  var1 t1%rowtype;
+begin
+  select * into var1 from t2;
+  insert into t1 values var1;
+end;
+/
+
+--1 row
+select id,name,age from t1;
+
+drop table t1;
+drop table t2;

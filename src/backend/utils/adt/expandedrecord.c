@@ -1287,6 +1287,12 @@ expanded_record_set_fields(ExpandedRecordHeader *erh,
 		if (attr->attisdropped)
 			continue;
 
+		/* Begin - BUG#Z00004225 */
+		/* ignore invisble col */
+		if (!attr->attisvisible)
+			continue;
+		/* End - BUG#Z00004225 */
+
 		newValue = newValues[fnumber];
 		isnull = isnulls[fnumber];
 
