@@ -145,6 +145,12 @@
 #undef IVY_MY_GUC_FUNC_DEFINE
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
+/* Begin - BUG#Z1444 */
+#include "utils/syscache.h"
+#include "mysql_parser/mys_case_sensitive.h"
+#include "catalog/pg_namespace.h"
+/* End - BUG#Z1444 */
+
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
 #endif
@@ -9125,6 +9131,32 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 			if (stmt->is_local)
 				WarnNoTransactionBlock(isTopLevel, "SET LOCAL");
 
+			/* Begin - BUG#Z1444 */
+			if (stmt->is_use && DB_MYSQL == compatible_db && list_length(stmt->args) == 1)
+			{
+				Node   *con = (Node *)linitial(stmt->args);
+				char   *nspname = NULL;
+				Oid		nspoid = InvalidOid;
+				if (IsA(con, A_Const))
+				{
+					A_Const   *cnst = (A_Const *)con;
+					if (cnst->val.type == T_String)
+					{
+						nspname = strVal(&cnst->val);
+						nspoid = GetSysCacheOid1(NAMESPACENAME, Anum_pg_namespace_oid,
+												 CStringGetDatum(nspname));
+						/* Begin - ReqID:SRS-MYSQL-CASE */
+						if (mysql_getoid_hook && !OidIsValid(nspoid))
+							nspoid = mysql_getoid_hook(nspname);
+						/* End - ReqID:SRS-MYSQL-CASE */
+						if (!OidIsValid(nspoid))
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_SCHEMA),
+									 errmsg("Unknown database %s", nspname)));
+					}
+				}
+			}
+			/* End - BUG#Z1444 */
 			(void) set_config_option(stmt->name,
 									 ExtractSetVariableArgs(stmt),
 									 (superuser() ? PGC_SUSET : PGC_USERSET),
