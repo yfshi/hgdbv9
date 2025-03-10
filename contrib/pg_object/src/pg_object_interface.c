@@ -153,26 +153,15 @@ void pg_object_createobj(char *objname, Oid objnsp, bool replace, char objkind,
 		 */
 		if (!replace)
 		{
-			Datum	val;
-			bool	isNull;
-			Name	sname;
-			char	*snamestr;
+			/* Begin - BUG#Z00004347 */
+			Form_pg_object object_struct = (Form_pg_object) GETSTRUCT(oldtuple);
 
-			val = heap_getattr(oldtuple,
-							   Anum_pg_object_objname,
-							   RelationGetDescr(rel),
-							   &isNull);
-			sname = DatumGetName(val);
-			snamestr = pstrdup(NameStr(*sname));
-			val = heap_getattr(oldtuple,
-							   Anum_pg_object_obj_oid,
-							   RelationGetDescr(rel),
-							   &isNull);
 			ereport(ERROR,
 					(errcode(ERRCODE_DUPLICATE_FUNCTION),
 					 errmsg("originobject \"%s\" already exists, oid  = %d; newobject \"%s\", oid  = %d. \n",
-							snamestr, DatumGetObjectId(val),
+							object_struct->objname.data, object_struct->obj_oid,
 							objname, address.objectId)));
+			/* End - BUG#Z00004347 */
 		}
 		else
 		{
@@ -268,7 +257,7 @@ void pg_object_alterobj(ObjectAddress address, char *newname, Oid newschema, Jso
 	{
 		namestrcpy(&newprocname, pstrdup(newname));
 
-		values[Anum_pg_object_objname - 1] = PointerGetDatum(&newprocname);
+		values[Anum_pg_object_objname - 1] = NameGetDatum(&newprocname); /* BUG#Z00004347 */
 		replaces[Anum_pg_object_objname - 1] = true;
 	}
 
@@ -425,8 +414,8 @@ PgObjectInfo get_object_origin_info(ObjectAddress address)
 	HeapTuple	tup;
 	Datum		val;
 	bool		isNull;
-	Timestamp	timestamp;
 	PgObjectInfo objinfo;
+	Form_pg_object struct_object; /* BUG#Z00004347 */
 
 	tup = SearchSysCache3(OBJECTREFCLASSIDOIDSUBID,
 						  ObjectIdGetDatum(address.classId),
@@ -437,28 +426,19 @@ PgObjectInfo get_object_origin_info(ObjectAddress address)
 
 	objinfo = (pg_object_ori_infor *)palloc(sizeof(pg_object_ori_infor));
 
+	/* Begin - BUG#Z00004347 */
+	struct_object = (Form_pg_object) GETSTRUCT(tup);
+
 	/* get object name */
-	val = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tup,
-						  Anum_pg_object_objname,
-						  &isNull);
-	if (!isNull)
-		objinfo->oriname = pstrdup(NameStr(*DatumGetName(val)));
+	objinfo->oriname = pstrdup(struct_object->objname.data);
 
 	/* get object schema */
-	val = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tup,
-						  Anum_pg_object_schemaoid,
-						  &isNull);
-	if (!isNull)
-		objinfo->orischema = DatumGetObjectId(val);
+	objinfo->orischema = struct_object->schemaoid;
 
 	/* get object modify time */
-	val = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tup,
-						  Anum_pg_object_modified,
-						  &isNull);
-	if (!isNull)
 	{
-		timestamp = DatumGetTimestamp(val);
-		objinfo->orimodifytime = &timestamp;
+		objinfo->orimodifytime = palloc(sizeof(Timestamp));
+		*objinfo->orimodifytime = struct_object->modified;
 	}
 
 	/* get object option */
@@ -470,7 +450,8 @@ PgObjectInfo get_object_origin_info(ObjectAddress address)
 	if (isNull)
 		objinfo->orioption = NULL;
 	else
-		objinfo->orioption = DatumGetJsonbP(val);
+		objinfo->orioption = DatumGetJsonbPCopy(val);
+	/* End - BUG#Z00004347 */
 
 	ReleaseSysCache(tup);
 

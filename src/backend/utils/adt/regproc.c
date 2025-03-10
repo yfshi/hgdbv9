@@ -1146,22 +1146,6 @@ regclassout(PG_FUNCTION_ARGS)
 			char	   *objrelschname = NULL;
 			/* End - ReqID:SRS-MYSQL-CASE */
 
-			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
-			{
-				ObjectAddress address;
-
-				ObjectAddressSet(address, RelationRelationId, classid);
-				mysql_get_objnameinfo_hook(address, &objrelname, &objrelschname);
-				if (objrelname != NULL && classname != NULL)
-				{
-					if (strcmp(objrelname, classname) &&
-						!pg_strcasecmp(objrelname, classname))
-						classname = objrelname;
-				}
-			}
-			/* End - ReqID:SRS-MYSQL-CASE */
-
 			/*
 			 * Would this class be found by regclassin? If not, qualify it.
 			 */
@@ -1187,6 +1171,22 @@ regclassout(PG_FUNCTION_ARGS)
 				}
 				/* End - ReqID:SRS-MYSQL-CASE */
 			}
+
+			/* Begin - ReqID:SRS-MYSQL-CASE */
+			if (mysql_get_objnameinfo_hook && DB_MYSQL == database_mode)
+			{
+				ObjectAddress address;
+
+				ObjectAddressSet(address, RelationRelationId, classid);
+				mysql_get_objnameinfo_hook(address, &objrelname, &objrelschname);
+				if (objrelname != NULL && classname != NULL)
+				{
+					if (strcmp(objrelname, classname) &&
+						!pg_strcasecmp(objrelname, classname))
+						classname = objrelname;
+				}
+			}
+			/* End - ReqID:SRS-MYSQL-CASE */
 
 			result = quote_qualified_identifier(nspname, classname);
 		}

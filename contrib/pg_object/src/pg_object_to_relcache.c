@@ -151,52 +151,29 @@ static void relattrfill(Relation objrel, Relation relation, HeapTuple tup, RelAt
 {
 	int				i;
 	Datum			val;
-	Name			sname;
 	Form_pg_object	objecttp;
 	bool			isNull;
 	int				relattrsnum = 0;
-	char		   *namestr = NULL;
 	char			compatible_mode = 'p';
 
 	relattrsnum = RelationGetNumberOfAttributes(relation);
 
 	if (opr == OBJECT_FILL_REL)
 	{
+		/* Begin - BUG#Z00004347 */
 		/* Table information filling */
-		val = heap_getattr(tup,
-						   Anum_pg_object_objsubid,
-						   RelationGetDescr(objrel),
-						   &isNull);
-		if (!isNull)
-			relation->relattrinfo->relinfo->objSubid = DatumGetInt32(val);
+		objecttp = (Form_pg_object) GETSTRUCT(tup);
 
-		val =heap_getattr(tup,
-						  Anum_pg_object_objname,
-						  RelationGetDescr(objrel),
-						  &isNull);
-		if (!isNull)
-		{
-			namestr = NULL;
-			sname = DatumGetName(val);
-			namestr = pstrdup(NameStr(*sname));
-			namestrcpy(&(relation->relattrinfo->relinfo->objname), namestr);
-		}
+		relation->relattrinfo->relinfo->objSubid = objecttp->objsubid;
 
-		val = heap_getattr(tup,
-						   Anum_pg_object_objkind,
-						   RelationGetDescr(objrel),
-						   &isNull);
-		if (!isNull)
-			relation->relattrinfo->relinfo->objkind = DatumGetChar(val);
+		namestrcpy(&(relation->relattrinfo->relinfo->objname), objecttp->objname.data);
 
-		val = heap_getattr(tup,
-						   Anum_pg_object_compatible_mode,
-						   RelationGetDescr(objrel),
-						   &isNull);
-		if (!isNull)
-			compatible_mode = DatumGetChar(val);
+		relation->relattrinfo->relinfo->objkind = objecttp->objkind;
+
+		compatible_mode = objecttp->compatible_mode;;
 
 		relation->relattrinfo->relinfo->compatible_mode = compatible_mode;
+		/* End - BUG#Z00004347 */
 
 		val = heap_getattr(tup,
 						   Anum_pg_object_option,
@@ -204,7 +181,7 @@ static void relattrfill(Relation objrel, Relation relation, HeapTuple tup, RelAt
 						   &isNull);
 		if (!isNull)
 		{
-			relation->relattrinfo->relinfo->optionval = val;
+			relation->relattrinfo->relinfo->optionval = JsonbPGetDatum(DatumGetJsonbPCopy(val));
 		}
 		else
 			relation->relattrinfo->relinfo->optionval = (Datum)0;
@@ -240,12 +217,7 @@ static void relattrfill(Relation objrel, Relation relation, HeapTuple tup, RelAt
 		{
 			if (relation->relattrinfo->attrinfo[i].objSubid == attnum) /* modify attr*/
 			{
-				val = heap_getattr(tup,
-								   Anum_pg_object_compatible_mode,
-								   RelationGetDescr(objrel),
-								   &isNull);
-				if (!isNull)
-					compatible_mode = DatumGetChar(val);
+				compatible_mode = objecttp->compatible_mode;
 
 				relation->relattrinfo->attrinfo[i].compatible_mode = compatible_mode;
 
@@ -255,7 +227,7 @@ static void relattrfill(Relation objrel, Relation relation, HeapTuple tup, RelAt
 								   &isNull);
 				if (!isNull)
 				{
-					relation->relattrinfo->attrinfo[i].optionval = val;
+					relation->relattrinfo->attrinfo[i].optionval = JsonbPGetDatum(DatumGetJsonbPCopy(val));
 					break;
 				}
 			}
