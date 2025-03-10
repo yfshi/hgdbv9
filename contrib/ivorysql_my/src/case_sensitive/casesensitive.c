@@ -301,59 +301,40 @@ get_obj_nameinfo_bybodyid(ObjectAddress address, char **objname, char **schema)
 						  Int32GetDatum(address.objectSubId));
 	if (HeapTupleIsValid(tup))
 	{
-		bool	isNull = true;
-		Datum	objdatum;
-		Datum	schmadatum;
 		Oid		schemaoid = InvalidOid;
+		/* Begin - BUG#Z00004347 */
+		Form_pg_object	object_struct = (Form_pg_object) GETSTRUCT(tup);
+		HeapTuple newtup;
 
-		objdatum = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tup,
-								   Anum_pg_object_objname,
-								   &isNull);
-		if (!isNull)
-			*objname = pstrdup(DatumGetCString(objdatum));
 
-		schmadatum = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tup,
-									 Anum_pg_object_schemaoid,
-									 &isNull);
-		if (!isNull)
+		*objname = pstrdup(object_struct->objname.data);
+		schemaoid = object_struct->schemaoid;
+
+		newtup = SearchSysCache3(OBJECTREFCLASSIDOIDSUBID,
+								 ObjectIdGetDatum(NamespaceRelationId),
+								 ObjectIdGetDatum(schemaoid),
+								 Int32GetDatum(0));
+		if (HeapTupleIsValid(newtup))
 		{
-			HeapTuple newtup;
+			Form_pg_object	object_struct1 = (Form_pg_object) GETSTRUCT(newtup);
 
-			schemaoid = DatumGetObjectId(schmadatum);
-			newtup = SearchSysCache3(OBJECTREFCLASSIDOIDSUBID,
-									 ObjectIdGetDatum(NamespaceRelationId),
-									 ObjectIdGetDatum(schemaoid),
-									 Int32GetDatum(0));
+			*schema = pstrdup(object_struct1->objname.data);
+
+			ReleaseSysCache(newtup);
+		}
+		else
+		{
+			newtup = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(schemaoid));
 			if (HeapTupleIsValid(newtup))
 			{
-				bool	newisNull = true;
-				Datum	newobjdatum;
+				Form_pg_namespace  namespace_struct = (Form_pg_namespace) GETSTRUCT(newtup);
 
-				newobjdatum = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, newtup,
-											  Anum_pg_object_objname,
-											  &newisNull);
-				if (!newisNull)
-					*schema = pstrdup(DatumGetCString(newobjdatum));
+				*schema = pstrdup(namespace_struct->nspname.data);
 
 				ReleaseSysCache(newtup);
 			}
-			else
-			{
-				newtup = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(schemaoid));
-				if (HeapTupleIsValid(newtup))
-				{
-					bool	newisNull = true;
-					Datum	newobjdatum;
-
-					newobjdatum = SysCacheGetAttr(NAMESPACEOID, newtup, Anum_pg_namespace_nspname,
-							   &newisNull);
-					if (!newisNull)
-						*schema = pstrdup(DatumGetCString(newobjdatum));
-				
-					ReleaseSysCache(newtup);
-				}
-			}
 		}
+		/* End - BUG#Z00004347 */
 		
 		ReleaseSysCache(tup);
 	}

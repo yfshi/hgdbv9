@@ -59,15 +59,17 @@ myscaselower(PG_FUNCTION_ARGS)
 	{
 		Datum		val;
 		bool		isNull;
-		bool		isNullc;
 		char		*str = "lower_case_table_names";
 		text		*txt;
 		char		*lowerval = NULL;
 		char		compatible_mode;
+		/* Begin - BUG#Z00004347 */
+		/* use struct maybe fast */
+		Form_pg_object object_struct = (Form_pg_object) GETSTRUCT(tuple);
 
-		compatible_mode = DatumGetChar(SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tuple,
-									   Anum_pg_object_compatible_mode,
-									   &isNullc));
+		compatible_mode = object_struct->compatible_mode;
+		/* End - BUG#Z00004347 */
+
 
 		val = SysCacheGetAttr(OBJECTREFCLASSIDOIDSUBID, tuple,
 							  Anum_pg_object_option,
