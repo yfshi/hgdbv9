@@ -1802,6 +1802,10 @@ CopyReadLineText(CopyFromState cstate)
 				{
 					/* found \r, but no \n */
 					if (cstate->eol_type == EOL_CRNL)
+					{
+						if (cstate->opts.tolerate == true)	/* BUG#M0000526 */
+							cstate->input_reached_error = true;	/* BUG#M0000526 */
+
 						ereport(ERROR,
 								(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 								 !cstate->opts.csv_mode ?
@@ -1811,6 +1815,8 @@ CopyReadLineText(CopyFromState cstate)
 								 errhint("Use \"\\r\" to represent carriage return.") :
 								 errhint("Use quoted CSV field to represent carriage return.")));
 
+					}
+
 					/*
 					 * if we got here, it is the first line and we didn't find
 					 * \n, so don't consume the peeked character
@@ -1819,6 +1825,10 @@ CopyReadLineText(CopyFromState cstate)
 				}
 			}
 			else if (cstate->eol_type == EOL_NL)
+			{
+				if (cstate->opts.tolerate == true)		/* BUG#M0000526 */
+					cstate->input_reached_error = true;	/* BUG#M0000526 */
+
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 						 !cstate->opts.csv_mode ?
@@ -1827,6 +1837,7 @@ CopyReadLineText(CopyFromState cstate)
 						 !cstate->opts.csv_mode ?
 						 errhint("Use \"\\r\" to represent carriage return.") :
 						 errhint("Use quoted CSV field to represent carriage return.")));
+			}
 			/* If reach here, we have found the line terminator */
 			break;
 		}
@@ -1835,6 +1846,10 @@ CopyReadLineText(CopyFromState cstate)
 		if (c == '\n' && (!cstate->opts.csv_mode || !in_quote))
 		{
 			if (cstate->eol_type == EOL_CR || cstate->eol_type == EOL_CRNL)
+			{
+				if (cstate->opts.tolerate == true)		/* BUG#M0000526 */
+					cstate->input_reached_error = true;     /* BUG#M0000526 */
+
 				ereport(ERROR,
 						(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 						 !cstate->opts.csv_mode ?
@@ -1843,6 +1858,7 @@ CopyReadLineText(CopyFromState cstate)
 						 !cstate->opts.csv_mode ?
 						 errhint("Use \"\\n\" to represent newline.") :
 						 errhint("Use quoted CSV field to represent newline.")));
+			}
 			cstate->eol_type = EOL_NL;	/* in case not set yet */
 			/* If reach here, we have found the line terminator */
 			break;
@@ -1922,6 +1938,9 @@ CopyReadLineText(CopyFromState cstate)
 					(cstate->eol_type == EOL_CRNL && c2 != '\n') ||
 					(cstate->eol_type == EOL_CR && c2 != '\r'))
 				{
+					if (cstate->opts.tolerate == true)              /* BUG#M0000526 */
+						cstate->input_reached_error = true;     /* BUG#M0000526 */
+	
 					ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							 errmsg("end-of-copy marker does not match previous newline style")));
@@ -2483,9 +2502,14 @@ CopyReadAttributesCSV(CopyFromState cstate)
 			{
 				end_ptr = cur_ptr;
 				if (cur_ptr >= line_end_ptr)
+				{
+					if (cstate->opts.tolerate == true)              /* BUG#M0000526 */
+						cstate->input_reached_error = true;     /* BUG#M0000526 */
+
 					ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							 errmsg("unterminated CSV quoted field")));
+				}
 
 				c = *cur_ptr++;
 
@@ -2497,9 +2521,14 @@ CopyReadAttributesCSV(CopyFromState cstate)
                      			 * if reached the end, d need a value
                      			 */
                     			if (cur_ptr >= line_end_ptr)
+					{
+						if (cstate->opts.tolerate == true)              /* BUG#M0000526 */
+							cstate->input_reached_error = true;     /* BUG#M0000526 */
+
 						ereport(ERROR,
 							(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 							errmsg("unterminated CSV quoted field")));
+					}
 					else
 						d = *cur_ptr;
 
@@ -2539,9 +2568,14 @@ CopyReadAttributesCSV(CopyFromState cstate)
 							continue;
 						case 4:
 							if (cur_ptr + 3 > line_end_ptr)
+							{
+								if (cstate->opts.tolerate == true)           /* BUG#M0000526 */	
+									cstate->input_reached_error = true;  /* BUG#M0000526 */
+
 								ereport(ERROR,
 										(errcode(ERRCODE_BAD_COPY_FILE_FORMAT),
 										 errmsg("unterminated CSV quoted field")));
+							}
 							else
 							{
 								/* Begin - BUG:M0000368 */

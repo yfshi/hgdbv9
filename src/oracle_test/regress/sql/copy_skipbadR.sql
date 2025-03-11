@@ -172,3 +172,72 @@ DROP TABLE fk_t,pk_t;
 DROP TABLE pk_t_u,fk_t_u;
 
 -- End - BUG#Z1616
+
+-- Begin - BUG#M0000526
+create table xxxx(n1 varchar2(100), n2 varchar2(100), n3 varchar2(100), n4 varchar2(100), n5 varchar2(100));
+-- more clomun than expected, skipped
+copy xxxx from stdin with(format csv, delimiter '|');
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012|345678
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012
+\.
+
+copy xxxx from stdin with(format csv, delimiter '|', skipbad);
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012|345678
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012
+\.
+
+select * from xxxx;
+
+-- less cloumn than expected, skipped
+delete from xxxx;
+copy xxxx from stdin with(format csv, delimiter '|');
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012
+\.
+
+copy xxxx from stdin with(format csv, delimiter '|', skipbad);
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90
+15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012
+\.
+
+select * from xxxx;
+delete from xxxx;
+-- if there have one quote, return an error
+copy xxxx from stdin with (format csv, delimiter '|');
+15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11|REJT:109026012
+\.
+
+
+copy xxxx from stdin with (format csv, delimiter '|', skipbad);
+15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11|REJT:109026012
+\.
+
+
+copy xxxx from stdin with (format csv, delimiter '|');
+15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11"|REJT:109026012
+\.
+
+copy xxxx from stdin with (format csv, delimiter '|', skipbad);
+15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11"|REJT:109026012
+\.
+
+select * from xxxx;
+-- if no column for a table, should skip all lines when enable skipbad
+create table no_column();
+copy no_column from stdin with(format csv, delimiter '|');
+1|2|3
+\.
+
+copy no_column from stdin with(format csv, delimiter '|', skipbad);
+1|2|3
+asdf
+T&Y
+\.
+
+drop table xxxx;
+drop table no_column;
+-- End - BUG#M0000526

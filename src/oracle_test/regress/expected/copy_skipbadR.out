@@ -186,3 +186,58 @@ DROP TABLE xshd;
 DROP TABLE fk_t,pk_t;
 DROP TABLE pk_t_u,fk_t_u;
 -- End - BUG#Z1616
+-- Begin - BUG#M0000526
+create table xxxx(n1 varchar2(100), n2 varchar2(100), n3 varchar2(100), n4 varchar2(100), n5 varchar2(100));
+-- more clomun than expected, skipped
+copy xxxx from stdin with(format csv, delimiter '|');
+ERROR:  extra data after last expected column
+CONTEXT:  COPY xxxx, line 1: "15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90|REJT:109026012|345678"
+copy xxxx from stdin with(format csv, delimiter '|', skipbad);
+select * from xxxx;
+         n1          |   n2   |      n3       |        n4         |       n5       
+---------------------+--------+---------------+-------------------+----------------
+ 15033479888@kuandai | 000001 | 111.63.248.12 | 82:e8:3d:74:45:90 | REJT:109026012
+(1 row)
+
+-- less cloumn than expected, skipped
+delete from xxxx;
+copy xxxx from stdin with(format csv, delimiter '|');
+ERROR:  missing data for column "n5"
+CONTEXT:  COPY xxxx, line 1: "15033479888@kuandai|000001|111.63.248.12|82:e8:3d:74:45:90"
+copy xxxx from stdin with(format csv, delimiter '|', skipbad);
+select * from xxxx;
+         n1          |   n2   |      n3       |        n4         |       n5       
+---------------------+--------+---------------+-------------------+----------------
+ 15033479888@kuandai | 000001 | 111.63.248.12 | 82:e8:3d:74:45:90 | REJT:109026012
+(1 row)
+
+delete from xxxx;
+-- if there have one quote, return an error
+copy xxxx from stdin with (format csv, delimiter '|');
+ERROR:  unterminated CSV quoted field
+CONTEXT:  COPY xxxx, line 1: "15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|00000..."
+copy xxxx from stdin with (format csv, delimiter '|', skipbad);
+ERROR:  unterminated CSV quoted field
+CONTEXT:  COPY xxxx, line 1: "15033479888@kuandai|000001|111.63.248.12|"82:e8:3d:74:45:90|REJT:109026012
+18833877712@kuandai|00000..."
+copy xxxx from stdin with (format csv, delimiter '|');
+copy xxxx from stdin with (format csv, delimiter '|', skipbad);
+select * from xxxx;
+         n1          |   n2   |      n3       |                             n4                             |       n5       
+---------------------+--------+---------------+------------------------------------------------------------+----------------
+ 15033479888@kuandai | 000001 | 111.63.248.12 | 82:e8:3d:74:45:90|REJT:109026012                          +| REJT:109026012
+                     |        |               | 18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11 | 
+ 15033479888@kuandai | 000001 | 111.63.248.12 | 82:e8:3d:74:45:90|REJT:109026012                          +| REJT:109026012
+                     |        |               | 18833877712@kuandai|000001|111.63.250.22|78:46:5f:24:e1:11 | 
+(2 rows)
+
+-- if no column for a table, should skip all lines when enable skipbad
+create table no_column();
+copy no_column from stdin with(format csv, delimiter '|');
+ERROR:  extra data after last expected column
+CONTEXT:  COPY no_column, line 1: "1|2|3"
+copy no_column from stdin with(format csv, delimiter '|', skipbad);
+drop table xxxx;
+drop table no_column;
+-- End - BUG#M0000526
