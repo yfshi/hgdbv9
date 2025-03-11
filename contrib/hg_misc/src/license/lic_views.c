@@ -50,8 +50,22 @@ PG_FUNCTION_INFO_V1(highgo_version);
 
 Datum highgo_version(PG_FUNCTION_ARGS)
 {
+	/* Begin Fix Bug#M0000525 */
+	const char *hgdb_version;
+	char *curr_encoding = NULL;
+
 	hg_set_is_with_title(false);
-	PG_RETURN_TEXT_P(cstring_to_text(hg_get_highgoVersion()));
+
+	curr_encoding = (char *)hg_get_encoding();
+	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true));
+
+	hgdb_version = hg_get_highgoVersion();
+
+	hg_set_encoding(curr_encoding);
+	free(curr_encoding);
+
+	PG_RETURN_TEXT_P(cstring_to_text(hgdb_version));
+	/* End Fix Bug#M0000525 */
 }
 
 
