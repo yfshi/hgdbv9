@@ -4045,9 +4045,10 @@ create_ordinary_grouping_paths(PlannerInfo *root, RelOptInfo *input_rel,
 		 * If this is the topmost relation or if the parent relation is doing
 		 * full partitionwise aggregation, then we can do full partitionwise
 		 * aggregation provided that the GROUP BY clause contains all of the
-		 * partitioning columns at this level.  Otherwise, we can do at most
-		 * partial partitionwise aggregation.  But if partial aggregation is
-		 * not supported in general then we can't use it for partitionwise
+		 * partitioning columns at this level and the collation used by GROUP
+		 * BY matches the partitioning collation.  Otherwise, we can do at
+		 * most partial partitionwise aggregation.  But if partial aggregation
+		 * is not supported in general then we can't use it for partitionwise
 		 * aggregation either.
 		 */
 		if (extra->patype == PARTITIONWISE_AGGREGATE_FULL &&
@@ -7715,8 +7716,8 @@ create_partitionwise_grouping_paths(PlannerInfo *root,
 /*
  * group_by_has_partkey
  *
- * Returns true, if all the partition keys of the given relation are part of
- * the GROUP BY clauses, false otherwise.
+ * Returns true if all the partition keys of the given relation are part of
+ * the GROUP BY clauses, including having matching collation, false otherwise.
  */
 static bool
 group_by_has_partkey(RelOptInfo *input_rel,
@@ -7744,43 +7745,40 @@ group_by_has_partkey(RelOptInfo *input_rel,
 
 		foreach(lc, partexprs)
 		{
+			ListCell   *lg;
 			Expr	   *partexpr = lfirst(lc);
+			Oid			partcoll = input_rel->part_scheme->partcollation[cnt];
 
-			/* Begin - Req:SRS-SQL-NLSSORT */
-			if (enable_partitionwise_qual_force_pushdown)
+			foreach(lg, groupexprs)
 			{
-				ListCell   *lg;
-				Oid			partcoll = input_rel->part_scheme->partcollation[cnt];
+				Expr	   *groupexpr = lfirst(lg);
+				Oid			groupcoll = exprCollation((Node *) groupexpr);
 
-				foreach (lg, groupexprs)
+				/*
+				 * Note: we can assume there is at most one RelabelType node;
+				 * eval_const_expressions() will have simplified if more than
+				 * one.
+				 */
+				if (IsA(groupexpr, RelabelType))
+					groupexpr = ((RelabelType *) groupexpr)->arg;
+
+				if (equal(groupexpr, partexpr))
 				{
-					Expr *groupexpr = lfirst(lg);
-					Oid   groupcoll = exprCollation((Node *) groupexpr);
-
 					/*
-					 * GROUP BY xx COLLATE xxx
-					 * Set collation in group by clause using COLLATE syntax,
-					 * AND the collation IS NOT equal to column's default collation.
+					 * Reject a match if the grouping collation does not match
+					 * the partitioning collation.
 					 */
-					if (IsA(groupexpr, RelabelType))
-						groupexpr = ((RelabelType *) groupexpr)->arg;
+					if (OidIsValid(partcoll) && OidIsValid(groupcoll) &&
+						partcoll != groupcoll)
+						return false;
 
-					if (equal(groupexpr, partexpr) && partcoll == groupcoll)
-					{
-						found = true;
-						break;
-					}
-				}
-
-				if (found)
+					found = true;
 					break;
+				}
 			}
-			/* End - Req:SRS-SQL-NLSSORT */
-			else if (list_member(groupexprs, partexpr))
-			{
-				found = true;
+
+			if (found)
 				break;
-			}
 		}
 
 		/*

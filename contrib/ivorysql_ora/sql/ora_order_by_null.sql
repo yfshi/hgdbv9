@@ -85,13 +85,11 @@ CREATE TABLE pagg_tab_p3 PARTITION OF pagg_tab FOR VALUES IN ('B', 'C', 'D', 'E'
 INSERT INTO pagg_tab SELECT i % 20, i % 30, substr('abcdeABCDE', i % 11, 1), i % 30 FROM generate_series(0, 2999) i;
 ANALYZE pagg_tab;
 
-set ivorysql.enable_partitionwise_qual_force_pushdown = off;
 -- use PARTITIONWISE_AGGREGATE_FULL partitionwise-aggregate strategy, and can push filter into sub table
 EXPLAIN SELECT c collate binary_ci, count(c) FROM pagg_tab GROUP BY c collate binary_ci HAVING avg(d) < 15 ORDER BY 1;
 -- but result is error !!!
 SELECT c collate binary_ci, count(c) FROM pagg_tab GROUP BY c collate binary_ci HAVING avg(d) < 15 ORDER BY 1;
 
-set ivorysql.enable_partitionwise_qual_force_pushdown = on;
 -- use PARTITIONWISE_AGGREGATE_PARTIAL partitionwise-aggregate strategy, and cannot push filter into sub table
 EXPLAIN SELECT c collate binary_ci, count(c) FROM pagg_tab GROUP BY c collate binary_ci HAVING avg(d) < 15 ORDER BY 1;
 -- result is right
@@ -100,7 +98,6 @@ RESET enable_partitionwise_aggregate;
 RESET enable_partitionwise_join;
 RESET max_parallel_workers_per_gather;
 RESET enable_incremental_sort;
-RESET ivorysql.enable_partitionwise_qual_force_pushdown;
 drop table pagg_tab;
 
 -- test performance optimization  in group_by_has_partkey()
@@ -115,18 +112,15 @@ CREATE TABLE pagg_tab_p3 PARTITION OF pagg_tab FOR VALUES IN ('B', 'C', 'D', 'E'
 INSERT INTO pagg_tab SELECT i % 20, i % 30, substr('abcdeABCDE', i % 11, 1), i % 30 FROM generate_series(0, 2999) i;
 ANALYZE pagg_tab;
 
-set ivorysql.enable_partitionwise_qual_force_pushdown = off;
 -- result is right, but cannot use PARTITIONWISE_AGGREGATE_FULL partitionwise-aggregate strategy, poor performance
 EXPLAIN SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
 SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
 
 -- result is right, and can use PARTITIONWISE_AGGREGATE_FULL partitionwise-aggregate strategy, good performance
-set ivorysql.enable_partitionwise_qual_force_pushdown = on;
 EXPLAIN SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
 SELECT c collate binary, count(c) FROM pagg_tab GROUP BY c collate binary HAVING avg(d) < 15 ORDER BY 1;
 RESET enable_partitionwise_aggregate;
 RESET enable_partitionwise_join;
 RESET max_parallel_workers_per_gather;
 RESET enable_incremental_sort;
-RESET ivorysql.enable_partitionwise_qual_force_pushdown;
 drop table pagg_tab;

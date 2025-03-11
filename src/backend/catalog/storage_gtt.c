@@ -1445,6 +1445,7 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 	Oid			toastrelid;
 	List	   *indexoidlist;
 	ListCell   *l;
+	Relation	rel;
 
 	if (!(operation == CMD_INSERT || operation == CMD_MERGE))
 		return;
@@ -1484,7 +1485,9 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 					ii = BuildIndexInfo(indexDesc);
 					RelationCreateStorage(indexDesc->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexDesc);
 					force_enable_gtt_index(indexDesc);
+					rel = table_open(relation->rd_id, ShareUpdateExclusiveLock);
 					index_build(resultRelInfo->ri_RelationDesc, indexDesc, ii, false, true);
+					table_close(rel, ShareUpdateExclusiveLock);
 				}
 			}
 		}
@@ -1515,8 +1518,10 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 			indexInfo = BuildIndexInfo(currentIndex);
 			RelationCreateStorage(currentIndex->rd_node, RELPERSISTENCE_GLOBAL_TEMP, currentIndex);
 			force_enable_gtt_index(currentIndex);
+			rel = table_open(toastrelid, ShareUpdateExclusiveLock);
 			index_build(toastrel, currentIndex, indexInfo, false, false);
 			index_close(currentIndex, NoLock);
+			table_close(rel, ShareUpdateExclusiveLock);
 		}
 
 		table_close(toastrel, NoLock);

@@ -132,18 +132,20 @@ IvyExecMergeMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 				  ItemPointer tupleid, bool canSetTag)
 {
 	 ModifyTableState *mtstate = context->mtstate;
+	 ItemPointerData lockedtid;
 	 TupleTableSlot *newslot;
 	 EState 	*estate = context->estate;
 	 ExprContext *econtext = mtstate->ps.ps_ExprContext;
 	 bool		 isNull;
 	 EPQState	*epqstate = &mtstate->mt_epqstate;
 	 ListCell	*l;
+	 bool		no_further_action = true;
 
 	 /*
 	  * If there are no WHEN MATCHED actions, we are done.
 	  */
 	 if (resultRelInfo->ri_matchedMergeAction == NIL)
-		 return true;
+		 return no_further_action;
 
 	 /*
 	  * Make tuple and any needed join variables available to ExecQual and
@@ -156,7 +158,20 @@ IvyExecMergeMatched(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	 econtext->ecxt_outertuple = NULL;
 
 lmerge_matched:;
-
+	 if (resultRelInfo->ri_needLockTagTuple)
+	 {
+	 	/*
+	 	 * This locks even for CMD_DELETE, for CMD_NOTHING, and for tuples
+	 	 * that don't match mas_whenqual.  MERGE on system catalogs is a minor
+	 	 * use case, so don't bother optimizing those.
+	 	 */
+	 	LockTuple(resultRelInfo->ri_RelationDesc, tupleid,
+	 			  InplaceUpdateTupleLock);
+	 	lockedtid = *tupleid;
+	 }
+	 else
+	 	ItemPointerSetInvalid(&lockedtid);
+	
 	 /*
 	  * This routine is only invoked for matched rows, and we must have found
 	  * the tupleid of the target row in that case; fetch that tuple.
@@ -339,12 +354,26 @@ lmerge_matched:;
 				if (!ExecUpdatePrologue(context, resultRelInfo, tupleid, NULL, newslot))
 				{
 					result = TM_Ok;
-					break;
+					goto out;
 				}
 
 				ExecUpdatePrepareSlot(resultRelInfo, newslot, context->estate);
 				result = ExecUpdateAct(context, resultRelInfo, tupleid, NULL,
 										newslot, mtstate->canSetTag, &updateCxt);
+				
+				/*
+				 * As in ExecUpdate(), if ExecUpdateAct() reports that a
+				 * cross-partition update was done, then there's nothing else
+				 * for us to do --- the UPDATE has been turned into a DELETE
+				 * and an INSERT, and we must not perform any of the usual
+				 * post-update tasks.
+				 */
+				if (updateCxt.crossPartUpdate)
+				{
+					mtstate->mt_merge_updated += 1;
+					goto out;
+				}
+
 				if (result == TM_Ok && updateCxt.updated)
 				{
 					/* Fire row-level after update trigger */
@@ -437,7 +466,8 @@ lmerge_matched:;
 							 errhint("Ensure that not more than one source row matches any one target row.")));
 				/* This shouldn't happen */
 				elog(ERROR, "attempted to update or delete invisible tuple");
-				 break;
+				no_further_action = false;
+				goto out;
 
 			 case TM_Deleted:
 				 if (IsolationUsesXactSnapshot())
@@ -449,7 +479,8 @@ lmerge_matched:;
 				  * If the tuple was already deleted, return to let caller
 				  * handle it under NOT MATCHED clauses.
 				  */
-				 return false;
+				 no_further_action = false;
+				 goto out;
 
 			 case TM_Updated:
 				 {
@@ -518,13 +549,19 @@ lmerge_matched:;
 							  * NOT MATCHED actions.
 							  */
 							 if (TupIsNull(epqslot))
-								 return false;
+							 {
+								 no_further_action = false;
+								 goto out;
+							 }
 
 							 (void) ExecGetJunkAttribute(epqslot,
 														 resultRelInfo->ri_RowIdAttNo,
 														 &isNull);
 							 if (isNull)
-								 return false;
+							 {
+							 	 no_further_action = false;
+							 	 goto out;
+							 }
 
 							 /*
 							  * When a tuple was updated and migrated to
@@ -550,6 +587,10 @@ lmerge_matched:;
 							  * Update tupleid to that of the new tuple, for
 							  * the refetch we do at the top.
 							  */
+							 if (resultRelInfo->ri_needLockTagTuple)
+								UnlockTuple(resultRelInfo->ri_RelationDesc,
+											&lockedtid,
+											InplaceUpdateTupleLock);
 							 ItemPointerCopy(&context->tmfd.ctid, tupleid);
 							 goto lmerge_matched;
 
@@ -559,7 +600,8 @@ lmerge_matched:;
 							  * tuple already deleted; tell caller to run NOT
 							  * MATCHED actions
 							  */
-							 return false;
+							 no_further_action = false;
+							 goto out;
 
 						 case TM_SelfModified:
 
@@ -585,7 +627,8 @@ lmerge_matched:;
 							 /* see table_tuple_lock call in ExecDelete() */
 							 elog(ERROR, "unexpected table_tuple_lock status: %u",
 								  result);
-							 return false;
+							 no_further_action = false;
+							 goto out;
 					 }
 				 }
 
@@ -607,7 +650,11 @@ lmerge_matched:;
 	 /*
 	  * Successfully executed an action or no qualifying action was found.
 	  */
-	 return true;
+out:
+	 if (ItemPointerIsValid(&lockedtid))
+	 	 UnlockTuple(resultRelInfo->ri_RelationDesc, &lockedtid,
+	 				 InplaceUpdateTupleLock);
+	 return no_further_action;
 }
 
 /*

@@ -574,6 +574,8 @@ typedef struct ResultRelInfo
 	 */
 	List	   *ri_ancestorResultRels;
 	ProjectionInfo   *ri_updateProj;	/* ReqID:SRS-MYSQL-SQL-INSERT */
+	/* updates do LockTuple() before oldtup read; see README.tuplock */
+	bool		ri_needLockTagTuple;
 } ResultRelInfo;
 
 /*

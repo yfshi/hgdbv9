@@ -55,10 +55,10 @@ endif # win32
 
 SHLIB_LINK = $(perl_embed_ldflags)
 
-REGRESS_OPTS = --dbname=$(PL_TESTDB)
+REGRESS_OPTS = --dbname=$(PL_TESTDB) --dlpath=$(top_builddir)/src/test/regress
 REGRESS = plperl_setup plperl plperl_lc plperl_trigger plperl_shared \
 	plperl_elog plperl_util plperl_init plperlu plperl_array \
-	plperl_call plperl_transaction
+	plperl_call plperl_transaction plperl_env
 # Begin - BUGM0000301
 ORACLE_REGRESS_OPTS = --dbname=$(PL_TESTDB)
 ORA_REGRESS = ivy_plperl_setup ivy_plperl plperl_lc ivy_plperl_trigger ivy_plperl_shared \
@@ -169,6 +169,7 @@ submake_mys:
 #End - ReqID:SRS-MISC-MYSQL-FRAME
 clean distclean maintainer-clean: clean-lib
 	rm -f SPI.c Util.c $(OBJS) perlchunks.h plperl_opmask.h
+	rm -f sql/plperl_env.sql expected/plperl_env.out
 	rm -rf $(pg_regress_clean_files)
 ifeq ($(PORTNAME), win32)
 	rm -f $(perlwithver).def
