@@ -9090,14 +9090,16 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 				Oid			valtype;
 				int32		valtypmod;
 
-				if (attr->attisdropped)
+				if (attr->attisdropped ||
+					!attr->attisvisible) /* BUG#Z00004225 */
 				{
 					/* expanded_record_set_fields should ignore this column */
 					continue;	/* skip dropped column in record */
 				}
 
 				while (anum < td_natts &&
-					   TupleDescAttr(tupdesc, anum_value)->attisdropped)
+					   (TupleDescAttr(tupdesc, anum_value)->attisdropped ||
+					   !TupleDescAttr(tupdesc, anum_value)->attisvisible))  /* BUG#Z00004225 */
 					anum++;		/* skip dropped column in tuple */
 
 				if (anum < td_natts)
@@ -9156,7 +9158,8 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 				{
 					/* skip dropped columns in the source descriptor */
 					while (anum_value < td_natts &&
-						   TupleDescAttr(tupdesc, anum_value)->attisdropped)
+						   (TupleDescAttr(tupdesc, anum_value)->attisdropped ||
+						   !TupleDescAttr(tupdesc, anum_value)->attisvisible)) /* BUG#Z00004225 */
 						anum_value++;
 
 					if (anum_value - 1 < td_natts)
@@ -9177,7 +9180,8 @@ exec_move_row_from_fields(PLiSQL_execstate *estate,
 				{
 					/* skip dropped columns in the source descriptor */
 					while (anum < td_natts &&
-						   TupleDescAttr(tupdesc, anum)->attisdropped)
+						   (TupleDescAttr(tupdesc, anum_value)->attisdropped ||
+						   !TupleDescAttr(tupdesc, anum_value)->attisvisible)) /* BUG#Z00004225 */
 						anum++;
 
 					if (anum < td_natts)

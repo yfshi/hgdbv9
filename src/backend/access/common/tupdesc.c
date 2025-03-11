@@ -961,10 +961,20 @@ ora_test_tupdesc_match(TupleDesc valuedesc, TupleDesc targetdesc, bool raise_err
 
 		if (dattr->attisdropped)
 			continue;
+
+		/* Begin - BUG#Z00004225 */
+		/*
+		 * ignore invisble col
+		 */
+		if (!dattr->attisvisible)
+			continue;
+		/* End - BUG#Z00004225 */
+
 		for (; j < valuedesc->natts; j++)
 		{
 			sattr = &valuedesc->attrs[j];
-			if (!sattr->attisdropped)
+			if (!sattr->attisdropped &&
+				dattr->attisvisible) /* BUG#Z00004225 */
 			{
 				j++;
 				break;

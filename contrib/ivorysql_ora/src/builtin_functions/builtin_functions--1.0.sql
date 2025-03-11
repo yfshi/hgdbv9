@@ -565,12 +565,14 @@ PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 /* End - bug0000427 */
-
+--bug#Z4327
+--change to_date like pg_catalog.to_date to PARALLEL SAFE
 CREATE FUNCTION sys.to_date(text)
 RETURNS sys.oradate
 AS 'MODULE_PATHNAME','to_oradate1'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 STABLE;
 
 CREATE FUNCTION sys.to_date(text,text)
@@ -578,6 +580,7 @@ RETURNS sys.oradate
 AS 'MODULE_PATHNAME','to_oradate2'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 STABLE;
  
 CREATE FUNCTION sys.to_date(text, text, text)
@@ -585,6 +588,7 @@ RETURNS sys.oradate
 AS 'MODULE_PATHNAME','to_oradate3'
 LANGUAGE C
 STRICT
+PARALLEL SAFE
 STABLE;
 
 CREATE FUNCTION sys.to_timestamp(text)
@@ -1160,15 +1164,16 @@ AS 'select pg_catalog.trunc($1::pg_catalog.numeric, $2)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 
 --to_date
+---bug#Z4327 change to_date to STABLE
 CREATE OR REPLACE FUNCTION sys.to_date(bigint)
 RETURNS sys.oradate
 AS 'select sys.to_date($1::text)'
-LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+LANGUAGE SQL STABLE PARALLEL SAFE STRICT;
 
 CREATE OR REPLACE FUNCTION sys.to_date(bigint, text)
 RETURNS sys.oradate
 AS 'select sys.to_date($1::text, $2)'
-LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+LANGUAGE SQL STABLE PARALLEL SAFE STRICT;
 
 --to_char
 CREATE OR REPLACE FUNCTION sys.to_char(number)

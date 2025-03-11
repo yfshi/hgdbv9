@@ -1550,6 +1550,12 @@ ExpandRowReference(ParseState *pstate, Node *expr,
 		if (att->attisdropped)
 			continue;
 
+		/* Begin - BUG#Z00004225 */
+		/* ignore invisble col */
+		if (!att->attisvisible)
+			continue;
+		/* End - BUG#Z00004225 */
+
 		fselect = makeNode(FieldSelect);
 		fselect->arg = (Expr *) copyObject(expr);
 		fselect->fieldnum = i + 1;
