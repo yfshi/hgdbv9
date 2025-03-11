@@ -1,0 +1,9 @@
+# mys_btree_gist extension
+comment = 'support for mysql indexing common datatypes in GiST'
+default_version = '1.0'
+module_pathname = '$libdir/mys_btree_gist'
+relocatable = false
+trusted = true
+schema = ivymy
+requires = 'ivorysql_my'
+parse_options = all

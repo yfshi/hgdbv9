@@ -1,0 +1,9 @@
+# mys_btree_gin extension
+comment = 'support for indexing mysql datatypes in GIN'
+default_version = '1.0'
+module_pathname = '$libdir/mys_btree_gin'
+relocatable = false
+trusted = true
+schema = ivymy
+requires = 'ivorysql_my'
+parse_options = all

@@ -920,4 +920,20 @@
 
 /*END Oracle Compatibility Metadatas*/
 
+/*BEGIN MySQL Compatibility Metadatas*/
+
+/* Begin - ReqID:SRS-MYSQL-YEARTYPE */
+{ oid => '9295', array_type_oid => '9296', descr => 'MySQL YEAR datatype',
+  typname => 'year', typnamespace => 'ivymy', typlen => '1', typbyval => 't',
+  typtype => 'b', typcategory => 'D', typispreferred => 'f',
+  typdelim => ',', typrelid => '0', typsubscript => '-', typelem => '0',
+  typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typanalyze => '-', typalign => 'c', typstorage => 'p', 
+  typnotnull => 'f', typbasetype => '0', typtypmod => '-1',
+  typndims => '0', typcollation => '0'},
+/* End - ReqID:SRS-MYSQL-YEARTYPE */
+
+/*END MySQL Compatibility Metadatas*/
 ]

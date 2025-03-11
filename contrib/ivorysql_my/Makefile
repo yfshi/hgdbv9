@@ -6,7 +6,8 @@ OBJS = \
 	$(WIN32RES) \
 	src/ivorysql_my.o \
 	src/case_sensitive/casesensitive.o \
-	src/case_sensitive/casefunc.o
+	src/case_sensitive/casefunc.o \
+	src/datatype/myyear.o
 
 EXTENSION = ivorysql_my
 
@@ -50,8 +51,8 @@ MYS_REGRESS = multi_update \
 			  insert_updatecase \
 			  multi_updatecase \
 			  multi_deletecase \
-			  mys_use_case
-
+			  mys_use_case \
+			  mys_year
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -63,6 +64,3 @@ top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
-
-
-

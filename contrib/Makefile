@@ -56,6 +56,8 @@ SUBDIRS = \
 		ora_btree_gin	\
 		pg_object	\
 		ivorysql_my	\
+		mys_btree_gist \
+		mys_btree_gin	\
 		uuid-ossp \
 		hg_misc
 

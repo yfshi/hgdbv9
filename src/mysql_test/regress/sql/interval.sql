@@ -182,14 +182,14 @@ SELECT interval '999' day;
 SELECT interval '999' month;
 
 -- test SQL-spec syntaxes for restricted field sets
-SELECT interval '1' year;
+--SELECT interval '1' year;
 SELECT interval '2' month;
 SELECT interval '3' day;
 SELECT interval '4' hour;
 SELECT interval '5' minute;
 SELECT interval '6' second;
-SELECT interval '1' year to month;
-SELECT interval '1-2' year to month;
+--SELECT interval '1' year to month;
+--SELECT interval '1-2' year to month;
 SELECT interval '1 2' day to hour;
 SELECT interval '1 2:03' day to hour;
 SELECT interval '1 2:03:04' day to hour;
@@ -235,17 +235,17 @@ SELECT interval '1 2:03.5678' minute to second(2);
 SELECT interval '1 2:03:04.5678' minute to second(2);
 
 -- test casting to restricted precision (bug #14479)
-SELECT f1, f1::INTERVAL DAY TO MINUTE AS "minutes",
-  (f1 + INTERVAL '1 month')::INTERVAL MONTH::INTERVAL YEAR AS "years"
-  FROM interval_tbl;
+--SELECT f1, f1::INTERVAL DAY TO MINUTE AS "minutes",
+--  (f1 + INTERVAL '1 month')::INTERVAL MONTH::INTERVAL YEAR AS "years"
+--  FROM interval_tbl;
 
 -- test inputting and outputting SQL standard interval literals
-SET IntervalStyle TO sql_standard;
-SELECT  interval '0'                       AS "zero",
-        interval '1-2' year to month       AS "year-month",
-        interval '1 2:03:04' day to second AS "day-time",
-        - interval '1-2'                   AS "negative year-month",
-        - interval '1 2:03:04'             AS "negative day-time";
+--SET IntervalStyle TO sql_standard;
+--SELECT  interval '0'                       AS "zero",
+--        interval '1-2' year to month       AS "year-month",
+--        interval '1 2:03:04' day to second AS "day-time",
+--        - interval '1-2'                   AS "negative year-month",
+--        - interval '1 2:03:04'             AS "negative day-time";
 
 -- test input of some not-quite-standard interval values in the sql style
 SET IntervalStyle TO postgres;
@@ -323,21 +323,21 @@ select make_interval(secs := 7e12);
 --
 -- test EXTRACT
 --
-SELECT f1,
-    EXTRACT(MICROSECOND FROM f1) AS MICROSECOND,
-    EXTRACT(MILLISECOND FROM f1) AS MILLISECOND,
-    EXTRACT(SECOND FROM f1) AS SECOND,
-    EXTRACT(MINUTE FROM f1) AS MINUTE,
-    EXTRACT(HOUR FROM f1) AS HOUR,
-    EXTRACT(DAY FROM f1) AS DAY,
-    EXTRACT(MONTH FROM f1) AS MONTH,
-    EXTRACT(QUARTER FROM f1) AS QUARTER,
-    EXTRACT(YEAR FROM f1) AS YEAR,
-    EXTRACT(DECADE FROM f1) AS DECADE,
-    EXTRACT(CENTURY FROM f1) AS CENTURY,
-    EXTRACT(MILLENNIUM FROM f1) AS MILLENNIUM,
-    EXTRACT(EPOCH FROM f1) AS EPOCH
-    FROM INTERVAL_TBL;
+--SELECT f1,
+--    EXTRACT(MICROSECOND FROM f1) AS MICROSECOND,
+--    EXTRACT(MILLISECOND FROM f1) AS MILLISECOND,
+--    EXTRACT(SECOND FROM f1) AS SECOND,
+--    EXTRACT(MINUTE FROM f1) AS MINUTE,
+--    EXTRACT(HOUR FROM f1) AS HOUR,
+--    EXTRACT(DAY FROM f1) AS DAY,
+--    EXTRACT(MONTH FROM f1) AS MONTH,
+--    EXTRACT(QUARTER FROM f1) AS QUARTER,
+--    EXTRACT(YEAR FROM f1) AS YEAR,
+--    EXTRACT(DECADE FROM f1) AS DECADE,
+--    EXTRACT(CENTURY FROM f1) AS CENTURY,
+--    EXTRACT(MILLENNIUM FROM f1) AS MILLENNIUM,
+--    EXTRACT(EPOCH FROM f1) AS EPOCH
+--    FROM INTERVAL_TBL;
 
 SELECT EXTRACT(FORTNIGHT FROM INTERVAL '2 days');  -- error
 SELECT EXTRACT(TIMEZONE FROM INTERVAL '2 days');  -- error

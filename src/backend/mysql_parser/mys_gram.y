@@ -775,7 +775,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
 
-	YEAR_P YES_P
+	YEAR YES_P
 
 	ZONE
 
@@ -14678,6 +14678,22 @@ ConstDatetime:
 						$$ = SystemTypeName("time");
 					$$->location = @1;
 				}
+			| YEAR '(' Iconst ')'
+				{
+					$$ = MySQLSystemTypeName("year");
+					if ($3 != 4)
+						ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Supports only YEAR or YEAR(4) column"),
+							 parser_errposition(@3)));
+					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->location = @1;
+				}
+			| YEAR
+				{
+					$$ = MySQLSystemTypeName("year");
+					$$->location = @1;
+				}
 		;
 
 ConstInterval:
@@ -14695,9 +14711,7 @@ opt_timezone:
 		;
 
 opt_interval:
-			YEAR_P
-				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR), @1)); }
-			| MONTH_P
+			MONTH_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
 			| DAY_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(DAY), @1)); }
@@ -14707,11 +14721,6 @@ opt_interval:
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE), @1)); }
 			| interval_second
 				{ $$ = $1; }
-			| YEAR_P TO MONTH_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
-												 INTERVAL_MASK(MONTH), @1));
-				}
 			| DAY_P TO HOUR_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
@@ -16368,7 +16377,6 @@ extract_list:
  */
 extract_arg:
 			IDENT									{ $$ = $1; }
-			| YEAR_P								{ $$ = "year"; }
 			| MONTH_P								{ $$ = "month"; }
 			| DAY_P									{ $$ = "day"; }
 			| HOUR_P								{ $$ = "hour"; }
@@ -17397,7 +17405,6 @@ unreserved_keyword:
 			| WRAPPER
 			| WRITE
 			| XML_P
-			| YEAR_P
 			| YES_P
 			| ZONE
 		;
@@ -17464,6 +17471,7 @@ col_name_keyword:
 			| XMLROOT
 			| XMLSERIALIZE
 			| XMLTABLE
+			| YEAR
 		;
 
 /* Type/function identifier --- keywords that can be type or function names.
@@ -18029,6 +18037,7 @@ bare_label_keyword:
 			| XMLROOT
 			| XMLSERIALIZE
 			| XMLTABLE
+			| YEAR
 			| YES_P
 			| ZONE
 		;
@@ -18515,6 +18524,19 @@ SystemTypeName(char *name)
 	return makeTypeNameFromNameList(list_make2(makeString("pg_catalog"),
 											   makeString(name)));
 }
+
+/* MySQLSystemTypeName()
+ *  Build a properly-qualified reference to a built-in type with MySQL schema.
+ *
+ */
+/* Begin - ReqID:SRS-MYSQL-YEARTYPE */
+TypeName *
+MySQLSystemTypeName(char *name)
+{
+	return makeTypeNameFromNameList(list_make2(makeString("ivymy"),
+											   makeString(name)));
+}
+/* End - ReqID:ReqID:SRS-MYSQL-YEARTYPE */
 
 /* doNegate()
  * Handle negation of a numeric constant.
