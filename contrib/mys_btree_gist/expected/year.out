@@ -1,0 +1,156 @@
+-- year check
+SELECT set_config('search_path', 'ivymy, '||current_setting('search_path'), false);
+       set_config       
+------------------------
+ ivymy, "$user", public
+(1 row)
+
+CREATE TABLE year_gist_check(y YEAR);
+\copy year_gist_check from 'data/year.data'
+SET enable_seqscan=on;
+SELECT count(*) FROM year_gist_check WHERE y <  '2016';
+ count 
+-------
+   357
+(1 row)
+
+SELECT count(*) FROM year_gist_check WHERE y <= '2016';
+ count 
+-------
+   362
+(1 row)
+
+SELECT count(*) FROM year_gist_check WHERE y  = '2016';
+ count 
+-------
+     5
+(1 row)
+
+SELECT count(*) FROM year_gist_check WHERE y >= '2016';
+ count 
+-------
+   187
+(1 row)
+
+SELECT count(*) FROM year_gist_check WHERE y >  '2016';
+ count 
+-------
+   182
+(1 row)
+
+SELECT count(*) FROM year_gist_check WHERE y <> '2016';
+ count 
+-------
+   539
+(1 row)
+
+CREATE INDEX yearidx on year_gist_check USING gist(y);
+SET enable_seqscan=off;
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y <  '2016';
+                   QUERY PLAN                   
+------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y < '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y < '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y <  '2016';
+ count 
+-------
+   357
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y <= '2016';
+                   QUERY PLAN                    
+-------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y <= '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y <= '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y <= '2016';
+ count 
+-------
+   362
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y  = '2016';
+                   QUERY PLAN                   
+------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y = '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y = '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y  = '2016';
+ count 
+-------
+     5
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y >= '2016';
+                   QUERY PLAN                    
+-------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y >= '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y >= '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y >= '2016';
+ count 
+-------
+   187
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y >  '2016';
+                   QUERY PLAN                   
+------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y > '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y > '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y >  '2016';
+ count 
+-------
+   182
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM year_gist_check WHERE y <> '2016';
+                   QUERY PLAN                    
+-------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on year_gist_check
+         Recheck Cond: (y <> '2016'::"year")
+         ->  Bitmap Index Scan on yearidx
+               Index Cond: (y <> '2016'::"year")
+(5 rows)
+
+SELECT count(*) FROM year_gist_check WHERE y <> '2016';
+ count 
+-------
+   539
+(1 row)
+
+SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);
+   set_config    
+-----------------
+ "$user", public
+(1 row)
+
