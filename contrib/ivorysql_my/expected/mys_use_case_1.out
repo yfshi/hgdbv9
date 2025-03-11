@@ -119,3 +119,15 @@ SELECT sche_f(0);
       2
 (1 row)
 
+--BUG#1444
+use aa;
+ERROR:  Unknown database aa
+create database aa;
+use aa;
+select current_schema();
+ current_schema 
+----------------
+ aa
+(1 row)
+
+drop schema aa;

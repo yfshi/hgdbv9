@@ -89,3 +89,10 @@ CREATE FUNCTION SCTEST8.sche_f(a int)
 
 USE  SCTEST8;
 SELECT sche_f(0);
+
+--BUG#1444
+use aa;
+create database aa;
+use aa;
+select current_schema();
+drop schema aa;
