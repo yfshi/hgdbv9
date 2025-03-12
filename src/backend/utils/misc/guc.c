@@ -3697,6 +3697,31 @@ static struct config_int ConfigureNamesInt[] =
 		0, 0, INT_MAX,
 		check_client_connection_check_interval, NULL, NULL
 	},
+	/* Begin - BUG#M0000527 */
+	{
+		{"hg_connect_size",
+			PGC_USERSET,
+			RESOURCES_MEM,
+			gettext_noop("Maximum number of connect pool size."),
+			NULL,
+		},
+		&hg_connect_size,
+		0, 0, MAX_BACKENDS,
+		NULL, NULL, NULL
+	},
+	{
+		{"hg_connect_delay",
+			PGC_USERSET,
+			RESOURCES_MEM,
+			gettext_noop("Delay time when there have more connection than connect_pool_size."),
+			NULL,
+		},
+		&hg_connect_delay,
+		0, 0, MAX_BACKENDS,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#M0000527 */
+
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_INT_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */

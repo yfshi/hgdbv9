@@ -4959,6 +4959,25 @@ PostgresMain(int argc, char *argv[],
 		if (ignore_till_sync && firstchar != EOF)
 			continue;
 
+		/* Begin - BUG#M0000527 */
+
+		/*
+		 * MyProc->pgxactoff is the index of current PROC in procArray->pgprocnos[]
+		 * procArray->pgprocnos[] store all active proc sorted by pgprocnos
+		 * keep first hg_connect_size of BEs active in procArray->pgprocnos[]
+		 * let the reset sleep connect_delay_time(ms)
+		 */
+		if (hg_connect_size > 0 && hg_connect_delay > 0)
+		{
+			if (MyProc->pgxactoff > hg_connect_size &&
+					MyProc->lxid == 0 )
+			{
+				pg_usleep(hg_connect_delay * 1000L);
+				// WaitLatch(MyLatch, xxx);
+			}
+		}
+		/* End - BUG#M0000527 */
+
 		switch (firstchar)
 		{
 			case 'Q':			/* simple query */
