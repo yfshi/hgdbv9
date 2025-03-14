@@ -7,12 +7,14 @@ format_generic_map1(int32_t val, StringInfoData *dest)
     uint32_t low_16  = (val & 0x0000ffff);
     uint32_t high_16 = (val & 0xffff0000) >> 16;
 
-    if(high_16 == 0x0000) {
+    if (high_16 == 0x0000) 
+    {
         pq_sendint16(dest, low_16);
         return 2;
     }
 
-    if(high_16 == 0xffff) {
+    if (high_16 == 0xffff) 
+    {
         pq_sendint32(dest, val);
         return 4;
     }
@@ -38,10 +40,10 @@ generic_find_format(void *find, StringInfoData *dest)
 
     nlssort_generic_mp_data_t *src = (nlssort_generic_mp_data_t *)find;
 
-    if(src->val1)
+    if (src->val1)
         len1 = format_generic_map1(src->val1, &dest[0]);
 
-    if(src->val2)
+    if (src->val2)
         len2 = format_generic_map2(src->val2, &dest[1]);
 
     return len1 + len2;
@@ -59,7 +61,7 @@ generic_m_ci_collate(nlssort_trans_t *trans, const char *src, int32_t len)
     StringInfoData data[GENERIC_MAP_NUMBER + 1];
     StringInfoData *result = &data[GENERIC_MAP_NUMBER];
 
-    for(int i = 0; i < GENERIC_MAP_NUMBER + 1; ++i)
+    for (int i = 0; i < GENERIC_MAP_NUMBER + 1; ++i)
         pq_begintypsend(&data[i]);
 
     nls_find_format_multi_char(trans, src, len, data);
@@ -68,7 +70,7 @@ generic_m_ci_collate(nlssort_trans_t *trans, const char *src, int32_t len)
     pq_sendint16(result, 0x0000);
     pq_sendbytes(result, data[1].data + VARHDRSZ, data[1].len - VARHDRSZ);
     
-    for(int i = 0; i < GENERIC_MAP_NUMBER; ++i)
+    for (int i = 0; i < GENERIC_MAP_NUMBER; ++i)
         pfree(data[i].data);
 
     return pq_endtypsend(result);
