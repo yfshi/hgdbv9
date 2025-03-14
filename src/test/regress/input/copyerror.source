@@ -724,6 +724,16 @@ DROP TABLE r_z1149;
 DROP TABLE p_z1149;
 -- End - BUG#Z1149
 
+-- Begin - BUG#M0000526
+-- file format error, return an error
+create table xxxx(n1 varchar(100), n2 varchar(100), n3 varchar(100), n4 varchar(100), n5 varchar(100));
+
+copy xxxx from '@abs_srcdir@/data/ora_copy_format_error.data' with(format csv, delimiter '|');
+copy xxxx from '@abs_srcdir@/data/ora_copy_format_error.data' with(format csv, delimiter '|', skipbad);
+
+drop table xxxx;
+-- End - BUG#M0000526
+
 -- clean up
 DROP TABLE x;
 DROP TABLE x_bad;
