@@ -9,7 +9,8 @@ uca_schinese_format_map1_map4(int32_t val, StringInfoData *dest)
     uint32_t low_16  = (val & 0x0000ffff);
     uint32_t high_16 = (val & 0xffff0000) >> 16;
 
-    if(high_16 == 0) {
+    if (high_16 == 0) 
+    {
         pq_sendint16(dest, low_16);
         return 2;
     }
@@ -42,16 +43,16 @@ uca_find_format(void *find, StringInfoData *dest)
 
     nlssort_uca_mp_data_t *src = (nlssort_uca_mp_data_t *)find;
 
-    if(src->val1)
+    if (src->val1)
         len1 = uca_schinese_format_map1_map4(src->val1, &dest[0]);
 
-    if(src->val2)
+    if (src->val2)
         len2 = uca_schinese_format_map2(src->val2, &dest[1]);
 
-    if(src->val3)
+    if (src->val3)
         len3 = uca_schinese_format_map3(src->val3, &dest[2]);
 
-    if(src->val4)
+    if (src->val4)
         len4 = uca_schinese_format_map1_map4(src->val4, &dest[3]);
 
     return len1 + len2 + len3 + len4;
@@ -82,10 +83,11 @@ uca_normalize(nlssort_trans_t *trans, const char *src, int len, StringInfoData *
 
     code = nls_get_code_number(src, len);
 
-    if(map)
+    if (map)
         find = (nlssort_uca_norm_mp_t *)map->mp_find(&code, map->data, map->size, map->sec_size);
 
-    if(!find) {
+    if (!find) 
+    {
         schinese_normalize(trans, src, len, dest);
         return;
     }
@@ -93,8 +95,9 @@ uca_normalize(nlssort_trans_t *trans, const char *src, int len, StringInfoData *
     nindex = find->nindex;
     indexs = find->indexs;
 
-    for(int i = 0; i < nindex; ++i) {
-        if(uca_mp)
+    for (int i = 0; i < nindex; ++i) 
+    {
+        if (uca_mp)
             uca_find_format((nlssort_mp_data_t *)(uca_mp + indexs[i]), dest);
     }
 }
@@ -107,7 +110,7 @@ uca_schinese_collate(nlssort_trans_t *trans, const char *src, int32_t len)
     StringInfoData data[UCA_MAP_NUMBER + 1];
     StringInfoData *result = &data[UCA_MAP_NUMBER];
 
-    for(int i = 0; i < UCA_MAP_NUMBER + 1; ++i)
+    for (int i = 0; i < UCA_MAP_NUMBER + 1; ++i)
         pq_begintypsend(&data[i]);
 
     nls_find_format_multi_char(trans, src, len, data);
@@ -120,7 +123,7 @@ uca_schinese_collate(nlssort_trans_t *trans, const char *src, int32_t len)
     pq_sendint8(result, 0x00);
     pq_sendbytes(result, data[3].data + VARHDRSZ, data[3].len - VARHDRSZ);
 
-    for(int i = 0; i < UCA_MAP_NUMBER; ++i)
+    for (int i = 0; i < UCA_MAP_NUMBER; ++i)
         pfree(data[i].data);
 
     return pq_endtypsend(result);

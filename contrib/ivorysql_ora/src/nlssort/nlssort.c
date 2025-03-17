@@ -186,7 +186,8 @@ remove_trailing_spaces(const char *src, int32_t len)
 {
     const char *pos = src + len - 1;
 
-    while(pos != src && *pos == ' ') {
+    while(pos != src && *pos == ' ') 
+    {
         pos--;
         len--;
     }
@@ -219,7 +220,7 @@ nls_find_format(nlssort_trans_t *trans, uint32_t code, StringInfoData *dest)
 
     find = map->mp_find(&code, map->data, map->size, map->sec_size);
 
-    if(find == NULL)
+    if (find == NULL)
         return 0;
 
     assert(map->mp_format != NULL);
@@ -232,7 +233,7 @@ nls_get_code_number(const char *src, int32_t len)
 {
     uint32_t code = 0;
 
-    for(int32_t i = len - 1; i >= 0; --i, src++)
+    for (int32_t i = len - 1; i >= 0; --i, src++)
         code |= *((uint8_t*)src) << (8 * i);
     
     return code;
@@ -244,7 +245,7 @@ nls_find_format_single_char(nlssort_trans_t *trans, const char *src, int32_t len
     int32_t ret = 0;
     uint32_t code = 0;
 
-    if(src == NULL || len == 0)
+    if (src == NULL || len == 0)
         return 0;
 
     code = nls_get_code_number(src, len);
@@ -266,10 +267,11 @@ nls_normalize(nlssort_trans_t *trans, const char *src, int len, StringInfoData *
 {
     const char *utf8 = src;
 
-    if(!trans->map || !trans->map->normalize) 
+    if (!trans->map || !trans->map->normalize) 
         return;
 
-    if(trans->enc != PG_UTF8) {
+    if (trans->enc != PG_UTF8) 
+    {
         text *ret;
         char raw[8] = { 0 };
 
@@ -294,7 +296,8 @@ nls_normalize(nlssort_trans_t *trans, const char *src, int len, StringInfoData *
 static void
 nls_find_format_multi_char(nlssort_trans_t *trans, const char *src, int32_t srclen, StringInfoData *dest)
 {
-    for(int32_t total = srclen, len = 0, append = 0; total > 0; total -= len, src += len) {
+    for (int32_t total = srclen, len = 0, append = 0; total > 0; total -= len, src += len) 
+    {
         len = pg_encoding_mblen(trans->enc, src);
 
         /**
@@ -311,7 +314,7 @@ nls_find_format_multi_char(nlssort_trans_t *trans, const char *src, int32_t srcl
          * may be the character is not support,
          * or the character is combinaton char, just normalize it !!!
          */
-        if(append == 0)
+        if (append == 0)
             nls_normalize(trans, src, len, dest);
     }
 }
@@ -326,14 +329,17 @@ nls_truncate_pre(const char *src, int32_t len, Oid collid)
 
     int32_t cnt = 0;
     
-    if(collid == ORA_COLL_OID(BINARY)) {
+    if (collid == ORA_COLL_OID(BINARY)) 
+    {
         cnt = len;
-    } else {
+    } 
+    else 
+    {
         while(cnt < len && cnt < NLSSORT_INPUT_LIMIT)
             cnt += pg_encoding_mblen(GetDatabaseEncoding(), src);
     }
 
-    if(cnt < NLSSORT_INPUT_LIMIT)
+    if (cnt < NLSSORT_INPUT_LIMIT)
         return len;
     
     return NLSSORT_INPUT_LIMIT;
@@ -351,9 +357,9 @@ nls_truncate_final(bytea *result)
     // Check from `MAX_STRING_SIZE` to ensure truncate length
     int32_t limit = (max_string_size == ORA_MAX_STRING_SIZE_STANDARD) ? 2000 : 32767;
 
-    if(VARSIZE_ANY_EXHDR(result) > limit) {
-        if(max_string_size == ORA_MAX_STRING_SIZE_STANDARD)
-            SET_VARSIZE(result, limit + VARHDRSZ);
+    if (VARSIZE_ANY_EXHDR(result) > limit)
+    {    
+        SET_VARSIZE(result, limit + VARHDRSZ);
 
         /*
          * there will effect INSERT, if table is partition-table, 
@@ -372,9 +378,9 @@ pick_collation_with_oid(Oid collid)
 {
     int32_t i;
 
-    for(i = 0; i != _ORA_LAST_COLLATION && ora_collations[i].collid != collid; i++) {}
+    for (i = 0; i != _ORA_LAST_COLLATION && ora_collations[i].collid != collid; i++) {}
 
-    if(i == _ORA_LAST_COLLATION)
+    if (i == _ORA_LAST_COLLATION)
         return NULL;
 
     return &ora_collations[i];
@@ -385,9 +391,9 @@ pick_collation_with_ora_id(Oid ora_id)
 {
     int32_t i;
 
-    for(i = 0; i != _ORA_LAST_COLLATION && ora_collations[i].ora_id != ora_id; i++) {}
+    for (i = 0; i != _ORA_LAST_COLLATION && ora_collations[i].ora_id != ora_id; i++) {}
 
-    if(i == _ORA_LAST_COLLATION)
+    if (i == _ORA_LAST_COLLATION)
         return NULL;
 
     return &ora_collations[i];
@@ -398,7 +404,8 @@ pick_collation_with_collname(const char *collname, int len)
 {
     int32_t i = 0;
     
-    for(i = 0; i != _ORA_LAST_COLLATION; i++) {
+    for (i = 0; i != _ORA_LAST_COLLATION; i++) 
+    {
         const char *shortname = ora_collations[i].collname;
         const char *longname = ora_collations[i].longname;
 
@@ -411,7 +418,7 @@ pick_collation_with_collname(const char *collname, int len)
             break;
     }
 
-    if(i == _ORA_LAST_COLLATION)
+    if (i == _ORA_LAST_COLLATION)
         return NULL;
     
     return &ora_collations[i];
@@ -427,7 +434,8 @@ do_nls_sort_internal(const char *src, int32_t len, ora_collation_t *coll)
     len = nls_truncate_pre(src, len, coll->collid);
 
     trans = coll->trans[enc];
-    if(trans == NULL && coll->default_trans && coll->default_trans->enc != GetDatabaseEncoding()) {
+    if (trans == NULL && coll->default_trans && coll->default_trans->enc != GetDatabaseEncoding()) 
+    {
         Datum converted;
         char *p = (char *) palloc(len + VARHDRSZ);
 
@@ -458,12 +466,12 @@ do_nls_sort(const char *src, int32_t len, const char *collname)
     
     coll = pick_collation_with_collname(collname, strlen(collname));
 
-    if(coll == NULL)
+    if (coll == NULL)
         ereport(ERROR,
                 errmsg("IVY-12702: invalid NLS parameter string used in SQL function"));
 
     // this is pseudo-collation
-    if(coll->collate == NULL)
+    if (coll->collate == NULL)
         ereport(ERROR,
                 errmsg("IVY-12702: invalid NLS parameter string used in SQL function"));
 
@@ -473,7 +481,7 @@ do_nls_sort(const char *src, int32_t len, const char *collname)
 static bytea *
 do_nls_lang(const char *src, int32_t len, const char *abbreviation)
 {
-    if(pg_strcasecmp(abbreviation, "ZHS") == 0 || pg_strcasecmp(abbreviation, "US") == 0) 
+    if (pg_strcasecmp(abbreviation, "ZHS") == 0 || pg_strcasecmp(abbreviation, "US") == 0) 
         return do_nls_sort(src, len, "BINARY");
     
     ereport(ERROR,
@@ -491,7 +499,7 @@ do_nls_lang(const char *src, int32_t len, const char *abbreviation)
 static bytea *
 do_nls_language(const char *src, int32_t len, const char *language)
 {
-    if(pg_strcasecmp(language, "AMERICAN") == 0) 
+    if (pg_strcasecmp(language, "AMERICAN") == 0) 
         return do_nls_sort(src, len, "BINARY");
 
     ereport(ERROR,
@@ -507,11 +515,13 @@ nlssort_action_choose(const char *src, int32_t len, char *key, char *val, bool t
     int32_t i;
     bytea   *result = NULL;
 
-    if(trim)
+    if (trim)
         len = remove_trailing_spaces(src, len);
 
-    for(i = NLS_SORT; i != _NLS_LAST_ARGS; ++i) {
-        if(pg_strcasecmp(key, nls_args[i].argname) == 0) {
+    for (i = NLS_SORT; i != _NLS_LAST_ARGS; ++i) 
+    {
+        if (pg_strcasecmp(key, nls_args[i].argname) == 0) 
+        {
             assert(nls_args[i].action != NULL);
             result = nls_args[i].action(src, len, val);
             break;
@@ -522,7 +532,6 @@ nlssort_action_choose(const char *src, int32_t len, char *key, char *val, bool t
         ereport(ERROR,
                 errmsg("IVY-12702: invalid NLS parameter string used in SQL function"));
 
-
     return result;
 }
 
@@ -531,7 +540,7 @@ nlssort_internal_with_pseudo_collation(const char *src, int32_t len, Oid collid,
 {    
     ora_collation_t *coll;
     
-    if(trim)
+    if (trim)
         len = remove_trailing_spaces(src, len);
 
     /**
@@ -571,26 +580,29 @@ rawin(PG_FUNCTION_ARGS)
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	};
 
-    if(targetTypeId != RAWOID && targetTypeId != BLOBOID)
+    if (targetTypeId != RAWOID && targetTypeId != BLOBOID)
       PG_RETURN_NULL();  
 
 	r = PG_GETARG_CSTRING(1);
 
-	if(r == NULL)
+	if (r == NULL)
 		len = 0;
 	else 
 		len = strlen(r);
 	
     // compatible PG's bytea input style: '\xfe'
-    if(len > 2 && r[0] == '\\' && r[1] == 'x') {
+    if (len > 2 && r[0] == '\\' && r[1] == 'x') 
+    {
         len -= 2;
         r += 2;
     }
 
     bc = (len + 1) / 2 + VARHDRSZ;
 
-	for(int i = 0; i < len; ++i) {
-		if(hexlookup[(int8_t)r[i]] == (uint8_t)-1) {
+	for (int i = 0; i < len; ++i) 
+    {
+		if (hexlookup[(int8_t)r[i]] == (uint8_t)-1) 
+        {
             ereport(ERROR,
                     errmsg("IVY-01465: invalid hex number"));
 		}
@@ -599,11 +611,13 @@ rawin(PG_FUNCTION_ARGS)
     result = palloc(bc);
 	w = (uint8_t *)VARDATA(result);
 
-	if(len & 1) {
+	if (len & 1) 
+    {
 		*(w++) = hexlookup[(int8_t)*(r++)];
 	}
 	
-	for(; r && *r; r += 2) {
+	for (; r && *r; r += 2) 
+    {
 		*(w++) = hexlookup[(int8_t)*r] << 4 | hexlookup[(int8_t)*(r + 1)];
 	}
 
@@ -616,7 +630,8 @@ rawin(PG_FUNCTION_ARGS)
 void
 nlssort_init(void)
 {
-    for(int32_t i=SCHINESE_STROKE_M; i != _ORA_LAST_COLLATION; i++) {
+    for (int32_t i=SCHINESE_STROKE_M; i != _ORA_LAST_COLLATION; i++) 
+    {
         memset(ora_collations[i].trans, 0, _PG_LAST_ENCODING_ * sizeof(nlssort_trans_t *));
     }
 
@@ -696,7 +711,8 @@ rawout(bytea *src)
 
 	*(result + len) = '\0';
 
-	while(len--) {
+	while(len--) 
+    {
 		result[len] = toupper(result[len]);
 	}
 
@@ -726,7 +742,8 @@ nls_collation_name(PG_FUNCTION_ARGS)
     ora_collation_t *coll;
     char            type = 'L';
     
-    if (PG_NARGS() == 2) {
+    if (PG_NARGS() == 2) 
+    {
         type = PG_GETARG_CHAR(1);
 
         if (type != 's' && type != 'S' &&
@@ -737,7 +754,7 @@ nls_collation_name(PG_FUNCTION_ARGS)
 
     coll = pick_collation_with_ora_id(ora_id);
 
-    if(coll == NULL)
+    if (coll == NULL)
         PG_RETURN_NULL();
 
     if ((type == 'l' || type == 'L') && coll->longname)

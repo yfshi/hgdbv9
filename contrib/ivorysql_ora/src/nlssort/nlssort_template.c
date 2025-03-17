@@ -42,7 +42,7 @@ nlssort_1(PG_FUNCTION_ARGS)
         len = strlen(src);
     #endif
     
-    if(len == 0)
+    if (len == 0)
         PG_RETURN_NULL();
 
     collname = nls_sort_str;
@@ -82,12 +82,13 @@ nlssort_2(PG_FUNCTION_ARGS)
         len = strlen(src);
     #endif
     
-    if(len == 0)
+    if (len == 0)
         PG_RETURN_NULL();
 
     nlssort_arg = pstrdup(PG_GETARG_CSTRING(1));
     
-    if (!SplitIdentifierString(nlssort_arg, '=', &l) || list_length(l) != 2) {
+    if (!SplitIdentifierString(nlssort_arg, '=', &l) || list_length(l) != 2) 
+    {
         list_free(l);
         pfree(nlssort_arg);
         ereport(ERROR,

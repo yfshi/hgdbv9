@@ -1260,7 +1260,7 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 
 	/* Begin - SRS-SQL-NLSSORT */
 	{
-		{"max_string_size", PGC_SU_BACKEND, COMPAT_ORACLE_OPTIONS,
+		{"max_string_size", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Compatible Oracle system parameter for MAX_STRING_SIZE."),
 			NULL
 		},
@@ -1704,10 +1704,7 @@ max_string_size_check(int *newval, void **extra, GucSource source)
 
 	if (new_val != ORA_MAX_STRING_SIZE_STANDARD && new_val != ORA_MAX_STRING_SIZE_EXTENDED)
 		ereport(ERROR, (errmsg("IVY-00096: invalid value EXTENDDED for parameter max_string_size, must be from among EXTENDED, STANDARD")));
-		
-	if (max_string_size == ORA_MAX_STRING_SIZE_EXTENDED && new_val == ORA_MAX_STRING_SIZE_STANDARD)
-		ereport(ERROR, (errmsg("cannot set MAX_STRING_SIZE from EXTENDED to STANDARD")));
-
+	
 	return true;
 }
 /* End - SRS-SQL-NLSSORT */
