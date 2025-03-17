@@ -692,7 +692,6 @@ end;
 NOTICE:  salary = <NULL>,total =25
 NOTICE:  xiexie,1986,19860
 --test failed
-create cast(varchar as integer) with inout as implicit;
 declare
   abc varchar(256);
   return_x varchar(256);
@@ -716,7 +715,6 @@ end;
 /
 NOTICE:  salary = <NULL>,total =<NULL>
 NOTICE:  xiexie,1986,19860
-drop cast(varchar as integer);
 drop function test_init_out_inout(integer,integer,integer);
 --return setof, create function statement failed
 create or replace function test_return_setof_out(id varchar,mds out integer) return setof integer as

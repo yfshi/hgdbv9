@@ -167,3 +167,87 @@ SELECT create_time, work_hour_sum FROM result;
 
 --clean data
 drop table hh_adds_static_day;
+
+--bug#Z4345
+create table tb(c1 int);
+create table tb2(c1 smallint);
+
+create table srb1(id char(10 char));
+create table srb2(id char(20 byte));
+create table srb3(id varchar2(10 char));
+create table srb4(id varchar2(10 byte));
+
+insert into srb1 values('100');
+insert into srb2 values('100');
+insert into srb3 values('100');
+insert into srb4 values('100');
+
+--ok
+insert into tb(c1) select case when 1=1 then '100' else '200' end from dual;
+insert into tb2(c1) select case when 1=1 then '100' else '200' end from dual;
+
+select * from tb;
+select count(*) from tb where c1 = 100;
+select * from tb2;
+
+--ok
+insert into tb select * from srb1;
+insert into tb select * from srb2;
+insert into tb select * from srb3;
+insert into tb select * from srb4;
+
+insert into tb2 select * from srb1;
+insert into tb2 select * from srb2;
+insert into tb2 select * from srb3;
+insert into tb2 select * from srb4;
+
+
+insert into srb1 values('100a');
+insert into srb2 values('100a');
+insert into srb3 values('100a');
+insert into srb4 values('100a');
+
+
+--error
+insert into tb select * from srb1;
+insert into tb select * from srb2;
+insert into tb select * from srb3;
+insert into tb select * from srb4;
+
+insert into tb2 select * from srb1;
+insert into tb2 select * from srb2;
+insert into tb2 select * from srb3;
+insert into tb2 select * from srb4;
+
+--clean data
+drop table tb;
+drop table tb2;
+drop table srb1;
+drop table srb2;
+drop table srb3;
+drop table srb4;
+
+--test fk
+set ivorysql.enable_ora_default_collation = off;
+create table pktable(id1 integer primary key,id2 varchar2(4) unique,id3 real unique);
+
+create table fktable(x1 integer references pktable(id1), x2 varchar2(4) references pktable(id2), x3 real references pktable(id3),
+x4 varchar2(256),x5 smallint);
+
+
+--ok
+alter table fktable add constraint fk_2_1 foreign key (x2) references pktable(id1);
+
+--ok
+insert into pktable values(1,'23',45.5);
+insert into pktable values(2,'abc',45.6);
+insert into pktable values(3,'2',45.7);
+
+--error
+insert into fktable values(1,'23',45.5);
+
+--ok
+insert into fktable values(1,'2',45.5);
+
+drop table fktable;
+drop table pktable;

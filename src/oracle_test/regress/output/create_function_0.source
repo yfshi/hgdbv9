@@ -67,12 +67,11 @@ CREATE FUNCTION binary_coercible(oid, oid)
     LANGUAGE C STRICT STABLE PARALLEL SAFE;
 /
 -- Things that shouldn't work:
+--ok
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'SELECT ''not an integer'';';
 /
-ERROR:  return type mismatch in function declared to return integer
-DETAIL:  Actual return type is varchar2.
-CONTEXT:  SQL function "test1"
+drop function test1(int);
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'not even SQL';
 /
