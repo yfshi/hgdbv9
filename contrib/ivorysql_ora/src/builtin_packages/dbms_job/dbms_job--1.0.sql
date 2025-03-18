@@ -572,6 +572,7 @@ BEGIN
         UPDATE pgagent.pga_job
         SET jobnextrun = SYSTIMESTAMP
         WHERE jobid = job;
+		UPDATE pgagent.pga_job SET jobenabled = true WHERE jobid = job; /* BUG#M0000528 */
     ELSE
         RAISE EXCEPTION 'IVY-23421:job number % is not a job in the job queue', job;
     END IF;
