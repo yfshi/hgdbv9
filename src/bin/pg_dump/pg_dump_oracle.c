@@ -15375,7 +15375,10 @@ dumpForeignServer(Archive *fout, const ForeignServerInfo *srvinfo)
 				srvinfo->initsrvacl, srvinfo->initrsrvacl);
 
 	/* Dump user mappings */
-	if (srvinfo->lnkconntype == 0 && srvinfo->dobj.dump & DUMP_COMPONENT_USERMAP)
+	/* BUG#Z4371 : dump the mappings for ORA_DBLINK_CONNECTED_USER and
+	 * ORA_DBLINK_CURRENT_USER dblink server
+	 */
+	if (srvinfo->lnkconntype != ORA_DBLINK_FIXED_USER && srvinfo->dobj.dump & DUMP_COMPONENT_USERMAP)
 		dumpUserMappings(fout,
 						 srvinfo->dobj.name, NULL,
 						 srvinfo->rolname,
