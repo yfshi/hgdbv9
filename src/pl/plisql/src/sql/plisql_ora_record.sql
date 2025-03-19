@@ -3449,7 +3449,6 @@ end;
 select * from mds;
 
 --record columns datatype are compatible with table columns datatype
-create cast(varchar as integer) with inout as implicit;
 
 declare
   type sds is record(id varchar(23),name_1 varchar(23));
@@ -3461,7 +3460,6 @@ begin
 end;
 /
 select * from mds;
-drop cast(varchar as integer);
 
 declare
   type sds is record(id integer,name_1 varchar(23));

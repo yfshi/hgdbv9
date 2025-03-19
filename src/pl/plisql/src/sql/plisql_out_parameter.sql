@@ -689,7 +689,6 @@ end;
 
 
 --test failed
-create cast(varchar as integer) with inout as implicit;
 
 declare
   abc varchar(256);
@@ -712,7 +711,6 @@ begin
 end;
 /
 
-drop cast(varchar as integer);
 drop function test_init_out_inout(integer,integer,integer);
 
 

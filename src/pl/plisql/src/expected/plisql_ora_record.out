@@ -3697,7 +3697,6 @@ select * from mds;
 (1 row)
 
 --record columns datatype are compatible with table columns datatype
-create cast(varchar as integer) with inout as implicit;
 declare
   type sds is record(id varchar(23),name_1 varchar(23));
   var1 sds;
@@ -3713,7 +3712,6 @@ select * from mds;
   22 | hi
 (1 row)
 
-drop cast(varchar as integer);
 declare
   type sds is record(id integer,name_1 varchar(23));
   var1 sds;

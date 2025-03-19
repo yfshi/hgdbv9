@@ -11772,6 +11772,40 @@ CREATE CAST (sys.oravarcharchar AS pg_catalog.int4)
 WITH INOUT
 AS IMPLICIT;
 
+/* Begin - BUG#Z00004345 */
+--oracle smallint,int as number,so we add implicit cast as number?
+--TODO, maybe add sys.integer,sys.smalint to handle this
+CREATE CAST (sys.oravarcharbyte AS pg_catalog.int4)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (sys.oracharchar AS pg_catalog.int4)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (sys.oracharbyte AS pg_catalog.int4)
+WITH INOUT
+AS IMPLICIT;
+
+
+CREATE CAST (sys.oravarcharchar AS pg_catalog.int2)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (sys.oravarcharbyte AS pg_catalog.int2)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (sys.oracharchar AS pg_catalog.int2)
+WITH INOUT
+AS IMPLICIT;
+
+CREATE CAST (sys.oracharbyte AS pg_catalog.int2)
+WITH INOUT
+AS IMPLICIT;
+/* End - BUG#Z00004345 */
+
+
 /* will move to oracharchar partion */
 create or replace function sys.oid_cc_eq(oid_l pg_catalog.oid, cc_r sys.oracharchar) 
 RETURNS BOOLEAN AS 

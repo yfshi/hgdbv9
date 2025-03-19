@@ -1120,8 +1120,7 @@ DETAIL:  Key columns "x2" and "id3" are of incompatible types: varchar2 and real
 -- nor to int4
 ALTER TABLE fktable ADD CONSTRAINT fk_2_1
 FOREIGN KEY (x2) REFERENCES pktable(id1);
-ERROR:  foreign key constraint "fk_2_1" cannot be implemented
-DETAIL:  Key columns "x2" and "id1" are of incompatible types: varchar2 and integer.
+ERROR:  IVY-02267: column type incompatible with referenced column type
 -- real does not promote to int4
 ALTER TABLE fktable ADD CONSTRAINT fk_3_1
 FOREIGN KEY (x3) REFERENCES pktable(id1);
@@ -1157,7 +1156,7 @@ DETAIL:  Key columns "x2" and "id3" are of incompatible types: varchar2 and real
 ALTER TABLE fktable ADD CONSTRAINT fk_241_132
 FOREIGN KEY (x2,x4,x1) REFERENCES pktable(id1,id3,id2);
 ERROR:  foreign key constraint "fk_241_132" cannot be implemented
-DETAIL:  Key columns "x2" and "id1" are of incompatible types: varchar2 and integer.
+DETAIL:  Key columns "x4" and "id3" are of incompatible types: text and real.
 DROP TABLE pktable, fktable;
 -- test a tricky case: we can elide firing the FK check trigger during
 -- an UPDATE if the UPDATE did not change the foreign key

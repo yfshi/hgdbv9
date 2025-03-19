@@ -82,10 +82,12 @@ CREATE FUNCTION binary_coercible(oid, oid)
 /
 
 -- Things that shouldn't work:
-
+--ok
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'SELECT ''not an integer'';';
 /
+
+drop function test1(int);
 
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'not even SQL';

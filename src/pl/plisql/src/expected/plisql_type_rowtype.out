@@ -2656,12 +2656,9 @@ BEGIN
   INSERT INTO t1 VALUES v1;
 END;
 /
-ERROR:  column "id" is of type integer but expression is of type varchar2
-LINE 1: INSERT INTO t1 VALUES v1
-                              ^
-HINT:  You will need to rewrite or cast the expression.
-QUERY:  INSERT INTO t1 VALUES v1
-CONTEXT:  PL/iSQL function inline_code_block line 6 at SQL statement
+ERROR:  invalid input syntax for type integer: "a"
+CONTEXT:  SQL statement "INSERT INTO t1 VALUES v1"
+PL/iSQL function inline_code_block line 6 at SQL statement
 DROP TABLE t3;
 DROP TABLE t4;
 DROP TABLE t5;
