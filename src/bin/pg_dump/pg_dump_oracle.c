@@ -15438,7 +15438,6 @@ dumpUserMappings(Archive *fout,
 					  "), E',\n    ') AS umoptions "
 					  "FROM pg_user_mappings "
 					  "WHERE srvid = '%u' "
-					  " AND usename != 'public' "
 					  "ORDER BY usename",
 					  catalogId.oid);
 
