@@ -1152,10 +1152,37 @@ sub lookup_oids
 			push @lookupoids, $lookupname;
 			if ($lookupname eq '-' or $lookupname eq '0')
 			{
-				warn sprintf
-				  "invalid zero OID reference in %s.dat field %s line %s\n",
-				  $catname, $attname, $bki_values->{line_number}
-				  if !$lookup_opt;
+				# Begin - BUG#M0000512
+				# these types will be update within contrib extension when initdb.
+				if (defined($bki_values->{typname})
+				and $bki_values->{typname} ne 'oracharchar'
+				and $bki_values->{typname} ne 'oracharbyte'
+				and $bki_values->{typname} ne 'oravarcharchar'
+				and $bki_values->{typname} ne 'oravarcharbyte'
+				and $bki_values->{typname} ne 'oradate'
+				and $bki_values->{typname} ne 'oratimestamp'
+				and $bki_values->{typname} ne 'oratimestamptz'
+				and $bki_values->{typname} ne 'oratimestampltz'
+				and $bki_values->{typname} ne 'yminterval'
+				and $bki_values->{typname} ne 'dsinterval'
+				and $bki_values->{typname} ne 'number'
+				and $bki_values->{typname} ne 'binary_float'
+				and $bki_values->{typname} ne 'binary_double'
+				and $bki_values->{typname} ne 'sys_refcursor'
+				and $bki_values->{typname} ne 'orarefcursor'
+				and $bki_values->{typname} ne 'udtpointer'
+				and $bki_values->{typname} ne 'oracharchar_2'
+				and $bki_values->{typname} ne 'oracharbyte_2'
+				and $bki_values->{typname} ne 'oravarcharchar_2'
+				and $bki_values->{typname} ne 'oravarcharbyte_2'
+				and $bki_values->{typname} ne 'year')
+				# End - BUG#M0000512
+				{
+					warn sprintf
+					  "invalid zero OID reference in %s.dat field %s line %s\n",
+					  $catname, $attname, $bki_values->{line_number}
+					  if !$lookup_opt;
+				}
 			}
 			else
 			{
