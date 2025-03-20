@@ -46,6 +46,7 @@ create or replace function test_conv(
   input IN bytea,
   src_encoding IN text,
   dst_encoding IN text,
+
   result OUT bytea,
   errorat OUT bytea,
   error OUT text)

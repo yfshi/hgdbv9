@@ -1171,6 +1171,7 @@ begin
     raise info '%', id;
     return id;
 end; $$ language plisql;
+/
 --print 23
 do $$
 declare
@@ -1178,8 +1179,8 @@ declare
 begin
   id := test_mds(23);
 end; $$ language plisql;
-/
 INFO:  23
+/
 --print 23 23
 select * from test_mds(23);
 INFO:  23
@@ -1207,6 +1208,7 @@ begin
     raise info '%', id;
     return id;
 end; $$ language plisql;
+/
 --print 23
 do $$
 declare
@@ -1214,8 +1216,8 @@ declare
 begin
   id := test_mds(23);
 end;$$ language plisql;
-/
 INFO:  23
+/
 --test ok
 create or replace function test_mds(id integer) returns integer AS
 $$

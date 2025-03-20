@@ -193,6 +193,7 @@ CREATE TABLE audit_tbls.schema_two_table_three(the_value text);
 CREATE OR REPLACE FUNCTION schema_two.add(int, int) RETURNS int LANGUAGE plpgsql
   CALLED ON NULL INPUT
   AS $$ BEGIN RETURN coalesce($1,0) + coalesce($2,0); END; $$;
+  /
 CREATE AGGREGATE schema_two.newton
   (BASETYPE = int, SFUNC = schema_two.add, STYPE = int);
 

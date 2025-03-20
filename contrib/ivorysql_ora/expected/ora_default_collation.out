@@ -164,6 +164,7 @@ BEGIN
     EXECUTE create_stmt;
     select check_column_collation('test', 'val') into ret;
     drop table test;
+
     return ret;
 END;
 /
