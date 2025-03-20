@@ -1159,9 +1159,9 @@ RestoreArchivePg(Archive *AHX)
 					if (( AH->format == archNull))
 						ahprintf(AH, "\\parser\n");
 					compatible_mode = ORA_PARSER;
+					ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n"); /* BUGZ4388 */
 				}
 				/* End - BUGZ4254 */
-				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 				CurUser = DB;
 				ahprintf(AH, "\n\n");
 				
@@ -1647,10 +1647,10 @@ RestoreArchiveOracle(Archive *AHX)
 					if (( AH->format == archNull))
 						ahprintf(AH, "\\parser\n");
 					compatible_mode = ORA_PARSER;	/* ReqID:SRS-CMD-PGDUMP */
+					ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n"); /* BUGZ4388 */
 				}
 				/* End - BUGZ4254 */
 				
-				ahprintf(AH, "set ivorysql.dumppgtype to oracle;\n");
 
 
 				ahprintf(AH, "\n\n");
@@ -4917,7 +4917,7 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 			ahprintf(AH, "SET ivorysql.dumppgtype to oracle;\n");
 			ahprintf(AH, "SET ivorysql.grant_usertype to oracle;\n");
 			ahprintf(AH, "SET ivorysql.enable_ora_user_schema to off;\n");
-			ahprintf(AH, "RESET ivorysql.compatible_mode;\n");
+			//ahprintf(AH, "RESET ivorysql.compatible_mode;\n");	/* BUGZ4388 */
 		}
 		/* End - BUG#M516 */
 	}
@@ -5007,9 +5007,9 @@ _reconnectToDB(ArchiveHandle *AH, const char *dbname)
 					if ((AH->format == archNull))
 						appendPQExpBufferStr(&connectbuf, "\\parser\n");
 					compatible_mode = ORA_PARSER;
+					appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");	/* BUGZ4388 */
 				}
 				/* End - BUGZ4254 */
-				appendPQExpBufferStr(&connectbuf, "set ivorysql.dumppgtype to oracle;\n");
 
 
 				appendPQExpBufferStr(&connectbuf, "\n\n");
@@ -5504,6 +5504,19 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				}
 				/* END - ReqID:SRS-CMD-PGDUMP */
 			}
+			/* Begin - BUGZ4388 */
+			/* Since pg_object does not record package information, you need to */
+			/* switch ivorysql.compatible_mode to oracle for package. If pg_object */
+			/* records package information in the future, the following code needs */
+			/* to be deleted. */
+			if (strcmp(te->desc, "PACKAGE") == 0 && compatible_mode != ORA_PARSER)
+			{
+				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
+				compatible_mode = ORA_PARSER;
+				if (AH->format == archNull || AH->connection == NULL)
+					ahprintf(AH, "\\parser\n\n");
+			}
+			/* End - BUGZ4388 */
 
 			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 			if (strcmp(te->desc, "VIEW") == 0 && database_mode == DB_ORACLE)	/* ReqID:SRS-CMD-PGDUMP */
