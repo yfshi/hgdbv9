@@ -162,7 +162,7 @@ static int	on_conflict_do_nothing = 0;
 static char role_catalog[10];
 #define PG_AUTHID "pg_authid "
 #define PG_ROLES  "pg_roles "
-#define IVORY_ROLES "ivory_roles "
+//#define IVORY_ROLES "ivory_roles " /* BUGZ4323 */
 
 static FILE *OPF;
 static char *filename = NULL;
@@ -667,9 +667,14 @@ main(int argc, char *argv[])
 	}
 		if (no_role_passwords)
 	{
+		/* Begin - BUGZ4323 */
+		/* delete database-level User should delete IVORY_ROLES */
+		#if 0
 		if(server_version >= 140008)
 			sprintf(role_catalog, "%s", IVORY_ROLES);
 		else
+		#endif
+		/* End - BUGZ4323 */
 			sprintf(role_catalog, "%s", PG_ROLES);
 	}
 		
