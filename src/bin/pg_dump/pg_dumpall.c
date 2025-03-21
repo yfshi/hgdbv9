@@ -4410,11 +4410,15 @@ dumpDatabasesOracle(PGconn *conn)
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
+						compatible_mode = ORA_PARSER; /* BUGZ4254 */
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "\n\n");
 					}
 					else
+					{
 						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
+						compatible_mode = PG_PARSER; /* BUGZ4254 */
+					}
 				}
 				/* END - ReqID:SRS-MISC-USER */
 			}
@@ -4522,11 +4526,15 @@ dumpDatabasesPg(PGconn *conn)
 					if(getDumpMode(DumpMode) != ASSIGNDUMPMODE_PG)	/*  bug#M0000261 */
 					{
 						fprintf(OPF, "set ivorysql.compatible_mode to oracle;\n");
+						compatible_mode = ORA_PARSER; /* BUGZ4254 */
 						fprintf(OPF, "set ivorysql.dumppgtype to oracle;\n");
 						fprintf(OPF, "\n\n");
 					}
 					else
+					{
 						fprintf(OPF, "set ivorysql.compatible_mode to pg;\n");
+						compatible_mode = PG_PARSER; /* BUGZ4254 */
+					}
 				}
 				/* END - ReqID:SRS-MISC-USER */
 			}
