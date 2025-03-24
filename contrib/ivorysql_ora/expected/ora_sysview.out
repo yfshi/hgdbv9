@@ -52,11 +52,10 @@ SELECT NAME, LINE, TEXT FROM ALL_SOURCE WHERE NAME = 'func_quotes_lower';
  func_quotes_lower | 2    |  RETURN varchar2
  func_quotes_lower | 3    |  AUTHID DEFINER
  func_quotes_lower | 4    | IS 
- func_quotes_lower | 5    | 
- func_quotes_lower | 6    | BEGIN
- func_quotes_lower | 7    |         RETURN 'func_quotes_lower'::VARCHAR2;
- func_quotes_lower | 8    | END;
-(8 rows)
+ func_quotes_lower | 5    | BEGIN
+ func_quotes_lower | 6    |         RETURN 'func_quotes_lower'::VARCHAR2;
+ func_quotes_lower | 7    | END;
+(7 rows)
 
 -- data_type and pls_type in all_arguments
 CREATE OR REPLACE FUNCTION FUNC_22_ARG_TYPES

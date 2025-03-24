@@ -234,7 +234,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_METADATA  IS
       -- get function body
       SELECT proc.prosrc INTO probody FROM pg_proc proc WHERE proc.oid = objtoid;
 
-      funcddl := funcddl||'CREATE OR REPLACE FUNCTION '||'"'||GET_OBJNAME(SCHEMA)||'"'||'.'||'"'||GET_OBJNAME(OBJNAME)|| '"' || parameterall||' RETURN '||rettypename||' AS' ||probody||chr(10);
+      funcddl := funcddl||'CREATE OR REPLACE FUNCTION '||'"'||GET_OBJNAME(SCHEMA)||'"'||'.'||'"'||GET_OBJNAME(OBJNAME)|| '"' || parameterall||' RETURN '||rettypename||' AS' || chr(10) ||probody||chr(10); --BUG#Z00001392
       FETCH mycur INTO objtoid, obj_owneroid;
     END LOOP;
 
@@ -323,7 +323,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_METADATA  IS
       -- get procdure body
       SELECT proc.prosrc INTO probody FROM pg_proc proc WHERE proc.oid = objtoid;
 
-      procdureddl := procdureddl||'CREATE OR REPLACE PROCEDURE '||'"'||GET_OBJNAME(SCHEMA)||'"'||'.'||'"'||GET_OBJNAME(OBJNAME)||'"' ||parameterall||' AS' ||probody||';'||chr(10);
+      procdureddl := procdureddl||'CREATE OR REPLACE PROCEDURE '||'"'||GET_OBJNAME(SCHEMA)||'"'||'.'||'"'||GET_OBJNAME(OBJNAME)||'"' ||parameterall||' AS' ||chr(10) ||probody||';'||chr(10); --BUG#Z00001392
       FETCH mycur INTO objtoid, obj_owneroid;
     END LOOP;
 
@@ -1087,7 +1087,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_METADATA  IS
 
     --get package context
     SELECT pkgsrc INTO tmpddl FROM pg_package WHERE oid=objtoid;
-    retddl := headddl || chr(10) || 'AS' || tmpddl || ';'|| chr(10);
+    retddl := headddl || chr(10) || 'AS' ||chr(10) || tmpddl || ';'|| chr(10); --BUG#Z00001392
 
     CLOSE mycur;
 	--Is there a package body?

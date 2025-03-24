@@ -1,4 +1,5 @@
 -- Initialization that requires path substitution.
+\set SEND_SPACE_ONE_COMMENTS false
 
 CREATE FUNCTION setenv(text, text)
    RETURNS void

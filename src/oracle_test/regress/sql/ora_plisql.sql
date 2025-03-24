@@ -3364,3 +3364,117 @@ select id,name,age from t1;
 
 drop table t1;
 drop table t2;
+
+--bug#Z1392
+\set SEND_SPACE_ONE_COMMENTS true
+
+create or replace function f_re11(id integer) return integer IS
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+/
+
+\sf f_re11
+
+select prosrc from pg_proc where proname='f_re11';
+
+create or replace procedure p_rel1(id integer) as
+/* this is a test comment */
+BEGIN
+ raise info 'p_rel1';
+end;
+/
+
+\sf p_rel1
+
+select prosrc from pg_proc where proname='p_rel1';
+
+create or replace package test_pkg1 is /* a test package */
+ var1 integer;
+ /* a test */
+ function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg1 IS
+  /* a test package body */
+ function test_f(id integer) return integer IS
+ BEGIN
+  return 1;
+ end;
+BEGIN
+   /* a test */
+   var1 := 1;
+end;
+/
+
+select pkgsrc,bodysrc from pg_package left join pg_package_body on pg_package.oid = pg_package_body.pkgoid where pkgname='test_pkg1';
+
+select f_re11(23) from dual;
+call p_rel1(23);
+select test_pkg1.test_f(23) from dual;
+
+drop function f_re11;
+drop procedure p_rel1;
+drop package test_pkg1;
+
+---save the newline after a newline
+create or replace function f_re11(id integer) return integer IS
+
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+/
+
+\sf f_re11
+
+select prosrc from pg_proc where proname='f_re11';
+
+
+create or replace procedure p_rel1(id integer) as /* a test */
+/* this is a test comment */
+
+BEGIN
+
+ raise info 'p_rel1';
+end;
+/
+
+\sf p_rel1
+
+select prosrc from pg_proc where proname='p_rel1';
+
+
+create or replace package test_pkg1 is /* a test package */
+
+ var1 integer;
+ /* a test */
+ function test_f(id integer) return integer;
+end;
+/
+
+create or replace package body test_pkg1 IS
+  /* a test package body */
+  
+ function test_f(id integer) return integer IS
+ BEGIN
+  return 1;
+ end;
+BEGIN
+   /* a test */
+   var1 := 1;
+end;
+/
+
+select pkgsrc,bodysrc from pg_package left join pg_package_body on pg_package.oid = pg_package_body.pkgoid where pkgname='test_pkg1';
+
+select f_re11(23) from dual;
+call p_rel1(23);
+select test_pkg1.test_f(23) from dual;
+
+--clean data
+drop function f_re11;
+drop procedure p_rel1;
+drop package test_pkg1;

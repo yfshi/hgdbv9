@@ -92,4 +92,9 @@ extern bool ora_psql_scan_in_quote(PsqlScanState state);
 extern bool is_oracle_slash(PsqlScanState state, const char *line);
 /* End - ReqID:SRS-SQL-PROC */
 
+/* Begin - BUG#Z00001392 */
+extern bool ora_psql_scan_in_block(PsqlScanState state);
+/* End - BUG#Z00001392 */
+
+
 #endif							/* PSQLSCAN_H */

@@ -1104,6 +1104,7 @@ begin
     raise info '%', id;
     return id;
 end; $$ language plisql;
+/
 
 --print 23
 do $$
@@ -1136,6 +1137,7 @@ begin
     raise info '%', id;
     return id;
 end; $$ language plisql;
+/
 
 --print 23
 do $$

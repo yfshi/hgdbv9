@@ -272,11 +272,11 @@ SELECT count(*) FROM pg_depend d, pg_class c, pg_proc p
 --change the column id type from int to varchar, call the function
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun3(integer) line 3 during statement block local variable initialization
+CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function inf1 line 4 during statement block local variable initialization
-PL/iSQL function fun4(integer) line 8 at RETURN
+CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
+PL/iSQL function fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 
@@ -307,11 +307,11 @@ SELECT prostatus FROM pg_proc WHERE proname like 'fun5'; --v
 
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function fun3(integer) line 3 during statement block local variable initialization
+CONTEXT:  PL/iSQL function fun3(integer) line 2 during statement block local variable initialization
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  invalid input syntax for type integer: "a"
-CONTEXT:  PL/iSQL function inf1 line 4 during statement block local variable initialization
-PL/iSQL function fun4(integer) line 8 at RETURN
+CONTEXT:  PL/iSQL function inf1 line 3 during statement block local variable initialization
+PL/iSQL function fun4(integer) line 7 at RETURN
 SELECT fun5(5) FROM dual;  --successfully
 NOTICE:  5
  fun5 
@@ -584,21 +584,19 @@ ALTER TABLE t1 DROP COLUMN id;
 --after drop the column id, call the function again
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a t1.id%TYPE := 'a';
+LINE 1:   a t1.id%TYPE := 'a';
                  ^
-QUERY:  
-  a t1.id%TYPE := 'a';
+QUERY:    a t1.id%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun3" near line 2
+compilation of PL/iSQL function "fun3" near line 1
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  syntax error at or near "%"
-LINE 3:     a t1.id%TYPE := 'a';
+LINE 2:     a t1.id%TYPE := 'a';
                    ^
-QUERY:  
-  FUNCTION inf1(v1 int) RETURN varchar AS
+QUERY:    FUNCTION inf1(v1 int) RETURN varchar AS
     a t1.id%TYPE := 'a';
   BEGIN
     RETURN a;
@@ -607,7 +605,7 @@ BEGIN
   RETURN inf1(4);
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun4" near line 3
+compilation of PL/iSQL function "fun4" near line 2
 SELECT fun5(5) FROM dual;  --falled
 ERROR:  package, relation or view does not exist
 ALTER FUNCTION fun3 COMPILE;
@@ -661,13 +659,13 @@ END;
 /
 ERROR:  syntax error at or near "%"
 LINE 2: BEGIN
-             ^
+            ^
 QUERY:  DECLARE
 BEGIN
   raise notice '%', pkg1.pfun(1);
 END
 CONTEXT:  invalid type name "t1.id%TYPE"
-compilation of PL/iSQL package "pkg1" near line 2
+compilation of PL/iSQL package "pkg1" near line 1
 DROP PACKAGE pkg1;
 DROP TABLE t1;
 --inherit table
@@ -688,15 +686,14 @@ SELECT fun6(1) FROM dual;
 ALTER TABLE child_table DROP COLUMN c3; 
 SELECT fun6(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c3%TYPE := 'a';
+LINE 1:   a child_table.c3%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c3%TYPE := 'a';
+QUERY:    a child_table.c3%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c3%TYPE "
-compilation of PL/iSQL function "fun6" near line 2
+compilation of PL/iSQL function "fun6" near line 1
 ALTER FUNCTION fun6 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -717,15 +714,14 @@ SELECT fun7(1) FROM dual;
 ALTER TABLE father_table DROP COLUMN c2; 
 SELECT fun7(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c2%TYPE := 'a';
+LINE 1:   a child_table.c2%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c2%TYPE := 'a';
+QUERY:    a child_table.c2%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c2%TYPE "
-compilation of PL/iSQL function "fun7" near line 2
+compilation of PL/iSQL function "fun7" near line 1
 ALTER FUNCTION fun7 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -863,21 +859,19 @@ ALTER TABLE t1 RENAME COLUMN id to id2;
 --after rename the column id to id2, call the function again
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a t1.id%TYPE := 'a';
+LINE 1:   a t1.id%TYPE := 'a';
                  ^
-QUERY:  
-  a t1.id%TYPE := 'a';
+QUERY:    a t1.id%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun3" near line 2
+compilation of PL/iSQL function "fun3" near line 1
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  syntax error at or near "%"
-LINE 3:     a t1.id%TYPE := 'a';
+LINE 2:     a t1.id%TYPE := 'a';
                    ^
-QUERY:  
-  FUNCTION inf1(v1 int) RETURN varchar AS
+QUERY:    FUNCTION inf1(v1 int) RETURN varchar AS
     a t1.id%TYPE := 'a';
   BEGIN
     RETURN a;
@@ -886,7 +880,7 @@ BEGIN
   RETURN inf1(4);
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun4" near line 3
+compilation of PL/iSQL function "fun4" near line 2
 SELECT fun5(5) FROM dual;  --falled
 ERROR:  package, relation or view does not exist
 ALTER FUNCTION fun3 COMPILE;
@@ -940,13 +934,13 @@ END;
 /
 ERROR:  syntax error at or near "%"
 LINE 2: BEGIN
-             ^
+            ^
 QUERY:  DECLARE
 BEGIN
   raise notice '%', pkg1.pfun(1);
 END
 CONTEXT:  invalid type name "t1.id%TYPE"
-compilation of PL/iSQL package "pkg1" near line 2
+compilation of PL/iSQL package "pkg1" near line 1
 DROP PACKAGE pkg1;
 DROP TABLE t1;
 --inherit table
@@ -974,15 +968,14 @@ SELECT fun6(1) FROM dual;
 ALTER TABLE child_table RENAME COLUMN c3 to c4; 
 SELECT fun6(1) FROM dual;
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c3%TYPE := 'a';
+LINE 1:   a child_table.c3%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c3%TYPE := 'a';
+QUERY:    a child_table.c3%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c3%TYPE "
-compilation of PL/iSQL function "fun6" near line 2
+compilation of PL/iSQL function "fun6" near line 1
 CREATE OR REPLACE FUNCTION fun7(v int) return varchar as
   a child_table.c2%TYPE := 'a';
 BEGIN
@@ -998,15 +991,14 @@ SELECT fun7(1) FROM dual;
 ALTER TABLE father_table RENAME COLUMN c2 to c2_new; 
 SELECT fun7(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c2%TYPE := 'a';
+LINE 1:   a child_table.c2%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c2%TYPE := 'a';
+QUERY:    a child_table.c2%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c2%TYPE "
-compilation of PL/iSQL function "fun7" near line 2
+compilation of PL/iSQL function "fun7" near line 1
 ALTER FUNCTION fun7 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -1144,21 +1136,19 @@ ALTER TABLE t1 RENAME TO t1_new;
 --after rename the table t1 to t1_new, call the function again
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a t1.id%TYPE := 'a';
+LINE 1:   a t1.id%TYPE := 'a';
                  ^
-QUERY:  
-  a t1.id%TYPE := 'a';
+QUERY:    a t1.id%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun3" near line 2
+compilation of PL/iSQL function "fun3" near line 1
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  syntax error at or near "%"
-LINE 3:     a t1.id%TYPE := 'a';
+LINE 2:     a t1.id%TYPE := 'a';
                    ^
-QUERY:  
-  FUNCTION inf1(v1 int) RETURN varchar AS
+QUERY:    FUNCTION inf1(v1 int) RETURN varchar AS
     a t1.id%TYPE := 'a';
   BEGIN
     RETURN a;
@@ -1167,7 +1157,7 @@ BEGIN
   RETURN inf1(4);
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun4" near line 3
+compilation of PL/iSQL function "fun4" near line 2
 SELECT fun5(5) FROM dual;  --falled
 ERROR:  package, relation or view does not exist
 ALTER FUNCTION fun3 COMPILE;
@@ -1221,13 +1211,13 @@ END;
 /
 ERROR:  syntax error at or near "%"
 LINE 2: BEGIN
-             ^
+            ^
 QUERY:  DECLARE
 BEGIN
   raise notice '%', pkg1.pfun(1);
 END
 CONTEXT:  invalid type name "t1.id%TYPE"
-compilation of PL/iSQL package "pkg1" near line 2
+compilation of PL/iSQL package "pkg1" near line 1
 DROP PACKAGE pkg1;
 DROP TABLE t1_new;
 --inherit table
@@ -1248,15 +1238,14 @@ SELECT fun6(1) FROM dual;
 ALTER TABLE child_table RENAME TO child_table_new;
 SELECT fun6(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c3%TYPE := 'a';
+LINE 1:   a child_table.c3%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c3%TYPE := 'a';
+QUERY:    a child_table.c3%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c3%TYPE "
-compilation of PL/iSQL function "fun6" near line 2
+compilation of PL/iSQL function "fun6" near line 1
 ALTER FUNCTION fun6 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -1418,21 +1407,19 @@ DROP TABLE t1;
 --after drop the table t1, call the function again
 SELECT fun3(3) FROM dual;  --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a t1.id%TYPE := 'a';
+LINE 1:   a t1.id%TYPE := 'a';
                  ^
-QUERY:  
-  a t1.id%TYPE := 'a';
+QUERY:    a t1.id%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun3" near line 2
+compilation of PL/iSQL function "fun3" near line 1
 SELECT fun4(4) FROM dual;  --falled
 ERROR:  syntax error at or near "%"
-LINE 3:     a t1.id%TYPE := 'a';
+LINE 2:     a t1.id%TYPE := 'a';
                    ^
-QUERY:  
-  FUNCTION inf1(v1 int) RETURN varchar AS
+QUERY:    FUNCTION inf1(v1 int) RETURN varchar AS
     a t1.id%TYPE := 'a';
   BEGIN
     RETURN a;
@@ -1441,7 +1428,7 @@ BEGIN
   RETURN inf1(4);
 END
 CONTEXT:  invalid type name "t1.id%TYPE "
-compilation of PL/iSQL function "fun4" near line 3
+compilation of PL/iSQL function "fun4" near line 2
 SELECT fun5(5) FROM dual;  --falled
 ERROR:  package, relation or view does not exist
 ALTER FUNCTION fun3 COMPILE;
@@ -1494,13 +1481,13 @@ END;
 /
 ERROR:  syntax error at or near "%"
 LINE 2: BEGIN
-             ^
+            ^
 QUERY:  DECLARE
 BEGIN
   raise notice '%', pkg1.pfun(1);
 END
 CONTEXT:  invalid type name "t1.id%TYPE"
-compilation of PL/iSQL package "pkg1" near line 2
+compilation of PL/iSQL package "pkg1" near line 1
 DROP PACKAGE pkg1;
 --inherit table
 CREATE TABLE father_table(c1 integer,c2 varchar(10));
@@ -1520,15 +1507,14 @@ SELECT fun6(1) FROM dual;
 DROP TABLE child_table;
 SELECT fun6(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c3%TYPE := 'a';
+LINE 1:   a child_table.c3%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c3%TYPE := 'a';
+QUERY:    a child_table.c3%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c3%TYPE "
-compilation of PL/iSQL function "fun6" near line 2
+compilation of PL/iSQL function "fun6" near line 1
 ALTER FUNCTION fun6 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -1551,15 +1537,14 @@ DROP TABLE father_table cascade;
 NOTICE:  drop cascades to table child_table
 SELECT fun7(1) FROM dual; --failed
 ERROR:  syntax error at or near "%"
-LINE 2:   a child_table.c2%TYPE := 'a';
+LINE 1:   a child_table.c2%TYPE := 'a';
                           ^
-QUERY:  
-  a child_table.c2%TYPE := 'a';
+QUERY:    a child_table.c2%TYPE := 'a';
 BEGIN
   RETURN a;
 END
 CONTEXT:  invalid type name "child_table.c2%TYPE "
-compilation of PL/iSQL function "fun7" near line 2
+compilation of PL/iSQL function "fun7" near line 1
 ALTER FUNCTION fun7 COMPILE;
 WARNING:  there was an compilation error
 HINT:  syntax error at or near "%"
@@ -1779,7 +1764,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 4 at assignment
+CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 ALTER PROCEDURE p1 COMPILE;
@@ -1794,7 +1779,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a := 'abc'
              ^
 QUERY:  a := 'abc'
-CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 4 at assignment
+CONTEXT:  PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at assignment
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -1809,7 +1794,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a.phone_number := 'abc'
                           ^
 QUERY:  a.phone_number := 'abc'
-CONTEXT:  PL/iSQL function f1(integer) line 4 at assignment
+CONTEXT:  PL/iSQL function f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -1820,7 +1805,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: a.phone_number := 'abc'
                           ^
 QUERY:  a.phone_number := 'abc'
-CONTEXT:  PL/iSQL function f1(integer) line 4 at assignment
+CONTEXT:  PL/iSQL function f1(integer) line 3 at assignment
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -1834,7 +1819,7 @@ ERROR:  invalid input syntax for type integer: "abc"
 LINE 1: var1.phone_number := 'abc'
                              ^
 QUERY:  var1.phone_number := 'abc'
-CONTEXT:  PL/iSQL function pfun line 5 at assignment
+CONTEXT:  PL/iSQL function pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);
@@ -1899,7 +1884,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at RAISE
+PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -1912,7 +1897,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 5 at RAISE
+PL/iSQL function f1(integer) line 4 at RAISE
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -1921,7 +1906,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 5 at RAISE
+PL/iSQL function f1(integer) line 4 at RAISE
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -1933,7 +1918,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f2(integer) line 4 at RETURN
+PL/iSQL function f2(integer) line 3 at RETURN
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -1944,7 +1929,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r := a.phone_number"
-PL/iSQL function f3(integer) line 5 at assignment
+PL/iSQL function f3(integer) line 4 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe%ROWTYPE;
@@ -1955,7 +1940,7 @@ END;
 /
 ERROR:  record "r" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r.phone_number :=  'abc'"
-PL/iSQL function pfun line 5 at assignment
+PL/iSQL function pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);
@@ -2022,7 +2007,7 @@ END;
 /
 ERROR:  record "v" has no field "phone_number"
 CONTEXT:  SQL expression "v.phone_number"
-PL/iSQL function p1(public.tmpe%ROWTYPE) line 3 at RAISE
+PL/iSQL function p1(public.tmpe%ROWTYPE) line 2 at RAISE
 SQL statement "CALL p1(a)"
 PL/iSQL function inline_code_block line 5 at CALL
 DECLARE
@@ -2035,7 +2020,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 5 at RAISE
+PL/iSQL function f1(integer) line 4 at RAISE
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
 BEGIN
@@ -2044,7 +2029,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f1(integer) line 5 at RAISE
+PL/iSQL function f1(integer) line 4 at RAISE
 SQL statement "CALL p1(f1(1))"
 PL/iSQL function inline_code_block line 3 at CALL
 DECLARE
@@ -2056,7 +2041,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  SQL expression "a.phone_number"
-PL/iSQL function f2(integer) line 4 at RETURN
+PL/iSQL function f2(integer) line 3 at RETURN
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -2067,7 +2052,7 @@ END;
 /
 ERROR:  record "a" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r := a.phone_number"
-PL/iSQL function f3(integer) line 5 at assignment
+PL/iSQL function f3(integer) line 4 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe%ROWTYPE;
@@ -2078,7 +2063,7 @@ END;
 /
 ERROR:  record "r" has no field "phone_number"
 CONTEXT:  PL/iSQL assignment "r.phone_number :=  'abc'"
-PL/iSQL function pfun line 5 at assignment
+PL/iSQL function pfun line 4 at assignment
 PL/iSQL function inline_code_block line 5 at RAISE
 DROP PROCEDURE p1(v tmpe%ROWTYPE);
 DROP FUNCTION f1(v int);
@@ -2177,7 +2162,7 @@ BEGIN
 END;
 /
 ERROR:  relation "tmpe" does not exist
-CONTEXT:  compilation of PL/iSQL function "f2" near line 2
+CONTEXT:  compilation of PL/iSQL function "f2" near line 1
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -2187,7 +2172,7 @@ BEGIN
 END;
 /
 ERROR:  relation "tmpe" does not exist
-CONTEXT:  compilation of PL/iSQL function "f3" near line 2
+CONTEXT:  compilation of PL/iSQL function "f3" near line 1
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe2%ROWTYPE;
@@ -2197,8 +2182,8 @@ BEGIN
 END;
 /
 ERROR:  relation "tmpe" does not exist
-CONTEXT:  compilation of PL/iSQL package "pkg1" near line 2
-compilation of PL/iSQL function "pkg1" near line 2
+CONTEXT:  compilation of PL/iSQL package "pkg1" near line 1
+compilation of PL/iSQL function "pkg1" near line 1
 DROP PROCEDURE p1(v tmpe2%ROWTYPE);
 DROP FUNCTION f1(v int);
 DROP FUNCTION f2(v int);
@@ -2292,7 +2277,7 @@ BEGIN
 END;
 /
 ERROR:  relation "tmpe" does not exist
-CONTEXT:  compilation of PL/iSQL function "f2" near line 2
+CONTEXT:  compilation of PL/iSQL function "f2" near line 1
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   res varchar(20);
@@ -2302,7 +2287,7 @@ BEGIN
 END;
 /
 ERROR:  relation "tmpe" does not exist
-CONTEXT:  compilation of PL/iSQL function "f3" near line 2
+CONTEXT:  compilation of PL/iSQL function "f3" near line 1
 PL/iSQL function inline_code_block line 4 at assignment
 DECLARE
   a tmpe%ROWTYPE;
@@ -3202,15 +3187,14 @@ SELECT prostatus FROM pg_proc WHERE proname like 'fun1'; --n
 
 select fun1('a','b') from dual;  --error
 ERROR:  syntax error at or near "%"
-LINE 2:   id t1.id%TYPE;
+LINE 1:   id t1.id%TYPE;
                   ^
-QUERY:  
-  id t1.id%TYPE;
+QUERY:    id t1.id%TYPE;
 BEGIN
   RETURN v;
 END
 CONTEXT:  invalid type name "t1.id%TYPE"
-compilation of PL/iSQL function "fun1" near line 2
+compilation of PL/iSQL function "fun1" near line 1
 CREATE OR REPLACE FUNCTION fun1(v t1.name%TYPE, v1 t1.name%TYPE) RETURN t1.name%TYPE AS
   id t1.id2%TYPE;
   id2 int;
@@ -3604,7 +3588,7 @@ create or replace package body pkg is
 end;
 /
 ERROR:  subprogram or cursor 'test_f', is declared in a package specification and must be defined in the package body
-CONTEXT:  compilation of PL/iSQL package "pkg" near line 7
+CONTEXT:  compilation of PL/iSQL package "pkg" near line 6
 drop package pkg;
 create or replace package pkg is
   var1 int;
@@ -3628,7 +3612,7 @@ create or replace package body pkg is
 end;
 /
 ERROR:  subprogram or cursor 'test_f', is declared in a package specification and must be defined in the package body
-CONTEXT:  compilation of PL/iSQL package "pkg" near line 6
+CONTEXT:  compilation of PL/iSQL package "pkg" near line 5
 drop package pkg;
 drop table tb1;
 --7.2 guc plisql.extra_errors
@@ -3738,11 +3722,10 @@ SELECT TEXT FROM SYS.ALL_SOURCE WHERE NAME LIKE 'FUN1';
   RETURN integer
   AUTHID DEFINER
  IS 
- 
  begin
    return abc;
  end;
-(8 rows)
+(7 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_level,data_type,defaulted,default_value,default_length,in_out,data_length,data_precision,data_scale,
   radix,type_name,type_subname,type_object_type,pls_type,char_length,char_used,origin_con_id FROM SYS.ALL_ARGUMENTS where OBJECT_NAME like 'FUN1';
@@ -3777,11 +3760,10 @@ SELECT TEXT FROM SYS.ALL_SOURCE WHERE NAME LIKE 'FUN2';
   RETURN integer
   AUTHID DEFINER
  IS 
- 
  begin
    return 1;
  end;
-(8 rows)
+(7 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_level,data_type,defaulted,default_value,default_length,in_out,data_length,data_precision,data_scale,
   radix,type_name,type_subname,type_object_type,pls_type,char_length,char_used,origin_con_id FROM SYS.ALL_ARGUMENTS where OBJECT_NAME like 'FUN2';
@@ -3818,12 +3800,11 @@ SELECT TEXT FROM ALL_SOURCE WHERE NAME LIKE 'FUN2';
   RETURN integer
   AUTHID DEFINER
  IS 
- 
  begin
    a := 1;
    return a;
  end;
-(9 rows)
+(8 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_level,data_type,defaulted,default_value,default_length,in_out,data_length,data_precision,data_scale,
   radix,type_name,type_subname,type_object_type,pls_type,char_length,char_used,origin_con_id FROM SYS.ALL_ARGUMENTS where OBJECT_NAME like 'FUN2';
@@ -3889,6 +3870,7 @@ return int
 is
 begin
    update t_370 set id=2 where id=1;
+
    insert into t_370 values(1);
    --commit;
    return 1;
@@ -3901,9 +3883,9 @@ SELECT NAME, LINE, TEXT FROM ALL_SOURCE where NAME='F1';
  F1   | 2    |  RETURN integer
  F1   | 3    |  AUTHID DEFINER
  F1   | 4    | IS 
- F1   | 5    | 
- F1   | 6    | begin
- F1   | 7    |    update t_370 set id=2 where id=1;
+ F1   | 5    | begin
+ F1   | 6    |    update t_370 set id=2 where id=1;
+ F1   | 7    | 
  F1   | 8    |    insert into t_370 values(1);
  F1   | 9    |    --commit;
  F1   | 10   |    return 1;

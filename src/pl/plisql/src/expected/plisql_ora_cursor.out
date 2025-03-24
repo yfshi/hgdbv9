@@ -559,10 +559,9 @@ BEGIN
 end;
 /
 ERROR:  the declaration of the type of this expression is incomplete or malformed at or near "c1"
-LINE 7:    OPEN c1;
+LINE 6:    OPEN c1;
                 ^
-QUERY:  
-  FUNCTION test_f(id integer) RETURN integer IS
+QUERY:    FUNCTION test_f(id integer) RETURN integer IS
   BEGIN
     RETURN 23;
   end;
@@ -1414,7 +1413,7 @@ BEGIN
   OPEN test_pkg.c1;
 end;
 /
-ERROR:  cursor "p_0_2_c1" already in use
+ERROR:  cursor "p_0_1_c1" already in use
 CONTEXT:  PL/iSQL function inline_code_block line 2 at OPEN
 --ok
 BEGIN
@@ -5615,7 +5614,7 @@ BEGIN
 end;
 /
 ERROR:  expression is of wrong type
-CONTEXT:  PL/iSQL function test_f1(integer) line 4 at assignment
+CONTEXT:  PL/iSQL function test_f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 --error
 DECLARE
@@ -5625,7 +5624,7 @@ BEGIN
 end;
 /
 ERROR:  expression is of wrong type
-CONTEXT:  PL/iSQL function test_f1(integer) line 4 at assignment
+CONTEXT:  PL/iSQL function test_f1(integer) line 3 at assignment
 PL/iSQL function inline_code_block line 4 at assignment
 CREATE OR REPLACE FUNCTION test_f(id integer) RETURN test_pkg.c_1 IS
   var1 test_pkg.c_1;

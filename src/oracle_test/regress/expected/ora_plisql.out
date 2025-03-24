@@ -892,7 +892,6 @@ SELECT pg_get_functiondef('bug139_func'::regproc) from dual;
   RETURN integer                                +
   DETERMINISTIC PARALLEL_ENABLE AUTHID DEFINER  +
  IS                                             +
-                                                +
  BEGIN                                          +
      RETURN 1;                                  +
  END;
@@ -904,7 +903,6 @@ SELECT pg_get_functiondef('bug139_proc'::regproc) from dual;
  CREATE OR REPLACE PROCEDURE public.bug139_proc()+
   AUTHID CURRENT_USER                            +
  IS                                              +
-                                                 +
          p integer := 20;                        +
  begin                                           +
          raise notice '%', p;                    +
@@ -949,7 +947,6 @@ SELECT ivy_get_plisql_functiondef('bug139_func'::regproc) from dual;
   RETURN integer                                +
   DETERMINISTIC PARALLEL_ENABLE AUTHID DEFINER  +
  IS                                             +
-                                                +
  BEGIN                                          +
      RETURN 1;                                  +
  END;
@@ -961,7 +958,6 @@ SELECT ivy_get_plisql_functiondef('bug139_proc'::regproc) from dual;
  CREATE OR REPLACE PROCEDURE public.bug139_proc()+
   AUTHID CURRENT_USER                            +
  IS                                              +
-                                                 +
          p integer := 20;                        +
  begin                                           +
          raise notice '%', p;                    +
@@ -1165,7 +1161,6 @@ select pg_get_functiondef('test_f'::regproc);
   AUTHID DEFINER                                     +
   INT IS NUMBER                                      +
  IS                                                  +
-                                                     +
   var1 integer;                                      +
  begin                                               +
    raise notice '%', id;                             +
@@ -1380,7 +1375,7 @@ ERROR:  wrong number or types of arguments in call to "square"
 LINE 1: square(3.14)
         ^
 QUERY:  square(3.14)
-CONTEXT:  PL/iSQL function test_subproc_func(integer) line 16 at RAISE
+CONTEXT:  PL/iSQL function test_subproc_func(integer) line 15 at RAISE
 select test_subproc_func(3.14) from dual;	-- error
 ERROR:  function test_subproc_func(numeric) does not exist
 LINE 1: select test_subproc_func(3.14) from dual;
@@ -1438,7 +1433,7 @@ ERROR:  wrong number or types of arguments in call to "square"
 LINE 1: square(3.14)
         ^
 QUERY:  square(3.14)
-CONTEXT:  PL/iSQL function test_subproc_proc(integer) line 16 at RAISE
+CONTEXT:  PL/iSQL function test_subproc_proc(integer) line 15 at RAISE
 call test_subproc_proc(3.14);	-- error
 ERROR:  procedure test_subproc_proc(numeric) does not exist
 LINE 1: call test_subproc_proc(3.14);
@@ -1537,7 +1532,7 @@ NOTICE:  abc
 NOTICE:  abc
 ERROR:  value too long for type char(3 byte)
 CONTEXT:  PL/iSQL assignment "var := '12345'"
-PL/iSQL function ora_fbug79(char) line 7 at assignment
+PL/iSQL function ora_fbug79(char) line 6 at assignment
 select pg_fbug79('abc');
 NOTICE:  abc
 NOTICE:  abc
@@ -1571,7 +1566,7 @@ NOTICE:  abc
 NOTICE:  abc
 ERROR:  value too long for type char(3 byte)
 CONTEXT:  PL/iSQL assignment "var := '12345'"
-PL/iSQL function ora_pbug79(char) line 7 at assignment
+PL/iSQL function ora_pbug79(char) line 6 at assignment
 call pg_pbug79('abc');
 NOTICE:  abc
 NOTICE:  abc
@@ -3435,7 +3430,6 @@ select test_f(1) from dual;
 select prosrc from pg_proc where proname = 'test_f';
           prosrc           
 ---------------------------
-                          +
  /* this is a test        +
   *commnet                +
   */                      +
@@ -3466,7 +3460,6 @@ select test_f1(1) from dual;
 select prosrc from pg_proc where proname = 'test_f1';
             prosrc            
 ------------------------------
-                             +
  /* this is a test commnet */+
  var1 integer;               +
  /* var2 integer */          +
@@ -3515,12 +3508,12 @@ select a.pkgsrc,b.bodysrc from pg_package a left join pg_package_body b
 on a.oid = b.pkgoid where pkgname = 'test_pkg';
                     pkgsrc                    |                     bodysrc                     
 ----------------------------------------------+-------------------------------------------------
-                                             +|  /* test a tett */                             +
-  /*/* test a test */                        +|   /* privie var */                             +
-  var1 integer;                              +|   var2 integer;                                +
-  /* a test_f */                             +|   function test_f(id integer) return integer is+
-  function test_f(id integer) return integer;+|   begin                                        +
- end                                          |     return var1;                               +
+  /*/* test a test */                        +| /* test a tett */                              +
+  var1 integer;                              +|   /* privie var */                             +
+  /* a test_f */                             +|   var2 integer;                                +
+  function test_f(id integer) return integer;+|   function test_f(id integer) return integer is+
+ end                                          |   begin                                        +
+                                              |     return var1;                               +
                                               |   end;                                         +
                                               |   /* a privie function */                      +
                                               |   function test_p(id integer) return integer is+
@@ -3544,6 +3537,7 @@ BEGIN
 /*comment4*/
 /*comment5*/
 /*comment6*/
+
 /*comment7
 *comment8
 *comment9
@@ -3562,7 +3556,6 @@ call testp5();
 select prosrc from pg_proc where proname = 'testp5';
                             prosrc                             
 ---------------------------------------------------------------
-                                                              +
  /* comment 1*/                                               +
  BEGIN                                                        +
  /*comment 2*/                                                +
@@ -3570,6 +3563,7 @@ select prosrc from pg_proc where proname = 'testp5';
  /*comment4*/                                                 +
  /*comment5*/                                                 +
  /*comment6*/                                                 +
+                                                              +
  /*comment7                                                   +
  *comment8                                                    +
  *comment9                                                    +
@@ -3601,7 +3595,7 @@ SELECT test_ff(1) FROM dual;
 select prosrc from pg_proc where proname = 'test_ff';
       prosrc       
 -------------------
-  /* a test */    +
+ /* a test */     +
  -- a test comment+
   var1 integer;   +
  begin            +
@@ -3637,7 +3631,6 @@ select a.pkgsrc,b.bodysrc from pg_package a left join pg_package_body b
 on a.oid = b.pkgoid where pkgname = 'test_pkg1';
                     pkgsrc                    |                     bodysrc                     
 ----------------------------------------------+-------------------------------------------------
-                                             +|                                                +
  -- a test comment                           +|   --a test                                     +
   var1 integer;                              +|   var3 integer;                                +
   --a function                               +|   FUNCTION test_f(id integer) RETURN integer IS+
@@ -3667,7 +3660,7 @@ SELECT test_ff1(1) FROM dual;
 select prosrc from pg_proc where proname = 'test_ff1';
      prosrc     
 ----------------
-  /* a test */ +
+ /* a test */  +
                +
   var1 integer;+
  begin         +
@@ -4481,3 +4474,211 @@ select id,name,age from t1;
 
 drop table t1;
 drop table t2;
+--bug#Z1392
+\set SEND_SPACE_ONE_COMMENTS true
+create or replace function f_re11(id integer) return integer IS
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+/
+\sf f_re11
+CREATE OR REPLACE FUNCTION public.f_re11(id integer)
+ RETURN integer
+ AUTHID DEFINER
+IS 
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+select prosrc from pg_proc where proname='f_re11';
+            prosrc            
+------------------------------
+ /* this is a test comment */+
+ BEGIN                       +
+   return id;                +
+ end
+(1 row)
+
+create or replace procedure p_rel1(id integer) as
+/* this is a test comment */
+BEGIN
+ raise info 'p_rel1';
+end;
+/
+\sf p_rel1
+CREATE OR REPLACE PROCEDURE public.p_rel1(IN id integer)
+ AUTHID DEFINER
+IS 
+/* this is a test comment */
+BEGIN
+ raise info 'p_rel1';
+end;
+select prosrc from pg_proc where proname='p_rel1';
+            prosrc            
+------------------------------
+ /* this is a test comment */+
+ BEGIN                       +
+  raise info 'p_rel1';       +
+ end
+(1 row)
+
+create or replace package test_pkg1 is /* a test package */
+ var1 integer;
+ /* a test */
+ function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg1 IS
+  /* a test package body */
+ function test_f(id integer) return integer IS
+ BEGIN
+  return 1;
+ end;
+BEGIN
+   /* a test */
+   var1 := 1;
+end;
+/
+select pkgsrc,bodysrc from pg_package left join pg_package_body on pg_package.oid = pg_package_body.pkgoid where pkgname='test_pkg1';
+                    pkgsrc                    |                    bodysrc                     
+----------------------------------------------+------------------------------------------------
+ /* a test package */                        +|   /* a test package body */                   +
+  var1 integer;                              +|  function test_f(id integer) return integer IS+
+  /* a test */                               +|  BEGIN                                        +
+  function test_f(id integer) return integer;+|   return 1;                                   +
+ end                                          |  end;                                         +
+                                              | BEGIN                                         +
+                                              |    /* a test */                               +
+                                              |    var1 := 1;                                 +
+                                              | end
+(1 row)
+
+select f_re11(23) from dual;
+ f_re11 
+--------
+     23
+(1 row)
+
+call p_rel1(23);
+INFO:  p_rel1
+select test_pkg1.test_f(23) from dual;
+ test_f 
+--------
+      1
+(1 row)
+
+drop function f_re11;
+drop procedure p_rel1;
+drop package test_pkg1;
+---save the newline after a newline
+create or replace function f_re11(id integer) return integer IS
+
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+/
+\sf f_re11
+CREATE OR REPLACE FUNCTION public.f_re11(id integer)
+ RETURN integer
+ AUTHID DEFINER
+IS 
+
+/* this is a test comment */
+BEGIN
+  return id;
+end;
+select prosrc from pg_proc where proname='f_re11';
+            prosrc            
+------------------------------
+                             +
+ /* this is a test comment */+
+ BEGIN                       +
+   return id;                +
+ end
+(1 row)
+
+create or replace procedure p_rel1(id integer) as /* a test */
+/* this is a test comment */
+
+BEGIN
+
+ raise info 'p_rel1';
+end;
+/
+\sf p_rel1
+CREATE OR REPLACE PROCEDURE public.p_rel1(IN id integer)
+ AUTHID DEFINER
+IS 
+/* a test */
+/* this is a test comment */
+
+BEGIN
+
+ raise info 'p_rel1';
+end;
+select prosrc from pg_proc where proname='p_rel1';
+            prosrc            
+------------------------------
+ /* a test */                +
+ /* this is a test comment */+
+                             +
+ BEGIN                       +
+                             +
+  raise info 'p_rel1';       +
+ end
+(1 row)
+
+create or replace package test_pkg1 is /* a test package */
+
+ var1 integer;
+ /* a test */
+ function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg1 IS
+  /* a test package body */
+  
+ function test_f(id integer) return integer IS
+ BEGIN
+  return 1;
+ end;
+BEGIN
+   /* a test */
+   var1 := 1;
+end;
+/
+select pkgsrc,bodysrc from pg_package left join pg_package_body on pg_package.oid = pg_package_body.pkgoid where pkgname='test_pkg1';
+                    pkgsrc                    |                    bodysrc                     
+----------------------------------------------+------------------------------------------------
+ /* a test package */                        +|   /* a test package body */                   +
+                                             +|                                               +
+  var1 integer;                              +|  function test_f(id integer) return integer IS+
+  /* a test */                               +|  BEGIN                                        +
+  function test_f(id integer) return integer;+|   return 1;                                   +
+ end                                          |  end;                                         +
+                                              | BEGIN                                         +
+                                              |    /* a test */                               +
+                                              |    var1 := 1;                                 +
+                                              | end
+(1 row)
+
+select f_re11(23) from dual;
+ f_re11 
+--------
+     23
+(1 row)
+
+call p_rel1(23);
+INFO:  p_rel1
+select test_pkg1.test_f(23) from dual;
+ test_f 
+--------
+      1
+(1 row)
+
+--clean data
+drop function f_re11;
+drop procedure p_rel1;
+drop package test_pkg1;

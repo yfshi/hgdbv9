@@ -400,13 +400,8 @@ other			.
 					 * Preserve comments in procedural language when
 					 * send_space_one_comments is true
 					 */
-					if (cur_state->send_space_one_comments &&
-						cur_state->identifier_count >= 4 &&
-						cur_state->identifiers[0] == 'c' &&
-						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' ||
-						 (cur_state->identifiers[1] == 'o' && cur_state->identifiers[2] == 'r' &&
-						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p'))) &&
-						cur_state->paren_depth == 0)
+					if (cur_state->paren_depth == 0 &&
+						ora_psql_scan_in_block(cur_state)) /*  BUG#Z00001392 */
 						ECHO;
 					/* End - BUG#M0000410 */
 					else if (!(output_buf->len == 0 || yytext[0] == '-'))
@@ -1476,6 +1471,27 @@ ora_psql_scan_in_quote(PsqlScanState state)
 	return state->start_state != INITIAL &&
 			state->start_state != xqs;
 }
+
+/* Begin - BUG#Z00001392 */
+/*
+ * Return true if lexer is current in an block ddl
+ * like create function or create package
+ */
+ bool
+ ora_psql_scan_in_block(PsqlScanState state)
+{
+	if (state->send_space_one_comments &&
+		state->identifier_count >= 4 &&
+		state->identifiers[0] == 'c' &&
+		(state->identifiers[1] == 'f' || state->identifiers[1] == 'p' ||
+		 (state->identifiers[1] == 'o' && state->identifiers[2] == 'r' &&
+		  (state->identifiers[3] == 'f' || state->identifiers[3] == 'p'))))
+		return true;
+	else
+		return false;
+}
+/* End - BUG#Z00001392 */
+
 
 /*
  * Push the given string onto the stack of stuff to scan.

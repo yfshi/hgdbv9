@@ -330,7 +330,8 @@ MainLoop(FILE *source)
 		}
 		else if (db_mode == DB_ORACLE)
 		{
-			if (line[0] == '\0' && !ora_psql_scan_in_quote(ora_scan_state))
+			/* append newline to block */
+			if (line[0] == '\0' && !ora_psql_scan_in_quote(ora_scan_state) && !ora_psql_scan_in_block(ora_scan_state)) /* BUG#Z00001392 */
 			{
 				free(line);
 				continue;

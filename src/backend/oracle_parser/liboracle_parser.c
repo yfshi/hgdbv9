@@ -99,6 +99,11 @@ static Datum oracle_get_keywords(PG_FUNCTION_ARGS);
 static void oracle_fill_in_constant_lengths(void *jjstate, const char *query, int query_loc);
 static const char * oracle_quote_identifier(const char *ident);
 
+/* Begin - BUG#Z00001392 */
+static int oracle_ltrim_space(const char *str, int location);
+/* End - BUG#Z00001392 */
+
+
 /*
  * Module load callback
  */
@@ -630,6 +635,10 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			*(yyextra->lookahead_end) = '\0';
 		}
 
+		/* Begin - BUG#Z00001392 */
+		if (yyextra->body_style == OraBody_FUNC)
+			beginpos = oracle_ltrim_space(yyextra->core_yy_extra.scanbuf, beginpos);
+		/* End - BUG#Z00001392 */
 		lvalp->core_yystype.str = pstrdup(yyextra->core_yy_extra.scanbuf + beginpos);
 		*llocp = beginpos;
 		cur_token = SCONST;
@@ -735,6 +744,10 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			yyextra->lookahead_hold_char = *(yyextra->lookahead_end);
 			*(yyextra->lookahead_end) = '\0';
 		}
+
+		/* Begin - BUG#Z00001392 */
+		beginpos = oracle_ltrim_space(yyextra->core_yy_extra.scanbuf, beginpos);
+		/* End - BUG#Z00001392 */
 
 		lvalp->core_yystype.str = pstrdup(yyextra->core_yy_extra.scanbuf + beginpos);
 		*llocp = beginpos;
@@ -1541,4 +1554,36 @@ oracle_quote_identifier(const char *ident)
 
 	return result;
 }
+
+
+/* Begin - BUG#Z00001392 */
+/*
+ * ingore the first space after location
+ */
+static int
+oracle_ltrim_space(const char *str, int location)
+{
+	int startpos = location;
+	bool found_new_line = false;
+
+	if (location < 0)
+		return location;
+
+	while (!found_new_line &&
+		(str[startpos] == '\t' ||
+		str[startpos] == '\n' ||
+		str[startpos] == '\r' ||
+		str[startpos] == ' ' ||
+		str[startpos] == '\f' ||
+		str[startpos] == '\v'))
+	{
+		/* find a newline,we should break it */
+		if (str[startpos] == '\n')
+			found_new_line = true;
+		startpos++;
+	}
+	return startpos;
+}
+/* End - BUG#Z00001392 */
+
 

@@ -891,7 +891,6 @@ select dbms_metadata.get_ddl('PACKAGE', 'PKG_503', 'PUBLIC') from dual;
    function test(id integer) return integer;                         +
  end;                                                                +
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."PKG_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer as                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -906,7 +905,6 @@ select dbms_metadata.get_ddl('PACKAGE_BODY', 'PKG_503', 'PUBLIC') from dual;
                                get_ddl                                
 ----------------------------------------------------------------------
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."PKG_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer as                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -944,7 +942,6 @@ select dbms_metadata.get_ddl('PACKAGE', 'pkg_503', 'PUBLIC') from dual;
    function test(id integer) return integer;                         +
  end "pkg_503";                                                      +
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."pkg_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer is                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -959,7 +956,6 @@ select dbms_metadata.get_ddl('PACKAGE_BODY', 'pkg_503', 'PUBLIC') from dual;
                                get_ddl                                
 ----------------------------------------------------------------------
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."pkg_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer is                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -994,7 +990,6 @@ select dbms_metadata.get_ddl('PACKAGE', 'PKG_503', 'PUBLIC') from dual;
    function test(id integer) return integer;                         +
  end "PKG_503";                                                      +
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."PKG_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer is                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -1009,7 +1004,6 @@ select dbms_metadata.get_ddl('PACKAGE_BODY', 'PKG_503', 'PUBLIC') from dual;
                                get_ddl                                
 ----------------------------------------------------------------------
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."PKG_503" AUTHID DEFINER AS+
-                                                                     +
   function test(id integer) return integer is                        +
   var1 integer;                                                      +
   begin                                                              +
@@ -1040,7 +1034,6 @@ select DBMS_METADATA.GET_DDL('PACKAGE','PKG_META', 'PUBLIC') from dual;
    PROCEDURE print_numlist (nums INT);                                +
    END pkg_meta;                                                      +
  CREATE EDITIONABLE PACKAGE BODY "PUBLIC"."PKG_META" AUTHID DEFINER AS+
-                                                                      +
    PROCEDURE print_numlist (nums INT) IS                              +
    BEGIN                                                              +
      NULL;                                                            +
