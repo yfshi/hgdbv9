@@ -166,4 +166,9 @@ extern void StorePartitionBound(Relation rel, Relation parent,
 								PartitionBoundSpec *bound);
 extern void DeleteForceViewAttinPgobject(Oid viewid);	/* BUGM354 */
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+extern void StorePartitionInterval(Relation rel, PartitionInterval *partinterval);
+extern void RemovePartitionInterval(Relation rel);
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 #endif							/* HEAP_H */

@@ -1691,6 +1691,11 @@ exprLocation(const Node *expr)
 		case T_PartitionElem:
 			loc = ((const PartitionElem *) expr)->location;
 			break;
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case T_PartitionInterval:
+			loc = ((const PartitionInterval *) expr)->location;
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
 		case T_PartitionSpec:
 			loc = ((const PartitionSpec *) expr)->location;
 			break;

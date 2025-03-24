@@ -41,4 +41,10 @@ extern IndexStmt *generateClonedIndexStmt(RangeVar *heapRel,
 										  const struct AttrMap *attmap,
 										  Oid *constraintOid);
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+void TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInterval,
+									 const char *colName, Oid colType, int32 colTypmod,
+									 Oid colCollation);
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 #endif							/* PARSE_UTILCMD_H */

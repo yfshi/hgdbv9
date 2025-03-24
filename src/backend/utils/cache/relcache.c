@@ -2811,6 +2811,7 @@ RelationClearRelation(Relation relation, bool rebuild)
 			memcpy(&tmpstruct, newrel, sizeof(RelationData));
 			memcpy(newrel, relation, sizeof(RelationData));
 			memcpy(relation, &tmpstruct, sizeof(RelationData));
+			relation->definterval = newrel->definterval;	/* ReqID:RSR-SQL-Partition-interval */
 		}
 
 		/* rd_smgr must not be swapped, due to back-links from smgr level */

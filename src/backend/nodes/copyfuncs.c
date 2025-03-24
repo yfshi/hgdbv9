@@ -5199,6 +5199,20 @@ _copyPartitionElem(const PartitionElem *from)
 	return newnode;
 }
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+static PartitionInterval *
+_copyPartitionInterval(const PartitionInterval *from)
+{
+	PartitionInterval *newnode = makeNode(PartitionInterval);
+
+	COPY_NODE_FIELD(interval);
+	COPY_NODE_FIELD(base);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 static PartitionSpec *
 _copyPartitionSpec(const PartitionSpec *from)
 {
@@ -5206,6 +5220,7 @@ _copyPartitionSpec(const PartitionSpec *from)
 
 	COPY_STRING_FIELD(strategy);
 	COPY_NODE_FIELD(partParams);
+	COPY_NODE_FIELD(partInterval);
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -6511,6 +6526,11 @@ copyObjectImpl(const void *from)
 		case T_PartitionElem:
 			retval = _copyPartitionElem(from);
 			break;
+		/* Begin - ReqID:RSR-SQL-Partition-interval */
+		case T_PartitionInterval:
+			retval = _copyPartitionInterval(from);
+			break;
+		/* End - ReqID:RSR-SQL-Partition-interval */
 		case T_PartitionSpec:
 			retval = _copyPartitionSpec(from);
 			break;

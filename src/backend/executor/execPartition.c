@@ -19,6 +19,7 @@
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_type.h"
 #include "catalog/storage_gtt.h"
+#include "commands/tablecmds.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "executor/execPartition.h"
 #include "executor/executor.h"
 #include "executor/nodeModifyTable.h"
@@ -31,6 +32,7 @@
 #include "partitioning/partprune.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/acl.h"
+#include "utils/guc.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "utils/lsyscache.h"
 #include "utils/partcache.h"
 #include "utils/rls.h"
@@ -157,7 +159,10 @@ typedef struct PartitionDispatchData
 	PartitionDesc partdesc;
 	TupleTableSlot *tupslot;
 	AttrMap    *tupmap;
-	int			indexes[FLEXIBLE_ARRAY_MEMBER];
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	int			indexnum;
+	int		   *indexes;
+	/* End - ReqID:RSR-SQL-Partition-interval */
 }			PartitionDispatchData;
 
 
@@ -243,6 +248,75 @@ ExecSetupPartitionTupleRouting(EState *estate, Relation rel)
 }
 
 /*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * UpdatePartitionTableDispatch - update partition dispatch.
+ */
+static void
+UpdatePartitionTableDispatch(PartitionDispatch partdispatch, PartitionDesc partdesc)
+{
+	int i;
+
+	Assert(partdesc->nparts > 0);
+
+	partdispatch->partdesc = partdesc;
+	partdispatch->indexes = repalloc(partdispatch->indexes, partdesc->nparts * sizeof(int));
+
+	for (i = partdispatch->indexnum; i < partdesc->nparts; i++)
+		partdispatch->indexes[i] = -1;
+	partdispatch->indexnum = partdesc->nparts;
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * CheckNewIntervalPartitionAllowedForTuple
+ *     Check if creating interval parition allowed.
+ */
+static bool
+CheckNewIntervalPartitionAllowedForTuple(PartitionKey partkey, PartitionDesc partdesc, Datum *values, bool *isnull)
+{
+	int32 cmpval = 0;
+
+	if (partkey->strategy != PARTITION_STRATEGY_RANGE ||
+		partdesc->intervalinfo == NULL ||
+		isnull[0])
+		return false;
+
+	if (partdesc->nparts == 0 || partdesc->boundinfo == NULL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_CHECK_VIOLATION),
+				 errmsg("At least one range partition should be speciefied in interval-partitoned table")));
+		return false;
+	}
+
+	if (partdesc->intervalinfo->base == NULL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_CHECK_VIOLATION),
+				 errmsg("No basevalue in interval-partitoned table"),
+				 errhint("Check meta data of interval-partioned table")));
+		return false;
+	}
+
+	if (partkey->partnatts != 1)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_CHECK_VIOLATION),
+				 errmsg("Multiple partition key in interval-partitoned table"),
+				 errhint("Check meta data of interval-partioned table")));
+		return false;
+	}
+
+	cmpval = DatumGetInt32(FunctionCall2Coll(&partkey->partsupfunc[0],
+											 partkey->partcollation[0],
+											 partdesc->intervalinfo->base->constvalue,
+											 values[0]));
+	return cmpval <= 0;
+}
+
+/*
  * ExecFindPartition -- Return the ResultRelInfo for the leaf partition that
  * the tuple contained in *slot should belong to.
  *
@@ -279,6 +353,7 @@ ExecFindPartition(ModifyTableState *mtstate,
 	TupleTableSlot *myslot = NULL;
 	MemoryContext oldcxt;
 	ResultRelInfo *rri = NULL;
+	int trycnt = 0;	/* ReqID:RSR-SQL-Partition-interval */
 
 	/* use per-tuple context here to avoid leaking memory */
 	oldcxt = MemoryContextSwitchTo(GetPerTupleMemoryContext(estate));
@@ -320,19 +395,65 @@ ExecFindPartition(ModifyTableState *mtstate,
 		if (partdesc->nparts == 0 ||
 			(partidx = get_partition_for_tuple(dispatch, values, isnull)) < 0)
 		{
-			char	   *val_desc;
-
-			val_desc = ExecBuildSlotPartitionKeyDescription(rel,
-															values, isnull, 64);
+			/* Begin - ReqID:RSR-SQL-Partition-interval */
+			MemoryContext saved_cxt;
 			Assert(OidIsValid(RelationGetRelid(rel)));
-			ereport(ERROR,
-					(errcode(ERRCODE_CHECK_VIOLATION),
-					 errmsg("no partition of relation \"%s\" found for row",
-							RelationGetRelationName(rel)),
-					 val_desc ?
-					 errdetail("Partition key of the failing row contains %s.",
-							   val_desc) : 0,
-					 errtable(rel)));
+
+			if (!CheckNewIntervalPartitionAllowedForTuple(rel->rd_partkey, partdesc, values, isnull) ||
+				(max_interval_partition_failures > -1 && trycnt > max_interval_partition_failures))
+			{
+				char	   *val_desc;
+
+				val_desc = ExecBuildSlotPartitionKeyDescription(rel,
+																values, isnull, 64);
+				Assert(OidIsValid(RelationGetRelid(rel)));
+				ereport(ERROR,
+						(errcode(ERRCODE_CHECK_VIOLATION),
+						errmsg("no partition of relation \"%s\" found for row",
+								RelationGetRelationName(rel)),
+						val_desc ?
+						errdetail("Partition key of the failing row contains %s.",
+								val_desc) : 0,
+						errtable(rel)));
+			}
+
+			/*
+			 * Create new interval partition.
+			 *
+			 * To reduce the issue of parttial failures caused by multiple backends creating
+			 * interval partitions simultaneously, 10 attemps are allow here. The following
+			 * are some examples:
+			 *
+			 * 1. If two transactions A and B, attempt to create the same interval parition
+			 * simultaneously. B will be blocked until transaction A  iscompleted. If A commits,
+			 * B's attempt to create the partition will fail. When B retries, it will find
+			 * that the interval parititon already exists and can use it directly. Otherwise,
+			 * if a rollback, B will successfully create the partition.
+			 *
+			 * 2. If two transactions A and B, attempt to create different interval partitions
+			 * simultaneously. The success or failure of A has no impact on B, but B will wait
+			 * until A is completed.
+			 */
+
+			if (estate->es_partition_directory == NULL)
+				estate->es_partition_directory =
+					CreatePartitionDirectory(estate->es_query_cxt,
+											 !IsolationUsesXactSnapshot());
+
+			saved_cxt = MemoryContextSwitchTo(proute->memcxt);
+			partidx = DefinePartitionInterval(rel, values, estate->es_partition_directory);
+			partdesc = PartitionDirectoryLookup(estate->es_partition_directory, rel);
+			UpdatePartitionTableDispatch(dispatch, partdesc);
+			MemoryContextSwitchTo(saved_cxt);
+
+			if (partidx < 0)
+			{
+				trycnt++;
+				continue;
+			}
+
+			Assert(partdesc->nparts > 0);
+			/* End - ReqID:RSR-SQL-Partition-interval */
 		}
 
 		is_leaf = partdesc->is_leaf[partidx];
@@ -1139,8 +1260,13 @@ ExecInitPartitionDispatchInfo(EState *estate,
 		rel = proute->partition_root;
 	partdesc = PartitionDirectoryLookup(estate->es_partition_directory, rel);
 
-	pd = (PartitionDispatch) palloc(offsetof(PartitionDispatchData, indexes) +
-									partdesc->nparts * sizeof(int));
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	/*pd = (PartitionDispatch) palloc(offsetof(PartitionDispatchData, indexes) +
+									partdesc->nparts * sizeof(int));*/
+	pd = (PartitionDispatch)palloc(sizeof(PartitionDispatchData));
+	pd->indexnum = partdesc->nparts;
+	pd->indexes = palloc(partdesc->nparts * sizeof(int));
+	/* End - ReqID:RSR-SQL-Partition-interval */
 	pd->reldesc = rel;
 	pd->key = RelationGetPartitionKey(rel);
 	pd->keystate = NIL;

@@ -4077,6 +4077,18 @@ _outPartitionElem(StringInfo str, const PartitionElem *node)
 	WRITE_LOCATION_FIELD(location);
 }
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+static void
+_outPartitionInterval(StringInfo str, const PartitionInterval *node)
+{
+	WRITE_NODE_TYPE("PARTITIONINTERVAL");
+
+	WRITE_NODE_FIELD(interval);
+	WRITE_NODE_FIELD(base);
+	WRITE_LOCATION_FIELD(location);
+}
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 static void
 _outPartitionSpec(StringInfo str, const PartitionSpec *node)
 {
@@ -4084,6 +4096,7 @@ _outPartitionSpec(StringInfo str, const PartitionSpec *node)
 
 	WRITE_STRING_FIELD(strategy);
 	WRITE_NODE_FIELD(partParams);
+	WRITE_NODE_FIELD(partInterval);	/* ReqID:RSR-SQL-Partition-interval */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -4881,6 +4894,11 @@ outNode(StringInfo str, const void *obj)
 			case T_PartitionElem:
 				_outPartitionElem(str, obj);
 				break;
+			/* Begin - ReqID:RSR-SQL-Partition-interval */
+			case T_PartitionInterval:
+				_outPartitionInterval(str, obj);
+				break;
+			/* End - ReqID:RSR-SQL-Partition-interval */
 			case T_PartitionSpec:
 				_outPartitionSpec(str, obj);
 				break;

@@ -877,6 +877,19 @@ typedef struct PartitionElem
 	int			location;		/* token location, or -1 if unknown */
 } PartitionElem;
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+/*
+ * PartitionInterval - parse-time representation of a partition interval
+ */
+typedef struct PartitionInterval
+{
+	NodeTag		type;
+	Node	   *interval;		/* interval of partition */
+	Node	   *base;			/* base value of partition, or NULL */
+	int			location;		/* token location, or -1 if unknown */
+} PartitionInterval;
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 /*
  * PartitionSpec - parse-time representation of a partition key specification
  *
@@ -888,6 +901,7 @@ typedef struct PartitionSpec
 	char	   *strategy;		/* partitioning strategy ('hash', 'list' or
 								 * 'range') */
 	List	   *partParams;		/* List of PartitionElems */
+	Node	   *partInterval;	/* interval range partition */
 	int			location;		/* token location, or -1 if unknown */
 } PartitionSpec;
 
@@ -2236,6 +2250,9 @@ typedef enum AlterTableType
 	/* Begin: ReqID:SRS-SQL-NLSSORT */
 	AT_DefaultCollation,		/* Table's default collation */
 	/* End: ReqID:SRS-SQL-NLSSORT */
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	AT_SetInterval				/* Table's partition interval */
+	/* End - ReqID:RSR-SQL-Partition-interval */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt

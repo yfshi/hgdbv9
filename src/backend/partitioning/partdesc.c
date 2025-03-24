@@ -19,16 +19,19 @@
 #include "access/table.h"
 #include "catalog/partition.h"
 #include "catalog/pg_inherits.h"
+#include "parser/pg_object_hook.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "partitioning/partbounds.h"
 #include "partitioning/partdesc.h"
 #include "storage/bufmgr.h"
 #include "storage/sinval.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
+#include "utils/guc.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "utils/hsearch.h"
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/ora_compatible.h"	/* ReqID:RSR-SQL-Partition-interval */
 #include "utils/partcache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -108,6 +111,47 @@ RelationGetPartitionDesc(Relation rel, bool omit_detached)
 	}
 
 	return RelationBuildPartitionDesc(rel, omit_detached);
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * RelationBuildPartitionInterval
+ *		Form rel's partition descriptor, and store in relcache entry
+ */
+static PartitionIntervalInfo
+RelationBuildPartitionInterval(Oid relid, MemoryContext context)
+{
+	PartitionInterval	   *partinterval;
+	PartitionIntervalInfo	info;
+	char				   *intervalstr;
+	MemoryContext			oldcxt = NULL;
+
+	if (ORA_PARSER != compatible_db)
+		return NULL;
+
+	if (context != NULL)
+		oldcxt = MemoryContextSwitchTo(context);
+
+	info = palloc0(sizeof(PartitionIntervalInfoData));
+
+	/* Get partition interval from metadata */
+	intervalstr = GetRelationInterval(relid);
+	if (intervalstr == NULL)
+		partinterval = NULL;
+	else
+		partinterval = stringToNode(intervalstr);
+
+	if (oldcxt != NULL)
+		MemoryContextSwitchTo(oldcxt);
+
+	if (partinterval == NULL)
+		return NULL;
+
+	info->base =(Const *) partinterval->base;
+	info->interval = (Const *) partinterval->interval;
+
+	return info;
 }
 
 /*
@@ -350,6 +394,10 @@ retry:
 		}
 		MemoryContextSwitchTo(oldcxt);
 	}
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	partdesc->intervalinfo =
+		RelationBuildPartitionInterval(RelationGetRelid(rel), new_pdcxt);
+	/* End - ReqID:RSR-SQL-Partition-interval */
 
 	/*
 	 * Are we working with the partdesc that omits the detached partition, or
@@ -467,6 +515,23 @@ PartitionDirectoryLookup(PartitionDirectory pdir, Relation rel)
 		Assert(pde->pd != NULL);
 	}
 	return pde->pd;
+}
+
+/*
+ * Begin - ReqID:RSR-SQL-Partition-interval
+ *
+ * PartitionDirectoryRemove
+ *		Remove the directory.
+ */
+void
+PartitionDirectoryRemove(PartitionDirectory pdir, Relation rel)
+{
+	Oid			relid = RelationGetRelid(rel);
+	bool		found;
+
+	hash_search(pdir->pdir_hash, &relid, HASH_REMOVE, &found);
+	if (found)
+		RelationDecrementReferenceCount(rel);
 }
 
 /*

@@ -2938,6 +2938,23 @@ _readPartitionRangeDatum(void)
 	READ_DONE();
 }
 
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * _readPartitionInterval
+ */
+static PartitionInterval *
+_readPartitionInterval(void)
+{
+	READ_LOCALS(PartitionInterval);
+
+	READ_NODE_FIELD(interval);
+	READ_NODE_FIELD(base);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
 
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 static NonDefValNode *
@@ -3288,6 +3305,10 @@ parseNodeString(void)
 		return_value = _readPartitionBoundSpec();
 	else if (MATCH("PARTITIONRANGEDATUM", 19))
 		return_value = _readPartitionRangeDatum();
+	/* Begin - ReqID:RSR-SQL-Partition-interval */
+	else if (MATCH("PARTITIONINTERVAL", 17))
+		return_value = _readPartitionInterval();
+	/* End - ReqID:RSR-SQL-Partition-interval */
 	/* Begin - ReqID:SRS-SQL-FUNCOUT */
 	else if (MATCH("NONDEFVALNODE", 13))
 		return_value = _readNonDefValNode();

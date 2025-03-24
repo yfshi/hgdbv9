@@ -1551,3 +1551,13 @@ begin
  end;
  $$ LANGUAGE plisql;
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+CREATE OR REPLACE FUNCTION sys.pg_get_partinterval_def(oid)
+RETURNS text
+AS 'MODULE_PATHNAME', 'pg_get_partinterval_def'
+LANGUAGE c
+PARALLEL SAFE
+STRICT
+STABLE;
+/* End - ReqID:RSR-SQL-Partition-interval */

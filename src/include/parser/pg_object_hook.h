@@ -80,4 +80,10 @@ extern void SetRelationCollation(char *relname, Oid namespaceId, Oid coll, Objec
 extern void UpdateRelationCollation(char *relname, Oid namespaceId, Oid coll, ObjectAddress address);
 /* End - Req:SRS-SQL-NLSSORT */
 
+/* Begin - ReqID:RSR-SQL-Partition-interval */
+extern char *GetRelationInterval(Oid relid);
+extern void SetRelationInterval(Oid relid, char *relname, Oid namespace, char relkind, char *value);
+extern void DeleteRelationInterval(Oid relid);
+/* End - ReqID:RSR-SQL-Partition-interval */
+
 #endif

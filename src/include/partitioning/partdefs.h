@@ -12,6 +12,7 @@
 #ifndef PARTDEFS_H
 #define PARTDEFS_H
 
+typedef struct PartitionIntervalInfoData *PartitionIntervalInfo;    /* ReqID:RSR-SQL-Partition-interval */
 
 typedef struct PartitionBoundInfoData *PartitionBoundInfo;
 

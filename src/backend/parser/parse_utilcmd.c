@@ -4964,3 +4964,348 @@ transformPartitionBoundValue(ParseState *pstate, Node *val,
 
 	return (Const *) value;
 }
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * transformIntervalExpr -
+ *     transforms a interval or base value to const.
+ */
+static Node *
+transformIntervalExpr(ParseState *pstate, Node *val,
+					  const char *colName, Oid colType,
+					  int32 colTypmod, Oid colCollation)
+{
+	Node	*value,
+			*tvalue;
+
+	/* Transform raw parsetree */
+	value = transformExpr(pstate, val, EXPR_KIND_PARTITION_BOUND);
+
+	if (IsA(value, CollateExpr))
+	{
+		Oid collid = exprCollation(value);
+		if (!type_is_collatable(colType))
+		{
+			if (OidIsValid(collid))
+				ereport(ERROR,
+						(errcode(ERRCODE_COLLATION_MISMATCH),
+						 errmsg("collations are not support by type %s",
+								format_type_be(colType))));
+		}
+		else
+		{
+			if (!OidIsValid(collid))
+				ereport(ERROR,
+						(errcode(ERRCODE_COLLATION_MISMATCH),
+						 errmsg("could not determine which collation to use for interval expression"),
+						 errhint("use the COLLATE clause to set the collation explicitly")));
+
+			if (collid == DEFAULT_COLLATION_OID && collid != colCollation)
+				ereport(ERROR,
+						(errcode(ERRCODE_COLLATION_MISMATCH),
+						 errmsg("collation of interval value for column \"%s\" does not match partition key collation \"%s\"",
+								colName, get_collation_name(colCollation)),
+						 parser_errposition(pstate, exprLocation(val))));
+		}
+	}
+
+	/*
+	 * transformExpr() should have already rejected column references,
+	 * subqueries, aggregates, window functions, and SRFs, based on the
+	 * EXPR_KIND_ of a partition bound expression.
+	 */
+	Assert(!contain_var_clause(value));
+
+	/*
+	 * Coerce to the correct type.  This might cause an explicit coercion step
+	 * to be added on top of the expression, which must be evaluated before
+	 * returning the result to the caller.
+	 */
+	tvalue = coerce_to_target_type(pstate,
+								   value, exprType(value),
+								   colType, colTypmod,
+								   COERCION_ASSIGNMENT,
+								   COERCE_IMPLICIT_CAST,
+								   -1);
+	if (tvalue == NULL && colType == YMINTERVALOID)
+	{
+		colType = DSINTERVALOID;
+		tvalue = coerce_to_target_type(pstate, value, exprType(value),
+									   colType, colTypmod,
+									   COERCION_ASSIGNMENT,
+									   COERCE_IMPLICIT_CAST,
+									   -1);
+	}
+	value = tvalue;
+
+	if (value == NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATATYPE_MISMATCH),
+				 errmsg("interval expression cannot be cast to type %s",
+						(colType == DSINTERVALOID) ? "interval" : format_type_be(colType)),
+				 parser_errposition(pstate, exprLocation(val))));
+
+	/*
+	 * Evaluate the expression, if needed, assigning the partition key's data
+	 * type and collation to the resulting Const node.
+	 */
+	if (!IsA(value, Const))
+	{
+		assign_expr_collations(pstate, value);
+		value = (Node *) expression_planner((Expr *) value);
+		value = (Node *) evaluate_expr((Expr *) value, colType, colTypmod, colCollation);
+
+		if (!IsA(value, Const))
+			elog(ERROR, "could not evaluate interval expression");
+	}
+
+	/*
+	 * If the expression is already a Const, as is often the case, we can
+	 * skip the rather expensive steps above.  But we still have to insert
+	 * the right collation, since coerce_to_target_type doesn't handle
+	 * that.
+	 */
+	((Const *) value)->constcollid = colCollation;
+
+	/*
+	 * Attach original expression's parse location to the Const, so that
+	 * that's what will be reported for any later errors related to this
+	 * partition bound.
+	 */
+	((Const *) value)->location = exprLocation(val);
+
+	return (Node *) value;
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * checkIntervalBasevalueLega -
+ *     check whether the interval can match the basevalue.
+ */
+static void
+checkIntervalBasevalueLega(ParseState *pstate, Const *base, Const *interval)
+{
+	int			mbase;
+	int			dbase;
+	int			mstep;
+	int			mpos;
+						 /* 12,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12 */
+	const int	mdays[] = { 31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+	Assert(interval != NULL);
+
+	if (base == NULL ||
+		interval->consttype != YMINTERVALOID)
+		return;
+
+	/*
+	 * get interval month.
+	 */
+	{
+		Interval *span = DatumGetIntervalP(interval->constvalue);
+
+		/* interval year to month and month > 0 */
+		Assert(span->month > 0);
+
+		mstep = span->month % 12;
+
+		/* interval is year, do nothing */
+		if (mstep == 0)
+			return;
+	}
+
+	/*
+	 * get base month and base day
+	 */
+	{
+		struct pg_tm	tm;
+		fsec_t			fsec;
+		Timestamp		ts = base->constvalue;
+
+		if (TIMESTAMP_NOT_FINITE(ts))
+			return;
+
+		if (timestamp2tm(ts, NULL, &tm, &fsec, NULL, NULL) != 0)
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+					errmsg("interval base out of range"),
+					parser_errposition(pstate, exprLocation((Node *) base))));
+
+		mbase = tm.tm_mon % 12;
+		dbase = tm.tm_mday;
+
+		if (dbase > mdays[mbase])
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+					 errmsg("cannot specify this interval with existing high bounds"),
+					 parser_errposition(pstate, exprLocation((Node *) interval))));
+	}
+
+	/*
+	 * Calculate whether there will be a situation of the number of days overflowing.
+	 * The calculation methos is as follows:
+	 *   starting from the specified month(1-12), add the interval months(1-12) each
+	 * time, and then check whether the specified day(1-31) is greater than the max
+	 * day(mdays array) of current month, until a repeated month appears. Subsequently,
+	 * it will enter a repeated cycle and the calculation will end.
+	 */
+	mpos = mbase;
+	for (;;)
+	{
+		mpos = (mpos + mstep) % 12;
+		if (mdays[mpos] < dbase)
+			ereport(ERROR,
+					(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+					 errmsg("cannot specify this interval with existing high bounds"),
+					 parser_errposition(pstate, exprLocation((Node *) interval))));
+
+		if (mpos == mbase)
+			break;
+	}
+}
+
+/*
+ * ReqID:RSR-SQL-Partition-interval
+ *
+ * TransformPartitionTableInterval -
+ *     transform a Interval Statement.
+ */
+void
+TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *partInterval,
+								const char *colName, Oid colType, int32 colTypmod,
+								Oid colCollation)
+{
+	Oid			basetype;
+	TYPCATEGORY	category;
+	Const	   *zeroconst;
+	Node	   *interval,
+			   *n;
+	Oid			i_typ;
+	int32		i_typmod;
+	Datum		constvalue;
+	int			constlen;
+	bool		constbyval;
+
+	/* Get the base type to ensure compatibility with "domain" type. */
+	basetype = getBaseType(colType);
+	category = TypeCategory(colType);
+
+	if (category != 'N' && category != 'D')
+	{
+		elog(ERROR, "Invalid data type for partitioning column of an interval partitioned");
+		return;
+	}
+
+	/* The interval value supports the following types. */
+	switch (basetype)
+	{
+		case INT2OID:
+		case INT4OID:
+		case INT8OID:
+			i_typ = INT4OID;
+			i_typmod = -1;
+			constlen = 4;
+			constbyval = true;
+			constvalue = Int32GetDatum(0);
+			break;
+
+		case FLOAT4OID:
+		case FLOAT8OID:
+			i_typ = FLOAT4OID;
+			i_typmod = -1;
+			constlen = 4;
+			constbyval = true;
+			constvalue = Int32GetDatum(0);
+			break;
+
+		case NUMERICOID:
+		case NUMBEROID:
+			i_typ = basetype;
+			i_typmod = -1;
+			constlen = -1;
+			constbyval = false;
+			constvalue = NumericGetDatum(int64_to_numeric(0));
+			break;
+
+		case DATEOID:
+		case TIMESTAMPOID:
+		case TIMESTAMPTZOID:
+			i_typ = INTERVALOID;
+			i_typmod = -1;
+			constlen = 16;
+			constbyval = false;
+			constvalue = DirectFunctionCall6(make_interval, 0, 0, 0, 0, 0, 0);
+			break;
+
+		case ORADATEOID:
+		case ORATIMESTAMPOID:
+		case ORATIMESTAMPTZOID:
+		case ORATIMESTAMPLTZOID:
+			i_typ = YMINTERVALOID;
+			i_typmod = -1;
+			constlen = 16;
+			constbyval = false;
+			constvalue = DirectFunctionCall6(make_interval, 0, 0, 0, 0, 0, 0);
+			break;
+
+		default:
+			elog(ERROR, "Invalid data type for partitioning column of an interval partitioned");
+			break;
+	}
+
+	/*
+	 * transform interval expression.
+	 *     CREATE TABLE ... PARTITION BY RANGE(...) INTERVAL(interval_expr)
+	 */
+	interval = transformIntervalExpr(pstate, partInterval->interval, colName, i_typ, i_typmod, colCollation);
+
+	/*
+	 * interval value must not be null.
+	 */
+	if (((Const *) interval)->constisnull)
+		ereport(ERROR,
+				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+				 errmsg("interval expression is not a constant of the correct type"),
+				 errhint("cannot specify NULL in interval expression"),
+				 parser_errposition(pstate, exprLocation(partInterval->interval))));
+
+	/*
+	 * interval value must great must greater than 0.
+	 */
+	{
+		/* make a zero const value */
+		zeroconst = makeConst(((Const *) interval)->consttype, i_typmod, 0, constlen, constvalue, false, constbyval);
+
+		/* make operator expression: interval > zero */
+		n = (Node *) makeSimpleA_Expr(AEXPR_OP, ">", interval, (Node *) zeroconst, -1);
+
+		/*
+		* evaluate the expression and return a boolean const.
+		*/
+		n = transformExpr(pstate, n, EXPR_KIND_PARTITION_BOUND);
+		if (!IsA(n, Const))
+			n = (Node *) expression_planner((Expr *) n);
+		n = (Node *) evaluate_expr((Expr *) n, BOOLOID, -1, 0);
+		if (!IsA(n, Const))
+			elog(ERROR, "could not evaluate interval expression");
+
+		/* boolean const values is "false" */
+		if (((Const *) n)->constvalue == 0)
+			ereport(ERROR,
+					(errmsg("interval must be greater than zero"),
+					 parser_errposition(pstate, exprLocation(partInterval->interval))));
+	}
+
+	partInterval->interval = interval;
+
+	/*
+	 * transform basevalue expression.
+	 *     CREATE TABLE ... PARTITION BY RANGE(...) INTERVAL(interval_expr) BASEVALUE(basevalue_expr)
+	 */
+	if (partInterval->base != NULL)
+		partInterval->base = transformIntervalExpr(pstate, partInterval->base, colName, colType, colTypmod, colCollation);
+
+	checkIntervalBasevalueLega(pstate, (Const *) partInterval->base, (Const *) partInterval->interval);
+}

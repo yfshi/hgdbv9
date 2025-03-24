@@ -466,6 +466,10 @@ extern PGDLLIMPORT bool enable_strict_view_def; /* OA-REQ-1558 */
 extern PGDLLIMPORT bool enable_compatible_type_shippable;
 /* End - OA#00001554 */
 
+/* Begin - RSR-SQL-Partition-interval */
+extern PGDLLIMPORT int max_interval_partition_failures;
+/* End - RSR-SQL-Partition-interval */
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

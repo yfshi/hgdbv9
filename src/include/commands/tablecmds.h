@@ -111,4 +111,6 @@ extern void UpdatePersistence(Oid relid,char relkind, char persistence);
 extern void UpdateIndexPersistence(Oid reloid, char persistence);
 /* End - BUG:M0000325 */
 
+extern int DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partdirectory);
+
 #endif							/* TABLECMDS_H */
