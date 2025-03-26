@@ -204,6 +204,8 @@ main(int argc, char *argv[])
 	getDbCompatibleMode(conn);
 	/* END - SQL PARSER */
 
+	setFmtEncoding(PQclientEncoding(conn));
+
 	initPQExpBuffer(&sql);
 
 	appendPQExpBuffer(&sql, "CREATE DATABASE %s",

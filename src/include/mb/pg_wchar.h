@@ -282,9 +282,6 @@ typedef enum pg_enc
 	PG_UHC,						/* UHC (Windows-949) */
 	PG_JOHAB,					/* EUC for Korean JOHAB */
 	PG_SHIFT_JIS_2004,			/* Shift-JIS-2004 */
-	PG_UTF8_2,					/* BUG#M0000414 */
-	PG_GB18030_2,				/* BUG#M0000414 */
-	PG_GBK_2,					/* BUG#M0000414 */
 	_PG_LAST_ENCODING_			/* mark only */
 
 } pg_enc;
@@ -362,7 +359,7 @@ typedef struct pg_enc2name
 #endif
 } pg_enc2name;
 
-extern const pg_enc2name pg_enc2name_tbl[];
+extern PGDLLIMPORT const pg_enc2name pg_enc2name_tbl[];
 
 /*
  * Encoding names for gettext
@@ -602,6 +599,7 @@ extern int	pg_valid_server_encoding_id(int encoding);
  * (in addition to the ones just above).  The constant tables declared
  * earlier in this file are also available from libpgcommon.
  */
+extern void pg_encoding_set_invalid(int encoding, char *dst);
 extern int	pg_encoding_mblen(int encoding, const char *mbstr);
 extern int	pg_encoding_mblen_bounded(int encoding, const char *mbstr);
 extern int	pg_encoding_dsplen(int encoding, const char *mbstr);

@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 
 	appendPQExpBuffer(&sql, "DROP DATABASE %s%s%s;",
 					  (if_exists ? "IF EXISTS " : ""),
-					  fmtId(dbname),
+					  fmtIdEnc(dbname, PQclientEncoding(conn)),
 					  force ? " WITH (FORCE)" : "");
 	/* END - SQL PARSER */
 
