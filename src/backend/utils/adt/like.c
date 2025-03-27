@@ -24,6 +24,9 @@
 #include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/pg_locale.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 
 #define LIKE_TRUE						1
@@ -150,8 +153,15 @@ SB_lower_char(unsigned char c, pg_locale_t locale, bool locale_is_c)
 static inline int
 GenericMatchText(const char *s, int slen, const char *p, int plen, Oid collation)
 {
-	if (collation && !lc_ctype_is_c(collation) && collation != DEFAULT_COLLATION_OID)
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	bool mysqlcollate = false;
+
+	if (is_mysql_format_collation(collation))
+		mysqlcollate = true;
+
+	if (!mysqlcollate && collation && !lc_ctype_is_c(collation) && collation != DEFAULT_COLLATION_OID)
 	{
+	/* End - ReqID:SRS-MYSQL-CASE */
 		pg_locale_t locale = pg_newlocale_from_collation(collation);
 
 		if (locale && !locale->deterministic)
@@ -159,6 +169,13 @@ GenericMatchText(const char *s, int slen, const char *p, int plen, Oid collation
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("nondeterministic collations are not supported for LIKE")));
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (IS_UTF8_GENERAL_COLLATION(collation))
+	{
+		return matchtext_utf8mb4((unsigned char*)s, slen, (unsigned char*)p, plen);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (pg_database_encoding_max_length() == 1)
 		return SB_MatchText(s, slen, p, plen, 0, true);
@@ -180,6 +197,10 @@ Generic_Text_IC_like(text *str, text *pat, Oid collation)
 
 	if (lc_ctype_is_c(collation))
 		locale_is_c = true;
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	else if (is_mysql_format_collation(collation))
+		locale_is_c = true;
+	/* End - ReqID:SRS-MYSQL-CASE */
 	else if (collation != DEFAULT_COLLATION_OID)
 	{
 		if (!OidIsValid(collation))
@@ -200,6 +221,18 @@ Generic_Text_IC_like(text *str, text *pat, Oid collation)
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("nondeterministic collations are not supported for ILIKE")));
 	}
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (IS_UTF8_GENERAL_COLLATION(collation))
+	{
+		p = VARDATA(pat);
+		plen = (VARSIZE(pat) - VARHDRSZ);
+		s = VARDATA(str);
+		slen = (VARSIZE(str) - VARHDRSZ);
+
+		return matchtext_utf8mb4((unsigned char*)s, slen, (unsigned char*)p, plen);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * For efficiency reasons, in the single byte case we don't call lower()

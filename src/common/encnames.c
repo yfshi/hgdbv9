@@ -17,7 +17,26 @@
 
 #include "mb/pg_wchar.h"
 
-const pg_encname pg_encname_tbl[] =
+
+/* ----------
+ * All encoding names, sorted:		 *** A L P H A B E T I C ***
+ *
+ * All names must be without irrelevant chars, search routines use
+ * isalnum() chars only. It means ISO-8859-1, iso_8859-1 and Iso8859_1
+ * are always converted to 'iso88591'. All must be lower case.
+ *
+ * The table doesn't contain 'cs' aliases (like csISOLatin1). It's needed?
+ *
+ * Karel Zak, Aug 2001
+ * ----------
+ */
+typedef struct pg_encname
+{
+	const char *name;
+	pg_enc		encoding;
+} pg_encname;
+
+static const pg_encname pg_encname_tbl[] =
 {
 	{
 		"abc", PG_WIN1258
@@ -26,32 +45,8 @@ const pg_encname pg_encname_tbl[] =
 		"alt", PG_WIN866
 	},							/* IBM866 */
 	{
-		"ascii", PG_SQL_ASCII, "US ASCII", "ascii_general_ci"
-	},
-	{
-		"big5", PG_BIG5, "Big5 Traditional Chinese", "big5_chinese_ci"
+		"big5", PG_BIG5
 	},							/* Big5; Chinese for Taiwan multibyte set */
-	{
-		"binary", PG_SQL_ASCII, "Binary pseudo charset", "binary"
-	},
-	{
-		"cp1250", PG_WIN1250, "Windows Central European", "cp1250_general_ci"
-	},
-	{
-		"cp1251", PG_WIN1251, "Windows Cyrillic", "cp1251_general_ci"
-	},
-	{
-		"cp1256", PG_WIN1256, "Windows Arabic", "cp1256_general_ci"
-	},
-	{
-		"cp1257", PG_WIN1257, "Windows Baltic", "cp1257_general_ci"
-	},
-	{
-		"cp866", PG_WIN866, "DOS Russian", "cp866_general_ci"
-	},
-	{
-		"cp932", PG_SJIS, "SJIS for Windows Japanese", "cp932_general_ci"
-	},
 	{
 		"euccn", PG_EUC_CN
 	},							/* EUC-CN; Extended Unix Code for simplified
@@ -65,10 +60,7 @@ const pg_encname pg_encname_tbl[] =
 	},							/* EUC-JP; Extended UNIX Code fixed Width for
 								 * Japanese, standard OSF */
 	{
-		"eucjpms", PG_SJIS, "UJIS for Windows Japanese", "eucjpms_japanese_ci"
-	},
-	{
-		"euckr", PG_EUC_KR, "EUC-KR Korean", "euckr_korean_ci"
+		"euckr", PG_EUC_KR
 	},							/* EUC-KR; Extended Unix Code for Korean , KS
 								 * X 1001 standard */
 	{
@@ -77,21 +69,12 @@ const pg_encname pg_encname_tbl[] =
 								 *
 								 * traditional Chinese */
 	{
-		"gb18030", PG_GB18030, "China National Standard GB18030", "gb18030_chinese_ci"
+		"gb18030", PG_GB18030
 	},							/* GB18030;GB18030 */
 	{
-		"gb2312", PG_EUC_CN, "GB2312 Simplified Chinese", "gb2312_chinese_ci"
-	},
-	{
-		"gbk", PG_GBK, "GBK Simplified Chinese", "gbk_chinese_ci"
+		"gbk", PG_GBK
 	},							/* GBK; Chinese Windows CodePage 936
 								 * simplified Chinese */
-	{
-    	"greek", PG_ISO_8859_7, "ISO 8859-7 Greek", "greek_general_ci"
-	},
-	{
-    	"hebrew", PG_ISO_8859_8, "ISO 8859-8 Hebrew", "hebrew_general_ci"
-	},
 	{
 		"iso88591", PG_LATIN1
 	},							/* ISO-8859-1; RFC1345,KXS2 */
@@ -143,19 +126,19 @@ const pg_encname pg_encname_tbl[] =
 	},							/* _dirty_ alias for KOI8-R (backward
 								 * compatibility) */
 	{
-		"koi8r", PG_KOI8R, "KOI8-R Relcom Russian", "koi8r_general_ci"
+		"koi8r", PG_KOI8R
 	},							/* KOI8-R; RFC1489 */
 	{
-		"koi8u", PG_KOI8U, "KOI8-U Ukrainian", "koi8u_general_ci"
+		"koi8u", PG_KOI8U
 	},							/* KOI8-U; RFC2319 */
 	{
-		"latin1", PG_LATIN1, "cp1252 West European", "latin1_swedish_ci"
+		"latin1", PG_LATIN1
 	},							/* alias for ISO-8859-1 */
 	{
 		"latin10", PG_LATIN10
 	},							/* alias for ISO-8859-16 */
 	{
-		"latin2", PG_LATIN2, "ISO 8859-2 Central European", "latin2_general_ci"
+		"latin2", PG_LATIN2
 	},							/* alias for ISO-8859-2 */
 	{
 		"latin3", PG_LATIN3
@@ -164,13 +147,13 @@ const pg_encname pg_encname_tbl[] =
 		"latin4", PG_LATIN4
 	},							/* alias for ISO-8859-4 */
 	{
-		"latin5", PG_LATIN5, "ISO 8859-9 Turkish", "latin5_turkish_ci"
+		"latin5", PG_LATIN5
 	},							/* alias for ISO-8859-9 */
 	{
 		"latin6", PG_LATIN6
 	},							/* alias for ISO-8859-10 */
 	{
-		"latin7", PG_LATIN7, "ISO 8859-13 Baltic", "latin7_general_ci"
+		"latin7", PG_LATIN7
 	},							/* alias for ISO-8859-13 */
 	{
 		"latin8", PG_LATIN8
@@ -193,7 +176,7 @@ const pg_encname pg_encname_tbl[] =
 	},							/* SHIFT-JIS-2004; Shift JIS for Japanese,
 								 * standard JIS X 0213 */
 	{
-		"sjis", PG_SJIS, "Shift-JIS Japanese", "sjis_japanese_ci"
+		"sjis", PG_SJIS
 	},							/* alias for Shift_JIS */
 	{
 		"sqlascii", PG_SQL_ASCII
@@ -208,20 +191,14 @@ const pg_encname pg_encname_tbl[] =
 		"uhc", PG_UHC
 	},							/* UHC; Korean Windows CodePage 949 */
 	{
-		"ujis", PG_EUC_JP, "EUC-JP Japanese", "ujis_japanese_ci"
-	},
-	{
 		"unicode", PG_UTF8
 	},							/* alias for UTF8 */
 	{
-		"utf8", PG_UTF8, "UTF-8 Unicode", "utf8_general_ci"
+		"utf8", PG_UTF8
 	},							/* alias for UTF8 */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	{
-		"utf8mb3", PG_UTF8, "UTF-8 Unicode", "utf8mb3_general_ci"
-	},							/* alias for UTF8 */
-	{
-		"utf8mb4", PG_UTF8, "UTF-8 Unicode", "utf8mb4_general_ci"
+		"utf8mb4", PG_UTF8
 	},							/* alias for UTF8 */
 	/* End - ReqID:SRS-MYSQL-CASE */
 	{
@@ -322,8 +299,6 @@ const pg_encname pg_encname_tbl[] =
 		"windows950", PG_BIG5
 	}							/* alias for BIG5 */
 };
-
-int pg_encname_tbl_size = lengthof(pg_encname_tbl);	/* Req:SRS-MYSQL-CHARSET */
 
 /* ----------
  * These are "official" encoding names.

@@ -601,41 +601,37 @@ drop schema MYSQLT;
 -- test collate(BTREE)
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "binary");
-ERROR:  collation "binary" for encoding "UTF8" does not exist
-LINE 1: create table test(sId int, sName text collate "binary");
-                                              ^
 --create index on test
 create index idx_Text on test(sname);
-ERROR:  relation "test" does not exist
 --insert data into test
 insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
-ERROR:  relation "test" does not exist
-LINE 1: insert into test select generate_series(1,100000) as i, 'zha...
-                    ^
 insert into test values (100001, 'zhangsan99999');
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100001, 'zhangsan99999');
-                    ^
 insert into test values (100002, 'ZHANGsan99999');
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100002, 'ZHANGsan99999');
-                    ^
 --query data from test
 select COUNT(*) from test;
-ERROR:  relation "test" does not exist
-LINE 1: select COUNT(*) from test;
-                             ^
+ COUNT  
+--------
+ 100002
+(1 row)
+
 select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: select * from test where SNAME = 'zhangsan99999';
-                      ^
+  sId   |     sName     
+--------+---------------
+  99999 | zhangsan99999
+ 100001 | zhangsan99999
+(2 rows)
+
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: explain (costs off) select * from test where SNAME = 'zhangs...
-                                          ^
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
+   Recheck Cond: ("sName" = 'zhangsan99999'::text)
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
+         Index Cond: ("sName" = 'zhangsan99999'::text)
+(4 rows)
+
 drop table test;
-ERROR:  table "test" does not exist
 ------------------------------------------------
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "utf8mb4_general_ci");
@@ -661,12 +657,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -696,12 +692,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -730,12 +726,12 @@ select * from test where SNAME = 'zhangsan99999';
 (2 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -765,12 +761,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -800,12 +796,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -834,12 +830,12 @@ select * from test where SNAME = 'zhangsan99999';
 (2 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -848,41 +844,39 @@ drop table test;
 -- test collate(HASH)
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "binary");
-ERROR:  collation "binary" for encoding "UTF8" does not exist
-LINE 1: create table test(sId int, sName text collate "binary");
-                                              ^
 --create index on test
 create index idx_Text on test using hash(sname);
-ERROR:  relation "test" does not exist
 --insert data into test
 insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test select generate_series(1,100000) as i, 'zha...
-                    ^
+ERROR:  Un-support feature
+DETAIL:  this collation is not currently supported 
 insert into test values (100001, 'zhangsan99999'); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100001, 'zhangsan99999');
-                    ^
+ERROR:  Un-support feature
+DETAIL:  this collation is not currently supported 
 insert into test values (100002, 'ZHANGsan99999'); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100002, 'ZHANGsan99999');
-                    ^
+ERROR:  Un-support feature
+DETAIL:  this collation is not currently supported 
 --query data from test
 select COUNT(*) from test;
-ERROR:  relation "test" does not exist
-LINE 1: select COUNT(*) from test;
-                             ^
+ COUNT 
+-------
+     0
+(1 row)
+
 select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: select * from test where SNAME = 'zhangsan99999';
-                      ^
+ERROR:  Un-support feature
+DETAIL:  this collation is not currently supported 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: explain (costs off) select * from test where SNAME = 'zhangs...
-                                          ^
+explain select * from test where SNAME = 'zhangsan99999';
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=4.05..13.51 rows=6 width=36)
+   Recheck Cond: ("sName" = 'zhangsan99999'::text)
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..4.04 rows=6 width=0)
+         Index Cond: ("sName" = 'zhangsan99999'::text)
+(4 rows)
+
 drop table test;
-ERROR:  table "test" does not exist
 ------------------------------------------------
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "utf8mb4_general_ci");
@@ -908,12 +902,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.13..612.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -943,12 +937,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.13..612.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -977,12 +971,12 @@ select * from test where SNAME = 'zhangsan99999';
 (2 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=15.13..608.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..15.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -1012,12 +1006,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.13..612.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -1047,12 +1041,12 @@ select * from test where SNAME = 'zhangsan99999';
 (3 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=19.13..612.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 
@@ -1081,12 +1075,12 @@ select * from test where SNAME = 'zhangsan99999';
 (2 rows)
 
 --explain
-explain (costs off) select * from test where SNAME = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test
+explain select * from test where SNAME = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test  (cost=15.13..608.30 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..15.03 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 

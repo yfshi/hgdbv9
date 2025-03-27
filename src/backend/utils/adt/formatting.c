@@ -83,7 +83,6 @@
 #include <unicode/ustring.h>
 #endif
 
-#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "mb/pg_wchar.h"
@@ -100,6 +99,9 @@
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/pg_locale.h"
 #include <time.h>		/* ReqID:SRS-SQL-SYSFUNC */
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* ----------
  * Convenience macros for error handling

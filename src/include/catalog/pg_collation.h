@@ -68,7 +68,6 @@ DECLARE_UNIQUE_INDEX_PKEY(pg_collation_oid_index, 3085, on pg_collation using bt
 #define COLLPROVIDER_ICU		'i'
 #define COLLPROVIDER_LIBC		'c'
 #define COLLPROVIDER_ORACLE		'o'
-#define COLLPROVIDER_MYSQL		'm'
 
 /* Begin: ReqID:SRS-SQL-NLSSORT */
 #define ORA_COLL_OID(COLL)	ORA_COLLATION_##COLL##_OID // defined in pg_collation.dat

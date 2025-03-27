@@ -15,9 +15,11 @@
  *-------------------------------------------------------------------------
  */
 
-#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "utils/pg_locale.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * To provide as much functionality as possible on a variety of platforms,
