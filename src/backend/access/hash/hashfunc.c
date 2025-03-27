@@ -34,9 +34,6 @@
 #include "utils/pg_locale.h"
 #include "utils/lsyscache.h"
 #include "utils/varlena.h"
-/* Begin - ReqID:SRS-MYSQL-CASE */
-#include "mysql_parser/hg_utf8_collation.h"
-/* End - ReqID:SRS-MYSQL-CASE */
 
 /*
  * Datatype-specific hash functions.
@@ -352,6 +349,7 @@ hashtext(PG_FUNCTION_ARGS)
 	Oid			collid = PG_GET_COLLATION();
 	pg_locale_t mylocale = 0;
 	Datum		result;
+	char		provider;
 
 	if (!collid)
 		ereport(ERROR,
@@ -359,11 +357,13 @@ hashtext(PG_FUNCTION_ARGS)
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
 
+	provider = get_collation_provider(collid);
+
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid))
+	if (provider == COLLPROVIDER_MYSQL && mysql_hash_hook)
 	{
-		result = hash_text_by_builtin_colltions((unsigned char *)VARDATA_ANY(key),
-												VARSIZE_ANY_EXHDR(key), collid);
+		result = mysql_hash_hook((unsigned char *)VARDATA_ANY(key), VARSIZE_ANY_EXHDR(key), collid);
+		
 		PG_FREE_IF_COPY(key, 0);
 
 		return result;
@@ -385,7 +385,7 @@ hashtext(PG_FUNCTION_ARGS)
 		if (nlssort_hook && 
 			!IsPseudoCollation(collid) &&
 			collid != ORA_COLL_OID(BINARY) && 
-			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+			provider == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, false);
 
@@ -438,6 +438,7 @@ hashtextextended(PG_FUNCTION_ARGS)
 	Oid			collid = PG_GET_COLLATION();
 	pg_locale_t mylocale = 0;
 	Datum		result;
+	char		provider;
 
 	if (!collid)
 		ereport(ERROR,
@@ -445,8 +446,10 @@ hashtextextended(PG_FUNCTION_ARGS)
 				 errmsg("could not determine which collation to use for string hashing"),
 				 errhint("Use the COLLATE clause to set the collation explicitly.")));
 
+	provider = get_collation_provider(collid);
+	
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid))
+	if (provider == COLLPROVIDER_MYSQL)
 	{
 		result = hash_any_extended((unsigned char *) VARDATA_ANY(key),
 								   VARSIZE_ANY_EXHDR(key),
@@ -472,7 +475,7 @@ hashtextextended(PG_FUNCTION_ARGS)
 		if (nlssort_hook && 
 			!IsPseudoCollation(collid) &&
 			collid != ORA_COLL_OID(BINARY) && 
-			get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+			provider == COLLPROVIDER_ORACLE)
 		{
 			bytea *k = nlssort_hook(keydata, keylen, collid, false);
 

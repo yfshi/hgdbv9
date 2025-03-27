@@ -356,7 +356,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -377,7 +377,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -398,7 +398,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -419,7 +419,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -439,7 +439,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -460,7 +460,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -481,7 +481,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -504,7 +504,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -525,7 +525,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -546,7 +546,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -567,7 +567,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -588,7 +588,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -609,7 +609,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 
@@ -630,7 +630,7 @@ select COUNT(*) from test;
 select * from test where SNAME = 'zhangsan99999';
 
 --explain
-explain select * from test where SNAME = 'zhangsan99999';
+explain (costs off) select * from test where SNAME = 'zhangsan99999';
 
 drop table test;
 

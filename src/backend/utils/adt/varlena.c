@@ -29,6 +29,7 @@
 #include "lib/hyperloglog.h"
 #include "libpq/pqformat.h"
 #include "miscadmin.h"
+#include "mysql_parser/mys_case_sensitive.h"
 #include "nodes/execnodes.h"
 #include "parser/scansup.h"
 #include "port/pg_bswap.h"
@@ -42,12 +43,12 @@
 #include "utils/pg_locale.h"
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
-/* Begin - ReqID:SRS-MYSQL-CASE */
-#include "mysql_parser/hg_utf8_collation.h"
-#include "mysql_parser/mys_case_sensitive.h"
-/* End - ReqID:SRS-MYSQL-CASE */
 
-PGDLLIMPORT nlssort_hook_type nlssort_hook;
+PGDLLIMPORT nlssort_hook_type nlssort_hook; 		/* Req: SRS-SQL-NLSSORT */
+/* Begin - Req: SRS-MYSQL-CHARSET */
+PGDLLIMPORT mysql_hash_hook_type 	mysql_hash_hook;
+PGDLLIMPORT mysql_strcmp_hook_type 	mysql_strcoll_hook;
+/* End - Req: SRS-MYSQL-CHARSET */
 
 /* GUC variable */
 int			bytea_output = BYTEA_OUTPUT_HEX;
@@ -187,9 +188,13 @@ static void text_format_string_conversion(StringInfo buf, char conversion,
 static void text_format_append_string(StringInfo buf, const char *str,
 									  int flags, int width);
 /* Begin - ReqID:SRS-MYSQL-CASE */
-static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup);
-static int varstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup);
+static int bpvarstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup);
+static int varstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup);
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/* Beign - Req:SRS-MYSQL-CHARSET */
+static int mysql_varstr_cmp(char* arg1, int len1, char* arg2, int len2, Oid collid);
+/* End - Req:SRS-MYSQL-CHARSET */
 
 
 /*****************************************************************************
@@ -1641,15 +1646,15 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 			result = (len1 < len2) ? -1 : 1;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_db == ORA_PARSER && nlssort_hook && provider == COLLPROVIDER_ORACLE)
+	else if(compatible_db == ORA_PARSER && provider == COLLPROVIDER_ORACLE)
 	{
 		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
 	}
 	/* End - SRS-SQL-NLSSORT */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (is_mysql_format_collation(collid))
+	else if (compatible_db == MYS_PARSER && provider == COLLPROVIDER_MYSQL)
 	{
-		result = varstr_cmp_by_builtin_collations(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
+		result = mysql_varstr_cmp(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 	else
@@ -1883,14 +1888,6 @@ texteq(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid))
-	{
-		result = texteq_with_collation(fcinfo);
-		PG_RETURN_BOOL(result);
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		locale = pg_newlocale_from_collation(collid);
 
@@ -1947,13 +1944,6 @@ textne(PG_FUNCTION_ARGS)
 
 	check_collation_set(collid);
 
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid))
-	{
-		result = !(texteq_with_collation(fcinfo));
-		PG_RETURN_BOOL(result);
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
 
 	if (!lc_collate_is_c(collid) && collid != DEFAULT_COLLATION_OID)
 		locale = pg_newlocale_from_collation(collid);
@@ -2218,9 +2208,9 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 	else if (is_mysql_format_collation(collid))
 	{
 		if (typid != BPCHAROID)
-			ssup->comparator = bpvarstrfastcmp_builtin;
+			ssup->comparator = bpvarstrfastcmp_mysql;
 		else
-			ssup->comparator = varstrfastcmp_builtin;
+			ssup->comparator = varstrfastcmp_mysql;
 
 		//collate_builtin = true;
 		abbreviate = false;
@@ -7360,8 +7350,23 @@ invalid_pair:
 	PG_RETURN_NULL();			/* keep compiler quiet */
 }
 
+/* Beign - Req:SRS-MYSQL-CHARSET */
+static inline int
+mysql_varstr_cmp(char *arg1, int len1, char *arg2, int len2, Oid collid)
+{
+	int ret;
+	
+	assert(mysql_strcoll_hook != NULL);
+
+	ret = mysql_strcoll_hook((unsigned char *) arg1, len1, (unsigned char *) arg2, len2, collid, false);
+
+	return ret;
+}
+/* End - Req:SRS-MYSQL-CHARSET */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
-static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
+static int 
+bpvarstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup)
 {
 	BpChar* arg1 = DatumGetBpCharPP(x);
 	BpChar* arg2 = DatumGetBpCharPP(y);
@@ -7373,7 +7378,7 @@ static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
 	len1 = bpchartruelen(a1p, VARSIZE_ANY_EXHDR(arg1));
 	len2 = bpchartruelen(a2p, VARSIZE_ANY_EXHDR(arg2));
 
-	result = varstr_cmp_by_builtin_collations(a1p, len1, a2p, len2, ssup->ssup_collation);
+	result = mysql_varstr_cmp(a1p, len1, a2p, len2, ssup->ssup_collation);
 
 	/* We can't afford to leak memory here. */
 	if (PointerGetDatum(arg1) != x)
@@ -7385,7 +7390,8 @@ static int bpvarstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
 	return result;
 }
 
-static int varstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
+static int 
+varstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup)
 {
 	text* arg1 = DatumGetTextPP(x);
 	text* arg2 = DatumGetTextPP(y);
@@ -7398,7 +7404,7 @@ static int varstrfastcmp_builtin(Datum x, Datum y, SortSupport ssup)
 	len1 = VARSIZE_ANY_EXHDR(arg1);
 	len2 = VARSIZE_ANY_EXHDR(arg2);
 
-	result = varstr_cmp_by_builtin_collations(a1p, len1, a2p, len2, ssup->ssup_collation);
+	result = mysql_varstr_cmp(a1p, len1, a2p, len2, ssup->ssup_collation);
 
 	/* We can't afford to leak memory here. */
 	if (PointerGetDatum(arg1) != x)

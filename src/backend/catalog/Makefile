@@ -45,8 +45,7 @@ OBJS = \
 	pg_type.o \
 	storage.o \
 	storage_gtt.o \
-	toasting.o \
-	utf8_collate.o
+	toasting.o
 
 include $(top_srcdir)/src/backend/common.mk
 

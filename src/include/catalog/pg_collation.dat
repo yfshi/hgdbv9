@@ -123,41 +123,5 @@
 /*END Oracle Compatibility Metadatas*/
 
 /*BEGIN MySQL Compatibility Metadatas*/
-# Begin - ReqID:SRS-MYSQL-CASE
-{ oid => '9257', oid_symbol => 'BINARY_COLLATION_OID',
-  descr => 'binary collation',
-  collname => 'binary', collprovider => 'c', collencoding => '-1',
-  collcollate => 'binary', collctype => 'binary' },
-
-{ oid => '9258', oid_symbol => 'UTF8MB4_GENERAL_CI_COLLATION_OID',
-  descr => 'utf8mb4_general_ci collation',
-  collname => 'utf8mb4_general_ci', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8mb4_general_ci', collctype => 'utf8mb4_general_ci' },
-
-{ oid => '9259', oid_symbol => 'UTF8MB4_UNICODE_CI_COLLATION_OID',
-  descr => 'utf8mb4_unicode_ci collation',
-  collname => 'utf8mb4_unicode_ci', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8mb4_unicode_ci', collctype => 'utf8mb4_unicode_ci' },
-
-{ oid => '9260', oid_symbol => 'UTF8MB4_BIN_COLLATION_OID',
-  descr => 'utf8mb4_bin collation',
-  collname => 'utf8mb4_bin', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8mb4_bin', collctype => 'utf8mb4_bin' },
-
-{ oid => '9261', oid_symbol => 'UTF8_GENERAL_CI_COLLATION_OID',
-  descr => 'utf8_general_cicollation collation',
-  collname => 'utf8_general_ci', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8_general_ci', collctype => 'utf8_general_ci' },
-
-{ oid => '9262', oid_symbol => 'UTF8_UNICODE_CI_COLLATION_OID',
-  descr => 'utf8_unicode_ci collation',
-  collname => 'utf8_unicode_ci', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8_unicode_ci', collctype => 'utf8_unicode_ci' },
-
-{ oid => '9263', oid_symbol => 'UTF8_BIN_COLLATION_OID',
-  descr => 'utf8_bin collation',
-  collname => 'utf8_bin', collprovider => 'c', collencoding => '-1',
-  collcollate => 'utf8_bin', collctype => 'utf8_bin' },
-# End - ReqID:SRS-MYSQL-CASE
 /*END MySQL Compatibility Metadatas*/
 ]
