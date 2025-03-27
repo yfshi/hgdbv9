@@ -215,4 +215,7 @@ extern Oid PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll);
 #define PseudoCollationReplace_BNN PseudoCollationReplace3
 /* End - Req:SRS-SQL-NLSSORT */
 
+/* Begin - Req:SRS-MYSQL-CHARSET */
+bool is_mysql_format_collation(Oid collid);
+/* End - Req:SRS-MYSQL-CHARSET */
 #endif							/* NAMESPACE_H */

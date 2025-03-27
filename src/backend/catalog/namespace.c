@@ -5540,3 +5540,18 @@ PseudoCollationReplaceForAExpr(A_Expr *a, Oid coll)
 
 	return coll;
 }
+
+/* Begin - Req:SRS-MYSQL-CHARSET */
+bool
+is_mysql_format_collation(Oid collid)
+{
+	char provider;
+
+	if (!OidIsValid(collid))
+		return false;
+
+	provider = get_collation_provider(collid);
+
+	return provider == COLLPROVIDER_MYSQL;
+}
+/* End - Req:SRS-MYSQL-CHARSET */

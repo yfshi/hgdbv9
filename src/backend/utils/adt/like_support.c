@@ -38,6 +38,7 @@
 
 #include "access/htup_details.h"
 #include "access/stratnum.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
@@ -54,10 +55,6 @@
 #include "utils/pg_locale.h"
 #include "utils/selfuncs.h"
 #include "utils/varlena.h"
-/* Begin - ReqID:SRS-MYSQL-CASE */
-#include "mysql_parser/hg_utf8_collation.h"
-/* End - ReqID:SRS-MYSQL-CASE */
-
 
 typedef enum
 {

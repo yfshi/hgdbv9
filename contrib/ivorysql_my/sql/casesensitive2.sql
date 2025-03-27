@@ -101,7 +101,7 @@ insert into test2 values (100002, 'ZHANGsan99999');
 
 --query table
 select * from test2 where sNAme = 'zhangsan99999';
-explain select * from test2 where sNAme = 'zhangsan99999';
+explain (costs off) select * from test2 where sNAme = 'zhangsan99999';
 
 --drop table
 drop table test2;
