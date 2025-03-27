@@ -381,12 +381,12 @@ select * from test0 where sNAme = 'zhangsan99999';
  100002 | ZHANGsan99999
 (3 rows)
 
-explain (costs off) select * from test0 where sNAme = 'zhangsan99999';
-                      QUERY PLAN                       
--------------------------------------------------------
- Bitmap Heap Scan on test0
+explain select * from test0 where sNAme = 'zhangsan99999';
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Bitmap Heap Scan on test0  (cost=19.55..612.72 rows=404 width=36)
    Recheck Cond: ("sName" = 'zhangsan99999'::text)
-   ->  Bitmap Index Scan on "idx_Text"
+   ->  Bitmap Index Scan on "idx_Text"  (cost=0.00..19.45 rows=404 width=0)
          Index Cond: ("sName" = 'zhangsan99999'::text)
 (4 rows)
 

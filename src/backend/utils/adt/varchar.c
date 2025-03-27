@@ -15,7 +15,6 @@
 #include "postgres.h"
 
 #include "access/detoast.h"
-#include "catalog/namespace.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
@@ -29,6 +28,9 @@
 #include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/hg_utf8_collation.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* common code for bpchartypmodin and varchartypmodin */
 static int32
@@ -1025,9 +1027,10 @@ hashbpchar(PG_FUNCTION_ARGS)
 	keylen = bcTruelen(key);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (is_mysql_format_collation(collid) && mysql_hash_hook)
+	if (is_mysql_format_collation(collid))
 	{
-		result = mysql_hash_hook((unsigned char *)VARDATA_ANY(key), keylen, collid);
+		result = hash_text_by_builtin_colltions((unsigned char *)VARDATA_ANY(key),
+												 keylen, collid);
 		/* Avoid leaking memory for toasted inputs */
 		PG_FREE_IF_COPY(key, 0);
 

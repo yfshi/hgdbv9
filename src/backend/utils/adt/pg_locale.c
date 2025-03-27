@@ -1598,19 +1598,12 @@ pg_newlocale_from_collation(Oid collid)
 #endif							/* not USE_ICU */
 		}
 		/* Begin - Req: SRS-SQL-NLSSORT */
-		else if (collform->collprovider == COLLPROVIDER_ORACLE)
+		else if(collform->collprovider == COLLPROVIDER_ORACLE)
 		{
 			ReleaseSysCache(tp);
 			return (pg_locale_t) 0;
 		}
 		/* End - Req: SRS-SQL-NLSSORT */
-		/* Beign - Req:SRS-MYSQL-CHARSET */
-		else if (collform->collprovider == COLLPROVIDER_MYSQL)
-		{
-			ReleaseSysCache(tp);
-			return (pg_locale_t) 0;	
-		}
-		/* End - Req:SRS-MYSQL-CHARSET */
 
 		collversion = SysCacheGetAttr(COLLOID, tp, Anum_pg_collation_collversion,
 									  &isnull);

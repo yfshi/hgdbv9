@@ -15,14 +15,13 @@
  *
  *------------------------------------------------------------------
  */
+/* Begin - ReqID:SRS-MYSQL-CASE */
 #include "postgres.h"
-#include "charset/ctype.h"
-#include "commands/collationcmds.h"
 #include "fmgr.h"
 #include "mysql_parser/mys_case_sensitive.h"
 #include "include/ivorysql_my.h"
 #include "include/casesensitive.h"
-#include "utils/varlena.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
@@ -44,12 +43,6 @@ static Mysql_casesensitive_get_typoid_hook_type premysql_get_typoid_hook = NULL;
 
 void _PG_init(void);
 void _PG_fini(void);
-
-/* Begin - Req: SRS-MYSQL-CHARSET */
-static mysql_hash_hook_type 				pre_mysql_hash_hook;
-static mysql_strcmp_hook_type 				pre_mysql_strcmp_hook;
-static import_mysql_collation_hook_type 	pre_import_mysql_collation_hook;
-/* End - Req: SRS-MYSQL-CHARSET */
 
 /*
  * Module initialization function.
@@ -79,17 +72,6 @@ _PG_init(void)
 	premysql_get_typoid_hook = mysql_get_typoid_hook;
 	mysql_get_typoid_hook = pg_compatible_mysql_get_typoid;
 	/* End - ReqID:SRS-MYSQL-CASE */
-
-	/* Beign - Req:SRS-MYSQL-CHARSET */
-	pre_import_mysql_collation_hook = import_mysql_collation_hook;
-	import_mysql_collation_hook = do_import_mysql_collation;
-
-	pre_mysql_strcmp_hook = mysql_strcoll_hook;
-	mysql_strcoll_hook = do_mysql_strcoll;
-	
-	pre_mysql_hash_hook = mysql_hash_hook;
-	mysql_hash_hook = do_mysql_hash;
-	/* End - Req:SRS-MYSQL-CHARSET */
 }
 
 /*
@@ -114,10 +96,4 @@ _PG_fini(void)
 	mysql_get_attName_hook = premysql_get_attName_hook;
 	mysql_get_typoid_hook = premysql_get_typoid_hook;
 	/* End - ReqID:SRS-MYSQL-CASE */
-
-	/* Beign - Req:SRS-MYSQL-CHARSET */
-	mysql_hash_hook = pre_mysql_hash_hook;
-	mysql_strcoll_hook = pre_mysql_strcmp_hook;
-	import_mysql_collation_hook = pre_import_mysql_collation_hook;
-	/* End - Req:SRS-MYSQL-CHARSET */
 }
