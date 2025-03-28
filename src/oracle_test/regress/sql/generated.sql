@@ -598,3 +598,9 @@ ALTER TABLE gtest28a DROP COLUMN a;
 CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
 
 \d gtest28*
+
+-- null values without "STORED"
+CREATE TABLE gtest_nostored (a varchar(100), b varchar(100), c varchar(100) GENERATED ALWAYS AS (a + b));
+INSERT INTO gtest_nostored VALUES ('1');
+SELECT * FROM gtest_nostored;
+DROP TABLE gtest_nostored;

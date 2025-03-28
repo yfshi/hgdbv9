@@ -1047,14 +1047,17 @@ slot_deform_heap_tuple(TupleTableSlot *slot, HeapTuple tuple, uint32 *offp,
 			values[attnum] = ExecEvalExprSwitchContext(exprState,
 														econtext,
 														&is_null);
-			if (thisatt->attlen == -1)
-				values[attnum] = PointerGetDatum(PG_DETOAST_DATUM_COPY(values[attnum]));
 			/* Begin - Bug#Z492 */
 			if (is_null)
 			{
 				values[attnum] = (Datum) 0;
 				isnull[attnum] = true;
 				slow = true;
+			}
+			else
+			{
+				if (thisatt->attlen == -1)
+					values[attnum] = PointerGetDatum(PG_DETOAST_DATUM_COPY(values[attnum]));
 			}
 			/* End - Bug#Z492 */
 

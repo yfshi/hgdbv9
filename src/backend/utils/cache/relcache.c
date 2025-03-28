@@ -3864,8 +3864,13 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 
 	/*
 	 * Schedule unlinking of the old storage at transaction commit.
+	 *
+	 * Prevent a global temporary table file from being deleted
+	 * multiple times in a transaction.
 	 */
-	RelationDropStorage(relation);
+	if (persistence != RELPERSISTENCE_GLOBAL_TEMP ||
+		!GTTInPendingDeletes(relation, true))
+		RelationDropStorage(relation);
 	/*
 	 * Create storage for the main fork of the new relfilenode.  If it's a
 	 * table-like object, call into the table AM to do so, which'll also
