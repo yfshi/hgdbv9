@@ -28,7 +28,7 @@ extern bool native_PG;      /*  BUG: M0000332 */
 extern void getDbCompatibleMode(PGconn *conn);
 
 /* Functions */
-extern const char *mys_fmtId(const char *identifier);
+extern const char *mys_fmtId(const char *identifier, int encoding);
 extern void get_mysql_objname(PGconn *conn, Oid oid, char **objname, char **nspname);
 
 #endif							/* MYS_STRING_UTILS_H */
