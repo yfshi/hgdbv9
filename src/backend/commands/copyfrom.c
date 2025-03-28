@@ -2082,6 +2082,8 @@ BeginCopyFrom(ParseState *pstate,
 			else
 				cstate->opts.skip_list[tmp] = true;
 		}
+
+		cstate->opts.skip_list_flag = true;
 	}
 	/* End - BUG:M0000368 */
 

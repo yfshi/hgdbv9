@@ -2358,8 +2358,21 @@ CopyReadAttributesCSV(CopyFromState cstate)
 		cstate->raw_fields[fieldno] = output_ptr;
 
 		/* Begin - BUG:M0000368 */
-		if (cstate->opts.skip_list[fieldno_all] == true)
-			need_skip_this_field = true;
+		/*
+		 * the flag used for totally skip logical if not enable skiplist feature
+		 * if no this flag, there need twice checkings as fieldno_all < xxx is true mostly
+		 * 
+		 * if enable skiplist feature
+		 * check the skip_list[] when column not more than MaxHeapAttributeNumber+MAX_SKIP_COUNT+1
+		 */
+		if (cstate->opts.skip_list_flag)
+		{
+			if ( fieldno_all < MaxHeapAttributeNumber+MAX_SKIP_COUNT+1 &&
+				cstate->opts.skip_list[fieldno_all] == true)
+				need_skip_this_field = true;
+			else
+				need_skip_this_field = false;
+		}
 		/* End - BUG:M0000368 */
 
 		/*
