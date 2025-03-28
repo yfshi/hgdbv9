@@ -149,6 +149,14 @@ typedef struct GroupClause
 	List   *list;
 } GroupClause;
 
+/* Begin - Req: SRS-MYSQL-CHARSET */
+typedef struct ShowFilter
+{
+    bool is_like;
+    Node *node;
+} ShowFilter;
+/* End - Req: SRS-MYSQL-CHARSET */
+
 /* ConstraintAttributeSpec yields an integer bitmask of these flags: */
 #define CAS_NOT_DEFERRABLE			0x01
 #define CAS_DEFERRABLE				0x02
@@ -214,6 +222,10 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 static RangeVar *transformRelistToRelation(List *rellist);
 static void checkMultiDelete(DeleteStmt *stmt);
 
+/* Begin - Req: SRS-MYSQL-CHARSET */
+static SelectStmt *makeShowCharsetStmt(ShowFilter *filter);
+static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
+/* End - Req: SRS-MYSQL-CHARSET */
 %}
 
 %pure-parser
@@ -273,6 +285,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 	struct GroupClause  *groupclause;
 	MergeWhenClause		*mergewhen;
 	MysCollateCharacterOpt *myscollatecharacteropt; /* ReqID:SRS-MYSQL-SQL-USE */
+	struct ShowFilter	*showfilter;				/* Req: SRS-MYSQL-CHARSET */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -314,6 +327,9 @@ static void checkMultiDelete(DeleteStmt *stmt);
 		CreateMatViewStmt RefreshMatViewStmt CreateAmStmt
 		CreatePublicationStmt AlterPublicationStmt
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
+		MysqlShowStmt /* Req: SRS-MYSQL-CHARSET */
+
+%type <showfilter> 	ShowFilter OptShowFilter /* Req: SRS-MYSQL-CHARSET */
 
 %type <node>	select_no_parens select_with_parens select_clause
 				simple_select values_clause
@@ -778,6 +794,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 	YEAR YES_P
 
 	ZONE
+	CHARSET /* Req: SRS-MYSQL-CHARSET */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -1875,6 +1892,64 @@ FunctionSetResetClause:
 			| VariableResetStmt				{ $$ = (VariableSetStmt *) $1; }
 		;
 
+/* Begin - Req: SRS-MYSQL-CHARSET */
+ShowFilter:
+			WHERE a_expr 
+					{
+						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
+						filter->is_like = false;
+						filter->node = $2;
+						$$ = filter;
+					}
+			| LIKE SCONST
+					{
+						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
+						filter->is_like = true;
+						filter->node = makeStringConst($2, -1);
+						$$ = filter;
+					}
+			| LIKE PARAM
+					{
+						ParamRef *p = makeNode(ParamRef);
+						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
+
+						p->number = $2;
+						p->location = @2;
+						
+						filter->is_like = true;
+						filter->node = (Node*)p;
+						$$ = filter;
+					}
+			;
+
+OptShowFilter:
+			ShowFilter
+				{
+					$$ = $1;
+				}
+			|
+				{ 
+					$$ = NULL; 
+				}
+
+MysqlShowStmt:
+			SHOW CHARSET OptShowFilter
+				{
+					SelectStmt *selectStmt = makeShowCharsetStmt($3);
+		    		$$ = (Node *) selectStmt;
+				}
+			| SHOW CHARACTER SET OptShowFilter
+				{
+					SelectStmt *selectStmt = makeShowCharsetStmt($4);
+		    		$$ = (Node *) selectStmt;
+				}
+			| SHOW COLLATION OptShowFilter
+				{
+					SelectStmt * selectStmt = makeShowCollationStmt($3);
+					$$ = (Node *) selectStmt;
+				}
+			;
+/* End - Req: SRS-MYSQL-CHARSET */
 
 VariableShowStmt:
 			SHOW var_name
@@ -1906,6 +1981,10 @@ VariableShowStmt:
 					VariableShowStmt *n = makeNode(VariableShowStmt);
 					n->name = "all";
 					$$ = (Node *) n;
+				}
+			| MysqlShowStmt
+				{
+					$$ = $1;
 				}
 		;
 
@@ -6672,6 +6751,7 @@ any_name_list:
 
 any_name:	ColId						{ $$ = list_make1(makeString($1)); }
 			| ColId attrs				{ $$ = lcons(makeString($1), $2); }
+			| BINARY					{ $$ = list_make1(makeString("binary")); } /* Req: SRS-MYSQL-CHARSET */
 		;
 
 attrs:		'.' attr_name
@@ -10957,18 +11037,18 @@ mys_create_option:
 				n->name = $3;
 				$$ = n;
 			}
-		| COLLATE '=' name
+		| COLLATE '=' any_name
 			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
 				n->opt_type = OPT_COLLATE;
-				n->name = $3;
+				n->name = strVal(linitial($3));
 				$$ = n;
 			}
-		| COLLATE name
+		| COLLATE any_name
 			{
 				MysCollateCharacterOpt *n = (MysCollateCharacterOpt *) palloc(sizeof(MysCollateCharacterOpt));
 				n->opt_type = OPT_COLLATE;
-				n->name = $2;
+				n->name = strVal(linitial($2));
 				$$ = n;
 			}
 		;
@@ -16552,6 +16632,10 @@ columnref:	ColId		 %prec UMINUS
 				{
 					$$ = makeColumnRef($1, $2, @1, yyscanner);
 				}
+			| CHARSET /* Req:SRS-MYSQL-CHARSET */
+				{
+					$$ = makeColumnRef(pstrdup($1), NIL, @1, yyscanner);
+				}
 		;
 
 indirection_el:
@@ -17529,6 +17613,7 @@ reserved_keyword:
 			| BOTH
 			| CASE
 			| CAST
+			| CHARSET
 			| CHECK
 			| COLLATE
 			| COLUMN
@@ -19057,3 +19142,63 @@ checkMultiDelete(DeleteStmt *stmt)
 }
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
+/* Begin - Req: SRS-MYSQL-CHARSET */
+static SelectStmt *
+makeRangeFuncSelect(char *funcname, Node *filter)
+{
+	SelectStmt 		*selectStmt = makeNode(SelectStmt);
+	ColumnRef 		*columnRef = makeNode(ColumnRef);
+	ResTarget 		*resTarget = makeNode(ResTarget);
+	RangeFunction 	*rangeFunction = makeNode(RangeFunction);
+	FuncCall 		*funcCall = makeFuncCall(list_make1(makeString(funcname)), 
+											 NIL,
+											 COERCE_EXPLICIT_CALL,
+											 -1);
+
+	columnRef->fields = list_make1(makeNode(A_Star));
+	resTarget->val = (Node *)columnRef;
+	rangeFunction->functions = list_make1(list_make2(funcCall, NIL));
+
+	selectStmt->targetList = list_make1(resTarget);
+	selectStmt->fromClause = list_make1(rangeFunction);
+
+	if (filter)
+		selectStmt->whereClause = filter;
+
+	return selectStmt;
+}
+
+static Node *
+makeShowFilter(char *colname, ShowFilter *filter)
+{
+	Node *node;
+
+	if (filter == NULL)
+		return NULL;
+	
+	node = filter->node;
+
+	if (filter->is_like)
+	{
+		ColumnRef *columnRef = makeNode(ColumnRef);
+		columnRef->fields = list_make1(makeString(colname));
+		node = (Node *) makeSimpleA_Expr(AEXPR_OP, "~~", (Node *)columnRef, filter->node, -1);
+	}
+
+	return node;
+}
+
+static SelectStmt *
+makeShowCharsetStmt(ShowFilter *filter)
+{
+	Node *where = makeShowFilter("charset", filter);
+	return makeRangeFuncSelect("show_mysql_charsets", where);
+}
+
+static SelectStmt *
+makeShowCollationStmt(ShowFilter *filter)
+{
+	Node *where = makeShowFilter("collation", filter);
+	return makeRangeFuncSelect("show_mysql_collations", where);
+}
+/* End - Req: SRS-MYSQL-CHARSET */

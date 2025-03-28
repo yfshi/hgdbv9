@@ -7,7 +7,23 @@ OBJS = \
 	src/ivorysql_my.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
-	src/datatype/myyear.o
+	src/datatype/myyear.o \
+	src/charset/charset.o \
+	src/charset/ctype-bin.o \
+	src/charset/ctype-mb.o \
+	src/charset/ctype-simple.o \
+	src/charset/ctype-utf8.o \
+	src/charset/ctype-gbk.o \
+	src/charset/ctype-gb2312.o \
+	src/charset/ctype-gb18030.o \
+	src/charset/ctype-big5.o \
+	src/charset/ctype-eucjpms.o \
+	src/charset/ctype-euc_kr.o \
+	src/charset/ctype-cp932.o \
+	src/charset/ctype-latin1.o \
+	src/charset/ctype-sjis.o \
+	src/charset/ctype-ujis.o \
+	src/charset/ctype-extra.o
 
 EXTENSION = ivorysql_my
 
@@ -52,7 +68,9 @@ MYS_REGRESS = multi_update \
 			  multi_updatecase \
 			  multi_deletecase \
 			  mys_use_case \
-			  mys_year
+			  mys_year \
+			  show_charset
+
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

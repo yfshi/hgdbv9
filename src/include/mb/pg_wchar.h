@@ -764,4 +764,28 @@ extern int	mic2latin_with_table(const unsigned char *mic, unsigned char *p,
 extern WCHAR *pgwin32_message_to_UTF16(const char *str, int len, int *utf16len);
 #endif
 
+/* ----------
+ * All encoding names, sorted:		 *** A L P H A B E T I C ***
+ *
+ * All names must be without irrelevant chars, search routines use
+ * isalnum() chars only. It means ISO-8859-1, iso_8859-1 and Iso8859_1
+ * are always converted to 'iso88591'. All must be lower case.
+ *
+ * The table doesn't contain 'cs' aliases (like csISOLatin1). It's needed?
+ *
+ * Karel Zak, Aug 2001
+ * ----------
+ */
+typedef struct pg_encname
+{
+	const char *name;
+	pg_enc		encoding;
+	/* Begin - Req:SRS-MYSQL-CHARSET */
+	const char *description;
+	const char *default_collation;
+	/* End - Req:SRS-MYSQL-CHARSET */
+} pg_encname;
+
+extern PGDLLIMPORT const pg_encname pg_encname_tbl[]; /* Req:SRS-MYSQL-CHARSET */
+extern PGDLLIMPORT int 	pg_encname_tbl_size; 	/* Req:SRS-MYSQL-CHARSET */
 #endif							/* PG_WCHAR_H */
