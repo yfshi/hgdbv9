@@ -44,6 +44,7 @@ my $status2 = $? >> 8;
 exit $status2 if $status2;
 chdir "$startdir";
 $ENV{PGPORT} = 5432;
+$ENV{PATH} = "$installdir/bin;$ENV{PATH}";
 
 my @vcregress_pg_install = ("installcheck","plcheck","contribcheck","modulescheck","ecpgcheck","isolationcheck");
 foreach $a (@vcregress_pg_install){

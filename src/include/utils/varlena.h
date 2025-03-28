@@ -21,6 +21,14 @@ typedef bytea * (*nlssort_hook_type)(const char *src, int32_t len, Oid collid, b
 extern PGDLLIMPORT nlssort_hook_type nlssort_hook;
 /* End - Req: SRS-SQL-NLSSORT */
 
+/* Begin - Req: SRS-MYSQL-CHARSET */
+typedef int (*mysql_strcmp_hook_type)(unsigned char *arg1, int len1, unsigned char *arg2, int len2, Oid collid, bool trim);
+extern PGDLLIMPORT mysql_strcmp_hook_type mysql_strcoll_hook;
+
+typedef Datum (*mysql_hash_hook_type)(const unsigned char *key, int32_t len, Oid coll);
+extern PGDLLIMPORT mysql_hash_hook_type mysql_hash_hook;
+/* End - Req: SRS-MYSQL-CHARSET */
+
 extern int	varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid);
 extern void varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid);
 extern int	varstr_levenshtein(const char *source, int slen,

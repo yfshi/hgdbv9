@@ -170,7 +170,7 @@ insert into test1 values (100002, 'ZHANGsan99999');
 
 --query table
 select * from test1 where sNAme = 'zhangsan99999';
-explain select * from test1 where sNAme = 'zhangsan99999';
+explain (costs off) select * from test1 where sNAme = 'zhangsan99999';
 
 --drop table
 drop table test1;

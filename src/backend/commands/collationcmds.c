@@ -30,16 +30,13 @@
 #include "common/string.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
+#include "mysql_parser/mys_case_sensitive.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/pg_locale.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
-/* Begin - ReqID:SRS-MYSQL-CASE */
-#include "mysql_parser/mys_case_sensitive.h"
-/* End - ReqID:SRS-MYSQL-CASE */
-
 
 typedef struct
 {
@@ -48,6 +45,7 @@ typedef struct
 	int			enc;			/* encoding */
 } CollAliasData;
 
+import_mysql_collation_hook_type import_mysql_collation_hook; /* Req:SRS-MYSQL-CHARSET */
 
 /*
  * CREATE COLLATION
@@ -762,6 +760,11 @@ pg_import_system_collations(PG_FUNCTION_ARGS)
 		}
 	}
 #endif							/* USE_ICU */
+
+	/* Begin - Req:SRS-MYSQL-CHARSET */
+	if (import_mysql_collation_hook)
+		import_mysql_collation_hook();
+	/* End - Req:SRS-MYSQL-CHARSET */
 
 	PG_RETURN_INT32(ncreated);
 }

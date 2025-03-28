@@ -1,0 +1,765 @@
+show charset;
+ Charset |           Description           |  Default collation  | Maxlen 
+---------+---------------------------------+---------------------+--------
+ ascii   | US ASCII                        | ascii_general_ci    |      1
+ big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
+ binary  | Binary pseudo charset           | binary              |      1
+ cp1250  | Windows Central European        | cp1250_general_ci   |      1
+ cp1251  | Windows Cyrillic                | cp1251_general_ci   |      1
+ cp1256  | Windows Arabic                  | cp1256_general_ci   |      1
+ cp1257  | Windows Baltic                  | cp1257_general_ci   |      1
+ cp866   | DOS Russian                     | cp866_general_ci    |      1
+ cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
+ euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
+ gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
+ greek   | ISO 8859-7 Greek                | greek_general_ci    |      1
+ hebrew  | ISO 8859-8 Hebrew               | hebrew_general_ci   |      1
+ koi8r   | KOI8-R Relcom Russian           | koi8r_general_ci    |      1
+ koi8u   | KOI8-U Ukrainian                | koi8u_general_ci    |      1
+ latin1  | cp1252 West European            | latin1_swedish_ci   |      1
+ latin2  | ISO 8859-2 Central European     | latin2_general_ci   |      1
+ latin5  | ISO 8859-9 Turkish              | latin5_turkish_ci   |      1
+ latin7  | ISO 8859-13 Baltic              | latin7_general_ci   |      1
+ sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
+ ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
+ utf8    | UTF-8 Unicode                   | utf8_general_ci     |      4
+ utf8mb3 | UTF-8 Unicode                   | utf8mb3_general_ci  |      4
+ utf8mb4 | UTF-8 Unicode                   | utf8mb4_general_ci  |      4
+(27 rows)
+
+show charset like 'utf8';
+ Charset |  Description  | Default collation | Maxlen 
+---------+---------------+-------------------+--------
+ utf8    | UTF-8 Unicode | utf8_general_ci   |      4
+(1 row)
+
+show charset like 'UTF8';
+ Charset | Description | Default collation | Maxlen 
+---------+-------------+-------------------+--------
+(0 rows)
+
+show charset where charset = 'utf8';
+ Charset |  Description  | Default collation | Maxlen 
+---------+---------------+-------------------+--------
+ utf8    | UTF-8 Unicode | utf8_general_ci   |      4
+(1 row)
+
+show charset where charset = 'UTF8';
+ Charset | Description | Default collation | Maxlen 
+---------+-------------+-------------------+--------
+(0 rows)
+
+show charset where maxlen > 1;
+ Charset |           Description           |  Default collation  | Maxlen 
+---------+---------------------------------+---------------------+--------
+ big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
+ cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
+ euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
+ gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
+ sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
+ ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
+ utf8    | UTF-8 Unicode                   | utf8_general_ci     |      4
+ utf8mb3 | UTF-8 Unicode                   | utf8mb3_general_ci  |      4
+ utf8mb4 | UTF-8 Unicode                   | utf8mb4_general_ci  |      4
+(12 rows)
+
+show character set;
+ Charset |           Description           |  Default collation  | Maxlen 
+---------+---------------------------------+---------------------+--------
+ ascii   | US ASCII                        | ascii_general_ci    |      1
+ big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
+ binary  | Binary pseudo charset           | binary              |      1
+ cp1250  | Windows Central European        | cp1250_general_ci   |      1
+ cp1251  | Windows Cyrillic                | cp1251_general_ci   |      1
+ cp1256  | Windows Arabic                  | cp1256_general_ci   |      1
+ cp1257  | Windows Baltic                  | cp1257_general_ci   |      1
+ cp866   | DOS Russian                     | cp866_general_ci    |      1
+ cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
+ euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
+ gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
+ greek   | ISO 8859-7 Greek                | greek_general_ci    |      1
+ hebrew  | ISO 8859-8 Hebrew               | hebrew_general_ci   |      1
+ koi8r   | KOI8-R Relcom Russian           | koi8r_general_ci    |      1
+ koi8u   | KOI8-U Ukrainian                | koi8u_general_ci    |      1
+ latin1  | cp1252 West European            | latin1_swedish_ci   |      1
+ latin2  | ISO 8859-2 Central European     | latin2_general_ci   |      1
+ latin5  | ISO 8859-9 Turkish              | latin5_turkish_ci   |      1
+ latin7  | ISO 8859-13 Baltic              | latin7_general_ci   |      1
+ sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
+ ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
+ utf8    | UTF-8 Unicode                   | utf8_general_ci     |      4
+ utf8mb3 | UTF-8 Unicode                   | utf8mb3_general_ci  |      4
+ utf8mb4 | UTF-8 Unicode                   | utf8mb4_general_ci  |      4
+(27 rows)
+
+show character set like 'utf8';
+ Charset |  Description  | Default collation | Maxlen 
+---------+---------------+-------------------+--------
+ utf8    | UTF-8 Unicode | utf8_general_ci   |      4
+(1 row)
+
+show character set like 'UTF8';
+ Charset | Description | Default collation | Maxlen 
+---------+-------------+-------------------+--------
+(0 rows)
+
+show character set where charset = 'utf8';
+ Charset |  Description  | Default collation | Maxlen 
+---------+---------------+-------------------+--------
+ utf8    | UTF-8 Unicode | utf8_general_ci   |      4
+(1 row)
+
+show character set where charset = 'UTF8';
+ Charset | Description | Default collation | Maxlen 
+---------+-------------+-------------------+--------
+(0 rows)
+
+show character set where maxlen > 1;
+ Charset |           Description           |  Default collation  | Maxlen 
+---------+---------------------------------+---------------------+--------
+ big5    | Big5 Traditional Chinese        | big5_chinese_ci     |      2
+ cp932   | SJIS for Windows Japanese       | cp932_general_ci    |      2
+ eucjpms | UJIS for Windows Japanese       | eucjpms_japanese_ci |      2
+ euckr   | EUC-KR Korean                   | euckr_korean_ci     |      3
+ gb18030 | China National Standard GB18030 | gb18030_chinese_ci  |      4
+ gb2312  | GB2312 Simplified Chinese       | gb2312_chinese_ci   |      2
+ gbk     | GBK Simplified Chinese          | gbk_chinese_ci      |      2
+ sjis    | Shift-JIS Japanese              | sjis_japanese_ci    |      2
+ ujis    | EUC-JP Japanese                 | ujis_japanese_ci    |      3
+ utf8    | UTF-8 Unicode                   | utf8_general_ci     |      4
+ utf8mb3 | UTF-8 Unicode                   | utf8mb3_general_ci  |      4
+ utf8mb4 | UTF-8 Unicode                   | utf8mb4_general_ci  |      4
+(12 rows)
+
+show collation;
+          Collation          | Charset | Id  | Default | Compiled | Sortlen 
+-----------------------------+---------+-----+---------+----------+---------
+ big5_chinese_ci             | big5    |   1 | Yes     | Yes      |       1
+ koi8r_general_ci            | koi8r   |   7 | Yes     | Yes      |       1
+ latin1_swedish_ci           | latin1  |   8 | Yes     | Yes      |       1
+ latin2_general_ci           | latin2  |   9 | Yes     | Yes      |       1
+ ascii_general_ci            | ascii   |  11 | Yes     | Yes      |       1
+ ujis_japanese_ci            | ujis    |  12 | Yes     | Yes      |       1
+ sjis_japanese_ci            | sjis    |  13 | Yes     | Yes      |       1
+ hebrew_general_ci           | hebrew  |  16 | Yes     | Yes      |       1
+ euckr_korean_ci             | euckr   |  19 | Yes     | Yes      |       1
+ koi8u_general_ci            | koi8u   |  22 | Yes     | Yes      |       1
+ gb2312_chinese_ci           | gb2312  |  24 | Yes     | Yes      |       1
+ greek_general_ci            | greek   |  25 | Yes     | Yes      |       1
+ cp1250_general_ci           | cp1250  |  26 | Yes     | Yes      |       1
+ gbk_chinese_ci              | gbk     |  28 | Yes     | Yes      |       1
+ latin5_turkish_ci           | latin5  |  30 | Yes     | Yes      |       1
+ latin1_german2_ci           | latin1  |  31 |         | Yes      |       2
+ utf8_general_ci             | utf8    |  33 | Yes     | Yes      |       1
+ utf8mb3_general_ci          | utf8mb3 |  33 | Yes     | Yes      |       1
+ cp866_general_ci            | cp866   |  36 | Yes     | Yes      |       1
+ latin7_general_ci           | latin7  |  41 | Yes     | Yes      |       1
+ utf8mb4_general_ci          | utf8mb4 |  45 | Yes     | Yes      |       1
+ utf8mb4_bin                 | utf8mb4 |  46 |         | Yes      |       1
+ latin1_bin                  | latin1  |  47 |         | Yes      |       1
+ cp1251_bin                  | cp1251  |  50 |         | Yes      |       1
+ cp1251_general_ci           | cp1251  |  51 | Yes     | Yes      |       1
+ cp1256_general_ci           | cp1256  |  57 | Yes     | Yes      |       1
+ cp1257_bin                  | cp1257  |  58 |         | Yes      |       1
+ cp1257_general_ci           | cp1257  |  59 | Yes     | Yes      |       1
+ binary                      | binary  |  63 | Yes     | Yes      |       1
+ ascii_bin                   | ascii   |  65 |         | Yes      |       1
+ cp1250_bin                  | cp1250  |  66 |         | Yes      |       1
+ cp1256_bin                  | cp1256  |  67 |         | Yes      |       1
+ cp866_bin                   | cp866   |  68 |         | Yes      |       1
+ greek_bin                   | greek   |  70 |         | Yes      |       1
+ hebrew_bin                  | hebrew  |  71 |         | Yes      |       1
+ koi8r_bin                   | koi8r   |  74 |         | Yes      |       1
+ koi8u_bin                   | koi8u   |  75 |         | Yes      |       1
+ utf8_tolower_ci             | utf8    |  76 |         | Yes      |       1
+ utf8mb3_tolower_ci          | utf8mb3 |  76 |         | Yes      |       1
+ latin2_bin                  | latin2  |  77 |         | Yes      |       1
+ latin5_bin                  | latin5  |  78 |         | Yes      |       1
+ latin7_bin                  | latin7  |  79 |         | Yes      |       1
+ utf8_bin                    | utf8    |  83 |         | Yes      |       1
+ utf8mb3_bin                 | utf8mb3 |  83 |         | Yes      |       1
+ big5_bin                    | big5    |  84 |         | Yes      |       1
+ euckr_bin                   | euckr   |  85 |         | Yes      |       1
+ gb2312_bin                  | gb2312  |  86 |         | Yes      |       1
+ gbk_bin                     | gbk     |  87 |         | Yes      |       1
+ sjis_bin                    | sjis    |  88 |         | Yes      |       1
+ ujis_bin                    | ujis    |  91 |         | Yes      |       1
+ cp932_japanese_ci           | cp932   |  95 |         | Yes      |       1
+ cp932_bin                   | cp932   |  96 |         | Yes      |       1
+ eucjpms_japanese_ci         | eucjpms |  97 | Yes     | Yes      |       1
+ eucjpms_bin                 | eucjpms |  98 |         | Yes      |       1
+ utf8_unicode_ci             | utf8    | 192 |         | Yes      |       8
+ utf8mb3_unicode_ci          | utf8mb3 | 192 |         | Yes      |       8
+ utf8_general_mysql500_ci    | utf8    | 223 |         | Yes      |       1
+ utf8mb3_general_mysql500_ci | utf8mb3 | 223 |         | Yes      |       1
+ utf8mb4_unicode_ci          | utf8mb4 | 224 |         | Yes      |       8
+ gb18030_chinese_ci          | gb18030 | 248 | Yes     | Yes      |       2
+ gb18030_bin                 | gb18030 | 249 |         | Yes      |       1
+ gb18030_unicode_520_ci      | gb18030 | 250 |         | Yes      |       8
+(62 rows)
+
+CREATE USER mysql_show_test_user WITH superuser;
+-- unix regress
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8mb3
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8mb4
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=ascii
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=binary
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1250
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1251
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1256
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1257
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp866
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=euckr
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gb18030
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gb2312
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gbk
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=greek
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=hebrew
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=koi8r
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=koi8u
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin1
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin2
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin5
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin7
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+\! psql -p $PGPORT -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=ujis
+psql: error: invalid integer value "$PGPORT" for connection option "port"
+-- windows regress
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8mb3
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=utf8mb4
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=ascii
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=binary
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+psql:./sql/collation.sql:49: ERROR:  collation "binary_bin" for encoding "SQL_ASCII" does not exist
+LINE 1:  create table test(val text collate binary_bin) 
+                                    ^
+QUERY:   create table test(val text collate binary_bin) 
+CONTEXT:  PL/pgSQL function bin_collation_test(text) line 7 at EXECUTE
+
+ default_collation_test 
+------------------------
+ 1
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1250
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1251
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1256
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp1257
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=cp866
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=euckr
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gb18030
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gb2312
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=gbk
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=greek
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=hebrew
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=koi8r
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=koi8u
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin1
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin2
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin5
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=latin7
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+\! psql -p %PGPORT% -d postgres -U mysql_show_test_user -f ./sql/collation.sql -v charset=ujis
+CREATE DATABASE
+You are now connected to database "mys_db_test" as user "mysql_show_test_user".
+CREATE FUNCTION
+CREATE FUNCTION
+ bin_collation_test 
+--------------------
+ 1
+(1 row)
+
+
+ default_collation_test 
+------------------------
+ 2
+(1 row)
+
+DROP FUNCTION
+You are now connected to database "postgres" as user "mysql_show_test_user".
+DROP DATABASE
+
+
+
+DROP USER mysql_show_test_user;
