@@ -603,81 +603,90 @@ INSERT INTO t VALUES (0),(1999),(2000),(2001),(70),(69);
 SELECT y+1 FROM t;
  ?column? 
 ----------
- 0001
- 2000
- 2001
- 2002
- 1971
- 2070
+        1
+     2000
+     2001
+     2002
+     1971
+     2070
 (6 rows)
 
 SELECT y-1 FROM t;
  ?column? 
 ----------
- 0000
- 1998
- 1999
- 2000
- 1969
- 2068
+        0
+     1998
+     1999
+     2000
+     1969
+     2068
 (6 rows)
 
 SELECT y*2 FROM t;
  ?column? 
 ----------
- 0000
- 3998
- 4000
- 4002
- 3940
- 4138
+        0
+     3998
+     4000
+     4002
+     3940
+     4138
 (6 rows)
 
 SELECT y/2 FROM t;
  ?column? 
 ----------
- 0000
- 0999
- 1000
- 1000
- 0985
- 1034
+        0
+      999
+     1000
+     1000
+      985
+     1034
 (6 rows)
 
 SELECT 1+y FROM t;
  ?column? 
 ----------
- 0001
- 2000
- 2001
- 2002
- 1971
- 2070
+        1
+     2000
+     2001
+     2002
+     1971
+     2070
 (6 rows)
 
 SELECT 2025-y FROM t;
  ?column? 
 ----------
- 2025
- 0026
- 0025
- 0024
- 0055
- 0000
+     2025
+       26
+       25
+       24
+       55
+        0
 (6 rows)
 
 SELECT 2*y FROM t;
  ?column? 
 ----------
- 0000
- 3998
- 4000
- 4002
- 3940
- 4138
+        0
+     3998
+     4000
+     4002
+     3940
+     4138
 (6 rows)
 
--- SELECT 2025/y FROM t where y != 0;
+SELECT 2025/y FROM t where y != 0;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        0
+(5 rows)
+
 SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);
    set_config    
 -----------------

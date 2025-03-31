@@ -37,12 +37,18 @@ PG_FUNCTION_INFO_V1(year_hash);
 PG_FUNCTION_INFO_V1(year_scale);
 PG_FUNCTION_INFO_V1(int4_year);
 PG_FUNCTION_INFO_V1(timestamptz_year);
+PG_FUNCTION_INFO_V1(timestamptz_eq_year);
+PG_FUNCTION_INFO_V1(year_eq_timestamptz);
 PG_FUNCTION_INFO_V1(numeric_year);
 PG_FUNCTION_INFO_V1(date_year);
 PG_FUNCTION_INFO_V1(time_year);
 PG_FUNCTION_INFO_V1(timetz_year);
 PG_FUNCTION_INFO_V1(char_year);
 PG_FUNCTION_INFO_V1(bigint_year);
+PG_FUNCTION_INFO_V1(year_lt_bigint);
+PG_FUNCTION_INFO_V1(bigint_lt_year);
+PG_FUNCTION_INFO_V1(year_gt_bigint);
+PG_FUNCTION_INFO_V1(bigint_gt_year);
 
 PG_FUNCTION_INFO_V1(year_larger);
 PG_FUNCTION_INFO_V1(year_smaller);
@@ -68,6 +74,9 @@ PG_FUNCTION_INFO_V1(int_add_year);
 PG_FUNCTION_INFO_V1(int_sub_year);
 PG_FUNCTION_INFO_V1(int_multi_year);
 PG_FUNCTION_INFO_V1(int_div_year);
+
+PG_FUNCTION_INFO_V1(year_eq_num);
+PG_FUNCTION_INFO_V1(num_eq_year);
 
 static double float8in_internals(char* str, char** endptr_p, bool* hasError);
 static YearADT int32_to_YearADT(int32 year);
@@ -346,6 +355,52 @@ Datum timestamptz_year(PG_FUNCTION_ARGS)
 	PG_RETURN_YEARADT(int32_to_YearADT(tmpResult));
 }
 
+Datum year_eq_timestamptz(PG_FUNCTION_ARGS)
+{
+	YearADT yearLeft = PG_GETARG_YEARADT(0);
+	YearADT yearRight = 0;
+	TimestampTz timestamp = PG_GETARG_TIMESTAMPTZ(1);
+	int32 tmpResult;
+	fsec_t fsec;
+	struct pg_tm tt, *tm = &tt;
+
+	if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) != 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				errmsg("timestamptz_year_eq timestamp out of range")));
+
+	tmpResult = 0;
+	if (tm->tm_year > 0)
+		tmpResult = tm->tm_year;
+
+	yearRight = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) == 0);
+}
+
+Datum timestamptz_eq_year(PG_FUNCTION_ARGS)
+{
+	YearADT yearLeft = 0;
+	TimestampTz timestamp = PG_GETARG_TIMESTAMPTZ(0);
+	YearADT yearRight = PG_GETARG_YEARADT(1);
+	int32 tmpResult;
+	fsec_t fsec;
+	struct pg_tm tt, *tm = &tt;
+
+	if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) != 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				errmsg("timestamptz_year_eq timestamp out of range")));
+
+	tmpResult = 0;
+	if (tm->tm_year > 0)
+		tmpResult = tm->tm_year;
+
+	yearLeft = int32_to_YearADT(tmpResult);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) == 0);
+}
+
 Datum numeric_year(PG_FUNCTION_ARGS)
 {
 	Numeric numeric = (Numeric) PG_GETARG_NUMERIC(0);
@@ -457,6 +512,70 @@ Datum bigint_year(PG_FUNCTION_ARGS)
 	year = bigint_to_YearADT(num);
 
 	PG_RETURN_YEARADT(year);
+}
+
+Datum year_lt_bigint(PG_FUNCTION_ARGS)
+{
+	YearADT yearLeft = PG_GETARG_YEARADT(0);
+	int64   num = PG_GETARG_INT64(1);
+	YearADT yearRight;
+	
+	if (num <= MIN_YEAR_NUM)
+		num = MIN_YEAR_NUM;
+	else if (num >= MAX_YEAR_NUM)
+		num = MAX_YEAR_NUM;
+
+	yearRight = bigint_to_YearADT(num);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) < 0);
+}
+
+Datum bigint_lt_year(PG_FUNCTION_ARGS)
+{
+	int64   num = PG_GETARG_INT64(0);
+	YearADT yearRight = PG_GETARG_YEARADT(1);
+	YearADT yearLeft;
+
+	if (num <= MIN_YEAR_NUM)
+		num = MIN_YEAR_NUM;
+	else if (num >= MAX_YEAR_NUM)
+		num = MAX_YEAR_NUM;
+
+	yearLeft = bigint_to_YearADT(num);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) < 0);
+}
+
+Datum year_gt_bigint(PG_FUNCTION_ARGS)
+{
+	YearADT yearLeft = PG_GETARG_YEARADT(0);
+	int64   num = PG_GETARG_INT64(1);
+	YearADT yearRight;
+	
+	if (num <= MIN_YEAR_NUM)
+		num = MIN_YEAR_NUM;
+	else if (num >= MAX_YEAR_NUM)
+		num = MAX_YEAR_NUM;
+
+	yearRight = bigint_to_YearADT(num);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) > 0);
+}
+
+Datum bigint_gt_year(PG_FUNCTION_ARGS)
+{
+	int64   num = PG_GETARG_INT64(0);
+	YearADT yearRight = PG_GETARG_YEARADT(1);
+	YearADT yearLeft;
+
+	if (num <= MIN_YEAR_NUM)
+		num = MIN_YEAR_NUM;
+	else if (num >= MAX_YEAR_NUM)
+		num = MAX_YEAR_NUM;
+
+	yearLeft = bigint_to_YearADT(num);
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, yearRight) > 0);
 }
 
 Datum year_scale(PG_FUNCTION_ARGS)
@@ -576,27 +695,21 @@ Datum year_add_int(PG_FUNCTION_ARGS)
 	YearADT yearLeft = PG_GETARG_INT16(0);
 	int32_t num  = PG_GETARG_INT32(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearLeft >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearLeft);
 		val += num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearLeft) % 100;
 		val += num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum year_sub_int(PG_FUNCTION_ARGS)
@@ -604,8 +717,6 @@ Datum year_sub_int(PG_FUNCTION_ARGS)
 	YearADT yearLeft = PG_GETARG_INT16(0);
 	int32_t num  = PG_GETARG_INT32(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearLeft >= 0)
 	{
@@ -614,7 +725,6 @@ Datum year_sub_int(PG_FUNCTION_ARGS)
 		val -= num;
 		if (val < 0)
 			val = 0;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
@@ -623,12 +733,9 @@ Datum year_sub_int(PG_FUNCTION_ARGS)
 		val -= num;
 		if (val < 0)
 			val = 0;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum year_multi_int(PG_FUNCTION_ARGS)
@@ -636,27 +743,21 @@ Datum year_multi_int(PG_FUNCTION_ARGS)
 	YearADT yearLeft = PG_GETARG_INT16(0);
 	int32_t num  = PG_GETARG_INT32(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearLeft >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearLeft);
 		val *= num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearLeft) % 100;
 		val *= num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum year_div_int(PG_FUNCTION_ARGS)
@@ -664,27 +765,21 @@ Datum year_div_int(PG_FUNCTION_ARGS)
 	YearADT yearLeft = PG_GETARG_INT16(0);
 	int32_t num  = PG_GETARG_INT32(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearLeft >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearLeft);
 		val /= num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearLeft) % 100;
 		val /= num;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum int_eq_year(PG_FUNCTION_ARGS)
@@ -758,27 +853,21 @@ Datum int_add_year(PG_FUNCTION_ARGS)
 	int32_t num  = PG_GETARG_INT32(0);
 	YearADT yearRight = PG_GETARG_INT16(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearRight >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearRight);
 		val  = num + val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearRight) % 100;
 		val = num + val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum int_sub_year(PG_FUNCTION_ARGS)
@@ -786,8 +875,6 @@ Datum int_sub_year(PG_FUNCTION_ARGS)
 	int32_t num  = PG_GETARG_INT32(0);
 	YearADT yearRight = PG_GETARG_INT16(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearRight >= 0)
 	{
@@ -796,7 +883,6 @@ Datum int_sub_year(PG_FUNCTION_ARGS)
 		val = num - val;
 		if (val < 0)
 			val = 0;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
@@ -805,12 +891,9 @@ Datum int_sub_year(PG_FUNCTION_ARGS)
 		val = num - val;
 		if (val < 0)
 			val = 0;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum int_multi_year(PG_FUNCTION_ARGS)
@@ -818,27 +901,21 @@ Datum int_multi_year(PG_FUNCTION_ARGS)
 	int32_t num  = PG_GETARG_INT32(0);
 	YearADT yearRight = PG_GETARG_INT16(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearRight >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearRight);
 		val = num * val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearRight) % 100;
 		val *= num * val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
-
-	PG_RETURN_CSTRING(result);
+	PG_RETURN_INT32(val);
 }
 
 Datum int_div_year(PG_FUNCTION_ARGS)
@@ -846,27 +923,51 @@ Datum int_div_year(PG_FUNCTION_ARGS)
 	int32_t num  = PG_GETARG_INT32(0);
 	YearADT yearRight = PG_GETARG_INT16(1);
 	int32   val  = 0;
-	char *result = NULL;
-	char buf[8];    /* buffer's size = 8 is enough for "YYYY\0" */
 
 	if (yearRight >= 0)
 	{
 		/* year(4) */
 		val  = YearADT_to_Year(yearRight);
 		val = num / val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 	else
 	{
 		/* year(2): displays only the last (least significant) 2 digits */
 		val = YearADT_to_Year(-yearRight) % 100;
 		val = num / val;
-		snprintf(buf, sizeof(buf), "%04d", val);
 	}
 
-	result = pstrdup(buf);
+	PG_RETURN_INT32(val);
+}
 
-	PG_RETURN_CSTRING(result);
+Datum year_eq_num(PG_FUNCTION_ARGS)
+{
+	YearADT yearLeft = PG_GETARG_YEARADT(0);
+	Numeric numeric = (Numeric) PG_GETARG_NUMERIC(1);
+	YearADT tmp_year;
+	Datum retValue;
+
+	retValue = DirectFunctionCall1(numeric_int2,
+								NumericGetDatum(numeric));
+
+	tmp_year = int32_to_YearADT(DatumGetInt32(retValue));
+
+	PG_RETURN_BOOL(year_cmp_internal(yearLeft, tmp_year) == 0);
+}
+
+Datum num_eq_year(PG_FUNCTION_ARGS)
+{
+	Numeric numeric = (Numeric) PG_GETARG_NUMERIC(0);
+	YearADT yearRight = PG_GETARG_YEARADT(1);	
+	YearADT tmp_year;
+	Datum retValue;
+
+	retValue = DirectFunctionCall1(numeric_int2,
+								NumericGetDatum(numeric));
+
+	tmp_year = int32_to_YearADT(DatumGetInt32(retValue));
+
+	PG_RETURN_BOOL(year_cmp_internal(tmp_year, yearRight) == 0);
 }
 
 static double

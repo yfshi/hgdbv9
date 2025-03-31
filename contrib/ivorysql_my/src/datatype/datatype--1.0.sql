@@ -184,7 +184,7 @@ AS 'MODULE_PATHNAME', 'year_sortsupport'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE OPERATOR CLASS year_ops
-	DEFAULT FOR TYPE year USING btree AS
+	DEFAULT FOR TYPE ivymy.year USING btree AS
 		OPERATOR	1	ivymy.< (year, year),
 		OPERATOR	2	ivymy.<=(year, year),
 		OPERATOR	3	ivymy.= (year, year),
@@ -200,7 +200,7 @@ AS 'MODULE_PATHNAME', 'year_hash'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE OPERATOR CLASS year_ops
-	DEFAULT FOR TYPE year USING hash AS
+	DEFAULT FOR TYPE ivymy.year USING hash AS
 		OPERATOR	1	ivymy.= (ivymy.year, ivymy.year),
 		FUNCTION	1	ivymy.year_hash(ivymy.year);
 
@@ -212,7 +212,7 @@ AS 'MODULE_PATHNAME', 'year_scale'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE CAST(year as year)
-WITH FUNCTION ivymy.year(ivymy.year, integer) AS IMPLICIT;
+WITH FUNCTION ivymy.year(ivymy.year, integer) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.int4_year(INT4)
 RETURNS ivymy.year
@@ -220,7 +220,7 @@ AS 'MODULE_PATHNAME', 'int4_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE CAST(INT4 AS year)
-WITH FUNCTION ivymy.int4_year(INT4) AS IMPLICIT;
+WITH FUNCTION ivymy.int4_year(INT4) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.timestamptz2year(timestamptz)
 RETURNS ivymy.year
@@ -228,7 +228,7 @@ AS 'MODULE_PATHNAME', 'timestamptz_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE CAST(timestamptz AS year)
-WITH FUNCTION ivymy.timestamptz2year(timestamptz) AS IMPLICIT;
+WITH FUNCTION ivymy.timestamptz2year(timestamptz) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.numeric2year(numeric)
 RETURNS ivymy.year
@@ -236,7 +236,7 @@ AS 'MODULE_PATHNAME', 'numeric_year'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 CREATE CAST(numeric AS year)
-WITH FUNCTION ivymy.numeric2year(numeric) AS IMPLICIT;
+WITH FUNCTION ivymy.numeric2year(numeric) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.date2year(DATE)
 RETURNS ivymy.year
@@ -244,7 +244,7 @@ AS 'MODULE_PATHNAME', 'date_year'
 LANGUAGE C STABLE STRICT PARALLEL SAFE;
 
 CREATE CAST (DATE AS year)
-WITH FUNCTION ivymy.date2year(DATE) AS IMPLICIT;
+WITH FUNCTION ivymy.date2year(DATE) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.time2year(TIME)
 RETURNS ivymy.year
@@ -252,7 +252,7 @@ AS 'MODULE_PATHNAME', 'time_year'
 LANGUAGE C STABLE STRICT PARALLEL SAFE;
 
 CREATE CAST (TIME as year)
-WITH FUNCTION ivymy.time2year(TIME) AS IMPLICIT;
+WITH FUNCTION ivymy.time2year(TIME) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.timetz2year(timetz)
 RETURNS ivymy.year
@@ -260,7 +260,7 @@ AS 'MODULE_PATHNAME', 'timetz_year'
 LANGUAGE C STABLE STRICT PARALLEL SAFE;
 
 CREATE CAST (timetz as year)
-WITH FUNCTION ivymy.timetz2year(timetz) AS IMPLICIT;
+WITH FUNCTION ivymy.timetz2year(timetz) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.char2year(CHAR)
 RETURNS ivymy.year
@@ -268,7 +268,7 @@ AS 'MODULE_PATHNAME', 'char_year'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
 
 CREATE CAST (CHAR AS YEAR)
-WITH FUNCTION ivymy.char2year (CHAR) AS IMPLICIT;
+WITH FUNCTION ivymy.char2year (CHAR) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.bigint2year(IN num BIGINT)
 RETURNS ivymy.year
@@ -276,7 +276,7 @@ AS 'MODULE_PATHNAME', 'bigint_year'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
 
 CREATE CAST (BIGINT AS year)
-WITH FUNCTION ivymy.bigint2year (BIGINT) AS IMPLICIT;
+WITH FUNCTION ivymy.bigint2year (BIGINT) AS ASSIGNMENT;
 
 -- CREATE YEAR'S MAX, MIN FUNCTION
 CREATE OR REPLACE FUNCTION ivymy.year_larger(ivymy.year, ivymy.year)
@@ -400,6 +400,26 @@ CREATE OPERATOR ivymy.>= (
     JOIN       = scalargejoinsel
 );
 
+CREATE FUNCTION ivymy.year_add_int(ivymy.year, pg_catalog.int4)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'year_add_int'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.year_sub_int(ivymy.year, pg_catalog.int4)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'year_sub_int'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.year_multi_int(ivymy.year, pg_catalog.int4)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'year_multi_int'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.year_div_int(ivymy.year, pg_catalog.int4)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'year_div_int'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 CREATE OPERATOR ivymy.+ (
     LEFTARG     = ivymy.year,
     RIGHTARG    = pg_catalog.int4,
@@ -515,6 +535,26 @@ CREATE OPERATOR ivymy.>= (
     JOIN       = scalargejoinsel
 );
 
+CREATE FUNCTION ivymy.int_add_year(pg_catalog.int4, ivymy.year)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'int_add_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.int_sub_year(pg_catalog.int4, ivymy.year)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'int_sub_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.int_multi_year(pg_catalog.int4, ivymy.year)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'int_multi_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.int_div_year(pg_catalog.int4, ivymy.year)
+RETURNS pg_catalog.int4
+AS 'MODULE_PATHNAME', 'int_div_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 CREATE OPERATOR ivymy.+ (
     LEFTARG     = pg_catalog.int4,
     RIGHTARG    = ivymy.year,
@@ -537,4 +577,130 @@ CREATE OPERATOR ivymy./ (
     LEFTARG     = pg_catalog.int4,
     RIGHTARG    = ivymy.year,
     PROCEDURE   = ivymy.int_div_year
+);
+
+-- ivymy.year vs pg_catalog.numeric
+CREATE FUNCTION ivymy.year_eq_num(ivymy.year, pg_catalog.numeric)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'year_eq_num'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.= (
+    LEFTARG    = ivymy.year,
+    RIGHTARG   = pg_catalog.numeric,
+    COMMUTATOR = =,
+    -- NEGATOR    = <>,
+    PROCEDURE  = ivymy.year_eq_num,
+    RESTRICT   = eqsel,
+    JOIN       = eqjoinsel
+);
+
+-- pg_catalog.numeric vs ivymy.year
+CREATE FUNCTION ivymy.num_eq_year(pg_catalog.numeric, ivymy.year)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'num_eq_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.= (
+    LEFTARG    = pg_catalog.numeric,
+    RIGHTARG   = ivymy.year,
+    COMMUTATOR = =,
+    -- NEGATOR    = <>,
+    PROCEDURE  = ivymy.num_eq_year,
+    RESTRICT   = eqsel,
+    JOIN       = eqjoinsel
+);
+
+-- ivymy.year vs pg_catalog.timestamptz
+CREATE OR REPLACE FUNCTION ivymy.year_eq_timestamptz(ivymy.year, pg_catalog.timestamptz)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'year_eq_timestamptz'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.=(
+	LEFTARG		= ivymy.year,
+	RIGHTARG	= pg_catalog.timestamptz,
+	COMMUTATOR  = =,
+	-- NEGATOR     = <>,
+	PROCEDURE	= ivymy.year_eq_timestamptz,
+	RESTRICT	= eqsel,
+	JOIN		= eqjoinsel
+);
+
+-- ivymy.timestamptz vs pg_catalog.year
+CREATE OR REPLACE FUNCTION ivymy.timestamptz_eq_year(pg_catalog.timestamptz, ivymy.year)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'timestamptz_eq_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.=(
+	LEFTARG		= pg_catalog.timestamptz,
+	RIGHTARG	= ivymy.year,
+	COMMUTATOR  = =,
+	-- NEGATOR     = <>,
+	PROCEDURE	= ivymy.timestamptz_eq_year,
+	RESTRICT	= eqsel,
+	JOIN		= eqjoinsel
+);
+
+-- ivymy.year vs pg_catalog.bigint
+CREATE OR REPLACE FUNCTION ivymy.year_lt_bigint(ivymy.year, bigint)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'year_lt_bigint'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.<(
+    LEFTARG    = ivymy.year,
+    RIGHTARG   = bigint,
+    -- NEGATOR    = >=,
+    COMMUTATOR = >,
+    PROCEDURE  = ivymy.year_lt_bigint,
+    RESTRICT   = scalarltsel,
+    JOIN       = scalarltjoinsel
+);
+
+CREATE OR REPLACE FUNCTION ivymy.year_gt_bigint(ivymy.year, bigint)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'year_gt_bigint'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.>(
+    LEFTARG    = ivymy.year,
+    RIGHTARG   = bigint,
+    -- NEGATOR    = <=,
+    COMMUTATOR = <,
+    PROCEDURE  = ivymy.year_gt_bigint,
+    RESTRICT   = scalarltsel,
+    JOIN       = scalarltjoinsel
+);
+
+-- pg_catalog.bigint vs ivymy.year
+CREATE OR REPLACE FUNCTION ivymy.bigint_lt_year(bigint, ivymy.year)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'bigint_lt_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.<(
+    LEFTARG    = bigint,
+    RIGHTARG   = ivymy.year,
+    -- NEGATOR    = >=,
+    COMMUTATOR = >,
+    PROCEDURE  = ivymy.bigint_lt_year,
+    RESTRICT   = scalarltsel,
+    JOIN       = scalarltjoinsel
+);
+
+CREATE OR REPLACE FUNCTION ivymy.bigint_gt_year(bigint, ivymy.year)
+RETURNS boolean
+AS 'MODULE_PATHNAME', 'bigint_gt_year'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.>(
+    LEFTARG    = bigint,
+    RIGHTARG   = ivymy.year,
+    -- NEGATOR    = <=,
+    COMMUTATOR = <,
+    PROCEDURE  = ivymy.bigint_gt_year,
+    RESTRICT   = scalarltsel,
+    JOIN       = scalarltjoinsel
 );

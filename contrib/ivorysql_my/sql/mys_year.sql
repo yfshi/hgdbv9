@@ -252,6 +252,6 @@ SELECT y/2 FROM t;
 SELECT 1+y FROM t;
 SELECT 2025-y FROM t;
 SELECT 2*y FROM t;
--- SELECT 2025/y FROM t where y != 0;
+SELECT 2025/y FROM t where y != 0;
 
 SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('search_path')), false);
