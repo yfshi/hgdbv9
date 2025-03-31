@@ -35,6 +35,8 @@
 #include "utils/syscache.h"
 #include "commands/proclang.h" /* SRS-PLSQL-SUBPROC */
 #include "commands/packagecmds.h" /* BUG#M0000227 */
+#include "utils/guc.h"	/* ReqID:SRS-MYSQL-DATETYPE */
+#include "utils/ora_compatible.h"	/* ReqID:SRS-MYSQL-DATETYPE */
 
 /*
  * Hooks for function calls
@@ -182,6 +184,7 @@ fmgr_subproc_info_cxt_security(Oid functionId, FmgrInfo *finfo,
 
 	finfo->fn_strict = false; /* inline function is awalys not strict */
 
+	finfo->fn_insert = false; /* ReqID:SRS-MYSQL-DATETYPE */
 
 	/*
 	 * handle invoke define from package or type
@@ -1012,7 +1015,7 @@ DirectFunctionCall1Coll(PGFunction func, Oid collation, Datum arg1)
 	result = (*func) (fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
+	if (fcinfo->isnull && MYS_PARSER != compatible_db) /* ReqID:SRS-MYSQL-DATETYPE */
 		elog(ERROR, "function %p returned NULL", (void *) func);
 
 	return result;
@@ -1329,8 +1332,12 @@ FunctionCall0Coll(FmgrInfo *flinfo, Oid collation)
 	result = FunctionCallInvoke(fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
-		elog(ERROR, "function %u returned NULL", flinfo->fn_oid);
+	if(MYS_PARSER != compatible_db) /* ReqID:SRS-MYSQL-DATETYPE */
+	{
+		if (fcinfo->isnull)
+			elog(ERROR, "function %u returned NULL", flinfo->fn_oid);
+	}
+
 
 	return result;
 }
@@ -1349,8 +1356,12 @@ FunctionCall1Coll(FmgrInfo *flinfo, Oid collation, Datum arg1)
 	result = FunctionCallInvoke(fcinfo);
 
 	/* Check for null result, since caller is clearly not expecting one */
-	if (fcinfo->isnull)
-		elog(ERROR, "function %u returned NULL", flinfo->fn_oid);
+	if(MYS_PARSER != compatible_db) /* ReqID:SRS-MYSQL-DATETYPE */
+	{
+		if (fcinfo->isnull)
+			elog(ERROR, "function %u returned NULL", flinfo->fn_oid);
+	}
+
 
 	return result;
 }
@@ -1765,9 +1776,13 @@ InputFunctionCall(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod)
 	}
 	else
 	{
-		if (fcinfo->isnull)
-			elog(ERROR, "input function %u returned NULL",
-				 flinfo->fn_oid);
+		if(compatible_db != MYS_PARSER) /* ReqID:SRS-MYSQL-DATETYPE */
+		{
+			if (fcinfo->isnull)
+				elog(ERROR, "input function %u returned NULL",
+					 flinfo->fn_oid);
+		}
+
 	}
 
 	return result;

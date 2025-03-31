@@ -67,14 +67,14 @@ CREATE TABLE CHECK_TBL (x int,
 INSERT INTO CHECK_TBL VALUES (5);
 INSERT INTO CHECK_TBL VALUES (4);
 INSERT INTO CHECK_TBL VALUES (3);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"
+ERROR:  new row for relation "check_tbl" violates check constraint "CHECK_CON"
 DETAIL:  Failing row contains (3).
 INSERT INTO CHECK_TBL VALUES (2);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"
+ERROR:  new row for relation "check_tbl" violates check constraint "CHECK_CON"
 DETAIL:  Failing row contains (2).
 INSERT INTO CHECK_TBL VALUES (6);
 INSERT INTO CHECK_TBL VALUES (1);
-ERROR:  new row for relation "check_tbl" violates check constraint "check_con"
+ERROR:  new row for relation "check_tbl" violates check constraint "CHECK_CON"
 DETAIL:  Failing row contains (1).
 SELECT * FROM CHECK_TBL;
  x 
@@ -90,16 +90,16 @@ CREATE TABLE CHECK2_TBL (x int, y text, z int,
 	CHECK (x > 3 and y <> 'check failed' and z < 8));
 INSERT INTO CHECK2_TBL VALUES (4, 'check ok', -2);
 INSERT INTO CHECK2_TBL VALUES (1, 'x check failed', -2);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"
+ERROR:  new row for relation "check2_tbl" violates check constraint "SEQUENCE_CON"
 DETAIL:  Failing row contains (1, x check failed, -2).
 INSERT INTO CHECK2_TBL VALUES (5, 'z check failed', 10);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"
+ERROR:  new row for relation "check2_tbl" violates check constraint "SEQUENCE_CON"
 DETAIL:  Failing row contains (5, z check failed, 10).
 INSERT INTO CHECK2_TBL VALUES (0, 'check failed', -2);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"
+ERROR:  new row for relation "check2_tbl" violates check constraint "SEQUENCE_CON"
 DETAIL:  Failing row contains (0, check failed, -2).
 INSERT INTO CHECK2_TBL VALUES (6, 'check failed', 11);
-ERROR:  new row for relation "check2_tbl" violates check constraint "sequence_con"
+ERROR:  new row for relation "check2_tbl" violates check constraint "SEQUENCE_CON"
 DETAIL:  Failing row contains (6, check failed, 11).
 INSERT INTO CHECK2_TBL VALUES (7, 'check ok', 7);
 SELECT * from CHECK2_TBL;
@@ -119,7 +119,7 @@ CREATE TABLE INSERT_TBL (x INT DEFAULT nextval('insert_seq'),
 	CONSTRAINT INSERT_TBL_CON CHECK (x >= 3 AND y <> 'check failed' AND x < 8),
 	CHECK (x + z = 0));
 INSERT INTO INSERT_TBL(x,z) VALUES (2, -2);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (2, -NULL-, -2).
 SELECT * FROM INSERT_TBL;
  x | y | z 
@@ -133,15 +133,15 @@ SELECT 'one' AS one, nextval('insert_seq');
 (1 row)
 
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (2, Y, -2).
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
 INSERT INTO INSERT_TBL(x,z) VALUES (1, -2);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (1, -NULL-, -2).
 INSERT INTO INSERT_TBL(z,x) VALUES (-7,  7);
 INSERT INTO INSERT_TBL VALUES (5, 'check failed', -5);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (5, check failed, -5).
 INSERT INTO INSERT_TBL VALUES (7, '!check failed', -7);
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
@@ -155,10 +155,10 @@ SELECT * FROM INSERT_TBL;
 (4 rows)
 
 INSERT INTO INSERT_TBL(y,z) VALUES ('check failed', 4);
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_check"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (5, check failed, 4).
 INSERT INTO INSERT_TBL(x,y) VALUES (5, 'check failed');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (5, check failed, -5).
 INSERT INTO INSERT_TBL(x,y) VALUES (5, '!check failed');
 INSERT INTO INSERT_TBL(y) VALUES ('-!NULL-');
@@ -180,7 +180,7 @@ SELECT 'seven' AS one, nextval('insert_seq');
 (1 row)
 
 INSERT INTO INSERT_TBL(y) VALUES ('Y');
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (8, Y, -8).
 SELECT 'eight' AS one, currval('insert_seq');
   one  | currval 
@@ -275,7 +275,7 @@ LINE 1: INSERT INTO ATACC2 (TEST) VALUES (-3);
                     ^
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST) VALUES (-3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_TEST_check"
 DETAIL:  Failing row contains (-3).
 DROP TABLE ATACC1 CASCADE;
 CREATE TABLE ATACC1 (TEST INT, TEST2 INT
@@ -290,7 +290,7 @@ LINE 1: INSERT INTO ATACC2 (TEST) VALUES (-3);
                     ^
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST) VALUES (-3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_TEST_check"
 DETAIL:  Failing row contains (-3, null).
 -- check constraint is not there on child
 INSERT INTO ATACC2 (TEST2) VALUES (3);
@@ -299,7 +299,7 @@ LINE 1: INSERT INTO ATACC2 (TEST2) VALUES (3);
                     ^
 -- check constraint is there on parent
 INSERT INTO ATACC1 (TEST2) VALUES (3);
-ERROR:  new row for relation "atacc1" violates check constraint "atacc1_test2_check"
+ERROR:  new row for relation "atacc1" violates check constraint "atacc1_TEST2_check"
 DETAIL:  Failing row contains (null, 3).
 DROP TABLE ATACC1 CASCADE;
 --
@@ -323,7 +323,7 @@ SELECT * FROM INSERT_TBL;
 INSERT INTO INSERT_TBL SELECT * FROM tmp WHERE yd = 'try again';
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -7 FROM tmp WHERE yd = 'try again';
 INSERT INTO INSERT_TBL(y,z) SELECT yd, -8 FROM tmp WHERE yd = 'try again';
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (8, try again, -8).
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
@@ -343,7 +343,7 @@ UPDATE INSERT_TBL SET x = NULL WHERE x = 5;
 UPDATE INSERT_TBL SET x = 6 WHERE x = 6;
 UPDATE INSERT_TBL SET x = -z, z = -x;
 UPDATE INSERT_TBL SET x = z, z = x;
-ERROR:  new row for relation "insert_tbl" violates check constraint "insert_tbl_con"
+ERROR:  new row for relation "insert_tbl" violates check constraint "INSERT_TBL_CON"
 DETAIL:  Failing row contains (-4, Y, 4).
 SELECT * FROM INSERT_TBL;
  x |       y       | z  
@@ -371,7 +371,7 @@ SELECT * FROM COPY_TBL;
 (2 rows)
 
 COPY COPY_TBL FROM '@abs_srcdir@/data/constrf.data';
-ERROR:  new row for relation "copy_tbl" violates check constraint "copy_con"
+ERROR:  new row for relation "copy_tbl" violates check constraint "COPY_CON"
 DETAIL:  Failing row contains (7, check failed, 6).
 CONTEXT:  COPY copy_tbl, line 2: "7	check failed	6"
 SELECT * FROM COPY_TBL;

@@ -282,6 +282,8 @@ CREATE VIEW ptif_test_view AS SELECT 1;
 CREATE MATERIALIZED VIEW ptif_test_matview AS SELECT 1;
 CREATE TABLE ptif_li_parent ();
 CREATE TABLE ptif_li_child () INHERITS (ptif_li_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 SELECT * FROM pg_partition_tree('ptif_test_view');
  relid | parentrelid | isleaf | level 
 -------+-------------+--------+-------
@@ -298,10 +300,9 @@ SELECT * FROM pg_partition_tree('ptif_li_parent');
 (0 rows)
 
 SELECT * FROM pg_partition_tree('ptif_li_child');
- relid | parentrelid | isleaf | level 
--------+-------------+--------+-------
-(0 rows)
-
+ERROR:  relation "ptif_li_child" does not exist
+LINE 1: SELECT * FROM pg_partition_tree('ptif_li_child');
+                                        ^
 SELECT * FROM pg_partition_ancestors('ptif_test_view');
  relid 
 -------
@@ -318,10 +319,9 @@ SELECT * FROM pg_partition_ancestors('ptif_li_parent');
 (0 rows)
 
 SELECT * FROM pg_partition_ancestors('ptif_li_child');
- relid 
--------
-(0 rows)
-
+ERROR:  relation "ptif_li_child" does not exist
+LINE 1: SELECT * FROM pg_partition_ancestors('ptif_li_child');
+                                             ^
 SELECT pg_partition_root('ptif_test_view');
  pg_partition_root 
 -------------------
@@ -341,11 +341,10 @@ SELECT pg_partition_root('ptif_li_parent');
 (1 row)
 
 SELECT pg_partition_root('ptif_li_child');
- pg_partition_root 
--------------------
- 
-(1 row)
-
+ERROR:  relation "ptif_li_child" does not exist
+LINE 1: SELECT pg_partition_root('ptif_li_child');
+                                 ^
 DROP VIEW ptif_test_view;
 DROP MATERIALIZED VIEW ptif_test_matview;
 DROP TABLE ptif_li_parent, ptif_li_child;
+ERROR:  table "ptif_li_child" does not exist

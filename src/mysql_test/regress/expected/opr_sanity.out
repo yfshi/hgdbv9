@@ -101,7 +101,9 @@ WHERE p1.oid != p2.oid AND
     p1.proname = p2.proname AND
     p1.pronargs = p2.pronargs AND
     p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p2.pronamespace != 9900 AND 
+    p2.pronamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
+    p1.pronamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
     p1.proargtypes = p2.proargtypes order by p1.oid, p1.proname, p2.oid, p2.proname;
  oid | proname | oid | proname 
 -----+---------+-----+---------
@@ -903,7 +905,7 @@ order by 1;
 -- Check that all immutable functions are marked parallel safe
 SELECT p1.oid, p1.proname
 FROM pg_proc AS p1
-WHERE provolatile = 'i' AND proparallel = 'u' AND p1.pronamespace != 9900;
+WHERE provolatile = 'i' AND proparallel = 'u' AND p1.pronamespace != 9900 AND p1.pronamespace != (select oid from pg_namespace where nspname = 'ivymy');
  oid | proname 
 -----+---------
 (0 rows)
@@ -1056,8 +1058,8 @@ WHERE condefault AND
 -- Look for illegal values in pg_operator fields.
 SELECT p1.oid, p1.oprname
 FROM pg_operator as p1
-WHERE (p1.oprkind != 'b' AND p1.oprkind != 'l') OR
-    p1.oprresult = 0 OR p1.oprcode = 0;
+WHERE ((p1.oprkind != 'b' AND p1.oprkind != 'l') OR
+    p1.oprresult = 0 OR p1.oprcode = 0) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');;
  oid | oprname 
 -----+---------
 (0 rows)
@@ -1095,7 +1097,8 @@ WHERE p1.oprcom = p2.oid AND
      p1.oprleft != p2.oprright OR
      p1.oprright != p2.oprleft OR
      p1.oprresult != p2.oprresult OR
-     p1.oid != p2.oprcom);
+     p1.oid != p2.oprcom) AND 
+	 p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
  oid | oprcode | oid | oprcode 
 -----+---------+-----+---------
 (0 rows)
@@ -1130,6 +1133,7 @@ WHERE o1.oprcom = o2.oid AND o1.oprname <= o2.oprname
 ORDER BY 1, 2;
  op1  | op2  
 ------+------
+ !~~  | !~~
  #    | #
  &    | &
  &&   | &&
@@ -1159,7 +1163,8 @@ ORDER BY 1, 2;
  ~<=~ | ~>=~
  ~<~  | ~>~
  ~=   | ~=
-(29 rows)
+ ~~   | ~~
+(31 rows)
 
 -- Likewise for negator pairs.
 SELECT DISTINCT o1.oprname AS op1, o2.oprname AS op2
@@ -1207,10 +1212,10 @@ WHERE p1.oprcom = p2.oid AND
 -- opfamilies.
 SELECT p1.oid, p1.oprname
 FROM pg_operator AS p1
-WHERE p1.oprcanmerge AND NOT EXISTS
+WHERE p1.oprcanmerge AND NOT EXISTS 
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree') AND
-         amopopr = p1.oid AND amopstrategy = 3);
+         amopopr = p1.oid AND amopstrategy = 3) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
  oid | oprname 
 -----+---------
 (0 rows)
@@ -1232,7 +1237,7 @@ FROM pg_operator AS p1
 WHERE p1.oprcanhash AND NOT EXISTS
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'hash') AND
-         amopopr = p1.oid AND amopstrategy = 1);
+         amopopr = p1.oid AND amopstrategy = 1) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
  oid | oprname 
 -----+---------
 (0 rows)
@@ -2183,26 +2188,33 @@ LEFT JOIN pg_amproc AS amp ON amp.amprocfamily = opf.oid AND
 WHERE am.amname = 'btree' AND
     amp.amproc IS DISTINCT FROM 'btequalimage'::regproc
 ORDER BY 1, 2, 3;
-        proc        |  opfamily_name   |   opclass_name   |    opcintype     
---------------------+------------------+------------------+------------------
- btvarstrequalimage | bpchar_ops       | bpchar_ops       | character
- btvarstrequalimage | text_ops         | name_ops         | name
- btvarstrequalimage | text_ops         | text_ops         | text
- btvarstrequalimage | text_ops         | varchar_ops      | text
-                    | array_ops        | array_ops        | anyarray
-                    | float_ops        | float4_ops       | real
-                    | float_ops        | float8_ops       | double precision
-                    | interval_ops     | interval_ops     | interval
-                    | jsonb_ops        | jsonb_ops        | jsonb
-                    | multirange_ops   | multirange_ops   | anymultirange
-                    | numeric_ops      | numeric_ops      | numeric
-                    | range_ops        | range_ops        | anyrange
-                    | record_image_ops | record_image_ops | record
-                    | record_ops       | record_ops       | record
-                    | tsquery_ops      | tsquery_ops      | tsquery
-                    | tsvector_ops     | tsvector_ops     | tsvector
-                    | year_ops         | year_ops         | ivymy."year"
-(17 rows)
+        proc        |     opfamily_name     |   opclass_name    |    opcintype     
+--------------------+-----------------------+-------------------+------------------
+ btvarstrequalimage | bpchar_ops            | bpchar_ops        | character
+ btvarstrequalimage | text_ops              | name_ops          | name
+ btvarstrequalimage | text_ops              | text_ops          | text
+ btvarstrequalimage | text_ops              | varchar_ops       | text
+                    | array_ops             | array_ops         | anyarray
+                    | float_ops             | float4_ops        | real
+                    | float_ops             | float8_ops        | double precision
+                    | interval_ops          | interval_ops      | interval
+                    | jsonb_ops             | jsonb_ops         | jsonb
+                    | multirange_ops        | multirange_ops    | anymultirange
+                    | mysdatetime_ops       | mysdate_ops       | date
+                    | mysdatetimestime_ops  | mysdatetimes_ops  | datetime
+                    | mysdatetimetime_ops   | mysdatetime_ops   | datetime
+                    | mystimestampstime_ops | mystimestamps_ops | timestamp
+                    | mystimestamptime_ops  | mystimestamp_ops  | timestamp
+                    | mystimestime_ops      | mystimes_ops      | time
+                    | mystimetime_ops       | mystime_ops       | time
+                    | numeric_ops           | numeric_ops       | numeric
+                    | range_ops             | range_ops         | anyrange
+                    | record_image_ops      | record_image_ops  | record
+                    | record_ops            | record_ops        | record
+                    | tsquery_ops           | tsquery_ops       | tsquery
+                    | tsvector_ops          | tsvector_ops      | tsvector
+                    | year_ops              | year_ops          | "year"
+(24 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.
@@ -2264,7 +2276,7 @@ ORDER BY 1;
 -- shared catalogs.
 SELECT relname, attname, attcollation
 FROM pg_class c, pg_attribute a
-WHERE c.oid = attrelid AND c.oid < 16384 AND
+WHERE c.oid = attrelid AND c.oid < 32767 AND
     c.relkind != 'v' AND  -- we don't care about columns in views
     attcollation != 0 AND
     attcollation != (SELECT oid FROM pg_collation WHERE collname = 'C');

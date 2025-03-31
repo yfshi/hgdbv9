@@ -306,6 +306,9 @@ struct ParseState
 	List	   *p_addupdatedeleterv;
 	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	bool		p_isreplace; /* BUG#Z1626 */
+	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+	bool		p_myscreateastmt;
+	/* End - ReqID:SRS-MYSQL-DATETYPE */
 };
 
 /*

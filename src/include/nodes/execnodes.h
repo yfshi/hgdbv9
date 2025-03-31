@@ -747,6 +747,7 @@ typedef struct EState
 	bool	skipbad_fk;
 	int		result_rel_index;	/* ReqID:SRS-MYSQL-UPDATE */
 
+	bool		es_createtbas;	/* SRS-MYSQL-DATETYPE */
 } EState;
 
 

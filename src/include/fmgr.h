@@ -69,6 +69,7 @@ typedef struct FmgrInfo
 	Oid			fn_pkgoid;		/* OID of pakcage or object type */
 	/* End - BUG#M0000227 */
 	/* End - BUG#M0000257 */
+	bool		fn_insert;		/* ReqID:SRS-MYSQL-DATETYPE */
 } FmgrInfo;
 
 /*

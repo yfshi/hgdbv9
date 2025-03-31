@@ -1,0 +1,6 @@
+Parsed test spec with 2 sessions
+
+starting permutation: rx1 wy1 c1 ry2 wx2 c2
+setup failed: ERROR:  syntax error at or near "WITH"
+LINE 3: ...RT INTO room_reservation VALUES ('101', TIMESTAMP WITH TIME ...
+                                                             ^

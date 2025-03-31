@@ -262,37 +262,62 @@ ORDER BY 1;
 -- INTERSECT and EXCEPT
 --
 SELECT q2 FROM int8_tbl INTERSECT SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q2 FROM int8_tbl INTERSECT SELECT q1 FROM int8_tbl OR...
-                       ^
+        q2        
+------------------
+              123
+ 4567890123456789
+(2 rows)
+
 SELECT q2 FROM int8_tbl INTERSECT ALL SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q2 FROM int8_tbl INTERSECT ALL SELECT q1 FROM int8_tb...
-                       ^
+        q2        
+------------------
+              123
+ 4567890123456789
+ 4567890123456789
+(3 rows)
+
 SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM int8_tbl ORDER...
-                       ^
+        q2         
+-------------------
+ -4567890123456789
+               456
+(2 rows)
+
 SELECT q2 FROM int8_tbl EXCEPT ALL SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q2 FROM int8_tbl EXCEPT ALL SELECT q1 FROM int8_tbl O...
-                       ^
+        q2         
+-------------------
+ -4567890123456789
+               456
+(2 rows)
+
 SELECT q2 FROM int8_tbl EXCEPT ALL SELECT DISTINCT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q2 FROM int8_tbl EXCEPT ALL SELECT DISTINCT q1 FROM i...
-                       ^
+        q2         
+-------------------
+ -4567890123456789
+               456
+  4567890123456789
+(3 rows)
+
 SELECT q1 FROM int8_tbl EXCEPT SELECT q2 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl EXCEPT SELECT q2 FROM int8_tbl ORDER...
-                       ^
+ q1 
+----
+(0 rows)
+
 SELECT q1 FROM int8_tbl EXCEPT ALL SELECT q2 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl EXCEPT ALL SELECT q2 FROM int8_tbl O...
-                       ^
+        q1        
+------------------
+              123
+ 4567890123456789
+(2 rows)
+
 SELECT q1 FROM int8_tbl EXCEPT ALL SELECT DISTINCT q2 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl EXCEPT ALL SELECT DISTINCT q2 FROM i...
-                       ^
+        q1        
+------------------
+              123
+ 4567890123456789
+ 4567890123456789
+(3 rows)
+
 SELECT q1 FROM int8_tbl EXCEPT ALL SELECT q1 FROM int8_tbl FOR NO KEY UPDATE;
 ERROR:  FOR NO KEY UPDATE is not allowed with UNION/INTERSECT/EXCEPT
 -- nested cases
@@ -794,66 +819,119 @@ reset enable_hashagg;
 -- Mixed types
 --
 SELECT f1 FROM float8_tbl INTERSECT SELECT f1 FROM int4_tbl ORDER BY 1;
-ERROR:  relation "float8_tbl" does not exist
-LINE 1: SELECT f1 FROM float8_tbl INTERSECT SELECT f1 FROM int4_tbl ...
-                       ^
+ f1 
+----
+  0
+(1 row)
+
 SELECT f1 FROM float8_tbl EXCEPT SELECT f1 FROM int4_tbl ORDER BY 1;
-ERROR:  relation "float8_tbl" does not exist
-LINE 1: SELECT f1 FROM float8_tbl EXCEPT SELECT f1 FROM int4_tbl ORD...
-                       ^
+          f1           
+-----------------------
+ -1.2345678901234e+200
+               -1004.3
+                -34.84
+ -1.2345678901234e-200
+(4 rows)
+
 --
 -- Operator precedence and (((((extra))))) parentheses
 --
 SELECT q1 FROM int8_tbl INTERSECT SELECT q2 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl  ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl INTERSECT SELECT q2 FROM int8_tbl UN...
-                       ^
+        q1         
+-------------------
+ -4567890123456789
+               123
+               123
+               456
+  4567890123456789
+  4567890123456789
+  4567890123456789
+(7 rows)
+
 SELECT q1 FROM int8_tbl INTERSECT (((SELECT q2 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl))) ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl INTERSECT (((SELECT q2 FROM int8_tbl...
-                       ^
+        q1        
+------------------
+              123
+ 4567890123456789
+(2 rows)
+
 (((SELECT q1 FROM int8_tbl INTERSECT SELECT q2 FROM int8_tbl ORDER BY 1))) UNION ALL SELECT q2 FROM int8_tbl;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: (((SELECT q1 FROM int8_tbl INTERSECT SELECT q2 FROM int8_tbl...
-                          ^
+        q1         
+-------------------
+               123
+  4567890123456789
+               456
+  4567890123456789
+               123
+  4567890123456789
+ -4567890123456789
+(7 rows)
+
 SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl EX...
-                       ^
+        q1         
+-------------------
+ -4567890123456789
+               456
+(2 rows)
+
 SELECT q1 FROM int8_tbl UNION ALL (((SELECT q2 FROM int8_tbl EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1)));
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl UNION ALL (((SELECT q2 FROM int8_tbl...
-                       ^
+        q1         
+-------------------
+               123
+               123
+  4567890123456789
+  4567890123456789
+  4567890123456789
+ -4567890123456789
+               456
+(7 rows)
+
 (((SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl))) EXCEPT SELECT q1 FROM int8_tbl ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: (((SELECT q1 FROM int8_tbl UNION ALL SELECT q2 FROM int8_tbl...
-                          ^
+        q1         
+-------------------
+ -4567890123456789
+               456
+(2 rows)
+
 --
 -- Subqueries with ORDER BY & LIMIT clauses
 --
 -- In this syntax, ORDER BY/LIMIT apply to the result of the EXCEPT
 SELECT q1,q2 FROM int8_tbl EXCEPT SELECT q2,q1 FROM int8_tbl
 ORDER BY q2,q1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1,q2 FROM int8_tbl EXCEPT SELECT q2,q1 FROM int8_tbl
-                          ^
+        q1        |        q2         
+------------------+-------------------
+ 4567890123456789 | -4567890123456789
+              123 |               456
+(2 rows)
+
 -- This should fail, because q2 isn't a name of an EXCEPT output column
 SELECT q1 FROM int8_tbl EXCEPT SELECT q2 FROM int8_tbl ORDER BY q2 LIMIT 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl EXCEPT SELECT q2 FROM int8_tbl ORDER...
-                       ^
+ERROR:  column "q2" does not exist
+LINE 1: ... int8_tbl EXCEPT SELECT q2 FROM int8_tbl ORDER BY q2 LIMIT 1...
+                                                             ^
+HINT:  There is a column named "q2" in table "*SELECT* 2", but it cannot be referenced from this part of the query.
 -- But this should work:
 SELECT q1 FROM int8_tbl EXCEPT (((SELECT q2 FROM int8_tbl ORDER BY q2 LIMIT 1))) ORDER BY 1;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: SELECT q1 FROM int8_tbl EXCEPT (((SELECT q2 FROM int8_tbl OR...
-                       ^
+        q1        
+------------------
+              123
+ 4567890123456789
+(2 rows)
+
 --
 -- New syntaxes (7.1) permit new tests
 --
 (((((select * from int8_tbl)))));
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: (((((select * from int8_tbl)))));
-                           ^
+        q1        |        q2         
+------------------+-------------------
+              123 |               456
+              123 |  4567890123456789
+ 4567890123456789 |               123
+ 4567890123456789 |  4567890123456789
+ 4567890123456789 | -4567890123456789
+(5 rows)
+
 --
 -- Check behavior with empty select list (allowed since 9.4)
 --
@@ -978,9 +1056,14 @@ SELECT a.f1 FROM (SELECT 'test' AS f1 FROM varchar_tbl) a
 UNION
 SELECT b.f1 FROM (SELECT f1 FROM varchar_tbl) b
 ORDER BY 1;
-ERROR:  relation "varchar_tbl" does not exist
-LINE 1: SELECT a.f1 FROM (SELECT 'test' AS f1 FROM varchar_tbl) a
-                                                   ^
+  f1  
+------
+ a
+ ab
+ abcd
+ test
+(4 rows)
+
 -- This should fail, but it should produce an error cursor
 SELECT '3.4'::numeric UNION SELECT 'foo';
 ERROR:  invalid input syntax for type numeric: "foo"
@@ -1224,34 +1307,71 @@ select distinct q1 from
    union all
    select distinct * from int8_tbl i82) ss
 where q2 = q2;
-ERROR:  relation "int8_tbl" does not exist
-LINE 3:   (select distinct * from int8_tbl i81
-                                  ^
+                        QUERY PLAN                        
+----------------------------------------------------------
+ Unique
+   ->  Merge Append
+         Sort Key: "*SELECT* 1".q1
+         ->  Subquery Scan on "*SELECT* 1"
+               ->  Unique
+                     ->  Sort
+                           Sort Key: i81.q1, i81.q2
+                           ->  Seq Scan on int8_tbl i81
+                                 Filter: (q2 IS NOT NULL)
+         ->  Subquery Scan on "*SELECT* 2"
+               ->  Unique
+                     ->  Sort
+                           Sort Key: i82.q1, i82.q2
+                           ->  Seq Scan on int8_tbl i82
+                                 Filter: (q2 IS NOT NULL)
+(15 rows)
+
 select distinct q1 from
   (select distinct * from int8_tbl i81
    union all
    select distinct * from int8_tbl i82) ss
 where q2 = q2;
-ERROR:  relation "int8_tbl" does not exist
-LINE 2:   (select distinct * from int8_tbl i81
-                                  ^
+        q1        
+------------------
+              123
+ 4567890123456789
+(2 rows)
+
 explain (costs off)
 select distinct q1 from
   (select distinct * from int8_tbl i81
    union all
    select distinct * from int8_tbl i82) ss
 where -q1 = q2;
-ERROR:  relation "int8_tbl" does not exist
-LINE 3:   (select distinct * from int8_tbl i81
-                                  ^
+                       QUERY PLAN                       
+--------------------------------------------------------
+ Unique
+   ->  Merge Append
+         Sort Key: "*SELECT* 1".q1
+         ->  Subquery Scan on "*SELECT* 1"
+               ->  Unique
+                     ->  Sort
+                           Sort Key: i81.q1, i81.q2
+                           ->  Seq Scan on int8_tbl i81
+                                 Filter: ((- q1) = q2)
+         ->  Subquery Scan on "*SELECT* 2"
+               ->  Unique
+                     ->  Sort
+                           Sort Key: i82.q1, i82.q2
+                           ->  Seq Scan on int8_tbl i82
+                                 Filter: ((- q1) = q2)
+(15 rows)
+
 select distinct q1 from
   (select distinct * from int8_tbl i81
    union all
    select distinct * from int8_tbl i82) ss
 where -q1 = q2;
-ERROR:  relation "int8_tbl" does not exist
-LINE 2:   (select distinct * from int8_tbl i81
-                                  ^
+        q1        
+------------------
+ 4567890123456789
+(1 row)
+
 -- Test proper handling of parameterized appendrel paths when the
 -- potential join qual is expensive
 create function expensivefunc(int) returns int
@@ -1264,15 +1384,26 @@ explain (costs off)
 select * from
   (select * from t3 a union all select * from t3 b) ss
   join int4_tbl on f1 = expensivefunc(x);
-ERROR:  relation "int4_tbl" does not exist
-LINE 4:   join int4_tbl on f1 = expensivefunc(x);
-               ^
+                         QUERY PLAN                         
+------------------------------------------------------------
+ Nested Loop
+   ->  Seq Scan on int4_tbl
+   ->  Append
+         ->  Index Scan using t3i on t3 a
+               Index Cond: (expensivefunc(x) = int4_tbl.f1)
+         ->  Index Scan using t3i on t3 b
+               Index Cond: (expensivefunc(x) = int4_tbl.f1)
+(7 rows)
+
 select * from
   (select * from t3 a union all select * from t3 b) ss
   join int4_tbl on f1 = expensivefunc(x);
-ERROR:  relation "int4_tbl" does not exist
-LINE 3:   join int4_tbl on f1 = expensivefunc(x);
-               ^
+ x | f1 
+---+----
+ 0 |  0
+ 0 |  0
+(2 rows)
+
 drop table t3;
 drop function expensivefunc(int);
 -- Test handling of appendrel quals that const-simplify into an AND
@@ -1282,14 +1413,26 @@ select * from
    union all
    select *, 1 as x from int8_tbl b) ss
 where (x = 0) or (q1 >= q2 and q1 <= q2);
-ERROR:  relation "int8_tbl" does not exist
-LINE 3:   (select *, 0 as x from int8_tbl a
-                                 ^
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on int8_tbl a
+   ->  Seq Scan on int8_tbl b
+         Filter: ((q1 >= q2) AND (q1 <= q2))
+(4 rows)
+
 select * from
   (select *, 0 as x from int8_tbl a
    union all
    select *, 1 as x from int8_tbl b) ss
 where (x = 0) or (q1 >= q2 and q1 <= q2);
-ERROR:  relation "int8_tbl" does not exist
-LINE 2:   (select *, 0 as x from int8_tbl a
-                                 ^
+        q1        |        q2         | x 
+------------------+-------------------+---
+              123 |               456 | 0
+              123 |  4567890123456789 | 0
+ 4567890123456789 |               123 | 0
+ 4567890123456789 |  4567890123456789 | 0
+ 4567890123456789 | -4567890123456789 | 0
+ 4567890123456789 |  4567890123456789 | 1
+(6 rows)
+

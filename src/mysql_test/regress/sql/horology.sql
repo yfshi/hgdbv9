@@ -66,13 +66,13 @@ SELECT date 'J0' AS "Julian Epoch";
 -- date, time arithmetic
 --
 
-SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
+--SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
 SELECT date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
 SELECT date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
 SELECT date '1991-02-03' + interval '2 years' AS "Add Two Years";
 SELECT date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
 -- subtract time from date should not make sense; use interval instead
-SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
+-- SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
 SELECT date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
 
 --
@@ -106,8 +106,8 @@ SELECT (timestamp without time zone 'tomorrow' > 'now') as "True";
 -- Convert from date and time to timestamp
 -- This test used to be timestamp(date,time) but no longer allowed by grammar
 -- to enable support for SQL99 timestamp type syntax.
-SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
-SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
+--SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
+--SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
 SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
 

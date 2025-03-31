@@ -4,7 +4,7 @@ SET enable_seqscan to false;
 -- test search for "not equals"
 
 CREATE TABLE test_ne (
-   a  TIMESTAMP,
+   a  pg_catalog.TIMESTAMP,
    b  NUMERIC
 );
 CREATE INDEX test_ne_idx ON test_ne USING gist (a, b);

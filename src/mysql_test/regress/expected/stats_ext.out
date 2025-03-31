@@ -171,41 +171,54 @@ NOTICE:  statistics object "ab1_a_b_stats" does not exist, skipping
 -- Ensure we can build statistics for tables with inheritance.
 CREATE TABLE ab1 (a INTEGER, b INTEGER);
 CREATE TABLE ab1c () INHERITS (ab1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO ab1 VALUES (1,1);
 CREATE STATISTICS ab1_a_b_stats ON a, b FROM ab1;
 ANALYZE ab1;
 DROP TABLE ab1 CASCADE;
-NOTICE:  drop cascades to table ab1c
 -- Tests for stats with inheritance
 CREATE TABLE stxdinh(a int, b int);
 CREATE TABLE stxdinh1() INHERITS(stxdinh);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE stxdinh2() INHERITS(stxdinh);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO stxdinh SELECT mod(a,50), mod(a,100) FROM generate_series(0, 1999) a;
 INSERT INTO stxdinh1 SELECT mod(a,100), mod(a,100) FROM generate_series(0, 999) a;
+ERROR:  relation "stxdinh1" does not exist
+LINE 1: INSERT INTO stxdinh1 SELECT mod(a,100), mod(a,100) FROM gene...
+                    ^
 INSERT INTO stxdinh2 SELECT mod(a,100), mod(a,100) FROM generate_series(0, 999) a;
+ERROR:  relation "stxdinh2" does not exist
+LINE 1: INSERT INTO stxdinh2 SELECT mod(a,100), mod(a,100) FROM gene...
+                    ^
 VACUUM ANALYZE stxdinh, stxdinh1, stxdinh2;
+ERROR:  relation "stxdinh1" does not exist
 -- Ensure non-inherited stats are not applied to inherited query
 -- Without stats object, it looks like this
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
  estimated | actual 
 -----------+--------
-       400 |    150
+       226 |    100
 (1 row)
 
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
  estimated | actual 
 -----------+--------
-         3 |     40
+         1 |     20
 (1 row)
 
 CREATE STATISTICS stxdinh ON a, b FROM stxdinh;
 VACUUM ANALYZE stxdinh, stxdinh1, stxdinh2;
+ERROR:  relation "stxdinh1" does not exist
 -- Since the stats object does not include inherited stats, it should not
 -- affect the estimates
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
  estimated | actual 
 -----------+--------
-       400 |    150
+       226 |    100
 (1 row)
 
 -- Dependencies are applied at individual relations (within append), so
@@ -213,10 +226,11 @@ SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* GROUP BY 1, 2');
 SELECT * FROM check_estimated_rows('SELECT a, b FROM stxdinh* WHERE a = 0 AND b = 0');
  estimated | actual 
 -----------+--------
-        22 |     40
+         1 |     20
 (1 row)
 
 DROP TABLE stxdinh, stxdinh1, stxdinh2;
+ERROR:  table "stxdinh1" does not exist
 -- Ensure inherited stats ARE applied to inherited query in partitioned table
 CREATE TABLE stxdinp(i int, a int, b int) PARTITION BY RANGE (i);
 CREATE TABLE stxdinp1 PARTITION OF stxdinp FOR VALUES FROM (1) TO (100);
@@ -260,6 +274,10 @@ SELECT stxkind FROM pg_statistic_ext WHERE stxname = 'ab1_exprstat_3';
 CREATE STATISTICS ab1_exprstat_4 ON date_trunc('day', d) FROM ab1;
 -- date_trunc on timestamp is immutable
 CREATE STATISTICS ab1_exprstat_5 ON date_trunc('day', c) FROM ab1;
+ERROR:  function date_trunc(unknown, timestamp) does not exist
+LINE 1: CREATE STATISTICS ab1_exprstat_5 ON date_trunc('day', c) FRO...
+                                            ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- check use of a boolean-returning expression
 CREATE STATISTICS ab1_exprstat_6 ON
   (case a when 1 then true else false end), b FROM ab1;
@@ -269,6 +287,9 @@ SELECT x / 10, x / 3,
     '2020-10-01'::timestamp + x * interval '1 day',
     '2020-10-01'::timestamptz + x * interval '1 day'
 FROM generate_series(1, 100) x;
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 3:     '2020-10-01'::timestamp + x * interval '1 day',
+            ^
 ANALYZE ab1;
 -- apply some stats
 SELECT * FROM check_estimated_rows('SELECT * FROM ab1 WHERE (case a when 1 then true else false end) AND b=2');
@@ -3088,6 +3109,10 @@ set search_path to public, stts_s1, stts_s2, tststats;
                                                         List of extended statistics
   Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
 ----------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
+ public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
+ public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
+ public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
+ public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
  public   | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
  public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
  public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
@@ -3097,10 +3122,11 @@ set search_path to public, stts_s1, stts_s2, tststats;
  public   | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
  public   | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
  public   | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
+ public   | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
  stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
  stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                          |           | defined      | defined
  tststats | priv_test_stats        | a, b FROM priv_test_tbl                                          |           |              | defined
-(12 rows)
+(17 rows)
 
 \dX stts_?
                        List of extended statistics
@@ -3123,6 +3149,10 @@ set search_path to public, stts_s1, stts_s2, tststats;
                                                         List of extended statistics
   Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
 ----------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
+ public   | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
+ public   | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
+ public   | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
+ public   | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
  public   | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
  public   | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
  public   | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
@@ -3132,10 +3162,11 @@ set search_path to public, stts_s1, stts_s2, tststats;
  public   | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
  public   | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
  public   | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
+ public   | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
  stts_s1  | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
  stts_s2  | stts_yama              | col1, col3 FROM stts_t3                                          |           | defined      | defined
  tststats | priv_test_stats        | a, b FROM priv_test_tbl                                          |           |              | defined
-(12 rows)
+(17 rows)
 
 \dX+ stts_?
                        List of extended statistics
@@ -3166,6 +3197,10 @@ set search_path to public, stts_s1;
                                                        List of extended statistics
  Schema  |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
 ---------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
+ public  | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
+ public  | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
+ public  | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
+ public  | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
  public  | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
  public  | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
  public  | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
@@ -3175,8 +3210,9 @@ set search_path to public, stts_s1;
  public  | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
  public  | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
  public  | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
+ public  | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
  stts_s1 | stts_foo               | col1, col2 FROM stts_t3                                          | defined   | defined      | defined
-(10 rows)
+(15 rows)
 
 create role regress_stats_ext nosuperuser;
 set role regress_stats_ext;
@@ -3184,6 +3220,10 @@ set role regress_stats_ext;
                                                        List of extended statistics
  Schema |          Name          |                            Definition                            | Ndistinct | Dependencies |   MCV   
 --------+------------------------+------------------------------------------------------------------+-----------+--------------+---------
+ public | ctlt1_a_b_stat         | a, b FROM ctlt1                                                  | defined   | defined      | defined
+ public | ctlt1_expr_stat        | (a || b) FROM ctlt1                                              |           |              | 
+ public | ctlt_all_a_b_stat      | a, b FROM ctlt_all                                               | defined   | defined      | defined
+ public | ctlt_all_expr_stat     | (a || b) FROM ctlt_all                                           |           |              | 
  public | func_deps_stat         | (a * 2), upper(b), (c + 1::numeric) FROM functional_dependencies |           | defined      | 
  public | mcv_lists_arrays_stats | a, b, c FROM mcv_lists_arrays                                    |           |              | defined
  public | mcv_lists_bool_stats   | a, b, c FROM mcv_lists_bool                                      |           |              | defined
@@ -3193,7 +3233,8 @@ set role regress_stats_ext;
  public | stts_3                 | a, b FROM stts_t1                                                | defined   | defined      | defined
  public | stts_4                 | b, c FROM stts_t2                                                | defined   | defined      | defined
  public | stts_hoge              | col1, col2, col3 FROM stts_t3                                    | defined   | defined      | defined
-(9 rows)
+ public | stxdinh                | a, b FROM stxdinh                                                | defined   | defined      | defined
+(14 rows)
 
 reset role;
 drop table stts_t1, stts_t2, stts_t3;

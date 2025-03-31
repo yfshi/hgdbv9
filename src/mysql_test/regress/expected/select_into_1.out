@@ -134,18 +134,22 @@ CREATE FUNCTION make_table() RETURNS VOID
 AS $$
   CREATE TABLE created_table AS SELECT * FROM int8_tbl;
 $$ LANGUAGE SQL;
-ERROR:  relation "int8_tbl" does not exist
-LINE 3:   CREATE TABLE created_table AS SELECT * FROM int8_tbl;
-                                                      ^
 SELECT make_table();
-ERROR:  function make_table() does not exist
-LINE 1: SELECT make_table();
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ make_table 
+------------
+ 
+(1 row)
+
 SELECT * FROM created_table;
-ERROR:  relation "created_table" does not exist
-LINE 1: SELECT * FROM created_table;
-                      ^
+        q1        |        q2         
+------------------+-------------------
+              123 |               456
+              123 |  4567890123456789
+ 4567890123456789 |               123
+ 4567890123456789 |  4567890123456789
+ 4567890123456789 | -4567890123456789
+(5 rows)
+
 -- Try EXPLAIN ANALYZE SELECT INTO and EXPLAIN ANALYZE CREATE TABLE AS
 -- WITH NO DATA, but hide the outputs since they won't be stable.
 DO $$
@@ -153,15 +157,8 @@ BEGIN
 	EXECUTE 'EXPLAIN ANALYZE SELECT * INTO TABLE easi FROM int8_tbl';
 	EXECUTE 'EXPLAIN ANALYZE CREATE TABLE easi2 AS SELECT * FROM int8_tbl WITH NO DATA';
 END$$;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: EXPLAIN ANALYZE SELECT * INTO TABLE easi FROM int8_tbl
-                                                      ^
-QUERY:  EXPLAIN ANALYZE SELECT * INTO TABLE easi FROM int8_tbl
-CONTEXT:  PL/mySQL function inline_code_block line 3 at EXECUTE
 DROP TABLE created_table;
-ERROR:  table "created_table" does not exist
 DROP TABLE easi, easi2;
-ERROR:  table "easi" does not exist
 --
 -- Disallowed uses of SELECT ... INTO.  All should fail
 --

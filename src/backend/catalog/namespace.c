@@ -3888,7 +3888,7 @@ GetOverrideSearchPath(MemoryContext context)
 		else
 		{
 			/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-			if (PG_PARSER == compatible_db || MYS_PARSER == compatible_db)	/* ReqID:SRS-MISC-MYSQL-FRAME */
+			if (PG_PARSER == compatible_db )	/* ReqID:SRS-MISC-MYSQL-FRAME */
 			{
 				Assert(linitial_oid(schemas) == PG_CATALOG_NAMESPACE);
 				result->addCatalog = true;
@@ -3922,6 +3922,27 @@ GetOverrideSearchPath(MemoryContext context)
 				}
 			}
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
+			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+			else if(MYS_PARSER == compatible_db)
+			{
+				if (!IsNormalProcessingMode())
+				{
+					Assert(linitial_oid(schemas) == PG_CATALOG_NAMESPACE);
+					result->addCatalog = true;
+				}
+				else
+				{
+					if (linitial_oid(schemas) == PG_IVYMY_NAMESPACE)
+					{
+						result->addIvymy = true;
+					}
+					else if (linitial_oid(schemas) == PG_CATALOG_NAMESPACE)
+					{
+						result->addCatalog = true;
+					}
+				}
+			}
+			/* End - ReqID:SRS-MYSQL-DATETYPE */
 		}
 		schemas = list_delete_first(schemas);
 	}
@@ -3948,6 +3969,7 @@ CopyOverrideSearchPath(OverrideSearchPath *path)
 	result->addCatalog = path->addCatalog;
 	result->addTemp = path->addTemp;
 	result->addSys = path->addSys;	/* ReqID:SRS-GKC-DATATYPE_001 */
+	result->addIvymy = path->addIvymy;	/* ReqID:SRS-MYSQL-DATETYPE */
 	result->generation = path->generation;
 
 	return result;
@@ -4000,6 +4022,15 @@ OverrideSearchPathMatchesCurrent(OverrideSearchPath *path)
 	}
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
 	/* End - BUG#M0000209 */
+	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+	if (path->addIvymy)
+	{
+		if (lc && lfirst_oid(lc) == PG_IVYMY_NAMESPACE)
+			lc = lnext(activeSearchPath, lc);
+		else
+			return false;
+	}
+	/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 	/* If path->addCatalog, next item should be pg_catalog. */
 	if (path->addCatalog)
@@ -4090,6 +4121,11 @@ PushOverrideSearchPath(OverrideSearchPath *newpath)
 	if (newpath->addSys)
 		oidlist = lcons_oid(PG_SYS_NAMESPACE, oidlist);
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+	
+	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+	if (newpath->addIvymy)
+		oidlist = lcons_oid(PG_IVYMY_NAMESPACE, oidlist);
+	/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 	if (newpath->addTemp && OidIsValid(myTempNamespace))
 		oidlist = lcons_oid(myTempNamespace, oidlist);
@@ -4460,6 +4496,14 @@ recomputeNamespacePath(void)
 			oidlist = lcons_oid(PG_SYS_NAMESPACE, oidlist);
 	}
 	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+	if (IsNormalProcessingMode() && MYS_PARSER == compatible_db)
+	{
+		if (!list_member_oid(oidlist, PG_IVYMY_NAMESPACE))
+			oidlist = lcons_oid(PG_IVYMY_NAMESPACE, oidlist);
+	}
+	/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 	if (OidIsValid(myTempNamespace) &&
 		!list_member_oid(oidlist, myTempNamespace))

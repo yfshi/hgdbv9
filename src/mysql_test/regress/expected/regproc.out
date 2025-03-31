@@ -282,7 +282,7 @@ ERROR:  role "regress_regrole_test" does not exist
 LINE 1: SELECT regrole('"regress_regrole_test"');
                        ^
 SELECT regrole('Nonexistent');
-ERROR:  role "nonexistent" does not exist
+ERROR:  role "Nonexistent" does not exist
 LINE 1: SELECT regrole('Nonexistent');
                        ^
 SELECT regrole('"Nonexistent"');
@@ -294,7 +294,7 @@ ERROR:  invalid name syntax
 LINE 1: SELECT regrole('foo.bar');
                        ^
 SELECT regnamespace('Nonexistent');
-ERROR:  schema "nonexistent" does not exist
+ERROR:  schema "Nonexistent" does not exist
 LINE 1: SELECT regnamespace('Nonexistent');
                             ^
 SELECT regnamespace('"Nonexistent"');

@@ -106,7 +106,6 @@ SELECT DISTINCT p.age FROM person* p ORDER BY age using >;
   88
   78
   68
-  60
   58
   50
   48
@@ -117,12 +116,11 @@ SELECT DISTINCT p.age FROM person* p ORDER BY age using >;
   28
   25
   24
-  23
   20
   19
   18
    8
-(20 rows)
+(18 rows)
 
 --
 -- Check mentioning same column more than once
@@ -216,45 +214,41 @@ DROP TABLE distinct_group_2;
 --
 CREATE TEMP TABLE disttable (f1 integer);
 INSERT INTO DISTTABLE VALUES(1);
+ERROR:  relation "DISTTABLE" does not exist
+LINE 1: INSERT INTO DISTTABLE VALUES(1);
+                    ^
 INSERT INTO DISTTABLE VALUES(2);
+ERROR:  relation "DISTTABLE" does not exist
+LINE 1: INSERT INTO DISTTABLE VALUES(2);
+                    ^
 INSERT INTO DISTTABLE VALUES(3);
+ERROR:  relation "DISTTABLE" does not exist
+LINE 1: INSERT INTO DISTTABLE VALUES(3);
+                    ^
 INSERT INTO DISTTABLE VALUES(NULL);
+ERROR:  relation "DISTTABLE" does not exist
+LINE 1: INSERT INTO DISTTABLE VALUES(NULL);
+                    ^
 -- basic cases
 SELECT f1, f1 IS DISTINCT FROM 2 as "not 2" FROM disttable;
  f1 | not 2 
 ----+-------
-  1 | t
-  2 | f
-  3 | t
-    | t
-(4 rows)
+(0 rows)
 
 SELECT f1, f1 IS DISTINCT FROM NULL as "not null" FROM disttable;
  f1 | not null 
 ----+----------
-  1 | t
-  2 | t
-  3 | t
-    | f
-(4 rows)
+(0 rows)
 
 SELECT f1, f1 IS DISTINCT FROM f1 as "false" FROM disttable;
  f1 | false 
 ----+-------
-  1 | f
-  2 | f
-  3 | f
-    | f
-(4 rows)
+(0 rows)
 
 SELECT f1, f1 IS DISTINCT FROM f1+1 as "not null" FROM disttable;
  f1 | not null 
 ----+----------
-  1 | t
-  2 | t
-  3 | t
-    | f
-(4 rows)
+(0 rows)
 
 -- check that optimizer constant-folds it properly
 SELECT 1 IS DISTINCT FROM 2 as "yes";

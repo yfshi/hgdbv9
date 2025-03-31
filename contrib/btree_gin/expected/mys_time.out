@@ -1,6 +1,6 @@
 set enable_seqscan=off;
 CREATE TABLE test_time (
-	i time
+	i pg_catalog.time
 );
 INSERT INTO test_time VALUES
 	( '03:55:08' ),
@@ -11,7 +11,7 @@ INSERT INTO test_time VALUES
 	( '10:55:08' )
 ;
 CREATE INDEX idx_time ON test_time USING gin (i);
-SELECT * FROM test_time WHERE i<'08:55:08'::time ORDER BY i;
+SELECT * FROM test_time WHERE i<'08:55:08'::pg_catalog.time ORDER BY i;
     i     
 ----------
  03:55:08
@@ -19,7 +19,7 @@ SELECT * FROM test_time WHERE i<'08:55:08'::time ORDER BY i;
  05:55:08
 (3 rows)
 
-SELECT * FROM test_time WHERE i<='08:55:08'::time ORDER BY i;
+SELECT * FROM test_time WHERE i<='08:55:08'::pg_catalog.time ORDER BY i;
     i     
 ----------
  03:55:08
@@ -28,13 +28,13 @@ SELECT * FROM test_time WHERE i<='08:55:08'::time ORDER BY i;
  08:55:08
 (4 rows)
 
-SELECT * FROM test_time WHERE i='08:55:08'::time ORDER BY i;
+SELECT * FROM test_time WHERE i='08:55:08'::pg_catalog.time ORDER BY i;
     i     
 ----------
  08:55:08
 (1 row)
 
-SELECT * FROM test_time WHERE i>='08:55:08'::time ORDER BY i;
+SELECT * FROM test_time WHERE i>='08:55:08'::pg_catalog.time ORDER BY i;
     i     
 ----------
  08:55:08
@@ -42,7 +42,7 @@ SELECT * FROM test_time WHERE i>='08:55:08'::time ORDER BY i;
  10:55:08
 (3 rows)
 
-SELECT * FROM test_time WHERE i>'08:55:08'::time ORDER BY i;
+SELECT * FROM test_time WHERE i>'08:55:08'::pg_catalog.time ORDER BY i;
     i     
 ----------
  09:55:08

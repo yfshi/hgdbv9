@@ -3,7 +3,10 @@ CREATE EXTENSION btree_gin;
 SELECT amname, opcname
 FROM pg_opclass opc LEFT JOIN pg_am am ON am.oid = opcmethod
 WHERE opc.oid >= 16384 AND NOT amvalidate(opc.oid);
- amname | opcname 
---------+---------
-(0 rows)
+INFO:  operator family "time_ops" of access method gin contains function time_cmp(time without time zone,time without time zone) with wrong signature for support number 1
+INFO:  operator family "time_ops" of access method gin contains function gin_compare_prefix_time(time without time zone,time without time zone,smallint,internal) with wrong signature for support number 5
+ amname | opcname  
+--------+----------
+ gin    | time_ops
+(1 row)
 

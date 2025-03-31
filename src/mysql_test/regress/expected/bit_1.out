@@ -137,7 +137,6 @@ SELECT SUBSTRING('01010101'::varbit FROM -10 FOR -2147483646) AS "error";
 ERROR:  negative substring length not allowed
 --- Bit operations
 DROP TABLE varbit_table;
-ERROR:  table "varbit_table" does not exist
 CREATE TABLE varbit_table (a BIT VARYING(16), b BIT VARYING(16));
 COPY varbit_table FROM stdin;
 SELECT a, b, ~a AS "~ a", a & b AS "a & b",
@@ -190,7 +189,6 @@ SELECT a,a<<4 AS "a<<4",b,b>>2 AS "b>>2" FROM varbit_table;
 DROP TABLE varbit_table;
 --- Bit operations
 DROP TABLE bit_table;
-ERROR:  table "bit_table" does not exist
 CREATE TABLE bit_table (a BIT(16), b BIT(16));
 COPY bit_table FROM stdin;
 SELECT a,b,~a AS "~ a",a & b AS "a & b",

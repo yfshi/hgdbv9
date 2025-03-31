@@ -76,7 +76,7 @@ select * from quadtable;
 create temp table pp (f1 text);
 insert into pp values (repeat('abcdefghijkl', 100000));
 
-insert into people select ('Jim', f1, null)::fullname, current_date from pp;
+insert into people select ('Jim', f1, null)::fullname, cast('2024-11-26' as date) from pp;
 
 select (fn).first, substr((fn).last, 1, 20), length((fn).last) from people;
 
@@ -453,15 +453,15 @@ select row_to_json(q) from
   (select thousand as x, tenthous as y from tenk1
    where thousand = 42 and tenthous < 2000 offset 0) q(a,b);
 
-create temp table tt1 as select * from int8_tbl limit 2;
-create temp table tt2 () inherits(tt1);
-insert into tt2 values(0,0);
-select row_to_json(r) from (select q2,q1 from tt1 offset 0) r;
+create temp table tt11 as select * from int8_tbl limit 2;
+create temp table tt22 () inherits(tt11);
+insert into tt22 values(0,0);
+select row_to_json(r) from (select q2,q1 from tt11 offset 0) r;
 
 -- check no-op rowtype conversions
-create temp table tt3 () inherits(tt2);
-insert into tt3 values(33,44);
-select row_to_json(tt3::tt2::tt1) from tt3;
+create temp table tt33 () inherits(tt22);
+insert into tt33 values(33,44);
+select row_to_json(tt33::tt22::tt11) from tt33;
 
 --
 -- IS [NOT] NULL should not recurse into nested composites (bug #14235)

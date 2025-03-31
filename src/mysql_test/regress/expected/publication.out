@@ -95,6 +95,8 @@ DROP TABLE testpub_tbl2;
 DROP PUBLICATION testpub_foralltables;
 CREATE TABLE testpub_tbl3 (a int);
 CREATE TABLE testpub_tbl3a (b text) INHERITS (testpub_tbl3);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 SET client_min_messages = 'ERROR';
 CREATE PUBLICATION testpub3 FOR TABLE testpub_tbl3;
 CREATE PUBLICATION testpub4 FOR TABLE ONLY testpub_tbl3;
@@ -106,7 +108,6 @@ RESET client_min_messages;
  regress_publication_user | f          | t       | t       | t       | t         | f
 Tables:
     "public.testpub_tbl3"
-    "public.testpub_tbl3a"
 
 \dRp+ testpub4
                                     Publication testpub4
@@ -117,6 +118,7 @@ Tables:
     "public.testpub_tbl3"
 
 DROP TABLE testpub_tbl3, testpub_tbl3a;
+ERROR:  table "testpub_tbl3a" does not exist
 DROP PUBLICATION testpub3, testpub4;
 -- Tests for partitioned tables
 SET client_min_messages = 'ERROR';
@@ -343,4 +345,6 @@ DROP SCHEMA pub_test CASCADE;
 NOTICE:  drop cascades to table pub_test.testpub_nopk
 RESET SESSION AUTHORIZATION;
 DROP ROLE regress_publication_user, regress_publication_user2;
+ERROR:  role "regress_publication_user" cannot be dropped because some objects depend on it
+DETAIL:  owner of table testpub_tbl3
 DROP ROLE regress_publication_user_dummy;

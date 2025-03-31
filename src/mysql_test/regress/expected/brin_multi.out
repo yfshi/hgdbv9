@@ -10,7 +10,6 @@ CREATE TABLE brintest_multi (
 	macaddr8col macaddr8,
 	inetcol inet,
 	cidrcol cidr,
-	datecol date,
 	timecol time without time zone,
 	timestampcol timestamp without time zone,
 	timestamptzcol timestamp with time zone,
@@ -42,6 +41,10 @@ INSERT INTO brintest_multi SELECT
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
 FROM tenk1 ORDER BY unique2 LIMIT 100;
+ERROR:  operator does not exist: time + interval
+LINE 14:  time '01:20:30' + thousand * interval '18.5 second',
+                          ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- throw in some NULL's and different values
 INSERT INTO brintest_multi (inetcol, cidrcol) SELECT
 	inet 'fe80::6e40:8ff:fea9:8c46' + tenthous,
@@ -74,7 +77,6 @@ CREATE INDEX brinidx_multi ON brintest_multi USING brin (
 	macaddr8col macaddr8_minmax_multi_ops,
 	inetcol inet_minmax_multi_ops,
 	cidrcol inet_minmax_multi_ops,
-	datecol date_minmax_multi_ops,
 	timecol time_minmax_multi_ops,
 	timestampcol timestamp_minmax_multi_ops,
 	timestamptzcol timestamptz_minmax_multi_ops,
@@ -97,7 +99,6 @@ CREATE INDEX brinidx_multi ON brintest_multi USING brin (
 	macaddr8col macaddr8_minmax_multi_ops,
 	inetcol inet_minmax_multi_ops,
 	cidrcol inet_minmax_multi_ops,
-	datecol date_minmax_multi_ops,
 	timecol time_minmax_multi_ops,
 	timestampcol timestamp_minmax_multi_ops,
 	timestamptzcol timestamptz_minmax_multi_ops,
@@ -196,10 +197,6 @@ INSERT INTO brinopers_multi VALUES
 	 '{=, <, <=, >, >=}',
 	 '{10.2.14/24, 255.255.255.255, 255.255.255.255, 0.0.0.0, 0.0.0.0}',
 	 '{2, 100, 100, 125, 125}'),
-	('datecol', 'date',
-	 '{>, >=, =, <=, <}',
-	 '{1995-08-15, 1995-08-15, 2009-12-01, 2022-12-30, 2022-12-30}',
-	 '{100, 100, 1, 100, 100}'),
 	('timecol', 'time',
 	 '{>, >=, =, <=, <}',
 	 '{01:20:30, 01:20:30, 02:28:57, 06:28:31.5, 06:28:31.5}',
@@ -316,6 +313,20 @@ BEGIN
 	END LOOP;
 END;
 $x$;
+WARNING:  unexpected number of results 25 for (inetcol,>,inet,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (inetcol,>=,inet,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (inetcol,>,cidr,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (inetcol,>=,cidr,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (cidrcol,>,inet,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (cidrcol,>=,inet,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (cidrcol,>,cidr,0.0.0.0,125)
+WARNING:  unexpected number of results 25 for (cidrcol,>=,cidr,0.0.0.0,125)
+ERROR:  operator does not exist: time without time zone > time
+LINE 1: ...array_agg(ctid) FROM brintest_multi WHERE timecol > '01:20:3...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  EXPLAIN SELECT array_agg(ctid) FROM brintest_multi WHERE timecol > '01:20:30'::time 
+CONTEXT:  PL/mySQL function inline_code_block line 26 at FOR over EXECUTE statement
 RESET enable_seqscan;
 RESET enable_bitmapscan;
 INSERT INTO brintest_multi SELECT
@@ -330,7 +341,6 @@ INSERT INTO brintest_multi SELECT
 	substr(md5(unique1::text), 1, 16)::macaddr8,
 	inet '10.2.3.4' + tenthous,
 	cidr '10.2.3/24' + tenthous,
-	date '1995-08-15' + tenthous,
 	time '01:20:30' + thousand * interval '18.5 second',
 	timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
 	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
@@ -340,6 +350,10 @@ INSERT INTO brintest_multi SELECT
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
 FROM tenk1 ORDER BY unique2 LIMIT 5 OFFSET 5;
+ERROR:  operator does not exist: time + interval
+LINE 13:  time '01:20:30' + thousand * interval '18.5 second',
+                          ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT brin_desummarize_range('brinidx_multi', 0);
  brin_desummarize_range 
 ------------------------
@@ -473,10 +487,18 @@ SET datestyle TO iso;
 INSERT INTO brin_timestamp_test
 SELECT '4713-01-01 00:00:01 BC'::timestamptz + (i || ' seconds')::interval
   FROM generate_series(1,30) s(i);
+ERROR:  operator is not unique: integer || unknown
+LINE 2: SELECT '4713-01-01 00:00:01 BC'::timestamptz + (i || ' secon...
+                                                          ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 -- values close to timetamp maximum
 INSERT INTO brin_timestamp_test
 SELECT '294276-12-01 00:00:01'::timestamptz + (i || ' seconds')::interval
   FROM generate_series(1,30) s(i);
+ERROR:  operator is not unique: integer || unknown
+LINE 2: SELECT '294276-12-01 00:00:01'::timestamptz + (i || ' second...
+                                                         ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE INDEX ON brin_timestamp_test USING brin (a timestamptz_minmax_multi_ops) WITH (pages_per_range=1);
 DROP TABLE brin_timestamp_test;
 -- test overflows during CREATE INDEX with extreme date values
@@ -485,75 +507,76 @@ CREATE TABLE brin_date_test(a DATE);
 INSERT INTO brin_date_test SELECT '4713-01-01 BC'::date + i FROM generate_series(1, 30) s(i);
 -- insert values close to date minimum
 INSERT INTO brin_date_test SELECT '5874897-12-01'::date + i FROM generate_series(1, 30) s(i);
+ERROR:  Incorrect DATE value: '5874897-12-01'
+LINE 1: INSERT INTO brin_date_test SELECT '5874897-12-01'::date + i ...
+                                          ^
 CREATE INDEX ON brin_date_test USING brin (a date_minmax_multi_ops) WITH (pages_per_range=1);
+ERROR:  operator class "date_minmax_multi_ops" does not accept data type date
 SET enable_seqscan = off;
 -- make sure the ranges were built correctly and 2023-01-01 eliminates all
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
 SELECT * FROM brin_date_test WHERE a = '2023-01-01'::date;
-                               QUERY PLAN                                
--------------------------------------------------------------------------
- Bitmap Heap Scan on brin_date_test (actual rows=0 loops=1)
-   Recheck Cond: (a = '2023-01-01'::date)
-   ->  Bitmap Index Scan on brin_date_test_a_idx (actual rows=0 loops=1)
-         Index Cond: (a = '2023-01-01'::date)
-(4 rows)
+                     QUERY PLAN                     
+----------------------------------------------------
+ Seq Scan on brin_date_test (actual rows=0 loops=1)
+   Filter: (a = '2023-01-01'::date)
+   Rows Removed by Filter: 30
+(3 rows)
 
 DROP TABLE brin_date_test;
 RESET enable_seqscan;
 -- test handling of infinite timestamp values
 CREATE TABLE brin_timestamp_test(a TIMESTAMP);
 INSERT INTO brin_timestamp_test VALUES ('-infinity'), ('infinity');
+ERROR:  Incorrect DATETIME value: '-infinity'
+LINE 1: INSERT INTO brin_timestamp_test VALUES ('-infinity'), ('infi...
+                                                ^
 INSERT INTO brin_timestamp_test
 SELECT i FROM generate_series('2000-01-01'::timestamp, '2000-02-09'::timestamp, '1 day'::interval) s(i);
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 2: SELECT i FROM generate_series('2000-01-01'::timestamp, '2000...
+                                      ^
 CREATE INDEX ON brin_timestamp_test USING brin (a timestamp_minmax_multi_ops) WITH (pages_per_range=1);
+ERROR:  operator class "timestamp_minmax_multi_ops" does not accept data type timestamp
 SET enable_seqscan = off;
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
 SELECT * FROM brin_timestamp_test WHERE a = '2023-01-01'::timestamp;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Bitmap Heap Scan on brin_timestamp_test (actual rows=0 loops=1)
-   Recheck Cond: (a = '2023-01-01 00:00:00'::timestamp without time zone)
-   ->  Bitmap Index Scan on brin_timestamp_test_a_idx (actual rows=0 loops=1)
-         Index Cond: (a = '2023-01-01 00:00:00'::timestamp without time zone)
-(4 rows)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 2: SELECT * FROM brin_timestamp_test WHERE a = '2023-01-01'::ti...
+                                                    ^
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
 SELECT * FROM brin_timestamp_test WHERE a = '1900-01-01'::timestamp;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Bitmap Heap Scan on brin_timestamp_test (actual rows=0 loops=1)
-   Recheck Cond: (a = '1900-01-01 00:00:00'::timestamp without time zone)
-   ->  Bitmap Index Scan on brin_timestamp_test_a_idx (actual rows=0 loops=1)
-         Index Cond: (a = '1900-01-01 00:00:00'::timestamp without time zone)
-(4 rows)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 2: SELECT * FROM brin_timestamp_test WHERE a = '1900-01-01'::ti...
+                                                    ^
 DROP TABLE brin_timestamp_test;
 RESET enable_seqscan;
 -- test handling of infinite date values
 CREATE TABLE brin_date_test(a DATE);
 INSERT INTO brin_date_test VALUES ('-infinity'), ('infinity');
+ERROR:  Incorrect DATE value: '-infinity'
+LINE 1: INSERT INTO brin_date_test VALUES ('-infinity'), ('infinity'...
+                                           ^
 INSERT INTO brin_date_test SELECT '2000-01-01'::date + i FROM generate_series(1, 40) s(i);
+ERROR:  Incorrect DATE value: '20000132'
 CREATE INDEX ON brin_date_test USING brin (a date_minmax_multi_ops) WITH (pages_per_range=1);
+ERROR:  operator class "date_minmax_multi_ops" does not accept data type date
 SET enable_seqscan = off;
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
 SELECT * FROM brin_date_test WHERE a = '2023-01-01'::date;
-                               QUERY PLAN                                
--------------------------------------------------------------------------
- Bitmap Heap Scan on brin_date_test (actual rows=0 loops=1)
-   Recheck Cond: (a = '2023-01-01'::date)
-   ->  Bitmap Index Scan on brin_date_test_a_idx (actual rows=0 loops=1)
-         Index Cond: (a = '2023-01-01'::date)
-(4 rows)
+                     QUERY PLAN                     
+----------------------------------------------------
+ Seq Scan on brin_date_test (actual rows=0 loops=1)
+   Filter: (a = '2023-01-01'::date)
+(2 rows)
 
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)
 SELECT * FROM brin_date_test WHERE a = '1900-01-01'::date;
-                               QUERY PLAN                                
--------------------------------------------------------------------------
- Bitmap Heap Scan on brin_date_test (actual rows=0 loops=1)
-   Recheck Cond: (a = '1900-01-01'::date)
-   ->  Bitmap Index Scan on brin_date_test_a_idx (actual rows=0 loops=1)
-         Index Cond: (a = '1900-01-01'::date)
-(4 rows)
+                     QUERY PLAN                     
+----------------------------------------------------
+ Seq Scan on brin_date_test (actual rows=0 loops=1)
+   Filter: (a = '1900-01-01'::date)
+(2 rows)
 
 DROP TABLE brin_date_test;
 RESET enable_seqscan;
@@ -561,7 +584,15 @@ RESET datestyle;
 -- test handling of overflow for interval values
 CREATE TABLE brin_interval_test(a INTERVAL);
 INSERT INTO brin_interval_test SELECT (i || ' years')::interval FROM generate_series(-178000000, -177999980) s(i);
+ERROR:  operator is not unique: integer || unknown
+LINE 1: INSERT INTO brin_interval_test SELECT (i || ' years')::inter...
+                                                 ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 INSERT INTO brin_interval_test SELECT (i || ' years')::interval FROM generate_series( 177999980,  178000000) s(i);
+ERROR:  operator is not unique: integer || unknown
+LINE 1: INSERT INTO brin_interval_test SELECT (i || ' years')::inter...
+                                                 ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 CREATE INDEX ON brin_interval_test USING brin (a interval_minmax_multi_ops) WITH (pages_per_range=1);
 SET enable_seqscan = off;
 EXPLAIN (ANALYZE, TIMING OFF, COSTS OFF, SUMMARY OFF)

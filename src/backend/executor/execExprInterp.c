@@ -760,6 +760,19 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			int			nargs = op->d.func.nargs;
 			Datum		d;
 
+			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+			if(compatible_db == MYS_PARSER && state->parent && state->parent->state)
+			{
+				if(state->parent->state->es_plannedstmt)
+				{
+					if(state->parent->state->es_plannedstmt->commandType == CMD_INSERT)
+						fcinfo->flinfo->fn_insert = true;
+				}
+				if(state->parent->state->es_createtbas)
+					fcinfo->flinfo->fn_insert = true;
+			}
+			/* End - ReqID:SRS-MYSQL-DATETYPE */
+
 			/* strict function, so check for NULL args */
 			for (int argno = 0; argno < nargs; argno++)
 			{
@@ -1186,7 +1199,8 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				str = DatumGetCString(FunctionCallInvoke(fcinfo_out));
 
 				/* OutputFunctionCall assumes result isn't null */
-				Assert(!fcinfo_out->isnull);
+				if(compatible_db != MYS_PARSER)/* ReqID:SRS-MYSQL-DATETYPE */
+					Assert(!fcinfo_out->isnull);
 			}
 
 			/* call input function (similar to InputFunctionCall) */
@@ -1213,7 +1227,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 				else
 				{
 					Assert(!*op->resnull);
-					Assert(!fcinfo_in->isnull);
+					if(compatible_db != MYS_PARSER)/* ReqID:SRS-MYSQL-DATETYPE */
+						Assert(!fcinfo_in->isnull);
+
 				}
 			}
 

@@ -47,11 +47,13 @@ INSERT INTO attmp (a, b, c, d, e, f, g,    i,    k, l, m, n, p, q, r, s, t,
 	'1 2 3 4 5 6 7 8', true, '(1.1,1.1)', '(4.1,4.1,3.1,3.1)',
 	'(0,2,4.1,4.1,3.1,3.1)', '(4.1,4.1,3.1,3.1)',
 	'epoch', '01:00:10', '{1.0,2.0,3.0,4.0}', '{1.0,2.0,3.0,4.0}', '{1,2,3,4}');
+ERROR:  Incorrect DATETIME value: 'epoch'
+LINE 8:  'epoch', '01:00:10', '{1.0,2.0,3.0,4.0}', '{1.0,2.0,3.0,4.0...
+         ^
 SELECT * FROM attmp;
- initial | a |  b   |  c   |  d  |  e  | f |           g           | i |   k    |   l   |  m  |        n        | p |     q     |           r           |              s              |          t          |            v             |        w         |     x     |     y     |     z     
----------+---+------+------+-----+-----+---+-----------------------+---+--------+-------+-----+-----------------+---+-----------+-----------------------+-----------------------------+---------------------+--------------------------+------------------+-----------+-----------+-----------
-         | 4 | name | text | 4.1 | 4.1 | 2 | ((4.1,4.1),(3.1,3.1)) | c | 314159 | (1,1) | 512 | 1 2 3 4 5 6 7 8 | t | (1.1,1.1) | [(4.1,4.1),(3.1,3.1)] | ((0,2),(4.1,4.1),(3.1,3.1)) | (4.1,4.1),(3.1,3.1) | Thu Jan 01 00:00:00 1970 | @ 1 hour 10 secs | {1,2,3,4} | {1,2,3,4} | {1,2,3,4}
-(1 row)
+ initial | a | b | c | d | e | f | g | i | k | l | m | n | p | q | r | s | t | v | w | x | y | z 
+---------+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---
+(0 rows)
 
 DROP TABLE attmp;
 -- the wolf bug - schema mods caused inconsistent row descriptors
@@ -89,11 +91,13 @@ INSERT INTO attmp (a, b, c, d, e, f, g,    i,   k, l, m, n, p, q, r, s, t,
 	'1 2 3 4 5 6 7 8', true, '(1.1,1.1)', '(4.1,4.1,3.1,3.1)',
 	'(0,2,4.1,4.1,3.1,3.1)', '(4.1,4.1,3.1,3.1)',
 	'epoch', '01:00:10', '{1.0,2.0,3.0,4.0}', '{1.0,2.0,3.0,4.0}', '{1,2,3,4}');
+ERROR:  Incorrect DATETIME value: 'epoch'
+LINE 8:  'epoch', '01:00:10', '{1.0,2.0,3.0,4.0}', '{1.0,2.0,3.0,4.0...
+         ^
 SELECT * FROM attmp;
- initial | a |  b   |  c   |  d  |  e  | f |           g           | i |   k    |   l   |  m  |        n        | p |     q     |           r           |              s              |          t          |            v             |        w         |     x     |     y     |     z     
----------+---+------+------+-----+-----+---+-----------------------+---+--------+-------+-----+-----------------+---+-----------+-----------------------+-----------------------------+---------------------+--------------------------+------------------+-----------+-----------+-----------
-         | 4 | name | text | 4.1 | 4.1 | 2 | ((4.1,4.1),(3.1,3.1)) | c | 314159 | (1,1) | 512 | 1 2 3 4 5 6 7 8 | t | (1.1,1.1) | [(4.1,4.1),(3.1,3.1)] | ((0,2),(4.1,4.1),(3.1,3.1)) | (4.1,4.1),(3.1,3.1) | Thu Jan 01 00:00:00 1970 | @ 1 hour 10 secs | {1,2,3,4} | {1,2,3,4} | {1,2,3,4}
-(1 row)
+ initial | a | b | c | d | e | f | g | i | k | l | m | n | p | q | r | s | t | v | w | x | y | z 
+---------+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---
+(0 rows)
 
 CREATE INDEX attmp_idx ON attmp (a, (d + e), b);
 ALTER INDEX attmp_idx ALTER COLUMN 0 SET STATISTICS 1000;
@@ -311,7 +315,9 @@ reset enable_bitmapscan;
 DROP VIEW attmp_view_new;
 -- toast-like relation name
 alter table stud_emp rename to pg_toast_stud_emp;
+ERROR:  relation "stud_emp" does not exist
 alter table pg_toast_stud_emp rename to stud_emp;
+ERROR:  relation "pg_toast_stud_emp" does not exist
 -- renaming index should rename constraint as well
 ALTER TABLE onek ADD CONSTRAINT onek_unique1_constraint UNIQUE (unique1);
 ALTER INDEX onek_unique1_constraint RENAME TO onek_unique1_constraint_foo;
@@ -343,25 +349,14 @@ Check constraints:
     "con1" CHECK (a > 0)
 
 CREATE TABLE constraint_rename_test2 (a int CONSTRAINT con1 CHECK (a > 0), d int) INHERITS (constraint_rename_test);
-NOTICE:  merging column "a" with inherited definition
-NOTICE:  merging constraint "con1" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d constraint_rename_test2
-      Table "public.constraint_rename_test2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | integer |           |          | 
- d      | integer |           |          | 
-Check constraints:
-    "con1" CHECK (a > 0)
-Inherits: constraint_rename_test
-
 ALTER TABLE constraint_rename_test2 RENAME CONSTRAINT con1 TO con1foo; -- fail
-ERROR:  cannot rename inherited constraint "con1"
+ERROR:  relation "constraint_rename_test2" does not exist
 ALTER TABLE ONLY constraint_rename_test RENAME CONSTRAINT con1 TO con1foo; -- fail
-ERROR:  inherited constraint "con1" must be renamed in child tables too
 ALTER TABLE constraint_rename_test RENAME CONSTRAINT con1 TO con1foo; -- ok
+ERROR:  constraint "con1" for table "constraint_rename_test" does not exist
 \d constraint_rename_test
        Table "public.constraint_rename_test"
  Column |  Type   | Collation | Nullable | Default 
@@ -371,20 +366,8 @@ ALTER TABLE constraint_rename_test RENAME CONSTRAINT con1 TO con1foo; -- ok
  c      | integer |           |          | 
 Check constraints:
     "con1foo" CHECK (a > 0)
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d constraint_rename_test2
-      Table "public.constraint_rename_test2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | integer |           |          | 
- d      | integer |           |          | 
-Check constraints:
-    "con1foo" CHECK (a > 0)
-Inherits: constraint_rename_test
-
 ALTER TABLE constraint_rename_test ADD CONSTRAINT con2 CHECK (b > 0) NO INHERIT;
 ALTER TABLE ONLY constraint_rename_test RENAME CONSTRAINT con2 TO con2foo; -- ok
 ALTER TABLE constraint_rename_test RENAME CONSTRAINT con2foo TO con2bar; -- ok
@@ -398,20 +381,8 @@ ALTER TABLE constraint_rename_test RENAME CONSTRAINT con2foo TO con2bar; -- ok
 Check constraints:
     "con1foo" CHECK (a > 0)
     "con2bar" CHECK (b > 0) NO INHERIT
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d constraint_rename_test2
-      Table "public.constraint_rename_test2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
- c      | integer |           |          | 
- d      | integer |           |          | 
-Check constraints:
-    "con1foo" CHECK (a > 0)
-Inherits: constraint_rename_test
-
 ALTER TABLE constraint_rename_test ADD CONSTRAINT con3 PRIMARY KEY (a);
 ALTER TABLE constraint_rename_test RENAME CONSTRAINT con3 TO con3foo; -- ok
 \d constraint_rename_test
@@ -426,21 +397,10 @@ Indexes:
 Check constraints:
     "con1foo" CHECK (a > 0)
     "con2bar" CHECK (b > 0) NO INHERIT
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d constraint_rename_test2
-      Table "public.constraint_rename_test2"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           | not null | 
- b      | integer |           |          | 
- c      | integer |           |          | 
- d      | integer |           |          | 
-Check constraints:
-    "con1foo" CHECK (a > 0)
-Inherits: constraint_rename_test
-
 DROP TABLE constraint_rename_test2;
+ERROR:  table "constraint_rename_test2" does not exist
 DROP TABLE constraint_rename_test;
 ALTER TABLE IF EXISTS constraint_not_exist RENAME CONSTRAINT con3 TO con3foo; -- ok
 NOTICE:  relation "constraint_not_exist" does not exist, skipping
@@ -525,49 +485,71 @@ select * from attmp3;
 (1 row)
 
 CREATE TABLE attmp6 () INHERITS (attmp3);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE attmp7 () INHERITS (attmp3);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO attmp6 VALUES (6, 30), (7, 16);
+ERROR:  relation "attmp6" does not exist
+LINE 1: INSERT INTO attmp6 VALUES (6, 30), (7, 16);
+                    ^
 ALTER TABLE attmp3 ADD CONSTRAINT b_le_20 CHECK (b <= 20) NOT VALID;
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_le_20;	-- fails
-ERROR:  check constraint "b_le_20" of relation "attmp6" is violated by some row
 DELETE FROM attmp6 WHERE b > 20;
+ERROR:  relation "attmp6" does not exist
+LINE 1: DELETE FROM attmp6 WHERE b > 20;
+                    ^
 ALTER TABLE attmp3 VALIDATE CONSTRAINT b_le_20;	-- succeeds
 -- An already validated constraint must not be revalidated
 CREATE FUNCTION boo(int) RETURNS int IMMUTABLE STRICT LANGUAGE plpgsql AS $$ BEGIN RAISE NOTICE 'boo: %', $1; RETURN $1; END; $$;
 INSERT INTO attmp7 VALUES (8, 18);
+ERROR:  relation "attmp7" does not exist
+LINE 1: INSERT INTO attmp7 VALUES (8, 18);
+                    ^
 ALTER TABLE attmp7 ADD CONSTRAINT identity CHECK (b = boo(b));
-NOTICE:  boo: 18
+ERROR:  relation "attmp7" does not exist
 ALTER TABLE attmp3 ADD CONSTRAINT IDENTITY check (b = boo(b)) NOT VALID;
-NOTICE:  merging constraint "identity" with inherited definition
 ALTER TABLE attmp3 VALIDATE CONSTRAINT identity;
 NOTICE:  boo: 20
-NOTICE:  boo: 16
 -- A NO INHERIT constraint should not be looked for in children during VALIDATE CONSTRAINT
 create table parent_noinh_convalid (a int);
 create table child_noinh_convalid () inherits (parent_noinh_convalid);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 insert into parent_noinh_convalid values (1);
 insert into child_noinh_convalid values (1);
+ERROR:  relation "child_noinh_convalid" does not exist
+LINE 1: insert into child_noinh_convalid values (1);
+                    ^
 alter table parent_noinh_convalid add constraint check_a_is_2 check (a = 2) no inherit not valid;
 -- fail, because of the row in parent
 alter table parent_noinh_convalid validate constraint check_a_is_2;
 ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row
 delete from only parent_noinh_convalid;
+ERROR:  syntax error at or near "only"
+LINE 1: delete from only parent_noinh_convalid;
+                    ^
 -- ok (parent itself contains no violating rows)
 alter table parent_noinh_convalid validate constraint check_a_is_2;
+ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row
 select convalidated from pg_constraint where conrelid = 'parent_noinh_convalid'::regclass and conname = 'check_a_is_2';
  convalidated 
 --------------
- t
+ f
 (1 row)
 
 -- cleanup
 drop table parent_noinh_convalid, child_noinh_convalid;
+ERROR:  table "child_noinh_convalid" does not exist
 -- Try (and fail) to create constraint from attmp5(a) to attmp4(a) - unique constraint on
 -- attmp4 is a,b
 ALTER TABLE attmp5 add constraint attmpconstr foreign key(a) references attmp4(a) match full;
 ERROR:  there is no unique constraint matching given keys for referenced table "attmp4"
 DROP TABLE attmp7;
+ERROR:  table "attmp7" does not exist
 DROP TABLE attmp6;
+ERROR:  table "attmp6" does not exist
 DROP TABLE attmp5;
 DROP TABLE attmp4;
 DROP TABLE attmp3;
@@ -586,74 +568,52 @@ Check constraints:
     "nv_parent_check" CHECK (false) NO INHERIT
 
 create table nv_child_2010 () inherits (nv_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table nv_child_2011 () inherits (nv_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table nv_child_2010 add check (d between '2010-01-01'::date and '2010-12-31'::date) not valid;
+ERROR:  relation "nv_child_2010" does not exist
 alter table nv_child_2011 add check (d between '2011-01-01'::date and '2011-12-31'::date) not valid;
+ERROR:  relation "nv_child_2011" does not exist
 explain (costs off) select * from nv_parent where d between '2011-08-01' and '2011-08-31';
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Append
-   ->  Seq Scan on nv_parent nv_parent_1
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-   ->  Seq Scan on nv_child_2010 nv_parent_2
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-   ->  Seq Scan on nv_child_2011 nv_parent_3
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-(7 rows)
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Seq Scan on nv_parent
+   Filter: ((d >= '2011-08-01'::date) AND (d <= '2011-08-31'::date))
+(2 rows)
 
 create table nv_child_2009 (check (d between '2009-01-01'::date and '2009-12-31'::date)) inherits (nv_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 explain (costs off) select * from nv_parent where d between '2011-08-01'::date and '2011-08-31'::date;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Append
-   ->  Seq Scan on nv_parent nv_parent_1
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-   ->  Seq Scan on nv_child_2010 nv_parent_2
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-   ->  Seq Scan on nv_child_2011 nv_parent_3
-         Filter: ((d >= '08-01-2011'::date) AND (d <= '08-31-2011'::date))
-(7 rows)
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Seq Scan on nv_parent
+   Filter: ((d >= '2011-08-01'::date) AND (d <= '2011-08-31'::date))
+(2 rows)
 
 explain (costs off) select * from nv_parent where d between '2009-08-01'::date and '2009-08-31'::date;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Append
-   ->  Seq Scan on nv_parent nv_parent_1
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-   ->  Seq Scan on nv_child_2010 nv_parent_2
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-   ->  Seq Scan on nv_child_2011 nv_parent_3
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-   ->  Seq Scan on nv_child_2009 nv_parent_4
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-(9 rows)
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Seq Scan on nv_parent
+   Filter: ((d >= '2009-08-01'::date) AND (d <= '2009-08-31'::date))
+(2 rows)
 
 -- after validation, the constraint should be used
 alter table nv_child_2011 VALIDATE CONSTRAINT nv_child_2011_d_check;
+ERROR:  relation "nv_child_2011" does not exist
 explain (costs off) select * from nv_parent where d between '2009-08-01'::date and '2009-08-31'::date;
-                                QUERY PLAN                                 
----------------------------------------------------------------------------
- Append
-   ->  Seq Scan on nv_parent nv_parent_1
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-   ->  Seq Scan on nv_child_2010 nv_parent_2
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-   ->  Seq Scan on nv_child_2009 nv_parent_3
-         Filter: ((d >= '08-01-2009'::date) AND (d <= '08-31-2009'::date))
-(7 rows)
+                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Seq Scan on nv_parent
+   Filter: ((d >= '2009-08-01'::date) AND (d <= '2009-08-31'::date))
+(2 rows)
 
 -- add an inherited NOT VALID constraint
 alter table nv_parent add check (d between '2001-01-01'::date and '2099-12-31'::date) not valid;
 \d nv_child_2009
-          Table "public.nv_child_2009"
- Column | Type | Collation | Nullable | Default 
---------+------+-----------+----------+---------
- d      | date |           |          | 
-Check constraints:
-    "nv_child_2009_d_check" CHECK (d >= '01-01-2009'::date AND d <= '12-31-2009'::date)
-    "nv_parent_d_check" CHECK (d >= '01-01-2001'::date AND d <= '12-31-2099'::date) NOT VALID
-Inherits: nv_parent
-
 -- we leave nv_parent and children around to help test pg_dump logic
 -- Foreign key adding test with mixed types
 -- Note: these tables are TEMP to avoid name conflicts when this test
@@ -663,31 +623,27 @@ INSERT INTO PKTABLE VALUES(42);
 CREATE TEMP TABLE FKTABLE (ftest1 inet);
 -- This next should fail, because int=inet does not exist
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- This should also fail for the same reason, but here we
 -- give the column name
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable(ptest1);
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
 -- This should succeed, even though they are different types,
 -- because int=int8 exists and is a member of the integer opfamily
 CREATE TEMP TABLE FKTABLE (ftest1 int8);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
+ERROR:  relation "pktable" does not exist
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
 INSERT INTO FKTABLE VALUES(43);		-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
 DROP TABLE FKTABLE;
 -- This should fail, because we'd have to cast numeric to int which is
 -- not an implicit coercion (or use numeric=numeric, but that's not part
 -- of the integer opfamily)
 CREATE TEMP TABLE FKTABLE (ftest1 numeric);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: numeric and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
 -- On the other hand, this should work because int implicitly promotes to
@@ -696,11 +652,10 @@ CREATE TEMP TABLE PKTABLE (ptest1 numeric PRIMARY KEY);
 INSERT INTO PKTABLE VALUES(42);
 CREATE TEMP TABLE FKTABLE (ftest1 int);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1) references pktable;
+ERROR:  relation "pktable" does not exist
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
 INSERT INTO FKTABLE VALUES(43);		-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
 CREATE TEMP TABLE PKTABLE (ptest1 int, ptest2 inet,
@@ -708,27 +663,23 @@ CREATE TEMP TABLE PKTABLE (ptest1 int, ptest2 inet,
 -- This should fail, because we just chose really odd types
 CREATE TEMP TABLE FKTABLE (ftest1 cidr, ftest2 timestamp);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1, ftest2) references pktable;
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
 -- Again, so should this...
 CREATE TEMP TABLE FKTABLE (ftest1 cidr, ftest2 timestamp);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1, ftest2)
      references pktable(ptest1, ptest2);
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
 -- This fails because we mixed up the column ordering
 CREATE TEMP TABLE FKTABLE (ftest1 int, ftest2 inet);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1, ftest2)
      references pktable(ptest2, ptest1);
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest2" are of incompatible types: integer and inet.
+ERROR:  relation "pktable" does not exist
 -- As does this...
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest2, ftest1)
      references pktable(ptest1, ptest2);
-ERROR:  foreign key constraint "fktable_ftest2_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest2" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
 -- Test that ALTER CONSTRAINT updates trigger deferrability properly
@@ -736,59 +687,42 @@ CREATE TEMP TABLE PKTABLE (ptest1 int primary key);
 CREATE TEMP TABLE FKTABLE (ftest1 int);
 ALTER TABLE FKTABLE ADD CONSTRAINT fknd FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION NOT DEFERRABLE;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ADD CONSTRAINT fkdd FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION DEFERRABLE INITIALLY DEFERRED;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ADD CONSTRAINT fkdi FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION DEFERRABLE INITIALLY IMMEDIATE;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ADD CONSTRAINT fknd2 FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION DEFERRABLE INITIALLY DEFERRED;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ALTER CONSTRAINT fknd2 NOT DEFERRABLE;
+ERROR:  constraint "fknd2" of relation "FKTABLE" does not exist
 ALTER TABLE FKTABLE ADD CONSTRAINT fkdd2 FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION NOT DEFERRABLE;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ALTER CONSTRAINT fkdd2 DEFERRABLE INITIALLY DEFERRED;
+ERROR:  constraint "fkdd2" of relation "FKTABLE" does not exist
 ALTER TABLE FKTABLE ADD CONSTRAINT fkdi2 FOREIGN KEY(ftest1) REFERENCES pktable
   ON DELETE CASCADE ON UPDATE NO ACTION NOT DEFERRABLE;
+ERROR:  relation "pktable" does not exist
 ALTER TABLE FKTABLE ALTER CONSTRAINT fkdi2 DEFERRABLE INITIALLY IMMEDIATE;
+ERROR:  constraint "fkdi2" of relation "FKTABLE" does not exist
 SELECT conname, tgfoid::regproc, tgtype, tgdeferrable, tginitdeferred
 FROM pg_trigger JOIN pg_constraint con ON con.oid = tgconstraint
 WHERE tgrelid = 'pktable'::regclass
 ORDER BY 1,2,3;
- conname |         tgfoid         | tgtype | tgdeferrable | tginitdeferred 
----------+------------------------+--------+--------------+----------------
- fkdd    | "RI_FKey_cascade_del"  |      9 | f            | f
- fkdd    | "RI_FKey_noaction_upd" |     17 | t            | t
- fkdd2   | "RI_FKey_cascade_del"  |      9 | f            | f
- fkdd2   | "RI_FKey_noaction_upd" |     17 | t            | t
- fkdi    | "RI_FKey_cascade_del"  |      9 | f            | f
- fkdi    | "RI_FKey_noaction_upd" |     17 | t            | f
- fkdi2   | "RI_FKey_cascade_del"  |      9 | f            | f
- fkdi2   | "RI_FKey_noaction_upd" |     17 | t            | f
- fknd    | "RI_FKey_cascade_del"  |      9 | f            | f
- fknd    | "RI_FKey_noaction_upd" |     17 | f            | f
- fknd2   | "RI_FKey_cascade_del"  |      9 | f            | f
- fknd2   | "RI_FKey_noaction_upd" |     17 | f            | f
-(12 rows)
-
+ERROR:  relation "pktable" does not exist
+LINE 3: WHERE tgrelid = 'pktable'::regclass
+                        ^
 SELECT conname, tgfoid::regproc, tgtype, tgdeferrable, tginitdeferred
 FROM pg_trigger JOIN pg_constraint con ON con.oid = tgconstraint
 WHERE tgrelid = 'fktable'::regclass
 ORDER BY 1,2,3;
- conname |       tgfoid        | tgtype | tgdeferrable | tginitdeferred 
----------+---------------------+--------+--------------+----------------
- fkdd    | "RI_FKey_check_ins" |      5 | t            | t
- fkdd    | "RI_FKey_check_upd" |     17 | t            | t
- fkdd2   | "RI_FKey_check_ins" |      5 | t            | t
- fkdd2   | "RI_FKey_check_upd" |     17 | t            | t
- fkdi    | "RI_FKey_check_ins" |      5 | t            | f
- fkdi    | "RI_FKey_check_upd" |     17 | t            | f
- fkdi2   | "RI_FKey_check_ins" |      5 | t            | f
- fkdi2   | "RI_FKey_check_upd" |     17 | t            | f
- fknd    | "RI_FKey_check_ins" |      5 | f            | f
- fknd    | "RI_FKey_check_upd" |     17 | f            | f
- fknd2   | "RI_FKey_check_ins" |      5 | f            | f
- fknd2   | "RI_FKey_check_upd" |     17 | f            | f
-(12 rows)
-
+ERROR:  relation "fktable" does not exist
+LINE 3: WHERE tgrelid = 'fktable'::regclass
+                        ^
 -- temp tables should go away by themselves, need not drop them.
 -- test check constraint adding
 create table atacc1 ( test int );
@@ -840,6 +774,8 @@ drop table atacc1;
 create table atacc1 (test int);
 create table atacc2 (test2 int);
 create table atacc3 (test3 int) inherits (atacc1, atacc2);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table atacc2 add constraint foo check (test2>0);
 -- fail and then succeed on atacc2
 insert into atacc2 (test2) values (-3);
@@ -848,22 +784,33 @@ DETAIL:  Failing row contains (-3).
 insert into atacc2 (test2) values (3);
 -- fail and then succeed on atacc3
 insert into atacc3 (test2) values (-3);
-ERROR:  new row for relation "atacc3" violates check constraint "foo"
-DETAIL:  Failing row contains (null, -3, null).
+ERROR:  relation "atacc3" does not exist
+LINE 1: insert into atacc3 (test2) values (-3);
+                    ^
 insert into atacc3 (test2) values (3);
+ERROR:  relation "atacc3" does not exist
+LINE 1: insert into atacc3 (test2) values (3);
+                    ^
 drop table atacc3;
+ERROR:  table "atacc3" does not exist
 drop table atacc2;
 drop table atacc1;
 -- same things with one created with INHERIT
 create table atacc1 (test int);
 create table atacc2 (test2 int);
 create table atacc3 (test3 int) inherits (atacc1, atacc2);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table atacc3 no inherit atacc2;
+ERROR:  relation "atacc3" does not exist
 -- fail
 alter table atacc3 no inherit atacc2;
-ERROR:  relation "atacc2" is not a parent of relation "atacc3"
+ERROR:  relation "atacc3" does not exist
 -- make sure it really isn't a child
 insert into atacc3 (test2) values (3);
+ERROR:  relation "atacc3" does not exist
+LINE 1: insert into atacc3 (test2) values (3);
+                    ^
 select test2 from atacc2;
  test2 
 -------
@@ -872,27 +819,35 @@ select test2 from atacc2;
 -- fail due to missing constraint
 alter table atacc2 add constraint foo check (test2>0);
 alter table atacc3 inherit atacc2;
-ERROR:  child table is missing constraint "foo"
+ERROR:  relation "atacc3" does not exist
 -- fail due to missing column
 alter table atacc3 rename test2 to testx;
+ERROR:  relation "atacc3" does not exist
 alter table atacc3 inherit atacc2;
-ERROR:  child table is missing column "test2"
+ERROR:  relation "atacc3" does not exist
 -- fail due to mismatched data type
 alter table atacc3 add test2 bool;
+ERROR:  relation "atacc3" does not exist
 alter table atacc3 inherit atacc2;
-ERROR:  child table "atacc3" has different type for column "test2"
+ERROR:  relation "atacc3" does not exist
 alter table atacc3 drop test2;
+ERROR:  relation "atacc3" does not exist
 -- succeed
 alter table atacc3 add test2 int;
+ERROR:  relation "atacc3" does not exist
 update atacc3 set test2 = 4 where test2 is null;
+ERROR:  relation "atacc3" does not exist
+LINE 1: update atacc3 set test2 = 4 where test2 is null;
+               ^
 alter table atacc3 add constraint foo check (test2>0);
+ERROR:  relation "atacc3" does not exist
 alter table atacc3 inherit atacc2;
+ERROR:  relation "atacc3" does not exist
 -- fail due to duplicates and circular inheritance
 alter table atacc3 inherit atacc2;
-ERROR:  relation "atacc2" would be inherited from more than once
+ERROR:  relation "atacc3" does not exist
 alter table atacc2 inherit atacc3;
-ERROR:  circular inheritance not allowed
-DETAIL:  "atacc3" is already a child of "atacc2".
+ERROR:  relation "atacc3" does not exist
 alter table atacc2 inherit atacc2;
 ERROR:  circular inheritance not allowed
 DETAIL:  "atacc2" is already a child of "atacc2".
@@ -900,19 +855,22 @@ DETAIL:  "atacc2" is already a child of "atacc2".
 select test2 from atacc2;
  test2 
 -------
-     4
-(1 row)
+(0 rows)
 
 drop table atacc2 cascade;
-NOTICE:  drop cascades to table atacc3
 drop table atacc1;
 -- adding only to a parent is allowed as of 9.2
 create table atacc1 (test int);
 create table atacc2 (test2 int) inherits (atacc1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- ok:
 alter table atacc1 add constraint foo check (test>0) no inherit;
 -- check constraint is not there on child
 insert into atacc2 (test) values (-3);
+ERROR:  relation "atacc2" does not exist
+LINE 1: insert into atacc2 (test) values (-3);
+                    ^
 -- check constraint is there on parent
 insert into atacc1 (test) values (-3);
 ERROR:  new row for relation "atacc1" violates check constraint "foo"
@@ -920,8 +878,9 @@ DETAIL:  Failing row contains (-3).
 insert into atacc1 (test) values (3);
 -- fail, violating row:
 alter table atacc2 add constraint foo check (test>0) no inherit;
-ERROR:  check constraint "foo" of relation "atacc2" is violated by some row
+ERROR:  relation "atacc2" does not exist
 drop table atacc2;
+ERROR:  table "atacc2" does not exist
 drop table atacc1;
 -- test unique constraint adding
 create table atacc1 ( test int ) ;
@@ -1182,36 +1141,53 @@ alter table atacc1 alter test_b set not null, alter test_a set not null;
 drop table atacc1;
 -- test inheritance
 create table parent (a int);
+ERROR:  relation "parent" already exists
 create table child (b varchar(255)) inherits (parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table parent alter a set not null;
 insert into parent values (NULL);
 ERROR:  null value in column "a" of relation "parent" violates not-null constraint
 DETAIL:  Failing row contains (null).
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
-DETAIL:  Failing row contains (null, foo).
+ERROR:  relation "child" does not exist
+LINE 1: insert into child (a, b) values (NULL, 'foo');
+                    ^
 alter table parent alter a drop not null;
 insert into parent values (NULL);
+NOTICE:  trigger = parent_insert_trig, new table = ()
 insert into child (a, b) values (NULL, 'foo');
+ERROR:  relation "child" does not exist
+LINE 1: insert into child (a, b) values (NULL, 'foo');
+                    ^
 alter table only parent alter a set not null;
 ERROR:  column "a" of relation "parent" contains null values
 alter table child alter a set not null;
-ERROR:  column "a" of relation "child" contains null values
+ERROR:  relation "child" does not exist
 delete from parent;
+NOTICE:  trigger = parent_delete_trig, old table = ()
 alter table only parent alter a set not null;
 insert into parent values (NULL);
 ERROR:  null value in column "a" of relation "parent" violates not-null constraint
 DETAIL:  Failing row contains (null).
 alter table child alter a set not null;
+ERROR:  relation "child" does not exist
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
-DETAIL:  Failing row contains (null, foo).
+ERROR:  relation "child" does not exist
+LINE 1: insert into child (a, b) values (NULL, 'foo');
+                    ^
 delete from child;
+ERROR:  relation "child" does not exist
+LINE 1: delete from child;
+                    ^
 alter table child alter a set not null;
+ERROR:  relation "child" does not exist
 insert into child (a, b) values (NULL, 'foo');
-ERROR:  null value in column "a" of relation "child" violates not-null constraint
-DETAIL:  Failing row contains (null, foo).
+ERROR:  relation "child" does not exist
+LINE 1: insert into child (a, b) values (NULL, 'foo');
+                    ^
 drop table child;
+ERROR:  table "child" does not exist
 drop table parent;
 -- test setting and removing default values
 create table def_test (
@@ -1555,56 +1531,52 @@ create table parent (a int, b int, c int);
 insert into parent values (1, 2, 3);
 alter table parent drop a;
 create table child (d varchar(255)) inherits (parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 insert into child values (12, 13, 'testing');
+ERROR:  relation "child" does not exist
+LINE 1: insert into child values (12, 13, 'testing');
+                    ^
 select * from parent;
- b  | c  
-----+----
-  2 |  3
- 12 | 13
-(2 rows)
-
-select * from child;
- b  | c  |    d    
-----+----+---------
- 12 | 13 | testing
+ b | c 
+---+---
+ 2 | 3
 (1 row)
 
+select * from child;
+ERROR:  relation "child" does not exist
+LINE 1: select * from child;
+                      ^
 alter table parent drop c;
 select * from parent;
- b  
-----
-  2
- 12
-(2 rows)
-
-select * from child;
- b  |    d    
-----+---------
- 12 | testing
+ b 
+---
+ 2
 (1 row)
 
+select * from child;
+ERROR:  relation "child" does not exist
+LINE 1: select * from child;
+                      ^
 drop table child;
+ERROR:  table "child" does not exist
 drop table parent;
 -- check error cases for inheritance column merging
 create table parent (a float8, b numeric(10,4), c text collate "C");
 create table child (a float4) inherits (parent); -- fail
-NOTICE:  merging column "a" with inherited definition
-ERROR:  column "a" has a type conflict
-DETAIL:  double precision versus real
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table child (b decimal(10,7)) inherits (parent); -- fail
-NOTICE:  moving and merging column "b" with inherited definition
-DETAIL:  User-specified column moved to the position of the inherited column.
-ERROR:  column "b" has a type conflict
-DETAIL:  numeric(10,4) versus numeric(10,7)
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table child (c text collate "POSIX") inherits (parent); -- fail
-NOTICE:  moving and merging column "c" with inherited definition
-DETAIL:  User-specified column moved to the position of the inherited column.
-ERROR:  column "c" has a collation conflict
-DETAIL:  "C" versus "POSIX"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table child (a double precision, b decimal(10,4)) inherits (parent);
-NOTICE:  merging column "a" with inherited definition
-NOTICE:  merging column "b" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 drop table child;
+ERROR:  table "child" does not exist
 drop table parent;
 -- test copy in/out
 create table attest (a int4, b int4, c int4);
@@ -1650,29 +1622,39 @@ drop table attest;
 -- test inheritance
 create table dropColumn (a int, b int, e int);
 create table dropColumnChild (c int) inherits (dropColumn);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table dropColumnAnother (d int) inherits (dropColumnChild);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- these two should fail
 alter table dropColumnchild drop column a;
-ERROR:  cannot drop inherited column "a"
+ERROR:  relation "dropColumnchild" does not exist
 alter table only dropColumnChild drop column b;
-ERROR:  cannot drop inherited column "b"
+ERROR:  relation "dropColumnChild" does not exist
 -- these three should work
 alter table only dropColumn drop column e;
 alter table dropColumnChild drop column c;
+ERROR:  relation "dropColumnChild" does not exist
 alter table dropColumn drop column a;
 create table renameColumn (a int);
 create table renameColumnChild (b int) inherits (renameColumn);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table renameColumnAnother (c int) inherits (renameColumnChild);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- these three should fail
 alter table renameColumnChild rename column a to d;
-ERROR:  cannot rename inherited column "a"
+ERROR:  relation "renameColumnChild" does not exist
 alter table only renameColumnChild rename column a to d;
-ERROR:  inherited column "a" must be renamed in child tables too
+ERROR:  relation "renameColumnChild" does not exist
 alter table only renameColumn rename column a to d;
-ERROR:  inherited column "a" must be renamed in child tables too
 -- these should work
 alter table renameColumn rename column a to d;
+ERROR:  column "a" does not exist
 alter table renameColumnChild rename column b to a;
+ERROR:  relation "renameColumnChild" does not exist
 -- these should work
 alter table if exists doesnt_exist_tab rename column a to d;
 NOTICE:  relation "doesnt_exist_tab" does not exist, skipping
@@ -1682,92 +1664,86 @@ NOTICE:  relation "doesnt_exist_tab" does not exist, skipping
 alter table renameColumn add column w int;
 -- this should fail
 alter table only renameColumn add column x int;
-ERROR:  column must be added to child tables too
 -- Test corner cases in dropping of inherited columns
 create table p1 (f1 int, f2 int);
 create table c1 (f1 int not null) inherits(p1);
-NOTICE:  merging column "f1" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- should be rejected since c1.f1 is inherited
 alter table c1 drop column f1;
-ERROR:  cannot drop inherited column "f1"
+ERROR:  relation "c1" does not exist
 -- should work
 alter table p1 drop column f1;
 -- c1.f1 is still there, but no longer inherited
 select f1 from c1;
- f1 
-----
-(0 rows)
-
-alter table c1 drop column f1;
-select f1 from c1;
-ERROR:  column "f1" does not exist
+ERROR:  relation "c1" does not exist
 LINE 1: select f1 from c1;
-               ^
-HINT:  Perhaps you meant to reference the column "c1.f2".
+                       ^
+alter table c1 drop column f1;
+ERROR:  relation "c1" does not exist
+select f1 from c1;
+ERROR:  relation "c1" does not exist
+LINE 1: select f1 from c1;
+                       ^
 drop table p1 cascade;
-NOTICE:  drop cascades to table c1
 create table p1 (f1 int, f2 int);
 create table c1 () inherits(p1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- should be rejected since c1.f1 is inherited
 alter table c1 drop column f1;
-ERROR:  cannot drop inherited column "f1"
+ERROR:  relation "c1" does not exist
 alter table p1 drop column f1;
 -- c1.f1 is dropped now, since there is no local definition for it
 select f1 from c1;
-ERROR:  column "f1" does not exist
+ERROR:  relation "c1" does not exist
 LINE 1: select f1 from c1;
-               ^
-HINT:  Perhaps you meant to reference the column "c1.f2".
+                       ^
 drop table p1 cascade;
-NOTICE:  drop cascades to table c1
 create table p1 (f1 int, f2 int);
 create table c1 () inherits(p1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- should be rejected since c1.f1 is inherited
 alter table c1 drop column f1;
-ERROR:  cannot drop inherited column "f1"
+ERROR:  relation "c1" does not exist
 alter table only p1 drop column f1;
 -- c1.f1 is NOT dropped, but must now be considered non-inherited
 alter table c1 drop column f1;
+ERROR:  relation "c1" does not exist
 drop table p1 cascade;
-NOTICE:  drop cascades to table c1
 create table p1 (f1 int, f2 int);
 create table c1 (f1 int not null) inherits(p1);
-NOTICE:  merging column "f1" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- should be rejected since c1.f1 is inherited
 alter table c1 drop column f1;
-ERROR:  cannot drop inherited column "f1"
+ERROR:  relation "c1" does not exist
 alter table only p1 drop column f1;
 -- c1.f1 is still there, but no longer inherited
 alter table c1 drop column f1;
+ERROR:  relation "c1" does not exist
 drop table p1 cascade;
-NOTICE:  drop cascades to table c1
 create table p1(id int, name text);
 create table p2(id2 int, name text, height int);
 create table c1(age int) inherits(p1,p2);
-NOTICE:  merging multiple inherited definitions of column "name"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table gc1() inherits (c1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 select relname, attname, attinhcount, attislocal
 from pg_class join pg_attribute on (pg_class.oid = pg_attribute.attrelid)
 where relname in ('p1','p2','c1','gc1') and attnum > 0 and not attisdropped
 order by relname, attnum;
  relname | attname | attinhcount | attislocal 
 ---------+---------+-------------+------------
- c1      | id      |           1 | f
- c1      | name    |           2 | f
- c1      | id2     |           1 | f
- c1      | height  |           1 | f
- c1      | age     |           0 | t
- gc1     | id      |           1 | f
- gc1     | name    |           1 | f
- gc1     | id2     |           1 | f
- gc1     | height  |           1 | f
- gc1     | age     |           1 | f
  p1      | id      |           0 | t
  p1      | name    |           0 | t
  p2      | id2     |           0 | t
  p2      | name    |           0 | t
  p2      | height  |           0 | t
-(15 rows)
+(5 rows)
 
 -- should work
 alter table only p1 drop column name;
@@ -1775,85 +1751,78 @@ alter table only p1 drop column name;
 alter table p2 drop column name;
 -- should be rejected since its inherited
 alter table gc1 drop column name;
-ERROR:  cannot drop inherited column "name"
+ERROR:  relation "gc1" does not exist
 -- should work, and drop gc1.name along
 alter table c1 drop column name;
+ERROR:  relation "c1" does not exist
 -- should fail: column does not exist
 alter table gc1 drop column name;
-ERROR:  column "name" of relation "gc1" does not exist
+ERROR:  relation "gc1" does not exist
 -- should work and drop the attribute in all tables
 alter table p2 drop column height;
 -- IF EXISTS test
 create table dropColumnExists ();
 alter table dropColumnExists drop column non_existing; --fail
-ERROR:  column "non_existing" of relation "dropcolumnexists" does not exist
+ERROR:  column "non_existing" of relation "dropColumnExists" does not exist
 alter table dropColumnExists drop column if exists non_existing; --succeed
-NOTICE:  column "non_existing" of relation "dropcolumnexists" does not exist, skipping
+NOTICE:  column "non_existing" of relation "dropColumnExists" does not exist, skipping
 select relname, attname, attinhcount, attislocal
 from pg_class join pg_attribute on (pg_class.oid = pg_attribute.attrelid)
 where relname in ('p1','p2','c1','gc1') and attnum > 0 and not attisdropped
 order by relname, attnum;
  relname | attname | attinhcount | attislocal 
 ---------+---------+-------------+------------
- c1      | id      |           1 | f
- c1      | id2     |           1 | f
- c1      | age     |           0 | t
- gc1     | id      |           1 | f
- gc1     | id2     |           1 | f
- gc1     | age     |           1 | f
  p1      | id      |           0 | t
  p2      | id2     |           0 | t
-(8 rows)
+(2 rows)
 
 drop table p1, p2 cascade;
-NOTICE:  drop cascades to 2 other objects
-DETAIL:  drop cascades to table c1
-drop cascades to table gc1
 -- test attinhcount tracking with merged columns
 create table depth0();
 create table depth1(c text) inherits (depth0);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table depth2() inherits (depth1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table depth0 add c text;
-NOTICE:  merging definition of column "c" for child "depth1"
 select attrelid::regclass, attname, attinhcount, attislocal
 from pg_attribute
 where attnum > 0 and attrelid::regclass in ('depth0', 'depth1', 'depth2')
 order by attrelid::regclass::text, attnum;
- attrelid | attname | attinhcount | attislocal 
-----------+---------+-------------+------------
- depth0   | c       |           0 | t
- depth1   | c       |           1 | t
- depth2   | c       |           1 | f
-(3 rows)
-
+ERROR:  relation "depth1" does not exist
+LINE 3: ...e attnum > 0 and attrelid::regclass in ('depth0', 'depth1', ...
+                                                             ^
 -- test renumbering of child-table columns in inherited operations
 create table p1 (f1 int);
 create table c1 (f2 text, f3 int) inherits (p1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 alter table p1 add column a1 int check (a1 > 0);
 alter table p1 add column f2 text;
-NOTICE:  merging definition of column "f2" for child "c1"
 insert into p1 values (1,2,'abc');
 insert into c1 values(11,'xyz',33,0); -- should fail
-ERROR:  new row for relation "c1" violates check constraint "p1_a1_check"
-DETAIL:  Failing row contains (11, xyz, 33, 0).
+ERROR:  relation "c1" does not exist
+LINE 1: insert into c1 values(11,'xyz',33,0);
+                    ^
 insert into c1 values(11,'xyz',33,22);
+ERROR:  relation "c1" does not exist
+LINE 1: insert into c1 values(11,'xyz',33,22);
+                    ^
 select * from p1;
  f1 | a1 | f2  
 ----+----+-----
   1 |  2 | abc
- 11 | 22 | xyz
-(2 rows)
+(1 row)
 
 update p1 set a1 = a1 + 1, f2 = upper(f2);
 select * from p1;
  f1 | a1 | f2  
 ----+----+-----
   1 |  3 | ABC
- 11 | 23 | XYZ
-(2 rows)
+(1 row)
 
 drop table p1 cascade;
-NOTICE:  drop cascades to table c1
 -- test that operations with a dropped column do not try to reference
 -- its datatype
 create domain mytype as text;
@@ -2295,6 +2264,8 @@ btree, for table "public.test_storage"
 -- ALTER COLUMN TYPE with a check constraint and a child table (bug #13779)
 CREATE TABLE test_inh_check (a float check (a > 10.2), b float);
 CREATE TABLE test_inh_check_child() INHERITS(test_inh_check);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d test_inh_check
                Table "public.test_inh_check"
  Column |       Type       | Collation | Nullable | Default 
@@ -2303,27 +2274,16 @@ CREATE TABLE test_inh_check_child() INHERITS(test_inh_check);
  b      | double precision |           |          | 
 Check constraints:
     "test_inh_check_a_check" CHECK (a > 10.2::double precision)
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d test_inh_check_child
-            Table "public.test_inh_check_child"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | double precision |           |          | 
- b      | double precision |           |          | 
-Check constraints:
-    "test_inh_check_a_check" CHECK (a > 10.2::double precision)
-Inherits: test_inh_check
-
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
   where relname like 'test_inh_check%' and c.conrelid = r.oid
   order by 1, 2;
-       relname        |        conname         | coninhcount | conislocal | connoinherit 
-----------------------+------------------------+-------------+------------+--------------
- test_inh_check       | test_inh_check_a_check |           0 | t          | f
- test_inh_check_child | test_inh_check_a_check |           1 | f          | f
-(2 rows)
+    relname     |        conname         | coninhcount | conislocal | connoinherit 
+----------------+------------------------+-------------+------------+--------------
+ test_inh_check | test_inh_check_a_check |           0 | t          | f
+(1 row)
 
 ALTER TABLE test_inh_check ALTER COLUMN a TYPE numeric;
 \d test_inh_check
@@ -2334,34 +2294,24 @@ ALTER TABLE test_inh_check ALTER COLUMN a TYPE numeric;
  b      | double precision |           |          | 
 Check constraints:
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d test_inh_check_child
-            Table "public.test_inh_check_child"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | numeric          |           |          | 
- b      | double precision |           |          | 
-Check constraints:
-    "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Inherits: test_inh_check
-
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
   where relname like 'test_inh_check%' and c.conrelid = r.oid
   order by 1, 2;
-       relname        |        conname         | coninhcount | conislocal | connoinherit 
-----------------------+------------------------+-------------+------------+--------------
- test_inh_check       | test_inh_check_a_check |           0 | t          | f
- test_inh_check_child | test_inh_check_a_check |           1 | f          | f
-(2 rows)
+    relname     |        conname         | coninhcount | conislocal | connoinherit 
+----------------+------------------------+-------------+------------+--------------
+ test_inh_check | test_inh_check_a_check |           0 | t          | f
+(1 row)
 
 -- also try noinherit, local, and local+inherited cases
 ALTER TABLE test_inh_check ADD CONSTRAINT bnoinherit CHECK (b > 100) NO INHERIT;
 ALTER TABLE test_inh_check_child ADD CONSTRAINT blocal CHECK (b < 1000);
+ERROR:  relation "test_inh_check_child" does not exist
 ALTER TABLE test_inh_check_child ADD CONSTRAINT bmerged CHECK (b > 1);
+ERROR:  relation "test_inh_check_child" does not exist
 ALTER TABLE test_inh_check ADD CONSTRAINT bmerged CHECK (b > 1);
-NOTICE:  merging constraint "bmerged" with inherited definition
 \d test_inh_check
                Table "public.test_inh_check"
  Column |       Type       | Collation | Nullable | Default 
@@ -2372,36 +2322,20 @@ Check constraints:
     "bmerged" CHECK (b > 1::double precision)
     "bnoinherit" CHECK (b > 100::double precision) NO INHERIT
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d test_inh_check_child
-            Table "public.test_inh_check_child"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | numeric          |           |          | 
- b      | double precision |           |          | 
-Check constraints:
-    "blocal" CHECK (b < 1000::double precision)
-    "bmerged" CHECK (b > 1::double precision)
-    "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Inherits: test_inh_check
-
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
   where relname like 'test_inh_check%' and c.conrelid = r.oid
   order by 1, 2;
-       relname        |        conname         | coninhcount | conislocal | connoinherit 
-----------------------+------------------------+-------------+------------+--------------
- test_inh_check       | bmerged                |           0 | t          | f
- test_inh_check       | bnoinherit             |           0 | t          | t
- test_inh_check       | test_inh_check_a_check |           0 | t          | f
- test_inh_check_child | blocal                 |           0 | t          | f
- test_inh_check_child | bmerged                |           1 | t          | f
- test_inh_check_child | test_inh_check_a_check |           1 | f          | f
-(6 rows)
+    relname     |        conname         | coninhcount | conislocal | connoinherit 
+----------------+------------------------+-------------+------------+--------------
+ test_inh_check | bmerged                |           0 | t          | f
+ test_inh_check | bnoinherit             |           0 | t          | t
+ test_inh_check | test_inh_check_a_check |           0 | t          | f
+(3 rows)
 
 ALTER TABLE test_inh_check ALTER COLUMN b TYPE numeric;
-NOTICE:  merging constraint "bmerged" with inherited definition
 \d test_inh_check
            Table "public.test_inh_check"
  Column |  Type   | Collation | Nullable | Default 
@@ -2412,40 +2346,30 @@ Check constraints:
     "bmerged" CHECK (b::double precision > 1::double precision)
     "bnoinherit" CHECK (b::double precision > 100::double precision) NO INHERIT
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d test_inh_check_child
-        Table "public.test_inh_check_child"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | numeric |           |          | 
- b      | numeric |           |          | 
-Check constraints:
-    "blocal" CHECK (b::double precision < 1000::double precision)
-    "bmerged" CHECK (b::double precision > 1::double precision)
-    "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
-Inherits: test_inh_check
-
 select relname, conname, coninhcount, conislocal, connoinherit
   from pg_constraint c, pg_class r
   where relname like 'test_inh_check%' and c.conrelid = r.oid
   order by 1, 2;
-       relname        |        conname         | coninhcount | conislocal | connoinherit 
-----------------------+------------------------+-------------+------------+--------------
- test_inh_check       | bmerged                |           0 | t          | f
- test_inh_check       | bnoinherit             |           0 | t          | t
- test_inh_check       | test_inh_check_a_check |           0 | t          | f
- test_inh_check_child | blocal                 |           0 | t          | f
- test_inh_check_child | bmerged                |           1 | t          | f
- test_inh_check_child | test_inh_check_a_check |           1 | f          | f
-(6 rows)
+    relname     |        conname         | coninhcount | conislocal | connoinherit 
+----------------+------------------------+-------------+------------+--------------
+ test_inh_check | bmerged                |           0 | t          | f
+ test_inh_check | bnoinherit             |           0 | t          | t
+ test_inh_check | test_inh_check_a_check |           0 | t          | f
+(3 rows)
 
 -- ALTER COLUMN TYPE with different schema in children
 -- Bug at https://postgr.es/m/20170102225618.GA10071@telsasoft.com
 CREATE TABLE test_type_diff (f1 int);
 CREATE TABLE test_type_diff_c (extra smallint) INHERITS (test_type_diff);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE test_type_diff ADD COLUMN f2 int;
 INSERT INTO test_type_diff_c VALUES (1, 2, 3);
+ERROR:  relation "test_type_diff_c" does not exist
+LINE 1: INSERT INTO test_type_diff_c VALUES (1, 2, 3);
+                    ^
 ALTER TABLE test_type_diff ALTER COLUMN f2 TYPE bigint USING f2::bigint;
 CREATE TABLE test_type_diff2 (int_two int2, int_four int4, int_eight int8);
 CREATE TABLE test_type_diff2_c1 (int_four int4, int_eight int8, int_two int2);
@@ -2567,31 +2491,27 @@ drop table at_base_table;
 -- related case (bug #17811)
 begin;
 create temp table t1 as select * from int8_tbl;
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: create temp table t1 as select * from int8_tbl;
+                                              ^
 create temp view v1 as select 1::int8 as q1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 create temp view v2 as select * from v1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 create or replace temp view v1 with (security_barrier = true)
   as select * from t1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 create temp table log (q1 int8, q2 int8);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 create rule v1_upd_rule as on update to v1
   do also insert into log values (new.*);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 update v2 set q1 = q1 + 1 where q1 = 123;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 select * from t1;
-        q1        |        q2         
-------------------+-------------------
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
-              124 |               456
-              124 |  4567890123456789
-(5 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 select * from log;
- q1  |        q2        
------+------------------
- 124 |              456
- 124 | 4567890123456789
-(2 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback;
 -- check adding a column not itself requiring a rewrite, together with
 -- a column requiring a default (bug #16038)
@@ -3105,6 +3025,8 @@ DROP TYPE test_type1;
 CREATE TYPE test_type2 AS (a int, b text);
 CREATE TABLE test_tbl2 OF test_type2;
 CREATE TABLE test_tbl2_subclass () INHERITS (test_tbl2);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d test_type2
         Composite type "public.test_type2"
  Column |  Type   | Collation | Nullable | Default 
@@ -3118,7 +3040,6 @@ CREATE TABLE test_tbl2_subclass () INHERITS (test_tbl2);
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  b      | text    |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 ALTER TYPE test_type2 ADD ATTRIBUTE c text; -- fails
@@ -3140,7 +3061,6 @@ ALTER TYPE test_type2 ADD ATTRIBUTE c text CASCADE;
  a      | integer |           |          | 
  b      | text    |           |          | 
  c      | text    |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar; -- fails
@@ -3162,7 +3082,6 @@ ALTER TYPE test_type2 ALTER ATTRIBUTE b TYPE varchar CASCADE;
  a      | integer           |           |          | 
  b      | character varying |           |          | 
  c      | text              |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 ALTER TYPE test_type2 DROP ATTRIBUTE b; -- fails
@@ -3182,7 +3101,6 @@ ALTER TYPE test_type2 DROP ATTRIBUTE b CASCADE;
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  c      | text    |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 ALTER TYPE test_type2 RENAME ATTRIBUTE a TO aa; -- fails
@@ -3202,19 +3120,15 @@ ALTER TYPE test_type2 RENAME ATTRIBUTE a TO aa CASCADE;
 --------+---------+-----------+----------+---------
  aa     | integer |           |          | 
  c      | text    |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 Typed table of type: test_type2
 
 \d test_tbl2_subclass
-         Table "public.test_tbl2_subclass"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- aa     | integer |           |          | 
- c      | text    |           |          | 
-Inherits: test_tbl2
-
 DROP TABLE test_tbl2_subclass, test_tbl2;
+ERROR:  table "test_tbl2_subclass" does not exist
 DROP TYPE test_type2;
+ERROR:  cannot drop type test_type2 because other objects depend on it
+DETAIL:  table test_tbl2 depends on type test_type2
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 CREATE TYPE test_typex AS (a int, b text);
 CREATE TABLE test_tblx (x int, y test_typex check ((y).a > 0));
 ALTER TYPE test_typex DROP ATTRIBUTE a; -- fails
@@ -3252,6 +3166,8 @@ CREATE TABLE tt3 (y numeric(8,2), x int);			-- wrong column order
 CREATE TABLE tt4 (x int);							-- too few columns
 CREATE TABLE tt5 (x int, y numeric(8,2), z int);	-- too few columns
 CREATE TABLE tt6 () INHERITS (tt0);					-- can't have a parent
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE tt7 (x int, q text, y numeric(8,2));
 ALTER TABLE tt7 DROP q;								-- OK
 ALTER TABLE tt0 OF tt_t0;
@@ -3266,7 +3182,7 @@ ERROR:  table is missing column "y"
 ALTER TABLE tt5 OF tt_t0;
 ERROR:  table has extra column "z"
 ALTER TABLE tt6 OF tt_t0;
-ERROR:  typed tables cannot inherit
+ERROR:  relation "tt6" does not exist
 ALTER TABLE tt7 OF tt_t0;
 CREATE TYPE tt_t1 AS (x int, y numeric(8,2));
 ALTER TABLE tt7 OF tt_t1;			-- reassign an already-typed table
@@ -3281,13 +3197,15 @@ ALTER TABLE tt7 NOT OF;
 -- make sure we can drop a constraint on the parent but it remains on the child
 CREATE TABLE test_drop_constr_parent (c text CHECK (c IS NOT NULL));
 CREATE TABLE test_drop_constr_child () INHERITS (test_drop_constr_parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE ONLY test_drop_constr_parent DROP CONSTRAINT "test_drop_constr_parent_c_check";
 -- should fail
 INSERT INTO test_drop_constr_child (c) VALUES (NULL);
-ERROR:  new row for relation "test_drop_constr_child" violates check constraint "test_drop_constr_parent_c_check"
-DETAIL:  Failing row contains (null).
+ERROR:  relation "test_drop_constr_child" does not exist
+LINE 1: INSERT INTO test_drop_constr_child (c) VALUES (NULL);
+                    ^
 DROP TABLE test_drop_constr_parent CASCADE;
-NOTICE:  drop cascades to table test_drop_constr_child
 --
 -- IF EXISTS test
 --
@@ -3907,11 +3825,14 @@ DROP ROLE regress_test_me;
 -- check that the table being attached is not part of regular inheritance
 CREATE TABLE parent (LIKE list_parted);
 CREATE TABLE child () INHERITS (parent);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE list_parted ATTACH PARTITION child FOR VALUES IN (1);
-ERROR:  cannot attach inheritance child as partition
+ERROR:  relation "child" does not exist
 ALTER TABLE list_parted ATTACH PARTITION parent FOR VALUES IN (1);
-ERROR:  cannot attach inheritance parent as partition
+ERROR:  child table is missing constraint "check_a"
 DROP TABLE child;
+ERROR:  table "child" does not exist
 -- now it should work, with a little tweak
 ALTER TABLE parent ADD CONSTRAINT check_a CHECK (a > 0);
 ALTER TABLE list_parted ATTACH PARTITION parent FOR VALUES IN (1);
@@ -4393,7 +4314,8 @@ ALTER TABLE list_parted2 add constraint check_b2 check (b <> 'zz') NO INHERIT;
 ERROR:  cannot add NO INHERIT constraint to partitioned table "list_parted2"
 -- check that a partition cannot participate in regular inheritance
 CREATE TABLE inh_test () INHERITS (part_2);
-ERROR:  cannot inherit from partition "part_2"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE inh_test (LIKE part_2);
 ALTER TABLE inh_test INHERIT part_2;
 ERROR:  cannot inherit from a partition

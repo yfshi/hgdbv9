@@ -1,0 +1,6097 @@
+set ivorysql.compatible_mode to mysql;
+set  datestyle to 'ISO,YMD';
+--MySQL date type test case start
+select cast('1.1' as date);--NULL
+WARNING:  Incorrect datetime value: '1.1'
+LINE 1: select cast('1.1' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11.1' as date);--NULL
+WARNING:  Incorrect datetime value: '11.1'
+LINE 1: select cast('11.1' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1.11' as date);--NULL
+WARNING:  Incorrect datetime value: '1.11'
+LINE 1: select cast('1.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11.11' as date);--NULL
+WARNING:  Incorrect datetime value: '11.11'
+LINE 1: select cast('11.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11.111' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('99.111' as date);--1999-11-01
+  mysdate   
+------------
+ 1999-11-01
+(1 row)
+
+select cast('99.311' as date);--NULL
+WARNING:  Incorrect datetime value: '99.311'
+LINE 1: select cast('99.311' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1.1111' as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast('1.111122222' as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast('998.3' as date);--1999-08-03
+  mysdate   
+------------
+ 1999-08-03
+(1 row)
+
+select cast('991.31' as date);--1999-01-31
+  mysdate   
+------------
+ 1999-01-31
+(1 row)
+
+select cast('999.31' as date);--NULL
+WARNING:  Incorrect datetime value: '999.31'
+LINE 1: select cast('999.31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111.111' as date);--2011-01-11
+  mysdate   
+------------
+ 2011-01-11
+(1 row)
+
+select cast('116.119' as date);--2011-06-11 
+  mysdate   
+------------
+ 2011-06-11
+(1 row)
+
+select cast('116.419' as date);--NULL
+WARNING:  Incorrect datetime value: '116.419'
+LINE 1: select cast('116.419' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('998.2222' as date);--1998-08-22
+  mysdate   
+------------
+ 1999-08-22
+(1 row)
+
+select cast('998.2224' as date);--NULL
+WARNING:  Incorrect datetime value: '998.2224'
+LINE 1: select cast('998.2224' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('998.222333' as date);--1999-08-22
+  mysdate   
+------------
+ 1999-08-22
+(1 row)
+
+select cast('998.222360' as date);--NULL
+WARNING:  Incorrect datetime value: '998.222360'
+LINE 1: select cast('998.222360' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('998.22235959' as date);--1999-08-22
+  mysdate   
+------------
+ 1999-08-22
+(1 row)
+
+select cast('998.222359599999' as date);--1999-08-22
+WARNING:  Truncated incorrect datetime value: '998.222359599999'
+LINE 1: select cast('998.222359599999' as date);
+                    ^
+  mysdate   
+------------
+ 1999-08-22
+(1 row)
+
+select cast('998.2223595999999999999999' as date);--1999-08-22
+WARNING:  Truncated incorrect datetime value: '998.2223595999999999999999'
+LINE 1: select cast('998.2223595999999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 1999-08-22
+(1 row)
+
+select cast('1118.1' as date);--NULL
+WARNING:  Incorrect datetime value: '1118.1'
+LINE 1: select cast('1118.1' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1118.12' as date);--NULL
+WARNING:  Incorrect datetime value: '1118.12'
+LINE 1: select cast('1118.12' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1118.122' as date);--1118-12-02
+  mysdate   
+------------
+ 1118-12-02
+(1 row)
+
+select cast('1118.122212' as date);--1118-12-22
+  mysdate   
+------------
+ 1118-12-22
+(1 row)
+
+select cast('1118.123212' as date);--NULL
+WARNING:  Incorrect datetime value: '1118.123212'
+LINE 1: select cast('1118.123212' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1118.123124' as date);--NULL
+WARNING:  Incorrect datetime value: '1118.123124'
+LINE 1: select cast('1118.123124' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1118.12312323' as date);--1118-12-31
+  mysdate   
+------------
+ 1118-12-31
+(1 row)
+
+select cast('1118.12312366' as date);--NULL
+WARNING:  Incorrect datetime value: '1118.12312366'
+LINE 1: select cast('1118.12312366' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1118.1222235659' as date);--1118-12-22
+  mysdate   
+------------
+ 1118-12-22
+(1 row)
+
+select cast('1118.122223565999999999999999' as date);--1118-12-22
+WARNING:  Truncated incorrect datetime value: '1118.122223565999999999999999'
+LINE 1: select cast('1118.122223565999999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 1118-12-22
+(1 row)
+
+select cast('11118.1' as date);--2011-11-08
+  mysdate   
+------------
+ 2011-11-08
+(1 row)
+
+select cast('11118.12' as date);--2011-11-08
+  mysdate   
+------------
+ 2011-11-08
+(1 row)
+
+select cast('11118.32' as date);--NULL
+WARNING:  Incorrect datetime value: '11118.32'
+LINE 1: select cast('11118.32' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11118.111111111' as date);--2011-11-08
+WARNING:  Truncated incorrect datetime value: '11118.111111111'
+LINE 1: select cast('11118.111111111' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-08
+(1 row)
+
+select cast('11118.116011111' as date);--NULL
+WARNING:  Incorrect datetime value: '11118.116011111'
+LINE 1: select cast('11118.116011111' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11118.110660111' as date);--NULL
+WARNING:  Incorrect datetime value: '11118.110660111'
+LINE 1: select cast('11118.110660111' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11118.1106019999999999999999' as date);--2011-11-08
+WARNING:  Truncated incorrect datetime value: '11118.1106019999999999999999'
+LINE 1: select cast('11118.1106019999999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-08
+(1 row)
+
+select cast('111121.1' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('111121.12' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('111121.24' as date);--NULL
+WARNING:  Incorrect datetime value: '111121.24'
+LINE 1: select cast('111121.24' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111121.231' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('111121.2312' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('111121.231260' as date);--NULL
+WARNING:  Incorrect datetime value: '111121.231260'
+LINE 1: select cast('111121.231260' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111521.231259' as date);--NULL
+WARNING:  Incorrect datetime value: '111521.231259'
+LINE 1: select cast('111521.231259' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111121.231259' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('111121.2312599999999999999' as date);--2011-11-21
+WARNING:  Truncated incorrect datetime value: '111121.2312599999999999999'
+LINE 1: select cast('111121.2312599999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.5' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.11' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.112' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.1122' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.11222222222' as date);--2011-11-21
+WARNING:  Truncated incorrect datetime value: '1111213.11222222222'
+LINE 1: select cast('1111213.11222222222' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.99' as date);--NULL
+WARNING:  Incorrect datetime value: '1111213.99'
+LINE 1: select cast('1111213.99' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111213.59' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.60' as date);--NULL
+WARNING:  Incorrect datetime value: '1111213.60'
+LINE 1: select cast('1111213.60' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111213.5960' as date);--NULL
+WARNING:  Incorrect datetime value: '1111213.5960'
+LINE 1: select cast('1111213.5960' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111213.5959' as date);--2011-11-21
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('1111213.595988888888888' as date);--2011-11-21
+WARNING:  Truncated incorrect datetime value: '1111213.595988888888888'
+LINE 1: select cast('1111213.595988888888888' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-21
+(1 row)
+
+select cast('11111121.9' as date);--1111-11-21
+  mysdate   
+------------
+ 1111-11-21
+(1 row)
+
+select cast('11111121.23' as date);--1111-11-21
+  mysdate   
+------------
+ 1111-11-21
+(1 row)
+
+select cast('11111121.24' as date);--NULL
+WARNING:  Incorrect datetime value: '11111121.24'
+LINE 1: select cast('11111121.24' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111121.235555' as date);--1111-11-21
+  mysdate   
+------------
+ 1111-11-21
+(1 row)
+
+select cast('11111121.245555' as date);--NULL
+WARNING:  Incorrect datetime value: '11111121.245555'
+LINE 1: select cast('11111121.245555' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111121.236055' as date);--NULL
+WARNING:  Incorrect datetime value: '11111121.236055'
+LINE 1: select cast('11111121.236055' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111121.235560' as date);--NULL
+WARNING:  Incorrect datetime value: '11111121.235560'
+LINE 1: select cast('11111121.235560' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111121.235555999999999' as date);--1111-11-21
+WARNING:  Truncated incorrect datetime value: '11111121.235555999999999'
+LINE 1: select cast('11111121.235555999999999' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-21
+(1 row)
+
+select cast('111111211.2' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111241.2' as date);--NULL
+WARNING:  Incorrect datetime value: '111111241.2'
+LINE 1: select cast('111111241.2' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111231.2' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111239.2' as date);--2011--11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111239.59' as date);--2011--11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111239.60' as date);--NULL
+WARNING:  Incorrect datetime value: '111111239.60'
+LINE 1: select cast('111111239.60' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111239.5999999999' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '111111239.5999999999'
+LINE 1: select cast('111111239.5999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112111.2' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112411.2' as date);--NULL
+WARNING:  Incorrect datetime value: '1111112411.2'
+LINE 1: select cast('1111112411.2' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111112159.2' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112160.2' as date);--NULL
+WARNING:  Incorrect datetime value: '1111112160.2'
+LINE 1: select cast('1111112160.2' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111112159.59' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112159.5999999999999' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111112159.5999999999999'
+LINE 1: select cast('1111112159.5999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111121591.2' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111121599.23' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111121599.23444' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111121599.99999999999999999' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111124599.23' as date);--NULL
+WARNING:  Incorrect datetime value: '11111124599.23'
+LINE 1: select cast('11111124599.23' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111121609.23444' as date);--NULL
+WARNING:  Incorrect datetime value: '11111121609.23444'
+LINE 1: select cast('11111121609.23444' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111215059.2' as date);--NULL
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111215060.2' as date);--NULL
+WARNING:  Incorrect datetime value: '111111215060.2'
+LINE 1: select cast('111111215060.2' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111215019.23444' as date);--2011-11-11 
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111215059.23455556' as date);--2011-11-11 
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111215059.99999999' as date);--2011-11-11 
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112150591.9' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111112150591.9'
+LINE 1: select cast('1111112150591.9' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112150601.9' as date);--NULL
+WARNING:  Incorrect datetime value: '1111112150601.9'
+LINE 1: select cast('1111112150601.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111112150591.99' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111112150591.99'
+LINE 1: select cast('1111112150591.99' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111112150591.9999999999999' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111112150591.9999999999999'
+LINE 1: select cast('1111112150591.9999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111111201911.9' as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('11111111241911.9' as date);--NULL
+WARNING:  Incorrect datetime value: '11111111241911.9'
+LINE 1: select cast('11111111241911.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111111236011.9' as date);--NULL
+WARNING:  Incorrect datetime value: '11111111236011.9'
+LINE 1: select cast('11111111236011.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111111201911.9999999999' as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('111111112019111.9' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '111111112019111.9'
+LINE 1: select cast('111111112019111.9' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('111111111260111.9' as date);--NULL
+WARNING:  Incorrect datetime value: '111111111260111.9'
+LINE 1: select cast('111111111260111.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111111201911111111.9' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '11111111201911111111.9'
+LINE 1: select cast('11111111201911111111.9' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('1111111112360111.9' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '1111111112360111.9'
+LINE 1: select cast('1111111112360111.9' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('111111112019113333.9999999999' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '111111112019113333.9999999999'
+LINE 1: select cast('111111112019113333.9999999999' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('1.1.1' as date);--2001-01-01
+  mysdate   
+------------
+ 2001-01-01
+(1 row)
+
+select cast('1.1.11' as date);--2001-01-11
+  mysdate   
+------------
+ 2001-01-11
+(1 row)
+
+select cast('11.11.11' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11.13.11' as date);--NULL
+WARNING:  Incorrect datetime value: '11.13.11'
+LINE 1: select cast('11.13.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11.13.32' as date);--NULL
+WARNING:  Incorrect datetime value: '11.13.32'
+LINE 1: select cast('11.13.32' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.11.11' as date);--1999-11-11
+  mysdate   
+------------
+ 1999-11-11
+(1 row)
+
+select cast('99.111.11' as date);--1999-11-01
+  mysdate   
+------------
+ 1999-11-01
+(1 row)
+
+select cast('99.111.1111' as date);--1999-11-01
+  mysdate   
+------------
+ 1999-11-01
+(1 row)
+
+select cast('99.111.3111' as date);--NULL
+WARNING:  Incorrect datetime value: '99.111.3111'
+LINE 1: select cast('99.111.3111' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.111.116111' as date);--NULL
+WARNING:  Incorrect datetime value: '99.111.116111'
+LINE 1: select cast('99.111.116111' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.111.115961' as date);--NULL
+WARNING:  Incorrect datetime value: '99.111.115961'
+LINE 1: select cast('99.111.115961' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.111.115911' as date);--1999-11-01
+  mysdate   
+------------
+ 1999-11-01
+(1 row)
+
+select cast('99.1111.115911' as date);--1999-11-11
+  mysdate   
+------------
+ 1999-11-11
+(1 row)
+
+select cast('99.1133.115911' as date);--NULL
+WARNING:  Incorrect datetime value: '99.1133.115911'
+LINE 1: select cast('99.1133.115911' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.1130.115911' as date);--1999-11-30
+  mysdate   
+------------
+ 1999-11-30
+(1 row)
+
+select cast('99.1311.11' as date);--NULL
+WARNING:  Incorrect datetime value: '99.1311.11'
+LINE 1: select cast('99.1311.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.1.11' as date);--1999-09-01
+  mysdate   
+------------
+ 1999-09-01
+(1 row)
+
+select cast('999.11.11' as date);--1999-09-11
+  mysdate   
+------------
+ 1999-09-11
+(1 row)
+
+select cast('999.30.11' as date);--1999-09-30
+  mysdate   
+------------
+ 1999-09-30
+(1 row)
+
+select cast('999.34.11' as date);--NULL
+WARNING:  Incorrect datetime value: '999.34.11'
+LINE 1: select cast('999.34.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.30.25' as date);--NULL
+WARNING:  Incorrect datetime value: '999.30.25'
+LINE 1: select cast('999.30.25' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.111.11' as date);--1999-09-11
+  mysdate   
+------------
+ 1999-09-11
+(1 row)
+
+select cast('999.239.20' as date);--1999-09-23
+  mysdate   
+------------
+ 1999-09-23
+(1 row)
+
+select cast('999.319.29' as date);--NULL
+WARNING:  Incorrect datetime value: '999.319.29'
+LINE 1: select cast('999.319.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.3191.29' as date);--NULL
+WARNING:  Incorrect datetime value: '999.3191.29'
+LINE 1: select cast('999.3191.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.2124.29' as date);--NULL
+WARNING:  Incorrect datetime value: '999.2124.29'
+LINE 1: select cast('999.2124.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.2123.29' as date);--1999-09-21
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.2111.59' as date);--1999-09-21
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.2111.60' as date);--NULL
+WARNING:  Incorrect datetime value: '999.2111.60'
+LINE 1: select cast('999.2111.60' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.2111.5959' as date);--1999-09-21 
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.2111.5960' as date);--NULL
+WARNING:  Incorrect datetime value: '999.2111.5960'
+LINE 1: select cast('999.2111.5960' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.2111.595999999999999' as date);
+WARNING:  Truncated incorrect datetime value: '999.2111.595999999999999'
+LINE 1: select cast('999.2111.595999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.21112.5959' as date);--1999-09-21  
+WARNING:  Truncated incorrect datetime value: '999.21112.5959'
+LINE 1: select cast('999.21112.5959' as date);
+                    ^
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.21112.6059' as date);--NULL
+WARNING:  Incorrect datetime value: '999.21112.6059'
+LINE 1: select cast('999.21112.6059' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.211111.5959' as date);--1999-09-21
+WARNING:  Truncated incorrect datetime value: '999.211111.5959'
+LINE 1: select cast('999.211111.5959' as date);
+                    ^
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.212411.5959' as date);--NULL
+WARNING:  Incorrect datetime value: '999.212411.5959'
+LINE 1: select cast('999.212411.5959' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.211160.5959' as date);--NULL
+WARNING:  Incorrect datetime value: '999.211160.5959'
+LINE 1: select cast('999.211160.5959' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.2111111.5959' as date);--1999-09-21 
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.2111111.999' as date);--1999-09-21 
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.2111111.9999999' as date);--1999-09-21 
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.21111111.9999999' as date);--1999-09-21
+  mysdate   
+------------
+ 1999-09-21
+(1 row)
+
+select cast('999.21111160.9999999' as date);--NULL
+WARNING:  Incorrect datetime value: '999.21111160.9999999'
+LINE 1: select cast('999.21111160.9999999' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('999.21116059.9999999' as date);--NULL
+WARNING:  Incorrect datetime value: '999.21116059.9999999'
+LINE 1: select cast('999.21116059.9999999' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.1.1' as date);
+  mysdate   
+------------
+ 1999-01-01
+(1 row)
+
+select cast('1999.1.11' as date);
+  mysdate   
+------------
+ 1999-01-11
+(1 row)
+
+select cast('1999.11.11' as date);
+  mysdate   
+------------
+ 1999-11-11
+(1 row)
+
+select cast('1999.13.11' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.13.11'
+LINE 1: select cast('1999.13.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.111.11' as date);--1999-11-01
+  mysdate   
+------------
+ 1999-11-01
+(1 row)
+
+select cast('1999.1112.11' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.1112.145678' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.1112.145678'
+LINE 1: select cast('1999.1112.145678' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.1112.14562299999999' as date);--1999-11-12
+WARNING:  Truncated incorrect datetime value: '1999.1112.14562299999999'
+LINE 1: select cast('1999.1112.14562299999999' as date);
+                    ^
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.11122.19' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.11122.1959' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.11122.1960' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.11122.1960'
+LINE 1: select cast('1999.11122.1960' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.111212.11' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.111224.11' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.111224.11'
+LINE 1: select cast('1999.111224.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.1112221.11' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.11122212.99' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.11122212.99'
+LINE 1: select cast('1999.11122212.99' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.11122212.19' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.111222121.19' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.1112221212.19' as date);--1999-11-12
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('1999.1112221260.19' as date);--NULL
+WARNING:  Incorrect datetime value: '1999.1112221260.19'
+LINE 1: select cast('1999.1112221260.19' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1999.111222121212999.19' as date);--1999-11-12--warning
+WARNING:  Truncated incorrect datetime value: '1999.111222121212999.19'
+LINE 1: select cast('1999.111222121212999.19' as date);
+                    ^
+  mysdate   
+------------
+ 1999-11-12
+(1 row)
+
+select cast('10000.1.1' as date);--2010-00-00
+  mysdate   
+------------
+ 2010-00-00
+(1 row)
+
+select cast('10001.1.1' as date);--2010-00-01
+  mysdate   
+------------
+ 2010-00-01
+(1 row)
+
+select cast('11111.1.1' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.11.11' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.24.11' as date);--NULL
+WARNING:  Incorrect datetime value: '11111.24.11'
+LINE 1: select cast('11111.24.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('199999.23.59' as date);--NULL
+WARNING:  Incorrect datetime value: '199999.23.59'
+LINE 1: select cast('199999.23.59' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111.23.11' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.23.59' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.23232.99999' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.232323.99999' as date);--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('11111.23232233.99999' as date);--2011-11-01
+WARNING:  Truncated incorrect datetime value: '11111.23232233.99999'
+LINE 1: select cast('11111.23232233.99999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select cast('111111.23.9' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111.24.9' as date);--NULL
+WARNING:  Incorrect datetime value: '111111.24.9'
+LINE 1: select cast('111111.24.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111.221.9' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111.22111111.9' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '111111.22111111.9'
+LINE 1: select cast('111111.22111111.9' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111.2260111.9999' as date);--NULL
+WARNING:  Incorrect datetime value: '111111.2260111.9999'
+LINE 1: select cast('111111.2260111.9999' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111.22111111.9999999999' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '111111.22111111.9999999999'
+LINE 1: select cast('111111.22111111.9999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111111.3231.9' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111111.6031.9' as date);--NULL
+WARNING:  Incorrect datetime value: '1111111.6031.9'
+LINE 1: select cast('1111111.6031.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111111.5931.9' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111221.59.29' as date);--2011-11-22
+  mysdate   
+------------
+ 2011-11-22
+(1 row)
+
+select cast('1111221.59599999999.29' as date);--2011-11-22
+WARNING:  Truncated incorrect datetime value: '1111221.59599999999.29'
+LINE 1: select cast('1111221.59599999999.29' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-22
+(1 row)
+
+select cast('11111211.1.29' as date);--1111-12-11
+  mysdate   
+------------
+ 1111-12-11
+(1 row)
+
+select cast('11111211.1112.29' as date);--1111-12-11
+  mysdate   
+------------
+ 1111-12-11
+(1 row)
+
+select cast('11111211.1160.29' as date);--NULL
+WARNING:  Incorrect datetime value: '11111211.1160.29'
+LINE 1: select cast('11111211.1160.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111211.1120.69' as date);--NULL
+WARNING:  Incorrect datetime value: '11111211.1120.69'
+LINE 1: select cast('11111211.1120.69' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('11111211.1159599999999.29' as date);--1111-12-11
+WARNING:  Truncated incorrect datetime value: '11111211.1159599999999.29'
+LINE 1: select cast('11111211.1159599999999.29' as date);
+                    ^
+  mysdate   
+------------
+ 1111-12-11
+(1 row)
+
+select cast('11111211.111616.99999' as date);--1111-12-11
+  mysdate   
+------------
+ 1111-12-11
+(1 row)
+
+select cast('111112111.1.29' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('111112241.1.29' as date);--NULL
+WARNING:  Incorrect datetime value: '111112241.1.29'
+LINE 1: select cast('111112241.1.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111112231.1.29' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('111112239.1.29' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('111112239.60.29' as date);--NULL
+WARNING:  Incorrect datetime value: '111112239.60.29'
+LINE 1: select cast('111112239.60.29' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111112239.6.9999' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('1111122329.6.9' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('1111122329.6.9999' as date);--2011-11-12
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('1111122329.60.9' as date);--NULL
+WARNING:  Incorrect datetime value: '1111122329.60.9'
+LINE 1: select cast('1111122329.60.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111122360.16.9' as date);--NULL
+WARNING:  Incorrect datetime value: '1111122360.16.9'
+LINE 1: select cast('1111122360.16.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111122416.16.9' as date);--NULL
+WARNING:  Incorrect datetime value: '1111122416.16.9'
+LINE 1: select cast('1111122416.16.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1111122216.599999.999999999999' as date);--2011-11-12--warning
+WARNING:  Truncated incorrect datetime value: '1111122216.599999.999999999999'
+LINE 1: select cast('1111122216.599999.999999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('11111222161.1.1' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '11111222161.1.1'
+LINE 1: select cast('11111222161.1.1' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('11111222161.9999999999.1' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '11111222161.9999999999.1'
+LINE 1: select cast('11111222161.9999999999.1' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('11111222161.9999999999.9999999999' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '11111222161.9999999999.9999999999'
+LINE 1: select cast('11111222161.9999999999.9999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('111112226011.9.9' as date);--NULL
+WARNING:  Incorrect datetime value: '111112226011.9.9'
+LINE 1: select cast('111112226011.9.9' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111112226011.9999999999.9999999999' as date);--NULL
+WARNING:  Incorrect datetime value: '111112226011.9999999999.9999999999'
+LINE 1: select cast('111112226011.9999999999.9999999999' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111112225911.9.9' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '111112225911.9.9'
+LINE 1: select cast('111112225911.9.9' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('111112222611.9999999999.9999999999' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '111112222611.9999999999.9999999999'
+LINE 1: select cast('111112222611.9999999999.9999999999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('1111122216119.9999.99999' as date);--2011-11-12
+WARNING:  Truncated incorrect datetime value: '1111122216119.9999.99999'
+LINE 1: select cast('1111122216119.9999.99999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('1111122216111.9999.99999' as date);--2011-11-12 
+WARNING:  Truncated incorrect datetime value: '1111122216111.9999.99999'
+LINE 1: select cast('1111122216111.9999.99999' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-12
+(1 row)
+
+select cast('11111222161121.9999.99999' as date);--1111-12-22
+WARNING:  Truncated incorrect datetime value: '11111222161121.9999.99999'
+LINE 1: select cast('11111222161121.9999.99999' as date);
+                    ^
+  mysdate   
+------------
+ 1111-12-22
+(1 row)
+
+select cast('111112221611211.9999.99999' as date);--1111-12-22
+WARNING:  Truncated incorrect datetime value: '111112221611211.9999.99999'
+LINE 1: select cast('111112221611211.9999.99999' as date);
+                    ^
+  mysdate   
+------------
+ 1111-12-22
+(1 row)
+
+select cast('1111122216112111111.9999.99999' as date);--1111-12-22--warning
+WARNING:  Truncated incorrect datetime value: '1111122216112111111.9999.99999'
+LINE 1: select cast('1111122216112111111.9999.99999' as date);
+                    ^
+  mysdate   
+------------
+ 1111-12-22
+(1 row)
+
+select cast('1.1.1.1' as date);--2001-01-01
+  mysdate   
+------------
+ 2001-01-01
+(1 row)
+
+select cast('11.11.11.11' as date);--2011-11-11 
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1.1.1.11.11' as date);--2001-01-01
+  mysdate   
+------------
+ 2001-01-01
+(1 row)
+
+select cast('111.11.11.11' as date);--2011-01-11 
+  mysdate   
+------------
+ 2011-01-11
+(1 row)
+
+select cast('1111.11.11.11' as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('1111.60.4.11' as date);--NULL
+WARNING:  Incorrect datetime value: '1111.60.4.11'
+LINE 1: select cast('1111.60.4.11' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111111.11.11.11' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111111.111.11.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111111.111.11.11'
+LINE 1: select cast('1111111.111.11.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111111.11.4.11' as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('111111111.11.4.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '111111111.11.4.11'
+LINE 1: select cast('111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111111111.11.4.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111111111.11.4.11'
+LINE 1: select cast('1111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111111111.11.4.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '11111111111.11.4.11'
+LINE 1: select cast('11111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111111111.11.4.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '111111111111.11.4.11'
+LINE 1: select cast('111111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('1111111111111.11.4.11' as date);--2011-11-11
+WARNING:  Truncated incorrect datetime value: '1111111111111.11.4.11'
+LINE 1: select cast('1111111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11111111111111.11.4.11' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '11111111111111.11.4.11'
+LINE 1: select cast('11111111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('11111111111111111.11.4.11' as date);--1111-11-11
+WARNING:  Truncated incorrect datetime value: '11111111111111111.11.4.11'
+LINE 1: select cast('11111111111111111.11.4.11' as date);
+                    ^
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('11.11.11.23.34.50' as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('9999.12.31.23.59.59.999999.99' as date);--NULL
+WARNING:  Datetime function: datetime field overflow
+LINE 1: select cast('9999.12.31.23.59.59.999999.99' as date);
+                    ^
+WARNING:  Truncated incorrect datetime value: '9999.12.31.23.59.59.999999.99'
+LINE 1: select cast('9999.12.31.23.59.59.999999.99' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('99.12.31.23.59.59.999999.99' as date);--2000-01-01
+  mysdate   
+------------
+ 2000-01-01
+(1 row)
+
+select cast('111/11/11/23/34/50' as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast('10000/11/11/23/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '10000/11/11/23/34/50'
+LINE 1: select cast('10000/11/11/23/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('1000/13/11/23/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '1000/13/11/23/34/50'
+LINE 1: select cast('1000/13/11/23/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('9999/11/60/23/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '9999/11/60/23/34/50'
+LINE 1: select cast('9999/11/60/23/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('9999/11/59/24/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '9999/11/59/24/34/50'
+LINE 1: select cast('9999/11/59/24/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('9999/11/59/23/60/50' as date);--NULL
+WARNING:  Incorrect datetime value: '9999/11/59/23/60/50'
+LINE 1: select cast('9999/11/59/23/60/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('9999/11/59/23/59/60' as date);--NULL
+WARNING:  Incorrect datetime value: '9999/11/59/23/59/60'
+LINE 1: select cast('9999/11/59/23/59/60' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('9999/11/19/23/59/59/99999999999' as date);--9999-11-19
+WARNING:  Truncated incorrect datetime value: '9999/11/19/23/59/59/99999999999'
+LINE 1: select cast('9999/11/19/23/59/59/99999999999' as date);
+                    ^
+  mysdate   
+------------
+ 9999-11-19
+(1 row)
+
+select cast('111.11.11.23.34.50' as date);--2011-01-11
+  mysdate   
+------------
+ 2011-01-11
+(1 row)
+
+select cast('1111/11.11.23/34/50' as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast('111/11.11.23/34/50' as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast('111/11.11/23/34/50' as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast('111/11.11.24/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '111/11.11.24/34/50'
+LINE 1: select cast('111/11.11.24/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111/11.11.23/60/50' as date);--NULL
+WARNING:  Incorrect datetime value: '111/11.11.23/60/50'
+LINE 1: select cast('111/11.11.23/60/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111/11.11.23/34/60' as date);--NULL
+WARNING:  Incorrect datetime value: '111/11.11.23/34/60'
+LINE 1: select cast('111/11.11.23/34/60' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('111/11.11.23/34/59/9999999' as date);--0111-11-11
+WARNING:  Truncated incorrect datetime value: '111/11.11.23/34/59/9999999'
+LINE 1: select cast('111/11.11.23/34/59/9999999' as date);
+                    ^
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast('10000/11/11/23/34/50' as date);--NULL
+WARNING:  Incorrect datetime value: '10000/11/11/23/34/50'
+LINE 1: select cast('10000/11/11/23/34/50' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(' ' as date);--NULL
+WARNING:  Incorrect datetime value: ' '
+LINE 1: select cast(' ' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('' as date);--NULL
+WARNING:  Incorrect datetime value: ''
+LINE 1: select cast('' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('2023-03-03 20:01:20AM' as date);--2023-03-03
+WARNING:  Truncated incorrect datetime value: '2023-03-03 20:01:20AM'
+LINE 1: select cast('2023-03-03 20:01:20AM' as date);
+                    ^
+  mysdate   
+------------
+ 2023-03-03
+(1 row)
+
+select cast('20230303200120PM' as date);--NULL
+WARNING:  Incorrect datetime value: '20230303200120PM'
+LINE 1: select cast('20230303200120PM' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('20230303200120AM' as date);--NULL 
+WARNING:  Incorrect datetime value: '20230303200120AM'
+LINE 1: select cast('20230303200120AM' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast('20230303T200120' as date);--2023-03-03
+  mysdate   
+------------
+ 2023-03-03
+(1 row)
+
+select cast('2003-03-03T20:01:20' as date);--2023-03-03
+  mysdate   
+------------
+ 2003-03-03
+(1 row)
+
+--explict conversion 
+select date'20100231111';--error 
+ERROR:  Incorrect DATE value: '20100231111'
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select date'2010-02-31 10:22:33';--error
+ERROR:  Incorrect DATE value: '2010-02-31 10:22:33'
+select date'20100231';--error
+ERROR:  Incorrect DATE value: '20100231'
+select date'0000-00-00';--error
+ERROR:  Incorrect DATE value: '0000-00-00'
+select date'11';--error
+ERROR:  Incorrect DATE value: '11'
+select date'100';--error
+ERROR:  Incorrect DATE value: '100'
+select date'101';--error
+ERROR:  Incorrect DATE value: '101'
+select date'111';--error
+ERROR:  Incorrect DATE value: '111'
+select date'1111';--error
+ERROR:  Incorrect DATE value: '1111'
+select date'9999';--error
+ERROR:  Incorrect DATE value: '9999'
+select date'11111';--2011-11-01
+  mysdate   
+------------
+ 2011-11-01
+(1 row)
+
+select date'111111';--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select date'1111111';--error
+ERROR:  Incorrect DATE value: '1111111'
+select date'11111111';--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select date'11111111111';--error
+ERROR:  Incorrect DATE value: '11111111111'
+select date'111111111111111';--error
+ERROR:  Incorrect DATE value: '111111111111111'
+select date'11.1';--error
+ERROR:  Incorrect DATE value: '11.1'
+select date'11.11';--error
+ERROR:  Incorrect DATE value: '11.11'
+select date'111.11';--2011-01-11
+  mysdate   
+------------
+ 2011-01-11
+(1 row)
+
+select date'111.111';--error
+ERROR:  Incorrect DATE value: '111.111'
+select date'111.11111';--error
+ERROR:  Incorrect DATE value: '111.11111'
+select date'111.11111111';--error
+ERROR:  Incorrect DATE value: '111.11111111'
+select date'1111.1';--error
+ERROR:  Incorrect DATE value: '1111.1'
+select date'1111.11';--error
+ERROR:  Incorrect DATE value: '1111.11'
+select date'1111.111';--1111-11-01
+  mysdate   
+------------
+ 1111-11-01
+(1 row)
+
+select date'1111.1111';--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select date'1111.11111';--error
+ERROR:  Incorrect DATE value: '1111.11111'
+select date'1111.111111';--error
+ERROR:  Incorrect DATE value: '1111.111111'
+select date'1111.1111111';--error
+ERROR:  Incorrect DATE value: '1111.1111111'
+select date'11111.1';--error
+ERROR:  Incorrect DATE value: '11111.1'
+select date'11111.11';--error
+ERROR:  Incorrect DATE value: '11111.11'
+select date'11111.111';--error
+ERROR:  Incorrect DATE value: '11111.111'
+select date'11111.1111';--error
+ERROR:  Incorrect DATE value: '11111.1111'
+select date'11111.11111';--error
+ERROR:  Incorrect DATE value: '11111.11111'
+select date'111111.111111';--error
+ERROR:  Incorrect DATE value: '111111.111111'
+select date'1111111.111111';--error
+ERROR:  Incorrect DATE value: '1111111.111111'
+select date'11111111.111111';--error
+ERROR:  Incorrect DATE value: '11111111.111111'
+select date'111111111.111111';--error
+ERROR:  Incorrect DATE value: '111111111.111111'
+select date'11111111111.111111';--error
+ERROR:  Incorrect DATE value: '11111111111.111111'
+select date'11111111111111.111111';--error
+ERROR:  Incorrect DATE value: '11111111111111.111111'
+select date'1.1.1';--2001-01-01
+  mysdate   
+------------
+ 2001-01-01
+(1 row)
+
+select date'11.11.11';--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select date'11.11.1111';--error
+ERROR:  Incorrect DATE value: '11.11.1111'
+select date'11.11.11111';--error
+ERROR:  Incorrect DATE value: '11.11.11111'
+select date'11.11.1111111';--error
+ERROR:  Incorrect DATE value: '11.11.1111111'
+select date'11.111.1';--error
+ERROR:  Incorrect DATE value: '11.111.1'
+select date'11.111.11';--error
+ERROR:  Incorrect DATE value: '11.111.11'
+select date'11.111.111111';--error
+ERROR:  Incorrect DATE value: '11.111.111111'
+select date'11.111.111111111';--error
+ERROR:  Incorrect DATE value: '11.111.111111111'
+select date'11.1111.11';--error
+ERROR:  Incorrect DATE value: '11.1111.11'
+select date'11.1111.111111';--error
+ERROR:  Incorrect DATE value: '11.1111.111111'
+select date'111.1.1';--error
+ERROR:  Incorrect DATE value: '111.1.1'
+select date'111.11.1';--error
+ERROR:  Incorrect DATE value: '111.11.1'
+select date'111.11.11';--error
+ERROR:  Incorrect DATE value: '111.11.11'
+select date'111.11111.11';--error
+ERROR:  Incorrect DATE value: '111.11111.11'
+select date'111.11.11111';--error
+ERROR:  Incorrect DATE value: '111.11.11111'
+select date'1111.11.1';--1111-11-01
+  mysdate   
+------------
+ 1111-11-01
+(1 row)
+
+select date'1111.11.11';--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select date'1111.111.11';--error
+ERROR:  Incorrect DATE value: '1111.111.11'
+select date'1111.11.11.11';--error
+ERROR:  Incorrect DATE value: '1111.11.11.11'
+select date'1111.11.11.11.11';--error
+ERROR:  Incorrect DATE value: '1111.11.11.11.11'
+select date'1111.11.11.11.11.11';--error
+ERROR:  Incorrect DATE value: '1111.11.11.11.11.11'
+select date'1111.11.11.11.11.1111111';--error
+ERROR:  Incorrect DATE value: '1111.11.11.11.11.1111111'
+select cast(1 as date);--NULL 
+WARNING:  Incorrect datetime value: '1'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11 as date);--NULL
+WARNING:  Incorrect datetime value: '11'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(111 as date);--2000-01-11
+  mysdate   
+------------
+ 2000-01-11
+(1 row)
+
+select cast(1111 as date);--2000-11-11
+  mysdate   
+------------
+ 2000-11-11
+(1 row)
+
+select cast(1131 as date);--NULL
+WARNING:  Incorrect datetime value: '1131'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111 as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast(11111.77 as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast(111111 as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(111311 as date);--NULL
+WARNING:  Incorrect datetime value: '111311'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(111111.88 as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(113111 as date);--NULL
+WARNING:  Incorrect datetime value: '113111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(112160 as date);--NULL
+WARNING:  Incorrect datetime value: '112160'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(1111111 as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast(1111111.34 as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast(1111161 as date);--NULL
+WARNING:  Incorrect datetime value: '1111161'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111 as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast(11111111.56 as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast(11113111 as date);--NULL
+WARNING:  Incorrect datetime value: '11113111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11112160 as date);--NULL
+WARNING:  Incorrect datetime value: '11112160'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(111111111 as date);--2000-01-11
+  mysdate   
+------------
+ 2000-01-11
+(1 row)
+
+select cast(111111111.99 as date);--2000-01-11
+  mysdate   
+------------
+ 2000-01-11
+(1 row)
+
+select cast(111351111 as date);--NULL
+WARNING:  Incorrect datetime value: '111351111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(1111111111 as date);--2000-11-11
+  mysdate   
+------------
+ 2000-11-11
+(1 row)
+
+select cast(1111111171 as date);--NULL
+WARNING:  Incorrect datetime value: '1111111171'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111116059 as date);--NULL
+WARNING:  Incorrect datetime value: '11111116059'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111111 as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast(111111111111 as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(11111111111.33 as date);--2001-11-11
+  mysdate   
+------------
+ 2001-11-11
+(1 row)
+
+select cast(111111111111.45 as date);--2011-11-11
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(111111241156 as date);--NULL
+WARNING:  Incorrect datetime value: '111111241156'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(1111111111111 as date);--0111-11-11
+  mysdate   
+------------
+ 0111-11-11
+(1 row)
+
+select cast(1111111311105 as date);--NULL
+WARNING:  Incorrect datetime value: '1111111311105'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111111111 as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast(11111111111111.23 as date);--1111-11-11
+  mysdate   
+------------
+ 1111-11-11
+(1 row)
+
+select cast(11111111119905 as date);--NULL
+WARNING:  Incorrect datetime value: '11111111119905'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111111165 as date);--NULL
+WARNING:  Incorrect datetime value: '11111111111165'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111251105 as date);--NULL
+WARNING:  Incorrect datetime value: '11111111251105'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(111111111111111 as date);--NULL
+WARNING:  Incorrect datetime value: '111111111111111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(1111111111111111 as date);--NULL
+WARNING:  Incorrect datetime value: '1111111111111111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(1111111111111111.44 as date);--NULL
+WARNING:  Incorrect datetime value: '1111111111111111.44'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(11111111111233444 as date);--NULL
+WARNING:  Incorrect datetime value: '11111111111233444'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(111111111111111111111 as date);--NULL
+WARNING:  Incorrect datetime value: '111111111111111111111'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(19830905 as date);--1983-09-05
+  mysdate   
+------------
+ 1983-09-05
+(1 row)
+
+select cast(119830905 as date);--NULL
+WARNING:  Incorrect datetime value: '119830905'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(198309051 as date);--NULL
+WARNING:  Incorrect datetime value: '198309051'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(198205051 as date);--NULL
+WARNING:  Incorrect datetime value: '198205051'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(128205051 as date);--2000-01-28
+  mysdate   
+------------
+ 2000-01-28
+(1 row)
+
+select cast(6995 as date);--NULL
+WARNING:  Incorrect datetime value: '6995'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(2007-05-23 as date);--NULL
+WARNING:  Incorrect datetime value: '1979'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(2007-05*23 as date);--NULL
+WARNING:  Incorrect datetime value: '1892'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(830905 as date);--1983-09-05
+  mysdate   
+------------
+ 1983-09-05
+(1 row)
+
+select cast(9830905 as date);--0983-09-05 
+  mysdate   
+------------
+ 0983-09-05
+(1 row)
+
+select cast(30905 as date);--2003-09-05
+  mysdate   
+------------
+ 2003-09-05
+(1 row)
+
+select cast(230905 as date);--2023-09-05
+  mysdate   
+------------
+ 2023-09-05
+(1 row)
+
+select cast(690905 as date);--2069-09-05
+  mysdate   
+------------
+ 2069-09-05
+(1 row)
+
+select cast(700905 as date);--1970-09-05
+  mysdate   
+------------
+ 1970-09-05
+(1 row)
+
+select cast(0905 as date);--2000-09-05
+  mysdate   
+------------
+ 2000-09-05
+(1 row)
+
+select cast(905 as date);--2000-09-05
+  mysdate   
+------------
+ 2000-09-05
+(1 row)
+
+select cast(00000905 as date);--2000-09-05
+  mysdate   
+------------
+ 2000-09-05
+(1 row)
+
+select cast(0000000905 as date);--2000-09-05
+  mysdate   
+------------
+ 2000-09-05
+(1 row)
+
+select cast(2007*05*23 as date);--2023-08-05
+  mysdate   
+------------
+ 2023-08-05
+(1 row)
+
+select cast(05*23 as date);--2000-01-15
+  mysdate   
+------------
+ 2000-01-15
+(1 row)
+
+select cast(06/03 as date);--NULL 
+WARNING:  Incorrect datetime value: '2'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(300/03 as date);--NULL
+WARNING:  Incorrect datetime value: '100'
+ mysdate 
+---------
+ 
+(1 row)
+
+select cast(30000000/3 as date); --1000-00-00
+  mysdate   
+------------
+ 1000-00-00
+(1 row)
+
+--round
+select cast('2010.01.31.23.59.59.99999999' as date);
+  mysdate   
+------------
+ 2010-02-01
+(1 row)
+
+select cast('2010.01.31.23.59.59.999999' as date);
+  mysdate   
+------------
+ 2010-01-31
+(1 row)
+
+select cast('2010.00.31.23.59.59.99999999' as date);
+WARNING:  Truncated incorrect datetime value: '2010.00.31.23.59.59.99999999'
+LINE 1: select cast('2010.00.31.23.59.59.99999999' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010.01.31.23.59.59.99999999';
+ERROR:  Incorrect DATE value: '2010.01.31.23.59.59.99999999'
+select date'2010.00.31.23.59.59.99999999';
+ERROR:  Incorrect DATE value: '2010.00.31.23.59.59.99999999'
+set sql_mode ='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+--strict mode :NO_ZERO_IN_DATE
+create table test(dt date);
+insert into test values('2100-00-04');--ok
+insert into test values('0000-00-00');--ok
+select cast('2010-02-31' as date);--NULL
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+select * from test;
+     dt     
+------------
+ 2100-00-04
+ 0000-00-00
+(2 rows)
+
+--set NO_ZERO_DATE
+set sql_mode ='NO_ZERO_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+insert into test values('2100-00-04');--ok
+insert into test values('0000-00-00');--warning
+WARNING:  Out of range value.
+LINE 1: insert into test values('0000-00-00');
+                                ^
+select cast('2010-02-31' as date);--NULL
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+select * from test;
+     dt     
+------------
+ 2100-00-04
+ 0000-00-00
+ 2100-00-04
+ 0000-00-00
+(4 rows)
+
+--strict mode :NO_ZERO_DATE
+set sql_mode ='NO_ZERO_DATE,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+insert into test values('2100-00-04');--ok
+insert into test values('0000-00-00');--error
+ERROR:  Incorrect DATE value: '0000-00-00'
+LINE 1: insert into test values('0000-00-00');
+                                ^
+select cast('2010-02-31' as date);--NULL
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+--set NO_ZERO_IN_DATE
+set sql_mode ='NO_ZERO_IN_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+insert into test values('2100-00-04');--ok warning
+WARNING:  Out of range value.
+LINE 1: insert into test values('2100-00-04');
+                                ^
+insert into test values('0000-00-00');--ok
+select cast('2010-02-31' as date);--NULL
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+--strict mode :NO_ZERO_IN_DATE
+set sql_mode ='NO_ZERO_IN_DATE,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+insert into test values('2100-00-04');--error
+ERROR:  Incorrect DATE value: '2100-00-04'
+LINE 1: insert into test values('2100-00-04');
+                                ^
+insert into test values('0000-00-00');--ok
+select cast('2010-02-31' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+--set ALLOW_INVALID_DATES
+set sql_mode ='ALLOW_INVALID_DATES';
+insert into test values('2100-00-04');--ok
+insert into test values('0000-00-00');--ok
+select cast('2010-02-31' as date);--ok
+  mysdate   
+------------
+ 2010-02-31
+(1 row)
+
+select date'2010-02-31';--ok
+  mysdate   
+------------
+ 2010-02-31
+(1 row)
+
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+--strict mode :ALLOW_INVALID_DATES
+set sql_mode ='ALLOW_INVALID_DATES,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+insert into test values('2100-00-04');--ok
+insert into test values('0000-00-00');--ok
+select cast('2010-02-31' as date);--ok
+  mysdate   
+------------
+ 2010-02-31
+(1 row)
+
+select date'2010-02-31';--ok
+  mysdate   
+------------
+ 2010-02-31
+(1 row)
+
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+set sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+--default strict+NO_ZERO_IN_DATE+NO_ZERO_DATE
+insert into test values('2100-00-04');--error
+ERROR:  Incorrect DATE value: '2100-00-04'
+LINE 1: insert into test values('2100-00-04');
+                                ^
+insert into test values('0000-00-00');--error
+ERROR:  Incorrect DATE value: '0000-00-00'
+LINE 1: insert into test values('0000-00-00');
+                                ^
+select cast('2010-02-31' as date);--NULL
+WARNING:  Incorrect datetime value: '2010-02-31'
+LINE 1: select cast('2010-02-31' as date);
+                    ^
+ mysdate 
+---------
+ 
+(1 row)
+
+select date'2010-02-31';--error
+ERROR:  Incorrect DATE value: '2010-02-31'
+select cast(20100231 as date);--NULL warning
+WARNING:  Incorrect datetime value: '20100231'
+ mysdate 
+---------
+ 
+(1 row)
+
+insert into test values('');--error
+ERROR:  Incorrect DATE value: ''
+LINE 1: insert into test values('');
+                                ^
+insert into test values('99999-04-32');--error
+ERROR:  Incorrect DATE value: '99999-04-32'
+LINE 1: insert into test values('99999-04-32');
+                                ^
+insert into test values('9999-04-32');--error
+ERROR:  Incorrect DATE value: '9999-04-32'
+LINE 1: insert into test values('9999-04-32');
+                                ^
+insert into test values('9999-04-32');--error
+ERROR:  Incorrect DATE value: '9999-04-32'
+LINE 1: insert into test values('9999-04-32');
+                                ^
+insert into test values('9999-02-31');--error
+ERROR:  Incorrect DATE value: '9999-02-31'
+LINE 1: insert into test values('9999-02-31');
+                                ^
+insert into test values('9999-00-31');--error
+ERROR:  Incorrect DATE value: '9999-00-31'
+LINE 1: insert into test values('9999-00-31');
+                                ^
+insert into test values('0000-00-00');--error
+ERROR:  Incorrect DATE value: '0000-00-00'
+LINE 1: insert into test values('0000-00-00');
+                                ^
+--default strict+NO_ZERO_IN_DATE+NO_ZERO_DATE
+delete from test;
+insert into test values(0);--error
+ERROR:  Incorrect DATE value: '0'
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--error
+ERROR:  Incorrect DATE value: '2'
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--error
+ERROR:  Incorrect DATE value: '21'
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--error
+ERROR:  Incorrect DATE value: '2221'
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--error
+ERROR:  Incorrect DATE value: '22211'
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--error
+ERROR:  Incorrect DATE value: '20200933'
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--error
+ERROR:  Incorrect DATE value: '2020091423'
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--error
+ERROR:  Incorrect DATE value: '202009142311'
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--error
+ERROR:  Incorrect DATE value: '20200934231817.49999'
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--error
+ERROR:  Incorrect DATE value: '14231817.49999'
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--error
+ERROR:  Incorrect DATE value: '231817.49999'
+LINE 1: insert into test values(231817.49999);
+                                ^
+select * from test;
+     dt     
+------------
+ 2000-02-22
+ 2002-12-11
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+(8 rows)
+
+set sql_mode ='';
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+(19 rows)
+
+set sql_mode ='NO_ZERO_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+(19 rows)
+
+set sql_mode ='NO_ZERO_DATE,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--error
+ERROR:  Incorrect DATE value: '0'
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--error
+ERROR:  Incorrect DATE value: '2'
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--error
+ERROR:  Incorrect DATE value: '21'
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--error
+ERROR:  Incorrect DATE value: '2221'
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--error
+ERROR:  Incorrect DATE value: '22211'
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--error
+ERROR:  Incorrect DATE value: '20200933'
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--error
+ERROR:  Incorrect DATE value: '2020091423'
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--error
+ERROR:  Incorrect DATE value: '202009142311'
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--error
+ERROR:  Incorrect DATE value: '20200934231817.49999'
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--error
+ERROR:  Incorrect DATE value: '14231817.49999'
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--error
+ERROR:  Incorrect DATE value: '231817.49999'
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--2023-00-17
+select * from test;
+     dt     
+------------
+ 2000-02-22
+ 2002-12-11
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 2023-00-17
+(9 rows)
+
+set sql_mode ='NO_ZERO_IN_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(230017);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+(20 rows)
+
+set sql_mode ='NO_ZERO_IN_DATE,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--error
+ERROR:  Incorrect DATE value: '2'
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--error
+ERROR:  Incorrect DATE value: '21'
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--error
+ERROR:  Incorrect DATE value: '2221'
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--error
+ERROR:  Incorrect DATE value: '22211'
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--error
+ERROR:  Incorrect DATE value: '20200933'
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--error
+ERROR:  Incorrect DATE value: '2020091423'
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--error
+ERROR:  Incorrect DATE value: '202009142311'
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--error
+ERROR:  Incorrect DATE value: '20200934231817.49999'
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--error
+ERROR:  Incorrect DATE value: '14231817.49999'
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--error
+ERROR:  Incorrect DATE value: '231817.49999'
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--error
+ERROR:  Incorrect DATE value: '230017'
+LINE 1: insert into test values(230017);
+                                ^
+select *  from test;
+     dt     
+------------
+ 0000-00-00
+ 2000-02-22
+ 2002-12-11
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+(9 rows)
+
+set sql_mode ='ALLOW_INVALID_DATES';
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00--warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--2023-00-17
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 2023-00-17
+(20 rows)
+
+set sql_mode ='ALLOW_INVALID_DATES,STRICT_TRANS_TABLES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--error
+ERROR:  Incorrect DATE value: '2'
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--error
+ERROR:  Incorrect DATE value: '21'
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--error
+ERROR:  Incorrect DATE value: '2221'
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--error
+ERROR:  Incorrect DATE value: '22211'
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--error
+ERROR:  Incorrect DATE value: '20200933'
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--error
+ERROR:  Incorrect DATE value: '2020091423'
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--error
+ERROR:  Incorrect DATE value: '202009142311'
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--error
+ERROR:  Incorrect DATE value: '20200934231817.49999'
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--error
+ERROR:  Incorrect DATE value: '14231817.49999'
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--error
+ERROR:  Incorrect DATE value: '231817.49999'
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--2023-00-17
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 2000-02-22
+ 2002-12-11
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 2023-00-17
+(10 rows)
+
+----20231013
+set sql_mode ='ALLOW_INVALID_DATES,NO_ZERO_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--2023-00-17
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 2023-00-17
+(20 rows)
+
+set sql_mode ='ALLOW_INVALID_DATES,NO_ZERO_IN_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00
+insert into test values(2);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(230017);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+(20 rows)
+
+set sql_mode ='NO_ZERO_DATE,NO_ZERO_IN_DATE';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(230017);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+(20 rows)
+
+set sql_mode ='NO_ZERO_DATE,NO_ZERO_IN_DATE,ALLOW_INVALID_DATES';
+WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+delete from test;
+insert into test values(0);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(0);
+                                ^
+insert into test values(2);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2);
+                                ^
+insert into test values(21);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(21);
+                                ^
+insert into test values(222);--2000-02-22
+insert into test values(2221);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2221);
+                                ^
+insert into test values(22211);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(22211);
+                                ^
+insert into test values(21211);--2002-12-11
+insert into test values(20200933);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200933);
+                                ^
+insert into test values(2020091423);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(2020091423);
+                                ^
+insert into test values(202009142311);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(202009142311);
+                                ^
+insert into test values(20200914231817);--2020-09-14--warning
+WARNING:  Incorrect date value:'20200914231817'
+LINE 1: insert into test values(20200914231817);
+                                ^
+insert into test values(20200914231817.66);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.66'
+LINE 1: insert into test values(20200914231817.66);
+                                ^
+insert into test values(20200914231817.49999);--2020-09-14 --warning
+WARNING:  Incorrect date value:'20200914231817.49999'
+LINE 1: insert into test values(20200914231817.49999);
+                                ^
+insert into test values(20200934231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(20200934231817.49999);
+                                ^
+insert into test values(0914231817.49999);--2000-09-14 --warning
+WARNING:  Incorrect date value:'914231817.49999'
+LINE 1: insert into test values(0914231817.49999);
+                                ^
+insert into test values(190914231817.49999);--2019-09-14 --warning
+WARNING:  Incorrect date value:'190914231817.49999'
+LINE 1: insert into test values(190914231817.49999);
+                                ^
+insert into test values(790914231817.49999);--1979-09-14 --warning
+WARNING:  Incorrect date value:'790914231817.49999'
+LINE 1: insert into test values(790914231817.49999);
+                                ^
+insert into test values(14231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(14231817.49999);
+                                ^
+insert into test values(231817.49999);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(231817.49999);
+                                ^
+insert into test values(230017);--0000-00-00 --warning
+WARNING:  Data truncated for column.
+LINE 1: insert into test values(230017);
+                                ^
+select * from test;
+     dt     
+------------
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2000-02-22
+ 0000-00-00
+ 0000-00-00
+ 2002-12-11
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+ 2020-09-14
+ 2020-09-14
+ 2020-09-14
+ 0000-00-00
+ 2000-09-14
+ 2019-09-14
+ 1979-09-14
+ 0000-00-00
+ 0000-00-00
+ 0000-00-00
+(20 rows)
+
+drop table test;
+set sql_mode to default;
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+-- oper
+---=
+select cast('2022-01-21' as date) = cast('2022-01-21' as date);--true 
+ ?column? 
+----------
+ t
+(1 row)
+
+select 212 = cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 = cast('2022-01-32' as date);
+                          ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 = cast('2022-01-30' as date);--false
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.01 = cast('2022-01-21' as date);--false
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL = cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 = cast('2022-01-21' as date);--false
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.4 = cast('2022-01-21' as date);--false
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.00 = cast('2022-01-21' as date);--ture
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121 = cast('2022-01-21' as date);--true
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) = cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) = cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) = cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) = cast('0000-00-00' as dat...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) = cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) = 20220121.00; 
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('0000-00-00' as date) <=> cast(0 as date);
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <=> cast(0 as date);
+                    ^
+ ?column? 
+----------
+ f
+(1 row)
+
+--<>
+select cast('2022-01-21' as date) <> cast('2022-01-21' as date);--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select 212 <> cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 <> cast('2022-01-32' as date);
+                           ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 <> cast('2022-01-30' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.01 <> cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL <> cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 <> cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.4 <> cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.00 <> cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121 <> cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('2022-01-21' as date) <> cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) <> cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) <> cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <> cast('0000-00-00' as da...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <> cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) <> 20220121.00;--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('0000-00-00' as date) <> cast(0 as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <> cast(0 as date);
+                    ^
+ ?column? 
+----------
+ 
+(1 row)
+
+--<
+select cast('2022-01-21' as date) < cast('2022-01-21' as date);--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select 212 < cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 < cast('2022-01-32' as date);
+                          ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 < cast('2022-01-30' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.01 < cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL < cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 < cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.4 < cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.00 < cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121 < cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('2022-01-21' as date) < cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) < cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) < cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) < cast('0000-00-00' as dat...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) < cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) < 20220121.00;--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('0000-00-00' as date) < cast(0 as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) < cast(0 as date);
+                    ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-01-02' as date) < cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-01-02' as date) < cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+-->
+select cast('2022-01-21' as date) > cast('2022-01-21' as date);--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select 212 > cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 > cast('2022-01-32' as date);
+                          ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 > cast('2022-01-30' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.01 > cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL > cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 > cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.4 > cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.00 > cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121 > cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('2022-01-21' as date) > cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) > cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) > cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) > cast('0000-00-00' as dat...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) > cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) > 20220121.00;--0 
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('0000-00-00' as date) > cast(0 as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) > cast(0 as date);
+                    ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-01-02' as date) > cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-01-02' as date) > cast('0000-00-00' as dat...
+                                                 ^
+ ?column? 
+----------
+ 
+(1 row)
+
+--<=
+select cast('2022-01-21' as date) <= cast('2022-01-21' as date);--1 
+ ?column? 
+----------
+ t
+(1 row)
+
+select 212 <= cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 <= cast('2022-01-32' as date);
+                           ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 <= cast('2022-01-30' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.01 <= cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL <= cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 <= cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.4 <= cast('2022-01-21' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.00 <= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121 <= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) <= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) <= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) <= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <= cast('0000-00-00' as da...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) <= 20220121.00;--1 
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('0000-00-00' as date) <= cast(0 as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <= cast(0 as date);
+                    ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-01-02' as date) <= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-01-02' as date) <= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+-->=
+select cast('2022-01-21' as date) >= cast('2022-01-21' as date);--1 
+ ?column? 
+----------
+ t
+(1 row)
+
+select 212 >= cast('2022-01-32' as date);--NULL--warning
+WARNING:  Incorrect datetime value: '2022-01-32'
+LINE 1: select 212 >= cast('2022-01-32' as date);
+                           ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select 212 >= cast('2022-01-30' as date);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.01 >= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL >= cast('2022-01-21' as date);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 20220121.5 >= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.4 >= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121.00 >= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 20220121 >= cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) >= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('2022-01-21' as date) >= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-00-00' as date) >= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) >= cast('0000-00-00' as da...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) >= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('2022-01-21' as date) >= 20220121.00;--1 
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('0000-00-00' as date) >= cast(0 as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) >= cast(0 as date);
+                    ^
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast('0000-01-02' as date) >= cast('0000-00-00' as date);--NULL warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-01-02' as date) >= cast('0000-00-00' as da...
+                                                  ^
+ ?column? 
+----------
+ 
+(1 row)
+
+--<=>
+select cast('0000-00-00' as date) <=> NULL;--1--warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <=> NULL;
+                    ^
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL <=> NULL;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(0 as date) <=> NULL;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('0000-00-00' as date) <=> cast(0 as date);--0 --warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <=> cast(0 as date);
+                    ^
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('0000-00-00' as date) <=> cast('0000-00-00' as date);--1--warning
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <=> cast('0000-00-00' as d...
+                    ^
+WARNING:  Incorrect datetime value: '0000-00-00'
+LINE 1: select cast('0000-00-00' as date) <=> cast('0000-00-00' as d...
+                                                   ^
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) <=> 4; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('2022-01-21' as date) <=> 4.4;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('2022-01-21' as date) <=> 20220121;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) <=> 20220121.00;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('2022-01-21' as date) <=> 20220121.43;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 20220121.00 <=> cast('2022-01-21' as date);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+--+
+select 2.3 +  cast('2022-02-32' as date) ;--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select 2.3 +  cast('2022-02-32' as date) ;
+                           ^
+ ?column? 
+----------
+         
+(1 row)
+
+select 2 +  cast('2022-02-32' as date) ;--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select 2 +  cast('2022-02-32' as date) ;
+                         ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) +  cast('2022-02-32' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select cast('2022-01-21' as date) +  cast('2022-02-32' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) +  NULL ;--NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) +  cast('9999-02-30' as date);--NULL warning
+WARNING:  Incorrect datetime value: '9999-02-30'
+LINE 1: select cast('2022-01-21' as date) +  cast('9999-02-30' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-01' as date) +  cast('2022-02-30' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-30'
+LINE 1: select cast('2022-01-01' as date) +  cast('2022-02-30' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-01' as date) +  cast('2022-02-20' as date);--40440321
+ ?column? 
+----------
+ 40440321
+(1 row)
+
+select cast(0 as date)  + 44;--44
+ ?column? 
+----------
+       44
+(1 row)
+
+select cast(0 as date)  + 44.88;--44.88
+ ?column? 
+----------
+    44.88
+(1 row)
+
+select 20220121.5 + cast('2022-01-21' as date);--40440242.5
+  ?column?  
+------------
+ 40440242.5
+(1 row)
+
+select 20220121.4 + cast('2022-01-21' as date);--40440242.4
+  ?column?  
+------------
+ 40440242.4
+(1 row)
+
+select 20220121.00 + cast('2022-01-21' as date);--40440242.00
+  ?column?   
+-------------
+ 40440242.00
+(1 row)
+
+select 20220121 + cast('2022-01-21' as date);--40440242
+ ?column? 
+----------
+ 40440242
+(1 row)
+
+---
+select 2.3 -  cast('2022-02-32' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select 2.3 -  cast('2022-02-32' as date);
+                           ^
+ ?column? 
+----------
+         
+(1 row)
+
+select 2 -  cast('2022-02-32' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select 2 -  cast('2022-02-32' as date);
+                         ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) -  cast('2022-02-32' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-32'
+LINE 1: select cast('2022-01-21' as date) -  cast('2022-02-32' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) -  NULL;--NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-21' as date) -  cast('9999-02-30' as date);--NULL warning
+WARNING:  Incorrect datetime value: '9999-02-30'
+LINE 1: select cast('2022-01-21' as date) -  cast('9999-02-30' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-01' as date) -  cast('2022-02-30' as date);--NULL warning
+WARNING:  Incorrect datetime value: '2022-02-30'
+LINE 1: select cast('2022-01-01' as date) -  cast('2022-02-30' as da...
+                                                  ^
+ ?column? 
+----------
+         
+(1 row)
+
+select cast('2022-01-01' as date) -  cast('2022-02-20' as date);---119
+ ?column? 
+----------
+     -119
+(1 row)
+
+select cast(0 as date)  - 44;---44
+ ?column? 
+----------
+      -44
+(1 row)
+
+select cast(0 as date)  - 44.88;---44.88
+ ?column? 
+----------
+   -44.88
+(1 row)
+
+select 20220121.5 - cast('2022-01-21' as date);--0.5
+ ?column? 
+----------
+      0.5
+(1 row)
+
+select 20220121.4 - cast('2022-01-21' as date);--0.4
+ ?column? 
+----------
+      0.4
+(1 row)
+
+select 20220121.00 - cast('2022-01-21' as date);--0.00
+ ?column? 
+----------
+     0.00
+(1 row)
+
+select 20220121 - cast('2022-01-21' as date);--0
+ ?column? 
+----------
+        0
+(1 row)
+
+--btree and hash index
+create table idx_1 (idx date);
+create index idx1 on idx_1 using btree (idx);
+insert into idx_1 values ('1022-01-01'),('1522-01-01'),('2022-01-01');
+vacuum full analyze idx_1;
+explain (COSTS OFF) select * from idx_1 where idx < '2022-01-01';
+              QUERY PLAN              
+--------------------------------------
+ Seq Scan on idx_1
+   Filter: (idx < '2022-01-01'::date)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx > '2022-01-01';
+              QUERY PLAN              
+--------------------------------------
+ Seq Scan on idx_1
+   Filter: (idx > '2022-01-01'::date)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx = '1022-01-01';
+              QUERY PLAN              
+--------------------------------------
+ Seq Scan on idx_1
+   Filter: (idx = '1022-01-01'::date)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx <= '2022-01-01';
+              QUERY PLAN               
+---------------------------------------
+ Seq Scan on idx_1
+   Filter: (idx <= '2022-01-01'::date)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx >= '1022-01-01';
+              QUERY PLAN               
+---------------------------------------
+ Seq Scan on idx_1
+   Filter: (idx >= '1022-01-01'::date)
+(2 rows)
+
+create table idx_2 (idx date);
+create index idx2 on idx_2 using hash (idx);
+vacuum full analyze idx_2;
+insert into idx_2 values ('1022-01-01'),('1522-01-01'),('2022-01-01');
+explain (COSTS OFF) select * from idx_2 where idx = '1522-01-01';
+              QUERY PLAN              
+--------------------------------------
+ Seq Scan on idx_2
+   Filter: (idx = '1522-01-01'::date)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_2 where idx > '1522-01-01';
+              QUERY PLAN              
+--------------------------------------
+ Seq Scan on idx_2
+   Filter: (idx > '1522-01-01'::date)
+(2 rows)
+
+drop table idx_1,idx_2;
+create table test_date(c1 date, c2 date);
+insert into test_date values('2012-01-01','2012-01-02'),('2013-01-01','2013-01-02');
+create table test_tmp(c1 date, c2 date);
+insert into test_tmp values('2012-01-01','2012-01-02'),('2013-02-01','2013-02-02');
+select * from test_date where(c1,c2) not in (select * from test_tmp);
+     c1     |     c2     
+------------+------------
+ 2013-01-01 | 2013-01-02
+(1 row)
+
+drop table test_date,test_tmp;
+create table tb1 (a date);
+create or replace procedure proc1()
+as
+$$
+declare
+i int := 1000;
+j int := 1;
+k int := 1;
+begin
+    while i <= 1200 loop
+	j = 1;
+		while j <=12 loop 
+		k = 1;
+			while k <= 28 loop
+				insert into tb1 (a) values (i*10000+j*100+k);
+				k = k+1;
+			end loop;
+			j = j+1;
+		end loop;
+    i = i+1;
+    end loop;
+end;
+$$ language plmysql;
+call proc1();
+create index idx1 on tb1 using hash(a);
+vacuum full analyze tb1;
+explain (COSTS OFF) select * from tb1 where a = '1004-04-04';
+               QUERY PLAN               
+----------------------------------------
+ Index Scan using idx1 on tb1
+   Index Cond: (a = '1004-04-04'::date)
+(2 rows)
+
+drop index idx1;
+create index idx_tree on tb1(a);
+vacuum full analyze tb1;
+--explain (COSTS OFF) select * from tb1 where a < '1004-04-04';
+explain (COSTS OFF) select * from tb1 where a = '1004-04-04';
+               QUERY PLAN               
+----------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Index Cond: (a = '1004-04-04'::date)
+(2 rows)
+
+--explain (COSTS OFF) select * from tb1 where a >= '1004-04-04';
+explain (COSTS OFF) select * from tb1 where a > '1104-04-04';
+               QUERY PLAN               
+----------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Index Cond: (a > '1104-04-04'::date)
+(2 rows)
+
+drop procedure proc1;
+drop table tb1;
+create table tb1(id date);
+create table tb2(id date);
+insert into tb1 values('1970-05-02');
+insert into tb2 select id from tb1;
+insert into tb2 select id + 8800 from tb1;
+ERROR:  Incorrect DATE value: '19709302'
+select * from tb1;
+     id     
+------------
+ 1970-05-02
+(1 row)
+
+select * from tb2;
+     id     
+------------
+ 1970-05-02
+(1 row)
+
+drop table tb1,tb2;
+select cast((date'1970-02-03' + 8800)as date);--NULL
+WARNING:  Incorrect datetime value: '19709003'
+ mysdate 
+---------
+ 
+(1 row)
+
+create table tb3(id int);
+insert into tb3 values(19220212);
+insert into tb3 values(99999999);
+create table tb4 as select id::date from tb3;
+ERROR:  Incorrect DATE value: '99999999'
+select id::date from tb3;
+WARNING:  Incorrect datetime value: '99999999'
+     id     
+------------
+ 1922-02-12
+ 
+(2 rows)
+
+create table tb5 as select '19950399'::date;
+ERROR:  Incorrect DATE value: '19950399'
+LINE 1: create table tb5 as select '19950399'::date;
+                                   ^
+drop table tb3;
+-- *
+select cast('221222222222' as date) + cast('221222222222' as date); --40442444
+ ?column? 
+----------
+ 40442444
+(1 row)
+
+select cast('221222222222' as date) - cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) * cast('221222222220' as date); --408897819173284
+    ?column?     
+-----------------
+ 408897819173284
+(1 row)
+
+select cast('221222222222' as date) * 111; --2244555642
+  ?column?  
+------------
+ 2244555642
+(1 row)
+
+select cast('221222222222' as date) * 111.11; --2246779976.42
+   ?column?    
+---------------
+ 2246779976.42
+(1 row)
+
+select 111 * cast('221222222220' as date); --2244555642
+  ?column?  
+------------
+ 2244555642
+(1 row)
+
+select 111.11 * cast('221222222220' as date); --2246779976.42
+   ?column?    
+---------------
+ 2246779976.42
+(1 row)
+
+select cast('221222222222' as date) * 111111111111; --2246802444442197642
+      ?column?       
+---------------------
+ 2246802444442197642
+(1 row)
+
+-- /
+-- Need to be modified: mysql takes the last 4 digits !!!!!!!
+select cast('221222222222' as date) / cast('221222222220' as date); --1.0000
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) / 111; --182173.1712
+      ?column?      
+--------------------
+ 182173.17117117118
+(1 row)
+
+select cast('221222222222' as date) / 111.1; -- 182009.1989
+      ?column?       
+---------------------
+ 182009.198919891989
+(1 row)
+
+select cast('221222222222' as date) / 115; -- 175836.7130
+      ?column?      
+--------------------
+ 175836.71304347826
+(1 row)
+
+select cast('221222222222' as date) / 0; -- NULL warning
+WARNING:  Division by 0.
+ ?column? 
+----------
+         
+(1 row)
+
+select 111111111111 / cast('221222222220' as date); --5494.7773
+     ?column?      
+-------------------
+ 5494.777274637507
+(1 row)
+
+select 111111111111.111 / cast('221222222220' as date);--5494.7772746
+       ?column?        
+-----------------------
+ 5494.7772746429963530
+(1 row)
+
+select 0 / cast('221222222220' as date); --0.0000
+ ?column? 
+----------
+        0
+(1 row)
+
+-- div
+select cast('221222222222' as date) div cast('221222222220' as date); --1
+ mys_div 
+---------
+       1
+(1 row)
+
+select cast('221222222222' as date) div 111; --182173
+ mys_div 
+---------
+  182173
+(1 row)
+
+select cast('221222222222' as date) div 111.1; -- 182009
+ mys_div 
+---------
+  182009
+(1 row)
+
+select cast('221222222222' as date) div 115; -- 175836
+ mys_div 
+---------
+  175836
+(1 row)
+
+select cast('221222222222' as date) div 0; -- NULL warning
+WARNING:  Division by 0.
+ mys_div 
+---------
+        
+(1 row)
+
+select 111111111111 div cast('221222222220' as date); --5494
+ mys_div 
+---------
+    5494
+(1 row)
+
+select 111111111111.111 div cast('221222222220' as date);--5494
+ mys_div 
+---------
+    5494
+(1 row)
+
+select 0 div cast('221222222220' as date); --0
+ mys_div 
+---------
+       0
+(1 row)
+
+select cast('221222222222' as date) div 115.1; --175683
+ mys_div 
+---------
+  175683
+(1 row)
+
+select cast('221222222222' as date) div 115.2; --175531
+ mys_div 
+---------
+  175531
+(1 row)
+
+-- %
+select cast('111111111111' as date) % cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) % 111; --20
+ ?column? 
+----------
+       20
+(1 row)
+
+select cast('221222222222' as date) % 111.1; --22.1
+ ?column? 
+----------
+     22.1
+(1 row)
+
+select cast('111111111111' as date) % 0; --NULL warning
+WARNING:  Division by 0.
+ ?column? 
+----------
+         
+(1 row)
+
+select 111111111111 % cast('221222222220' as date); --15717443
+ ?column? 
+----------
+ 15717443
+(1 row)
+
+select 111111111111.111 % cast('221222222220' as date); --15717443.111
+   ?column?   
+--------------
+ 15717443.111
+(1 row)
+
+select 0 % cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+-- mod
+select cast('111111111111' as date) mod cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) mod 111; --20
+ ?column? 
+----------
+       20
+(1 row)
+
+select cast('221222222222' as date) mod 111.1; --22.1
+ ?column? 
+----------
+     22.1
+(1 row)
+
+select cast('111111111111' as date) mod 0; --NULL warning
+WARNING:  Division by 0.
+ ?column? 
+----------
+         
+(1 row)
+
+select 111111111111 mod cast('221222222220' as date); --15717443
+ ?column? 
+----------
+ 15717443
+(1 row)
+
+select 111111111111.111 mod cast('221222222220' as date); --15717443.111
+   ?column?   
+--------------
+ 15717443.111
+(1 row)
+
+select 0 mod cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) MOD cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+-- &
+select cast('111111111111' as date) & cast('111111111110' as date); --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select cast('111111111111' as date) & 111; --7
+ ?column? 
+----------
+        7
+(1 row)
+
+select cast('221222222222' as date) & 111.1; --38
+ ?column? 
+----------
+       38
+(1 row)
+
+select cast('111111111111' as date) & 0; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 111111111111 & cast('221222222220' as date); --3408134
+ ?column? 
+----------
+  3408134
+(1 row)
+
+select 111111111111.111 & cast('221222222220' as date); --3408134
+ ?column? 
+----------
+  3408134
+(1 row)
+
+select 0 & cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) & 1.4; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) & 1.5; --2
+ ?column? 
+----------
+        2
+(1 row)
+
+-- |
+select cast('111111111111' as date) | cast('111111111110' as date); --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select cast('111111111111' as date) | 111; --20111215
+ ?column? 
+----------
+ 20111215
+(1 row)
+
+select cast('221222222222' as date) | 111.1; --20221295
+ ?column? 
+----------
+ 20221295
+(1 row)
+
+select cast('111111111111' as date) | 0; --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select 111111111111 | cast('221222222220' as date); --111127924199
+   ?column?   
+--------------
+ 111127924199
+(1 row)
+
+select 111111111111.111 | cast('221222222220' as date); --111127924199
+   ?column?   
+--------------
+ 111127924199
+(1 row)
+
+select 0 | cast('221222222220' as date); --20221222
+ ?column? 
+----------
+ 20221222
+(1 row)
+
+select cast('221222222222' as date) | 1.4; --20221223
+ ?column? 
+----------
+ 20221223
+(1 row)
+
+select cast('221222222222' as date) | 1.5; --20221222
+ ?column? 
+----------
+ 20221222
+(1 row)
+
+-- ~
+-- Need to be modified: 64-bit unsigned number after the number is inverted in mysql !!!!!!!
+select ~cast('111111111111' as date) ;--18446744073689440504
+ ?column?  
+-----------
+ -20111112
+(1 row)
+
+-- ^
+select cast('111111111111' as date) ^ cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) ^ 111; --20111208
+ ?column? 
+----------
+ 20111208
+(1 row)
+
+select cast('221222222222' as date) ^ 111.1; --20221257
+ ?column? 
+----------
+ 20221257
+(1 row)
+
+select cast('111111111111' as date) ^ 0; --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select 111111111111 ^ cast('221222222220' as date); --111124516065
+   ?column?   
+--------------
+ 111124516065
+(1 row)
+
+select 111111111111.111 ^ cast('221222222220' as date); --111124516065
+   ?column?   
+--------------
+ 111124516065
+(1 row)
+
+select 0 ^ cast('221222222220' as date); --20221222
+ ?column? 
+----------
+ 20221222
+(1 row)
+
+select cast('221222222222' as date) ^ 1.4; --20221223
+ ?column? 
+----------
+ 20221223
+(1 row)
+
+select cast('221222222222' as date) ^ 1.5; --20221220
+ ?column? 
+----------
+ 20221220
+(1 row)
+
+-- >>
+select cast('111111111111' as date) >> cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) >> 111; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) >> 111.1; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) >> 0; --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select 111111111111 >> cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 111111111111.111 >> cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 0 >> cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) >> 1.4; --10110611
+ ?column? 
+----------
+ 10110611
+(1 row)
+
+select cast('221222222222' as date) >> 1.5; --5055305
+ ?column? 
+----------
+  5055305
+(1 row)
+
+-- <<
+select cast('111111111111' as date) << cast('111111111110' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) << 111; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) << 111.1; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('111111111111' as date) << 0; --20111111
+ ?column? 
+----------
+ 20111111
+(1 row)
+
+select 111111111111 << cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 111111111111.111 << cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 0 << cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) << 1.4; --40442444
+ ?column? 
+----------
+ 40442444
+(1 row)
+
+select cast('221222222222' as date) << 1.5; --80884888
+ ?column? 
+----------
+ 80884888
+(1 row)
+
+-- bit_count
+select bit_count(cast('111111111111' as date));  --14
+ bit_count 
+-----------
+        14
+(1 row)
+
+select bit_count(cast('111111' as date));  --14
+ bit_count 
+-----------
+        14
+(1 row)
+
+select bit_count(cast('99991231235959' as date));  --21
+ bit_count 
+-----------
+        21
+(1 row)
+
+select bit_count(cast('111111111111.4' as date));  --14
+ bit_count 
+-----------
+        14
+(1 row)
+
+select bit_count(cast('111111111111.5' as date));  --14
+ bit_count 
+-----------
+        14
+(1 row)
+
+-- &&
+select cast('111111111111' as date) && cast('111111111110' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('111111111111' as date) && 111; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) && 111.1; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('111111111111' as date) && 0; --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select 111111111111 && cast('221222222220' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 111111111111.111 && cast('221222222220' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 0 && cast('221222222220' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+select cast('221222222222' as date) && 1.4; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) && 1.5; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+-- ||
+select cast('111111111111' as date) || cast('111111111110' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('111111111111' as date) || 111; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) || 111.1; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('111111111111' as date) || 0; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 111111111111 || cast('221222222220' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 111111111111.111 || cast('221222222220' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 0 || cast('221222222220' as date); --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) || 1.4; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast('221222222222' as date) || 1.5; --1
+ ?column? 
+----------
+        1
+(1 row)
+
+-- !
+select !cast('111111111111' as date); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+-- and or xor
+select cast('221222222222' as date) and cast('221222222222' as date );--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('221222222222' as date) and cast('221222222222' as date ) and 0::boolean;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('221222222222' as date) or cast('221222222222' as date );--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('221222222222' as date) or cast('221222222222' as date ) or 0::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast('221222222222' as date) xor cast('221222222222' as date );--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('221222222222' as date) xor cast('221222222222' as date ) xor 0::boolean;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast('221222222222' as date) xor cast('221222222222' as date ) xor 1::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+-- between and
+create table t1 (f1 date, f2 date, f3 date );
+insert into t1 values('2001-01-01','2001-01-01','2001-01-01');
+insert into t1 values('2001-02-05','2001-02-05','2001-02-05');
+insert into t1 values('2001-03-10','2001-03-09','2001-03-10');
+insert into t1 values('2001-04-15','2001-04-15','2001-04-15');
+insert into t1 values('2001-05-20','2001-05-20','2001-05-20');
+select f2 from t1 where f2 between '2001-2-5' and '01-04-14';
+     f2     
+------------
+ 2001-02-05
+ 2001-03-09
+(2 rows)
+
+select f1, f2, f3 from t1 where f1 between f2 and f3;
+     f1     |     f2     |     f3     
+------------+------------+------------
+ 2001-01-01 | 2001-01-01 | 2001-01-01
+ 2001-02-05 | 2001-02-05 | 2001-02-05
+ 2001-03-10 | 2001-03-09 | 2001-03-10
+ 2001-04-15 | 2001-04-15 | 2001-04-15
+ 2001-05-20 | 2001-05-20 | 2001-05-20
+(5 rows)
+
+select f2 from t1 where '2001-04-10' between f2 and '01-05-01';--Need to be modified: text type conversion bit timestamp in mysql !!!!
+ f2 
+----
+(0 rows)
+
+--select f2 from t1 where '2001-04-10' between f2 and '01-05-01' --mysql result;
+-- f2 
+------
+--2001-01-01
+--2001-02-05
+--2001-03-09
+--(0 rows)
+select f2 from t1 where cast('2001-04-10' as date) between f2 and '01-05-01';
+     f2     
+------------
+ 2001-01-01
+ 2001-02-05
+ 2001-03-09
+(3 rows)
+
+select f2, f3 from t1 where '01-03-10' between f2 and f3;
+     f2     |     f3     
+------------+------------
+ 2001-03-09 | 2001-03-10
+(1 row)
+
+select f2, f3 from t1 where '01-03-10' not between f2 and f3;
+     f2     |     f3     
+------------+------------
+ 2001-01-01 | 2001-01-01
+ 2001-02-05 | 2001-02-05
+ 2001-04-15 | 2001-04-15
+ 2001-05-20 | 2001-05-20
+(4 rows)
+
+drop table t1;
+-- in
+create table t1(f2 date);
+insert into t1 values('01-01-01'),('01-02-03'),('02-04-06');
+select * from t1 where f2 in ('01-01-01','01-02-03','01-02-03');
+     f2     
+------------
+ 2001-01-01
+ 2001-02-03
+(2 rows)
+
+select * from t1 where f2 not in ('01-01-01','01-02-03','01-02-03');
+     f2     
+------------
+ 2002-04-06
+(1 row)
+
+drop table t1;
+-- is
+CREATE TABLE t1 (a date, b INT);
+INSERT INTO t1 VALUES ('01-02-03',1), ('1999-05-10',2);
+SELECT * FROM t1 WHERE a IS true;
+     a      | b 
+------------+---
+ 2001-02-03 | 1
+ 1999-05-10 | 2
+(2 rows)
+
+SELECT * FROM t1 WHERE a IS not true;
+ a | b 
+---+---
+(0 rows)
+
+SELECT * FROM t1 WHERE a IS NULL;
+ a | b 
+---+---
+(0 rows)
+
+SELECT * FROM t1 WHERE a IS not NULL;
+     a      | b 
+------------+---
+ 2001-02-03 | 1
+ 1999-05-10 | 2
+(2 rows)
+
+drop table t1;
+-- like
+create table t1 (f1 date);
+insert into t1 values('2001-01-01');
+insert into t1 values('9999-12-31');
+insert into t1 values('9999-12-31');
+select f1 from t1 where f1 like '2001-01-01'; --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast('2001-01-01' as date); --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like 010101010101; --0
+ f1 
+----
+(0 rows)
+
+select f1 from t1 where f1 like '010101010101'; --0 --Need to be modified: text type conversion bit timestamp in mysql!!!!!!
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like 20010101010101; --0
+ f1 
+----
+(0 rows)
+
+select f1 from t1 where f1 like '20010101010101'; --0 --Need to be modified: text type conversion bit timestamp in mysql!!!!!!
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast('010101010101' as date); --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast(010101010101 as date); --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast(20010101010101 as date); --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast('20010101.010101' as date); --1
+     f1     
+------------
+ 2001-01-01
+(1 row)
+
+select f1 from t1 where f1 like cast('99991231.2359595' as date);
+WARNING:  Truncated incorrect datetime value: '99991231.2359595'
+LINE 1: select f1 from t1 where f1 like cast('99991231.2359595' as d...
+                                             ^
+     f1     
+------------
+ 9999-12-31
+ 9999-12-31
+(2 rows)
+
+drop table t1;
+--Type Conversion
+select cast(111111111111 as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('111111111111' as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11-11-11 11:11:11'::pg_catalog.timestamp as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11-11-11 11:11:11'::pg_catalog.timestamptz as date );
+WARNING:  Truncated incorrect datetime value: '2011-11-11 11:11:11-08'
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast('11-11-11 11:11:11'::pg_catalog.date as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+-- mysql type to mysql type
+select cast(cast('11-11-11 11:11:11.111111' as date) as date ); 
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as datetime) as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as datetime(4)) as date );
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as timestamp) as date );
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: select cast(cast('11-11-11 11:11:11.111111' as timestamp) as...
+                         ^
+select cast(cast('11-11-11 11:11:11.111111' as timestamp(4)) as date );
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: select cast(cast('11-11-11 11:11:11.111111' as timestamp(4))...
+                         ^
+--select cast(cast('11-11-11 11:11:11.111111' as time) as date );
+--select cast(cast('11-11-11 11:11:11.111111' as time(4)) as date );
+select cast(cast('11-11-11 11:11:11.111111' as date) as date);
+  mysdate   
+------------
+ 2011-11-11
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as date) as datetime);
+     mysdatetime     
+---------------------
+ 2011-11-11 00:00:00
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as date) as datetime(3));
+      mysdatetimes       
+-------------------------
+ 2011-11-11 00:00:00.000
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as date) as timestamp);
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+select cast(cast('11-11-11 11:11:11.111111' as date) as timestamp(4));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+select cast(cast('11-11-11 11:11:11.111111' as date) as time);
+ mystime  
+----------
+ 00:00:00
+(1 row)
+
+select cast(cast('11-11-11 11:11:11.111111' as date) as time(4));
+   mystimes    
+---------------
+ 00:00:00.0000
+(1 row)
+
+-- mysql type opertor----Need to be modified
+select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as datetime);
+    ?column?    
+----------------
+ 40222222111111
+(1 row)
+
+select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as timestamp);
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: ...t cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 ...
+                                                             ^
+--select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as time);
+select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as datetime(3));
+    ?column?    
+----------------
+ 40222222111111
+(1 row)
+
+select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as timestamp(3));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: ...t cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 ...
+                                                             ^
+--select cast('11-11-11 11:11:11.111111' as date) + cast('11-11-11 11:11:11.111111' as time(3));
+select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as timestamp);
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: ...st('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 ...
+                                                             ^
+--select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as time);
+select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as timestamp(3));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: ...st('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 ...
+                                                             ^
+--select cast('11-11-11 11:11:11.111111' as datetime) + cast('11-11-11 11:11:11.111111' as time(3));
+select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as time);
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
+                    ^
+select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as datetime(3));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
+                    ^
+select cast('11-11-11 11:11:11.111111' as timestamp) + cast('11-11-11 11:11:11.111111' as time(3));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: select cast('11-11-11 11:11:11.111111' as timestamp) + cast(...
+                    ^
+--select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as datetime(3));
+select cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 11:11:11.111111' as timestamp(3));
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: ...t cast('11-11-11 11:11:11.111111' as time) + cast('11-11-11 ...
+                                                             ^

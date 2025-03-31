@@ -81,7 +81,9 @@ WHERE p1.oid != p2.oid AND
     p1.proname = p2.proname AND
     p1.pronargs = p2.pronargs AND
     p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p2.pronamespace != 9900 AND 
+    p2.pronamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
+    p1.pronamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
     p1.proargtypes = p2.proargtypes order by p1.oid, p1.proname, p2.oid, p2.proname;
 
 -- Considering only built-in procs (prolang = 12), look for multiple uses
@@ -415,7 +417,7 @@ order by 1;
 -- Check that all immutable functions are marked parallel safe
 SELECT p1.oid, p1.proname
 FROM pg_proc AS p1
-WHERE provolatile = 'i' AND proparallel = 'u' AND p1.pronamespace != 9900;
+WHERE provolatile = 'i' AND proparallel = 'u' AND p1.pronamespace != 9900 AND p1.pronamespace != (select oid from pg_namespace where nspname = 'ivymy');
 
 
 -- **************** pg_cast ****************
@@ -544,8 +546,8 @@ WHERE condefault AND
 
 SELECT p1.oid, p1.oprname
 FROM pg_operator as p1
-WHERE (p1.oprkind != 'b' AND p1.oprkind != 'l') OR
-    p1.oprresult = 0 OR p1.oprcode = 0;
+WHERE ((p1.oprkind != 'b' AND p1.oprkind != 'l') OR
+    p1.oprresult = 0 OR p1.oprcode = 0) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');;
 
 -- Look for missing or unwanted operand types
 
@@ -577,7 +579,8 @@ WHERE p1.oprcom = p2.oid AND
      p1.oprleft != p2.oprright OR
      p1.oprright != p2.oprleft OR
      p1.oprresult != p2.oprresult OR
-     p1.oid != p2.oprcom);
+     p1.oid != p2.oprcom) AND 
+	 p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
 
 -- Look for negatory operators that don't agree.
 -- DEFINITIONAL NOTE: If A.oprnegate = B, then both A and B must yield
@@ -635,10 +638,10 @@ WHERE p1.oprcom = p2.oid AND
 
 SELECT p1.oid, p1.oprname
 FROM pg_operator AS p1
-WHERE p1.oprcanmerge AND NOT EXISTS
+WHERE p1.oprcanmerge AND NOT EXISTS 
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree') AND
-         amopopr = p1.oid AND amopstrategy = 3);
+         amopopr = p1.oid AND amopstrategy = 3) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
 
 -- And the converse.
 
@@ -656,7 +659,7 @@ FROM pg_operator AS p1
 WHERE p1.oprcanhash AND NOT EXISTS
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'hash') AND
-         amopopr = p1.oid AND amopstrategy = 1);
+         amopopr = p1.oid AND amopstrategy = 1) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
 
 -- And the converse.
 
@@ -1389,7 +1392,7 @@ ORDER BY 1;
 
 SELECT relname, attname, attcollation
 FROM pg_class c, pg_attribute a
-WHERE c.oid = attrelid AND c.oid < 16384 AND
+WHERE c.oid = attrelid AND c.oid < 32767 AND
     c.relkind != 'v' AND  -- we don't care about columns in views
     attcollation != 0 AND
     attcollation != (SELECT oid FROM pg_collation WHERE collname = 'C');

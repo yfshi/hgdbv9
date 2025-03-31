@@ -2015,31 +2015,31 @@ UPDATE test_tsquery SET keyword = to_tsquery('english', txtkeyword);
 ALTER TABLE test_tsquery ADD COLUMN sample tsquery;
 UPDATE test_tsquery SET sample = to_tsquery('english', txtsample::text);
 SELECT COUNT(*) FROM test_tsquery WHERE keyword <  'new <-> york';
- count 
+ COUNT 
 -------
      2
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword <= 'new <-> york';
- count 
+ COUNT 
 -------
      3
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword = 'new <-> york';
- count 
+ COUNT 
 -------
      1
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword >= 'new <-> york';
- count 
+ COUNT 
 -------
      4
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword >  'new <-> york';
- count 
+ COUNT 
 -------
      3
 (1 row)
@@ -2047,31 +2047,31 @@ SELECT COUNT(*) FROM test_tsquery WHERE keyword >  'new <-> york';
 CREATE UNIQUE INDEX bt_tsq ON test_tsquery (keyword);
 SET enable_seqscan=OFF;
 SELECT COUNT(*) FROM test_tsquery WHERE keyword <  'new <-> york';
- count 
+ COUNT 
 -------
      2
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword <= 'new <-> york';
- count 
+ COUNT 
 -------
      3
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword = 'new <-> york';
- count 
+ COUNT 
 -------
      1
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword >= 'new <-> york';
- count 
+ COUNT 
 -------
      4
 (1 row)
 
 SELECT COUNT(*) FROM test_tsquery WHERE keyword >  'new <-> york';
- count 
+ COUNT 
 -------
      3
 (1 row)

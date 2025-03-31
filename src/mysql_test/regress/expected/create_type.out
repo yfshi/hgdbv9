@@ -94,25 +94,7 @@ CREATE TYPE bogus_type (
 	"Default" = 42,
 	"Passedbyvalue"
 );
-WARNING:  type attribute "Internallength" not recognized
-LINE 2:  "Internallength" = 4,
-         ^
-WARNING:  type attribute "Input" not recognized
-LINE 3:  "Input" = int42_in,
-         ^
-WARNING:  type attribute "Output" not recognized
-LINE 4:  "Output" = int42_out,
-         ^
-WARNING:  type attribute "Alignment" not recognized
-LINE 5:  "Alignment" = int4,
-         ^
-WARNING:  type attribute "Default" not recognized
-LINE 6:  "Default" = 42,
-         ^
-WARNING:  type attribute "Passedbyvalue" not recognized
-LINE 7:  "Passedbyvalue"
-         ^
-ERROR:  type input function must be specified
+ERROR:  type input function int42_in must return type bogus_type
 -- invalid: input/output function incompatibility
 CREATE TYPE bogus_type (INPUT = array_in,
     OUTPUT = array_out,

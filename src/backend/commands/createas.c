@@ -50,6 +50,9 @@
 #include "utils/rel.h"
 #include "utils/rls.h"
 #include "utils/snapmgr.h"
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+#include "utils/ora_compatible.h"
+/* End - ReqID:SRS-MYSQL-DATETYPE */
 /* Begin - BUG#M0000401 */
 #include "commands/defrem.h"
 #include "tcop/utility.h"
@@ -394,6 +397,11 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 
 		/* call ExecutorStart to prepare the plan for execution */
 		ExecutorStart(queryDesc, GetIntoRelEFlags(into));
+
+		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+		if(compatible_db == MYS_PARSER)
+			queryDesc->estate->es_createtbas = true;
+		/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 		/* run the plan to completion */
 		ExecutorRun(queryDesc, ForwardScanDirection, 0L, true);

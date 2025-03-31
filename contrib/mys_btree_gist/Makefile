@@ -5,6 +5,11 @@ MODULE_big = mys_btree_gist
 OBJS =  \
 	$(WIN32RES) \
 	btree_gist.o \
+	btree_mysdate.o \
+	btree_interval.o \
+	btree_mysdatetime.o \
+	btree_mystimestamp.o \
+	btree_mystime.o \
 	btree_utils_num.o \
 	btree_year.o
 
@@ -12,7 +17,7 @@ EXTENSION = mys_btree_gist
 DATA = mys_btree_gist--1.0.sql
 PGFILEDESC = "mys_btree_gist - B-tree equivalent GiST operator classes"
 
-MYS_REGRESS = init year
+MYS_REGRESS = init year mys_date mys_datetime mys_timestamp mys_time
 EXTRA_INSTALL = contrib/ivorysql_my
 
 SHLIB_LINK += $(filter -lm, $(LIBS))

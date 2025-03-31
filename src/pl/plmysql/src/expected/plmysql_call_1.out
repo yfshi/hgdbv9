@@ -434,7 +434,14 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
-NOTICE:  v_cnt = 42
+ERROR:  operator is not unique: unknown || integer
+LINE 1: v_Text := 'v_cnt = ' || v_cnt
+                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+QUERY:  v_Text := 'v_cnt = ' || v_cnt
+CONTEXT:  PL/mySQL function p1(integer,text) line 3 at assignment
+SQL statement "CALL p1(v_cnt := v_cnt, v_Text := v_Text)"
+PL/mySQL function inline_code_block line 6 at CALL
 DO $$
 DECLARE
   v_Text text;
@@ -443,7 +450,14 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
-NOTICE:  v_cnt = 10
+ERROR:  operator is not unique: unknown || integer
+LINE 1: v_Text := 'v_cnt = ' || v_cnt
+                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+QUERY:  v_Text := 'v_cnt = ' || v_cnt
+CONTEXT:  PL/mySQL function p1(integer,text) line 3 at assignment
+SQL statement "CALL p1(10, v_Text := v_Text)"
+PL/mySQL function inline_code_block line 5 at CALL
 DO $$
 DECLARE
   v_Text text;
@@ -453,4 +467,11 @@ BEGIN
   RAISE NOTICE '%', v_Text;
 END;
 $$;
-NOTICE:  <NULL>
+ERROR:  operator is not unique: unknown || integer
+LINE 1: v_Text := 'v_cnt = ' || v_cnt
+                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+QUERY:  v_Text := 'v_cnt = ' || v_cnt
+CONTEXT:  PL/mySQL function p1(integer,text) line 3 at assignment
+SQL statement "CALL p1(v_Text := v_Text, v_cnt := v_cnt)"
+PL/mySQL function inline_code_block line 6 at CALL

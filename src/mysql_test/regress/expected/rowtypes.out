@@ -95,7 +95,7 @@ insert into people values ('(Joe,Blow)', '1984-01-10');
 select * from people;
      fn     |     bd     
 ------------+------------
- (Joe,Blow) | 01-10-1984
+ (Joe,Blow) | 1984-01-10
 (1 row)
 
 -- at the moment this will not work due to ALTER TABLE inadequacy:
@@ -106,7 +106,7 @@ alter table fullname add column suffix text default null;
 select * from people;
      fn      |     bd     
 -------------+------------
- (Joe,Blow,) | 01-10-1984
+ (Joe,Blow,) | 1984-01-10
 (1 row)
 
 -- test insertion/updating of subfields
@@ -114,7 +114,7 @@ update people set fn.suffix = 'Jr';
 select * from people;
       fn       |     bd     
 ---------------+------------
- (Joe,Blow,Jr) | 01-10-1984
+ (Joe,Blow,Jr) | 1984-01-10
 (1 row)
 
 insert into quadtable (f1, q.c1.r, q.c2.i) values(44,55,66);
@@ -137,7 +137,7 @@ select * from quadtable;
 -- be toasted inside pp, it must still work after being copied to people.
 create temp table pp (f1 text);
 insert into pp values (repeat('abcdefghijkl', 100000));
-insert into people select ('Jim', f1, null)::fullname, current_date from pp;
+insert into people select ('Jim', f1, null)::fullname, cast('2024-11-26' as date) from pp;
 select (fn).first, substr((fn).last, 1, 20), length((fn).last) from people;
  first |        substr        | length  
 -------+----------------------+---------
@@ -433,24 +433,20 @@ select a,b from test_table where (a,b) > ('a','a') order by a,b;
 reset enable_sort;
 -- Check row comparisons with IN
 select * from int8_tbl i8 where i8 in (row(123,456));  -- fail, type mismatch
-ERROR:  cannot compare dissimilar column types bigint and integer at record column 1
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select * from int8_tbl i8 where i8 in (row(123,456));
+                      ^
 explain (costs off)
 select * from int8_tbl i8
 where i8 in (row(123,456)::int8_tbl, '(4567890123456789,123)');
-                                  QUERY PLAN                                   
--------------------------------------------------------------------------------
- Seq Scan on int8_tbl i8
-   Filter: (i8.* = ANY ('{"(123,456)","(4567890123456789,123)"}'::int8_tbl[]))
-(2 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2: select * from int8_tbl i8
+                      ^
 select * from int8_tbl i8
 where i8 in (row(123,456)::int8_tbl, '(4567890123456789,123)');
-        q1        | q2  
-------------------+-----
-              123 | 456
- 4567890123456789 | 123
-(2 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select * from int8_tbl i8
+                      ^
 -- Check ability to select columns from an anonymous rowtype
 select (row(1, 2.0)).f1;
  f1 
@@ -1010,93 +1006,45 @@ select longname(f) from fullname f;
 -- (bug #11210 and other reports)
 --
 select row_to_json(i) from int8_tbl i;
-                  row_to_json                   
-------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":123}
- {"q1":4567890123456789,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select row_to_json(i) from int8_tbl i;
+                                   ^
 -- since "i" is of type "int8_tbl", attaching aliases doesn't change anything:
 select row_to_json(i) from int8_tbl i(x,y);
-                  row_to_json                   
-------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":123}
- {"q1":4567890123456789,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select row_to_json(i) from int8_tbl i(x,y);
+                                   ^
 -- in these examples, we'll report the exposed column names of the subselect:
 select row_to_json(ss) from
   (select q1, q2 from int8_tbl) as ss;
-                  row_to_json                   
-------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":123}
- {"q1":4567890123456789,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1, q2 from int8_tbl) as ss;
+                              ^
 select row_to_json(ss) from
   (select q1, q2 from int8_tbl offset 0) as ss;
-                  row_to_json                   
-------------------------------------------------
- {"q1":123,"q2":456}
- {"q1":123,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":123}
- {"q1":4567890123456789,"q2":4567890123456789}
- {"q1":4567890123456789,"q2":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1, q2 from int8_tbl offset 0) as ss;
+                              ^
 select row_to_json(ss) from
   (select q1 as a, q2 as b from int8_tbl) as ss;
-                 row_to_json                  
-----------------------------------------------
- {"a":123,"b":456}
- {"a":123,"b":4567890123456789}
- {"a":4567890123456789,"b":123}
- {"a":4567890123456789,"b":4567890123456789}
- {"a":4567890123456789,"b":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1 as a, q2 as b from int8_tbl) as ss;
+                                        ^
 select row_to_json(ss) from
   (select q1 as a, q2 as b from int8_tbl offset 0) as ss;
-                 row_to_json                  
-----------------------------------------------
- {"a":123,"b":456}
- {"a":123,"b":4567890123456789}
- {"a":4567890123456789,"b":123}
- {"a":4567890123456789,"b":4567890123456789}
- {"a":4567890123456789,"b":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1 as a, q2 as b from int8_tbl offset 0) as ss;
+                                        ^
 select row_to_json(ss) from
   (select q1 as a, q2 as b from int8_tbl) as ss(x,y);
-                 row_to_json                  
-----------------------------------------------
- {"x":123,"y":456}
- {"x":123,"y":4567890123456789}
- {"x":4567890123456789,"y":123}
- {"x":4567890123456789,"y":4567890123456789}
- {"x":4567890123456789,"y":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1 as a, q2 as b from int8_tbl) as ss(x,y);
+                                        ^
 select row_to_json(ss) from
   (select q1 as a, q2 as b from int8_tbl offset 0) as ss(x,y);
-                 row_to_json                  
-----------------------------------------------
- {"x":123,"y":456}
- {"x":123,"y":4567890123456789}
- {"x":4567890123456789,"y":123}
- {"x":4567890123456789,"y":4567890123456789}
- {"x":4567890123456789,"y":-4567890123456789}
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   (select q1 as a, q2 as b from int8_tbl offset 0) as ss(x,y...
+                                        ^
 explain (costs off)
 select row_to_json(q) from
   (select thousand, tenthous from tenk1
@@ -1135,26 +1083,33 @@ select row_to_json(q) from
  {"a":42,"b":1042}
 (2 rows)
 
-create temp table tt1 as select * from int8_tbl limit 2;
-create temp table tt2 () inherits(tt1);
-insert into tt2 values(0,0);
-select row_to_json(r) from (select q2,q1 from tt1 offset 0) r;
-           row_to_json            
-----------------------------------
- {"q2":456,"q1":123}
- {"q2":4567890123456789,"q1":123}
- {"q2":0,"q1":0}
-(3 rows)
-
+create temp table tt11 as select * from int8_tbl limit 2;
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: create temp table tt11 as select * from int8_tbl limit 2;
+                                                ^
+create temp table tt22 () inherits(tt11);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
+insert into tt22 values(0,0);
+ERROR:  relation "tt22" does not exist
+LINE 1: insert into tt22 values(0,0);
+                    ^
+select row_to_json(r) from (select q2,q1 from tt11 offset 0) r;
+ERROR:  relation "tt11" does not exist
+LINE 1: select row_to_json(r) from (select q2,q1 from tt11 offset 0)...
+                                                      ^
 -- check no-op rowtype conversions
-create temp table tt3 () inherits(tt2);
-insert into tt3 values(33,44);
-select row_to_json(tt3::tt2::tt1) from tt3;
-    row_to_json    
--------------------
- {"q1":33,"q2":44}
-(1 row)
-
+create temp table tt33 () inherits(tt22);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
+insert into tt33 values(33,44);
+ERROR:  relation "tt33" does not exist
+LINE 1: insert into tt33 values(33,44);
+                    ^
+select row_to_json(tt33::tt22::tt11) from tt33;
+ERROR:  relation "tt33" does not exist
+LINE 1: select row_to_json(tt33::tt22::tt11) from tt33;
+                                                  ^
 --
 -- IS [NOT] NULL should not recurse into nested composites (bug #14235)
 --

@@ -1436,26 +1436,9 @@ create view vv2a as
 select * from (values(now(),2,3,now(),5)) v(a,b,c,d,e)
 union all
 select * from tt7a left join tt8a using (x), tt8a tt8ax;
+ERROR:  failed to find conversion function from timestamp with time zone to date
 select pg_get_viewdef('vv2a', true);
-                     pg_get_viewdef                     
---------------------------------------------------------
-  SELECT v.a,                                          +
-     v.b,                                              +
-     v.c,                                              +
-     v.d,                                              +
-     v.e                                               +
-    FROM ( VALUES (now(),2,3,now(),5)) v(a, b, c, d, e)+
- UNION ALL                                             +
-  SELECT x AS a,                                       +
-     tt7a.y AS b,                                      +
-     tt8a.z AS c,                                      +
-     tt8ax.x_1 AS d,                                   +
-     tt8ax.z AS e                                      +
-    FROM tt7a                                          +
-      LEFT JOIN tt8a USING (x),                        +
-     tt8a tt8ax(x_1, z);
-(1 row)
-
+ERROR:  relation "vv2a" does not exist
 --
 -- Also check dropping a column that existed when the view was made
 --
@@ -1808,30 +1791,12 @@ select
   trim(E'\\000'::bytea from E'\\000Tom\\000'::bytea) as btb,
   trim(leading E'\\000'::bytea from E'\\000Tom\\000'::bytea) as ltb,
   trim(trailing E'\\000'::bytea from E'\\000Tom\\000'::bytea) as rtb;
+ERROR:  operator does not exist: date + interval
+LINE 3:   ('2022-12-01'::date + '1 day'::interval) at time zone 'UTC...
+                              ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select pg_get_viewdef('tt201v', true);
-                                        pg_get_viewdef                                         
------------------------------------------------------------------------------------------------
-  SELECT (('12-01-2022'::date + '@ 1 day'::interval) AT TIME ZONE 'UTC'::text) AS atz,        +
-     EXTRACT(day FROM now()) AS extr,                                                         +
-     ((now(), '@ 1 day'::interval) OVERLAPS (CURRENT_TIMESTAMP(2), '@ 1 day'::interval)) AS o,+
-     ('foo'::text IS NORMALIZED) AS isn,                                                      +
-     ('foo'::text IS NFKC NORMALIZED) AS isnn,                                                +
-     NORMALIZE('foo'::text) AS n,                                                             +
-     NORMALIZE('foo'::text, NFKD) AS nfkd,                                                    +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2) AS ovl,                                  +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2 FOR 3) AS ovl2,                           +
-     POSITION(('foo'::text) IN ('foobar'::text)) AS p,                                        +
-     SUBSTRING('foo'::text FROM 2 FOR 3) AS s,                                                +
-     SUBSTRING('foo'::text SIMILAR 'f'::text ESCAPE '#'::text) AS ss,                         +
-     "substring"('foo'::text, 'oo'::text) AS ssf,                                             +
-     TRIM(BOTH ' '::text FROM ' foo '::text) AS bt,                                           +
-     TRIM(LEADING ' '::text FROM ' foo '::text) AS lt,                                        +
-     TRIM(TRAILING FROM ' foo '::text) AS rt,                                                 +
-     TRIM(BOTH '\x00'::bytea FROM '\x00546f6d00'::bytea) AS btb,                              +
-     TRIM(LEADING '\x00'::bytea FROM '\x00546f6d00'::bytea) AS ltb,                           +
-     TRIM(TRAILING '\x00'::bytea FROM '\x00546f6d00'::bytea) AS rtb;
-(1 row)
-
+ERROR:  relation "tt201v" does not exist
 -- corner cases with empty join conditions
 create view tt21v as
 select * from tt5 natural inner join tt6;
@@ -2049,7 +2014,7 @@ drop cascades to view aliased_view_2
 drop cascades to view aliased_view_3
 drop cascades to view aliased_view_4
 DROP SCHEMA testviewschm2 CASCADE;
-NOTICE:  drop cascades to 75 other objects
+NOTICE:  drop cascades to 73 other objects
 DETAIL:  drop cascades to table t1
 drop cascades to view temporal1
 drop cascades to view temporal2
@@ -2098,7 +2063,6 @@ drop cascades to view vv3
 drop cascades to view vv4
 drop cascades to table tt7a
 drop cascades to table tt8a
-drop cascades to view vv2a
 drop cascades to table tt9
 drop cascades to table tt10
 drop cascades to view vv5
@@ -2116,7 +2080,6 @@ drop cascades to table tt15v_log
 drop cascades to view tt18v
 drop cascades to view tt19v
 drop cascades to view tt20v
-drop cascades to view tt201v
 drop cascades to view tt22v
 drop cascades to view tt23v
 drop cascades to view tt24v

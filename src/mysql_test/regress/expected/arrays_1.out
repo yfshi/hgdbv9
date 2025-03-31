@@ -318,28 +318,34 @@ SELECT f1[:] FROM POINT_TBL;
 ERROR:  slices of fixed-length arrays not implemented
 -- subscript assignments to fixed-width result in NULL if previous value is NULL
 UPDATE point_tbl SET f1[0] = 10 WHERE f1 IS NULL RETURNING *;
-ERROR:  relation "point_tbl" does not exist
-LINE 1: UPDATE point_tbl SET f1[0] = 10 WHERE f1 IS NULL RETURNING *...
-               ^
+ f1 
+----
+ 
+(1 row)
+
 INSERT INTO point_tbl(f1[0]) VALUES(0) RETURNING *;
-ERROR:  relation "point_tbl" does not exist
-LINE 1: INSERT INTO point_tbl(f1[0]) VALUES(0) RETURNING *;
-                    ^
+ f1 
+----
+ 
+(1 row)
+
 -- NULL assignments get ignored
 UPDATE point_tbl SET f1[0] = NULL WHERE f1::text = '(10,10)'::point::text RETURNING *;
-ERROR:  relation "point_tbl" does not exist
-LINE 1: UPDATE point_tbl SET f1[0] = NULL WHERE f1::text = '(10,10)'...
-               ^
+   f1    
+---------
+ (10,10)
+(1 row)
+
 -- but non-NULL subscript assignments work
 UPDATE point_tbl SET f1[0] = -10, f1[1] = -10 WHERE f1::text = '(10,10)'::point::text RETURNING *;
-ERROR:  relation "point_tbl" does not exist
-LINE 1: UPDATE point_tbl SET f1[0] = -10, f1[1] = -10 WHERE f1::text...
-               ^
+    f1     
+-----------
+ (-10,-10)
+(1 row)
+
 -- but not to expand the range
 UPDATE point_tbl SET f1[3] = 10 WHERE f1::text = '(-10,-10)'::point::text RETURNING *;
-ERROR:  relation "point_tbl" does not exist
-LINE 1: UPDATE point_tbl SET f1[3] = 10 WHERE f1::text = '(-10,-10)'...
-               ^
+ERROR:  array subscript out of range
 --
 -- test array extension
 --
@@ -462,6 +468,9 @@ INSERT INTO arrtest2 VALUES(
   ARRAY[[['aaa','aab'],['aba','abb'],['aca','acb']],[['baa','bab'],['bba','bbb'],['bca','bcb']]],
   ARRAY['19620326','19931223','19970117']::timestamp[]
 );
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 6:   ARRAY['19620326','19931223','19970117']::timestamp[]
+                ^
 -- some more test data
 CREATE TEMP TABLE arrtest_f (f0 int, f1 text, f2 float8);
 insert into arrtest_f values(1,'cat1',1.21);
@@ -2259,21 +2268,14 @@ select array(select array['Hello', i::text] from generate_series(9,11) i);
 
 -- Insert/update on a column that is array of composite
 create temp table mys_t1 (f1 int8_tbl[]);
-ERROR:  type "int8_tbl[]" does not exist
-LINE 1: create temp table mys_t1 (f1 int8_tbl[]);
-                                     ^
 insert into mys_t1 (f1[5].q1) values(42);
-ERROR:  relation "mys_t1" does not exist
-LINE 1: insert into mys_t1 (f1[5].q1) values(42);
-                    ^
 update mys_t1 set f1[5].q2 = 43;
-ERROR:  relation "mys_t1" does not exist
-LINE 1: update mys_t1 set f1[5].q2 = 43;
-               ^
 select * from mys_t1;
-ERROR:  relation "mys_t1" does not exist
-LINE 1: select * from mys_t1;
-                      ^
+        f1         
+-------------------
+ [5:5]={"(42,43)"}
+(1 row)
+
 -- Check that arrays of composites are safely detoasted when needed
 create temp table src (f1 text);
 insert into src

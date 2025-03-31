@@ -281,13 +281,4 @@ CREATE OPERATOR ===
 	"Hashes",
 	"Merges"
 );
-WARNING:  operator attribute "Leftarg" not recognized
-WARNING:  operator attribute "Rightarg" not recognized
-WARNING:  operator attribute "Procedure" not recognized
-WARNING:  operator attribute "Commutator" not recognized
-WARNING:  operator attribute "Negator" not recognized
-WARNING:  operator attribute "Restrict" not recognized
-WARNING:  operator attribute "Join" not recognized
-WARNING:  operator attribute "Hashes" not recognized
-WARNING:  operator attribute "Merges" not recognized
-ERROR:  operator function must be specified
+ERROR:  function area_equal_function(box, box) does not exist

@@ -57,7 +57,7 @@ NOTICE:  drop cascades to view test_ns_schema_2.abc_view
 -- verify that the objects were created
 SELECT COUNT(*) FROM pg_class WHERE relnamespace =
     (SELECT oid FROM pg_namespace WHERE nspname = 'test_ns_schema_1');
- count 
+ COUNT 
 -------
      5
 (1 row)
@@ -84,7 +84,7 @@ SELECT * FROM test_ns_schema_1.abc_view;
 ALTER SCHEMA test_ns_schema_1 RENAME TO test_ns_schema_renamed;
 SELECT COUNT(*) FROM pg_class WHERE relnamespace =
     (SELECT oid FROM pg_namespace WHERE nspname = 'test_ns_schema_1');
- count 
+ COUNT 
 -------
      0
 (1 row)
@@ -109,7 +109,7 @@ drop cascades to view test_ns_schema_renamed.abc_view
 -- verify that the objects were dropped
 SELECT COUNT(*) FROM pg_class WHERE relnamespace =
     (SELECT oid FROM pg_namespace WHERE nspname = 'test_ns_schema_renamed');
- count 
+ COUNT 
 -------
      0
 (1 row)

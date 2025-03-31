@@ -243,13 +243,13 @@ CREATE VIEW timetz_local_view AS
   FROM TIMETZ_TBL
   ORDER BY f1;
 SELECT pg_get_viewdef('timetz_local_view', true);
-                                  pg_get_viewdef                                  
-----------------------------------------------------------------------------------
-  SELECT timetz_tbl.f1 AS dat,                                                   +
-     (timetz_tbl.f1 AT TIME ZONE current_setting('TimeZone'::text)) AS dat_at_tz,+
-     (timetz_tbl.f1 AT TIME ZONE '@ 0'::interval) AS dat_at_int                  +
-    FROM timetz_tbl                                                              +
-   ORDER BY timetz_tbl.f1;
+                                   pg_get_viewdef                                   
+------------------------------------------------------------------------------------
+  SELECT "TIMETZ_TBL".f1 AS dat,                                                   +
+     ("TIMETZ_TBL".f1 AT TIME ZONE current_setting('TimeZone'::text)) AS dat_at_tz,+
+     ("TIMETZ_TBL".f1 AT TIME ZONE '@ 0'::interval) AS dat_at_int                  +
+    FROM "TIMETZ_TBL"                                                              +
+   ORDER BY "TIMETZ_TBL".f1;
 (1 row)
 
 TABLE timetz_local_view;

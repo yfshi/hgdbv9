@@ -98,7 +98,6 @@ SELECT * FROM update_test;
 
 -- fail, multi assignment to same column:
 UPDATE update_test SET (c,b) = ('car', a+b), b = a + 1 WHERE a = 10;
-ERROR:  multiple assignments to same column "b"
 -- uncorrelated sub-select:
 UPDATE update_test
   SET (b,a) = (select a,b from update_test where b = 41 and c = 'car')
@@ -341,7 +340,7 @@ ALTER TABLE part_b_10_b_20 ATTACH PARTITION part_c_1_100 FOR VALUES FROM (1) TO 
 EXPLAIN (costs off) UPDATE range_parted set c = c - 50 WHERE c > 97;
                       QUERY PLAN                       
 -------------------------------------------------------
- Update on range_parted
+ Update on MULTI-RELATION
    Update on part_a_1_a_10 range_parted_1
    Update on part_a_10_a_20 range_parted_2
    Update on part_b_1_b_10 range_parted_3

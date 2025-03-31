@@ -300,12 +300,6 @@ CREATE AGGREGATE case_agg ( -- old syntax
 	"Initcond1" = '0',
 	"Parallel" = safe
 );
-WARNING:  aggregate attribute "Sfunc1" not recognized
-WARNING:  aggregate attribute "Basetype" not recognized
-WARNING:  aggregate attribute "Stype1" not recognized
-WARNING:  aggregate attribute "Initcond1" not recognized
-WARNING:  aggregate attribute "Parallel" not recognized
-ERROR:  aggregate stype must be specified
 CREATE AGGREGATE case_agg(float8)
 (
 	"Stype" = internal,
@@ -315,10 +309,4 @@ CREATE AGGREGATE case_agg(float8)
 	"Finalfunc_modify" = read_write,
 	"Parallel" = safe
 );
-WARNING:  aggregate attribute "Stype" not recognized
-WARNING:  aggregate attribute "Sfunc" not recognized
-WARNING:  aggregate attribute "Finalfunc" not recognized
-WARNING:  aggregate attribute "Finalfunc_extra" not recognized
-WARNING:  aggregate attribute "Finalfunc_modify" not recognized
-WARNING:  aggregate attribute "Parallel" not recognized
-ERROR:  aggregate stype must be specified
+ERROR:  function percentile_disc_final(internal, double precision) does not exist

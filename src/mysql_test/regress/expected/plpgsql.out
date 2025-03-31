@@ -1001,6 +1001,8 @@ begin
     return rec.slotlink;
 end;
 ' language plpgsql;
+ERROR:  relation "iface" does not exist
+CONTEXT:  compilation of PL/pgSQL function "wslot_slotlink_view" near line 28
 -- ************************************************************
 -- * View of a patchfield describing backside and patches
 -- ************************************************************
@@ -1471,50 +1473,18 @@ update PSlot set slotlink = 'HS.base.hub1.1' where slotname = 'PS.base.b2';
 -- Now we take a look at the patchfield
 --
 select * from PField_v1 where pfname = 'PF0_1' order by slotname;
- pfname |       slotname       |                         backside                         |                     patch                     
---------+----------------------+----------------------------------------------------------+-----------------------------------------------
- PF0_1  | PS.base.a1           | WS.001.1a in room 001 -> Phone PH.hc001 (Hicom standard) | PS.base.ta1 -> Phone line -0 (Central call)
- PF0_1  | PS.base.a2           | WS.001.1b in room 001 -> -                               | -
- PF0_1  | PS.base.a3           | WS.001.2a in room 001 -> Phone PH.fax001 (Canon fax)     | PS.base.ta2 -> Phone line -501 (Fax entrance)
- PF0_1  | PS.base.a4           | WS.001.2b in room 001 -> -                               | -
- PF0_1  | PS.base.a5           | WS.001.3a in room 001 -> -                               | -
- PF0_1  | PS.base.a6           | WS.001.3b in room 001 -> -                               | -
- PF0_1  | PS.base.b1           | WS.002.1a in room 002 -> Phone PH.hc002 (Hicom standard) | PS.base.ta5 -> Phone line -103
- PF0_1  | PS.base.b2           | WS.002.1b in room 002 -> orion IF eth0 (PC)              | Patchfield PF0_1 hub slot 1
- PF0_1  | PS.base.b3           | WS.002.2a in room 002 -> Phone PH.hc003 (Hicom standard) | PS.base.tb2 -> Phone line -106
- PF0_1  | PS.base.b4           | WS.002.2b in room 002 -> -                               | -
- PF0_1  | PS.base.b5           | WS.002.3a in room 002 -> -                               | -
- PF0_1  | PS.base.b6           | WS.002.3b in room 002 -> -                               | -
- PF0_1  | PS.base.c1           | WS.003.1a in room 003 -> -                               | -
- PF0_1  | PS.base.c2           | WS.003.1b in room 003 -> -                               | -
- PF0_1  | PS.base.c3           | WS.003.2a in room 003 -> -                               | -
- PF0_1  | PS.base.c4           | WS.003.2b in room 003 -> -                               | -
- PF0_1  | PS.base.c5           | WS.003.3a in room 003 -> -                               | -
- PF0_1  | PS.base.c6           | WS.003.3b in room 003 -> -                               | -
-(18 rows)
-
+ERROR:  relation "PField_v1" does not exist
+LINE 1: select * from PField_v1 where pfname = 'PF0_1' order by slot...
+                      ^
 select * from PField_v1 where pfname = 'PF0_2' order by slotname;
- pfname |       slotname       |            backside            |                                 patch                                  
---------+----------------------+--------------------------------+------------------------------------------------------------------------
- PF0_2  | PS.base.ta1          | Phone line -0 (Central call)   | PS.base.a1 -> WS.001.1a in room 001 -> Phone PH.hc001 (Hicom standard)
- PF0_2  | PS.base.ta2          | Phone line -501 (Fax entrance) | PS.base.a3 -> WS.001.2a in room 001 -> Phone PH.fax001 (Canon fax)
- PF0_2  | PS.base.ta3          | Phone line -102                | -
- PF0_2  | PS.base.ta4          | -                              | -
- PF0_2  | PS.base.ta5          | Phone line -103                | PS.base.b1 -> WS.002.1a in room 002 -> Phone PH.hc002 (Hicom standard)
- PF0_2  | PS.base.ta6          | Phone line -104                | -
- PF0_2  | PS.base.tb1          | -                              | -
- PF0_2  | PS.base.tb2          | Phone line -106                | PS.base.b3 -> WS.002.2a in room 002 -> Phone PH.hc003 (Hicom standard)
- PF0_2  | PS.base.tb3          | Phone line -108                | -
- PF0_2  | PS.base.tb4          | Phone line -109                | -
- PF0_2  | PS.base.tb5          | Phone line -121                | -
- PF0_2  | PS.base.tb6          | Phone line -122                | -
-(12 rows)
-
+ERROR:  relation "PField_v1" does not exist
+LINE 1: select * from PField_v1 where pfname = 'PF0_2' order by slot...
+                      ^
 --
 -- Finally we want errors
 --
 insert into PField values ('PF1_1', 'should fail due to unique index');
-ERROR:  duplicate key value violates unique constraint "pfield_name"
+ERROR:  duplicate key value violates unique constraint "PField_name"
 DETAIL:  Key (name)=(PF1_1) already exists.
 update PSlot set backlink = 'WS.not.there' where slotname = 'PS.base.a1';
 ERROR:  WS.not.there         does not exist
@@ -1533,7 +1503,7 @@ ERROR:  illegal slotlink beginning with XX
 CONTEXT:  PL/pgSQL function tg_slotlink_set(character,character) line 77 at RAISE
 PL/pgSQL function tg_slotlink_a() line 17 at assignment
 insert into HSlot values ('HS', 'base.hub1', 1, '');
-ERROR:  duplicate key value violates unique constraint "hslot_name"
+ERROR:  duplicate key value violates unique constraint "HSlot_name"
 DETAIL:  Key (slotname)=(HS.base.hub1.1      ) already exists.
 insert into HSlot values ('HS', 'base.hub1', 20, '');
 ERROR:  no manual manipulation of HSlot
@@ -3064,8 +3034,6 @@ begin
   select v from generate_series(1,2) g(v) into x;
 end;
 $$;
-WARNING:  query returned more than one row
-HINT:  Make sure the query returns a single row, or use LIMIT 1.
 set plpgsql.extra_errors to 'too_many_rows';
 do $$
 declare x int;
@@ -3073,9 +3041,6 @@ begin
   select v from generate_series(1,2) g(v) into x;
 end;
 $$;
-ERROR:  query returned more than one row
-HINT:  Make sure the query returns a single row, or use LIMIT 1.
-CONTEXT:  PL/pgSQL function inline_code_block line 4 at SQL statement
 reset plpgsql.extra_errors;
 reset plpgsql.extra_warnings;
 set plpgsql.extra_warnings to 'strict_multi_assignment';
@@ -3089,12 +3054,6 @@ begin
   select 1,2,3 into x, y;
 end
 $$;
-WARNING:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_warnings is active.
-HINT:  Make sure the query returns the exact list of columns.
-WARNING:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_warnings is active.
-HINT:  Make sure the query returns the exact list of columns.
 set plpgsql.extra_errors to 'strict_multi_assignment';
 do $$
 declare
@@ -3106,10 +3065,6 @@ begin
   select 1,2,3 into x, y;
 end
 $$;
-ERROR:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_errors is active.
-HINT:  Make sure the query returns the exact list of columns.
-CONTEXT:  PL/pgSQL function inline_code_block line 6 at SQL statement
 create table test_01(a int, b int, c int);
 alter table test_01 drop column a;
 -- the check is active only when source table is not empty
@@ -3125,10 +3080,6 @@ begin
 end;
 $$;
 NOTICE:  ok
-ERROR:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_errors is active.
-HINT:  Make sure the query returns the exact list of columns.
-CONTEXT:  PL/pgSQL function inline_code_block line 8 at SQL statement
 do $$
 declare
   t test_01;
@@ -3139,10 +3090,6 @@ begin
 end;
 $$;
 NOTICE:  ok
-ERROR:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_errors is active.
-HINT:  Make sure the query returns the exact list of columns.
-CONTEXT:  PL/pgSQL function inline_code_block line 7 at SQL statement
 do $$
 declare
   t test_01;
@@ -3150,10 +3097,6 @@ begin
   select 1 into t; -- should fail;
 end;
 $$;
-ERROR:  number of source and target fields in assignment does not match
-DETAIL:  strict_multi_assignment check of extra_errors is active.
-HINT:  Make sure the query returns the exact list of columns.
-CONTEXT:  PL/pgSQL function inline_code_block line 5 at SQL statement
 drop table test_01;
 reset plpgsql.extra_errors;
 reset plpgsql.extra_warnings;
@@ -3173,15 +3116,11 @@ begin
 end;
 $$ language plpgsql;
 select * from sc_test();
-   sc_test   
--------------
- -2147483647
-  2147483647
-     -123456
-      123456
-           0
-(5 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select f1 from int4_tbl
+                       ^
+QUERY:  select f1 from int4_tbl
+CONTEXT:  PL/pgSQL function sc_test() line 6 at OPEN
 create or replace function sc_test() returns setof integer as $$
 declare
   c no scroll cursor for select f1 from int4_tbl;
@@ -3197,9 +3136,11 @@ begin
 end;
 $$ language plpgsql;
 select * from sc_test();  -- fails because of NO SCROLL specification
-ERROR:  cursor can only scan forward
-HINT:  Declare it with SCROLL option to enable backward scan.
-CONTEXT:  PL/pgSQL function sc_test() line 7 at FETCH
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select f1 from int4_tbl
+                       ^
+QUERY:  select f1 from int4_tbl
+CONTEXT:  PL/pgSQL function sc_test() line 6 at OPEN
 create or replace function sc_test() returns setof integer as $$
 declare
   c refcursor;
@@ -3215,15 +3156,11 @@ begin
 end;
 $$ language plpgsql;
 select * from sc_test();
-   sc_test   
--------------
- -2147483647
-  2147483647
-     -123456
-      123456
-           0
-(5 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select f1 from int4_tbl
+                       ^
+QUERY:  select f1 from int4_tbl
+CONTEXT:  PL/pgSQL function sc_test() line 6 at OPEN
 create or replace function sc_test() returns setof integer as $$
 declare
   c refcursor;
@@ -3239,13 +3176,11 @@ begin
 end;
 $$ language plpgsql;
 select * from sc_test();
-   sc_test   
--------------
- -2147483647
-     -123456
-           0
-(3 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select f1 from int4_tbl
+                       ^
+QUERY:  select f1 from int4_tbl
+CONTEXT:  PL/pgSQL function sc_test() line 6 at OPEN
 create or replace function sc_test() returns setof integer as $$
 declare
   c refcursor;
@@ -3262,12 +3197,11 @@ begin
 end;
 $$ language plpgsql;
 select * from sc_test();
-   sc_test   
--------------
- -2147483647
-      123456
-(2 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select f1 from int4_tbl
+                       ^
+QUERY:  select f1 from int4_tbl
+CONTEXT:  PL/pgSQL function sc_test() line 6 at OPEN
 create or replace function sc_test() returns setof integer as $$
 declare
   c cursor for select * from generate_series(1, 10);
@@ -4416,6 +4350,7 @@ create function sql_to_date(integer) returns date as $$
 select $1::text::date
 $$ language sql immutable strict;
 create cast (integer as date) with function sql_to_date(integer) as assignment;
+ERROR:  cast from type integer to type date already exists
 create function cast_invoker(integer) returns date as $$
 begin
   return $1;
@@ -4423,56 +4358,58 @@ end$$ language plpgsql;
 select cast_invoker(20150717);
  cast_invoker 
 --------------
- 07-17-2015
+ 2015-07-17
 (1 row)
 
 select cast_invoker(20150718);  -- second call crashed in pre-release 9.5
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
 begin;
 select cast_invoker(20150717);
  cast_invoker 
 --------------
- 07-17-2015
+ 2015-07-17
 (1 row)
 
 select cast_invoker(20150718);
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
 savepoint s1;
 select cast_invoker(20150718);
  cast_invoker 
 --------------
- 07-18-2015
+ 2015-07-18
 (1 row)
 
 select cast_invoker(-1); -- fails
-ERROR:  invalid input syntax for type date: "-1"
-CONTEXT:  SQL function "sql_to_date" statement 1
-PL/pgSQL function cast_invoker(integer) while casting return value to function's return type
+WARNING:  Incorrect datetime value: '-1'
+ cast_invoker 
+--------------
+ 
+(1 row)
+
 rollback to savepoint s1;
 select cast_invoker(20150719);
  cast_invoker 
 --------------
- 07-19-2015
+ 2015-07-19
 (1 row)
 
 select cast_invoker(20150720);
  cast_invoker 
 --------------
- 07-20-2015
+ 2015-07-20
 (1 row)
 
 commit;
 drop function cast_invoker(integer);
 drop function sql_to_date(integer) cascade;
-NOTICE:  drop cascades to cast from integer to date
 -- Test handling of cast cache inside DO blocks
 -- (to check the original crash case, this must be a cast not previously
 -- used in this session)
@@ -4664,13 +4601,12 @@ begin
   end loop;
 end;
 $$ language plpgsql;
+ERROR:  type "int8_tbl" does not exist
 select * from conflict_test();
-ERROR:  column reference "q1" is ambiguous
-LINE 1: select q1,q2 from int8_tbl
-               ^
-DETAIL:  It could refer to either a PL/pgSQL variable or a table column.
-QUERY:  select q1,q2 from int8_tbl
-CONTEXT:  PL/pgSQL function conflict_test() line 5 at FOR over SELECT rows
+ERROR:  function conflict_test() does not exist
+LINE 1: select * from conflict_test();
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 create or replace function conflict_test() returns setof int8_tbl as $$
 #variable_conflict use_variable
 declare r record;
@@ -4681,16 +4617,12 @@ begin
   end loop;
 end;
 $$ language plpgsql;
+ERROR:  type "int8_tbl" does not exist
 select * from conflict_test();
- q1 |        q2         
-----+-------------------
- 42 |               456
- 42 |  4567890123456789
- 42 |               123
- 42 |  4567890123456789
- 42 | -4567890123456789
-(5 rows)
-
+ERROR:  function conflict_test() does not exist
+LINE 1: select * from conflict_test();
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 create or replace function conflict_test() returns setof int8_tbl as $$
 #variable_conflict use_column
 declare r record;
@@ -4701,17 +4633,14 @@ begin
   end loop;
 end;
 $$ language plpgsql;
+ERROR:  type "int8_tbl" does not exist
 select * from conflict_test();
-        q1        |        q2         
-------------------+-------------------
-              123 |               456
-              123 |  4567890123456789
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
-(5 rows)
-
+ERROR:  function conflict_test() does not exist
+LINE 1: select * from conflict_test();
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 drop function conflict_test();
+ERROR:  function conflict_test() does not exist
 -- Check that an unreserved keyword can be used as a variable name
 create function unreserved_test() returns int as $$
 declare
@@ -5272,14 +5201,14 @@ begin
 end;
 $$;
 ERROR:  assertion failed
-CONTEXT:  PL/pgSQL function inline_code_block line 3 at ASSERT
+CONTEXT:  PL/mySQL function inline_code_block line 3 at ASSERT
 do $$
 begin
   assert NULL;  -- should fail
 end;
 $$;
 ERROR:  assertion failed
-CONTEXT:  PL/pgSQL function inline_code_block line 3 at ASSERT
+CONTEXT:  PL/mySQL function inline_code_block line 3 at ASSERT
 -- check controlling GUC
 set plpgsql.check_asserts = off;
 do $$
@@ -5287,6 +5216,8 @@ begin
   assert 1=0;  -- won't be tested
 end;
 $$;
+ERROR:  assertion failed
+CONTEXT:  PL/mySQL function inline_code_block line 3 at ASSERT
 reset plpgsql.check_asserts;
 -- test custom message
 do $$
@@ -5296,7 +5227,7 @@ begin
 end;
 $$;
 ERROR:  assertion failed, var = "some value"
-CONTEXT:  PL/pgSQL function inline_code_block line 4 at ASSERT
+CONTEXT:  PL/mySQL function inline_code_block line 4 at ASSERT
 -- ensure assertions are not trapped by 'others'
 do $$
 begin
@@ -5306,7 +5237,7 @@ exception when others then
 end;
 $$;
 ERROR:  unhandled assertion
-CONTEXT:  PL/pgSQL function inline_code_block line 3 at ASSERT
+CONTEXT:  PL/mySQL function inline_code_block line 3 at ASSERT
 -- Test use of plpgsql in a domain check constraint (cf. bug #14414)
 create function plpgsql_domain_check(val int) returns boolean as $$
 begin return val > 0; end
@@ -5325,7 +5256,7 @@ begin
 end;
 $$;
 ERROR:  value for domain plpgsql_domain violates check constraint "plpgsql_domain_check"
-CONTEXT:  PL/pgSQL function inline_code_block line 4 at assignment
+CONTEXT:  PL/mySQL function inline_code_block line 4 at assignment
 -- Test handling of expanded array passed to a domain constraint (bug #14472)
 create function plpgsql_arr_domain_check(val int[]) returns boolean as $$
 begin return val[1] > 0; end
@@ -5345,7 +5276,7 @@ begin
 end;
 $$;
 ERROR:  value for domain plpgsql_arr_domain violates check constraint "plpgsql_arr_domain_check"
-CONTEXT:  PL/pgSQL function inline_code_block line 4 at assignment
+CONTEXT:  PL/mySQL function inline_code_block line 4 at assignment
 --
 -- test usage of transition tables in AFTER triggers
 --
@@ -5627,23 +5558,32 @@ INSERT INTO alter_table_under_transition_tables
   VALUES (1, '1'), (2, '2'), (3, '3');
 UPDATE alter_table_under_transition_tables
   SET name = name || name;
-WARNING:  old table = 1=1,2=2,3=3, new table = 1=11,2=22,3=33
-NOTICE:  one = 1
+ERROR:  operator is not unique: integer || unknown
+LINE 1: (SELECT string_agg(id || '=' || name, ',') FROM d)
+                              ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+QUERY:  (SELECT string_agg(id || '=' || name, ',') FROM d)
+CONTEXT:  PL/pgSQL function alter_table_under_transition_tables_upd_func() line 3 at RAISE
 -- now change 'name' to an integer to see what happens...
 ALTER TABLE alter_table_under_transition_tables
   ALTER COLUMN name TYPE int USING name::integer;
 UPDATE alter_table_under_transition_tables
   SET name = (name::text || name::text)::integer;
-WARNING:  old table = 1=11,2=22,3=33, new table = 1=1111,2=2222,3=3333
-NOTICE:  one = 1
+ERROR:  operator is not unique: integer || unknown
+LINE 1: (SELECT string_agg(id || '=' || name, ',') FROM d)
+                              ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+QUERY:  (SELECT string_agg(id || '=' || name, ',') FROM d)
+CONTEXT:  PL/pgSQL function alter_table_under_transition_tables_upd_func() line 3 at RAISE
 -- now drop column 'name'
 ALTER TABLE alter_table_under_transition_tables
   DROP column name;
 UPDATE alter_table_under_transition_tables
   SET id = id;
-ERROR:  column "name" does not exist
+ERROR:  operator is not unique: integer || unknown
 LINE 1: (SELECT string_agg(id || '=' || name, ',') FROM d)
-                                        ^
+                              ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 QUERY:  (SELECT string_agg(id || '=' || name, ',') FROM d)
 CONTEXT:  PL/pgSQL function alter_table_under_transition_tables_upd_func() line 3 at RAISE
 --

@@ -289,7 +289,7 @@ ERROR:  table "gexec_test" does not exist
 select '2000-01-01'::date as party_over
  party_over 
 ------------
- 01-01-2000
+ 2000-01-01
 (1 row)
 
 \unset FETCH_COUNT

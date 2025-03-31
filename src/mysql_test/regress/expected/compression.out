@@ -36,13 +36,13 @@ SELECT pg_column_compression(f1) FROM cmdata1;
 
 -- decompress data slice
 SELECT SUBSTR(f1, 200, 5) FROM cmdata;
- substr 
+ SUBSTR 
 --------
  01234
 (1 row)
 
 SELECT SUBSTR(f1, 2000, 50) FROM cmdata1;
-                       substr                       
+                       SUBSTR                       
 ----------------------------------------------------
  01234567890123456789012345678901234567890123456789
 (1 row)
@@ -120,14 +120,14 @@ SELECT pg_column_compression(f1) FROM cmdata1;
 (2 rows)
 
 SELECT SUBSTR(f1, 200, 5) FROM cmdata1;
- substr 
+ SUBSTR 
 --------
  01234
  8f14e
 (2 rows)
 
 SELECT SUBSTR(f1, 200, 5) FROM cmdata2;
- substr 
+ SUBSTR 
 --------
  8f14e
 (1 row)
@@ -225,13 +225,11 @@ SELECT pg_column_compression(f1) FROM cmpart2;
 
 -- test compression with inheritance, error
 CREATE TABLE cminh() INHERITS(cmdata, cmdata1);
-NOTICE:  merging multiple inherited definitions of column "f1"
-ERROR:  column "f1" has a compression method conflict
-DETAIL:  pglz versus lz4
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE cminh(f1 TEXT COMPRESSION lz4) INHERITS(cmdata);
-NOTICE:  merging column "f1" with inherited definition
-ERROR:  column "f1" has a compression method conflict
-DETAIL:  pglz versus lz4
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- test default_toast_compression GUC
 SET default_toast_compression = '';
 ERROR:  invalid value for parameter "default_toast_compression": ""
@@ -354,9 +352,9 @@ SELECT length(f1) FROM cmmove3;
 (2 rows)
 
 CREATE TABLE badcompresstbl (a text COMPRESSION I_Do_Not_Exist_Compression); -- fails
-ERROR:  invalid compression method "i_do_not_exist_compression"
+ERROR:  invalid compression method "I_Do_Not_Exist_Compression"
 CREATE TABLE badcompresstbl (a text);
 ALTER TABLE badcompresstbl ALTER a SET COMPRESSION I_Do_Not_Exist_Compression; -- fails
-ERROR:  invalid compression method "i_do_not_exist_compression"
+ERROR:  invalid compression method "I_Do_Not_Exist_Compression"
 DROP TABLE badcompresstbl;
 \set HIDE_TOAST_COMPRESSION true
