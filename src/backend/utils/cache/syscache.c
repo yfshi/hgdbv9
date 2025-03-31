@@ -87,6 +87,9 @@
 #include "utils/inval.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
+/* Begin - ReqID:SRS-MYSQL-CASE */
+#include "mysql_parser/mys_case_sensitive.h"
+/* End - ReqID:SRS-MYSQL-CASE */
 
 /*---------------------------------------------------------------------------
 
@@ -1469,8 +1472,16 @@ SearchSysCacheAttName(Oid relid, const char *attname)
 	tuple = SearchSysCache2(ATTNAME,
 							ObjectIdGetDatum(relid),
 							CStringGetDatum(attname));
+	/* Begin - BUG:Z4315 Z4316 */
+	if (!HeapTupleIsValid(tuple) && mysql_get_attName_hook != NULL &&
+			mysql_switch_hook != NULL && mysql_switch_hook())
+	{
+		tuple = mysql_get_attName_hook(relid, pstrdup(attname));
+	}
+	/* End - BUG:Z4315 Z4316 */
 	if (!HeapTupleIsValid(tuple))
 		return NULL;
+
 	if (((Form_pg_attribute) GETSTRUCT(tuple))->attisdropped)
 	{
 		ReleaseSysCache(tuple);
