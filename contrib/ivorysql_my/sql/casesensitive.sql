@@ -347,7 +347,7 @@ create table test(sId int, sName text collate "binary");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -368,7 +368,7 @@ create table test(sId int, sName text collate "utf8mb4_general_ci");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -389,7 +389,7 @@ create table test(sId int, sName text collate "utf8mb4_unicode_ci");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -410,7 +410,7 @@ create table test(sId int, sName text collate "utf8mb4_bin");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -430,7 +430,7 @@ create table test(sId int, sName text collate "utf8_general_ci");
 --create index on test
 create index idx_Text on test(sname);
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -451,7 +451,7 @@ create table test(sId int, sName text collate "utf8_unicode_ci");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -472,7 +472,7 @@ create table test(sId int, sName text collate "utf8_bin");
 create index idx_Text on test(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -495,7 +495,7 @@ create table test(sId int, sName text collate "binary");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000); --err
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000); --err
 insert into test values (100001, 'zhangsan99999'); --err
 insert into test values (100002, 'ZHANGsan99999'); --err
 
@@ -516,7 +516,7 @@ create table test(sId int, sName text collate "utf8mb4_general_ci");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -537,7 +537,7 @@ create table test(sId int, sName text collate "utf8mb4_unicode_ci");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -558,7 +558,7 @@ create table test(sId int, sName text collate "utf8mb4_bin");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -579,7 +579,7 @@ create table test(sId int, sName text collate "utf8_general_ci");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -600,7 +600,7 @@ create table test(sId int, sName text collate "utf8_unicode_ci");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 
@@ -621,7 +621,7 @@ create table test(sId int, sName text collate "utf8_bin");
 create index idx_Text on test using hash(sname);
 
 --insert data into test
-insert into test select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test values (100001, 'zhangsan99999');
 insert into test values (100002, 'ZHANGsan99999');
 

@@ -107,4 +107,32 @@ extern CoercionPathType find_coercion_pathway(Oid targetTypeId,
 extern CoercionPathType find_typmod_coercion_function(Oid typeId,
 													  Oid *funcid);
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+extern int32 Num2Mysdate(Const *con, Oid inputTypeId);
+extern int32 Str2Mysdate(Const *con, Const *newcon);
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+extern int64 Num2Mysdatetime(Const *con, Oid inputTypeId);
+extern int64 Str2Mysdatetime(Const *con, Const *newcon);
+extern Datum Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
+extern Datum Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert);
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+extern int64 Num2Mystimestamp(Const *con, Oid inputTypeId);
+extern int64 Str2Mystimestamp(Const *con, Const *newcon);
+extern Datum Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert);
+extern Datum Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert);
+
+/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+extern int64 Num2Mystime(Const *con, Oid inputTypeId, bool is_insert);
+extern int64 Str2Mystime(Const *con, Const *newcon, bool is_insert);
+extern Datum Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
+extern Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
+
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
+
 #endif							/* PARSE_COERCE_H */

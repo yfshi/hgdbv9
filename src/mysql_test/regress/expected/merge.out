@@ -1724,20 +1724,9 @@ MERGE INTO pa_target t
     UPDATE SET balance = balance + delta, val = val || ' updated by merge'
   WHEN NOT MATCHED THEN
     INSERT VALUES (slogts::timestamp, sid, delta, 'inserted by merge');
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 SELECT * FROM pa_target ORDER BY tid;
-          logts           | tid | balance |           val            
---------------------------+-----+---------+--------------------------
- Tue Jan 31 00:00:00 2017 |   1 |     110 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   2 |     220 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   3 |      30 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   4 |     440 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   5 |     550 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   6 |      60 | inserted by merge
- Tue Jan 31 00:00:00 2017 |   7 |     770 | initial updated by merge
- Tue Feb 28 00:00:00 2017 |   8 |     880 | initial updated by merge
- Sun Jan 15 00:00:00 2017 |   9 |      90 | inserted by merge
-(9 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE pa_source;
 DROP TABLE pa_target CASCADE;
@@ -1837,9 +1826,13 @@ CREATE TABLE measurement (
 CREATE TABLE measurement_y2006m02 (
     CHECK ( logdate >= DATE '2006-02-01' AND logdate < DATE '2006-03-01' )
 ) INHERITS (measurement);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE measurement_y2006m03 (
     CHECK ( logdate >= DATE '2006-03-01' AND logdate < DATE '2006-04-01' )
 ) INHERITS (measurement);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE measurement_y2007m01 (
     filler          text,
     peaktemp        int,
@@ -1873,21 +1866,37 @@ CREATE TRIGGER insert_measurement_trigger
     BEFORE INSERT ON measurement
     FOR EACH ROW EXECUTE PROCEDURE measurement_insert_trigger();
 INSERT INTO measurement VALUES (1, '2006-02-10', 35, 10);
+ERROR:  relation "measurement_y2006m02" does not exist
+LINE 1: INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+                    ^
+QUERY:  INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+CONTEXT:  PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-02-16', 45, 20);
+ERROR:  relation "measurement_y2006m02" does not exist
+LINE 1: INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+                    ^
+QUERY:  INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+CONTEXT:  PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-17', 25, 10);
+ERROR:  relation "measurement_y2006m03" does not exist
+LINE 1: INSERT INTO measurement_y2006m03 VALUES (NEW.*)
+                    ^
+QUERY:  INSERT INTO measurement_y2006m03 VALUES (NEW.*)
+CONTEXT:  PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2006-03-27', 15, 40);
+ERROR:  relation "measurement_y2006m03" does not exist
+LINE 1: INSERT INTO measurement_y2006m03 VALUES (NEW.*)
+                    ^
+QUERY:  INSERT INTO measurement_y2006m03 VALUES (NEW.*)
+CONTEXT:  PL/pgSQL function measurement_insert_trigger() line 8 at SQL statement
 INSERT INTO measurement VALUES (1, '2007-01-15', 10, 10);
 INSERT INTO measurement VALUES (1, '2007-01-17', 10, 10);
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
        tableoid       | city_id |  logdate   | peaktemp | unitsales 
 ----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       45 |        20
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2006m03 |       1 | 03-27-2006 |       15 |        40
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-17-2007 |       10 |        10
-(6 rows)
+ measurement_y2007m01 |       1 | 2007-01-15 |       10 |        10
+ measurement_y2007m01 |       1 | 2007-01-17 |       10 |        10
+(2 rows)
 
 CREATE TABLE new_measurement (LIKE measurement);
 INSERT INTO new_measurement VALUES (1, '2006-03-01', 20, 10);
@@ -1907,23 +1916,20 @@ WHEN MATCHED THEN UPDATE
 WHEN NOT MATCHED THEN INSERT
      (city_id, logdate, peaktemp, unitsales)
    VALUES (city_id, logdate, peaktemp, unitsales);
+ERROR:  relation "measurement_y2006m02" does not exist
+LINE 1: INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+                    ^
+QUERY:  INSERT INTO measurement_y2006m02 VALUES (NEW.*)
+CONTEXT:  PL/pgSQL function measurement_insert_trigger() line 5 at SQL statement
 SELECT tableoid::regclass, * FROM measurement ORDER BY city_id, logdate;
        tableoid       | city_id |  logdate   | peaktemp | unitsales 
 ----------------------+---------+------------+----------+-----------
- measurement_y2006m02 |       1 | 02-10-2006 |       35 |        10
- measurement_y2006m02 |       1 | 02-16-2006 |       50 |        30
- measurement_y2006m03 |       1 | 03-01-2006 |       20 |        10
- measurement_y2006m03 |       1 | 03-17-2006 |       25 |        10
- measurement_y2007m01 |       1 | 01-15-2007 |       10 |        10
- measurement_y2007m01 |       1 | 01-16-2007 |       10 |        10
- measurement_y2006m02 |       2 | 02-10-2006 |       20 |        20
-(7 rows)
+ measurement_y2007m01 |       1 | 2007-01-15 |       10 |        10
+ measurement_y2007m01 |       1 | 2007-01-17 |       10 |        10
+(2 rows)
 
 DROP TABLE measurement, new_measurement CASCADE;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to table measurement_y2006m02
-drop cascades to table measurement_y2006m03
-drop cascades to table measurement_y2007m01
+NOTICE:  drop cascades to table measurement_y2007m01
 DROP FUNCTION measurement_insert_trigger();
 -- prepare
 RESET SESSION AUTHORIZATION;

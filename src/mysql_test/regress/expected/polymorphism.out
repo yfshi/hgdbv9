@@ -801,30 +801,13 @@ select case when $1 then $2 else $3 end $$ language sql;
 -- Note this would fail with integer overflow, never mind wrong bleat() output,
 -- if the CASE expression were not successfully inlined
 select f1, sql_if(f1 > 0, bleat(f1), bleat(f1 + 1)) from int4_tbl;
-NOTICE:  bleat 1
-NOTICE:  bleat 123456
-NOTICE:  bleat -123455
-NOTICE:  bleat 2147483647
-NOTICE:  bleat -2147483646
-     f1      |   sql_if    
--------------+-------------
-           0 |           1
-      123456 |      123456
-     -123456 |     -123455
-  2147483647 |  2147483647
- -2147483647 | -2147483646
-(5 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: ... f1, sql_if(f1 > 0, bleat(f1), bleat(f1 + 1)) from int4_tbl;
+                                                              ^
 select q2, sql_if(q2 > 0, q2, q2 + 1) from int8_tbl;
-        q2         |      sql_if       
--------------------+-------------------
-               456 |               456
-  4567890123456789 |  4567890123456789
-               123 |               123
-  4567890123456789 |  4567890123456789
- -4567890123456789 | -4567890123456788
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select q2, sql_if(q2 > 0, q2, q2 + 1) from int8_tbl;
+                                                   ^
 -- another sort of polymorphic aggregate
 CREATE AGGREGATE array_larger_accum (anyarray)
 (
@@ -866,11 +849,9 @@ create aggregate build_group(anyelement, integer) (
   STYPE = anyarray
 );
 select build_group(q1,3) from int8_tbl;
-        build_group         
-----------------------------
- {123,123,4567890123456789}
-(1 row)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select build_group(q1,3) from int8_tbl;
+                                      ^
 -- this should fail because stype isn't compatible with arg
 create aggregate build_group(int8, integer) (
   SFUNC = add_group,
@@ -1464,31 +1445,31 @@ $$ language sql;
 select (dfunc('Hello World', 20, '2009-07-25'::date)).*;
       a      | b  |     c      
 -------------+----+------------
- Hello World | 20 | 07-25-2009
+ Hello World | 20 | 2009-07-25
 (1 row)
 
 select * from dfunc('Hello World', 20, '2009-07-25'::date);
       a      | b  |     c      
 -------------+----+------------
- Hello World | 20 | 07-25-2009
+ Hello World | 20 | 2009-07-25
 (1 row)
 
 select * from dfunc(c := '2009-07-25'::date, a := 'Hello World', b := 20);
       a      | b  |     c      
 -------------+----+------------
- Hello World | 20 | 07-25-2009
+ Hello World | 20 | 2009-07-25
 (1 row)
 
 select * from dfunc('Hello World', b := 20, c := '2009-07-25'::date);
       a      | b  |     c      
 -------------+----+------------
- Hello World | 20 | 07-25-2009
+ Hello World | 20 | 2009-07-25
 (1 row)
 
 select * from dfunc('Hello World', c := '2009-07-25'::date, b := 20);
       a      | b  |     c      
 -------------+----+------------
- Hello World | 20 | 07-25-2009
+ Hello World | 20 | 2009-07-25
 (1 row)
 
 select * from dfunc('Hello World', c := 20, b := '2009-07-25'::date);  -- fail
@@ -1782,32 +1763,16 @@ CREATE VIEW dfview AS
      dfunc(q1,q2, flag := q1>q2) as c3,
      dfunc(q1, flag := q1<q2, b := q2) as c4
      FROM int8_tbl;
+ERROR:  relation "int8_tbl" does not exist
+LINE 5:      FROM int8_tbl;
+                  ^
 select * from dfview;
-        q1        |        q2         |        c3        |        c4         
-------------------+-------------------+------------------+-------------------
-              123 |               456 |              456 |               123
-              123 |  4567890123456789 | 4567890123456789 |               123
- 4567890123456789 |               123 | 4567890123456789 |               123
- 4567890123456789 |  4567890123456789 | 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789 | 4567890123456789 | -4567890123456789
-(5 rows)
-
+ERROR:  relation "dfview" does not exist
+LINE 1: select * from dfview;
+                      ^
 \d+ dfview
-                           View "public.dfview"
- Column |  Type  | Collation | Nullable | Default | Storage | Description 
---------+--------+-----------+----------+---------+---------+-------------
- q1     | bigint |           |          |         | plain   | 
- q2     | bigint |           |          |         | plain   | 
- c3     | bigint |           |          |         | plain   | 
- c4     | bigint |           |          |         | plain   | 
-View definition:
- SELECT int8_tbl.q1,
-    int8_tbl.q2,
-    dfunc(int8_tbl.q1, int8_tbl.q2, flag => int8_tbl.q1 > int8_tbl.q2) AS c3,
-    dfunc(int8_tbl.q1, flag => int8_tbl.q1 < int8_tbl.q2, b => int8_tbl.q2) AS c4
-   FROM int8_tbl;
-
 drop view dfview;
+ERROR:  view "dfview" does not exist
 drop function dfunc(anyelement, anyelement, bool);
 --
 -- Tests for ANYCOMPATIBLE polymorphism family

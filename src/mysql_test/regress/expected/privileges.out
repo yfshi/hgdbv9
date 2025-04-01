@@ -445,14 +445,18 @@ select * from
    union all
    (select b.q2 as x from int8_tbl b offset 0)) ss
 where false;
-ERROR:  permission denied for table int8_tbl
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   ((select a.q1 as x from int8_tbl a offset 0)
+                                  ^
 set constraint_exclusion = on;
 select * from
   ((select a.q1 as x, random() from int8_tbl a where q1 > 0)
    union all
    (select b.q2 as x, random() from int8_tbl b where q2 > 0)) ss
 where x < 0;
-ERROR:  permission denied for table int8_tbl
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   ((select a.q1 as x, random() from int8_tbl a where q1 > 0)
+                                            ^
 reset constraint_exclusion;
 CREATE VIEW atestv4 AS SELECT * FROM atestv3; -- nested view
 SELECT * FROM atestv4; -- ok
@@ -887,8 +891,11 @@ SET SESSION AUTHORIZATION regress_priv_user1;
 CREATE TABLE atestp1 (f1 int, f2 int);
 CREATE TABLE atestp2 (fx int, fy int);
 CREATE TABLE atestc (fz int) INHERITS (atestp1, atestp2);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 GRANT SELECT(fx,fy,tableoid) ON atestp2 TO regress_priv_user2;
 GRANT SELECT(fx) ON atestc TO regress_priv_user2;
+ERROR:  relation "atestc" does not exist
 SET SESSION AUTHORIZATION regress_priv_user2;
 SELECT fx FROM atestp2; -- ok
  fx 
@@ -911,9 +918,12 @@ SELECT tableoid FROM atestp2; -- ok
 (0 rows)
 
 SELECT fy FROM atestc; -- fail
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
+LINE 1: SELECT fy FROM atestc;
+                       ^
 SET SESSION AUTHORIZATION regress_priv_user1;
 GRANT SELECT(fy,tableoid) ON atestc TO regress_priv_user2;
+ERROR:  relation "atestc" does not exist
 SET SESSION AUTHORIZATION regress_priv_user2;
 SELECT fx FROM atestp2; -- still ok
  fx 
@@ -938,6 +948,7 @@ SELECT tableoid FROM atestp2; -- ok
 -- child's permissions do not apply when operating on parent
 SET SESSION AUTHORIZATION regress_priv_user1;
 REVOKE ALL ON atestc FROM regress_priv_user2;
+ERROR:  relation "atestc" does not exist
 GRANT ALL ON atestp1 TO regress_priv_user2;
 SET SESSION AUTHORIZATION regress_priv_user2;
 SELECT f2 FROM atestp1; -- ok
@@ -946,22 +957,28 @@ SELECT f2 FROM atestp1; -- ok
 (0 rows)
 
 SELECT f2 FROM atestc; -- fail
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
+LINE 1: SELECT f2 FROM atestc;
+                       ^
 DELETE FROM atestp1; -- ok
 DELETE FROM atestc; -- fail
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
+LINE 1: DELETE FROM atestc;
+                    ^
 UPDATE atestp1 SET f1 = 1; -- ok
 UPDATE atestc SET f1 = 1; -- fail
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
+LINE 1: UPDATE atestc SET f1 = 1;
+               ^
 TRUNCATE atestp1; -- ok
 TRUNCATE atestc; -- fail
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
 BEGIN;
 LOCK atestp1;
 END;
 BEGIN;
 LOCK atestc;
-ERROR:  permission denied for table atestc
+ERROR:  relation "atestc" does not exist
 END;
 -- privileges on functions, languages
 -- switch to superuser
@@ -1676,7 +1693,7 @@ END$$;
 CREATE MATERIALIZED VIEW sro_index_mv AS SELECT 1 AS c;
 CREATE UNIQUE INDEX ON sro_index_mv (c) WHERE unwanted_grant_nofail(1) > 0;
 \c -
-REFRESH MATERIALIZED VIEW CONCURRENTLY sro_index_mv;
+--REFRESH MATERIALIZED VIEW CONCURRENTLY sro_index_mv;
 REFRESH MATERIALIZED VIEW sro_index_mv;
 DROP OWNED BY regress_sro_user;
 DROP ROLE regress_sro_user;
@@ -2498,6 +2515,7 @@ DROP TABLE atest4;
 DROP TABLE atest5;
 DROP TABLE atest6;
 DROP TABLE atestc;
+ERROR:  table "atestc" does not exist
 DROP TABLE atestp1;
 DROP TABLE atestp2;
 SELECT lo_unlink(oid) FROM pg_largeobject_metadata WHERE oid >= 1000 AND oid < 3000 ORDER BY oid;

@@ -1,0 +1,122 @@
+-- datetime check
+SET NLS_TIMESTAMP_FORMAT='YYYY-MM-DD HH24:MI:SS.FF9';
+CREATE TABLE datetimetest (a datetime);
+\copy datetimetest from 'data/datetime.data'
+SET enable_seqscan=on;
+SELECT count(*) FROM datetimetest WHERE a <  '2004-10-26 08:55:08';
+ count 
+-------
+   270
+(1 row)
+
+SELECT count(*) FROM datetimetest WHERE a <= '2004-10-26 08:55:08';
+ count 
+-------
+   271
+(1 row)
+
+SELECT count(*) FROM datetimetest WHERE a  = '2004-10-26 08:55:08';
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM datetimetest WHERE a >= '2004-10-26 08:55:08';
+ count 
+-------
+   274
+(1 row)
+
+SELECT count(*) FROM datetimetest WHERE a >  '2004-10-26 08:55:08';
+ count 
+-------
+   273
+(1 row)
+
+CREATE INDEX datetimeidx ON datetimetest USING gin ( a );
+SET enable_seqscan=off;
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM datetimetest WHERE a <  '2004-10-26 08:55:08'::datetime;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on datetimetest
+         Recheck Cond: (a < '2004-10-26 08:55:08'::datetime)
+         ->  Bitmap Index Scan on datetimeidx
+               Index Cond: (a < '2004-10-26 08:55:08'::datetime)
+(5 rows)
+
+SELECT count(*) FROM datetimetest WHERE a <  '2004-10-26 08:55:08'::datetime;
+ count 
+-------
+   270
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM datetimetest WHERE a <= '2004-10-26 08:55:08'::datetime;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on datetimetest
+         Recheck Cond: (a <= '2004-10-26 08:55:08'::datetime)
+         ->  Bitmap Index Scan on datetimeidx
+               Index Cond: (a <= '2004-10-26 08:55:08'::datetime)
+(5 rows)
+
+SELECT count(*) FROM datetimetest WHERE a <= '2004-10-26 08:55:08'::datetime;
+ count 
+-------
+   271
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM datetimetest WHERE a  = '2004-10-26 08:55:08'::datetime;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on datetimetest
+         Recheck Cond: (a = '2004-10-26 08:55:08'::datetime)
+         ->  Bitmap Index Scan on datetimeidx
+               Index Cond: (a = '2004-10-26 08:55:08'::datetime)
+(5 rows)
+
+SELECT count(*) FROM datetimetest WHERE a  = '2004-10-26 08:55:08'::datetime;
+ count 
+-------
+     1
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM datetimetest WHERE a >= '2004-10-26 08:55:08'::datetime;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on datetimetest
+         Recheck Cond: (a >= '2004-10-26 08:55:08'::datetime)
+         ->  Bitmap Index Scan on datetimeidx
+               Index Cond: (a >= '2004-10-26 08:55:08'::datetime)
+(5 rows)
+
+SELECT count(*) FROM datetimetest WHERE a >= '2004-10-26 08:55:08'::datetime;
+ count 
+-------
+   274
+(1 row)
+
+EXPLAIN (COSTS OFF)
+SELECT count(*) FROM datetimetest WHERE a >  '2004-10-26 08:55:08'::datetime;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Aggregate
+   ->  Bitmap Heap Scan on datetimetest
+         Recheck Cond: (a > '2004-10-26 08:55:08'::datetime)
+         ->  Bitmap Index Scan on datetimeidx
+               Index Cond: (a > '2004-10-26 08:55:08'::datetime)
+(5 rows)
+
+SELECT count(*) FROM datetimetest WHERE a >  '2004-10-26 08:55:08'::datetime;
+ count 
+-------
+   273
+(1 row)
+

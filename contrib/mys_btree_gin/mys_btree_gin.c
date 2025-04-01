@@ -184,6 +184,57 @@ mysyear_cmp(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(0);
 }
 
+static Datum
+mysdatetime_cmp(PG_FUNCTION_ARGS)
+{
+	TimeADT	dateVal1 = PG_GETARG_TIMEADT(0);
+	TimeADT	dateVal2 = PG_GETARG_TIMEADT(1);
+
+	if (dateVal1 < dateVal2)
+		PG_RETURN_INT32(-1);
+	else if (dateVal1 > dateVal2)
+		PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);
+}
+
+static Datum
+mystimestamp_cmp(PG_FUNCTION_ARGS)
+{
+	TimeADT	dateVal1 = PG_GETARG_TIMEADT(0);
+	TimeADT	dateVal2 = PG_GETARG_TIMEADT(1);
+
+	if (dateVal1 < dateVal2)
+		PG_RETURN_INT32(-1);
+	else if (dateVal1 > dateVal2)
+		PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);
+}
+
+static Datum
+mystime_cmp(PG_FUNCTION_ARGS)
+{
+	TimeADT	dateVal1 = PG_GETARG_TIMEADT(0);
+	TimeADT	dateVal2 = PG_GETARG_TIMEADT(1);
+
+	if (dateVal1 < dateVal2)
+		PG_RETURN_INT32(-1);
+	else if (dateVal1 > dateVal2)
+		PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);
+}
+
+static Datum
+mysdate_cmp(PG_FUNCTION_ARGS)
+{
+	DateADT	dateVal1 = PG_GETARG_DATEADT(0);
+	DateADT	dateVal2 = PG_GETARG_DATEADT(1);
+	if (dateVal1 < dateVal2)
+		PG_RETURN_INT32(-1);
+	else if (dateVal1 > dateVal2)
+		PG_RETURN_INT32(1);
+	PG_RETURN_INT32(0);
+}
+
 
 PG_FUNCTION_INFO_V1(gin_btree_consistent);
 Datum
@@ -228,3 +279,38 @@ leftmostvalue_year(void)
 }
 
 GIN_SUPPORT(mysyear, false, leftmostvalue_year, mysyear_cmp)
+static Datum
+leftmostvalue_mysdate(void)
+{
+	return TimeADTGetDatum(0);
+}
+
+static Datum
+leftmostvalue_mysdatetime(void)
+{
+	return TimeADTGetDatum(0);
+}
+
+static Datum
+leftmostvalue_mystimestamp(void)
+{
+	return TimeADTGetDatum(0);
+}
+
+static Datum
+leftmostvalue_mystime(void)
+{
+	return TimeADTGetDatum(DT_NOBEGIN);
+}
+
+GIN_SUPPORT(mysdate, false, leftmostvalue_mysdate, mysdate_cmp)
+
+GIN_SUPPORT(mysdatetime, false, leftmostvalue_mysdatetime, mysdatetime_cmp)
+
+GIN_SUPPORT(mystimestamp, false, leftmostvalue_mystimestamp, mystimestamp_cmp)
+
+GIN_SUPPORT(mystime, false, leftmostvalue_mystime, mystime_cmp)
+
+
+
+

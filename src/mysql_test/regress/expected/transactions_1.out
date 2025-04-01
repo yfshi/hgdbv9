@@ -628,25 +628,34 @@ BEGIN
 END $$;
 BEGIN;
 DECLARE ok CURSOR FOR SELECT * FROM int8_tbl;
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: DECLARE ok CURSOR FOR SELECT * FROM int8_tbl;
-                                            ^
 DECLARE ctt CURSOR FOR SELECT create_temp_tab();
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ok;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ q1  | q2  
+-----+-----
+ 123 | 456
+(1 row)
+
 SAVEPOINT s1;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ok;  -- should work
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ q1  |        q2        
+-----+------------------
+ 123 | 4567890123456789
+(1 row)
+
 FETCH ctt; -- error occurs here
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ERROR:  division by zero
+CONTEXT:  PL/pgSQL function invert(double precision) line 1 at RETURN
+SQL statement "INSERT INTO new_table SELECT invert(0.0)"
+PL/pgSQL function create_temp_tab() line 6 at SQL statement
 ROLLBACK TO s1;
-ERROR:  savepoint "s1" does not exist
 FETCH ok;  -- should work
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+        q1        | q2  
+------------------+-----
+ 4567890123456789 | 123
+(1 row)
+
 FETCH ctt; -- must be rejected
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ERROR:  portal "ctt" cannot be run
 COMMIT;
 DROP FUNCTION create_temp_tab();
 DROP FUNCTION invert(x float8);

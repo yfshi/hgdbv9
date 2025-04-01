@@ -194,30 +194,23 @@ EXPLAIN (COSTS OFF)
 -- check inheritance behavior
 explain (costs off)
   select count(*) from person tablesample bernoulli (100);
-                   QUERY PLAN                    
--------------------------------------------------
+                QUERY PLAN                 
+-------------------------------------------
  Aggregate
-   ->  Append
-         ->  Sample Scan on person person_1
-               Sampling: bernoulli ('100'::real)
-         ->  Sample Scan on emp person_2
-               Sampling: bernoulli ('100'::real)
-         ->  Sample Scan on student person_3
-               Sampling: bernoulli ('100'::real)
-         ->  Sample Scan on stud_emp person_4
-               Sampling: bernoulli ('100'::real)
-(10 rows)
+   ->  Sample Scan on person
+         Sampling: bernoulli ('100'::real)
+(3 rows)
 
 select count(*) from person tablesample bernoulli (100);
  count 
 -------
-    58
+    50
 (1 row)
 
 select count(*) from person;
  count 
 -------
-    58
+    50
 (1 row)
 
 -- check that collations get assigned within the tablesample arguments
@@ -281,7 +274,7 @@ select pct, count(unique1) from
 
 -- errors
 SELECT id FROM test_tablesample TABLESAMPLE FOOBAR (1);
-ERROR:  tablesample method foobar does not exist
+ERROR:  tablesample method FOOBAR does not exist
 LINE 1: SELECT id FROM test_tablesample TABLESAMPLE FOOBAR (1);
                                                     ^
 SELECT id FROM test_tablesample TABLESAMPLE SYSTEM (NULL);

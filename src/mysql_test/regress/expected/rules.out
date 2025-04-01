@@ -455,24 +455,22 @@ select ename, who = current_user as "matches user", action, newsal, oldsal from 
 (11 rows)
 
 delete from rtest_emp using rtest_empmass where rtest_emp.ename = rtest_empmass.ename;
+ERROR:  Unknown table rtest_emp in MULTI DELETE
 select ename, who = current_user as "matches user", action, newsal, oldsal from rtest_emplog order by ename, action, newsal;
         ename         | matches user |   action   |   newsal   |   oldsal   
 ----------------------+--------------+------------+------------+------------
  gates                | t            | fired      |      $0.00 | $80,000.00
  gates                | t            | hired      | $80,000.00 |      $0.00
- maier                | t            | fired      |      $0.00 |  $6,000.00
  maier                | t            | hired      |  $5,000.00 |      $0.00
  maier                | t            | honored    |  $6,000.00 |  $5,000.00
- mayr                 | t            | fired      |      $0.00 |  $7,000.00
  mayr                 | t            | hired      |  $6,000.00 |      $0.00
  mayr                 | t            | honored    |  $7,000.00 |  $6,000.00
- meyer                | t            | fired      |      $0.00 |  $5,000.00
  meyer                | t            | hired      |  $4,000.00 |      $0.00
  meyer                | t            | honored    |  $5,000.00 |  $4,000.00
  wiecc                | t            | hired      |  $5,000.00 |      $0.00
  wieck                | t            | honored    |  $6,000.00 |  $5,000.00
  wieck                | t            | honored    |  $7,000.00 |  $6,000.00
-(14 rows)
+(11 rows)
 
 --
 -- Multiple cascaded qualified instead rule test
@@ -1036,12 +1034,14 @@ SELECT * FROM shoe_ready WHERE total_avail >= 2 ORDER BY 1;
                                         'Al Bundy',
                                         'epoch'
                                     );
+ERROR:  Incorrect DATETIME value: 'epoch'
+LINE 7:                                         'epoch'
+                                                ^
 UPDATE shoelace_data SET sl_avail = 6 WHERE  sl_name = 'sl7';
 SELECT * FROM shoelace_log;
-  sl_name   | sl_avail | log_who  |         log_when         
-------------+----------+----------+--------------------------
- sl7        |        6 | Al Bundy | Thu Jan 01 00:00:00 1970
-(1 row)
+ sl_name | sl_avail | log_who | log_when 
+---------+----------+---------+----------
+(0 rows)
 
     CREATE RULE shoelace_ins AS ON INSERT TO shoelace
         DO INSTEAD
@@ -1108,13 +1108,9 @@ SELECT * FROM shoelace ORDER BY sl_name;
 (8 rows)
 
 SELECT * FROM shoelace_log ORDER BY sl_name;
-  sl_name   | sl_avail | log_who  |         log_when         
-------------+----------+----------+--------------------------
- sl3        |       10 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl6        |       20 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl7        |        6 | Al Bundy | Thu Jan 01 00:00:00 1970
- sl8        |       21 | Al Bundy | Thu Jan 01 00:00:00 1970
-(4 rows)
+ sl_name | sl_avail | log_who | log_when 
+---------+----------+---------+----------
+(0 rows)
 
     CREATE VIEW shoelace_obsolete AS
 	SELECT * FROM shoelace WHERE NOT EXISTS
@@ -1285,12 +1281,6 @@ drop table cchild;
 SELECT viewname, definition FROM pg_views
 WHERE schemaname IN ('pg_catalog', 'public')
 ORDER BY viewname;
-iexit| SELECT ih.name,
-    ih.thepath,
-    interpt_pp(ih.thepath, r.thepath) AS exit
-   FROM ihighway ih,
-    ramp r
-  WHERE (ih.thepath ## r.thepath);
 key_dependent_view| SELECT view_base_table.key,
     view_base_table.data
    FROM view_base_table
@@ -2669,34 +2659,34 @@ pg_views| SELECT n.nspname AS schemaname,
 rtest_v1| SELECT rtest_t1.a,
     rtest_t1.b
    FROM rtest_t1;
-rtest_vcomp| SELECT x.part,
-    (x.size * y.factor) AS size_in_cm
-   FROM rtest_comp x,
-    rtest_unitfact y
-  WHERE (x.unit = y.unit);
-rtest_vview1| SELECT x.a,
-    x.b
-   FROM rtest_view1 x
+rtest_vcomp| SELECT "X".part,
+    ("X".size * "Y".factor) AS size_in_cm
+   FROM rtest_comp "X",
+    rtest_unitfact "Y"
+  WHERE ("X".unit = "Y".unit);
+rtest_vview1| SELECT "X".a,
+    "X".b
+   FROM rtest_view1 "X"
   WHERE (0 < ( SELECT count(*) AS count
-           FROM rtest_view2 y
-          WHERE (y.a = x.a)));
+           FROM rtest_view2 "Y"
+          WHERE ("Y".a = "X".a)));
 rtest_vview2| SELECT rtest_view1.a,
     rtest_view1.b
    FROM rtest_view1
   WHERE rtest_view1.v;
-rtest_vview3| SELECT x.a,
-    x.b
-   FROM rtest_vview2 x
+rtest_vview3| SELECT "X".a,
+    "X".b
+   FROM rtest_vview2 "X"
   WHERE (0 < ( SELECT count(*) AS count
-           FROM rtest_view2 y
-          WHERE (y.a = x.a)));
-rtest_vview4| SELECT x.a,
-    x.b,
-    count(y.a) AS refcount
-   FROM rtest_view1 x,
-    rtest_view2 y
-  WHERE (x.a = y.a)
-  GROUP BY x.a, x.b;
+           FROM rtest_view2 "Y"
+          WHERE ("Y".a = "X".a)));
+rtest_vview4| SELECT "X".a,
+    "X".b,
+    count("Y".a) AS refcount
+   FROM rtest_view1 "X",
+    rtest_view2 "Y"
+  WHERE ("X".a = "Y".a)
+  GROUP BY "X".a, "X".b;
 rtest_vview5| SELECT rtest_view1.a,
     rtest_view1.b,
     rtest_viewfunc1(rtest_view1.a) AS refcount
@@ -2757,11 +2747,6 @@ test_tablesample_v1| SELECT test_tablesample.id
    FROM test_tablesample TABLESAMPLE system ((10 * 2)) REPEATABLE (2);
 test_tablesample_v2| SELECT test_tablesample.id
    FROM test_tablesample TABLESAMPLE system (99);
-toyemp| SELECT emp.name,
-    emp.age,
-    emp.location,
-    (12 * emp.salary) AS annualsal
-   FROM emp;
 SELECT tablename, rulename, definition FROM pg_rules
 WHERE schemaname IN ('pg_catalog', 'public')
 ORDER BY tablename, rulename;
@@ -2857,10 +2842,6 @@ shoelace|shoelace_ins|CREATE RULE shoelace_ins AS
 shoelace|shoelace_upd|CREATE RULE shoelace_upd AS
     ON UPDATE TO public.shoelace DO INSTEAD  UPDATE shoelace_data SET sl_name = new.sl_name, sl_avail = new.sl_avail, sl_color = new.sl_color, sl_len = new.sl_len, sl_unit = new.sl_unit
   WHERE (shoelace_data.sl_name = old.sl_name);
-shoelace_data|log_shoelace|CREATE RULE log_shoelace AS
-    ON UPDATE TO public.shoelace_data
-   WHERE (new.sl_avail <> old.sl_avail) DO  INSERT INTO shoelace_log (sl_name, sl_avail, log_who, log_when)
-  VALUES (new.sl_name, new.sl_avail, 'Al Bundy'::name, 'Thu Jan 01 00:00:00 1970'::timestamp without time zone);
 shoelace_ok|shoelace_ok_ins|CREATE RULE shoelace_ok_ins AS
     ON INSERT TO public.shoelace_ok DO INSTEAD  UPDATE shoelace SET sl_avail = (shoelace.sl_avail + new.ok_quant)
   WHERE (shoelace.sl_name = new.ok_name);
@@ -2994,119 +2975,135 @@ drop view rules_fooview;
 -- cannot convert an inheritance parent or child to a view, though
 create table rules_fooview (x int, y text);
 create table rules_fooview_child () inherits (rules_fooview);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create rule "_RETURN" as on select to rules_fooview do instead
   select 1 as x, 'aaa'::text as y;
-ERROR:  could not convert table "rules_fooview" to a view because it has child tables
 create rule "_RETURN" as on select to rules_fooview_child do instead
   select 1 as x, 'aaa'::text as y;
-ERROR:  could not convert table "rules_fooview_child" to a view because it has parent tables
+ERROR:  relation "rules_fooview_child" does not exist
 drop table rules_fooview cascade;
-NOTICE:  drop cascades to table rules_fooview_child
+ERROR:  "rules_fooview" is not a table
+HINT:  Use DROP VIEW to remove a view.
 -- likewise, converting a partitioned table or partition to view is not allowed
 create table rules_fooview (x int, y text) partition by list (x);
+ERROR:  relation "rules_fooview" already exists
 create rule "_RETURN" as on select to rules_fooview do instead
   select 1 as x, 'aaa'::text as y;
-ERROR:  cannot convert partitioned table "rules_fooview" to a view
+ERROR:  "rules_fooview" is already a view
 create table rules_fooview_part partition of rules_fooview for values in (1);
+ERROR:  inherited relation "rules_fooview" is not a table or foreign table
 create rule "_RETURN" as on select to rules_fooview_part do instead
   select 1 as x, 'aaa'::text as y;
-ERROR:  cannot convert partition "rules_fooview_part" to a view
+ERROR:  relation "rules_fooview_part" does not exist
 drop table rules_fooview;
+ERROR:  "rules_fooview" is not a table
+HINT:  Use DROP VIEW to remove a view.
 --
 -- check for planner problems with complex inherited UPDATES
 --
 create table id (id serial primary key, name text);
 -- currently, must respecify PKEY for each inherited subtable
 create table test_1 (id integer primary key) inherits (id);
-NOTICE:  merging column "id" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table test_2 (id integer primary key) inherits (id);
-NOTICE:  merging column "id" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table test_3 (id integer primary key) inherits (id);
-NOTICE:  merging column "id" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 insert into test_1 (name) values ('Test 1');
+ERROR:  relation "test_1" does not exist
+LINE 1: insert into test_1 (name) values ('Test 1');
+                    ^
 insert into test_1 (name) values ('Test 2');
+ERROR:  relation "test_1" does not exist
+LINE 1: insert into test_1 (name) values ('Test 2');
+                    ^
 insert into test_2 (name) values ('Test 3');
+ERROR:  relation "test_2" does not exist
+LINE 1: insert into test_2 (name) values ('Test 3');
+                    ^
 insert into test_2 (name) values ('Test 4');
+ERROR:  relation "test_2" does not exist
+LINE 1: insert into test_2 (name) values ('Test 4');
+                    ^
 insert into test_3 (name) values ('Test 5');
+ERROR:  relation "test_3" does not exist
+LINE 1: insert into test_3 (name) values ('Test 5');
+                    ^
 insert into test_3 (name) values ('Test 6');
+ERROR:  relation "test_3" does not exist
+LINE 1: insert into test_3 (name) values ('Test 6');
+                    ^
 create view id_ordered as select * from id order by id;
 create rule update_id_ordered as on update to id_ordered
 	do instead update id set name = new.name where id = old.id;
 select * from id_ordered;
- id |  name  
-----+--------
-  1 | Test 1
-  2 | Test 2
-  3 | Test 3
-  4 | Test 4
-  5 | Test 5
-  6 | Test 6
-(6 rows)
+ id | name 
+----+------
+(0 rows)
 
 update id_ordered set name = 'update 2' where id = 2;
 update id_ordered set name = 'update 4' where id = 4;
 update id_ordered set name = 'update 5' where id = 5;
 select * from id_ordered;
- id |   name   
-----+----------
-  1 | Test 1
-  2 | update 2
-  3 | Test 3
-  4 | update 4
-  5 | update 5
-  6 | Test 6
-(6 rows)
+ id | name 
+----+------
+(0 rows)
 
 drop table id cascade;
-NOTICE:  drop cascades to 4 other objects
-DETAIL:  drop cascades to table test_1
-drop cascades to table test_2
-drop cascades to table test_3
-drop cascades to view id_ordered
+NOTICE:  drop cascades to view id_ordered
 --
 -- check corner case where an entirely-dummy subplan is created by
 -- constraint exclusion
 --
 create temp table t1 (a integer primary key);
 create temp table t1_1 (check (a >= 0 and a < 10)) inherits (t1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create temp table t1_2 (check (a >= 10 and a < 20)) inherits (t1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create rule t1_ins_1 as on insert to t1
 	where new.a >= 0 and new.a < 10
 	do instead
 	insert into t1_1 values (new.a);
+ERROR:  relation "t1_1" does not exist
+LINE 4:  insert into t1_1 values (new.a);
+                     ^
 create rule t1_ins_2 as on insert to t1
 	where new.a >= 10 and new.a < 20
 	do instead
 	insert into t1_2 values (new.a);
+ERROR:  relation "t1_2" does not exist
+LINE 4:  insert into t1_2 values (new.a);
+                     ^
 create rule t1_upd_1 as on update to t1
 	where old.a >= 0 and old.a < 10
 	do instead
 	update t1_1 set a = new.a where a = old.a;
+ERROR:  relation "t1_1" does not exist
+LINE 4:  update t1_1 set a = new.a where a = old.a;
+                ^
 create rule t1_upd_2 as on update to t1
 	where old.a >= 10 and old.a < 20
 	do instead
 	update t1_2 set a = new.a where a = old.a;
+ERROR:  relation "t1_2" does not exist
+LINE 4:  update t1_2 set a = new.a where a = old.a;
+                ^
 set constraint_exclusion = on;
 insert into t1 select * from generate_series(5,19,1) g;
 update t1 set a = 4 where a = 5;
 select * from only t1;
- a 
----
-(0 rows)
-
-select * from only t1_1;
- a 
----
- 6
- 7
- 8
- 9
- 4
-(5 rows)
-
-select * from only t1_2;
  a  
 ----
+  6
+  7
+  8
+  9
  10
  11
  12
@@ -3117,8 +3114,17 @@ select * from only t1_2;
  17
  18
  19
-(10 rows)
+  4
+(15 rows)
 
+select * from only t1_1;
+ERROR:  relation "t1_1" does not exist
+LINE 1: select * from only t1_1;
+                           ^
+select * from only t1_2;
+ERROR:  relation "t1_2" does not exist
+LINE 1: select * from only t1_2;
+                           ^
 reset constraint_exclusion;
 -- test FOR UPDATE in rules
 create table rules_base(f1 int, f2 int);
@@ -3273,6 +3279,7 @@ create rule r4 as on delete to rules_src do notify rules_src_deletion;
 -- Ensure an aliased target relation for insert is correctly deparsed.
 --
 create rule r5 as on insert to rules_src do instead insert into rules_log AS trgt SELECT NEW.* RETURNING trgt.f1, trgt.f2;
+ERROR:  Column count doesn't match value count!
 create rule r6 as on update to rules_src do instead UPDATE rules_log AS trgt SET tag = 'updated' WHERE trgt.f1 = new.f1;
 --
 -- Check deparse disambiguation of INSERT/UPDATE/DELETE targets.
@@ -3283,6 +3290,9 @@ create rule r7 as on delete to rules_src do instead
        wdel as (delete from int4_tbl trgt where f1 = 0 returning *)
   insert into rules_log AS trgt select old.* from wins, wupd, wdel
   returning trgt.f1, trgt.f2;
+ERROR:  syntax error at or near "trgt"
+LINE 4:        wdel as (delete from int4_tbl trgt where f1 = 0 retur...
+                                             ^
 -- check display of all rules added above
 \d+ rules_src
                                  Table "public.rules_src"
@@ -3300,34 +3310,9 @@ Rules:
     r4 AS
     ON DELETE TO rules_src DO
  NOTIFY rules_src_deletion
-    r5 AS
-    ON INSERT TO rules_src DO INSTEAD  INSERT INTO rules_log AS trgt (f1, f2)  SELECT new.f1,
-            new.f2
-  RETURNING trgt.f1,
-    trgt.f2
     r6 AS
     ON UPDATE TO rules_src DO INSTEAD  UPDATE rules_log trgt SET tag = 'updated'::text
   WHERE trgt.f1 = new.f1
-    r7 AS
-    ON DELETE TO rules_src DO INSTEAD  WITH wins AS (
-         INSERT INTO int4_tbl AS trgt_1 (f1)
-          VALUES (0)
-          RETURNING trgt_1.f1
-        ), wupd AS (
-         UPDATE int4_tbl trgt_1 SET f1 = trgt_1.f1 + 1
-          RETURNING trgt_1.f1
-        ), wdel AS (
-         DELETE FROM int4_tbl trgt_1
-          WHERE trgt_1.f1 = 0
-          RETURNING trgt_1.f1
-        )
- INSERT INTO rules_log AS trgt (f1, f2)  SELECT old.f1,
-            old.f2
-           FROM wins,
-            wupd,
-            wdel
-  RETURNING trgt.f1,
-    trgt.f2
 
 --
 -- Also check multiassignment deparsing.
@@ -3361,6 +3346,7 @@ CREATE VIEW rule_v1 AS SELECT * FROM rule_t1;
 CREATE RULE v1_ins AS ON INSERT TO rule_v1
   DO ALSO INSERT INTO rule_t1
   SELECT * FROM (SELECT a + 10 FROM rule_t1 WHERE a = NEW.a) tt;
+ERROR:  Column count doesn't match value count!
 CREATE RULE v1_upd AS ON UPDATE TO rule_v1
   DO ALSO UPDATE rule_t1 t
   SET c = tt.a * 10
@@ -3368,13 +3354,11 @@ CREATE RULE v1_upd AS ON UPDATE TO rule_v1
 INSERT INTO rule_v1 VALUES (1, 'a'), (2, 'b');
 UPDATE rule_v1 SET b = upper(b);
 SELECT * FROM rule_t1;
- a  |  b  |  c  
-----+-----+-----
-  1 | A   |  10
-  2 | B   |  20
- 11 | XXX | 110
- 12 | XXX | 120
-(4 rows)
+ a | b | c  
+---+---+----
+ 1 | A | 10
+ 2 | B | 20
+(2 rows)
 
 DROP TABLE rule_t1 CASCADE;
 NOTICE:  drop cascades to view rule_v1
@@ -3404,7 +3388,7 @@ View definition:
  SELECT rule_t1.a
    FROM rule_t1;
 Rules:
- newinsertrule AS
+ "NewInsertRule" AS
     ON INSERT TO rule_v1 DO INSTEAD  INSERT INTO rule_t1 (a)
   VALUES (new.a)
 
@@ -3412,7 +3396,7 @@ Rules:
 -- error conditions for alter rename rule
 --
 ALTER RULE InsertRule ON rule_v1 RENAME TO NewInsertRule; -- doesn't exist
-ERROR:  rule "insertrule" for relation "rule_v1" does not exist
+ERROR:  rule "InsertRule" for relation "rule_v1" does not exist
 ALTER RULE NewInsertRule ON rule_v1 RENAME TO "_RETURN"; -- already exists
 ERROR:  rule "_RETURN" for relation "rule_v1" already exists
 ALTER RULE "_RETURN" ON rule_v1 RENAME TO abc; -- ON SELECT rule cannot be renamed
@@ -3715,7 +3699,7 @@ SELECT pg_get_functiondef('func_with_set_params()'::regprocedure);
   RETURNS integer                                                                                                                                                        +
   LANGUAGE sql                                                                                                                                                           +
   IMMUTABLE STRICT                                                                                                                                                       +
-  SET search_path TO 'pg_catalog'                                                                                                                                        +
+  SET search_path TO 'PG_CATALOG'                                                                                                                                        +
   SET extra_float_digits TO '2'                                                                                                                                          +
   SET work_mem TO '4MB'                                                                                                                                                  +
   SET "DateStyle" TO 'iso, mdy'                                                                                                                                          +

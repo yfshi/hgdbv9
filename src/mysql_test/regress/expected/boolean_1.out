@@ -458,9 +458,13 @@ SELECT
     b IS UNKNOWN AS isunknown,
     b IS NOT UNKNOWN AS isnotunknown
 FROM booltbl3 ORDER BY o;
-ERROR:  relation "booltbl3" does not exist
-LINE 9: FROM booltbl3 ORDER BY o;
-             ^
+   d   | istrue | isnottrue | isfalse | isnotfalse | isunknown | isnotunknown 
+-------+--------+-----------+---------+------------+-----------+--------------
+ true  | t      | f         | f       | t          | f         | t
+ false | f      | t         | t       | f          | f         | t
+ null  | f      | t         | f       | t          | t         | f
+(3 rows)
+
 -- Test to make sure short-circuiting and NULL handling is
 -- correct. Use a table as source to prevent constant simplification
 -- to interfer.
@@ -553,4 +557,3 @@ DROP TABLE  BOOLTBL1;
 DROP TABLE  BOOLTBL2;
 DROP TABLE  BOOLTBL3;
 DROP TABLE  BOOLTBL4;
-ERROR:  table "BOOLTBL4" does not exist

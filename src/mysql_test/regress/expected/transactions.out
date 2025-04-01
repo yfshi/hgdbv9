@@ -628,34 +628,25 @@ BEGIN
 END $$;
 BEGIN;
 DECLARE ok CURSOR FOR SELECT * FROM int8_tbl;
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: DECLARE ok CURSOR FOR SELECT * FROM int8_tbl;
+                                            ^
 DECLARE ctt CURSOR FOR SELECT create_temp_tab();
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ok;
- q1  | q2  
------+-----
- 123 | 456
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SAVEPOINT s1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ok;  -- should work
- q1  |        q2        
------+------------------
- 123 | 4567890123456789
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ctt; -- error occurs here
-ERROR:  division by zero
-CONTEXT:  PL/pgSQL function invert(double precision) line 1 at RETURN
-SQL statement "INSERT INTO new_table SELECT invert(0.0)"
-PL/pgSQL function create_temp_tab() line 6 at SQL statement
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO s1;
+ERROR:  savepoint "s1" does not exist
 FETCH ok;  -- should work
-        q1        | q2  
-------------------+-----
- 4567890123456789 | 123
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ctt; -- must be rejected
-ERROR:  portal "ctt" cannot be run
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
 DROP FUNCTION create_temp_tab();
 DROP FUNCTION invert(x float8);
@@ -1100,5 +1091,5 @@ begin;
 select 1/0;
 ERROR:  division by zero
 rollback to X;
-ERROR:  savepoint "x" does not exist
+ERROR:  savepoint "X" does not exist
 -- DO NOT ADD ANYTHING HERE.

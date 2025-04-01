@@ -12,14 +12,22 @@ CREATE VIEW iexit AS
 	interpt_pp(ih.thepath, r.thepath) AS exit
    FROM ihighway ih, ramp r
    WHERE ih.thepath ## r.thepath;
+ERROR:  relation "ihighway" does not exist
+LINE 4:    FROM ihighway ih, ramp r
+                ^
 CREATE VIEW toyemp AS
    SELECT name, age, location, 12*salary AS annualsal
    FROM emp;
+ERROR:  relation "emp" does not exist
+LINE 3:    FROM emp;
+                ^
 -- Test comments
 COMMENT ON VIEW noview IS 'no view';
 ERROR:  relation "noview" does not exist
 COMMENT ON VIEW toyemp IS 'is a view';
+ERROR:  relation "toyemp" does not exist
 COMMENT ON VIEW toyemp IS NULL;
+ERROR:  relation "toyemp" does not exist
 -- These views are left around mainly to exercise special cases in pg_dump.
 CREATE TABLE view_base_table (key int PRIMARY KEY, data varchar(20));
 CREATE VIEW key_dependent_view AS
@@ -1428,26 +1436,9 @@ create view vv2a as
 select * from (values(now(),2,3,now(),5)) v(a,b,c,d,e)
 union all
 select * from tt7a left join tt8a using (x), tt8a tt8ax;
+ERROR:  failed to find conversion function from timestamp with time zone to date
 select pg_get_viewdef('vv2a', true);
-                     pg_get_viewdef                     
---------------------------------------------------------
-  SELECT v.a,                                          +
-     v.b,                                              +
-     v.c,                                              +
-     v.d,                                              +
-     v.e                                               +
-    FROM ( VALUES (now(),2,3,now(),5)) v(a, b, c, d, e)+
- UNION ALL                                             +
-  SELECT x AS a,                                       +
-     tt7a.y AS b,                                      +
-     tt8a.z AS c,                                      +
-     tt8ax.x_1 AS d,                                   +
-     tt8ax.z AS e                                      +
-    FROM tt7a                                          +
-      LEFT JOIN tt8a USING (x),                        +
-     tt8a tt8ax(x_1, z);
-(1 row)
-
+ERROR:  relation "vv2a" does not exist
 --
 -- Also check dropping a column that existed when the view was made
 --
@@ -1601,111 +1592,57 @@ DETAIL:  Table has type integer, but query expects text.
 rollback;
 -- check display of whole-row variables in some corner cases
 create type nestedcomposite as (x int8_tbl);
+ERROR:  type "int8_tbl" does not exist
 create view tt15v as select row(i)::nestedcomposite from int8_tbl i;
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: ...view tt15v as select row(i)::nestedcomposite from int8_tbl i...
+                                                             ^
 select * from tt15v;
-                   row                    
-------------------------------------------
- ("(123,456)")
- ("(123,4567890123456789)")
- ("(4567890123456789,123)")
- ("(4567890123456789,4567890123456789)")
- ("(4567890123456789,-4567890123456789)")
-(5 rows)
-
+ERROR:  relation "tt15v" does not exist
+LINE 1: select * from tt15v;
+                      ^
 select pg_get_viewdef('tt15v', true);
-                    pg_get_viewdef                    
-------------------------------------------------------
-  SELECT ROW(i.*::int8_tbl)::nestedcomposite AS "row"+
-    FROM int8_tbl i;
-(1 row)
-
+ERROR:  relation "tt15v" does not exist
 select row(i.*::int8_tbl)::nestedcomposite from int8_tbl i;
-                   row                    
-------------------------------------------
- ("(123,456)")
- ("(123,4567890123456789)")
- ("(4567890123456789,123)")
- ("(4567890123456789,4567890123456789)")
- ("(4567890123456789,-4567890123456789)")
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select row(i.*::int8_tbl)::nestedcomposite from int8_tbl i;
+                                                        ^
 create view tt16v as select * from int8_tbl i, lateral(values(i)) ss;
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: create view tt16v as select * from int8_tbl i, lateral(value...
+                                           ^
 select * from tt16v;
-        q1        |        q2         |               column1                
-------------------+-------------------+--------------------------------------
-              123 |               456 | (123,456)
-              123 |  4567890123456789 | (123,4567890123456789)
- 4567890123456789 |               123 | (4567890123456789,123)
- 4567890123456789 |  4567890123456789 | (4567890123456789,4567890123456789)
- 4567890123456789 | -4567890123456789 | (4567890123456789,-4567890123456789)
-(5 rows)
-
+ERROR:  relation "tt16v" does not exist
+LINE 1: select * from tt16v;
+                      ^
 select pg_get_viewdef('tt16v', true);
-              pg_get_viewdef               
--------------------------------------------
-  SELECT i.q1,                            +
-     i.q2,                                +
-     ss.column1                           +
-    FROM int8_tbl i,                      +
-     LATERAL ( VALUES (i.*::int8_tbl)) ss;
-(1 row)
-
+ERROR:  relation "tt16v" does not exist
 select * from int8_tbl i, lateral(values(i.*::int8_tbl)) ss;
-        q1        |        q2         |               column1                
-------------------+-------------------+--------------------------------------
-              123 |               456 | (123,456)
-              123 |  4567890123456789 | (123,4567890123456789)
- 4567890123456789 |               123 | (4567890123456789,123)
- 4567890123456789 |  4567890123456789 | (4567890123456789,4567890123456789)
- 4567890123456789 | -4567890123456789 | (4567890123456789,-4567890123456789)
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select * from int8_tbl i, lateral(values(i.*::int8_tbl)) ss;
+                      ^
 create view tt17v as select * from int8_tbl i where i in (values(i));
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: create view tt17v as select * from int8_tbl i where i in (va...
+                                           ^
 select * from tt17v;
-        q1        |        q2         
-------------------+-------------------
-              123 |               456
-              123 |  4567890123456789
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
-(5 rows)
-
+ERROR:  relation "tt17v" does not exist
+LINE 1: select * from tt17v;
+                      ^
 select pg_get_viewdef('tt17v', true);
-               pg_get_viewdef                
----------------------------------------------
-  SELECT i.q1,                              +
-     i.q2                                   +
-    FROM int8_tbl i                         +
-   WHERE (i.* IN ( VALUES (i.*::int8_tbl)));
-(1 row)
-
+ERROR:  relation "tt17v" does not exist
 select * from int8_tbl i where i.* in (values(i.*::int8_tbl));
-        q1        |        q2         
-------------------+-------------------
-              123 |               456
-              123 |  4567890123456789
- 4567890123456789 |               123
- 4567890123456789 |  4567890123456789
- 4567890123456789 | -4567890123456789
-(5 rows)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select * from int8_tbl i where i.* in (values(i.*::int8_tbl)...
+                      ^
 create table tt15v_log(o tt15v, n tt15v, incr bool);
+ERROR:  type "tt15v" does not exist
+LINE 1: create table tt15v_log(o tt15v, n tt15v, incr bool);
+                                 ^
 create rule updlog as on update to tt15v do also
   insert into tt15v_log values(old, new, row(old,old) < row(new,new));
+ERROR:  relation "tt15v" does not exist
 \d+ tt15v
-                             View "testviewschm2.tt15v"
- Column |      Type       | Collation | Nullable | Default | Storage  | Description 
---------+-----------------+-----------+----------+---------+----------+-------------
- row    | nestedcomposite |           |          |         | extended | 
-View definition:
- SELECT ROW(i.*::int8_tbl)::nestedcomposite AS "row"
-   FROM int8_tbl i;
-Rules:
- updlog AS
-    ON UPDATE TO tt15v DO  INSERT INTO tt15v_log (o, n, incr)
-  VALUES (old.*::tt15v, new.*::tt15v, (ROW(old.*::tt15v, old.*::tt15v) < ROW(new.*::tt15v, new.*::tt15v)))
-
 -- check unique-ification of overlength names
 create view tt18v as
   select * from int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxy
@@ -1713,26 +1650,15 @@ create view tt18v as
   select * from int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxz;
 NOTICE:  identifier "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxy" will be truncated to "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 NOTICE:  identifier "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxz" will be truncated to "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ERROR:  relation "int8_tbl" does not exist
+LINE 2:   select * from int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...
+                        ^
 select pg_get_viewdef('tt18v', true);
-                                  pg_get_viewdef                                   
------------------------------------------------------------------------------------
-  SELECT xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.q1,      +
-     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.q2           +
-    FROM int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx +
- UNION ALL                                                                        +
-  SELECT xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.q1,      +
-     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.q2           +
-    FROM int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
-(1 row)
-
+ERROR:  relation "tt18v" does not exist
 explain (costs off) select * from tt18v;
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
- Append
-   ->  Seq Scan on int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   ->  Seq Scan on int8_tbl xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_1
-(3 rows)
-
+ERROR:  relation "tt18v" does not exist
+LINE 1: explain (costs off) select * from tt18v;
+                                          ^
 -- check display of ScalarArrayOp with a sub-select
 select 'foo'::text = any(array['abc','def','foo']::text[]);
  ?column? 
@@ -1810,45 +1736,19 @@ select
   trim(E'\\000'::bytea from E'\\000Tom\\000'::bytea) as btb,
   trim(leading E'\\000'::bytea from E'\\000Tom\\000'::bytea) as ltb,
   trim(trailing E'\\000'::bytea from E'\\000Tom\\000'::bytea) as rtb;
+ERROR:  operator does not exist: date + interval
+LINE 3:   ('2022-12-01'::date + '1 day'::interval) at time zone 'UTC...
+                              ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select pg_get_viewdef('tt201v', true);
-                                        pg_get_viewdef                                         
------------------------------------------------------------------------------------------------
-  SELECT (('12-01-2022'::date + '@ 1 day'::interval) AT TIME ZONE 'UTC'::text) AS atz,        +
-     EXTRACT(day FROM now()) AS extr,                                                         +
-     ((now(), '@ 1 day'::interval) OVERLAPS (CURRENT_TIMESTAMP(2), '@ 1 day'::interval)) AS o,+
-     ('foo'::text IS NORMALIZED) AS isn,                                                      +
-     ('foo'::text IS NFKC NORMALIZED) AS isnn,                                                +
-     NORMALIZE('foo'::text) AS n,                                                             +
-     NORMALIZE('foo'::text, NFKD) AS nfkd,                                                    +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2) AS ovl,                                  +
-     OVERLAY('foo'::text PLACING 'bar'::text FROM 2 FOR 3) AS ovl2,                           +
-     POSITION(('foo'::text) IN ('foobar'::text)) AS p,                                        +
-     SUBSTRING('foo'::text FROM 2 FOR 3) AS s,                                                +
-     SUBSTRING('foo'::text SIMILAR 'f'::text ESCAPE '#'::text) AS ss,                         +
-     "substring"('foo'::text, 'oo'::text) AS ssf,                                             +
-     TRIM(BOTH ' '::text FROM ' foo '::text) AS bt,                                           +
-     TRIM(LEADING ' '::text FROM ' foo '::text) AS lt,                                        +
-     TRIM(TRAILING FROM ' foo '::text) AS rt,                                                 +
-     TRIM(BOTH '\x00'::bytea FROM '\x00546f6d00'::bytea) AS btb,                              +
-     TRIM(LEADING '\x00'::bytea FROM '\x00546f6d00'::bytea) AS ltb,                           +
-     TRIM(TRAILING '\x00'::bytea FROM '\x00546f6d00'::bytea) AS rtb;
-(1 row)
-
+ERROR:  relation "tt201v" does not exist
 -- corner cases with empty join conditions
 create view tt21v as
 select * from tt5 natural inner join tt6;
+ERROR:  Natural join support {left|right} [outer] join.
+HINT:  Please note whether it's compatible with MySQL.
 select pg_get_viewdef('tt21v', true);
-    pg_get_viewdef    
-----------------------
-  SELECT tt5.a,      +
-     tt5.b,          +
-     tt5.cc,         +
-     tt6.c,          +
-     tt6.d           +
-    FROM tt5         +
-      CROSS JOIN tt6;
-(1 row)
-
+ERROR:  relation "tt21v" does not exist
 create view tt22v as
 select * from tt5 natural left join tt6;
 select pg_get_viewdef('tt22v', true);
@@ -1868,30 +1768,16 @@ create view tt23v (col_a, col_b) as
 select q1 as other_name1, q2 as other_name2 from int8_tbl
 union
 select 42, 43;
+ERROR:  relation "int8_tbl" does not exist
+LINE 2: select q1 as other_name1, q2 as other_name2 from int8_tbl
+                                                         ^
 select pg_get_viewdef('tt23v', true);
-        pg_get_viewdef         
--------------------------------
-  SELECT int8_tbl.q1 AS col_a,+
-     int8_tbl.q2 AS col_b     +
-    FROM int8_tbl             +
- UNION                        +
-  SELECT 42 AS col_a,         +
-     43 AS col_b;
-(1 row)
-
+ERROR:  relation "tt23v" does not exist
 select pg_get_ruledef(oid, true) from pg_rewrite
   where ev_class = 'tt23v'::regclass and ev_type = '1';
-                         pg_get_ruledef                          
------------------------------------------------------------------
- CREATE RULE "_RETURN" AS                                       +
-     ON SELECT TO tt23v DO INSTEAD  SELECT int8_tbl.q1 AS col_a,+
-     int8_tbl.q2 AS col_b                                       +
-    FROM int8_tbl                                               +
- UNION                                                          +
-  SELECT 42 AS col_a,                                           +
-     43 AS col_b;
-(1 row)
-
+ERROR:  relation "tt23v" does not exist
+LINE 2:   where ev_class = 'tt23v'::regclass and ev_type = '1';
+                           ^
 -- test extraction of FieldSelect field names (get_name_for_var_field)
 create view tt24v as
 with cte as materialized (select r from (values(1,2),(3,4)) r)
@@ -2059,7 +1945,7 @@ drop cascades to view aliased_view_2
 drop cascades to view aliased_view_3
 drop cascades to view aliased_view_4
 DROP SCHEMA testviewschm2 CASCADE;
-NOTICE:  drop cascades to 77 other objects
+NOTICE:  drop cascades to 67 other objects
 DETAIL:  drop cascades to table t1
 drop cascades to view temporal1
 drop cascades to view temporal2
@@ -2108,7 +1994,6 @@ drop cascades to view vv3
 drop cascades to view vv4
 drop cascades to table tt7a
 drop cascades to table tt8a
-drop cascades to view vv2a
 drop cascades to table tt9
 drop cascades to table tt10
 drop cascades to view vv5
@@ -2119,18 +2004,9 @@ drop cascades to view vv6
 drop cascades to table tt14t
 drop cascades to function tt14f()
 drop cascades to view tt14v
-drop cascades to type nestedcomposite
-drop cascades to view tt15v
-drop cascades to view tt16v
-drop cascades to view tt17v
-drop cascades to table tt15v_log
-drop cascades to view tt18v
 drop cascades to view tt19v
 drop cascades to view tt20v
-drop cascades to view tt201v
-drop cascades to view tt21v
 drop cascades to view tt22v
-drop cascades to view tt23v
 drop cascades to view tt24v
 drop cascades to view tt25v
 drop cascades to view tt26v

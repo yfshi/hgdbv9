@@ -65,7 +65,7 @@ main(void)
 if (sqlca.sqlcode < 0) sqlprint ( );}
 #line 28 "dt_test.pgc"
 
-	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table date_test ( d date , ts timestamp )", ECPGt_EOIT, ECPGt_EORT);
+	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "create table date_test ( d date , ts pg_catalog . timestamp )", ECPGt_EOIT, ECPGt_EORT);
 #line 29 "dt_test.pgc"
 
 if (sqlca.sqlcode < 0) sqlprint ( );}

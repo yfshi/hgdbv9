@@ -11,7 +11,7 @@ DATA = mys_btree_gin--1.0.sql
 
 PGFILEDESC = "mys_btree_gin - B-tree equivalent GIN operator classes"
 
-MYS_REGRESS = init year
+MYS_REGRESS = init year date datetime timestamp time
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

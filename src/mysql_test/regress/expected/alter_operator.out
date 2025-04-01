@@ -123,7 +123,7 @@ ALTER OPERATOR === (boolean, boolean) SET (NEGATOR = !==);
 ERROR:  operator attribute "negator" cannot be changed
 -- invalid: non-lowercase quoted identifiers
 ALTER OPERATOR & (bit, bit) SET ("Restrict" = _int_contsel, "Join" = _int_contjoinsel);
-ERROR:  operator attribute "Restrict" not recognized
+ERROR:  function _int_contsel(internal, oid, internal, integer) does not exist
 --
 -- Test permission check. Must be owner to ALTER OPERATOR.
 --

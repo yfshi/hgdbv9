@@ -45,8 +45,8 @@ SELECT c, max(a) FROM test_having
 	ORDER BY c;
     c     | max 
 ----------+-----
- bbbb     |   5
  XXXX     |   0
+ bbbb     |   5
 (2 rows)
 
 -- test degenerate cases involving HAVING without GROUP BY

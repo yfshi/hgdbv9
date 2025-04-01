@@ -8,6 +8,7 @@ OBJS = \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
 	src/datatype/myyear.o \
+	src/datatype/mysdate.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -68,7 +69,11 @@ MYS_REGRESS = multi_update \
 			  multi_updatecase \
 			  multi_deletecase \
 			  mys_use_case \
-			  mys_year \
+			  mys_year	\
+			  mys_date \
+			  mys_datetime \
+			  mys_timestamp \
+			  mys_time	\
 			  show_charset
 
 

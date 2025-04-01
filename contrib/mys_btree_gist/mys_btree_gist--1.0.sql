@@ -131,3 +131,336 @@ AS
 
 ALTER OPERATOR FAMILY gist_mysyear_ops USING gist ADD
 	OPERATOR	6	ivymy.<> (ivymy.year, ivymy.year);
+	
+CREATE FUNCTION ivymy.mysdatetime_dist(ivymy.mysdatetime, ivymy.mysdatetime)
+RETURNS pg_catalog.interval
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR <-> (
+	LEFTARG = ivymy.mysdatetime,
+	RIGHTARG = ivymy.mysdatetime,
+	PROCEDURE = ivymy.mysdatetime_dist,
+	COMMUTATOR = '<->'
+);
+
+CREATE FUNCTION ivymy.mysdate_dist(ivymy.mysdate, ivymy.mysdate)
+RETURNS int4
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR <-> (
+	LEFTARG = ivymy.mysdate,
+	RIGHTARG = ivymy.mysdate,
+	PROCEDURE = ivymy.mysdate_dist,
+	COMMUTATOR = '<->'
+);
+
+CREATE FUNCTION ivymy.mystimestamp_dist(ivymy.mystimestamp, ivymy.mystimestamp)
+RETURNS pg_catalog.interval
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR <-> (
+	LEFTARG = ivymy.mystimestamp,
+	RIGHTARG = ivymy.mystimestamp,
+	PROCEDURE = ivymy.mystimestamp_dist,
+	COMMUTATOR = '<->'
+);
+
+CREATE FUNCTION ivymy.mystime_dist(ivymy.mystime, ivymy.mystime)
+RETURNS pg_catalog.interval
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR <-> (
+	LEFTARG = ivymy.mystime,
+	RIGHTARG = ivymy.mystime,
+	PROCEDURE = ivymy.mystime_dist,
+	COMMUTATOR = '<->'
+);
+--
+--
+--
+-- mysdatetime ops
+--
+--
+--
+CREATE FUNCTION ivymy.gbt_mysdatetime_consistent(internal,ivymy.mysdatetime,int2,oid,internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_distance(internal,ivymy.mysdatetime,int2,oid,internal)
+RETURNS float8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_compress(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_fetch(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_penalty(internal,internal,internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_picksplit(internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_union(internal, internal)
+RETURNS ivymy.gbtreekey16
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mysdatetime_same(ivymy.gbtreekey16, ivymy.gbtreekey16, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+-- Create the operator class
+CREATE OPERATOR CLASS gist_mysdatetime_ops
+DEFAULT FOR TYPE ivymy.mysdatetime USING gist
+AS
+	OPERATOR	1	<  ,
+	OPERATOR	2	<= ,
+	OPERATOR	3	=  ,
+	OPERATOR	4	>= ,
+	OPERATOR	5	>  ,
+	FUNCTION	1	ivymy.gbt_mysdatetime_consistent (internal, ivymy.mysdatetime, int2, oid, internal),
+	FUNCTION	2	ivymy.gbt_mysdatetime_union (internal, internal),
+	FUNCTION	3	ivymy.gbt_mysdatetime_compress (internal),
+	FUNCTION	4	ivymy.gbt_decompress (internal),
+	FUNCTION	5	ivymy.gbt_mysdatetime_penalty (internal, internal, internal),
+	FUNCTION	6	ivymy.gbt_mysdatetime_picksplit (internal, internal),
+	FUNCTION	7	ivymy.gbt_mysdatetime_same (ivymy.gbtreekey16, ivymy.gbtreekey16, internal),
+	STORAGE 	ivymy.gbtreekey16;
+
+ALTER OPERATOR FAMILY gist_mysdatetime_ops USING gist ADD
+	OPERATOR	6	<> (ivymy.mysdatetime, ivymy.mysdatetime) ,
+	OPERATOR	15	<-> (ivymy.mysdatetime, ivymy.mysdatetime) FOR ORDER BY pg_catalog.interval_ops ,
+	FUNCTION	8 (ivymy.mysdatetime, ivymy.mysdatetime) ivymy.gbt_mysdatetime_distance (internal, ivymy.mysdatetime, int2, oid, internal) ,
+	FUNCTION	9 (ivymy.mysdatetime, ivymy.mysdatetime) ivymy.gbt_mysdatetime_fetch (internal) ;
+
+
+--
+--
+--
+-- ivymy.mysdate ops
+--
+--
+--
+
+CREATE FUNCTION ivymy.gbt_date_consistent(internal,ivymy.mysdate,int2,oid,internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_distance(internal,ivymy.mysdate,int2,oid,internal)
+RETURNS float8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_compress(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_fetch(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_penalty(internal,internal,internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_picksplit(internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_union(internal, internal)
+RETURNS gbtreekey8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_date_same(ivymy.gbtreekey8, ivymy.gbtreekey8, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+-- Create the operator class
+CREATE OPERATOR CLASS gist_mysdate_ops
+DEFAULT FOR TYPE ivymy.mysdate USING gist
+AS
+	OPERATOR	1	<  ,
+	OPERATOR	2	<= ,
+	OPERATOR	3	=  ,
+	OPERATOR	4	>= ,
+	OPERATOR	5	>  ,
+	FUNCTION	1	ivymy.gbt_date_consistent (internal, ivymy.mysdate, int2, oid, internal),
+	FUNCTION	2	ivymy.gbt_date_union (internal, internal),
+	FUNCTION	3	ivymy.gbt_date_compress (internal),
+	FUNCTION	4	ivymy.gbt_decompress (internal),
+	FUNCTION	5	ivymy.gbt_date_penalty (internal, internal, internal),
+	FUNCTION	6	ivymy.gbt_date_picksplit (internal, internal),
+	FUNCTION	7	ivymy.gbt_date_same (ivymy.gbtreekey8, ivymy.gbtreekey8, internal),
+	STORAGE		gbtreekey8;
+
+ALTER OPERATOR FAMILY gist_mysdate_ops USING gist ADD
+	OPERATOR	6	<> (ivymy.mysdate, ivymy.mysdate) ,
+	OPERATOR	15	<-> (ivymy.mysdate, ivymy.mysdate) FOR ORDER BY pg_catalog.integer_ops ,
+	FUNCTION	8 (ivymy.mysdate, ivymy.mysdate) ivymy.gbt_date_distance (internal, ivymy.mysdate, int2, oid, internal) ,
+	FUNCTION	9 (ivymy.mysdate, ivymy.mysdate) ivymy.gbt_date_fetch (internal) ;
+
+
+/* timestamp */
+--
+--
+--
+-- mystimestamp ops
+--
+--
+--
+CREATE FUNCTION ivymy.gbt_mystimestamp_consistent(internal,ivymy.mystimestamp,int2,oid,internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_distance(internal,ivymy.mystimestamp,int2,oid,internal)
+RETURNS float8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_compress(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_fetch(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_penalty(internal,internal,internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_picksplit(internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_union(internal, internal)
+RETURNS ivymy.gbtreekey16
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystimestamp_same(ivymy.gbtreekey16, ivymy.gbtreekey16, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR CLASS gist_mystimestamp_ops
+DEFAULT FOR TYPE ivymy.mystimestamp USING gist
+AS
+	OPERATOR	1	<  ,
+	OPERATOR	2	<= ,
+	OPERATOR	3	=  ,
+	OPERATOR	4	>= ,
+	OPERATOR	5	>  ,
+	FUNCTION	1	ivymy.gbt_mystimestamp_consistent (internal, ivymy.mystimestamp, int2, oid, internal),
+	FUNCTION	2	ivymy.gbt_mystimestamp_union (internal, internal),
+	FUNCTION	3	ivymy.gbt_mystimestamp_compress (internal),
+	FUNCTION	4	ivymy.gbt_decompress (internal),
+	FUNCTION	5	ivymy.gbt_mystimestamp_penalty (internal, internal, internal),
+	FUNCTION	6	ivymy.gbt_mystimestamp_picksplit (internal, internal),
+	FUNCTION	7	ivymy.gbt_mystimestamp_same (ivymy.gbtreekey16, ivymy.gbtreekey16, internal),
+	STORAGE 	ivymy.gbtreekey16;
+
+ALTER OPERATOR FAMILY gist_mystimestamp_ops USING gist ADD
+	OPERATOR	6	<> (ivymy.mystimestamp, ivymy.mystimestamp) ,
+	OPERATOR	15	<-> (ivymy.mystimestamp, ivymy.mystimestamp) FOR ORDER BY pg_catalog.interval_ops ,
+	FUNCTION	8 (ivymy.mystimestamp, ivymy.mystimestamp) ivymy.gbt_mystimestamp_distance (internal, ivymy.mystimestamp, int2, oid, internal) ,
+	FUNCTION	9 (ivymy.mystimestamp, ivymy.mystimestamp) ivymy.gbt_mystimestamp_fetch (internal) ;
+
+/* time */
+--
+--
+-- mystime ops
+--
+--
+--
+CREATE FUNCTION ivymy.gbt_mystime_consistent(internal,ivymy.mystime,int2,oid,internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_distance(internal,ivymy.mystime,int2,oid,internal)
+RETURNS float8
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_compress(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_fetch(internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_penalty(internal,internal,internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_picksplit(internal, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_union(internal, internal)
+RETURNS ivymy.gbtreekey16
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION ivymy.gbt_mystime_same(ivymy.gbtreekey16, ivymy.gbtreekey16, internal)
+RETURNS internal
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OPERATOR CLASS gist_mystime_ops
+DEFAULT FOR TYPE ivymy.mystime USING gist
+AS
+	OPERATOR	1	<  ,
+	OPERATOR	2	<= ,
+	OPERATOR	3	=  ,
+	OPERATOR	4	>= ,
+	OPERATOR	5	>  ,
+	FUNCTION	1	ivymy.gbt_mystime_consistent (internal, ivymy.mystime, int2, oid, internal),
+	FUNCTION	2	ivymy.gbt_mystime_union (internal, internal),
+	FUNCTION	3	ivymy.gbt_mystime_compress (internal),
+	FUNCTION	4	ivymy.gbt_decompress (internal),
+	FUNCTION	5	ivymy.gbt_mystime_penalty (internal, internal, internal),
+	FUNCTION	6	ivymy.gbt_mystime_picksplit (internal, internal),
+	FUNCTION	7	ivymy.gbt_mystime_same (ivymy.gbtreekey16, ivymy.gbtreekey16, internal),
+	STORAGE 	ivymy.gbtreekey16;
+
+ALTER OPERATOR FAMILY gist_mystimestamp_ops USING gist ADD
+	OPERATOR	6	<> (ivymy.mystime, ivymy.mystime) ,
+	OPERATOR	15	<-> (ivymy.mystime, ivymy.mystime) FOR ORDER BY pg_catalog.interval_ops ,
+	FUNCTION	8 (ivymy.mystime, ivymy.mystime) ivymy.gbt_mystime_distance (internal, ivymy.mystime, int2, oid, internal) ,
+	FUNCTION	9 (ivymy.mystime, ivymy.mystime) ivymy.gbt_mystime_fetch (internal) ;

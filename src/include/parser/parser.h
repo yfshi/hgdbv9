@@ -89,8 +89,11 @@ extern TypeName *SystemTypeName(char *name);
 extern List *OracleSystemFuncName(char *name);
 extern TypeName *OracleSystemTypeName(char *name);
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 /* Begin - ReqID:SRS-MYSQL-YEARTYPE */
 extern TypeName *MySQLSystemTypeName(char *name);
 /* End - ReqID:SRS-MYSQL-YEARTYPE */
+/* End - ReqID:SRS-MYSQL-DATETYPE */
 
 #endif							/* PARSER_H */

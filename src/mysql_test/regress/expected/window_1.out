@@ -603,25 +603,16 @@ SELECT empno, depname, salary, bonus, depadj, MIN(bonus) OVER (ORDER BY empno), 
 			AVG(salary) OVER (PARTITION BY depname) < salary
 		THEN 200 END AS depadj FROM empsalary
 )s;
- empno |  depname  | salary | bonus | depadj | MIN  | MAX 
--------+-----------+--------+-------+--------+------+-----
-     1 | sales     |   5000 |  1000 |    200 | 1000 | 200
-     2 | personnel |   3900 |  1000 |    200 | 1000 | 200
-     3 | sales     |   4800 |   500 |        |  500 | 200
-     4 | sales     |   4800 |   500 |        |  500 | 200
-     5 | personnel |   3500 |   500 |        |  500 | 200
-     7 | develop   |   4200 |       |        |  500 | 200
-     8 | develop   |   6000 |  1000 |    200 |  500 | 200
-     9 | develop   |   4500 |       |        |  500 | 200
-    10 | develop   |   5200 |   500 |    200 |  500 | 200
-    11 | develop   |   5200 |   500 |    200 |  500 | 200
-(10 rows)
-
+ERROR:  syntax error at or near "YEAR"
+LINE 3: ...EN enroll_date < '2008-01-01' THEN 2008 - extract(YEAR FROM ...
+                                                             ^
 -- window function over ungrouped agg over empty row set (bug before 9.1)
 SELECT SUM(COUNT(f1)) OVER () FROM int4_tbl WHERE f1=42;
-ERROR:  relation "int4_tbl" does not exist
-LINE 1: SELECT SUM(COUNT(f1)) OVER () FROM int4_tbl WHERE f1=42;
-                                           ^
+ SUM 
+-----
+   0
+(1 row)
+
 -- window function with ORDER BY an expression involving aggregates (9.1 bug)
 select ten,
   sum(unique1) + sum(unique2) as res,
@@ -1514,100 +1505,34 @@ FROM tenk1 WHERE unique1 < 10;
 
 select sum(salary) over (order by enroll_date range between '1 year'::interval preceding and '1 year'::interval following),
 	salary, enroll_date from empsalary;
-  sum  | salary | enroll_date 
--------+--------+-------------
- 34900 |   5000 | 10-01-2006
- 34900 |   6000 | 10-01-2006
- 38400 |   3900 | 12-23-2006
- 47100 |   4800 | 08-01-2007
- 47100 |   5200 | 08-01-2007
- 47100 |   4800 | 08-08-2007
- 47100 |   5200 | 08-15-2007
- 36100 |   3500 | 12-10-2007
- 32200 |   4500 | 01-01-2008
- 32200 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...(salary) over (order by enroll_date range between '1 year'::...
+                                                             ^
 select sum(salary) over (order by enroll_date desc range between '1 year'::interval preceding and '1 year'::interval following),
 	salary, enroll_date from empsalary;
-  sum  | salary | enroll_date 
--------+--------+-------------
- 32200 |   4200 | 01-01-2008
- 32200 |   4500 | 01-01-2008
- 36100 |   3500 | 12-10-2007
- 47100 |   5200 | 08-15-2007
- 47100 |   4800 | 08-08-2007
- 47100 |   4800 | 08-01-2007
- 47100 |   5200 | 08-01-2007
- 38400 |   3900 | 12-23-2006
- 34900 |   5000 | 10-01-2006
- 34900 |   6000 | 10-01-2006
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...ry) over (order by enroll_date desc range between '1 year'::...
+                                                             ^
 select sum(salary) over (order by enroll_date desc range between '1 year'::interval following and '1 year'::interval following),
 	salary, enroll_date from empsalary;
- sum | salary | enroll_date 
------+--------+-------------
-     |   4200 | 01-01-2008
-     |   4500 | 01-01-2008
-     |   3500 | 12-10-2007
-     |   5200 | 08-15-2007
-     |   4800 | 08-08-2007
-     |   4800 | 08-01-2007
-     |   5200 | 08-01-2007
-     |   3900 | 12-23-2006
-     |   5000 | 10-01-2006
-     |   6000 | 10-01-2006
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...ry) over (order by enroll_date desc range between '1 year'::...
+                                                             ^
 select sum(salary) over (order by enroll_date range between '1 year'::interval preceding and '1 year'::interval following
 	exclude current row), salary, enroll_date from empsalary;
-  sum  | salary | enroll_date 
--------+--------+-------------
- 29900 |   5000 | 10-01-2006
- 28900 |   6000 | 10-01-2006
- 34500 |   3900 | 12-23-2006
- 42300 |   4800 | 08-01-2007
- 41900 |   5200 | 08-01-2007
- 42300 |   4800 | 08-08-2007
- 41900 |   5200 | 08-15-2007
- 32600 |   3500 | 12-10-2007
- 27700 |   4500 | 01-01-2008
- 28000 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...(salary) over (order by enroll_date range between '1 year'::...
+                                                             ^
 select sum(salary) over (order by enroll_date range between '1 year'::interval preceding and '1 year'::interval following
 	exclude group), salary, enroll_date from empsalary;
-  sum  | salary | enroll_date 
--------+--------+-------------
- 23900 |   5000 | 10-01-2006
- 23900 |   6000 | 10-01-2006
- 34500 |   3900 | 12-23-2006
- 37100 |   4800 | 08-01-2007
- 37100 |   5200 | 08-01-2007
- 42300 |   4800 | 08-08-2007
- 41900 |   5200 | 08-15-2007
- 32600 |   3500 | 12-10-2007
- 23500 |   4500 | 01-01-2008
- 23500 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...(salary) over (order by enroll_date range between '1 year'::...
+                                                             ^
 select sum(salary) over (order by enroll_date range between '1 year'::interval preceding and '1 year'::interval following
 	exclude ties), salary, enroll_date from empsalary;
-  sum  | salary | enroll_date 
--------+--------+-------------
- 28900 |   5000 | 10-01-2006
- 29900 |   6000 | 10-01-2006
- 38400 |   3900 | 12-23-2006
- 41900 |   4800 | 08-01-2007
- 42300 |   5200 | 08-01-2007
- 47100 |   4800 | 08-08-2007
- 47100 |   5200 | 08-15-2007
- 36100 |   3500 | 12-10-2007
- 28000 |   4500 | 01-01-2008
- 27700 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...(salary) over (order by enroll_date range between '1 year'::...
+                                                             ^
 select first_value(salary) over(order by salary range between 1000 preceding and 1000 following),
 	lead(salary) over(order by salary range between 1000 preceding and 1000 following),
 	nth_value(salary, 1) over(order by salary range between 1000 preceding and 1000 following),
@@ -1685,77 +1610,33 @@ select first_value(salary) over(order by enroll_date range between unbounded pre
 	exclude ties),
 	last_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following),
 	salary, enroll_date from empsalary;
- first_value | last_value | salary | enroll_date 
--------------+------------+--------+-------------
-        5000 |       5200 |   5000 | 10-01-2006
-        6000 |       5200 |   6000 | 10-01-2006
-        5000 |       3500 |   3900 | 12-23-2006
-        5000 |       4200 |   4800 | 08-01-2007
-        5000 |       4200 |   5200 | 08-01-2007
-        5000 |       4200 |   4800 | 08-08-2007
-        5000 |       4200 |   5200 | 08-15-2007
-        5000 |       4200 |   3500 | 12-10-2007
-        5000 |       4200 |   4500 | 01-01-2008
-        5000 |       4200 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...enroll_date range between unbounded preceding and '1 year'::...
+                                                             ^
 select first_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude ties),
 	last_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude ties),
 	salary, enroll_date from empsalary;
- first_value | last_value | salary | enroll_date 
--------------+------------+--------+-------------
-        5000 |       5200 |   5000 | 10-01-2006
-        6000 |       5200 |   6000 | 10-01-2006
-        5000 |       3500 |   3900 | 12-23-2006
-        5000 |       4200 |   4800 | 08-01-2007
-        5000 |       4200 |   5200 | 08-01-2007
-        5000 |       4200 |   4800 | 08-08-2007
-        5000 |       4200 |   5200 | 08-15-2007
-        5000 |       4200 |   3500 | 12-10-2007
-        5000 |       4500 |   4500 | 01-01-2008
-        5000 |       4200 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...enroll_date range between unbounded preceding and '1 year'::...
+                                                             ^
 select first_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude group),
 	last_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude group),
 	salary, enroll_date from empsalary;
- first_value | last_value | salary | enroll_date 
--------------+------------+--------+-------------
-        3900 |       5200 |   5000 | 10-01-2006
-        3900 |       5200 |   6000 | 10-01-2006
-        5000 |       3500 |   3900 | 12-23-2006
-        5000 |       4200 |   4800 | 08-01-2007
-        5000 |       4200 |   5200 | 08-01-2007
-        5000 |       4200 |   4800 | 08-08-2007
-        5000 |       4200 |   5200 | 08-15-2007
-        5000 |       4200 |   3500 | 12-10-2007
-        5000 |       3500 |   4500 | 01-01-2008
-        5000 |       3500 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...enroll_date range between unbounded preceding and '1 year'::...
+                                                             ^
 select first_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude current row),
 	last_value(salary) over(order by enroll_date range between unbounded preceding and '1 year'::interval following
 	exclude current row),
 	salary, enroll_date from empsalary;
- first_value | last_value | salary | enroll_date 
--------------+------------+--------+-------------
-        6000 |       5200 |   5000 | 10-01-2006
-        5000 |       5200 |   6000 | 10-01-2006
-        5000 |       3500 |   3900 | 12-23-2006
-        5000 |       4200 |   4800 | 08-01-2007
-        5000 |       4200 |   5200 | 08-01-2007
-        5000 |       4200 |   4800 | 08-08-2007
-        5000 |       4200 |   5200 | 08-15-2007
-        5000 |       4200 |   3500 | 12-10-2007
-        5000 |       4200 |   4500 | 01-01-2008
-        5000 |       4500 |   4200 | 01-01-2008
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date
+LINE 1: ...enroll_date range between unbounded preceding and '1 year'::...
+                                                             ^
 -- RANGE offset PRECEDING/FOLLOWING with null values
 select x, y,
        first_value(y) over w,
@@ -2227,38 +2108,16 @@ select id, f_time, first_value(id) over w, last_value(id) over w
 from datetimes
 window w as (order by f_time range between
              '70 min'::interval preceding and '2 hours'::interval following);
- id |  f_time  | first_value | last_value 
-----+----------+-------------+------------
-  1 | 11:00:00 |           1 |          3
-  2 | 12:00:00 |           1 |          4
-  3 | 13:00:00 |           2 |          6
-  4 | 14:00:00 |           3 |          6
-  5 | 15:00:00 |           4 |          7
-  6 | 15:00:00 |           4 |          7
-  7 | 17:00:00 |           7 |          9
-  8 | 18:00:00 |           7 |         10
-  9 | 19:00:00 |           8 |         10
- 10 | 20:00:00 |           9 |         10
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type time
+LINE 4:              '70 min'::interval preceding and '2 hours'::int...
+                     ^
 select id, f_time, first_value(id) over w, last_value(id) over w
 from datetimes
 window w as (order by f_time desc range between
              '70 min' preceding and '2 hours' following);
- id |  f_time  | first_value | last_value 
-----+----------+-------------+------------
- 10 | 20:00:00 |          10 |          8
-  9 | 19:00:00 |          10 |          7
-  8 | 18:00:00 |           9 |          7
-  7 | 17:00:00 |           8 |          5
-  6 | 15:00:00 |           6 |          3
-  5 | 15:00:00 |           6 |          3
-  4 | 14:00:00 |           6 |          2
-  3 | 13:00:00 |           4 |          1
-  2 | 12:00:00 |           3 |          1
-  1 | 11:00:00 |           2 |          1
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type time
+LINE 4:              '70 min' preceding and '2 hours' following);
+                     ^
 select id, f_timetz, first_value(id) over w, last_value(id) over w
 from datetimes
 window w as (order by f_timetz range between
@@ -2371,38 +2230,16 @@ select id, f_timestamp, first_value(id) over w, last_value(id) over w
 from datetimes
 window w as (order by f_timestamp range between
              '1 year'::interval preceding and '1 year'::interval following);
- id |       f_timestamp        | first_value | last_value 
-----+--------------------------+-------------+------------
-  1 | Thu Oct 19 10:23:54 2000 |           1 |          3
-  2 | Fri Oct 19 10:23:54 2001 |           1 |          4
-  3 | Fri Oct 19 10:23:54 2001 |           1 |          4
-  4 | Sat Oct 19 10:23:54 2002 |           2 |          5
-  5 | Sun Oct 19 10:23:54 2003 |           4 |          6
-  6 | Tue Oct 19 10:23:54 2004 |           5 |          7
-  7 | Wed Oct 19 10:23:54 2005 |           6 |          8
-  8 | Thu Oct 19 10:23:54 2006 |           7 |          9
-  9 | Fri Oct 19 10:23:54 2007 |           8 |         10
- 10 | Sun Oct 19 10:23:54 2008 |           9 |         10
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type timestamp
+LINE 4:              '1 year'::interval preceding and '1 year'::inte...
+                     ^
 select id, f_timestamp, first_value(id) over w, last_value(id) over w
 from datetimes
 window w as (order by f_timestamp desc range between
              '1 year' preceding and '1 year' following);
- id |       f_timestamp        | first_value | last_value 
-----+--------------------------+-------------+------------
- 10 | Sun Oct 19 10:23:54 2008 |          10 |          9
-  9 | Fri Oct 19 10:23:54 2007 |          10 |          8
-  8 | Thu Oct 19 10:23:54 2006 |           9 |          7
-  7 | Wed Oct 19 10:23:54 2005 |           8 |          6
-  6 | Tue Oct 19 10:23:54 2004 |           7 |          5
-  5 | Sun Oct 19 10:23:54 2003 |           6 |          4
-  4 | Sat Oct 19 10:23:54 2002 |           5 |          2
-  3 | Fri Oct 19 10:23:54 2001 |           4 |          1
-  2 | Fri Oct 19 10:23:54 2001 |           4 |          1
-  1 | Thu Oct 19 10:23:54 2000 |           3 |          1
-(10 rows)
-
+ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type timestamp
+LINE 4:              '1 year' preceding and '1 year' following);
+                     ^
 -- RANGE offset PRECEDING/FOLLOWING error cases
 select sum(salary) over (order by enroll_date, salary range between '1 year'::interval preceding and '2 years'::interval following
 	exclude ties), salary, enroll_date from empsalary;
@@ -2421,25 +2258,34 @@ LINE 1: ... sum(salary) over (order by depname range between '1 year'::...
                                                              ^
 select max(enroll_date) over (order by enroll_date range between 1 preceding and 2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type date and offset type integer
-LINE 1: ...ll_date) over (order by enroll_date range between 1 precedin...
-                                                             ^
-HINT:  Cast the offset value to an appropriate type.
+ERROR:  function max(date) does not exist
+LINE 1: select max(enroll_date) over (order by enroll_date range bet...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select max(enroll_date) over (order by salary range between -1 preceding and 2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  invalid preceding or following size in window function
+ERROR:  function max(date) does not exist
+LINE 1: select max(enroll_date) over (order by salary range between ...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select max(enroll_date) over (order by salary range between 1 preceding and -2 following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  invalid preceding or following size in window function
+ERROR:  function max(date) does not exist
+LINE 1: select max(enroll_date) over (order by salary range between ...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select max(enroll_date) over (order by salary range between '1 year'::interval preceding and '2 years'::interval following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  RANGE with offset PRECEDING/FOLLOWING is not supported for column type integer and offset type interval
-LINE 1: ...(enroll_date) over (order by salary range between '1 year'::...
-                                                             ^
-HINT:  Cast the offset value to an appropriate type.
+ERROR:  function max(date) does not exist
+LINE 1: select max(enroll_date) over (order by salary range between ...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select max(enroll_date) over (order by enroll_date range between '1 year'::interval preceding and '-2 years'::interval following
 	exclude ties), salary, enroll_date from empsalary;
-ERROR:  invalid preceding or following size in window function
+ERROR:  function max(date) does not exist
+LINE 1: select max(enroll_date) over (order by enroll_date range bet...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- GROUPS tests
 SELECT sum(unique1) over (order by four groups between unbounded preceding and current row),
 	unique1, four
@@ -2719,16 +2565,16 @@ select first_value(salary) over(order by enroll_date groups between 1 preceding 
 	salary, enroll_date from empsalary;
  first_value | lead | nth_value | salary | enroll_date 
 -------------+------+-----------+--------+-------------
-        5000 | 6000 |      5000 |   5000 | 10-01-2006
-        5000 | 3900 |      5000 |   6000 | 10-01-2006
-        5000 | 4800 |      5000 |   3900 | 12-23-2006
-        3900 | 5200 |      3900 |   4800 | 08-01-2007
-        3900 | 4800 |      3900 |   5200 | 08-01-2007
-        4800 | 5200 |      4800 |   4800 | 08-08-2007
-        4800 | 3500 |      4800 |   5200 | 08-15-2007
-        5200 | 4500 |      5200 |   3500 | 12-10-2007
-        3500 | 4200 |      3500 |   4500 | 01-01-2008
-        3500 |      |      3500 |   4200 | 01-01-2008
+        5000 | 6000 |      5000 |   5000 | 2006-10-01
+        5000 | 3900 |      5000 |   6000 | 2006-10-01
+        5000 | 4800 |      5000 |   3900 | 2006-12-23
+        3900 | 5200 |      3900 |   4800 | 2007-08-01
+        3900 | 4800 |      3900 |   5200 | 2007-08-01
+        4800 | 5200 |      4800 |   4800 | 2007-08-08
+        4800 | 3500 |      4800 |   5200 | 2007-08-15
+        5200 | 4500 |      5200 |   3500 | 2007-12-10
+        3500 | 4200 |      3500 |   4500 | 2008-01-01
+        3500 |      |      3500 |   4200 | 2008-01-01
 (10 rows)
 
 select last_value(salary) over(order by enroll_date groups between 1 preceding and 1 following),
@@ -2736,16 +2582,16 @@ select last_value(salary) over(order by enroll_date groups between 1 preceding a
 	salary, enroll_date from empsalary;
  last_value | lag  | salary | enroll_date 
 ------------+------+--------+-------------
-       3900 |      |   5000 | 10-01-2006
-       3900 | 5000 |   6000 | 10-01-2006
-       5200 | 6000 |   3900 | 12-23-2006
-       4800 | 3900 |   4800 | 08-01-2007
-       4800 | 4800 |   5200 | 08-01-2007
-       5200 | 5200 |   4800 | 08-08-2007
-       3500 | 4800 |   5200 | 08-15-2007
-       4200 | 5200 |   3500 | 12-10-2007
-       4200 | 3500 |   4500 | 01-01-2008
-       4200 | 4500 |   4200 | 01-01-2008
+       3900 |      |   5000 | 2006-10-01
+       3900 | 5000 |   6000 | 2006-10-01
+       5200 | 6000 |   3900 | 2006-12-23
+       4800 | 3900 |   4800 | 2007-08-01
+       4800 | 4800 |   5200 | 2007-08-01
+       5200 | 5200 |   4800 | 2007-08-08
+       3500 | 4800 |   5200 | 2007-08-15
+       4200 | 5200 |   3500 | 2007-12-10
+       4200 | 3500 |   4500 | 2008-01-01
+       4200 | 4500 |   4200 | 2008-01-01
 (10 rows)
 
 select first_value(salary) over(order by enroll_date groups between 1 following and 3 following
@@ -2756,16 +2602,16 @@ select first_value(salary) over(order by enroll_date groups between 1 following 
 	salary, enroll_date from empsalary;
  first_value | lead | nth_value | salary | enroll_date 
 -------------+------+-----------+--------+-------------
-        3900 | 6000 |      3900 |   5000 | 10-01-2006
-        3900 | 3900 |      3900 |   6000 | 10-01-2006
-        4800 | 4800 |      4800 |   3900 | 12-23-2006
-        4800 | 5200 |      4800 |   4800 | 08-01-2007
-        4800 | 4800 |      4800 |   5200 | 08-01-2007
-        5200 | 5200 |      5200 |   4800 | 08-08-2007
-        3500 | 3500 |      3500 |   5200 | 08-15-2007
-        4500 | 4500 |      4500 |   3500 | 12-10-2007
-             | 4200 |           |   4500 | 01-01-2008
-             |      |           |   4200 | 01-01-2008
+        3900 | 6000 |      3900 |   5000 | 2006-10-01
+        3900 | 3900 |      3900 |   6000 | 2006-10-01
+        4800 | 4800 |      4800 |   3900 | 2006-12-23
+        4800 | 5200 |      4800 |   4800 | 2007-08-01
+        4800 | 4800 |      4800 |   5200 | 2007-08-01
+        5200 | 5200 |      5200 |   4800 | 2007-08-08
+        3500 | 3500 |      3500 |   5200 | 2007-08-15
+        4500 | 4500 |      4500 |   3500 | 2007-12-10
+             | 4200 |           |   4500 | 2008-01-01
+             |      |           |   4200 | 2008-01-01
 (10 rows)
 
 select last_value(salary) over(order by enroll_date groups between 1 following and 3 following
@@ -2774,16 +2620,16 @@ select last_value(salary) over(order by enroll_date groups between 1 following a
 	salary, enroll_date from empsalary;
  last_value | lag  | salary | enroll_date 
 ------------+------+--------+-------------
-       4800 |      |   5000 | 10-01-2006
-       4800 | 5000 |   6000 | 10-01-2006
-       5200 | 6000 |   3900 | 12-23-2006
-       3500 | 3900 |   4800 | 08-01-2007
-       3500 | 4800 |   5200 | 08-01-2007
-       4200 | 5200 |   4800 | 08-08-2007
-       4200 | 4800 |   5200 | 08-15-2007
-       4200 | 5200 |   3500 | 12-10-2007
-            | 3500 |   4500 | 01-01-2008
-            | 4500 |   4200 | 01-01-2008
+       4800 |      |   5000 | 2006-10-01
+       4800 | 5000 |   6000 | 2006-10-01
+       5200 | 6000 |   3900 | 2006-12-23
+       3500 | 3900 |   4800 | 2007-08-01
+       3500 | 4800 |   5200 | 2007-08-01
+       4200 | 5200 |   4800 | 2007-08-08
+       4200 | 4800 |   5200 | 2007-08-15
+       4200 | 5200 |   3500 | 2007-12-10
+            | 3500 |   4500 | 2008-01-01
+            | 4500 |   4200 | 2008-01-01
 (10 rows)
 
 -- Show differences in offset interpretation between ROWS, RANGE, and GROUPS
@@ -3264,12 +3110,12 @@ SELECT * FROM
 WHERE first_emp = 1 OR last_emp = 1;
   depname  | empno | salary | enroll_date | first_emp | last_emp 
 -----------+-------+--------+-------------+-----------+----------
- develop   |     8 |   6000 | 10-01-2006  |         1 |        5
- develop   |     7 |   4200 | 01-01-2008  |         5 |        1
- personnel |     2 |   3900 | 12-23-2006  |         1 |        2
- personnel |     5 |   3500 | 12-10-2007  |         2 |        1
- sales     |     1 |   5000 | 10-01-2006  |         1 |        3
- sales     |     4 |   4800 | 08-08-2007  |         3 |        1
+ develop   |     8 |   6000 | 2006-10-01  |         1 |        5
+ develop   |     7 |   4200 | 2008-01-01  |         5 |        1
+ personnel |     2 |   3900 | 2006-12-23  |         1 |        2
+ personnel |     5 |   3500 | 2007-12-10  |         2 |        1
+ sales     |     1 |   5000 | 2006-10-01  |         1 |        3
+ sales     |     4 |   4800 | 2007-08-08  |         3 |        1
 (6 rows)
 
 -- cleanup

@@ -18,6 +18,7 @@
 
 #include "nodes/nodes.h"
 #include "utils/timestamp.h"
+#include "nodes/pg_list.h"
 
 /* this struct is declared in utils/tzparser.h: */
 struct tzEntry;
@@ -192,6 +193,80 @@ struct tzEntry;
 #define DTK_DATE_M		(DTK_M(YEAR) | DTK_M(MONTH) | DTK_M(DAY))
 #define DTK_TIME_M		(DTK_M(HOUR) | DTK_M(MINUTE) | DTK_ALL_SECS_M)
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+#define MYS_ZERO_tm(_X) \
+do {	\
+	(_X)->tm_sec  = (_X)->tm_year = (_X)->tm_min = (_X)->tm_wday = \
+	(_X)->tm_hour = (_X)->tm_yday = (_X)->tm_isdst = (_X)->tm_mon  = 0; \
+	(_X)->tm_mday = 0; \
+	(_X)->tm_zone = NULL; \
+} while(0)
+
+/* mysql date part */
+#define MAX_DATE_PARTS 8
+
+typedef enum
+{
+	MYSQL_TIMESTAMP_NONE = -2,
+	MYSQL_TIMESTAMP_ERROR = -1,
+	MYSQL_TIMESTAMP_DATE = 0,
+	MYSQL_TIMESTAMP_DATETIME = 1,
+	MYSQL_TIMESTAMP_TIME = 2
+}mysql_dttype;
+
+#define TIME_MAX_HOUR 838
+
+/* Flags to str_to_datetime and number_to_datetime */
+typedef int my_time_flags;
+static const my_time_flags TIME_FUZZY_DATE =         1;
+static const my_time_flags TIME_DATETIME_ONLY =      2;
+static const my_time_flags TIME_NO_NSEC_ROUNDING =   4;
+static const my_time_flags TIME_NO_DATE_FRAC_WARN =  8;
+static const my_time_flags TIME_NO_ZERO_IN_DATE =   16;
+static const my_time_flags TIME_NO_ZERO_DATE =      32;
+static const my_time_flags TIME_INVALID_DATES =     64;
+
+/* Conversion warnings */
+#define MYSQL_TIME_WARN_TRUNCATED         1
+#define MYSQL_TIME_WARN_OUT_OF_RANGE      2
+#define MYSQL_TIME_WARN_INVALID_TIMESTAMP 4
+#define MYSQL_TIME_WARN_ZERO_DATE         8
+#define MYSQL_TIME_NOTE_TRUNCATED        16
+#define MYSQL_TIME_WARN_ZERO_IN_DATE     32
+
+/* Usefull constants */
+#define SECONDS_IN_24H 86400L
+
+/* Limits for the TIME data type */
+#define TIME_MAX_HOUR 838
+#define TIME_MAX_MINUTE 59
+#define TIME_MAX_SECOND 59
+#define TIME_MAX_VALUE (TIME_MAX_HOUR*10000 + TIME_MAX_MINUTE*100 + \
+                        TIME_MAX_SECOND)
+#define TIME_MAX_VALUE_SECONDS (TIME_MAX_HOUR * 3600L + \
+                                TIME_MAX_MINUTE * 60L + TIME_MAX_SECOND)
+
+/* two-digit years < this are 20..; >= this are 19.. */
+#define YY_PART_YEAR	   70
+
+#define DATETIME_MAX_DECIMALS 6
+
+#define TIMESTAMP_MAX_YEAR 2038
+#define TIMESTAMP_MIN_YEAR (1900 + YY_PART_YEAR - 1)
+#define TIMESTAMP_MAX_VALUE (0x7fffffff)
+#define TIMESTAMP_MIN_VALUE 1
+
+/* daynr at 1970.01.01 */
+#define DAYS_AT_TIMESTART 719528
+
+#define IS_TIME_T_VALID_FOR_TIMESTAMP(x) \
+    ((x) <= TIMESTAMP_MAX_VALUE && \
+     (x) >= TIMESTAMP_MIN_VALUE)
+
+#define set_bigger(a,b)  do { if ((a) < (b)) (a)=(b); } while(0)
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+
 /*
  * Working buffer size for input and output of interval, timestamp, etc.
  * Inputs that need more working space will be rejected early.  Longer outputs
@@ -339,5 +414,41 @@ extern void InstallTimeZoneAbbrevs(TimeZoneAbbrevTable *tbl);
 extern void AdjustTimestampForTypmod(Timestamp *time, int32 typmod);
 extern bool AdjustTimestampForTypmodError(Timestamp *time, int32 typmod,
 										  bool *error);
+
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+extern int mystr_to_datetime(const char *str, int length, 
+ 						   struct pg_tm *tm, int flag, fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int * fsec_len);
+
+extern int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn);
+
+extern bool non_zero_time(const struct pg_tm *tm, int fsec);
+
+extern bool non_zero_date(const struct pg_tm *tm);
+extern bool zero_date(const struct pg_tm *tm);
+
+extern bool mysdatetime_add_nanoseconds_with_round(struct pg_tm *tm, int *fsec, int *warn, int nanoseconds);
+
+extern bool mysdatetime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn);
+
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+extern int64 my_system_gmt_sec(struct pg_tm *tm, long *my_timezone, bool *in_dst_time_gap);
+extern bool datetime_with_no_zero_in_date_to_timeval(struct pg_tm *tm, fsec_t fsec, int *warn);
+/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict);
+bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict, int *is_out_range);
+
+extern int double2datetimenanosec(double nr, int64 *datetime, fsec_t *fsec);
+extern void adjust_time_range(struct pg_tm *tm, fsec_t * fsec, int *warning) ;
+extern bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
+														int nanoseconds, int *warnings);
+extern bool mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec);
+
+extern int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
+					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg);
+extern int mysnumber_to_time(int64 nr, struct pg_tm *tm,  int flag, int *fsec, mysql_dttype *ftype, int *warnings, int *neg);
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 #endif							/* DATETIME_H */

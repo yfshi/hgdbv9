@@ -10,7 +10,7 @@ INSERT INTO DATE_TBL VALUES ('1996-03-01');
 INSERT INTO DATE_TBL VALUES ('1996-03-02');
 INSERT INTO DATE_TBL VALUES ('1997-02-28');
 INSERT INTO DATE_TBL VALUES ('1997-02-29');
-ERROR:  date/time field value out of range: "1997-02-29"
+ERROR:  Incorrect DATE value: '1997-02-29'
 LINE 1: INSERT INTO DATE_TBL VALUES ('1997-02-29');
                                      ^
 INSERT INTO DATE_TBL VALUES ('1997-03-01');
@@ -23,48 +23,47 @@ INSERT INTO DATE_TBL VALUES ('2039-04-09');
 INSERT INTO DATE_TBL VALUES ('2040-04-10');
 INSERT INTO DATE_TBL VALUES ('2040-04-10 BC');
 SELECT f1 FROM DATE_TBL;
-      f1       
----------------
- 04-09-1957
- 06-13-1957
- 02-28-1996
- 02-29-1996
- 03-01-1996
- 03-02-1996
- 02-28-1997
- 03-01-1997
- 03-02-1997
- 04-01-2000
- 04-02-2000
- 04-03-2000
- 04-08-2038
- 04-09-2039
- 04-10-2040
- 04-10-2040 BC
+     f1     
+------------
+ 1957-04-09
+ 1957-06-13
+ 1996-02-28
+ 1996-02-29
+ 1996-03-01
+ 1996-03-02
+ 1997-02-28
+ 1997-03-01
+ 1997-03-02
+ 2000-04-01
+ 2000-04-02
+ 2000-04-03
+ 2038-04-08
+ 2039-04-09
+ 2040-04-10
+ 2040-04-10
 (16 rows)
 
 SELECT f1 FROM DATE_TBL WHERE f1 < '2000-01-01';
-      f1       
----------------
- 04-09-1957
- 06-13-1957
- 02-28-1996
- 02-29-1996
- 03-01-1996
- 03-02-1996
- 02-28-1997
- 03-01-1997
- 03-02-1997
- 04-10-2040 BC
-(10 rows)
+     f1     
+------------
+ 1957-04-09
+ 1957-06-13
+ 1996-02-28
+ 1996-02-29
+ 1996-03-01
+ 1996-03-02
+ 1997-02-28
+ 1997-03-01
+ 1997-03-02
+(9 rows)
 
 SELECT f1 FROM DATE_TBL
   WHERE f1 BETWEEN '2000-01-01' AND '2001-01-01';
      f1     
 ------------
- 04-01-2000
- 04-02-2000
- 04-03-2000
+ 2000-04-01
+ 2000-04-02
+ 2000-04-03
 (3 rows)
 
 --
@@ -73,773 +72,388 @@ SELECT f1 FROM DATE_TBL
 SET datestyle TO iso;  -- display results in ISO
 SET datestyle TO ymd;
 SELECT date 'January 8, 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'January 8, 1999'
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999-01-18';
-    date    
+  mysdate   
 ------------
  1999-01-18
 (1 row)
 
 SELECT date '1/8/1999';
-ERROR:  date/time field value out of range: "1/8/1999"
-LINE 1: SELECT date '1/8/1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '1/8/1999'
 SELECT date '1/18/1999';
-ERROR:  date/time field value out of range: "1/18/1999"
-LINE 1: SELECT date '1/18/1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '1/18/1999'
 SELECT date '18/1/1999';
-ERROR:  date/time field value out of range: "18/1/1999"
-LINE 1: SELECT date '18/1/1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '18/1/1999'
 SELECT date '01/02/03';
-    date    
+  mysdate   
 ------------
  2001-02-03
 (1 row)
 
 SELECT date '19990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999.008';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999.008'
 SELECT date 'J2451187';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'J2451187'
 SELECT date 'January 8, 99 BC';
-ERROR:  date/time field value out of range: "January 8, 99 BC"
-LINE 1: SELECT date 'January 8, 99 BC';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: 'January 8, 99 BC'
 SELECT date '99-Jan-08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '99-Jan-08'
 SELECT date '1999-Jan-08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999-Jan-08'
 SELECT date '08-Jan-99';
-ERROR:  date/time field value out of range: "08-Jan-99"
-LINE 1: SELECT date '08-Jan-99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08-Jan-99'
 SELECT date '08-Jan-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-Jan-1999'
 SELECT date 'Jan-08-99';
-ERROR:  date/time field value out of range: "Jan-08-99"
-LINE 1: SELECT date 'Jan-08-99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: 'Jan-08-99'
 SELECT date 'Jan-08-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan-08-1999'
 SELECT date '99-08-Jan';
-ERROR:  invalid input syntax for type date: "99-08-Jan"
-LINE 1: SELECT date '99-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '99-08-Jan'
 SELECT date '1999-08-Jan';
-ERROR:  invalid input syntax for type date: "1999-08-Jan"
-LINE 1: SELECT date '1999-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '1999-08-Jan'
 SELECT date '99 Jan 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '99 Jan 08'
 SELECT date '1999 Jan 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 Jan 08'
 SELECT date '08 Jan 99';
-ERROR:  date/time field value out of range: "08 Jan 99"
-LINE 1: SELECT date '08 Jan 99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08 Jan 99'
 SELECT date '08 Jan 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 Jan 1999'
 SELECT date 'Jan 08 99';
-ERROR:  date/time field value out of range: "Jan 08 99"
-LINE 1: SELECT date 'Jan 08 99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: 'Jan 08 99'
 SELECT date 'Jan 08 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan 08 1999'
 SELECT date '99 08 Jan';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '99 08 Jan'
 SELECT date '1999 08 Jan';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 08 Jan'
 SELECT date '99-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '08-01-99';
-ERROR:  date/time field value out of range: "08-01-99"
-LINE 1: SELECT date '08-01-99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08-01-99'
 SELECT date '08-01-1999';
-ERROR:  date/time field value out of range: "08-01-1999"
-LINE 1: SELECT date '08-01-1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08-01-1999'
 SELECT date '01-08-99';
-ERROR:  date/time field value out of range: "01-08-99"
-LINE 1: SELECT date '01-08-99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '01-08-99'
 SELECT date '01-08-1999';
-ERROR:  date/time field value out of range: "01-08-1999"
-LINE 1: SELECT date '01-08-1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '01-08-1999'
 SELECT date '99-08-01';
-    date    
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
 SELECT date '1999-08-01';
-    date    
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
 SELECT date '99 01 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '99 01 08'
 SELECT date '1999 01 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 01 08'
 SELECT date '08 01 99';
-ERROR:  date/time field value out of range: "08 01 99"
-LINE 1: SELECT date '08 01 99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08 01 99'
 SELECT date '08 01 1999';
-ERROR:  date/time field value out of range: "08 01 1999"
-LINE 1: SELECT date '08 01 1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '08 01 1999'
 SELECT date '01 08 99';
-ERROR:  date/time field value out of range: "01 08 99"
-LINE 1: SELECT date '01 08 99';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '01 08 99'
 SELECT date '01 08 1999';
-ERROR:  date/time field value out of range: "01 08 1999"
-LINE 1: SELECT date '01 08 1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '01 08 1999'
 SELECT date '99 08 01';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '99 08 01'
 SELECT date '1999 08 01';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 08 01'
 SET datestyle TO dmy;
 SELECT date 'January 8, 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'January 8, 1999'
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999-01-18';
-    date    
+  mysdate   
 ------------
  1999-01-18
 (1 row)
 
 SELECT date '1/8/1999';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '1/8/1999'
 SELECT date '1/18/1999';
-ERROR:  date/time field value out of range: "1/18/1999"
-LINE 1: SELECT date '1/18/1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '1/18/1999'
 SELECT date '18/1/1999';
-    date    
-------------
- 1999-01-18
-(1 row)
-
+ERROR:  Incorrect DATE value: '18/1/1999'
 SELECT date '01/02/03';
-    date    
+  mysdate   
 ------------
- 2003-02-01
+ 2001-02-03
 (1 row)
 
 SELECT date '19990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999.008';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999.008'
 SELECT date 'J2451187';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'J2451187'
 SELECT date 'January 8, 99 BC';
-     date      
----------------
- 0099-01-08 BC
-(1 row)
-
+ERROR:  Incorrect DATE value: 'January 8, 99 BC'
 SELECT date '99-Jan-08';
-ERROR:  date/time field value out of range: "99-Jan-08"
-LINE 1: SELECT date '99-Jan-08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99-Jan-08'
 SELECT date '1999-Jan-08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999-Jan-08'
 SELECT date '08-Jan-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-Jan-99'
 SELECT date '08-Jan-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-Jan-1999'
 SELECT date 'Jan-08-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan-08-99'
 SELECT date 'Jan-08-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan-08-1999'
 SELECT date '99-08-Jan';
-ERROR:  invalid input syntax for type date: "99-08-Jan"
-LINE 1: SELECT date '99-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '99-08-Jan'
 SELECT date '1999-08-Jan';
-ERROR:  invalid input syntax for type date: "1999-08-Jan"
-LINE 1: SELECT date '1999-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '1999-08-Jan'
 SELECT date '99 Jan 08';
-ERROR:  date/time field value out of range: "99 Jan 08"
-LINE 1: SELECT date '99 Jan 08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99 Jan 08'
 SELECT date '1999 Jan 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 Jan 08'
 SELECT date '08 Jan 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 Jan 99'
 SELECT date '08 Jan 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 Jan 1999'
 SELECT date 'Jan 08 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan 08 99'
 SELECT date 'Jan 08 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan 08 1999'
 SELECT date '99 08 Jan';
-ERROR:  invalid input syntax for type date: "99 08 Jan"
-LINE 1: SELECT date '99 08 Jan';
-                    ^
+ERROR:  Incorrect DATE value: '99 08 Jan'
 SELECT date '1999 08 Jan';
-    date    
+ERROR:  Incorrect DATE value: '1999 08 Jan'
+SELECT date '99-01-08';
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
-SELECT date '99-01-08';
-ERROR:  date/time field value out of range: "99-01-08"
-LINE 1: SELECT date '99-01-08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '08-01-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-01-99'
 SELECT date '08-01-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-01-1999'
 SELECT date '01-08-99';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '01-08-99'
 SELECT date '01-08-1999';
-    date    
+ERROR:  Incorrect DATE value: '01-08-1999'
+SELECT date '99-08-01';
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
-SELECT date '99-08-01';
-ERROR:  date/time field value out of range: "99-08-01"
-LINE 1: SELECT date '99-08-01';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
 SELECT date '1999-08-01';
-    date    
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
 SELECT date '99 01 08';
-ERROR:  date/time field value out of range: "99 01 08"
-LINE 1: SELECT date '99 01 08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99 01 08'
 SELECT date '1999 01 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 01 08'
 SELECT date '08 01 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 01 99'
 SELECT date '08 01 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 01 1999'
 SELECT date '01 08 99';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '01 08 99'
 SELECT date '01 08 1999';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '01 08 1999'
 SELECT date '99 08 01';
-ERROR:  date/time field value out of range: "99 08 01"
-LINE 1: SELECT date '99 08 01';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99 08 01'
 SELECT date '1999 08 01';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 08 01'
 SET datestyle TO mdy;
 SELECT date 'January 8, 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'January 8, 1999'
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999-01-18';
-    date    
+  mysdate   
 ------------
  1999-01-18
 (1 row)
 
 SELECT date '1/8/1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1/8/1999'
 SELECT date '1/18/1999';
-    date    
-------------
- 1999-01-18
-(1 row)
-
+ERROR:  Incorrect DATE value: '1/18/1999'
 SELECT date '18/1/1999';
-ERROR:  date/time field value out of range: "18/1/1999"
-LINE 1: SELECT date '18/1/1999';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '18/1/1999'
 SELECT date '01/02/03';
-    date    
+  mysdate   
 ------------
- 2003-01-02
+ 2001-02-03
 (1 row)
 
 SELECT date '19990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '990108';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '1999.008';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999.008'
 SELECT date 'J2451187';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'J2451187'
 SELECT date 'January 8, 99 BC';
-     date      
----------------
- 0099-01-08 BC
-(1 row)
-
+ERROR:  Incorrect DATE value: 'January 8, 99 BC'
 SELECT date '99-Jan-08';
-ERROR:  date/time field value out of range: "99-Jan-08"
-LINE 1: SELECT date '99-Jan-08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99-Jan-08'
 SELECT date '1999-Jan-08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999-Jan-08'
 SELECT date '08-Jan-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-Jan-99'
 SELECT date '08-Jan-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-Jan-1999'
 SELECT date 'Jan-08-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan-08-99'
 SELECT date 'Jan-08-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan-08-1999'
 SELECT date '99-08-Jan';
-ERROR:  invalid input syntax for type date: "99-08-Jan"
-LINE 1: SELECT date '99-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '99-08-Jan'
 SELECT date '1999-08-Jan';
-ERROR:  invalid input syntax for type date: "1999-08-Jan"
-LINE 1: SELECT date '1999-08-Jan';
-                    ^
+ERROR:  Incorrect DATE value: '1999-08-Jan'
 SELECT date '99 Jan 08';
-ERROR:  invalid input syntax for type date: "99 Jan 08"
-LINE 1: SELECT date '99 Jan 08';
-                    ^
+ERROR:  Incorrect DATE value: '99 Jan 08'
 SELECT date '1999 Jan 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 Jan 08'
 SELECT date '08 Jan 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 Jan 99'
 SELECT date '08 Jan 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 Jan 1999'
 SELECT date 'Jan 08 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan 08 99'
 SELECT date 'Jan 08 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: 'Jan 08 1999'
 SELECT date '99 08 Jan';
-ERROR:  invalid input syntax for type date: "99 08 Jan"
-LINE 1: SELECT date '99 08 Jan';
-                    ^
+ERROR:  Incorrect DATE value: '99 08 Jan'
 SELECT date '1999 08 Jan';
-    date    
+ERROR:  Incorrect DATE value: '1999 08 Jan'
+SELECT date '99-01-08';
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
-SELECT date '99-01-08';
-ERROR:  date/time field value out of range: "99-01-08"
-LINE 1: SELECT date '99-01-08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
 SELECT date '1999-01-08';
-    date    
+  mysdate   
 ------------
  1999-01-08
 (1 row)
 
 SELECT date '08-01-99';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '08-01-99'
 SELECT date '08-01-1999';
-    date    
+ERROR:  Incorrect DATE value: '08-01-1999'
+SELECT date '01-08-99';
+ERROR:  Incorrect DATE value: '01-08-99'
+SELECT date '01-08-1999';
+ERROR:  Incorrect DATE value: '01-08-1999'
+SELECT date '99-08-01';
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
-SELECT date '01-08-99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
-SELECT date '01-08-1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
-SELECT date '99-08-01';
-ERROR:  date/time field value out of range: "99-08-01"
-LINE 1: SELECT date '99-08-01';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
 SELECT date '1999-08-01';
-    date    
+  mysdate   
 ------------
  1999-08-01
 (1 row)
 
 SELECT date '99 01 08';
-ERROR:  date/time field value out of range: "99 01 08"
-LINE 1: SELECT date '99 01 08';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99 01 08'
 SELECT date '1999 01 08';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 01 08'
 SELECT date '08 01 99';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 01 99'
 SELECT date '08 01 1999';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '08 01 1999'
 SELECT date '01 08 99';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '01 08 99'
 SELECT date '01 08 1999';
-    date    
-------------
- 1999-01-08
-(1 row)
-
+ERROR:  Incorrect DATE value: '01 08 1999'
 SELECT date '99 08 01';
-ERROR:  date/time field value out of range: "99 08 01"
-LINE 1: SELECT date '99 08 01';
-                    ^
-HINT:  Perhaps you need a different "datestyle" setting.
+ERROR:  Incorrect DATE value: '99 08 01'
 SELECT date '1999 08 01';
-    date    
-------------
- 1999-08-01
-(1 row)
-
+ERROR:  Incorrect DATE value: '1999 08 01'
 -- Check upper and lower limits of date range
 SELECT date '4714-11-24 BC';
-     date      
----------------
- 4714-11-24 BC
-(1 row)
-
+ERROR:  Incorrect DATE value: '4714-11-24 BC'
 SELECT date '4714-11-23 BC';  -- out of range
-ERROR:  date out of range: "4714-11-23 BC"
-LINE 1: SELECT date '4714-11-23 BC';
-                    ^
+ERROR:  Incorrect DATE value: '4714-11-23 BC'
 SELECT date '5874897-12-31';
-     date      
----------------
- 5874897-12-31
-(1 row)
-
+ERROR:  Incorrect DATE value: '5874897-12-31'
 SELECT date '5874898-01-01';  -- out of range
-ERROR:  date out of range: "5874898-01-01"
-LINE 1: SELECT date '5874898-01-01';
-                    ^
+ERROR:  Incorrect DATE value: '5874898-01-01'
 RESET datestyle;
 --
 -- Simple math
@@ -848,81 +462,38 @@ RESET datestyle;
 SELECT f1 - date '2000-01-01' AS "Days From 2K" FROM DATE_TBL;
  Days From 2K 
 --------------
-       -15607
-       -15542
-        -1403
-        -1402
-        -1401
-        -1400
-        -1037
-        -1036
-        -1035
-           91
-           92
-           93
-        13977
-        14343
-        14710
-     -1475115
+      -429692
+      -429488
+       -39873
+       -39872
+       -39800
+       -39799
+       -29873
+       -29800
+       -29799
+          300
+          301
+          302
+       380307
+       390308
+       400309
+       400309
 (16 rows)
 
 SELECT f1 - date 'epoch' AS "Days From Epoch" FROM DATE_TBL;
- Days From Epoch 
------------------
-           -4650
-           -4585
-            9554
-            9555
-            9556
-            9557
-            9920
-            9921
-            9922
-           11048
-           11049
-           11050
-           24934
-           25300
-           25667
-        -1464158
-(16 rows)
-
+ERROR:  Incorrect DATE value: 'epoch'
 SELECT date 'yesterday' - date 'today' AS "One day";
- One day 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: 'yesterday'
 SELECT date 'today' - date 'tomorrow' AS "One day";
- One day 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: 'today'
 SELECT date 'yesterday' - date 'tomorrow' AS "Two days";
- Two days 
-----------
-       -2
-(1 row)
-
+ERROR:  Incorrect DATE value: 'yesterday'
 SELECT date 'tomorrow' - date 'today' AS "One day";
- One day 
----------
-       1
-(1 row)
-
+ERROR:  Incorrect DATE value: 'tomorrow'
 SELECT date 'today' - date 'yesterday' AS "One day";
- One day 
----------
-       1
-(1 row)
-
+ERROR:  Incorrect DATE value: 'today'
 SELECT date 'tomorrow' - date 'yesterday' AS "Two days";
- Two days 
-----------
-        2
-(1 row)
-
+ERROR:  Incorrect DATE value: 'tomorrow'
 --
 -- test extract!
 --
@@ -942,92 +513,53 @@ SELECT f1 as "date",
     date_part('julian', f1) AS julian,
     date_part('epoch', f1) AS epoch
     FROM date_tbl;
-     date      | year  | month | day | quarter | decade | century | millennium | isoyear | week | dow | isodow | doy | julian  |     epoch     
----------------+-------+-------+-----+---------+--------+---------+------------+---------+------+-----+--------+-----+---------+---------------
- 04-09-1957    |  1957 |     4 |   9 |       2 |    195 |      20 |          2 |    1957 |   15 |   2 |      2 |  99 | 2435938 |    -401760000
- 06-13-1957    |  1957 |     6 |  13 |       2 |    195 |      20 |          2 |    1957 |   24 |   4 |      4 | 164 | 2436003 |    -396144000
- 02-28-1996    |  1996 |     2 |  28 |       1 |    199 |      20 |          2 |    1996 |    9 |   3 |      3 |  59 | 2450142 |     825465600
- 02-29-1996    |  1996 |     2 |  29 |       1 |    199 |      20 |          2 |    1996 |    9 |   4 |      4 |  60 | 2450143 |     825552000
- 03-01-1996    |  1996 |     3 |   1 |       1 |    199 |      20 |          2 |    1996 |    9 |   5 |      5 |  61 | 2450144 |     825638400
- 03-02-1996    |  1996 |     3 |   2 |       1 |    199 |      20 |          2 |    1996 |    9 |   6 |      6 |  62 | 2450145 |     825724800
- 02-28-1997    |  1997 |     2 |  28 |       1 |    199 |      20 |          2 |    1997 |    9 |   5 |      5 |  59 | 2450508 |     857088000
- 03-01-1997    |  1997 |     3 |   1 |       1 |    199 |      20 |          2 |    1997 |    9 |   6 |      6 |  60 | 2450509 |     857174400
- 03-02-1997    |  1997 |     3 |   2 |       1 |    199 |      20 |          2 |    1997 |    9 |   0 |      7 |  61 | 2450510 |     857260800
- 04-01-2000    |  2000 |     4 |   1 |       2 |    200 |      20 |          2 |    2000 |   13 |   6 |      6 |  92 | 2451636 |     954547200
- 04-02-2000    |  2000 |     4 |   2 |       2 |    200 |      20 |          2 |    2000 |   13 |   0 |      7 |  93 | 2451637 |     954633600
- 04-03-2000    |  2000 |     4 |   3 |       2 |    200 |      20 |          2 |    2000 |   14 |   1 |      1 |  94 | 2451638 |     954720000
- 04-08-2038    |  2038 |     4 |   8 |       2 |    203 |      21 |          3 |    2038 |   14 |   4 |      4 |  98 | 2465522 |    2154297600
- 04-09-2039    |  2039 |     4 |   9 |       2 |    203 |      21 |          3 |    2039 |   14 |   6 |      6 |  99 | 2465888 |    2185920000
- 04-10-2040    |  2040 |     4 |  10 |       2 |    204 |      21 |          3 |    2040 |   15 |   2 |      2 | 101 | 2466255 |    2217628800
- 04-10-2040 BC | -2040 |     4 |  10 |       2 |   -204 |     -21 |         -3 |   -2040 |   15 |   1 |      1 | 100 |  976430 | -126503251200
-(16 rows)
-
+ERROR:  relation "date_tbl" does not exist
+LINE 16:     FROM date_tbl;
+                  ^
 --
 -- epoch
 --
 SELECT EXTRACT(EPOCH FROM DATE        '1970-01-01');     --  0
- extract 
----------
-       0
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(EPOCH FROM DATE        '1970-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- century
 --
 SELECT EXTRACT(CENTURY FROM DATE '0101-12-31 BC'); -- -2
- extract 
----------
-      -2
-(1 row)
-
+ERROR:  Incorrect DATE value: '0101-12-31 BC'
 SELECT EXTRACT(CENTURY FROM DATE '0100-12-31 BC'); -- -1
- extract 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0100-12-31 BC'
 SELECT EXTRACT(CENTURY FROM DATE '0001-12-31 BC'); -- -1
- extract 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0001-12-31 BC'
 SELECT EXTRACT(CENTURY FROM DATE '0001-01-01');    --  1
- extract 
----------
-       1
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM DATE '0001-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM DATE '0001-01-01 AD'); --  1
- extract 
----------
-       1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0001-01-01 AD'
 SELECT EXTRACT(CENTURY FROM DATE '1900-12-31');    -- 19
- extract 
----------
-      19
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM DATE '1900-12-31');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM DATE '1901-01-01');    -- 20
- extract 
----------
-      20
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM DATE '1901-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM DATE '2000-12-31');    -- 20
- extract 
----------
-      20
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM DATE '2000-12-31');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM DATE '2001-01-01');    -- 21
- extract 
----------
-      21
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY FROM DATE '2001-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY FROM CURRENT_DATE)>=21 AS True;     -- true
  true 
 ------
@@ -1038,41 +570,29 @@ SELECT EXTRACT(CENTURY FROM CURRENT_DATE)>=21 AS True;     -- true
 -- millennium
 --
 SELECT EXTRACT(MILLENNIUM FROM DATE '0001-12-31 BC'); -- -1
- extract 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0001-12-31 BC'
 SELECT EXTRACT(MILLENNIUM FROM DATE '0001-01-01 AD'); --  1
- extract 
----------
-       1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0001-01-01 AD'
 SELECT EXTRACT(MILLENNIUM FROM DATE '1000-12-31');    --  1
- extract 
----------
-       1
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM FROM DATE '1000-12-31');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MILLENNIUM FROM DATE '1001-01-01');    --  2
- extract 
----------
-       2
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM FROM DATE '1001-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MILLENNIUM FROM DATE '2000-12-31');    --  2
- extract 
----------
-       2
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM FROM DATE '2000-12-31');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MILLENNIUM FROM DATE '2001-01-01');    --  3
- extract 
----------
-       3
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM FROM DATE '2001-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- next test to be fixed on the turn of the next millennium;-)
 SELECT EXTRACT(MILLENNIUM FROM CURRENT_DATE);         --  3
  extract 
@@ -1084,385 +604,292 @@ SELECT EXTRACT(MILLENNIUM FROM CURRENT_DATE);         --  3
 -- decade
 --
 SELECT EXTRACT(DECADE FROM DATE '1994-12-25');    -- 199
- extract 
----------
-     199
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DECADE FROM DATE '1994-12-25');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DECADE FROM DATE '0010-01-01');    --   1
- extract 
----------
-       1
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DECADE FROM DATE '0010-01-01');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DECADE FROM DATE '0009-12-31');    --   0
- extract 
----------
-       0
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DECADE FROM DATE '0009-12-31');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DECADE FROM DATE '0001-01-01 BC'); --   0
- extract 
----------
-       0
-(1 row)
-
+ERROR:  Incorrect DATE value: '0001-01-01 BC'
 SELECT EXTRACT(DECADE FROM DATE '0002-12-31 BC'); --  -1
- extract 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0002-12-31 BC'
 SELECT EXTRACT(DECADE FROM DATE '0011-01-01 BC'); --  -1
- extract 
----------
-      -1
-(1 row)
-
+ERROR:  Incorrect DATE value: '0011-01-01 BC'
 SELECT EXTRACT(DECADE FROM DATE '0012-12-31 BC'); --  -2
- extract 
----------
-      -2
-(1 row)
-
+ERROR:  Incorrect DATE value: '0012-12-31 BC'
 --
 -- all possible fields
 --
 SELECT EXTRACT(MICROSECONDS  FROM DATE '2020-08-11');
-ERROR:  date units "microseconds" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MICROSECONDS  FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MILLISECONDS  FROM DATE '2020-08-11');
-ERROR:  date units "milliseconds" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLISECONDS  FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(SECOND        FROM DATE '2020-08-11');
-ERROR:  date units "second" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(SECOND        FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MINUTE        FROM DATE '2020-08-11');
-ERROR:  date units "minute" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MINUTE        FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(HOUR          FROM DATE '2020-08-11');
-ERROR:  date units "hour" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(HOUR          FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DAY           FROM DATE '2020-08-11');
- extract 
----------
-      11
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DAY           FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MONTH         FROM DATE '2020-08-11');
- extract 
----------
-       8
-(1 row)
-
-SELECT EXTRACT(YEAR          FROM DATE '2020-08-11');
- extract 
----------
-    2020
-(1 row)
-
-SELECT EXTRACT(YEAR          FROM DATE '2020-08-11 BC');
- extract 
----------
-   -2020
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MONTH         FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+--SELECT EXTRACT(YEAR          FROM DATE '2020-08-11');
+--SELECT EXTRACT(YEAR          FROM DATE '2020-08-11 BC');
 SELECT EXTRACT(DECADE        FROM DATE '2020-08-11');
- extract 
----------
-     202
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DECADE        FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(CENTURY       FROM DATE '2020-08-11');
- extract 
----------
-      21
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(CENTURY       FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(MILLENNIUM    FROM DATE '2020-08-11');
- extract 
----------
-       3
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(MILLENNIUM    FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(ISOYEAR       FROM DATE '2020-08-11');
- extract 
----------
-    2020
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(ISOYEAR       FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(ISOYEAR       FROM DATE '2020-08-11 BC');
- extract 
----------
-   -2020
-(1 row)
-
+ERROR:  Incorrect DATE value: '2020-08-11 BC'
 SELECT EXTRACT(QUARTER       FROM DATE '2020-08-11');
- extract 
----------
-       3
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(QUARTER       FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(WEEK          FROM DATE '2020-08-11');
- extract 
----------
-      33
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(WEEK          FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DOW           FROM DATE '2020-08-11');
- extract 
----------
-       2
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DOW           FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DOW           FROM DATE '2020-08-16');
- extract 
----------
-       0
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DOW           FROM DATE '2020-08-16');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(ISODOW        FROM DATE '2020-08-11');
- extract 
----------
-       2
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(ISODOW        FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(ISODOW        FROM DATE '2020-08-16');
- extract 
----------
-       7
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(ISODOW        FROM DATE '2020-08-16');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(DOY           FROM DATE '2020-08-11');
- extract 
----------
-     224
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(DOY           FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(TIMEZONE      FROM DATE '2020-08-11');
-ERROR:  date units "timezone" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(TIMEZONE      FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(TIMEZONE_M    FROM DATE '2020-08-11');
-ERROR:  date units "timezone_m" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(TIMEZONE_M    FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(TIMEZONE_H    FROM DATE '2020-08-11');
-ERROR:  date units "timezone_h" not supported
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(TIMEZONE_H    FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(EPOCH         FROM DATE '2020-08-11');
-  extract   
-------------
- 1597104000
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(EPOCH         FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT EXTRACT(JULIAN        FROM DATE '2020-08-11');
- extract 
----------
- 2459073
-(1 row)
-
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(JULIAN        FROM DATE '2020-08-11');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- test trunc function!
 --
 SELECT DATE_TRUNC('MILLENNIUM', TIMESTAMP '1970-03-20 04:30:00.00000'); -- 1001
-        date_trunc        
---------------------------
- Thu Jan 01 00:00:00 1001
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, timestamp) does not exist
+LINE 1: SELECT DATE_TRUNC('MILLENNIUM', TIMESTAMP '1970-03-20 04:30:...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('MILLENNIUM', DATE '1970-03-20'); -- 1001-01-01
-          date_trunc          
-------------------------------
- Thu Jan 01 00:00:00 1001 LMT
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('MILLENNIUM', DATE '1970-03-20');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('CENTURY', TIMESTAMP '1970-03-20 04:30:00.00000'); -- 1901
-        date_trunc        
---------------------------
- Tue Jan 01 00:00:00 1901
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, timestamp) does not exist
+LINE 1: SELECT DATE_TRUNC('CENTURY', TIMESTAMP '1970-03-20 04:30:00....
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('CENTURY', DATE '1970-03-20'); -- 1901
-          date_trunc          
-------------------------------
- Tue Jan 01 00:00:00 1901 PST
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('CENTURY', DATE '1970-03-20');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('CENTURY', DATE '2004-08-10'); -- 2001-01-01
-          date_trunc          
-------------------------------
- Mon Jan 01 00:00:00 2001 PST
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('CENTURY', DATE '2004-08-10');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('CENTURY', DATE '0002-02-04'); -- 0001-01-01
-          date_trunc          
-------------------------------
- Mon Jan 01 00:00:00 0001 LMT
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('CENTURY', DATE '0002-02-04');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('CENTURY', DATE '0055-08-10 BC'); -- 0100-01-01 BC
-           date_trunc            
----------------------------------
- Tue Jan 01 00:00:00 0100 LMT BC
-(1 row)
-
+ERROR:  Incorrect DATE value: '0055-08-10 BC'
 SELECT DATE_TRUNC('DECADE', DATE '1993-12-25'); -- 1990-01-01
-          date_trunc          
-------------------------------
- Mon Jan 01 00:00:00 1990 PST
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('DECADE', DATE '1993-12-25');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('DECADE', DATE '0004-12-25'); -- 0001-01-01 BC
-           date_trunc            
----------------------------------
- Sat Jan 01 00:00:00 0001 LMT BC
-(1 row)
-
+ERROR:  function DATE_TRUNC(unknown, date) does not exist
+LINE 1: SELECT DATE_TRUNC('DECADE', DATE '0004-12-25');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT DATE_TRUNC('DECADE', DATE '0002-12-31 BC'); -- 0011-01-01 BC
-           date_trunc            
----------------------------------
- Mon Jan 01 00:00:00 0011 LMT BC
-(1 row)
-
+ERROR:  Incorrect DATE value: '0002-12-31 BC'
 --
 -- test infinity
 --
 select 'infinity'::date, '-infinity'::date;
-   date   |   date    
-----------+-----------
- infinity | -infinity
+WARNING:  Incorrect datetime value: 'infinity'
+LINE 1: select 'infinity'::date, '-infinity'::date;
+               ^
+WARNING:  Incorrect datetime value: '-infinity'
+LINE 1: select 'infinity'::date, '-infinity'::date;
+                                 ^
+ mysdate | mysdate 
+---------+---------
+         | 
 (1 row)
 
 select 'infinity'::date > 'today'::date as t;
+WARNING:  Incorrect datetime value: 'infinity'
+LINE 1: select 'infinity'::date > 'today'::date as t;
+               ^
+WARNING:  Incorrect datetime value: 'today'
+LINE 1: select 'infinity'::date > 'today'::date as t;
+                                  ^
  t 
 ---
- t
+ 
 (1 row)
 
 select '-infinity'::date < 'today'::date as t;
+WARNING:  Incorrect datetime value: '-infinity'
+LINE 1: select '-infinity'::date < 'today'::date as t;
+               ^
+WARNING:  Incorrect datetime value: 'today'
+LINE 1: select '-infinity'::date < 'today'::date as t;
+                                   ^
  t 
 ---
- t
+ 
 (1 row)
 
 select isfinite('infinity'::date), isfinite('-infinity'::date), isfinite('today'::date);
- isfinite | isfinite | isfinite 
-----------+----------+----------
- f        | f        | t
-(1 row)
-
+WARNING:  Incorrect datetime value: 'infinity'
+LINE 1: select isfinite('infinity'::date), isfinite('-infinity'::dat...
+                        ^
+ERROR:  function isfinite(date) does not exist
+LINE 1: select isfinite('infinity'::date), isfinite('-infinity'::dat...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- oscillating fields from non-finite date:
 --
 SELECT EXTRACT(DAY FROM DATE 'infinity');      -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(DAY FROM DATE '-infinity');     -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: '-infinity'
 -- all supported fields
 SELECT EXTRACT(DAY           FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(MONTH         FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(QUARTER       FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(WEEK          FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(DOW           FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(ISODOW        FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(DOY           FROM DATE 'infinity');    -- NULL
- extract 
----------
-        
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 --
 -- monotonic fields from non-finite date:
 --
 SELECT EXTRACT(EPOCH FROM DATE 'infinity');         --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(EPOCH FROM DATE '-infinity');        -- -Infinity
-  extract  
------------
- -Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: '-infinity'
 -- all supported fields
-SELECT EXTRACT(YEAR       FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+--SELECT EXTRACT(YEAR       FROM DATE 'infinity');    --  Infinity
 SELECT EXTRACT(DECADE     FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(CENTURY    FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(MILLENNIUM FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(JULIAN     FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(ISOYEAR    FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 SELECT EXTRACT(EPOCH      FROM DATE 'infinity');    --  Infinity
- extract  
-----------
- Infinity
-(1 row)
-
+ERROR:  Incorrect DATE value: 'infinity'
 --
 -- wrong fields from non-finite date:
 --
 SELECT EXTRACT(MICROSEC  FROM DATE 'infinity');     -- error
-ERROR:  date units "microsec" not recognized
+ERROR:  Incorrect DATE value: 'infinity'
 -- test constructors
 select make_date(2013, 7, 15);
  make_date  

@@ -64,10 +64,10 @@
 #include "utils/numeric.h"
 #include "utils/xml.h"
 
-/* Begin - ReqID:SRS-MYSQL-UPDATE */
+/* Begin - ReqID:SRS-MYSQL-UPDATE */ /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
-/* End - ReqID:SRS-MYSQL-UPDATE */
+/* End - ReqID:SRS-MYSQL-UPDATE */  /* End - ReqID:SRS-MYSQL-DATETYPE */
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 #include "nodes/pg_list.h"
@@ -165,6 +165,12 @@ typedef struct ShowFilter
 #define CAS_NOT_VALID				0x10
 #define CAS_NO_INHERIT				0x20
 
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+#define TIME_ZONE_NULL				0x00
+#define WITH_TIME_ZONE				0x10
+#define WITHOUT_TIME_ZONE			0x20
+
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 #define parser_yyerror(msg)  mys_scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  mys_scanner_errposition(pos, yyscanner)
@@ -202,6 +208,7 @@ static Node *doNegate(Node *n, int location);
 static void doNegateFloat(Value *v);
 static Node *makeAndExpr(Node *lexpr, Node *rexpr, int location);
 static Node *makeOrExpr(Node *lexpr, Node *rexpr, int location);
+static Node *makeXorExpr(Node *lexpr, Node *rexpr, int location); /* ReqID:SRS-MYSQL-DATETYPE */
 static Node *makeNotExpr(Node *expr, int location);
 static Node *makeAArrayExpr(List *elements, int location);
 static Node *makeSQLValueFunction(SQLValueFunctionOp op, int32 typmod,
@@ -603,9 +610,11 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 				CharacterWithLength CharacterWithoutLength
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
+				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
 %type <str>		character
 %type <str>		extract_arg
-%type <boolean> opt_varying opt_timezone opt_no_inherit
+%type <boolean> opt_varying opt_no_inherit
+%type <ival>	opt_timezone
 
 %type <ival>	Iconst SignedIconst
 %type <str>		Sconst comment_text notify_payload
@@ -717,9 +726,9 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
-	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
+	DATA_P DATABASE DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC
-	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
+	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUPLICATE_P
 
 	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT
@@ -747,7 +756,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
-	MINUTE_P MINVALUE MODE MONTH_P MOVE
+	MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -791,6 +800,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
 
+	XOR
 	YEAR YES_P
 
 	ZONE
@@ -835,6 +845,9 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 %left		INTERSECT
 %left		OR
 %left		AND
+%left		XOR
+%left		MOD
+%left		DIV
 %right		NOT
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 %nonassoc	lower_than_on
@@ -3900,6 +3913,21 @@ ColConstraintElem:
 					n->cooked_expr = NULL;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+			/* The update flag is currently not in use, 
+			 * and func_expr is assigned to the updated value in the UPDATE statement.
+			 */
+			| DEFAULT b_expr ON UPDATE func_expr
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_DEFAULT;
+					n->location = @1;
+					n->raw_expr = $2;
+					n->cooked_expr = NULL;
+					n->on_update = true;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 			| GENERATED generated_when AS IDENTITY_P OptParenthesizedSeqOptList
 				{
 					Constraint *n = makeNode(Constraint);
@@ -14447,7 +14475,7 @@ SimpleTypename:
 			| Numeric								{ $$ = $1; }
 			| Bit									{ $$ = $1; }
 			| Character								{ $$ = $1; }
-			| ConstDatetime							{ $$ = $1; }
+			| Datetime								{ $$ = $1; } /* ReqID:SRS-MYSQL-DATETYPE */
 			| ConstInterval opt_interval
 				{
 					$$ = $1;
@@ -14723,40 +14751,252 @@ opt_varying:
 /*
  * SQL date/time types
  */
-ConstDatetime:
+/* ReqID:SRS-MYSQL-DATETYPE */
+Datetime:
 			TIMESTAMP '(' Iconst ')' opt_timezone
 				{
-					if ($5)
-						$$ = SystemTypeName("timestamptz");
+					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
+					{
+						if(0 == $3)
+						{
+							$$ = MySQLSystemTypeName("mystimestamp");
+							$$->location = @1;
+						}
+						else
+						{
+							$$ = MySQLSystemTypeName("mystimestamps");
+							$$->typmods = list_make1(makeIntConst($3, @3));
+							$$->location = @1;
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					else
-						$$ = SystemTypeName("timestamp");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+					{
+						if (WITH_TIME_ZONE == $5)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 				}
 			| TIMESTAMP opt_timezone
 				{
-					if ($2)
-						$$ = SystemTypeName("timestamptz");
+					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $2)
+					{
+						$$ = MySQLSystemTypeName("mystimestamp");
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					else
-						$$ = SystemTypeName("timestamp");
+					{
+						if (WITH_TIME_ZONE == $2)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->location = @1;
+					}
+				}
+			| DATE_P
+				{
+					/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+					if (MYS_PARSER == compatible_db)
+					{
+						$$ = MySQLSystemTypeName("mysdate");
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-MYSQL-DATETYPE */
+					else
+					{
+						$$ = SystemTypeName("date");
+						$$->location = @1;
+					}
+				}
+			| DATETIME_P
+				{
+					/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+					$$ = MySQLSystemTypeName("mysdatetime");
 					$$->location = @1;
+					/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+				}
+			| DATETIME_P  '(' Iconst ')'
+				{
+					/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+					if(0 == $3)
+					{
+						$$ = MySQLSystemTypeName("mysdatetime");
+						$$->location = @1;
+					}
+					else
+					{
+						$$ = MySQLSystemTypeName("mysdatetimes");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 				}
 			| TIME '(' Iconst ')' opt_timezone
 				{
-					if ($5)
-						$$ = SystemTypeName("timetz");
+					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL == $5)
+					{
+						if(0 == $3)
+						{
+							$$ = MySQLSystemTypeName("mystime");
+							$$->location = @1;
+						}
+						else
+						{
+							$$ = MySQLSystemTypeName("mystimes");
+							$$->typmods = list_make1(makeIntConst($3, @3));
+							$$->location = @1;
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-TIMETYPE */
 					else
-						$$ = SystemTypeName("time");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+					{
+						if (WITH_TIME_ZONE == $5)
+							$$ = SystemTypeName("timetz");
+						else
+							$$ = SystemTypeName("time");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 				}
 			| TIME opt_timezone
 				{
-					if ($2)
-						$$ = SystemTypeName("timetz");
+					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					{
+						$$ = MySQLSystemTypeName("mystime");
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-MYSQL-TIMETYPE */
 					else
-						$$ = SystemTypeName("time");
+					{
+						if (WITH_TIME_ZONE == $2)
+							$$ = SystemTypeName("timetz");
+						else
+							$$ = SystemTypeName("time");
+						$$->location = @1;
+					}
+				}
+			| YEAR '(' Iconst ')'
+				{
+					$$ = MySQLSystemTypeName("year");
+					if ($3 != 4)
+						ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Supports only YEAR or YEAR(4) column"),
+							 parser_errposition(@3)));
+					$$->typmods = list_make1(makeIntConst($3, @3));
 					$$->location = @1;
+				}
+			| YEAR
+				{
+					$$ = MySQLSystemTypeName("year");
+					$$->location = @1;
+				}
+		;
+/*
+ * SQL date/time types
+ */
+ConstDatetime:
+			TIMESTAMP opt_timezone
+				{
+					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					{
+						$$ = MySQLSystemTypeName("mystimestamp");
+						$$->location = @1;
+					}
+					else
+					{
+						if (WITH_TIME_ZONE == $2)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->location = @1;
+					}
+				}
+			| TIMESTAMP '(' Iconst ')' opt_timezone
+				{
+					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$5)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("You have an error in your SQL syntax; TIMESTAMP().")));
+					}
+					else
+					{
+						if (WITH_TIME_ZONE == $5)
+							$$ = SystemTypeName("timestamptz");
+						else
+							$$ = SystemTypeName("timestamp");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+				}
+			| DATE_P
+				{
+					/* ReqID:SRS-MYSQL-DATETYPE */
+					if (MYS_PARSER == compatible_db)
+					{
+						$$ = MySQLSystemTypeName("mysdate");
+						$$->location = @1;
+					}
+				}
+			| DATETIME_P
+				{
+					/*not support: "datetime'2222-11-11'"*/
+					ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+							errmsg("Unknown column 'datetime' in 'field list' "),
+							parser_errposition(@1)));
+					/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+					$$ = MySQLSystemTypeName("mysdatetime");
+					$$->location = @1;
+					/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+				}
+			| TIME opt_timezone
+				{
+					/* ReqID:SRS-MYSQL-TIMETYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$2)
+					{
+						$$ = MySQLSystemTypeName("mystimes");
+						$$->typmods = list_make1(makeIntConst(0, -1));
+						$$->location = @1;
+					}
+					else
+					{
+						if (WITH_TIME_ZONE == $2)
+							$$ = SystemTypeName("timetz");
+						else
+							$$ = SystemTypeName("time");
+						$$->location = @1;
+					}
+				}
+			| TIME '(' Iconst ')' opt_timezone
+				{
+					/* ReqID:SRS-MYSQL-TIMETYPE */
+					if (MYS_PARSER == compatible_db && TIME_ZONE_NULL ==$5)
+					{
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("You have an error in your SQL syntax; TIME().")));
+					}
+					else
+					{
+						if (WITH_TIME_ZONE == $5)
+							$$ = SystemTypeName("timetz");
+						else
+							$$ = SystemTypeName("time");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
 				}
 			| YEAR '(' Iconst ')'
 				{
@@ -14785,9 +15025,9 @@ ConstInterval:
 		;
 
 opt_timezone:
-			WITH_LA TIME ZONE						{ $$ = true; }
-			| WITHOUT TIME ZONE						{ $$ = false; }
-			| /*EMPTY*/								{ $$ = false; }
+			WITH_LA TIME ZONE						{ $$ = WITH_TIME_ZONE; }
+			| WITHOUT TIME ZONE						{ $$ = WITHOUT_TIME_ZONE; }
+			| /*EMPTY*/								{ $$ = TIME_ZONE_NULL; }
 		;
 
 opt_interval:
@@ -14922,8 +15162,21 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", $1, $3, @2); }
 			| a_expr '/' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", $1, $3, @2); }
+			/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+			| a_expr DIV a_expr
+				{ 
+					$$ = (Node *) makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_div")),
+												list_make2($1,$3),
+												COERCE_SQL_SYNTAX,
+												@1);
+				}
+			/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 			| a_expr '%' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
+			/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+			| a_expr MOD a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
+			/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 			| a_expr '^' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "^", $1, $3, @2); }
 			| a_expr '<' a_expr
@@ -14948,6 +15201,8 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = makeAndExpr($1, $3, @2); }
 			| a_expr OR a_expr
 				{ $$ = makeOrExpr($1, $3, @2); }
+			| a_expr XOR a_expr
+				{ $$ = makeXorExpr($1, $3, @2); }
 			| NOT a_expr
 				{ $$ = makeNotExpr($2, @1); }
 			| NOT_LA a_expr						%prec NOT
@@ -16895,7 +17150,11 @@ AexprConst: Iconst
 				}
 			| ConstTypename Sconst
 				{
-					$$ = makeStringConstCast($2, @2, $1);
+					/* ReqID:SRS-MYSQL-DATETYPE */
+					if (MYS_PARSER == compatible_db)
+						$$ = makeStringConstCast($2, -2, $1);
+					else
+						$$ = makeStringConstCast($2, @2, $1);
 				}
 			| ConstInterval Sconst opt_interval
 				{
@@ -17255,6 +17514,7 @@ unreserved_keyword:
 			| DICTIONARY
 			| DISABLE_P
 			| DISCARD
+			| DIV
 			| DOCUMENT_P
 			| DOMAIN_P
 			| DOUBLE_P
@@ -17335,6 +17595,7 @@ unreserved_keyword:
 			| METHOD
 			| MINUTE_P
 			| MINVALUE
+			| MOD
 			| MODE
 			| MONTH_P
 			| MOVE
@@ -17511,6 +17772,8 @@ col_name_keyword:
 			| CHAR_P
 			| CHARACTER
 			| COALESCE
+			| DATE_P			  /* ReqID:SRS-MYSQL-DATETYPE */
+			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
 			| DEC
 			| DECIMAL_P
 			| EXISTS
@@ -17685,6 +17948,7 @@ reserved_keyword:
 			| WHERE
 			| WINDOW
 			| WITH
+			| XOR
 		;
 
 /*
@@ -17785,6 +18049,8 @@ bare_label_keyword:
 			| CYCLE
 			| DATA_P
 			| DATABASE
+			| DATE_P			/* ReqID:SRS-MYSQL-DATETYPE */
+			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
 			| DEALLOCATE
 			| DEC
 			| DECIMAL_P
@@ -17806,6 +18072,7 @@ bare_label_keyword:
 			| DISABLE_P
 			| DISCARD
 			| DISTINCT
+			| DIV
 			| DO
 			| DOCUMENT_P
 			| DOMAIN_P
@@ -17915,6 +18182,7 @@ bare_label_keyword:
 			| MERGE
 			| METHOD
 			| MINVALUE
+			| MOD
 			| MODE
 			| MOVE
 			| NAME_P
@@ -18122,6 +18390,7 @@ bare_label_keyword:
 			| XMLROOT
 			| XMLSERIALIZE
 			| XMLTABLE
+			| XOR
 			| YEAR
 			| YES_P
 			| ZONE
@@ -18610,6 +18879,7 @@ SystemTypeName(char *name)
 											   makeString(name)));
 }
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 /* MySQLSystemTypeName()
  *  Build a properly-qualified reference to a built-in type with MySQL schema.
  *
@@ -18622,7 +18892,7 @@ MySQLSystemTypeName(char *name)
 											   makeString(name)));
 }
 /* End - ReqID:ReqID:SRS-MYSQL-YEARTYPE */
-
+/* End - ReqID:SRS-MYSQL-DATETYPE */
 /* doNegate()
  * Handle negation of a numeric constant.
  *
@@ -18708,6 +18978,23 @@ makeOrExpr(Node *lexpr, Node *rexpr, int location)
 	}
 	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);
 }
+
+/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+static Node *
+makeXorExpr(Node *lexpr, Node *rexpr, int location)
+{
+    Expr *aorb;
+    Expr *notaandb;
+
+    // XOR is (A OR B) AND (NOT (A AND B))
+    aorb = makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);
+
+    notaandb = makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);
+    notaandb = makeBoolExpr(NOT_EXPR, list_make1(notaandb), false, location);
+
+    return (Node *)makeBoolExpr(AND_EXPR, list_make2(aorb, notaandb), false, location);
+}
+/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 
 static Node *
 makeNotExpr(Node *expr, int location)

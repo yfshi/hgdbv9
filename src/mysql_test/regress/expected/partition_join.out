@@ -887,7 +887,7 @@ SELECT COUNT(*) FROM prt1 FULL JOIN prt2 p2(b,a,c) USING(a,b) FULL JOIN prt2 p3(
 
 SELECT COUNT(*) FROM prt1 FULL JOIN prt2 p2(b,a,c) USING(a,b) FULL JOIN prt2 p3(b,a,c) USING (a, b)
   WHERE a BETWEEN 490 AND 510;
- count 
+ COUNT 
 -------
     14
 (1 row)
@@ -948,7 +948,7 @@ SELECT COUNT(*) FROM prt1 FULL JOIN prt2 p2(b,a,c) USING(a,b) FULL JOIN prt2 p3(
 
 SELECT COUNT(*) FROM prt1 FULL JOIN prt2 p2(b,a,c) USING(a,b) FULL JOIN prt2 p3(b,a,c) USING (a, b) FULL JOIN prt1 p4 (a,b,c) USING (a, b)
   WHERE a BETWEEN 490 AND 510;
- count 
+ COUNT 
 -------
     14
 (1 row)
@@ -2058,7 +2058,7 @@ SELECT COUNT(*) FROM prt1_l t1 LEFT JOIN LATERAL
 			  (SELECT t1.b AS t1b, t2.* FROM prt2_l t2) s
 			  ON t1.a = s.b AND t1.b = s.a AND t1.c = s.c
 			  WHERE s.t1b = s.a;
- count 
+ COUNT 
 -------
    100
 (1 row)
@@ -2093,28 +2093,9 @@ WHERE EXISTS (
     FROM int4_tbl,
          LATERAL (SELECT int4_tbl.f1 FROM int8_tbl LIMIT 2) ss
     WHERE prt1_l.c IS NULL);
-                        QUERY PLAN                        
-----------------------------------------------------------
- Delete on prt1_l
-   Delete on prt1_l_p1 prt1_l_1
-   Delete on prt1_l_p3_p1 prt1_l_2
-   Delete on prt1_l_p3_p2 prt1_l_3
-   ->  Nested Loop Semi Join
-         ->  Append
-               ->  Seq Scan on prt1_l_p1 prt1_l_1
-                     Filter: (c IS NULL)
-               ->  Seq Scan on prt1_l_p3_p1 prt1_l_2
-                     Filter: (c IS NULL)
-               ->  Seq Scan on prt1_l_p3_p2 prt1_l_3
-                     Filter: (c IS NULL)
-         ->  Materialize
-               ->  Nested Loop
-                     ->  Seq Scan on int4_tbl
-                     ->  Subquery Scan on ss
-                           ->  Limit
-                                 ->  Seq Scan on int8_tbl
-(18 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 5:     FROM int4_tbl,
+                 ^
 --
 -- negative testcases
 --

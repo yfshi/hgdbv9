@@ -717,65 +717,67 @@ select int4range(1, 2, '()');
 
 -- test canonical form for daterange
 select daterange('2000-01-10'::date, '2000-01-20'::date, '[]');
-        daterange        
--------------------------
- [01-10-2000,01-21-2000)
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-20'::date, '[]...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-10'::date, '2000-01-20'::date, '[)');
-        daterange        
--------------------------
- [01-10-2000,01-20-2000)
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-20'::date, '[)...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-10'::date, '2000-01-20'::date, '(]');
-        daterange        
--------------------------
- [01-11-2000,01-21-2000)
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-20'::date, '(]...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-10'::date, '2000-01-20'::date, '()');
-        daterange        
--------------------------
- [01-11-2000,01-20-2000)
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-20'::date, '()...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-10'::date, '2000-01-11'::date, '()');
- daterange 
------------
- empty
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-11'::date, '()...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-10'::date, '2000-01-11'::date, '(]');
-        daterange        
--------------------------
- [01-11-2000,01-12-2000)
-(1 row)
-
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-10'::date, '2000-01-11'::date, '(]...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('-infinity'::date, '2000-01-01'::date, '()');
-       daterange        
-------------------------
- (-infinity,01-01-2000)
-(1 row)
-
+WARNING:  Incorrect datetime value: '-infinity'
+LINE 1: select daterange('-infinity'::date, '2000-01-01'::date, '()'...
+                         ^
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('-infinity'::date, '2000-01-01'::date, '()'...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('-infinity'::date, '2000-01-01'::date, '[)');
-       daterange        
-------------------------
- [-infinity,01-01-2000)
-(1 row)
-
+WARNING:  Incorrect datetime value: '-infinity'
+LINE 1: select daterange('-infinity'::date, '2000-01-01'::date, '[)'...
+                         ^
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('-infinity'::date, '2000-01-01'::date, '[)'...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-01'::date, 'infinity'::date, '[)');
-       daterange       
------------------------
- [01-01-2000,infinity)
-(1 row)
-
+WARNING:  Incorrect datetime value: 'infinity'
+LINE 1: select daterange('2000-01-01'::date, 'infinity'::date, '[)')...
+                                             ^
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-01'::date, 'infinity'::date, '[)')...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select daterange('2000-01-01'::date, 'infinity'::date, '[]');
-       daterange       
------------------------
- [01-01-2000,infinity]
-(1 row)
-
+WARNING:  Incorrect datetime value: 'infinity'
+LINE 1: select daterange('2000-01-01'::date, 'infinity'::date, '[]')...
+                                             ^
+ERROR:  function daterange(date, date, unknown) does not exist
+LINE 1: select daterange('2000-01-01'::date, 'infinity'::date, '[]')...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- test GiST index that's been built incrementally
 create table test_range_gist(ir int4range);
 create index test_range_gist_idx on test_range_gist using gist (ir);

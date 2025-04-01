@@ -398,6 +398,44 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			/*
 			 * End - ReqID:SRS-MISC-USER
 			 */
+		/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+		case MYSDATEOID:
+			buf = pstrdup("date");
+			break;
+		/* End - ReqID:SRS-MYSQL-DATETYPE */
+		/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+		case MYSDATETIMEOID:
+			buf = pstrdup("datetime");
+			break;
+		case MYSDATETIMESOID:
+			if (with_typemod)
+				buf = printTypmod("datetime", typemod, typeform->typmodout);
+			else
+				buf = pstrdup("datetime");
+			break;
+		/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+		/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+		case MYSTIMESTAMPOID:
+			buf = pstrdup("timestamp");
+			break;
+		case MYSTIMESTAMPSOID:
+			if (with_typemod)
+				buf = printTypmod("timestamp", typemod, typeform->typmodout);
+			else
+				buf = pstrdup("timestamp");
+			break;
+		/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+		/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+		case MYSTIMEOID:
+			buf = pstrdup("time");
+			break;
+		case MYSTIMESOID:
+			if (with_typemod)
+				buf = printTypmod("time", typemod, typeform->typmodout);
+			else
+				buf = pstrdup("time");
+			break;
+		/* End - ReqID:SRS-MYSQL-TIMETYPE */
 		case DATEOID:
 			buf = pstrdup("date");
 

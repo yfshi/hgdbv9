@@ -66,6 +66,7 @@ typedef struct OverrideSearchPath
 	bool		addCatalog;		/* implicitly prepend pg_catalog? */
 	bool		addTemp;		/* implicitly prepend temp schema? */
 	bool		addSys;			/* implicitly prepend sys schema? */
+	bool		addIvymy;		/* implicitly prepend ivymy schema? */
 	uint64		generation;		/* for quick detection of equality to active */
 } OverrideSearchPath;
 

@@ -3,7 +3,7 @@
 --
 -- prepare the table...
 DROP TABLE INET_TBL;
-ERROR:  table "INET_TBL" does not exist
+ERROR:  table "inet_tbl" does not exist
 CREATE TABLE INET_TBL (c cidr, i inet);
 INSERT INTO INET_TBL (c, i) VALUES ('192.168.1', '192.168.1.226/24');
 INSERT INTO INET_TBL (c, i) VALUES ('192.168.1.0/26', '192.168.1.226');
@@ -263,194 +263,512 @@ SELECT set_masklen(inet(text(i)), 24) FROM INET_TBL;
 
 -- check that btree index works correctly
 CREATE INDEX inet_idx1 ON inet_tbl(i);
-ERROR:  relation "inet_tbl" does not exist
 SET enable_seqscan TO off;
 EXPLAIN (COSTS OFF)
 SELECT * FROM inet_tbl WHERE i<<'192.168.1.0/24'::cidr;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT * FROM inet_tbl WHERE i<<'192.168.1.0/24'::cidr;
-                      ^
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Index Scan using inet_idx1 on inet_tbl
+   Index Cond: ((i > '192.168.1.0/24'::inet) AND (i <= '192.168.1.255'::inet))
+   Filter: (i << '192.168.1.0/24'::inet)
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i<<'192.168.1.0/24'::cidr;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i<<'192.168.1.0/24'::cidr;
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(3 rows)
+
 EXPLAIN (COSTS OFF)
 SELECT * FROM inet_tbl WHERE i<<='192.168.1.0/24'::cidr;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT * FROM inet_tbl WHERE i<<='192.168.1.0/24'::cidr;
-                      ^
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Index Scan using inet_idx1 on inet_tbl
+   Index Cond: ((i >= '192.168.1.0/24'::inet) AND (i <= '192.168.1.255'::inet))
+   Filter: (i <<= '192.168.1.0/24'::inet)
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i<<='192.168.1.0/24'::cidr;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i<<='192.168.1.0/24'::cidr;
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 EXPLAIN (COSTS OFF)
 SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >>= i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >>= i;
-                      ^
+                                   QUERY PLAN                                   
+--------------------------------------------------------------------------------
+ Index Scan using inet_idx1 on inet_tbl
+   Index Cond: ((i >= '192.168.1.0/24'::inet) AND (i <= '192.168.1.255'::inet))
+   Filter: ('192.168.1.0/24'::inet >>= i)
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >>= i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >>= i;
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 EXPLAIN (COSTS OFF)
 SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >> i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >> i;
-                      ^
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
+ Index Scan using inet_idx1 on inet_tbl
+   Index Cond: ((i > '192.168.1.0/24'::inet) AND (i <= '192.168.1.255'::inet))
+   Filter: ('192.168.1.0/24'::inet >> i)
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >> i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE '192.168.1.0/24'::cidr >> i;
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(3 rows)
+
 SET enable_seqscan TO on;
 DROP INDEX inet_idx1;
-ERROR:  index "inet_idx1" does not exist
 -- check that gist index works correctly
 CREATE INDEX inet_idx2 ON inet_tbl using gist (i inet_ops);
-ERROR:  relation "inet_tbl" does not exist
 SET enable_seqscan TO off;
 SELECT * FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i <<= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <<= '192.168.1.0/24'::cidr OR...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 SELECT * FROM inet_tbl WHERE i && '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i && '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 SELECT * FROM inet_tbl WHERE i >>= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >>= '192.168.1.0/24'::cidr OR...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i >> '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >> '192.168.1.0/24'::cidr ORD...
-                      ^
+ c | i 
+---+---
+(0 rows)
+
 SELECT * FROM inet_tbl WHERE i < '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i < '192.168.1.0/24'::cidr ORDE...
-                      ^
+      c      |      i      
+-------------+-------------
+ 10.0.0.0/8  | 9.1.2.3/8
+ 10.0.0.0/32 | 10.1.2.3/8
+ 10.0.0.0/8  | 10.1.2.3/8
+ 10.0.0.0/8  | 10.1.2.3/8
+ 10.1.0.0/16 | 10.1.2.3/16
+ 10.1.2.0/24 | 10.1.2.3/24
+ 10.1.2.3/32 | 10.1.2.3
+ 10.0.0.0/8  | 11.1.2.3/8
+(8 rows)
+
 SELECT * FROM inet_tbl WHERE i <= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <= '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |       i        
+----------------+----------------
+ 10.0.0.0/8     | 9.1.2.3/8
+ 10.0.0.0/8     | 10.1.2.3/8
+ 10.0.0.0/32    | 10.1.2.3/8
+ 10.0.0.0/8     | 10.1.2.3/8
+ 10.1.0.0/16    | 10.1.2.3/16
+ 10.1.2.0/24    | 10.1.2.3/24
+ 10.1.2.3/32    | 10.1.2.3
+ 10.0.0.0/8     | 11.1.2.3/8
+ 192.168.1.0/24 | 192.168.1.0/24
+(9 rows)
+
 SELECT * FROM inet_tbl WHERE i = '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i = '192.168.1.0/24'::cidr ORDE...
-                      ^
+       c        |       i        
+----------------+----------------
+ 192.168.1.0/24 | 192.168.1.0/24
+(1 row)
+
 SELECT * FROM inet_tbl WHERE i >= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >= '192.168.1.0/24'::cidr ORD...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(9 rows)
+
 SELECT * FROM inet_tbl WHERE i > '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i > '192.168.1.0/24'::cidr ORDE...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(8 rows)
+
 SELECT * FROM inet_tbl WHERE i <> '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <> '192.168.1.0/24'::cidr ORD...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 10.0.0.0/8         | 9.1.2.3/8
+ 10.0.0.0/8         | 10.1.2.3/8
+ 10.0.0.0/32        | 10.1.2.3/8
+ 10.0.0.0/8         | 10.1.2.3/8
+ 10.1.0.0/16        | 10.1.2.3/16
+ 10.1.2.0/24        | 10.1.2.3/24
+ 10.1.2.3/32        | 10.1.2.3
+ 10.0.0.0/8         | 11.1.2.3/8
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(16 rows)
+
 -- test index-only scans
 EXPLAIN (COSTS OFF)
 SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+                    QUERY PLAN                     
+---------------------------------------------------
+ Sort
+   Sort Key: i
+   ->  Index Only Scan using inet_idx2 on inet_tbl
+         Index Cond: (i << '192.168.1.0/24'::inet)
+(4 rows)
+
 SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+        i         
+------------------
+ 192.168.1.0/25
+ 192.168.1.255/25
+ 192.168.1.226
+(3 rows)
+
 SET enable_seqscan TO on;
 DROP INDEX inet_idx2;
-ERROR:  index "inet_idx2" does not exist
 -- check that spgist index works correctly
 CREATE INDEX inet_idx3 ON inet_tbl using spgist (i);
-ERROR:  relation "inet_tbl" does not exist
 SET enable_seqscan TO off;
 SELECT * FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i <<= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <<= '192.168.1.0/24'::cidr OR...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 SELECT * FROM inet_tbl WHERE i && '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i && '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+ 192.168.1.0/24 | 192.168.1.0/25
+ 192.168.1.0/24 | 192.168.1.255/25
+ 192.168.1.0/26 | 192.168.1.226
+(6 rows)
+
 SELECT * FROM inet_tbl WHERE i >>= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >>= '192.168.1.0/24'::cidr OR...
-                      ^
+       c        |        i         
+----------------+------------------
+ 192.168.1.0/24 | 192.168.1.0/24
+ 192.168.1.0/24 | 192.168.1.226/24
+ 192.168.1.0/24 | 192.168.1.255/24
+(3 rows)
+
 SELECT * FROM inet_tbl WHERE i >> '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >> '192.168.1.0/24'::cidr ORD...
-                      ^
+ c | i 
+---+---
+(0 rows)
+
 SELECT * FROM inet_tbl WHERE i < '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i < '192.168.1.0/24'::cidr ORDE...
-                      ^
+      c      |      i      
+-------------+-------------
+ 10.0.0.0/8  | 9.1.2.3/8
+ 10.0.0.0/32 | 10.1.2.3/8
+ 10.0.0.0/8  | 10.1.2.3/8
+ 10.0.0.0/8  | 10.1.2.3/8
+ 10.1.0.0/16 | 10.1.2.3/16
+ 10.1.2.0/24 | 10.1.2.3/24
+ 10.1.2.3/32 | 10.1.2.3
+ 10.0.0.0/8  | 11.1.2.3/8
+(8 rows)
+
 SELECT * FROM inet_tbl WHERE i <= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <= '192.168.1.0/24'::cidr ORD...
-                      ^
+       c        |       i        
+----------------+----------------
+ 10.0.0.0/8     | 9.1.2.3/8
+ 10.0.0.0/8     | 10.1.2.3/8
+ 10.0.0.0/32    | 10.1.2.3/8
+ 10.0.0.0/8     | 10.1.2.3/8
+ 10.1.0.0/16    | 10.1.2.3/16
+ 10.1.2.0/24    | 10.1.2.3/24
+ 10.1.2.3/32    | 10.1.2.3
+ 10.0.0.0/8     | 11.1.2.3/8
+ 192.168.1.0/24 | 192.168.1.0/24
+(9 rows)
+
 SELECT * FROM inet_tbl WHERE i = '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i = '192.168.1.0/24'::cidr ORDE...
-                      ^
+       c        |       i        
+----------------+----------------
+ 192.168.1.0/24 | 192.168.1.0/24
+(1 row)
+
 SELECT * FROM inet_tbl WHERE i >= '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i >= '192.168.1.0/24'::cidr ORD...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(9 rows)
+
 SELECT * FROM inet_tbl WHERE i > '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i > '192.168.1.0/24'::cidr ORDE...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(8 rows)
+
 SELECT * FROM inet_tbl WHERE i <> '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT * FROM inet_tbl WHERE i <> '192.168.1.0/24'::cidr ORD...
-                      ^
+         c          |        i         
+--------------------+------------------
+ 10.0.0.0/8         | 9.1.2.3/8
+ 10.0.0.0/8         | 10.1.2.3/8
+ 10.0.0.0/32        | 10.1.2.3/8
+ 10.0.0.0/8         | 10.1.2.3/8
+ 10.1.0.0/16        | 10.1.2.3/16
+ 10.1.2.0/24        | 10.1.2.3/24
+ 10.1.2.3/32        | 10.1.2.3
+ 10.0.0.0/8         | 11.1.2.3/8
+ 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.0/24     | 192.168.1.255/25
+ 192.168.1.0/26     | 192.168.1.226
+ ::ffff:1.2.3.4/128 | ::4.3.2.1/24
+ 10:23::f1/128      | 10:23::f1/64
+ 10:23::8000/113    | 10:23::ffff
+(16 rows)
+
 -- test index-only scans
 EXPLAIN (COSTS OFF)
 SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 2: SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+                    QUERY PLAN                     
+---------------------------------------------------
+ Sort
+   Sort Key: i
+   ->  Index Only Scan using inet_idx3 on inet_tbl
+         Index Cond: (i << '192.168.1.0/24'::inet)
+(4 rows)
+
 SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORDER BY i;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i FROM inet_tbl WHERE i << '192.168.1.0/24'::cidr ORD...
-                      ^
+        i         
+------------------
+ 192.168.1.0/25
+ 192.168.1.255/25
+ 192.168.1.226
+(3 rows)
+
 SET enable_seqscan TO on;
 DROP INDEX inet_idx3;
-ERROR:  index "inet_idx3" does not exist
 -- simple tests of inet boolean and arithmetic operators
 SELECT i, ~i AS "~i" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, ~i AS "~i" FROM inet_tbl;
-                                  ^
+        i         |                     ~i                     
+------------------+--------------------------------------------
+ 192.168.1.226/24 | 63.87.254.29/24
+ 192.168.1.226    | 63.87.254.29
+ 192.168.1.0/24   | 63.87.254.255/24
+ 192.168.1.0/25   | 63.87.254.255/25
+ 192.168.1.255/24 | 63.87.254.0/24
+ 192.168.1.255/25 | 63.87.254.0/25
+ 10.1.2.3/8       | 245.254.253.252/8
+ 10.1.2.3/8       | 245.254.253.252/8
+ 10.1.2.3         | 245.254.253.252
+ 10.1.2.3/24      | 245.254.253.252/24
+ 10.1.2.3/16      | 245.254.253.252/16
+ 10.1.2.3/8       | 245.254.253.252/8
+ 11.1.2.3/8       | 244.254.253.252/8
+ 9.1.2.3/8        | 246.254.253.252/8
+ 10:23::f1/64     | ffef:ffdc:ffff:ffff:ffff:ffff:ffff:ff0e/64
+ 10:23::ffff      | ffef:ffdc:ffff:ffff:ffff:ffff:ffff:0
+ ::4.3.2.1/24     | ffff:ffff:ffff:ffff:ffff:ffff:fbfc:fdfe/24
+(17 rows)
+
 SELECT i, c, i & c AS "and" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, c, i & c AS "and" FROM inet_tbl;
-                                         ^
+        i         |         c          |      and       
+------------------+--------------------+----------------
+ 192.168.1.226/24 | 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.226    | 192.168.1.0/26     | 192.168.1.0
+ 192.168.1.0/24   | 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.0/25   | 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.255/24 | 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.255/25 | 192.168.1.0/24     | 192.168.1.0/25
+ 10.1.2.3/8       | 10.0.0.0/8         | 10.0.0.0/8
+ 10.1.2.3/8       | 10.0.0.0/32        | 10.0.0.0
+ 10.1.2.3         | 10.1.2.3/32        | 10.1.2.3
+ 10.1.2.3/24      | 10.1.2.0/24        | 10.1.2.0/24
+ 10.1.2.3/16      | 10.1.0.0/16        | 10.1.0.0/16
+ 10.1.2.3/8       | 10.0.0.0/8         | 10.0.0.0/8
+ 11.1.2.3/8       | 10.0.0.0/8         | 10.0.0.0/8
+ 9.1.2.3/8        | 10.0.0.0/8         | 8.0.0.0/8
+ 10:23::f1/64     | 10:23::f1/128      | 10:23::f1
+ 10:23::ffff      | 10:23::8000/113    | 10:23::8000
+ ::4.3.2.1/24     | ::ffff:1.2.3.4/128 | ::0.2.2.0
+(17 rows)
+
 SELECT i, c, i | c AS "or" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, c, i | c AS "or" FROM inet_tbl;
-                                        ^
+        i         |         c          |        or        
+------------------+--------------------+------------------
+ 192.168.1.226/24 | 192.168.1.0/24     | 192.168.1.226/24
+ 192.168.1.226    | 192.168.1.0/26     | 192.168.1.226
+ 192.168.1.0/24   | 192.168.1.0/24     | 192.168.1.0/24
+ 192.168.1.0/25   | 192.168.1.0/24     | 192.168.1.0/25
+ 192.168.1.255/24 | 192.168.1.0/24     | 192.168.1.255/24
+ 192.168.1.255/25 | 192.168.1.0/24     | 192.168.1.255/25
+ 10.1.2.3/8       | 10.0.0.0/8         | 10.1.2.3/8
+ 10.1.2.3/8       | 10.0.0.0/32        | 10.1.2.3
+ 10.1.2.3         | 10.1.2.3/32        | 10.1.2.3
+ 10.1.2.3/24      | 10.1.2.0/24        | 10.1.2.3/24
+ 10.1.2.3/16      | 10.1.0.0/16        | 10.1.2.3/16
+ 10.1.2.3/8       | 10.0.0.0/8         | 10.1.2.3/8
+ 11.1.2.3/8       | 10.0.0.0/8         | 11.1.2.3/8
+ 9.1.2.3/8        | 10.0.0.0/8         | 11.1.2.3/8
+ 10:23::f1/64     | 10:23::f1/128      | 10:23::f1
+ 10:23::ffff      | 10:23::8000/113    | 10:23::ffff
+ ::4.3.2.1/24     | ::ffff:1.2.3.4/128 | ::ffff:5.3.3.5
+(17 rows)
+
 SELECT i, i + 500 AS "i+500" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, i + 500 AS "i+500" FROM inet_tbl;
-                                          ^
+        i         |      i+500       
+------------------+------------------
+ 192.168.1.226/24 | 192.168.3.214/24
+ 192.168.1.226    | 192.168.3.214
+ 192.168.1.0/24   | 192.168.2.244/24
+ 192.168.1.0/25   | 192.168.2.244/25
+ 192.168.1.255/24 | 192.168.3.243/24
+ 192.168.1.255/25 | 192.168.3.243/25
+ 10.1.2.3/8       | 10.1.3.247/8
+ 10.1.2.3/8       | 10.1.3.247/8
+ 10.1.2.3         | 10.1.3.247
+ 10.1.2.3/24      | 10.1.3.247/24
+ 10.1.2.3/16      | 10.1.3.247/16
+ 10.1.2.3/8       | 10.1.3.247/8
+ 11.1.2.3/8       | 11.1.3.247/8
+ 9.1.2.3/8        | 9.1.3.247/8
+ 10:23::f1/64     | 10:23::2e5/64
+ 10:23::ffff      | 10:23::1:1f3
+ ::4.3.2.1/24     | ::4.3.3.245/24
+(17 rows)
+
 SELECT i, i - 500 AS "i-500" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, i - 500 AS "i-500" FROM inet_tbl;
-                                          ^
+        i         |                 i-500                  
+------------------+----------------------------------------
+ 192.168.1.226/24 | 192.167.255.238/24
+ 192.168.1.226    | 192.167.255.238
+ 192.168.1.0/24   | 192.167.255.12/24
+ 192.168.1.0/25   | 192.167.255.12/25
+ 192.168.1.255/24 | 192.168.0.11/24
+ 192.168.1.255/25 | 192.168.0.11/25
+ 10.1.2.3/8       | 10.1.0.15/8
+ 10.1.2.3/8       | 10.1.0.15/8
+ 10.1.2.3         | 10.1.0.15
+ 10.1.2.3/24      | 10.1.0.15/24
+ 10.1.2.3/16      | 10.1.0.15/16
+ 10.1.2.3/8       | 10.1.0.15/8
+ 11.1.2.3/8       | 11.1.0.15/8
+ 9.1.2.3/8        | 9.1.0.15/8
+ 10:23::f1/64     | 10:22:ffff:ffff:ffff:ffff:ffff:fefd/64
+ 10:23::ffff      | 10:23::fe0b
+ ::4.3.2.1/24     | ::4.3.0.13/24
+(17 rows)
+
 SELECT i, c, i - c AS "minus" FROM inet_tbl;
-ERROR:  relation "inet_tbl" does not exist
-LINE 1: SELECT i, c, i - c AS "minus" FROM inet_tbl;
-                                           ^
+        i         |         c          |      minus       
+------------------+--------------------+------------------
+ 192.168.1.226/24 | 192.168.1.0/24     |              226
+ 192.168.1.226    | 192.168.1.0/26     |              226
+ 192.168.1.0/24   | 192.168.1.0/24     |                0
+ 192.168.1.0/25   | 192.168.1.0/24     |                0
+ 192.168.1.255/24 | 192.168.1.0/24     |              255
+ 192.168.1.255/25 | 192.168.1.0/24     |              255
+ 10.1.2.3/8       | 10.0.0.0/8         |            66051
+ 10.1.2.3/8       | 10.0.0.0/32        |            66051
+ 10.1.2.3         | 10.1.2.3/32        |                0
+ 10.1.2.3/24      | 10.1.2.0/24        |                3
+ 10.1.2.3/16      | 10.1.0.0/16        |              515
+ 10.1.2.3/8       | 10.0.0.0/8         |            66051
+ 11.1.2.3/8       | 10.0.0.0/8         |         16843267
+ 9.1.2.3/8        | 10.0.0.0/8         |        -16711165
+ 10:23::f1/64     | 10:23::f1/128      |                0
+ 10:23::ffff      | 10:23::8000/113    |            32767
+ ::4.3.2.1/24     | ::ffff:1.2.3.4/128 | -281470631346435
+(17 rows)
+
 SELECT '127.0.0.1'::inet + 257;
  ?column?  
 -----------

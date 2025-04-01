@@ -505,9 +505,6 @@ INSERT INTO t1 VALUES (CURRENT_TIME);
 -- INSERT INTO t1 VALUES (TIME'25:00:00');
 INSERT INTO t1 VALUES ('15:44:00'::time);
 INSERT INTO t1 VALUES ('25:00:00'::time);
-ERROR:  date/time field value out of range: "25:00:00"
-LINE 1: INSERT INTO t1 VALUES ('25:00:00'::time);
-                               ^
 -- SELECT * FROM t1;
 DROP TABLE t1;
 -- SET timestamp=DEFAULT;

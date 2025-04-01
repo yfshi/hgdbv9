@@ -6,7 +6,7 @@ CREATE TYPE rainbow AS ENUM ('red', 'orange', 'yellow', 'green', 'blue', 'purple
 -- Did it create the right number of rows?
 --
 SELECT COUNT(*) FROM pg_enum WHERE enumtypid = 'rainbow'::regtype;
- count 
+ COUNT 
 -------
      6
 (1 row)
@@ -678,7 +678,7 @@ DROP TYPE rainbow;
 -- Verify properly cleaned up
 --
 SELECT COUNT(*) FROM pg_type WHERE typname = 'rainbow';
- count 
+ COUNT 
 -------
      0
 (1 row)

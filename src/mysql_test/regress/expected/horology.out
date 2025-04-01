@@ -86,8 +86,6 @@ SELECT timestamp with time zone '12/27/2001 04:05:06.789-08';
 -- should fail in mdy mode:
 SELECT timestamp with time zone '27/12/2001 04:05:06.789-08';
 ERROR:  date/time field value out of range: "27/12/2001 04:05:06.789-08"
-LINE 1: SELECT timestamp with time zone '27/12/2001 04:05:06.789-08'...
-                                        ^
 HINT:  Perhaps you need a different "datestyle" setting.
 set datestyle to dmy;
 SELECT timestamp with time zone '27/12/2001 04:05:06.789-08';
@@ -272,57 +270,35 @@ SELECT time with time zone 'T040506.789 -08';
 SET DateStyle = 'Postgres, MDY';
 -- Check Julian dates BC
 SELECT date 'J1520447' AS "Confucius' Birthday";
- Confucius' Birthday 
----------------------
- 09-28-0551 BC
-(1 row)
-
+ERROR:  Incorrect DATE value: 'J1520447'
 SELECT date 'J0' AS "Julian Epoch";
- Julian Epoch  
----------------
- 11-24-4714 BC
-(1 row)
-
+ERROR:  Incorrect DATE value: 'J0'
 --
 -- date, time arithmetic
 --
-SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
-       Date + Time        
---------------------------
- Tue Feb 03 04:05:06 1981
-(1 row)
-
+--SELECT date '1981-02-03' + time '04:05:06' AS "Date + Time";
 SELECT date '1991-02-03' + time with time zone '04:05:06 PST' AS "Date + Time PST";
-       Date + Time PST        
-------------------------------
- Sun Feb 03 04:05:06 1991 PST
-(1 row)
-
+ERROR:  operator does not exist: date + time with time zone
+LINE 1: SELECT date '1991-02-03' + time with time zone '04:05:06 PST...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT date '2001-02-03' + time with time zone '04:05:06 UTC' AS "Date + Time UTC";
-       Date + Time UTC        
-------------------------------
- Fri Feb 02 20:05:06 2001 PST
-(1 row)
-
+ERROR:  operator does not exist: date + time with time zone
+LINE 1: SELECT date '2001-02-03' + time with time zone '04:05:06 UTC...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT date '1991-02-03' + interval '2 years' AS "Add Two Years";
-      Add Two Years       
---------------------------
- Wed Feb 03 00:00:00 1993
-(1 row)
-
+ERROR:  operator does not exist: date + interval
+LINE 1: SELECT date '1991-02-03' + interval '2 years' AS "Add Two Ye...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT date '2001-12-13' - interval '2 years' AS "Subtract Two Years";
-    Subtract Two Years    
---------------------------
- Mon Dec 13 00:00:00 1999
-(1 row)
-
+ERROR:  operator does not exist: date - interval
+LINE 1: SELECT date '2001-12-13' - interval '2 years' AS "Subtract T...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- subtract time from date should not make sense; use interval instead
-SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
-      Subtract Time       
---------------------------
- Sat Feb 02 19:54:54 1991
-(1 row)
-
+-- SELECT date '1991-02-03' - time '04:05:06' AS "Subtract Time";
 SELECT date '1991-02-03' - time with time zone '04:05:06 UTC' AS "Subtract Time UTC";
 ERROR:  operator does not exist: date - time with time zone
 LINE 1: SELECT date '1991-02-03' - time with time zone '04:05:06 UTC...
@@ -447,30 +423,18 @@ SELECT (timestamp without time zone 'tomorrow' > 'now') as "True";
 -- Convert from date and time to timestamp
 -- This test used to be timestamp(date,time) but no longer allowed by grammar
 -- to enable support for SQL99 timestamp type syntax.
-SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
-     Jan_01_1994_11am     
---------------------------
- Sat Jan 01 11:00:00 1994
-(1 row)
-
-SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
-     Jan_01_1994_10am     
---------------------------
- Sat Jan 01 10:00:00 1994
-(1 row)
-
+--SELECT date '1994-01-01' + time '11:00' AS "Jan_01_1994_11am";
+--SELECT date '1994-01-01' + time '10:00' AS "Jan_01_1994_10am";
 SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_8am";
-       Jan_01_1994_8am        
-------------------------------
- Sat Jan 01 08:00:00 1994 PST
-(1 row)
-
+ERROR:  operator does not exist: date + time with time zone
+LINE 1: SELECT date '1994-01-01' + timetz '11:00-5' AS "Jan_01_1994_...
+                                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
-       Jan_01_1994_8am        
-------------------------------
- Sat Jan 01 08:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time with time zone) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMP_TBL;
           one_year           
 -----------------------------
@@ -690,35 +654,30 @@ SELECT timestamp with time zone '2005-04-03 12:00-06' - interval '24 hours' as "
 
 RESET TIME ZONE;
 SELECT timestamptz(date '1994-01-01', time '11:00') AS "Jan_01_1994_10am";
-       Jan_01_1994_10am       
-------------------------------
- Sat Jan 01 11:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time '11:00') AS "Jan_...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT timestamptz(date '1994-01-01', time '10:00') AS "Jan_01_1994_9am";
-       Jan_01_1994_9am        
-------------------------------
- Sat Jan 01 10:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time '10:00') AS "Jan_...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-8') AS "Jan_01_1994_11am";
-       Jan_01_1994_11am       
-------------------------------
- Sat Jan 01 11:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time with time zone) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT timestamptz(date '1994-01-01', time with time zone '10:00-8') AS "Jan_01_1994_10am";
-       Jan_01_1994_10am       
-------------------------------
- Sat Jan 01 10:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time with time zone) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT timestamptz(date '1994-01-01', time with time zone '11:00-5') AS "Jan_01_1994_8am";
-       Jan_01_1994_8am        
-------------------------------
- Sat Jan 01 08:00:00 1994 PST
-(1 row)
-
+ERROR:  function timestamptz(date, time with time zone) does not exist
+LINE 1: SELECT timestamptz(date '1994-01-01', time with time zone '1...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT d1 + interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
             one_year             
 ---------------------------------
@@ -865,41 +824,33 @@ SELECT d1 - interval '1 year' AS one_year FROM TIMESTAMPTZ_TBL;
 -- time, interval arithmetic
 --
 SELECT CAST(time '01:02' AS interval) AS "+01:02";
-     +01:02      
------------------
- @ 1 hour 2 mins
-(1 row)
-
+ERROR:  cannot cast type time to interval
+LINE 1: SELECT CAST(time '01:02' AS interval) AS "+01:02";
+               ^
 SELECT CAST(interval '02:03' AS time) AS "02:03:00";
- 02:03:00 
-----------
- 02:03:00
-(1 row)
-
+ERROR:  cannot cast type interval to time
+LINE 1: SELECT CAST(interval '02:03' AS time) AS "02:03:00";
+               ^
 SELECT time '01:30' + interval '02:01' AS "03:31:00";
- 03:31:00 
-----------
- 03:31:00
-(1 row)
-
+ERROR:  operator does not exist: time + interval
+LINE 1: SELECT time '01:30' + interval '02:01' AS "03:31:00";
+                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT time '01:30' - interval '02:01' AS "23:29:00";
- 23:29:00 
-----------
- 23:29:00
-(1 row)
-
+ERROR:  operator does not exist: time - interval
+LINE 1: SELECT time '01:30' - interval '02:01' AS "23:29:00";
+                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT time '02:30' + interval '36:01' AS "14:31:00";
- 14:31:00 
-----------
- 14:31:00
-(1 row)
-
+ERROR:  operator does not exist: time + interval
+LINE 1: SELECT time '02:30' + interval '36:01' AS "14:31:00";
+                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT time '03:30' + interval '1 month 04:01' AS "07:31:00";
- 07:31:00 
-----------
- 07:31:00
-(1 row)
-
+ERROR:  operator does not exist: time + interval
+LINE 1: SELECT time '03:30' + interval '1 month 04:01' AS "07:31:00"...
+                            ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT CAST(time with time zone '01:02-08' AS interval) AS "+00:01";
 ERROR:  cannot cast type time with time zone to interval
 LINE 1: SELECT CAST(time with time zone '01:02-08' AS interval) AS "...
@@ -927,18 +878,10 @@ SELECT time with time zone '02:30-08' + interval '36:01' AS "14:31:00-08";
 -- Try the following two tests instead, as a poor substitute
 SELECT CAST(CAST(date 'today' + time with time zone '05:30'
             + interval '02:01' AS time with time zone) AS time) AS "07:31:00";
- 07:31:00 
-----------
- 07:31:00
-(1 row)
-
+ERROR:  Incorrect DATE value: 'today'
 SELECT CAST(cast(date 'today' + time with time zone '03:30'
   + interval '1 month 04:01' as timestamp without time zone) AS time) AS "07:31:00";
- 07:31:00 
-----------
- 07:31:00
-(1 row)
-
+ERROR:  Incorrect DATE value: 'today'
 SELECT t.d1 AS t, i.f1 AS i, t.d1 + i.f1 AS "add", t.d1 - i.f1 AS "subtract"
   FROM TIMESTAMP_TBL t, INTERVAL_TBL i
   WHERE t.d1 BETWEEN '1990-01-01' AND '2001-01-01'
@@ -1055,110 +998,10 @@ SELECT t.d1 AS t, i.f1 AS i, t.d1 + i.f1 AS "add", t.d1 - i.f1 AS "subtract"
 SELECT t.f1 AS t, i.f1 AS i, t.f1 + i.f1 AS "add", t.f1 - i.f1 AS "subtract"
   FROM TIME_TBL t, INTERVAL_TBL i
   ORDER BY 1,2;
-      t      |               i               |     add     |  subtract   
--------------+-------------------------------+-------------+-------------
- 00:00:00    | @ 14 secs ago                 | 23:59:46    | 00:00:14
- 00:00:00    | @ 1 min                       | 00:01:00    | 23:59:00
- 00:00:00    | @ 5 hours                     | 05:00:00    | 19:00:00
- 00:00:00    | @ 1 day 2 hours 3 mins 4 secs | 02:03:04    | 21:56:56
- 00:00:00    | @ 10 days                     | 00:00:00    | 00:00:00
- 00:00:00    | @ 3 mons                      | 00:00:00    | 00:00:00
- 00:00:00    | @ 5 mons                      | 00:00:00    | 00:00:00
- 00:00:00    | @ 5 mons 12 hours             | 12:00:00    | 12:00:00
- 00:00:00    | @ 6 years                     | 00:00:00    | 00:00:00
- 00:00:00    | @ 34 years                    | 00:00:00    | 00:00:00
- 01:00:00    | @ 14 secs ago                 | 00:59:46    | 01:00:14
- 01:00:00    | @ 1 min                       | 01:01:00    | 00:59:00
- 01:00:00    | @ 5 hours                     | 06:00:00    | 20:00:00
- 01:00:00    | @ 1 day 2 hours 3 mins 4 secs | 03:03:04    | 22:56:56
- 01:00:00    | @ 10 days                     | 01:00:00    | 01:00:00
- 01:00:00    | @ 3 mons                      | 01:00:00    | 01:00:00
- 01:00:00    | @ 5 mons                      | 01:00:00    | 01:00:00
- 01:00:00    | @ 5 mons 12 hours             | 13:00:00    | 13:00:00
- 01:00:00    | @ 6 years                     | 01:00:00    | 01:00:00
- 01:00:00    | @ 34 years                    | 01:00:00    | 01:00:00
- 02:03:00    | @ 14 secs ago                 | 02:02:46    | 02:03:14
- 02:03:00    | @ 1 min                       | 02:04:00    | 02:02:00
- 02:03:00    | @ 5 hours                     | 07:03:00    | 21:03:00
- 02:03:00    | @ 1 day 2 hours 3 mins 4 secs | 04:06:04    | 23:59:56
- 02:03:00    | @ 10 days                     | 02:03:00    | 02:03:00
- 02:03:00    | @ 3 mons                      | 02:03:00    | 02:03:00
- 02:03:00    | @ 5 mons                      | 02:03:00    | 02:03:00
- 02:03:00    | @ 5 mons 12 hours             | 14:03:00    | 14:03:00
- 02:03:00    | @ 6 years                     | 02:03:00    | 02:03:00
- 02:03:00    | @ 34 years                    | 02:03:00    | 02:03:00
- 11:59:00    | @ 14 secs ago                 | 11:58:46    | 11:59:14
- 11:59:00    | @ 1 min                       | 12:00:00    | 11:58:00
- 11:59:00    | @ 5 hours                     | 16:59:00    | 06:59:00
- 11:59:00    | @ 1 day 2 hours 3 mins 4 secs | 14:02:04    | 09:55:56
- 11:59:00    | @ 10 days                     | 11:59:00    | 11:59:00
- 11:59:00    | @ 3 mons                      | 11:59:00    | 11:59:00
- 11:59:00    | @ 5 mons                      | 11:59:00    | 11:59:00
- 11:59:00    | @ 5 mons 12 hours             | 23:59:00    | 23:59:00
- 11:59:00    | @ 6 years                     | 11:59:00    | 11:59:00
- 11:59:00    | @ 34 years                    | 11:59:00    | 11:59:00
- 12:00:00    | @ 14 secs ago                 | 11:59:46    | 12:00:14
- 12:00:00    | @ 1 min                       | 12:01:00    | 11:59:00
- 12:00:00    | @ 5 hours                     | 17:00:00    | 07:00:00
- 12:00:00    | @ 1 day 2 hours 3 mins 4 secs | 14:03:04    | 09:56:56
- 12:00:00    | @ 10 days                     | 12:00:00    | 12:00:00
- 12:00:00    | @ 3 mons                      | 12:00:00    | 12:00:00
- 12:00:00    | @ 5 mons                      | 12:00:00    | 12:00:00
- 12:00:00    | @ 5 mons 12 hours             | 00:00:00    | 00:00:00
- 12:00:00    | @ 6 years                     | 12:00:00    | 12:00:00
- 12:00:00    | @ 34 years                    | 12:00:00    | 12:00:00
- 12:01:00    | @ 14 secs ago                 | 12:00:46    | 12:01:14
- 12:01:00    | @ 1 min                       | 12:02:00    | 12:00:00
- 12:01:00    | @ 5 hours                     | 17:01:00    | 07:01:00
- 12:01:00    | @ 1 day 2 hours 3 mins 4 secs | 14:04:04    | 09:57:56
- 12:01:00    | @ 10 days                     | 12:01:00    | 12:01:00
- 12:01:00    | @ 3 mons                      | 12:01:00    | 12:01:00
- 12:01:00    | @ 5 mons                      | 12:01:00    | 12:01:00
- 12:01:00    | @ 5 mons 12 hours             | 00:01:00    | 00:01:00
- 12:01:00    | @ 6 years                     | 12:01:00    | 12:01:00
- 12:01:00    | @ 34 years                    | 12:01:00    | 12:01:00
- 15:36:39    | @ 14 secs ago                 | 15:36:25    | 15:36:53
- 15:36:39    | @ 14 secs ago                 | 15:36:25    | 15:36:53
- 15:36:39    | @ 1 min                       | 15:37:39    | 15:35:39
- 15:36:39    | @ 1 min                       | 15:37:39    | 15:35:39
- 15:36:39    | @ 5 hours                     | 20:36:39    | 10:36:39
- 15:36:39    | @ 5 hours                     | 20:36:39    | 10:36:39
- 15:36:39    | @ 1 day 2 hours 3 mins 4 secs | 17:39:43    | 13:33:35
- 15:36:39    | @ 1 day 2 hours 3 mins 4 secs | 17:39:43    | 13:33:35
- 15:36:39    | @ 10 days                     | 15:36:39    | 15:36:39
- 15:36:39    | @ 10 days                     | 15:36:39    | 15:36:39
- 15:36:39    | @ 3 mons                      | 15:36:39    | 15:36:39
- 15:36:39    | @ 3 mons                      | 15:36:39    | 15:36:39
- 15:36:39    | @ 5 mons                      | 15:36:39    | 15:36:39
- 15:36:39    | @ 5 mons                      | 15:36:39    | 15:36:39
- 15:36:39    | @ 5 mons 12 hours             | 03:36:39    | 03:36:39
- 15:36:39    | @ 5 mons 12 hours             | 03:36:39    | 03:36:39
- 15:36:39    | @ 6 years                     | 15:36:39    | 15:36:39
- 15:36:39    | @ 6 years                     | 15:36:39    | 15:36:39
- 15:36:39    | @ 34 years                    | 15:36:39    | 15:36:39
- 15:36:39    | @ 34 years                    | 15:36:39    | 15:36:39
- 23:59:00    | @ 14 secs ago                 | 23:58:46    | 23:59:14
- 23:59:00    | @ 1 min                       | 00:00:00    | 23:58:00
- 23:59:00    | @ 5 hours                     | 04:59:00    | 18:59:00
- 23:59:00    | @ 1 day 2 hours 3 mins 4 secs | 02:02:04    | 21:55:56
- 23:59:00    | @ 10 days                     | 23:59:00    | 23:59:00
- 23:59:00    | @ 3 mons                      | 23:59:00    | 23:59:00
- 23:59:00    | @ 5 mons                      | 23:59:00    | 23:59:00
- 23:59:00    | @ 5 mons 12 hours             | 11:59:00    | 11:59:00
- 23:59:00    | @ 6 years                     | 23:59:00    | 23:59:00
- 23:59:00    | @ 34 years                    | 23:59:00    | 23:59:00
- 23:59:59.99 | @ 14 secs ago                 | 23:59:45.99 | 00:00:13.99
- 23:59:59.99 | @ 1 min                       | 00:00:59.99 | 23:58:59.99
- 23:59:59.99 | @ 5 hours                     | 04:59:59.99 | 18:59:59.99
- 23:59:59.99 | @ 1 day 2 hours 3 mins 4 secs | 02:03:03.99 | 21:56:55.99
- 23:59:59.99 | @ 10 days                     | 23:59:59.99 | 23:59:59.99
- 23:59:59.99 | @ 3 mons                      | 23:59:59.99 | 23:59:59.99
- 23:59:59.99 | @ 5 mons                      | 23:59:59.99 | 23:59:59.99
- 23:59:59.99 | @ 5 mons 12 hours             | 11:59:59.99 | 11:59:59.99
- 23:59:59.99 | @ 6 years                     | 23:59:59.99 | 23:59:59.99
- 23:59:59.99 | @ 34 years                    | 23:59:59.99 | 23:59:59.99
-(100 rows)
-
+ERROR:  operator does not exist: time + interval
+LINE 1: SELECT t.f1 AS t, i.f1 AS i, t.f1 + i.f1 AS "add", t.f1 - i....
+                                          ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT t.f1 AS t, i.f1 AS i, t.f1 + i.f1 AS "add", t.f1 - i.f1 AS "subtract"
   FROM TIMETZ_TBL t, INTERVAL_TBL i
   ORDER BY 1,2;
@@ -1376,35 +1219,31 @@ SELECT (timestamp without time zone '2000-11-27', interval '12 hours')
 -- test time and interval
 SELECT (time '00:00', time '01:00')
   OVERLAPS (time '00:30', time '01:30') AS "True";
- True 
-------
- t
-(1 row)
-
+ERROR:  function pg_catalog.overlaps(time, time, time, time) does not exist
+LINE 2:   OVERLAPS (time '00:30', time '01:30') AS "True";
+          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '00:30', interval '1 hour') AS "True";
- True 
-------
- t
-(1 row)
-
+ERROR:  function pg_catalog.overlaps(time, interval, time, interval) does not exist
+LINE 2:   OVERLAPS (time '00:30', interval '1 hour') AS "True";
+          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '01:30', interval '1 hour') AS "False";
- False 
--------
- f
-(1 row)
-
+ERROR:  function pg_catalog.overlaps(time, interval, time, interval) does not exist
+LINE 2:   OVERLAPS (time '01:30', interval '1 hour') AS "False";
+          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 -- SQL99 seems to want this to be false (and we conform to the spec).
 -- istm that this *should* return true, on the theory that time
 -- intervals can wrap around the day boundary - thomas 2001-09-25
 SELECT (time '00:00', interval '1 hour')
   OVERLAPS (time '01:30', interval '1 day') AS "False";
- False 
--------
- f
-(1 row)
-
+ERROR:  function pg_catalog.overlaps(time, interval, time, interval) does not exist
+LINE 2:   OVERLAPS (time '01:30', interval '1 day') AS "False";
+          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 CREATE TABLE TEMP_TIMESTAMP (f1 timestamp with time zone);
 -- get some candidate input values
 INSERT INTO TEMP_TIMESTAMP (f1)
@@ -2064,92 +1903,92 @@ SELECT f1 AS "timestamp", date(f1) AS date
   FROM TEMP_TIMESTAMP
   WHERE f1 <> timestamp 'now'
   ORDER BY date, "timestamp";
-          timestamp           |    date    
-------------------------------+------------
- Thu Jan 01 00:00:00 1970 PST | 01-01-1970
- Wed Feb 28 17:32:01 1996 PST | 02-28-1996
- Thu Feb 29 17:32:01 1996 PST | 02-29-1996
- Fri Mar 01 17:32:01 1996 PST | 03-01-1996
- Mon Dec 30 17:32:01 1996 PST | 12-30-1996
- Tue Dec 31 17:32:01 1996 PST | 12-31-1996
- Fri Dec 31 17:32:01 1999 PST | 12-31-1999
- Sat Jan 01 17:32:01 2000 PST | 01-01-2000
- Wed Mar 15 02:14:05 2000 PST | 03-15-2000
- Wed Mar 15 03:14:04 2000 PST | 03-15-2000
- Wed Mar 15 08:14:01 2000 PST | 03-15-2000
- Wed Mar 15 12:14:03 2000 PST | 03-15-2000
- Wed Mar 15 13:14:02 2000 PST | 03-15-2000
- Sun Dec 31 17:32:01 2000 PST | 12-31-2000
- Mon Jan 01 17:32:01 2001 PST | 01-01-2001
- Sat Sep 22 18:19:20 2001 PDT | 09-22-2001
-(16 rows)
-
+ERROR:  syntax error at or near "("
+LINE 1: SELECT f1 AS "timestamp", date(f1) AS date
+                                      ^
 DROP TABLE TEMP_TIMESTAMP;
 --
 -- Comparisons between datetime types, especially overflow cases
 ---
 SELECT '2202020-10-05'::date::timestamp;  -- fail
-ERROR:  date out of range for timestamp
+WARNING:  Incorrect datetime value: '2202020-10-05'
+LINE 1: SELECT '2202020-10-05'::date::timestamp;
+               ^
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
- t 
----
- t
-(1 row)
-
+WARNING:  Incorrect datetime value: '2202020-10-05'
+LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
+               ^
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamp as t;
+                                       ^
 SELECT '2020-10-05'::timestamp > '2202020-10-05'::date as f;
- f 
----
- f
-(1 row)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: SELECT '2020-10-05'::timestamp > '2202020-10-05'::date as f;
+               ^
 SELECT '2202020-10-05'::date::timestamptz;  -- fail
-ERROR:  date out of range for timestamp
+WARNING:  Incorrect datetime value: '2202020-10-05'
+LINE 1: SELECT '2202020-10-05'::date::timestamptz;
+               ^
+ERROR:  cannot cast type date to timestamp with time zone
+LINE 1: SELECT '2202020-10-05'::date::timestamptz;
+                                    ^
 SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as t;
- t 
----
- t
-(1 row)
-
+WARNING:  Incorrect datetime value: '2202020-10-05'
+LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as ...
+               ^
+ERROR:  operator does not exist: date > timestamp with time zone
+LINE 1: SELECT '2202020-10-05'::date > '2020-10-05'::timestamptz as ...
+                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as f;
- f 
----
- f
-(1 row)
-
+WARNING:  Incorrect datetime value: '2202020-10-05'
+LINE 1: SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as ...
+                                           ^
+ERROR:  operator does not exist: timestamp with time zone > date
+LINE 1: SELECT '2020-10-05'::timestamptz > '2202020-10-05'::date as ...
+                                         ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- This conversion may work depending on timezone
 SELECT '4714-11-24 BC'::date::timestamptz;
-           timestamptz           
----------------------------------
- Mon Nov 24 00:00:00 4714 LMT BC
-(1 row)
-
+WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
+LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
+               ^
+ERROR:  cannot cast type date to timestamp with time zone
+LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
+                                    ^
 SET TimeZone = 'UTC-2';
 SELECT '4714-11-24 BC'::date::timestamptz;  -- fail
-ERROR:  date out of range for timestamp
+WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
+LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
+               ^
+ERROR:  cannot cast type date to timestamp with time zone
+LINE 1: SELECT '4714-11-24 BC'::date::timestamptz;
+                                    ^
 SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as t;
- t 
----
- t
-(1 row)
-
+WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
+LINE 1: SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as ...
+               ^
+ERROR:  operator does not exist: date < timestamp with time zone
+LINE 1: SELECT '4714-11-24 BC'::date < '2020-10-05'::timestamptz as ...
+                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as t;
- t 
----
- t
-(1 row)
-
+WARNING:  Truncated incorrect datetime value: '4714-11-24 BC'
+LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as...
+                                            ^
+ERROR:  operator does not exist: timestamp with time zone >= date
+LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::date as...
+                                         ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT '4714-11-24 BC'::timestamp < '2020-10-05'::timestamptz as t;
- t 
----
- t
-(1 row)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: SELECT '4714-11-24 BC'::timestamp < '2020-10-05'::timestampt...
+               ^
 SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::timestamp as t;
- t 
----
- t
-(1 row)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+LINE 1: SELECT '2020-10-05'::timestamptz >= '4714-11-24 BC'::timesta...
+                                            ^
 RESET TimeZone;
 --
 -- Formats
@@ -2896,84 +2735,45 @@ SELECT to_timestamp('2018-11-02 12:34:56.025', 'YYYY-MM-DD HH24:MI:SS.MS');
 (1 row)
 
 SELECT i, to_timestamp('2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |         to_timestamp         
----+------------------------------
- 1 | Fri Nov 02 12:34:56 2018 PDT
- 2 | Fri Nov 02 12:34:56 2018 PDT
- 3 | Fri Nov 02 12:34:56 2018 PDT
- 4 | Fri Nov 02 12:34:56 2018 PDT
- 5 | Fri Nov 02 12:34:56 2018 PDT
- 6 | Fri Nov 02 12:34:56 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...'2018-11-02 12:34:56', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.1', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |          to_timestamp          
----+--------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.1 2018 PDT
- 3 | Fri Nov 02 12:34:56.1 2018 PDT
- 4 | Fri Nov 02 12:34:56.1 2018 PDT
- 5 | Fri Nov 02 12:34:56.1 2018 PDT
- 6 | Fri Nov 02 12:34:56.1 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...018-11-02 12:34:56.1', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |          to_timestamp           
----+---------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.12 2018 PDT
- 3 | Fri Nov 02 12:34:56.12 2018 PDT
- 4 | Fri Nov 02 12:34:56.12 2018 PDT
- 5 | Fri Nov 02 12:34:56.12 2018 PDT
- 6 | Fri Nov 02 12:34:56.12 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...18-11-02 12:34:56.12', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.123', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |           to_timestamp           
----+----------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.12 2018 PDT
- 3 | Fri Nov 02 12:34:56.123 2018 PDT
- 4 | Fri Nov 02 12:34:56.123 2018 PDT
- 5 | Fri Nov 02 12:34:56.123 2018 PDT
- 6 | Fri Nov 02 12:34:56.123 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...8-11-02 12:34:56.123', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.1234', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |           to_timestamp            
----+-----------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.12 2018 PDT
- 3 | Fri Nov 02 12:34:56.123 2018 PDT
- 4 | Fri Nov 02 12:34:56.1234 2018 PDT
- 5 | Fri Nov 02 12:34:56.1234 2018 PDT
- 6 | Fri Nov 02 12:34:56.1234 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...-11-02 12:34:56.1234', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.12345', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |            to_timestamp            
----+------------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.12 2018 PDT
- 3 | Fri Nov 02 12:34:56.123 2018 PDT
- 4 | Fri Nov 02 12:34:56.1235 2018 PDT
- 5 | Fri Nov 02 12:34:56.12345 2018 PDT
- 6 | Fri Nov 02 12:34:56.12345 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...11-02 12:34:56.12345', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.123456', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
- i |            to_timestamp             
----+-------------------------------------
- 1 | Fri Nov 02 12:34:56.1 2018 PDT
- 2 | Fri Nov 02 12:34:56.12 2018 PDT
- 3 | Fri Nov 02 12:34:56.123 2018 PDT
- 4 | Fri Nov 02 12:34:56.1235 2018 PDT
- 5 | Fri Nov 02 12:34:56.12346 2018 PDT
- 6 | Fri Nov 02 12:34:56.123456 2018 PDT
-(6 rows)
-
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...1-02 12:34:56.123456', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT i, to_timestamp('2018-11-02 12:34:56.123456789', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM generate_series(1, 6) i;
-ERROR:  date/time field value out of range: "2018-11-02 12:34:56.123456789"
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...2 12:34:56.123456789', 'YYYY-MM-DD HH24:MI:SS.FF' || i) FROM...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 SELECT to_date('1 4 1902', 'Q MM YYYY');  -- Q is ignored
   to_date   
 ------------

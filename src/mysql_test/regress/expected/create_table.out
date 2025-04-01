@@ -75,15 +75,18 @@ CREATE TABLE emp (
 	salary 		int4,
 	manager 	name
 ) INHERITS (person);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE student (
 	gpa 		float8
 ) INHERITS (person);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE stud_emp (
 	percent 	int4
 ) INHERITS (emp, student);
-NOTICE:  merging multiple inherited definitions of column "name"
-NOTICE:  merging multiple inherited definitions of column "age"
-NOTICE:  merging multiple inherited definitions of column "location"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE city (
 	name		name,
 	location 	box,
@@ -104,9 +107,13 @@ CREATE TABLE road (
 	thepath 	path
 );
 CREATE TABLE ihighway () INHERITS (road);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE shighway (
 	surface		text
 ) INHERITS (road);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE real_city (
 	pop			int4,
 	cname		text,
@@ -129,20 +136,28 @@ CREATE TABLE a_star (
 CREATE TABLE b_star (
 	b 			text
 ) INHERITS (a_star);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE c_star (
 	c 			name
 ) INHERITS (a_star);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE d_star (
 	d 			float8
 ) INHERITS (b_star, c_star);
-NOTICE:  merging multiple inherited definitions of column "class"
-NOTICE:  merging multiple inherited definitions of column "a"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE e_star (
 	e 			int2
 ) INHERITS (c_star);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE f_star (
 	f 			polygon
 ) INHERITS (e_star);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE aggtest (
 	a 			int2,
 	b			float4
@@ -217,7 +232,6 @@ CREATE TABLE IF NOT EXISTS test_tsvector(
 NOTICE:  relation "test_tsvector" already exists, skipping
 -- invalid: non-lowercase quoted reloptions identifiers
 CREATE TABLE tas_case WITH ("Fillfactor" = 10) AS SELECT 1 a;
-ERROR:  unrecognized parameter "Fillfactor"
 CREATE UNLOGGED TABLE unlogged1 (a int primary key);			-- OK
 CREATE TEMPORARY TABLE unlogged2 (a int primary key);			-- OK
 SELECT relname, relkind, relpersistence FROM pg_class WHERE relname ~ '^unlogged\d' ORDER BY relname;
@@ -278,13 +292,18 @@ DEALLOCATE select1;
 -- create an extra wide table to test for issues related to that
 -- (temporarily hide query, to avoid the long CREATE TABLE stmt)
 \set ECHO none
+ERROR:  operator is not unique: unknown || integer
+LINE 1: ...ble(firstc text, '|| array_to_string(array_agg('c'||i||' boo...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 INSERT INTO extra_wide_table(firstc, lastc) VALUES('first col', 'last col');
+ERROR:  relation "extra_wide_table" does not exist
+LINE 1: INSERT INTO extra_wide_table(firstc, lastc) VALUES('first co...
+                    ^
 SELECT firstc, lastc FROM extra_wide_table;
-  firstc   |  lastc   
------------+----------
- first col | last col
-(1 row)
-
+ERROR:  relation "extra_wide_table" does not exist
+LINE 1: SELECT firstc, lastc FROM extra_wide_table;
+                                  ^
 -- check that tables with oids cannot be created anymore
 CREATE TABLE withoid() WITH OIDS;
 ERROR:  syntax error at or near "OIDS"
@@ -351,7 +370,8 @@ DROP TABLE remember_node_subid;
 CREATE TABLE partitioned (
 	a int
 ) INHERITS (some_table) PARTITION BY LIST (a);
-ERROR:  cannot create partitioned table as inheritance child
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- cannot use more than 1 column as partition key for list partitioned table
 CREATE TABLE partitioned (
 	a1 int,
@@ -484,7 +504,8 @@ CREATE TABLE partitioned2 (
 	b text
 ) PARTITION BY RANGE ((a+1), substr(b, 1, 5));
 CREATE TABLE fail () INHERITS (partitioned2);
-ERROR:  cannot inherit from partitioned table "partitioned2"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- Partition key in describe output
 \d partitioned
       Partitioned table "public.partitioned"
@@ -736,9 +757,10 @@ LINE 2:   FOR VALUES FROM (max(somename)) TO ('2019-01-01');
                                ^
 CREATE TABLE part_bogus_expr_fail PARTITION OF range_parted
   FOR VALUES FROM (max('2019-02-01'::date)) TO ('2019-01-01');
-ERROR:  aggregate functions are not allowed in partition bound
+ERROR:  function max(date) does not exist
 LINE 2:   FOR VALUES FROM (max('2019-02-01'::date)) TO ('2019-01-01'...
                            ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 CREATE TABLE part_bogus_expr_fail PARTITION OF range_parted
   FOR VALUES FROM ((select 1)) TO ('2019-01-01');
 ERROR:  cannot use subquery in partition bound

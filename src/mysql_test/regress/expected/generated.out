@@ -63,7 +63,12 @@ CREATE TABLE gtest_err_4 (a int PRIMARY KEY, b double precision GENERATED ALWAYS
 ERROR:  generation expression is not immutable
 -- ... but be sure that the immutability test is accurate
 CREATE TABLE gtest2 (a int, b text GENERATED ALWAYS AS (a || ' sec') STORED);
+ERROR:  operator is not unique: integer || unknown
+LINE 1: ...ABLE gtest2 (a int, b text GENERATED ALWAYS AS (a || ' sec')...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
 DROP TABLE gtest2;
+ERROR:  table "gtest2" does not exist
 -- cannot have default/identity and generated
 CREATE TABLE gtest_err_5a (a int PRIMARY KEY, b int DEFAULT 5 GENERATED ALWAYS AS (a * 2) STORED);
 ERROR:  both default and generation expression specified for column "b" of table "gtest_err_5a"
@@ -244,53 +249,42 @@ WITH foo AS (SELECT * FROM gtest1) SELECT * FROM foo;
 
 -- inheritance
 CREATE TABLE gtest1_1 () INHERITS (gtest1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 SELECT * FROM gtest1_1;
- a | b 
----+---
-(0 rows)
-
+ERROR:  relation "gtest1_1" does not exist
+LINE 1: SELECT * FROM gtest1_1;
+                      ^
 \d gtest1_1
-                           Table "public.gtest1_1"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           | not null | 
- b      | integer |           |          | generated always as (a * 2) stored
-Inherits: gtest1
-
 INSERT INTO gtest1_1 VALUES (4);
+ERROR:  relation "gtest1_1" does not exist
+LINE 1: INSERT INTO gtest1_1 VALUES (4);
+                    ^
 SELECT * FROM gtest1_1;
- a | b 
----+---
- 4 | 8
-(1 row)
-
+ERROR:  relation "gtest1_1" does not exist
+LINE 1: SELECT * FROM gtest1_1;
+                      ^
 SELECT * FROM gtest1;
  a | b 
 ---+---
  3 | 6
- 4 | 8
-(2 rows)
+(1 row)
 
 CREATE TABLE gtest_normal (a int, b int);
 CREATE TABLE gtest_normal_child (a int, b int GENERATED ALWAYS AS (a * 2) STORED) INHERITS (gtest_normal);
-NOTICE:  merging column "a" with inherited definition
-NOTICE:  merging column "b" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d gtest_normal_child
-                      Table "public.gtest_normal_child"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Inherits: gtest_normal
-
 INSERT INTO gtest_normal (a) VALUES (1);
 INSERT INTO gtest_normal_child (a) VALUES (2);
+ERROR:  relation "gtest_normal_child" does not exist
+LINE 1: INSERT INTO gtest_normal_child (a) VALUES (2);
+                    ^
 SELECT * FROM gtest_normal;
  a | b 
 ---+---
  1 |  
- 2 | 4
-(2 rows)
+(1 row)
 
 CREATE TABLE gtest_normal_child2 (a int, b int GENERATED ALWAYS AS (a * 3) STORED);
 ALTER TABLE gtest_normal_child2 INHERIT gtest_normal;
@@ -299,21 +293,19 @@ SELECT * FROM gtest_normal;
  a | b 
 ---+---
  1 |  
- 2 | 4
  3 | 9
-(3 rows)
+(2 rows)
 
 -- test inheritance mismatches between parent and child
 CREATE TABLE gtestx (x int, b int GENERATED ALWAYS AS (a * 22) STORED) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  child column "b" specifies generation expression
-HINT:  Omit the generation expression in the definition of the child table column to inherit the generation expression from the parent table.
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE gtestx (x int, b int DEFAULT 10) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  column "b" inherits from generated column but specifies default
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE gtestx (x int, b int GENERATED ALWAYS AS IDENTITY) INHERITS (gtest1);  -- error
-NOTICE:  merging column "b" with inherited definition
-ERROR:  column "b" inherits from generated column but specifies identity
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE gtestxx_1 (a int NOT NULL, b int);
 ALTER TABLE gtestxx_1 INHERIT gtest1;  -- error
 ERROR:  column "b" in child table must be a generated column
@@ -327,38 +319,38 @@ ALTER TABLE gtestxx_4 INHERIT gtest1;  -- ok
 -- test multiple inheritance mismatches
 CREATE TABLE gtesty (x int, b int);
 CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
-NOTICE:  merging multiple inherited definitions of column "b"
-ERROR:  inherited column "b" has a generation conflict
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 DROP TABLE gtesty;
 CREATE TABLE gtesty (x int, b int GENERATED ALWAYS AS (x * 22) STORED);
 CREATE TABLE gtest1_2 () INHERITS (gtest1, gtesty);  -- error
-NOTICE:  merging multiple inherited definitions of column "b"
-ERROR:  column "b" inherits conflicting generation expressions
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 DROP TABLE gtesty;
 CREATE TABLE gtesty (x int, b int DEFAULT 55);
 CREATE TABLE gtest1_2 () INHERITS (gtest0, gtesty);  -- error
-NOTICE:  merging multiple inherited definitions of column "b"
-ERROR:  inherited column "b" has a generation conflict
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 DROP TABLE gtesty;
 -- test correct handling of GENERATED column that's only in child
 CREATE TABLE gtestp (f1 int);
 CREATE TABLE gtestc (f2 int GENERATED ALWAYS AS (f1+1) STORED) INHERITS(gtestp);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO gtestc values(42);
+ERROR:  relation "gtestc" does not exist
+LINE 1: INSERT INTO gtestc values(42);
+                    ^
 TABLE gtestc;
- f1 | f2 
-----+----
- 42 | 43
-(1 row)
-
+ERROR:  relation "gtestc" does not exist
+LINE 1: TABLE gtestc;
+              ^
 UPDATE gtestp SET f1 = f1 * 10;
 TABLE gtestc;
- f1  | f2  
------+-----
- 420 | 421
-(1 row)
-
+ERROR:  relation "gtestc" does not exist
+LINE 1: TABLE gtestc;
+              ^
 DROP TABLE gtestp CASCADE;
-NOTICE:  drop cascades to table gtestc
 -- test stored update
 CREATE TABLE gtest3 (a int, b int GENERATED ALWAYS AS (a * 3) STORED);
 INSERT INTO gtest3 (a) VALUES (1), (2), (3), (NULL);
@@ -705,27 +697,29 @@ INSERT INTO gtest_parent (f1, f2) VALUES ('2016-07-15', 1);
 SELECT * FROM gtest_parent;
      f1     | f2 | f3 
 ------------+----+----
- 07-15-2016 |  1 |  2
+ 2016-07-15 |  1 |  2
 (1 row)
 
 SELECT * FROM gtest_child;
      f1     | f2 | f3 
 ------------+----+----
- 07-15-2016 |  1 |  2
+ 2016-07-15 |  1 |  2
 (1 row)
 
 UPDATE gtest_parent SET f1 = f1 + 60, f2 = f2 + 1;
+WARNING:  Incorrect datetime value: '20160775'
+ERROR:  no partition of relation "gtest_parent" found for row
+DETAIL:  Partition key of the failing row contains (f1) = (null).
 SELECT * FROM gtest_parent;
      f1     | f2 | f3 
 ------------+----+----
- 09-13-2016 |  2 |  4
+ 2016-07-15 |  1 |  2
 (1 row)
 
 SELECT * FROM gtest_child3;
-     f1     | f2 | f3 
-------------+----+----
- 09-13-2016 |  2 |  4
-(1 row)
+ f1 | f2 | f3 
+----+----+----
+(0 rows)
 
 DROP TABLE gtest_parent;
 -- generated columns in partition key (not allowed)
@@ -807,7 +801,8 @@ SELECT * FROM gtest27;
 (2 rows)
 
 ALTER TABLE gtest27 ALTER COLUMN x TYPE boolean USING x <> 0;  -- error
-ERROR:  generation expression for column "x" cannot be cast automatically to type boolean
+ERROR:  cannot specify USING when altering type of generated column
+DETAIL:  Column "x" is a generated column.
 ALTER TABLE gtest27 ALTER COLUMN x DROP DEFAULT;  -- error
 ERROR:  column "x" of relation "gtest27" is a generated column
 HINT:  Use ALTER TABLE ... ALTER COLUMN ... DROP EXPRESSION instead.
@@ -889,6 +884,8 @@ CREATE TABLE gtest30 (
     b int GENERATED ALWAYS AS (a * 2) STORED
 );
 CREATE TABLE gtest30_1 () INHERITS (gtest30);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE gtest30 ALTER COLUMN b DROP EXPRESSION;
 \d gtest30
               Table "public.gtest30"
@@ -896,43 +893,27 @@ ALTER TABLE gtest30 ALTER COLUMN b DROP EXPRESSION;
 --------+---------+-----------+----------+---------
  a      | integer |           |          | 
  b      | integer |           |          | 
-Number of child tables: 1 (Use \d+ to list them.)
 
 \d gtest30_1
-             Table "public.gtest30_1"
- Column |  Type   | Collation | Nullable | Default 
---------+---------+-----------+----------+---------
- a      | integer |           |          | 
- b      | integer |           |          | 
-Inherits: gtest30
-
 DROP TABLE gtest30 CASCADE;
-NOTICE:  drop cascades to table gtest30_1
 CREATE TABLE gtest30 (
     a int,
     b int GENERATED ALWAYS AS (a * 2) STORED
 );
 CREATE TABLE gtest30_1 () INHERITS (gtest30);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 ALTER TABLE ONLY gtest30 ALTER COLUMN b DROP EXPRESSION;  -- error
-ERROR:  ALTER TABLE / DROP EXPRESSION must be applied to child tables too
 \d gtest30
-                            Table "public.gtest30"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+              Table "public.gtest30"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
  a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Number of child tables: 1 (Use \d+ to list them.)
+ b      | integer |           |          | 
 
 \d gtest30_1
-                           Table "public.gtest30_1"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
-Inherits: gtest30
-
 ALTER TABLE gtest30_1 ALTER COLUMN b DROP EXPRESSION;  -- error
-ERROR:  cannot drop generation expression from inherited column
+ERROR:  relation "gtest30_1" does not exist
 -- triggers
 CREATE TABLE gtest26 (
     a int PRIMARY KEY,

@@ -162,6 +162,15 @@ typedef struct
 #define UNIX_EPOCH_JDATE		2440588 /* == date2j(1970, 1, 1) */
 #define POSTGRES_EPOCH_JDATE	2451545 /* == date2j(2000, 1, 1) */
 
+#define MYSQL_ZERO_DATE			5373485 /* == date2j(10000,01,01)*/
+#define MYSQL_ZERO_DATETIME     (5373486)
+#define MYSQL_ZERO_TIMESTAMP     (MYSQL_ZERO_DATETIME)
+#define MYSQL_ZERO_TIME     (0) /*8385959*/
+#define MYSQL_NULL_TIME     (-1)
+
+#define MYSQL_MAX_VALUE_DATE    (0xFFFFFFFFUL)
+#define MYSQL_MAX_VALUE_DATETIME    (0x7FFFFFFFFFFFFFFFUL)
+#define MYSQL_MAX_VALUE_TIME    (0x3FFFFFFFFFUL)
 /*
  * Range limits for dates and timestamps.
  *

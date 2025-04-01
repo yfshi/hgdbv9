@@ -68,6 +68,8 @@ SELECT DISTINCT ON (string4, ten) string4, ten, two
 
 -- bug #5049: early 8.4.x chokes on volatile DISTINCT ON clauses
 select distinct on (1) floor(random()) as r, f1 from int4_tbl order by 1,2;
-ERROR:  relation "int4_tbl" does not exist
-LINE 1: ...ect distinct on (1) floor(random()) as r, f1 from int4_tbl o...
-                                                             ^
+ r |     f1      
+---+-------------
+ 0 | -2147483647
+(1 row)
+

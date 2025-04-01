@@ -26,7 +26,7 @@ main(void)
 	ECPGdebug(1, stderr);
 	exec sql whenever sqlerror do sqlprint();
 	exec sql connect to REGRESSDB1;
-	exec sql create table date_test (d date, ts timestamp);
+	exec sql create table date_test (d date, ts pg_catalog.timestamp);
 	exec sql set datestyle to iso;
 	exec sql set intervalstyle to postgres_verbose;
 

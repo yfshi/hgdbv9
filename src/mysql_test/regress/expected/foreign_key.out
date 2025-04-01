@@ -20,8 +20,8 @@ INSERT INTO FKTABLE VALUES (3, 4);
 INSERT INTO FKTABLE VALUES (NULL, 1);
 -- Insert a failed row into FK TABLE
 INSERT INTO FKTABLE VALUES (100, 2);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(100) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "FKTABLE_ftest1_fkey"
+DETAIL:  Key (ftest1)=(100) is not present in table "PKTABLE".
 -- Check FKTABLE
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
@@ -34,25 +34,33 @@ SELECT * FROM FKTABLE;
 
 -- Delete a row from PK TABLE
 DELETE FROM PKTABLE WHERE ptest1=1;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_catalog.=) "ftest1"
 -- Check FKTABLE for removal of matched row
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
 --------+--------
+      1 |      2
       2 |      3
       3 |      4
         |      1
-(3 rows)
+(4 rows)
 
 -- Update a row from PK TABLE
 UPDATE PKTABLE SET ptest1=1 WHERE ptest1=2;
+ERROR:  duplicate key value violates unique constraint "PKTABLE_pkey"
+DETAIL:  Key (ptest1)=(1) already exists.
 -- Check FKTABLE for update of matched row
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
 --------+--------
+      1 |      2
+      2 |      3
       3 |      4
         |      1
-      1 |      3
-(3 rows)
+(4 rows)
 
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
@@ -64,7 +72,7 @@ CREATE TABLE FKTABLE ( ftest1 int, ftest2 int, ftest3 int, CONSTRAINT constrname
                        REFERENCES PKTABLE MATCH FULL ON DELETE SET NULL ON UPDATE SET NULL);
 -- Test comments
 COMMENT ON CONSTRAINT constrname_wrong ON FKTABLE IS 'fk constraint comment';
-ERROR:  constraint "constrname_wrong" for table "fktable" does not exist
+ERROR:  constraint "constrname_wrong" for table "FKTABLE" does not exist
 COMMENT ON CONSTRAINT constrname ON FKTABLE IS 'fk constraint comment';
 COMMENT ON CONSTRAINT constrname ON FKTABLE IS NULL;
 -- Insert test data into PKTABLE
@@ -82,16 +90,16 @@ INSERT INTO FKTABLE VALUES (3, 6, 12);
 INSERT INTO FKTABLE VALUES (NULL, NULL, 0);
 -- Insert failed rows into FK TABLE
 INSERT INTO FKTABLE VALUES (100, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname"
-DETAIL:  Key (ftest1, ftest2)=(100, 2) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname"
+DETAIL:  Key (ftest1, ftest2)=(100, 2) is not present in table "PKTABLE".
 INSERT INTO FKTABLE VALUES (2, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname"
-DETAIL:  Key (ftest1, ftest2)=(2, 2) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname"
+DETAIL:  Key (ftest1, ftest2)=(2, 2) is not present in table "PKTABLE".
 INSERT INTO FKTABLE VALUES (NULL, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 INSERT INTO FKTABLE VALUES (1, NULL, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 -- Check FKTABLE
 SELECT * FROM FKTABLE;
@@ -145,7 +153,7 @@ SELECT * FROM FKTABLE;
 
 -- Check update with part of key null
 UPDATE FKTABLE SET ftest1 = NULL WHERE ftest1 = 1;
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 -- Check update with old and new key values equal
 UPDATE FKTABLE SET ftest1 = 1 WHERE ftest1 = 1;
@@ -172,7 +180,7 @@ SELECT * FROM FKTABLE;
 (5 rows)
 
 DROP TABLE PKTABLE CASCADE;
-NOTICE:  drop cascades to constraint constrname on table fktable
+NOTICE:  drop cascades to constraint constrname on table "FKTABLE"
 DROP TABLE FKTABLE;
 --
 -- check set default and table constraint on multiple columns
@@ -197,16 +205,16 @@ INSERT INTO FKTABLE VALUES (3, 6, 12);
 INSERT INTO FKTABLE VALUES (NULL, NULL, 0);
 -- Insert failed rows into FK TABLE
 INSERT INTO FKTABLE VALUES (100, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname2"
-DETAIL:  Key (ftest1, ftest2)=(100, 2) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname2"
+DETAIL:  Key (ftest1, ftest2)=(100, 2) is not present in table "PKTABLE".
 INSERT INTO FKTABLE VALUES (2, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname2"
-DETAIL:  Key (ftest1, ftest2)=(2, 2) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname2"
+DETAIL:  Key (ftest1, ftest2)=(2, 2) is not present in table "PKTABLE".
 INSERT INTO FKTABLE VALUES (NULL, 2, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname2"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname2"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 INSERT INTO FKTABLE VALUES (1, NULL, 4);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname2"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname2"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 -- Check FKTABLE
 SELECT * FROM FKTABLE;
@@ -260,11 +268,11 @@ SELECT * FROM FKTABLE;
 
 -- this should fail for lack of CASCADE
 DROP TABLE PKTABLE;
-ERROR:  cannot drop table pktable because other objects depend on it
-DETAIL:  constraint constrname2 on table fktable depends on table pktable
+ERROR:  cannot drop table "PKTABLE" because other objects depend on it
+DETAIL:  constraint constrname2 on table "FKTABLE" depends on table "PKTABLE"
 HINT:  Use DROP ... CASCADE to drop the dependent objects too.
 DROP TABLE PKTABLE CASCADE;
-NOTICE:  drop cascades to constraint constrname2 on table fktable
+NOTICE:  drop cascades to constraint constrname2 on table "FKTABLE"
 DROP TABLE FKTABLE;
 --
 -- First test, check with no on delete or on update
@@ -284,8 +292,8 @@ INSERT INTO FKTABLE VALUES (3, 4);
 INSERT INTO FKTABLE VALUES (NULL, 1);
 -- Insert a failed row into FK TABLE
 INSERT INTO FKTABLE VALUES (100, 2);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(100) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "FKTABLE_ftest1_fkey"
+DETAIL:  Key (ftest1)=(100) is not present in table "PKTABLE".
 -- Check FKTABLE
 SELECT * FROM FKTABLE;
  ftest1 | ftest2 
@@ -309,8 +317,8 @@ SELECT * FROM PKTABLE;
 
 -- Delete a row from PK TABLE (should fail)
 DELETE FROM PKTABLE WHERE ptest1=1;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_fkey" on table "fktable"
-DETAIL:  Key (ptest1)=(1) is still referenced from table "fktable".
+ERROR:  update or delete on table "PKTABLE" violates foreign key constraint "FKTABLE_ftest1_fkey" on table "FKTABLE"
+DETAIL:  Key (ptest1)=(1) is still referenced from table "FKTABLE".
 -- Delete a row from PK TABLE (should succeed)
 DELETE FROM PKTABLE WHERE ptest1=5;
 -- Check PKTABLE for deletes
@@ -325,8 +333,8 @@ SELECT * FROM PKTABLE;
 
 -- Update a row from PK TABLE (should fail)
 UPDATE PKTABLE SET ptest1=0 WHERE ptest1=2;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_fkey" on table "fktable"
-DETAIL:  Key (ptest1)=(2) is still referenced from table "fktable".
+ERROR:  update or delete on table "PKTABLE" violates foreign key constraint "FKTABLE_ftest1_fkey" on table "FKTABLE"
+DETAIL:  Key (ptest1)=(2) is still referenced from table "FKTABLE".
 -- Update a row from PK TABLE (should succeed)
 UPDATE PKTABLE SET ptest1=0 WHERE ptest1=4;
 -- Check PKTABLE for updates
@@ -349,7 +357,7 @@ CREATE TABLE FKTABLE ( ftest1 int, ftest2 int );
 INSERT INTO PKTABLE VALUES (1, 2);
 INSERT INTO FKTABLE VALUES (1, NULL);
 ALTER TABLE FKTABLE ADD FOREIGN KEY(ftest1, ftest2) REFERENCES PKTABLE MATCH FULL;
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_ftest2_fkey"
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "FKTABLE_ftest1_ftest2_fkey"
 DETAIL:  MATCH FULL does not allow mixing of null and nonnull key values.
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
@@ -371,8 +379,8 @@ INSERT INTO FKTABLE VALUES (NULL, 2, 7, 4);
 INSERT INTO FKTABLE VALUES (NULL, 3, 4, 5);
 -- Insert a failed values
 INSERT INTO FKTABLE VALUES (1, 2, 7, 6);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname3"
-DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname3"
+DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "PKTABLE".
 -- Show FKTABLE
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -386,14 +394,14 @@ SELECT * from FKTABLE;
 
 -- Try to update something that should fail
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "constrname3" on table "fktable"
-DETAIL:  Key (ptest1, ptest2, ptest3)=(1, 2, 3) is still referenced from table "fktable".
+ERROR:  update or delete on table "PKTABLE" violates foreign key constraint "constrname3" on table "FKTABLE"
+DETAIL:  Key (ptest1, ptest2, ptest3)=(1, 2, 3) is still referenced from table "FKTABLE".
 -- Try to update something that should succeed
 UPDATE PKTABLE set ptest1=1 WHERE ptest2=3;
 -- Try to delete something that should fail
 DELETE FROM PKTABLE where ptest1=1 and ptest2=2 and ptest3=3;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "constrname3" on table "fktable"
-DETAIL:  Key (ptest1, ptest2, ptest3)=(1, 2, 3) is still referenced from table "fktable".
+ERROR:  update or delete on table "PKTABLE" violates foreign key constraint "constrname3" on table "FKTABLE"
+DETAIL:  Key (ptest1, ptest2, ptest3)=(1, 2, 3) is still referenced from table "FKTABLE".
 -- Try to delete something that should work
 DELETE FROM PKTABLE where ptest1=2;
 -- Show PKTABLE and FKTABLE
@@ -459,8 +467,8 @@ INSERT INTO FKTABLE VALUES (NULL, 2, 7, 4);
 INSERT INTO FKTABLE VALUES (NULL, 3, 4, 5);
 -- Insert a failed values
 INSERT INTO FKTABLE VALUES (1, 2, 7, 6);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname3"
-DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname3"
+DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "PKTABLE".
 -- Show FKTABLE
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -498,14 +506,19 @@ SELECT * from FKTABLE;
 
 -- Try to delete something that should cascade
 DELETE FROM PKTABLE where ptest1=1 and ptest2=5 and ptest3=3;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_catalog.=) "ftest1" AND $2 OPERATOR(pg_catalog.=) "ftest2" AND $3 OPERATOR(pg_catalog.=) "ftest3"
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE;
  ptest1 | ptest2 | ptest3 | ptest4 
 --------+--------+--------+--------
       2 |      4 |      5 | test4
+      1 |      5 |      3 | test1
       1 |      3 |      3 | test2
       1 |      3 |      4 | test3
-(3 rows)
+(4 rows)
 
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -514,17 +527,24 @@ SELECT * from FKTABLE;
       2 |        |      3 |      3
         |      2 |      7 |      4
         |      3 |      4 |      5
-(4 rows)
+      1 |      5 |      3 |      1
+(5 rows)
 
 -- Try to delete something that should not have a cascade
 DELETE FROM PKTABLE where ptest1=2;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_cat...
+                    ^
+QUERY:  DELETE FROM ONLY "public"."FKTABLE" WHERE $1 OPERATOR(pg_catalog.=) "ftest1" AND $2 OPERATOR(pg_catalog.=) "ftest2" AND $3 OPERATOR(pg_catalog.=) "ftest3"
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE;
  ptest1 | ptest2 | ptest3 | ptest4 
 --------+--------+--------+--------
+      2 |      4 |      5 | test4
+      1 |      5 |      3 | test1
       1 |      3 |      3 | test2
       1 |      3 |      4 | test3
-(2 rows)
+(4 rows)
 
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -533,7 +553,8 @@ SELECT * from FKTABLE;
       2 |        |      3 |      3
         |      2 |      7 |      4
         |      3 |      4 |      5
-(4 rows)
+      1 |      5 |      3 |      1
+(5 rows)
 
 DROP TABLE FKTABLE;
 DROP TABLE PKTABLE;
@@ -556,8 +577,8 @@ INSERT INTO FKTABLE VALUES (NULL, 2, 7, 4);
 INSERT INTO FKTABLE VALUES (NULL, 3, 4, 5);
 -- Insert a failed values
 INSERT INTO FKTABLE VALUES (1, 2, 7, 6);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname3"
-DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname3"
+DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "PKTABLE".
 -- Show FKTABLE
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -661,8 +682,8 @@ INSERT INTO FKTABLE VALUES (NULL, 2, 7, 4);
 INSERT INTO FKTABLE VALUES (NULL, 3, 4, 5);
 -- Insert a failed values
 INSERT INTO FKTABLE VALUES (1, 2, 7, 6);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname3"
-DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname3"
+DETAIL:  Key (ftest1, ftest2, ftest3)=(1, 2, 7) is not present in table "PKTABLE".
 -- Show FKTABLE
 SELECT * from FKTABLE;
  ftest1 | ftest2 | ftest3 | ftest4 
@@ -678,8 +699,8 @@ SELECT * from FKTABLE;
 
 -- Try to update something that will fail
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
-ERROR:  insert or update on table "fktable" violates foreign key constraint "constrname3"
-DETAIL:  Key (ftest1, ftest2, ftest3)=(0, -1, -2) is not present in table "pktable".
+ERROR:  insert or update on table "FKTABLE" violates foreign key constraint "constrname3"
+DETAIL:  Key (ftest1, ftest2, ftest3)=(0, -1, -2) is not present in table "PKTABLE".
 -- Try to update something that will set default
 UPDATE PKTABLE set ptest1=0, ptest2=-1, ptest3=-2 where ptest2=2;
 UPDATE PKTABLE set ptest2=10 where ptest2=4;
@@ -771,9 +792,9 @@ DROP TABLE PKTABLE;
 -- Test for referencing column number smaller than referenced constraint
 CREATE TABLE PKTABLE (ptest1 int, ptest2 int, UNIQUE(ptest1, ptest2));
 CREATE TABLE FKTABLE_FAIL1 (ftest1 int REFERENCES pktable(ptest1));
-ERROR:  there is no unique constraint matching given keys for referenced table "pktable"
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE_FAIL1;
-ERROR:  table "fktable_fail1" does not exist
+ERROR:  table "FKTABLE_FAIL1" does not exist
 DROP TABLE PKTABLE;
 --
 -- Tests for mismatched types
@@ -783,228 +804,319 @@ CREATE TABLE PKTABLE (ptest1 int PRIMARY KEY);
 INSERT INTO PKTABLE VALUES(42);
 -- This next should fail, because int=inet does not exist
 CREATE TABLE FKTABLE (ftest1 inet REFERENCES pktable);
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- This should also fail for the same reason, but here we
 -- give the column name
 CREATE TABLE FKTABLE (ftest1 inet REFERENCES pktable(ptest1));
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- This should succeed, even though they are different types,
 -- because int=int8 exists and is a member of the integer opfamily
 CREATE TABLE FKTABLE (ftest1 int8 REFERENCES pktable);
+ERROR:  relation "pktable" does not exist
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: INSERT INTO FKTABLE VALUES(42);
+                    ^
 INSERT INTO FKTABLE VALUES(43);		-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: INSERT INTO FKTABLE VALUES(43);
+                    ^
 UPDATE FKTABLE SET ftest1 = ftest1;	-- should succeed
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: UPDATE FKTABLE SET ftest1 = ftest1;
+               ^
 UPDATE FKTABLE SET ftest1 = ftest1 + 1;	-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: UPDATE FKTABLE SET ftest1 = ftest1 + 1;
+               ^
 DROP TABLE FKTABLE;
+ERROR:  table "FKTABLE" does not exist
 -- This should fail, because we'd have to cast numeric to int which is
 -- not an implicit coercion (or use numeric=numeric, but that's not part
 -- of the integer opfamily)
 CREATE TABLE FKTABLE (ftest1 numeric REFERENCES pktable);
-ERROR:  foreign key constraint "fktable_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: numeric and integer.
+ERROR:  relation "pktable" does not exist
 DROP TABLE PKTABLE;
 -- On the other hand, this should work because int implicitly promotes to
 -- numeric, and we allow promotion on the FK side
 CREATE TABLE PKTABLE (ptest1 numeric PRIMARY KEY);
 INSERT INTO PKTABLE VALUES(42);
 CREATE TABLE FKTABLE (ftest1 int REFERENCES pktable);
+ERROR:  relation "pktable" does not exist
 -- Check it actually works
 INSERT INTO FKTABLE VALUES(42);		-- should succeed
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: INSERT INTO FKTABLE VALUES(42);
+                    ^
 INSERT INTO FKTABLE VALUES(43);		-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: INSERT INTO FKTABLE VALUES(43);
+                    ^
 UPDATE FKTABLE SET ftest1 = ftest1;	-- should succeed
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: UPDATE FKTABLE SET ftest1 = ftest1;
+               ^
 UPDATE FKTABLE SET ftest1 = ftest1 + 1;	-- should fail
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(43) is not present in table "pktable".
+ERROR:  relation "FKTABLE" does not exist
+LINE 1: UPDATE FKTABLE SET ftest1 = ftest1 + 1;
+               ^
 DROP TABLE FKTABLE;
+ERROR:  table "FKTABLE" does not exist
 DROP TABLE PKTABLE;
 -- Two columns, two tables
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, PRIMARY KEY(ptest1, ptest2));
 -- This should fail, because we just chose really odd types
 CREATE TABLE FKTABLE (ftest1 cidr, ftest2 timestamp, FOREIGN KEY(ftest1, ftest2) REFERENCES pktable);
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 -- Again, so should this...
 CREATE TABLE FKTABLE (ftest1 cidr, ftest2 timestamp, FOREIGN KEY(ftest1, ftest2) REFERENCES pktable(ptest1, ptest2));
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 -- This fails because we mixed up the column ordering
 CREATE TABLE FKTABLE (ftest1 int, ftest2 inet, FOREIGN KEY(ftest2, ftest1) REFERENCES pktable);
-ERROR:  foreign key constraint "fktable_ftest2_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest2" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- As does this...
 CREATE TABLE FKTABLE (ftest1 int, ftest2 inet, FOREIGN KEY(ftest2, ftest1) REFERENCES pktable(ptest1, ptest2));
-ERROR:  foreign key constraint "fktable_ftest2_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest2" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- And again..
 CREATE TABLE FKTABLE (ftest1 int, ftest2 inet, FOREIGN KEY(ftest1, ftest2) REFERENCES pktable(ptest2, ptest1));
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest2" are of incompatible types: integer and inet.
+ERROR:  relation "pktable" does not exist
 -- This works...
 CREATE TABLE FKTABLE (ftest1 int, ftest2 inet, FOREIGN KEY(ftest2, ftest1) REFERENCES pktable(ptest2, ptest1));
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
+ERROR:  table "FKTABLE" does not exist
 -- As does this
 CREATE TABLE FKTABLE (ftest1 int, ftest2 inet, FOREIGN KEY(ftest1, ftest2) REFERENCES pktable(ptest1, ptest2));
+ERROR:  relation "pktable" does not exist
 DROP TABLE FKTABLE;
+ERROR:  table "FKTABLE" does not exist
 DROP TABLE PKTABLE;
 -- Two columns, same table
 -- Make sure this still works...
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, ptest3 int, ptest4 inet, PRIMARY KEY(ptest1, ptest2), FOREIGN KEY(ptest3,
 ptest4) REFERENCES pktable(ptest1, ptest2));
+ERROR:  relation "pktable" does not exist
 DROP TABLE PKTABLE;
+ERROR:  table "PKTABLE" does not exist
 -- And this,
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, ptest3 int, ptest4 inet, PRIMARY KEY(ptest1, ptest2), FOREIGN KEY(ptest3,
 ptest4) REFERENCES pktable);
+ERROR:  relation "pktable" does not exist
 DROP TABLE PKTABLE;
+ERROR:  table "PKTABLE" does not exist
 -- This shouldn't (mixed up columns)
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, ptest3 int, ptest4 inet, PRIMARY KEY(ptest1, ptest2), FOREIGN KEY(ptest3,
 ptest4) REFERENCES pktable(ptest2, ptest1));
-ERROR:  foreign key constraint "pktable_ptest3_ptest4_fkey" cannot be implemented
-DETAIL:  Key columns "ptest3" and "ptest2" are of incompatible types: integer and inet.
+ERROR:  relation "pktable" does not exist
 -- Nor should this... (same reason, we have 4,3 referencing 1,2 which mismatches types
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, ptest3 int, ptest4 inet, PRIMARY KEY(ptest1, ptest2), FOREIGN KEY(ptest4,
 ptest3) REFERENCES pktable(ptest1, ptest2));
-ERROR:  foreign key constraint "pktable_ptest4_ptest3_fkey" cannot be implemented
-DETAIL:  Key columns "ptest4" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 -- Not this one either... Same as the last one except we didn't defined the columns being referenced.
 CREATE TABLE PKTABLE (ptest1 int, ptest2 inet, ptest3 int, ptest4 inet, PRIMARY KEY(ptest1, ptest2), FOREIGN KEY(ptest4,
 ptest3) REFERENCES pktable);
-ERROR:  foreign key constraint "pktable_ptest4_ptest3_fkey" cannot be implemented
-DETAIL:  Key columns "ptest4" and "ptest1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 --
 -- Now some cases with inheritance
 -- Basic 2 table case: 1 column of matching types.
 create table pktable_base (base1 int not null);
 create table pktable (ptest1 int, primary key(base1), unique(base1, ptest1)) inherits (pktable_base);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table fktable (ftest1 int references pktable(base1));
+ERROR:  relation "pktable" does not exist
 -- now some ins, upd, del
 insert into pktable(base1) values (1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1) values (1);
+                    ^
 insert into pktable(base1) values (2);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1) values (2);
+                    ^
 --  let's insert a non-existent fktable value
 insert into fktable(ftest1) values (3);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_fkey"
-DETAIL:  Key (ftest1)=(3) is not present in table "pktable".
+ERROR:  relation "fktable" does not exist
+LINE 1: insert into fktable(ftest1) values (3);
+                    ^
 --  let's make a valid row for that
 insert into pktable(base1) values (3);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1) values (3);
+                    ^
 insert into fktable(ftest1) values (3);
+ERROR:  relation "fktable" does not exist
+LINE 1: insert into fktable(ftest1) values (3);
+                    ^
 -- let's try removing a row that should fail from pktable
 delete from pktable where base1>2;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_fkey" on table "fktable"
-DETAIL:  Key (base1)=(3) is still referenced from table "fktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1>2;
+                    ^
 -- okay, let's try updating all of the base1 values to *4
 -- which should fail.
 update pktable set base1=base1*4;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_fkey" on table "fktable"
-DETAIL:  Key (base1)=(3) is still referenced from table "fktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: update pktable set base1=base1*4;
+               ^
 -- okay, let's try an update that should work.
 update pktable set base1=base1*4 where base1<3;
+ERROR:  relation "pktable" does not exist
+LINE 1: update pktable set base1=base1*4 where base1<3;
+               ^
 -- and a delete that should work
 delete from pktable where base1>3;
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1>3;
+                    ^
 -- cleanup
 drop table fktable;
+ERROR:  table "fktable" does not exist
 delete from pktable;
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable;
+                    ^
 -- Now 2 columns 2 tables, matching types
 create table fktable (ftest1 int, ftest2 int, foreign key(ftest1, ftest2) references pktable(base1, ptest1));
+ERROR:  relation "pktable" does not exist
 -- now some ins, upd, del
 insert into pktable(base1, ptest1) values (1, 1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1, ptest1) values (1, 1);
+                    ^
 insert into pktable(base1, ptest1) values (2, 2);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1, ptest1) values (2, 2);
+                    ^
 --  let's insert a non-existent fktable value
 insert into fktable(ftest1, ftest2) values (3, 1);
-ERROR:  insert or update on table "fktable" violates foreign key constraint "fktable_ftest1_ftest2_fkey"
-DETAIL:  Key (ftest1, ftest2)=(3, 1) is not present in table "pktable".
+ERROR:  relation "fktable" does not exist
+LINE 1: insert into fktable(ftest1, ftest2) values (3, 1);
+                    ^
 --  let's make a valid row for that
 insert into pktable(base1,ptest1) values (3, 1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable(base1,ptest1) values (3, 1);
+                    ^
 insert into fktable(ftest1, ftest2) values (3, 1);
+ERROR:  relation "fktable" does not exist
+LINE 1: insert into fktable(ftest1, ftest2) values (3, 1);
+                    ^
 -- let's try removing a row that should fail from pktable
 delete from pktable where base1>2;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_ftest2_fkey" on table "fktable"
-DETAIL:  Key (base1, ptest1)=(3, 1) is still referenced from table "fktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1>2;
+                    ^
 -- okay, let's try updating all of the base1 values to *4
 -- which should fail.
 update pktable set base1=base1*4;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "fktable_ftest1_ftest2_fkey" on table "fktable"
-DETAIL:  Key (base1, ptest1)=(3, 1) is still referenced from table "fktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: update pktable set base1=base1*4;
+               ^
 -- okay, let's try an update that should work.
 update pktable set base1=base1*4 where base1<3;
+ERROR:  relation "pktable" does not exist
+LINE 1: update pktable set base1=base1*4 where base1<3;
+               ^
 -- and a delete that should work
 delete from pktable where base1>3;
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1>3;
+                    ^
 -- cleanup
 drop table fktable;
+ERROR:  table "fktable" does not exist
 drop table pktable;
+ERROR:  table "pktable" does not exist
 drop table pktable_base;
 -- Now we'll do one all in 1 table with 2 columns of matching types
 create table pktable_base(base1 int not null, base2 int);
 create table pktable(ptest1 int, ptest2 int, primary key(base1, ptest1), foreign key(base2, ptest2) references
                                              pktable(base1, ptest1)) inherits (pktable_base);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 insert into pktable (base1, ptest1, base2, ptest2) values (1, 1, 1, 1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable (base1, ptest1, base2, ptest2) values (1...
+                    ^
 insert into pktable (base1, ptest1, base2, ptest2) values (2, 1, 1, 1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable (base1, ptest1, base2, ptest2) values (2...
+                    ^
 insert into pktable (base1, ptest1, base2, ptest2) values (2, 2, 2, 1);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable (base1, ptest1, base2, ptest2) values (2...
+                    ^
 insert into pktable (base1, ptest1, base2, ptest2) values (1, 3, 2, 2);
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable (base1, ptest1, base2, ptest2) values (1...
+                    ^
 -- fails (3,2) isn't in base1, ptest1
 insert into pktable (base1, ptest1, base2, ptest2) values (2, 3, 3, 2);
-ERROR:  insert or update on table "pktable" violates foreign key constraint "pktable_base2_ptest2_fkey"
-DETAIL:  Key (base2, ptest2)=(3, 2) is not present in table "pktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: insert into pktable (base1, ptest1, base2, ptest2) values (2...
+                    ^
 -- fails (2,2) is being referenced
 delete from pktable where base1=2;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "pktable_base2_ptest2_fkey" on table "pktable"
-DETAIL:  Key (base1, ptest1)=(2, 2) is still referenced from table "pktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1=2;
+                    ^
 -- fails (1,1) is being referenced (twice)
 update pktable set base1=3 where base1=1;
-ERROR:  update or delete on table "pktable" violates foreign key constraint "pktable_base2_ptest2_fkey" on table "pktable"
-DETAIL:  Key (base1, ptest1)=(1, 1) is still referenced from table "pktable".
+ERROR:  relation "pktable" does not exist
+LINE 1: update pktable set base1=3 where base1=1;
+               ^
 -- this sequence of two deletes will work, since after the first there will be no (2,*) references
 delete from pktable where base2=2;
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base2=2;
+                    ^
 delete from pktable where base1=2;
+ERROR:  relation "pktable" does not exist
+LINE 1: delete from pktable where base1=2;
+                    ^
 drop table pktable;
+ERROR:  table "pktable" does not exist
 drop table pktable_base;
 -- 2 columns (2 tables), mismatched types
 create table pktable_base(base1 int not null);
 create table pktable(ptest1 inet, primary key(base1, ptest1)) inherits (pktable_base);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- just generally bad types (with and without column references on the referenced table)
 create table fktable(ftest1 cidr, ftest2 int[], foreign key (ftest1, ftest2) references pktable);
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "base1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 create table fktable(ftest1 cidr, ftest2 int[], foreign key (ftest1, ftest2) references pktable(base1, ptest1));
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "base1" are of incompatible types: cidr and integer.
+ERROR:  relation "pktable" does not exist
 -- let's mix up which columns reference which
 create table fktable(ftest1 int, ftest2 inet, foreign key(ftest2, ftest1) references pktable);
-ERROR:  foreign key constraint "fktable_ftest2_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest2" and "base1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 create table fktable(ftest1 int, ftest2 inet, foreign key(ftest2, ftest1) references pktable(base1, ptest1));
-ERROR:  foreign key constraint "fktable_ftest2_ftest1_fkey" cannot be implemented
-DETAIL:  Key columns "ftest2" and "base1" are of incompatible types: inet and integer.
+ERROR:  relation "pktable" does not exist
 create table fktable(ftest1 int, ftest2 inet, foreign key(ftest1, ftest2) references pktable(ptest1, base1));
-ERROR:  foreign key constraint "fktable_ftest1_ftest2_fkey" cannot be implemented
-DETAIL:  Key columns "ftest1" and "ptest1" are of incompatible types: integer and inet.
+ERROR:  relation "pktable" does not exist
 drop table pktable;
+ERROR:  table "pktable" does not exist
 drop table pktable_base;
 -- 2 columns (1 table), mismatched types
 create table pktable_base(base1 int not null, base2 int);
 create table pktable(ptest1 inet, ptest2 inet[], primary key(base1, ptest1), foreign key(base2, ptest2) references
                                              pktable(base1, ptest1)) inherits (pktable_base);
-ERROR:  foreign key constraint "pktable_base2_ptest2_fkey" cannot be implemented
-DETAIL:  Key columns "ptest2" and "ptest1" are of incompatible types: inet[] and inet.
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table pktable(ptest1 inet, ptest2 inet, primary key(base1, ptest1), foreign key(base2, ptest2) references
                                              pktable(ptest1, base1)) inherits (pktable_base);
-ERROR:  foreign key constraint "pktable_base2_ptest2_fkey" cannot be implemented
-DETAIL:  Key columns "base2" and "ptest1" are of incompatible types: integer and inet.
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table pktable(ptest1 inet, ptest2 inet, primary key(base1, ptest1), foreign key(ptest2, base2) references
                                              pktable(base1, ptest1)) inherits (pktable_base);
-ERROR:  foreign key constraint "pktable_ptest2_base2_fkey" cannot be implemented
-DETAIL:  Key columns "ptest2" and "base1" are of incompatible types: inet and integer.
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table pktable(ptest1 inet, ptest2 inet, primary key(base1, ptest1), foreign key(ptest2, base2) references
                                              pktable(base1, ptest1)) inherits (pktable_base);
-ERROR:  foreign key constraint "pktable_ptest2_base2_fkey" cannot be implemented
-DETAIL:  Key columns "ptest2" and "base1" are of incompatible types: inet and integer.
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 drop table pktable;
 ERROR:  table "pktable" does not exist
 drop table pktable_base;
@@ -2616,15 +2728,21 @@ CREATE SCHEMA fkpart9
 INSERT INTO fkpart9.pk VALUES (35);
 INSERT INTO fkpart9.fk VALUES (35);
 DELETE FROM fkpart9.pk WHERE a=35;
+ERROR:  syntax error at or near "ONLY"
+LINE 1: DELETE FROM ONLY "fkpart9"."fk" WHERE $1 OPERATOR(pg_catalog...
+                    ^
+QUERY:  DELETE FROM ONLY "fkpart9"."fk" WHERE $1 OPERATOR(pg_catalog.=) "fk_a"
 SELECT * FROM fkpart9.pk;
- a 
----
-(0 rows)
+ a  
+----
+ 35
+(1 row)
 
 SELECT * FROM fkpart9.fk;
  fk_a 
 ------
-(0 rows)
+   35
+(1 row)
 
 DROP SCHEMA fkpart9 CASCADE;
 NOTICE:  drop cascades to 2 other objects

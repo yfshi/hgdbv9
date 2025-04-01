@@ -882,10 +882,11 @@ const char *const config_group_names[] =
 	gettext_noop("Compat MySQL Options"),
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* help_config wants this array to be null-terminated */
+	NULL,
 	NULL
 };
 
-StaticAssertDecl(lengthof(config_group_names) == (COMPAT_MYSQL_OPTIONS + 2),/* BUG#Z0001269 */
+StaticAssertDecl(lengthof(config_group_names) == (COMPAT_MYSQL_OPTIONS + 3),/* BUG#Z0001269 */
 				 "array length mismatch");
 
 /*

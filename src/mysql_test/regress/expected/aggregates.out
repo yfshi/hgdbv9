@@ -24,11 +24,9 @@ SELECT avg(b)::numeric(10,3) AS avg_107_943 FROM aggtest;
 (1 row)
 
 SELECT avg(gpa) AS avg_3_4 FROM ONLY student;
- avg_3_4 
----------
-     3.4
-(1 row)
-
+ERROR:  relation "student" does not exist
+LINE 1: SELECT avg(gpa) AS avg_3_4 FROM ONLY student;
+                                             ^
 SELECT sum(four) AS sum_1500 FROM onek;
  sum_1500 
 ----------
@@ -48,11 +46,9 @@ SELECT sum(b) AS avg_431_773 FROM aggtest;
 (1 row)
 
 SELECT sum(gpa) AS avg_6_8 FROM ONLY student;
- avg_6_8 
----------
-     6.8
-(1 row)
-
+ERROR:  relation "student" does not exist
+LINE 1: SELECT sum(gpa) AS avg_6_8 FROM ONLY student;
+                                             ^
 SELECT max(four) AS max_3 FROM onek;
  max_3 
 -------
@@ -72,11 +68,9 @@ SELECT max(aggtest.b) AS max_324_78 FROM aggtest;
 (1 row)
 
 SELECT max(student.gpa) AS max_3_7 FROM student;
- max_3_7 
----------
-     3.7
-(1 row)
-
+ERROR:  relation "student" does not exist
+LINE 1: SELECT max(student.gpa) AS max_3_7 FROM student;
+                                                ^
 SELECT stddev_pop(b) FROM aggtest;
    stddev_pop    
 -----------------
@@ -616,11 +610,9 @@ SELECT oldcnt(*) AS cnt_1000 FROM onek;
 (1 row)
 
 SELECT sum2(q1,q2) FROM int8_tbl;
-       sum2        
--------------------
- 18271560493827981
-(1 row)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: SELECT sum2(q1,q2) FROM int8_tbl;
+                                ^
 -- test for outer-level aggregates
 -- this should work
 select ten, sum(distinct four) from onek a
@@ -1007,28 +999,14 @@ select min(tenthous) from tenk1 where thousand = 33;
 explain (costs off)
   select f1, (select min(unique1) from tenk1 where unique1 > f1) AS gt
     from int4_tbl;
-                                       QUERY PLAN                                        
------------------------------------------------------------------------------------------
- Seq Scan on int4_tbl
-   SubPlan 2
-     ->  Result
-           InitPlan 1 (returns $1)
-             ->  Limit
-                   ->  Index Only Scan using tenk1_unique1 on tenk1
-                         Index Cond: ((unique1 IS NOT NULL) AND (unique1 > int4_tbl.f1))
-(7 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 3:     from int4_tbl;
+                 ^
 select f1, (select min(unique1) from tenk1 where unique1 > f1) AS gt
   from int4_tbl;
-     f1      | gt 
--------------+----
-           0 |  1
-      123456 |   
-     -123456 |  0
-  2147483647 |   
- -2147483647 |  0
-(5 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 2:   from int4_tbl;
+               ^
 -- check some cases that were handled incorrectly in 8.3.0
 explain (costs off)
   select distinct max(unique2) from tenk1;
@@ -1150,125 +1128,92 @@ select max(100) from tenk1;
 -- try it on an inheritance tree
 create table minmaxtest(f1 int);
 create table minmaxtest1() inherits (minmaxtest);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table minmaxtest2() inherits (minmaxtest);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create table minmaxtest3() inherits (minmaxtest);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 create index minmaxtesti on minmaxtest(f1);
 create index minmaxtest1i on minmaxtest1(f1);
+ERROR:  relation "minmaxtest1" does not exist
 create index minmaxtest2i on minmaxtest2(f1 desc);
+ERROR:  relation "minmaxtest2" does not exist
 create index minmaxtest3i on minmaxtest3(f1) where f1 is not null;
+ERROR:  relation "minmaxtest3" does not exist
 insert into minmaxtest values(11), (12);
 insert into minmaxtest1 values(13), (14);
+ERROR:  relation "minmaxtest1" does not exist
+LINE 1: insert into minmaxtest1 values(13), (14);
+                    ^
 insert into minmaxtest2 values(15), (16);
+ERROR:  relation "minmaxtest2" does not exist
+LINE 1: insert into minmaxtest2 values(15), (16);
+                    ^
 insert into minmaxtest3 values(17), (18);
+ERROR:  relation "minmaxtest3" does not exist
+LINE 1: insert into minmaxtest3 values(17), (18);
+                    ^
 explain (costs off)
   select min(f1), max(f1) from minmaxtest;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
  Result
    InitPlan 1 (returns $0)
      ->  Limit
-           ->  Merge Append
-                 Sort Key: minmaxtest.f1
-                 ->  Index Only Scan using minmaxtesti on minmaxtest minmaxtest_1
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest1i on minmaxtest1 minmaxtest_2
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest2i on minmaxtest2 minmaxtest_3
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest3i on minmaxtest3 minmaxtest_4
+           ->  Index Only Scan using minmaxtesti on minmaxtest
+                 Index Cond: (f1 IS NOT NULL)
    InitPlan 2 (returns $1)
      ->  Limit
-           ->  Merge Append
-                 Sort Key: minmaxtest_5.f1 DESC
-                 ->  Index Only Scan Backward using minmaxtesti on minmaxtest minmaxtest_6
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest1i on minmaxtest1 minmaxtest_7
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest2i on minmaxtest2 minmaxtest_8
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest3i on minmaxtest3 minmaxtest_9
-(23 rows)
+           ->  Index Only Scan Backward using minmaxtesti on minmaxtest minmaxtest_1
+                 Index Cond: (f1 IS NOT NULL)
+(9 rows)
 
 select min(f1), max(f1) from minmaxtest;
  min | max 
 -----+-----
-  11 |  18
+  11 |  12
 (1 row)
 
 -- DISTINCT doesn't do anything useful here, but it shouldn't fail
 explain (costs off)
   select distinct min(f1), max(f1) from minmaxtest;
-                                         QUERY PLAN                                          
----------------------------------------------------------------------------------------------
- Unique
+                                     QUERY PLAN                                      
+-------------------------------------------------------------------------------------
+ HashAggregate
+   Group Key: $0, $1
    InitPlan 1 (returns $0)
      ->  Limit
-           ->  Merge Append
-                 Sort Key: minmaxtest.f1
-                 ->  Index Only Scan using minmaxtesti on minmaxtest minmaxtest_1
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest1i on minmaxtest1 minmaxtest_2
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest2i on minmaxtest2 minmaxtest_3
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest3i on minmaxtest3 minmaxtest_4
+           ->  Index Only Scan using minmaxtesti on minmaxtest
+                 Index Cond: (f1 IS NOT NULL)
    InitPlan 2 (returns $1)
      ->  Limit
-           ->  Merge Append
-                 Sort Key: minmaxtest_5.f1 DESC
-                 ->  Index Only Scan Backward using minmaxtesti on minmaxtest minmaxtest_6
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest1i on minmaxtest1 minmaxtest_7
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan using minmaxtest2i on minmaxtest2 minmaxtest_8
-                       Index Cond: (f1 IS NOT NULL)
-                 ->  Index Only Scan Backward using minmaxtest3i on minmaxtest3 minmaxtest_9
-   ->  Sort
-         Sort Key: ($0), ($1)
-         ->  Result
-(26 rows)
+           ->  Index Only Scan Backward using minmaxtesti on minmaxtest minmaxtest_1
+                 Index Cond: (f1 IS NOT NULL)
+   ->  Result
+(11 rows)
 
 select distinct min(f1), max(f1) from minmaxtest;
  min | max 
 -----+-----
-  11 |  18
+  11 |  12
 (1 row)
 
 drop table minmaxtest cascade;
-NOTICE:  drop cascades to 3 other objects
-DETAIL:  drop cascades to table minmaxtest1
-drop cascades to table minmaxtest2
-drop cascades to table minmaxtest3
 -- DISTINCT can also trigger wrong answers with hash aggregation (bug #18465)
 begin;
 set local enable_sort = off;
 explain (costs off)
   select f1, (select distinct min(t1.f1) from int4_tbl t1 where t1.f1 = t0.f1)
   from int4_tbl t0;
-                             QUERY PLAN                              
----------------------------------------------------------------------
- Seq Scan on int4_tbl t0
-   SubPlan 2
-     ->  HashAggregate
-           Group Key: $1
-           InitPlan 1 (returns $1)
-             ->  Limit
-                   ->  Seq Scan on int4_tbl t1
-                         Filter: ((f1 IS NOT NULL) AND (f1 = t0.f1))
-           ->  Result
-(9 rows)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 3:   from int4_tbl t0;
+               ^
 select f1, (select distinct min(t1.f1) from int4_tbl t1 where t1.f1 = t0.f1)
 from int4_tbl t0;
-     f1      |     min     
--------------+-------------
-           0 |           0
-      123456 |      123456
-     -123456 |     -123456
-  2147483647 |  2147483647
- -2147483647 | -2147483647
-(5 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback;
 -- check for correct detection of nested-aggregate errors
 select max(min(unique1)) from tenk1;
@@ -1276,9 +1221,9 @@ ERROR:  aggregate function calls cannot be nested
 LINE 1: select max(min(unique1)) from tenk1;
                    ^
 select (select max(min(unique1)) from int8_tbl) from tenk1;
-ERROR:  aggregate function calls cannot be nested
+ERROR:  relation "int8_tbl" does not exist
 LINE 1: select (select max(min(unique1)) from int8_tbl) from tenk1;
-                           ^
+                                              ^
 select avg((select avg(a1.col1 order by (select avg(a2.col2) from tenk1 a3))
             from tenk1 a1(col1)))
 from tenk1 a2(col2);
@@ -1349,16 +1294,16 @@ explain (costs off) select * from t3 group by a,b,c;
 (3 rows)
 
 create temp table t1c () inherits (t1);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- Ensure we don't remove any columns when t1 has a child table
 explain (costs off) select * from t1 group by a,b,c,d;
-             QUERY PLAN              
--------------------------------------
+      QUERY PLAN      
+----------------------
  HashAggregate
-   Group Key: t1.a, t1.b, t1.c, t1.d
-   ->  Append
-         ->  Seq Scan on t1 t1_1
-         ->  Seq Scan on t1c t1_2
-(5 rows)
+   Group Key: a, b
+   ->  Seq Scan on t1
+(3 rows)
 
 -- Okay to remove columns if we're only querying the parent.
 explain (costs off) select * from only t1 group by a,b,c,d;
@@ -1390,7 +1335,6 @@ explain (costs off) select * from p_t1 group by a,b,c,d;
 (5 rows)
 
 drop table t1 cascade;
-NOTICE:  drop cascades to table t1c
 drop table t2;
 drop table t3;
 drop table p_t1;
@@ -1727,25 +1671,21 @@ select string_agg(a,',') from (values(null),(null)) g(a);
 
 -- check some implicit casting cases, as per bug #5564
 select string_agg(distinct f1, ',' order by f1) from varchar_tbl;  -- ok
- string_agg 
-------------
- a,ab,abcd
-(1 row)
-
+ERROR:  relation "varchar_tbl" does not exist
+LINE 1: ...ect string_agg(distinct f1, ',' order by f1) from varchar_tb...
+                                                             ^
 select string_agg(distinct f1::text, ',' order by f1) from varchar_tbl;  -- not ok
-ERROR:  in an aggregate with DISTINCT, ORDER BY expressions must appear in argument list
-LINE 1: select string_agg(distinct f1::text, ',' order by f1) from v...
-                                                          ^
+ERROR:  relation "varchar_tbl" does not exist
+LINE 1: ...ring_agg(distinct f1::text, ',' order by f1) from varchar_tb...
+                                                             ^
 select string_agg(distinct f1, ',' order by f1::text) from varchar_tbl;  -- not ok
-ERROR:  in an aggregate with DISTINCT, ORDER BY expressions must appear in argument list
-LINE 1: select string_agg(distinct f1, ',' order by f1::text) from v...
-                                                    ^
+ERROR:  relation "varchar_tbl" does not exist
+LINE 1: ...ring_agg(distinct f1, ',' order by f1::text) from varchar_tb...
+                                                             ^
 select string_agg(distinct f1::text, ',' order by f1::text) from varchar_tbl;  -- ok
- string_agg 
-------------
- a,ab,abcd
-(1 row)
-
+ERROR:  relation "varchar_tbl" does not exist
+LINE 1: ...gg(distinct f1::text, ',' order by f1::text) from varchar_tb...
+                                                             ^
 -- string_agg bytea tests
 create table bytea_test_table(v bytea);
 select string_agg(v, '') from bytea_test_table;
@@ -1901,17 +1841,17 @@ ERROR:  aggregate functions are not allowed in FILTER
 LINE 1: select max(unique1) filter (where sum(ten) > 0) from tenk1;
                                           ^
 select (select max(unique1) filter (where sum(ten) > 0) from int8_tbl) from tenk1;
-ERROR:  aggregate function calls cannot be nested
-LINE 1: select (select max(unique1) filter (where sum(ten) > 0) from...
-                                                  ^
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: ...ect max(unique1) filter (where sum(ten) > 0) from int8_tbl) ...
+                                                             ^
 select max(unique1) filter (where bool_or(ten > 0)) from tenk1;
 ERROR:  aggregate functions are not allowed in FILTER
 LINE 1: select max(unique1) filter (where bool_or(ten > 0)) from ten...
                                           ^
 select (select max(unique1) filter (where bool_or(ten > 0)) from int8_tbl) from tenk1;
-ERROR:  aggregate function calls cannot be nested
-LINE 1: select (select max(unique1) filter (where bool_or(ten > 0)) ...
-                                                  ^
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: ...max(unique1) filter (where bool_or(ten > 0)) from int8_tbl) ...
+                                                             ^
 -- ordered-set aggregates
 select p, percentile_cont(p) within group (order by x::float8)
 from generate_series(1,5) x,
@@ -2170,41 +2110,29 @@ select * from aggordview1 order by ten;
 drop view aggordview1;
 -- variadic aggregates
 select least_agg(q1,q2) from int8_tbl;
-     least_agg     
--------------------
- -4567890123456789
-(1 row)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select least_agg(q1,q2) from int8_tbl;
+                                     ^
 select least_agg(variadic array[q1,q2]) from int8_tbl;
-     least_agg     
--------------------
- -4567890123456789
-(1 row)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select least_agg(variadic array[q1,q2]) from int8_tbl;
+                                                     ^
 select cleast_agg(q1,q2) from int8_tbl;
-    cleast_agg     
--------------------
- -4567890123456789
-(1 row)
-
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: select cleast_agg(q1,q2) from int8_tbl;
+                                      ^
 select cleast_agg(4.5,f1) from int4_tbl;
- cleast_agg  
--------------
- -2147483647
-(1 row)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select cleast_agg(4.5,f1) from int4_tbl;
+                                       ^
 select cleast_agg(variadic array[4.5,f1]) from int4_tbl;
- cleast_agg  
--------------
- -2147483647
-(1 row)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: select cleast_agg(variadic array[4.5,f1]) from int4_tbl;
+                                                       ^
 select pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
- pg_typeof 
------------
- numeric
-(1 row)
-
+ERROR:  relation "int4_tbl" does not exist
+LINE 1: ...pg_typeof(cleast_agg(variadic array[4.5,f1])) from int4_tbl;
+                                                              ^
 -- test aggregates with common transition functions share the same states
 begin work;
 create type avg_state as (total bigint, count bigint);

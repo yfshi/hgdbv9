@@ -2535,6 +2535,7 @@ typedef struct Constraint
 	bool		skip_validation;	/* skip validation of existing rows? */
 	bool		initially_valid;	/* mark the new constraint as valid? */
 	bool		table_level;		/* BUG#Z1460, The constraint is table-level */
+	bool		on_update;	/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 } Constraint;
 
 /* ----------------------

@@ -32,6 +32,8 @@
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/tzparser.h"
+#include "utils/varlena.h"	/* ReqID:SRS-MYSQL-DATETYPE */
+#include "time.h" /* ReqID:SRS-MYSQL-DATETYPE */
 
 static int	DecodeNumber(int flen, char *field, bool haveTextMonth,
 						 int fmask, int *tmask,
@@ -57,6 +59,20 @@ static bool DetermineTimeZoneAbbrevOffsetInternal(pg_time_t t,
 												  int *offset, int *isdst);
 static pg_tz *FetchDynamicTimeZone(TimeZoneAbbrevTable *tbl, const datetkn *tp);
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+static int CalmicroSecondsPower(int num);
+
+static bool check_datetime(struct pg_tm *tm, bool not_zero_date, my_time_flags flag, int *warn);
+
+static void get_datetime_from_num(int64 num, struct pg_tm *tm);
+
+bool check_datetime_range(struct pg_tm *tm, int fsec, int ftype);
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+
+
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 const int	day_tab[2][13] =
 {
@@ -2945,6 +2961,1412 @@ DecodeNumberField(int len, char *str, int fmask,
 	return DTERR_BAD_FORMAT;
 }
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+
+/* CalmicroSecondsPower
+* Calculates milliseconds raised to powers
+*/
+static int
+CalmicroSecondsPower(int num)
+{
+  int	  ans = 1;
+  while(num)
+  {
+	  ans *= 10;
+	  num--;
+  }
+  return ans;
+}
+
+/* Check datetime */
+static bool 
+check_datetime(struct pg_tm *tm, bool not_zero_date, my_time_flags flag, int *warn)
+{
+	if (not_zero_date)
+	{
+		if (((flag & TIME_NO_ZERO_IN_DATE) || !(flag & TIME_FUZZY_DATE)) &&
+			(tm->tm_mon == 0 || tm->tm_mday == 0))
+		{
+			*warn = MYSQL_TIME_WARN_ZERO_IN_DATE;
+			return true;
+		}
+		/*
+		* Check for valid day of month, now that we know for sure the month
+		* and year.	Note we don't use MD_FIELD_OVERFLOW here, since it seems
+		* unlikely that "Feb 29" is a YMD-order error.
+		*/
+		else if ((!(flag & TIME_INVALID_DATES) && tm->tm_mon > 0 &&
+			tm->tm_mday > day_tab[isleap(tm->tm_year)][tm->tm_mon - 1]))
+		{
+			*warn = MYSQL_TIME_WARN_OUT_OF_RANGE;
+			return true;
+		}
+	}
+	else if (flag & TIME_NO_ZERO_DATE)
+	{
+		*warn = MYSQL_TIME_WARN_ZERO_DATE;
+		return true;
+	}
+
+	return false;
+}
+
+int internal_format_positions[] = {0, 1, 2, 3, 4, 5, 6, 255};
+
+/*
+* check datetime range
+*/
+bool
+check_datetime_range(struct pg_tm *tm, int fsec, int ftype)
+{
+
+	return
+		tm->tm_year > 9999 || tm->tm_mon > 12  || tm->tm_mday > 31 || 
+		tm->tm_min > 59 || tm->tm_sec > 59 || fsec > 999999 ||
+		(tm->tm_hour >
+		(ftype == MYSQL_TIMESTAMP_TIME ? TIME_MAX_HOUR : 23));
+}
+
+/* Calculate the impact of nanoseconds on datetime */
+bool
+mysdatetime_add_nanoseconds_with_round(struct pg_tm *tm, int *fsec, int *warn, int nanoseconds)
+{
+	if (nanoseconds < 500)
+		return false;
+
+	*fsec += (nanoseconds + 500) / 1000;
+
+	if (*fsec < 1000000)
+		return false;
+	if (check_datetime(tm, non_zero_date(tm), (TIME_NO_ZERO_IN_DATE | TIME_NO_ZERO_DATE), warn))
+		return true;
+
+	if(*fsec == 1000000)
+	{
+		*fsec %= 1000000;
+		tm->tm_sec++;
+	}
+	if(tm->tm_sec == 60)
+	{
+		tm->tm_sec = 0;
+		tm->tm_min++;
+	}
+	if(tm->tm_min == 60)
+	{
+		tm->tm_min = 0;
+		tm->tm_hour++;
+	}
+	if(tm->tm_hour == 24)
+	{
+		tm->tm_hour = 0;
+		tm->tm_mday++;
+	}
+	if(tm->tm_mday > day_tab[isleap(tm->tm_year)][tm->tm_mon - 1])
+	{
+		tm->tm_mday = 1;
+		tm->tm_mon++;
+	}
+	if(tm->tm_mon > 12)
+	{
+		tm->tm_mon = 1;
+		tm->tm_year++;
+	}
+	if(tm->tm_year > 9999)
+	{
+		*warn |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return true;
+	}
+	return false;
+}
+
+/* Calculate the seconds: Microseconds rounded to seconds */
+bool
+mysdatetime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn)
+{
+	if(*fsec < 500000)
+	{
+		return false; 
+	}
+
+	if(tm->tm_hour == 0 && tm->tm_min == 0 && tm->tm_sec == 0 )
+	{
+		return false; 
+	}
+	
+	tm->tm_sec++;
+	if(tm->tm_sec == 60)
+	{
+		tm->tm_sec = 0;
+		tm->tm_min++;
+	}
+	if(tm->tm_min == 60)
+	{
+		tm->tm_min = 0;
+		tm->tm_hour++;
+	}
+	if(tm->tm_hour == 24)
+	{
+		tm->tm_hour = 0;
+		tm->tm_mday++;
+	}
+	if(tm->tm_mday > day_tab[isleap(tm->tm_year)][tm->tm_mon - 1])
+	{
+		tm->tm_mday = 1;
+		tm->tm_mon++;
+	}
+	if(tm->tm_mon > 12)
+	{
+		tm->tm_mon = 1;
+		tm->tm_year++;
+	}
+	if(tm->tm_year > 9999)
+	{
+		*warn |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return true;
+	}
+	return false;
+}
+
+/*
+* Convert a timestamp string to a MYSQL date and time value.
+*/
+int 
+mystr_to_datetime(const char *str, int length, struct pg_tm *tm, int flag,
+					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int * fsec_len)
+{
+	int	  field_length = 0,
+		  year_length = 0,
+		  digits,
+		  i, 
+		  number_of_fields;
+	int	  date[MAX_DATE_PARTS];
+	int	  date_len[MAX_DATE_PARTS];
+	int	  add_hours = 0,
+		  start_loop;
+	long	  not_zero_date,
+		  allow_space;
+	bool	  is_internal_format;
+	const char *pos,
+			 *last_field_pos = NULL;
+	const char *end = str + length;
+	int		 *format_position;
+	bool	  found_delimitier = 0,
+		  found_space = 0;
+	int	  frac_pos,
+		  frac_len;
+
+	/* Skip space at start */
+	for (; str != end && isspace((unsigned char)*str) ; str++)
+		;
+
+	if (str == end || !isdigit((unsigned char)*str))
+	{
+		*warn = MYSQL_TIME_WARN_TRUNCATED;
+		*ftype = MYSQL_TIMESTAMP_NONE;
+		return -1;
+	}
+
+	is_internal_format = false;
+	format_position = internal_format_positions;
+
+	/*
+	* Calculate number of digits in first part.
+	* If length= 8 or >= 14 then year is of format YYYY.
+	* (YYYY-MM-DD,  YYYYMMDD, YYYYYMMDDHHMMSS).
+	*/
+	for (pos = str; pos != end && (isdigit((unsigned char)*pos) || *pos == 'T'); pos++)
+		;
+	digits = (pos - str);
+
+	start_loop = 0;								  /* Start of scan loop */
+	date_len[format_position[0]] = 0; 			  /* Length of year field */
+
+	if (pos == end || *pos == '.')
+	{
+		/* Found date in internal format (only numbers like YYYYMMDD) */
+		year_length = (digits == 4 || digits == 8 || digits >= 14) ? 4 : 2;
+		field_length = year_length;
+		is_internal_format = true;
+		format_position = internal_format_positions;
+	}
+	else
+	{
+		field_length = format_position[0] == 0 ? 4 : 2;
+	}
+
+	i = format_position[0] > format_position[1] ? format_position[0] : format_position[1];
+	set_bigger(i, format_position[2]);
+	allow_space = ((1 << i) | (1 << format_position[6]));
+	allow_space &= (1 | 2 | 4 | 8 | 64);
+
+	not_zero_date = 0;
+	for (i = start_loop; i < MAX_DATE_PARTS - 1 && str != end &&
+		isdigit((unsigned char)*str); i++)
+	{
+		const char *start = str;
+		long		  tmp_value = (int)(*str++ - '0');
+
+		/* Determine the internal format and millisecond segment. */
+		bool		  scan_until_delim = !is_internal_format && ((i != format_position[6]));
+		while (str != end && isdigit((unsigned char)str[0]) &&
+			(scan_until_delim || --field_length))
+		{
+			tmp_value = tmp_value * 10 + (long)(*str - '0');
+			str++;
+		}
+		date_len[i] = (str - start);
+
+		/* Impossible date part */
+		if (tmp_value > 999999)
+		{
+			*warn = MYSQL_TIME_WARN_TRUNCATED;
+			*ftype = MYSQL_TIMESTAMP_NONE;
+			return -1;
+		}
+		date[i] = tmp_value;
+		not_zero_date |= tmp_value;
+
+		/* Length of next field */
+		field_length = format_position[i + 1] == 0 ? 4 : 2;
+
+		/* Register last found part */
+		if ((last_field_pos = str) == end)
+		{
+			i++;
+			break;
+		}
+		/* Allow a 'T' after day to allow CCYYMMDDT type of fields */
+		if (i == format_position[2] && *str == 'T')
+		{
+			str++;
+			continue;
+		}
+		if (i == format_position[5])	  /* Seconds */
+		{
+			/* Followed by part seconds */
+			if (*str == '.')
+			{
+				str++;
+				/*
+				* Shift last_field_pos, so '2001-01-01 00:00:00.'
+				*is treated as a valid value
+				*/
+				last_field_pos = str;
+				field_length = 6; 	  /* 6 digits */
+			}
+			else if (isdigit((unsigned char)str[0]))
+			{
+				/*
+				* We do not see a decimal point which would have indicated a
+				* fractional second part in further read. So we skip the further
+				* processing of digits.
+				*/
+				i++;
+				break;
+			}
+			continue;
+		}
+
+		while (str != end && (ispunct((unsigned char)*str) || isspace((unsigned char)*str)))
+		{
+			if (isspace((unsigned char)*str))
+			{
+				if (!(allow_space & (1 << i)))
+				{
+					*warn = MYSQL_TIME_WARN_TRUNCATED;
+					*ftype = MYSQL_TIMESTAMP_NONE;
+					return -1;
+				}
+				found_space = 1;
+			}
+			str++;
+			/* Should be a 'normal' date */
+			found_delimitier = 1;
+		}
+		/* Check if next position is AM/PM */
+		if (i == format_position[6])		  /* Seconds, time for AM/PM */
+		{
+			/* Skip AM/PM part */
+			i++;
+			if (format_position[7] != 255)  /* If using AM/PM */
+			{
+				if (str + 2 <= end && (str[1] == 'M' || str[1] == 'm'))
+				{
+					if (str[0] == 'p' || str[0] == 'P')
+					{
+						//flagpm = true;
+						add_hours = 12;
+					}
+					else if (str[0] != 'a' || str[0] != 'A')
+						continue; 			  /* Not AM/PM */
+					str += 2; 				  /* Skip AM/PM */
+					/* Skip space after AM/PM */
+					while (str != end && isspace((unsigned char)*str))
+						str++;
+				}
+			}
+		}
+		last_field_pos = str;
+	}
+
+	/* check is datetime,eg 2011-01-11 12:23:33. */
+	if (found_delimitier && !found_space && (flag & TIME_DATETIME_ONLY))
+	{
+		*warn = MYSQL_TIME_WARN_TRUNCATED;
+		*ftype = MYSQL_TIMESTAMP_NONE;
+		return -1;
+	}
+
+	str = last_field_pos;
+	number_of_fields = i - start_loop;
+	while (i < MAX_DATE_PARTS)
+	{
+		date_len[i] = 0;
+		date[i++] = 0;
+	}
+	if (!is_internal_format)
+	{
+		year_length = date_len[format_position[0]];
+		if (!year_length) 	  /* Year must be specified */
+		{
+			*warn = MYSQL_TIME_WARN_TRUNCATED;
+			*ftype = MYSQL_TIMESTAMP_NONE;
+			return -1;
+		}
+
+		tm->tm_year = date[format_position[0]];
+		tm->tm_mon  = date[format_position[1]];
+		tm->tm_mday = date[format_position[2]];
+		tm->tm_hour = date[format_position[3]];
+		tm->tm_min  = date[format_position[4]];
+		tm->tm_sec  = date[format_position[5]];
+
+		frac_pos = format_position[6];
+		frac_len= date_len[frac_pos];
+		if (frac_len < 6)
+			date[frac_pos] *= CalmicroSecondsPower( DATETIME_MAX_DECIMALS - date_len[6]);;
+		*fsec = date[frac_pos];
+		*fsec_len = frac_len;
+
+		if (format_position[7] != 255)
+		{
+			if (tm->tm_hour > 12)
+			{
+				*warn = MYSQL_TIME_WARN_TRUNCATED;
+				return -1;
+			}
+			tm->tm_hour= tm->tm_hour % 12 + add_hours;
+		}
+	}
+	else
+	{
+		tm->tm_year = date[0];
+		tm->tm_mon  = date[1];
+		tm->tm_mday = date[2];
+		tm->tm_hour = date[3];
+		tm->tm_min  = date[4];
+		tm->tm_sec  = date[5];
+		if (date_len[6] < 6)
+		{
+			date[6] *= CalmicroSecondsPower( DATETIME_MAX_DECIMALS - date_len[6]);
+		}
+		frac_len = date_len[6];
+		*fsec = date[6];
+
+		*fsec_len = frac_len;
+	}
+
+	if (year_length == 2 && not_zero_date)
+		tm->tm_year+= (tm->tm_year < YY_PART_YEAR ? 2000 : 1900);
+
+	*ftype = number_of_fields <= 3 ? MYSQL_TIMESTAMP_DATE : MYSQL_TIMESTAMP_DATETIME;
+
+	if (number_of_fields < 3 || check_datetime_range(tm, *fsec, *ftype))
+	{
+		/* Only give warning for a zero date if there is some garbage after */
+		if (!not_zero_date)
+		{
+			for (; str != end ; str++)
+			{
+				if (!isspace((unsigned char)*str))
+				{
+					/* Give warning */
+					not_zero_date = 1;
+					break;
+				}
+			}
+		}
+		*warn |= not_zero_date ? MYSQL_TIME_WARN_TRUNCATED : MYSQL_TIME_WARN_ZERO_DATE;
+		MYS_ZERO_tm(tm);
+		*ftype = MYSQL_TIMESTAMP_ERROR;
+		return -1;
+	}
+
+	if(check_datetime(tm, not_zero_date != 0, flag, warn))
+	{
+		MYS_ZERO_tm(tm);
+		*ftype = MYSQL_TIMESTAMP_ERROR;
+		return -1;
+	}
+
+	/* Scan all digits left after microseconds */
+	if (frac_len == 6 && str != end)
+	{
+		if (isdigit((unsigned char)*str))
+		{
+			/*
+			* We don't need the exact nanoseconds value.
+			* Knowing the first digit is enough for rounding.
+			*/
+			*nanoseconds = 100 * (int) (*str++ - '0');
+			for (; str != end && isdigit((unsigned char)*str); str++)
+			{
+
+			}
+		}
+	}
+
+	for (; str != end ; str++)
+	{
+		if (!isspace((unsigned char)*str))
+		{
+			*warn = MYSQL_TIME_WARN_TRUNCATED;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static void
+get_datetime_from_num(int64 num, struct pg_tm *tm)
+{
+	long	  part1, part2;
+
+	part1=(long) (num / 1000000);
+	part2=(long) (num - (long long)part1 * 1000000);
+	tm->tm_year=	(int) (part1 / 10000);
+	part1 %= 10000;
+	tm->tm_mon= (int) part1 / 100;
+	tm->tm_mday=	 (int) part1 % 100;
+	tm->tm_hour=	(int) (part2/10000);
+	part2 %= 10000;
+	tm->tm_min=(int) part2 / 100;
+	tm->tm_sec=(int) part2 % 100;
+}
+
+/* Check if the time part is zero */
+bool
+non_zero_time(const struct pg_tm *tm, int fsec)
+{
+	return tm->tm_hour || tm->tm_min || tm->tm_sec || fsec;
+}
+
+bool
+non_zero_date(const struct pg_tm *tm)
+{
+	return tm->tm_year || tm->tm_mon || tm->tm_mday;
+}
+
+bool
+zero_date(const struct pg_tm *tm)
+{
+	return !tm->tm_year || !tm->tm_mon || !tm->tm_mday;
+}
+
+/* Convert datetime value specified as number to broken-down TIME
+* representation and form value of DATETIME type .
+*/
+int
+mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn)
+{
+	*warn = 0;
+	MYS_ZERO_tm(tm);
+	*ftype = MYSQL_TIMESTAMP_DATE;
+
+	if (num == 0 || num >= 10000101000000)
+	{
+		*ftype = MYSQL_TIMESTAMP_DATETIME;
+		/* 9999-12-31 23:59:59 */
+		if (num > 99991231235959)
+		{
+			*warn = MYSQL_TIME_WARN_OUT_OF_RANGE;
+			return -1;
+		}
+		goto isdatetime;
+	}
+	if (num < 101)
+		goto err;
+
+	if (num <= (YY_PART_YEAR-1) * 10000 + 1231)
+	{
+		/* YYMMDD, year: 2000-2069 */
+		num = (num + 20000000) * 1000000;
+		goto isdatetime;
+	}
+	if (num < (YY_PART_YEAR) * 10000 + 101)
+		goto err;
+
+	if (num <= 991231)
+	{
+		/* YYMMDD, year: 1970-1999 */
+		num = (num + 19000000) * 1000000;
+		goto isdatetime;
+	}
+	/*
+	* Though officially we support DATE values from 1000-01-01 only, one can
+	* easily insert a value like 1-1-1. So, for consistency reasons such dates
+	* are allowed when TIME_FUZZY_DATE is set.
+	*/
+	//  if (num < 10000101 && !(flags & TIME_FUZZY_DATE))
+	//	  goto err;
+	if (num <= 99991231)
+	{
+		num = num * 1000000;
+		goto isdatetime;
+	}
+	if (num < 101000000)
+		goto err;
+
+	*ftype = MYSQL_TIMESTAMP_DATETIME;
+
+	if (num <= (YY_PART_YEAR-1) * 10000000000 + 1231235959)
+	{
+		/* YYMMDDHHMMSS, 2000-2069 */
+		num = num + 20000000000000;
+		goto isdatetime;
+	}
+	if (num < YY_PART_YEAR * 10000000000 + 101000000)
+		goto err;
+	if (num <= 991231235959)
+		num = num + 19000000000000;	  /* YYMMDDHHMMSS, 1970-1999 */
+
+isdatetime:
+	get_datetime_from_num(num, tm);
+	if(!check_datetime(tm, (num != 0), flag, warn) && !check_datetime_range(tm, *fsec, *ftype))
+		return 1;
+err:
+	*warn = MYSQL_TIME_WARN_TRUNCATED;
+	return -1;
+}
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+/*
+  Calculate nr of day since year 0 in new date-system (from 1615)
+
+  SYNOPSIS
+    calc_daynr()
+    year		 Year (exact 4 digit year, no year conversions)
+    month		 Month
+    day			 Day
+
+  NOTES: 0000-00-00 is a valid date, and will return 0
+
+  RETURN
+    Days since 0000-00-00
+*/
+
+static inline long calc_daynr(uint32 year,uint32 month,uint32 day)
+{
+	long delsum;
+	int temp;
+	int y= year;                                  /* may be < 0 temporarily */
+
+	if (y == 0 && month == 0)
+		return 0;				/* Skip errors */
+	/* Cast to int to be able to handle month == 0 */
+	delsum= (long) (365 * y + 31 *((int) month - 1) + (int) day);
+	if (month <= 2)
+		y--;
+	else
+		delsum-= (long) ((int) month * 4 + 23) / 10;
+	temp=(int) ((y/100+1)*3)/4;
+
+	return (delsum+(int) y/4-temp);
+} /* calc_daynr */
+
+/*
+  Function to check sanity of a TIMESTAMP value
+
+  DESCRIPTION
+    Check if a given MYSQL_TIME value fits in TIMESTAMP range.
+    This function doesn't make precise check, but rather a rough
+    estimate.
+
+  RETURN VALUES
+    TRUE    The value seems sane
+    FALSE   The MYSQL_TIME value is definitely out of range
+*/
+
+static inline bool validate_timestamp_range(struct pg_tm *tm)
+{
+	if ((tm->tm_year > TIMESTAMP_MAX_YEAR || tm->tm_year < TIMESTAMP_MIN_YEAR) ||
+		(tm->tm_year == TIMESTAMP_MAX_YEAR && (tm->tm_mon > 1 || tm->tm_mday > 19)) ||
+		(tm->tm_year == TIMESTAMP_MIN_YEAR && (tm->tm_mon < 12 || tm->tm_mday < 31)))
+		return false;
+
+	return true;
+}
+
+/*
+  Convert time in MYSQL_TIME representation in system time zone to its
+  my_time_t form (number of seconds in UTC since begginning of Unix Epoch).
+
+  SYNOPSIS
+    my_system_gmt_sec()
+      t               - time value to be converted
+      my_timezone     - pointer to long where offset of system time zone
+                        from UTC will be stored for caching
+      in_dst_time_gap - set to true if time falls into spring time-gap
+
+  NOTES
+    The idea is to cache the time zone offset from UTC (including daylight 
+    saving time) for the next call to make things faster. But currently we 
+    just calculate this offset during startup (by calling my_init_time() 
+    function) and use it all the time.
+    Time value provided should be legal time value (e.g. '2003-01-01 25:00:00'
+    is not allowed).
+
+  RETURN VALUE
+    Time in UTC seconds since Unix Epoch representation.
+*/
+int64
+my_system_gmt_sec(struct pg_tm *tm, long *my_timezone, bool *in_dst_time_gap)
+{
+	uint32 loop;
+	time_t tmp= 0;
+	int shift= 0;
+	struct pg_tm tmp_time;
+	struct pg_tm *t= &tmp_time;
+	struct tm *l_time;
+	long diff, current_timezone;
+	int my_time_zone = 0;
+	/*
+	Use temp variable to avoid trashing input data, which could happen in
+	case of shift required for boundary dates processing.
+	*/
+	memcpy(&tmp_time, tm, sizeof(struct pg_tm));
+
+	if (!validate_timestamp_range(t))
+		return 0;
+
+	/*
+	Calculate the gmt time based on current time and timezone
+	The -1 on the end is to ensure that if have a date that exists twice
+	(like 2002-10-27 02:00:0 MET), we will find the initial date.
+
+	By doing -3600 we will have to call localtime_r() several times, but
+	I couldn't come up with a better way to get a repeatable result :(
+
+	We can't use mktime() as it's buggy on many platforms and not thread safe.
+
+	Note: this code assumes that our time_t estimation is not too far away
+	from real value (we assume that localtime_r(tmp) will return something
+	within 24 hrs from t) which is probably true for all current time zones.
+
+	Note2: For the dates, which have time_t representation close to
+	MAX_INT32 (efficient time_t limit for supported platforms), we should
+	do a small trick to avoid overflow. That is, convert the date, which is
+	two days earlier, and then add these days to the final value.
+
+	The same trick is done for the values close to 0 in time_t
+	representation for platfroms with unsigned time_t (QNX).
+
+	To be more verbose, here is a sample (extracted from the code below):
+	(calc_daynr(2038, 1, 19) - (long) days_at_timestart)*86400L + 4*3600L
+	would return -2147480896 because of the long type overflow. In result
+	we would get 1901 year in localtime_r(), which is an obvious error.
+
+	Alike problem raises with the dates close to Epoch. E.g.
+	(calc_daynr(1969, 12, 31) - (long) days_at_timestart)*86400L + 23*3600L
+	will give -3600.
+
+	On some platforms, (E.g. on QNX) time_t is unsigned and localtime(-3600)
+	wil give us a date around 2106 year. Which is no good.
+
+	Theoreticaly, there could be problems with the latter conversion:
+	there are at least two timezones, which had time switches near 1 Jan
+	of 1970 (because of political reasons). These are America/Hermosillo and
+	America/Mazatlan time zones. They changed their offset on
+	1970-01-01 08:00:00 UTC from UTC-8 to UTC-7. For these zones
+	the code below will give incorrect results for dates close to
+	1970-01-01, in the case OS takes into account these historical switches.
+	Luckily, it seems that we support only one platform with unsigned
+	time_t. It's QNX. And QNX does not support historical timezone data at all.
+	E.g. there are no /usr/share/zoneinfo/ files or any other mean to supply
+	historical information for localtime_r() etc. That is, the problem is not
+	relevant to QNX.
+
+	We are safe with shifts close to MAX_INT32, as there are no known
+	time switches on Jan 2038 yet :)
+	*/
+	if ((t->tm_year == TIMESTAMP_MAX_YEAR) && (t->tm_mon == 1) && (t->tm_mday > 4))
+	{
+	/*
+		Below we will pass (uint) (t->day - shift) to calc_daynr.
+		As we don't want to get an overflow here, we will shift
+		only safe dates. That's why we have (t->day > 4) above.
+	*/
+	t->tm_mday-= 2;
+	shift= 2;
+	}
+
+	tmp= (time_t) (((calc_daynr((uint32) t->tm_year, (uint32) t->tm_mon, (uint32) t->tm_mday) -
+					(long) DAYS_AT_TIMESTART) * SECONDS_IN_24H +
+					(long) t->tm_hour*3600L +
+					(long) (t->tm_min*60 + t->tm_sec)) + (time_t) my_time_zone -
+					3600);
+
+	current_timezone= my_time_zone;
+	l_time = localtime(&tmp);
+
+	for (loop=0;
+		loop < 2 &&
+		(t->tm_hour != (uint32) l_time->tm_hour ||
+		t->tm_min != (uint32) l_time->tm_min ||
+		t->tm_sec != (uint32) l_time->tm_sec);
+		loop++)
+	{					/* One check should be enough ? */
+		/* Get difference in days */
+		int days= t->tm_mday - l_time->tm_mday;
+		if (days < -1)
+			days= 1;					/* Month has wrapped */
+		else if (days > 1)
+			days= -1;
+		diff=(3600L*(long) (days*24+((int) t->tm_hour - (int) l_time->tm_hour)) +
+				(long) (60*((int) t->tm_min - (int) l_time->tm_min)) +
+				(long) ((int) t->tm_sec - (int) l_time->tm_sec));
+		current_timezone+= diff+3600;		/* Compensate for -3600 above */
+		tmp+= (time_t) diff;
+		l_time = localtime(&tmp);
+
+	}
+	/*
+	Fix that if we are in the non existing daylight saving time hour
+	we move the start of the next real hour.
+
+	This code doesn't handle such exotical thing as time-gaps whose length
+	is more than one hour or non-integer (latter can theoretically happen
+	if one of seconds will be removed due leap correction, or because of
+	general time correction like it happened for Africa/Monrovia time zone
+	in year 1972).
+	*/
+	if (loop == 2 && t->tm_hour != (uint32) l_time->tm_hour)
+	{
+		int days= t->tm_mday - l_time->tm_mday;
+		if (days < -1)
+			days=1;					/* Month has wrapped */
+		else if (days > 1)
+			days= -1;
+		diff=(3600L*(long) (days*24+((int) t->tm_hour - (int) l_time->tm_hour))+
+			(long) (60*((int) t->tm_min - (int) l_time->tm_min)) +
+			(long) ((int) t->tm_sec - (int) l_time->tm_sec));
+		if (diff == 3600)
+			tmp+=3600 - t->tm_min*60 - t->tm_sec;	/* Move to next hour */
+		else if (diff == -3600)
+			tmp-=t->tm_min*60 + t->tm_sec;		/* Move to previous hour */
+
+		*in_dst_time_gap= 1;
+	}
+	*my_timezone= current_timezone;
+
+
+	/* shift back, if we were dealing with boundary dates */
+	tmp+= shift * SECONDS_IN_24H;
+
+	/*
+	This is possible for dates, which slightly exceed boundaries.
+	Conversion will pass ok for them, but we don't allow them.
+	First check will pass for platforms with signed time_t.
+	instruction above (tmp+= shift*86400L) could exceed
+	MAX_INT32 (== TIMESTAMP_MAX_VALUE) and overflow will happen.
+	So, tmp < TIMESTAMP_MIN_VALUE will be triggered. On platfroms
+	with unsigned time_t tmp+= shift*86400L might result in a number,
+	larger then TIMESTAMP_MAX_VALUE, so another check will work.
+	*/
+	if (!IS_TIME_T_VALID_FOR_TIMESTAMP(tmp))
+	tmp= 0;
+
+	return (int64) tmp;
+} /* my_system_gmt_sec */
+
+bool datetime_with_no_zero_in_date_to_timeval(struct pg_tm *tm, fsec_t fsec, int *warn)
+{
+	long	my_timezone = 0;
+	bool	in_dst_time_gap = 0;
+
+	if (!tm->tm_mon) /* Zero date */
+	{
+		if (non_zero_time(tm, fsec))
+		{
+			/*
+			Return error for zero date with non-zero time, e.g.:
+			'0000-00-00 10:20:30' or '0000-00-00 00:00:00.123456'
+			*/
+			*warn |= MYSQL_TIME_WARN_TRUNCATED;
+			return true;
+		}
+		return true;
+	}
+
+	if (!my_system_gmt_sec(tm, &my_timezone, &in_dst_time_gap))
+	{
+		/*
+		Date was outside of the supported timestamp range.
+		For example: '3001-01-01 00:00:00' or '1000-01-01 00:00:00'
+		*/
+		*warn |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return true;
+	}
+	else if (in_dst_time_gap)
+	{
+		/*
+		Set MYSQL_TIME_WARN_INVALID_TIMESTAMP warning to indicate
+		that date was fine but pointed to winter/summer time switch gap.
+		In this case tm is set to the fist second after gap.
+		For example: '2003-03-30 02:30:00 MSK' -> '2003-03-30 03:00:00 MSK'
+		*/
+		*warn |= MYSQL_TIME_WARN_INVALID_TIMESTAMP;
+	}
+	return false;
+}
+
+/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+
+bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict)
+{
+	if(!is_err && !warn)
+	{
+		return false;
+	}
+	if(is_err) /* Returns an error result, the value is not 0. */
+	{
+		if(is_strict) /* Is strict mode*/
+		{
+			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			{
+				ereport(ERROR, (errcode(ERRCODE_INVALID_DATETIME_FORMAT), errmsg("Incorrect TIME value: '%s'", str)));
+			}
+			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE | MYSQL_TIME_WARN_ZERO_IN_DATE))
+			{
+				ereport(ERROR, (errcode(ERRCODE_INVALID_DATETIME_FORMAT), errmsg("Incorrect TIME value: '%s'", str)));
+			}
+		}
+		else /* non-strict mode */
+		{
+			if(warn & (MYSQL_TIME_WARN_ZERO_DATE | MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+			{
+				ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Out of range value.")));
+			}
+			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			{
+				ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Data truncated for column.")));
+			}
+			return true;
+		}
+	}
+	else /* Returns the correct result with a value of 0 */
+	{
+		if(warn & MYSQL_TIME_WARN_OUT_OF_RANGE)
+		{
+			ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Out of range value.")));
+		}
+		else if(warn & (MYSQL_TIME_WARN_TRUNCATED | MYSQL_TIME_WARN_INVALID_TIMESTAMP |
+						MYSQL_TIME_WARN_ZERO_DATE | MYSQL_TIME_NOTE_TRUNCATED | MYSQL_TIME_WARN_ZERO_IN_DATE))
+		{
+			ereport(WARNING, errcode(ERRCODE_INVALID_DATETIME_FORMAT), (errmsg("Data truncated for column.")));
+		}
+	}
+	return false;
+}
+
+bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict, int *is_out_range)
+{
+	if(!is_err && !warn)
+	{
+		return false;
+	}
+
+	if(is_err < 0) /* Returns an error result, the value is not 0. */
+	{
+		if(is_strict)/* strict mode */
+		{
+			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+				ereport(ERROR, (errmsg("Incorrect TIME value: '%s'", str)));
+			if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+				MYSQL_TIME_WARN_ZERO_IN_DATE))
+				ereport(ERROR, (errmsg("Incorrect TIME value: '%s'", str)));
+
+		}
+		else /* non-strict mode */
+		{
+			if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
+				MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+			{
+				ereport(WARNING, (errmsg("Out of range value.")));
+				*is_out_range = true;
+			}
+			if(warn & MYSQL_TIME_WARN_TRUNCATED)
+			{
+				ereport(WARNING, (errmsg("Data truncated for column.")));
+			}
+			return true;
+		}
+
+	}
+	else /* Returns the correct result with a value of 0 */
+	{
+		if (warn & MYSQL_TIME_WARN_TRUNCATED)
+			ereport(WARNING, (errmsg("Data truncated for column.")));
+		if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
+			MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
+		{
+			ereport(WARNING, (errmsg("Out of range value.")));
+			*is_out_range = true;
+		}
+		if ((warn & MYSQL_TIME_NOTE_TRUNCATED) &&
+			!(warn & MYSQL_TIME_WARN_TRUNCATED))
+		{
+			ereport(WARNING, (errmsg("Incorrect TIME value:'%s'", str)));
+		}
+	}
+	return false;
+}
+
+
+#define LLDIV_MIN -1000000000000000000LL
+#define LLDIV_MAX  1000000000000000000LL
+int double2datetimenanosec(double nr, int64 *datetime, fsec_t *fsec)
+{
+	double temp_num;
+	if (nr > LLDIV_MAX)
+	{
+		*datetime = LLDIV_MAX;
+		*fsec = 0;
+		return -1;
+	}
+	else if (nr < LLDIV_MIN)
+	{
+		*datetime = LLDIV_MIN;
+		*fsec = 0;
+		return -1;
+	}
+	/* Truncate fractional part toward zero and store into "quot" */
+	*datetime = temp_num =  (nr > 0 ? floor(nr) : ceil(nr));
+
+	/* Multiply reminder to 10^9 and store into "rem" */
+	*fsec = (int64) rint((nr - temp_num) * 1000000000);
+	/*
+	Sometimes the expression "(double) 0.999999999xxx * (double) 10e9"
+	gives 1,000,000,000 instead of 999,999,999 due to lack of double precision.
+	The callers do not expect lld->rem to be greater than 999,999,999.
+	Let's catch this corner case and put the "nanounit" (e.g. nanosecond)
+	value in ldd->rem back into the valid range.
+	*/
+	if (*fsec > 999999999LL)
+		*fsec = 999999999LL;
+	else if (*fsec < -999999999LL)
+		*fsec = -999999999LL;
+
+	*datetime = (long long int)temp_num;
+	return 0;
+}
+
+void adjust_time_range(struct pg_tm *tm, fsec_t *fsec, int *warning) 
+{
+	int64 hour= (int64) tm->tm_hour + 24LL * tm->tm_mday;
+
+	if (hour <= TIME_MAX_HOUR && 
+		(hour != TIME_MAX_HOUR || tm->tm_min != TIME_MAX_MINUTE ||
+		tm->tm_sec != TIME_MAX_SECOND || !(*fsec)))
+	{
+		return;
+	}
+	else
+	{
+		tm->tm_mday = *fsec= 0;
+		tm->tm_hour = TIME_MAX_HOUR;
+		tm->tm_min = TIME_MAX_MINUTE;
+		tm->tm_sec = TIME_MAX_SECOND;
+
+		*warning|= MYSQL_TIME_WARN_OUT_OF_RANGE;	
+	}
+}
+
+bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
+                                     int nanoseconds, int *warnings)
+{
+	if (nanoseconds < 500)
+		return false;
+
+	*fsec += (nanoseconds + 500) / 1000;
+	if (*fsec < 1000000)
+		goto ret;
+
+	*fsec %= 1000000;
+	if (tm->tm_sec < 59)
+	{
+		tm->tm_sec++;
+		goto ret;
+	}
+
+	tm->tm_sec = 0;
+	if (tm->tm_min < 59)
+	{
+		tm->tm_min++;
+		goto ret;
+	}
+	tm->tm_min= 0;
+	tm->tm_hour++;
+
+ret:
+	/*
+	We can get '838:59:59.000001' at this point, which
+	is bigger than the maximum possible value '838:59:59.000000'.
+	Checking only "hour > 838" is not enough.
+	Do full adjust_time_range().
+	*/
+	adjust_time_range(tm, fsec, warnings);
+	return false;
+}
+
+bool
+mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec)
+{
+	
+	if(*fsec < 500000)
+	{
+		return false; 
+	}
+
+	tm->tm_sec++;
+	if(tm->tm_sec > TIME_MAX_SECOND)
+	{
+		tm->tm_sec = 0;
+		tm->tm_min++;
+	}
+	if(tm->tm_min > TIME_MAX_MINUTE)
+	{
+		tm->tm_min = 0;
+		tm->tm_hour++;
+	}
+	if(tm->tm_hour > TIME_MAX_HOUR)
+	{
+		tm->tm_mday = *fsec= 0;
+		tm->tm_hour = TIME_MAX_HOUR;
+		tm->tm_min = TIME_MAX_MINUTE;
+		tm->tm_sec = TIME_MAX_SECOND;
+		*warn |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return true;
+	}
+	return false;
+}
+
+/*
+ Convert a time string to a MYSQL_TIME struct.
+
+  SYNOPSIS
+   str_to_time()
+   str                  A string in full TIMESTAMP format or
+                        [-] DAYS [H]H:MM:SS, [H]H:MM:SS, [M]M:SS, [H]HMMSS,
+                        [M]MSS or [S]S
+                        There may be an optional [.second_part] after seconds
+   length               Length of str
+   l_time               Store result here
+   status               Conversion status
+
+   status.warning is set to:
+     MYSQL_TIME_WARN_TRUNCATED flag if the input string
+                        was cut during conversion, and/or
+     MYSQL_TIME_WARN_OUT_OF_RANGE flag, if the value is out of range.
+
+   NOTES
+     Because of the extra days argument, this function can only
+     work with times where the time arguments are in the above order.
+
+   RETURN
+     0  ok
+     1  error
+*/
+
+int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
+					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
+{
+	int date[5];
+	int64 value;
+	const char *end=str+length, *end_of_days;
+	bool found_days,found_hours;
+	uint32 state;
+
+	*neg = 0;
+
+	/* Skip space at start */
+	for (; str != end && isspace((unsigned char)*str) ; str++)
+		length--;
+
+	if (str != end && *str == '-')
+	{
+		*neg=1;
+		str++;
+		length--;
+	}
+	if (str == end)
+		return -1;
+
+	/* Check first if this is a full TIMESTAMP */
+	if (length >= 12)
+	{
+		int			fsec_len;
+		/* Probably full timestamp */
+		(void) mystr_to_datetime(str, strlen(str), tm, (TIME_FUZZY_DATE | TIME_DATETIME_ONLY),
+								fsec, ftype, warn, nanoseconds, &fsec_len);
+		if (*ftype >= MYSQL_TIMESTAMP_ERROR)
+		{	
+			return *ftype == MYSQL_TIMESTAMP_ERROR ? -1 : 0;
+		}
+		*warn = 0;
+	}
+
+	/* Not a timestamp. Try to get this as a DAYS_TO_SECOND string */
+	for (value=0; str != end && isdigit((unsigned char)*str) ; str++)
+		value=value*10L + (long) (*str - '0');
+
+	if (value > UINT_MAX)
+		return -1;
+
+	/* Skip all space after 'days' */
+	end_of_days= str;
+	for (; str != end && isspace((unsigned char)*str) ; str++)
+		;
+
+	state= 0;
+	found_days=found_hours=0;
+	if ((uint32) (end-str) > 1 && str != end_of_days &&
+		isdigit((unsigned char)*str))
+	{                                             /* Found days part */
+		date[0]= (uint64) value;
+		state= 1;                                   /* Assume next is hours */
+		found_days= 1;
+	}
+	else if ((end-str) > 1 &&  *str == ':' &&
+			isdigit((unsigned char)str[1]))
+	{
+		date[0]= 0;                                 /* Assume we found hours */
+		date[1]= (uint64) value;
+		state=2;
+		found_hours=1;
+		str++;                                      /* skip ':' */
+	}
+	else
+	{
+		/* String given as one number; assume HHMMSS format */
+		date[0]= 0;
+		date[1]= (uint64) (value/10000);
+		date[2]= (uint64) (value/100 % 100);
+		date[3]= (uint64) (value % 100);
+		state=4;
+		goto fractional;
+	}
+
+	/* Read hours, minutes and seconds */
+	for (;;)
+	{
+		for (value=0; str != end && isdigit((unsigned char)*str) ; str++)
+		{
+			value=value*10L + (long) (*str - '0');
+		}
+		date[state++]= (uint64) value;
+
+		if (state == 4 || (end-str) < 2 || *str != ':' ||
+			!isdigit((unsigned char)str[1]))
+			break;
+		str++;                                      /* Skip time_separator (':') */
+	}
+
+	if (state != 4)
+	{                                             /* Not HH:MM:SS */
+		/* Fix the date to assume that seconds was given */
+		if (!found_hours && !found_days)
+		{
+			size_t len= sizeof(long) * (state - 1);
+			memmove((unsigned char*) (date+4) - len, (unsigned char*) (date+state) - len, len);
+			memset(date, 0, sizeof(long)*(4-state));
+		}
+		else
+			memset((date+state), 0, sizeof(long)*(4-state));
+	}
+
+fractional:
+	/* Get fractional second part */
+	if ((end-str) >= 2 && *str == '.' && isdigit((unsigned char)str[1]))
+	{
+		int field_length= 5;
+		str++; value=(uint32) (unsigned char) (*str - '0');
+		while (++str != end && isdigit((unsigned char)*str))
+		{
+			if (field_length-- > 0)
+			value= value*10 + (uint32) (unsigned char) (*str - '0');
+		}
+		if (field_length >= 0)
+		{
+			*fsec= DATETIME_MAX_DECIMALS - field_length;
+			if (field_length > 0)
+				value*= (long) CalmicroSecondsPower( field_length);
+		}
+		else
+		{
+			/* Scan digits left after microseconds */
+			*fsec= 6;
+			*nanoseconds= 100 * (int) (str[-1] - '0');
+			for ( ; str != end && isdigit((unsigned char)*str); str++)
+			{ }
+		}
+		date[4]= (uint64) value;
+	}
+	else if ((end - str) == 1 && *str == '.')
+	{
+		str++;
+		date[4]= 0;
+	}
+	else
+		date[4]=0;
+
+	/* Check for exponent part: E<gigit> | E<sign><digit> */
+	/* (may occur as result of %g formatting of time value) */
+	if ((end - str) > 1 &&
+		(*str == 'e' || *str == 'E') &&
+		(isdigit((unsigned char)str[1]) ||
+		((str[1] == '-' || str[1] == '+') &&
+		(end - str) > 2 && isdigit((unsigned char)str[2]))))
+		return -1;
+
+	if (internal_format_positions[7] != 255)
+	{
+		/* Read a possible AM/PM */
+		while (str != end && isspace((unsigned char)*str))
+			str++;
+		if (str+2 <= end && (str[1] == 'M' || str[1] == 'm'))
+		{
+			if (str[0] == 'p' || str[0] == 'P')
+			{
+			str+= 2;
+			date[1]= date[1]%12 + 12;
+			}
+			else if (str[0] == 'a' || str[0] == 'A')
+			str+=2;
+		}
+	}
+
+	/* Integer overflow checks */
+	if (date[0] > UINT_MAX || date[1] > UINT_MAX ||
+		date[2] > UINT_MAX || date[3] > UINT_MAX ||
+		date[4] > UINT_MAX)
+		return -1;
+
+	tm->tm_year=         0;                      /* For protocol::store_time */
+	tm->tm_mon=        0;
+
+	tm->tm_mday=  0;
+	tm->tm_hour= date[1] + date[0] * 24; /* Mix days and hours */
+
+	tm->tm_min=       date[2];
+	tm->tm_sec=       date[3];
+	*fsec=  date[4];
+	*ftype= MYSQL_TIMESTAMP_TIME;
+
+	if (tm->tm_min >= 60 || tm->tm_sec >= 60 || *fsec > 999999)
+	{
+		*warn|= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return -1;
+	}
+
+	/* Adjust the value into supported MYSQL_TIME range */
+	adjust_time_range(tm, fsec, warn);
+
+	/* Check if there is garbage at end of the MYSQL_TIME specification */
+	if (str != end)
+	{
+		do
+		{
+			if (!isspace((unsigned char)*str))
+			{
+				*warn|= MYSQL_TIME_WARN_TRUNCATED;
+				break;
+			}
+		} while (++str != end);
+	}
+	return 0;
+}
+
+
+/**
+  Convert number to TIME
+  @param nr            Number to convert.
+  @param OUT ltime     Variable to convert to.
+  @param OUT warnings  Warning vector.
+
+  @retval false OK
+  @retval true No. is out of range
+*/
+int
+mysnumber_to_time(int64 nr, struct pg_tm *tm,  int flag, int *fsec, mysql_dttype *ftype, int *warnings, int *neg)
+{
+	if (nr > TIME_MAX_VALUE)
+	{
+		/* For huge numbers try full DATETIME, like str_to_time does. */
+		if (nr >= 10000000000LL) /* '0001-00-00 00-00-00' */
+		{
+			int warnings_backup= *warnings;
+			if (mysnumber_to_datetime(nr, tm, flag, fsec, ftype, warnings) != -1LL)
+				return 0;
+			*warnings= warnings_backup;
+		}
+		memset(tm, 0, sizeof(*tm));
+		*ftype = MYSQL_TIMESTAMP_TIME;
+		tm->tm_hour = TIME_MAX_HOUR;
+		tm->tm_min = TIME_MAX_MINUTE;
+		tm->tm_sec = TIME_MAX_SECOND;
+		*neg = 0;
+
+		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return -1;
+	}
+	else if (nr < -TIME_MAX_VALUE)
+	{
+		memset(tm, 0, sizeof(*tm));
+		*ftype = MYSQL_TIMESTAMP_TIME;
+		tm->tm_hour = TIME_MAX_HOUR;
+		tm->tm_min = TIME_MAX_MINUTE;
+		tm->tm_sec = TIME_MAX_SECOND;
+		*neg = 1;
+
+		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return -1;
+	}
+	if ((*neg = (nr < 0)))
+		nr= -nr;
+	if (nr % 100 >= 60 || nr / 100 % 100 >= 60) /* Check hours and minutes */
+	{
+		memset(tm, 0, sizeof(*tm));
+		*ftype = MYSQL_TIMESTAMP_TIME;
+		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return -1;
+	}
+
+	*ftype= MYSQL_TIMESTAMP_TIME;
+	tm->tm_year= tm->tm_mon= tm->tm_mday= 0;
+
+	tm->tm_sec=  (int) (nr % 100);
+	tm->tm_min=  (int) (nr / 100) % 100;
+	tm->tm_hour= (int) (nr / 10000);
+	*fsec= 0;
+	return 0;
+}
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
 
 /* DecodeTimezone()
  * Interpret string as a numeric timezone.

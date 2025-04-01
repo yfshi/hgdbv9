@@ -1,7 +1,7 @@
 set enable_seqscan=off;
 
 CREATE TABLE test_timestamp (
-	i timestamp
+	i pg_catalog.timestamp
 );
 
 INSERT INTO test_timestamp VALUES
@@ -15,8 +15,8 @@ INSERT INTO test_timestamp VALUES
 
 CREATE INDEX idx_timestamp ON test_timestamp USING gin (i);
 
-SELECT * FROM test_timestamp WHERE i<'2004-10-26 08:55:08'::timestamp ORDER BY i;
-SELECT * FROM test_timestamp WHERE i<='2004-10-26 08:55:08'::timestamp ORDER BY i;
-SELECT * FROM test_timestamp WHERE i='2004-10-26 08:55:08'::timestamp ORDER BY i;
-SELECT * FROM test_timestamp WHERE i>='2004-10-26 08:55:08'::timestamp ORDER BY i;
-SELECT * FROM test_timestamp WHERE i>'2004-10-26 08:55:08'::timestamp ORDER BY i;
+SELECT * FROM test_timestamp WHERE i<'2004-10-26 08:55:08'::pg_catalog.timestamp ORDER BY i;
+SELECT * FROM test_timestamp WHERE i<='2004-10-26 08:55:08'::pg_catalog.timestamp ORDER BY i;
+SELECT * FROM test_timestamp WHERE i='2004-10-26 08:55:08'::pg_catalog.timestamp ORDER BY i;
+SELECT * FROM test_timestamp WHERE i>='2004-10-26 08:55:08'::pg_catalog.timestamp ORDER BY i;
+SELECT * FROM test_timestamp WHERE i>'2004-10-26 08:55:08'::pg_catalog.timestamp ORDER BY i;

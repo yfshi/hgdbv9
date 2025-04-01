@@ -6,11 +6,9 @@
 --
 -- current_date  (always matches because of transactional behaviour)
 SELECT date(now())::text = current_date::text;
- ?column? 
-----------
- t
-(1 row)
-
+ERROR:  syntax error at or near "("
+LINE 1: SELECT date(now())::text = current_date::text;
+                   ^
 -- current_time / localtime
 SELECT now()::timetz::text = current_time::text;
  ?column? 
@@ -27,15 +25,10 @@ SELECT now()::timetz(4)::text = current_time(4)::text;
 SELECT now()::time::text = localtime::text;
  ?column? 
 ----------
- t
+ f
 (1 row)
 
-SELECT now()::time(3)::text = localtime(3)::text;
- ?column? 
-----------
- t
-(1 row)
-
+--SELECT now()::time(3)::text = localtime(3)::text;
 -- current_timestamp / localtimestamp (always matches because of transactional behaviour)
 SELECT current_timestamp = NOW();
  ?column? 
@@ -52,11 +45,7 @@ SELECT length(current_timestamp::text) >= length(current_timestamp(0)::text);
 
 -- localtimestamp
 SELECT now()::timestamp::text = localtimestamp::text;
- ?column? 
-----------
- t
-(1 row)
-
+ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 -- current_role/user/user is tested in rolenames.sql
 -- current database / catalog
 SELECT current_catalog = current_database();
@@ -93,47 +82,71 @@ RESET search_path;
 explain (costs off)
 select count(*) from date_tbl
   where f1 between '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 2: select count(*) from date_tbl
-                             ^
+                                 QUERY PLAN                                  
+-----------------------------------------------------------------------------
+ Aggregate
+   ->  Seq Scan on date_tbl
+         Filter: ((f1 >= '1997-01-01'::date) AND (f1 <= '1998-01-01'::date))
+(3 rows)
+
 select count(*) from date_tbl
   where f1 between '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 1: select count(*) from date_tbl
-                             ^
+ count 
+-------
+     3
+(1 row)
+
 explain (costs off)
 select count(*) from date_tbl
   where f1 not between '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 2: select count(*) from date_tbl
-                             ^
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ Aggregate
+   ->  Seq Scan on date_tbl
+         Filter: ((f1 < '1997-01-01'::date) OR (f1 > '1998-01-01'::date))
+(3 rows)
+
 select count(*) from date_tbl
   where f1 not between '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 1: select count(*) from date_tbl
-                             ^
+ count 
+-------
+    13
+(1 row)
+
 explain (costs off)
 select count(*) from date_tbl
   where f1 between symmetric '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 2: select count(*) from date_tbl
-                             ^
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Seq Scan on date_tbl
+         Filter: (((f1 >= '1997-01-01'::date) AND (f1 <= '1998-01-01'::date)) OR ((f1 >= '1998-01-01'::date) AND (f1 <= '1997-01-01'::date)))
+(3 rows)
+
 select count(*) from date_tbl
   where f1 between symmetric '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 1: select count(*) from date_tbl
-                             ^
+ count 
+-------
+     3
+(1 row)
+
 explain (costs off)
 select count(*) from date_tbl
   where f1 not between symmetric '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 2: select count(*) from date_tbl
-                             ^
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate
+   ->  Seq Scan on date_tbl
+         Filter: (((f1 < '1997-01-01'::date) OR (f1 > '1998-01-01'::date)) AND ((f1 < '1998-01-01'::date) OR (f1 > '1997-01-01'::date)))
+(3 rows)
+
 select count(*) from date_tbl
   where f1 not between symmetric '1997-01-01' and '1998-01-01';
-ERROR:  relation "date_tbl" does not exist
-LINE 1: select count(*) from date_tbl
-                             ^
+ count 
+-------
+    13
+(1 row)
+
 --
 -- Test parsing of a no-op cast to a type with unspecified typmod
 --

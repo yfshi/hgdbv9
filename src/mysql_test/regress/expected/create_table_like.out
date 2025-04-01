@@ -8,34 +8,36 @@ CREATE TABLE inhx (xx text DEFAULT 'text');
  */
 CREATE TABLE ctla (aa TEXT);
 CREATE TABLE ctlb (bb TEXT) INHERITS (ctla);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE foo (LIKE nonexistent);
 ERROR:  relation "nonexistent" does not exist
 LINE 1: CREATE TABLE foo (LIKE nonexistent);
                                ^
 CREATE TABLE inhe (ee text, LIKE inhx) inherits (ctlb);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO inhe VALUES ('ee-col1', 'ee-col2', DEFAULT, 'ee-col4');
+ERROR:  relation "inhe" does not exist
+LINE 1: INSERT INTO inhe VALUES ('ee-col1', 'ee-col2', DEFAULT, 'ee-...
+                    ^
 SELECT * FROM inhe; /* Columns aa, bb, xx value NULL, ee */
-   aa    |   bb    | ee |   xx    
----------+---------+----+---------
- ee-col1 | ee-col2 |    | ee-col4
-(1 row)
-
+ERROR:  relation "inhe" does not exist
+LINE 1: SELECT * FROM inhe;
+                      ^
 SELECT * FROM inhx; /* Empty set since LIKE inherits structure only */
  xx 
 ----
 (0 rows)
 
 SELECT * FROM ctlb; /* Has ee entry */
-   aa    |   bb    
----------+---------
- ee-col1 | ee-col2
-(1 row)
-
+ERROR:  relation "ctlb" does not exist
+LINE 2: SELECT * FROM ctlb;
+                      ^
 SELECT * FROM ctla; /* Has ee entry */
-   aa    
----------
- ee-col1
-(1 row)
+ aa 
+----
+(0 rows)
 
 CREATE TABLE inhf (LIKE inhx, LIKE inhx); /* Throw error */
 ERROR:  column "xx" specified more than once
@@ -243,24 +245,9 @@ CREATE TABLE test_like_5x (p int CHECK (p > 0),
    q int GENERATED ALWAYS AS (p * 2) STORED);
 CREATE TABLE test_like_5c (LIKE test_like_4 INCLUDING ALL)
   INHERITS (test_like_5, test_like_5x);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d test_like_5c
-                         Table "public.test_like_5c"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
- x      | point   |           |          | 
- y      | point   |           |          | 
- z      | point   |           |          | 
- p      | integer |           |          | 
- q      | integer |           |          | generated always as (p * 2) stored
- b      | integer |           |          | 42
- c      | integer |           |          | generated always as (a * 2) stored
- a      | integer |           |          | 
-Check constraints:
-    "test_like_4_a_check" CHECK (a > 0)
-    "test_like_5x_p_check" CHECK (p > 0)
-Inherits: test_like_5,
-          test_like_5x
-
 -- Test updating of column numbers in statistics expressions (bug #18468)
 CREATE TABLE test_like_6 (a int, c text, b text);
 CREATE STATISTICS ext_stat ON (a || b) FROM test_like_6;
@@ -277,6 +264,7 @@ Statistics objects:
 
 DROP TABLE test_like_4, test_like_4a, test_like_4b, test_like_4c, test_like_4d;
 DROP TABLE test_like_5, test_like_5x, test_like_5c;
+ERROR:  table "test_like_5c" does not exist
 DROP TABLE test_like_6, test_like_6c;
 CREATE TABLE inhg (x text, LIKE inhx INCLUDING INDEXES, y text); /* copies indexes */
 INSERT INTO inhg VALUES (5, 10);
@@ -359,64 +347,25 @@ CREATE TABLE ctlt12_comments (LIKE ctlt1 INCLUDING COMMENTS, LIKE ctlt2 INCLUDIN
  c      | text |           |          |         | extended |              | C
 
 CREATE TABLE ctlt1_inh (LIKE ctlt1 INCLUDING CONSTRAINTS INCLUDING COMMENTS) INHERITS (ctlt1);
-NOTICE:  merging column "a" with inherited definition
-NOTICE:  merging column "b" with inherited definition
-NOTICE:  merging constraint "ctlt1_a_check" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d+ ctlt1_inh
-                                Table "public.ctlt1_inh"
- Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+------+-----------+----------+---------+----------+--------------+-------------
- a      | text |           | not null |         | main     |              | A
- b      | text |           |          |         | extended |              | B
-Check constraints:
-    "ctlt1_a_check" CHECK (length(a) > 2)
-Inherits: ctlt1
-
 SELECT description FROM pg_description, pg_constraint c WHERE classoid = 'pg_constraint'::regclass AND objoid = c.oid AND c.conrelid = 'ctlt1_inh'::regclass;
- description 
--------------
- t1_a_check
-(1 row)
-
+ERROR:  relation "ctlt1_inh" does not exist
+LINE 1: ...nt'::regclass AND objoid = c.oid AND c.conrelid = 'ctlt1_inh...
+                                                             ^
 CREATE TABLE ctlt13_inh () INHERITS (ctlt1, ctlt3);
-NOTICE:  merging multiple inherited definitions of column "a"
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d+ ctlt13_inh
-                               Table "public.ctlt13_inh"
- Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+------+-----------+----------+---------+----------+--------------+-------------
- a      | text |           | not null |         | main     |              | 
- b      | text |           |          |         | extended |              | 
- c      | text |           |          |         | external |              | 
-Check constraints:
-    "ctlt1_a_check" CHECK (length(a) > 2)
-    "ctlt3_a_check" CHECK (length(a) < 5)
-    "ctlt3_c_check" CHECK (length(c) < 7)
-Inherits: ctlt1,
-          ctlt3
-
 CREATE TABLE ctlt13_like (LIKE ctlt3 INCLUDING CONSTRAINTS INCLUDING INDEXES INCLUDING COMMENTS INCLUDING STORAGE) INHERITS (ctlt1);
-NOTICE:  merging column "a" with inherited definition
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 \d+ ctlt13_like
-                               Table "public.ctlt13_like"
- Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
---------+------+-----------+----------+---------+----------+--------------+-------------
- a      | text |           | not null |         | main     |              | A3
- b      | text |           |          |         | extended |              | 
- c      | text |           |          |         | external |              | C
-Indexes:
-    "ctlt13_like_expr_idx" btree ((a || c))
-Check constraints:
-    "ctlt1_a_check" CHECK (length(a) > 2)
-    "ctlt3_a_check" CHECK (length(a) < 5)
-    "ctlt3_c_check" CHECK (length(c) < 7)
-Inherits: ctlt1
-
 SELECT description FROM pg_description, pg_constraint c WHERE classoid = 'pg_constraint'::regclass AND objoid = c.oid AND c.conrelid = 'ctlt13_like'::regclass;
- description 
--------------
- t3_a_check
-(1 row)
-
+ERROR:  relation "ctlt13_like" does not exist
+LINE 1: ...nt'::regclass AND objoid = c.oid AND c.conrelid = 'ctlt13_li...
+                                                             ^
 CREATE TABLE ctlt_all (LIKE ctlt1 INCLUDING ALL);
 \d+ ctlt_all
                                 Table "public.ctlt_all"
@@ -449,13 +398,11 @@ SELECT s.stxname, objsubid, description FROM pg_description, pg_statistic_ext s 
 (2 rows)
 
 CREATE TABLE inh_error1 () INHERITS (ctlt1, ctlt4);
-NOTICE:  merging multiple inherited definitions of column "a"
-ERROR:  inherited column "a" has a storage parameter conflict
-DETAIL:  MAIN versus EXTENDED
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE inh_error2 (LIKE ctlt4 INCLUDING STORAGE) INHERITS (ctlt1);
-NOTICE:  merging column "a" with inherited definition
-ERROR:  column "a" has a storage parameter conflict
-DETAIL:  MAIN versus EXTENDED
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 -- Check that LIKE isn't confused by a system catalog of the same name
 CREATE TABLE pg_attrdef (LIKE ctlt1 INCLUDING ALL);
 \d+ public.pg_attrdef
@@ -498,7 +445,7 @@ Statistics objects:
 
 ROLLBACK;
 DROP TABLE ctlt1, ctlt2, ctlt3, ctlt4, ctlt12_storage, ctlt12_comments, ctlt1_inh, ctlt13_inh, ctlt13_like, ctlt_all, ctla, ctlb CASCADE;
-NOTICE:  drop cascades to table inhe
+ERROR:  table "ctlt1_inh" does not exist
 -- LIKE must respect NO INHERIT property of constraints
 CREATE TABLE noinh_con_copy (a int CHECK (a > 0) NO INHERIT);
 CREATE TABLE noinh_con_copy1 (LIKE noinh_con_copy INCLUDING CONSTRAINTS);
@@ -517,6 +464,7 @@ ERROR:  cannot add NO INHERIT constraint to partitioned table "noinh_con_copy1_p
 DROP TABLE noinh_con_copy, noinh_con_copy1;
 /* LIKE with other relation kinds */
 CREATE TABLE ctlt4 (a int, b text);
+ERROR:  relation "ctlt4" already exists
 CREATE SEQUENCE ctlseq1;
 CREATE TABLE ctlt10 (LIKE ctlseq1);  -- fail
 ERROR:  "ctlseq1" is not a table, view, materialized view, composite type, or foreign table

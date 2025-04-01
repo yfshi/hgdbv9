@@ -166,7 +166,7 @@ create table test0(sId int, sName text collate utf8mb4_general_ci);
 create index idx_Text on test0(sname);
 
 --insert data
-insert into test0 select generate_series(1,100000) as i, 'zhangsan'||generate_series(1,100000);
+insert into test0 select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
 insert into test0 values (100001, 'zhangsan99999');
 insert into test0 values (100002, 'ZHANGsan99999');
 

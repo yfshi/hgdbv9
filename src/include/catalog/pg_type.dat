@@ -935,5 +935,60 @@
   typndims => '0', typcollation => '0'},
 /* End - ReqID:SRS-MYSQL-YEARTYPE */
 
+/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+{ oid => '9281', array_type_oid => '9282', descr => 'MySQL DATE datatype',
+  typname => 'mysdate', typnamespace => 'ivymy', typlen => '4', typbyval => 't',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i' },
+/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+{ oid => '9283', array_type_oid => '9284', descr => 'MySQL DATETIME datatype',
+  typname => 'mysdatetime', typnamespace => 'ivymy', typlen => '8', typbyval => 't',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'd' },
+{ oid => '9285', array_type_oid => '9286', descr => 'datetime(decimal):MySQL DATETIME datatype',
+  typname => 'mysdatetimes', typnamespace => 'ivymy', typlen => '-1', typbyval => 'f',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage =>'m' },
+/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+{ oid => '9287', array_type_oid => '9288', descr => 'MySQL TIMESTAMP datatype',
+  typname => 'mystimestamp', typnamespace => 'ivymy', typlen => '8', typbyval => 't',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'd' },
+{ oid => '9289', array_type_oid => '9290', descr => 'timestamp(decimal):MySQL TIMESTAMP datatype',
+  typname => 'mystimestamps', typnamespace => 'ivymy', typlen => '-1', typbyval => 'f',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage =>'m'},
+/* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
+{ oid => '9291', array_type_oid => '9292', descr => 'MySQL TIME datatype',
+  typname => 'mystime', typnamespace => 'ivymy', typlen => '8', typbyval => 't',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'd' },
+{ oid => '9293', array_type_oid => '9294', descr => 'MySQL TIME(decimal) datatype',
+  typname => 'mystimes', typnamespace => 'ivymy', typlen => '-1', typbyval => 'f',
+  typcategory => 'D', typinput => '-', typoutput => '-',
+  typreceive => '-', typsend => '-',
+  typmodin => '-', typmodout => '-',
+  typalign => 'i', typstorage =>'m' },
+/* End - ReqID:SRS-MYSQL-TIMETYPE */
+
 /*END MySQL Compatibility Metadatas*/
+
 ]

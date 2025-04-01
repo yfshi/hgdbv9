@@ -1395,15 +1395,23 @@ begin;
 create function nochange(int) returns int
   as 'select $1 limit 1' language sql stable;
 declare c cursor for select * from int8_tbl limit nochange(3);
-ERROR:  relation "int8_tbl" does not exist
-LINE 1: declare c cursor for select * from int8_tbl limit nochange(3...
-                                           ^
 fetch all from c;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+        q1        |        q2        
+------------------+------------------
+              123 |              456
+              123 | 4567890123456789
+ 4567890123456789 |              123
+(3 rows)
+
 move backward all in c;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
 fetch all from c;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+        q1        |        q2        
+------------------+------------------
+              123 |              456
+              123 | 4567890123456789
+ 4567890123456789 |              123
+(3 rows)
+
 rollback;
 -- Check handling of non-backwards-scan-capable plans with scroll cursors
 begin;

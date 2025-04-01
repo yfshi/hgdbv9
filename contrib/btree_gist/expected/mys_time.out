@@ -1,5 +1,5 @@
 -- time check
-CREATE TABLE timetmp (a time);
+CREATE TABLE timetmp (a pg_catalog.time);
 \copy timetmp from 'data/time.data'
 SET enable_seqscan=on;
 SELECT count(*) FROM timetmp WHERE a <  '10:57:11';
@@ -42,31 +42,31 @@ SELECT a, a <-> '10:57:11' FROM timetmp ORDER BY a <-> '10:57:11' LIMIT 3;
 
 CREATE INDEX timeidx ON timetmp USING gist ( a );
 SET enable_seqscan=off;
-SELECT count(*) FROM timetmp WHERE a <  '10:57:11'::time;
+SELECT count(*) FROM timetmp WHERE a <  '10:57:11'::pg_catalog.time;
  count 
 -------
    251
 (1 row)
 
-SELECT count(*) FROM timetmp WHERE a <= '10:57:11'::time;
+SELECT count(*) FROM timetmp WHERE a <= '10:57:11'::pg_catalog.time;
  count 
 -------
    252
 (1 row)
 
-SELECT count(*) FROM timetmp WHERE a  = '10:57:11'::time;
+SELECT count(*) FROM timetmp WHERE a  = '10:57:11'::pg_catalog.time;
  count 
 -------
      1
 (1 row)
 
-SELECT count(*) FROM timetmp WHERE a >= '10:57:11'::time;
+SELECT count(*) FROM timetmp WHERE a >= '10:57:11'::pg_catalog.time;
  count 
 -------
    293
 (1 row)
 
-SELECT count(*) FROM timetmp WHERE a >  '10:57:11'::time;
+SELECT count(*) FROM timetmp WHERE a >  '10:57:11'::pg_catalog.time;
  count 
 -------
    292

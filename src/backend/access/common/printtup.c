@@ -371,8 +371,15 @@ printtup(TupleTableSlot *slot, DestReceiver *self)
 				outputstr = OutputFunctionCall(&thisState->finfo, attr);
 			}
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
-
-			pq_sendcountedtext(buf, outputstr, strlen(outputstr), false);
+			/* Begin - ReqID:SRS-MYSQL-DATETYPE */
+			if(outputstr == NULL)
+			{
+				pq_sendint32(buf, -1);
+				continue;
+			}
+			/* End - ReqID:SRS-MYSQL-DATETYPE */
+			else
+				pq_sendcountedtext(buf, outputstr, strlen(outputstr), false);
 		}
 		else
 		{

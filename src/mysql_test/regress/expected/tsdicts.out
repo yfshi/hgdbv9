@@ -686,7 +686,6 @@ CREATE TEXT SEARCH DICTIONARY tsdict_case
 	"DictFile" = ispell_sample,
 	"AffFile" = ispell_sample
 );
-ERROR:  unrecognized Ispell parameter: "DictFile"
 -- Test grammar for configurations
 CREATE TEXT SEARCH CONFIGURATION dummy_tst (COPY=english);
 -- Overriden mapping change with duplicated tokens.

@@ -1180,14 +1180,18 @@ SELECT * FROM uctest;
 DELETE FROM uctest WHERE f1 = 10;  -- restore test table state
 -- Check inheritance cases
 CREATE TEMP TABLE ucchild () inherits (uctest);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO ucchild values(100, 'hundred');
+ERROR:  relation "ucchild" does not exist
+LINE 1: INSERT INTO ucchild values(100, 'hundred');
+                    ^
 SELECT * FROM uctest;
- f1  |   f2    
------+---------
-   3 | three
-   8 | one
- 100 | hundred
-(3 rows)
+ f1 |  f2   
+----+-------
+  3 | three
+  8 | one
+(2 rows)
 
 BEGIN;
 DECLARE c1 CURSOR FOR SELECT * FROM uctest FOR UPDATE;
@@ -1206,25 +1210,21 @@ FETCH 1 FROM c1;
 
 UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;
 FETCH 1 FROM c1;
- f1  |   f2    
------+---------
- 100 | hundred
-(1 row)
-
-UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;
-FETCH 1 FROM c1;
  f1 | f2 
 ----+----
 (0 rows)
 
+UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;
+ERROR:  cursor "c1" is not positioned on a row
+FETCH 1 FROM c1;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
 SELECT * FROM uctest;
- f1  |   f2    
------+---------
-  13 | three
-  18 | one
- 110 | hundred
-(3 rows)
+ f1 |  f2   
+----+-------
+  3 | three
+  8 | one
+(2 rows)
 
 -- Can update from a self-join, but only if FOR UPDATE says which to use
 BEGIN;
@@ -1232,7 +1232,7 @@ DECLARE c1 CURSOR FOR SELECT * FROM uctest a, uctest b WHERE a.f1 = b.f1 + 5;
 FETCH 1 FROM c1;
  f1 | f2  | f1 |  f2   
 ----+-----+----+-------
- 18 | one | 13 | three
+  8 | one |  3 | three
 (1 row)
 
 UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;  -- fail
@@ -1243,7 +1243,7 @@ DECLARE c1 CURSOR FOR SELECT * FROM uctest a, uctest b WHERE a.f1 = b.f1 + 5 FOR
 FETCH 1 FROM c1;
  f1 | f2  | f1 |  f2   
 ----+-----+----+-------
- 18 | one | 13 | three
+  8 | one |  3 | three
 (1 row)
 
 UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;  -- fail
@@ -1254,17 +1254,16 @@ DECLARE c1 CURSOR FOR SELECT * FROM uctest a, uctest b WHERE a.f1 = b.f1 + 5 FOR
 FETCH 1 FROM c1;
  f1 | f2  | f1 |  f2   
 ----+-----+----+-------
- 18 | one | 13 | three
+  8 | one |  3 | three
 (1 row)
 
 UPDATE uctest SET f1 = f1 + 10 WHERE CURRENT OF c1;
 SELECT * FROM uctest;
- f1  |   f2    
------+---------
-  13 | three
-  28 | one
- 110 | hundred
-(3 rows)
+ f1 |  f2   
+----+-------
+  3 | three
+ 18 | one
+(2 rows)
 
 ROLLBACK;
 -- Check various error cases
@@ -1312,7 +1311,7 @@ DECLARE c1 CURSOR FOR SELECT * FROM ucview;
 FETCH FROM c1;
  f1 |  f2   
 ----+-------
- 13 | three
+  3 | three
 (1 row)
 
 DELETE FROM ucview WHERE CURRENT OF c1; -- fail, views not supported
@@ -1347,70 +1346,33 @@ ROLLBACK;
 BEGIN;
 CREATE TABLE current_check (currentid int, payload text);
 CREATE TABLE current_check_1 () INHERITS (current_check);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 CREATE TABLE current_check_2 () INHERITS (current_check);
+ERROR:  CREATE TABLE ... INHERITS is not yet supported.
+HINT:  Please note whether it's compatible with MySQL.
 INSERT INTO current_check_1 SELECT i, 'p' || i FROM generate_series(1,9) i;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 INSERT INTO current_check_2 SELECT i, 'P' || i FROM generate_series(10,19) i;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DECLARE c1 SCROLL CURSOR FOR SELECT * FROM current_check;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 -- This tests the fetch-backwards code path
 FETCH ABSOLUTE 12 FROM c1;
- currentid | payload 
------------+---------
-        12 | P12
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ABSOLUTE 8 FROM c1;
- currentid | payload 
------------+---------
-         8 | p8
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DELETE FROM current_check WHERE CURRENT OF c1 RETURNING *;
- currentid | payload 
------------+---------
-         8 | p8
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 -- This tests the ExecutorRewind code path
 FETCH ABSOLUTE 13 FROM c1;
- currentid | payload 
------------+---------
-        13 | P13
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 FETCH ABSOLUTE 1 FROM c1;
- currentid | payload 
------------+---------
-         1 | p1
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 DELETE FROM current_check WHERE CURRENT OF c1 RETURNING *;
- currentid | payload 
------------+---------
-         1 | p1
-(1 row)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SELECT * FROM current_check;
- currentid | payload 
------------+---------
-         2 | p2
-         3 | p3
-         4 | p4
-         5 | p5
-         6 | p6
-         7 | p7
-         9 | p9
-        10 | P10
-        11 | P11
-        12 | P12
-        13 | P13
-        14 | P14
-        15 | P15
-        16 | P16
-        17 | P17
-        18 | P18
-        19 | P19
-(17 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 -- Make sure snapshot management works okay, per bug report in
 -- 235395b90909301035v7228ce63q392931f15aa74b31@mail.gmail.com
@@ -1433,23 +1395,15 @@ begin;
 create function nochange(int) returns int
   as 'select $1 limit 1' language sql stable;
 declare c cursor for select * from int8_tbl limit nochange(3);
+ERROR:  relation "int8_tbl" does not exist
+LINE 1: declare c cursor for select * from int8_tbl limit nochange(3...
+                                           ^
 fetch all from c;
-        q1        |        q2        
-------------------+------------------
-              123 |              456
-              123 | 4567890123456789
- 4567890123456789 |              123
-(3 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 move backward all in c;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 fetch all from c;
-        q1        |        q2        
-------------------+------------------
-              123 |              456
-              123 | 4567890123456789
- 4567890123456789 |              123
-(3 rows)
-
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback;
 -- Check handling of non-backwards-scan-capable plans with scroll cursors
 begin;
