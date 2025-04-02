@@ -1873,13 +1873,6 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 
 			Assert(attribute->expr == NULL);
 			atttuple = SearchSysCacheAttName(relId, attribute->name);
-			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (!HeapTupleIsValid(atttuple))
-			{
-				if (mysql_switch_hook && mysql_get_attName_hook && mysql_switch_hook())
-					atttuple = mysql_get_attName_hook(relId, attribute->name);
-			}
-			/* End - ReqID:SRS-MYSQL-CASE */
 			if (!HeapTupleIsValid(atttuple))
 			{
 				/* difference in error message spellings is historical */

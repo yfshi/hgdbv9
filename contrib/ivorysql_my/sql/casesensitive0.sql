@@ -440,6 +440,61 @@ DROP SCHEMA Sc cascade;
 DROP SCHEMA SC cascade;
 
 
+-- bug:z4315
+-- ALTER TABLE TB RENAME COLUMN ID/Id/iD/id TO ID1_1/ Id2_2/ iD3_3/ id4_4;
+create table TB(ID int, name varchar(30));
+insert into TB values (1, 'zhangsan'), (2, 'lisi');
+\d TB
+ALTER TABLE TB RENAME COLUMN ID TO ID1_1;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+insert into TB values (1, 'zhangsan'), (2, 'lisi');
+\d TB
+ALTER TABLE TB RENAME COLUMN Id TO Id2_2;
+\d TB
+ALTER TABLE TB RENAME COLUMN ID2_2 TO iD3_3;
+\d TB
+ALTER TABLE TB RENAME COLUMN id3_3 TO id4_4;
+\d TB
+drop table TB;
+
+
+
+-- bug:z4316
+create table TB(ID int, name varchar(30));
+insert into TB values (1, 'zhangsan'), (2, 'lisi');
+ALTER TABLE TB DROP COLUMN ID;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB DROP COLUMN Id;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB DROP COLUMN iD;
+\d TB
+drop table TB;
+
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB DROP COLUMN id;
+\d TB
+drop table TB;
+
+
+--zijixz
+create table TB(ID int, name varchar(30));
+\d TB
+ALTER TABLE TB add COLUMN IDD text, add COLUMN aaa text;
+\d TB
+drop table TB;
+
 reset ivorysql.compatible_mode;
 reset mysql.enable_case_switch;
 reset lower_case_table_names;

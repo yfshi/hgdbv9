@@ -354,9 +354,23 @@ mysql_SearchAttName(Oid relid, char *attname)
 	int			attno;
 	bool		nameexist = false;
 	char	   *realattname;
+	HeapTuple	classTuple; /* BUG:Z4315 Z4316 */
 
 	if (!OidIsValid(relid) || attname == NULL)
 		return NULL;
+
+	/* Begin - BUG:Z4315 Z4316 */
+	classTuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(classTuple))
+		return NULL;
+	else if (((Form_pg_class) GETSTRUCT(classTuple))->relkind == RELKIND_COMPOSITE_TYPE)
+	{
+		ReleaseSysCache(classTuple);
+		return NULL;
+	}
+	else
+		ReleaseSysCache(classTuple);
+	/* Begin - BUG:Z4315 Z4316 */
 
 	rel = table_open(relid, RowExclusiveLock);
 	tupDesc = RelationGetDescr(rel);
@@ -377,7 +391,27 @@ mysql_SearchAttName(Oid relid, char *attname)
 	table_close(rel, RowExclusiveLock);
 
 	if (nameexist)
-		return SearchSysCacheAttName(relid, realattname);
+	{
+		/* Begin - BUG:Z4315 Z4316 */
+		HeapTuple	tuple;
+
+		tuple = SearchSysCache2(ATTNAME,
+								ObjectIdGetDatum(relid),
+								CStringGetDatum(realattname));
+		if (!HeapTupleIsValid(tuple))
+		{
+			return NULL;
+		}
+		else if (((Form_pg_attribute) GETSTRUCT(tuple))->attisdropped)
+		{
+			ReleaseSysCache(tuple);
+			return NULL;
+		}
+		else
+			return tuple;
+
+		/* End - BUG:Z4315 Z4316 */
+	}
 
 	return NULL;
 }
