@@ -2535,9 +2535,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2547,9 +2545,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2559,9 +2555,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2571,9 +2565,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2583,9 +2575,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2595,9 +2585,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2607,9 +2595,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -2619,9 +2605,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -3884,57 +3868,33 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdate_like,
 	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mysdate
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdate_like,
 	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdate_like,
 	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdate_notlike,
 	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mysdate
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdate_notlike,
 	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdate_notlike,
 	leftarg = ivymy.mysdate,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 /*
@@ -5838,9 +5798,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5850,9 +5808,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5862,9 +5818,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5874,9 +5828,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5886,9 +5838,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5898,9 +5848,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5910,9 +5858,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -5922,9 +5868,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -7188,57 +7132,33 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetime_like,
 	leftarg = ivymy.mysdatetime,
-	rightarg = ivymy.mysdatetime,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mysdatetime
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetime_like,
 	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetime_like,
 	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetime_notlike,
 	leftarg = ivymy.mysdatetime,
-	rightarg = ivymy.mysdatetime,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mysdatetime
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetime_notlike,
 	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetime_notlike,
 	leftarg = ivymy.mysdatetime,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 /*
  * B-tree Index Support
@@ -9203,9 +9123,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9215,9 +9133,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9227,9 +9143,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9239,9 +9153,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9251,9 +9163,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9263,9 +9173,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9275,9 +9183,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -9287,9 +9193,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -10571,76 +10475,44 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetimes_like,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = ivymy.mysdatetimes,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mysdatetimes
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetimes_like,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetimes_like,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mysdatetimes_like,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.numeric,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.numeric
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetimes_notlike,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = ivymy.mysdatetimes,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mysdatetimes
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetimes_notlike,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetimes_notlike,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mysdatetimes_notlike,
 	leftarg = ivymy.mysdatetimes,
-	rightarg = pg_catalog.numeric,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.numeric
 );
 /*
  * B-tree Index Support
@@ -12544,9 +12416,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12556,9 +12426,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12568,9 +12436,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12580,9 +12446,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12592,9 +12456,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12604,9 +12466,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12616,9 +12476,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -12628,9 +12486,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -13894,57 +13750,33 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamp_like,
 	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mystimestamp
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamp_like,
 	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamp_like,
 	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamp_notlike,
 	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mystimestamp
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamp_notlike,
 	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamp_notlike,
 	leftarg = ivymy.mystimestamp,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 /*
  * B-tree Index Support
@@ -15910,9 +15742,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15922,9 +15752,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15934,9 +15762,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15946,9 +15772,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15958,9 +15782,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15970,9 +15792,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15982,9 +15802,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -15994,9 +15812,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -17278,76 +17094,44 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamps_like,
 	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mystimestamps
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamps_like,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamps_like,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimestamps_like,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.numeric,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.numeric
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamps_notlike,
 	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mystimestamps
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamps_notlike,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamps_notlike,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimestamps_notlike,
 	leftarg = ivymy.mystimestamps,
-	rightarg = pg_catalog.numeric,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.numeric
 );
 /*
  * B-tree Index Support
@@ -19279,9 +19063,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19291,9 +19073,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19303,9 +19083,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19315,9 +19093,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19327,9 +19103,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19339,9 +19113,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19351,9 +19123,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -19363,9 +19133,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -20647,75 +20415,43 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystime_like,
 	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mystime
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystime_like,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystime_like,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int4,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int4
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystime_like,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystime_notlike,
 	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mystime
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystime_notlike,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystime_notlike,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int4,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int4
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystime_notlike,
 	leftarg = ivymy.mystime,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 /*
  * B-tree Index Support
@@ -22699,9 +22435,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22711,9 +22445,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22723,9 +22455,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22735,9 +22465,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22747,9 +22475,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22759,9 +22485,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22771,9 +22495,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 CREATE OPERATOR = (
@@ -22783,9 +22505,7 @@ CREATE OPERATOR = (
 	commutator = =,
 	negator = <>,
 	restrict = eqsel,
-	join = eqjoinsel,
-	hashes,
-	merges
+	join = eqjoinsel
 );
 
 ----operator <>
@@ -24085,94 +23805,54 @@ LEAKPROOF;
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimes_like,
 	leftarg = ivymy.mystimes,
-	rightarg = ivymy.mystimes,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = ivymy.mystimes
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimes_like,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.text,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimes_like,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int4,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int4
 );
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimes_like,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int8,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR ~~ (
 	procedure = ivymy.mystimes_like,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.numeric,
-	commutator = ~~,
-	negator   = !~~,
-    RESTRICT  = iclikesel,
-    JOIN      = iclikejoinsel
+	rightarg = pg_catalog.numeric
 );
 
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimes_notlike,
 	leftarg = ivymy.mystimes,
-	rightarg = ivymy.mystimes,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = ivymy.mystimes
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimes_notlike,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.text,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.text
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimes_notlike,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int4,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int4
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimes_notlike,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.int8,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.int8
 );
 CREATE OPERATOR !~~ (
 	procedure = ivymy.mystimes_notlike,
 	leftarg = ivymy.mystimes,
-	rightarg = pg_catalog.numeric,
-	commutator = !~~,
-	negator   = ~~,
-    RESTRICT  = icnlikesel,
-    JOIN      = icnlikejoinsel
+	rightarg = pg_catalog.numeric
 );
 /*
  * B-tree Index Support

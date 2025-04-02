@@ -551,7 +551,7 @@ WHERE condefault AND
 SELECT p1.oid, p1.oprname
 FROM pg_operator as p1
 WHERE ((p1.oprkind != 'b' AND p1.oprkind != 'l') OR
-    p1.oprresult = 0 OR p1.oprcode = 0) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');;
+    p1.oprresult = 0 OR p1.oprcode = 0) ;
 
 -- Look for missing or unwanted operand types
 
@@ -583,8 +583,7 @@ WHERE p1.oprcom = p2.oid AND
      p1.oprleft != p2.oprright OR
      p1.oprright != p2.oprleft OR
      p1.oprresult != p2.oprresult OR
-     p1.oid != p2.oprcom) AND 
-	 p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
+     p1.oid != p2.oprcom);
 
 -- Look for negatory operators that don't agree.
 -- DEFINITIONAL NOTE: If A.oprnegate = B, then both A and B must yield
@@ -645,7 +644,7 @@ FROM pg_operator AS p1
 WHERE p1.oprcanmerge AND NOT EXISTS
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'btree') AND
-         amopopr = p1.oid AND amopstrategy = 3) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
+         amopopr = p1.oid AND amopstrategy = 3);
 
 -- And the converse.
 
@@ -663,7 +662,7 @@ FROM pg_operator AS p1
 WHERE p1.oprcanhash AND NOT EXISTS
   (SELECT 1 FROM pg_amop
    WHERE amopmethod = (SELECT oid FROM pg_am WHERE amname = 'hash') AND
-         amopopr = p1.oid AND amopstrategy = 1) AND p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy');
+         amopopr = p1.oid AND amopstrategy = 1);
 
 -- And the converse.
 
