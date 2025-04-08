@@ -989,10 +989,14 @@ explain (COSTS OFF) select * from tb1 where a = '1004-04-04';
 drop index idx1;
 create index idx_tree on tb1(a);
 vacuum full analyze tb1;
---explain (COSTS OFF) select * from tb1 where a < '1004-04-04';
+set enable_bitmapscan =false;
+set enable_seqscan =false;
+explain (COSTS OFF) select * from tb1 where a < '1004-04-04';
 explain (COSTS OFF) select * from tb1 where a = '1004-04-04';
---explain (COSTS OFF) select * from tb1 where a >= '1004-04-04';
+explain (COSTS OFF) select * from tb1 where a >= '1004-04-04';
 explain (COSTS OFF) select * from tb1 where a > '1104-04-04';
+set enable_seqscan =true;
+set enable_bitmapscan =true;
 drop procedure proc1;
 drop table tb1;
 
