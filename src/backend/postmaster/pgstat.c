@@ -360,6 +360,22 @@ static void pgstat_recv_disconnect(PgStat_MsgDisconnect *msg, int len);
 static void pgstat_recv_replslot(PgStat_MsgReplSlot *msg, int len);
 static void pgstat_recv_tempfile(PgStat_MsgTempFile *msg, int len);
 
+/* Begin - ReqID:SRS-MISC-PDR */
+char * get_pgstat_stat_directory(void);
+void pdr_pgstat_read_db_statsfile(Oid databaseid, HTAB *tabhash, HTAB *funchash, bool permanent);
+
+char * get_pgstat_stat_directory(void)
+{
+	return pgstat_stat_directory;
+}
+
+void pdr_pgstat_read_db_statsfile(Oid databaseid, HTAB *tabhash, HTAB *funchash, bool permanent)
+{
+	return pgstat_read_db_statsfile(databaseid, tabhash, funchash, permanent);
+}
+/* End - ReqID:SRS-MISC-PDR */
+
+
 /* ------------------------------------------------------------
  * Public functions called from postmaster follow
  * ------------------------------------------------------------

@@ -614,6 +614,9 @@ sub GenerateFiles
 		#/* Begin - BUG#Z00005371 */
 		HG_HGDB_VERSION				=> $self->{options}->{hg_hgdb_version},
 		#/* End - BUG#Z00005371 */
+		# Begin - ReqID:SRS-MISC-PDR
+		HG_PLATFORM_STR            => qq{"Uninitialized version string (win32)"},
+		# End - ReqID:SRS-MISC-PDR
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,

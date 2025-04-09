@@ -2772,6 +2772,11 @@ AC_DEFINE_UNQUOTED(PG_VERSION_STR,
                    ["PostgreSQL $PG_VERSION on $host, compiled by $cc_string, `expr $ac_cv_sizeof_void_p \* 8`-bit"],
                    [A string containing the version number, platform, and C compiler])
 
+# ReqID:SRS-MISC-PDR
+AC_DEFINE_UNQUOTED(HG_PLATFORM_STR,
+                   ["`uname -m`"],
+                   [r])
+
 # Supply a numeric version string for use by 3rd party add-ons
 # awk -F is a regex on some platforms, and not on others, so make "." a tab
 [PG_VERSION_NUM="`echo $PG_MAJORVERSION $PG_MINORVERSION |

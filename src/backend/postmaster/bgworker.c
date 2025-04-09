@@ -148,6 +148,38 @@ static const struct
 /* Private functions. */
 static bgworker_main_type LookupBackgroundWorkerFunction(const char *libraryname, const char *funcname);
 
+/* Begin - ReqID:SRS-MISC-PDR */ 
+pid_t get_BackgroundWorkerData_pid_pdr(void);
+pid_t get_BackgroundWorkerData_pid_wait(void);
+
+pid_t get_BackgroundWorkerData_pid_pdr(void)
+{
+	int			i;
+	pid_t		pdrpid = 0;
+	for(i = 0; i < BackgroundWorkerData->total_slots; i++)
+	{
+		if(strcmp(BackgroundWorkerData->slot[i].worker.bgw_name,"performance diagnosis collector")==0)
+		{
+			pdrpid = BackgroundWorkerData->slot[i].pid;
+		}
+	}
+	return pdrpid;
+}
+pid_t get_BackgroundWorkerData_pid_wait(void)
+{
+	int			i;
+	pid_t		pdrpid = 0;
+	for(i = 0; i < BackgroundWorkerData->total_slots; i++)
+	{
+		if(strcmp(BackgroundWorkerData->slot[i].worker.bgw_name,"pg_wait_sampling collector")==0)
+		{
+			pdrpid = BackgroundWorkerData->slot[i].pid;
+		}
+	}
+	return pdrpid;
+}
+/* End - ReqID:SRS-MISC-PDR */
+
 
 /*
  * Calculate shared memory needed.
