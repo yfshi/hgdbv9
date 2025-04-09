@@ -1526,6 +1526,70 @@ _readUpsertExpr(void)
 }
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+static HierarQueryClause *
+_readHierarQueryClause(void)
+{
+	READ_LOCALS(HierarQueryClause);
+
+	READ_NODE_FIELD(start_with);
+	READ_BOOL_FIELD(is_nocycle);
+	READ_NODE_FIELD(connect_by);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+
+static SysConnectPath *
+_readSysConnectPath(void)
+{
+	READ_LOCALS(SysConnectPath);
+
+	READ_NODE_FIELD(colnode);
+	READ_STRING_FIELD(joinOp);
+	READ_STRING_FIELD(alias);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static ConnectByRoot *
+_readConnectByRoot(void)
+{
+	READ_LOCALS(ConnectByRoot);
+
+	READ_NODE_FIELD(colnode);
+	READ_STRING_FIELD(alias);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+
+static ConnectByIsCycle *
+_readConnectByIsCycle(void)
+{
+	READ_LOCALS(ConnectByIsCycle);
+
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+
+static PriorAexpr *
+_readPriorAexpr(void)
+{
+	READ_LOCALS(PriorAexpr);
+
+	READ_NODE_FIELD(arg);
+	READ_LOCATION_FIELD(location);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /*
  *	Stuff from pathnodes.h.
  *
@@ -3251,6 +3315,18 @@ parseNodeString(void)
 	else if (MATCH("UPSERTEXPR", 10))
 		return_value = _readUpsertExpr();
 	/* End - ReqID:SRS-MYSQL-SQL-INSERT */
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	else if (MATCH("HIERARQUERYCLAUSE",  17))
+		return_value = _readHierarQueryClause();
+	else if (MATCH("SYSCONNECTPATH", 14))
+		return_value = _readSysConnectPath();
+	else if (MATCH("CONNECTBYROOT", 13))
+		return_value = _readConnectByRoot();
+	else if (MATCH("CONNECTBYISCYCLE", 16))
+		return_value = _readConnectByIsCycle();
+	else if (MATCH("PRIORAEXPR", 10))
+		return_value = _readPriorAexpr();
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

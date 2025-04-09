@@ -428,6 +428,7 @@ extern bool enable_compatible_const_integer_operator;
 extern bool enable_compatible_numeric_division_result;
 /* End - BUG#Z00001452 */
 
+
 /* Begin - BUG#M0000470: SELECT FOR UPDATE */
 extern PGDLLIMPORT bool allow_forupdate_in_subquery;
 /* End - BUG#M0000470: SELECT FOR UPDATE */
@@ -446,6 +447,11 @@ extern bool enable_store_nullterminator_char;
 /* Begin - BUG#z1616 */
 extern PGDLLIMPORT bool convert_gbk_to_utf8_question_mark;
 /* End - BUG#z1616 */
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+extern bool connect_by_rownum_use_func;
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02

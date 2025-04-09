@@ -160,6 +160,11 @@ typedef struct GroupClause
 #define parser_yyerror(msg)  ora_scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  ora_scanner_errposition(pos, yyscanner)
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+#define parse_string_byposition(startpos, endpos) ora_scanner_str_byposition(startpos, endpos, yyscanner)
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /* Begin - BUG#M0000201: support question marks as binding variables */
 static int questionmarks_count;
 /* End - BUG#M0000201: support question marks as binding variables */
@@ -674,6 +679,14 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 %type <list> jdbc_call_function_parameter_list
 /* End - BUG#M0000201: support question marks as binding variables */
 
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+%type <node> opt_hierarchical_clause hierarchical_clause
+			opt_start_with start_with
+%type <boolean> opt_nocycle
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -729,7 +742,11 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECT /* ReqID:SRS-SQL-DBLINK */ CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
+	CONNECT /* ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	CONNECT_BY_ISCYCLE CONNECT_BY_ROOT
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_SHARD /* ReqID:SRS-MISC-BULKLOAD*/
@@ -793,10 +810,12 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 	SAVEPOINT SCALE SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES	/* ReqID:SRS-SQL-SEQ */
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARD
 	SHARDING /* ReqID:SRS-MISC-BULKLOAD*/ SHARE SHARED /* ReqID:SRS-SQL-DBLINK */ SHOW	/* ReqID:SRS-SQL-SEQ */
+	SIBLINGS /* ReqID:SRS-SQL-HierarchicalQueries */
 	SIMILAR SIMPLE SKIP SKIPBAD /* BUG#Z1616 */ SKIPLIST /* BUG:M0000368*/ SMALLINT SNAPSHOT SOME SPECIFICATION /* ReqID:SRS-SQL-PACKAGE */
 	SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
-	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
+	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC
+	SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TASKID /* ReqID:SRS-MISC-BULKLOAD*/ TEMP TEMPLATE TEMPORARY TEXT_P THEN
 	TIES TIME TIMESTAMP TO TRAILING TRANSACTION TRANSFORM
@@ -920,7 +939,7 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
 %token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P/* BUG#Z375 */ /* Bug#Z485 */
-%token	    CONNECT_TO DATABASE_LINK
+%token	    CONNECT_TO DATABASE_LINK CONNECT_BY /* ReqID:SRS-SQL-HierarchicalQueries */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -954,6 +973,10 @@ static bool getXeFirstEscape(ora_core_yyscan_t yyscanner);
 /* Begin - BUG#M0000307 */
 %nonassoc	DAY_P YEAR_P    /* see param_name */
 /* End - BUG#M0000307 */
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+%nonassoc	NOCYCLE
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 %left		UNION EXCEPT
 %left		INTERSECT
 %left		OR
@@ -14206,7 +14229,7 @@ select_clause:
  */
 simple_select:
 			SELECT opt_all_clause opt_target_list
-			into_clause from_clause where_clause
+			into_clause from_clause where_clause opt_hierarchical_clause
 			group_clause having_clause window_clause
 				{
 					SelectStmt *n = makeNode(SelectStmt);
@@ -14214,14 +14237,17 @@ simple_select:
 					n->intoClause = $4;
 					n->fromClause = $5;
 					n->whereClause = $6;
-					n->groupClause = ($7)->list;
-					n->groupDistinct = ($7)->distinct;
-					n->havingClause = $8;
-					n->windowClause = $9;
+					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+					n->connect_by = (HierarQueryClause *) $7;
+					/* End - ReqID:SRS-SQL-HierarchicalQueries */
+					n->groupClause = ($8)->list;
+					n->groupDistinct = ($8)->distinct;
+					n->havingClause = $9;
+					n->windowClause = $10;
 					$$ = (Node *)n;
 				}
 			| SELECT distinct_clause target_list
-			into_clause from_clause where_clause
+			into_clause from_clause where_clause opt_hierarchical_clause
 			group_clause having_clause window_clause
 				{
 					SelectStmt *n = makeNode(SelectStmt);
@@ -14230,10 +14256,13 @@ simple_select:
 					n->intoClause = $4;
 					n->fromClause = $5;
 					n->whereClause = $6;
-					n->groupClause = ($7)->list;
-					n->groupDistinct = ($7)->distinct;
-					n->havingClause = $8;
-					n->windowClause = $9;
+					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+					n->connect_by = (HierarQueryClause *) $7;
+					/* End - ReqID:SRS-SQL-HierarchicalQueries */
+					n->groupClause = ($8)->list;
+					n->groupDistinct = ($8)->distinct;
+					n->havingClause = $9;
+					n->windowClause = $10;
 					$$ = (Node *)n;
 				}
 			| values_clause							{ $$ = $1; }
@@ -14492,6 +14521,18 @@ opt_sort_clause:
 
 sort_clause:
 			ORDER BY sortby_list					{ $$ = $3; }
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			| ORDER SIBLINGS BY sortby_list
+				{
+					/* we need only set one sort */
+					SortBy *sby = (SortBy *) linitial($4);
+
+					sby->siblings = true;
+					sby->location = @1;
+
+					$$ = $4;
+				}
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		;
 
 sortby_list:
@@ -15381,6 +15422,68 @@ where_or_current_clause:
 				}
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
+
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+/*
+ * start with ...connect by or connect by...start with
+ */
+opt_hierarchical_clause:
+			hierarchical_clause	{ $$ = $1; }
+			| /* empty */ { $$ = NULL; }
+			;
+
+/*
+ * CONNECT is a unreserved_keyword keyword for grant
+ * connect to xxx, if we doesn't use CONNECT_BY to replace it
+ * it will has shift/reduce conflicits
+ */
+hierarchical_clause:
+			start_with CONNECT_BY BY opt_nocycle a_expr
+				{
+					HierarQueryClause *n = makeNode(HierarQueryClause);
+
+					n->start_with = $1;
+					n->is_nocycle = $4;
+					n->connect_by = $5;
+					n->location = @1;
+
+					$$ = (Node *)n;
+				}
+			| CONNECT_BY BY opt_nocycle a_expr opt_start_with
+				{
+					HierarQueryClause *n = makeNode(HierarQueryClause);
+
+					n->start_with = $5;
+					n->is_nocycle = $3;
+					n->connect_by = $4;
+					n->location = @1;
+
+					$$ = (Node *)n;
+				}
+			;
+/*
+ * because we support connect by nocycle nocycle xxx
+ * so nocycle can reduces to a_expr, so if we don't
+ * use %prec, it will has shift/reduce conflicits
+ */
+opt_nocycle:
+		NOCYCLE	{ $$ = true; }
+		|/* EMPTY */	%prec SET { $$ = false; }
+		;
+
+opt_start_with:
+			start_with	{ $$ = $1; }
+			| /* EMPTY */	{ $$ = NULL; }
+			;
+
+start_with:
+			START WITH a_expr
+				{
+					$$ = $3;
+				}
+			;
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 
 OptTableFuncElementList:
@@ -17653,6 +17756,32 @@ a_expr:		c_expr									{ $$ = $1; }
 																		makeStringConst("-inf", @4)), @2);
 				}
 			/* End - BUG:Z093 */
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			| PRIOR a_expr	%prec UMINUS
+				{
+					PriorAexpr *n = makeNode(PriorAexpr);
+
+					if (nodeTag($2) == T_PriorAexpr)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("Specified pseudocolumn or operator not allowed here"),
+								 parser_errposition(@2)));
+					n->arg = $2;
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+			| CONNECT_BY_ROOT a_expr	%prec UMINUS
+				{
+					ConnectByRoot *n = makeNode(ConnectByRoot);
+					n->colnode = $2;
+
+					n->alias = parse_string_byposition(@1, yylloc - 1);
+					n->location = @1;
+					Assert(n->alias != NULL);
+
+					$$ = (Node*) n;
+				}
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		;
 
 /*
@@ -17991,37 +18120,81 @@ func_application: func_name '(' ')'
 func_expr: func_application within_group_clause filter_clause over_clause
 				{
 					FuncCall *n = (FuncCall *) $1;
+					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 					/*
-					 * The order clause for WITHIN GROUP and the one for
-					 * plain-aggregate ORDER BY share a field, so we have to
-					 * check here that at most one is present.  We also check
-					 * for DISTINCT and VARIADIC here to give a better error
-					 * location.  Other consistency checks are deferred to
-					 * parse analysis.
+					 * check wether is a
+					 * sys_connect_by_path function
 					 */
-					if ($2 != NIL)
+					char	*funcname = strVal(llast(n->funcname));
+
+					if (list_length(n->funcname) == 1 &&
+						strcmp(funcname, "sys_connect_by_path") == 0)
 					{
-						if (n->agg_order != NIL)
+						SysConnectPath *sys_conn_path = makeNode(SysConnectPath);
+						A_Const *aconst;
+
+						/* check arguments is valid */
+						if (list_length(n->args) != 2)
 							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("cannot use multiple ORDER BY clauses with WITHIN GROUP"),
-									 parser_errposition(@2)));
-						if (n->agg_distinct)
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("invalid number of arguments for function SYS_CONNECT_BY_PATH"),
+								 parser_errposition(@1)));
+						sys_conn_path->colnode = (Node *) linitial(n->args);
+						/* the second must b a A_Const for string */
+						if (nodeTag(lsecond(n->args)) != T_A_Const)
 							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("cannot use DISTINCT with WITHIN GROUP"),
-									 parser_errposition(@2)));
-						if (n->func_variadic)
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("illegal parameter in SYS_CONNECT_BY_PATH function"),
+								 parser_errposition(@1)));
+						aconst = (A_Const *) lsecond(n->args);
+						if (aconst->val.type != T_String)
 							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("cannot use VARIADIC with WITHIN GROUP"),
-									 parser_errposition(@2)));
-						n->agg_order = $2;
-						n->agg_within_group = true;
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("illegal parameter in SYS_CONNECT_BY_PATH function"),
+								 parser_errposition(@1)));
+						sys_conn_path->joinOp = aconst->val.val.str;
+						sys_conn_path->alias = parse_string_byposition(@1 , yylloc - 1);
+						Assert(sys_conn_path->alias != NULL);
+
+						sys_conn_path->location = @1;
+
+						$$ = (Node*) sys_conn_path;
 					}
-					n->agg_filter = $3;
-					n->over = $4;
-					$$ = (Node *) n;
+					else
+					{
+						/*
+						 * The order clause for WITHIN GROUP and the one for
+						 * plain-aggregate ORDER BY share a field, so we have to
+						 * check here that at most one is present.  We also check
+						 * for DISTINCT and VARIADIC here to give a better error
+						 * location.  Other consistency checks are deferred to
+						 * parse analysis.
+						 */
+						if ($2 != NIL)
+						{
+							if (n->agg_order != NIL)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("cannot use multiple ORDER BY clauses with WITHIN GROUP"),
+										 parser_errposition(@2)));
+							if (n->agg_distinct)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("cannot use DISTINCT with WITHIN GROUP"),
+										 parser_errposition(@2)));
+							if (n->func_variadic)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("cannot use VARIADIC with WITHIN GROUP"),
+										 parser_errposition(@2)));
+							n->agg_order = $2;
+							n->agg_within_group = true;
+						}
+						n->agg_filter = $3;
+						n->over = $4;
+						$$ = (Node *) n;
+					}
+					/* End - ReqID:SRS-SQL-HierarchicalQueries */
 				}
 			| func_expr_common_subexpr
 				{ $$ = $1; }
@@ -19872,6 +20045,16 @@ AexprConst: Iconst
 					$$ = makeBDoubleConst("Nan", @1);
 				}
 			/* End - BUG:Z092 */
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			| CONNECT_BY_ISCYCLE
+				{
+					ConnectByIsCycle	*n = makeNode(ConnectByIsCycle);
+
+					n->location = @1;
+
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		;
 
 Iconst:		ICONST									{ $$ = $1; };
@@ -20393,6 +20576,7 @@ unreserved_keyword:
 			| NFKD
 			| NO
 			| NOCACHE		/* ReqID:SRS-SQL-IDENTCOL */
+			| NOCYCLE		/* SRS-SQL-HierarchicalQueries */
 			| NOEXTEND		/* ReqID:SRS-SQL-SEQ */
 			| NOFORCE		/* BUG#Z930 */
 			| NOKEEP		/* ReqID:SRS-SQL-SEQ */
@@ -20442,7 +20626,6 @@ unreserved_keyword:
 			| PREPARE
 			| PREPARED
 			| PRESERVE
-			| PRIOR
 			| PRIVILEGES
 			| PROCEDURAL
 			| PROCEDURE
@@ -20512,6 +20695,7 @@ unreserved_keyword:
 			| SHARED /* ReqID:SRS-SQL-DBLINK */
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
+			| SIBLINGS	/* ReqID:SRS-SQL-HierarchicalQueries */
 			| SIMPLE
 			| SKIP
 			| SKIPBAD  /* BUG#Z1616 */
@@ -20522,7 +20706,6 @@ unreserved_keyword:
 			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE
 			| STANDALONE_P
-			| START
 			| STATEMENT
 			| STATISTICS
 			| STDIN
@@ -20724,7 +20907,10 @@ reserved_keyword:
 			| CHECK
 			| COLLATE
 			| COLUMN
-			/*| CONNECT*/	/* ReqID:SRS-SQL-DBLINK */
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			| CONNECT_BY_ISCYCLE
+			| CONNECT_BY_ROOT
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
 			| CONSTRAINT
 			| CREATE
 			| CURRENT_CATALOG
@@ -20762,7 +20948,6 @@ reserved_keyword:
 			| LOCALTIMESTAMP
 			| NAN_P	/* BUG:Z093 */
 			| NOCOPY /* ReqID:SRS-SQL-PROC */
-			| NOCYCLE		/* ReqID:SRS-SQL-IDENTCOL */
 			| NOT
 			| NULL_P
 			| OFFSET
@@ -20772,12 +20957,14 @@ reserved_keyword:
 			| ORDER
 			| PLACING
 			| PRIMARY
+			| PRIOR /* ReqID:SRS-SQL-HierarchicalQueries */
 			| REFERENCES
 			| RETURNING
 			| ROWNUM	/* ReqID:SRS-SQL-ROWNUM */
 			| SELECT
 			| SESSION_USER
 			| SOME
+			| START /* ReqID:SRS-SQL-HierarchicalQueries */
 			| SYMMETRIC
 			| TABLE
 			| THEN
@@ -20887,6 +21074,10 @@ bare_label_keyword:
 			| CONFLICT
 			/*| CONNECT */	/* ReqID:SRS-SQL-DBLINK */
 			| CONNECTION
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			| CONNECT_BY_ISCYCLE
+			| CONNECT_BY_ROOT
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
 			| CONSTRAINT
 			| CONSTRAINTS
 			| CONTENT_P
@@ -21217,6 +21408,7 @@ bare_label_keyword:
 			| SHARED /* ReqID:SRS-SQL-DBLINK */
 			| SHARING /* ReqID:SRS-SQL-PROC */
 			| SHOW
+			| SIBLINGS	/* ReqID:SRS-SQL-HierarchicalQueries */
 			| SIMILAR
 			| SIMPLE
 			| SKIP
@@ -21230,7 +21422,6 @@ bare_label_keyword:
 			| SQL_MACRO /* ReqID:SRS-SQL-PROC */
 			| STABLE
 			| STANDALONE_P
-			| START
 			| STATEMENT
 			| STATISTICS
 			| STDIN

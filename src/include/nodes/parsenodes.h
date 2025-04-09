@@ -553,6 +553,9 @@ typedef struct SortBy
 	SortByDir	sortby_dir;		/* ASC/DESC/USING/default */
 	SortByNulls sortby_nulls;	/* NULLS FIRST/LAST */
 	List	   *useOp;			/* name of op to use, if SORTBY_USING */
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	bool		siblings;		/* is order siblings by ? */
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	int			location;		/* operator location, or -1 if none/unknown */
 } SortBy;
 
@@ -1519,6 +1522,68 @@ typedef struct WithClause
 	int			location;		/* token location, or -1 if unknown */
 } WithClause;
 
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+/*
+ * start with xxx connect by xx
+ */
+typedef struct HierarQueryClause
+{
+	NodeTag	type;
+	Node	*start_with;		/* START WITH, Can be NULL */
+	bool	is_nocycle;			/* is a NOCYCLE */
+	Node	*connect_by;		/* connect_by a_expr */
+	int		location;			/* location */
+}HierarQueryClause;
+
+/* sys_connect_by_path */
+typedef struct SysConnectPath
+{
+	NodeTag	type;
+	Node *colnode;				/* column that returns the path from root to node */
+	char *joinOp;				/* separated char */
+	char *alias;				/* alias name of sys_connect_by_path */
+	int		location;			/* location */
+}SysConnectPath;
+
+/* connect_by_root */
+typedef struct ConnectByRoot
+{
+	NodeTag	type;
+	Node *colnode;				/* column that returns using data from the root row */
+	char *alias;				/* alias name of connect_by_root */
+	int		location;			/* location */
+}ConnectByRoot;
+
+typedef struct ConnectByIsCycle
+{
+	NodeTag type;
+	int		location;			/* location */
+} ConnectByIsCycle;
+
+/* pseudo column and function */
+typedef struct IgnoreStr
+{
+	char *lq_table;				/* cte_0_by__alias */
+	char *lq_level;				/* level */
+	char *lq_isleaf;			/* connect_by_isleaf */
+	List *lq_prior;				/* prior colname */
+	List *lq_path;				/* sys_connect_by_path */
+	List *lq_root;				/* connect_by_root */
+	List *lq_table_col;			/* like h1.a */
+	char *lq_connect_by_iscycle;	/* connect_by_iscycle */
+	char *lq_arrpath;			/* cte_0_array__path */
+}IgnoreStr;
+
+typedef struct PriorAexpr
+{
+	NodeTag	type;
+	Node *arg;		/* a_expr */
+	int		location;	/* location */
+} PriorAexpr;
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /*
  * InferClause -
  *		ON CONFLICT unique index inference clause
@@ -1873,6 +1938,10 @@ typedef struct SelectStmt
 	LimitOption limitOption;	/* limit type */
 	List	   *lockingClause;	/* FOR UPDATE (list of LockingClause's) */
 	WithClause *withClause;		/* WITH clause */
+
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	HierarQueryClause	*connect_by;		/* connect by */
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 	/*
 	 * These fields are used only in upper-level SelectStmts.

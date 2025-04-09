@@ -458,6 +458,16 @@ typedef enum NodeTag
 	T_AlterDatabaseLinkStmt,
 	T_AlterSessionCloseDblinkStmt,
 	/* End - ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	/*
+	 * support connect by
+	 */
+	T_HierarQueryClause,
+	T_SysConnectPath,
+	T_ConnectByIsCycle,
+	T_ConnectByRoot,
+	T_PriorAexpr,
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)

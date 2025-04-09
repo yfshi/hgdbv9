@@ -198,6 +198,7 @@ bool enable_ora_user_schema = true;	/* ReqID:SRS-SQL-SCHEMA */
 bool allow_forupdate_in_subquery = true;
 /* End - BUG#M0000470: SELECT FOR UPDATE */
 
+
 bool enable_pg_interval_datatype = false; /* BUG#M0000475 */
 bool alter_database_set_special = false; /* BUG#M0000475 */
 
@@ -210,6 +211,10 @@ bool enable_store_nullterminator_char = false;
 /* Begin - BUG#z1616 */
 bool   convert_gbk_to_utf8_question_mark = true;
 /* End - BUG#z1616 */
+
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+bool	connect_by_rownum_use_func = true;
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 #endif
 
@@ -777,6 +782,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#Z00001452 */
+
 	/* Begin - BUG#M0000470: SELECT FOR UPDATE */
 	{
 		{"ivorysql.allow_forupdate_in_subquery", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
@@ -859,6 +865,20 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		false,
 		NULL, NULL, NULL
 	},
+
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	{
+		{"ivorysql.connect_by_rownum_use_func", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether using func to implement connect by rownum when level is bigger deep."),
+			NULL,
+			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
+		},
+		&connect_by_rownum_use_func,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 #endif
 #if 0
 	/* End-of-list marker */

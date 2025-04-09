@@ -306,9 +306,15 @@ struct ParseState
 	List	   *p_addupdatedeleterv;
 	/* End - ReqID:SRS-MYSQL-SQL-DELETE */
 	bool		p_isreplace; /* BUG#Z1626 */
+
 	/* Begin - ReqID:SRS-MYSQL-DATETYPE */
 	bool		p_myscreateastmt;
 	/* End - ReqID:SRS-MYSQL-DATETYPE */
+
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	IgnoreStr  *p_connectby_names;
+	bool		p_check_connectby;
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 };
 
 /*

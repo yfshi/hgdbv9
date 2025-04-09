@@ -65,6 +65,10 @@
 #include "catalog/pg_constraint.h"
 /* End - BUG#Z1435 */
 #include "catalog/partition.h" /* ReqID:SRS-MYSQL-SQL-REPLACE */
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+#include "parser/parse_connectby.h"
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
@@ -2243,6 +2247,28 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 		qry->cteList = transformWithClause(pstate, stmt->withClause);
 		qry->hasModifyingCTE = pstate->p_hasModifyingCTE;
 	}
+
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	/*
+	 * transform connect by to with
+	 * clause
+	 */
+	if(stmt->connect_by)
+	{
+		IgnoreStr  *ignoreStr = NULL;
+
+		stmt = transformHierarQueryClause(pstate, stmt,
+					&ignoreStr, pstate->p_sourcetext);
+		pstate->p_connectby_names = ignoreStr;
+	}
+	else if (stmt->sortClause != NULL)
+	{
+		SortBy *srby = (SortBy *) linitial(stmt->sortClause);
+
+		if (srby->siblings)
+			elog(ERROR, "ORDER SIBLINGS BY clause not allowed here");
+	}
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 	/* Complain if we get called from someplace where INTO is not allowed */
 	if (stmt->intoClause)

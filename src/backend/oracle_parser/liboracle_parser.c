@@ -883,6 +883,10 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 		case CONNECT:
 			if (next_token == TO)
 				cur_token = CONNECT_TO;
+			/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+			else if (next_token == BY)
+				cur_token = CONNECT_BY;
+			/* End - ReqID:SRS-SQL-HierarchicalQueries */
 			break;
 		case DATABASE:
 			if (next_token == LINK)

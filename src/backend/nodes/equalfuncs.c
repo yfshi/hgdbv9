@@ -1167,6 +1167,9 @@ _equalSelectStmt(const SelectStmt *a, const SelectStmt *b)
 	COMPARE_SCALAR_FIELD(limitOption);
 	COMPARE_NODE_FIELD(lockingClause);
 	COMPARE_NODE_FIELD(withClause);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	COMPARE_NODE_FIELD(connect_by);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	COMPARE_SCALAR_FIELD(op);
 	COMPARE_SCALAR_FIELD(all);
 	COMPARE_NODE_FIELD(larg);
@@ -2276,6 +2279,59 @@ _equalAlterSessionCloseDblinkStmt(const AlterSessionCloseDblinkStmt *a, const Al
 }
 /* End - ReqID:SRS-SQL-DBLINK */
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+static bool
+_equalHierarQueryClause(const HierarQueryClause *a, const HierarQueryClause *b)
+{
+	COMPARE_NODE_FIELD(start_with);
+	COMPARE_SCALAR_FIELD(is_nocycle);
+	COMPARE_NODE_FIELD(connect_by);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+static bool
+_equalSysConnectPath(const SysConnectPath *a, const SysConnectPath *b)
+{
+	COMPARE_NODE_FIELD(colnode);
+	COMPARE_STRING_FIELD(joinOp);
+	COMPARE_STRING_FIELD(alias);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+static bool
+_equalConnectByRoot(const ConnectByRoot *a, const ConnectByRoot *b)
+{
+	COMPARE_NODE_FIELD(colnode);
+	COMPARE_STRING_FIELD(alias);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+static bool
+_equalConnectByIsCycle(const ConnectByIsCycle *a, const ConnectByIsCycle *b)
+{
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+static bool
+_equalPriorAexpr(const PriorAexpr *a, const PriorAexpr *b)
+{
+	COMPARE_NODE_FIELD(arg);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 static bool
 _equalCreateTransformStmt(const CreateTransformStmt *a, const CreateTransformStmt *b)
 {
@@ -2808,6 +2864,9 @@ _equalSortBy(const SortBy *a, const SortBy *b)
 	COMPARE_SCALAR_FIELD(sortby_dir);
 	COMPARE_SCALAR_FIELD(sortby_nulls);
 	COMPARE_NODE_FIELD(useOp);
+	/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+	COMPARE_SCALAR_FIELD(siblings);
+	/* End - ReqID:SRS-SQL-HierarchicalQueries */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -4032,6 +4091,23 @@ equal(const void *a, const void *b)
 			retval = _equalAlterSessionCloseDblinkStmt(a,b);
 			break;
 		/* End - ReqID:SRS-SQL-DBLINK */
+		/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+		case T_HierarQueryClause:
+			retval = _equalHierarQueryClause(a, b);
+			break;
+		case T_SysConnectPath:
+			retval = _equalSysConnectPath(a, b);
+			break;
+		case T_ConnectByIsCycle:
+			retval = _equalConnectByIsCycle(a, b);
+			break;
+		case T_ConnectByRoot:
+			retval = _equalConnectByRoot(a, b);
+			break;
+		case T_PriorAexpr:
+			retval = _equalPriorAexpr(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 		case T_CreateTransformStmt:
 			retval = _equalCreateTransformStmt(a, b);
 			break;

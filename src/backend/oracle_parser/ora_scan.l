@@ -1463,6 +1463,55 @@ ora_scanner_yyerror(const char *message, ora_core_yyscan_t yyscanner)
 }
 
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+/*
+ * get str from start to end
+ */
+char *
+ora_scanner_str_byposition(int start, int end, ora_core_yyscan_t yyscanner)
+{
+	char *result = NULL;
+	int startpos;
+	int endpos;
+	int i;
+
+	if (start < 0 || end < 0 || end <= start)
+		return NULL;
+
+	if (end > yyextra->scanbuflen)
+		return NULL;
+
+	startpos = pg_mbstrlen_with_len(yyextra->scanbuf, start);
+	endpos = pg_mbstrlen_with_len(yyextra->scanbuf, end);
+
+	if (endpos <= startpos)
+		return NULL;
+
+	/* ignore tail space */
+	while (endpos > startpos &&
+		(yyextra->scanbuf[endpos] == '\t' ||
+		yyextra->scanbuf[endpos] == '\n' ||
+		yyextra->scanbuf[endpos] == '\r' ||
+		yyextra->scanbuf[endpos] == ' ' ||
+		yyextra->scanbuf[endpos] == '\f' ||
+		yyextra->scanbuf[endpos] == '\v'))
+		endpos--;
+
+	if (endpos <= startpos)
+		return NULL;
+
+	result = palloc0(endpos - startpos + 2);
+	for (i = 0; i < endpos - startpos + 1; i++)
+		result[i] = yyextra->scanbuf[startpos + i];
+
+	Assert(i <= endpos);
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
+
 /*
  * Called before any actual parsing is done
  */

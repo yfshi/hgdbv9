@@ -218,6 +218,7 @@ test: ora_dblink_for_pgfdw
 test: copy_skip
 #/* End - BUG:M0000368 */
 
+
 #/* Begin - ReqID:SRS-SQL-SCHEMA */
 test: ora_schema
 #/* End - ReqID:SRS-SQL-SCHEMA */
@@ -238,3 +239,6 @@ test: ora_rowid
 test: ora_copy_gbk_2_utf8
 #/* End - BUG#z1616 */
 
+#/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+test: ora_connectby
+#/* End - ReqID:SRS-SQL-HierarchicalQueries */

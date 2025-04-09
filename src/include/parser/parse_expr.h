@@ -20,6 +20,13 @@ extern bool Transform_null_equals;
 
 extern Node *transformExpr(ParseState *pstate, Node *expr, ParseExprKind exprKind);
 
+/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
+extern Node *IvyTransformColumnRef(ParseState *pstate,
+											ColumnRef *cref,
+											bool missing_ok);
+/* End - ReqID:SRS-SQL-HierarchicalQueries */
+
+
 /* Begin - BUG#M0000376 */
 extern void transformFuncArg(ParseState *pstate, Node *func_arg);
 /* End - BUG#M0000376 */
