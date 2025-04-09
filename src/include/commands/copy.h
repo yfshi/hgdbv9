@@ -73,6 +73,7 @@ typedef struct CopyFormatOptions
 	//int	   skip_count;
 	// skip_list[0] did not used
 	bool	   skip_list[MaxHeapAttributeNumber + MAX_SKIP_COUNT + 1];
+	bool	   skip_list_flag;
 	/* End - BUG:M0000368 */
 
 	/* Begin - BUG#M0000414 */

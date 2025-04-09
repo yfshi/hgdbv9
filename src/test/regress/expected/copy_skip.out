@@ -225,6 +225,23 @@ DROP TABLE copy_skip_1;
 DROP TABLE copy_skip_2;
 DROP TABLE copy_skip_3;
 DROP TABLE fk_t,pk_t;
+-- skiplist feature support max skipping 128 cloumns
+-- if skiplist include number > 1728, raise an error
+-- if not enable skiplist, not checking the skiplist[]
+create table test_1728(id int);
+--- enable the skiplist, skiplist is 1729, raise an error
+copy test_1728 from stdin with csv skiplist 1729;
+ERROR:  skiplist have invalid "1729" value for COPY
+---- not enable skiplist, if column more than 1600+128, raise a error(the same with 14.14)
+-- if there have 1730 column
+copy test_1728 from stdin with(format csv);
+ERROR:  extra data after last expected column
+CONTEXT:  COPY test_1728, line 1: "1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,..."
+--- enable the skiplist, but 1730 columns, raise an error
+copy test_1728 from stdin with csv skiplist 2,3;
+ERROR:  extra data after last expected column
+CONTEXT:  COPY test_1728, line 1: "1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,..."
+drop table test_1728;
 -- as there have ' or ",so output the record to the bad table
 -- this is a bug for tolerate
 -- COPY copy_skip_3(id,name,number,buy) from STDIN with csv skiplist 3 taskid 'ihaveadream' filename 'stdin' badfile '/home/postgres/x_bad.log';
