@@ -74,7 +74,8 @@ MYS_REGRESS = multi_update \
 			  mys_datetime \
 			  mys_timestamp \
 			  mys_time	\
-			  show_charset
+			  show_charset \
+			  mys_int1
 
 
 ifdef USE_PGXS

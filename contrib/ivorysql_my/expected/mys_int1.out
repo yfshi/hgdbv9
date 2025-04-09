@@ -1,0 +1,425 @@
+-- int1
+create table t1 (a int1);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+insert into t1 values(127);
+insert into t1 values(128);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+select * from t1;
+  a   
+------
+    0
+    1
+   -1
+ -128
+  127
+(5 rows)
+
+drop table t1;
+create table t1 (a int1 SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+insert into t1 values(127);
+insert into t1 values(128);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+select * from t1;
+  a   
+------
+    0
+    1
+   -1
+ -128
+  127
+(5 rows)
+
+drop table t1;
+--tinyint
+create table t1 (a tinyint);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+insert into t1 values(127);
+insert into t1 values(128);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+select * from t1;
+  a   
+------
+    0
+    1
+   -1
+ -128
+  127
+(5 rows)
+
+drop table t1;
+create table t1 (a tinyint SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+insert into t1 values(127);
+insert into t1 values(128);
+ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+select * from t1;
+  a   
+------
+    0
+    1
+   -1
+ -128
+  127
+(5 rows)
+
+drop table t1;
+create table t1 (a int1 UNSIGNED);
+ERROR:  syntax error at or near "UNSIGNED"
+LINE 1: create table t1 (a int1 UNSIGNED);
+                                ^
+insert into t1 values(0);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(0);
+                    ^
+insert into t1 values(1);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(1);
+                    ^
+insert into t1 values(-1);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-1);
+                    ^
+insert into t1 values(-128);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-128);
+                    ^
+insert into t1 values(-129);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-129);
+                    ^
+insert into t1 values(127);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(127);
+                    ^
+insert into t1 values(128);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(128);
+                    ^
+select * from t1;
+ERROR:  relation "t1" does not exist
+LINE 1: select * from t1;
+                      ^
+drop table t1;
+ERROR:  table "t1" does not exist
+create table t1 (a tinyint UNSIGNED);
+ERROR:  syntax error at or near "UNSIGNED"
+LINE 1: create table t1 (a tinyint UNSIGNED);
+                                   ^
+insert into t1 values(0);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(0);
+                    ^
+insert into t1 values(1);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(1);
+                    ^
+insert into t1 values(-1);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-1);
+                    ^
+insert into t1 values(-128);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-128);
+                    ^
+insert into t1 values(-129);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(-129);
+                    ^
+insert into t1 values(127);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(127);
+                    ^
+insert into t1 values(128);
+ERROR:  relation "t1" does not exist
+LINE 1: insert into t1 values(128);
+                    ^
+select * from t1;
+ERROR:  relation "t1" does not exist
+LINE 1: select * from t1;
+                      ^
+drop table t1;
+ERROR:  table "t1" does not exist
+--int1[(M)]
+create table t1 (a int1(-1));
+ERROR:  syntax error at or near
+LINE 1: create table t1 (a int1(-1));
+                               ^
+create table t2 (a int1(0));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int1(3));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+--tinyint[(M)]
+create table t1 (a tinyint(-1));
+ERROR:  syntax error at or near
+LINE 1: create table t1 (a tinyint(-1));
+                                  ^
+create table t1 (a tinyint(256));
+ERROR:  syntax error at or near
+LINE 1: create table t1 (a tinyint(256));
+                                  ^
+create table t2 (a tinyint(0));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a tinyint(3));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+create table test1(b int1(0) default 3);
+insert into test1 values ();
+drop table test1;
+--expr
+create table test1(a int1, b int1 default 3);
+insert into test1 values();
+insert into test1 values(5, 1 + 2);
+insert into test1 values(5, 5 - 2);
+insert into test1 values(1, 2 * 2);
+insert into test1 values(6, 6 / 2);
+insert into test1 values(7, 7 % 2);
+select * from test1;
+ a | b 
+---+---
+   | 3
+ 5 | 3
+ 5 | 3
+ 1 | 4
+ 6 | 3
+ 7 | 1
+(6 rows)
+
+select not a from test1;
+ERROR:  argument of NOT must be type boolean, not type "tinyint"
+LINE 1: select not a from test1;
+                   ^
+select !a from test1;
+ERROR:  operator does not exist: ! "tinyint"
+LINE 1: select !a from test1;
+               ^
+HINT:  No operator matches the given name and argument type. You might need to add an explicit type cast.
+select a AND b from test1;
+ERROR:  argument of AND must be type boolean, not type "tinyint"
+LINE 1: select a AND b from test1;
+               ^
+select a && b from test1;
+ERROR:  operator does not exist: "tinyint" && "tinyint"
+LINE 1: select a && b from test1;
+                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select a or b from test1;
+ERROR:  argument of OR must be type boolean, not type "tinyint"
+LINE 1: select a or b from test1;
+               ^
+select a || b from test1;
+ERROR:  operator does not exist: "tinyint" || "tinyint"
+LINE 1: select a || b from test1;
+                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select a xor b from test1;
+ERROR:  argument of OR must be type boolean, not type "tinyint"
+LINE 1: select a xor b from test1;
+               ^
+select a & b from test1;
+ ?column? 
+----------
+         
+        1
+        1
+        0
+        2
+        1
+(6 rows)
+
+select a | b from test1;
+ ?column? 
+----------
+         
+        7
+        7
+        5
+        7
+        7
+(6 rows)
+
+select ~b from test1;
+ ?column? 
+----------
+       -4
+       -4
+       -4
+       -5
+       -4
+       -2
+(6 rows)
+
+select a >> b from test1;
+ ?column? 
+----------
+         
+        0
+        0
+        0
+        0
+        3
+(6 rows)
+
+select a << b from test1;
+ ?column? 
+----------
+         
+       40
+       40
+       16
+       48
+       14
+(6 rows)
+
+select a = b from test1;
+ ?column? 
+----------
+ 
+ f
+ f
+ f
+ f
+ f
+(6 rows)
+
+select a <= b from test1;
+ ?column? 
+----------
+ 
+ f
+ f
+ t
+ f
+ f
+(6 rows)
+
+select a < b from test1;
+ ?column? 
+----------
+ 
+ f
+ f
+ t
+ f
+ f
+(6 rows)
+
+select a > b from test1;
+ ?column? 
+----------
+ 
+ t
+ t
+ f
+ t
+ t
+(6 rows)
+
+select a >= b from test1;
+ ?column? 
+----------
+ 
+ t
+ t
+ f
+ t
+ t
+(6 rows)
+
+select a <=> b from test1;
+ERROR:  operator does not exist: "tinyint" <=> "tinyint"
+LINE 1: select a <=> b from test1;
+                 ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+drop table test1;
+--'-'
+create table tb_test(id int1);
+insert into tb_test values (123),(-121),(0);
+select -id from tb_test;
+ ?column? 
+----------
+     -123
+      121
+        0
+(3 rows)
+
+select * from tb_test;
+  id  
+------
+  123
+ -121
+    0
+(3 rows)
+
+drop table tb_test;

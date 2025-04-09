@@ -718,7 +718,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	BOOLEAN_P BOTH BREADTH BY
 
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
-	CHARACTER CHARACTERISTICS CHECK CHECKPOINT CLASS CLOSE
+	CHARACTER CHARACTERISTICS CHARSET CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
 	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
@@ -744,7 +744,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -780,12 +780,12 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHOW
-	SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SQL_P STABLE STANDALONE_P
+	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
-	TIES TIME TIMESTAMP TO TRAILING TRANSACTION TRANSFORM
+	TIES TIME TIMESTAMP TINYINT TO TRAILING TRANSACTION TRANSFORM
 	TREAT TRIGGER TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
@@ -804,7 +804,6 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	YEAR YES_P
 
 	ZONE
-	CHARSET /* Req: SRS-MYSQL-CHARSET */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -14594,7 +14593,70 @@ Numeric:	INT_P
 					$$ = SystemTypeName("bool");
 					$$->location = @1;
 				}
+			| INT1 opt_type_modifiers flag_signed
+				{
+					A_Const *node_const = NULL;
+					List	   *typmods = $2;
+
+					if (typmods != NULL)
+					{
+						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+					}
+
+					$$ = MySQLSystemTypeName("tinyint");
+					$$->location = @1;
+				}
+			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+			| TINYINT opt_type_modifiers flag_signed
+				{
+					A_Const *node_const = NULL;
+					List	   *typmods = $2;
+
+					if (typmods != NULL)
+					{
+						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+					}
+					$$ = MySQLSystemTypeName("tinyint");
+					$$->location = @1;
+				}
 		;
+
+flag_signed: SIGNED
+			| /* EMPTY */
+		;
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 
 opt_float:	'(' Iconst ')'
 				{
@@ -17783,6 +17845,7 @@ col_name_keyword:
 			| GROUPING
 			| INOUT
 			| INT_P
+			| INT1
 			| INTEGER
 			| INTERVAL
 			| LEAST
@@ -17799,10 +17862,12 @@ col_name_keyword:
 			| REAL
 			| ROW
 			| SETOF
+			| SIGNED
 			| SMALLINT
 			| SUBSTRING
 			| TIME
 			| TIMESTAMP
+			| TINYINT
 			| TREAT
 			| TRIM
 			| VALUES
@@ -18146,6 +18211,7 @@ bare_label_keyword:
 			| INSERT
 			| INSTEAD
 			| INT_P
+			| INT1
 			| INTEGER
 			| INTERVAL
 			| INVOKER
@@ -18336,6 +18402,7 @@ bare_label_keyword:
 			| TIES
 			| TIME
 			| TIMESTAMP
+			| TINYINT
 			| TRAILING
 			| TRANSACTION
 			| TRANSFORM

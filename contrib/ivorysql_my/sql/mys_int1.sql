@@ -1,0 +1,146 @@
+-- int1
+create table t1 (a int1);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+create table t1 (a int1 SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+--tinyint
+create table t1 (a tinyint);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+create table t1 (a tinyint SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+create table t1 (a int1 UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+create table t1 (a tinyint UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-128);
+insert into t1 values(-129);
+insert into t1 values(127);
+insert into t1 values(128);
+select * from t1;
+drop table t1;
+
+--int1[(M)]
+create table t1 (a int1(-1));
+
+create table t2 (a int1(0));
+\d t2
+insert into t2 values (1);
+select * from t2;
+drop table t2;
+
+create table t2 (a int1(3));
+\d t2
+insert into t2 values (2);
+select * from t2;
+drop table t2;
+
+
+--tinyint[(M)]
+create table t1 (a tinyint(-1));
+create table t1 (a tinyint(256));
+
+create table t2 (a tinyint(0));
+\d t2
+insert into t2 values (1);
+select * from t2;
+drop table t2;
+
+create table t2 (a tinyint(3));
+\d t2
+insert into t2 values (2);
+select * from t2;
+drop table t2;
+
+create table test1(b int1(0) default 3);
+insert into test1 values ();
+drop table test1;
+
+--expr
+create table test1(a int1, b int1 default 3);
+insert into test1 values();
+insert into test1 values(5, 1 + 2);
+insert into test1 values(5, 5 - 2);
+insert into test1 values(1, 2 * 2);
+insert into test1 values(6, 6 / 2);
+insert into test1 values(7, 7 % 2);
+select * from test1;
+
+select not a from test1;
+select !a from test1;
+
+select a AND b from test1;
+select a && b from test1;
+
+select a or b from test1;
+select a || b from test1;
+
+select a xor b from test1;
+select a & b from test1;
+select a | b from test1;
+select ~b from test1;
+
+select a >> b from test1;
+select a << b from test1;
+
+select a = b from test1;
+select a <= b from test1;
+select a < b from test1;
+select a > b from test1;
+select a >= b from test1;
+select a <=> b from test1;
+drop table test1;
+
+--'-'
+create table tb_test(id int1);
+insert into tb_test values (123),(-121),(0);
+select -id from tb_test;
+select * from tb_test;
+drop table tb_test;
+
