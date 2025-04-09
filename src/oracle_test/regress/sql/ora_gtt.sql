@@ -413,3 +413,12 @@ reindex index temp_table_idx; -- error
 -- reindex table
 reindex table temp_table; -- error
 drop table temp_table;
+
+-- truncate multiples
+create global temporary table gtt_truncate(id int) on commit preserve rows;
+insert into gtt_truncate values(1);
+begin;
+truncate gtt_truncate;
+truncate gtt_truncate;
+end;
+drop table gtt_truncate;

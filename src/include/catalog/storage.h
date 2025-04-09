@@ -48,4 +48,6 @@ extern void PostPrepare_smgr(void);
 extern void RelationDropStorageSetLog(Relation rel);
 /* End - BUG:M0000325 */
 
+extern bool GTTInPendingDeletes(Relation rel, bool isCommit);
+
 #endif							/* STORAGE_H */

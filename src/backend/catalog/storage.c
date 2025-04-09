@@ -1214,3 +1214,28 @@ RelationDropStorageSetLog(Relation rel)
 }
 /* End - BUG:M0000325 */
 
+/*
+ * GTTInPendingDeletes -
+ *     check global temporary table's storage dropped already
+ */
+bool
+GTTInPendingDeletes(Relation rel, bool isCommit)
+{
+	if (RELATION_IS_GLOBAL_TEMP(rel))
+	{
+		PendingRelDelete *pending;
+
+		for (pending = pendingDeletes; pending != NULL; pending = pending->next)
+		{
+			if (RelFileNodeEquals(rel->rd_node, pending->relnode) &&
+				pending->backend == rel->rd_backend &&
+				pending->atCommit == isCommit)
+			{
+				RelationCloseSmgr(rel);
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
