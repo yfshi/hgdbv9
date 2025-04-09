@@ -2683,15 +2683,16 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 					{
 						/* Block-qualified reference to oracle record variable. */
 						wdatum->datum = plisql_Datums[ns->itemno];
+						/* Begin - BUG#Z1672 */
+						wdatum->ident = NULL;
+						wdatum->quoted = false; /* not used */
+						wdatum->idents = idents;
+						/* Begin - ReqID:SRS-SQL-PACKAGE */
+						wdatum->nname_used = nnames;
+						/* End - ReqID:SRS-SQL-PACKAGE */
+						return true;
+						/* End - BUG#Z1672 */
 					}
-
-					wdatum->ident = NULL;
-					wdatum->quoted = false; /* not used */
-					wdatum->idents = idents;
-					/* Begin - ReqID:SRS-SQL-PACKAGE */
-					wdatum->nname_used = nnames;
-					/* End - ReqID:SRS-SQL-PACKAGE */
-					return true;
 				/* End - ReqID:SRS-PLSQL-RECORD */
 
 				default:

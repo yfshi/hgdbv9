@@ -1718,7 +1718,7 @@ PackageTypeSelectCandidates(FuncCandidateList candidates,
 
 		for (i = 0; i < nargs; i++)
 		{
-			if (type[i] != NULL)
+			if (type[i] != NULL && tmp_candidate->argnames != NULL /* BUG#Z1672 */)
 			{
 				PkgType *pkgtype;
 				TypeName *tname;

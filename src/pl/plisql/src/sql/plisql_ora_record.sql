@@ -4189,6 +4189,74 @@ end;
 /
 /* End - BUG#Z1307 */
 
+/* Begin - BUG#Z1672 */
+CREATE TABLE t_copy2(id int,
+                     d varchar2(512),
+                     f varchar2(512));
+INSERT INTO t_copy2 values(1,'111','1111');
+INSERT INTO t_copy2 values(2,'222','22222');
+
+CREATE OR REPLACE PROCEDURE getcopy2222() IS
+  my_cursor CURSOR FOR
+       SELECT id, d,f FROM t_copy2 ;
+  TYPE T_Copy IS RECORD(id int,
+                        d varchar2(512),
+                        f varchar2(512));
+  arr T_Copy[];
+  rec T_Copy;
+BEGIN
+  OPEN my_cursor;
+  LOOP
+      FETCH my_cursor INTO rec;
+      EXIT WHEN NOT FOUND;
+      RAISE NOTICE 'Processing user: %, ID: %', rec.d, rec.id;
+      arr := array_append(arr, rec);
+  END LOOP;
+  CLOSE my_cursor;
+END;
+/
+
+DROP PROCEDURE getcopy2222();
+DROP TABLE t_copy2;
+
+CREATE SCHEMA RMW;
+CREATE OR REPLACE PACKAGE RMW.RMS_IP_RELATE_OLT_PACKAGE IS
+  TYPE T_BARS_INFO IS RECORD
+  (
+     ZH_LABEL           VARCHAR2(255),
+     INT_ID             NUMBER(20),
+     IP                 VARCHAR2(100),
+     RELATED_ROOM       VARCHAR2(100),
+     RELATED_SITE       VARCHAR2(100)
+  );
+  FUNCTION F_GET_BARS_INFO(V_BARS_LABEL VARCHAR2) RETURN T_BARS_INFO;
+END RMS_IP_RELATE_OLT_PACKAGE;
+/
+
+CREATE OR REPLACE PACKAGE BODY RMW."RMS_IP_RELATE_OLT_PACKAGE" IS
+  FUNCTION F_GET_BARS_INFO(V_BARS_LABEL VARCHAR2) RETURN T_BARS_INFO
+   IS
+     V_BARS_INFO           T_BARS_INFO;
+   BEGIN
+     BEGIN
+        SELECT RELATED_ROOM,
+               RELATED_SITE
+          INTO V_BARS_INFO.RELATED_ROOM，
+               V_BARS_INFO.RELATED_SITE
+        FROM RMS_JL_DATA_DEVICE WHERE STATEFLAG=0 AND ZH_LABEL=V_BARS_LABEL AND ROWNUM = 1;
+
+     EXCEPTION
+     WHEN OTHERS THEN
+       NULL;
+     END ;
+
+     RETURN V_BARS_INFO;
+  END F_GET_BARS_INFO;
+END RMS_IP_RELATE_OLT_PACKAGE;
+/
+DROP PACKAGE RMW.RMS_IP_RELATE_OLT_PACKAGE;
+DROP SCHEMA RMW;
+/* End - BUG#Z1672 */
 reset ivorysql.identifier_case_switch;
 
 --clean table

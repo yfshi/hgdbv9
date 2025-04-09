@@ -1067,7 +1067,8 @@ plisql_parse_udt_rowtype(const char *ident, bool byval)
 	else
 	{
 		if (nse != NULL &&
-			nse->itemtype == PLISQL_NSTYPE_TYPE)
+			nse->itemtype == PLISQL_NSTYPE_TYPE &&
+			typeName->arrayBounds == NIL /* BUG#Z1672 */)
 		{
 			PLiSQL_datum_udt_type *udt_type = (PLiSQL_datum_udt_type *) plisql_Datums[nse->itemno];
 			return udt_type->udt_type;
