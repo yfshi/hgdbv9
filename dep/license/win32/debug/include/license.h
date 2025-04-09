@@ -90,4 +90,8 @@ extern LICENSEEXPORT const char * hg_get_technical_support_url(void);		// get te
 extern LICENSEEXPORT int		  hg_load_client_license(const char *);	    // Load client license authorization file
 extern LICENSEEXPORT int		  hg_load_server_license(const char *);	    // Load server license authorization file
 
+extern LICENSEEXPORT bool 		  hg_set_is_command_specified(bool flag);	// Set this flag when the user specifies language or encoding parameters using the command line
+extern LICENSEEXPORT void 		  hg_set_is_chinese_err_desc(bool flag);	// Set error prompt in Chinese or English
+//Check if the user has set language or coding parameter flags
+
 #endif // end __LICENSE_H__

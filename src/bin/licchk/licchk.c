@@ -6,7 +6,7 @@
  * 	  licchk tool checks and displays the content of the license.dat file..
  *
  * Copyright:
- * Copyright (c) 2024, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		src/bin/licchk/licchk.c
@@ -14,6 +14,7 @@
  * Requirement description:
  * 		ReqID:SRS-MISC-LICENSE
  * 		ReqID:SRS-MISC-LICENSE-ClientTool
+ *		ReqID:SRS-MISC-LICENSE-ENCODING
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -51,6 +52,10 @@ static bool  is_client_dat = false;				/* Is it the file that loads the license_
 /* Begin - fix Bug#M0000329 */
 static bool  is_get_max_connections = false;
 /* End - fix Bug#M0000329 */
+/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+static bool  is_specify_encoding = false; 	/* Command line specifies encoding flag */
+static bool  is_specify_language = false;	/* Command line specifies language flag */
+/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 
 static void  printLicenseData(void);
 static void  _printFuncList(void);
@@ -58,12 +63,20 @@ static void  gen_hardware_code_file(const char *);
 
 static char *lang = NULL;
 static bool  is_chinese = false;
+/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+static char *cli_encoding = NULL;	/* Command line specified encoding */
+static char *cli_language = NULL;	/* Command line specified language */
+/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 
 static void  print_funclist_title_head(bool is_chinese, bool is_view);
 static void  print_funclist_content(bool is_chinese, bool is_list, bool is_all, bool is_view);
 static void  print_funclist_title_tail(bool is_chinese, bool is_view);
 
 static void  usage(const char *progname);
+
+/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+static void  commands_specified_language_or_encoding(void);	/* Whether to specify encoding and language parameters on the command line */
+/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 
 #ifdef WIN32
 static char *lic_win32_langinfo(const char *ctype);
@@ -100,6 +113,10 @@ int main(int argc, char **argv)
 		/* Begin - fix Bug#M0000329 */
 		{ "max-connections", no_argument, NULL, 'm' },
 		/* End - fix Bug#M0000329 */
+		/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+		{ "set-encoding", required_argument, NULL, 's' },
+		{ "set-language", required_argument, NULL, 'e' },
+		/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -166,12 +183,12 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V1.5");
+			puts("licchk DB V1.5.4");
 			exit(0);
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdm", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -225,6 +242,19 @@ int main(int argc, char **argv)
 				is_get_max_connections = true;
 				break;
 			/* End - fix Bug#M0000329 */
+
+			/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+			case 's':
+				is_specify_encoding = true;
+				cli_encoding = strdup(optarg);
+				break;
+
+			case 'e':
+				is_specify_language = true;
+				cli_language = strdup(optarg);
+				break;
+			/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
+
 			case 'v':
 				is_view = true;
 				break;
@@ -252,6 +282,9 @@ int main(int argc, char **argv)
 		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum); // fix Bug#M0000321
 		hg_set_is_ignore_hardware_check(is_ignore_check_hardware); // ReqID:SRS-MISC-LICENSE-ClientTool
 		hg_set_is_ignore_datetime_check(is_ignore_datetime_check); // ReqID:SRS-MISC-LICENSE-ClientTool
+		hg_set_is_chinese_title(is_chinese);
+
+		commands_specified_language_or_encoding(); // ReqID::SRS-MISC-LICENSE-ENCODING
 
 		iRet = hg_load_license(NULL);
 		if (iRet != 0)
@@ -285,6 +318,9 @@ int main(int argc, char **argv)
 		hg_set_is_ignore_md5_checksum(is_ignore_md5_checksum);	// fix Bug#M0000321
 		hg_set_is_ignore_hardware_check(is_ignore_check_hardware); // ReqID:SRS-MISC-LICENSE-ClientTool
 		hg_set_is_ignore_datetime_check(is_ignore_datetime_check); // ReqID:SRS-MISC-LICENSE-ClientTool
+		hg_set_is_chinese_title(is_chinese);
+
+		commands_specified_language_or_encoding(); // ReqID::SRS-MISC-LICENSE-ENCODING
 	
 		iRet = hg_load_license(license_dat);
 		if (iRet != 0)
@@ -323,8 +359,7 @@ static void
 printLicenseData(void)
 {
 	hg_set_is_with_title(true);
-	hg_set_is_chinese_title(is_chinese);
-
+	
 	printf("%s\n", hg_get_licver());
 	printf("%s\n", hg_get_licSerial());
 	printf("%s\n", hg_get_license_status());
@@ -426,6 +461,10 @@ usage(const char *progname)
 	printf(_("  -m, --max-connections       show max connections.\n"));
 	printf(_("  -U, --username              obtain the username from the license file.\n"));
 	printf(_("  -P, --port                  obtain the port from the license file.\n"));
+	/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+	printf(_("  -s, --set-encoding          set license character encoding.\n"));
+	printf(_("  -e, --set-language          set display language(ch or en).\n"));
+	/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 	printf(_("  -V, --version               output version information, then exit\n"));
 	printf(_("  -?, --help                  show this help, then exit\n"));
 }
@@ -510,3 +549,35 @@ lic_win32_langinfo(const char *ctype)
 	return r;
 }
 #endif
+
+/* Begin - ReqID:SRS-MISC-LICENSE-ENCODING */
+static void
+commands_specified_language_or_encoding(void)
+{
+	if (is_specify_encoding)
+	{
+		hg_set_is_command_specified(true);
+		hg_set_encoding(cli_encoding);
+	}
+
+	if (is_specify_language)
+	{
+		hg_set_is_command_specified(true);
+		if (pg_strncasecmp(cli_language, "ch", strlen("ch")) == 0)
+		{
+			hg_set_is_chinese_title(true);
+			hg_set_is_chinese_err_desc(true);
+		}
+		else if (pg_strncasecmp(cli_language, "en", strlen("en")) == 0)
+		{
+			hg_set_is_chinese_title(false);
+			hg_set_is_chinese_err_desc(false);
+		}
+		else
+		{
+			printf("-e parameater error\n");
+			exit(-1);
+		}
+	}
+}
+/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
