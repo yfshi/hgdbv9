@@ -152,3 +152,6 @@ int			VacuumCostBalance = 0;	/* working state for vacuum */
 bool		VacuumCostActive = false;
 
 bool            enable_insertparallel = false;     /* ReqID:SRS-MISC-PERFORMANCE-INSERTPARALLEL */
+
+int		hg_connect_size = 0;	/* BUG#M0000527 */
+int		hg_connect_delay = 0;	/* BUG#M0000527 */
