@@ -364,7 +364,7 @@ WHERE p1.typanalyze = p2.oid AND NOT
 
 SELECT d.oid, d.typname, d.typanalyze, t.oid, t.typname, t.typanalyze
 FROM pg_type d JOIN pg_type t ON d.typbasetype = t.oid
-WHERE d.typanalyze != t.typanalyze AND d.typnamespace != 9900;
+WHERE d.typanalyze != t.typanalyze AND d.typnamespace != 9900 AND d.typnamespace != 9800;
 
 -- range_typanalyze should be used for all and only range types
 -- (but exclude domains, which we checked above)

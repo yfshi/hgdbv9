@@ -989,6 +989,13 @@
   typalign => 'i', typstorage =>'m' },
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
+{ oid => '9200', array_type_oid => '9201',
+  descr => 'mysql tiny integer, domain int2',
+  typname => 'myint1', typnamespace => 'ivymy', typlen => '-1', typbyval => 'f', typtype => 'd',
+  typcategory => 'N', typinput => 'domain_in', typoutput => 'int2out', typreceive => 'domain_recv',
+  typmodin => '-', typmodout => '-',
+  typsend => 'int2send', typalign => 's', typstorage => 'p', typbasetype => 'int2' },
+
 /*END MySQL Compatibility Metadatas*/
 
 ]
