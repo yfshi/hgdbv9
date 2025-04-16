@@ -1325,7 +1325,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 {
 	int		newmode = *newval;
 
-	if (DB_PG == database_mode && (newmode == DB_ORACLE || newmode == DB_MYSQL))	/* ReqID:SRS-MISC-MYSQL-FRAME */
+	if (DB_PG == database_mode && (newmode == ORA_PARSER|| newmode == MYS_PARSER))	/* BUG#Z00001674 */
 			ereport(ERROR,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.compatible_mode cannot be changed in native PG mode.")));
@@ -1333,7 +1333,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 	if(DB_ORACLE == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newmode == DB_ORACLE)
+		if (newmode == ORA_PARSER) /* BUG#Z00001674 */
 		{
 			if (ora_raw_parser == NULL)
 				ereport(ERROR,
@@ -1351,7 +1351,7 @@ check_compatible_mode(int *newval, void **extra, GucSource source)
 	if(DB_MYSQL == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newmode == DB_MYSQL)
+		if (newmode == MYS_PARSER) /* BUG#Z00001674 */
 		{
 			if (mys_raw_parser == NULL)
 				ereport(ERROR,
@@ -1383,7 +1383,7 @@ assign_compatible_mode(int newval, void *extra)
 	if(DB_ORACLE == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newval == DB_ORACLE)
+		if (newval == ORA_PARSER) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = ora_raw_parser;
 
@@ -1399,7 +1399,7 @@ assign_compatible_mode(int newval, void *extra)
 			/* update the search_path */
 			assign_search_path(NULL, NULL);
 		}
-		else if (newval == DB_PG)
+		else if (newval == PG_PARSER) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = standard_raw_parser;
 
@@ -1420,13 +1420,13 @@ assign_compatible_mode(int newval, void *extra)
 	else if(DB_MYSQL == database_mode
 	&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
-		if (newval == DB_MYSQL)
+		if (newval == MYS_PARSER) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = mys_raw_parser;
 			pg_object_bulid_relcache = NULL;
 			assign_search_path(NULL, NULL);
 		}
-		else if (newval == DB_PG)
+		else if (newval == PG_PARSER) /* BUG#Z00001674 */
 		{
 			sql_raw_parser = standard_raw_parser;
 			pg_object_bulid_relcache = NULL;
