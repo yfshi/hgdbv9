@@ -4915,6 +4915,10 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 		if (database_mode != DB_PG)
 		{
 			ahprintf(AH, "SET ivorysql.compatible_mode to oracle;\n");
+			/* Begin - BUGZ4565 */
+			if (AH->format == archNull)
+				ahprintf(AH, "\\parser\n");
+			/* End - BUGZ4565 */
 			ahprintf(AH, "SET ivorysql.dumppgtype to oracle;\n");
 			ahprintf(AH, "SET ivorysql.grant_usertype to oracle;\n");
 			ahprintf(AH, "SET ivorysql.enable_ora_user_schema to off;\n");
