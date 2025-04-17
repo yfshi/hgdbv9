@@ -146,13 +146,15 @@ connectMaintenanceDatabase(ConnParams *cparams,
 		return connectDatabase(cparams, progname, echo, false, false);
 
 	/* Otherwise, try postgres first and then template1. */
-	cparams->dbname = "postgres";
-	conn = connectDatabase(cparams, progname, echo, true, false);
-	if (!conn)
-	{
+	/* Begin - BUGZ4340 */
+	// cparams->dbname = "postgres";
+	// conn = connectDatabase(cparams, progname, echo, true, false);
+	// if (!conn)
+	// {
+	/* End - BUGZ4340 */
 		cparams->dbname = "template1";
 		conn = connectDatabase(cparams, progname, echo, false, false);
-	}
+	//}	/* BUGZ4340 */
 	return conn;
 }
 
