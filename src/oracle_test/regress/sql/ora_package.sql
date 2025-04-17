@@ -7616,3 +7616,80 @@ end;
 /
 
 DROP USER system;
+
+
+--bug#Z1674
+create table test_mds(id integer, name varchar2(256));
+
+create or replace package test_pkg is
+  function test_f(v_id integer, v_name varchar2) return integer;
+end;
+/
+
+create or replace package body test_pkg is
+  function test_f(v_id integer, v_name varchar2) return integer is
+	v_path test_mds%rowtype;
+  begin
+    v_path.id := 1;
+    DECLARE
+	   cursor c1 is select * from test_mds a where a.id = v_path.id and rownum < 3 order by id;
+	   c_name c1%rowtype;
+	begin
+	  open c1;
+	  loop
+		fetch c1 into c_name;
+		exit when c1%notfound;
+		raise info '%', c_name;
+      end loop;
+	end;
+	return v_path.id;
+  end;
+ end;
+ /
+
+
+ insert into test_mds values(1,'sjfsjf');
+ insert into test_mds values(2,'ok');
+
+select test_pkg.test_f(1,'ok') from dual;
+
+
+create or replace package body test_pkg is
+  var1 integer;
+  cursor c1 is select * from test_mds a where a.id =  var1;
+  c_name c1%rowtype;
+  function test_f(v_id integer, v_name varchar2) return integer is
+	v_path test_mds%rowtype;
+  begin
+    v_path.id := 1;
+    DECLARE
+	   cursor c1 is select * from test_mds a where a.id = v_path.id and rownum < 3 order by id;
+	   c_name c1%rowtype;
+	begin
+	  open c1;
+	  loop
+		fetch c1 into c_name;
+		exit when c1%notfound;
+		raise info '%', c_name;
+      end loop;
+	  close c1;
+	end;
+	return v_path.id;
+  end;
+begin
+  var1 := 2;
+  open c1;
+	  loop
+		fetch c1 into c_name;
+		exit when c1%notfound;
+		raise info '%', c_name;
+      end loop;
+  close c1;
+ end;
+ /
+
+select test_pkg.test_f(1,'ok') from dual;
+
+--clean data
+drop package test_pkg;
+drop table test_mds;

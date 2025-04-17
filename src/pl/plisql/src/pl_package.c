@@ -1725,7 +1725,21 @@ plisql_package_body_compile(Oid bodyoid,
 	else if (PACKAGE_HAS_BODY(item->cachestatus))
 		goto finish;
 
-	package_body_doCompile(pkgbodyTup, item, forValidator);
+	/* Begin - BUG#Z00001674 */
+	/*
+	 * package body rely on package, so we should add
+	 * package item to cache,so that last check
+	 * no raise package cache is not found error
+	 */
+	if (PackageCacheLookup(&pkey) == NULL)
+	{
+		PackageCacheInsert(&pkey, item);
+		package_body_doCompile(pkgbodyTup, item, forValidator);
+		PackageCacheDelete(&pkey);
+	}
+	else
+		package_body_doCompile(pkgbodyTup, item, forValidator);
+	/* End - BUG#Z0000674 */
 
 	/* if we rebuild body, we should re init */
 	newpsource = (PLiSQL_package *) item->source;
