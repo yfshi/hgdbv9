@@ -649,7 +649,7 @@ select connect_by_root emp_name, connect_by_root emp_id from employee connect by
 --test ok
 select connect_by_root emp_name, connect_by_root emp_id from employee connect by prior emp_id = lead_id start with emp_id = 1 order by sys_connect_by_path(emp_name, '@@');
 
---oracle test failed, but we support
+--failed
 select connect_by_root emp_name, connect_by_root emp_id from employee  where sys_connect_by_path(emp_id,'@@') = 'xiexie' connect by prior emp_id = lead_id start with emp_id = 1 order by emp_name;
 
 --test ok
@@ -2446,3 +2446,125 @@ select * from h1,h2 where h1c1 = h2c1 and h1c1 > 1 or h1c1 < 3 connect by nocycl
 --clean data
 drop table h1;
 drop table h2;
+
+--BUG#Z00004575
+create table emp_test(emp_id number primary key,emp_name varchar2(50), manager_id number);
+
+insert into emp_test values(1,'CE0', NULL);
+insert into emp_test values(2,'managerA', 1);
+insert into emp_test values(3,'staffA1', 2);
+insert into emp_test values(4,'staffA2', 3);
+
+insert into emp_test values(5,'managerB', 7);
+insert into emp_test values(6,'staffB1', 5);
+insert into emp_test values(7,'staffB2',6);
+
+insert into emp_test values(8, 'managerC', 9);
+insert into emp_test values(9, 'staffC1', 8);
+
+insert into emp_test values(10,'managerD', 10);
+
+
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+
+delete from emp_test where emp_id != 10;
+
+--1 row
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+--ok 1 row
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where connect_by_isleaf = 1
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+--ok 1 row
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where level = 1
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+
+--ok 1 row
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where connect_by_iscycle = 1
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+--ok 0 ROW
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where prior manager_id = 10
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+
+--ok 1 row
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where connect_by_root manager_id = 10
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+--error
+select emp_name,connect_by_iscycle as is_cycle, connect_by_isleaf as is_leaf from emp_test where sys_connect_by_path(manager_id, '/') = '10/'
+start with emp_id = 5 or emp_id = 8 or emp_id = 10
+connect by nocycle emp_id = prior manager_id;
+
+--clean data
+drop table emp_test;
+
+--bug#Z4574
+create table employees (
+	emp_id number primary key,
+	emp_name varchar(50),
+	dept_id number,
+	salary number,
+	mgr_id number,
+	status varchar(10) default 'ACTIVE'
+);
+
+insert into employees values (1, 'CEO', 10, 10000, NULL, 'ACTIVE');
+insert into employees values (2, 'VP1', 10, 8000, 1, 'CEO');
+insert into employees values (3, 'VP2', 20, 7500, 1, 'CEO');
+insert into employees values (4, 'MGR1', 10, 6000, 2, 'VP1');
+insert into employees values (5, 'MGR2', 20, 5500, 3, 'VP2');
+insert into employees values (6, 'EMP1', 10, 4000, 4, 'MGR1');
+insert into employees values (7, 'EMP2', 20, 3800, 5, 'MGR2');
+insert into employees values (8, 'EMP3', 10, 3500, 4, 'MGR1');
+
+--error
+select emp_name, sys_connect_by_path(emp_name, '/') as path
+from employees
+where sys_connect_by_path(emp_name, '/') like '%VP%'
+start with mgr_id is null
+connect by prior emp_id = mgr_id;
+
+
+--error
+select emp_name, sys_connect_by_path(emp_name, '/') AS path
+from employees
+start with mgr_id is null
+connect by prior emp_id = mgr_id and sys_connect_by_path(emp_name, '/') like '%VP%';
+
+
+--ok
+select emp_name, sys_connect_by_path(emp_name, '/') as path
+from employees
+start with emp_id = 1
+connect by prior emp_id = mgr_id
+order siblings by emp_name;
+
+
+--ok
+select emp_name, sys_connect_by_path(emp_name, '/') as path
+from employees
+start with emp_id = 1
+connect by prior emp_name = status
+order siblings by emp_name;
+
+--ok
+select emp_name, sys_connect_by_path(emp_name, '/') as path
+from employees
+start with emp_id = 1
+connect by prior emp_id = mgr_id and prior emp_name = status
+order siblings by emp_name;
+
+--clean data
+drop table employees;
