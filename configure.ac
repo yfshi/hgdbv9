@@ -224,7 +224,7 @@ fi
 AC_MSG_CHECKING([for default port number in mysql compatible mode])
 PGAC_ARG_REQ(with, mysport, [PORTNUM], [set default port number for mysql [3306]],
              [default_mys_port=$withval],
-             [default_mys_port=1521])
+             [default_mys_port=3306])
 AC_MSG_RESULT([$default_mys_port])
 # Need both of these because some places want an integer and some a string
 AC_DEFINE_UNQUOTED(DEF_MYSPORT, ${default_mys_port},

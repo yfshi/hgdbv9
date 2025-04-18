@@ -3366,7 +3366,7 @@ if test "${with_mysport+set}" = set; then :
   esac
 
 else
-  default_mys_port=1521
+  default_mys_port=3306
 fi
 
 
