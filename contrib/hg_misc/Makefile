@@ -4,7 +4,7 @@
 include ./hg_misc.global
 # SQL marcos are used to generate hg_misc--1.0.sql.
 # If you add a new module, don't forget add corresponding here.
-SQL_MARCO = 
+SQL_MARCO = -P
 
 MODULE_big = hg_misc
 OBJS = \
