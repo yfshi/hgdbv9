@@ -48,16 +48,20 @@
 /* Define to the default TCP port number on which the server listens and to
    which clients will try to connect. This can be overridden at run-time, but
    it's convenient if your clients have the right default compiled in.
+   (--with-mysport=PORTNUM) */
+#undef DEF_MYSPORT
+
+/* Define to the default TCP port number as a string constant. */
+#undef DEF_MYSPORT_STR
+
+/* Define to the default TCP port number on which the server listens and to
+   which clients will try to connect. This can be overridden at run-time, but
+   it's convenient if your clients have the right default compiled in.
    (--with-oraport=PORTNUM) */
 #undef DEF_ORAPORT
 
 /* Define to the default TCP port number as a string constant. */
 #undef DEF_ORAPORT_STR
-
-#undef DEF_MYSPORT
-
-/* Define to the default TCP port number as a string constant. */
-#undef DEF_MYSPORT_STR
 
 /* Define to the default TCP port number on which the server listens and to
    which clients will try to connect. This can be overridden at run-time, but
@@ -845,6 +849,9 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* Define to 1 to enable NUMA performance. (--enable-numa) */
+#undef PERF_NUMA
+
 /* Define to the name of a signed 128-bit integer type. */
 #undef PG_INT128_TYPE
 
@@ -921,9 +928,6 @@
 /* Define to 1 if strerror_r() returns int. */
 #undef STRERROR_R_INT
 
-/* Define to 0 to build without administrator user. */
-#undef USE_ADMINISTRATOR
-
 /* Define to 1 to use ARMv8 CRC Extension. */
 #undef USE_ARMV8_CRC32C
 
@@ -964,6 +968,9 @@
 /* Define to select named POSIX semaphores. */
 #undef USE_NAMED_POSIX_SEMAPHORES
 
+/* Define to 32767 to build with normalobjectid. (--enable-normalobjectid) */
+#undef USE_NORMAL_OBJECT_ID
+
 /* Define to 1 to build with OpenSSL support. (--with-ssl=openssl) */
 #undef USE_OPENSSL
 
@@ -972,9 +979,8 @@
 
 /* Define to 1 to build with root user. (--enable-root) */
 #undef USE_ROOT
-
-/* ivorysql pro use 32767. (--enable-normalobjectid) */
-#undef USE_NORMAL_OBJECT_ID
+/* Define to 1 to build with root user. (--enable-root) on ifdef win32*/
+#undef USE_ADMINISTRATOR
 
 /* Define to 1 to use software CRC-32C implementation (slicing-by-8). */
 #undef USE_SLICING_BY_8_CRC32C
@@ -1005,6 +1011,10 @@
 
 /* Define to 1 if `wcstombs_l' requires <xlocale.h>. */
 #undef WCSTOMBS_L_IN_XLOCALE
+
+/* Define to build with Security Enhancement features.
+   (--with-security-enhancement) */
+#undef WITH_SECURITY_ENHANCEMENT
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
@@ -1062,5 +1072,3 @@
 
 /* Define to how the compiler spells `typeof'. */
 #undef typeof
-
-#undef PERF_NUMA

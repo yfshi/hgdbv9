@@ -1,0 +1,123 @@
+-- SEQUENCE
+
+-- setup before test start
+create database testdb;
+\c testdb -
+create schema sch_u1 authorization u1;
+create schema sch_sysdba_u1 authorization sysdba_u1;
+create schema sch_sysdba_u2 authorization sysdba_u2;
+create schema sch_syssso_u1 authorization syssso_u1;
+create schema sch_syssao_u1 authorization syssao_u1;
+
+create sequence seq1_syssso_u1;
+create sequence seq1_syssao_u1;
+create sequence seq1_u1;
+
+alter sequence seq1_syssso_u1 owner to syssso_u1;
+alter sequence seq1_syssao_u1 owner to syssao_u1;
+
+alter database testdb set se_feature.mode to on;
+set se_feature.mode to on;
+
+-- For member of sysdba_role
+\c testdb sysdba_u1;
+
+---- CREATE SEQUENCE
+------ pass
+create sequence sch_sysdba_u1.seq1_sysdba_u1;
+create sequence sch_sysdba_u2.seq1_sysdba_u2;
+create sequence seq1_sysdba_u1;
+create sequence seq1_sysdba_u2;
+create sequence sch_u1.seq2_u1;
+------ fail
+create sequence sch_syssso_u1.seq2_syssso_u1;
+create sequence sch_syssao_u1.seq2_syssao_u1;
+
+---- ALTER SEQUENCE OWNER
+------ pass
+alter sequence seq1_sysdba_u1 owner to sysdba_u1;
+alter sequence seq1_sysdba_u2 owner to sysdba_u2;
+alter sequence seq1_u1 owner to u1;
+------ fail
+alter sequence seq1_syssso_u1 owner to sysdba_u1;
+alter sequence seq1_syssao_u1 owner to u1;
+alter sequence seq1_sysdba_u1 owner to syssso_u1;
+alter sequence seq1_u1 owner to syssao_u1;
+
+---- ALTER SEQUENCE
+------ pass
+alter sequence seq1_sysdba_u1 restart with 100;
+alter sequence seq1_sysdba_u2 restart with 100;
+alter sequence seq1_u1 restart with 100;
+------ fail
+alter sequence seq1_syssso_u1 restart with 100;
+alter sequence seq1_syssao_u1 restart with 100;
+
+---- ALTER SEQUENCE RENAME
+------ pass
+alter sequence seq1_sysdba_u1 rename to seq1_sysdba_u1_new;
+alter sequence seq1_sysdba_u2 rename to seq1_sysdba_u2_new;
+alter sequence seq1_u1 rename to seq1_u1_new;
+------ fail
+alter sequence seq1_syssso_u1 rename to seq1_syssso_u1_new;
+alter sequence seq1_syssao_u1 rename to seq1_syssao_u1_new;
+
+---- ALTER SEQUENCE SCHEMA
+------ pass
+alter sequence seq1_sysdba_u1_new set schema sch_sysdba_u1;
+alter sequence sch_sysdba_u1.seq1_sysdba_u1_new set schema sch_u1;
+alter sequence sch_u1.seq1_sysdba_u1_new set schema public;
+------ fail
+alter sequence seq1_sysdba_u1_new set schema sch_syssso_u1;
+alter sequence seq1_u1_new set schema sch_syssao_u1;
+alter sequence seq1_syssso_u1 set schema sch_sysdba_u1;
+alter sequence seq1_syssao_u1 set schema sch_u1;
+
+---- GRANT SEQUENCE
+------ pass
+grant all on seq1_sysdba_u1_new to sysdba_u1;
+grant all on seq1_sysdba_u2_new to sysdba_u2;
+grant all on seq1_sysdba_u1_new to u1;
+grant all on seq1_u1_new to u1;
+grant all on seq1_u1_new to u2;
+grant all on seq1_u1_new to sysdba_u1;
+------ fail
+grant all on seq1_sysdba_u1_new to syssso_u1;
+grant all on seq1_sysdba_u1_new to syssao_u1;
+grant all on seq1_sysdba_u2_new to syssao_u1;
+grant all on seq1_sysdba_u2_new to syssao_u1;
+grant all on seq1_syssso_u1 to sysdba_u1;
+grant all on seq1_syssao_u1 to sysdba_u1;
+grant all on seq1_u1_new to syssso_u1;
+grant all on seq1_u1_new to syssao_u1;
+
+---- DROP SEQUENCE
+------ pass
+drop sequence seq1_sysdba_u1_new;
+drop sequence seq1_sysdba_u2_new;
+drop sequence seq1_u1_new;
+------ fail
+drop sequence seq1_syssso_u1;
+drop sequence seq1_syssao_u1;
+
+-- Clean test object
+\c testdb syssso_u1
+set se_feature.mode to on;
+alter database testdb set se_feature.mode to off;
+\c testdb sysdba_u1
+drop sequence sch_sysdba_u1.seq1_sysdba_u1;
+drop sequence sch_sysdba_u2.seq1_sysdba_u2;
+drop sequence sch_u1.seq2_u1;
+
+drop schema sch_sysdba_u1;
+drop schema sch_sysdba_u2;
+drop schema sch_syssso_u1;
+drop schema sch_syssao_u1;
+drop schema sch_u1;
+
+drop sequence seq1_syssso_u1;
+drop sequence seq1_syssao_u1;
+
+\c template1 sysdba_u1
+drop database testdb;
+

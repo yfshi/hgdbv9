@@ -47,6 +47,10 @@ install: all installdirs
 	$(INSTALL_DATA) utils/errcodes.h '$(DESTDIR)$(includedir_server)/utils'
 	$(INSTALL_DATA) utils/fmgroids.h '$(DESTDIR)$(includedir_server)/utils'
 	$(INSTALL_DATA) utils/fmgrprotos.h '$(DESTDIR)$(includedir_server)/utils'
+# # Added by chengxi for security features
+ifeq ($(with_security_enhancement),yes)
+	$(INSTALL_DATA) se_features_interface.h '$(DESTDIR)$(includedir_server)'
+endif
 # We don't use INSTALL_DATA for performance reasons --- there are a lot of files
 # (in fact, we have to take some pains to avoid overlength shell commands here)
 	cp $(srcdir)/*.h '$(DESTDIR)$(includedir_server)'/

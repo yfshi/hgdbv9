@@ -549,6 +549,10 @@ sub contribcheck
 		next if ($module eq "ivorysql_ora");
 		# Native PostgreSQL does not perform the test of ivorysql_my.
 		next if ($module eq "ivorysql_my");
+		# /* Begin - ReqID:SRS-SECURITY-POWERS */
+		# skip restricted_dba check if we compile without se-features.
+		next if ($module eq "restricted_dba"  && !defined($config->{with_security_enhancement}));
+		# /* End - ReqID:SRS-SECURITY-POWERS */
 
 		subdircheck($module);
 		my $status = $? >> 8;

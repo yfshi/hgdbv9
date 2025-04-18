@@ -65,6 +65,15 @@ LIBS += -lnuma
 endif
 # END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
 
+# build se_features and compile it into postgres
+ifeq ($(with_security_enhancement),yes)
+$(top_builddir)/src/se_features/libse_features.a:
+	$(MAKE) -C $(top_builddir)/src/se_features/ libse_features.a
+OBJS += $(top_builddir)/src/se_features/libse_features.a
+# LDFLAGS_INTERNAL += -L$(top_builddir)/src/se_features/ -lse_features
+endif
+
+
 ##########################################################################
 
 all: submake-libpgport submake-catalog-headers submake-utils-headers postgres $(POSTGRES_IMP)
@@ -73,7 +82,7 @@ ifneq ($(PORTNAME), cygwin)
 ifneq ($(PORTNAME), win32)
 ifneq ($(PORTNAME), aix)
 
-postgres: $(OBJS)
+postgres: $(OBJS) 
 	$(CC) $(CFLAGS) $(call expand_subsys,$^) $(LDFLAGS) $(LDFLAGS_EX) $(export_dynamic) $(LIBS) -o $@
 
 endif

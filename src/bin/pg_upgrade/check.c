@@ -705,7 +705,15 @@ check_is_install_user(ClusterInfo *cluster)
 							"SELECT rolsuper, oid "
 							"FROM pg_catalog.pg_roles "
 							"WHERE rolname = current_user "
-							"AND rolname !~ '^pg_'");
+							"AND rolname !~ '^pg_'"
+#ifdef WITH_SECURITY_ENHANCEMENT
+							"AND rolname != 'sysdba_role' "
+							"AND rolname != 'syssso_role' "
+							"AND rolname != 'syssao_role' "
+							"AND rolname != 'syssso' "
+							"AND rolname != 'syssao' "
+#endif
+							);
 
 
 	/*
@@ -723,7 +731,15 @@ check_is_install_user(ClusterInfo *cluster)
 	res = executeQueryOrDie(conn,
 						"SELECT COUNT(*) "
 						"FROM pg_catalog.pg_roles "
-						"WHERE rolname !~ '^pg_'");
+						"WHERE rolname !~ '^pg_'"
+#ifdef WITH_SECURITY_ENHANCEMENT
+						"AND rolname != 'sysdba_role' "
+						"AND rolname != 'syssso_role' "
+						"AND rolname != 'syssao_role' "
+						"AND rolname != 'syssso' "
+						"AND rolname != 'syssao' "
+#endif
+						);
 
 	if (PQntuples(res) != 1)
 		pg_fatal("could not determine the number of users\n");

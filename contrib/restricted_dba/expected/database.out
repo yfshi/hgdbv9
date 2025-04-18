@@ -1,0 +1,33 @@
+-- DATABASE
+set se_feature.mode to on;
+---- CREATE DATABASE
+------ fail
+create database db1 owner u1;
+ERROR:  only member of sysdba_role can own a database
+------ pass
+create database db1 owner sysdba_u1;
+---- ALTER DATABASE
+------ fail
+alter database db1 owner to u1;
+ERROR:  permission denied
+DETAIL:  only sysdba_role member can be owner
+------ pass
+alter database db1 owner to sysdba_u2;
+---- GRANT/REVOKE
+------ pass
+grant all on database db1 to sysdba_u1;
+grant all on database db1 to u1;
+grant connect on database db1 to syssso_u1;
+------ fail
+grant all on database db1 to u1 with grant option;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on database with grant optionto non-sysdba_role member
+grant create on database db1 to syssso_u1 with grant option;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on database with grant optionto non-sysdba_role member
+grant all on database db1 to syssao_u1;
+ERROR:  permission denied
+DETAIL:  cannot grant privilege on database to syssso_role/syssao_role member.
+---- DROP DATABASE
+------ pass
+drop database db1;

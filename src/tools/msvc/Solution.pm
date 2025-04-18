@@ -545,6 +545,9 @@ sub GenerateFiles
 		# Begin - ReqID:SRS-Performance-GUC
 		MISC_INTERNAL              => $self->{options}->{internal_guc} ? 1 : undef,
 		# End - ReqID:SRS-Performance-GUC
+		#/* Begin - ReqID:SRS-SECURITY-POWERS */
+		WITH_SECURITY_ENHANCEMENT  => $self->{options}->{with_security_enhancement} ? 1 : undef,
+		#/* End - ReqID:SRS-SECURITY-POWERS */
 		USE_LLVM                   => undef,
 		USE_NAMED_POSIX_SEMAPHORES => undef,
 		USE_OPENSSL                => undef,
@@ -1379,6 +1382,9 @@ sub GetFakeConfigure
 	# Begin - ReqID:SRS-Performance-GUC
 	$cfg .= ' --enable-internal-guc' if ($self->{options}->{internal_guc});
 	# End - ReqID:SRS-Performance-GUC
+	#/* Begin - ReqID:SRS-SECURITY-POWERS */
+	$cfg .= ' --with-security-enhancement' if ($self->{options}->{with_security_enhancement});
+	#/* End - ReqID:SRS-SECURITY-POWERS */
 	$cfg .= ' --with-ldap'        if ($self->{options}->{ldap});
 	$cfg .= ' --without-zlib' unless ($self->{options}->{zlib});
 	$cfg .= ' --with-extra-version' if ($self->{options}->{extraver});
