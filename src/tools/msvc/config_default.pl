@@ -8,7 +8,7 @@ use warnings;
 our $config = {
 	asserts => 0,    # --enable-cassert
 	#/* Begin - Bug#M0000315 */
-	administrator => 1,		  # --enable-root
+	administrator => 0,		  # --enable-root
 	#/* End - Bug#M0000315 */
 
 	# blocksize => 8,         # --with-blocksize, 8kB by default
@@ -27,6 +27,9 @@ our $config = {
 	# Begin - ReqID:SRS-Performance-GUC
 	internal_guc => undef,
 	# End - ReqID:SRS-Performance-GUC
+	#/* Begin - ReqID:SRS-SECURITY-POWERS */
+	with_security_enhancement => undef,		# --with-security-enhancement
+	#/* End - ReqID:SRS-SECURITY-POWERS */
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>

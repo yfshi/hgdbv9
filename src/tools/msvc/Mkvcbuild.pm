@@ -37,6 +37,10 @@ my $liborafeutils;
 my $libmysfeutils;	# ReqID:SRS-MISC-MYSQL-FRAME
 # END - SQL PARSER
 
+# /* Begin - ReqID:SRS-SECURITY-POWERS */
+my $libsefeatures;
+# /* End - ReqID:SRS-SECURITY-POWERS */
+
 my @unlink_on_exit;
 
 # Set of variables for modules in contrib/ and src/test/modules/
@@ -232,6 +236,14 @@ sub mkvcbuild
 	$libmysfeutils->AddFiles('src/mysql_fe_utils', @mysfeutilsfiles);
 	$libmysfeutils->AddFile('src/backend/mysql_parser/mys_keywords.c');
 	# End - ReqID:SRS-MISC-MYSQL-FRAME
+
+	# /* Begin - ReqID:SRS-SECURITY-POWERS */
+	if ($solution->{options}->{with_security_enhancement})
+	{
+		$libsefeatures = $solution->AddProject('libsefeatures', 'lib', 'misc');
+		$libsefeatures->AddFile('src/se_features/se_features.c');
+	}
+	# /* End - ReqID:SRS-SECURITY-POWERS */
 
 	$postgres = $solution->AddProject('postgres', 'exe', '', 'src/backend');
 	$postgres->AddIncludeDir('src/backend');
@@ -641,6 +653,14 @@ sub mkvcbuild
 		push @contrib_excludes, 'uuid-ossp';
 	}
 
+	# /* Begin - ReqID:SRS-SECURITY-POWERS */
+	if (!$solution->{options}->{with_security_enhancement})
+	{
+		push @contrib_excludes, 'restricted_dba';
+	}
+	# /* End - ReqID:SRS-SECURITY-POWERS */
+		
+
 	# AddProject() does not recognize the constructs used to populate OBJS in
 	# the pgcrypto Makefile, so it will discover no files.
 	my $pgcrypto =
@@ -1037,6 +1057,12 @@ sub mkvcbuild
 			$proj->AddLibrary($solution->{options}->{license} . '\share\license.lib');			
 		}
 		# End - ReqID:SRS-MISC-LICENSE
+		# /* Begin - ReqID:SRS-SECURITY-POWERS */
+		if ($solution->{options}->{with_security_enhancement})
+		{
+			$proj->AddReference($libsefeatures);
+		}
+		# /* End - ReqID:SRS-SECURITY-POWERS */
 	}
 
 	# Regression DLL and EXE
@@ -1125,6 +1151,13 @@ sub mkvcbuild
 		$postgres->AddLibrary($solution->{options}->{license} . '\lib\license.lib');
 	}
 	# End - ReqID:SRS-MISC-LICENSE
+
+	# /* Begin - ReqID:SRS-SECURITY-POWERS */
+	if ($solution->{options}->{with_security_enhancement})
+	{
+		$postgres->AddReference($libsefeatures);
+	}
+	# /* End - ReqID:SRS-SECURITY-POWERS */
 
 	# fix up pg_waldump once it's been set up
 	# files symlinked on Unix are copied on windows
@@ -1269,6 +1302,12 @@ sub AddContrib
 			$proj->AddIncludeDir($solution->{options}->{license} . '\include');
 		}
 		# End - ReqID:SRS-MISC-LICENSE
+		# /* Begin - ReqID:SRS-SECURITY-POWERS */
+		if ($solution->{options}->{with_security_enhancement})
+		{
+			$proj->AddReference($libsefeatures);
+		}
+		# /* End - ReqID:SRS-SECURITY-POWERS */
 	}
 	elsif ($mf =~ /^MODULES\s*=\s*(.*)$/mg)
 	{

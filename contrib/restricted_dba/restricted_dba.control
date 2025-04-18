@@ -1,0 +1,9 @@
+# restricted_dba
+comment = 'restricted_dba'
+default_version = '1.0'
+module_pathname = '$libdir/restricted_dba'
+relocatable = true
+trusted = true
+#  begin - bug: z676
+parse_options = all
+#  end - bug: z676

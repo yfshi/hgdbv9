@@ -718,6 +718,7 @@ with_license
 with_ldap
 with_krb_srvnam
 krb_srvtab
+with_security_enhancement
 with_gssapi
 with_python
 with_perl
@@ -725,8 +726,8 @@ with_tcl
 ICU_LIBS
 ICU_CFLAGS
 with_icu
-enable_numa
 enable_internal_guc
+enable_numa
 enable_thread_safety
 INCLUDES
 autodepend
@@ -772,8 +773,8 @@ LCOV
 GCOV
 enable_debug
 enable_rpath
-default_ora_port
 default_mys_port
+default_ora_port
 default_port
 WANTED_LANGUAGES
 enable_nls
@@ -866,6 +867,7 @@ with_tclconfig
 with_perl
 with_python
 with_gssapi
+with_security_enhancement
 with_krb_srvnam
 with_pam
 with_bsd_auth
@@ -1581,6 +1583,8 @@ Optional Packages:
   --with-perl             build Perl modules (PL/Perl)
   --with-python           build Python modules (PL/Python)
   --with-gssapi           build with GSSAPI support
+  --with-security-enhancement
+                          build with Security Enhancement features
   --with-krb-srvnam=NAME  default service principal name in Kerberos (GSSAPI)
                           [postgres]
   --with-pam              build with PAM support
@@ -3362,7 +3366,7 @@ if test "${with_mysport+set}" = set; then :
   esac
 
 else
-  default_mys_port=3306
+  default_mys_port=1521
 fi
 
 
@@ -3393,6 +3397,7 @@ elif test "$default_mys_port" -lt "1" -o "$default_mys_port" -gt "65535"; then
 fi
 
 # End - ReqID:SRS-MISC-MYSQL-FRAME
+
 #
 # '-rpath'-like feature can be disabled
 #
@@ -8369,8 +8374,8 @@ else
 
 fi
 
-### End - Bug#Z1064 ###
 
+### End - Bug#Z1064 ###
 
 
 #
@@ -8443,6 +8448,8 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_thread_safety" >&5
 $as_echo "$enable_thread_safety" >&6; }
 
+
+# BEGIN - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
 #
 # Enable NUMA performance
 #
@@ -8479,6 +8486,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_numa" >&5
 $as_echo "$enable_numa" >&6; }
 
+# END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
 
 #
 # Enable hg_misc/internal, ReqID:SRS-Performance-GUC
@@ -8806,6 +8814,41 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_gssapi" >&5
 $as_echo "$with_gssapi" >&6; }
+
+
+#
+# Security Enhancement
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with Security Enhancement features" >&5
+$as_echo_n "checking whether to build with Security Enhancement features... " >&6; }
+
+
+
+# Check whether --with-security-enhancement was given.
+if test "${with_security_enhancement+set}" = set; then :
+  withval=$with_security_enhancement;
+  case $withval in
+    yes)
+
+$as_echo "#define WITH_SECURITY_ENHANCEMENT 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --with-security-enhancement option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  with_security_enhancement=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_security_enhancement" >&5
+$as_echo "$with_security_enhancement" >&6; }
 
 
 

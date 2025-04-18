@@ -98,6 +98,9 @@ ALWAYS_SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
 endif
 
 
+ifeq ($(with_security_enhancement),yes)
+SUBDIRS += restricted_dba
+endif
 
 # Missing:
 #		start-scripts	\ (does not have a makefile)

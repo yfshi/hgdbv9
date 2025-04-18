@@ -53,6 +53,10 @@ SUBDIRS += $(LICENSE_DIR)
 SUBDIRS += ../dep/license/client_info
 endif
 
+ifeq ($(with_security_enhancement), yes)
+SUBDIRS += se_features
+endif
+
 # There are too many interdependencies between the subdirectories, so
 # don't attempt parallel make here.
 .NOTPARALLEL:

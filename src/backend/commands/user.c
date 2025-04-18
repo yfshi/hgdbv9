@@ -44,6 +44,10 @@
 #include "access/tableam.h"
 #include "catalog/pg_namespace.h"	/* ReqID:SRS-SQL-SCHEMA */
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+#include "se_features_interface.h"
+#endif 
+
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
 
@@ -756,6 +760,41 @@ AlterRole(AlterRoleStmt *stmt)
 	}
 	else if (!have_createrole_privilege())
 	{
+
+/*chengxi marks here move following change to extension latter*/
+#ifdef WITH_SECURITY_ENHANCEMENT
+		if (se_feature.mode && (IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId())))
+		{
+			if (!(inherit < 0 &&
+				createrole < 0 &&
+				createdb < 0 &&
+				canlogin < 0 &&
+				!dconnlimit &&
+				!rolemembers &&
+				(validUntil ||	//we allow syssso and syssao to modify its validuntil
+				dpassword )&&
+				roleid == GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied")));
+		}
+		else
+		{
+			if (!(inherit < 0 &&
+				createrole < 0 &&
+				createdb < 0 &&
+				canlogin < 0 &&
+				!dconnlimit &&
+				!rolemembers &&
+				!validUntil &&
+				dpassword &&
+				roleid == GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						errmsg("permission denied")));
+		}
+		
+#else
 		/* We already checked issuper, isreplication, and bypassrls */
 		if (!(inherit < 0 &&
 			  createrole < 0 &&
@@ -769,6 +808,7 @@ AlterRole(AlterRoleStmt *stmt)
 			ereport(ERROR,
 					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 					 errmsg("permission denied")));
+#endif				
 	}
 
 	/* Convert validuntil to internal form */

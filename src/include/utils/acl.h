@@ -210,6 +210,9 @@ extern bool has_privs_of_role(Oid member, Oid role);
 extern bool is_member_of_role(Oid member, Oid role);
 extern bool is_member_of_role_nosuper(Oid member, Oid role);
 extern bool is_admin_of_role(Oid member, Oid role);
+/* Begin - ReqID: SRS-SECURITY-POWERS */
+extern bool is_admin_of_role_nosuper(Oid member, Oid role);
+/* End - ReqID: SRS-SECURITY-POWERS */
 extern void check_is_member_of_role(Oid member, Oid role);
 extern Oid	get_role_oid(const char *rolename, bool missing_ok);
 extern Oid	get_role_canlogin_oid(const char *rolname, bool missing_ok);

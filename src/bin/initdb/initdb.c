@@ -162,7 +162,6 @@ static char *xlog_dir = NULL;
 static char *str_wal_segment_size_mb = NULL;
 static int	wal_segment_size_mb;
 
-
 /* internal vars */
 static const char *progname;
 static int	encodingid;
@@ -188,6 +187,12 @@ static int	output_errno = 0;
 static char *pgdata_native;
 static char *preload_ora_misc;	/* BUG#M0000195 */
 static char *preload_mys_misc;	/* ReqID:SRS-MYSQL-CASE */
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+/*just like superuser_password can be set via -W or --pwfile*/
+static char *syssso_password;
+static char *syssao_password;
+#endif
 
 /* BEGIN - case sensitive indentify */
 static char  *switchmode = "interchange";
@@ -1342,6 +1347,15 @@ setup_config(void)
 	}
 	/* End - BUG#0000065 */
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+	{
+		char *token = "shared_preload_libraries = 'gb18030_2022'";
+		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba'";
+		conflines = replace_token(conflines,token, replacement);
+	}
+#endif
+
+
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
 	writefile(path, conflines);
@@ -1375,6 +1389,14 @@ setup_config(void)
 		}
 		/* End - SRS-MISC-COMPATDM-SQL */
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+		{
+			char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
+			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba'";
+			conflines = replace_token(conflines,token, replacement);
+		}
+#endif
+
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
 		{
@@ -1391,6 +1413,14 @@ setup_config(void)
 		conflines = readfile(mys_conf_file);
 
 		snprintf(path, sizeof(path), "%s/ivorysql.mysql.conf", pg_data);
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+		{
+			char *token = "shared_preload_libraries = 'libmysql_parser, pg_object'";
+			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, restricted_dba'";
+			conflines = replace_token(conflines,token, replacement);
+		}
+#endif
 
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
@@ -1660,7 +1690,10 @@ static void
 get_su_pwd(void)
 {
 	char	   *pwd1;
-
+#ifdef	WITH_SECURITY_ENHANCEMENT
+	char	   *syssso_pwd1;
+	char	   *syssao_pwd1;
+#endif
 	if (pwprompt)
 	{
 		/*
@@ -1670,7 +1703,11 @@ get_su_pwd(void)
 
 		printf("\n");
 		fflush(stdout);
+#ifdef	WITH_SECURITY_ENHANCEMENT
+		pwd1 = simple_prompt("Enter default dba user password: ", false);
+#else
 		pwd1 = simple_prompt("Enter new superuser password: ", false);
+#endif
 		pwd2 = simple_prompt("Enter it again: ", false);
 		if (strcmp(pwd1, pwd2) != 0)
 		{
@@ -1678,6 +1715,37 @@ get_su_pwd(void)
 			exit(1);
 		}
 		free(pwd2);
+
+#ifdef	WITH_SECURITY_ENHANCEMENT
+		{
+			char	   *syssso_pwd2;
+			char	   *syssao_pwd2;
+
+			printf("\n");
+			fflush(stdout);
+			syssso_pwd1 = simple_prompt("Enter default sso user password: ", false);
+			syssso_pwd2 = simple_prompt("Enter it again: ", false);
+			if (strcmp(syssso_pwd1, syssso_pwd2) != 0)
+			{
+				fprintf(stderr, _("Passwords didn't match.\n"));
+				exit(1);
+			}
+
+			printf("\n");
+			fflush(stdout);
+			syssao_pwd1 = simple_prompt("Enter default sao user password: ", false);
+			syssao_pwd2 = simple_prompt("Enter it again: ", false);
+			if (strcmp(syssao_pwd1, syssao_pwd2) != 0)
+			{
+				fprintf(stderr, _("Passwords didn't match.\n"));
+				exit(1);
+			}
+
+			free(syssso_pwd2);
+			free(syssao_pwd2);
+		}
+#endif
+
 	}
 	else
 	{
@@ -1708,12 +1776,45 @@ get_su_pwd(void)
 							 pwfilename);
 			exit(1);
 		}
+
+#ifdef	WITH_SECURITY_ENHANCEMENT
+		syssso_pwd1 = pg_get_line(pwf);
+		if (!syssso_pwd1)
+		{
+			// if (ferror(pwf))
+			// 	pg_log_error("could not read sso password from file \"%s\": %m",
+			// 				 pwfilename);
+			// else
+			// 	pg_log_error("password of sso is empty",
+			// 				 pwfilename);
+			// exit(1);
+			syssso_pwd1 = pwd1;
+		}
+		syssao_pwd1 = pg_get_line(pwf);
+		if (!syssao_pwd1)
+		{
+			// if (ferror(pwf))
+			// 	pg_log_error("could not read sao password from file \"%s\": %m",
+			// 				 pwfilename);
+			// else
+			// 	pg_log_error("password of sao is empty",
+			// 				 pwfilename);
+			// exit(1);
+			syssao_pwd1 = pwd1;
+		}	
+#endif
 		fclose(pwf);
 
 		(void) pg_strip_crlf(pwd1);
 	}
 
 	superuser_password = pwd1;
+#ifdef	WITH_SECURITY_ENHANCEMENT
+	(void) pg_strip_crlf(syssso_pwd1);
+	(void) pg_strip_crlf(syssao_pwd1);
+	syssso_password = syssso_pwd1;
+	syssao_password = syssao_pwd1;
+#endif
 }
 
 /*
@@ -3268,6 +3369,38 @@ initialize_data_directory(void)
 
 	setup_depend(cmdfd);
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+{
+	char   *security_roles_file;
+	char  **lines;
+
+	set_input(&security_roles_file, "security_roles.sql");
+	check_input(security_roles_file);
+	
+	lines = readfile(security_roles_file);
+	lines = replace_token(lines, "$POSTGRES", username);
+
+	if(syssso_password)
+		lines = replace_token(lines, "$SYSSSO_PASSWORD", syssso_password);
+	else
+		lines = replace_token(lines, "PASSWORD '$SYSSSO_PASSWORD'", "");
+
+	if(syssao_password)
+		lines = replace_token(lines, "$SYSSAO_PASSWORD", syssao_password);
+	else
+		lines = replace_token(lines, "PASSWORD '$SYSSAO_PASSWORD'", "");
+
+	for (char **line = lines; *line != NULL; line++)
+	{
+		PG_CMD_PUTS(*line);
+		free(*line);
+	}
+
+	PG_CMD_PUTS("\n\n");
+	free(lines);
+}
+#endif
+
 	/*
 	 * Note that no objects created after setup_depend() will be "pinned".
 	 * They are all droppable at the whim of the DBA.
@@ -3323,6 +3456,10 @@ initialize_data_directory(void)
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+	PG_CMD_PUTS("CREATE EXTENSION restricted_dba SCHEMA public;\n\n");
+#endif
 
 	vacuum_db(cmdfd);
 

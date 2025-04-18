@@ -1,0 +1,37 @@
+# contrib/restricted_dba/Makefile
+
+MODULE_big = restricted_dba
+OBJS = \
+	$(WIN32RES) \
+	alter.o		\
+	hooks.o		\
+	user.o		\
+	aclchk.o	\
+	database.o	\
+	instance.o	\
+	helper.o	\
+	tablespace.o\
+	schema.o	\
+	relation.o	\
+	proc.o
+
+EXTENSION = restricted_dba
+DATA = restricted_dba--1.0.sql
+PGFILEDESC = "restricted_dba - restrict superuser privilege from dba"
+
+REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/restricted_dba/restricted_dba.conf
+
+REGRESS = role helper tablespace database schema table view sequence index function procedure routine
+# ORA_REGRESS = restricted_dba
+
+
+ifdef USE_PGXS
+PG_CONFIG = pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+else
+subdir = contrib/restricted_dba
+top_builddir = ../..
+include $(top_builddir)/src/Makefile.global
+include $(top_srcdir)/contrib/contrib-global.mk
+endif

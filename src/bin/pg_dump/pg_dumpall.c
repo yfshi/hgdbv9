@@ -1025,6 +1025,18 @@ dropRolesNative(PGconn *conn)
 
 		rolename = PQgetvalue(res, i, i_rolname);
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*skip those se_roles created on initdb*/
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0 ||
+			strcmp(rolename, "syssso") == 0 ||
+			strcmp(rolename, "syssao") == 0)
+		{
+			continue;
+		}
+#endif
+
 		fprintf(OPF, "DROP ROLE %s%s;\n",
 				if_exists ? "IF EXISTS " : "",
 				fmtId(rolename));
@@ -1080,6 +1092,18 @@ dropRolesOracle(PGconn *conn)
 
 		rolename = PQgetvalue(res, i, i_rolname);
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*skip those se_roles created on initdb*/
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0 ||
+			strcmp(rolename, "syssso") == 0 ||
+			strcmp(rolename, "syssao") == 0)
+		{
+			continue;
+		}
+#endif
+
 		fprintf(OPF, "DROP ROLE %s%s;\n",
 				if_exists ? "IF EXISTS " : "",
 				fmtId(rolename));
@@ -1134,6 +1158,18 @@ dropRolesPg(PGconn *conn)
 		const char *rolename;
 
 		rolename = PQgetvalue(res, i, i_rolname);
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*skip those se_roles created on initdb*/
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0 ||
+			strcmp(rolename, "syssso") == 0 ||
+			strcmp(rolename, "syssao") == 0)
+		{
+			continue;
+		}
+#endif
 
 		fprintf(OPF, "DROP ROLE %s%s;\n",
 				if_exists ? "IF EXISTS " : "",
@@ -1191,6 +1227,18 @@ dropRolesMysql(PGconn *conn)
 		const char *rolename;
 
 		rolename = PQgetvalue(res, i, i_rolname);
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*skip those se_roles created on initdb*/
+		if (strcmp(rolename, "sysdba_role") == 0 ||
+			strcmp(rolename, "syssso_role") == 0 ||
+			strcmp(rolename, "syssao_role") == 0 ||
+			strcmp(rolename, "syssso") == 0 ||
+			strcmp(rolename, "syssao") == 0)
+		{
+			continue;
+		}
+#endif
 
 		fprintf(OPF, "DROP ROLE %s%s;\n",
 				if_exists ? "IF EXISTS " : "",
@@ -1630,9 +1678,23 @@ dumpRolesOracle(PGconn *conn)
 		 * have failed to drop it.  binary_upgrade cannot generate any errors,
 		 * so we assume the current role is already created.
 		 */
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
+		if (strcmp(rolename, "sysdba_role") != 0 &&
+			strcmp(rolename, "syssso_role") != 0 &&
+			strcmp(rolename, "syssao_role") != 0 &&
+			strcmp(rolename, "syssso") != 0 &&
+			strcmp(rolename, "syssao") != 0)
+		{
+			if (!binary_upgrade ||
+				strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
+				appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+		}
+#else
 		if (!binary_upgrade ||
 			strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
 			appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+#endif
 		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
 
 		if (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0)
@@ -1884,9 +1946,23 @@ dumpRolesPg(PGconn *conn)
 		 * have failed to drop it.  binary_upgrade cannot generate any errors,
 		 * so we assume the current role is already created.
 		 */
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
+		if (strcmp(rolename, "sysdba_role") != 0 &&
+			strcmp(rolename, "syssso_role") != 0 &&
+			strcmp(rolename, "syssao_role") != 0 &&
+			strcmp(rolename, "syssso") != 0 &&
+			strcmp(rolename, "syssao") != 0)
+		{
+			if (!binary_upgrade ||
+				strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
+				appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+		}
+#else
 		if (!binary_upgrade ||
 			strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
 			appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+#endif
 		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
 
 		if (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0)
@@ -2140,9 +2216,23 @@ dumpRolesMysql(PGconn *conn)
 		 * have failed to drop it.  binary_upgrade cannot generate any errors,
 		 * so we assume the current role is already created.
 		 */
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/*no matter in dumpall or upgrade, do not dump a create of se_roles*/
+		if (strcmp(rolename, "sysdba_role") != 0 &&
+			strcmp(rolename, "syssso_role") != 0 &&
+			strcmp(rolename, "syssao_role") != 0 &&
+			strcmp(rolename, "syssso") != 0 &&
+			strcmp(rolename, "syssao") != 0)
+		{
+			if (!binary_upgrade ||
+				strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
+				appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+		}
+#else
 		if (!binary_upgrade ||
 			strcmp(PQgetvalue(res, i, i_is_current_user), "f") == 0)
 			appendPQExpBuffer(buf, "CREATE ROLE %s;\n", fmtId(rolename));
+#endif
 		appendPQExpBuffer(buf, "ALTER ROLE %s WITH", fmtId(rolename));
 
 		if (strcmp(PQgetvalue(res, i, i_rolsuper), "t") == 0)
@@ -2245,6 +2335,9 @@ dumpRoleMembership(PGconn *conn)
 					  "um.rolname AS member, "
 					  "a.admin_option, "
 					  "ug.rolname AS grantor "
+#ifdef WITH_SECURITY_ENHANCEMENT
+					  ", a.member AS memberoid "
+#endif
 					  "FROM pg_auth_members a "
 					  "LEFT JOIN %s ur on ur.oid = a.roleid "
 					  "LEFT JOIN %s um on um.oid = a.member "
@@ -2262,6 +2355,14 @@ dumpRoleMembership(PGconn *conn)
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
 
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/* in case install user is not "postgres", we just compare the oid. */
+		char	   *memberoid = PQgetvalue(res, i, 4);
+		if ((strcmp(roleid, "sysdba_role") == 0 && strcmp(memberoid, "10") == 0) ||
+			(strcmp(roleid, "syssso_role") == 0 && strcmp(member, "syssso") == 0) ||
+			(strcmp(roleid, "syssao_role") == 0 && strcmp(member, "syssao") == 0))
+			continue;
+#endif
 		fprintf(OPF, "GRANT %s", fmtId(roleid));
 		fprintf(OPF, " TO %s", fmtId(member));
 		if (*option == 't')
@@ -2423,6 +2524,9 @@ OradumpRoleMembership(PGconn *conn)
 					  "um.rolname AS member, "
 					  "a.admin_option, "
 					  "ug.rolname AS grantor "
+#ifdef WITH_SECURITY_ENHANCEMENT
+					  ", a.member AS memberoid "
+#endif
 					  "FROM pg_auth_members a "
 					  "LEFT JOIN %s ur on ur.oid = a.roleid "
 					  "LEFT JOIN %s um on um.oid = a.member "
@@ -2439,6 +2543,15 @@ OradumpRoleMembership(PGconn *conn)
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/* in case install user not "postgres" , we just compare the oid. */
+		char	   *memberoid = PQgetvalue(res, i, 4);
+		if ((strcmp(roleid, "sysdba_role") == 0 && strcmp(memberoid, "10") == 0) ||
+			(strcmp(roleid, "syssso_role") == 0 && strcmp(member, "syssso") == 0) ||
+			(strcmp(roleid, "syssao_role") == 0 && strcmp(member, "syssao") == 0))
+			continue;
+#endif
 
 		fprintf(OPF, "GRANT %s", fmtId(roleid));
 		fprintf(OPF, " TO %s", fmtId(member));
@@ -2482,6 +2595,9 @@ dumpRoleMembershipMysql(PGconn *conn)
 					  "um.rolname AS member, "
 					  "a.admin_option, "
 					  "ug.rolname AS grantor "
+#ifdef WITH_SECURITY_ENHANCEMENT
+					  ", a.member AS memberoid "
+#endif
 					  "FROM pg_auth_members a "
 					  "LEFT JOIN %s ur on ur.oid = a.roleid "
 					  "LEFT JOIN %s um on um.oid = a.member "
@@ -2498,6 +2614,15 @@ dumpRoleMembershipMysql(PGconn *conn)
 		char	   *roleid = PQgetvalue(res, i, 0);
 		char	   *member = PQgetvalue(res, i, 1);
 		char	   *option = PQgetvalue(res, i, 2);
+
+#ifdef WITH_SECURITY_ENHANCEMENT
+		/* in case install user not "postgres" , we just compare the oid. */
+		char	   *memberoid = PQgetvalue(res, i, 4);
+		if ((strcmp(roleid, "sysdba_role") == 0 && strcmp(memberoid, "10") == 0) ||
+			(strcmp(roleid, "syssso_role") == 0 && strcmp(member, "syssso") == 0) ||
+			(strcmp(roleid, "syssao_role") == 0 && strcmp(member, "syssao") == 0))
+			continue;
+#endif
 
 		fprintf(OPF, "GRANT %s", fmtId(roleid));
 		fprintf(OPF, " TO %s", fmtId(member));
