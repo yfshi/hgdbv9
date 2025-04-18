@@ -1,4 +1,4 @@
---单表
+--single table
 drop table if exists t,t1,t2;
 create table t(id int,name varchar(10));
 create table t1(id int,name varchar(10));
@@ -16,7 +16,11 @@ delete from t where id = 2;
 select * from t;
 rollback;
 
---多表
+--BUG#Z4581
+--error
+delete t;--error
+
+--multi tables
 delete from t using t2;--error
 begin;
 delete from t using t,t2;
@@ -96,7 +100,7 @@ select * from t1;
 select * from t2;
 rollback;
 
---error 别名的规则
+--error alias rules
 DELETE t1 AS a1, t2 AS a2 FROM t1 INNER JOIN t2
 WHERE a1.id=a2.id;
 
@@ -119,12 +123,12 @@ begin;
 execute del1;
 end;
 
---单表使用indexhint
+--single table indexhint
 --error
 create index idk on t1(id);
 create index idk2 on t2(id);
 delete from t1 use index(idk);--error
---多表语法使用indexhint
+--multi tables indexhint
 explain (costs false) delete t1 from t1 use index(idk);
 explain (costs false) delete from t1 using t1  use index(idk);
 explain (costs false) delete t1,t2 from t1 use index(idk),t2 use index (idk2) where t1.id = t2.id;
@@ -145,12 +149,12 @@ insert into t1 values(1),(2);
 insert into t2 values(3),(4);
 create view v1 as select * from t1;
 
---表和视图是同一个
+--table and view as same
 begin;
 delete from t1,v1 using t1,v1;
 select * from v1;
 rollback;
---表和视图非同一个
+--table and view not same
 begin;
 delete from t2,v1 using t2,v1;
 select * from t2;

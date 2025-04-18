@@ -1,4 +1,4 @@
---单表
+--single table
 drop table if exists t,t1,t2;
 NOTICE:  table "t" does not exist, skipping
 NOTICE:  table "t1" does not exist, skipping
@@ -39,7 +39,13 @@ select * from t;
 (0 rows)
 
 rollback;
---多表
+--BUG#Z4581
+--error
+delete t;--error
+ERROR:  syntax error at or near ";"
+LINE 1: delete t;
+                ^
+--multi tables
 delete from t using t2;--error
 ERROR:  Unknown table t in MULTI DELETE
 begin;
@@ -213,7 +219,7 @@ select * from t2;
 (0 rows)
 
 rollback;
---error 别名的规则
+--error alias rules
 DELETE t1 AS a1, t2 AS a2 FROM t1 INNER JOIN t2
 WHERE a1.id=a2.id;
 ERROR:  syntax error at or near "AS"
@@ -243,7 +249,7 @@ PREPARE del1  AS
 begin;
 execute del1;
 end;
---单表使用indexhint
+--single table indexhint
 --error
 create index idk on t1(id);
 create index idk2 on t2(id);
@@ -251,7 +257,7 @@ delete from t1 use index(idk);--error
 ERROR:  syntax error at or near "use"
 LINE 1: delete from t1 use index(idk);
                        ^
---多表语法使用indexhint
+--multi tables indexhint
 explain (costs false) delete t1 from t1 use index(idk);
       QUERY PLAN      
 ----------------------
@@ -389,7 +395,7 @@ create table t2(b int);
 insert into t1 values(1),(2);
 insert into t2 values(3),(4);
 create view v1 as select * from t1;
---表和视图是同一个
+--table and view as same
 begin;
 delete from t1,v1 using t1,v1;
 select * from v1;
@@ -398,7 +404,7 @@ select * from v1;
 (0 rows)
 
 rollback;
---表和视图非同一个
+--table and view not same
 begin;
 delete from t2,v1 using t2,v1;
 select * from t2;
