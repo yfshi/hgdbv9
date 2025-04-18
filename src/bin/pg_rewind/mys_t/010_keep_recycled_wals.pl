@@ -59,7 +59,7 @@ my ($stdout, $stderr) = run_command(
 
 like(
 	$stderr,
-	qr/Not removing pg_wal.* because it is required for recovery/,
+	qr/Not removing file .* because it is required for recovery/,
 	"some WAL files were skipped");
 
 done_testing();
