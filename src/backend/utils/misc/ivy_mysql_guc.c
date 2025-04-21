@@ -42,6 +42,7 @@ bool		enable_ignore_columns_list = false;
 /* End - BUG#Z1434 */
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
+bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -58,7 +59,7 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	{
-		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+		{"mysql.enable_indexhint", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable index hint feature in MySQL compatible mode."),
 			NULL
 		},
@@ -69,7 +70,7 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/* Begin - BUG#Z1434 */
 	{
-		{"mysql.enable_ignore_columns_list", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+		{"mysql.enable_ignore_columns_list", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable ignore cloumns list feature in MySQL compatible mode."),
 			NULL
 		},
@@ -80,7 +81,7 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 	/* End - BUG#Z1434 */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	{
-		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
 			NULL
 		},
@@ -89,6 +90,17 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-CASE */
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+	{
+		{"mysql.mode_pad_char_to_full", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("mode_pad_char_to_full_length control char(n) output."),
+			NULL
+		},
+		&not_mode_pad_char_to_full,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
@@ -106,7 +118,7 @@ bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	{
-		{"lower_case_table_names", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+		{"lower_case_table_names", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 			gettext_noop("MySQL case sensitive parameter."),
 			NULL
 		},

@@ -29,6 +29,16 @@
 #include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
 #include "utils/varlena.h"
+#include "utils/guc.h" /* ReqID: SRS-MYSQL-CHARACTERTYPE */
+
+/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE */
+static text *
+mys_dotrim(const char *string, int stringlen,
+	   const char *set, int setlen,
+	   bool doltrim, bool dortrim,
+	   Oid coll);
+Datum mysrtrim(text *string, Oid collid);
+/* End - ReqID: SRS-MYSQL-CHARACTERTYPE */
 
 /* common code for bpchartypmodin and varchartypmodin */
 static int32
@@ -48,6 +58,15 @@ anychar_typmodin(ArrayType *ta, const char *typename)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("invalid type modifier")));
+
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
+	if (*tl < 1 && compatible_db == MYS_PARSER &&
+		(strcmp(typename, "char") == 0 || strcmp(typename, "varchar") == 0))
+	{
+		typmod = VARHDRSZ + *tl;
+		return typmod;
+	}
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
 
 	if (*tl < 1)
 		ereport(ERROR,
@@ -77,6 +96,10 @@ anychar_typmodout(int32 typmod)
 
 	if (typmod > VARHDRSZ)
 		snprintf(res, 64, "(%d)", (int) (typmod - VARHDRSZ));
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
+	else if (compatible_db == MYS_PARSER && typmod == VARHDRSZ)
+		snprintf(res, 64, "(%d)", 0);
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
 	else
 		*res = '\0';
 
@@ -219,6 +242,22 @@ bpcharout(PG_FUNCTION_ARGS)
 {
 	Datum		txt = PG_GETARG_DATUM(0);
 
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+	if (compatible_db == MYS_PARSER)
+	{
+		/*
+		 * 1. if sql_mode value have MODE_PAD_CHAR_TO_FULL_LENGTH, the return is full string;
+		 * 2. if sql_mode value not have MODE_PAD_CHAR_TO_FULL_LENGTH, but the guc parameters
+		 *    not_mode_pad_char_to_full == true, the return is trimed string;
+		 * 3. the others cases are full string;
+		 */
+		if (mode_pad_char_to_full())
+			PG_RETURN_CSTRING(TextDatumGetCString(txt));
+		if (not_mode_pad_char_to_full == true)
+			PG_RETURN_CSTRING(TextDatumGetCString(mysrtrim(DatumGetTextPP(txt), PG_GET_COLLATION())));
+	}
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+
 	PG_RETURN_CSTRING(TextDatumGetCString(txt));
 }
 
@@ -295,6 +334,36 @@ bpchar(PG_FUNCTION_ARGS)
 	/* No work if supplied data matches typmod already */
 	if (charlen == maxlen)
 		PG_RETURN_BPCHAR_P(source);
+
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)
+	 * if type is char(0), sql_mode is strict mode,
+	 * we need to report an error.
+	 */
+	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0 && charlen > 0)
+	{
+		if (is_strict_mode())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type char(%d)",
+					 maxlen)));
+		}
+		else
+		{
+			source =  bpchar_input("", strlen(""), VARHDRSZ);
+			len = VARSIZE_ANY_EXHDR(source);
+			s = VARDATA_ANY(source);
+			charlen = pg_mbstrlen_with_len(s, len);
+			ereport(WARNING,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type char(%d), Data truncated.",
+					 maxlen)));
+			/* No work if supplied data matches typmod already */
+			if (charlen == maxlen)
+				PG_RETURN_BPCHAR_P(source);
+		}
+	}
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0) */
 
 	if (charlen > maxlen)
 	{
@@ -627,6 +696,35 @@ varchar(PG_FUNCTION_ARGS)
 	/* truncate multibyte string preserving multibyte boundary */
 	maxmblen = pg_mbcharcliplen(s_data, len, maxlen);
 
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-VARCHAR(0)
+	 * if type is char(0), sql_mode is strict mode,
+	 * we need to report an error.
+	 */
+	if (compatible_db == MYS_PARSER && maxlen == 0 && len > 0)
+	{
+		if (is_strict_mode())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type varchar(%d)",
+					 maxlen)));
+		}
+		else
+		{
+			source =  varchar_input("", strlen(""), VARHDRSZ);
+			len = VARSIZE_ANY_EXHDR(source);
+			s_data = VARDATA_ANY(source);
+			ereport(WARNING,
+					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+					 errmsg("value too long for type varchar(%d), Data truncated.",
+					 maxlen)));
+			/* No work if supplied data matches typmod already */
+			if (maxlen < 0 || len <= maxlen)
+				PG_RETURN_BPCHAR_P(source);
+		}
+	}
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-VARCHAR(0) */
+
 	if (!isExplicit)
 	{
 		for (i = maxmblen; i < len; i++)
@@ -666,6 +764,14 @@ varchartypmodout(PG_FUNCTION_ARGS)
 static inline int
 bcTruelen(BpChar *arg)
 {
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)
+	 * sql_mode have value MODE_PAD_CHAR_TO_FULL_LENGTH,
+	 * the length include space.
+	 */
+	if (compatible_db == MYS_PARSER && mode_pad_char_to_full())
+		return VARSIZE_ANY_EXHDR(arg);
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+
 	return bpchartruelen(VARDATA_ANY(arg), VARSIZE_ANY_EXHDR(arg));
 }
 
@@ -1300,3 +1406,182 @@ btbpchar_pattern_sortsupport(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+
+/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)
+ * mysrtrim
+	rtrim with set fixed as ' '
+ */
+Datum mysrtrim(text *string, Oid collid)
+{
+	text *ret = string;
+
+	if (!OidIsValid(collid))
+		collid = C_COLLATION_OID;
+
+	if (!mode_pad_char_to_full())
+		ret = mys_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
+					 " ", 1,
+					 false, true,
+					 collid);
+
+	PG_RETURN_TEXT_P(ret) ;
+}
+
+/* dotrim
+ * Common implementation for btrim, ltrim, rtrim
+ */
+
+static text *
+mys_dotrim(const char *string, int stringlen,
+	   const char *set, int setlen,
+	   bool doltrim, bool dortrim,
+	   Oid coll)
+{
+	int			i;
+
+	/* Nothing to do if either string or set is empty */
+	if (stringlen > 0 && setlen > 0)
+	{
+		if (pg_database_encoding_max_length() > 1)
+		{
+			/*
+			 * In the multibyte-encoding case, build arrays of pointers to
+			 * character starts, so that we can avoid inefficient checks in
+			 * the inner loops.
+			 */
+			const char **stringchars;
+			const char **setchars;
+			int		   *stringmblen;
+			int		   *setmblen;
+			int			stringnchars;
+			int			setnchars;
+			int			resultndx;
+			int			resultnchars;
+			const char *p;
+			int			len;
+			int			mblen;
+			const char *str_pos;
+			int			str_len;
+
+			stringchars = (const char **) palloc(stringlen * sizeof(char *));
+			stringmblen = (int *) palloc(stringlen * sizeof(int));
+			stringnchars = 0;
+			p = string;
+			len = stringlen;
+			while (len > 0)
+			{
+				stringchars[stringnchars] = p;
+				stringmblen[stringnchars] = mblen = pg_mblen(p);
+				stringnchars++;
+				p += mblen;
+				len -= mblen;
+			}
+
+			setchars = (const char **) palloc(setlen * sizeof(char *));
+			setmblen = (int *) palloc(setlen * sizeof(int));
+			setnchars = 0;
+			p = set;
+			len = setlen;
+			while (len > 0)
+			{
+				setchars[setnchars] = p;
+				setmblen[setnchars] = mblen = pg_mblen(p);
+				setnchars++;
+				p += mblen;
+				len -= mblen;
+			}
+
+			resultndx = 0;		/* index in stringchars[] */
+			resultnchars = stringnchars;
+
+			if (doltrim)
+			{
+				while (resultnchars > 0)
+				{
+					str_pos = stringchars[resultndx];
+					str_len = stringmblen[resultndx];
+					for (i = 0; i < setnchars; i++)
+					{
+						if (str_len == setmblen[i] &&
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0)
+							break;
+					}
+					if (i >= setnchars)
+						break;	/* no match here */
+					string += str_len;
+					stringlen -= str_len;
+					resultndx++;
+					resultnchars--;
+				}
+			}
+
+			if (dortrim)
+			{
+				while (resultnchars > 0)
+				{
+					str_pos = stringchars[resultndx + resultnchars - 1];
+					str_len = stringmblen[resultndx + resultnchars - 1];
+					for (i = 0; i < setnchars; i++)
+					{
+						if (str_len == setmblen[i] &&
+							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0)
+							break;
+					}
+					if (i >= setnchars)
+						break;	/* no match here */
+					stringlen -= str_len;
+					resultnchars--;
+				}
+			}
+
+			pfree(stringchars);
+			pfree(stringmblen);
+			pfree(setchars);
+			pfree(setmblen);
+		}
+		else
+		{
+			/*
+			 * In the single-byte-encoding case, we don't need such overhead.
+			 */
+			if (doltrim)
+			{
+				while (stringlen > 0)
+				{
+					char		str_ch = *string;
+
+					for (i = 0; i < setlen; i++)
+					{
+						if (str_ch == set[i])
+							break;
+					}
+					if (i >= setlen)
+						break;	/* no match here */
+					string++;
+					stringlen--;
+				}
+			}
+
+			if (dortrim)
+			{
+				while (stringlen > 0)
+				{
+					char		str_ch = string[stringlen - 1];
+
+					for (i = 0; i < setlen; i++)
+					{
+						if (str_ch == set[i])
+							break;
+					}
+					if (i >= setlen)
+						break;	/* no match here */
+					stringlen--;
+				}
+			}
+		}
+	}
+
+	/* Return selected portion of string */
+	return cstring_to_text_with_len(string, stringlen);
+}
+/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
