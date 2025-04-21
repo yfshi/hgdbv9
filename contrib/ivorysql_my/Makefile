@@ -24,7 +24,8 @@ OBJS = \
 	src/charset/ctype-latin1.o \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
-	src/charset/ctype-extra.o
+	src/charset/ctype-extra.o \
+	src/datatype/mysfloat.o
 
 EXTENSION = ivorysql_my
 
@@ -75,7 +76,8 @@ MYS_REGRESS = multi_update \
 			  mys_timestamp \
 			  mys_time	\
 			  show_charset \
-			  mys_int1
+			  mys_int1	\
+			  mys_float
 
 
 ifdef USE_PGXS

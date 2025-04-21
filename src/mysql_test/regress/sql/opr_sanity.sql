@@ -565,6 +565,8 @@ WHERE p1.oid != p2.oid AND
     p1.oprname = p2.oprname AND
     p1.oprkind = p2.oprkind AND
     p1.oprleft = p2.oprleft AND
+    p1.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
+    p2.oprnamespace != (select oid from pg_namespace where nspname = 'ivymy') AND
     p1.oprright = p2.oprright;
 
 -- Look for commutative operators that don't commute.

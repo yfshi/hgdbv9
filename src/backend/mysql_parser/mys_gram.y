@@ -175,6 +175,11 @@ typedef struct ShowFilter
 #define parser_yyerror(msg)  mys_scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  mys_scanner_errposition(pos, yyscanner)
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+#define RealAsFloat()	(has_sql_mode(MODE_REAL_AS_FLOAT))
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+
+
 static void mys_base_yyerror(YYLTYPE *yylloc, mys_core_yyscan_t yyscanner,
 						 const char *msg);
 static RawStmt *makeRawStmt(Node *stmt, int stmt_location);
@@ -233,6 +238,7 @@ static void checkMultiDelete(DeleteStmt *stmt);
 static SelectStmt *makeShowCharsetStmt(ShowFilter *filter);
 static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 /* End - Req: SRS-MYSQL-CHARSET */
+
 %}
 
 %pure-parser
@@ -605,7 +611,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 %type <list>	copy_options
 
 %type <typnam>	Typename SimpleTypename ConstTypename
-				GenericType Numeric opt_float
+				GenericType Numeric
 				Character ConstCharacter
 				CharacterWithLength CharacterWithoutLength
 				ConstDatetime ConstInterval
@@ -684,6 +690,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 %type <list>		opt_table_target_list table_name_list
 
+%type <typnam>		NumericNoConflict opt_float_noempty mys_float
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -14535,7 +14542,8 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
 /*
  * SQL numeric data types
  */
-Numeric:	INT_P
+Numeric:	NumericNoConflict { $$ = $1; }
+			| INT_P
 				{
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
@@ -14555,16 +14563,26 @@ Numeric:	INT_P
 					$$ = SystemTypeName("int8");
 					$$->location = @1;
 				}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-FLOAT */
 			| REAL
+				{
+					if (compatible_db == MYS_PARSER && RealAsFloat())
+						$$ = SystemTypeName("float4");
+					else
+						$$ = SystemTypeName("float8");
+					$$->location = @1;
+				}
+			| FLOAT_P
 				{
 					$$ = SystemTypeName("float4");
 					$$->location = @1;
 				}
-			| FLOAT_P opt_float
+			| DOUBLE_P
 				{
-					$$ = $2;
+					$$ = SystemTypeName("float8");
 					$$->location = @1;
 				}
+			/* End - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
 			| DOUBLE_P PRECISION
 				{
 					$$ = SystemTypeName("float8");
@@ -14658,7 +14676,32 @@ flag_signed: SIGNED
 		;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 
-opt_float:	'(' Iconst ')'
+/* Begin - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
+NumericNoConflict: REAL mys_float
+				{
+					if(RealAsFloat())
+						$$ = SystemTypeName("float4");
+					else
+						$$ = $2;
+					$$->location = @1;
+				}
+			| FLOAT_P opt_float_noempty
+				{
+					$$ = $2;
+					$$->location = @1;
+				}
+			| DOUBLE_P mys_float
+				{
+					$$ = $2;
+					$$->location = @1;
+				}
+			| DOUBLE_P PRECISION mys_float
+				{
+					$$ = $3;
+					$$->location = @1;
+				}
+		;
+opt_float_noempty: '(' Iconst ')'
 				{
 					/*
 					 * Check FLOAT() precision limits assuming IEEE floating
@@ -14679,12 +14722,33 @@ opt_float:	'(' Iconst ')'
 								 errmsg("precision for type float must be less than 54 bits"),
 								 parser_errposition(@2)));
 				}
-			| /*EMPTY*/
+			| mys_float
 				{
-					$$ = SystemTypeName("float8");
+					$$ = $1;
 				}
 		;
+mys_float:	'(' Iconst ',' Iconst ')'
+				{
+					if ($2 > 255 || $2 < 1)
+							ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("precision must be between 1 and 255."),
+								 parser_errposition(@2)));
+						if ($4 > 30 || $4 < 0)
+							ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("scale must be between 0 and 30."),
+								 parser_errposition(@4)));
+						if ($2 < $4)
+							ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("invalid type modifier, precision must be greater than scale."),
+								 parser_errposition(@2)));
 
+						$$ = SystemTypeName("float8");
+				}
+		;
+/* End - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
 /*
  * SQL bit-field data types
  * The following implements BIT() and BIT VARYING().
@@ -17579,7 +17643,6 @@ unreserved_keyword:
 			| DIV
 			| DOCUMENT_P
 			| DOMAIN_P
-			| DOUBLE_P
 			| DROP
 			| DUPLICATE_P	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| EACH
@@ -17838,6 +17901,7 @@ col_name_keyword:
 			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
 			| DEC
 			| DECIMAL_P
+			| DOUBLE_P
 			| EXISTS
 			| EXTRACT
 			| FLOAT_P

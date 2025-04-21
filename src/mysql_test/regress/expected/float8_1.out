@@ -133,9 +133,10 @@ SELECT 'nan'::float8 / 'nan'::float8;
 (1 row)
 
 SELECT 'nan'::float8 / '0'::float8;
+WARNING:  Division by 0
  ?column? 
 ----------
-      NaN
+         
 (1 row)
 
 SELECT 'nan'::numeric::float8;
@@ -245,9 +246,9 @@ SELECT f.f1, f.f1 - '-10' AS x
 
 SELECT f.f1 ^ '2.0' AS square_f1
    FROM FLOAT8_TBL f where f.f1 = '1004.3';
-     square_f1      
---------------------
- 1008618.4899999999
+ square_f1 
+-----------
+      1006
 (1 row)
 
 -- absolute value
@@ -604,11 +605,11 @@ UPDATE FLOAT8_TBL
 SELECT f.f1 * '1e200' from FLOAT8_TBL f;
 ERROR:  value out of range: overflow
 SELECT f.f1 ^ '1e200' from FLOAT8_TBL f;
-ERROR:  value out of range: overflow
+ERROR:  bigint out of range
 SELECT 0 ^ 0 + 0 ^ 1 + 0 ^ 0.0 + 0 ^ 0.5;
- ?column? 
-----------
-        2
+      ?column?      
+--------------------
+ 2.0000000000000000
 (1 row)
 
 SELECT ln(f.f1) from FLOAT8_TBL f where f.f1 = '0.0' ;
@@ -618,7 +619,20 @@ ERROR:  cannot take logarithm of a negative number
 SELECT exp(f.f1) from FLOAT8_TBL f;
 ERROR:  value out of range: underflow
 SELECT f.f1 / '0.0' from FLOAT8_TBL f;
-ERROR:  division by zero
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+         
+         
+         
+         
+(5 rows)
+
 SELECT * FROM FLOAT8_TBL;
           f1           
 -----------------------

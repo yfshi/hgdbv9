@@ -81,7 +81,7 @@ begin a := f1 from onecol limit 1; raise notice 'a = %', a; end$$;
 NOTICE:  a = {1,2}
 do $$ declare a real;
 begin a[1] := 2; raise notice 'a = %', a; end$$;
-ERROR:  cannot subscript type real because it does not support subscripting
+ERROR:  cannot subscript type float4 because it does not support subscripting
 LINE 1: a[1] := 2
         ^
 QUERY:  a[1] := 2

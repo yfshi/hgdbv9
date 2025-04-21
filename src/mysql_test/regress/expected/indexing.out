@@ -1257,12 +1257,10 @@ alter table idxpart attach partition idxpart2 for values from (100000) to (10000
 insert into idxpart values (0, 'zero'), (42, 'life'), (2^16, 'sixteen');
 insert into idxpart select 2^g, format('two to power of %s', g) from generate_series(15, 17) g;
 ERROR:  duplicate key value violates unique constraint "idxpart1_a_idx"
-DETAIL:  Key (a)=(65536) already exists.
+DETAIL:  Key (a)=(18) already exists.
 insert into idxpart values (16, 'sixteen');
 insert into idxpart (b, a) values ('one', 142857), ('two', 285714);
 insert into idxpart select a * 2, b || b from idxpart where a between 2^16 and 2^19;
-ERROR:  duplicate key value violates unique constraint "idxpart2_a_idx"
-DETAIL:  Key (a)=(285714) already exists.
 insert into idxpart values (572814, 'five');
 ERROR:  duplicate key value violates unique constraint "idxpart2_a_idx"
 DETAIL:  Key (a)=(572814) already exists.
@@ -1272,8 +1270,8 @@ select tableoid::regclass, * from idxpart order by a;
 ----------+--------+----------------
  idxpart1 |      0 | zero
  idxpart1 |     16 | sixteen
+ idxpart1 |     18 | sixteen
  idxpart1 |     42 | life
- idxpart1 |  65536 | sixteen
  idxpart2 | 142857 | one
  idxpart2 | 285714 | two
  idxpart2 | 572814 | inserted first

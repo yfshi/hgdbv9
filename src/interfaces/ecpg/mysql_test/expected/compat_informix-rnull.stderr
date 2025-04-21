@@ -74,7 +74,7 @@
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_get_data on line 59: RESULT: t offset: -1; array: no
 [NO_PID]: sqlca: code: 0, state: 00000
-[NO_PID]: ecpg_get_data on line 59: RESULT: 3.71000003814697 offset: -1; array: no
+[NO_PID]: ecpg_get_data on line 59: RESULT: 3.71 offset: -1; array: no
 [NO_PID]: sqlca: code: 0, state: 00000
 [NO_PID]: ecpg_get_data on line 59: RESULT: 487444 offset: -1; array: no
 [NO_PID]: sqlca: code: 0, state: 00000

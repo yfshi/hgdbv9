@@ -13,12 +13,12 @@ step s2_alter_tbl2_float: ALTER TABLE tbl2 ALTER COLUMN val2 TYPE float;
 step s1_insert_tbl2: INSERT INTO tbl2 (val1, val2) VALUES (1, 1);
 step s1_commit: COMMIT;
 step s2_get_changes: SELECT data FROM pg_logical_slot_get_changes('isolation_slot', NULL, NULL, 'include-xids', '0', 'skip-empty-xacts', '1');
-data                                                               
--------------------------------------------------------------------
-BEGIN                                                              
-table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1         
-table public.tbl2: INSERT: val1[integer]:1 val2[double precision]:1
-COMMIT                                                             
+data                                                      
+----------------------------------------------------------
+BEGIN                                                     
+table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1
+table public.tbl2: INSERT: val1[integer]:1 val2[float4]:1 
+COMMIT                                                    
 (4 rows)
 
 ?column?
@@ -181,12 +181,12 @@ step s2_alter_tbl1_float: ALTER TABLE tbl1 ALTER COLUMN val2 TYPE float; <waitin
 step s1_commit: COMMIT;
 step s2_alter_tbl1_float: <... completed>
 step s2_get_changes: SELECT data FROM pg_logical_slot_get_changes('isolation_slot', NULL, NULL, 'include-xids', '0', 'skip-empty-xacts', '1');
-data                                                               
--------------------------------------------------------------------
-BEGIN                                                              
-table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1         
-table public.tbl2: INSERT: val1[integer]:1 val2[double precision]:1
-COMMIT                                                             
+data                                                      
+----------------------------------------------------------
+BEGIN                                                     
+table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1
+table public.tbl2: INSERT: val1[integer]:1 val2[float4]:1 
+COMMIT                                                    
 (4 rows)
 
 ?column?
@@ -414,12 +414,12 @@ step s2_alter_tbl2_add_float: ALTER TABLE tbl2 ADD COLUMN val3 FLOAT;
 step s1_insert_tbl2_3col: INSERT INTO tbl2 (val1, val2, val3) VALUES (1, 1, 1);
 step s1_commit: COMMIT;
 step s2_get_changes: SELECT data FROM pg_logical_slot_get_changes('isolation_slot', NULL, NULL, 'include-xids', '0', 'skip-empty-xacts', '1');
-data                                                                               
------------------------------------------------------------------------------------
-BEGIN                                                                              
-table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1                         
-table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1 val3[double precision]:1
-COMMIT                                                                             
+data                                                                     
+-------------------------------------------------------------------------
+BEGIN                                                                    
+table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1               
+table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1 val3[float4]:1
+COMMIT                                                                   
 (4 rows)
 
 ?column?
@@ -444,15 +444,15 @@ step s2_alter_tbl2_add_float: ALTER TABLE tbl2 ADD COLUMN val3 FLOAT;
 step s1_insert_tbl2_3col: INSERT INTO tbl2 (val1, val2, val3) VALUES (1, 1, 1);
 step s1_commit: COMMIT;
 step s2_get_changes: SELECT data FROM pg_logical_slot_get_changes('isolation_slot', NULL, NULL, 'include-xids', '0', 'skip-empty-xacts', '1');
-data                                                                               
------------------------------------------------------------------------------------
-BEGIN                                                                              
-table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1                         
-table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1                         
-COMMIT                                                                             
-BEGIN                                                                              
-table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1 val3[double precision]:1
-COMMIT                                                                             
+data                                                                     
+-------------------------------------------------------------------------
+BEGIN                                                                    
+table public.tbl1: INSERT: val1[integer]:1 val2[integer]:1               
+table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1               
+COMMIT                                                                   
+BEGIN                                                                    
+table public.tbl2: INSERT: val1[integer]:1 val2[integer]:1 val3[float4]:1
+COMMIT                                                                   
 (7 rows)
 
 ?column?

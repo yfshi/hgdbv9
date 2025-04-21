@@ -25,7 +25,7 @@ ORA_ISOLATION = mxact delayed_startup ondisk_startup \
        oldest_xmin snapshot_transfer subxact_without_top concurrent_stream \
        twophase_snapshot catalog_change_snapshot skip_snapshot_restore
 #Begin - ReqID:SRS-MISC-MYSQL-FRAME
-MYS_ISOLATION = mxact delayed_startup ondisk_startup concurrent_ddl_dml \
+MYS_ISOLATION = mxact delayed_startup ondisk_startup mys_concurrent_ddl_dml \
 	oldest_xmin snapshot_transfer subxact_without_top concurrent_stream \
 	twophase_snapshot catalog_change_snapshot skip_snapshot_restore
 #End - ReqID:SRS-MISC-MYSQL-FRAME

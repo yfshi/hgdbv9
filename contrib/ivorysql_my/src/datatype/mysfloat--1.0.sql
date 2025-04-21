@@ -1,0 +1,374 @@
+/***************************************************************
+ *
+ * type float and double operator support
+ *
+ ***************************************************************/
+-- ~
+CREATE FUNCTION ivymy.mysfloat8_not(float8)
+RETURNS bigint
+AS 'MODULE_PATHNAME','mysfloat8_not'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.~ (
+	procedure = ivymy.mysfloat8_not,
+	rightarg = float8
+);
+
+-- -
+CREATE FUNCTION ivymy.mysfloat4um(float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat4um'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.- (
+	procedure = ivymy.mysfloat4um,
+	rightarg = float4
+	);
+
+-- !
+CREATE FUNCTION ivymy.mysfloat8_logic_not(float8)
+RETURNS bool
+AS 'MODULE_PATHNAME','mysfloat8_logic_not'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.!(
+	procedure = ivymy.mysfloat8_logic_not,
+	rightarg = float8
+);
+
+-- <=>
+CREATE FUNCTION ivymy.mysfloat4_safeeq(float4, float4)
+RETURNS boolean
+AS 'MODULE_PATHNAME','mysfloat4safeeq'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.<=> (
+	procedure = ivymy.mysfloat4_safeeq,
+	leftarg = float4,
+	rightarg = float4,
+	restrict = eqsel,
+	join = eqjoinsel
+);
+
+CREATE FUNCTION ivymy.mysfloat8_safeeq(float8, float8)
+RETURNS boolean
+AS 'MODULE_PATHNAME','mysfloat8safeeq'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.<=> (
+	procedure = ivymy.mysfloat8_safeeq,
+	leftarg = float8,
+	rightarg = float8,
+	restrict = eqsel,
+	join = eqjoinsel
+);
+
+-- &
+CREATE FUNCTION ivymy.mysfloat8_and(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_and'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.& (
+	procedure = ivymy.mysfloat8_and,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- <<
+CREATE FUNCTION ivymy.mysfloat8_shl(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_shl'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.<< (
+	procedure = ivymy.mysfloat8_shl,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- >>
+CREATE FUNCTION ivymy.mysfloat8_shr(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_shr'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.>> (
+	procedure = ivymy.mysfloat8_shr,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- |
+CREATE FUNCTION ivymy.mysfloat8_or(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_or'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.| (
+	procedure = ivymy.mysfloat8_or,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- ^
+CREATE FUNCTION ivymy.mysfloat8_xor(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_xor'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.^ (
+	procedure = ivymy.mysfloat8_xor,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- *
+CREATE FUNCTION ivymy.mysfloat4_mul(float4, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat4_mul'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.* (
+	procedure = ivymy.mysfloat4_mul,
+	leftarg = float4,
+	rightarg = float4
+);
+
+-- +
+CREATE FUNCTION ivymy.mysfloat4_pl(float4, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat4_pl'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.+ (
+	procedure = ivymy.mysfloat4_pl,
+	leftarg = float4,
+	rightarg = float4
+);
+
+-- -
+CREATE FUNCTION ivymy.mysfloat4_mi(float4, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat4_mi'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.- (
+	procedure = ivymy.mysfloat4_mi,
+	leftarg = float4,
+	rightarg = float4
+);
+
+-- &&
+CREATE FUNCTION ivymy.mysfloat8_logic_and(float8,float8)
+RETURNS boolean
+AS 'MODULE_PATHNAME','mysfloat8_logic_and'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.&& (
+	procedure = ivymy.mysfloat8_logic_and,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- ||
+CREATE FUNCTION ivymy.mysfloat8_logic_or(float8, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME','mysfloat8_logic_or'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.||(
+	procedure = ivymy.mysfloat8_logic_or,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- /
+CREATE FUNCTION ivymy.mysfloat4_div(float4, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat4_div'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.mysfloat4_div,
+	leftarg = float4,
+	rightarg = float4
+);
+
+CREATE FUNCTION ivymy.mysfloat48_div(float4, float8)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat48_div'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.mysfloat48_div,
+	leftarg = float4,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.mysfloat8_div(float8, float8)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat8_div'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.mysfloat8_div,
+	leftarg = float8,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.mysfloat84_div(float8, float4)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat84_div'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy./ (
+	procedure = ivymy.mysfloat84_div,
+	leftarg = float8,
+	rightarg = float4
+);
+
+-- //
+CREATE FUNCTION ivymy.mysfloat4_moddiv(float4, float4)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat4_moddiv'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mysfloat8_moddiv(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_moddiv'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mys_div(float4, float4)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat4_moddiv'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.mys_div(float8, float8)
+RETURNS int8
+AS 'MODULE_PATHNAME','mysfloat8_moddiv'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR ivymy.// (
+	procedure = ivymy.mysfloat4_moddiv,
+	leftarg = float4,
+	rightarg = float4
+);
+
+CREATE OPERATOR ivymy.// (
+	procedure = ivymy.mysfloat8_moddiv,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- %
+CREATE FUNCTION ivymy.mysfloat8_mod(float8, float8)
+RETURNS float8
+AS 'MODULE_PATHNAME','mysfloat8_mod'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.% (
+	procedure = ivymy.mysfloat8_mod,
+	leftarg = float8,
+	rightarg = float8
+);
+
+-- XOR
+CREATE FUNCTION ivymy.mysfloat4_boolean(float4)
+RETURNS boolean 
+AS 'MODULE_PATHNAME','mysfloat4_boolean'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.mysfloat8_boolean(float8)
+RETURNS boolean 
+AS 'MODULE_PATHNAME','mysfloat8_boolean'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+
+CREATE CAST (float4 AS boolean)
+WITH FUNCTION ivymy.mysfloat4_boolean(float4)
+AS ASSIGNMENT;
+
+CREATE CAST (float8 AS boolean)
+WITH FUNCTION ivymy.mysfloat8_boolean(float8)
+AS ASSIGNMENT;
