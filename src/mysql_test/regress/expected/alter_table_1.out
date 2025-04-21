@@ -2293,11 +2293,11 @@ CREATE TABLE test_inh_check_child() INHERITS(test_inh_check);
 ERROR:  CREATE TABLE ... INHERITS is not yet supported.
 HINT:  Please note whether it's compatible with MySQL.
 \d test_inh_check
-               Table "public.test_inh_check"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | double precision |           |          | 
- b      | double precision |           |          | 
+          Table "public.test_inh_check"
+ Column |  Type  | Collation | Nullable | Default 
+--------+--------+-----------+----------+---------
+ a      | float4 |           |          | 
+ b      | float4 |           |          | 
 Check constraints:
     "test_inh_check_a_check" CHECK (a > 10.2::double precision)
 
@@ -2313,11 +2313,11 @@ select relname, conname, coninhcount, conislocal, connoinherit
 
 ALTER TABLE test_inh_check ALTER COLUMN a TYPE numeric;
 \d test_inh_check
-               Table "public.test_inh_check"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | numeric          |           |          | 
- b      | double precision |           |          | 
+           Table "public.test_inh_check"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | numeric |           |          | 
+ b      | float4  |           |          | 
 Check constraints:
     "test_inh_check_a_check" CHECK (a::double precision > 10.2::double precision)
 
@@ -2339,11 +2339,11 @@ ALTER TABLE test_inh_check_child ADD CONSTRAINT bmerged CHECK (b > 1);
 ERROR:  relation "test_inh_check_child" does not exist
 ALTER TABLE test_inh_check ADD CONSTRAINT bmerged CHECK (b > 1);
 \d test_inh_check
-               Table "public.test_inh_check"
- Column |       Type       | Collation | Nullable | Default 
---------+------------------+-----------+----------+---------
- a      | numeric          |           |          | 
- b      | double precision |           |          | 
+           Table "public.test_inh_check"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | numeric |           |          | 
+ b      | float4  |           |          | 
 Check constraints:
     "bmerged" CHECK (b > 1::double precision)
     "bnoinherit" CHECK (b > 100::double precision) NO INHERIT

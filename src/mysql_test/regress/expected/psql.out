@@ -5038,21 +5038,21 @@ List of access methods
  btree | float_ops       | =(double precision,double precision)  |        3 | search  | 
  btree | float_ops       | >=(double precision,double precision) |        4 | search  | 
  btree | float_ops       | >(double precision,double precision)  |        5 | search  | 
- btree | float_ops       | <(real,real)                          |        1 | search  | 
- btree | float_ops       | <=(real,real)                         |        2 | search  | 
- btree | float_ops       | =(real,real)                          |        3 | search  | 
- btree | float_ops       | >=(real,real)                         |        4 | search  | 
- btree | float_ops       | >(real,real)                          |        5 | search  | 
- btree | float_ops       | <(double precision,real)              |        1 | search  | 
- btree | float_ops       | <=(double precision,real)             |        2 | search  | 
- btree | float_ops       | =(double precision,real)              |        3 | search  | 
- btree | float_ops       | >=(double precision,real)             |        4 | search  | 
- btree | float_ops       | >(double precision,real)              |        5 | search  | 
- btree | float_ops       | <(real,double precision)              |        1 | search  | 
- btree | float_ops       | <=(real,double precision)             |        2 | search  | 
- btree | float_ops       | =(real,double precision)              |        3 | search  | 
- btree | float_ops       | >=(real,double precision)             |        4 | search  | 
- btree | float_ops       | >(real,double precision)              |        5 | search  | 
+ btree | float_ops       | <(float4,float4)                      |        1 | search  | 
+ btree | float_ops       | <=(float4,float4)                     |        2 | search  | 
+ btree | float_ops       | =(float4,float4)                      |        3 | search  | 
+ btree | float_ops       | >=(float4,float4)                     |        4 | search  | 
+ btree | float_ops       | >(float4,float4)                      |        5 | search  | 
+ btree | float_ops       | <(double precision,float4)            |        1 | search  | 
+ btree | float_ops       | <=(double precision,float4)           |        2 | search  | 
+ btree | float_ops       | =(double precision,float4)            |        3 | search  | 
+ btree | float_ops       | >=(double precision,float4)           |        4 | search  | 
+ btree | float_ops       | >(double precision,float4)            |        5 | search  | 
+ btree | float_ops       | <(float4,double precision)            |        1 | search  | 
+ btree | float_ops       | <=(float4,double precision)           |        2 | search  | 
+ btree | float_ops       | =(float4,double precision)            |        3 | search  | 
+ btree | float_ops       | >=(float4,double precision)           |        4 | search  | 
+ btree | float_ops       | >(float4,double precision)            |        5 | search  | 
 (20 rows)
 
 \dAo * pg_catalog.jsonb_path_ops
@@ -5071,11 +5071,11 @@ List of access methods
  btree | float_ops       | double precision     | double precision      |      1 | btfloat8cmp(double precision,double precision)
  btree | float_ops       | double precision     | double precision      |      2 | btfloat8sortsupport(internal)
  btree | float_ops       | double precision     | double precision      |      3 | in_range(double precision,double precision,double precision,boolean,boolean)
- btree | float_ops       | real                 | real                  |      1 | btfloat4cmp(real,real)
- btree | float_ops       | real                 | real                  |      2 | btfloat4sortsupport(internal)
- btree | float_ops       | double precision     | real                  |      1 | btfloat84cmp(double precision,real)
- btree | float_ops       | real                 | double precision      |      1 | btfloat48cmp(real,double precision)
- btree | float_ops       | real                 | double precision      |      3 | in_range(real,real,double precision,boolean,boolean)
+ btree | float_ops       | float4               | float4                |      1 | btfloat4cmp(float4,float4)
+ btree | float_ops       | float4               | float4                |      2 | btfloat4sortsupport(internal)
+ btree | float_ops       | double precision     | float4                |      1 | btfloat84cmp(double precision,float4)
+ btree | float_ops       | float4               | double precision      |      1 | btfloat48cmp(float4,double precision)
+ btree | float_ops       | float4               | double precision      |      3 | in_range(float4,float4,double precision,boolean,boolean)
 (8 rows)
 
 \dAp * pg_catalog.uuid_ops

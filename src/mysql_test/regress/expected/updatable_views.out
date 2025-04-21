@@ -1330,17 +1330,16 @@ DETAIL:  View columns that are not columns of their base relation are not updata
 INSERT INTO rw_view1 (a) VALUES (1.1) RETURNING a, s, c; -- OK
   a  |         s         |         c         
 -----+-------------------+-------------------
- 1.1 | 0.891207360061435 | 0.453596121425577
+ 1.1 | 0.891207370876009 | 0.453596100177538
 (1 row)
 
 UPDATE rw_view1 SET s = s WHERE a = 1.1; -- should fail
 ERROR:  cannot update column "s" of view "rw_view1"
 DETAIL:  View columns that are not columns of their base relation are not updatable.
 UPDATE rw_view1 SET a = 1.05 WHERE a = 1.1 RETURNING s; -- OK
-         s         
--------------------
- 0.867423225594017
-(1 row)
+ s 
+---
+(0 rows)
 
 DELETE FROM rw_view1 WHERE a = 1.05; -- OK
 CREATE VIEW rw_view2 AS
@@ -1355,7 +1354,7 @@ DETAIL:  View columns that are not columns of their base relation are not updata
 INSERT INTO rw_view2(base_a) VALUES (1.1) RETURNING t; -- OK
         t         
 ------------------
- 1.96475965724865
+ 1.96475977312677
 (1 row)
 
 UPDATE rw_view2 SET s = s WHERE base_a = 1.1; -- should fail
@@ -1366,10 +1365,9 @@ ERROR:  cannot update column "t" of view "rw_view2"
 DETAIL:  View columns that are not columns of their base relation are not updatable.
 UPDATE rw_view2 SET base_a = 1.05 WHERE base_a = 1.1; -- OK
 DELETE FROM rw_view2 WHERE base_a = 1.05 RETURNING base_a, s, c, t; -- OK
- base_a |         s         |         c         |        t         
---------+-------------------+-------------------+------------------
-   1.05 | 0.867423225594017 | 0.497571047891727 | 1.74331530998317
-(1 row)
+ base_a | s | c | t 
+--------+---+---+---
+(0 rows)
 
 CREATE VIEW rw_view3 AS
   SELECT s, c, s/c t, ctid
@@ -1387,6 +1385,7 @@ DELETE FROM rw_view3 WHERE s = sin(0.1); -- should be OK
 SELECT * FROM base_tbl ORDER BY a;
   a  
 -----
+ 0.1
  0.2
  0.3
  0.4
@@ -1396,7 +1395,9 @@ SELECT * FROM base_tbl ORDER BY a;
  0.8
  0.9
    1
-(9 rows)
+ 1.1
+ 1.1
+(12 rows)
 
 SELECT table_name, is_insertable_into
   FROM information_schema.tables
@@ -2384,7 +2385,7 @@ DROP TABLE tx3;
 CREATE TABLE t1 (a int, b text, c int);
 ERROR:  relation "t1" already exists
 INSERT INTO t1 VALUES (1, 'one', 10);
-ERROR:  invalid input syntax for type double precision: "one"
+ERROR:  invalid input syntax for type real: "one"
 LINE 1: INSERT INTO t1 VALUES (1, 'one', 10);
                                   ^
 CREATE TABLE t2 (cc int);

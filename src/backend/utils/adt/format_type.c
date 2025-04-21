@@ -240,7 +240,12 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			break;
 
 		case FLOAT4OID:
-			buf = pstrdup("real");
+			/* Begin - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
+			if (compatible_db == MYS_PARSER)
+				buf = pstrdup("float4");
+			else
+				buf = pstrdup("real");
+			/* End - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
 			break;
 
 		case FLOAT8OID:

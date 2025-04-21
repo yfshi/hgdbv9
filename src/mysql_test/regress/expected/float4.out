@@ -150,9 +150,10 @@ SELECT 'nan'::float4 / 'nan'::float4;
 (1 row)
 
 SELECT 'nan'::float4 / '0'::float4;
+WARNING:  Division by 0
  ?column? 
 ----------
-      NaN
+         
 (1 row)
 
 SELECT 'nan'::numeric::float4;
@@ -222,43 +223,56 @@ SELECT f.* FROM FLOAT4_TBL f WHERE  f.f1 <= '1004.3';
 
 SELECT f.f1, f.f1 * '-10' AS x FROM FLOAT4_TBL f
    WHERE f.f1 > '0.0';
-      f1       |       x        
----------------+----------------
-        1004.3 |         -10043
- 1.2345679e+20 | -1.2345678e+21
- 1.2345679e-20 | -1.2345678e-19
+      f1       |           x            
+---------------+------------------------
+        1004.3 |                 -10043
+ 1.2345679e+20 |   -1.2345678252014e+21
+ 1.2345679e-20 | -1.234567839717218e-19
 (3 rows)
 
 SELECT f.f1, f.f1 + '-10' AS x FROM FLOAT4_TBL f
    WHERE f.f1 > '0.0';
-      f1       |       x       
----------------+---------------
-        1004.3 |         994.3
- 1.2345679e+20 | 1.2345679e+20
- 1.2345679e-20 |           -10
+      f1       |           x            
+---------------+------------------------
+        1004.3 |      994.2999877929688
+ 1.2345679e+20 | 1.2345678955701443e+20
+ 1.2345679e-20 |                    -10
 (3 rows)
 
 SELECT f.f1, f.f1 / '-10' AS x FROM FLOAT4_TBL f
    WHERE f.f1 > '0.0';
-      f1       |       x        
----------------+----------------
-        1004.3 |        -100.43
- 1.2345679e+20 | -1.2345679e+19
- 1.2345679e-20 | -1.2345679e-21
+      f1       |            x            
+---------------+-------------------------
+        1004.3 |     -100.43000030517578
+ 1.2345679e+20 | -1.2345679395506094e+19
+ 1.2345679e-20 | -1.2345678720289608e-21
 (3 rows)
 
 SELECT f.f1, f.f1 - '-10' AS x FROM FLOAT4_TBL f
    WHERE f.f1 > '0.0';
-      f1       |       x       
----------------+---------------
-        1004.3 |        1014.3
- 1.2345679e+20 | 1.2345679e+20
- 1.2345679e-20 |            10
+      f1       |           x            
+---------------+------------------------
+        1004.3 |     1014.2999877929688
+ 1.2345679e+20 | 1.2345678955701443e+20
+ 1.2345679e-20 |                     10
 (3 rows)
 
 -- test divide by zero
 SELECT f.f1 / '0.0' from FLOAT4_TBL f;
-ERROR:  division by zero
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+         
+         
+         
+         
+(5 rows)
+
 SELECT * FROM FLOAT4_TBL;
       f1       
 ---------------
@@ -955,7 +969,7 @@ drop type xfloat4 cascade;
 NOTICE:  drop cascades to 6 other objects
 DETAIL:  drop cascades to function xfloat4in(cstring)
 drop cascades to function xfloat4out(xfloat4)
-drop cascades to cast from xfloat4 to real
-drop cascades to cast from real to xfloat4
+drop cascades to cast from xfloat4 to float4
+drop cascades to cast from float4 to xfloat4
 drop cascades to cast from xfloat4 to integer
 drop cascades to cast from integer to xfloat4

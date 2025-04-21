@@ -914,8 +914,8 @@ select * from rtest_vcomp order by part;
  p2   |                300
  p3   |                  5
  p4   |                 15
- p5   |              17.78
- p6   | 11.176000000000002
+ p5   | 17.779998779296875
+ p6   | 11.175999641418457
 (6 rows)
 
 select * from rtest_vcomp where size_in_cm > 10.0 order by size_in_cm using >;
@@ -923,9 +923,9 @@ select * from rtest_vcomp where size_in_cm > 10.0 order by size_in_cm using >;
 ------+--------------------
  p1   |                500
  p2   |                300
- p5   |              17.78
+ p5   | 17.779998779296875
  p4   |                 15
- p6   | 11.176000000000002
+ p6   | 11.175999641418457
 (5 rows)
 
 --
@@ -998,16 +998,16 @@ INSERT INTO shoelace_data VALUES ('sl7', 7, 'brown', 60 , 'cm');
 INSERT INTO shoelace_data VALUES ('sl8', 1, 'brown', 40 , 'inch');
 -- SELECTs in doc
 SELECT * FROM shoelace ORDER BY sl_name;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl1        |        5 | black      |     80 | cm       |        80
- sl2        |        6 | black      |    100 | cm       |       100
- sl3        |        0 | black      |     35 | inch     |      88.9
- sl4        |        8 | black      |     40 | inch     |     101.6
- sl5        |        4 | brown      |      1 | m        |       100
- sl6        |        0 | brown      |    0.9 | m        |        90
- sl7        |        7 | brown      |     60 | cm       |        60
- sl8        |        1 | brown      |     40 | inch     |     101.6
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |     sl_len_cm     
+------------+----------+------------+--------+----------+-------------------
+ sl1        |        5 | black      |     80 | cm       |                80
+ sl2        |        6 | black      |    100 | cm       |               100
+ sl3        |        0 | black      |     35 | inch     |  88.9000015258789
+ sl4        |        8 | black      |     40 | inch     | 101.5999984741211
+ sl5        |        4 | brown      |      1 | m        |               100
+ sl6        |        0 | brown      |    0.9 | m        |                90
+ sl7        |        7 | brown      |     60 | cm       |                60
+ sl8        |        1 | brown      |     40 | inch     | 101.5999984741211
 (8 rows)
 
 SELECT * FROM shoe_ready WHERE total_avail >= 2 ORDER BY 1;
@@ -1081,30 +1081,30 @@ INSERT INTO shoelace_arrive VALUES ('sl3', 10);
 INSERT INTO shoelace_arrive VALUES ('sl6', 20);
 INSERT INTO shoelace_arrive VALUES ('sl8', 20);
 SELECT * FROM shoelace ORDER BY sl_name;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl1        |        5 | black      |     80 | cm       |        80
- sl2        |        6 | black      |    100 | cm       |       100
- sl3        |        0 | black      |     35 | inch     |      88.9
- sl4        |        8 | black      |     40 | inch     |     101.6
- sl5        |        4 | brown      |      1 | m        |       100
- sl6        |        0 | brown      |    0.9 | m        |        90
- sl7        |        6 | brown      |     60 | cm       |        60
- sl8        |        1 | brown      |     40 | inch     |     101.6
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |     sl_len_cm     
+------------+----------+------------+--------+----------+-------------------
+ sl1        |        5 | black      |     80 | cm       |                80
+ sl2        |        6 | black      |    100 | cm       |               100
+ sl3        |        0 | black      |     35 | inch     |  88.9000015258789
+ sl4        |        8 | black      |     40 | inch     | 101.5999984741211
+ sl5        |        4 | brown      |      1 | m        |               100
+ sl6        |        0 | brown      |    0.9 | m        |                90
+ sl7        |        6 | brown      |     60 | cm       |                60
+ sl8        |        1 | brown      |     40 | inch     | 101.5999984741211
 (8 rows)
 
 insert into shoelace_ok select * from shoelace_arrive;
 SELECT * FROM shoelace ORDER BY sl_name;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl1        |        5 | black      |     80 | cm       |        80
- sl2        |        6 | black      |    100 | cm       |       100
- sl3        |       10 | black      |     35 | inch     |      88.9
- sl4        |        8 | black      |     40 | inch     |     101.6
- sl5        |        4 | brown      |      1 | m        |       100
- sl6        |       20 | brown      |    0.9 | m        |        90
- sl7        |        6 | brown      |     60 | cm       |        60
- sl8        |       21 | brown      |     40 | inch     |     101.6
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |     sl_len_cm     
+------------+----------+------------+--------+----------+-------------------
+ sl1        |        5 | black      |     80 | cm       |                80
+ sl2        |        6 | black      |    100 | cm       |               100
+ sl3        |       10 | black      |     35 | inch     |  88.9000015258789
+ sl4        |        8 | black      |     40 | inch     | 101.5999984741211
+ sl5        |        4 | brown      |      1 | m        |               100
+ sl6        |       20 | brown      |    0.9 | m        |                90
+ sl7        |        6 | brown      |     60 | cm       |                60
+ sl8        |       21 | brown      |     40 | inch     | 101.5999984741211
 (8 rows)
 
 SELECT * FROM shoelace_log ORDER BY sl_name;
@@ -1124,42 +1124,42 @@ insert into shoelace values ('sl10', 1000, 'magenta', 40.0, 'inch', 0.0)
   on conflict do nothing;
 ERROR:  INSERT with ON CONFLICT clause cannot be used with table that has INSERT or UPDATE rules
 SELECT * FROM shoelace_obsolete ORDER BY sl_len_cm;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl9        |        0 | pink       |     35 | inch     |      88.9
- sl10       |     1000 | magenta    |     40 | inch     |     101.6
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |     sl_len_cm     
+------------+----------+------------+--------+----------+-------------------
+ sl9        |        0 | pink       |     35 | inch     |  88.9000015258789
+ sl10       |     1000 | magenta    |     40 | inch     | 101.5999984741211
 (2 rows)
 
 SELECT * FROM shoelace_candelete;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl9        |        0 | pink       |     35 | inch     |      88.9
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |    sl_len_cm     
+------------+----------+------------+--------+----------+------------------
+ sl9        |        0 | pink       |     35 | inch     | 88.9000015258789
 (1 row)
 
 DELETE FROM shoelace WHERE EXISTS
     (SELECT * FROM shoelace_candelete
              WHERE sl_name = shoelace.sl_name);
 SELECT * FROM shoelace ORDER BY sl_name;
-  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  | sl_len_cm 
-------------+----------+------------+--------+----------+-----------
- sl1        |        5 | black      |     80 | cm       |        80
- sl10       |     1000 | magenta    |     40 | inch     |     101.6
- sl2        |        6 | black      |    100 | cm       |       100
- sl3        |       10 | black      |     35 | inch     |      88.9
- sl4        |        8 | black      |     40 | inch     |     101.6
- sl5        |        4 | brown      |      1 | m        |       100
- sl6        |       20 | brown      |    0.9 | m        |        90
- sl7        |        6 | brown      |     60 | cm       |        60
- sl8        |       21 | brown      |     40 | inch     |     101.6
+  sl_name   | sl_avail |  sl_color  | sl_len | sl_unit  |     sl_len_cm     
+------------+----------+------------+--------+----------+-------------------
+ sl1        |        5 | black      |     80 | cm       |                80
+ sl10       |     1000 | magenta    |     40 | inch     | 101.5999984741211
+ sl2        |        6 | black      |    100 | cm       |               100
+ sl3        |       10 | black      |     35 | inch     |  88.9000015258789
+ sl4        |        8 | black      |     40 | inch     | 101.5999984741211
+ sl5        |        4 | brown      |      1 | m        |               100
+ sl6        |       20 | brown      |    0.9 | m        |                90
+ sl7        |        6 | brown      |     60 | cm       |                60
+ sl8        |       21 | brown      |     40 | inch     | 101.5999984741211
 (9 rows)
 
 SELECT * FROM shoe ORDER BY shoename;
-  shoename  | sh_avail |  slcolor   | slminlen | slminlen_cm | slmaxlen | slmaxlen_cm |  slunit  
-------------+----------+------------+----------+-------------+----------+-------------+----------
- sh1        |        2 | black      |       70 |          70 |       90 |          90 | cm      
- sh2        |        0 | black      |       30 |        76.2 |       40 |       101.6 | inch    
- sh3        |        4 | brown      |       50 |          50 |       65 |          65 | cm      
- sh4        |        3 | brown      |       40 |       101.6 |       50 |         127 | inch    
+  shoename  | sh_avail |  slcolor   | slminlen |    slminlen_cm    | slmaxlen |    slmaxlen_cm    |  slunit  
+------------+----------+------------+----------+-------------------+----------+-------------------+----------
+ sh1        |        2 | black      |       70 |                70 |       90 |                90 | cm      
+ sh2        |        0 | black      |       30 | 76.19999694824219 |       40 | 101.5999984741211 | inch    
+ sh3        |        4 | brown      |       50 |                50 |       65 |                65 | cm      
+ sh4        |        3 | brown      |       40 | 101.5999984741211 |       50 |               127 | inch    
 (4 rows)
 
 SELECT count(*) FROM shoe;
@@ -1398,7 +1398,7 @@ pg_gtt_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 1) THEN s.stanumbers3
             WHEN (s.stakind4 = 1) THEN s.stanumbers4
             WHEN (s.stakind5 = 1) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_freqs,
         CASE
             WHEN (s.stakind1 = 2) THEN s.stavalues1
@@ -1414,7 +1414,7 @@ pg_gtt_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 3) THEN s.stanumbers3[1]
             WHEN (s.stakind4 = 3) THEN s.stanumbers4[1]
             WHEN (s.stakind5 = 3) THEN s.stanumbers5[1]
-            ELSE NULL::real
+            ELSE NULL::float4
         END AS correlation,
         CASE
             WHEN (s.stakind1 = 4) THEN s.stavalues1
@@ -1430,7 +1430,7 @@ pg_gtt_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 4) THEN s.stanumbers3
             WHEN (s.stakind4 = 4) THEN s.stanumbers4
             WHEN (s.stakind5 = 4) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_elem_freqs,
         CASE
             WHEN (s.stakind1 = 5) THEN s.stanumbers1
@@ -1438,7 +1438,7 @@ pg_gtt_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 5) THEN s.stanumbers3
             WHEN (s.stakind4 = 5) THEN s.stanumbers4
             WHEN (s.stakind5 = 5) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS elem_count_histogram
    FROM ((pg_class c
      JOIN pg_attribute a ON ((c.oid = a.attrelid)))
@@ -2454,7 +2454,7 @@ pg_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 1) THEN s.stanumbers3
             WHEN (s.stakind4 = 1) THEN s.stanumbers4
             WHEN (s.stakind5 = 1) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_freqs,
         CASE
             WHEN (s.stakind1 = 2) THEN s.stavalues1
@@ -2470,7 +2470,7 @@ pg_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 3) THEN s.stanumbers3[1]
             WHEN (s.stakind4 = 3) THEN s.stanumbers4[1]
             WHEN (s.stakind5 = 3) THEN s.stanumbers5[1]
-            ELSE NULL::real
+            ELSE NULL::float4
         END AS correlation,
         CASE
             WHEN (s.stakind1 = 4) THEN s.stavalues1
@@ -2486,7 +2486,7 @@ pg_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 4) THEN s.stanumbers3
             WHEN (s.stakind4 = 4) THEN s.stanumbers4
             WHEN (s.stakind5 = 4) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_elem_freqs,
         CASE
             WHEN (s.stakind1 = 5) THEN s.stanumbers1
@@ -2494,7 +2494,7 @@ pg_stats| SELECT n.nspname AS schemaname,
             WHEN (s.stakind3 = 5) THEN s.stanumbers3
             WHEN (s.stakind4 = 5) THEN s.stanumbers4
             WHEN (s.stakind5 = 5) THEN s.stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS elem_count_histogram
    FROM (((pg_statistic s
      JOIN pg_class c ON ((c.oid = s.starelid)))
@@ -2551,7 +2551,7 @@ pg_stats_ext_exprs| SELECT cn.nspname AS schemaname,
             WHEN ((stat.a).stakind3 = 1) THEN (stat.a).stanumbers3
             WHEN ((stat.a).stakind4 = 1) THEN (stat.a).stanumbers4
             WHEN ((stat.a).stakind5 = 1) THEN (stat.a).stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_freqs,
         CASE
             WHEN ((stat.a).stakind1 = 2) THEN (stat.a).stavalues1
@@ -2567,7 +2567,7 @@ pg_stats_ext_exprs| SELECT cn.nspname AS schemaname,
             WHEN ((stat.a).stakind3 = 3) THEN (stat.a).stanumbers3[1]
             WHEN ((stat.a).stakind4 = 3) THEN (stat.a).stanumbers4[1]
             WHEN ((stat.a).stakind5 = 3) THEN (stat.a).stanumbers5[1]
-            ELSE NULL::real
+            ELSE NULL::float4
         END AS correlation,
         CASE
             WHEN ((stat.a).stakind1 = 4) THEN (stat.a).stavalues1
@@ -2583,7 +2583,7 @@ pg_stats_ext_exprs| SELECT cn.nspname AS schemaname,
             WHEN ((stat.a).stakind3 = 4) THEN (stat.a).stanumbers3
             WHEN ((stat.a).stakind4 = 4) THEN (stat.a).stanumbers4
             WHEN ((stat.a).stakind5 = 4) THEN (stat.a).stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS most_common_elem_freqs,
         CASE
             WHEN ((stat.a).stakind1 = 5) THEN (stat.a).stanumbers1
@@ -2591,7 +2591,7 @@ pg_stats_ext_exprs| SELECT cn.nspname AS schemaname,
             WHEN ((stat.a).stakind3 = 5) THEN (stat.a).stanumbers3
             WHEN ((stat.a).stakind4 = 5) THEN (stat.a).stanumbers4
             WHEN ((stat.a).stakind5 = 5) THEN (stat.a).stanumbers5
-            ELSE NULL::real[]
+            ELSE NULL::float4[]
         END AS elem_count_histogram
    FROM (((((pg_statistic_ext s
      JOIN pg_class c ON ((c.oid = s.stxrelid)))

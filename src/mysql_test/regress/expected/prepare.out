@@ -112,7 +112,7 @@ ERROR:  wrong number of parameters for prepared statement "q3"
 DETAIL:  Expected 5 parameters but got 6.
 -- wrong param types
 EXECUTE q3(5::smallint, 10.5::float, false, 4::bigint, 'bytea');
-ERROR:  parameter $3 of type boolean cannot be coerced to the expected type double precision
+ERROR:  parameter $3 of type boolean cannot be coerced to the expected type float4
 LINE 1: EXECUTE q3(5::smallint, 10.5::float, false, 4::bigint, 'byte...
                                              ^
 HINT:  You will need to rewrite or cast the expression.
@@ -161,12 +161,12 @@ PREPARE q7(unknown) AS
     SELECT * FROM road WHERE thepath = $1;
 SELECT name, statement, parameter_types FROM pg_prepared_statements
     ORDER BY name;
- name |                            statement                             |                  parameter_types                   
-------+------------------------------------------------------------------+----------------------------------------------------
+ name |                            statement                             |            parameter_types             
+------+------------------------------------------------------------------+----------------------------------------
  q2   | PREPARE q2(text) AS                                             +| {text}
       |         SELECT datname, datistemplate, datallowconn             +| 
       |         FROM pg_database WHERE datname = $1;                     | 
- q3   | PREPARE q3(text, int, float, boolean, smallint) AS              +| {text,integer,"double precision",boolean,smallint}
+ q3   | PREPARE q3(text, int, float, boolean, smallint) AS              +| {text,integer,float4,boolean,smallint}
       |         SELECT * FROM tenk1 WHERE string4 = $1 AND (four = $2 OR+| 
       |         ten = $3::bigint OR true = $4 OR odd = $5::int)         +| 
       |         ORDER BY unique1;                                        | 

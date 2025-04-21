@@ -261,28 +261,46 @@ ERROR:  argument of NOT must be type boolean, not type "tinyint"
 LINE 1: select not a from test1;
                    ^
 select !a from test1;
-ERROR:  operator does not exist: ! "tinyint"
-LINE 1: select !a from test1;
-               ^
-HINT:  No operator matches the given name and argument type. You might need to add an explicit type cast.
+ ?column? 
+----------
+ 
+ f
+ f
+ f
+ f
+ f
+(6 rows)
+
 select a AND b from test1;
 ERROR:  argument of AND must be type boolean, not type "tinyint"
 LINE 1: select a AND b from test1;
                ^
 select a && b from test1;
-ERROR:  operator does not exist: "tinyint" && "tinyint"
-LINE 1: select a && b from test1;
-                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column? 
+----------
+ 
+ t
+ t
+ t
+ t
+ t
+(6 rows)
+
 select a or b from test1;
 ERROR:  argument of OR must be type boolean, not type "tinyint"
 LINE 1: select a or b from test1;
                ^
 select a || b from test1;
-ERROR:  operator does not exist: "tinyint" || "tinyint"
-LINE 1: select a || b from test1;
-                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column? 
+----------
+ 
+ t
+ t
+ t
+ t
+ t
+(6 rows)
+
 select a xor b from test1;
 ERROR:  argument of OR must be type boolean, not type "tinyint"
 LINE 1: select a xor b from test1;
@@ -398,10 +416,16 @@ select a >= b from test1;
 (6 rows)
 
 select a <=> b from test1;
-ERROR:  operator does not exist: "tinyint" <=> "tinyint"
-LINE 1: select a <=> b from test1;
-                 ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ f
+(6 rows)
+
 drop table test1;
 --'-'
 create table tb_test(id int1);

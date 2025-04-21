@@ -5419,13 +5419,13 @@ select 'true'::jsonb::bool;
 select '[]'::jsonb::bool;
 ERROR:  cannot cast jsonb array to type boolean
 select '1.0'::jsonb::float;
- float8 
+ float4 
 --------
       1
 (1 row)
 
 select '[1.0]'::jsonb::float;
-ERROR:  cannot cast jsonb array to type double precision
+ERROR:  cannot cast jsonb array to type real
 select '12345'::jsonb::int4;
  int4  
 -------
