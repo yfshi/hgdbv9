@@ -12200,27 +12200,31 @@ opt_delayed:
  *
  *****************************************************************************/
 /* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
-DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_table_target_list from_clause
+DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_table_target_list FROM from_list /* BUG#Z4581 */
 			using_clause where_or_current_clause opt_sort_clause opt_update_limit returning_clause
 				{
 					DeleteStmt *n = makeNode(DeleteStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
-					MYS_DELETE_CLAUSE_DEAL_CASE($6, $8);
+					MYS_DELETE_CLAUSE_DEAL_CASE($6, $9); /* BUG#Z4581 */
 					/* End - ReqID:SRS-MYSQL-CASE */
 					n->ignore = $5;
 					n->collist = $6;
-					n->relationList= $7;
-					n->usingClause = $8;
+					/* Begin - BUG#Z4581 */
+					n->relationList= $8;
+					n->usingClause = $9;
+					/* End - BUG#Z4581 */
 					if (list_length(n->relationList) == 1 && !(n->usingClause))
 					{
 						Node   *node  =(Node *) linitial(n->relationList);
 						if (IsA(node, RangeVar))
 							n->relation = (RangeVar *)node;
 					}
-					n->whereClause = $9;
-					n->sortClause = $10;
-					n->limitClause = (Node*)list_nth($11, 1);
-					n->returningList = $12;
+					/* Begin - BUG#Z4581 */
+					n->whereClause = $10;
+					n->sortClause = $11;
+					n->limitClause = (Node*)list_nth($12, 1);
+					n->returningList = $13;
+					/* End - BUG#Z4581 */
 					n->withClause = $1;
 					if (n->usingClause || n->relationList)
 						checkMultiDelete(n);
