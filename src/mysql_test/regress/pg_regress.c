@@ -2517,7 +2517,7 @@ regression_main(int argc, char *argv[],
 		header(_("starting postmaster"));
 		snprintf(buf, sizeof(buf),
 				 "\"%s%spostgres\" -D \"%s/data\" -F%s "
-				 "-c \"listen_addresses=%s\" -k \"%s\" "
+				 "-c \"listen_addresses=%s\" -c \"mysql.mode_pad_char_to_full=off\" -k \"%s\" "
 				 "-p %d -m %d "							/* SQL PARSER */
 				 "> \"%s/log/postmaster.log\" 2>&1",
 				 bindir ? bindir : "",

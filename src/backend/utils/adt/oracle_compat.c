@@ -23,6 +23,8 @@
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/varlena.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 
 static text *dotrim(const char *string, int stringlen,
 					const char *set, int setlen,
@@ -852,10 +854,18 @@ rtrim1(PG_FUNCTION_ARGS)
 		coll = C_COLLATION_OID;
 	/* End - BUG#Z1467 */
 
-	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
-				 " ", 1,
-				 false, true,
-				 coll);
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)
+	 * Handing char(n) space padding issues based on
+	 * sql_mode value MODE_PAD_CHAR_TO_FULL_LENGTH.
+	 */
+	if (compatible_db == MYS_PARSER && mode_pad_char_to_full())
+		ret = string;
+	else
+		ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
+					 " ", 1,
+					 false, true,
+					 coll);
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)  */
 
 	PG_RETURN_TEXT_P(ret);
 }

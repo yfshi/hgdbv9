@@ -268,6 +268,24 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 		case DELETE_P:
 			cur_token_length = 6;
 			break;
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
+		case NCHAR:
+			{
+				/* The main purpose here is to solve the syntax problem of NCHAR VARCHAR,
+				 * but in PG, N in N'aa''d\\ef' will be recognized as NCHAR,which should
+				 * be returned directly, and subsequent processing may cause segmentation
+				 * errors.
+				 */
+				char	   *tmpstr = pstrdup(yyextra->core_yy_extra.scanbuf);
+				int			lenth = strlen(tmpstr);
+
+				if (lenth >= 5 && pg_strcasecmp(tmpstr+(lenth - 5), "nchar") == 0)
+					cur_token_length = 5;
+				else
+					return cur_token;
+			}
+			break;
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
 		default:
 			return cur_token;
 	}
@@ -449,6 +467,16 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			}
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-DELETE */
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
+		case NCHAR:
+			switch (next_token)
+			{
+				case VARCHAR:
+					cur_token = NCHAR_P;
+					break;
+			}
+			break;
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
 	}
 
 	return cur_token;

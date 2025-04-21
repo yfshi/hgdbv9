@@ -484,6 +484,8 @@ extern PGDLLIMPORT int lower_case_table_names;
 extern PGDLLIMPORT bool myenable_case_switch;
 /* End - ReqID:SRS-MYSQL-CASE */
 
+extern PGDLLIMPORT bool not_mode_pad_char_to_full;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+
 /*
  * Functions exported by guc.c
  */
@@ -687,8 +689,9 @@ extern void assign_xlog_sync_method(int new_sync_method, void *extra);
 #define MODE_VALUES_FIRST				MODE_REAL_AS_FLOAT
 #define MODE_VALUES_LAST				MODE_PAD_CHAR_TO_FULL_LENGTH
 
-#define has_sql_mode(t)		(sql_mode & t)
+#define has_sql_mode(t)		(sql_mode & (t))
 #define is_strict_mode() 	(has_sql_mode(MODE_STRICT_TRANS_TABLES | MODE_STRICT_ALL_TABLES))
+#define mode_pad_char_to_full()	(has_sql_mode(MODE_PAD_CHAR_TO_FULL_LENGTH))
 
 typedef unsigned long long sql_mode_t;
 

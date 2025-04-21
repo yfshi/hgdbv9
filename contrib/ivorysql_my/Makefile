@@ -77,7 +77,8 @@ MYS_REGRESS = multi_update \
 			  mys_time	\
 			  show_charset \
 			  mys_int1	\
-			  mys_float
+			  mys_float \
+			  mys-char-varchar
 
 
 ifdef USE_PGXS

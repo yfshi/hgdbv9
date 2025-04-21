@@ -2765,6 +2765,31 @@ AddRelationNewConstraints(Relation rel,
 		Form_pg_attribute atp = TupleDescAttr(rel->rd_att, colDef->attnum - 1);
 		Oid			defOid;
 
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0)
+		 * when char(0) and varchar(0) are used as the default value
+		 * of a table, their length cannot be greater than 0.
+		 */
+		if (compatible_db == MYS_PARSER && atp->atttypmod == VARHDRSZ && 
+			(atp->atttypid == BPCHAROID || atp->atttypid == VARCHAROID ))
+		{
+			if (colDef->raw_default != NULL && IsA(colDef->raw_default, A_Const))
+			{
+				A_Const *con = (A_Const *)colDef->raw_default;
+
+				if (((Value *)(&con->val))->type == T_String)
+				{
+					int len = DirectFunctionCall1Coll(bpcharlen,
+													  atp->attcollation,
+													  CStringGetTextDatum(strVal(&con->val)));
+					if (len > 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_COLUMN_DEFINITION),
+								 errmsg("Invalid default value for \'%s\' ", NameStr(atp->attname))));
+				}
+			}
+		}
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
+
 		expr = cookDefault(pstate, colDef->raw_default,
 						   atp->atttypid, atp->atttypmod,
 						   NameStr(atp->attname),

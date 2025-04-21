@@ -420,6 +420,17 @@ ConstructTupleDescriptor(Relation heapRelation,
 							   NIL, 0);
 		}
 
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0)
+		 * char(0) and varchar(0) columns do not support index creation.
+		 */
+		if (compatible_db == MYS_PARSER && (to->atttypid == BPCHAROID ||
+			to->atttypid == VARCHAROID) && to->atttypmod == VARHDRSZ)
+		{
+			elog(ERROR, "The used storage engine can't index column '%s' ",
+						 NameStr(to->attname));
+		}
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(0)/VARCHAR(0) */
+
 		/*
 		 * We do not yet have the correct relation OID for the index, so just
 		 * set it invalid for now.  InitializeAttributeOids() will fix it

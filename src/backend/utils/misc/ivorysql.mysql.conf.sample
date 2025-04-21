@@ -9,3 +9,5 @@
 #mysql.port = 3306		# (change requires restart)
 
 shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'		# (change requires restart)
+
+#mysql.mode_pad_char_to_full = true		# pad_char_to_full_length control char(n) output.

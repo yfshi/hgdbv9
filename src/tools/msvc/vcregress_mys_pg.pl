@@ -661,7 +661,7 @@ sub upgradecheck
 	print "\nSetting up new cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nRunning pg_upgrade\n\n";
-	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-y', $mys_port, '-Y', $mys_port);
+	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-y', $mys_port, '-Y', $mys_port, '-O', '-c mysql.mode_pad_char_to_full=false');
 	system(@args) == 0 or exit 1;
 	print "\nStarting new cluster\n\n";
 	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -m $mys_port", 'start');
