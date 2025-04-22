@@ -81,6 +81,13 @@ insert into t2 values (2);
 select * from t2;
 drop table t2;
 
+create table t2 (a int1(3.1));
+\d t2
+drop table t2;
+
+create table t2 (a int1(3.9));
+\d t2
+drop table t2;
 
 --tinyint[(M)]
 create table t1 (a tinyint(-1));
@@ -111,6 +118,12 @@ insert into test1 values(1, 2 * 2);
 insert into test1 values(6, 6 / 2);
 insert into test1 values(7, 7 % 2);
 select * from test1;
+
+select a + b from test1;
+select a - b from test1;
+select a * b from test1;
+select a / b from test1;
+select a % b from test1;
 
 select not a from test1;
 select !a from test1;
@@ -144,3 +157,8 @@ select -id from tb_test;
 select * from tb_test;
 drop table tb_test;
 
+--'+'
+create table tb_test(id int1);
+insert into tb_test values (123),(-121),(0);
+select +id from tb_test;
+drop table tb_test;

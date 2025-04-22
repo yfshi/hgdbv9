@@ -145,6 +145,8 @@ WHERE p1.oid != p2.oid AND
     p1.prolang = 12 AND p2.prolang = 12 AND
     p1.pronamespace != 9900 AND
     p2.pronamespace != 9900 AND
+    p1.pronamespace != 9800 AND
+    p2.pronamespace != 9800 AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -160,6 +162,8 @@ WHERE p1.oid != p2.oid AND
     p1.prolang = 12 AND p2.prolang = 12 AND
     p1.pronamespace != 9900 AND
     p2.pronamespace != 9900 AND
+    p1.pronamespace != 9800 AND
+    p2.pronamespace != 9800 AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
