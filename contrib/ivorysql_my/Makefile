@@ -13,6 +13,7 @@ OBJS = \
 	src/datatype/mysdate.o \
 	src/datatype/mys_int1.o \
 	src/datatype/mys_int3.o \
+	src/datatype/mysint4.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
 	src/datatype/binary/strtod.o \
