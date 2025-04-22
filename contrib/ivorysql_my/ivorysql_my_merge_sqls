@@ -3,4 +3,6 @@ src/builtin_functions/builtin_functions
 src/sysview/sysview
 src/case_sensitive/case_sensitive
 src/charset/mys_charset
+src/datatype/mys_uint4
+src/datatype/mys_uint8
 src/datatype/mysfloat

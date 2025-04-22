@@ -996,6 +996,28 @@
   typmodin => '-', typmodout => '-',
   typsend => 'int2send', typalign => 's', typstorage => 'p', typbasetype => 'int2' },
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+{ oid => '9214', array_type_oid => '9215',
+  descr => 'mysql unsigned integer, 4-byte storage',
+  typname => 'mysuint4', typnamespace => 'ivymy', typlen => '4', typbyval => 't', 
+  typcategory => 'N', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'i' , 
+  typmodin => '-', typmodout => '-' },
+
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+{ oid => '9218', array_type_oid => '9219',
+  descr => 'mysql unsigned bitint, 8-byte storage',
+  typname => 'mysuint8', typnamespace => 'ivymy', typlen => '8', typbyval => 't', 
+  typcategory => 'N', typinput => '-', typoutput => '-', 
+  typreceive => '-', typsend => '-', 
+  typalign => 'd' , 
+  typmodin => '-', typmodout => '-' },
+
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+
 /*END MySQL Compatibility Metadatas*/
 
 ]

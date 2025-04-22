@@ -9,6 +9,8 @@ OBJS = \
 	src/case_sensitive/casefunc.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
+	src/datatype/mysuint4.o \
+	src/datatype/mysuint8.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -58,6 +60,8 @@ cleansql:
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
 MYS_REGRESS = multi_update \
+			  mys_uint4		\
+			  mys_uint8		\
 			  insert_update \
 			  multi_delete \
 			  replace \

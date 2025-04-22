@@ -4475,6 +4475,12 @@
   proname => 'pg_lsn', prorettype => 'pg_lsn', proargtypes => 'numeric',
   prosrc => 'numeric_pg_lsn' },
 
+# Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 
+{ oid => '9117', descr => 'convert numeric to uint8',
+  proname => 'numeric_uint8', prorettype => 'int8', proargtypes => 'numeric',
+  prosrc => 'numeric_uint8' },
+# End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 
+
 { oid => '3556', descr => 'convert jsonb to boolean',
   proname => 'bool', prorettype => 'bool', proargtypes => 'jsonb',
   prosrc => 'jsonb_bool' },

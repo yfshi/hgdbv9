@@ -39,6 +39,10 @@
 #include "utils/typcache.h"
 #include "utils/numeric.h"
 /*End - ReqID:SRS-MYDSQL-DATATYPE */
+#include "tsearch/ts_locale.h"/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
+uint32 pg_atoi_uint4_check(const char *s,int c);/* ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 typedef enum datetime
 {
@@ -49,7 +53,9 @@ typedef enum datetime
 	MYS_TIMESTAMP_FLG,
 	MYS_TIMESTAMPS_FLG,
 	MYS_TIME_FLG,
-	MYS_TIMES_FLG
+	MYS_TIMES_FLG,
+	MYS_UINT4_FLG,
+	MYS_UINT8_FLG
 } mys_datetime;
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
@@ -2096,7 +2102,259 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+uint32 pg_atoi_uint4_check(const char *s,int c)
+{
+	long long l;
+	char *badp;
 
+	/*
+	 * Some versions of strtol treat the empty string as an error, but some
+	 * seem not to.  Make an explicit test to be sure we catch it.
+	 */
+	if (s == NULL)
+		elog(ERROR, "NULL pointer");
+	if (*s == 0)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	errno = 0;
+
+	l = strtoll(s, &badp, 10);
+
+	/* We made no progress parsing the string, so bail out */
+	if (s == badp)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	if (errno == ERANGE || l < 0 || l > PG_UINT32_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("value \"%s\" is out of range for unsigned 32-bit integer", s)));
+		l = l < 0 ? 0 : PG_UINT32_MAX;
+		return l;
+	}
+
+	/*
+	 * Skip any trailing whitespace; if anything but whitespace remains before
+	 * the terminating character, bail out
+	 */
+	while (*badp && *badp != c && isspace((unsigned char)*badp))
+		badp++;
+
+	if (*badp && *badp != c)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+	}
+	return (uint32)l;
+}
+
+uint64 Num2Mysuint4(Const *con, Oid inputTypeId)
+{
+	uint32		val2 = 0;
+
+	if (inputTypeId == NUMERICOID)
+	{
+		int64		val1 = 0;
+		val1 = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(con->constvalue)));
+		val2 = val1;
+		if (val1 < 0 || val1 > PG_UINT32_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			val2 = val1 < 0 ? 0 : PG_UINT32_MAX;
+		}
+	}
+	else
+	{
+		int64		val1 = 0;
+		val1 = con->constvalue;
+		val2 = val1;
+		if (val1 < 0 || val1 > PG_UINT32_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			val2 = val1 < 0 ? 0 : PG_UINT32_MAX;
+		}
+
+	}
+	return val2;
+}
+
+uint64 Str2Mysuint4(Const *con, Const *newcon)
+{
+	char *num = NULL;
+	uint32 temp = 0;
+
+	if (con->constisnull)
+	{
+		newcon->constisnull = true;
+		return temp;
+	}
+
+	num = DatumGetCString(con->constvalue);
+	temp = pg_atoi_uint4_check(num, '\0');
+
+	return temp;
+
+}
+/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+uint64 pg_atoi_uint8_check(const char *s,int c)
+{
+	unsigned long long l;
+	char *badp;
+
+	/*
+	 * Some versions of strtol treat the empty string as an error, but some
+	 * seem not to.  Make an explicit test to be sure we catch it.
+	 */
+	if (s == NULL)
+		elog(ERROR, "NULL pointer");
+	if (*s == 0)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	errno = 0;
+
+	l = strtoull(s, &badp, 10);
+
+	/* We made no progress parsing the string, so bail out */
+	if (s == badp)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+		l = 0;
+		return l;
+	}
+
+	if (errno  == ERANGE || l < 0 || l > PG_UINT64_MAX)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("value \"%s\" is out of range for unsigned 64-bit integer", s)));
+		l = l < 0 ? 0 : PG_UINT64_MAX;
+		return l;
+	}
+
+	/*
+	 * Skip any trailing whitespace; if anything but whitespace remains before
+	 * the terminating character, bail out
+	 */
+	while (*badp && *badp != c && isspace((unsigned char)*badp))
+		badp++;
+
+	if (*badp && *badp != c)
+	{
+		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+		ereport(EREPORT_LEVEL,
+			(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			 errmsg("invalid input syntax for type %s: \"%s\"",
+					"integer", s)));
+	}
+	return (uint64)l;
+}
+
+uint64 Num2Mysuint8(Const *con, Oid inputTypeId)
+{
+	uint64		val1 = 0;
+
+	if (inputTypeId == NUMERICOID)
+	{
+		Numeric		uint8maxnum = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+										CStringGetDatum("18446744073709551615"),
+										ObjectIdGetDatum(InvalidOid),
+										Int32GetDatum(-1)));
+
+		if(DatumGetBool(DirectFunctionCall2(
+			numeric_gt, NumericGetDatum(con->constvalue), NumericGetDatum(uint8maxnum))))
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			return PG_UINT64_MAX;
+		}
+		if(DatumGetBool(DirectFunctionCall2(
+				numeric_lt, NumericGetDatum(con->constvalue), NumericGetDatum(int64_to_numeric(0)))))
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			return 0;
+		}
+
+		val1 = DatumGetInt64(DirectFunctionCall1(numeric_uint8, NumericGetDatum(con->constvalue)));
+
+		if (val1 < 0 || val1 > PG_UINT64_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			val1 = val1 < 0 ? 0 : PG_UINT64_MAX;
+		}
+	}
+	else
+	{
+		int64 tempval = con->constvalue;
+		val1 = tempval;
+		if (tempval < 0 || tempval > PG_UINT64_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
+			val1 = tempval < 0 ? 0 : PG_UINT64_MAX;
+		}
+
+	}
+	return val1;
+}
+
+uint64 Str2Mysuint8(Const *con, Const *newcon)
+{
+	char *strnum = NULL;
+	uint64 ret = 0;
+
+	if (con->constisnull)
+	{
+		newcon->constisnull = true;
+		return ret;
+	}
+
+	strnum = DatumGetCString(con->constvalue);
+	ret = pg_atoi_uint8_check(strnum, '\0');
+
+	return ret;
+
+}
+/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /*
  * coerce_type()
@@ -2281,6 +2539,18 @@ coerce_type(ParseState *pstate, Node *node,
 			{
 				dateflg = MYS_TIMES_FLG;
 			}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			else if(baseTypeId == MYSUINT4OID)
+			{
+				dateflg = MYS_UINT4_FLG;
+			}
+			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			else if(baseTypeId == MYSUINT4OID)
+			{
+				dateflg = MYS_UINT8_FLG;
+			}
+			/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 		}
 
 		if( COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
@@ -2297,6 +2567,10 @@ coerce_type(ParseState *pstate, Node *node,
 			dateflg = MYS_TIME_FLG;
 		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
 			dateflg = MYS_TIMES_FLG;
+		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT4OID)
+			dateflg = MYS_UINT4_FLG;
+		else if(COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSUINT8OID)
+			dateflg = MYS_UINT8_FLG;
 
 		if(dateflg)
 		{
@@ -2360,6 +2634,22 @@ coerce_type(ParseState *pstate, Node *node,
 				time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
 				newcon->constvalue = TimeADTGetDatum(time);
 			}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			else if(dateflg == MYS_UINT4_FLG)
+			{
+				uint32 tempvalue = 0;
+				tempvalue = Num2Mysuint4(con, inputTypeId);
+				newcon->constvalue = TimeADTGetDatum(tempvalue);
+			}
+			/* End - SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			else if(dateflg == MYS_UINT8_FLG)
+			{
+				uint64 tempvalue = 0;
+				tempvalue = Num2Mysuint8(con, inputTypeId);
+				newcon->constvalue = TimeADTGetDatum(tempvalue);
+			}
+			/* End - SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 			result = (Node *) newcon;
 			ReleaseSysCache(baseType);
@@ -2796,6 +3086,23 @@ coerce_type(ParseState *pstate, Node *node,
 					time = Str2Mystimes(con, newcon, targetTypeMod, is_insert);
 					newcon->constvalue = TimeADTGetDatum(time);
 				}
+				/* End - ReqID:SRS-MYSQL-TIMETYPE */
+				/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+				else if (baseTypeId == MYSUINT4OID)
+				{
+					uint64		value;
+					value = Str2Mysuint4(con, newcon);
+					newcon->constvalue = UInt32GetDatum(value);
+				}
+				/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+				/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+				else if (baseTypeId == MYSUINT8OID)
+				{
+					uint64		value;
+					value = Str2Mysuint8(con, newcon);
+					newcon->constvalue = UInt64GetDatum(value);
+				}
+				/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 				else
 				{
 					/*
