@@ -135,4 +135,15 @@ extern Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
 
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+extern uint64 Num2Mysuint4(Const *con, Oid inputTypeId);
+extern uint64 Str2Mysuint4(Const *con, Const *newcon);
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+extern uint64 pg_atoi_uint8_check(const char *s,int c);
+extern uint64 Num2Mysuint8(Const *con, Oid inputTypeId);
+extern uint64 Str2Mysuint8(Const *con, Const *newcon);
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+
 #endif							/* PARSE_COERCE_H */

@@ -4614,6 +4614,37 @@ numeric_pg_lsn(PG_FUNCTION_ARGS)
 	PG_RETURN_LSN(result);
 }
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+Datum
+numeric_uint8(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	XLogRecPtr	result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "uint8")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "uint8")));
+	}
+
+	/* Convert to variable format and thence to pg_lsn */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_uint64(&x, (uint64 *) &result))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("uint8 out of range")));
+
+	PG_RETURN_UINT64(result);
+}
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
 /* ----------------------------------------------------------------------
  *

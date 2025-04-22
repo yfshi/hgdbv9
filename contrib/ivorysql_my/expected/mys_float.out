@@ -238,35 +238,31 @@ CREATE TABLE t1 (
   recdesc varchar(50) NOT NULL,
   PRIMARY KEY  (reckey)
 );
-ERROR:  syntax error at or near "unsigned"
-LINE 2:   reckey int unsigned NOT NULL,
-                     ^
 INSERT INTO t1 VALUES (108, 'Has 108 as key');
-ERROR:  relation "t1" does not exist
-LINE 1: INSERT INTO t1 VALUES (108, 'Has 108 as key');
-                    ^
 INSERT INTO t1 VALUES (109, 'Has 109 as key');
-ERROR:  relation "t1" does not exist
-LINE 1: INSERT INTO t1 VALUES (109, 'Has 109 as key');
-                    ^
 select * from t1 where reckey=108;
-ERROR:  relation "t1" does not exist
-LINE 1: select * from t1 where reckey=108;
-                      ^
+ reckey |    recdesc     
+--------+----------------
+ 108    | Has 108 as key
+(1 row)
+
 select * from t1 where reckey=1.08E2;
-ERROR:  relation "t1" does not exist
+ERROR:  operator does not exist: mysuint4 = numeric
 LINE 1: select * from t1 where reckey=1.08E2;
-                      ^
+                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 select * from t1 where reckey=109;
-ERROR:  relation "t1" does not exist
-LINE 1: select * from t1 where reckey=109;
-                      ^
+ reckey |    recdesc     
+--------+----------------
+ 109    | Has 109 as key
+(1 row)
+
 select * from t1 where reckey=1.09E2;
-ERROR:  relation "t1" does not exist
+ERROR:  operator does not exist: mysuint4 = numeric
 LINE 1: select * from t1 where reckey=1.09E2;
-                      ^
+                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 drop table t1;
-ERROR:  table "t1" does not exist
 create table t1 (d double(10,1));
 create table t2 (d double(10,9));
 insert into t1 values ("100000000.0");
@@ -501,24 +497,21 @@ LINE 1: select a+0 from t1;
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 drop table t1;
 create table t1(d double, u bigint unsigned);
-ERROR:  syntax error at or near "unsigned"
-LINE 1: create table t1(d double, u bigint unsigned);
-                                           ^
 insert into t1(d) values (9.22337203685479e18),
                          (1.84e19);
-ERROR:  relation "t1" does not exist
-LINE 1: insert into t1(d) values (9.22337203685479e18),
-                    ^
 update t1 set u = d;
-ERROR:  relation "t1" does not exist
+ERROR:  column "u" is of type mysuint8 but expression is of type double precision
 LINE 1: update t1 set u = d;
-               ^
+                          ^
+HINT:  You will need to rewrite or cast the expression.
 select u from t1;
-ERROR:  relation "t1" does not exist
-LINE 1: select u from t1;
-                      ^
+ u 
+---
+ 
+ 
+(2 rows)
+
 drop table t1;
-ERROR:  table "t1" does not exist
 CREATE TABLE t1 (f1 DOUBLE);
 INSERT INTO t1 VALUES(-1.79769313486231e+308);
 SELECT f1 FROM t1;

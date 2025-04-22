@@ -690,6 +690,8 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 %type <list>		opt_table_target_list table_name_list
 
+%type <boolean>		field_unsigned /*ReqID: SRS-MYSQL-NUMBERICTYPE-UINT4*/
+%type <keyword>		integer_int /*ReqID: SRS-MYSQL-NUMBERICTYPE-UINT4*/
 %type <typnam>		NumericNoConflict opt_float_noempty mys_float
 
 /*
@@ -797,7 +799,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
-	UNLISTEN UNLOGGED UNTIL UPDATE USE USER USING
+	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
@@ -810,7 +812,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	XOR
 	YEAR YES_P
 
-	ZONE
+	ZEROFILL ZONE
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -913,7 +915,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
  * left-associativity among the JOIN rules themselves.
  */
 %left		JOIN CROSS LEFT FULL RIGHT INNER_P NATURAL
-
+%nonassoc	ZEROFILL
 %%
 
 /*
@@ -14514,7 +14516,7 @@ SimpleTypename:
  * reduce/reduce conflicts against function names.
  */
 ConstTypename:
-			Numeric									{ $$ = $1; }
+			Numeric								{ $$ = $1; }
 			| ConstBit								{ $$ = $1; }
 			| ConstCharacter						{ $$ = $1; }
 			| ConstDatetime							{ $$ = $1; }
@@ -14528,12 +14530,79 @@ ConstTypename:
  * constants for them.
  */
 GenericType:
-			type_function_name opt_type_modifiers
+			type_function_name opt_type_modifiers field_unsigned
 				{
-					$$ = makeTypeName($1);
-					$$->typmods = $2;
-					$$->location = @1;
+					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+					if ($3 && MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
+
+						$$ = MySQLSystemTypeName("mysuint4");
+						$$->typmods = $2;
+						$$->location = @1;
+					}	
+					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+					if ($3 && MYS_PARSER == compatible_db && strcmp($1, "int8") == 0)
+					{
+						A_Const *node_const = NULL;
+						List	   *typmods = $2;
+
+						if (typmods != NULL)
+						{
+							if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+
+							node_const = (A_Const *) linitial(typmods);
+							if (nodeTag(&node_const->val) != T_Integer ||
+								node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										errmsg("syntax error at or near"),
+										parser_errposition(@2)));
+							}
+						}
+
+						$$ = MySQLSystemTypeName("mysuint8");
+						$$->typmods = $2;
+						$$->location = @1;
+					}	
+					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+					{
+						$$ = makeTypeName($1);
+						$$->typmods = $2;
+						$$->location = @1;
+					}
 				}
+
 			| type_function_name attrs opt_type_modifiers
 				{
 					$$ = makeTypeNameFromNameList(lcons(makeString($1), $2));
@@ -14683,8 +14752,74 @@ flag_signed: SIGNED
 		;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+integer_int:
+	INTEGER
+	|INT_P
+	;
+
+field_unsigned:
+	unsigned_list {$$ = true; }
+	| /*empty*/   {$$ = false; }
+	;
+
+unsigned_list:
+	opt_unsigned
+	| unsigned_list opt_unsigned
+	;
+
+opt_unsigned:
+	UNSIGNED
+	| ZEROFILL
+	;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 /* Begin - ReqID:SRS-MYSQL-NUMERICTYPE-FLOAT */
-NumericNoConflict: REAL mys_float
+NumericNoConflict: 
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			integer_int unsigned_list
+				{
+					$$ = MySQLSystemTypeName("mysuint4");
+					$$->location = @1;
+				}
+			| integer_int '(' Iconst ')' field_unsigned
+				{
+					if($5)
+					{
+						$$ = MySQLSystemTypeName("mysuint4");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					} 
+					else
+					{
+						$$ = SystemTypeName("int4");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+				}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			| BIGINT unsigned_list
+				{
+					$$ = MySQLSystemTypeName("mysuint8");
+					$$->location = @1;
+				}
+			| BIGINT '(' Iconst ')' field_unsigned
+				{
+					if($5)
+					{
+						$$ = MySQLSystemTypeName("mysuint8");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					} 
+					else
+					{
+						$$ = SystemTypeName("int4");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					}
+				}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */				
+			|REAL mys_float
 				{
 					if(RealAsFloat())
 						$$ = SystemTypeName("float4");
@@ -16155,6 +16290,20 @@ func_expr_common_subexpr:
 				}
 			| CAST '(' a_expr AS Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
+			/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			| CAST '(' a_expr AS UNSIGNED INTEGER ')'
+				{ 				
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint4"), @1);
+				}
+			| CAST '(' a_expr AS UNSIGNED INT_P ')'
+				{ 				
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint4"), @1);
+				}
+			| CAST '(' a_expr AS UNSIGNED ')'
+				{ 				
+					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
+				}
+			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -17949,6 +18098,7 @@ col_name_keyword:
 			| TINYINT
 			| TREAT
 			| TRIM
+			| UNSIGNED
 			| VALUES
 			| VARCHAR
 			| XMLATTRIBUTES
@@ -17963,6 +18113,7 @@ col_name_keyword:
 			| XMLSERIALIZE
 			| XMLTABLE
 			| YEAR
+			| ZEROFILL
 		;
 
 /* Type/function identifier --- keywords that can be type or function names.

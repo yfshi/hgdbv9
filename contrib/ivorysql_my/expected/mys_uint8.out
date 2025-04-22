@@ -1,0 +1,2646 @@
+set SQL_MODE='TRADITIONAL';
+select cast(1111 as UNSIGNED) ; -- 1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast(1111.8 as UNSIGNED) ; --1112
+ mysuint8 
+----------
+ 1112
+(1 row)
+
+select cast(4294967297.8 as UNSIGNED) ; --4294967298
+  mysuint8  
+------------
+ 4294967298
+(1 row)
+
+select cast('1111' as UNSIGNED) ; --1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast('4294967295' as UNSIGNED) ; --4294967295
+  mysuint8  
+------------
+ 4294967295
+(1 row)
+
+select cast('4294967297' as UNSIGNED) ; --4294967297
+  mysuint8  
+------------
+ 4294967297
+(1 row)
+
+select cast('a111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: "a111"
+LINE 1: select cast('a111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('111a' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111a"
+LINE 1: select cast('111a' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('.111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: ".111"
+LINE 1: select cast('.111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('0111' as UNSIGNED) ; --111
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('#111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: "#111"
+LINE 1: select cast('#111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('111#' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111#"
+LINE 1: select cast('111#' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('111.' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111."
+LINE 1: select cast('111.' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast(42222222222222294967297.8 as UNSIGNED) ; --18446744073709551615
+WARNING:  integer unsigned out of range
+       mysuint8       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(42222222222222294967297 as UNSIGNED) ; --18446744073709551615
+WARNING:  integer unsigned out of range
+       mysuint8       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
+      mysuint8       
+---------------------
+ 9223372036854775808
+(1 row)
+
+set SQL_MODE='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+select cast(1111 as UNSIGNED) ; --1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast(1111.8 as UNSIGNED) ; --1112
+ mysuint8 
+----------
+ 1112
+(1 row)
+
+select cast(4294967297.8 as UNSIGNED) ; --4294967298
+  mysuint8  
+------------
+ 4294967298
+(1 row)
+
+select cast('1111' as UNSIGNED) ; --1111
+ mysuint8 
+----------
+ 1111
+(1 row)
+
+select cast('4294967295' as UNSIGNED) ; --4294967295
+  mysuint8  
+------------
+ 4294967295
+(1 row)
+
+select cast('4294967297' as UNSIGNED) ; --4294967297
+  mysuint8  
+------------
+ 4294967297
+(1 row)
+
+select cast('a111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: "a111"
+LINE 1: select cast('a111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('111a' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111a"
+LINE 1: select cast('111a' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('.111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: ".111"
+LINE 1: select cast('.111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('0111' as UNSIGNED) ; --111
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('#111' as UNSIGNED) ; --0
+WARNING:  invalid input syntax for type integer: "#111"
+LINE 1: select cast('#111' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 0
+(1 row)
+
+select cast('111#' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111#"
+LINE 1: select cast('111#' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast('111.' as UNSIGNED) ; --111
+WARNING:  invalid input syntax for type integer: "111."
+LINE 1: select cast('111.' as UNSIGNED) ;
+                    ^
+ mysuint8 
+----------
+ 111
+(1 row)
+
+select cast(42222222222222294967297.8 as UNSIGNED) ; --18446744073709551615
+WARNING:  integer unsigned out of range
+       mysuint8       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(42222222222222294967297 as UNSIGNED) ; --18446744073709551615
+WARNING:  integer unsigned out of range
+       mysuint8       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
+      mysuint8       
+---------------------
+ 9223372036854775808
+(1 row)
+
+set SQL_MODE='TRADITIONAL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+--bigint
+create table t1(c1 bigint UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+ERROR:  integer unsigned out of range
+LINE 1: insert into t1 values(-1);
+                              ^
+insert into t1 values(42222222222222294967297);
+ERROR:  integer unsigned out of range
+LINE 1: insert into t1 values(42222222222222294967297);
+                              ^
+insert into t1 values(9223372036854775808);
+insert into t1 values('100');
+insert into t1 values('9223372036854775808');
+insert into t1 values('42222222222222294967297');
+ERROR:  value "42222222222222294967297" is out of range for unsigned 64-bit integer
+LINE 1: insert into t1 values('42222222222222294967297');
+                              ^
+select * from t1;
+         c1          
+---------------------
+ 0
+ 1
+ 9223372036854775808
+ 100
+ 9223372036854775808
+(5 rows)
+
+drop table t1;
+--bigint[(M)]
+create table t1 (a bigint[-1] UNSIGNED); --fail
+ERROR:  syntax error at or near "-"
+LINE 1: create table t1 (a bigint[-1] UNSIGNED);
+                                  ^
+create table t2 (a bigint(0) UNSIGNED);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(0) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a bigint(3) UNSIGNED);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(3) |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+create table t3 (a bigint(4) UNSIGNED);
+\d t3
+                   Table "public.t3"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(4) |           |          | 
+
+insert into t3 values (3);
+select * from t3;
+ a 
+---
+ 3
+(1 row)
+
+drop table t3;
+--mediumint zerofill
+create table t2 (a bigint(-1) ZEROFILL);
+ERROR:  syntax error at or near "-"
+LINE 1: create table t2 (a bigint(-1) ZEROFILL);
+                                  ^
+create table t2 (a bigint ZEROFILL);
+\d t2
+                 Table "public.t2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ a      | mysuint8 |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a bigint(2) ZEROFILL);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(2) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a bigint(2) UNSIGNED ZEROFILL);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(2) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+--int8
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+ERROR:  integer unsigned out of range
+LINE 1: insert into t1 values(-1);
+                              ^
+insert into t1 values(42222222222222294967297);
+ERROR:  integer unsigned out of range
+LINE 1: insert into t1 values(42222222222222294967297);
+                              ^
+insert into t1 values(9223372036854775808);
+insert into t1 values('100');
+insert into t1 values('9223372036854775808');
+insert into t1 values('42222222222222294967297');
+ERROR:  value "42222222222222294967297" is out of range for unsigned 64-bit integer
+LINE 1: insert into t1 values('42222222222222294967297');
+                              ^
+select * from t1;
+         c1          
+---------------------
+ 0
+ 1
+ 9223372036854775808
+ 100
+ 9223372036854775808
+(5 rows)
+
+drop table t1;
+--int8[(M)]
+create table t1 (a int8[-1] UNSIGNED); --fail
+ERROR:  syntax error at or near "-"
+LINE 1: create table t1 (a int8[-1] UNSIGNED);
+                                ^
+create table t2 (a int8(0) UNSIGNED);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(0) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int8(3) UNSIGNED);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(3) |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+create table t3 (a int8(4) UNSIGNED);
+\d t3
+                   Table "public.t3"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(4) |           |          | 
+
+insert into t3 values (3);
+select * from t3;
+ a 
+---
+ 3
+(1 row)
+
+drop table t3;
+--mediumint zerofill
+create table t2 (a int8(-1) ZEROFILL);
+ERROR:  syntax error at or near
+LINE 1: create table t2 (a int8(-1) ZEROFILL);
+                               ^
+create table t2 (a int8 ZEROFILL);
+\d t2
+                 Table "public.t2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ a      | mysuint8 |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int8(2) ZEROFILL);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(2) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a int8(2) UNSIGNED ZEROFILL);
+\d t2
+                   Table "public.t2"
+ Column |    Type     | Collation | Nullable | Default 
+--------+-------------+-----------+----------+---------
+ a      | mysuint8(2) |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+set SQL_MODE='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+--bigint
+create table t1(c1 bigint UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+WARNING:  integer unsigned out of range
+LINE 1: insert into t1 values(-1);
+                              ^
+insert into t1 values(42222222222222294967297);
+WARNING:  integer unsigned out of range
+LINE 1: insert into t1 values(42222222222222294967297);
+                              ^
+insert into t1 values(9223372036854775808);
+insert into t1 values('100');
+insert into t1 values('9223372036854775808');
+insert into t1 values('42222222222222294967297');
+WARNING:  value "42222222222222294967297" is out of range for unsigned 64-bit integer
+LINE 1: insert into t1 values('42222222222222294967297');
+                              ^
+select * from t1;
+          c1          
+----------------------
+ 0
+ 1
+ 0
+ 18446744073709551615
+ 9223372036854775808
+ 100
+ 9223372036854775808
+ 18446744073709551615
+(8 rows)
+
+drop table t1;
+--int8
+create table t1(c1 int8 UNSIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+WARNING:  integer unsigned out of range
+LINE 1: insert into t1 values(-1);
+                              ^
+insert into t1 values(42222222222222294967297);
+WARNING:  integer unsigned out of range
+LINE 1: insert into t1 values(42222222222222294967297);
+                              ^
+insert into t1 values(9223372036854775808);
+insert into t1 values('100');
+insert into t1 values('9223372036854775808');
+insert into t1 values('42222222222222294967297');
+WARNING:  value "42222222222222294967297" is out of range for unsigned 64-bit integer
+LINE 1: insert into t1 values('42222222222222294967297');
+                              ^
+select * from t1;
+          c1          
+----------------------
+ 0
+ 1
+ 0
+ 18446744073709551615
+ 9223372036854775808
+ 100
+ 9223372036854775808
+ 18446744073709551615
+(8 rows)
+
+drop table t1;
+set SQL_MODE to default;
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+-- oper
+---=
+select cast(111 as UNSIGNED)  = 111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  = -111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  = NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 = cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select -111 = cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL = cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--<> 
+select cast(111 as UNSIGNED)  <> 111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  <> -111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  <> NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 <> cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select -111 <> cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL <> cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--<
+select cast(111 as UNSIGNED)  < 111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  < -111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  < NULL;  --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 < cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select -111 < cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL < cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+-->
+select cast(111 as UNSIGNED)  > 111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  > -111;  --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  > NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 > cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select -111 > cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL > cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--<=
+select cast(111 as UNSIGNED)  <= 111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  <= -111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  <= NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 <= cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select -111 <= cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL <= cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+-->=
+select cast(111 as UNSIGNED)  >= 111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  >= -111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  >= NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 >= cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select -111 >= cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL >= cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--<=>
+select cast(111 as UNSIGNED)  <=> 111; --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  <=> -111; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED)  <=> NULL; --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select 111 <=> cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ t
+(1 row)
+
+select -111 <=> cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL <=> cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ f
+(1 row)
+
+--+
+select cast(111 as UNSIGNED) + 111; --222
+ ?column? 
+----------
+ 222
+(1 row)
+
+select cast(111 as UNSIGNED) + -111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) + NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 + cast(111 as UNSIGNED); --222
+ ?column? 
+----------
+ 222
+(1 row)
+
+select -111 + cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select NULL + cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+---
+select cast(111 as UNSIGNED)  - 111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED)  - -111; --222
+ ?column? 
+----------
+ 222
+(1 row)
+
+select cast(111 as UNSIGNED)  - NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 - cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 - cast(111 as UNSIGNED); --err
+ERROR:  integer unsigned out of range
+select NULL - cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+-- *
+select cast(111 as UNSIGNED)  * 111; --12321
+ ?column? 
+----------
+ 12321
+(1 row)
+
+select cast(111 as UNSIGNED)  * -111; --err
+ERROR:  integer unsigned out of range
+select cast(111 as UNSIGNED)  * NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 * cast(111 as UNSIGNED);--12321
+ ?column? 
+----------
+ 12321
+(1 row)
+
+select -111 * cast(111 as UNSIGNED); --err
+ERROR:  integer unsigned out of range
+select NULL * cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 4294967295 * cast(4294967295 as UNSIGNED);--18446744065119617025
+       ?column?       
+----------------------
+ 18446744065119617025
+(1 row)
+
+-- /
+select cast(111 as UNSIGNED)  / 111; --1.0000
+        ?column?        
+------------------------
+ 1.00000000000000000000
+(1 row)
+
+select cast(111 as UNSIGNED)  / 110; --1.0091
+      ?column?      
+--------------------
+ 1.0090909090909091
+(1 row)
+
+select cast(111 as UNSIGNED)  / -111; -- -1.0000
+        ?column?         
+-------------------------
+ -1.00000000000000000000
+(1 row)
+
+select cast(111 as UNSIGNED)  / NULL; --NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select 111 / cast(111 as UNSIGNED); --1.0000
+        ?column?        
+------------------------
+ 1.00000000000000000000
+(1 row)
+
+select 110 / cast(111 as UNSIGNED); --0.9910
+        ?column?        
+------------------------
+ 0.99099099099099099099
+(1 row)
+
+select -111 / cast(111 as UNSIGNED); ---1.0000
+        ?column?         
+-------------------------
+ -1.00000000000000000000
+(1 row)
+
+select NULL / cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+         
+(1 row)
+
+--div
+select cast(111 as UNSIGNED) div 111; --1
+ mys_div 
+---------
+ 1
+(1 row)
+
+select cast(111 as UNSIGNED) div 110; --1
+ mys_div 
+---------
+ 1
+(1 row)
+
+select cast(111 as UNSIGNED) div -111; --err
+ERROR:  integer unsigned out of range
+select cast(111 as UNSIGNED) div NULL; --NULL
+ mys_div 
+---------
+ 
+(1 row)
+
+select 111 div cast(111 as UNSIGNED); --1
+ mys_div 
+---------
+ 1
+(1 row)
+
+select 110 div cast(111 as UNSIGNED); --0
+ mys_div 
+---------
+ 0
+(1 row)
+
+select -111 div cast(111 as UNSIGNED); --err
+ERROR:  integer unsigned out of range
+select NULL div cast(111 as UNSIGNED); --NULL
+ mys_div 
+---------
+ 
+(1 row)
+
+-- %
+select cast(111 as UNSIGNED) % 111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) % -111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) % NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 % cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 % cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select NULL % cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--mod
+select cast(111 as UNSIGNED) mod 111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) mod -111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) mod NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 mod cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 mod cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select NULL mod cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+set sql_mode to default;
+select cast(111 as UNSIGNED)  / 0; --NULL warning
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
+select cast(111 as UNSIGNED) div 0; --NULL warning
+WARNING:  Division by 0
+ mys_div 
+---------
+ 
+(1 row)
+
+select cast(111 as UNSIGNED) % 0; --NULL warning
+WARNING:  Division by 0
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast(111 as UNSIGNED) mod 0; --NULL warning
+WARNING:  Division by 0
+ ?column? 
+----------
+ 
+(1 row)
+
+set sql_mode= '';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+select cast(111 as UNSIGNED)  / 0; --NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select cast(111 as UNSIGNED) div 0; --NULL
+ mys_div 
+---------
+ 
+(1 row)
+
+select cast(111 as UNSIGNED) % 0; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select cast(111 as UNSIGNED) mod 0; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"&"
+select cast(111 as UNSIGNED) & 111; --111
+ ?column? 
+----------
+ 111
+(1 row)
+
+select cast(111 as UNSIGNED) & -111; --1
+ ?column? 
+----------
+ 1
+(1 row)
+
+select cast(111 as UNSIGNED) & NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 & cast(111 as UNSIGNED); --111
+ ?column? 
+----------
+ 111
+(1 row)
+
+select -111 & cast(111 as UNSIGNED); --1
+ ?column? 
+----------
+ 1
+(1 row)
+
+select NULL & cast(111 as UNSIGNED);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"|"
+select cast(111 as UNSIGNED)  | 111; --111
+ ?column? 
+----------
+ 111
+(1 row)
+
+select cast(111 as UNSIGNED)  | -111; --18446744073709551615
+       ?column?       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select cast(111 as UNSIGNED)  | NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 | cast(111 as UNSIGNED); --111
+ ?column? 
+----------
+ 111
+(1 row)
+
+select -111 | cast(111 as UNSIGNED); --18446744073709551615
+       ?column?       
+----------------------
+ 18446744073709551615
+(1 row)
+
+select NULL | cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"~"
+select ~cast(111 as UNSIGNED); --18446744073709551504
+       ?column?       
+----------------------
+ 18446744073709551504
+(1 row)
+
+--"^"
+select cast(111 as UNSIGNED)  ^ 111; --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED)  ^ -111; --18446744073709551614
+       ?column?       
+----------------------
+ 18446744073709551614
+(1 row)
+
+select cast(111 as UNSIGNED)  ^ NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 ^ cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 ^ cast(111 as UNSIGNED);  --18446744073709551614
+       ?column?       
+----------------------
+ 18446744073709551614
+(1 row)
+
+select NULL ^ cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--">>"
+select cast(111 as UNSIGNED) >> 111;--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) >> -111;--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) >> NULL; --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 >> cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 >> cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select NULL >> cast(111 as UNSIGNED); --NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"<<"
+select cast(111 as UNSIGNED) << 111;--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) << -111;--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select cast(111 as UNSIGNED) << NULL;--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111 << cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select -111 << cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ 0
+(1 row)
+
+select NULL << cast(111 as UNSIGNED);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"&&"
+select cast(111 as UNSIGNED) && 111;--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast(111 as UNSIGNED) && -111;--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast(111 as UNSIGNED) && NULL;--NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select 111 && cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select -111 && cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select NULL && cast(111 as UNSIGNED);--NULL
+ ?column? 
+----------
+         
+(1 row)
+
+--"||"
+select cast(111 as UNSIGNED) || 111;--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast(111 as UNSIGNED) || -111;--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select cast(111 as UNSIGNED) || NULL;--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select 111 || cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select -111 || cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+        1
+(1 row)
+
+select NULL || cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+        1
+(1 row)
+
+--"!"
+select !cast(111 as UNSIGNED); --0
+ ?column? 
+----------
+        0
+(1 row)
+
+--"and"
+select cast(111 as UNSIGNED)  and 111::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  and (-111)::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED)  and NULL;--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111::boolean and cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select (-111)::boolean and cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL and cast(111 as UNSIGNED);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+--"or"
+select cast(111 as UNSIGNED) or 111::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED) or (-111)::boolean;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select cast(111 as UNSIGNED) or NULL;--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select 111::boolean or cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select (-111)::boolean or cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+select NULL or cast(111 as UNSIGNED);--1
+ ?column? 
+----------
+ t
+(1 row)
+
+--"xor"
+select cast(111 as UNSIGNED) xor 111::boolean;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED) xor (-111)::boolean;--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select cast(111 as UNSIGNED) xor NULL;--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+select 111::boolean xor cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select (-111)::boolean xor cast(111 as UNSIGNED);--0
+ ?column? 
+----------
+ f
+(1 row)
+
+select NULL xor cast(111 as UNSIGNED);--NULL
+ ?column? 
+----------
+ 
+(1 row)
+
+set SQL_MODE to default;
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+--------------------------------------------------
+CREATE TABLE t2 (a bigint UNSIGNED, b bigint UNSIGNED);
+insert into t2 values(100, 999);
+insert into t2 values(222, 999);
+insert into t2 values(333, 999);
+insert into t2 values(444, 999);
+insert into t2 values(555, 100);
+---=
+select * from t2 where a = b;
+ a | b 
+---+---
+(0 rows)
+
+select * from t2 where b = 999;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+(4 rows)
+
+--<>
+select * from t2 where a <> b;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+ 555 | 100
+(5 rows)
+
+select * from t2 where b <> 999;
+  a  |  b  
+-----+-----
+ 555 | 100
+(1 row)
+
+--<
+select * from t2 where a < b;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+(4 rows)
+
+select * from t2 where b < 999;
+  a  |  b  
+-----+-----
+ 555 | 100
+(1 row)
+
+-->
+select * from t2 where a > b;
+  a  |  b  
+-----+-----
+ 555 | 100
+(1 row)
+
+select * from t2 where b > 999;
+ a | b 
+---+---
+(0 rows)
+
+--<=
+select * from t2 where a <= b;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+(4 rows)
+
+select * from t2 where b <= 999;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+ 555 | 100
+(5 rows)
+
+-->=
+select * from t2 where a >= b;
+  a  |  b  
+-----+-----
+ 555 | 100
+(1 row)
+
+select * from t2 where b >= 999;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+(4 rows)
+
+--<=>
+select * from t2 where a <=> b;
+ a | b 
+---+---
+(0 rows)
+
+select * from t2 where b <=> 999;
+  a  |  b  
+-----+-----
+ 100 | 999
+ 222 | 999
+ 333 | 999
+ 444 | 999
+(4 rows)
+
+--+
+select a + b from t2;
+ ?column? 
+----------
+ 1099
+ 1221
+ 1332
+ 1443
+ 655
+(5 rows)
+
+select a + 11 from t2;
+ ?column? 
+----------
+ 111
+ 233
+ 344
+ 455
+ 566
+(5 rows)
+
+---
+select b - a from t2;
+ERROR:  integer unsigned out of range
+select b - 11 from t2;
+ ?column? 
+----------
+ 988
+ 988
+ 988
+ 988
+ 89
+(5 rows)
+
+-- *
+select b * a from t2;
+ ?column? 
+----------
+ 99900
+ 221778
+ 332667
+ 443556
+ 55500
+(5 rows)
+
+select b * 11 from t2;
+ ?column? 
+----------
+ 10989
+ 10989
+ 10989
+ 10989
+ 1100
+(5 rows)
+
+--"&"
+select b & a from t2;
+ ?column? 
+----------
+ 100
+ 198
+ 325
+ 420
+ 32
+(5 rows)
+
+select b & 11 from t2;
+ ?column? 
+----------
+ 3
+ 3
+ 3
+ 3
+ 0
+(5 rows)
+
+--"|"
+select b | a from t2;
+ ?column? 
+----------
+ 999
+ 1023
+ 1007
+ 1023
+ 623
+(5 rows)
+
+select b | 11 from t2;
+ ?column? 
+----------
+ 1007
+ 1007
+ 1007
+ 1007
+ 111
+(5 rows)
+
+--"~"
+select ~b from t2; --18446744073709550616
+       ?column?       
+----------------------
+ 18446744073709550616
+ 18446744073709550616
+ 18446744073709550616
+ 18446744073709550616
+ 18446744073709551515
+(5 rows)
+
+--"^"
+select b ^ a from t2;
+ ?column? 
+----------
+ 899
+ 825
+ 682
+ 603
+ 591
+(5 rows)
+
+select b ^ 11 from t2;
+ ?column? 
+----------
+ 1004
+ 1004
+ 1004
+ 1004
+ 111
+(5 rows)
+
+--">>"
+select b >> a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+(5 rows)
+
+select b >> 11 from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+(5 rows)
+
+select b >> 2 from t2;
+ ?column? 
+----------
+ 249
+ 249
+ 249
+ 249
+ 25
+(5 rows)
+
+--"<<"
+select b << a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+(5 rows)
+
+select b << 11 from t2;
+ ?column? 
+----------
+ 2045952
+ 2045952
+ 2045952
+ 2045952
+ 204800
+(5 rows)
+
+select b << 2 from t2;
+ ?column? 
+----------
+ 3996
+ 3996
+ 3996
+ 3996
+ 400
+(5 rows)
+
+--"&&"
+select b && a from t2;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+(5 rows)
+
+select b && 11 from t2;
+ ?column? 
+----------
+        1
+        1
+        1
+        1
+        1
+(5 rows)
+
+--"||"
+select b or a from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+select b or 11::boolean from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+--"!"
+select !b from t2;
+ ?column? 
+----------
+        0
+        0
+        0
+        0
+        0
+(5 rows)
+
+--"and"
+select b and a from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+select b and 11::boolean from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+--"or"
+select b or a from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+select b or 11::boolean from t2;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+(5 rows)
+
+--"xor"
+select b xor a from t2;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+(5 rows)
+
+select b xor 11::boolean from t2;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+(5 rows)
+
+set sql_mode to default;
+insert into t2 values(555, 0);
+-- /
+select b / a from t2;
+        ?column?        
+------------------------
+     9.9900000000000000
+     4.5000000000000000
+     3.0000000000000000
+     2.2500000000000000
+ 0.18018018018018018018
+ 0.00000000000000000000
+(6 rows)
+
+select b / 11 from t2;
+        ?column?        
+------------------------
+    90.8181818181818182
+    90.8181818181818182
+    90.8181818181818182
+    90.8181818181818182
+     9.0909090909090909
+ 0.00000000000000000000
+(6 rows)
+
+select a / b from t2;
+WARNING:  Division by 0
+        ?column?        
+------------------------
+ 0.10010010010010010010
+ 0.22222222222222222222
+ 0.33333333333333333333
+ 0.44444444444444444444
+     5.5500000000000000
+                       
+(6 rows)
+
+select 0 / a from t2;
+        ?column?        
+------------------------
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+(6 rows)
+
+--div
+select b div a from t2;
+ mys_div 
+---------
+ 9
+ 4
+ 3
+ 2
+ 0
+ 0
+(6 rows)
+
+select b div 11 from t2;
+ mys_div 
+---------
+ 90
+ 90
+ 90
+ 90
+ 9
+ 0
+(6 rows)
+
+select a div b from t2;
+WARNING:  Division by 0
+ mys_div 
+---------
+ 0
+ 0
+ 0
+ 0
+ 5
+ 
+(6 rows)
+
+select 0 div a from t2;
+ mys_div 
+---------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+-- %
+select b % a from t2;
+ ?column? 
+----------
+ 99
+ 111
+ 0
+ 111
+ 100
+ 0
+(6 rows)
+
+select b % 11 from t2;
+ ?column? 
+----------
+ 9
+ 9
+ 9
+ 9
+ 1
+ 0
+(6 rows)
+
+select a % b from t2;
+WARNING:  Division by 0
+ ?column? 
+----------
+ 100
+ 222
+ 333
+ 444
+ 55
+ 
+(6 rows)
+
+select 0 % a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+--mod
+select b mod a from t2;
+ ?column? 
+----------
+ 99
+ 111
+ 0
+ 111
+ 100
+ 0
+(6 rows)
+
+select b mod 11 from t2;
+ ?column? 
+----------
+ 9
+ 9
+ 9
+ 9
+ 1
+ 0
+(6 rows)
+
+select a mod b from t2;
+WARNING:  Division by 0
+ ?column? 
+----------
+ 100
+ 222
+ 333
+ 444
+ 55
+ 
+(6 rows)
+
+select 0 mod a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+set sql_mode='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+-- /
+select b / a from t2;
+        ?column?        
+------------------------
+     9.9900000000000000
+     4.5000000000000000
+     3.0000000000000000
+     2.2500000000000000
+ 0.18018018018018018018
+ 0.00000000000000000000
+(6 rows)
+
+select b / 11 from t2;
+        ?column?        
+------------------------
+    90.8181818181818182
+    90.8181818181818182
+    90.8181818181818182
+    90.8181818181818182
+     9.0909090909090909
+ 0.00000000000000000000
+(6 rows)
+
+select a / b from t2;
+        ?column?        
+------------------------
+ 0.10010010010010010010
+ 0.22222222222222222222
+ 0.33333333333333333333
+ 0.44444444444444444444
+     5.5500000000000000
+                       
+(6 rows)
+
+select 0 / a from t2;
+        ?column?        
+------------------------
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+ 0.00000000000000000000
+(6 rows)
+
+--div
+select b div a from t2;
+ mys_div 
+---------
+ 9
+ 4
+ 3
+ 2
+ 0
+ 0
+(6 rows)
+
+select b div 11 from t2;
+ mys_div 
+---------
+ 90
+ 90
+ 90
+ 90
+ 9
+ 0
+(6 rows)
+
+select a div b from t2;
+ mys_div 
+---------
+ 0
+ 0
+ 0
+ 0
+ 5
+ 
+(6 rows)
+
+select 0 div a from t2;
+ mys_div 
+---------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+-- %
+select b % a from t2;
+ ?column? 
+----------
+ 99
+ 111
+ 0
+ 111
+ 100
+ 0
+(6 rows)
+
+select b % 11 from t2;
+ ?column? 
+----------
+ 9
+ 9
+ 9
+ 9
+ 1
+ 0
+(6 rows)
+
+select a % b from t2;
+ ?column? 
+----------
+ 100
+ 222
+ 333
+ 444
+ 55
+ 
+(6 rows)
+
+select 0 % a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+--mod
+select b mod a from t2;
+ ?column? 
+----------
+ 99
+ 111
+ 0
+ 111
+ 100
+ 0
+(6 rows)
+
+select b mod 11 from t2;
+ ?column? 
+----------
+ 9
+ 9
+ 9
+ 9
+ 1
+ 0
+(6 rows)
+
+select a mod b from t2;
+ ?column? 
+----------
+ 100
+ 222
+ 333
+ 444
+ 55
+ 
+(6 rows)
+
+select 0 mod a from t2;
+ ?column? 
+----------
+ 0
+ 0
+ 0
+ 0
+ 0
+ 0
+(6 rows)
+
+drop table t2;
+-- between and
+create table t1 (a bigint UNSIGNED , b bigint UNSIGNED);
+insert into t1 values(111, 444);
+insert into t1 values(222, 444);
+insert into t1 values(333, 444);
+insert into t1 values(444, 444);
+insert into t1 values(555, 444);
+select * from t1 where a between 222 and 444;
+  a  |  b  
+-----+-----
+ 222 | 444
+ 333 | 444
+ 444 | 444
+(3 rows)
+
+select * from t1 where b between a and 555;
+  a  |  b  
+-----+-----
+ 111 | 444
+ 222 | 444
+ 333 | 444
+ 444 | 444
+(4 rows)
+
+drop table t1;
+-- in
+create table t1(a bigint UNSIGNED);
+insert into t1 values(111),(222),(333);
+select * from t1 where a in (112,222,444);
+  a  
+-----
+ 222
+(1 row)
+
+select * from t1 where a not in (112,222,444);
+  a  
+-----
+ 111
+ 333
+(2 rows)
+
+drop table t1;
+-- is
+CREATE TABLE t1 (a bigint UNSIGNED, b bigint UNSIGNED);
+INSERT INTO t1 VALUES (111,1), (222,2);
+SELECT * FROM t1 WHERE a IS true;
+  a  | b 
+-----+---
+ 111 | 1
+ 222 | 2
+(2 rows)
+
+SELECT * FROM t1 WHERE a IS not true;
+ a | b 
+---+---
+(0 rows)
+
+SELECT * FROM t1 WHERE a IS NULL;
+ a | b 
+---+---
+(0 rows)
+
+SELECT * FROM t1 WHERE a IS not NULL;
+  a  | b 
+-----+---
+ 111 | 1
+ 222 | 2
+(2 rows)
+
+drop table t1;
+-- like
+create table t1 (a bigint UNSIGNED);
+insert into t1 values(111);
+insert into t1 values(222);
+insert into t1 values(333);
+set SQL_MODE='TRADITIONAL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+select a from t1 where a like '111'; --1
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 111; --0
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 0111;
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 'a111'; --0
+ERROR:  invalid input syntax for type integer: "a111"
+LINE 1: select a from t1 where a like 'a111';
+                                      ^
+select a from t1 where a like 1111; --0
+ a 
+---
+(0 rows)
+
+select a from t1 where a like '111a'; --0
+ERROR:  invalid input syntax for type integer: "111a"
+LINE 1: select a from t1 where a like '111a';
+                                      ^
+set SQL_MODE='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+select a from t1 where a like '111'; --1
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 111; --0
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 0111;
+  a  
+-----
+ 111
+(1 row)
+
+select a from t1 where a like 'a111'; --0
+WARNING:  invalid input syntax for type integer: "a111"
+LINE 1: select a from t1 where a like 'a111';
+                                      ^
+ a 
+---
+(0 rows)
+
+select a from t1 where a like 1111; --0
+ a 
+---
+(0 rows)
+
+select a from t1 where a like '111a'; --0
+WARNING:  invalid input syntax for type integer: "111a"
+LINE 1: select a from t1 where a like '111a';
+                                      ^
+  a  
+-----
+ 111
+(1 row)
+
+set SQL_MODE=default;
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+drop table t1;
+--btree and hash index
+create table idx_1 (idx bigint UNSIGNED);
+create index idx1 on idx_1 using btree (idx);
+insert into idx_1 values (111),(222),(333);
+vacuum full analyze idx_1;
+explain (COSTS OFF) select * from idx_1 where idx < 111;
+      QUERY PLAN       
+-----------------------
+ Seq Scan on idx_1
+   Filter: (idx < 111)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx > 222;
+      QUERY PLAN       
+-----------------------
+ Seq Scan on idx_1
+   Filter: (idx > 222)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx = 333;
+      QUERY PLAN       
+-----------------------
+ Seq Scan on idx_1
+   Filter: (idx = 333)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx <= 444;
+       QUERY PLAN       
+------------------------
+ Seq Scan on idx_1
+   Filter: (idx <= 444)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_1 where idx >= 555;
+       QUERY PLAN       
+------------------------
+ Seq Scan on idx_1
+   Filter: (idx >= 555)
+(2 rows)
+
+create table idx_2 (idx bigint UNSIGNED);
+create index idx2 on idx_2 using hash (idx);
+vacuum full analyze idx_2;
+insert into idx_2 values (111),(222),(333);
+explain (COSTS OFF) select * from idx_2 where idx = 111;
+      QUERY PLAN       
+-----------------------
+ Seq Scan on idx_2
+   Filter: (idx = 111)
+(2 rows)
+
+explain (COSTS OFF) select * from idx_2 where idx > 222;
+      QUERY PLAN       
+-----------------------
+ Seq Scan on idx_2
+   Filter: (idx > 222)
+(2 rows)
+
+drop table idx_1,idx_2;
+create table tb1 (a bigint UNSIGNED);
+create or replace procedure proc1()
+as
+$$
+declare
+i bigint := 0;
+begin
+    while i <= 10000 loop
+        insert into tb1 (a) values (i);
+        i = i+1;
+    end loop;
+end;
+$$ language plmysql;
+call proc1();
+create index idx1 on tb1 using hash(a);
+vacuum full analyze tb1;
+explain (COSTS OFF) select * from tb1 where a = 10;
+     QUERY PLAN     
+--------------------
+ Seq Scan on tb1
+   Filter: (a = 10)
+(2 rows)
+
+drop index idx1;
+create index idx_tree on tb1(a);
+vacuum full analyze tb1;
+set enable_bitmapscan =false;
+set enable_seqscan =false;
+explain (COSTS OFF) select * from tb1 where a < 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a < 10)
+(2 rows)
+
+explain (COSTS OFF) select * from tb1 where a <= 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a <= 10)
+(2 rows)
+
+explain (COSTS OFF) select * from tb1 where a = 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a = 10)
+(2 rows)
+
+explain (COSTS OFF) select * from tb1 where a != 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a <> 10)
+(2 rows)
+
+explain (COSTS OFF) select * from tb1 where a >= 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a >= 10)
+(2 rows)
+
+explain (COSTS OFF) select * from tb1 where a > 10;
+              QUERY PLAN               
+---------------------------------------
+ Index Only Scan using idx_tree on tb1
+   Filter: (a > 10)
+(2 rows)
+
+set enable_seqscan =true;
+set enable_bitmapscan =true;
+drop procedure proc1;
+drop table tb1;
+CREATE TABLE t1(m1 bigint UNSIGNED);
+INSERT INTO t1 VALUES (1901),(2155),(0000);
+SELECT * FROM t1;
+  m1  
+------
+ 1901
+ 2155
+ 0
+(3 rows)
+
+SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t1;
+ total_rows | min_value | max_value 
+------------+-----------+-----------
+          3 | 0         | 2155
+(1 row)
+
+SELECT AVG(m1) AS avg_value FROM t1;
+       avg_value       
+-----------------------
+ 1352.0000000000000000
+(1 row)
+
+SELECT SUM(m1) AS sum_value FROM t1;
+ sum_value 
+-----------
+      4056
+(1 row)
+
+DROP TABLE t1;
