@@ -104,6 +104,7 @@ MYS_REGRESS = multi_update \
 			  show_charset \
 			  mys_int1	\
 			  mys_int2	\
+			  mys_int4	\
 			  mys_float \
 			  mys-char-varchar \
 			  mys_int3 \
