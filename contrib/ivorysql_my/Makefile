@@ -77,6 +77,7 @@ MYS_REGRESS = multi_update \
 			  mys_time	\
 			  show_charset \
 			  mys_int1	\
+			  mys_int4	\
 			  mys_float
 
 
