@@ -70,7 +70,21 @@ typedef struct _parallelReadyList
 	bool		sorted;			/* are valid entries currently sorted? */
 } ParallelReadyList;
 
+/*
+	when initdb -m pg and create seq. but pg_restore oracle data
+	example:
+	1\
+	./initdb -D ../data -m pg
+	./pg_ctl -D ../data
+	./psql
+	create sequence seq1 as integer increment 2 no minvalue no maxvalue start 10 cache 10 cycle;
 
+	2\
+	./initdb -D ../data
+	./pg_dump -U postgres -d postgres -Fc -f Fcseq
+	./pg_restore -U postgres -p 5866 -d postgres < Fcseq
+*/
+static DBMode current_mode = DB_ORACLE; /*  BUG#Z4570 BUG#Z4571 */
 
 static ArchiveHandle *_allocAH(const char *FileSpec, const ArchiveFormat fmt,
 							   const int compression, bool dosync, ArchiveMode mode,
@@ -724,6 +738,7 @@ RestoreArchiveNative(Archive *AHX)
 	/*
 	 * Establish important parameter values right away.
 	 */
+	 current_mode = DB_PG;	/*  BUG#Z4570 BUG#Z4571 */
 	_doSetFixedOutputState(AH);
 
 	AH->stage = STAGE_PROCESSING;
@@ -1129,6 +1144,7 @@ RestoreArchivePg(Archive *AHX)
 	/*
 	 * Establish important parameter values right away.
 	 */
+	 current_mode = DB_PG;	/*  BUG#Z4570 BUG#Z4571 */
 	_doSetFixedOutputState(AH);
 
 	/* BEGIN - ReqID:SRS-MISC-USER */
@@ -4912,7 +4928,7 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 		ahprintf(AH, "SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
 		/* End - bug:z774 */
 		/* Begin - BUG#M516 */
-		if (database_mode != DB_PG)
+		if (database_mode != DB_PG && current_mode != DB_PG)	/*  BUG#Z4570 BUG#Z4571 */
 		{
 			ahprintf(AH, "SET ivorysql.compatible_mode to oracle;\n");
 			/* Begin - BUGZ4565 */
