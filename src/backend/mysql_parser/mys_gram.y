@@ -617,6 +617,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
+				Int4 Int4WithLength Int4WithoutLength	/* ReqID:SRS-MYSQL-NUMERIC */
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_no_inherit
@@ -753,7 +754,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT4 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -14502,6 +14503,7 @@ SimpleTypename:
 					$$->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
 											 makeIntConst($3, @3));
 				}
+			| Int4	{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERIC-INT4 */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14619,16 +14621,66 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
  * SQL numeric data types
  */
 Numeric:	NumericNoConflict { $$ = $1; }
-			| INT_P
+			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
+			| INT_P opt_type_modifiers flag_signed
 				{
+					A_Const *node_const = NULL;
+					List	   *typmods = $2;
+
+					if (typmods != NULL)
+					{
+						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+					}
+
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
-			| INTEGER
+			| INTEGER opt_type_modifiers flag_signed
 				{
+					A_Const *node_const = NULL;
+					List	   *typmods = $2;
+
+					if (typmods != NULL)
+					{
+						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+
+						node_const = (A_Const *) linitial(typmods);
+						if (nodeTag(&node_const->val) != T_Integer ||
+							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_SYNTAX_ERROR),
+									 errmsg("syntax error at or near"),
+									 parser_errposition(@2)));
+						}
+					}
+
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
+			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| SMALLINT
 				{
 					$$ = SystemTypeName("int2");
@@ -15023,6 +15075,44 @@ opt_varying:
 			VARYING									{ $$ = true; }
 			| /*EMPTY*/								{ $$ = false; }
 		;
+
+/*
+ * SQL int4
+ */
+Int4:
+			Int4WithLength
+			{
+				$$ = $1;
+			}
+			|	Int4WithoutLength
+			{
+				$$ = $1;
+			}
+		;
+Int4WithLength:
+			INT4  '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| INT4  '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}			
+Int4WithoutLength:
+			INT4
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}
+			| INT4  SIGNED
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}	
+		;
+
 
 /*
  * SQL date/time types
@@ -16304,6 +16394,18 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
 				}
 			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			| INT4 '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
+											   list_make1($3),
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+			| INT4 SCONST
+				{
+					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int4"), @1);
+				}
+			
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -18074,6 +18176,7 @@ col_name_keyword:
 			| INOUT
 			| INT_P
 			| INT1
+			| INT4
 			| INTEGER
 			| INTERVAL
 			| LEAST
@@ -18442,6 +18545,7 @@ bare_label_keyword:
 			| INSTEAD
 			| INT_P
 			| INT1
+			| INT4
 			| INTEGER
 			| INTERVAL
 			| INVOKER
