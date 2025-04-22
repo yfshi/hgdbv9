@@ -635,6 +635,7 @@ static TypeName *MystextSystemTypeName(char *name);
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
 				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
+				Int4 Int4WithLength Int4WithoutLength	/* ReqID:SRS-MYSQL-NUMERIC */
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_no_inherit
@@ -775,7 +776,7 @@ static TypeName *MystextSystemTypeName(char *name);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INT4 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -14600,6 +14601,7 @@ SimpleTypename:
 											 makeIntConst($3, @3));
 				}
 			| Int2									{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERICTYPE-INT2 */
+			| Int4	{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERIC-INT4 */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14746,6 +14748,7 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
+			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| SMALLINT
 				{
 					$$ = SystemTypeName("int2");
@@ -15479,6 +15482,44 @@ BlobWithoutLength:
 				}
 		;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
+/*
+ * SQL int4
+ */
+Int4:
+			Int4WithLength
+			{
+				$$ = $1;
+			}
+			|	Int4WithoutLength
+			{
+				$$ = $1;
+			}
+		;
+Int4WithLength:
+			INT4  '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| INT4  '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}			
+Int4WithoutLength:
+			INT4
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}
+			| INT4  SIGNED
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}	
+		;
+
 
 /*
  * SQL date/time types
@@ -16789,6 +16830,9 @@ func_expr_common_subexpr:
 			| INT2 '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("int2"),
+			| INT4 '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
 											   list_make1($3),
 											   COERCE_SQL_SYNTAX,
 											   @1);
@@ -18607,6 +18651,7 @@ col_name_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+			| INT4
 			| INTEGER
 			| INTERVAL
 			| LEAST
@@ -18985,6 +19030,7 @@ bare_label_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+			| INT4
 			| INTEGER
 			| INTERVAL
 			| INVOKER
