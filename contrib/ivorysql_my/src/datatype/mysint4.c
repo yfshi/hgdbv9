@@ -37,7 +37,7 @@ PG_FUNCTION_INFO_V1(myint4_bit_xor);
 PG_FUNCTION_INFO_V1(myint4_or);
 PG_FUNCTION_INFO_V1(myint4_and);
 PG_FUNCTION_INFO_V1(myint4_left_shift);
-PG_FUNCTION_INFO_V1(myint4_safeeq);
+PG_FUNCTION_INFO_V1(myint4_right_shift);
 PG_FUNCTION_INFO_V1(myint4_safeeq);
 PG_FUNCTION_INFO_V1(myint4_not);
 PG_FUNCTION_INFO_V1(myint4_bit_neg);
