@@ -10,20 +10,17 @@
  * Copyright:
  * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved. 
  *
- * Identification:
- *		contrib/ivorysql_my/src/datatype/mysint4.c
- *
  * ReqID:SRS-MYSQL-NUMBERICTYPE-INT4
  * 
  *------------------------------------------------------------------
  */
 
 #include "postgres.h"
+#include "utils/guc.h"
 #include "common/int.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"
 #include "utils/numeric.h"
-#include "../include/my_ctype_simple.h"
+// #include "../include/my_ctype_simple.h"
 
 #define PG_GETARG_UINT64(n)	 DatumGetUInt64(PG_GETARG_DATUM(n))
 
