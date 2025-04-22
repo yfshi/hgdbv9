@@ -14739,7 +14739,7 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
  */
 Numeric:	NumericNoConflict { $$ = $1; }
 			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
-			| integer_int
+			| INT_P opt_type_modifiers flag_signed
 				{
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
@@ -15572,6 +15572,44 @@ Int4WithoutLength:
 			| INT4  unsigned_list
 			{
 				$$ = MySQLSystemTypeName("mysuint4");
+				$$->location = @1;
+			}	
+		;
+
+
+/*
+ * SQL int4
+ */
+Int4:
+			Int4WithLength
+			{
+				$$ = $1;
+			}
+			|	Int4WithoutLength
+			{
+				$$ = $1;
+			}
+		;
+Int4WithLength:
+			INT4  '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| INT4  '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}			
+Int4WithoutLength:
+			INT4
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}
+			| INT4  SIGNED
+			{
+				$$ = SystemTypeName("int4");
 				$$->location = @1;
 			}	
 		;
@@ -16904,7 +16942,6 @@ func_expr_common_subexpr:
 											   COERCE_SQL_SYNTAX,
 											   @1);
 				}
-
 			| INT2 SCONST
 				{
 					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);
@@ -18712,7 +18749,7 @@ col_name_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
-			| INT4
+			| INT4			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| INTEGER
 			| INTERVAL
 			| LEAST
@@ -19091,7 +19128,7 @@ bare_label_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
-			| INT4
+			| INT4			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| INTEGER
 			| INTERVAL
 			| INVOKER
