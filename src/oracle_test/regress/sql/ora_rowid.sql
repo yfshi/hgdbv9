@@ -264,8 +264,8 @@ drop table t2;
 
 /* Begin - Bug#Z928 */
 create table tw(a int, b int) with rowid;
-create user test;
-alter table tw owner to test;
+create user test_z928;
+alter table tw owner to test_z928;
 
 -- check if the Owner is consistent
 SELECT
@@ -292,7 +292,7 @@ FROM (
 
 --cleanup
 drop table tw;
-drop user test;
+drop user test_z928;
 /* End - Bug#Z928 */
 /* Begin - BUG#M508 */
 -- add a table with rowid to test BUGZ1641 for pg_upgrade

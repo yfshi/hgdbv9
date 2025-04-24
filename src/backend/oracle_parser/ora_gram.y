@@ -19489,6 +19489,7 @@ case_expr:	CASE case_arg when_clause_list case_default END_P
 					expr_list = lappend(a_expr,$5);
 					n = makeNode(CoalesceExpr);
 					n->args = expr_list;
+					n->isnvl = true;	/* BUG#Z4591 */
 					n->location = @1;
 					res->val = (Node *) n;
 					res->location = @1;

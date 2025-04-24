@@ -2370,46 +2370,87 @@ ExecInitExprRec(Expr *node, ExprState *state,
 		case T_CoalesceExpr:
 			{
 				CoalesceExpr *coalesce = (CoalesceExpr *) node;
-				List	   *adjust_jumps = NIL;
-				ListCell   *lc;
 
-				/* We assume there's at least one arg */
-				Assert(coalesce->args != NIL);
-
-				/*
-				 * Prepare evaluation of all coalesced arguments, after each
-				 * one push a step that short-circuits if not null.
-				 */
-				foreach(lc, coalesce->args)
+				/* Begin - BUG#Z4591 */
+				if (coalesce->isnvl)
 				{
-					Expr	   *e = (Expr *) lfirst(lc);
+					ListCell   *cell1;
+					ListCell   *cell2;
+					Expr	   *expr1;
+					Expr	   *expr2;
+					int			jump_stepid;
 
-					/* evaluate argument, directly into result datum */
-					ExecInitExprRec(e, state, resv, resnull);
+					/* NVL expr must have two args? */
+					Assert(list_length(coalesce->args) == 2);
 
-					/* if it's not null, skip to end of COALESCE expr */
+					cell1 = list_head(coalesce->args);
+					cell2 = list_second_cell(coalesce->args);
+
+					/*
+					 * Process expr2 first to check implicit conversion.
+					 */
+					expr2 = (Expr *) lfirst(cell2);
+					ExecInitExprRec(expr2, state, resv, resnull);
+
+					expr1 = (Expr *) lfirst(cell1);
+					ExecInitExprRec(expr1, state, resv, resnull);
+
+					/* if expr1 is not null, skip to end of NVL expr */
 					scratch.opcode = EEOP_JUMP_IF_NOT_NULL;
 					scratch.d.jump.jumpdone = -1;	/* adjust later */
 					ExprEvalPushStep(state, &scratch);
+					jump_stepid = state->steps_len - 1;
 
-					adjust_jumps = lappend_int(adjust_jumps,
-											   state->steps_len - 1);
+					/* expr1 is null return expr2 */
+					ExecInitExprRec(expr2, state, resv, resnull);
+
+					/* final adjust jump target */
+					state->steps[jump_stepid].d.jump.jumpdone = state->steps_len;
 				}
-
-				/*
-				 * No need to add a constant NULL return - we only can get to
-				 * the end of the expression if a NULL already is being
-				 * returned.
-				 */
-
-				/* adjust jump targets */
-				foreach(lc, adjust_jumps)
+				else
+				/* End - BUG#Z4591 */
 				{
-					ExprEvalStep *as = &state->steps[lfirst_int(lc)];
+					List	   *adjust_jumps = NIL;
+					ListCell   *lc;
 
-					Assert(as->opcode == EEOP_JUMP_IF_NOT_NULL);
-					Assert(as->d.jump.jumpdone == -1);
-					as->d.jump.jumpdone = state->steps_len;
+					/* We assume there's at least one arg */
+					Assert(coalesce->args != NIL);
+
+					/*
+					 * Prepare evaluation of all coalesced arguments, after each
+					 * one push a step that short-circuits if not null.
+					 */
+					foreach(lc, coalesce->args)
+					{
+						Expr	   *e = (Expr *) lfirst(lc);
+
+						/* evaluate argument, directly into result datum */
+						ExecInitExprRec(e, state, resv, resnull);
+
+						/* if it's not null, skip to end of COALESCE expr */
+						scratch.opcode = EEOP_JUMP_IF_NOT_NULL;
+						scratch.d.jump.jumpdone = -1;	/* adjust later */
+						ExprEvalPushStep(state, &scratch);
+
+						adjust_jumps = lappend_int(adjust_jumps,
+												   state->steps_len - 1);
+					}
+
+					/*
+					 * No need to add a constant NULL return - we only can get to
+					 * the end of the expression if a NULL already is being
+					 * returned.
+					 */
+
+					/* adjust jump targets */
+					foreach(lc, adjust_jumps)
+					{
+						ExprEvalStep *as = &state->steps[lfirst_int(lc)];
+
+						Assert(as->opcode == EEOP_JUMP_IF_NOT_NULL);
+						Assert(as->d.jump.jumpdone == -1);
+						as->d.jump.jumpdone = state->steps_len;
+					}
 				}
 
 				break;

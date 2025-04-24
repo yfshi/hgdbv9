@@ -1197,6 +1197,7 @@ typedef struct CoalesceExpr
 	Oid			coalescetype;	/* type of expression result */
 	Oid			coalescecollid; /* OID of collation, or InvalidOid if none */
 	List	   *args;			/* the arguments */
+	bool		isnvl;			/* BUG#Z4591: wrapper for compatible Oracle's NVL */
 	int			location;		/* token location, or -1 if unknown */
 } CoalesceExpr;
 

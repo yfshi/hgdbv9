@@ -2408,3 +2408,37 @@ select pg_get_viewdef('test_listagg');
 DROP VIEW test_listagg;
 DROP TABLE employee;
 /* End - BUG#M0000457 */
+
+/* Begin - BUG#Z4591 */
+create table test_nvl(a number, b char(8));
+select nvl(a, b) from test_nvl;	-- null
+
+insert into test_nvl values(123, '456');
+select nvl(a, b) from test_nvl;	-- 123
+
+insert into test_nvl values(123, 'aaa');
+select nvl(a, b) from test_nvl;	-- error
+
+delete from test_nvl;
+insert into test_nvl values(123, '456');
+select nvl(666, b) from test_nvl;	-- 666
+
+
+insert into test_nvl values(123, 'aaaa');
+select nvl(666, b) from test_nvl;	-- error
+drop table test_nvl;
+
+-- const
+select nvl(3, 'aaa') from dual;	-- error
+select nvl(222, 333) from dual;	-- 222
+select nvl(null, 222) from dual; -- 222
+select nvl(222, null) from dual; -- 222
+select nvl(null, null) from dual; -- null
+
+-- nested
+select nvl(null, nvl(111,222)) from dual; -- 111
+select nvl(nvl(222,333), null) from dual; -- 222
+select nvl(nvl(123, null), nvl(111,222)) from dual; -- 123
+select nvl(nvl(null, 123), nvl(111,222)) from dual; -- 123
+select nvl(nvl(null, null), nvl(111,222)) from dual; -- 111
+/* End - BUG#Z4591 */

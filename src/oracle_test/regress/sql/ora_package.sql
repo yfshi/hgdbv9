@@ -4537,26 +4537,26 @@ drop package test_pkg;
 drop package test_reference;
 
 --create user
-create user test;
+create user test2;
 create user test1;
 CREATE SCHEMA test1;
-CREATE SCHEMA test;
+CREATE SCHEMA test2;
 
 ALTER SCHEMA test1 owner TO test1;
-ALTER SCHEMA test owner TO test;
+ALTER SCHEMA test2 owner TO test2;
 
 --set session
-set session authorization test;
+set session authorization test2;
 
 --create package
-create or replace package test.test_pkg is
+create or replace package test2.test_pkg is
   var1 integer;
   function test_f(id integer) return integer;
 end;
 /
 
 --create package body
-create or replace package body test.test_pkg is
+create or replace package body test2.test_pkg is
   function test_f(id integer) return integer is
      var1 integer;
   begin
@@ -4566,23 +4566,23 @@ end;
 /
 
 --ok
-alter package test.test_pkg compile;
+alter package test2.test_pkg compile;
 
 --set session
 set session authorization test1;
 
 --failed
-alter package test.test_pkg compile;
+alter package test2.test_pkg compile;
 
 --set session super user
 reset session authorization;
 
 --ok
-alter package test.test_pkg compile;
+alter package test2.test_pkg compile;
 
-drop package test.test_pkg;
-DROP SCHEMA test;
-drop user test;
+drop package test2.test_pkg;
+DROP SCHEMA test2;
+drop user test2;
 DROP SCHEMA test1;
 drop user test1;
 
@@ -7693,7 +7693,6 @@ select test_pkg.test_f(1,'ok') from dual;
 --clean data
 drop package test_pkg;
 drop table test_mds;
-
 
 --bug#Z4612
 create user usr1_tivp001141030 with password '1';
