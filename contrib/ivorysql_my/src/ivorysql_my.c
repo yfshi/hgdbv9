@@ -47,6 +47,9 @@ static Mysql_casesensitive_get_typoid_hook_type premysql_get_typoid_hook = NULL;
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 static Mysql_int_datatype_in_hook_type pre_mysql_int_datatype_in_hook = NULL;
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+static Mysql_int4_datatype_in_hook_type pre_mysql_int4_datatype_in_hook = NULL;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
 void _PG_init(void);
 void _PG_fini(void);
@@ -100,6 +103,10 @@ _PG_init(void)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 	pre_mysql_int_datatype_in_hook = mysql_int_datatype_in_hook;
 	mysql_int_datatype_in_hook = my_atoi_int2;
+	
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+	pre_mysql_int4_datatype_in_hook = mysql_int4_datatype_in_hook;
+	mysql_int4_datatype_in_hook = my_atoi_int4;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
 }
 
@@ -135,4 +142,7 @@ _PG_fini(void)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
 	mysql_int_datatype_in_hook = pre_mysql_int_datatype_in_hook;
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+	mysql_int4_datatype_in_hook = pre_mysql_int4_datatype_in_hook;
+	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 }
