@@ -445,11 +445,7 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 				break;
 			}
 		case T_SysConnectPath:
-			if (!pstate->p_check_connectby)
-				elog(ERROR, "CONNECT BY clause required in this query block");
-			/* only check grammer, so simple check is colnode */
-			((SysConnectPath *) expr)->colnode = transformExprRecurse(pstate, ((SysConnectPath *) expr)->colnode);
-			result = expr;
+			elog(ERROR, "SYS_CONNECT_BY_PATH function is not allowed here");
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
 

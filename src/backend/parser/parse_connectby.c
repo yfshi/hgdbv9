@@ -3684,9 +3684,149 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 			}
 		}
 
+		/* Begin - BUG#Z00004575 */
+		/*
+		 * there root row connect_by_iscycle maybe
+		 * true
+		 */
 		/* make left connect_by_iscycle pseudocolumn */
-		if (hascycle)
+		if (connect_by_prior)
 		{
+			if (hascycle)
+			{
+				/*
+				 * construct connect_by_iscycle
+				 * case WHEN 1 <= (select count(*) from level__query1  where connectby and
+				 * row(_tbname_1.prior colist) = row(level__query1.prior colist))
+				 * then 1 else 0 END as connect_by_iscycle
+				 */
+				SelectStmt *st;
+				FuncCall *fcall;
+				CaseExpr *caseiscycle;
+				List *caseiscycle_args = NIL;
+				ResTarget *cyclecol = makeNode(ResTarget);
+				Node *connectcycle;
+				SubLink *sub;
+				ResTarget *res;
+				RangeVar *rvar;
+				Alias *alias;
+				char *tb_alias1 = "_tbname_1";
+				int cycle_flags = 0;
+				bool cycle_found_prior = false;
+				RowExpr *r;
+				RowExpr *r1;
+
+				st = makeNode(SelectStmt);
+				rvar = makeRangeVar(NULL, internel_priorname, -1);
+
+				alias = (Alias *) makeNode(Alias);
+				alias->aliasname = pstrdup(tb_alias1);
+
+				rvar->alias = alias;
+
+				st->fromClause = list_make1(rvar);
+
+				fcall = makeNode(FuncCall);
+				fcall->funcname = list_make1(makeString("count"));
+				fcall->agg_star = true;
+
+				res = makeNode(ResTarget);
+				res->location = -1;
+				res->val = (Node *) fcall;
+
+				st->targetList = list_make1(res);
+
+				/* construct where clause */
+				connectcycle = copyObject(origin_connect_by);
+
+				replace_series_ctx.prior_columlist = NULL;
+				replace_series_ctx.prior_name = internel_priorname;
+				replace_series_ctx.tbname = tb_alias1;
+				replace_series_ctx.found_prior = &cycle_found_prior;
+				replace_series_ctx.recurse_flag = &cycle_flags;
+
+				connectcycle = parsetree_tree_walker(connectcycle,
+						replace_series_walker, &replace_series_ctx);
+
+
+				r = makeNode(RowExpr);
+
+				r->row_typeid = InvalidOid;
+				r->colnames = NIL;
+				r->row_format = COERCE_EXPLICIT_CALL;
+				r->location = -1;
+				if (connect_by_priorlist != NIL)
+				{
+					tab_ctx.tbname = tb_alias1;
+
+					r->args = copyObject(connect_by_priorlist);
+
+					r->args = (List *) parsetree_tree_walker((Node *) r->args,
+								add_tabreference_walker, (void *) &tab_ctx);
+					tab_ctx.tbname = internel_priorname;
+				}
+				else
+				{
+					Node *rnode;
+
+					rnode = makeColumnRef(tb_alias1, list_make1(makeNode(A_Star)));
+					r->args = list_make1(rnode);
+				}
+
+				r1 = makeNode(RowExpr);
+
+				r1->row_typeid = InvalidOid;
+				r1->colnames = NIL;
+				r1->row_format = COERCE_EXPLICIT_CALL;
+				r1->location = -1;
+				if (connect_by_priorlist != NIL)
+				{
+
+					r1->args = copyObject(connect_by_priorlist);
+
+					r1->args = (List *) parsetree_tree_walker((Node *) r1->args,
+								add_tabreference_walker, (void *) &tab_ctx);
+				}
+				else
+				{
+					Node *rnode;
+
+					rnode = makeColumnRef(internel_priorname, list_make1(makeNode(A_Star)));
+					r1->args = list_make1(rnode);
+				}
+
+				st->whereClause = (Node *) makeSimpleA_Expr(AEXPR_OP, "=", (Node *) r,
+													(Node *) r1, -1);
+				st->whereClause = makeAndExpr(connectcycle, st->whereClause, -1);
+
+				/* make sublink */
+				sub = makeNode(SubLink);
+				sub->subLinkType = EXPR_SUBLINK;
+				sub->subLinkId = 0;
+				sub->testexpr = NULL;
+				sub->operName = NIL;
+				sub->subselect = (Node *) st;
+				sub->location = -1;
+
+				/* make case */
+				caseiscycle = makeNode(CaseExpr);
+				casewheniscycle = makeNode(CaseWhen);
+				casewheniscycle->expr = (Expr *)makeSimpleA_Expr(AEXPR_OP, "<=", makeIntConst(1),
+												(Node *)sub, -1);
+				casewheniscycle->result = (Expr *)makeIntConst(1);
+				caseiscycle_args = lappend(caseiscycle_args, casewheniscycle);
+				caseiscycle->args = caseiscycle_args;
+				caseiscycle->defresult = (Expr *)makeIntConst(0);
+
+				cyclecol->name = iscyclename;
+				cyclecol->val = (Node *) caseiscycle;
+				stmt->targetList = lappend(stmt->targetList, cyclecol);
+				(*ignoreStr)->lq_connect_by_iscycle = iscyclename;
+			}
+		}
+		else if (hascycle)
+		{
+			/* connect by series connect_by_iscycle is awalys 0 */
 			ResTarget *cyclecol = makeNode(ResTarget);
 
 			cyclecol->name = iscyclename;
@@ -3694,6 +3834,7 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 			stmt->targetList = lappend(stmt->targetList, cyclecol);
 			(*ignoreStr)->lq_connect_by_iscycle = iscyclename;
 		}
+		/* End - BUG#Z00004575 */
 
 		/*
 		 * make left level col
