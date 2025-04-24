@@ -615,9 +615,9 @@ select * from t3;
 drop table t3;
 --mediumint zerofill
 create table t2 (a int4(-1) ZEROFILL);
-ERROR:  syntax error at or near
+ERROR:  syntax error at or near "-"
 LINE 1: create table t2 (a int4(-1) ZEROFILL);
-                               ^
+                                ^
 create table t2 (a int4 ZEROFILL);
 \d t2
                  Table "public.t2"

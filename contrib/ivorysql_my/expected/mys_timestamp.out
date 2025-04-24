@@ -2701,12 +2701,12 @@ select t div 20221231010101.11 from t2;
 (4 rows)
 
 select 20221231010101 div t from t2;
- ?column? 
-----------
-        1
-        1
-        1
-        1
+ mys_div 
+---------
+       1
+       1
+       1
+       1
 (4 rows)
 
 select 20221231010101.99 div t from t2;
