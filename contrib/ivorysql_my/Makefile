@@ -8,11 +8,12 @@ OBJS = \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
 	src/datatype/my_ctype_simple.o \
-	src/datatype/mysint2.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
 	src/datatype/mys_int1.o \
+	src/datatype/mysint2.o \
 	src/datatype/mys_int3.o \
+	src/datatype/mysint4.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
 	src/charset/charset.o \
@@ -31,8 +32,8 @@ OBJS = \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
-	src/datatype/mysfloat.o\
-	src/datatype/mysint4.o
+	src/datatype/mysfloat.o
+
 
 EXTENSION = ivorysql_my
 

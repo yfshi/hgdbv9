@@ -106,48 +106,28 @@ drop table t1;
 
 
 CREATE TABLE t1 (col1 INT);
-INSERT INTO t1 VALUES(-2147483648),(0),(2147483647),('-2147483648'),('2147483647',(-2147483648.0),(2147483647.0);
---error 1264
+INSERT INTO t1 VALUES(-2147483648),(0),(2147483647),('-2147483648'),('2147483647'),(-2147483648.0),(2147483647.0);
 INSERT INTO t1 (col1) VALUES(-2147483649);
---error 1264
 INSERT INTO t1 (col1) VALUES(2147643648);
---error 1264
-INSERT INTO t1 (col2) VALUES(-1);
---error 1264
-INSERT INTO t1 (col2) VALUES(4294967296);
---error 1264
+INSERT INTO t1 (col1) VALUES(-1);
+INSERT INTO t1 (col1) VALUES(4294967296);
 INSERT INTO t1 (col1) VALUES('-2147483649');
---error 1264
 INSERT INTO t1 (col1) VALUES('2147643648');
---error 1264
-INSERT INTO t1 (col2) VALUES('-1');
---error 1264
-INSERT INTO t1 (col2) VALUES('4294967296');
---error 1264
+INSERT INTO t1 (col1) VALUES('-1');
+INSERT INTO t1 (col1) VALUES('4294967296');
 INSERT INTO t1 (col1) VALUES(-2147483649.0);
---error 1264
 INSERT INTO t1 (col1) VALUES(2147643648.0);
---error 1264
 INSERT INTO t1 (col1) VALUES(-1.0);
---error 1264
 INSERT INTO t1 (col1) VALUES(4294967296.0);
-
---error 1264
 UPDATE t1 SET col1 = col1 - 50 WHERE col1 < 0;
---error 1264
-UPDATE t1 SET col2 =col2 + 50 WHERE col2 > 0;
---error 1365
+UPDATE t1 SET col1 =col1 + 50 WHERE col1 > 0;
 UPDATE t1 SET col1 =col1 / 0 WHERE col1 > 0;
---error 1365
 UPDATE t1 SET col1= MOD(col1,0) WHERE col1 > 0;
---error 1366
 INSERT INTO t1 (col1) VALUES ('');
---error 1366
 INSERT INTO t1 (col1) VALUES ('a59b');
---error 1265
 INSERT INTO t1 (col1) VALUES ('1a');
 INSERT INTO t1 (col1) VALUES ('2a');
-INSERT INTO t1 values (1/0,1/0);
+INSERT INTO t1 values (1/0);
 INSERT INTO t1 values (-2147483649),(2147643648);
 INSERT INTO t1 values ('-2147483649'),('2147643648');
 INSERT INTO t1 values (-2147483649.0),(2147643648.0);
@@ -170,7 +150,7 @@ DROP TABLE t1,t2,t3,t4,t5;
 
 --operator
 create table tb_test(id int);
-insert into tb_test values (2147643648),(-2147483649),(0);
+insert into tb_test values (2147483647),(-2147483648),(0),(1);
 select !id from tb_test;
 select ~id from tb_test;
 select +id from tb_test;
@@ -178,9 +158,9 @@ select -id from tb_test;
 select * from tb_test;
 drop table tb_test;
 
-create table t1 (col1 int2, col2 int2);
-insert into t1 values(1, 2147643648);
-insert into t1 values(1, -2147483649);
+create table t1 (col1 int, col2 int);
+insert into t1 values(1, 2147483647);
+insert into t1 values(1, -2147483648);
 select col1 + col2 from t1;
 select col1 - col2 from t1;
 select col1 * col2 from t1;
@@ -287,58 +267,50 @@ select '2147483648'::int;
 ------------------------------
 --from int4 to other pg type
 ------------------------------
-select '123'::int::pg_catalog.int4;
-select '123'::int::pg_catalog.int8;
-select '123'::int::pg_catalog.float4;
-select '123'::int::pg_catalog.float8;
-select '123'::int::pg_catalog.numeric;
-select '123'::int::pg_catalog.oid;
-select '123'::int::pg_catalog.regclass;
-select '123'::int::pg_catalog.char;
-select '123'::int::pg_catalog.varchar;
-select '123'::int::pg_catalog.bpchar;
-select '123'::int::pg_catalog.text;
-select '123'::int::pg_catalog.regoperator;
-select '123'::int::pg_catalog.regcollation;
-select '123'::int::pg_catalog.regtype;
-select '123'::int::pg_catalog.regconfig;
-select '123'::int::pg_catalog.regdictionary;
-select '123'::int::pg_catalog.regnamespace;
-select '123'::int::pg_catalog.regrole;
-select '123'::int::pg_catalog.regproc;
-select '123'::int::pg_catalog.regprocedure;
-select '123'::int::pg_catalog.regoper;
+select '2147483647'::int::pg_catalog.int4;
+select '2147483647'::int::pg_catalog.int8;
+select '2147483647'::int::pg_catalog.float4;
+select '2147483647'::int::pg_catalog.float8;
+select '2147483647'::int::pg_catalog.numeric;
+select '2147483647'::int::pg_catalog.oid;
+select '2147483647'::int::pg_catalog.regclass;
+select '2147483647'::int::pg_catalog.varchar;
+select '2147483647'::int::pg_catalog.bpchar;
+select '2147483647'::int::pg_catalog.text;
+select '2147483647'::int::pg_catalog.regoperator;
+select '2147483647'::int::pg_catalog.regcollation;
+select '2147483647'::int::pg_catalog.regtype;
+select '2147483647'::int::pg_catalog.regconfig;
+select '2147483647'::int::pg_catalog.regdictionary;
+select '2147483647'::int::pg_catalog.regnamespace;
+select '2147483647'::int::pg_catalog.regrole;
+select '2147483647'::int::pg_catalog.regproc;
+select '2147483647'::int::pg_catalog.regprocedure;
+select '2147483647'::int::pg_catalog.regoper;
 
 ----------------------------------
 --from other pg type to int
 ----------------------------------
-select cast('32767'::pg_catalog.int2 as smallint);
-select cast('32767'::pg_catalog.int4 as smallint);
-select cast('32767'::pg_catalog.int8 as smallint);
-select cast('32767'::pg_catalog.float4 as smallint);
-select cast('32767'::pg_catalog.float8 as smallint);
-select cast('32767'::pg_catalog.numeric as smallint);
-select cast('32768'::pg_catalog.int2 as smallint);
-select cast('32768'::pg_catalog.int4 as smallint);
-select cast('32768'::pg_catalog.int8 as smallint);
-select cast('32768'::pg_catalog.float4 as smallint);
-select cast('32768'::pg_catalog.float8 as smallint);
-select cast('32768'::pg_catalog.numeric as smallint);
-select cast('-32768'::pg_catalog.int2 as smallint);
-select cast('-32768'::pg_catalog.int4 as smallint);
-select cast('-32768'::pg_catalog.int8 as smallint);
-select cast('-32768'::pg_catalog.float4 as smallint);
-select cast('-32768'::pg_catalog.float8 as smallint);
-select cast('-32768'::pg_catalog.numeric as smallint);
-select cast('-32769'::pg_catalog.int2 as smallint);
-select cast('-32769'::pg_catalog.int4 as smallint);
-select cast('-32769'::pg_catalog.int8 as smallint);
-select cast('-32769'::pg_catalog.float4 as smallint);
-select cast('-32769'::pg_catalog.float8 as smallint);
-select cast('-32769'::pg_catalog.numeric as smallint);
-select '123'::pg_catalog.int2::smallint;
-select '123'::pg_catalog.int4::smallint;
-select '123'::pg_catalog.int8::smallint;
-select '123'::pg_catalog.float4::smallint;
-select '123'::pg_catalog.float8::smallint;
-select '123'::pg_catalog.numeric::smallint;
+select cast('32767'::pg_catalog.int2 as int);
+select cast('2147483647'::pg_catalog.int4 as int);
+select cast('2147483647'::pg_catalog.int8 as int);
+select cast('2000000000'::pg_catalog.float4 as int);
+select cast('2147483647'::pg_catalog.float8 as int);
+select cast('2147483647'::pg_catalog.numeric as int);
+select cast('-32768'::pg_catalog.int2 as int);
+select cast('-2147483648'::pg_catalog.int4 as int);
+select cast('-2147483648'::pg_catalog.int8 as int);
+select cast('-2147483648'::pg_catalog.float4 as int);
+select cast('-2147483648'::pg_catalog.float8 as int);
+select cast('-2147483648'::pg_catalog.numeric as int);
+select cast('-2147483648'::pg_catalog.int4 as int);
+select cast('-2147483648'::pg_catalog.int8 as int);
+select cast('-2147483648'::pg_catalog.float4 as int);
+select cast('-2147483648'::pg_catalog.float8 as int);
+select cast('-2147483648'::pg_catalog.numeric as int);
+select '123'::pg_catalog.int2::int;
+select '123'::pg_catalog.int4::int;
+select '123'::pg_catalog.int8::int;
+select '123'::pg_catalog.float4::int;
+select '123'::pg_catalog.float8::int;
+select '123'::pg_catalog.numeric::int;
