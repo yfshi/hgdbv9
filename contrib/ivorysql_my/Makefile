@@ -7,6 +7,7 @@ OBJS = \
 	src/ivorysql_my.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
+	src/datatype/my_ctype_simple.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
 	src/datatype/mysuint4.o \

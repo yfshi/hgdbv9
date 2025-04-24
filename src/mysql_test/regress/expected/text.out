@@ -40,7 +40,7 @@ select 'four: '::text || 2+2;
 (1 row)
 
 select 'four: ' || 2+2;
-ERROR:  operator is not unique: unknown || integer
+ERROR:  operator is not unique: unknown || bigint
 LINE 1: select 'four: ' || 2+2;
                         ^
 HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.

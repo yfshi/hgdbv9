@@ -8,7 +8,7 @@
 
 --  "&"
 CREATE FUNCTION ivymy.myint4_bit_and(pg_catalog.int4, pg_catalog.int4)
-RETURNS pg_catalog.int8		--uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_bit_and'
 LANGUAGE C
 PARALLEL SAFE
@@ -24,7 +24,7 @@ CREATE OPERATOR ivymy.& (
 
 --  "|"
 CREATE FUNCTION ivymy.myint4_bit_or(pg_catalog.int4, pg_catalog.int4)
-RETURNS pg_catalog.int8		--uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_bit_or'
 LANGUAGE C
 PARALLEL SAFE
@@ -104,7 +104,7 @@ CREATE OPERATOR ivymy./ (
 );
 
 --  "//"
-CREATE FUNCTION ivymy.mys_div(pg_catalog.int4, pg_catalog.int4)
+CREATE FUNCTION ivymy.myint4_exact_div(pg_catalog.int4, pg_catalog.int4)
 RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','myint4_exact_div'
 LANGUAGE C
@@ -113,7 +113,7 @@ STRICT
 IMMUTABLE;
 
 CREATE OPERATOR ivymy.// (
-	procedure = ivymy.myint4_div,
+	procedure = ivymy.myint4_exact_div,
 	leftarg = pg_catalog.int4,
 	rightarg = pg_catalog.int4,
 	commutator = //
@@ -137,7 +137,7 @@ CREATE OPERATOR ivymy.% (
 
 --  "^"
 CREATE FUNCTION ivymy.myint4_bit_xor(pg_catalog.int4, pg_catalog.int4)
-RETURNS pg_catalog.int8	--uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_bit_xor'
 LANGUAGE C
 PARALLEL SAFE
@@ -172,7 +172,7 @@ CREATE OPERATOR ivymy.&& (
 
 --  "<<"
 CREATE FUNCTION ivymy.myint4_left_shift(pg_catalog.int4, pg_catalog.int4)
-RETURNS pg_catalog.int8 --uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_left_shift'
 LANGUAGE C
 PARALLEL SAFE
@@ -188,7 +188,7 @@ CREATE OPERATOR ivymy.<< (
 
 --  ">>"
 CREATE FUNCTION ivymy.myint4_right_shift(pg_catalog.int4, pg_catalog.int4)
-RETURNS pg_catalog.int4 --uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_right_shift'
 LANGUAGE C
 PARALLEL SAFE
@@ -233,7 +233,7 @@ CREATE OPERATOR !(
 
 --  "~"
 CREATE FUNCTION ivymy.myint4_bit_neg(pg_catalog.int4)
-RETURNS pg_catalog.int8 --uint8
+RETURNS ivymy.mysuint8
 AS 'MODULE_PATHNAME','myint4_bit_neg'
 LANGUAGE C
 PARALLEL SAFE
@@ -276,27 +276,10 @@ CREATE OPERATOR ivymy.- (
 -- CREATE CAST
 
 -- to bpchar
-CREATE FUNCTION ivymy.int4_to_bpchar(pg_catalog.int4) 
-RETURNS pg_catalog.bpchar 
-AS 'MODULE_PATHNAME','int4_to_bpchar'
-LANGUAGE C
-PARALLEL SAFE 
-STRICT 
-IMMUTABLE;
-
 CREATE CAST (pg_catalog.int4 AS pg_catalog.bpchar) 
-WITH FUNCTION ivymy.int4_to_bpchar(pg_catalog.int4) 
+WITH INOUT
 AS ASSIGNMENT;
-
 -- to varchar
-CREATE FUNCTION ivymy.int4_to_varchar(pg_catalog.int4) 
-RETURNS pg_catalog.varchar 
-AS 'MODULE_PATHNAME','int4_to_varchar'
-LANGUAGE C
-PARALLEL SAFE 
-STRICT 
-IMMUTABLE;
-
 CREATE CAST (pg_catalog.int4 AS pg_catalog.varchar) 
-WITH FUNCTION ivymy.int4_to_varchar(pg_catalog.int4) 
+WITH INOUT
 AS ASSIGNMENT;

@@ -3,25 +3,27 @@
  * File: mysint4.c
  *
  * Abstract: 
- * 		Compatible with MySQL's DATE data type.
+ * 		Compatible with MySQL's INT4 data type.
  *
  * Authored by liyonghao@highgo.com, 20250421.
  *
  * Copyright:
- * Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved. 
+ * Copyright (c) 2023, HighGo Software Co.,Ltd. All rights reserved. 
  *
  * Identification:
  *		contrib/ivorysql_my/src/datatype/mysint4.c
  *
+ * ReqID:SRS-MYSQL-NUMBERICTYPE-INT4
+ * 
  *------------------------------------------------------------------
  */
 
 #include "postgres.h"
-#include "utils/guc.h"
 #include "common/int.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/numeric.h"
-// #include "../include/my_ctype_simple.h"
+#include "../include/my_ctype_simple.h"
 
 #define PG_GETARG_UINT64(n)	 DatumGetUInt64(PG_GETARG_DATUM(n))
 
@@ -44,11 +46,8 @@ PG_FUNCTION_INFO_V1(myint4_bit_neg);
 PG_FUNCTION_INFO_V1(myint4_positive);
 PG_FUNCTION_INFO_V1(myint4_negative);
 
-PG_FUNCTION_INFO_V1(int4_to_bpchar);
-PG_FUNCTION_INFO_V1(int4_to_varchar);
-
-#if 0
-int16 my_atoi_int2(const char *s)
+int32 
+my_atoi_int4(const char *s)
 {
 	long l;
 	char *badp;
@@ -64,32 +63,32 @@ int16 my_atoi_int2(const char *s)
 	 * seem not to.  Make an explicit test to be sure we catch it.
 	 */
 	if (s == NULL)
-		elog(ERROR, "NULL pointer");
+		ereport(ERROR,
+			(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+				errmsg("invalid input syntax for type integer")));
 	if (*s == 0)
 	{
-			ereport(ERROR,
-				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input syntax for type %s: \"%s\"",
-						"smallint", s)));
+		ereport(ERROR,
+			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				errmsg("invalid input syntax for type integer: \"%s\"", s)));
 	}
 
 	errno = 0;
-    l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);\
+    l = my_strntoull10rnd_8bit(s, strlen(s), flag, &badp, &save_errno);
 
 	/* We made no progress parsing the string, so bail out */
 	if (s == badp)
 	{
 		ereport(ERROR,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type %s: \"%s\"",
-					"smallint", s)));
+				errmsg("invalid input syntax for type integer: \"%s\"", s)));
 	}
 
-	if (save_errno == ERANGE || l < PG_INT16_MIN || l > PG_INT16_MAX)
+	if (save_errno == ERANGE || l < PG_INT32_MIN || l > PG_INT32_MAX)
 	{
 		ereport(ERROR,
 			(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
-				errmsg("value \"%s\" is out of range for type smallint", s)));
+				errmsg("value \"%s\" is out of range for type integer", s)));
 	}
 
 	/*
@@ -103,13 +102,11 @@ int16 my_atoi_int2(const char *s)
 	{
 		ereport(ERROR,
 			(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				errmsg("invalid input syntax for type %s: \"%s\"",
-					"smallint", s)));
+				errmsg("invalid input syntax for type integer: \"%s\"", s)));
 	}
 
-	return (int16)l;
+	return (int32)l;
 }
-#endif
 
 /* operator int4 & int4 */
 Datum 
@@ -181,6 +178,12 @@ myint4_div(PG_FUNCTION_ARGS)
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
 
+	if(arg1 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
 	res = DatumGetNumeric(DirectFunctionCall2(numeric_div, NumericGetDatum(int64_to_numeric(arg0)),
 							NumericGetDatum(int64_to_numeric(arg1))));
 
@@ -368,28 +371,4 @@ myint4_negative(PG_FUNCTION_ARGS)
 	int64 num = PG_GETARG_INT32(0);
 
 	PG_RETURN_INT64(-num);
-}
-
-/* cast to varchar */
-Datum
-int4_to_bpchar(PG_FUNCTION_ARGS)
-{
-	int32		arg1 = PG_GETARG_INT32(0);
-	char	   *result = (char *) palloc(7);	/* sign, 5 digits, '\0' */
-
-	pg_itoa(arg1, result);
-
-	PG_RETURN_BPCHAR_P(cstring_to_text(result));
-}
-
-/* cast to varchar */
-Datum
-int4_to_varchar(PG_FUNCTION_ARGS)
-{
-	int32		arg1 = PG_GETARG_INT32(0);
-	char	   *result = (char *) palloc(7);	/* sign, 5 digits, '\0' */
-
-	pg_itoa(arg1, result);
-
-	PG_RETURN_VARCHAR_P(cstring_to_text(result));
 }

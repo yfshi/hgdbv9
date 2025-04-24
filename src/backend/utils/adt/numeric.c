@@ -3156,7 +3156,15 @@ numeric_div_opt_error(Numeric num1, Numeric num2, bool *have_error)
 	/*
 	 * Select scale for division result
 	 */
-	rscale = select_div_scale(&arg1, &arg2);
+	if (MYS_PARSER == compatible_db)
+	{
+		rscale = arg1.dscale + 4 < 30 ?
+					arg1.dscale + 4 : 30;
+	}
+	else
+	{
+		rscale = select_div_scale(&arg1, &arg2);
+	}
 
 	/*
 	 * If "have_error" is provided, check for division by zero here

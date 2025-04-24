@@ -2663,14 +2663,14 @@ select cast(05*23 as datetime);--2000-01-15 00:00:00
 (1 row)
 
 select cast(06/03 as datetime);--NULL 
-WARNING:  Incorrect datetime value: '2'
+WARNING:  Incorrect DATETIME value: '2'
  mysdatetime 
 -------------
  
 (1 row)
 
 select cast(300/03 as datetime);--NULL
-WARNING:  Incorrect datetime value: '100'
+WARNING:  Incorrect DATETIME value: '100'
  mysdatetime 
 -------------
  
@@ -5960,9 +5960,9 @@ select cast('221222222222' as datetime) / 111; --182173173173.1712
 (1 row)
 
 select cast('221222222222' as datetime) / 111.1; -- 182009200920.0900
-       ?column?        
------------------------
- 182009200920.09000900
+     ?column?      
+-------------------
+ 182009200920.0900
 (1 row)
 
 select cast('221222222222' as datetime) / 115; -- 175836714975.8435
@@ -5985,9 +5985,9 @@ select 111111111111 / cast('221222222220' as datetime); --0.0055
 (1 row)
 
 select 111111111111.111 / cast('221222222220' as datetime);--0.0054948
-        ?column?        
-------------------------
- 0.00549477721425844627
+ ?column?  
+-----------
+ 0.0054948
 (1 row)
 
 select 0 / cast('221222222220' as datetime); --0.0000
@@ -9225,14 +9225,14 @@ select cast(05*23 as datetime(3));--2000-01-15 00:00:00.000
 (1 row)
 
 select cast(06/03 as datetime(3));--NULL 
-WARNING:  Incorrect datetime value: '2'
+WARNING:  Incorrect datetime value: '2.0000'
  mysdatetimes 
 --------------
  
 (1 row)
 
 select cast(300/03 as datetime(3));--NULL
-WARNING:  Incorrect datetime value: '100'
+WARNING:  Incorrect datetime value: '100.0000'
  mysdatetimes 
 --------------
  
