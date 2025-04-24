@@ -7693,3 +7693,85 @@ select test_pkg.test_f(1,'ok') from dual;
 --clean data
 drop package test_pkg;
 drop table test_mds;
+
+
+--bug#Z4612
+create user usr1_tivp001141030 with password '1';
+
+create procedure test_grant_database_user(username varchar2) is
+    dbname varchar2(256);
+begin
+        select current_database into dbname;
+		execute format('grant all on database %s to %s;',dbname,username);
+end;
+/
+
+call test_grant_database_user('usr1_tivp001141030');
+create user enrol11 with password '1' superuser;
+call test_grant_database_user('enrol11');
+
+
+\c - enrol11
+create schema if not exists s2_tivp001141030;
+create table s2_tivp001141030.tb2_tivp001141030 (emp_id number,emp_name varchar2(100),emp_salary number(10, 2));
+insert into s2_tivp001141030.tb2_tivp001141030 values (1, 'tom', 1000),(2,'sam', 2000);
+
+
+create or replace editionable package s2_tivp001141030.pkg2_tivp001141030
+sharing=metadata default
+collation USING_NLS_COMP
+AUTHID DEFINER
+accessible by (procedure proc1)
+is
+	type emp_record_type is record (
+		emp_id s2_tivp001141030.tb2_tivp001141030.emp_id%type,
+		emp_name s2_tivp001141030.tb2_tivp001141030.emp_name%type,
+		emp_salary s2_tivp001141030.tb2_tivp001141030.emp_salary%type
+	);
+	function get_employee(p_emp_id in s2_tivp001141030.tb2_tivp001141030.emp_id%type) return emp_record_type;
+	procedure update_employee_salary(p_emp in out s2_tivp001141030.tb2_tivp001141030%rowtype);
+end;
+/
+
+
+create or replace package body s2_tivp001141030.pkg2_tivp001141030 is
+	function get_employee(p_emp_id in s2_tivp001141030.tb2_tivp001141030.emp_id%type) return emp_record_type is
+		v_employee emp_record_type;
+	begin
+		select emp_id, emp_name, emp_salary
+		into v_employee
+		from s2_tivp001141030.tb2_tivp001141030
+		where emp_id = p_emp_id;
+	return v_employee;
+	exception
+		when no_data_found then
+		raise_application_error(-20001, 'employee id not found.');
+	end get_employee;
+
+	procedure update_employee_salary(p_emp in out s2_tivp001141030.tb2_tivp001141030%rowtype) is
+	begin
+		update s2_tivp001141030.tb2_tivp001141030 set emp_salary = p_emp.emp_salary
+		where emp_id = p_emp.emp_id;
+	end update_employee_salary;
+end;
+/
+
+grant usage on schema s2_tivp001141030 to usr1_tivp001141030;
+grant execute on package s2_tivp001141030.pkg2_tivp001141030 to usr1_tivp001141030;
+
+--swith to super user
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+--ok
+drop owned by usr1_tivp001141030;
+drop owned by enrol11;
+drop user usr1_tivp001141030;
+drop user enrol11;
+drop procedure test_grant_database_user;
+
