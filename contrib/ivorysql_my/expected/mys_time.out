@@ -2455,7 +2455,7 @@ select cast(300/03 as time);--00:01:00
 (1 row)
 
 select cast(30000000/3 as time); --NULL warning
-WARNING:  Incorrect time value: '10000000'
+WARNING:  Incorrect TIME value: '10000000.0000'
  mystime 
 ---------
  
@@ -8923,7 +8923,7 @@ select cast(300/03 as time(5));--00:01:00.00000
 (1 row)
 
 select cast(30000000/3 as time(5)); --NULL warning
-WARNING:  Incorrect time value: '10000000'
+WARNING:  Incorrect TIME value: '10000000.0000'
  mystimes 
 ----------
  

@@ -14724,60 +14724,34 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
  */
 Numeric:	NumericNoConflict { $$ = $1; }
 			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
-			| INT_P opt_type_modifiers flag_signed
+			| integer_int
 				{
-					A_Const *node_const = NULL;
-					List	   *typmods = $2;
-
-					if (typmods != NULL)
-					{
-						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
-						{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| integer_int SIGNED
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| integer_int '(' Iconst ')'
+				{
+					if ($3 > 255 || $3 < 0)
 							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("syntax error at or near"),
-									 parser_errposition(@2)));
-						}
-
-						node_const = (A_Const *) linitial(typmods);
-						if (nodeTag(&node_const->val) != T_Integer ||
-							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-						{
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("syntax error at or near"),
-									 parser_errposition(@2)));
-						}
-					}
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("int4 length must be between 1 and 255."),
+								 parser_errposition(@2)));
 
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
-			| INTEGER opt_type_modifiers flag_signed
+			| integer_int '(' Iconst ')' SIGNED
 				{
-					A_Const *node_const = NULL;
-					List	   *typmods = $2;
-
-					if (typmods != NULL)
-					{
-						if (list_length(typmods) > 1 || !IsA(linitial(typmods), A_Const))
-						{
+					if ($3 > 255 || $3 < 0)
 							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("syntax error at or near"),
-									 parser_errposition(@2)));
-						}
-
-						node_const = (A_Const *) linitial(typmods);
-						if (nodeTag(&node_const->val) != T_Integer ||
-							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
-						{
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("syntax error at or near"),
-									 parser_errposition(@2)));
-						}
-					}
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("int4 length must be between 1 and 255."),
+								 parser_errposition(@2)));
 
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
@@ -14981,20 +14955,16 @@ NumericNoConflict:
 					$$ = MySQLSystemTypeName("mysuint4");
 					$$->location = @1;
 				}
-			| integer_int '(' Iconst ')' field_unsigned
+			| integer_int '(' Iconst ')' unsigned_list
 				{
-					if($5)
-					{
-						$$ = MySQLSystemTypeName("mysuint4");
-						$$->typmods = list_make1(makeIntConst($3, @3));
-						$$->location = @1;
-					} 
-					else
-					{
-						$$ = SystemTypeName("int4");
-						$$->typmods = list_make1(makeIntConst($3, @3));
-						$$->location = @1;
-					}
+					if ($3 > 255 || $3 < 0)
+						ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							errmsg("int4 length must be between 1 and 255."),
+							parser_errposition(@2)));
+					$$ = MySQLSystemTypeName("mysuint4");
+					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->location = @1;
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
@@ -15556,6 +15526,7 @@ Int4WithoutLength:
 /*
  * SQL int4
  */
+/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 Int4:
 			Int4WithLength
 			{
@@ -15576,7 +15547,18 @@ Int4WithLength:
 				{
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
-				}			
+				}
+			| INT4  '(' Iconst ')' unsigned_list
+				{
+					if ($3 > 255 || $3 < 0)
+							ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("int4 length must be between 1 and 255."),
+								 parser_errposition(@2)));
+					$$ = MySQLSystemTypeName("mysuint4");
+					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->location = @1;
+				}				
 Int4WithoutLength:
 			INT4
 			{
@@ -15586,6 +15568,11 @@ Int4WithoutLength:
 			| INT4  SIGNED
 			{
 				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}	
+			| INT4  unsigned_list
+			{
+				$$ = MySQLSystemTypeName("mysuint4");
 				$$->location = @1;
 			}	
 		;
@@ -16900,6 +16887,11 @@ func_expr_common_subexpr:
 			| INT2 '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("int2"),
+												list_make1($3),
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| INT4 '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
@@ -16932,7 +16924,7 @@ func_expr_common_subexpr:
 				{
 					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int4"), @1);
 				}
-			
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
