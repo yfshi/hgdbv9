@@ -9,6 +9,8 @@ OBJS = \
 	src/case_sensitive/casefunc.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
+	src/datatype/mys_int1.o \
+	src/datatype/mys_int3.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
 	src/charset/charset.o \
@@ -82,7 +84,8 @@ MYS_REGRESS = multi_update \
 			  show_charset \
 			  mys_int1	\
 			  mys_float \
-			  mys-char-varchar
+			  mys-char-varchar \
+			  mys_int3
 
 
 ifdef USE_PGXS

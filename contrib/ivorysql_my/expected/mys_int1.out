@@ -195,6 +195,22 @@ select * from t2;
 (1 row)
 
 drop table t2;
+create table t2 (a int1(3.1));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+drop table t2;
+create table t2 (a int1(3.9));
+\d t2
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | "tinyint" |           |          | 
+
+drop table t2;
 --tinyint[(M)]
 create table t1 (a tinyint(-1));
 ERROR:  syntax error at or near
@@ -254,6 +270,61 @@ select * from test1;
  1 | 4
  6 | 3
  7 | 1
+(6 rows)
+
+select a + b from test1;
+ ?column? 
+----------
+         
+        8
+        8
+        5
+        9
+        8
+(6 rows)
+
+select a - b from test1;
+ ?column? 
+----------
+         
+        2
+        2
+       -3
+        3
+        6
+(6 rows)
+
+select a * b from test1;
+ ?column? 
+----------
+         
+       15
+       15
+        4
+       18
+        7
+(6 rows)
+
+select a / b from test1;
+ ?column? 
+----------
+         
+        1
+        1
+        0
+        2
+        7
+(6 rows)
+
+select a % b from test1;
+ ?column? 
+----------
+         
+        2
+        2
+        1
+        0
+        0
 (6 rows)
 
 select not a from test1;
@@ -444,6 +515,18 @@ select * from tb_test;
   123
  -121
     0
+(3 rows)
+
+drop table tb_test;
+--'+'
+create table tb_test(id int1);
+insert into tb_test values (123),(-121),(0);
+select +id from tb_test;
+ ?column? 
+----------
+      123
+     -121
+        0
 (3 rows)
 
 drop table tb_test;

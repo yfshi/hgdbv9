@@ -753,7 +753,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -764,7 +764,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LOW_PRIORITY
 
-	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MERGE METHOD
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMINT MERGE METHOD
 	MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
@@ -14687,7 +14687,9 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = SystemTypeName("bool");
 					$$->location = @1;
 				}
-			| INT1 opt_type_modifiers flag_signed
+
+			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+			| type_int3 opt_type_modifiers flag_signed
 				{
 					A_Const *node_const = NULL;
 					List	   *typmods = $2;
@@ -14703,7 +14705,16 @@ Numeric:	NumericNoConflict { $$ = $1; }
 						}
 
 						node_const = (A_Const *) linitial(typmods);
-						if (nodeTag(&node_const->val) != T_Integer ||
+						if (nodeTag(&node_const->val) == T_Float)
+						{
+							int m = atoi(node_const->val.val.str);
+							if (m < 0 || m > 255)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("syntax error at or near"),
+										 parser_errposition(@2)));
+						}
+						else if (nodeTag(&node_const->val) != T_Integer ||
 							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
 						{
 							ereport(ERROR,
@@ -14712,12 +14723,12 @@ Numeric:	NumericNoConflict { $$ = $1; }
 									 parser_errposition(@2)));
 						}
 					}
-
-					$$ = MySQLSystemTypeName("tinyint");
+					$$ = MySQLSystemTypeName("mediumint");
 					$$->location = @1;
 				}
+			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
-			| TINYINT opt_type_modifiers flag_signed
+			| type_int1 opt_type_modifiers flag_signed
 				{
 					A_Const *node_const = NULL;
 					List	   *typmods = $2;
@@ -14733,7 +14744,16 @@ Numeric:	NumericNoConflict { $$ = $1; }
 						}
 
 						node_const = (A_Const *) linitial(typmods);
-						if (nodeTag(&node_const->val) != T_Integer ||
+						if (nodeTag(&node_const->val) == T_Float)
+						{
+							int m = atoi(node_const->val.val.str);
+							if (m < 0 || m > 255)
+								ereport(ERROR,
+										(errcode(ERRCODE_SYNTAX_ERROR),
+										 errmsg("syntax error at or near"),
+										 parser_errposition(@2)));
+						}
+						else if (nodeTag(&node_const->val) != T_Integer ||
 							node_const->val.val.ival < 0 || node_const->val.val.ival > 255)
 						{
 							ereport(ERROR,
@@ -14745,12 +14765,21 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = MySQLSystemTypeName("tinyint");
 					$$->location = @1;
 				}
+		;
+
+type_int1: INT1
+			| TINYINT
 		;
 
 flag_signed: SIGNED
 			| /* EMPTY */
 		;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
+type_int3: INT3
+			| MEDIUMINT
+		;
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 integer_int:
@@ -18073,10 +18102,12 @@ col_name_keyword:
 			| GROUPING
 			| INOUT
 			| INT_P
-			| INT1
+			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL
 			| LEAST
+			| MEDIUMINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| NATIONAL
 			| NCHAR
 			| NONE
@@ -18095,7 +18126,7 @@ col_name_keyword:
 			| SUBSTRING
 			| TIME
 			| TIMESTAMP
-			| TINYINT
+			| TINYINT		 /* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TREAT
 			| TRIM
 			| UNSIGNED
@@ -18441,7 +18472,8 @@ bare_label_keyword:
 			| INSERT
 			| INSTEAD
 			| INT_P
-			| INT1
+			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL
 			| INVOKER
@@ -18475,6 +18507,7 @@ bare_label_keyword:
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
+			| MEDIUMINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| MERGE
 			| METHOD
 			| MINVALUE
@@ -18632,7 +18665,7 @@ bare_label_keyword:
 			| TIES
 			| TIME
 			| TIMESTAMP
-			| TINYINT
+			| TINYINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TRAILING
 			| TRANSACTION
 			| TRANSFORM

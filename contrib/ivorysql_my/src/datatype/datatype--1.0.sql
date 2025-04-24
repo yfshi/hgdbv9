@@ -24309,6 +24309,3 @@ CREATE OPERATOR CLASS ivymy.mystime_minmax_ops
 		FUNCTION	2 	ivymy.brin_minmax_add_value(internal, internal, internal, internal),
 		FUNCTION	3 	ivymy.brin_minmax_consistent(internal, internal, internal),
 		FUNCTION	4 	ivymy.brin_minmax_union(internal, internal, internal);
-
-/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
-create domain ivymy.tinyint as int2 check(value >= -128 and value <= 127);
