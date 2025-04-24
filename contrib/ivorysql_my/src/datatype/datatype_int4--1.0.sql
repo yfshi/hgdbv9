@@ -104,7 +104,7 @@ CREATE OPERATOR ivymy./ (
 );
 
 --  "//"
-CREATE FUNCTION ivymy.mys_div(pg_catalog.int4, pg_catalog.int4)
+CREATE FUNCTION ivymy.myint4_exact_div(pg_catalog.int4, pg_catalog.int4)
 RETURNS pg_catalog.int4
 AS 'MODULE_PATHNAME','myint4_exact_div'
 LANGUAGE C
@@ -113,7 +113,7 @@ STRICT
 IMMUTABLE;
 
 CREATE OPERATOR ivymy.// (
-	procedure = ivymy.myint4_div,
+	procedure = ivymy.myint4_exact_div,
 	leftarg = pg_catalog.int4,
 	rightarg = pg_catalog.int4,
 	commutator = //
