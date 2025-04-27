@@ -617,6 +617,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
+				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_no_inherit
@@ -753,7 +754,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -14502,6 +14503,7 @@ SimpleTypename:
 					$$->typmods = list_make2(makeIntConst(INTERVAL_FULL_RANGE, -1),
 											 makeIntConst($3, @3));
 				}
+			| Int2									{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERICTYPE-INT2 */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14634,6 +14636,23 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = SystemTypeName("int2");
 					$$->location = @1;
 				}
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+			| SMALLINT SIGNED
+				{
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}
+			| SMALLINT '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}
+			| SMALLINT '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| BIGINT
 				{
 					$$ = SystemTypeName("int8");
@@ -15051,6 +15070,45 @@ character:	CHARACTER opt_varying
 opt_varying:
 			VARYING									{ $$ = true; }
 			| /*EMPTY*/								{ $$ = false; }
+		;
+/*
+ * SQL int2
+ */
+/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+Int2:
+			Int2WithLength
+			{
+				$$ = $1;
+			}
+			|	Int2WithoutLength
+			{
+				$$ = $1;
+			}
+		;
+
+Int2WithLength:
+			INT2  '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}
+			| INT2  '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int2");
+					$$->location = @1;
+				}			
+
+Int2WithoutLength:
+			INT2
+			{
+				$$ = SystemTypeName("int2");
+				$$->location = @1;
+			}
+			| INT2  SIGNED
+			{
+				$$ = SystemTypeName("int2");
+				$$->location = @1;
+			}	
 		;
 
 /*
@@ -16333,6 +16391,20 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast($3, MySQLSystemTypeName("mysuint8"), @1);
 				}
 			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+			| INT2 '(' a_expr ')'
+				{
+					$$ = (Node *) makeFuncCall(SystemFuncName("int2"),
+											   list_make1($3),
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+
+			| INT2 SCONST
+				{
+					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);
+				}
+			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -18103,6 +18175,7 @@ col_name_keyword:
 			| INOUT
 			| INT_P
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL
@@ -18473,6 +18546,7 @@ bare_label_keyword:
 			| INSTEAD
 			| INT_P
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| INTEGER
 			| INTERVAL

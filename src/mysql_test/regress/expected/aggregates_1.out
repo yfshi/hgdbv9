@@ -4,15 +4,15 @@
 -- avoid bit-exact output here because operations may not be bit-exact.
 SET extra_float_digits = 0;
 SELECT avg(four) AS avg_1 FROM onek;
-       avg_1        
---------------------
- 1.5000000000000000
+ avg_1  
+--------
+ 1.5000
 (1 row)
 
 SELECT avg(a) AS avg_32 FROM aggtest WHERE a < 100;
-       avg_32        
----------------------
- 32.6666666666666667
+ avg_32  
+---------
+ 32.6667
 (1 row)
 
 -- In 7.1, avg(float4) is computed using float8 arithmetic.
@@ -580,9 +580,9 @@ group by ten order by ten;
 
 -- user-defined aggregates
 SELECT newavg(four) AS avg_1 FROM onek;
-       avg_1        
---------------------
- 1.5000000000000000
+ avg_1  
+--------
+ 1.5000
 (1 row)
 
 SELECT newsum(four) AS sum_1500 FROM onek;
@@ -2577,9 +2577,9 @@ FROM (SELECT * FROM tenk1
       UNION ALL SELECT * FROM tenk1
       UNION ALL SELECT * FROM tenk1
       UNION ALL SELECT * FROM tenk1) u;
-       variance       |          avg          
-----------------------+-----------------------
- 8333541.588539713493 | 4999.5000000000000000
+       variance       |    avg    
+----------------------+-----------
+ 8333541.588539713493 | 4999.5000
 (1 row)
 
 ROLLBACK;

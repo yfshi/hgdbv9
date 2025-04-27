@@ -312,6 +312,10 @@ extern PGDLLIMPORT bool convert_plisql_int_to_number;
 extern PGDLLIMPORT bool convert_plisql_anonymous_int_to_number;
 /* End - BUG:M0000068 */
 
+/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE */
+extern PGDLLIMPORT int div_prec_increment;
+/* End - ReqID:SRS-MYSQL-NUMBERICTYPE */
+
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 extern PGDLLIMPORT int	nls_length_semantics;	/* BUG#Z091 */
 extern PGDLLIMPORT char *nls_date_format;

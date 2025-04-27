@@ -196,8 +196,8 @@ my_hash_sort_8bit_bin(const CHARSET_INFO *cs,
                       uint64 *nr1, uint64 *nr2)
 {
     const uchar *pos = key;
-    ulong tmp1;
-    ulong tmp2;
+    uint64 tmp1;
+    uint64 tmp2;
 
     /*
        Remove trailing spaces. We have to do this to be able to compare
@@ -210,7 +210,7 @@ my_hash_sort_8bit_bin(const CHARSET_INFO *cs,
 
     for (; pos < (uchar *)key; pos++)
     {
-        tmp1 ^= (ulong)((((uint)tmp1 & 63) + tmp2) *
+        tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) *
                         ((uint)*pos)) +
                 (tmp1 << 8);
         tmp2 += 3;

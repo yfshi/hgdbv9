@@ -121,12 +121,10 @@ INFO:  (100, <class 'int'>)
 (1 row)
 
 SELECT * FROM test_type_conversion_int2(-100::int2);
-INFO:  (-100, <class 'int'>)
- test_type_conversion_int2 
----------------------------
-                      -100
-(1 row)
-
+ERROR:  function test_type_conversion_int2(integer) does not exist
+LINE 1: SELECT * FROM test_type_conversion_int2(-100::int2);
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 SELECT * FROM test_type_conversion_int2(null);
 INFO:  (None, <class 'NoneType'>)
  test_type_conversion_int2 
@@ -849,9 +847,10 @@ select test_build_uint2_array(1::int2);
 (1 row)
 
 select test_build_uint2_array(-1::int2);  -- fail
-ERROR:  value for domain uint2 violates check constraint "uint2_check"
-CONTEXT:  while creating return value
-PL/Python function "test_build_uint2_array"
+ERROR:  function test_build_uint2_array(integer) does not exist
+LINE 1: select test_build_uint2_array(-1::int2);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --
 -- ideally this would work, but for now it doesn't, because the return value
 -- is [[2,4], [2,4]] which our conversion code thinks should become a 2-D

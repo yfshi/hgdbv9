@@ -11,3 +11,5 @@
 shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'		# (change requires restart)
 
 #mysql.mode_pad_char_to_full = true		# pad_char_to_full_length control char(n) output.
+
+#div_prec_increment = 4		# the number of digits by which to increase the scale of the result of divison operations.

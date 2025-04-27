@@ -43,6 +43,7 @@ bool		enable_ignore_columns_list = false;
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -127,6 +128,17 @@ bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n
 		check_lower_case_table_names, assign_lower_case_table_names, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-CASE */
+	/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE */
+	{
+		{"div_prec_increment", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Use mysql code in datatype function."),
+			NULL
+		},
+		&div_prec_increment,
+		4, 0, 30,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID: SRS-MYSQL-NUMBERICTYPE */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS

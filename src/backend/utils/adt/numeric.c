@@ -502,6 +502,8 @@ static void dump_var(const char *str, NumericVar *var);
 	(weight) <= NUMERIC_SHORT_WEIGHT_MAX && \
 	(weight) >= NUMERIC_SHORT_WEIGHT_MIN)
 
+#define DECIMAL_MAX_SCALE 30	/* ReqID: SRS-MYSQL-NUMBERICTYPE */
+
 static void alloc_var(NumericVar *var, int ndigits);
 static void free_var(NumericVar *var);
 static void zero_var(NumericVar *var);
@@ -3156,7 +3158,16 @@ numeric_div_opt_error(Numeric num1, Numeric num2, bool *have_error)
 	/*
 	 * Select scale for division result
 	 */
-	rscale = select_div_scale(&arg1, &arg2);
+
+	if (MYS_PARSER == compatible_db)
+	{
+		rscale = arg1.dscale + div_prec_increment < DECIMAL_MAX_SCALE ?
+					arg1.dscale + div_prec_increment : DECIMAL_MAX_SCALE;
+	}
+	else
+	{
+		rscale = select_div_scale(&arg1, &arg2);
+	}
 
 	/*
 	 * If "have_error" is provided, check for division by zero here

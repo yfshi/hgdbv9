@@ -539,8 +539,8 @@ my_hash_sort_latin1_de(const CHARSET_INFO *cs,
                        uint64 *nr1, uint64 *nr2)
 {
     const uchar *end;
-    ulong tmp1;
-    ulong tmp2;
+    uint64 tmp1;
+    uint64 tmp2;
 
     end = skip_trailing_space(key, len);
 
@@ -550,11 +550,11 @@ my_hash_sort_latin1_de(const CHARSET_INFO *cs,
     for (; key < end; key++)
     {
         uint X = (uint)combo1map[(uint)*key];
-        tmp1 ^= (ulong)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
+        tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
         tmp2 += 3;
         if ((X = combo2map[*key]))
         {
-            tmp1 ^= (ulong)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
+            tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
             tmp2 += 3;
         }
     }
