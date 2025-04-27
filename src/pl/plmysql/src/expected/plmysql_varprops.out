@@ -75,9 +75,8 @@ declare x int := 1/0;  -- fail
 begin
   raise notice 'x = %', x;
 end$$;
-ERROR:  division by zero
-CONTEXT:  SQL expression "1/0"
-PL/mySQL function inline_code_block line 3 during statement block local variable initialization
+WARNING:  Division by 0
+NOTICE:  x = <NULL>
 do $$
 declare x bigint[] := array[1,3,5];
 begin

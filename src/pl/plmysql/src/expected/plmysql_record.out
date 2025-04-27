@@ -320,7 +320,7 @@ end$$;
 NOTICE:  r = (78,"skidoo 1 2 3 4 5 6 7 8 9 10")
 -- check behavior of function declared to return "record"
 create function returnsrecord(int) returns record language plmysql as
-$$ begin return row($1,$1+1); end $$;
+$$ begin return row($1,($1+1)::integer); end $$;
 select returnsrecord(42);
  returnsrecord 
 ---------------
@@ -343,7 +343,7 @@ DETAIL:  Returned type integer does not match expected type bigint in column 2.
 CONTEXT:  PL/mySQL function returnsrecord(integer) while casting return value to function's return type
 -- same with an intermediate record variable
 create or replace function returnsrecord(int) returns record language plmysql as
-$$ declare r record; begin r := row($1,$1+1); return r; end $$;
+$$ declare r record; begin r := row($1,($1+1)::integer); return r; end $$;
 select returnsrecord(42);
  returnsrecord 
 ---------------

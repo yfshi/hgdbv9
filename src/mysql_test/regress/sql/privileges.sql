@@ -171,7 +171,7 @@ SELECT * FROM atest1; -- ok
 SET SESSION AUTHORIZATION regress_priv_user1;
 
 CREATE TABLE atest12 as
-  SELECT x AS a, 10001 - x AS b FROM generate_series(1,10000) x;
+  SELECT x AS a, (10001 - x)::integer AS b FROM generate_series(1,10000) x;
 CREATE INDEX ON atest12 (a);
 CREATE INDEX ON atest12 (abs(a));
 -- results below depend on having quite accurate stats for atest12, so...
@@ -1031,11 +1031,11 @@ ALTER TABLE sro_tab OWNER TO regress_sro_user;
 INSERT INTO sro_tab VALUES (1), (2), (3);
 -- Create an expression index with a predicate
 CREATE INDEX sro_idx ON sro_tab ((sro_ifun(a) + sro_ifun(0)))
-	WHERE sro_ifun(a + 10) > sro_ifun(10);
+	WHERE sro_ifun((a + 10)::integer) > sro_ifun(10);
 DROP INDEX sro_idx;
 -- Do the same concurrently
 CREATE INDEX CONCURRENTLY sro_idx ON sro_tab ((sro_ifun(a) + sro_ifun(0)))
-	WHERE sro_ifun(a + 10) > sro_ifun(10);
+	WHERE sro_ifun((a + 10)::integer) > sro_ifun(10);
 -- REINDEX
 REINDEX TABLE sro_tab;
 REINDEX INDEX sro_idx;
@@ -1057,7 +1057,7 @@ CREATE TABLE sro_part PARTITION OF sro_ptab FOR VALUES FROM (1) TO (10);
 ALTER TABLE sro_part OWNER TO regress_sro_user;
 INSERT INTO sro_ptab VALUES (1), (2), (3);
 CREATE INDEX sro_pidx ON sro_ptab ((sro_ifun(a) + sro_ifun(0)))
-	WHERE sro_ifun(a + 10) > sro_ifun(10);
+	WHERE sro_ifun((a + 10)::integer) > sro_ifun(10);
 REINDEX TABLE sro_ptab;
 REINDEX INDEX CONCURRENTLY sro_pidx;
 

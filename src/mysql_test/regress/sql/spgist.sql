@@ -62,7 +62,7 @@ select g, 'baaaaaaaaaaaaaar' || g from generate_series(1, 1000) g;
 -- one of these will cause the page to run out of space, causing the inner
 -- tuple to be moved to another page.
 insert into spgist_text_tbl (id, t)
-select -g, 'f' || repeat('o', 100-g) || 'surprise' from generate_series(1, 100) g;
+select -g, 'f' || repeat('o', (100-g)::integer) || 'surprise' from generate_series(1, 100) g;
 
 -- Test out-of-range fillfactor values
 create index spgist_point_idx2 on spgist_point_tbl using spgist(p) with (fillfactor = 9);

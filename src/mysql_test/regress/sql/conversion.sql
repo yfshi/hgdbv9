@@ -64,7 +64,7 @@ begin
   exception when others then
     error := sqlerrm;
     select * into validlen, result from test_enc_conversion(input, src_encoding, dst_encoding, true);
-    errorat = substr(input, validlen + 1);
+    errorat = substr(input, (validlen + 1)::integer);
   end;
   return;
 end;

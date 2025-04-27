@@ -289,7 +289,7 @@ CALL ptest9(NULL);
 (1 row)
 
 -- you can write an expression, but it's not evaluated
-CALL ptest9(1/0);  -- no error
+CALL ptest9((1/0)::integer);  -- no error
  a 
 ---
  1

@@ -151,16 +151,16 @@ SELECT a/2, a/2 FROM test_missing_target
 	ORDER BY a/2;
  ?column? | ?column? 
 ----------+----------
-        0 |        0
-        0 |        0
-        1 |        1
-        1 |        1
-        2 |        2
-        2 |        2
-        3 |        3
-        3 |        3
-        4 |        4
-        4 |        4
+   0.0000 |   0.0000
+   0.5000 |   0.5000
+   1.0000 |   1.0000
+   1.5000 |   1.5000
+   2.0000 |   2.0000
+   2.5000 |   2.5000
+   3.0000 |   3.0000
+   3.5000 |   3.5000
+   4.0000 |   4.0000
+   4.5000 |   4.5000
 (10 rows)
 
 --   group expression w/ target under ambiguous condition
@@ -169,12 +169,17 @@ SELECT a/2, a/2 FROM test_missing_target
 	GROUP BY a/2 ORDER BY a/2;
  ?column? | ?column? 
 ----------+----------
-        0 |        0
-        1 |        1
-        2 |        2
-        3 |        3
-        4 |        4
-(5 rows)
+   0.0000 |   0.0000
+   0.5000 |   0.5000
+   1.0000 |   1.0000
+   1.5000 |   1.5000
+   2.0000 |   2.0000
+   2.5000 |   2.5000
+   3.0000 |   3.0000
+   3.5000 |   3.5000
+   4.0000 |   4.0000
+   4.5000 |   4.5000
+(10 rows)
 
 --   group w/ existing GROUP BY target under ambiguous condition
 SELECT x.b, count(*) FROM test_missing_target x, test_missing_target y
@@ -250,9 +255,10 @@ SELECT count(b) FROM test_missing_target GROUP BY b/2 ORDER BY b/2;
  count 
 -------
      1
-     5
+     2
+     3
      4
-(3 rows)
+(4 rows)
 
 --   w/ existing GROUP BY target using a relation name in target
 SELECT lower(test_missing_target.c), count(c)
@@ -304,10 +310,11 @@ SELECT x.b/2, count(x.b) FROM test_missing_target x, test_missing_target y
 	GROUP BY x.b/2 ORDER BY x.b/2;
  ?column? | count 
 ----------+-------
-        0 |     1
-        1 |     5
-        2 |     4
-(3 rows)
+   0.5000 |     1
+   1.0000 |     2
+   1.5000 |     3
+   2.0000 |     4
+(4 rows)
 
 --   group w/o existing GROUP BY target under ambiguous condition
 --   failure expected due to ambiguous b in count(b)
@@ -328,9 +335,10 @@ SELECT * FROM test_missing_target3;
  count 
 -------
      1
-     5
+     2
+     3
      4
-(3 rows)
+(4 rows)
 
 --   Cleanup
 DROP TABLE test_missing_target;

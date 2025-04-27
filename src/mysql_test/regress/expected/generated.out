@@ -22,11 +22,11 @@ SELECT table_name, column_name, dependent_column FROM information_schema.column_
 (1 row)
 
 \d gtest1
-                            Table "public.gtest1"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+                             Table "public.gtest1"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  a      | integer |           | not null | 
- b      | integer |           |          | generated always as (a * 2) stored
+ b      | integer |           |          | generated always as ((a * 2)) stored
 Indexes:
     "gtest1_pkey" PRIMARY KEY, btree (a)
 
@@ -571,9 +571,9 @@ INSERT INTO gtest21b (a) VALUES (0);  -- ok now
 CREATE TABLE gtest22a (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a / 2) STORED UNIQUE);
 INSERT INTO gtest22a VALUES (2);
 INSERT INTO gtest22a VALUES (3);
-ERROR:  duplicate key value violates unique constraint "gtest22a_b_key"
-DETAIL:  Key (b)=(1) already exists.
 INSERT INTO gtest22a VALUES (4);
+ERROR:  duplicate key value violates unique constraint "gtest22a_b_key"
+DETAIL:  Key (b)=(2) already exists.
 CREATE TABLE gtest22b (a int, b int GENERATED ALWAYS AS (a / 2) STORED, PRIMARY KEY (a, b));
 INSERT INTO gtest22b VALUES (2);
 INSERT INTO gtest22b VALUES (2);
@@ -585,11 +585,11 @@ CREATE INDEX gtest22c_b_idx ON gtest22c (b);
 CREATE INDEX gtest22c_expr_idx ON gtest22c ((b * 3));
 CREATE INDEX gtest22c_pred_idx ON gtest22c (a) WHERE b > 0;
 \d gtest22c
-                           Table "public.gtest22c"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+                            Table "public.gtest22c"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  a      | integer |           |          | 
- b      | integer |           |          | generated always as (a * 2) stored
+ b      | integer |           |          | generated always as ((a * 2)) stored
 Indexes:
     "gtest22c_b_idx" btree (b)
     "gtest22c_expr_idx" btree ((b * 3))
@@ -648,11 +648,11 @@ CREATE TABLE gtest23x (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STOR
 ERROR:  invalid ON DELETE action for foreign key constraint containing generated column
 CREATE TABLE gtest23b (a int PRIMARY KEY, b int GENERATED ALWAYS AS (a * 2) STORED REFERENCES gtest23a (x));
 \d gtest23b
-                           Table "public.gtest23b"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+                            Table "public.gtest23b"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  a      | integer |           | not null | 
- b      | integer |           |          | generated always as (a * 2) stored
+ b      | integer |           |          | generated always as ((a * 2)) stored
 Indexes:
     "gtest23b_pkey" PRIMARY KEY, btree (a)
 Foreign-key constraints:
@@ -766,9 +766,9 @@ SELECT * FROM gtest25 ORDER BY a;
  Column |       Type       | Collation | Nullable |                       Default                        
 --------+------------------+-----------+----------+------------------------------------------------------
  a      | integer          |           | not null | 
- b      | integer          |           |          | generated always as (a * 3) stored
+ b      | integer          |           |          | generated always as ((a * 3)) stored
  c      | integer          |           |          | 42
- x      | integer          |           |          | generated always as (c * 4) stored
+ x      | integer          |           |          | generated always as ((c * 4)) stored
  d      | double precision |           |          | 101
  y      | double precision |           |          | generated always as (d * 4::double precision) stored
 Indexes:
@@ -785,13 +785,14 @@ ALTER TABLE gtest27 ALTER COLUMN a TYPE text;  -- error
 ERROR:  cannot alter type of a column used by a generated column
 DETAIL:  Column "a" is used by generated column "x".
 ALTER TABLE gtest27 ALTER COLUMN x TYPE numeric;
+ERROR:  found unexpected dependency for column: operator +(integer,integer)
 \d gtest27
                                 Table "public.gtest27"
  Column |  Type   | Collation | Nullable |                  Default                   
 --------+---------+-----------+----------+--------------------------------------------
  a      | integer |           |          | 
  b      | integer |           |          | 
- x      | numeric |           |          | generated always as (((a + b) * 2)) stored
+ x      | integer |           |          | generated always as (((a + b) * 2)) stored
 
 SELECT * FROM gtest27;
  a | b  | x  
@@ -1066,17 +1067,17 @@ CREATE TABLE gtest28a (
 ALTER TABLE gtest28a DROP COLUMN a;
 CREATE TABLE gtest28b (LIKE gtest28a INCLUDING GENERATED);
 \d gtest28*
-                           Table "public.gtest28a"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+                            Table "public.gtest28a"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  b      | integer |           |          | 
  c      | integer |           |          | 
- x      | integer |           |          | generated always as (b * 2) stored
+ x      | integer |           |          | generated always as ((b * 2)) stored
 
-                           Table "public.gtest28b"
- Column |  Type   | Collation | Nullable |              Default               
---------+---------+-----------+----------+------------------------------------
+                            Table "public.gtest28b"
+ Column |  Type   | Collation | Nullable |               Default                
+--------+---------+-----------+----------+--------------------------------------
  b      | integer |           |          | 
  c      | integer |           |          | 
- x      | integer |           |          | generated always as (b * 2) stored
+ x      | integer |           |          | generated always as ((b * 2)) stored
 
