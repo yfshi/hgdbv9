@@ -85,7 +85,8 @@ MYS_REGRESS = multi_update \
 			  mys_int1	\
 			  mys_float \
 			  mys-char-varchar \
-			  mys_int3
+			  mys_int3 \
+			  group_by
 
 
 ifdef USE_PGXS
