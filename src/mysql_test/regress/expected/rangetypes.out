@@ -781,13 +781,13 @@ HINT:  No function matches the given name and argument types. You might need to 
 -- test GiST index that's been built incrementally
 create table test_range_gist(ir int4range);
 create index test_range_gist_idx on test_range_gist using gist (ir);
-insert into test_range_gist select int4range(g, g+10) from generate_series(1,2000) g;
+insert into test_range_gist select int4range(g, (g+10)::integer) from generate_series(1,2000) g;
 insert into test_range_gist select 'empty'::int4range from generate_series(1,500) g;
-insert into test_range_gist select int4range(g, g+10000) from generate_series(1,1000) g;
+insert into test_range_gist select int4range(g, (g+10000)::integer) from generate_series(1,1000) g;
 insert into test_range_gist select 'empty'::int4range from generate_series(1,500) g;
-insert into test_range_gist select int4range(NULL,g*10,'(]') from generate_series(1,100) g;
-insert into test_range_gist select int4range(g*10,NULL,'(]') from generate_series(1,100) g;
-insert into test_range_gist select int4range(g, g+10) from generate_series(1,2000) g;
+insert into test_range_gist select int4range(NULL, (g*10)::integer,'(]') from generate_series(1,100) g;
+insert into test_range_gist select int4range((g*10)::integer, NULL,'(]') from generate_series(1,100) g;
+insert into test_range_gist select int4range(g, (g+10)::integer) from generate_series(1,2000) g;
 -- test statistics and selectivity estimation as well
 --
 -- We don't check the accuracy of selectivity estimation, but at least check
@@ -1167,13 +1167,13 @@ select count(*) from test_range_gist where ir -|- int4multirange(int4range(100,2
 -- test SP-GiST index that's been built incrementally
 create table test_range_spgist(ir int4range);
 create index test_range_spgist_idx on test_range_spgist using spgist (ir);
-insert into test_range_spgist select int4range(g, g+10) from generate_series(1,2000) g;
+insert into test_range_spgist select int4range(g, (g+10)::integer) from generate_series(1,2000) g;
 insert into test_range_spgist select 'empty'::int4range from generate_series(1,500) g;
-insert into test_range_spgist select int4range(g, g+10000) from generate_series(1,1000) g;
+insert into test_range_spgist select int4range(g, (g+10000)::integer) from generate_series(1,1000) g;
 insert into test_range_spgist select 'empty'::int4range from generate_series(1,500) g;
-insert into test_range_spgist select int4range(NULL,g*10,'(]') from generate_series(1,100) g;
-insert into test_range_spgist select int4range(g*10,NULL,'(]') from generate_series(1,100) g;
-insert into test_range_spgist select int4range(g, g+10) from generate_series(1,2000) g;
+insert into test_range_spgist select int4range(NULL,(g*10)::integer,'(]') from generate_series(1,100) g;
+insert into test_range_spgist select int4range((g*10)::integer,NULL,'(]') from generate_series(1,100) g;
+insert into test_range_spgist select int4range(g, (g+10)::integer) from generate_series(1,2000) g;
 -- first, verify non-indexed results
 SET enable_seqscan    = t;
 SET enable_indexscan  = f;
@@ -1417,17 +1417,17 @@ select count(*) from test_range_elem where i <@ int4range(10,50);
 (1 row)
 
 -- also test spgist index on anyrange expression
-create index on test_range_elem using spgist(int4range(i,i+10));
+create index on test_range_elem using spgist(int4range(i,(i+10)::integer));
 explain (costs off)
-select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
-                               QUERY PLAN                                
--------------------------------------------------------------------------
+select count(*) from test_range_elem where int4range(i,(i+10)::integer) <@ int4range(10,30);
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Aggregate
    ->  Index Scan using test_range_elem_int4range_idx on test_range_elem
-         Index Cond: (int4range(i, (i + 10)) <@ '[10,30)'::int4range)
+         Index Cond: (int4range(i, ((i + 10))::integer) <@ '[10,30)'::int4range)
 (3 rows)
 
-select count(*) from test_range_elem where int4range(i,i+10) <@ int4range(10,30);
+select count(*) from test_range_elem where int4range(i,(i+10)::integer) <@ int4range(10,30);
  count 
 -------
     11

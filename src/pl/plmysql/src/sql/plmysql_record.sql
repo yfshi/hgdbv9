@@ -215,7 +215,7 @@ end$$;
 -- check behavior of function declared to return "record"
 
 create function returnsrecord(int) returns record language plmysql as
-$$ begin return row($1,$1+1); end $$;
+$$ begin return row($1,($1+1)::integer); end $$;
 
 select returnsrecord(42);
 select * from returnsrecord(42) as r(x int, y int);
@@ -224,7 +224,7 @@ select * from returnsrecord(42) as r(x int, y bigint);  -- fail
 
 -- same with an intermediate record variable
 create or replace function returnsrecord(int) returns record language plmysql as
-$$ declare r record; begin r := row($1,$1+1); return r; end $$;
+$$ declare r record; begin r := row($1,($1+1)::integer); return r; end $$;
 
 select returnsrecord(42);
 select * from returnsrecord(42) as r(x int, y int);

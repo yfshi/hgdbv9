@@ -261,26 +261,26 @@ SELECT * FROM (VALUES (1),(2),(3)) v(r) LEFT JOIN unnest(array[10,20,30]) WITH O
 --invokes ExecReScanFunctionScan with chgParam != NULL (using implied LATERAL)
 
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(10+r,13);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql((10+r)::integer,13);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(10+r,13) WITH ORDINALITY AS f(i,s,o);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql((10+r)::integer,13) WITH ORDINALITY AS f(i,s,o);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(11,10+r);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(11,(10+r)::integer);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(11,10+r) WITH ORDINALITY AS f(i,s,o);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_sql(11,(10+r)::integer) WITH ORDINALITY AS f(i,s,o);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
 SELECT * FROM (VALUES (11,12),(13,15),(16,20)) v(r1,r2), rngfunc_sql(r1,r2);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
 SELECT * FROM (VALUES (11,12),(13,15),(16,20)) v(r1,r2), rngfunc_sql(r1,r2) WITH ORDINALITY AS f(i,s,o);
 
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(10+r,13);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat((10+r)::integer,13);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(10+r,13) WITH ORDINALITY AS f(i,s,o);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat((10+r)::integer,13) WITH ORDINALITY AS f(i,s,o);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(11,10+r);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(11,(10+r)::integer);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(11,10+r) WITH ORDINALITY AS f(i,s,o);
+SELECT * FROM (VALUES (1),(2),(3)) v(r), rngfunc_mat(11,(10+r)::integer) WITH ORDINALITY AS f(i,s,o);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
 SELECT * FROM (VALUES (11,12),(13,15),(16,20)) v(r1,r2), rngfunc_mat(r1,r2);
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
@@ -289,14 +289,14 @@ SELECT * FROM (VALUES (11,12),(13,15),(16,20)) v(r1,r2), rngfunc_mat(r1,r2) WITH
 -- selective rescan of multiple functions:
 
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql(11,11), rngfunc_mat(10+r,13) );
+SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql(11,11), rngfunc_mat((10+r)::integer,13) );
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql(10+r,13), rngfunc_mat(11,11) );
+SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql((10+r)::integer,13), rngfunc_mat(11,11) );
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql(10+r,13), rngfunc_mat(10+r,13) );
+SELECT * FROM (VALUES (1),(2),(3)) v(r), ROWS FROM( rngfunc_sql((10+r)::integer,13), rngfunc_mat((10+r)::integer,13) );
 
 SELECT setval('rngfunc_rescan_seq1',1,false),setval('rngfunc_rescan_seq2',1,false);
-SELECT * FROM generate_series(1,2) r1, generate_series(r1,3) r2, ROWS FROM( rngfunc_sql(10+r1,13), rngfunc_mat(10+r2,13) );
+SELECT * FROM generate_series(1,2) r1, generate_series(r1,3) r2, ROWS FROM( rngfunc_sql((10+r1)::integer,13), rngfunc_mat((10+r2)::integer,13) );
 
 SELECT * FROM (VALUES (1),(2),(3)) v(r), generate_series(10+r,20-r) f(i);
 SELECT * FROM (VALUES (1),(2),(3)) v(r), generate_series(10+r,20-r) WITH ORDINALITY AS f(i,o);

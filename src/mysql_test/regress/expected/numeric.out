@@ -732,50 +732,50 @@ SELECT x1, x2,
   x1 % x2 AS mod,
   div(x1, x2) AS div
 FROM v AS v1(x1), v AS v2(x2) WHERE x2 != 0;
-    x1     |    x2     |          quot           | mod  |    div    
------------+-----------+-------------------------+------+-----------
-         0 |         1 |  0.00000000000000000000 |    0 |         0
-         1 |         1 |  1.00000000000000000000 |    0 |         1
-        -1 |         1 | -1.00000000000000000000 |    0 |        -1
-       4.2 |         1 |      4.2000000000000000 |  0.2 |         4
-  Infinity |         1 |                Infinity |  NaN |  Infinity
- -Infinity |         1 |               -Infinity |  NaN | -Infinity
-       NaN |         1 |                     NaN |  NaN |       NaN
-         0 |        -1 |  0.00000000000000000000 |    0 |         0
-         1 |        -1 | -1.00000000000000000000 |    0 |        -1
-        -1 |        -1 |  1.00000000000000000000 |    0 |         1
-       4.2 |        -1 |     -4.2000000000000000 |  0.2 |        -4
-  Infinity |        -1 |               -Infinity |  NaN | -Infinity
- -Infinity |        -1 |                Infinity |  NaN |  Infinity
-       NaN |        -1 |                     NaN |  NaN |       NaN
-         0 |       4.2 |  0.00000000000000000000 |  0.0 |         0
-         1 |       4.2 |  0.23809523809523809524 |  1.0 |         0
-        -1 |       4.2 | -0.23809523809523809524 | -1.0 |         0
-       4.2 |       4.2 |  1.00000000000000000000 |  0.0 |         1
-  Infinity |       4.2 |                Infinity |  NaN |  Infinity
- -Infinity |       4.2 |               -Infinity |  NaN | -Infinity
-       NaN |       4.2 |                     NaN |  NaN |       NaN
-         0 |  Infinity |                       0 |    0 |         0
-         1 |  Infinity |                       0 |    1 |         0
-        -1 |  Infinity |                       0 |   -1 |         0
-       4.2 |  Infinity |                       0 |  4.2 |         0
-  Infinity |  Infinity |                     NaN |  NaN |       NaN
- -Infinity |  Infinity |                     NaN |  NaN |       NaN
-       NaN |  Infinity |                     NaN |  NaN |       NaN
-         0 | -Infinity |                       0 |    0 |         0
-         1 | -Infinity |                       0 |    1 |         0
-        -1 | -Infinity |                       0 |   -1 |         0
-       4.2 | -Infinity |                       0 |  4.2 |         0
-  Infinity | -Infinity |                     NaN |  NaN |       NaN
- -Infinity | -Infinity |                     NaN |  NaN |       NaN
-       NaN | -Infinity |                     NaN |  NaN |       NaN
-         0 |       NaN |                     NaN |  NaN |       NaN
-         1 |       NaN |                     NaN |  NaN |       NaN
-        -1 |       NaN |                     NaN |  NaN |       NaN
-       4.2 |       NaN |                     NaN |  NaN |       NaN
-  Infinity |       NaN |                     NaN |  NaN |       NaN
- -Infinity |       NaN |                     NaN |  NaN |       NaN
-       NaN |       NaN |                     NaN |  NaN |       NaN
+    x1     |    x2     |   quot    | mod  |    div    
+-----------+-----------+-----------+------+-----------
+         0 |         1 |    0.0000 |    0 |         0
+         1 |         1 |    1.0000 |    0 |         1
+        -1 |         1 |   -1.0000 |    0 |        -1
+       4.2 |         1 |   4.20000 |  0.2 |         4
+  Infinity |         1 |  Infinity |  NaN |  Infinity
+ -Infinity |         1 | -Infinity |  NaN | -Infinity
+       NaN |         1 |       NaN |  NaN |       NaN
+         0 |        -1 |    0.0000 |    0 |         0
+         1 |        -1 |   -1.0000 |    0 |        -1
+        -1 |        -1 |    1.0000 |    0 |         1
+       4.2 |        -1 |  -4.20000 |  0.2 |        -4
+  Infinity |        -1 | -Infinity |  NaN | -Infinity
+ -Infinity |        -1 |  Infinity |  NaN |  Infinity
+       NaN |        -1 |       NaN |  NaN |       NaN
+         0 |       4.2 |    0.0000 |  0.0 |         0
+         1 |       4.2 |    0.2381 |  1.0 |         0
+        -1 |       4.2 |   -0.2381 | -1.0 |         0
+       4.2 |       4.2 |   1.00000 |  0.0 |         1
+  Infinity |       4.2 |  Infinity |  NaN |  Infinity
+ -Infinity |       4.2 | -Infinity |  NaN | -Infinity
+       NaN |       4.2 |       NaN |  NaN |       NaN
+         0 |  Infinity |         0 |    0 |         0
+         1 |  Infinity |         0 |    1 |         0
+        -1 |  Infinity |         0 |   -1 |         0
+       4.2 |  Infinity |         0 |  4.2 |         0
+  Infinity |  Infinity |       NaN |  NaN |       NaN
+ -Infinity |  Infinity |       NaN |  NaN |       NaN
+       NaN |  Infinity |       NaN |  NaN |       NaN
+         0 | -Infinity |         0 |    0 |         0
+         1 | -Infinity |         0 |    1 |         0
+        -1 | -Infinity |         0 |   -1 |         0
+       4.2 | -Infinity |         0 |  4.2 |         0
+  Infinity | -Infinity |       NaN |  NaN |       NaN
+ -Infinity | -Infinity |       NaN |  NaN |       NaN
+       NaN | -Infinity |       NaN |  NaN |       NaN
+         0 |       NaN |       NaN |  NaN |       NaN
+         1 |       NaN |       NaN |  NaN |       NaN
+        -1 |       NaN |       NaN |  NaN |       NaN
+       4.2 |       NaN |       NaN |  NaN |       NaN
+  Infinity |       NaN |       NaN |  NaN |       NaN
+ -Infinity |       NaN |       NaN |  NaN |       NaN
+       NaN |       NaN |       NaN |  NaN |       NaN
 (42 rows)
 
 SELECT 'inf'::numeric / '0';
@@ -1091,9 +1091,9 @@ SELECT power('-inf'::numeric, '-inf');
 -- ******************************
 -- numeric AVG used to fail on some platforms
 SELECT AVG(val) FROM num_data;
-          AVG           
-------------------------
- -13430913.592242320700
+           AVG            
+--------------------------
+ -13430913.59224232070000
 (1 row)
 
 SELECT MAX(val) FROM num_data;
@@ -1331,21 +1331,10 @@ SELECT i as pow,
 	round((1.5 * 10 ^ i)::numeric, -i),
 	round((2.5 * 10 ^ i)::numeric, -i)
 FROM generate_series(-5,5) AS t(i);
- pow |  round   |  round   |  round  |  round   |   round   |   round   
------+----------+----------+---------+----------+-----------+-----------
-  -5 | 37.50000 | 22.50000 | 7.50000 | -7.50000 | -22.50000 | -37.50000
-  -4 |  25.0000 |  15.0000 |  5.0000 |  -5.0000 |  -15.0000 |  -25.0000
-  -3 |   22.500 |   13.500 |   4.500 |   -4.500 |   -13.500 |   -22.500
-  -2 |    30.00 |    18.00 |    6.00 |    -6.00 |    -18.00 |    -30.00
-  -1 |     27.5 |     16.5 |     5.5 |     -5.5 |     -16.5 |     -27.5
-   0 |      -25 |      -15 |      -5 |        5 |        15 |        25
-   1 |      -30 |      -20 |     -10 |       10 |        20 |        30
-   2 |        0 |        0 |       0 |        0 |         0 |         0
-   3 |        0 |        0 |       0 |        0 |         0 |         0
-   4 |        0 |        0 |       0 |        0 |         0 |         0
-   5 |        0 |        0 |       0 |        0 |         0 |         0
-(11 rows)
-
+ERROR:  operator does not exist: numeric * mysuint8
+LINE 2:  round((-2.5 * 10 ^ i)::numeric, -i),
+                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- Check limits of rounding before the decimal point
 SELECT round(4.4e131071, -131071) = 4e131071;
  ?column? 
@@ -2322,9 +2311,9 @@ select trim_scale((0.1 - 2e-16383) * (0.1 - 3e-16383));
 -- Test some corner cases for division
 --
 select 999999999999999999999::numeric/1000000000000000000000;
-        ?column?        
-------------------------
- 1.00000000000000000000
+ ?column? 
+----------
+   1.0000
 (1 row)
 
 select div(999999999999999999999::numeric,1000000000000000000000);
@@ -2370,9 +2359,9 @@ select div (70.0,70) ;
 (1 row)
 
 select 70.0 / 70 ;
-        ?column?        
-------------------------
- 1.00000000000000000000
+ ?column? 
+----------
+  1.00000
 (1 row)
 
 select 12345678901234567890 % 123;
@@ -2382,9 +2371,9 @@ select 12345678901234567890 % 123;
 (1 row)
 
 select 12345678901234567890 / 123;
-      ?column?      
---------------------
- 100371373180768845
+        ?column?         
+-------------------------
+ 100371373180768844.6341
 (1 row)
 
 select div(12345678901234567890, 123);

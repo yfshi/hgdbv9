@@ -22,11 +22,12 @@ SELECT f1 FROM TEMP_FLOAT
        -1234
            0
            0
+          35
         1234
        32767
       123456
   2147483647
-(10 rows)
+(11 rows)
 
 -- int4
 CREATE TABLE TEMP_INT4 (f1 INT4);
@@ -67,7 +68,8 @@ SELECT f1 FROM TEMP_INT2
      0
      0
      0
-(5 rows)
+    35
+(6 rows)
 
 --
 -- Group-by combinations

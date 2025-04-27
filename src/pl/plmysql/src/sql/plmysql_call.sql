@@ -106,7 +106,7 @@ DECLARE
     x int := 3;
     y int := 4;
 BEGIN
-    CALL test_proc6(2, x + 1, y);  -- error
+    CALL test_proc6(2, (x + 1)::integer, y);  -- error
     RAISE INFO 'x = %, y = %', x, y;
 END;
 $$;

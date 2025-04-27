@@ -289,7 +289,7 @@ BEGIN
   WHILE o IS NOT NULL
   LOOP
     RAISE NOTICE '%', o;
-    o := array_position(a, 2, o + 1);
+    o := array_position(a, 2, (o + 1)::integer);
   END LOOP;
 END
 $$ LANGUAGE plpgsql;
