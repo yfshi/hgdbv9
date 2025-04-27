@@ -2719,6 +2719,12 @@ coerce_type(ParseState *pstate, Node *node,
 			baseTypeId == YMINTERVALOID ||
 			baseTypeId == DSINTERVALOID)
 			inputTypeMod = baseTypeMod;
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (baseTypeId == BINARYOID)
+		{
+			inputTypeMod = baseTypeMod;
+		}
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else
 			inputTypeMod = -1;
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */

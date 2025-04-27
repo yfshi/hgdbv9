@@ -1823,7 +1823,7 @@ InputFunctionCall_2(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, i
 	{
 		if (fcinfo->isnull)
 			elog(ERROR, "input function %u returned NULL",
-				 flinfo->fn_oid);
+					flinfo->fn_oid);
 	}
 
 	return result;

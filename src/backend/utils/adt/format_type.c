@@ -194,6 +194,11 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 
 	switch (type_oid)
 	{
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		case BLOBOID:
+			buf = pstrdup("blob");
+			break;
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		case BITOID:
 			if (with_typemod)
 				buf = printTypmod("bit", typemod, typeform->typmodout);
@@ -508,6 +513,32 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			break;
 		/* End - BUG#0000048 */
 		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		case MYBLOBOID:
+			buf = pstrdup("blob");
+			break;
+		case TINYBLOBOID:
+			buf = pstrdup("tinyblob");
+			break;
+		case MEDIUMBLOBOID:
+			buf = pstrdup("mediumblob");
+			break;
+		case LONGBLOBOID:
+			buf = pstrdup("longblob");
+			break;
+		case BINARYOID:
+			if (with_typemod)
+				buf = printTypmod("binary", typemod, typeform->typmodout);
+			else
+				buf = pstrdup("binary");
+			break;
+		case VARBINARYOID:
+			if (with_typemod)
+				buf = printTypmod("varbinary", typemod, typeform->typmodout);
+			else
+				buf = pstrdup("varbinary");
+			break;
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 	}
 	
 	if (buf == NULL)

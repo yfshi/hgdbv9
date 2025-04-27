@@ -5875,70 +5875,70 @@ select cast('222222.1111' as time(2)) / cast('222220.44' as time(1));--1.000008
 
 -- div
 select cast('222222' as time) div cast('222220' as time); --1
- mys_div 
----------
-       1
+ ?column? 
+----------
+        1
 (1 row)
 
 select cast('222222' as time) div 111; --2002
- mys_div 
----------
-    2002
+ ?column? 
+----------
+     2002
 (1 row)
 
 select cast('222222' as time) div 111.1; -- 2000
- mys_div 
----------
-    2000
+ ?column? 
+----------
+     2000
 (1 row)
 
 select cast('222222' as time) div 115; -- 1932
- mys_div 
----------
-    1932
+ ?column? 
+----------
+     1932
 (1 row)
 
 select cast('222222' as time) div 0; -- NULL warning
 WARNING:  Division by 0.
- mys_div 
----------
-        
+ ?column? 
+----------
+         
 (1 row)
 
 select 111111 div cast('222220' as time); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 111111.111 div cast('222220' as time);--0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 0 div cast('222220' as time); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select cast('222222' as time) div 115.1; --1930
- mys_div 
----------
-    1930
+ ?column? 
+----------
+     1930
 (1 row)
 
 select cast('222222' as time) div 115.2; --1929
- mys_div 
----------
-    1929
+ ?column? 
+----------
+     1929
 (1 row)
 
 select cast('222222.444' as time(2)) div 115.2;--1929
- mys_div 
----------
-    1929
+ ?column? 
+----------
+     1929
 (1 row)
 
 -- %
@@ -12248,70 +12248,70 @@ select cast('222222.1111' as time(2)) / cast('222220.44' as time(1));--1.000008
 
 -- div
 select cast('222222.5555555' as time(5)) div cast('222220' as time(5)); --1
- mys_div 
----------
-       1
+ ?column? 
+----------
+        1
 (1 row)
 
 select cast('222222' as time(5)) div 111; --2002
- mys_div 
----------
-    2002
+ ?column? 
+----------
+     2002
 (1 row)
 
 select cast('222222' as time(5)) div 111.1; -- 2000
- mys_div 
----------
-    2000
+ ?column? 
+----------
+     2000
 (1 row)
 
 select cast('222222' as time(5)) div 115; -- 1932
- mys_div 
----------
-    1932
+ ?column? 
+----------
+     1932
 (1 row)
 
 select cast('222222' as time(5)) div 0; -- NULL warning
 WARNING:  Division by 0.
- mys_div 
----------
-        
+ ?column? 
+----------
+         
 (1 row)
 
 select 111111 div cast('222220' as time(5)); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 111111.111 div cast('222220' as time(5));--0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 0 div cast('222220' as time(5)); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select cast('222222' as time(5)) div 115.1; --1930
- mys_div 
----------
-    1930
+ ?column? 
+----------
+     1930
 (1 row)
 
 select cast('222222' as time(5)) div 115.2; --1929
- mys_div 
----------
-    1929
+ ?column? 
+----------
+     1929
 (1 row)
 
 select cast('222222.444' as time(2)) div 115.2;--1929
- mys_div 
----------
-    1929
+ ?column? 
+----------
+     1929
 (1 row)
 
 -- %

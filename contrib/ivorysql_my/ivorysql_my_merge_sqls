@@ -4,6 +4,7 @@ src/builtin_functions/builtin_functions
 src/sysview/sysview
 src/case_sensitive/case_sensitive
 src/charset/mys_charset
+src/datatype/binary
 src/datatype/mys_int
 src/datatype/mys_uint4
 src/datatype/mys_uint8

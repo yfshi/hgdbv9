@@ -1317,7 +1317,7 @@ permissionsList(const char *pattern)
 	 */
 	if (!validateSQLNamePattern(&buf, pattern, true, false,
 								"n.nspname", "c.relname", NULL,
-								"n.nspname !~ '^pg_' AND n.nspname <> 'sys' AND pg_catalog.pg_table_is_visible(c.oid)",	 /* ReqID:SRS-GKC-DATATYPE_001 */
+								"n.nspname !~ '^pg_' AND n.nspname <> 'sys' AND n.nspname <> 'ivymy' AND pg_catalog.pg_table_is_visible(c.oid)",	 /* ReqID:SRS-GKC-DATATYPE_001 */
 								NULL, 3))
 		return false;
 
@@ -4792,6 +4792,7 @@ listPartitionedTables(const char *reltypes, const char *pattern, bool verbose)
 		appendPQExpBufferStr(&buf, "      AND n.nspname <> 'pg_catalog'\n"
 							 "      AND n.nspname !~ '^pg_toast'\n"
 							 "      AND n.nspname <> 'information_schema'\n"
+							 "      AND n.nspname <> 'ivymy'\n"
 							 "      AND n.nspname <> 'sys'\n");	/* ReqID:SRS-GKC-DATATYPE_001 */
 
 	if (!validateSQLNamePattern(&buf, pattern, true, false,

@@ -461,7 +461,7 @@ extern bool connect_by_rownum_use_func;
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
 #define ORATIMESTAMPLTZ_MASK	0x08
-#define DATETIME_IGNORE_NLS(i, m) (((i) & (m)) != 0) 
+#define DATETIME_IGNORE_NLS(i, m) (((i) & (m)) != 0)
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 extern PGDLLIMPORT bool out_parameter_column_position;
@@ -701,5 +701,11 @@ typedef unsigned long long sql_mode_t;
 
 extern PGDLLIMPORT sql_mode_t  sql_mode;
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+extern PGDLLIMPORT char *max_allowed_packet_value;
+extern PGDLLIMPORT char *max_sort_length_str;
+extern PGDLLIMPORT bool  enable_character_blob;
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
 #endif							/* GUC_H */

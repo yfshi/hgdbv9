@@ -15,6 +15,12 @@ OBJS = \
 	src/datatype/mys_int3.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
+	src/datatype/binary/strtod.o \
+	src/datatype/binary/anyblob.o \
+	src/datatype/binary/anybinary.o \
+	src/datatype/binary/binary.o \
+	src/datatype/binary/varbinary.o \
+	src/datatype/binary/binary_gin.o \
 	src/charset/charset.o \
 	src/charset/ctype-bin.o \
 	src/charset/ctype-mb.o \
@@ -66,6 +72,13 @@ cleansql:
 MYS_REGRESS = multi_update \
 			  mys_uint4		\
 			  mys_uint8		\
+			  test_binary \
+			  test_varbinary \
+			  test_blob \
+			  test_tinyblob \
+			  test_mediumblob \
+			  test_longblob \
+			  test_conversion \
 			  insert_update \
 			  multi_delete \
 			  replace \
