@@ -3047,6 +3047,16 @@ ExecEvalMinMax(ExprState *state, ExprEvalStep *op)
 
 	for (int off = 0; off < op->d.minmax.nelems; off++)
 	{
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		if (compatible_db == MYS_PARSER && nulls[off])
+		{
+			/* return NULL if any one is NULL. */
+			*op->resvalue = values[off];
+			*op->resnull = true;
+			break;
+		}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 		/* ignore NULL inputs */
 		if (nulls[off])
 			continue;

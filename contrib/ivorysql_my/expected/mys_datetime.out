@@ -5998,62 +5998,62 @@ select 0 / cast('221222222220' as datetime); --0.0000
 
 -- div
 select cast('221222222222' as datetime) div cast('221222222220' as datetime); --1
- mys_div 
----------
-       1
+ ?column? 
+----------
+        1
 (1 row)
 
 select cast('221222222222' as datetime) div 111; --182173173173
-   mys_div    
+   ?column?   
 --------------
  182173173173
 (1 row)
 
 select cast('221222222222' as datetime) div 111.1; -- 182009200920
-   mys_div    
+   ?column?   
 --------------
  182009200920
 (1 row)
 
 select cast('221222222222' as datetime) div 115; -- 175836714975
-   mys_div    
+   ?column?   
 --------------
  175836714975
 (1 row)
 
 select cast('221222222222' as datetime) div 0; -- NULL
 WARNING:  Division by 0.
- mys_div 
----------
-        
+ ?column? 
+----------
+         
 (1 row)
 
 select 111111111111 div cast('221222222220' as datetime); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 111111111111.111 div cast('221222222220' as datetime);--0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 0 div cast('221222222220' as datetime); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select cast('221222222222' as datetime) div 115.1; --175683946326
-   mys_div    
+   ?column?   
 --------------
  175683946326
 (1 row)
 
 select cast('221222222222' as datetime) div 115.2; --175531442901
-   mys_div    
+   ?column?   
 --------------
  175531442901
 (1 row)
@@ -11424,62 +11424,62 @@ select 0 / cast('221222222220' as datetime(3)); --0.0000
 
 -- div
 select cast('221222222222' as datetime(3)) div cast('221222222220' as datetime(3)); --1
- mys_div 
----------
-       1
+ ?column? 
+----------
+        1
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 111; --182173173173
-   mys_div    
+   ?column?   
 --------------
  182173173173
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 111.1; -- 182009200920
-   mys_div    
+   ?column?   
 --------------
  182009200920
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 115; -- 175836714975
-   mys_div    
+   ?column?   
 --------------
  175836714975
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 0; -- NULL
 WARNING:  Division by 0.
- mys_div 
----------
-        
+ ?column? 
+----------
+         
 (1 row)
 
 select 111111111111 div cast('221222222220' as datetime(3)); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 111111111111.111 div cast('221222222220' as datetime(3));--0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select 0 div cast('221222222220' as datetime(3)); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 115.1; --175683946326
-   mys_div    
+   ?column?   
 --------------
  175683946326
 (1 row)
 
 select cast('221222222222' as datetime(3)) div 115.2; --175531442901
-   mys_div    
+   ?column?   
 --------------
  175531442901
 (1 row)

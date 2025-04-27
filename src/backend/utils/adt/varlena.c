@@ -137,6 +137,7 @@ static int	varlenafastcmp_nlssort(Datum x, Datum y, SortSupport ssup);
 static int	namefastcmp_nlssort(Datum x, Datum y, SortSupport ssup);
 static int	varstrfastcmp_c(Datum x, Datum y, SortSupport ssup);
 static int	bpcharfastcmp_c(Datum x, Datum y, SortSupport ssup);
+static int	blobfastcmp_c(Datum x, Datum y, SortSupport ssup);/* ReqID:SRS-MYSQL-BINARYTYPE */
 static int	namefastcmp_c(Datum x, Datum y, SortSupport ssup);
 static int	varlenafastcmp_locale(Datum x, Datum y, SortSupport ssup);
 static int	namefastcmp_locale(Datum x, Datum y, SortSupport ssup);
@@ -322,6 +323,7 @@ byteain(PG_FUNCTION_ARGS)
 	char	   *rp;
 	int			bc;
 	bytea	   *result;
+	int			zero_cnt = 0; /* ReqID:SRS-MYSQL-BINARYTYPE */
 
 	/* Recognize hex input */
 	if (inputText[0] == '\\' && inputText[1] == 'x')
@@ -349,6 +351,16 @@ byteain(PG_FUNCTION_ARGS)
 		else if ((tp[0] == '\\') &&
 				 (tp[1] == '\\'))
 			tp += 2;
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (enable_character_blob &&
+				(tp[0] == '\\') && (tp[1] == '0') &&
+			 ((tp[2] == '\\') || (tp[2] == '\0')))
+		{
+			/* check if the inserted contains '\0', such as 'abc\0\0'. */
+			tp += 2;
+			zero_cnt += 2;
+		}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else
 		{
 			/*
@@ -361,9 +373,10 @@ byteain(PG_FUNCTION_ARGS)
 	}
 
 	bc += VARHDRSZ;
+	bc += zero_cnt; /* ReqID:SRS-MYSQL-BINARYTYPE */
 
 	result = (bytea *) palloc(bc);
-	SET_VARSIZE(result, bc);
+	SET_VARSIZE(result, bc - zero_cnt); /* ReqID:SRS-MYSQL-BINARYTYPE */
 
 	tp = inputText;
 	rp = VARDATA(result);
@@ -390,6 +403,21 @@ byteain(PG_FUNCTION_ARGS)
 			*rp++ = '\\';
 			tp += 2;
 		}
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (enable_character_blob &&
+				 (tp[0] == '\\') && (tp[1] == '0') &&
+				((tp[2] == '\\') || (tp[2] == '\0')))
+		{
+			/* convert to pg storage formate, such as 'abc\0\0' to 'abc\000\000'. */
+			bc = VAL(tp[1]);
+			bc <<= 3;
+			bc += VAL(tp[1]);
+			bc <<= 3;
+			*rp++ = bc + VAL(tp[1]);
+
+			tp += 4;
+		}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else
 		{
 			/*
@@ -417,7 +445,7 @@ byteaout(PG_FUNCTION_ARGS)
 	char	   *result;
 	char	   *rp;
 
-	if (bytea_output == BYTEA_OUTPUT_HEX)
+	if (bytea_output == BYTEA_OUTPUT_HEX && !enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
 	{
 		/* Begin - Bug#z1457 */
 		if (hex_bytea)
@@ -436,7 +464,8 @@ byteaout(PG_FUNCTION_ARGS)
 		}
 		/* End -  Bug#z1457 */
 	}
-	else if (bytea_output == BYTEA_OUTPUT_ESCAPE)
+	else if (bytea_output == BYTEA_OUTPUT_ESCAPE 
+				|| enable_character_blob) /* ReqID:SRS-MYSQL-BINARYTYPE */
 	{
 		/* Print traditional escaped format */
 		char	   *vp;
@@ -485,6 +514,12 @@ byteaout(PG_FUNCTION_ARGS)
 				rp[2] = DIG(val & 07);
 				val >>= 3;
 				rp[1] = DIG(val & 03);
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+				/* do not use hex to output '0' char, make it similar to mysql. */
+				if (enable_character_blob &&
+					rp[1] == '0' && rp[2] == '0' && rp[3] == '0')
+					rp[0] = '\0';
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				rp += 4;
 			}
 			else
@@ -2179,6 +2214,16 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		if (typid == BPCHAROID || 
 			(database_mode == DB_ORACLE && (typid == ORACHARCHAROID || typid == ORACHARBYTEOID)))	/* ReqID:SRS-GKC-DATATYPE_001 */
 			ssup->comparator = bpcharfastcmp_c;
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (((typid == MYBLOBOID)||(typid == MEDIUMBLOBOID)
+				||(typid == LONGBLOBOID)||(typid == TINYBLOBOID)
+				||(typid == BINARYOID)||(typid == VARBINARYOID))
+				&& (database_mode == DB_MYSQL))
+		{
+			ssup->comparator = blobfastcmp_c;
+			abbreviate = false;
+		}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		else if (typid == NAMEOID)
 		{
 			ssup->comparator = namefastcmp_c;
@@ -2526,6 +2571,44 @@ bpcharfastcmp_c(Datum x, Datum y, SortSupport ssup)
 	return result;
 }
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+/*
+* sortsupport comparison func (for blob C locale case)
+*/
+static int
+blobfastcmp_c(Datum x, Datum y, SortSupport ssup)
+{
+	VarString  *arg1 = DatumGetVarStringPP(x);
+	VarString  *arg2 = DatumGetVarStringPP(y);
+	char	   *a1p,
+			   *a2p;
+	int			len1,
+				len2,
+				result,
+				max_sort_length;
+
+	a1p = VARDATA_ANY(arg1);
+	a2p = VARDATA_ANY(arg2);
+
+	len1 = VARSIZE_ANY_EXHDR(arg1);
+	len2 = VARSIZE_ANY_EXHDR(arg2);
+
+	max_sort_length = atoi(max_sort_length_str);
+	len1 = len1 > max_sort_length ? max_sort_length : len1;
+	len2 = len2 > max_sort_length ? max_sort_length : len2;
+
+	result = memcmp(a1p, a2p, Min(len1, len2));
+	if ((result == 0) && (len1 != len2))
+		result = (len1 < len2) ? -1 : 1;
+
+	/* We can't afford to leak memory here. */
+	if (PointerGetDatum(arg1) != x)
+		pfree(arg1);
+	if (PointerGetDatum(arg2) != y)
+		pfree(arg2);
+	return result;
+}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 /*
  * sortsupport comparison func (for NAME C locale case)
  */

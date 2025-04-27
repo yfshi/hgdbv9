@@ -444,6 +444,12 @@ CREATE OPERATOR ivymy./ (
     PROCEDURE   = ivymy.year_div_int
 );
 
+CREATE OPERATOR ivymy.// (
+    LEFTARG     = ivymy.year,
+    RIGHTARG    = pg_catalog.int4,
+    PROCEDURE   = ivymy.year_div_int
+);
+
 -- pg_catalog.int4 vs year
 CREATE FUNCTION ivymy.int_eq_year(pg_catalog.int4, ivymy.year)
 RETURNS bool
@@ -574,6 +580,12 @@ CREATE OPERATOR ivymy.* (
 );
 
 CREATE OPERATOR ivymy./ (
+    LEFTARG     = pg_catalog.int4,
+    RIGHTARG    = ivymy.year,
+    PROCEDURE   = ivymy.int_div_year
+);
+
+CREATE OPERATOR ivymy.// (
     LEFTARG     = pg_catalog.int4,
     RIGHTARG    = ivymy.year,
     PROCEDURE   = ivymy.int_div_year
@@ -3300,6 +3312,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdate
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mysdate_div,
@@ -3351,6 +3364,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mysdate_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mysdate
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdate,
+	rightarg = ivymy.mysdate
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdate,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdate,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdate,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdate,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mysdate
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mysdate
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mysdate
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdate
 );
@@ -6564,6 +6632,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdatetime
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mysdatetime_div,
@@ -6615,6 +6684,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mysdatetime_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mysdatetime
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetime,
+	rightarg = ivymy.mysdatetime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetime,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetime,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetime,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetime,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mysdatetime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mysdatetime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mysdatetime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdatetime
 );
@@ -9889,6 +10013,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdatetimes
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mysdatetimes_div,
@@ -9940,6 +10065,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mysdatetimes_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mysdatetimes
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = ivymy.mysdatetimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mysdatetimes,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mysdatetimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mysdatetimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mysdatetimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mysdatetimes
 );
@@ -13182,6 +13362,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimestamp
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mystimestamp_div,
@@ -13233,6 +13414,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mystimestamp_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mystimestamp
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamp,
+	rightarg = ivymy.mystimestamp
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamp,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamp,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamp,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamp,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mystimestamp
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mystimestamp
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mystimestamp
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimestamp
 );
@@ -16508,6 +16744,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimestamps
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mystimestamps_div,
@@ -16559,6 +16796,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mystimestamps_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mystimestamps
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamps,
+	rightarg = ivymy.mystimestamps
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamps,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamps,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamps,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimestamps,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mystimestamps
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mystimestamps
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mystimestamps
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimestamps
 );
@@ -19829,6 +20121,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystime
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mystime_div,
@@ -19880,6 +20173,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mystime_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mystime
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystime,
+	rightarg = ivymy.mystime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystime,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystime,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystime,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystime,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mystime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mystime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mystime
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystime
 );
@@ -23201,6 +23549,7 @@ CREATE OPERATOR * (
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimes
 );
+
 --operator /
 CREATE OPERATOR / (
 	procedure = ivymy.mystimes_div,
@@ -23252,6 +23601,61 @@ CREATE OPERATOR / (
 
 CREATE OPERATOR / (
 	procedure = ivymy.mystimes_div,
+	leftarg = pg_catalog.numeric,
+	rightarg = ivymy.mystimes
+);
+
+--operator //
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimes,
+	rightarg = ivymy.mystimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimes,
+	rightarg = pg_catalog.int2
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimes,
+	rightarg = pg_catalog.int4
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimes,
+	rightarg = pg_catalog.int8
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = ivymy.mystimes,
+	rightarg = pg_catalog.numeric
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int2,
+	rightarg = ivymy.mystimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int4,
+	rightarg = ivymy.mystimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
+	leftarg = pg_catalog.int8,
+	rightarg = ivymy.mystimes
+);
+
+CREATE OPERATOR // (
+	procedure = ivymy.mys_div,
 	leftarg = pg_catalog.numeric,
 	rightarg = ivymy.mystimes
 );

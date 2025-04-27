@@ -981,42 +981,42 @@ select NULL / cast(111 as UNSIGNED); --NULL
 
 --div
 select cast(111 as UNSIGNED) div 111; --1
- mys_div 
----------
+ ?column? 
+----------
  1
 (1 row)
 
 select cast(111 as UNSIGNED) div 110; --1
- mys_div 
----------
+ ?column? 
+----------
  1
 (1 row)
 
 select cast(111 as UNSIGNED) div -111; --err
 ERROR:  integer unsigned out of range
 select cast(111 as UNSIGNED) div NULL; --NULL
- mys_div 
----------
+ ?column? 
+----------
  
 (1 row)
 
 select 111 div cast(111 as UNSIGNED); --1
- mys_div 
----------
+ ?column? 
+----------
  1
 (1 row)
 
 select 110 div cast(111 as UNSIGNED); --0
- mys_div 
----------
+ ?column? 
+----------
  0
 (1 row)
 
 select -111 div cast(111 as UNSIGNED); --err
 ERROR:  integer unsigned out of range
 select NULL div cast(111 as UNSIGNED); --NULL
- mys_div 
----------
+ ?column? 
+----------
  
 (1 row)
 
@@ -1104,8 +1104,8 @@ WARNING:  Division by 0
 
 select cast(111 as UNSIGNED) div 0; --NULL warning
 WARNING:  Division by 0
- mys_div 
----------
+ ?column? 
+----------
  
 (1 row)
 
@@ -1132,8 +1132,8 @@ select cast(111 as UNSIGNED)  / 0; --NULL
 (1 row)
 
 select cast(111 as UNSIGNED) div 0; --NULL
- mys_div 
----------
+ ?column? 
+----------
  
 (1 row)
 
@@ -2010,8 +2010,8 @@ select 0 / a from t2;
 
 --div
 select b div a from t2;
- mys_div 
----------
+ ?column? 
+----------
  9
  4
  3
@@ -2021,8 +2021,8 @@ select b div a from t2;
 (6 rows)
 
 select b div 11 from t2;
- mys_div 
----------
+ ?column? 
+----------
  90
  90
  90
@@ -2033,8 +2033,8 @@ select b div 11 from t2;
 
 select a div b from t2;
 WARNING:  Division by 0
- mys_div 
----------
+ ?column? 
+----------
  0
  0
  0
@@ -2044,8 +2044,8 @@ WARNING:  Division by 0
 (6 rows)
 
 select 0 div a from t2;
- mys_div 
----------
+ ?column? 
+----------
  0
  0
  0
@@ -2195,8 +2195,8 @@ select 0 / a from t2;
 
 --div
 select b div a from t2;
- mys_div 
----------
+ ?column? 
+----------
  9
  4
  3
@@ -2206,8 +2206,8 @@ select b div a from t2;
 (6 rows)
 
 select b div 11 from t2;
- mys_div 
----------
+ ?column? 
+----------
  90
  90
  90
@@ -2217,8 +2217,8 @@ select b div 11 from t2;
 (6 rows)
 
 select a div b from t2;
- mys_div 
----------
+ ?column? 
+----------
  0
  0
  0
@@ -2228,8 +2228,8 @@ select a div b from t2;
 (6 rows)
 
 select 0 div a from t2;
- mys_div 
----------
+ ?column? 
+----------
  0
  0
  0

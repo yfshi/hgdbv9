@@ -5159,64 +5159,64 @@ select 0 / cast('221222222220' as date); --0.0000
 
 -- div
 select cast('221222222222' as date) div cast('221222222220' as date); --1
- mys_div 
----------
-       1
+ ?column? 
+----------
+        1
 (1 row)
 
 select cast('221222222222' as date) div 111; --182173
- mys_div 
----------
-  182173
+ ?column? 
+----------
+   182173
 (1 row)
 
 select cast('221222222222' as date) div 111.1; -- 182009
- mys_div 
----------
-  182009
+ ?column? 
+----------
+   182009
 (1 row)
 
 select cast('221222222222' as date) div 115; -- 175836
- mys_div 
----------
-  175836
+ ?column? 
+----------
+   175836
 (1 row)
 
 select cast('221222222222' as date) div 0; -- NULL warning
 WARNING:  Division by 0.
- mys_div 
----------
-        
+ ?column? 
+----------
+         
 (1 row)
 
 select 111111111111 div cast('221222222220' as date); --5494
- mys_div 
----------
-    5494
+ ?column? 
+----------
+     5494
 (1 row)
 
 select 111111111111.111 div cast('221222222220' as date);--5494
- mys_div 
----------
-    5494
+ ?column? 
+----------
+     5494
 (1 row)
 
 select 0 div cast('221222222220' as date); --0
- mys_div 
----------
-       0
+ ?column? 
+----------
+        0
 (1 row)
 
 select cast('221222222222' as date) div 115.1; --175683
- mys_div 
----------
-  175683
+ ?column? 
+----------
+   175683
 (1 row)
 
 select cast('221222222222' as date) div 115.2; --175531
- mys_div 
----------
-  175531
+ ?column? 
+----------
+   175531
 (1 row)
 
 -- %

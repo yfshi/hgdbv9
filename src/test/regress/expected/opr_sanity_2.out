@@ -123,8 +123,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid < p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     (p1.prokind != 'a' OR p2.prokind != 'a') AND
     (p1.prolang != p2.prolang OR
      p1.prokind != p2.prokind OR
@@ -154,8 +154,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -176,10 +176,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
-    p1.pronamespace != 9800 AND
-    p2.pronamespace != 9800 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -202,10 +200,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
-    p1.pronamespace != 9800 AND
-    p2.pronamespace != 9800 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -226,8 +222,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     (p1.proargtypes[2] < p2.proargtypes[2])
 ORDER BY 1, 2;
@@ -1015,7 +1011,18 @@ WHERE c.castmethod = 'b' AND
  xml               | text              |        0 | a
  xml               | character varying |        0 | a
  xml               | character         |        0 | a
-(10 rows)
+ binary            | bytea             |        0 | i
+ text              | binary            |        0 | a
+ varbinary         | bytea             |        0 | i
+ text              | varbinary         |        0 | a
+ blob              | bytea             |        0 | i
+ tinyblob          | bytea             |        0 | i
+ text              | tinyblob          |        0 | a
+ mediumblob        | bytea             |        0 | i
+ text              | mediumblob        |        0 | a
+ longblob          | bytea             |        0 | i
+ text              | longblob          |        0 | a
+(21 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.
@@ -2016,11 +2023,16 @@ ORDER BY 1, 2, 3;
         783 |           48 | <@
         783 |           68 | <@
        2742 |            1 | &&
+       2742 |            1 | <
        2742 |            1 | @@
+       2742 |            2 | <=
        2742 |            2 | @>
        2742 |            2 | @@@
        2742 |            3 | <@
+       2742 |            3 | =
        2742 |            4 | =
+       2742 |            4 | >=
+       2742 |            5 | >
        2742 |            7 | @>
        2742 |            9 | ?
        2742 |           10 | ?|
@@ -2093,7 +2105,7 @@ ORDER BY 1, 2, 3;
        4000 |           28 | ^@
        4000 |           29 | <^
        4000 |           30 | >^
-(124 rows)
+(129 rows)
 
 -- Check that all opclass search operators have selectivity estimators.
 -- This is not absolutely required, but it seems a reasonable thing
@@ -2211,11 +2223,15 @@ ORDER BY 1, 2, 3;
  btvarstrequalimage | text_ops              | text_ops          | text
  btvarstrequalimage | text_ops              | varchar_ops       | text
                     | array_ops             | array_ops         | anyarray
+                    | binary_ops            | binary_ops        | binary
                     | float_ops             | float4_ops        | real
                     | float_ops             | float8_ops        | double precision
                     | interval_ops          | interval_ops      | interval
                     | jsonb_ops             | jsonb_ops         | jsonb
+                    | longblob_ops          | longblob_ops      | longblob
+                    | mediumblob_ops        | mediumblob_ops    | mediumblob
                     | multirange_ops        | multirange_ops    | anymultirange
+                    | myblob_ops            | myblob_ops        | blob
                     | mysdatetime_ops       | mysdate_ops       | date
                     | mysdatetimestime_ops  | mysdatetimes_ops  | datetime
                     | mysdatetimetime_ops   | mysdatetime_ops   | datetime
@@ -2229,10 +2245,12 @@ ORDER BY 1, 2, 3;
                     | range_ops             | range_ops         | anyrange
                     | record_image_ops      | record_image_ops  | record
                     | record_ops            | record_ops        | record
+                    | tinyblob_ops          | tinyblob_ops      | tinyblob
                     | tsquery_ops           | tsquery_ops       | tsquery
                     | tsvector_ops          | tsvector_ops      | tsvector
+                    | varbinary_ops         | varbinary_ops     | varbinary
                     | year_ops              | year_ops          | ivymy.year
-(26 rows)
+(32 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

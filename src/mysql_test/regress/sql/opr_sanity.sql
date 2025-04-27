@@ -99,8 +99,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid < p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     (p1.prokind != 'a' OR p2.prokind != 'a') AND
     (p1.prolang != p2.prolang OR
      p1.prokind != p2.prokind OR
@@ -128,8 +128,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -143,10 +143,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
-    p1.pronamespace != 9800 AND
-    p2.pronamespace != 9800 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -160,10 +158,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
-    p1.pronamespace != 9800 AND
-    p2.pronamespace != 9800 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     p1.prosrc NOT LIKE E'range\\_constructor_' AND
     p2.prosrc NOT LIKE E'range\\_constructor_' AND
@@ -177,8 +173,8 @@ FROM pg_proc AS p1, pg_proc AS p2
 WHERE p1.oid != p2.oid AND
     p1.prosrc = p2.prosrc AND
     p1.prolang = 12 AND p2.prolang = 12 AND
-    p1.pronamespace != 9900 AND
-    p2.pronamespace != 9900 AND
+    p1.pronamespace NOT IN (9900, 9800) AND
+    p2.pronamespace NOT IN (9900, 9800) AND
     p1.prokind != 'a' AND p2.prokind != 'a' AND
     (p1.proargtypes[2] < p2.proargtypes[2])
 ORDER BY 1, 2;
@@ -540,7 +536,7 @@ WHERE p.oid = c.conproc AND
 SELECT p1.oid, p1.conname
 FROM pg_conversion as p1
 WHERE condefault AND
-    convert('ABC'::bytea, pg_encoding_to_char(conforencoding),
+    pg_catalog.convert('ABC'::bytea, pg_encoding_to_char(conforencoding),
             pg_encoding_to_char(contoencoding)) != 'ABC';
 
 

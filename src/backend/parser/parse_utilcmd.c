@@ -4248,20 +4248,55 @@ transformConstraintAttrs(CreateStmtContext *cxt, List *constraintList)
 	}
 }
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+/*
+ * only for mysql, set column type default mod
+ */
+static void
+mys_set_default_mod(CreateStmtContext *cxt, ColumnDef *column)
+{
+	char *type_name;
+
+	if (compatible_db != MYS_PARSER)
+		return;
+
+	type_name = TypeNameToString(column->typeName);
+
+	if (pg_strcasecmp(type_name, "ivymy.binary") == 0)
+	{
+		if (column->typeName->typmods == NIL && 
+				column->typeName->typemod == -1)
+		{
+			A_Const *n = makeNode(A_Const);
+			n->val.type = T_Integer;
+			n->val.val.ival = 1;
+			n->location = column->typeName->location;
+			column->typeName->typmods = list_make1(n);
+		}
+	}
+}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 /*
  * Special handling of type definition for a column
  */
 static void
 transformColumnType(CreateStmtContext *cxt, ColumnDef *column)
 {
-	int32	typmod;	/* BUG:M0000068 */
+	int32			typmod;	/* BUG:M0000068 */
+	Type			ctype;
+	Form_pg_type 	typtup;
+
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+	mys_set_default_mod(cxt, column);
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 
 	/*
 	 * All we really need to do here is verify that the type is valid,
 	 * including any collation spec that might be present.
 	 */
-	Type		ctype = typenameType(cxt->pstate, column->typeName, &typmod);	/* BUG:M0000068 */
-	Form_pg_type typtup = (Form_pg_type) GETSTRUCT(ctype);
+	ctype = typenameType(cxt->pstate, column->typeName, &typmod);	/* BUG:M0000068 */
+	typtup = (Form_pg_type) GETSTRUCT(ctype);
 
 	/* Begin - BUG:M0000068 */
 	/*

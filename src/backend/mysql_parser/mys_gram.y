@@ -46,6 +46,7 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #include "access/tableam.h"
 #include "catalog/index.h"
@@ -234,6 +235,10 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 static RangeVar *transformRelistToRelation(List *rellist);
 static void checkMultiDelete(DeleteStmt *stmt);
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+static int32 GetTypeNameTypeMod(const TypeName *typeName);
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 /* Begin - Req: SRS-MYSQL-CHARSET */
 static SelectStmt *makeShowCharsetStmt(ShowFilter *filter);
 static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
@@ -299,6 +304,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	MergeWhenClause		*mergewhen;
 	MysCollateCharacterOpt *myscollatecharacteropt; /* ReqID:SRS-MYSQL-SQL-USE */
 	struct ShowFilter	*showfilter;				/* Req: SRS-MYSQL-CHARSET */
+	uint64				lval; /* ReqID:SRS-MYSQL-BINARYTYPE */
 }
 
 %type <node>	stmt toplevel_stmt schema_stmt routine_body_stmt
@@ -527,7 +533,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 %type <boolean> opt_instead
 %type <boolean> opt_unique opt_concurrently opt_verbose opt_full
 %type <boolean> opt_freeze opt_analyze opt_default opt_recheck
-%type <defelt>	opt_binary copy_delimiter
+%type <defelt>	copy_delimiter
 
 %type <boolean> copy_from opt_program
 
@@ -616,6 +622,12 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 				CharacterWithLength CharacterWithoutLength
 				ConstDatetime ConstInterval
 				Bit ConstBit BitWithLength BitWithoutLength
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+				Binary ConstBinary
+				BinaryWithLength BinaryWithoutLength
+				Blob ConstBlob
+				BlobWithLength BlobWithoutLength
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
 				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
 %type <str>		character
@@ -691,6 +703,10 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 %type <list>		opt_table_target_list table_name_list
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+%type <lval>		mysql_datatype_length
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 %type <boolean>		field_unsigned /*ReqID: SRS-MYSQL-NUMBERICTYPE-UINT4*/
 %type <keyword>		integer_int /*ReqID: SRS-MYSQL-NUMBERICTYPE-UINT4*/
 %type <typnam>		NumericNoConflict opt_float_noempty mys_float
@@ -724,14 +740,14 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION
 
-	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT
+	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
 	BOOLEAN_P BOTH BREADTH BY
 
 	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
 	CHARACTER CHARACTERISTICS CHARSET CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P COPY
+	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P CONVERT COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
@@ -763,9 +779,9 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
-	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LOW_PRIORITY
+	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
-	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMINT MERGE METHOD
+	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
 	MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
 
 	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
@@ -795,14 +811,14 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
-	TIES TIME TIMESTAMP TINYINT TO TRAILING TRANSACTION TRANSFORM
+	TIES TIME TIMESTAMP TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
 	TREAT TRIGGER TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
 	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING
 
-	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARIADIC VARYING
+	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE
 
 	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
@@ -825,7 +841,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
  * as NOT, at least with respect to their left-hand subexpression.
  * NULLS_LA and WITH_LA are needed to make the grammar LALR(1).
  */
-%token		NOT_LA NULLS_LA WITH_LA DELETE_FROM
+%token		NOT_LA NULLS_LA WITH_LA DELETE_FROM BINARY_F
 
 
 %token		NCHAR_P		/* ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
@@ -849,7 +865,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 %token		MODE_PLISQL_ASSIGN2
 %token		MODE_PLISQL_ASSIGN3
 /* End - BUG:M0000079 */
-
+%nonassoc	BINARY
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
@@ -867,7 +883,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 /* End - ReqID:SRS-MYSQL-UPDATE */
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
-%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
+%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA BINARY_F
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
 /*
  * To support target_el without AS, it used to be necessary to assign IDENT an
@@ -1851,6 +1867,7 @@ zone_value:
 
 opt_encoding:
 			Sconst									{ $$ = $1; }
+			| BINARY								{ $$ = (char*)$1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| DEFAULT								{ $$ = NULL; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
@@ -3316,7 +3333,7 @@ ClosePortalStmt:
  *
  *****************************************************************************/
 
-CopyStmt:	COPY opt_binary qualified_name opt_column_list
+CopyStmt:	COPY BINARY qualified_name opt_column_list
 			copy_from opt_program copy_file_name copy_delimiter opt_with
 			copy_options where_clause
 				{
@@ -3346,14 +3363,49 @@ CopyStmt:	COPY opt_binary qualified_name opt_column_list
 
 					n->options = NIL;
 					/* Concatenate user-supplied flags */
-					if ($2)
-						n->options = lappend(n->options, $2);
+					n->options = lappend(n->options, (Node *)makeDefElem("format", (Node *)makeString("binary"), @2)); /* ReqID:SRS-MYSQL-BINARYTYPE */
+
 					if ($8)
 						n->options = lappend(n->options, $8);
 					if ($10)
 						n->options = list_concat(n->options, $10);
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			| COPY qualified_name opt_column_list
+			copy_from opt_program copy_file_name copy_delimiter opt_with
+			copy_options where_clause
+				{
+					CopyStmt *n = makeNode(CopyStmt);
+					n->relation = $2;
+					n->query = NULL;
+					n->attlist = $3;
+					n->is_from = $4;
+					n->is_program = $5;
+					n->filename = $6;
+					n->whereClause = $10;
+
+					if (n->is_program && n->filename == NULL)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("STDIN/STDOUT not allowed with PROGRAM"),
+								 parser_errposition(@7)));
+
+					if (!n->is_from && n->whereClause != NULL)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("WHERE clause not allowed with COPY TO"),
+								 parser_errposition(@10)));
+
+					n->options = NIL;
+					/* Concatenate user-supplied flags */
+					if ($7)
+						n->options = lappend(n->options, $7);
+					if ($9)
+						n->options = list_concat(n->options, $9);
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| COPY '(' PreparableStmt ')' TO opt_program copy_file_name opt_with copy_options
 				{
 					CopyStmt *n = makeNode(CopyStmt);
@@ -3462,14 +3514,6 @@ copy_opt_item:
 		;
 
 /* The following exist for backward compatibility with very old versions */
-
-opt_binary:
-			BINARY
-				{
-					$$ = makeDefElem("format", (Node *)makeString("binary"), @1);
-				}
-			| /*EMPTY*/								{ $$ = NULL; }
-		;
 
 copy_delimiter:
 			opt_using DELIMITERS Sconst
@@ -3751,7 +3795,10 @@ TypedTableElement:
 
 columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList
 				{
-					ColumnDef *n = makeNode(ColumnDef);
+					char		*tpname;
+					ListCell 	*clist;
+					ColumnDef 	*n = makeNode(ColumnDef);
+					
 					n->colname = $1;
 					n->typeName = $2;
 					n->compression = $3;
@@ -3769,6 +3816,46 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 									 yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
+
+					/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+					tpname = strVal(llast(n->typeName->names));
+					
+					foreach (clist, n->constraints)
+					{
+						Constraint *con = (Constraint *) lfirst(clist);
+						
+						if ((con->contype == CONSTR_DEFAULT))
+						{
+							if (pg_strcasecmp(tpname, "myblob") == 0 	||
+								pg_strcasecmp(tpname, "tinyblob") == 0 	||
+								pg_strcasecmp(tpname, "longblob") == 0 	||
+								pg_strcasecmp(tpname, "mediumblob") == 0)
+							{
+								ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+										errmsg("ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value")));
+							}
+						}
+
+						if (con->contype == CONSTR_NOTNULL)
+						{
+							n->is_not_null = true;
+						}
+					}
+
+					if (is_strict_mode())
+					{
+						if (pg_strcasecmp(tpname, "varbinary") == 0 && n->is_not_null == false)
+						{
+							int32 mod = GetTypeNameTypeMod(n->typeName);
+							if (mod >= 65533) 
+							{
+								ereport(ERROR,
+										(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+											errmsg("Row size too large.")));
+							}
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 				}
 		;
 
@@ -6791,7 +6878,6 @@ any_name_list:
 
 any_name:	ColId						{ $$ = list_make1(makeString($1)); }
 			| ColId attrs				{ $$ = lcons(makeString($1), $2); }
-			| BINARY					{ $$ = list_make1(makeString("binary")); } /* Req: SRS-MYSQL-CHARSET */
 		;
 
 attrs:		'.' attr_name
@@ -11048,7 +11134,7 @@ CreatedbStmt:
 			| CREATE DATABASE name mys_create_option
 				{
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					
+
 					/* Begin - ReqID:SRS-MYSQL-CASE */
 					$3 = MYS_LOWERONE_STRING_CASE($3);
 					/* End - ReqID:SRS-MYSQL-CASE */
@@ -14490,6 +14576,10 @@ SimpleTypename:
 			GenericType								{ $$ = $1; }
 			| Numeric								{ $$ = $1; }
 			| Bit									{ $$ = $1; }
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			| Binary								{ $$ = $1; }
+			| Blob									{ $$ = $1; }
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| Character								{ $$ = $1; }
 			| Datetime								{ $$ = $1; } /* ReqID:SRS-MYSQL-DATETYPE */
 			| ConstInterval opt_interval
@@ -14520,6 +14610,10 @@ SimpleTypename:
 ConstTypename:
 			Numeric								{ $$ = $1; }
 			| ConstBit								{ $$ = $1; }
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			| ConstBinary							{ $$ = $1; }
+			| ConstBlob								{ $$ = $1; }
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 			| ConstCharacter						{ $$ = $1; }
 			| ConstDatetime							{ $$ = $1; }
 		;
@@ -15111,6 +15205,200 @@ Int2WithoutLength:
 			}	
 		;
 
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+/*
+*SQL binary data types
+*/
+Binary:
+			BinaryWithLength
+			{
+				$$ = $1;
+			}
+			|	BinaryWithoutLength
+			{
+				$$ = $1;
+			}
+		;
+ConstBinary:
+			BinaryWithLength
+			{
+				$$ = $1;
+			}
+			|	BinaryWithoutLength
+			{
+				$$ = $1;
+				$$->typmods = NIL;
+			}
+		;
+
+mysql_datatype_length:
+			Iconst
+				{
+					$$ = $1;
+				}
+			| FCONST
+				{
+					$$ = strtoll($1, NULL, 10);
+				}
+		;
+
+BinaryWithLength:
+			BINARY  '(' mysql_datatype_length ')'
+				{
+					$$ = MySQLSystemTypeName("binary");
+					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->location = @1;
+				}
+		  | VARBINARY '(' mysql_datatype_length ')'
+				{
+					long long int length = $3;
+
+					if (length <= 65533)
+					{
+						$$ = MySQLSystemTypeName("varbinary");
+						$$->typmods = list_make1(makeIntConst(length, @3));
+						$$->location = @1;
+					}
+					else if (length >= 65534 && length <= 16777215)
+					{
+						if (is_strict_mode())
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+										errmsg("Column length too big; use BLOB or TEXT instead")));
+						}
+						else
+						{
+							ereport(WARNING,
+									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+										errmsg("Converting column from VARBINARY to BLOB")));
+
+								$$ = MySQLSystemTypeName("mediumblob");
+							}
+					}
+					else if (length >= 16777216 && length <= 4294967295)
+					{
+						if (is_strict_mode())
+						{
+							ereport(ERROR,
+								(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+									errmsg("Column length too big; use BLOB or TEXT instead")));
+						}
+						else
+						{
+							ereport(WARNING,
+									(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+										errmsg("Converting column from VARBINARY to BLOB")));
+
+							$$ = MySQLSystemTypeName("longblob");
+						}
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									errmsg("invalid type modifier")));
+					}
+				}
+		;
+
+BinaryWithoutLength:
+			BINARY
+			{
+				$$ = MySQLSystemTypeName("binary");
+				if (strcmp($1, "binary") == 0)
+				{
+					$$->typmods = NIL;
+					$$->typemod = -1;
+				}
+				$$->location = @1;
+			}
+		;
+
+/*
+*SQL blob data types
+*/
+Blob:
+			BlobWithLength
+			{
+				$$ = $1;
+			}
+			|	BlobWithoutLength
+			{
+				$$ = $1;
+			}
+		;
+ConstBlob:
+			BlobWithLength
+			{
+				$$ = $1;
+			}
+			|	BlobWithoutLength
+			{
+				$$ = $1;
+				$$->typmods = NIL;
+			}
+		;
+
+BlobWithLength:
+			BLOB_P '(' mysql_datatype_length ')'
+				{
+					long long int length = $3;
+
+					if (length >= 1 && length <= 255)
+					{
+						$$ = MySQLSystemTypeName("tinyblob");
+					}
+					else if ((length >= 256 && length <= 65535) || length == 0)
+					{
+						$$ = MySQLSystemTypeName("myblob");
+					}
+					else if (length >= 65536 && length <= 16777215)
+					{
+						$$ = MySQLSystemTypeName("mediumblob");
+					}
+					else if (length >= 16777216 && length <= 4294967295)
+					{
+						$$ = MySQLSystemTypeName("longblob");
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+									errmsg("invalid type modifier")));
+					}
+				}
+		;
+
+BlobWithoutLength:
+			BLOB_P
+				{
+					$$ = MySQLSystemTypeName("myblob");
+					if (strcmp($1, "blob") == 0)
+						$$->typmods = list_make1(makeIntConst(1, -1));
+					$$->location = @1;
+				}
+			| TINYBLOB
+				{
+					$$ = MySQLSystemTypeName("tinyblob");
+					$$->typmods = list_make1(makeIntConst(1, -1));
+					$$->location = @1;
+				}
+			| MEDIUMBLOB
+				{
+					$$ = MySQLSystemTypeName("mediumblob");
+					$$->typmods = list_make1(makeIntConst(1, -1));
+					$$->location = @1;
+				}
+			| LONGBLOB
+				{
+					$$ = MySQLSystemTypeName("longblob");
+					$$->typmods = list_make1(makeIntConst(1, -1));
+					$$->location = @1;
+				}
+		;
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 /*
  * SQL date/time types
  */
@@ -15525,15 +15813,12 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", $1, $3, @2); }
 			| a_expr '/' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", $1, $3, @2); }
-			/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
+
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
 			| a_expr DIV a_expr
-				{ 
-					$$ = (Node *) makeFuncCall(list_make2(makeString("ivymy"), makeString("mys_div")),
-												list_make2($1,$3),
-												COERCE_SQL_SYNTAX,
-												@1);
-				}
-			/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "//", $1, $3, @2); }
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
 			| a_expr '%' a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "%", $1, $3, @2); }
 			/* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
@@ -15570,7 +15855,6 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = makeNotExpr($2, @1); }
 			| NOT_LA a_expr						%prec NOT
 				{ $$ = makeNotExpr($2, @1); }
-
 			| a_expr LIKE a_expr
 				{
 					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
@@ -16405,6 +16689,21 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+			| CONVERT '(' a_expr ',' Typename ')'
+				{ $$ = makeTypeCast($3, $5, @1); }
+
+			| BINARY_F SCONST
+				{
+					$$ = makeTypeCast(makeStringConst($2, @1), MySQLSystemTypeName("binary"), @1);
+				}
+
+			| BINARY '(' SCONST ')'
+				{
+					$$ = makeTypeCast(makeStringConst($3, @1), MySQLSystemTypeName("binary"), @1);
+				}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -18157,7 +18456,9 @@ unreserved_keyword:
 col_name_keyword:
 			  BETWEEN
 			| BIGINT
+			| BINARY
 			| BIT
+			| BLOB_P
 			| BOOLEAN_P
 			| CHAR_P
 			| CHARACTER
@@ -18180,6 +18481,8 @@ col_name_keyword:
 			| INTEGER
 			| INTERVAL
 			| LEAST
+			| LONGBLOB		/* ReqID:SRS-MYSQL-BINARYTYPE */
+			| MEDIUMBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| MEDIUMINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| NATIONAL
 			| NCHAR
@@ -18199,11 +18502,13 @@ col_name_keyword:
 			| SUBSTRING
 			| TIME
 			| TIMESTAMP
+			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		 /* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TREAT
 			| TRIM
 			| UNSIGNED
 			| VALUES
+			| VARBINARY	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| VARCHAR
 			| XMLATTRIBUTES
 			| XMLCONCAT
@@ -18232,7 +18537,6 @@ col_name_keyword:
  */
 type_func_name_keyword:
 			  AUTHORIZATION
-			| BINARY
 			| COLLATION
 			| CONCURRENTLY
 			| CROSS
@@ -18280,6 +18584,7 @@ reserved_keyword:
 			| COLLATE
 			| COLUMN
 			| CONSTRAINT
+			| CONVERT
 			| CREATE
 			| CURRENT_CATALOG
 			| CURRENT_DATE
@@ -18393,6 +18698,7 @@ bare_label_keyword:
 			| BIGINT
 			| BINARY
 			| BIT
+			| BLOB_P
 			| BOOLEAN_P
 			| BOTH
 			| BREADTH
@@ -18431,6 +18737,7 @@ bare_label_keyword:
 			| CONTENT_P
 			| CONTINUE_P
 			| CONVERSION_P
+			| CONVERT
 			| COPY
 			| COST
 			| CROSS
@@ -18575,12 +18882,14 @@ bare_label_keyword:
 			| LOCK_P
 			| LOCKED
 			| LOGGED
+			| LONGBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| LOW_PRIORITY
 			| MAPPING
 			| MATCH
 			| MATCHED
 			| MATERIALIZED
 			| MAXVALUE
+			| MEDIUMBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| MEDIUMINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
 			| MERGE
 			| METHOD
@@ -18739,6 +19048,7 @@ bare_label_keyword:
 			| TIES
 			| TIME
 			| TIMESTAMP
+			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| TINYINT		/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| TRAILING
 			| TRANSACTION
@@ -18770,6 +19080,7 @@ bare_label_keyword:
 			| VALIDATOR
 			| VALUE_P
 			| VALUES
+			| VARBINARY
 			| VARCHAR
 			| VARIADIC
 			| VERBOSE
@@ -19893,3 +20204,50 @@ makeShowCollationStmt(ShowFilter *filter)
 	return makeRangeFuncSelect("show_mysql_collations", where);
 }
 /* End - Req: SRS-MYSQL-CHARSET */
+
+/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+static int32
+GetTypeNameTypeMod(const TypeName *typeName)
+{
+	ListCell *l;
+	int32 ret = -1;
+	char	*cstr = NULL;
+	
+	foreach(l, typeName->typmods)
+	{
+		Node	   *tm = (Node *) lfirst(l);
+
+		if (IsA(tm, A_Const))
+		{
+			A_Const    *ac = (A_Const *) tm;
+
+			if (IsA(&ac->val, Integer))
+			{
+				cstr = psprintf("%ld", (long) ac->val.val.ival);
+			}
+			else if (IsA(&ac->val, Float) ||
+					 IsA(&ac->val, String))
+			{
+				/* we can just use the str field directly. */
+				cstr = ac->val.val.str;
+			}
+		}
+		else if (IsA(tm, ColumnRef))
+		{
+			ColumnRef  *cr = (ColumnRef *) tm;
+
+			if (list_length(cr->fields) == 1 &&
+				IsA(linitial(cr->fields), String))
+				cstr = strVal(linitial(cr->fields));
+		}
+	}
+
+	if (cstr)
+	{
+		ret = atoi(cstr);
+		return ret;
+	}
+
+	return -1;
+}
+/* End - ReqID:SRS-MYSQL-BINARYTYPE */

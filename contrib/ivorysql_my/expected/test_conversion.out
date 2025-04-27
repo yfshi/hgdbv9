@@ -1,0 +1,2275 @@
+/*
+ * test mysql binary type conversion
+ */
+-- parameter settings
+SET ivorysql.compatible_mode TO mysql;
+set mysql.enable_character_blob to on;
+-- clean environment
+DROP TABLE IF EXISTS
+  pg_bytea_t14,
+  my_binary_t13,
+  my_longblob_t12,
+  my_mediumblob_t11,
+  my_tinyblob_t10,
+  my_blob_t09,
+  my_varbinary_t08,
+  my_binary_t07,
+  my_longblob_t06,
+  my_mediumblob_t05,
+  my_tinyblob_t04,
+  my_blob_t03,
+  my_varbinary_t02,
+  my_binary_t01;
+NOTICE:  table "pg_bytea_t14" does not exist, skipping
+NOTICE:  table "my_binary_t13" does not exist, skipping
+NOTICE:  table "my_longblob_t12" does not exist, skipping
+NOTICE:  table "my_mediumblob_t11" does not exist, skipping
+NOTICE:  table "my_tinyblob_t10" does not exist, skipping
+NOTICE:  table "my_varbinary_t08" does not exist, skipping
+NOTICE:  table "my_binary_t07" does not exist, skipping
+NOTICE:  table "my_longblob_t06" does not exist, skipping
+NOTICE:  table "my_mediumblob_t05" does not exist, skipping
+NOTICE:  table "my_tinyblob_t04" does not exist, skipping
+NOTICE:  table "my_blob_t03" does not exist, skipping
+NOTICE:  table "my_binary_t01" does not exist, skipping
+CREATE TABLE my_binary_t01     (c1 binary(10));
+CREATE TABLE my_varbinary_t02  (c1 varbinary(10));
+CREATE TABLE my_blob_t03       (c1 blob);
+CREATE TABLE my_tinyblob_t04   (c1 tinyblob);
+CREATE TABLE my_mediumblob_t05 (c1 mediumblob);
+CREATE TABLE my_longblob_t06   (c1 longblob);
+INSERT  INTO my_binary_t01     VALUES ('1234567890'), ('abcd');
+INSERT  INTO my_varbinary_t02  VALUES ('1234567890'), ('abcd');
+INSERT  INTO my_blob_t03       VALUES ('1234567890'), ('abcd');
+INSERT  INTO my_tinyblob_t04   VALUES ('1234567890'), ('abcd');
+INSERT  INTO my_mediumblob_t05 VALUES ('1234567890'), ('abcd');
+INSERT  INTO my_longblob_t06   VALUES ('1234567890'), ('abcd');
+CREATE TABLE my_binary_t07     (c1 binary(10));
+CREATE TABLE my_varbinary_t08  (c1 varbinary(10));
+CREATE TABLE my_blob_t09       (c1 blob);
+CREATE TABLE my_tinyblob_t10   (c1 tinyblob);
+CREATE TABLE my_mediumblob_t11 (c1 mediumblob);
+CREATE TABLE my_longblob_t12   (c1 longblob);
+INSERT  INTO my_binary_t07     VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+INSERT  INTO my_varbinary_t08  VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+INSERT  INTO my_blob_t09       VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+INSERT  INTO my_tinyblob_t10   VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+INSERT  INTO my_mediumblob_t11 VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+INSERT  INTO my_longblob_t12   VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+CREATE TABLE my_binary_t13     (c1 binary(10), c2 varbinary(10), c3 blob, c4 tinyblob, c5 mediumblob, c6 longblob);
+INSERT  INTO my_binary_t13     VALUES ('1234', '1234', '1234', '1234', '1234', '1234');
+CREATE TABLE pg_bytea_t14      (c1 bytea);
+INSERT  INTO pg_bytea_t14      VALUES ('1234'), ('abcd'), ('1q2w'), ('q1w2');
+--------------------------------------------------------------------------------
+-- use cast "mysql binary" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_binary_t01;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_binary_t01;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as varbinary(10)) FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, varbinary(10)) FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::varbinary(10)  FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as blob)          FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, blob)          FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::blob           FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as tinyblob)      FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, tinyblob)      FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::tinyblob       FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as mediumblob)    FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, mediumblob)    FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::mediumblob     FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as longblob)      FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, longblob)      FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::longblob       FROM my_binary_t01;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+--------------------------------------------------------------------------------
+-- use cast "mysql varbinary" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_varbinary_t02;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+-- TODO[TD003]: ok
+SELECT  cast(c1 as varbinary(10)) FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, varbinary(10)) FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::varbinary(10)  FROM my_varbinary_t02;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as blob)          FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, blob)          FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::blob           FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as tinyblob)      FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, tinyblob)      FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::tinyblob       FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as mediumblob)    FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, mediumblob)    FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::mediumblob     FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as longblob)      FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, longblob)      FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::longblob       FROM my_varbinary_t02;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+--------------------------------------------------------------------------------
+-- use cast "mysql blob" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_blob_t03;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as varbinary(10)) FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, varbinary(10)) FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::varbinary(10)  FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+-- TODO[TD003]: ok
+SELECT  cast(c1 as blob)          FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, blob)          FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::blob           FROM my_blob_t03;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as tinyblob)      FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, tinyblob)      FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::tinyblob       FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as mediumblob)    FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, mediumblob)    FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::mediumblob     FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as longblob)      FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, longblob)      FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::longblob       FROM my_blob_t03;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+--------------------------------------------------------------------------------
+-- use cast "mysql tinyblob" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_tinyblob_t04;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as varbinary(10)) FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, varbinary(10)) FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::varbinary(10)  FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as blob)          FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, blob)          FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::blob           FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+-- TODO[TD003]: ok
+SELECT  cast(c1 as tinyblob)      FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, tinyblob)      FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::tinyblob       FROM my_tinyblob_t04;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as mediumblob)    FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, mediumblob)    FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::mediumblob     FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as longblob)      FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, longblob)      FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::longblob       FROM my_tinyblob_t04;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+--------------------------------------------------------------------------------
+-- use cast "mysql mediumblob" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_mediumblob_t05;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as varbinary(10)) FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, varbinary(10)) FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::varbinary(10)  FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as blob)          FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, blob)          FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::blob           FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as tinyblob)      FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, tinyblob)      FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::tinyblob       FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+-- TODO[TD003]: ok
+SELECT  cast(c1 as mediumblob)    FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, mediumblob)    FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::mediumblob     FROM my_mediumblob_t05;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as longblob)      FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, longblob)      FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::longblob       FROM my_mediumblob_t05;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+--------------------------------------------------------------------------------
+-- use cast "mysql longblob" to "mysql other binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary)        FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary)        FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary         FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(0))     FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT convert(c1, binary(0))     FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+SELECT         c1::binary(0)      FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:0, data truncated
+WARNING:  The input length:4 exceeds the maximum length:0, data truncated
+ c1 
+----
+ 
+ 
+(2 rows)
+
+-- EXPECT: ok, but warning
+SELECT  cast(c1 as binary(1))     FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT convert(c1, binary(1))     FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+SELECT         c1::binary(1)      FROM my_longblob_t06;
+WARNING:  The input length:10 exceeds the maximum length:1, data truncated
+WARNING:  The input length:4 exceeds the maximum length:1, data truncated
+ c1 
+----
+ 1
+ a
+(2 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10))    FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, binary(10))    FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::binary(10)     FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+-- EXPECT: syntax error
+SELECT  cast(c1 as varbinary(10)) FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, varbinary(10)) FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::varbinary(10)  FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as blob)          FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, blob)          FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::blob           FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as tinyblob)      FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, tinyblob)      FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::tinyblob       FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+SELECT  cast(c1 as mediumblob)    FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT convert(c1, mediumblob)    FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+SELECT         c1::mediumblob     FROM my_longblob_t06;
+ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+-- EXPECT: syntax error
+-- TODO[TD003]: ok
+SELECT  cast(c1 as longblob)      FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT convert(c1, longblob)      FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+SELECT         c1::longblob       FROM my_longblob_t06;
+     c1     
+------------
+ 1234567890
+ abcd
+(2 rows)
+
+--------------------------------------------------------------------------------
+-- use cast "mysql binary" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as date)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to date
+LINE 1: SELECT  cast(c1 as date)          FROM my_binary_t07;
+                ^
+SELECT convert(c1, date)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to date
+LINE 1: SELECT convert(c1, date)          FROM my_binary_t07;
+               ^
+SELECT         c1::date           FROM my_binary_t07;
+ERROR:  cannot cast type binary to date
+LINE 1: SELECT         c1::date           FROM my_binary_t07;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as time)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to time
+LINE 1: SELECT  cast(c1 as time)          FROM my_binary_t07;
+                ^
+SELECT convert(c1, time)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to time
+LINE 1: SELECT convert(c1, time)          FROM my_binary_t07;
+               ^
+SELECT         c1::time           FROM my_binary_t07;
+ERROR:  cannot cast type binary to time
+LINE 1: SELECT         c1::time           FROM my_binary_t07;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as datetime)      FROM my_binary_t07;
+ERROR:  cannot cast type binary to datetime
+LINE 1: SELECT  cast(c1 as datetime)      FROM my_binary_t07;
+                ^
+SELECT convert(c1, datetime)      FROM my_binary_t07;
+ERROR:  cannot cast type binary to datetime
+LINE 1: SELECT convert(c1, datetime)      FROM my_binary_t07;
+               ^
+SELECT         c1::datetime       FROM my_binary_t07;
+ERROR:  cannot cast type binary to datetime
+LINE 1: SELECT         c1::datetime       FROM my_binary_t07;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
+ERROR:  cannot cast type binary to numeric
+LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_binary_t07;
+                ^
+SELECT convert(c1, decimal(4, 0)) FROM my_binary_t07;
+ERROR:  cannot cast type binary to numeric
+LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_binary_t07;
+               ^
+SELECT         c1::decimal(4, 0)  FROM my_binary_t07;
+ERROR:  cannot cast type binary to numeric
+LINE 1: SELECT         c1::decimal(4, 0)  FROM my_binary_t07;
+                         ^
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to json
+LINE 1: SELECT  cast(c1 as json)          FROM my_binary_t07;
+                ^
+SELECT convert(c1, json)          FROM my_binary_t07;
+ERROR:  cannot cast type binary to json
+LINE 1: SELECT convert(c1, json)          FROM my_binary_t07;
+               ^
+SELECT         c1::json           FROM my_binary_t07;
+ERROR:  cannot cast type binary to json
+LINE 1: SELECT         c1::json           FROM my_binary_t07;
+                         ^
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_binary_t07;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_binary_t07;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_binary_t07;
+                           ^
+SELECT convert(c1, signed)        FROM my_binary_t07;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_binary_t07;
+                           ^
+SELECT         c1::signed         FROM my_binary_t07;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_binary_t07;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_binary_t07;
+ERROR:  cannot cast type binary to mysuint8
+LINE 1: SELECT  cast(c1 as unsigned)      FROM my_binary_t07;
+                ^
+SELECT convert(c1, unsigned)      FROM my_binary_t07;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_binary_t07;
+                           ^
+SELECT         c1::unsigned       FROM my_binary_t07;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_binary_t07;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql varbinary" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- TODO[TD013]: EXPECT: get {NULL, NULL, NULL, NULL}, and warning
+SELECT  cast(c1 as date)          FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT convert(c1, date)          FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT         c1::date           FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+-- EXPECT: get {00:12:34, 00:00:00, 00:00:01, 00:00:00}, and warning
+SELECT  cast(c1 as time)          FROM my_varbinary_t08;
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
+SELECT convert(c1, time)          FROM my_varbinary_t08;
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
+SELECT         c1::time           FROM my_varbinary_t08;
+WARNING:  Truncated incorrect time value: 'abcd'
+WARNING:  Truncated incorrect time value: '1q2w'
+WARNING:  Truncated incorrect time value: 'q1w2'
+    c1    
+----------
+ 00:12:34
+ 00:00:00
+ 00:00:01
+ 00:00:00
+(4 rows)
+
+-- TODO[TD013]: EXPECT: get {NULL, NULL, NULL, NULL}, and warning
+SELECT  cast(c1 as datetime)      FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT convert(c1, datetime)      FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+SELECT         c1::datetime       FROM my_varbinary_t08;
+WARNING:  Incorrect datetime value: '1234'
+WARNING:  Incorrect datetime value: 'abcd'
+WARNING:  Incorrect datetime value: '1q2w'
+WARNING:  Incorrect datetime value: 'q1w2'
+ c1 
+----
+ 
+ 
+ 
+ 
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type numeric: "abcd"
+SELECT convert(c1, decimal(4, 0)) FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type numeric: "abcd"
+SELECT         c1::decimal(4, 0)  FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type numeric: "abcd"
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type json
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
+SELECT convert(c1, json)          FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type json
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
+SELECT         c1::json           FROM my_varbinary_t08;
+ERROR:  invalid input syntax for type json
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_varbinary_t08;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_varbinary_t08;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_varbinary_t08;
+                           ^
+SELECT convert(c1, signed)        FROM my_varbinary_t08;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_varbinary_t08;
+                           ^
+SELECT         c1::signed         FROM my_varbinary_t08;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_varbinary_t08;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_varbinary_t08;
+WARNING:  invalid input syntax for type integer: "abcd"
+WARNING:  invalid input syntax for type integer: "1q2w"
+WARNING:  invalid input syntax for type integer: "q1w2"
+  c1  
+------
+ 1234
+ 0
+ 1
+ 0
+(4 rows)
+
+SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_varbinary_t08;
+                           ^
+SELECT         c1::unsigned       FROM my_varbinary_t08;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_varbinary_t08;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql blob" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as date)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to date
+LINE 1: SELECT  cast(c1 as date)          FROM my_blob_t09;
+                ^
+SELECT convert(c1, date)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to date
+LINE 1: SELECT convert(c1, date)          FROM my_blob_t09;
+               ^
+SELECT         c1::date           FROM my_blob_t09;
+ERROR:  cannot cast type blob to date
+LINE 1: SELECT         c1::date           FROM my_blob_t09;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as time)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to time
+LINE 1: SELECT  cast(c1 as time)          FROM my_blob_t09;
+                ^
+SELECT convert(c1, time)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to time
+LINE 1: SELECT convert(c1, time)          FROM my_blob_t09;
+               ^
+SELECT         c1::time           FROM my_blob_t09;
+ERROR:  cannot cast type blob to time
+LINE 1: SELECT         c1::time           FROM my_blob_t09;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as datetime)      FROM my_blob_t09;
+ERROR:  cannot cast type blob to datetime
+LINE 1: SELECT  cast(c1 as datetime)      FROM my_blob_t09;
+                ^
+SELECT convert(c1, datetime)      FROM my_blob_t09;
+ERROR:  cannot cast type blob to datetime
+LINE 1: SELECT convert(c1, datetime)      FROM my_blob_t09;
+               ^
+SELECT         c1::datetime       FROM my_blob_t09;
+ERROR:  cannot cast type blob to datetime
+LINE 1: SELECT         c1::datetime       FROM my_blob_t09;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_blob_t09;
+ERROR:  cannot cast type blob to numeric
+LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_blob_t09;
+                ^
+SELECT convert(c1, decimal(4, 0)) FROM my_blob_t09;
+ERROR:  cannot cast type blob to numeric
+LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_blob_t09;
+               ^
+SELECT         c1::decimal(4, 0)  FROM my_blob_t09;
+ERROR:  cannot cast type blob to numeric
+LINE 1: SELECT         c1::decimal(4, 0)  FROM my_blob_t09;
+                         ^
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to json
+LINE 1: SELECT  cast(c1 as json)          FROM my_blob_t09;
+                ^
+SELECT convert(c1, json)          FROM my_blob_t09;
+ERROR:  cannot cast type blob to json
+LINE 1: SELECT convert(c1, json)          FROM my_blob_t09;
+               ^
+SELECT         c1::json           FROM my_blob_t09;
+ERROR:  cannot cast type blob to json
+LINE 1: SELECT         c1::json           FROM my_blob_t09;
+                         ^
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_blob_t09;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_blob_t09;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_blob_t09;
+                           ^
+SELECT convert(c1, signed)        FROM my_blob_t09;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_blob_t09;
+                           ^
+SELECT         c1::signed         FROM my_blob_t09;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_blob_t09;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_blob_t09;
+ERROR:  cannot cast type blob to mysuint8
+LINE 1: SELECT  cast(c1 as unsigned)      FROM my_blob_t09;
+                ^
+SELECT convert(c1, unsigned)      FROM my_blob_t09;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_blob_t09;
+                           ^
+SELECT         c1::unsigned       FROM my_blob_t09;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_blob_t09;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql tinyblob" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as date)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to date
+LINE 1: SELECT  cast(c1 as date)          FROM my_tinyblob_t10;
+                ^
+SELECT convert(c1, date)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to date
+LINE 1: SELECT convert(c1, date)          FROM my_tinyblob_t10;
+               ^
+SELECT         c1::date           FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to date
+LINE 1: SELECT         c1::date           FROM my_tinyblob_t10;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT cast(c1 as time)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to time
+LINE 1: SELECT cast(c1 as time)          FROM my_tinyblob_t10;
+               ^
+SELECT convert(c1, time)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to time
+LINE 1: SELECT convert(c1, time)          FROM my_tinyblob_t10;
+               ^
+SELECT         c1::time           FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to time
+LINE 1: SELECT         c1::time           FROM my_tinyblob_t10;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as datetime)      FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to datetime
+LINE 1: SELECT  cast(c1 as datetime)      FROM my_tinyblob_t10;
+                ^
+SELECT convert(c1, datetime)      FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to datetime
+LINE 1: SELECT convert(c1, datetime)      FROM my_tinyblob_t10;
+               ^
+SELECT         c1::datetime       FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to datetime
+LINE 1: SELECT         c1::datetime       FROM my_tinyblob_t10;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to numeric
+LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_tinyblob_t10;
+                ^
+SELECT convert(c1, decimal(4, 0)) FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to numeric
+LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_tinyblob_t10;
+               ^
+SELECT         c1::decimal(4, 0)  FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to numeric
+LINE 1: SELECT         c1::decimal(4, 0)  FROM my_tinyblob_t10;
+                         ^
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to json
+LINE 1: SELECT  cast(c1 as json)          FROM my_tinyblob_t10;
+                ^
+SELECT convert(c1, json)          FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to json
+LINE 1: SELECT convert(c1, json)          FROM my_tinyblob_t10;
+               ^
+SELECT         c1::json           FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to json
+LINE 1: SELECT         c1::json           FROM my_tinyblob_t10;
+                         ^
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_tinyblob_t10;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_tinyblob_t10;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_tinyblob_t10;
+                           ^
+SELECT convert(c1, signed)        FROM my_tinyblob_t10;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_tinyblob_t10;
+                           ^
+SELECT         c1::signed         FROM my_tinyblob_t10;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_tinyblob_t10;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_tinyblob_t10;
+ERROR:  cannot cast type tinyblob to mysuint8
+LINE 1: SELECT  cast(c1 as unsigned)      FROM my_tinyblob_t10;
+                ^
+SELECT convert(c1, unsigned)      FROM my_tinyblob_t10;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_tinyblob_t10;
+                           ^
+SELECT         c1::unsigned       FROM my_tinyblob_t10;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_tinyblob_t10;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql mediumblob" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as date)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to date
+LINE 1: SELECT  cast(c1 as date)          FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, date)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to date
+LINE 1: SELECT convert(c1, date)          FROM my_mediumblob_t11;
+               ^
+SELECT         c1::date           FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to date
+LINE 1: SELECT         c1::date           FROM my_mediumblob_t11;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as time)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to time
+LINE 1: SELECT  cast(c1 as time)          FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, time)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to time
+LINE 1: SELECT convert(c1, time)          FROM my_mediumblob_t11;
+               ^
+SELECT         c1::time           FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to time
+LINE 1: SELECT         c1::time           FROM my_mediumblob_t11;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as datetime)      FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to datetime
+LINE 1: SELECT  cast(c1 as datetime)      FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, datetime)      FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to datetime
+LINE 1: SELECT convert(c1, datetime)      FROM my_mediumblob_t11;
+               ^
+SELECT         c1::datetime       FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to datetime
+LINE 1: SELECT         c1::datetime       FROM my_mediumblob_t11;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to numeric
+LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, decimal(4, 0)) FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to numeric
+LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_mediumblob_t11;
+               ^
+SELECT         c1::decimal(4, 0)  FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to numeric
+LINE 1: SELECT         c1::decimal(4, 0)  FROM my_mediumblob_t11;
+                         ^
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to json
+LINE 1: SELECT  cast(c1 as json)          FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, json)          FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to json
+LINE 1: SELECT convert(c1, json)          FROM my_mediumblob_t11;
+               ^
+SELECT         c1::json           FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to json
+LINE 1: SELECT         c1::json           FROM my_mediumblob_t11;
+                         ^
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_mediumblob_t11;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_mediumblob_t11;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_mediumblob_t11;
+                           ^
+SELECT convert(c1, signed)        FROM my_mediumblob_t11;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_mediumblob_t11;
+                           ^
+SELECT         c1::signed         FROM my_mediumblob_t11;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_mediumblob_t11;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_mediumblob_t11;
+ERROR:  cannot cast type mediumblob to mysuint8
+LINE 1: SELECT  cast(c1 as unsigned)      FROM my_mediumblob_t11;
+                ^
+SELECT convert(c1, unsigned)      FROM my_mediumblob_t11;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_mediumblob_t11;
+                           ^
+SELECT         c1::unsigned       FROM my_mediumblob_t11;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_mediumblob_t11;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql longblob" to "mysql other type"
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as char)          FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, char)          FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::char           FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as date)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to date
+LINE 1: SELECT  cast(c1 as date)          FROM my_longblob_t12;
+                ^
+SELECT convert(c1, date)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to date
+LINE 1: SELECT convert(c1, date)          FROM my_longblob_t12;
+               ^
+SELECT         c1::date           FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to date
+LINE 1: SELECT         c1::date           FROM my_longblob_t12;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as time)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to time
+LINE 1: SELECT  cast(c1 as time)          FROM my_longblob_t12;
+                ^
+SELECT convert(c1, time)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to time
+LINE 1: SELECT convert(c1, time)          FROM my_longblob_t12;
+               ^
+SELECT         c1::time           FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to time
+LINE 1: SELECT         c1::time           FROM my_longblob_t12;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as datetime)      FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to datetime
+LINE 1: SELECT  cast(c1 as datetime)      FROM my_longblob_t12;
+                ^
+SELECT convert(c1, datetime)      FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to datetime
+LINE 1: SELECT convert(c1, datetime)      FROM my_longblob_t12;
+               ^
+SELECT         c1::datetime       FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to datetime
+LINE 1: SELECT         c1::datetime       FROM my_longblob_t12;
+                         ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as decimal(4, 0)) FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to numeric
+LINE 1: SELECT  cast(c1 as decimal(4, 0)) FROM my_longblob_t12;
+                ^
+SELECT convert(c1, decimal(4, 0)) FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to numeric
+LINE 1: SELECT convert(c1, decimal(4, 0)) FROM my_longblob_t12;
+               ^
+SELECT         c1::decimal(4, 0)  FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to numeric
+LINE 1: SELECT         c1::decimal(4, 0)  FROM my_longblob_t12;
+                         ^
+-- EXPECT: ok
+-- TODO[TD004]: error
+SELECT  cast(c1 as json)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to json
+LINE 1: SELECT  cast(c1 as json)          FROM my_longblob_t12;
+                ^
+SELECT convert(c1, json)          FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to json
+LINE 1: SELECT convert(c1, json)          FROM my_longblob_t12;
+               ^
+SELECT         c1::json           FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to json
+LINE 1: SELECT         c1::json           FROM my_longblob_t12;
+                         ^
+-- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
+-- TODO[TD004]: ok, but get diff value
+SELECT  cast(c1 as nchar)         FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT convert(c1, nchar)         FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+SELECT         c1::nchar          FROM my_longblob_t12;
+ c1 
+----
+ 1
+ a
+ 1
+ q
+(4 rows)
+
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as signed)        FROM my_longblob_t12;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT  cast(c1 as signed)        FROM my_longblob_t12;
+                           ^
+SELECT convert(c1, signed)        FROM my_longblob_t12;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT convert(c1, signed)        FROM my_longblob_t12;
+                           ^
+SELECT         c1::signed         FROM my_longblob_t12;
+ERROR:  syntax error at or near "signed"
+LINE 1: SELECT         c1::signed         FROM my_longblob_t12;
+                           ^
+-- EXPECT: ok , but warning
+-- TODO[TD004]: error
+SELECT  cast(c1 as unsigned)      FROM my_longblob_t12;
+ERROR:  cannot cast type longblob to mysuint8
+LINE 1: SELECT  cast(c1 as unsigned)      FROM my_longblob_t12;
+                ^
+SELECT convert(c1, unsigned)      FROM my_longblob_t12;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT convert(c1, unsigned)      FROM my_longblob_t12;
+                           ^
+SELECT         c1::unsigned       FROM my_longblob_t12;
+ERROR:  syntax error at or near "unsigned"
+LINE 1: SELECT         c1::unsigned       FROM my_longblob_t12;
+                           ^
+--------------------------------------------------------------------------------
+-- use cast "mysql binary" to "pg bytea"
+-- EXPECT: ok
+SELECT  cast(c1 as bytea) FROM my_binary_t13;
+  c1  
+------
+ 1234
+(1 row)
+
+SELECT convert(c1, bytea) FROM my_binary_t13;
+  c1  
+------
+ 1234
+(1 row)
+
+SELECT         c1::bytea  FROM my_binary_t13;
+  c1  
+------
+ 1234
+(1 row)
+
+-- EXPECT: ok
+SELECT  cast(c2 as bytea) FROM my_binary_t13;
+  c2  
+------
+ 1234
+(1 row)
+
+SELECT convert(c2, bytea) FROM my_binary_t13;
+  c2  
+------
+ 1234
+(1 row)
+
+SELECT         c2::bytea  FROM my_binary_t13;
+  c2  
+------
+ 1234
+(1 row)
+
+-- EXPECT: ok
+SELECT  cast(c3 as bytea) FROM my_binary_t13;
+  c3  
+------
+ 1234
+(1 row)
+
+SELECT convert(c3, bytea) FROM my_binary_t13;
+  c3  
+------
+ 1234
+(1 row)
+
+SELECT         c3::bytea  FROM my_binary_t13;
+  c3  
+------
+ 1234
+(1 row)
+
+-- EXPECT: ok
+SELECT  cast(c4 as bytea) FROM my_binary_t13;
+  c4  
+------
+ 1234
+(1 row)
+
+SELECT convert(c4, bytea) FROM my_binary_t13;
+  c4  
+------
+ 1234
+(1 row)
+
+SELECT         c4::bytea  FROM my_binary_t13;
+  c4  
+------
+ 1234
+(1 row)
+
+-- EXPECT: ok
+SELECT  cast(c5 as bytea) FROM my_binary_t13;
+  c5  
+------
+ 1234
+(1 row)
+
+SELECT convert(c5, bytea) FROM my_binary_t13;
+  c5  
+------
+ 1234
+(1 row)
+
+SELECT         c5::bytea  FROM my_binary_t13;
+  c5  
+------
+ 1234
+(1 row)
+
+-- EXPECT: ok
+SELECT  cast(c6 as bytea) FROM my_binary_t13;
+  c6  
+------
+ 1234
+(1 row)
+
+SELECT convert(c6, bytea) FROM my_binary_t13;
+  c6  
+------
+ 1234
+(1 row)
+
+SELECT         c6::bytea  FROM my_binary_t13;
+  c6  
+------
+ 1234
+(1 row)
+
+--------------------------------------------------------------------------------
+-- use cast "pg bytea" to "mysql binary"
+-- EXPECT: ok
+SELECT  cast(c1 as binary(10)) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, binary(10)) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::binary(10)  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as varbinary(10)) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, varbinary(10)) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::varbinary(10)  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as blob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, blob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::blob  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as tinyblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, tinyblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::tinyblob  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as mediumblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, mediumblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::mediumblob  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+-- EXPECT: ok
+SELECT  cast(c1 as longblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT convert(c1, longblob) FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+
+SELECT         c1::longblob  FROM pg_bytea_t14;
+  c1  
+------
+ 1234
+ abcd
+ 1q2w
+ q1w2
+(4 rows)
+

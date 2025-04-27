@@ -1836,7 +1836,7 @@ select t/11 from t2;
 */
 -- div
 select t div a from t2;
-    mys_div     
+    ?column?    
 ----------------
  20221211010101
  10110610505050
@@ -1845,7 +1845,7 @@ select t div a from t2;
 (4 rows)
 
 select t div 11 from t2;
-    mys_div    
+   ?column?    
 ---------------
  1838291910009
  1838292819100
@@ -2684,7 +2684,7 @@ select 66666666666666/t from t2;
 
 -- div
 select t div a from t2;
-    mys_div     
+    ?column?    
 ----------------
  20221211010101
  10110610505050
@@ -2693,7 +2693,7 @@ select t div a from t2;
 (4 rows)
 
 select t div 11 from t2;
-    mys_div    
+   ?column?    
 ---------------
  1838291910009
  1838292819100
@@ -2702,7 +2702,7 @@ select t div 11 from t2;
 (4 rows)
 
 select t div 11.11 from t2;
-    mys_div    
+   ?column?    
 ---------------
  1820091000009
  1820091900099
@@ -2711,39 +2711,39 @@ select t div 11.11 from t2;
 (4 rows)
 
 select t div 20221231010101.11 from t2;
- mys_div 
----------
-       0
-       0
-       1
-       0
+ ?column? 
+----------
+        0
+        0
+        1
+        0
 (4 rows)
 
 select 20221231010101 div t from t2;
- mys_div 
----------
-       1
-       1
-       1
-       1
+ ?column? 
+----------
+        1
+        1
+        1
+        1
 (4 rows)
 
 select 20221231010101.99 div t from t2;
- mys_div 
----------
-       1
-       1
-       1
-       1
+ ?column? 
+----------
+        1
+        1
+        1
+        1
 (4 rows)
 
 select 66666666666666 div t from t2;
- mys_div 
----------
-       3
-       3
-       3
-       3
+ ?column? 
+----------
+        3
+        3
+        3
+        3
 (4 rows)
 
 -- %

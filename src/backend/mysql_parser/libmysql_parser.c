@@ -265,6 +265,11 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 		case USCONST:
 			cur_token_length = strlen(yyextra->core_yy_extra.scanbuf + *llocp);
 			break;
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		case BINARY:
+			cur_token_length = 6;
+			break;
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		case DELETE_P:
 			cur_token_length = 6;
 			break;
@@ -317,7 +322,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
 	/* Get the third token ,eg: delete quick/low_priority/ignore from */
-	if (cur_token == DELETE_P && 
+	if (cur_token == DELETE_P &&
 		(next_token == QUICK ||
 		 next_token == LOW_PRIORITY ||
 		 next_token == IGNORE_P))
@@ -345,6 +350,16 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	/* Replace cur_token if needed, based on lookahead */
 	switch (cur_token)
 	{
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		case BINARY:
+			switch (next_token)
+			{
+				case SCONST:
+					cur_token = BINARY_F;
+					break;
+			}
+			break;
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
 		case NOT:
 			/* Replace NOT by NOT_LA if it's followed by BETWEEN, IN, etc */
 			switch (next_token)
