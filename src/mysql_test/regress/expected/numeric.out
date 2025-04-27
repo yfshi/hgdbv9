@@ -1331,21 +1331,10 @@ SELECT i as pow,
 	round((1.5 * 10 ^ i)::numeric, -i),
 	round((2.5 * 10 ^ i)::numeric, -i)
 FROM generate_series(-5,5) AS t(i);
- pow |  round   |  round   |  round  |  round   |   round   |   round   
------+----------+----------+---------+----------+-----------+-----------
-  -5 | 37.50000 | 22.50000 | 7.50000 | -7.50000 | -22.50000 | -37.50000
-  -4 |  25.0000 |  15.0000 |  5.0000 |  -5.0000 |  -15.0000 |  -25.0000
-  -3 |   22.500 |   13.500 |   4.500 |   -4.500 |   -13.500 |   -22.500
-  -2 |    30.00 |    18.00 |    6.00 |    -6.00 |    -18.00 |    -30.00
-  -1 |     27.5 |     16.5 |     5.5 |     -5.5 |     -16.5 |     -27.5
-   0 |      -25 |      -15 |      -5 |        5 |        15 |        25
-   1 |      -30 |      -20 |     -10 |       10 |        20 |        30
-   2 |        0 |        0 |       0 |        0 |         0 |         0
-   3 |        0 |        0 |       0 |        0 |         0 |         0
-   4 |        0 |        0 |       0 |        0 |         0 |         0
-   5 |        0 |        0 |       0 |        0 |         0 |         0
-(11 rows)
-
+ERROR:  operator does not exist: numeric * mysuint8
+LINE 2:  round((-2.5 * 10 ^ i)::numeric, -i),
+                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 -- Check limits of rounding before the decimal point
 SELECT round(4.4e131071, -131071) = 4e131071;
  ?column? 

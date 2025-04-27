@@ -31,6 +31,12 @@ typedef int32 (*Mysql_int4_datatype_in_hook_type)
 extern PGDLLIMPORT Mysql_int4_datatype_in_hook_type mysql_int4_datatype_in_hook;
 /* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 
+/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
+typedef int32 (*Mysql_int4_datatype_in_hook_type) 
+				(const char *str);
+extern PGDLLIMPORT Mysql_int4_datatype_in_hook_type mysql_int4_datatype_in_hook;
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
+
 /*---------
  * The following guidelines apply to all the routines:
  * - If a + b overflows, return true, otherwise store the result of a + b

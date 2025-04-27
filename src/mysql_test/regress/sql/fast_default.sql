@@ -173,7 +173,7 @@ DECLARE res TEXT := '';
 BEGIN
   i := 0;
   WHILE (i < a) LOOP
-    res := res || chr(ascii('a') + i);
+    res := res || chr((ascii('a') + i)::integer);
     i := i + 1;
   END LOOP;
   RETURN res;

@@ -26,7 +26,7 @@ SELECT count(*) FROM (
 WITH RECURSIVE t(n) AS (
     VALUES (1)
 UNION ALL
-    SELECT n+1 FROM t WHERE n < 100
+    SELECT (n+1)::integer FROM t WHERE n < 100
 )
 SELECT sum(n) FROM t;
  sum  
@@ -37,7 +37,7 @@ SELECT sum(n) FROM t;
 WITH RECURSIVE t(n) AS (
     SELECT (VALUES(1))
 UNION ALL
-    SELECT n+1 FROM t WHERE n < 5
+    SELECT (n+1)::integer FROM t WHERE n < 5
 )
 SELECT * FROM t;
  n 
@@ -62,7 +62,7 @@ DETAIL:  All column datatypes must be hashable.
 CREATE RECURSIVE VIEW nums (n) AS
     VALUES (1)
 UNION ALL
-    SELECT n+1 FROM nums WHERE n < 5;
+    SELECT (n+1)::integer FROM nums WHERE n < 5;
 SELECT * FROM nums;
  n 
 ---
@@ -76,7 +76,7 @@ SELECT * FROM nums;
 CREATE OR REPLACE RECURSIVE VIEW nums (n) AS
     VALUES (1)
 UNION ALL
-    SELECT n+1 FROM nums WHERE n < 6;
+    SELECT (n+1)::integer FROM nums WHERE n < 6;
 SELECT * FROM nums;
  n 
 ---
@@ -92,7 +92,7 @@ SELECT * FROM nums;
 WITH RECURSIVE t(n) AS (
     SELECT 1
 UNION
-    SELECT 10-n FROM t)
+    SELECT (10-n)::integer FROM t)
 SELECT * FROM t;
  n 
 ---
@@ -104,7 +104,7 @@ SELECT * FROM t;
 WITH RECURSIVE t(n) AS (
     VALUES (1)
 UNION ALL
-    SELECT n+1 FROM t)
+    SELECT (n+1)::integer FROM t)
 SELECT * FROM t LIMIT 10;
  n  
 ----
@@ -124,7 +124,7 @@ SELECT * FROM t LIMIT 10;
 WITH RECURSIVE t(n) AS (
     SELECT 1
 UNION
-    SELECT n+1 FROM t)
+    SELECT (n+1)::integer FROM t)
 SELECT * FROM t LIMIT 10;
  n  
 ----
@@ -284,7 +284,7 @@ WITH RECURSIVE subdepartment(level, id, parent_department, name) AS
 	SELECT 1, * FROM department WHERE name = 'A'
 	UNION ALL
 	-- recursive term
-	SELECT sd.level + 1, d.* FROM department AS d, subdepartment AS sd
+	SELECT (sd.level + 1)::integer, d.* FROM department AS d, subdepartment AS sd
 		WHERE d.parent_department = sd.id
 )
 SELECT * FROM subdepartment ORDER BY name;
@@ -305,7 +305,7 @@ WITH RECURSIVE subdepartment(level, id, parent_department, name) AS
 	SELECT 1, * FROM department WHERE name = 'A'
 	UNION ALL
 	-- recursive term
-	SELECT sd.level + 1, d.* FROM department AS d, subdepartment AS sd
+	SELECT (sd.level + 1)::integer, d.* FROM department AS d, subdepartment AS sd
 		WHERE d.parent_department = sd.id
 )
 SELECT * FROM subdepartment WHERE level >= 2 ORDER BY name;
@@ -332,12 +332,12 @@ SELECT * FROM subdepartment ORDER BY name;
 -- inside subqueries
 SELECT count(*) FROM (
     WITH RECURSIVE t(n) AS (
-        SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 500
+        SELECT 1 UNION ALL SELECT (n + 1)::integer FROM t WHERE n < 500
     )
     SELECT * FROM t) AS t WHERE n < (
         SELECT count(*) FROM (
             WITH RECURSIVE t(n) AS (
-                   SELECT 1 UNION ALL SELECT n + 1 FROM t WHERE n < 100
+                   SELECT 1 UNION ALL SELECT (n + 1)::integer FROM t WHERE n < 100
                 )
             SELECT * FROM t WHERE n < 50000
          ) AS t WHERE n < 100);
@@ -430,7 +430,7 @@ CREATE VIEW sums_1_100 AS
 WITH RECURSIVE t(n) AS (
     VALUES (1)
 UNION ALL
-    SELECT n+1 FROM t WHERE n < 100
+    SELECT (n+1)::integer FROM t WHERE n < 100
 )
 SELECT sum(n) FROM t;
 \d+ sums_1_100
@@ -442,7 +442,7 @@ View definition:
  WITH RECURSIVE t(n) AS (
          VALUES (1)
         UNION ALL
-         SELECT t_1.n + 1
+         SELECT (t_1.n + 1)::integer AS "int4"
            FROM t t_1
           WHERE t_1.n < 100
         )
@@ -536,9 +536,9 @@ select * from q limit 32;
 WITH RECURSIVE t(i,j) AS (
 	VALUES (1,2)
 	UNION ALL
-	SELECT t2.i, t.j+1 FROM
+	SELECT t2.i, (t.j+1)::integer FROM
 		(SELECT 2 AS i UNION ALL SELECT 3 AS i) AS t2
-		JOIN t ON (t2.i = t.i+1))
+		JOIN t ON (t2.i = (t.i+1)::integer))
 	SELECT * FROM t;
  i | j 
 ---+---
@@ -795,12 +795,12 @@ explain (verbose, costs off)
 with recursive test as (
   select 1 as x
   union all
-  select x + 1
+  select (x + 1)::integer
   from test
 ) search depth first by x set y
 select * from test limit 5;
-                                       QUERY PLAN                                        
------------------------------------------------------------------------------------------
+                                                  QUERY PLAN                                                   
+---------------------------------------------------------------------------------------------------------------
  Limit
    Output: test.x, test.y
    CTE test
@@ -808,7 +808,7 @@ select * from test limit 5;
            ->  Result
                  Output: 1, '{(1)}'::record[]
            ->  WorkTable Scan on test test_1
-                 Output: (test_1.x + 1), array_cat(test_1.y, ARRAY[ROW((test_1.x + 1))])
+                 Output: ((test_1.x + 1))::integer, array_cat(test_1.y, ARRAY[ROW(((test_1.x + 1))::integer)])
    ->  CTE Scan on test
          Output: test.x, test.y
 (10 rows)
@@ -816,7 +816,7 @@ select * from test limit 5;
 with recursive test as (
   select 1 as x
   union all
-  select x + 1
+  select (x + 1)::integer
   from test
 ) search depth first by x set y
 select * from test limit 5;
@@ -833,12 +833,12 @@ explain (verbose, costs off)
 with recursive test as (
   select 1 as x
   union all
-  select x + 1
+  select (x + 1)::integer
   from test
 ) search breadth first by x set y
 select * from test limit 5;
-                                         QUERY PLAN                                         
---------------------------------------------------------------------------------------------
+                                                    QUERY PLAN                                                    
+------------------------------------------------------------------------------------------------------------------
  Limit
    Output: test.x, test.y
    CTE test
@@ -846,7 +846,7 @@ select * from test limit 5;
            ->  Result
                  Output: 1, '(0,1)'::record
            ->  WorkTable Scan on test test_1
-                 Output: (test_1.x + 1), ROW(int8inc((test_1.y)."*DEPTH*"), (test_1.x + 1))
+                 Output: ((test_1.x + 1))::integer, ROW(int8inc((test_1.y)."*DEPTH*"), ((test_1.x + 1))::integer)
    ->  CTE Scan on test
          Output: test.x, test.y
 (10 rows)
@@ -854,7 +854,7 @@ select * from test limit 5;
 with recursive test as (
   select 1 as x
   union all
-  select x + 1
+  select (x + 1)::integer
   from test
 ) search breadth first by x set y
 select * from test limit 5;
@@ -1182,12 +1182,12 @@ explain (verbose, costs off)
 with recursive test as (
   select 0 as x
   union all
-  select (x + 1) % 10
+  select (x + 1)::integer % 10
   from test
 ) cycle x set is_cycle using path
 select * from test;
-                                                                                          QUERY PLAN                                                                                           
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                                                           QUERY PLAN                                                                                                           
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  CTE Scan on test
    Output: test.x, test.is_cycle, test.path
    CTE test
@@ -1195,14 +1195,14 @@ select * from test;
            ->  Result
                  Output: 0, false, '{(0)}'::record[]
            ->  WorkTable Scan on test test_1
-                 Output: ((test_1.x + 1) % 10), CASE WHEN (ROW(((test_1.x + 1) % 10)) = ANY (test_1.path)) THEN true ELSE false END, array_cat(test_1.path, ARRAY[ROW(((test_1.x + 1) % 10))])
+                 Output: (((test_1.x + 1))::integer % 10), CASE WHEN (ROW((((test_1.x + 1))::integer % 10)) = ANY (test_1.path)) THEN true ELSE false END, array_cat(test_1.path, ARRAY[ROW((((test_1.x + 1))::integer % 10))])
                  Filter: (NOT test_1.is_cycle)
 (9 rows)
 
 with recursive test as (
   select 0 as x
   union all
-  select (x + 1) % 10
+  select (x + 1)::integer % 10
   from test
 ) cycle x set is_cycle using path
 select * from test;
@@ -1224,7 +1224,7 @@ select * from test;
 with recursive test as (
   select 0 as x
   union all
-  select (x + 1) % 10
+  select (x + 1)::integer % 10
   from test
     where not is_cycle  -- redundant, but legal
 ) cycle x set is_cycle using path
@@ -1609,7 +1609,7 @@ select * from v_cycle2;
 --
 WITH RECURSIVE
   y (id) AS (VALUES (1)),
-  x (id) AS (SELECT * FROM y UNION ALL SELECT id+1 FROM x WHERE id < 5)
+  x (id) AS (SELECT * FROM y UNION ALL SELECT (id+1)::integer FROM x WHERE id < 5)
 SELECT * FROM x;
  id 
 ----
@@ -1622,7 +1622,7 @@ SELECT * FROM x;
 
 -- forward reference OK
 WITH RECURSIVE
-    x(id) AS (SELECT * FROM y UNION ALL SELECT id+1 FROM x WHERE id < 5),
+    x(id) AS (SELECT * FROM y UNION ALL SELECT (id+1)::integer FROM x WHERE id < 5),
     y(id) AS (values (1))
  SELECT * FROM x;
  id 
@@ -1636,9 +1636,9 @@ WITH RECURSIVE
 
 WITH RECURSIVE
    x(id) AS
-     (VALUES (1) UNION ALL SELECT id+1 FROM x WHERE id < 5),
+     (VALUES (1) UNION ALL SELECT (id+1)::integer FROM x WHERE id < 5),
    y(id) AS
-     (VALUES (1) UNION ALL SELECT id+1 FROM y WHERE id < 10)
+     (VALUES (1) UNION ALL SELECT (id+1)::integer FROM y WHERE id < 10)
  SELECT y.*, x.* FROM y LEFT JOIN x USING (id);
  id | id 
 ----+----
@@ -1656,9 +1656,9 @@ WITH RECURSIVE
 
 WITH RECURSIVE
    x(id) AS
-     (VALUES (1) UNION ALL SELECT id+1 FROM x WHERE id < 5),
+     (VALUES (1) UNION ALL SELECT (id+1)::integer FROM x WHERE id < 5),
    y(id) AS
-     (VALUES (1) UNION ALL SELECT id+1 FROM x WHERE id < 10)
+     (VALUES (1) UNION ALL SELECT (id+1)::integer FROM x WHERE id < 10)
  SELECT y.*, x.* FROM y LEFT JOIN x USING (id);
  id | id 
 ----+----
@@ -1672,11 +1672,11 @@ WITH RECURSIVE
 
 WITH RECURSIVE
    x(id) AS
-     (SELECT 1 UNION ALL SELECT id+1 FROM x WHERE id < 3 ),
+     (SELECT 1 UNION ALL SELECT (id+1)::integer FROM x WHERE id < 3 ),
    y(id) AS
      (SELECT * FROM x UNION ALL SELECT * FROM x),
    z(id) AS
-     (SELECT * FROM x UNION ALL SELECT id+1 FROM z WHERE id < 10)
+     (SELECT * FROM x UNION ALL SELECT (id+1)::integer FROM z WHERE id < 10)
  SELECT * FROM z;
  id 
 ----
@@ -1711,11 +1711,11 @@ WITH RECURSIVE
 
 WITH RECURSIVE
    x(id) AS
-     (SELECT 1 UNION ALL SELECT id+1 FROM x WHERE id < 3 ),
+     (SELECT 1 UNION ALL SELECT (id+1)::integer FROM x WHERE id < 3 ),
    y(id) AS
      (SELECT * FROM x UNION ALL SELECT * FROM x),
    z(id) AS
-     (SELECT * FROM y UNION ALL SELECT id+1 FROM z WHERE id < 10)
+     (SELECT * FROM y UNION ALL SELECT (id+1)::integer FROM z WHERE id < 10)
  SELECT * FROM z;
  id 
 ----
@@ -2162,11 +2162,11 @@ WITH RECURSIVE t(j) AS (
     WITH RECURSIVE s(i) AS (
         VALUES (1)
         UNION ALL
-        SELECT i+1 FROM s WHERE i < 10
+        SELECT (i+1)::integer FROM s WHERE i < 10
     )
     SELECT i FROM s
     UNION ALL
-    SELECT j+1 FROM t WHERE j < 10
+    SELECT (j+1)::integer FROM t WHERE j < 10
 )
 SELECT * FROM t;
  j  
@@ -2725,7 +2725,7 @@ LINE 3:   WITH t_cte AS MATERIALIZED (SELECT * FROM int8_tbl t)
 WITH RECURSIVE t(a) AS (
 	SELECT 0
 		UNION ALL
-	SELECT a+1 FROM t WHERE a+1 < 5
+	SELECT (a+1)::integer FROM t WHERE (a+1)::integer < 5
 ), t2 as (
 	INSERT INTO y
 		SELECT * FROM t RETURNING *

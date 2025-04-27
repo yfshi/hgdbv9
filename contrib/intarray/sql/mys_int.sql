@@ -196,7 +196,7 @@ CREATE TABLE more__int AS SELECT
    -- Leave alone NULLs, empty arrays and the one row that we use to test
    -- equality; also skip INT_MAX
    CASE WHEN a IS NULL OR a = '{}' OR a = '{73,23,20}' THEN a ELSE
-     (select array_agg(u) || array_agg(u + 1000) || array_agg(u + 2000)
+     (select array_agg(u) || array_agg((u + 1000)::integer) || array_agg((u + 2000)::integer)
       from unnest(a) u where u < 2000000000)
    END AS a, a as b
    FROM test__int;

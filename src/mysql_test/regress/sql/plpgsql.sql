@@ -1432,7 +1432,7 @@ BEGIN
     IF $1 <= 0 THEN
         rslt = CAST($2 AS TEXT);
     ELSE
-        rslt = CAST($1 AS TEXT) || '','' || recursion_test($1 - 1, $2);
+        rslt = CAST($1 AS TEXT) || '','' || recursion_test(($1 - 1)::integer, $2);
     END IF;
     RETURN rslt;
 END;' LANGUAGE plpgsql;
@@ -2840,7 +2840,7 @@ begin
     $1 := -1;
     $2 := -2;
     return next;
-    return query select x + 1, x * 10 from generate_series(0, 10) s (x);
+    return query select (x + 1)::integer, (x * 10)::integer from generate_series(0, 10) s (x);
     return next;
 end;
 $$ language plpgsql;
@@ -3473,7 +3473,7 @@ drop function pleast(numeric);
 
 create function tftest(int) returns table(a int, b int) as $$
 begin
-  return query select $1, $1+i from generate_series(1,5) g(i);
+  return query select $1, ($1+i)::integer from generate_series(1,5) g(i);
 end;
 $$ language plpgsql immutable strict;
 
@@ -4476,7 +4476,7 @@ INSERT INTO transition_table_level1 (level1_no)
 ANALYZE transition_table_level1;
 
 INSERT INTO transition_table_level2 (level2_no, parent_no)
-  SELECT level2_no, level2_no / 50 + 1 AS parent_no
+  SELECT level2_no, (level2_no div 50) + 1 AS parent_no
     FROM generate_series(1,9999) level2_no;
 ANALYZE transition_table_level2;
 

@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 src/datatype/datatype_int2
+=======
+>>>>>>> a894612a05f5332dd3a6abe5c541e4e6bf8bd111
 src/datatype/datatype_int4
 src/datatype/datatype
 src/builtin_functions/builtin_functions

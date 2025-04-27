@@ -363,7 +363,7 @@ $$ SELECT a + 1 $$;
 SELECT voidtest1(42);
 
 CREATE FUNCTION voidtest2(a int, b int) RETURNS VOID LANGUAGE SQL AS
-$$ SELECT voidtest1(a + b) $$;
+$$ SELECT voidtest1((a + b)::integer) $$;
 SELECT voidtest2(11,22);
 
 -- currently, we can inline voidtest2 but not voidtest1
@@ -372,11 +372,11 @@ EXPLAIN (verbose, costs off) SELECT voidtest2(11,22);
 CREATE TEMP TABLE sometable(f1 int);
 
 CREATE FUNCTION voidtest3(a int) RETURNS VOID LANGUAGE SQL AS
-$$ INSERT INTO sometable VALUES(a + 1) $$;
+$$ INSERT INTO sometable VALUES((a + 1)::integer) $$;
 SELECT voidtest3(17);
 
 CREATE FUNCTION voidtest4(a int) RETURNS VOID LANGUAGE SQL AS
-$$ INSERT INTO sometable VALUES(a - 1) RETURNING f1 $$;
+$$ INSERT INTO sometable VALUES((a - 1)::integer) RETURNING f1 $$;
 SELECT voidtest4(39);
 
 TABLE sometable;

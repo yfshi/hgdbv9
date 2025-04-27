@@ -549,7 +549,7 @@ select f3, myaggn08a(f1) from t group by f3 order by f3;
 select f3, myaggn08b(f1) from t group by f3 order by f3;
 select f3, myaggn09a(f1) from t group by f3 order by f3;
 select f3, myaggn10a(f1) from t group by f3 order by f3;
-select mysum2(f1, f1 + 1) from t;
+select mysum2(f1, (f1 + 1)::integer) from t;
 
 -- test inlining of polymorphic SQL functions
 create function bleat(int) returns int as $$

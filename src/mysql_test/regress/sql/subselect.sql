@@ -621,7 +621,7 @@ select sum(o.four), sum(ss.a) from
     with recursive x(a) as
       (select o.four as a
        union
-       select a + 1 from x
+       select (a + 1)::integer from x
        where a < 10)
     select * from x
   ) ss
@@ -632,7 +632,7 @@ select sum(o.four), sum(ss.a) from
     with recursive x(a) as
       (select o.four as a
        union
-       select a + 1 from x
+       select (a + 1)::integer from x
        where a < 10)
     select * from x
   ) ss

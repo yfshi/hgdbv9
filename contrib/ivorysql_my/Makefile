@@ -32,7 +32,8 @@ OBJS = \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
-	src/datatype/mysfloat.o
+	src/datatype/mysfloat.o\
+	src/datatype/mysint4.o
 
 
 EXTENSION = ivorysql_my
@@ -88,10 +89,10 @@ MYS_REGRESS = multi_update \
 			  show_charset \
 			  mys_int1	\
 			  mys_int2	\
+			  mys_int3 \
 			  mys_int4	\
 			  mys_float \
 			  mys-char-varchar \
-			  mys_int3 \
 			  group_by
 
 

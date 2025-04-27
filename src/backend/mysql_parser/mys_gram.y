@@ -15227,6 +15227,61 @@ Int4WithoutLength:
 
 
 /*
+ * SQL int4
+ */
+/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+Int4:
+			Int4WithLength
+			{
+				$$ = $1;
+			}
+			|	Int4WithoutLength
+			{
+				$$ = $1;
+			}
+		;
+Int4WithLength:
+			INT4  '(' Iconst ')'
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| INT4  '(' Iconst ')' SIGNED
+				{
+					$$ = SystemTypeName("int4");
+					$$->location = @1;
+				}
+			| INT4  '(' Iconst ')' unsigned_list
+				{
+					if ($3 > 255 || $3 < 0)
+							ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("int4 length must be between 1 and 255."),
+								 parser_errposition(@2)));
+					$$ = MySQLSystemTypeName("mysuint4");
+					$$->typmods = list_make1(makeIntConst($3, @3));
+					$$->location = @1;
+				}				
+Int4WithoutLength:
+			INT4
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}
+			| INT4  SIGNED
+			{
+				$$ = SystemTypeName("int4");
+				$$->location = @1;
+			}	
+			| INT4  unsigned_list
+			{
+				$$ = MySQLSystemTypeName("mysuint4");
+				$$->location = @1;
+			}	
+		;
+
+
+/*
  * SQL date/time types
  */
 /* ReqID:SRS-MYSQL-DATETYPE */
