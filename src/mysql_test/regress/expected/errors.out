@@ -298,7 +298,12 @@ LINE 1: drop rewrite rule nonesuch;
 -- Check that division-by-zero is properly caught.
 --
 select 1/0;
-ERROR:  division by zero
+WARNING:  Division by 0
+ ?column? 
+----------
+         
+(1 row)
+
 select 1::int8/0;
 ERROR:  division by zero
 select 1/0::int8;

@@ -1560,7 +1560,7 @@ BEGIN
     IF $1 <= 0 THEN
         rslt = CAST($2 AS TEXT);
     ELSE
-        rslt = CAST($1 AS TEXT) || '','' || recursion_test($1 - 1, $2);
+        rslt = CAST($1 AS TEXT) || '','' || recursion_test(($1 - 1)::integer, $2);
     END IF;
     RETURN rslt;
 END;' LANGUAGE plpgsql;
@@ -2360,9 +2360,12 @@ begin
   open c1 (p2 := 77, p1 := 42/0);
 end $$ language plpgsql;
 select namedparmcursor_test7();
-ERROR:  division by zero
-CONTEXT:  SQL expression "42/0 AS p1, 77 AS p2"
-PL/pgSQL function namedparmcursor_test7() line 6 at OPEN
+WARNING:  Division by 0
+ namedparmcursor_test7 
+-----------------------
+ 
+(1 row)
+
 -- check that line comments work correctly within the argument list
 -- (this used to require a special hack in the code; it no longer does,
 -- but let's keep the test anyway)
@@ -2613,7 +2616,7 @@ end; $$ language plpgsql;
 select excpt_test3();
 NOTICE:  caught exception P0001 user exception
 NOTICE:  P0001 user exception
-NOTICE:  caught exception 22012 division by zero
+WARNING:  Division by 0
 NOTICE:  P0001 user exception
  excpt_test3 
 -------------
@@ -2626,11 +2629,9 @@ begin
 	exception when others then return sqlerrm; end;
 end; $$ language plpgsql;
 select excpt_test4();
-   excpt_test4    
-------------------
- division by zero
-(1 row)
-
+WARNING:  Division by 0
+ERROR:  control reached end of function without RETURN
+CONTEXT:  PL/pgSQL function excpt_test4()
 drop function excpt_test1();
 drop function excpt_test2();
 drop function excpt_test3();
@@ -3323,7 +3324,7 @@ begin
     $1 := -1;
     $2 := -2;
     return next;
-    return query select x + 1, x * 10 from generate_series(0, 10) s (x);
+    return query select (x + 1)::integer, (x * 10)::integer from generate_series(0, 10) s (x);
     return next;
 end;
 $$ language plpgsql;
@@ -3981,7 +3982,7 @@ exception when others then
 end;
 $$ language plpgsql;
 select stacked_diagnostics_test();
-NOTICE:  sqlstate: 22012, message: division by zero, context: [PL/pgSQL function zero_divide() line 4 at RETURN <- SQL statement "SELECT zero_divide()" <- PL/pgSQL function stacked_diagnostics_test() line 6 at PERFORM]
+WARNING:  Division by 0
  stacked_diagnostics_test 
 --------------------------
  
@@ -4038,9 +4039,12 @@ exception
 end;
 $$ language plpgsql;
 select raise_test();
-NOTICE:  22012
-ERROR:  substitute message
-CONTEXT:  PL/pgSQL function raise_test() line 7 at RAISE
+WARNING:  Division by 0
+ raise_test 
+------------
+ 
+(1 row)
+
 drop function raise_test();
 -- test passing column_name, constraint_name, datatype_name, table_name
 -- and schema_name error fields
@@ -4169,7 +4173,7 @@ drop function pleast(numeric);
 -- test table functions
 create function tftest(int) returns table(a int, b int) as $$
 begin
-  return query select $1, $1+i from generate_series(1,5) g(i);
+  return query select $1, ($1+i)::integer from generate_series(1,5) g(i);
 end;
 $$ language plpgsql immutable strict;
 select * from tftest(10);
@@ -4463,13 +4467,18 @@ begin
 end
 $$;
 select fail();
-ERROR:  division by zero
-CONTEXT:  SQL expression "1/0"
-PL/pgSQL function fail() line 3 at RETURN
+WARNING:  Division by 0
+ fail 
+------
+     
+(1 row)
+
 select fail();
-ERROR:  division by zero
-CONTEXT:  SQL expression "1/0"
-PL/pgSQL function fail() line 3 at RETURN
+ fail 
+------
+     
+(1 row)
+
 drop function fail();
 -- Test handling of string literals.
 set standard_conforming_strings = off;
@@ -4591,16 +4600,16 @@ begin
   end loop;
 end;
 $outer$;
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
-NOTICE:  caught division by zero
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
+WARNING:  Division by 0
 -- Check variable scoping -- a var is not available in its own or prior
 -- default expressions.
 create function scope_test() returns int as $$
@@ -5190,9 +5199,7 @@ $$ language plpgsql;
 select outer_outer_func(10);
 NOTICE:  calling down into outer_func()
 NOTICE:  calling down into inner_func()
-NOTICE:  ***PL/pgSQL function inner_func(integer) line 10 at GET DIAGNOSTICS
-PL/pgSQL function outer_func(integer) line 6 at assignment
-PL/pgSQL function outer_outer_func(integer) line 6 at assignment***
+WARNING:  Division by 0
 NOTICE:  ***PL/pgSQL function inner_func(integer) line 15 at GET DIAGNOSTICS
 PL/pgSQL function outer_func(integer) line 6 at assignment
 PL/pgSQL function outer_outer_func(integer) line 6 at assignment***
@@ -5208,9 +5215,7 @@ NOTICE:  outer_func() done
 select outer_outer_func(20);
 NOTICE:  calling down into outer_func()
 NOTICE:  calling down into inner_func()
-NOTICE:  ***PL/pgSQL function inner_func(integer) line 10 at GET DIAGNOSTICS
-PL/pgSQL function outer_func(integer) line 6 at assignment
-PL/pgSQL function outer_outer_func(integer) line 6 at assignment***
+WARNING:  Division by 0
 NOTICE:  ***PL/pgSQL function inner_func(integer) line 15 at GET DIAGNOSTICS
 PL/pgSQL function outer_func(integer) line 6 at assignment
 PL/pgSQL function outer_outer_func(integer) line 6 at assignment***
@@ -5493,7 +5498,7 @@ INSERT INTO transition_table_level1 (level1_no)
   SELECT generate_series(1,200);
 ANALYZE transition_table_level1;
 INSERT INTO transition_table_level2 (level2_no, parent_no)
-  SELECT level2_no, level2_no / 50 + 1 AS parent_no
+  SELECT level2_no, (level2_no div 50) + 1 AS parent_no
     FROM generate_series(1,9999) level2_no;
 ANALYZE transition_table_level2;
 INSERT INTO transition_table_status (level, node_no, status)

@@ -604,7 +604,7 @@ float84le(double precision,float4)
 float84gt(double precision,float4)
 float84ge(double precision,float4)
 float8(float4)
-int4(smallint)
+"int4"(smallint)
 float8(integer)
 float4(integer)
 btint2cmp(smallint,smallint)
@@ -817,7 +817,7 @@ btfloat84cmp(double precision,float4)
 md5(text)
 md5(bytea)
 bool(integer)
-int4(boolean)
+"int4"(boolean)
 tidgt(tid,tid)
 tidlt(tid,tid)
 tidge(tid,tid)
@@ -1165,12 +1165,14 @@ ORDER BY 1, 2;
  //   | //
  <    | >
  <->  | <->
+ <<   | <<
  <<   | >>
  <<=  | >>=
  <=   | >=
  <>   | <>
  <@   | @>
  =    | =
+ >>   | >>
  ?#   | ?#
  ?-   | ?-
  ?-|  | ?-|
@@ -1183,7 +1185,7 @@ ORDER BY 1, 2;
  ~<=~ | ~>=~
  ~<~  | ~>~
  ~=   | ~=
-(34 rows)
+(35 rows)
 
 -- Likewise for negator pairs.
 SELECT DISTINCT o1.oprname AS op1, o2.oprname AS op2

@@ -81,7 +81,7 @@ SELECT last_value(ten) OVER (PARTITION BY four), ten, four FROM
 	(SELECT * FROM tenk1 WHERE unique2 < 10 ORDER BY four, ten)s
 	ORDER BY four, ten;
 
-SELECT nth_value(ten, four + 1) OVER (PARTITION BY four), ten, four
+SELECT nth_value(ten, (four + 1)::integer) OVER (PARTITION BY four), ten, four
 	FROM (SELECT * FROM tenk1 WHERE unique2 < 10 ORDER BY four, ten)s;
 
 SELECT ten, two, sum(hundred) AS gsum, sum(sum(hundred)) OVER (PARTITION BY two ORDER BY ten) AS wsum
@@ -1157,7 +1157,7 @@ sum_following AS (
 )
 SELECT DISTINCT
 	sum_following.s = sum_int_randomrestart(v) OVER fwd AS eq1,
-	-sum_following.s = sum_int_randomrestart(-v) OVER fwd AS eq2,
+	-sum_following.s = sum_int_randomrestart((-v)::integer) OVER fwd AS eq2,
 	100*3+(vs.i-1)*3 = length(logging_agg_nonstrict(''::text) OVER fwd) AS eq3
 FROM vs
 JOIN sum_following ON sum_following.i = vs.i

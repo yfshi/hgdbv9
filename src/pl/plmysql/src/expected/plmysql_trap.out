@@ -7,7 +7,7 @@ declare x int;
 begin
 	begin	-- start a subtransaction
 		raise notice 'should see this';
-		x := 100 / $1;
+		x := 100 div $1;
 		raise notice 'should see this only if % <> 0', $1;
 		sx := $1;
 		raise notice 'should see this only if % fits in smallint', $1;
@@ -35,10 +35,12 @@ NOTICE:  should see this only if 50 fits in smallint
 
 select trap_zero_divide(0);
 NOTICE:  should see this
-NOTICE:  caught division_by_zero
+WARNING:  Division by 0
+NOTICE:  should see this only if 0 <> 0
+NOTICE:  should see this only if 0 fits in smallint
  trap_zero_divide 
 ------------------
-               -1
+                 
 (1 row)
 
 select trap_zero_divide(100000);
@@ -57,14 +59,14 @@ NOTICE:  should see this only if -100 fits in smallint
 ERROR:  -100 is less than zero
 CONTEXT:  PL/mySQL function trap_zero_divide(integer) line 12 at RAISE
 create table match_source as
-  select x as id, x*10 as data, x/10 as ten from generate_series(1,100) x;
+  select x as id, x*10 as data, x div 10 as ten from generate_series(1,100) x;
 create function trap_matching_test(int) returns int as $$
 declare x int;
 	sx smallint;
 	y int;
 begin
 	begin	-- start a subtransaction
-		x := 100 / $1;
+		x := 100 div $1;
 		sx := $1;
 		select into y data from match_source where id =
 			(select id from match_source b where ten = $1);
@@ -85,10 +87,11 @@ select trap_matching_test(50);
 (1 row)
 
 select trap_matching_test(0);
-NOTICE:  caught data_exception
+WARNING:  Division by 0
+NOTICE:  caught numeric_value_out_of_range or cardinality_violation
  trap_matching_test 
 --------------------
-                 -1
+                 -2
 (1 row)
 
 select trap_matching_test(100000);

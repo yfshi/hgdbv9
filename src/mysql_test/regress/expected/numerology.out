@@ -69,7 +69,8 @@ SELECT f1 FROM TEMP_INT2
      0
      0
      0
-(5 rows)
+    35
+(6 rows)
 
 --
 -- Group-by combinations

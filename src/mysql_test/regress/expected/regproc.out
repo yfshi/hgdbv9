@@ -96,9 +96,9 @@ SELECT regoper('pg_catalog.||/');
 (1 row)
 
 SELECT regoperator('pg_catalog.+(int4,int4)');
-    regoperator     
---------------------
- +(integer,integer)
+          regoperator          
+-------------------------------
+ pg_catalog.+(integer,integer)
 (1 row)
 
 SELECT regproc('pg_catalog.now');

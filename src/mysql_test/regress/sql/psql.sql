@@ -154,9 +154,9 @@ select 'drop table gexec_test', 'select ''2000-01-01''::date as party_over'
 
 -- test multi-line headers, wrapping, and newline indicators
 -- in aligned, unaligned, and wrapped formats
-prepare q as select array_to_string(array_agg(repeat('x',2*n)),E'\n') as "ab
+prepare q as select array_to_string(array_agg(repeat('x',(2*n)::integer)),E'\n') as "ab
 
-c", array_to_string(array_agg(repeat('y',20-2*n)),E'\n') as "a
+c", array_to_string(array_agg(repeat('y',(20-2*n)::integer)),E'\n') as "a
 bc" from generate_series(1,10) as n(n) group by n>1 order by n>1;
 
 \pset linestyle ascii
@@ -274,7 +274,7 @@ execute q;
 deallocate q;
 
 -- test single-line header and data
-prepare q as select repeat('x',2*n) as "0123456789abcdef", repeat('y',20-2*n) as "0123456789" from generate_series(1,10) as n;
+prepare q as select repeat('x',(2*n)::integer) as "0123456789abcdef", repeat('y',(20-2*n)::integer) as "0123456789" from generate_series(1,10) as n;
 
 \pset linestyle ascii
 

@@ -113,7 +113,7 @@ DECLARE
     x int := 3;
     y int := 4;
 BEGIN
-    CALL test_proc6(2, x + 1, y);  -- error
+    CALL test_proc6(2, (x + 1)::integer, y);  -- error
     RAISE INFO 'x = %, y = %', x, y;
 END;
 $$;
@@ -150,9 +150,9 @@ END IF;
 END;
 $$;
 CALL test_proc7(100, -1, -1);
- a | b 
----+---
- 0 | 1
+ a |   b    
+---+--------
+ 0 | 1.0000
 (1 row)
 
 -- inner COMMIT with output arguments
@@ -175,7 +175,7 @@ BEGIN
 END
 $$;
 CALL test_proc7cc(10);
-NOTICE:  _x: 10,_a: 1, _b: 5
+NOTICE:  _x: 10,_a: 1, _b: 5.0000
 -- named parameters and defaults
 CREATE PROCEDURE test_proc8a(INOUT a int, INOUT b int)
 LANGUAGE plmysql

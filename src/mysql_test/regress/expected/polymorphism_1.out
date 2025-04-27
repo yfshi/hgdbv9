@@ -784,7 +784,7 @@ select f3, myaggn10a(f1) from t group by f3 order by f3;
  c  | {1,2}
 (3 rows)
 
-select mysum2(f1, f1 + 1) from t;
+select mysum2(f1, (f1 + 1)::integer) from t;
  mysum2 
 --------
      38
