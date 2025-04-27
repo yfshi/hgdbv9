@@ -20,6 +20,10 @@
 #ifndef COMMON_INT_H
 #define COMMON_INT_H
 
+/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
+typedef int16 (*Mysql_int_datatype_in_hook_type) (const char *str);
+extern PGDLLIMPORT Mysql_int_datatype_in_hook_type mysql_int_datatype_in_hook;
+/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 
 /*---------
  * The following guidelines apply to all the routines:

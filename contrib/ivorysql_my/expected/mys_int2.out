@@ -1,0 +1,763 @@
+select '0'::smallint;
+ int2 
+------
+    0
+(1 row)
+
+select '-32768'::smallint;
+  int2  
+--------
+ -32768
+(1 row)
+
+select '32767'::smallint;
+ int2  
+-------
+ 32767
+(1 row)
+
+select '-32769'::smallint;
+ERROR:  value "-32769" is out of range for type smallint
+LINE 1: select '-32769'::smallint;
+               ^
+select '32768'::smallint;
+ERROR:  value "32768" is out of range for type smallint
+LINE 1: select '32768'::smallint;
+               ^
+--smallint[(M)]
+create table t1 (a smallint[-1]); --fail
+ERROR:  syntax error at or near "-"
+LINE 1: create table t1 (a smallint[-1]);
+                                    ^
+create table t2 (a smallint(0));
+\d t2
+                 Table "public.t2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ a      | smallint |           |          | 
+
+insert into t2 values (1);
+select * from t2;
+ a 
+---
+ 1
+(1 row)
+
+drop table t2;
+create table t2 (a smallint(3));
+\d t2
+                 Table "public.t2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ a      | smallint |           |          | 
+
+insert into t2 values (2);
+select * from t2;
+ a 
+---
+ 2
+(1 row)
+
+drop table t2;
+--int2
+create table t2 (a int2);
+insert into t2 values(0);
+insert into t2 values(1);
+insert into t2 values(-1);
+insert into t2 values(-32768);
+insert into t2 values(32767);
+insert into t2 values(-32769);
+ERROR:  smallint out of range
+insert into t2 values(32768);
+ERROR:  smallint out of range
+select * from t2;
+   a    
+--------
+      0
+      1
+     -1
+ -32768
+  32767
+(5 rows)
+
+drop table t2;
+create table t2 (a int2 SIGNED);
+insert into t2 values(0);
+insert into t2 values(1);
+insert into t2 values(-1);
+insert into t2 values(-32768);
+insert into t2 values(32767);
+insert into t2 values(-32769);
+ERROR:  smallint out of range
+insert into t2 values(32768);
+ERROR:  smallint out of range
+select * from t2;
+   a    
+--------
+      0
+      1
+     -1
+ -32768
+  32767
+(5 rows)
+
+drop table t2;
+--smallint
+create table t1 (a smallint);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-32768);
+insert into t1 values(32767);
+insert into t1 values(-32769);
+ERROR:  smallint out of range
+insert into t1 values(32768);
+ERROR:  smallint out of range
+select * from t1;
+   a    
+--------
+      0
+      1
+     -1
+ -32768
+  32767
+(5 rows)
+
+drop table t1;
+create table t1 (a smallint SIGNED);
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(-1);
+insert into t1 values(-32768);
+insert into t1 values(32767);
+insert into t1 values(-32769);
+ERROR:  smallint out of range
+insert into t1 values(32768);
+ERROR:  smallint out of range
+select * from t1;
+   a    
+--------
+      0
+      1
+     -1
+ -32768
+  32767
+(5 rows)
+
+drop table t1;
+CREATE TABLE t1 (sint16 smallint not null);
+INSERT INTO t1 VALUES ('0.1');
+INSERT INTO t1 VALUES ('0.5');
+INSERT INTO t1 VALUES ('32767.4');
+INSERT INTO t1 VALUES ('32767.5');
+ERROR:  value "32767.5" is out of range for type smallint
+LINE 1: INSERT INTO t1 VALUES ('32767.5');
+                               ^
+INSERT INTO t1 VALUES ('-0.1');
+INSERT INTO t1 VALUES ('-0.5');
+INSERT INTO t1 VALUES ('-32767.4');
+INSERT INTO t1 VALUES ('-32767.5');
+INSERT INTO t1 VALUES ('-32768.4');
+INSERT INTO t1 VALUES ('-32768.5');
+ERROR:  value "-32768.5" is out of range for type smallint
+LINE 1: INSERT INTO t1 VALUES ('-32768.5');
+                               ^
+SELECT * FROM t1;
+ sint16 
+--------
+      0
+      1
+  32767
+      0
+     -1
+ -32767
+ -32768
+ -32768
+(8 rows)
+
+DROP TABLE t1;
+CREATE TABLE t1(col1 SMALLINT);
+INSERT INTO t1 VALUES(-32768),(0),(32767),('-32768'),('32767'),(-32768.0),(32767.0);
+--error 1264
+INSERT INTO t1 (col1) VALUES(-32769);
+ERROR:  smallint out of range
+--error 1264
+INSERT INTO t1 (col1) VALUES(32768);
+ERROR:  smallint out of range
+--error 1264
+INSERT INTO t1 (col2) VALUES(-1);
+ERROR:  column "col2" of relation "t1" does not exist
+LINE 1: INSERT INTO t1 (col2) VALUES(-1);
+                        ^
+--error 1264
+INSERT INTO t1 (col2) VALUES(65536);
+ERROR:  column "col2" of relation "t1" does not exist
+LINE 1: INSERT INTO t1 (col2) VALUES(65536);
+                        ^
+--error 1264
+INSERT INTO t1 (col1) VALUES('-32769');
+ERROR:  value "-32769" is out of range for type smallint
+LINE 1: INSERT INTO t1 (col1) VALUES('-32769');
+                                     ^
+--error 1264
+INSERT INTO t1 (col1) VALUES('32768');
+ERROR:  value "32768" is out of range for type smallint
+LINE 1: INSERT INTO t1 (col1) VALUES('32768');
+                                     ^
+--error 1264
+INSERT INTO t1 (col1) VALUES(-32769.0);
+ERROR:  smallint out of range
+--error 1264
+INSERT INTO t1 (col1) VALUES(32768.0);
+ERROR:  smallint out of range
+INSERT INTO t1 (col1) VALUES ('');
+ERROR:  invalid input syntax for type smallint: ""
+LINE 1: INSERT INTO t1 (col1) VALUES ('');
+                                      ^
+INSERT INTO t1 (col1) VALUES ('a59b');
+ERROR:  invalid input syntax for type smallint: "a59b"
+LINE 1: INSERT INTO t1 (col1) VALUES ('a59b');
+                                      ^
+INSERT INTO t1 (col1) VALUES ('1a');
+ERROR:  invalid input syntax for type smallint: "1a"
+LINE 1: INSERT INTO t1 (col1) VALUES ('1a');
+                                      ^
+SELECT * FROM t1;
+  col1  
+--------
+ -32768
+      0
+  32767
+ -32768
+  32767
+ -32768
+  32767
+(7 rows)
+
+DROP TABLE t1;
+--create tables
+CREATE TABLE t1(c1 SMALLINT NOT NULL, c2 SMALLINT NOT NULL);
+\d t1;
+                 Table "public.t1"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ c1     | smallint |           | not null | 
+ c2     | smallint |           | not null | 
+
+CREATE TABLE t2(c1 SMALLINT NULL);
+\d t2;
+                 Table "public.t2"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ c1     | smallint |           |          | 
+
+CREATE TABLE t3(c1 SMALLINT NOT NULL);
+\d t3;
+                 Table "public.t3"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ c1     | smallint |           | not null | 
+
+CREATE TABLE t4(c1 SMALLINT(5) NULL DEFAULT 1);
+\d t4;
+                 Table "public.t4"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ c1     | smallint |           |          | 1
+
+CREATE TABLE t5(c1 SMALLINT(1) NULL);
+\d t5;
+                 Table "public.t5"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ c1     | smallint |           |          | 
+
+DROP TABLE t1,t2,t3,t4,t5;
+--operator
+create table tb_test(id int2);
+insert into tb_test values (123),(-121),(0);
+select !id from tb_test;
+ ?column? 
+----------
+        0
+        0
+        1
+(3 rows)
+
+select ~id from tb_test;
+ ?column? 
+----------
+     -124
+      120
+       -1
+(3 rows)
+
+select +id from tb_test;
+ ?column? 
+----------
+      123
+     -121
+        0
+(3 rows)
+
+select -id from tb_test;
+ ?column? 
+----------
+     -123
+      121
+        0
+(3 rows)
+
+select * from tb_test;
+  id  
+------
+  123
+ -121
+    0
+(3 rows)
+
+drop table tb_test;
+create table t1 (col1 int2, col2 int2);
+insert into t1 values(1, 123);
+insert into t1 values(1, -123);
+select col1 + col2 from t1;
+ ?column? 
+----------
+      124
+     -122
+(2 rows)
+
+select col1 - col2 from t1;
+ ?column? 
+----------
+     -122
+      124
+(2 rows)
+
+select col1 * col2 from t1;
+ ?column? 
+----------
+      123
+     -123
+(2 rows)
+
+select col1 / col2 from t1;
+ ?column? 
+----------
+   0.0081
+  -0.0081
+(2 rows)
+
+select col1 div col2 from t1;
+ mys_div 
+---------
+       0
+       0
+(2 rows)
+
+select col1 % col2 from t1;
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+select col1 & col2 from t1;
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+select col1 | col2 from t1;
+ ?column? 
+----------
+      123
+     -123
+(2 rows)
+
+select col1 ^ col2 from t1; --failed
+ ?column? 
+----------
+      122
+     -124
+(2 rows)
+
+select col1 || col2 from t1;
+ ?column? 
+----------
+ t
+ t
+(2 rows)
+
+select col1 && col2 from t1;
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+select col1 <=> col2 from t1;
+ ?column? 
+----------
+        0
+        0
+(2 rows)
+
+drop table t1;
+CREATE TABLE t1(c1 SMALLINT);
+INSERT INTO t1 (c1) VALUES(0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+SELECT * FROM t1 WHERE c1 > 5;
+ c1 
+----
+  6
+  7
+  8
+  9
+(4 rows)
+
+SELECT * FROM t1 WHERE c1 >= 5;
+ c1 
+----
+  5
+  6
+  7
+  8
+  9
+(5 rows)
+
+SELECT * FROM t1 WHERE c1 = 5;
+ c1 
+----
+  5
+(1 row)
+
+SELECT * FROM t1 WHERE c1 != 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  6
+  7
+  8
+  9
+(9 rows)
+
+SELECT * FROM t1 WHERE c1 <> 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  6
+  7
+  8
+  9
+(9 rows)
+
+SELECT * FROM t1 WHERE c1 < 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+(5 rows)
+
+SELECT * FROM t1 WHERE c1 <= 5;
+ c1 
+----
+  0
+  1
+  2
+  3
+  4
+  5
+(6 rows)
+
+DROP TABLE t1;
+------------------------------
+--from int2 to other pg type
+------------------------------
+select '123'::smallint::pg_catalog.int4;
+ int4 
+------
+  123
+(1 row)
+
+select '123'::smallint::pg_catalog.int8;
+ int8 
+------
+  123
+(1 row)
+
+select '123'::smallint::pg_catalog.float4;
+ float4 
+--------
+    123
+(1 row)
+
+select '123'::smallint::pg_catalog.float8;
+ float8 
+--------
+    123
+(1 row)
+
+select '123'::smallint::pg_catalog.numeric;
+ numeric 
+---------
+     123
+(1 row)
+
+select '123'::smallint::pg_catalog.oid;
+ oid 
+-----
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regclass;
+ regclass 
+----------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.char;
+ char 
+------
+ 1
+(1 row)
+
+select '123'::smallint::pg_catalog.varchar;
+ varchar 
+---------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.bpchar;
+ bpchar 
+--------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.text;
+ text 
+------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regoperator;
+ regoperator 
+-------------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regcollation;
+ regcollation 
+--------------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regtype;
+ regtype 
+---------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regconfig;
+ regconfig 
+-----------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regdictionary;
+ regdictionary 
+---------------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regnamespace;
+ regnamespace 
+--------------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regrole;
+ regrole 
+---------
+ 123
+(1 row)
+
+select '123'::smallint::pg_catalog.regproc;
+ regproc 
+---------
+ box_in
+(1 row)
+
+select '123'::smallint::pg_catalog.regprocedure;
+  regprocedure   
+-----------------
+ box_in(cstring)
+(1 row)
+
+select '123'::smallint::pg_catalog.regoper;
+ regoper 
+---------
+ 123
+(1 row)
+
+----------------------------------
+--from other pg type to smallint
+----------------------------------
+select cast('32767'::pg_catalog.int2 as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32767'::pg_catalog.int4 as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32767'::pg_catalog.int8 as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32767'::pg_catalog.float4 as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32767'::pg_catalog.float8 as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32767'::pg_catalog.numeric as smallint);
+ int2  
+-------
+ 32767
+(1 row)
+
+select cast('32768'::pg_catalog.int2 as smallint);
+ERROR:  value "32768" is out of range for type smallint
+LINE 1: select cast('32768'::pg_catalog.int2 as smallint);
+                    ^
+select cast('32768'::pg_catalog.int4 as smallint);
+ERROR:  smallint out of range
+select cast('32768'::pg_catalog.int8 as smallint);
+ERROR:  smallint out of range
+select cast('32768'::pg_catalog.float4 as smallint);
+ERROR:  smallint out of range
+select cast('32768'::pg_catalog.float8 as smallint);
+ERROR:  smallint out of range
+select cast('32768'::pg_catalog.numeric as smallint);
+ERROR:  smallint out of range
+select cast('-32768'::pg_catalog.int2 as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32768'::pg_catalog.int4 as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32768'::pg_catalog.int8 as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32768'::pg_catalog.float4 as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32768'::pg_catalog.float8 as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32768'::pg_catalog.numeric as smallint);
+  int2  
+--------
+ -32768
+(1 row)
+
+select cast('-32769'::pg_catalog.int2 as smallint);
+ERROR:  value "-32769" is out of range for type smallint
+LINE 1: select cast('-32769'::pg_catalog.int2 as smallint);
+                    ^
+select cast('-32769'::pg_catalog.int4 as smallint);
+ERROR:  smallint out of range
+select cast('-32769'::pg_catalog.int8 as smallint);
+ERROR:  smallint out of range
+select cast('-32769'::pg_catalog.float4 as smallint);
+ERROR:  smallint out of range
+select cast('-32769'::pg_catalog.float8 as smallint);
+ERROR:  smallint out of range
+select cast('-32769'::pg_catalog.numeric as smallint);
+ERROR:  smallint out of range
+select '123'::pg_catalog.int2::smallint;
+ int2 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.int4::smallint;
+ int2 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.int8::smallint;
+ int2 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.float4::smallint;
+ int2 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.float8::smallint;
+ int2 
+------
+  123
+(1 row)
+
+select '123'::pg_catalog.numeric::smallint;
+ int2 
+------
+  123
+(1 row)
+
+--view
+create table t1 (s1 smallint);
+create view v1 as select * from t1 where 20 < (select (s1) from t1);
+insert into v1 values (30);
+create view v2 as select * from t1;
+create view v3 as select * from t1 where 20 < (select (s1) from v2);
+insert into v3 values (30);
+create view v4 as select * from v2 where 20 < (select (s1) from t1);
+insert into v4 values (30);
+drop view v4, v3, v2, v1;
+drop table t1;

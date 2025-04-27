@@ -7,6 +7,8 @@ OBJS = \
 	src/ivorysql_my.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
+	src/datatype/my_ctype_simple.o \
+	src/datatype/mysint2.o \
 	src/datatype/myyear.o \
 	src/datatype/mysdate.o \
 	src/datatype/mys_int1.o \
@@ -83,9 +85,12 @@ MYS_REGRESS = multi_update \
 			  mys_time	\
 			  show_charset \
 			  mys_int1	\
+			  mys_int2	\
 			  mys_float \
 			  mys-char-varchar \
 			  mys_int3
+
+
 
 
 ifdef USE_PGXS

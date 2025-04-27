@@ -57,7 +57,6 @@
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
-typedef unsigned long int ulong;
 typedef unsigned long int my_wc_t;
 
 typedef struct MY_COLLATION_HANDLER MY_COLLATION_HANDLER;

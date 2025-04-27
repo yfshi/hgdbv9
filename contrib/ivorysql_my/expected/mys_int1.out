@@ -309,11 +309,11 @@ select a / b from test1;
  ?column? 
 ----------
          
-        1
-        1
-        0
-        2
-        7
+   1.6667
+   1.6667
+   0.2500
+   2.0000
+   7.0000
 (6 rows)
 
 select a % b from test1;
@@ -334,12 +334,12 @@ LINE 1: select not a from test1;
 select !a from test1;
  ?column? 
 ----------
- 
- f
- f
- f
- f
- f
+         
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 select a AND b from test1;
@@ -349,12 +349,12 @@ LINE 1: select a AND b from test1;
 select a && b from test1;
  ?column? 
 ----------
- 
- t
- t
- t
- t
- t
+         
+        1
+        1
+        1
+        1
+        1
 (6 rows)
 
 select a or b from test1;
@@ -489,12 +489,12 @@ select a >= b from test1;
 select a <=> b from test1;
  ?column? 
 ----------
- f
- f
- f
- f
- f
- f
+        0
+        0
+        0
+        0
+        0
+        0
 (6 rows)
 
 drop table test1;
