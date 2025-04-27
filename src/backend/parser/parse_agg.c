@@ -27,6 +27,8 @@
 #include "parser/parsetree.h"
 #include "rewrite/rewriteManip.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 #include "utils/lsyscache.h"
 
 
@@ -1488,6 +1490,45 @@ check_ungrouped_columns_walker(Node *node,
 		context->sublevels_up--;
 		return result;
 	}
+
+	/* Begin - BUG#Z4610 */
+	if (compatible_db == MYS_PARSER)
+	{
+		if (IsA(node, TargetEntry))
+		{
+			/** 
+			 * Statement without GROUP BY clause.
+			 */
+			if (context->groupClauses == NULL)
+			{
+				TargetEntry *tle = (TargetEntry *) node;
+
+				/**
+				 * The TargetEntry may be add by order by.
+				 */
+				if (tle->resjunk)
+				{
+					/**
+					 * This may be WITHIN GROUP statement, just go ahead.
+					 */
+					if (IsA(tle->expr, Aggref))
+					{
+						node = (Node *) tle->expr;
+					}
+					else
+					{
+						/**
+						 * The statement 'SELECT count(*) from tbl order by col', it's illegal
+				 		 * in postgresql, but LEGAL in MySQL.
+						 */
+						return false;
+					}
+				}
+			}
+		}
+	}
+	/* End - BUG#Z4610 */
+
 	return expression_tree_walker(node, check_ungrouped_columns_walker,
 								  (void *) context);
 }
