@@ -1118,6 +1118,29 @@
 
 /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 
+/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+{ oid => '9264', array_type_oid => '9265',
+  descr => 'MySQL TINYTEXT datatype',  typnamespace => 'ivymy',
+  typname => 'tinytext', typtype => 'd', typlen => '-1', typbyval => 'f', typcategory => 'S',
+  typispreferred => 'f', typinput => 'domain_in', typoutput => 'textout',
+  typreceive => 'domain_recv', typsend => 'textsend', typalign => 'i',
+  typstorage => 'x', typnotnull =>'f', typbasetype =>'text', typtypmod => '-1', typcollation => 'default' },
+{
+  oid => '9266', array_type_oid => '9267',
+  descr => 'MySQL MEDIUMTEXT datatype',  typnamespace => 'ivymy',
+  typname => 'mediumtext', typtype => 'd', typlen => '-1', typbyval => 'f', typcategory => 'S',
+  typispreferred => 'f', typinput => 'domain_in', typoutput => 'textout',
+  typreceive => 'domain_recv', typsend => 'textsend', typalign => 'i',
+  typstorage => 'x', typnotnull =>'f', typbasetype =>'text', typtypmod => '-1', typcollation => 'default' },
+{
+  oid => '9268', array_type_oid => '9269',
+  descr => 'MySQL LONGTEXT datatype',  typnamespace => 'ivymy',
+  typname => 'longtext', typtype => 'd', typlen => '-1', typbyval => 'f', typcategory => 'S',
+  typispreferred => 'f', typinput => 'domain_in', typoutput => 'textout',
+  typreceive => 'domain_recv', typsend => 'textsend', typalign => 'i',
+  typstorage => 'x', typnotnull =>'f', typbasetype =>'text', typtypmod => '-1', typcollation => 'default' },
+/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+
 /*END MySQL Compatibility Metadatas*/
 
 ]

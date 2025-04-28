@@ -1642,40 +1642,28 @@ select NULL && cast(111 as int UNSIGNED);
 (1 row)
 
 --"||"
-select cast(111 as int UNSIGNED) || 111;
+select cast(111 as int UNSIGNED) || true;
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select cast(111 as int UNSIGNED) || -111;
+select cast(111 as int UNSIGNED) || false;
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select cast(111 as int UNSIGNED) || NULL;
+select true || cast(111 as int UNSIGNED);
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select 111 || cast(111 as int UNSIGNED);
+select false || cast(111 as int UNSIGNED);
  ?column? 
 ----------
-        1
-(1 row)
-
-select -111 || cast(111 as int UNSIGNED);
- ?column? 
-----------
-        1
-(1 row)
-
-select NULL || cast(111 as int UNSIGNED);
- ?column? 
-----------
-        1
+ t
 (1 row)
 
 --"!"

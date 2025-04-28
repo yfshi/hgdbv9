@@ -489,6 +489,7 @@ extern PGDLLIMPORT bool myenable_case_switch;
 /* End - ReqID:SRS-MYSQL-CASE */
 
 extern PGDLLIMPORT bool not_mode_pad_char_to_full;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
+extern PGDLLIMPORT bool mysql_convert;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 
 /*
  * Functions exported by guc.c

@@ -439,12 +439,10 @@ select -111 && cast(111 as int UNSIGNED);
 select NULL && cast(111 as int UNSIGNED);
 
 --"||"
-select cast(111 as int UNSIGNED) || 111;
-select cast(111 as int UNSIGNED) || -111;
-select cast(111 as int UNSIGNED) || NULL;
-select 111 || cast(111 as int UNSIGNED);
-select -111 || cast(111 as int UNSIGNED);
-select NULL || cast(111 as int UNSIGNED);
+select cast(111 as int UNSIGNED) || true;
+select cast(111 as int UNSIGNED) || false;
+select true || cast(111 as int UNSIGNED);
+select false || cast(111 as int UNSIGNED);
 
 --"!"
 select !cast(111 as int UNSIGNED);

@@ -5683,58 +5683,35 @@ select cast('221222222222' as date) && 1.5; --1
 (1 row)
 
 -- ||
+set sql_mode='ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 select cast('111111111111' as date) || cast('111111111110' as date); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select cast('111111111111' as date) || 111; --1
+select cast('111111111111' as date) || true; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select cast('221222222222' as date) || 111.1; --1
+select cast('221222222222' as date) || false; --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select cast('111111111111' as date) || 0; --1
+select true || cast('221222222220' as date); --1
  ?column? 
 ----------
-        1
+ t
 (1 row)
 
-select 111111111111 || cast('221222222220' as date); --1
+select false || cast('221222222220' as date); --1
  ?column? 
 ----------
-        1
-(1 row)
-
-select 111111111111.111 || cast('221222222220' as date); --1
- ?column? 
-----------
-        1
-(1 row)
-
-select 0 || cast('221222222220' as date); --1
- ?column? 
-----------
-        1
-(1 row)
-
-select cast('221222222222' as date) || 1.4; --1
- ?column? 
-----------
-        1
-(1 row)
-
-select cast('221222222222' as date) || 1.5; --1
- ?column? 
-----------
-        1
+ t
 (1 row)
 
 -- !

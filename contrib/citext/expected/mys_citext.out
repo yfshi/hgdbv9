@@ -1104,10 +1104,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('foo'::bytea);
 -- Cannot cast to boolean on assignment.
 INSERT INTO caster (boolean)       VALUES ('t'::text);
-ERROR:  column "boolean" is of type boolean but expression is of type text
-LINE 1: INSERT INTO caster (boolean)       VALUES ('t'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('t'::boolean);
 INSERT INTO caster (boolean)       VALUES ('t'::citext);
 ERROR:  column "boolean" is of type boolean but expression is of type citext
@@ -1117,10 +1113,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('t'::boolean);
 -- Cannot cast to float8 on assignment.
 INSERT INTO caster (float8)        VALUES ('12.42'::text);
-ERROR:  column "float8" is of type double precision but expression is of type text
-LINE 1: INSERT INTO caster (float8)        VALUES ('12.42'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12.42'::float8);
 INSERT INTO caster (float8)        VALUES ('12.42'::citext);
 ERROR:  column "float8" is of type double precision but expression is of type citext
@@ -1156,10 +1148,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('12.42'::numeric);
 -- Cannot cast to int8 on assignment.
 INSERT INTO caster (int8)          VALUES ('12'::text);
-ERROR:  column "int8" is of type bigint but expression is of type text
-LINE 1: INSERT INTO caster (int8)          VALUES ('12'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12'::int8);
 INSERT INTO caster (int8)          VALUES ('12'::citext);
 ERROR:  column "int8" is of type bigint but expression is of type citext
@@ -1169,10 +1157,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('12'::int8);
 -- Cannot cast to int4 on assignment.
 INSERT INTO caster (int4)          VALUES ('12'::text);
-ERROR:  column "int4" is of type integer but expression is of type text
-LINE 1: INSERT INTO caster (int4)          VALUES ('12'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12'::int4);
 INSERT INTO caster (int4)          VALUES ('12'::citext);
 ERROR:  column "int4" is of type integer but expression is of type citext
@@ -1182,10 +1166,6 @@ HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (citext)        VALUES ('12'::int4);
 -- Cannot cast to int2 on assignment.
 INSERT INTO caster (int2)          VALUES ('12'::text);
-ERROR:  column "int2" is of type smallint but expression is of type text
-LINE 1: INSERT INTO caster (int2)          VALUES ('12'::text);
-                                                   ^
-HINT:  You will need to rewrite or cast the expression.
 INSERT INTO caster (text)          VALUES ('12'::int2);
 INSERT INTO caster (int2)          VALUES ('12'::citext);
 ERROR:  column "int2" is of type smallint but expression is of type citext

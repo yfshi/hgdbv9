@@ -201,14 +201,14 @@ SELECT bool 'f' <= bool 't' AS true;
 SELECT 'TrUe'::text::boolean AS true, 'fAlse'::text::boolean AS false;
  true | false 
 ------+-------
- t    | f
+ f    | f
 (1 row)
 
 SELECT '    true   '::text::boolean AS true,
        '     FALSE'::text::boolean AS false;
  true | false 
 ------+-------
- t    | f
+ f    | f
 (1 row)
 
 SELECT true::boolean::text AS true, false::boolean::text AS false;
@@ -218,9 +218,17 @@ SELECT true::boolean::text AS true, false::boolean::text AS false;
 (1 row)
 
 SELECT '  tru e '::text::boolean AS invalid;    -- error
-ERROR:  invalid input syntax for type boolean: "  tru e "
+ invalid 
+---------
+ f
+(1 row)
+
 SELECT ''::text::boolean AS invalid;            -- error
-ERROR:  invalid input syntax for type boolean: ""
+ invalid 
+---------
+ f
+(1 row)
+
 CREATE TABLE BOOLTBL1 (f1 bool);
 INSERT INTO BOOLTBL1 (f1) VALUES (bool 't');
 INSERT INTO BOOLTBL1 (f1) VALUES (bool 'True');

@@ -30,7 +30,7 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT STABLE PARALLEL SAFE;  -- stable because depends on pg_trgm.similarity_threshold
 
-CREATE OPERATOR % (
+CREATE OPERATOR pg_catalog.% (
         LEFTARG = text,
         RIGHTARG = text,
         PROCEDURE = similarity_op,
@@ -170,7 +170,7 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR CLASS gist_trgm_ops
 FOR TYPE text USING gist
 AS
-        OPERATOR        1       % (text, text),
+        OPERATOR        1       pg_catalog.% (text, text),
         FUNCTION        1       gtrgm_consistent (internal, text, smallint, oid, internal),
         FUNCTION        2       gtrgm_union (internal, internal),
         FUNCTION        3       gtrgm_compress (internal),
@@ -223,7 +223,7 @@ LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 CREATE OPERATOR CLASS gin_trgm_ops
 FOR TYPE text USING gin
 AS
-        OPERATOR        1       % (text, text),
+        OPERATOR        1       pg_catalog.% (text, text),
         FUNCTION        1       btint4cmp (int4, int4),
         FUNCTION        2       gin_extract_value_trgm (text, internal),
         FUNCTION        3       gin_extract_query_trgm (text, internal, int2, internal, internal, internal, internal),

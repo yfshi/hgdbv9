@@ -345,12 +345,10 @@ select -111 && cast(111 as UNSIGNED);--1
 select NULL && cast(111 as UNSIGNED);--NULL
 
 --"||"
-select cast(111 as UNSIGNED) || 111;--1
-select cast(111 as UNSIGNED) || -111;--1
-select cast(111 as UNSIGNED) || NULL;--1
-select 111 || cast(111 as UNSIGNED);--1
-select -111 || cast(111 as UNSIGNED);--1
-select NULL || cast(111 as UNSIGNED);--1
+select cast(111 as UNSIGNED) || true;--1
+select cast(111 as UNSIGNED) || false;--1
+select true || cast(111 as UNSIGNED);--1
+select false || cast(111 as UNSIGNED);--1
 
 --"!"
 select !cast(111 as UNSIGNED); --0

@@ -1,0 +1,1757 @@
+set mysql.mysql_convert = true;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_001
+create table tb(col national tinytext);  -- fail
+ERROR:  syntax error at or near "tinytext"
+LINE 1: create table tb(col national tinytext);
+                                     ^
+drop table if exists tb;
+NOTICE:  table "tb" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_002
+create table tb (col tinytext character set utf32);  -- success
+ERROR:  syntax error at or near "character"
+LINE 1: create table tb (col tinytext character set utf32);
+                                      ^
+drop table if exists tb;
+NOTICE:  table "tb" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_003
+create table tb(col tinytext collate armscii8_general_ci);
+ERROR:  collation "armscii8_general_ci" for encoding "UTF8" does not exist
+LINE 1: create table tb(col tinytext collate armscii8_general_ci);
+                                     ^
+drop table if exists tb;
+NOTICE:  table "tb" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_004
+create table tb(col tinytext charset gbk);
+ERROR:  syntax error at or near "charset"
+LINE 1: create table tb(col tinytext charset gbk);
+                                     ^
+insert into tb values(repeat('中',127));  -- success
+ERROR:  relation "tb" does not exist
+LINE 1: insert into tb values(repeat('中',127));
+                    ^
+insert into tb values(repeat('中',128));  -- fail
+ERROR:  relation "tb" does not exist
+LINE 1: insert into tb values(repeat('中',128));
+                    ^
+drop table if exists tb;
+NOTICE:  table "tb" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_005
+create table tb(col tinytext charset utf8);
+ERROR:  syntax error at or near "charset"
+LINE 1: create table tb(col tinytext charset utf8);
+                                     ^
+insert into tb values(repeat('中',85));  -- success
+ERROR:  relation "tb" does not exist
+LINE 1: insert into tb values(repeat('中',85));
+                    ^
+insert into tb values(repeat('中',86));  -- fail
+ERROR:  relation "tb" does not exist
+LINE 1: insert into tb values(repeat('中',86));
+                    ^
+drop table if exists tb;
+NOTICE:  table "tb" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_006
+create table tb1(col text(0) charset utf8);  -- tinytext
+ERROR:  syntax error at or near "charset"
+LINE 1: create table tb1(col text(0) charset utf8);
+                                     ^
+\d+ tb1
+create table tb2(col text(85) charset utf8);  -- tinytext
+ERROR:  syntax error at or near "charset"
+LINE 1: create table tb2(col text(85) charset utf8);
+                                      ^
+\d+ tb2
+insert into tb1 values(repeat('中',85));  -- success
+ERROR:  relation "tb1" does not exist
+LINE 1: insert into tb1 values(repeat('中',85));
+                    ^
+insert into tb1 values(repeat('中',86));  -- fail
+ERROR:  relation "tb1" does not exist
+LINE 1: insert into tb1 values(repeat('中',86));
+                    ^
+drop table if exists tb1,tb2;
+NOTICE:  table "tb1" does not exist, skipping
+NOTICE:  table "tb2" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_001
+create table tb(col tinytext charset utf8);
+ERROR:  syntax error at or near "charset"
+LINE 1: create table tb(col tinytext charset utf8);
+                                     ^
+insert into tb1 values(repeat('中',86)); -- fail
+ERROR:  relation "tb1" does not exist
+LINE 1: insert into tb1 values(repeat('中',86));
+                    ^
+set sql_mode='';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+insert into tb1 values(repeat('中',86)); -- success
+ERROR:  relation "tb1" does not exist
+LINE 1: insert into tb1 values(repeat('中',86));
+                    ^
+select char_length(col) from tb1;  -- 85
+ERROR:  relation "tb1" does not exist
+LINE 1: select char_length(col) from tb1;
+                                     ^
+set sql_mode='TRADITIONAL';
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+insert into tb1 values(repeat('中',86)); -- fail
+ERROR:  relation "tb1" does not exist
+LINE 1: insert into tb1 values(repeat('中',86));
+                    ^
+drop table if exists tb1;
+NOTICE:  table "tb1" does not exist, skipping
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_002
+create table tb(id int,col tinytext);
+insert into tb values(1,'abc'); -- success
+select char_length(col) from tb where id=1; -- 3
+ char_length 
+-------------
+           3
+(1 row)
+
+set sql_mode = 'PAD_CHAR_TO_FULL_LENGTH'; -- success
+WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+insert into tb values(2,'abc'); -- success
+select char_length(col) from tb where id=2; -- 3
+ char_length 
+-------------
+           3
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_SQLMODE_003
+create table tb(col tinytext);
+insert into tb values (' abcd'),('abc '),('abc  '),('abc   ');
+select col,char_length(col) from tb where col=' abcd';
+  col  | char_length 
+-------+-------------
+  abcd |           5
+(1 row)
+
+drop table tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_001
+create table tb(id int,col1 tinytext, col2 tinytext);
+insert into tb values(1,'a','b');
+select col1+col2 from tb where id=1; -- 0
+ ?column? 
+----------
+        0
+(1 row)
+
+select col1-col2 from tb where id=1; -- 0
+ ?column? 
+----------
+        0
+(1 row)
+
+select col1*col2 from tb where id=1; -- 0
+ ?column? 
+----------
+        0
+(1 row)
+
+select col1/col2 from tb where id=1; -- NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select col1%col2 from tb where id=1; -- NULL
+ ?column? 
+----------
+         
+(1 row)
+
+select NULL+col2 from tb where id=1; -- NULL
+ ?column? 
+----------
+         
+(1 row)
+
+drop table if exists tb;
+create table tb (col1 text, col2 text);
+insert into tb (col1,col2) VALUES
+    ('  -.1.2', '1.0'),('  +.1.2', '-2.0'),('  123abc', '3.0'),('  +123.45', '-2.0'),
+    ('  -123.45','4.0'),('  0.1','-.0'),('  +0.1','1.0'),('  -0.1','2.0'),('  123','0.1.0'),
+    ('  +123','-.0.5'),('  -123','9.0'),('  .1.2','5'),('  1.2.3','-0'),('  123abc456','-5'),
+    ('  0x10','+.0'),('  1.23.45','+2.0'),('  ','-x2.0'),('  abc123','0.0'),('  -0.0','2.0'),
+    ('  +.0','2.0'),('  0x10abc','2.0');
+select col1+col2 from tb;
+ ?column? 
+----------
+      0.9
+     -1.9
+      126
+   121.45
+  -119.45
+      0.1
+      1.1
+      1.9
+    123.1
+      123
+     -114
+      5.1
+      1.2
+      118
+        0
+     3.23
+        0
+        0
+        2
+        2
+        2
+(21 rows)
+
+select col1-col2 from tb;
+ ?column? 
+----------
+     -1.1
+      2.1
+      120
+   125.45
+  -127.45
+      0.1
+     -0.9
+     -2.1
+    122.9
+      123
+     -132
+     -4.9
+      1.2
+      128
+        0
+    -0.77
+        0
+        0
+       -2
+       -2
+       -2
+(21 rows)
+
+select col1*col2 from tb;
+ ?column? 
+----------
+     -0.1
+     -0.2
+      369
+   -246.9
+   -493.8
+       -0
+      0.1
+     -0.2
+     12.3
+       -0
+    -1107
+      0.5
+       -0
+     -615
+        0
+     2.46
+        0
+        0
+       -0
+        0
+        0
+(21 rows)
+
+select col1/col2 from tb;
+      ?column?       
+---------------------
+                -0.1
+               -0.05
+                  41
+             -61.725
+            -30.8625
+                    
+                 0.1
+               -0.05
+                1230
+                    
+ -13.666666666666666
+                0.02
+                    
+               -24.6
+                    
+               0.615
+                    
+                    
+                  -0
+                   0
+                   0
+(21 rows)
+
+select col1%col2 from tb;
+      ?column?       
+---------------------
+                -0.1
+                 0.1
+                   0
+  1.4500000000000028
+  -3.450000000000003
+                    
+                 0.1
+                -0.1
+ 0.09999999999999318
+                    
+                  -6
+                 0.1
+                    
+                   3
+                    
+                1.23
+                    
+                    
+                  -0
+                   0
+                   0
+(21 rows)
+
+select NULL+col2 from tb;
+ ?column? 
+----------
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+         
+(21 rows)
+
+select col1^col2 from tb;
+ ?column? 
+----------
+        1
+       -2
+      120
+     -123
+     -127
+        0
+        1
+        2
+      123
+      123
+     -116
+        5
+        1
+     -128
+        0
+        3
+        0
+        0
+        2
+        2
+        2
+(21 rows)
+
+select col1 xor col2 from tb;
+ ?column? 
+----------
+ f
+ f
+ f
+ f
+ f
+ t
+ f
+ f
+ f
+ t
+ f
+ f
+ t
+ f
+ f
+ f
+ f
+ f
+ t
+ t
+ t
+(21 rows)
+
+set sql_mode='';
+select col1 || col2 from tb;
+ ?column? 
+----------
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ t
+ f
+ t
+ f
+ f
+ t
+ t
+ t
+(21 rows)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_002
+create table tb (c1 int,c2 tinytext);
+insert into tb values(1,'a'),(2,'b'),(3,NULL);
+select * from tb where c2='a';  -- (1,a)
+ c1 | c2 
+----+----
+  1 | a
+(1 row)
+
+select * from tb where c2>'a';  -- (2,b)
+ c1 | c2 
+----+----
+  2 | b
+(1 row)
+
+select * from tb where c2>='a';  -- (1,a)(2,b)
+ c1 | c2 
+----+----
+  1 | a
+  2 | b
+(2 rows)
+
+select * from tb where c2<'b';  -- (1,a)
+ c1 | c2 
+----+----
+  1 | a
+(1 row)
+
+select * from tb where c2<='b';  -- (1,a)(2,b)
+ c1 | c2 
+----+----
+  1 | a
+  2 | b
+(2 rows)
+
+select * from tb where c2<=>NULL;  -- (3,NULL)
+ c1 | c2 
+----+----
+  3 | 
+(1 row)
+
+select * from tb where c2<>'a';  -- (2,b)
+ c1 | c2 
+----+----
+  2 | b
+(1 row)
+
+select * from tb where c2!='a';  -- (2,b)
+ c1 | c2 
+----+----
+  2 | b
+(1 row)
+
+select * from tb where c2 between 'a' and 'b';  -- (1,a)(2,b)
+ c1 | c2 
+----+----
+  1 | a
+  2 | b
+(2 rows)
+
+select * from tb where c2 is null;  -- (3,NULL)
+ c1 | c2 
+----+----
+  3 | 
+(1 row)
+
+select * from tb where c2 is not null;  -- (1,a)(2,b)
+ c1 | c2 
+----+----
+  1 | a
+  2 | b
+(2 rows)
+
+select * from tb where isnull(c2);  -- (3,NULL) 
+ c1 | c2 
+----+----
+  3 | 
+(1 row)
+
+select * from tb where c2 in ('a','b');  -- (1,a)(2,b)
+ c1 | c2 
+----+----
+  1 | a
+  2 | b
+(2 rows)
+
+select * from tb where c2 not in ('a','b');  -- no result 
+ c1 | c2 
+----+----
+(0 rows)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_003
+create table tb (col tinytext);
+insert into tb values('a');
+select not col from tb;  -- 1
+ ?column? 
+----------
+ t
+(1 row)
+
+select !col from tb;  -- 1
+ ?column? 
+----------
+ t
+(1 row)
+
+select col and col from tb;  -- 0
+ ?column? 
+----------
+ f
+(1 row)
+
+select col && col from tb;  -- 0
+ ?column? 
+----------
+ f
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_004
+create table tb (col tinytext);
+insert into tb values('JetPack 1000');
+insert into tb values('JetPack 2000');
+insert into tb values('JetPack 3000');
+insert into tb values('1 ton anvil');
+insert into tb values('2 ton anvil');
+insert into tb values('.5 ton anvil');
+insert into tb values('Furball Inc.');
+insert into tb values('TNT (1 stick)');
+insert into tb values('TNT (5 sticks)');
+select * from tb where col regexp '1000';  -- JetPack 1000
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '1000';
+                                   ^
+select * from tb where col regexp '.000';  -- JetPack 1000, JetPack 2000, JetPack 3000  
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '.000';
+                                   ^
+select * from tb where col regexp '1000|2000';  -- JetPack 1000, JetPack 2000
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '1000|2000';
+                                   ^
+select * from tb where col regexp '[123] Ton';  -- 1 ton anvil, 2 ton anvil
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '[123] Ton';
+                                   ^
+select * from tb where col regexp '[1-5] Ton';  -- 1 ton anvil, 2 ton anvil, .5 ton anvil
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '[1-5] Ton';
+                                   ^
+select * from tb where col regexp '\\.';  --  .5 ton anvil, Furball Inc. 
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '\\.';
+                                   ^
+select * from tb where col regexp '\\([0-9] sticks?\\)';  -- TNT (1 stick), TNT (5 stick)
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '\\([0-9] sticks?\\)';
+                                   ^
+select * from tb where col regexp '^[0-9]';  -- 1 ton anvil, 2 ton anvil
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '^[0-9]';
+                                   ^
+select * from tb where col regexp '\\.$';  -- Furball Inc.
+ERROR:  syntax error at or near "regexp"
+LINE 1: select * from tb where col regexp '\\.$';
+                                   ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_005
+create table tb (col tinytext);
+insert into tb values('JetPack 1000');
+insert into tb values('JetPack 2000');
+insert into tb values('JetPack 3000');
+insert into tb values('1 ton anvil');
+insert into tb values('2 ton anvil');
+insert into tb values('.5 ton anvil');
+insert into tb values('Furball Inc.');
+insert into tb values('TNT (1 stick)');
+insert into tb values('TNT (5 sticks)');
+select * from tb where col not regexp '1000';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '1000';
+                                   ^
+select * from tb where col not regexp '.000';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '.000';
+                                   ^
+select * from tb where col not regexp '1000|2000';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '1000|2000';
+                                   ^
+select * from tb where col not regexp '[123] Ton';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '[123] Ton';
+                                   ^
+select * from tb where col not regexp '[1-5] Ton';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '[1-5] Ton';
+                                   ^
+select * from tb where col not regexp '\\.';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '\\.';
+                                   ^
+select * from tb where col not regexp '\\([0-9] sticks?\\)';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '\\([0-9] sticks?\\)';
+                                   ^
+select * from tb where col not regexp '^[0-9]';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '^[0-9]';
+                                   ^
+select * from tb where col not regexp '\\.$';
+ERROR:  syntax error at or near "not"
+LINE 1: select * from tb where col not regexp '\\.$';
+                                   ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_006
+create table tb (col tinytext);
+insert into tb values('JetPack 1000');
+insert into tb values('JetPack 2000');
+insert into tb values('JetPack 3000');
+insert into tb values('1 ton anvil');
+insert into tb values('2 ton anvil');
+insert into tb values('.5 ton anvil');
+insert into tb values('Furball Inc.');
+insert into tb values('TNT (1 stick)');
+insert into tb values('TNT (5 sticks)');
+select * from tb where col rlike '1000';  -- JetPack 1000
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '1000';
+                                   ^
+select * from tb where col rlike '.000';  -- JetPack 1000, JetPack 2000, JetPack 3000
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '.000';
+                                   ^
+select * from tb where col rlike '1000|2000';  -- JetPack 1000, JetPack 2000
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '1000|2000';
+                                   ^
+select * from tb where col rlike '[123] Ton';  -- 1 ton anvil, 2 ton anvil
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '[123] Ton';
+                                   ^
+select * from tb where col rlike '[1-5] Ton';  -- 1 ton anvil, 2 ton anvil, .5 ton anvil
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '[1-5] Ton';
+                                   ^
+select * from tb where col rlike '\\.';  --  .5 ton anvil, Furball Inc.
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '\\.';
+                                   ^
+select * from tb where col rlike '\\([0-9] sticks?\\)';  -- TNT (1 stick), TNT (5 stick)
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '\\([0-9] sticks?\\)';
+                                   ^
+select * from tb where col rlike '^[0-9]';  -- 1 ton anvil, 2 ton anvil
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '^[0-9]';
+                                   ^
+select * from tb where col rlike '\\.$';  -- Furball Inc.
+ERROR:  syntax error at or near "rlike"
+LINE 1: select * from tb where col rlike '\\.$';
+                                   ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_007
+create table tb1(col tinytext);
+insert into tb1 values (' bc');
+insert into tb1 values ('abc');
+insert into tb1 values ('abcd');
+insert into tb1 values ('bem');
+insert into tb1 values ('abcdefg');
+insert into tb1 values ('小巷人家');
+insert into tb1 values ('三体');
+insert into tb1 values ('Sam');
+insert into tb1 values ('sam');
+insert into tb1 values ('am');
+select * from tb1 where col like 'a%';  -- abc, abcd, abcdefg, am
+   col   
+---------
+ abc
+ abcd
+ abcdefg
+ am
+(4 rows)
+
+select * from tb1 where col like ' %';  -- bc
+ col 
+-----
+  bc
+(1 row)
+
+select * from tb1 where col like '%d';  -- abcd
+ col  
+------
+ abcd
+(1 row)
+
+select * from tb1 where col like '%e%';  -- bem, abcdefg
+   col   
+---------
+ bem
+ abcdefg
+(2 rows)
+
+select * from tb1 where col like '%';  -- all rows
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
+select * from tb1 where col like '_m';  -- am
+ col 
+-----
+ am
+(1 row)
+
+select * from tb1 where col like 'be_';  -- bem
+ col 
+-----
+ bem
+(1 row)
+
+select * from tb1 where col like '_b_';  -- bc, abc
+ col 
+-----
+  bc
+ abc
+(2 rows)
+
+select * from tb1 where col like '%_';  -- all rows
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
+select * from tb1 where col like '_%';  -- all rows
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(10 rows)
+
+select * from tb1 where col like '%人%';  -- 小巷人家
+   col    
+----------
+ 小巷人家
+(1 row)
+
+select * from tb1 where col like 'S%';  -- Sam
+ col 
+-----
+ Sam
+(1 row)
+
+select * from tb1 where col not like 'a%';
+   col    
+----------
+  bc
+ bem
+ 小巷人家
+ 三体
+ Sam
+ sam
+(6 rows)
+
+select * from tb1 where col not like ' %';
+   col    
+----------
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
+select * from tb1 where col not like '%d';
+   col    
+----------
+  bc
+ abc
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
+select * from tb1 where col not like '%e%';
+   col    
+----------
+  bc
+ abc
+ abcd
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
+select * from tb1 where col not like '%';
+ col 
+-----
+(0 rows)
+
+select * from tb1 where col not like '_m';
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+(9 rows)
+
+select * from tb1 where col not like 'be_';
+   col    
+----------
+  bc
+ abc
+ abcd
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
+select * from tb1 where col not like '_b_';
+   col    
+----------
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ Sam
+ sam
+ am
+(8 rows)
+
+select * from tb1 where col not like '%_';
+ col 
+-----
+(0 rows)
+
+select * from tb1 where col not like '_%';
+ col 
+-----
+(0 rows)
+
+select * from tb1 where col not like '%人%';
+   col   
+---------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 三体
+ Sam
+ sam
+ am
+(9 rows)
+
+select * from tb1 where col not like 'S%';
+   col    
+----------
+  bc
+ abc
+ abcd
+ bem
+ abcdefg
+ 小巷人家
+ 三体
+ sam
+ am
+(9 rows)
+
+drop table if exists tb1;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_008
+create table tb1(col tinytext);
+insert into tb1 values (' bc');
+insert into tb1 values ('abc');
+insert into tb1 values ('abcd');
+insert into tb1 values ('bem');
+insert into tb1 values ('abcdefg');
+insert into tb1 values ('小巷人家');
+insert into tb1 values ('三体');
+insert into tb1 values ('Sam');
+insert into tb1 values ('sam');
+insert into tb1 values ('am');
+select * from tb1 where col like binary 'a%';  -- abc,abcd,abcdefg,am
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary 'a%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary ' %';  -- bc
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary ' %';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '%d';  -- abcd
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '%d';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '%e%';  -- bem,abcdefg
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '%e%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '%';  -- all
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '_m';  -- am
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '_m';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary 'be_';  -- bem
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary 'be_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '_b_';  -- bc,abc
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '_b_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '%_';  -- all rows
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '%_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '_%';  -- all rows
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '_%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary '%人%';  -- 小巷人家
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary '%人%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col like binary 'S%';  -- Sam
+ERROR:  operator does not exist: tinytext ~~ binary
+LINE 1: select * from tb1 where col like binary 'S%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary 'a%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary 'a%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary ' %';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary ' %';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '%d';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '%d';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '%e%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '%e%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '_m';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '_m';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary 'be_';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary 'be_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '_b_';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '_b_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '%_';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '%_';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '_%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '_%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary '%人%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary '%人%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+select * from tb1 where col not like binary 'S%';
+ERROR:  operator does not exist: tinytext !~~ binary
+LINE 1: select * from tb1 where col not like binary 'S%';
+                                    ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+drop table if exists tb1;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_OPER_009
+create table tb1(col tinytext);
+insert into tb1 values (' ab%m');
+insert into tb1 values ('123m_ab');
+insert into tb1 values ('ert#qw');
+insert into tb1 values ('fa\fsd');
+insert into tb1 values('x''y');
+select * from tb1 where col like '%\%%' escape '\\';  -- ab%m
+ERROR:  invalid escape string
+HINT:  Escape string must be empty or one character.
+select * from tb1 where col like '%\_%' escape '\\';  -- 123m_ab
+ERROR:  invalid escape string
+HINT:  Escape string must be empty or one character.
+select * from tb1 where col like '%\#%' escape '\\';  -- ert#qw
+ERROR:  invalid escape string
+HINT:  Escape string must be empty or one character.
+select * from tb1 where col like '%\'%' escape '\\';  --  x'y
+invalid command \
+select * from tb1 where col like '%+%%' escape '+';  -- ab%m
+ERROR:  syntax error at or near "select"
+LINE 2: select * from tb1 where col like '%+%%' escape '+';
+        ^
+select * from tb1 where col like '%++%%' escape '++';  -- error “Incorrect arguments to ESCAPE”
+ERROR:  invalid escape string
+HINT:  Escape string must be empty or one character.
+drop table if exists tb1;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_BINARY_001
+create table tb (col1 tinytext,col2 tinytext);
+insert into tb values('a','A');
+select col1=col2 from tb;  -- 1
+ ?column? 
+----------
+ f
+(1 row)
+
+select binary col1=binary col2 from tb;  -- 0
+ERROR:  syntax error at or near "="
+LINE 1: select binary col1=binary col2 from tb;
+                          ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_001
+create table tb (col tinytext);
+insert into tb values('xy');
+select cast(col as binary) from tb;  -- 0x7879
+  col   
+--------
+ \x7879
+(1 row)
+
+select cast(col as binary(0)) from tb;  -- 0x
+WARNING:  The input length:2 exceeds the maximum length:0, data truncated
+ col 
+-----
+ \x
+(1 row)
+
+select cast(col as binary(10)) from tb;  -- 0x78790000000000000000
+          col           
+------------------------
+ \x78790000000000000000
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_002
+set sql_mode='';
+create table tb (col tinytext);
+insert into tb values('xy');
+select cast(col as char), char_length(cast(col as char)) from tb;  -- ('xy',2)
+ col | char_length 
+-----+-------------
+ x   |           1
+(1 row)
+
+select cast(col as char(0)), char_length(cast(col as char(0)))  from tb;  -- (,0)
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ col | char_length 
+-----+-------------
+     |           0
+(1 row)
+
+select cast(col as char(10)), char_length(cast(col as char(10)))  from tb;  -- ('xy',2)
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+select cast(col as char(10)), char_length(cast(col as char(10) charset utf16))  from tb;  -- ('xy',2)
+ERROR:  syntax error at or near "charset"
+LINE 1: ...ol as char(10)), char_length(cast(col as char(10) charset ut...
+                                                             ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_003
+create table tb (id int,col tinytext);
+insert into tb values(1,'20240628');
+insert into tb values(2,'2024-06-28');
+insert into tb values(3,'2024/06/28');
+insert into tb values(4,'2024-06-28 12:12:12');
+insert into tb values(5,'06282024');
+select cast(col as date) from tb where id=1;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select cast(col as date) from tb where id=2;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select cast(col as date) from tb where id=3;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select cast(col as date) from tb where id=4;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select cast(col as date) from tb where id=5;  -- NULL
+WARNING:  Incorrect datetime value: '06282024'
+ col 
+-----
+ 
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_004
+create table tb (id int,col tinytext);
+insert into tb values(1,'2024-06-28 12:12:12');
+insert into tb values(2,'2024-06-28 12:12:12');
+insert into tb values(3,'20240628 12:12:12');
+insert into tb values(4,'123');
+select cast(col as datetime) from tb where id=1;  -- 2024-06-28 12:12:12
+         col         
+---------------------
+ 2024-06-28 12:12:12
+(1 row)
+
+select cast(col as datetime(6)) from tb where id=2; -- 2024-06-28 12:12:12.000000
+            col             
+----------------------------
+ 2024-06-28 12:12:12.000000
+(1 row)
+
+select cast(col as datetime) from tb where id=3;  -- NULL
+WARNING:  Incorrect datetime value: '20240628 12:12:12'
+ col 
+-----
+ 
+(1 row)
+
+select cast(col as datetime) from tb where id=4;  -- NULL
+WARNING:  Incorrect datetime value: '123'
+ col 
+-----
+ 
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_005
+create table tb (col tinytext);
+insert into tb values('123.4');
+select cast(col as decimal(5)) from tb;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+select cast(col as decimal(5,1)) from tb;  -- 123.4
+  col  
+-------
+ 123.4
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_006
+create table tb(col tinytext);
+insert into tb values('{"name":"CoderAcademy", "age": 30}');
+select cast(col as json) from tb;  -- {"age": 30, "name": "CoderAcademy"}
+                col                 
+------------------------------------
+ {"name":"CoderAcademy", "age": 30}
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_007
+set sql_mode='';
+create table tb (col tinytext);
+insert into tb values('xy');
+select cast(col as nchar), char_length(cast(col as nchar)) from tb;  -- ('xy',2)
+ col | char_length 
+-----+-------------
+ x   |           1
+(1 row)
+
+select cast(col as nchar(0)), char_length(cast(col as nchar(0))) from tb;  -- (,0)
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ col | char_length 
+-----+-------------
+     |           0
+(1 row)
+
+select cast(col as nchar(10)), char_length(cast(col as nchar(10))) from tb;  -- ('xy',2)
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+select cast(col as nchar(10)), char_length(cast(col as nchar(10) charset utf16)) from tb;  -- fail
+ERROR:  syntax error at or near "charset"
+LINE 1: ... as nchar(10)), char_length(cast(col as nchar(10) charset ut...
+                                                             ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_009
+create table tb (id int,col tinytext);
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select cast(col as integer) from tb where id=1;  -- 0
+ col 
+-----
+   0
+(1 row)
+
+select cast(col as integer) from tb where id=2;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+select cast(col as integer) from tb where id=3;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_010
+create table tb (id int,col tinytext);
+insert into tb values(1,'123');
+insert into tb values(2,'12-12-12');
+insert into tb values(3,'12:12:12');
+select cast(col as time) from tb where id=1;  -- 00:01:23
+   col    
+----------
+ 00:01:23
+(1 row)
+
+select cast(col as time) from tb where id=2;  -- 00:00:12
+WARNING:  Truncated incorrect time value: '12-12-12'
+   col    
+----------
+ 00:00:12
+(1 row)
+
+select cast(col as time) from tb where id=3;  -- 12:12:12
+   col    
+----------
+ 12:12:12
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_012
+create table tb1 as select cast('abc'::tinytext as binary(10));  -- binary
+\d+ tb1
+                                      Table "public.tb1"
+ Column |    Type    | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------------+-----------+----------+---------+----------+--------------+-------------
+ binary | binary(10) |           |          |         | extended |              | 
+
+create table tb2 as select cast('abc'::tinytext as char(10));  -- char(10)
+\d+ tb2
+                                       Table "public.tb2"
+ Column |     Type      | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+---------------+-----------+----------+---------+----------+--------------+-------------
+ bpchar | character(10) |           |          |         | extended |              | 
+
+create table tb3 as select cast('2024-06-28'::tinytext as date);  -- date
+\d+ tb3
+                                   Table "public.tb3"
+ Column  | Type | Collation | Nullable | Default | Storage | Stats target | Description 
+---------+------+-----------+----------+---------+---------+--------------+-------------
+ mysdate | date |           |          |         | plain   |              | 
+
+create table tb4 as select cast('2024-06-28 12:12:12'::tinytext as datetime);  -- datetime
+\d+ tb4
+                                       Table "public.tb4"
+   Column    |   Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+-------------+----------+-----------+----------+---------+---------+--------------+-------------
+ mysdatetime | datetime |           |          |         | plain   |              | 
+
+create table tb5 as select cast('123.4'::tinytext as decimal(5,1));  -- decimal(5,1)
+\d+ tb5
+                                       Table "public.tb5"
+ Column  |     Type     | Collation | Nullable | Default | Storage | Stats target | Description 
+---------+--------------+-----------+----------+---------+---------+--------------+-------------
+ numeric | numeric(5,1) |           |          |         | main    |              | 
+
+create table tb6 as select cast('{"name":"CoderAcademy", "age": 30}'::tinytext as json);  -- json
+\d+ tb6
+                                   Table "public.tb6"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ json   | json |           |          |         | extended |              | 
+
+create table tb7 as select cast('abc'::tinytext as nchar(5));  -- nchar(5)
+\d+ tb7
+                                       Table "public.tb7"
+ Column |     Type     | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+--------------+-----------+----------+---------+----------+--------------+-------------
+ bpchar | character(5) |           |          |         | extended |              | 
+
+create table tb8 as select cast('12:12:12'::tinytext as time(6));  -- time(6)
+\d+ tb8
+                                     Table "public.tb8"
+  Column  |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+----------+---------+-----------+----------+---------+---------+--------------+-------------
+ mystimes | time(6) |           |          |         | main    |              | 
+
+drop table if exists tb1,tb2,tb3,tb4,tb5,tb6,tb7,tb8;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CAST_013
+create table tb1 as select cast('abc'::tinytext as xml);  -- xml
+\d+ tb1
+                                   Table "public.tb1"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ xml    | xml  |           |          |         | extended |              | 
+
+create table tb2 as select cast('abc'::tinytext as name);  -- name
+\d+ tb2
+                                  Table "public.tb2"
+ Column | Type | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+------+-----------+----------+---------+---------+--------------+-------------
+ name   | name | default   |          |         | plain   |              | 
+
+create table tb3 as select cast('2024-06-28 12:12:12'::tinytext as text);  -- text
+\d+ tb3
+                                   Table "public.tb3"
+ Column | Type | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+------+-----------+----------+---------+----------+--------------+-------------
+ text   | text |           |          |         | extended |              | 
+
+create table tb4 as select cast('123.4'::tinytext as bpchar);  -- bpchar
+\d+ tb4
+                                    Table "public.tb4"
+ Column |  Type  | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+--------+-----------+----------+---------+----------+--------------+-------------
+ bpchar | bpchar |           |          |         | extended |              | 
+
+create table tb5 as select cast('{"name":"CoderAcademy", "age": 30}'::tinytext as varchar); -- varchar
+\d+ tb5
+                                          Table "public.tb5"
+ Column  |       Type        | Collation | Nullable | Default | Storage  | Stats target | Description 
+---------+-------------------+-----------+----------+---------+----------+--------------+-------------
+ varchar | character varying |           |          |         | extended |              | 
+
+drop table if exists tb1,tb2,tb3,tb4,tb5;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_001
+create table tb (col tinytext);
+insert into tb values('abc');
+select convert('abc' using gbk);  -- success
+WARNING:   Syntax support only
+ ?column? 
+----------
+ abc
+(1 row)
+
+select convert('abc' using gb18030);  -- success
+WARNING:   Syntax support only
+ ?column? 
+----------
+ abc
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_002
+create table tb (col tinytext);
+insert into tb values('xy');
+select convert(col , binary) from tb;  -- 0x7879
+  col   
+--------
+ \x7879
+(1 row)
+
+select convert(col , binary(0)) from tb;  -- 0x
+WARNING:  The input length:2 exceeds the maximum length:0, data truncated
+ col 
+-----
+ \x
+(1 row)
+
+select convert(col , binary(10)) from tb;  -- 0x78790000000000000000
+          col           
+------------------------
+ \x78790000000000000000
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_003
+create table tb (col tinytext);
+insert into tb values('xy');
+select convert(col , char), char_length(convert(col , char)) from tb;  -- ('xy',2)
+ col | char_length 
+-----+-------------
+ x   |           1
+(1 row)
+
+select convert(col , char(0)), char_length(convert(col , char(0)))  from tb;  -- (,0)
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ col | char_length 
+-----+-------------
+     |           0
+(1 row)
+
+select convert(col , char(10)), char_length(convert(col , char(10)))  from tb;  -- ('xy',2)
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+select convert(col , char(10)), char_length(convert(col , char(10) charset utf16))  from tb;  -- ('xy',2)
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_004
+create table tb (id int,col tinytext);
+insert into tb values(1,'20240628');
+insert into tb values(2,'2024-06-28');
+insert into tb values(3,'2024/06/28');
+insert into tb values(4,'2024-06-28 12:12:12');
+insert into tb values(5,'06282024');
+select convert(col , date) from tb where id=1;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select convert(col , date) from tb where id=2;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select convert(col , date) from tb where id=3;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select convert(col , date) from tb where id=4;  -- 2024-06-28
+    col     
+------------
+ 2024-06-28
+(1 row)
+
+select convert(col , date) from tb where id=5;  -- NULL
+WARNING:  Incorrect datetime value: '06282024'
+ col 
+-----
+ 
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_005
+create table tb (id int,col tinytext);
+insert into tb values(1,'2024-06-28 12:12:12');
+insert into tb values(2,'2024-06-28 12:12:12');
+insert into tb values(3,'20240628 12:12:12');
+insert into tb values(4,'123');
+select convert(col , datetime) from tb where id=1;  -- 2024-06-28 12:12:12
+         col         
+---------------------
+ 2024-06-28 12:12:12
+(1 row)
+
+select convert(col , datetime(6)) from tb where id=2;  -- 2024-06-28 12:12:12.000000
+            col             
+----------------------------
+ 2024-06-28 12:12:12.000000
+(1 row)
+
+select convert(col , datetime) from tb where id=3;  -- NULL
+WARNING:  Incorrect datetime value: '20240628 12:12:12'
+ col 
+-----
+ 
+(1 row)
+
+select convert(col , datetime) from tb where id=4;  -- NULL
+WARNING:  Incorrect datetime value: '123'
+ col 
+-----
+ 
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_006
+create table tb (col tinytext);
+insert into tb values('123.4');
+select convert(col , decimal(5)) from tb;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+select convert(col , decimal(5,1)) from tb;  -- 123.4
+  col  
+-------
+ 123.4
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_007
+create table tb(col tinytext);
+insert into tb values('{"name":"CoderAcademy", "age": 30}');
+select convert(col , json) from tb;  -- {"age": 30, "name": "CoderAcademy"}
+                col                 
+------------------------------------
+ {"name":"CoderAcademy", "age": 30}
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_008
+create table tb (col tinytext);
+insert into tb values('xy');
+select convert(col , nchar), char_length(convert(col , nchar)) from tb;  -- ('xy',2)
+ col | char_length 
+-----+-------------
+ x   |           1
+(1 row)
+
+select convert(col , nchar(0)), char_length(convert(col , nchar(0))) from tb;  -- (,0)
+WARNING:  value too long for type char(0), Data truncated.
+WARNING:  value too long for type char(0), Data truncated.
+ col | char_length 
+-----+-------------
+     |           0
+(1 row)
+
+select convert(col , nchar(10)), char_length(convert(col , nchar(10))) from tb;  -- ('xy',2)
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+select convert(col , nchar(10)), char_length(convert(col , nchar(10) charset utf16)) from tb; -- fail
+    col     | char_length 
+------------+-------------
+ xy         |           2
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_009
+create table tb (id int,col tinytext);
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select convert(col , signed) from tb where id=1;  -- 0
+ERROR:  syntax error at or near "signed"
+LINE 1: select convert(col , signed) from tb where id=1;
+                             ^
+select convert(col , signed) from tb where id=2;  -- 123
+ERROR:  syntax error at or near "signed"
+LINE 1: select convert(col , signed) from tb where id=2;
+                             ^
+select convert(col , signed) from tb where id=3;  -- 123
+ERROR:  syntax error at or near "signed"
+LINE 1: select convert(col , signed) from tb where id=3;
+                             ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_010
+create table tb (id int,col tinytext);
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select convert(col , integer) from tb where id=1;  -- 0
+ col 
+-----
+   0
+(1 row)
+
+select convert(col , integer) from tb where id=2;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+select convert(col , integer) from tb where id=3;  -- 123
+ col 
+-----
+ 123
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_011
+create table tb (id int,col tinytext);
+insert into tb values(1,'123');
+insert into tb values(2,'12-12-12');
+insert into tb values(3,'12:12:12');
+select convert(col , time) from tb where id=1;  -- 00:01:23
+   col    
+----------
+ 00:01:23
+(1 row)
+
+select convert(col , time) from tb where id=2;  -- 00:00:12
+WARNING:  Truncated incorrect time value: '12-12-12'
+   col    
+----------
+ 00:00:12
+(1 row)
+
+select convert(col , time) from tb where id=3;  -- 12:12:12
+   col    
+----------
+ 12:12:12
+(1 row)
+
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_012
+create table tb (id int,col tinytext);
+insert into tb values(1,'abc');
+insert into tb values(2,'123');
+insert into tb values(3,'123.4');
+select convert(col ,unsigned) from tb where id=1;  -- 0
+ERROR:  syntax error at or near "unsigned"
+LINE 1: select convert(col ,unsigned) from tb where id=1;
+                            ^
+select convert(col , unsigned) from tb where id=2;  -- 123
+ERROR:  syntax error at or near "unsigned"
+LINE 1: select convert(col , unsigned) from tb where id=2;
+                             ^
+select convert(col , unsigned) from tb where id=3;  -- 123
+ERROR:  syntax error at or near "unsigned"
+LINE 1: select convert(col , unsigned) from tb where id=3;
+                             ^
+drop table if exists tb;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_CONVERT_013
+create table tb (col tinytext);
+insert into tb values('123');
+create table tb1 as select col+ 1 as result from tb ;  -- double
+\d+ tb1
+                                        Table "public.tb1"
+ Column |       Type       | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+------------------+-----------+----------+---------+---------+--------------+-------------
+ result | double precision |           |          |         | plain   |              | 
+
+create table tb2 as select col+ 1.2 as result from tb ;  -- double
+\d+ tb2
+                                        Table "public.tb2"
+ Column |       Type       | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+------------------+-----------+----------+---------+---------+--------------+-------------
+ result | double precision |           |          |         | plain   |              | 
+
+create table tb3 as select col='123' as result from tb ;  -- int
+\d+ tb3
+                                    Table "public.tb3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ result | boolean |           |          |         | plain   |              | 
+
+drop table if exists tb,tb1,tb2,tb3;
+-- TC_IVYSQL_MSQL_DATATYPE_TINYTEXT_INDEX_001
+create table tb(c1 tinytext, c2 tinytext, c3 tinytext, c4 tinytext);
+insert into tb values('a', 'ab', 'abc', 'abcd');
+set enable_seqscan =off;
+create index ind1 on tb using btree(c1);
+explain (costs false) select * from tb where c1='a';   -- ind1
+               QUERY PLAN               
+----------------------------------------
+ Index Scan using ind1 on tb
+   Index Cond: ((c1)::text = 'a'::text)
+(2 rows)
+
+create index ind2 on tb using hash(c2);
+explain (costs false) select * from tb where c2='ab';  -- ind2
+               QUERY PLAN                
+-----------------------------------------
+ Index Scan using ind2 on tb
+   Index Cond: ((c2)::text = 'ab'::text)
+(2 rows)
+
+drop table if exists tb cascade;
+reset mysql.mysql_convert;

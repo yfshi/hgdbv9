@@ -4,6 +4,7 @@
 -- parameter settings
 SET ivorysql.compatible_mode TO mysql;
 set mysql.enable_character_blob to on;
+set mysql.mysql_convert = true;
 -- clean environment
 DROP TABLE IF EXISTS
   pg_bytea_t14,
@@ -2273,3 +2274,4 @@ SELECT         c1::longblob  FROM pg_bytea_t14;
  q1w2
 (4 rows)
 
+set mysql.mysql_convert = false;
