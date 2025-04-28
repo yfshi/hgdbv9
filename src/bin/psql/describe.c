@@ -1266,7 +1266,44 @@ permissionsList(const char *pattern)
 						  gettext_noop("Policies"));
 
 	if (pset.sversion >= 100000)
-		appendPQExpBuffer(&buf,
+	{
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+		if (DB_MYSQL == db_mode)
+			appendPQExpBuffer(&buf,
+						  ",\n  pg_catalog.array_to_string(ARRAY(\n"
+						  "    SELECT polname\n"
+						  "    || CASE WHEN NOT polpermissive THEN\n"
+						  "       E' (RESTRICTIVE)'\n"
+						  "       ELSE '' END\n"
+						  "    || CASE WHEN polcmd != '*' THEN\n"
+						  "           E' (' operator(pg_catalog.||) polcmd operator(pg_catalog.||) E'):'\n"
+						  "       ELSE E':'\n"
+						  "       END\n"
+						  "    || CASE WHEN polqual IS NOT NULL THEN\n"
+						  "           E'\\n  (u): ' operator(pg_catalog.||) pg_catalog.pg_get_expr(polqual, polrelid)\n"
+						  "       ELSE E''\n"
+						  "       END\n"
+						  "    || CASE WHEN polwithcheck IS NOT NULL THEN\n"
+						  "           E'\\n  (c): ' operator(pg_catalog.||) pg_catalog.pg_get_expr(polwithcheck, polrelid)\n"
+						  "       ELSE E''\n"
+						  "       END"
+						  "    || CASE WHEN polroles <> '{0}' THEN\n"
+						  "           E'\\n  to: ' operator(pg_catalog.||) pg_catalog.array_to_string(\n"
+						  "               ARRAY(\n"
+						  "                   SELECT rolname\n"
+						  "                   FROM pg_catalog.pg_roles\n"
+						  "                   WHERE oid = ANY (polroles)\n"
+						  "                   ORDER BY 1\n"
+						  "               ), E', ')\n"
+						  "       ELSE E''\n"
+						  "       END\n"
+						  "    FROM pg_catalog.pg_policy pol\n"
+						  "    WHERE polrelid = c.oid), E'\\n')\n"
+						  "    AS \"%s\"",
+						  gettext_noop("Policies"));
+		else
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+			appendPQExpBuffer(&buf,
 						  ",\n  pg_catalog.array_to_string(ARRAY(\n"
 						  "    SELECT polname\n"
 						  "    || CASE WHEN NOT polpermissive THEN\n"
@@ -1298,6 +1335,7 @@ permissionsList(const char *pattern)
 						  "    WHERE polrelid = c.oid), E'\\n')\n"
 						  "    AS \"%s\"",
 						  gettext_noop("Policies"));
+	}
 
 	appendPQExpBufferStr(&buf, "\nFROM pg_catalog.pg_class c\n"
 						 "     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace\n"
@@ -1835,7 +1873,26 @@ describeOneTableDetails(const char *schemaname,
 						   "array(select 'toast.' || x from pg_catalog.unnest(tc.reloptions) x), ', ')\n"
 						   : "''"),
 						  oid);
-		else		/* End - BUG#M229 */
+		/* End - BUG#M229 */
+
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+		else if (DB_MYSQL == db_mode)
+			printfPQExpBuffer(&buf,
+						  "SELECT c.relchecks, c.relkind, c.relhasindex, c.relhasrules, "
+						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "
+						  "false AS relhasoids, c.relispartition, %s, c.reltablespace, "
+						  "CASE WHEN c.reloftype = 0 THEN '' ELSE c.reloftype::pg_catalog.regtype::pg_catalog.text END, "
+						  "c.relpersistence, c.relreplident, am.amname, false as relhasrowid\n"
+						  "FROM pg_catalog.pg_class c\n "
+						  "LEFT JOIN pg_catalog.pg_class tc ON (c.reltoastrelid = tc.oid)\n"
+						  "LEFT JOIN pg_catalog.pg_am am ON (c.relam = am.oid)\n"
+						  "WHERE c.oid = '%s';",
+						  (verbose ?
+						   "pg_catalog.array_to_string(c.reloptions operator(pg_catalog.||) "
+						   "array(select 'toast.' operator(pg_catalog.||) x from pg_catalog.unnest(tc.reloptions) x), ', ')\n"
+						   : "''"),
+						  oid);
+		else	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 			printfPQExpBuffer(&buf,
 						  "SELECT c.relchecks, c.relkind, c.relhasindex, c.relhasrules, "
 						  "c.relhastriggers, c.relrowsecurity, c.relforcerowsecurity, "

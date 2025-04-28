@@ -244,6 +244,11 @@ static SelectStmt *makeShowCharsetStmt(ShowFilter *filter);
 static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 /* End - Req: SRS-MYSQL-CHARSET */
 
+/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+static List *MystextSystemFuncName(char *name);
+static TypeName *MystextSystemTypeName(char *name);
+/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+
 %}
 
 %pure-parser
@@ -845,6 +850,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 
 %token		NCHAR_P		/* ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
+%token		CHARACTER_P	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 
 
 /*
@@ -15135,6 +15141,57 @@ CharacterWithLength:  character '(' Iconst ')'
 					$$->location = @1;
 				}
 				/* End - ReqID: SRS-MYSQL-CHARACTERTYPE- NCHAR VARCHAR(n) */
+
+				/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+				| TEXT_P '(' func_arg_list_opt ')'
+				{
+					Node	*node;
+					double	length = 0;
+
+					if (list_length($3) != 1)
+							ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("You have an error in you SQL syntax,in text( ... "),
+											 parser_errposition(@1)));
+
+					node = linitial($3);
+					if (IsA(node, A_Const))
+					{
+							A_Const *con = (A_Const *)node;
+
+							if (((Value *)(&con->val))->type == T_Integer)
+									length = intVal(&con->val);
+							else if (((Value *)(&con->val))->type == T_Float)
+									length = floatVal(&con->val);
+							else
+									ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("You have an error in you SQL syntax in text( ... "),
+											 parser_errposition(@1)));
+					}
+					else
+							ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("You have an error in you SQL syntax in text( ... "),
+											 parser_errposition(@1)));
+
+					if (length < 0 || length > 4294967295)
+							ereport(ERROR,
+											(errcode(ERRCODE_SYNTAX_ERROR),
+											 errmsg("You have an error in you SQL syntax in text( ... "),
+											 parser_errposition(@1)));
+					else if (length > 0 && length <= 255)
+							$$ = MySQLSystemTypeName("tinytext");
+					else if (length == 0 || length <= 65535)
+							$$ = SystemTypeName("text");
+					else if (length <= 16777215)
+							$$ = MySQLSystemTypeName("mediumtext");
+					else
+							$$ = MySQLSystemTypeName("longtext");
+
+					$$->location = @1;
+				}
+				/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 		;
 
 CharacterWithoutLength:	 character
@@ -15145,6 +15202,13 @@ CharacterWithoutLength:	 character
 						$$->typmods = list_make1(makeIntConst(1, -1));
 					$$->location = @1;
 				}
+				/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+				| TEXT_P
+				{
+					$$ = MystextSystemTypeName("text");
+					$$->location = @1;
+				}
+				/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 		;
 
 character:	CHARACTER opt_varying
@@ -15841,7 +15905,21 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $3, @2); }
 
 			| a_expr qual_Op a_expr				%prec Op
-				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
+				{
+					/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+					if (strcmp(strVal(lfirst(list_head($2))), "||") == 0)
+					{
+						if (has_sql_mode(MODE_PIPES_AS_CONCAT))
+						{
+							$$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2);
+						}
+						else
+							$$ = makeOrExpr($1, $3, @2);
+					}
+					else
+					/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+						$$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2);
+				}
 			| qual_Op a_expr					%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $1, NULL, $2, @1); }
 
@@ -16661,6 +16739,21 @@ func_expr_common_subexpr:
 				}
 			| CAST '(' a_expr AS Typename ')'
 				{ $$ = makeTypeCast($3, $5, @1); }
+			/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+			| CONVERT '(' a_expr USING any_name ')'
+				{
+					ereport(WARNING, (errmsg(" Syntax support only")));
+					$$ = $3;
+				}
+			| CONVERT '(' a_expr ',' Typename CHARSET any_name ')'
+				{
+					$$ = makeTypeCast($3, $5, @1);
+				}
+			| CONVERT '(' a_expr ',' Typename CHARACTER SET any_name ')'
+				{
+					$$ = makeTypeCast($3, $5, @1);
+				}
+			/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 			/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
 			| CAST '(' a_expr AS UNSIGNED INTEGER ')'
 				{ 				
@@ -16778,6 +16871,15 @@ func_expr_common_subexpr:
 											   COERCE_EXPLICIT_CALL,
 											   @1);
 				}
+			/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+			| TEXT_P '(' func_arg_list_opt ')'
+				{
+					$$ = (Node *) makeFuncCall(MystextSystemFuncName("text"),
+											   $3,
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
+			/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 			| TREAT '(' a_expr AS Typename ')'
 				{
 					/* TREAT(expr AS target) converts expr of a particular type to target,
@@ -18404,7 +18506,6 @@ unreserved_keyword:
 			| TEMP
 			| TEMPLATE
 			| TEMPORARY
-			| TEXT_P
 			| TIES
 			| TRANSACTION
 			| TRANSFORM
@@ -18500,6 +18601,7 @@ col_name_keyword:
 			| SIGNED
 			| SMALLINT
 			| SUBSTRING
+			| TEXT_P  /* ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 			| TIME
 			| TIMESTAMP
 			| TINYBLOB	/* ReqID:SRS-MYSQL-BINARYTYPE */
@@ -20251,3 +20353,17 @@ GetTypeNameTypeMod(const TypeName *typeName)
 	return -1;
 }
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
+
+/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+static List *
+MystextSystemFuncName(char *name)
+{
+	return list_make1(makeString(name));
+}
+
+static TypeName *
+MystextSystemTypeName(char *name)
+{
+	return makeTypeNameFromNameList(list_make1(makeString(name)));
+}
+/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */

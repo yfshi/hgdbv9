@@ -934,10 +934,11 @@ INSERT INTO my_longblob_t1 VALUES ('123', 'abc', '', ' ', null);
 --------------------------------------------------------------------------------
 -- TODO[TD010]: should get (0, 0, 0, 0, 1), but not as expected
 select isnull(c1), isnull(c2), ISNULL(c3), ISNULL(c4), ISNULL(c5) from my_longblob_t1;
-ERROR:  function isnull(longblob) does not exist
-LINE 1: select isnull(c1), isnull(c2), ISNULL(c3), ISNULL(c4), ISNUL...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ isnull | isnull | isnull | isnull | isnull 
+--------+--------+--------+--------+--------
+ f      | f      | f      | f      | t
+(1 row)
+
 DISCARD ALL;
 /*
  * test mysql longblob type operator

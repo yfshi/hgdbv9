@@ -491,10 +491,11 @@ DROP TABLE d1;
 create table t1 (a char(20));
 insert into t1 values (1.225e-05);
 select a+0 from t1;
-ERROR:  operator does not exist: character + integer
-LINE 1: select a+0 from t1;
-                ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ ?column?  
+-----------
+ 1.225e-05
+(1 row)
+
 drop table t1;
 create table t1(d double, u bigint unsigned);
 insert into t1(d) values (9.22337203685479e18),
@@ -592,9 +593,9 @@ create table t2 as select +id from test;
 
 drop table t1,t2,test;
 show sql_mode;
-                                                                              sql_mode                                                                               
----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- REAL_AS_FLOAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+                                                                                      sql_mode                                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 set sql_mode = '';
@@ -615,9 +616,9 @@ create table t1(id real);
 set sql_mode to default;
 WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 show sql_mode;
-                                                                              sql_mode                                                                               
----------------------------------------------------------------------------------------------------------------------------------------------------------------------
- REAL_AS_FLOAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+                                                                                      sql_mode                                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 create table t2(id real);

@@ -3,6 +3,7 @@ src/datatype/datatype
 src/builtin_functions/builtin_functions
 src/sysview/sysview
 src/case_sensitive/case_sensitive
+src/character/mys_character
 src/charset/mys_charset
 src/datatype/binary
 src/datatype/mys_int

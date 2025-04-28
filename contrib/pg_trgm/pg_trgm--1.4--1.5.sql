@@ -11,7 +11,7 @@ LANGUAGE C IMMUTABLE PARALLEL SAFE;
 ALTER OPERATOR FAMILY gist_trgm_ops USING gist
 ADD FUNCTION 10 (text) gtrgm_options (internal);
 
-ALTER OPERATOR % (text, text)
+ALTER OPERATOR pg_catalog.% (text, text)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);
 ALTER OPERATOR <% (text, text)
   SET (RESTRICT = matchingsel, JOIN = matchingjoinsel);

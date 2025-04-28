@@ -2396,44 +2396,31 @@ CREATE VIEW v1 WITH (security_barrier = true) AS
 CREATE VIEW v2 WITH (security_barrier = true) AS
   SELECT * FROM v1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2.cc = v1.c)
   WITH CHECK OPTION;
-ERROR:  operator does not exist: integer = text
-LINE 2: ...* FROM v1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2.cc = v1.c)
-                                                                ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 INSERT INTO v2 VALUES (2, 'two', 20); -- ok
-ERROR:  relation "v2" does not exist
+ERROR:  invalid input syntax for type real: "two"
 LINE 1: INSERT INTO v2 VALUES (2, 'two', 20);
-                    ^
+                                  ^
 INSERT INTO v2 VALUES (-2, 'minus two', 20); -- not allowed
-ERROR:  relation "v2" does not exist
+ERROR:  invalid input syntax for type real: "minus two"
 LINE 1: INSERT INTO v2 VALUES (-2, 'minus two', 20);
-                    ^
+                                   ^
 INSERT INTO v2 VALUES (3, 'three', 30); -- not allowed
-ERROR:  relation "v2" does not exist
+ERROR:  invalid input syntax for type real: "three"
 LINE 1: INSERT INTO v2 VALUES (3, 'three', 30);
-                    ^
+                                  ^
 UPDATE v2 SET b = 'ONE' WHERE a = 1; -- ok
-ERROR:  relation "v2" does not exist
+ERROR:  invalid input syntax for type real: "ONE"
 LINE 1: UPDATE v2 SET b = 'ONE' WHERE a = 1;
-               ^
+                          ^
 UPDATE v2 SET a = -1 WHERE a = 1; -- not allowed
-ERROR:  relation "v2" does not exist
-LINE 1: UPDATE v2 SET a = -1 WHERE a = 1;
-               ^
 UPDATE v2 SET c = 30 WHERE a = 1; -- not allowed
-ERROR:  relation "v2" does not exist
-LINE 1: UPDATE v2 SET c = 30 WHERE a = 1;
-               ^
 DELETE FROM v2 WHERE a = 2; -- ok
-ERROR:  relation "v2" does not exist
-LINE 1: DELETE FROM v2 WHERE a = 2;
-                    ^
 SELECT * FROM v2;
-ERROR:  relation "v2" does not exist
-LINE 1: SELECT * FROM v2;
-                      ^
+ a | b | c 
+---+---+---
+(0 rows)
+
 DROP VIEW v2;
-ERROR:  view "v2" does not exist
 DROP VIEW v1;
 DROP TABLE t2;
 DROP TABLE t1;

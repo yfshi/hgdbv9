@@ -37,6 +37,7 @@ OBJS = \
 	src/charset/ctype-sjis.o \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
+	src/character/mystext.o \
 	src/datatype/mysfloat.o
 
 EXTENSION = ivorysql_my
@@ -70,6 +71,10 @@ cleansql:
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
 MYS_REGRESS = multi_update \
+			  mys_text \
+			  mys_tinytext \
+			  mys_mediumtext \
+			  mys_longtext \
 			  mys_uint4		\
 			  mys_uint8		\
 			  test_binary \

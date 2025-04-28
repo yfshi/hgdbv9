@@ -77,6 +77,7 @@ CREATE FUNCTION binary_coercible(oid, oid)
 
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'SELECT ''not an integer'';';
+DROP FUNCTION IF EXISTS test1;
 
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'not even SQL';

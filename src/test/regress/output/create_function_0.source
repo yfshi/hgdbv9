@@ -62,6 +62,8 @@ CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
 ERROR:  return type mismatch in function declared to return integer
 DETAIL:  Actual return type is text.
 CONTEXT:  SQL function "test1"
+DROP FUNCTION IF EXISTS test1;
+NOTICE:  function test1() does not exist, skipping
 CREATE FUNCTION test1 (int) RETURNS int LANGUAGE SQL
     AS 'not even SQL';
 ERROR:  syntax error at or near "not"

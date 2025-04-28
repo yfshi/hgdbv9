@@ -40,6 +40,7 @@
 #include "parser/scansup.h"
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
+#include "utils/guc.h"	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 
 PG_MODULE_MAGIC;
 
@@ -291,6 +292,18 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			}
 			break;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+		case CONVERT:
+			{
+				cur_token_length = 0;
+				if (mysql_convert == false)
+					cur_token = IDENT;
+
+				return cur_token;
+			}
+			break;
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+
 		default:
 			return cur_token;
 	}
@@ -921,9 +934,20 @@ mysql_quote_identifier(const char *ident)
 		 * that's fine, since we already know we have all-lower-case.
 		 */
 		int			kwnum = ScanKeywordLookup(ident, &MysScanKeywords);
+		bool		tempsafe = safe; /* ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 
 		if (kwnum >= 0 && MysScanKeywordCategories[kwnum] != UNRESERVED_KEYWORD)
 			safe = false;
+
+		/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
+		/*
+		 * Due to the change of the text keyword's attribute - from a non-reserved
+		 * keyword to a column name keyword - the display of text is now enclosed
+		 * in double quotes. Here, we remove the display of the double quotes.
+		 */
+		if ((compatible_db == MYS_PARSER) && (pg_strcasecmp("text", ident) == 0))
+			safe = tempsafe;
+		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 	}
 
 	if (safe)

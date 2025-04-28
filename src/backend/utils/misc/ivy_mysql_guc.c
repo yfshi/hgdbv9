@@ -48,6 +48,7 @@ bool		enable_character_blob = false;
 /* Begin - BUG#Z1434 */
 bool		enable_ignore_columns_list = false;
 /* End - BUG#Z1434 */
+bool		mysql_convert = false;		/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
@@ -121,6 +122,17 @@ int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+	{
+		{"mysql.mysql_convert", PGC_USERSET, COMPAT_OPTIONS_PREVIOUS,
+			gettext_noop("mysql and pg convert."),
+			NULL
+		},
+		&mysql_convert,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
@@ -184,7 +196,7 @@ int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 		},
 		&sql_mode_str,
 		"ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,"
-		"ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,REAL_AS_FLOAT",
+		"ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,REAL_AS_FLOAT,PIPES_AS_CONCAT",
 		check_sql_mode, assign_sql_mode, show_sql_mode
 	},
 	/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */

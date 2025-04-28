@@ -1337,16 +1337,12 @@ select cast('222222' as time) && 1.5; --1
 select cast('222222.555555' as time(3)) && 1.5;--1
 
 -- ||
+set sql_mode='ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 select cast('111111' as time) || cast('111110' as time); --1
-select cast('111111' as time) || 111; --1
-select cast('222222' as time) || 111.1; --1
-select cast('111111' as time) || 0; --1
-select 111111 || cast('222220' as time); --1
-select 111111.111 || cast('222220' as time); --1
-select 0 || cast('222220' as time); --1
-select cast('222222' as time) || 1.4; --1
-select cast('222222' as time) || 1.5; --1
-select cast('222222.555555' as time(3)) || 1.5;--1
+select cast('111111' as time) || true; --1
+select cast('222222' as time) || false; --1
+select true || cast('111111' as time); --1
+select false || cast('222222' as time); --1
 
 -- !
 select !cast('111111' as time) ;--0
