@@ -293,11 +293,11 @@ insert into tb1 values (6, '');
 insert into tb(id, name) select id, name from tb1;
 select * from tb;
 show ivorysql.compatible_mode ;
-show mysql.mode_pad_char_to_full;
+show mysql.functional_diff_control;
 select * from tb1;
-set mysql.mode_pad_char_to_full = true;
+set mysql.functional_diff_control = true;
 select * from tb1;
-set mysql.mode_pad_char_to_full = false ;
+set mysql.functional_diff_control = false ;
 select name, length(name) from tb;
 select repeat(name, '10') from tb;
 select text(name), length(text(name)) from tb;
@@ -457,3 +457,180 @@ select * from t6;
 delete from t6;
 drop table t6;
 reset sql_mode;
+
+
+----------------- fix bug m533 ----------------
+set mysql.functional_diff_control = true;
+select cast('a' as char);
+select cast('ab' as char);
+select cast('abc' as char);
+select cast('abcd' as char);
+select cast('abcde' as char);
+select cast('abcdef' as char);
+
+select cast(repeat('a', 1) as char);
+select cast(repeat('a', 2) as char);
+select cast(repeat('a', 3) as char);
+select cast(repeat('a', 4) as char);
+select cast(repeat('a', 5) as char);
+
+select cast('a'::char(10) as char);
+select cast('ab'::char(10) as char);
+select cast('abc'::char(10) as char);
+select cast('abcd'::char(10) as char);
+select cast('abcde'::char(10) as char);
+select cast('abcdef'::char(10) as char);
+
+---String cast to char, varchar with length
+create table tb as select cast('a' as char);
+\d tb
+create table tb1 as select cast('ab' as char);
+\d tb1
+create table tb2 as select cast('abc' as char);
+\d tb2
+create table tb3 as select cast('abcd' as char);
+\d tb3
+create table tb4 as select cast('abcde' as char);
+\d tb4
+create table tb5 as select cast('abcdef' as char);
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+
+---Expression cast to char, varchar without length
+create table tb as select cast(repeat('a', 1) as char);
+\d tb
+create table tb1 as select cast(repeat('a', 2) as char);
+\d tb1
+create table tb2 as select cast(repeat('a', 3) as char);
+\d tb2
+create table tb3 as select cast(repeat('a', 4) as char);
+\d tb3
+create table tb4 as select cast(repeat('a', 5) as char);
+\d tb4
+create table tb5 as select cast(repeat('a', 6) as char);
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+--nchar
+select cast('a' as nchar);
+select cast('ab' as nchar);
+select cast('abc' as nchar);
+select cast('abcd' as nchar);
+select cast('abcde' as nchar);
+select cast('abcdef' as nchar);
+select cast('aaa' as nchar);
+
+select cast(repeat('a', 1) as nchar);
+select cast(repeat('a', 2) as nchar);
+select cast(repeat('a', 3) as nchar);
+select cast(repeat('a', 4) as nchar);
+select cast(repeat('a', 5) as nchar);
+
+select cast('a'::nchar(10) as nchar);
+select cast('ab'::nchar(10) as nchar);
+select cast('abc'::nchar(10) as nchar);
+select cast('abcd'::nchar(10) as nchar);
+select cast('abcde'::nchar(10) as nchar);
+select cast('abcdef'::nchar(10) as nchar);
+
+---String cast to nchar, varchar with length
+create table tb as select cast('a' as nchar);
+\d tb
+create table tb1 as select cast('ab' as nchar);
+\d tb1
+create table tb2 as select cast('abc' as nchar);
+\d tb2
+create table tb3 as select cast('abcd' as nchar);
+\d tb3
+create table tb4 as select cast('abcde' as nchar);
+\d tb4
+create table tb5 as select cast('abcdef' as nchar);
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+
+---Expression cast to nchar, varchar without length
+create table tb as select cast(repeat('a', 1) as nchar);
+\d tb
+create table tb1 as select cast(repeat('a', 2) as nchar);
+\d tb1
+create table tb2 as select cast(repeat('a', 3) as nchar);
+\d tb2
+create table tb3 as select cast(repeat('a', 4) as nchar);
+\d tb3
+create table tb4 as select cast(repeat('a', 5) as nchar);
+\d tb4
+create table tb5 as select cast(repeat('a', 6) as nchar);
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+
+--char(n)
+select cast('a' as char(2));
+select cast('ab' as char(3));
+select cast('abc' as char(4));
+select cast('abcd' as char(5));
+select cast('abcde' as char(9));
+select cast('abcdef' as char(10));
+
+select cast(repeat('a', 1) as char(10));
+select cast(repeat('a', 2) as char(10));
+select cast(repeat('a', 3) as char(10));
+select cast(repeat('a', 4) as char(10));
+select cast(repeat('a', 5) as char(10));
+
+---String cast to char, varchar with length
+create table tb as select cast('a' as char(2));
+\d tb
+create table tb1 as select cast('ab' as char(3));
+\d tb1
+create table tb2 as select cast('abc' as char(4));
+\d tb2
+create table tb3 as select cast('abcd' as char(5));
+\d tb3
+create table tb4 as select cast('abcde' as char(9));
+\d tb4
+create table tb5 as select cast('abcdef' as char(20));
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+
+---Expression cast to char, varchar without length
+create table tb as select cast(repeat('a', 1) as char(10));
+\d tb
+create table tb1 as select cast(repeat('a', 2) as char(10));
+\d tb1
+create table tb2 as select cast(repeat('a', 3) as char(10));
+\d tb2
+create table tb3 as select cast(repeat('a', 4) as char(10));
+\d tb3
+create table tb4 as select cast(repeat('a', 5) as char(10));
+\d tb4
+create table tb5 as select cast(repeat('a', 6) as char(10));
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+
+
+--nchar(n)
+create table tb as select cast(repeat('a', 1) as nchar(10));
+\d tb
+create table tb1 as select cast(repeat('a', 2) as nchar(10));
+\d tb1
+create table tb2 as select cast(repeat('a', 3) as nchar(10));
+\d tb2
+create table tb3 as select cast(repeat('a', 4) as nchar(10));
+\d tb3
+create table tb4 as select cast(repeat('a', 5) as nchar(10));
+\d tb4
+create table tb5 as select cast(repeat('a', 6) as nchar(10));
+\d tb5
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+set mysql.functional_diff_control = off;

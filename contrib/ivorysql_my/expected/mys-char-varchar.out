@@ -610,9 +610,9 @@ show ivorysql.compatible_mode ;
  mysql
 (1 row)
 
-show mysql.mode_pad_char_to_full;
- mysql.mode_pad_char_to_full 
------------------------------
+show mysql.functional_diff_control;
+ mysql.functional_diff_control 
+-------------------------------
  off
 (1 row)
 
@@ -627,7 +627,7 @@ select * from tb1;
   6 |           
 (6 rows)
 
-set mysql.mode_pad_char_to_full = true;
+set mysql.functional_diff_control = true;
 select * from tb1;
  id | name  
 ----+-------
@@ -639,7 +639,7 @@ select * from tb1;
   6 | 
 (6 rows)
 
-set mysql.mode_pad_char_to_full = false ;
+set mysql.functional_diff_control = false ;
 select name, length(name) from tb;
  name  | length 
 -------+--------
@@ -1361,3 +1361,592 @@ delete from t6;
 drop table t6;
 reset sql_mode;
 WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+----------------- fix bug m533 ----------------
+set mysql.functional_diff_control = true;
+select cast('a' as char);
+ varchar 
+---------
+ a
+(1 row)
+
+select cast('ab' as char);
+ varchar 
+---------
+ ab
+(1 row)
+
+select cast('abc' as char);
+ varchar 
+---------
+ abc
+(1 row)
+
+select cast('abcd' as char);
+ varchar 
+---------
+ abcd
+(1 row)
+
+select cast('abcde' as char);
+ varchar 
+---------
+ abcde
+(1 row)
+
+select cast('abcdef' as char);
+ varchar 
+---------
+ abcdef
+(1 row)
+
+select cast(repeat('a', 1) as char);
+ repeat 
+--------
+ a
+(1 row)
+
+select cast(repeat('a', 2) as char);
+ repeat 
+--------
+ aa
+(1 row)
+
+select cast(repeat('a', 3) as char);
+ repeat 
+--------
+ aaa
+(1 row)
+
+select cast(repeat('a', 4) as char);
+ repeat 
+--------
+ aaaa
+(1 row)
+
+select cast(repeat('a', 5) as char);
+ repeat 
+--------
+ aaaaa
+(1 row)
+
+select cast('a'::char(10) as char);
+ varchar 
+---------
+ a
+(1 row)
+
+select cast('ab'::char(10) as char);
+ varchar 
+---------
+ ab
+(1 row)
+
+select cast('abc'::char(10) as char);
+ varchar 
+---------
+ abc
+(1 row)
+
+select cast('abcd'::char(10) as char);
+ varchar 
+---------
+ abcd
+(1 row)
+
+select cast('abcde'::char(10) as char);
+ varchar 
+---------
+ abcde
+(1 row)
+
+select cast('abcdef'::char(10) as char);
+ varchar 
+---------
+ abcdef
+(1 row)
+
+---String cast to char, varchar with length
+create table tb as select cast('a' as char);
+\d tb
+                        Table "public.tb"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(1) |           |          | 
+
+create table tb1 as select cast('ab' as char);
+\d tb1
+                       Table "public.tb1"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(2) |           |          | 
+
+create table tb2 as select cast('abc' as char);
+\d tb2
+                       Table "public.tb2"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(3) |           |          | 
+
+create table tb3 as select cast('abcd' as char);
+\d tb3
+                       Table "public.tb3"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(4) |           |          | 
+
+create table tb4 as select cast('abcde' as char);
+\d tb4
+                       Table "public.tb4"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(5) |           |          | 
+
+create table tb5 as select cast('abcdef' as char);
+\d tb5
+                       Table "public.tb5"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(6) |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+---Expression cast to char, varchar without length
+create table tb as select cast(repeat('a', 1) as char);
+\d tb
+                      Table "public.tb"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb1 as select cast(repeat('a', 2) as char);
+\d tb1
+                     Table "public.tb1"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb2 as select cast(repeat('a', 3) as char);
+\d tb2
+                     Table "public.tb2"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb3 as select cast(repeat('a', 4) as char);
+\d tb3
+                     Table "public.tb3"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb4 as select cast(repeat('a', 5) as char);
+\d tb4
+                     Table "public.tb4"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb5 as select cast(repeat('a', 6) as char);
+\d tb5
+                     Table "public.tb5"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+--nchar
+select cast('a' as nchar);
+ varchar 
+---------
+ a
+(1 row)
+
+select cast('ab' as nchar);
+ varchar 
+---------
+ ab
+(1 row)
+
+select cast('abc' as nchar);
+ varchar 
+---------
+ abc
+(1 row)
+
+select cast('abcd' as nchar);
+ varchar 
+---------
+ abcd
+(1 row)
+
+select cast('abcde' as nchar);
+ varchar 
+---------
+ abcde
+(1 row)
+
+select cast('abcdef' as nchar);
+ varchar 
+---------
+ abcdef
+(1 row)
+
+select cast('aaa' as nchar);
+ varchar 
+---------
+ aaa
+(1 row)
+
+select cast(repeat('a', 1) as nchar);
+ repeat 
+--------
+ a
+(1 row)
+
+select cast(repeat('a', 2) as nchar);
+ repeat 
+--------
+ aa
+(1 row)
+
+select cast(repeat('a', 3) as nchar);
+ repeat 
+--------
+ aaa
+(1 row)
+
+select cast(repeat('a', 4) as nchar);
+ repeat 
+--------
+ aaaa
+(1 row)
+
+select cast(repeat('a', 5) as nchar);
+ repeat 
+--------
+ aaaaa
+(1 row)
+
+select cast('a'::nchar(10) as nchar);
+ varchar 
+---------
+ a
+(1 row)
+
+select cast('ab'::nchar(10) as nchar);
+ varchar 
+---------
+ ab
+(1 row)
+
+select cast('abc'::nchar(10) as nchar);
+ varchar 
+---------
+ abc
+(1 row)
+
+select cast('abcd'::nchar(10) as nchar);
+ varchar 
+---------
+ abcd
+(1 row)
+
+select cast('abcde'::nchar(10) as nchar);
+ varchar 
+---------
+ abcde
+(1 row)
+
+select cast('abcdef'::nchar(10) as nchar);
+ varchar 
+---------
+ abcdef
+(1 row)
+
+---String cast to nchar, varchar with length
+create table tb as select cast('a' as nchar);
+\d tb
+                        Table "public.tb"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(1) |           |          | 
+
+create table tb1 as select cast('ab' as nchar);
+\d tb1
+                       Table "public.tb1"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(2) |           |          | 
+
+create table tb2 as select cast('abc' as nchar);
+\d tb2
+                       Table "public.tb2"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(3) |           |          | 
+
+create table tb3 as select cast('abcd' as nchar);
+\d tb3
+                       Table "public.tb3"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(4) |           |          | 
+
+create table tb4 as select cast('abcde' as nchar);
+\d tb4
+                       Table "public.tb4"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(5) |           |          | 
+
+create table tb5 as select cast('abcdef' as nchar);
+\d tb5
+                       Table "public.tb5"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(6) |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+---Expression cast to nchar, varchar without length
+create table tb as select cast(repeat('a', 1) as nchar);
+\d tb
+                      Table "public.tb"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb1 as select cast(repeat('a', 2) as nchar);
+\d tb1
+                     Table "public.tb1"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb2 as select cast(repeat('a', 3) as nchar);
+\d tb2
+                     Table "public.tb2"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb3 as select cast(repeat('a', 4) as nchar);
+\d tb3
+                     Table "public.tb3"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb4 as select cast(repeat('a', 5) as nchar);
+\d tb4
+                     Table "public.tb4"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+create table tb5 as select cast(repeat('a', 6) as nchar);
+\d tb5
+                     Table "public.tb5"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ repeat | character varying |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+--char(n)
+select cast('a' as char(2));
+ varchar 
+---------
+ a
+(1 row)
+
+select cast('ab' as char(3));
+ varchar 
+---------
+ ab
+(1 row)
+
+select cast('abc' as char(4));
+ varchar 
+---------
+ abc
+(1 row)
+
+select cast('abcd' as char(5));
+ varchar 
+---------
+ abcd
+(1 row)
+
+select cast('abcde' as char(9));
+ varchar 
+---------
+ abcde
+(1 row)
+
+select cast('abcdef' as char(10));
+ varchar 
+---------
+ abcdef
+(1 row)
+
+select cast(repeat('a', 1) as char(10));
+ repeat 
+--------
+ a
+(1 row)
+
+select cast(repeat('a', 2) as char(10));
+ repeat 
+--------
+ aa
+(1 row)
+
+select cast(repeat('a', 3) as char(10));
+ repeat 
+--------
+ aaa
+(1 row)
+
+select cast(repeat('a', 4) as char(10));
+ repeat 
+--------
+ aaaa
+(1 row)
+
+select cast(repeat('a', 5) as char(10));
+ repeat 
+--------
+ aaaaa
+(1 row)
+
+---String cast to char, varchar with length
+create table tb as select cast('a' as char(2));
+\d tb
+                        Table "public.tb"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(2) |           |          | 
+
+create table tb1 as select cast('ab' as char(3));
+\d tb1
+                       Table "public.tb1"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(3) |           |          | 
+
+create table tb2 as select cast('abc' as char(4));
+\d tb2
+                       Table "public.tb2"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(4) |           |          | 
+
+create table tb3 as select cast('abcd' as char(5));
+\d tb3
+                       Table "public.tb3"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(5) |           |          | 
+
+create table tb4 as select cast('abcde' as char(9));
+\d tb4
+                       Table "public.tb4"
+ Column  |         Type         | Collation | Nullable | Default 
+---------+----------------------+-----------+----------+---------
+ varchar | character varying(9) |           |          | 
+
+create table tb5 as select cast('abcdef' as char(20));
+\d tb5
+                        Table "public.tb5"
+ Column  |         Type          | Collation | Nullable | Default 
+---------+-----------------------+-----------+----------+---------
+ varchar | character varying(20) |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+---Expression cast to char, varchar without length
+create table tb as select cast(repeat('a', 1) as char(10));
+\d tb
+                        Table "public.tb"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb1 as select cast(repeat('a', 2) as char(10));
+\d tb1
+                       Table "public.tb1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb2 as select cast(repeat('a', 3) as char(10));
+\d tb2
+                       Table "public.tb2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb3 as select cast(repeat('a', 4) as char(10));
+\d tb3
+                       Table "public.tb3"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb4 as select cast(repeat('a', 5) as char(10));
+\d tb4
+                       Table "public.tb4"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb5 as select cast(repeat('a', 6) as char(10));
+\d tb5
+                       Table "public.tb5"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+--nchar(n)
+create table tb as select cast(repeat('a', 1) as nchar(10));
+\d tb
+                        Table "public.tb"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb1 as select cast(repeat('a', 2) as nchar(10));
+\d tb1
+                       Table "public.tb1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb2 as select cast(repeat('a', 3) as nchar(10));
+\d tb2
+                       Table "public.tb2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb3 as select cast(repeat('a', 4) as nchar(10));
+\d tb3
+                       Table "public.tb3"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb4 as select cast(repeat('a', 5) as nchar(10));
+\d tb4
+                       Table "public.tb4"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+create table tb5 as select cast(repeat('a', 6) as nchar(10));
+\d tb5
+                       Table "public.tb5"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ repeat | character varying(10) |           |          | 
+
+drop table tb, tb1, tb2, tb3, tb4, tb5;
+set mysql.functional_diff_control = off;

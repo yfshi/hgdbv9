@@ -639,7 +639,7 @@ sub upgradecheck
 	print "\nRunning initdb on old cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nStarting old cluster\n\n";
-	my @args = ('pg_ctl', 'start', '-l', "$logdir/postmaster1.log", '-o', "-p $pg_port -m $mys_port -c mysql.mode_pad_char_to_full=off");
+	my @args = ('pg_ctl', 'start', '-l', "$logdir/postmaster1.log", '-o', "-p $pg_port -m $mys_port -c mysql.functional_diff_control=off");
 	system(@args) == 0 or exit 1;
 
 	print "\nCreating databases with names covering most ASCII bytes\n\n";
@@ -661,10 +661,10 @@ sub upgradecheck
 	print "\nSetting up new cluster\n\n";
 	standard_initdb() or exit 1;
 	print "\nRunning pg_upgrade\n\n";
-	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-y', $mys_port, '-Y', $mys_port, '-O', "-c mysql.mode_pad_char_to_full=off");
+	@args = ('pg_upgrade', '-d', "$data.old", '-D', $data, '-b', $bindir, '-p', $pg_port, '-P', $pg_port, '-y', $mys_port, '-Y', $mys_port, '-O', "-c mysql.functional_diff_control=off");
 	system(@args) == 0 or exit 1;
 	print "\nStarting new cluster\n\n";
-	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -m $mys_port -c mysql.mode_pad_char_to_full=off", 'start');
+	@args = ('pg_ctl', '-l', "$logdir/postmaster2.log", '-o', "-p $pg_port -m $mys_port -c mysql.functional_diff_control=off", 'start');
 	system(@args) == 0 or exit 1;
 	print "\nDumping new cluster\n\n";
 	@args = ('pg_dumpall', '-f', "$tmp_root/dump2.sql");
