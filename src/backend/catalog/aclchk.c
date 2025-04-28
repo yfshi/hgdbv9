@@ -1610,6 +1610,11 @@ RemoveRoleFromObjectACL(Oid roleid, Oid classid, Oid objid)
 			case ForeignDataWrapperRelationId:
 				istmt.objtype = OBJECT_FDW;
 				break;
+			/* Begin - BUG#Z00004612 */
+			case PackageRelationId:
+				istmt.objtype = OBJECT_PACKAGE;
+				break;
+			/* End - BUG#Z00004612 */
 			default:
 				elog(ERROR, "unexpected object class %u", classid);
 				break;
