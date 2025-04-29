@@ -16820,12 +16820,6 @@ func_expr_common_subexpr:
 					$$ = makeTypeCast(makeStringConst($3, @1), MySQLSystemTypeName("binary"), @1);
 				}
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
-			/*End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
-			| INT4 SCONST
-				{
-					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int4"), @1);
-				}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),

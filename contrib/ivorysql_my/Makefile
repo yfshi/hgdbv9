@@ -39,8 +39,7 @@ OBJS = \
 	src/charset/ctype-ujis.o \
 	src/charset/ctype-extra.o \
 	src/character/mystext.o \
-	src/datatype/mysfloat.o\
-	src/datatype/mysint4.o
+	src/datatype/mysfloat.o
 
 EXTENSION = ivorysql_my
 
