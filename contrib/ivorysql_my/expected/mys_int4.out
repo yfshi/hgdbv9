@@ -421,10 +421,10 @@ select col1 / col2 from t1;
 (2 rows)
 
 select col1 div col2 from t1;
- mys_div 
----------
-       0
-       0
+ ?column? 
+----------
+        0
+        0
 (2 rows)
 
 select col1 % col2 from t1;
