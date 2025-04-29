@@ -97,6 +97,7 @@
 #include "access/fdwxact_launcher.h"
 #include "access/transam.h"
 #include "access/xlog.h"
+#include "access/xlog_internal.h" /* BUG#Z00004645 */
 #include "bootstrap/bootstrap.h"
 #include "catalog/pg_control.h"
 #include "common/file_perm.h"
@@ -474,6 +475,15 @@ static void ShowCheckLicenseWarnings(void);
 static void ShowLicenseEffectiveDate(void);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+
+/* Begin - BUG#Z00004645 */
+/* BEGIN - case sensitive indentify */
+static void SetCaseGucOption(char* path);
+static int GetDatabaseStyleFromControl(char* path);
+static int GetCaseSwitchModeFromControl(char* path);
+/* END - case sensitive indentify */
+/* End - BUG#Z00004645 */
+
 
 /*
  * Archiver is allowed to start up at the current postmaster state?
@@ -927,15 +937,23 @@ PostmasterMain(int argc, char *argv[])
 		ExitPostmaster(1);
 	}
 
+	/* Begin - BUG#Z00004645 */
+	/* set database_style here */
+	/*
+	 * there, we set identifier_case_switch to value
+	 * get from pg_control before SelectConfigFiles, so
+	 * that confgilre file value overwrite the default value
+	 * from pg_control
+	 */
+	SetCaseGucOption(userDoption);
+	/* End - BUG#Z00004645 */
+
 	/*
 	 * Locate the proper configuration files and data directory, and read
 	 * postgresql.conf for the first time.
 	 */
 	if (!SelectConfigFiles(userDoption, progname))
 		ExitPostmaster(2);
-
-	/* set database_style here */
-	SetCaseGucOption(userDoption);
 
 	if (output_config_variable != NULL)
 	{
@@ -7143,3 +7161,134 @@ ShowLicenseEffectiveDate(void)
 
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+
+
+/* Begin - BUG#Z00004645 */
+/* BEGIN - case sensitive indentify
+ * Read database compatibility mode from pg_control file
+ *
+ */
+static int
+GetDatabaseStyleFromControl(char* path)
+{
+	int			fd;
+	int			len;
+	char		pathname[1024];
+	char		*configdir;
+	ControlFileData confile;
+
+	if (path)
+		configdir = make_absolute_path(path);
+	else
+		configdir = make_absolute_path(getenv("PGDATA"));
+
+	sprintf(pathname,"%s/%s",configdir,XLOG_CONTROL_FILE);
+
+	fd = open(pathname, O_RDONLY | PG_BINARY, 0);
+
+	if (fd < 0)
+	{
+		fprintf(stderr, _("could not open file \"%s\" for reading: %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+
+	len = read(fd, &confile, sizeof(ControlFileData));
+	if (len < 0)
+	{
+		fprintf(stderr, _("could not read file \"%s\": %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+	close(fd);
+
+	return confile.dbmode;
+}
+
+
+/*
+ * Read case conversion mode from pg_control file
+ *
+ */
+static int
+GetCaseSwitchModeFromControl(char* path)
+{
+	int			fd;
+	int			len;
+	char		pathname[1024];
+	char		*configdir;
+	ControlFileData confile;
+
+	if (path)
+		configdir = make_absolute_path(path);
+	else
+		configdir = make_absolute_path(getenv("PGDATA"));
+
+	sprintf(pathname,"%s/%s",configdir,XLOG_CONTROL_FILE);
+
+	fd = open(pathname, O_RDONLY | PG_BINARY, 0);
+
+	if (fd < 0)
+	{
+		fprintf(stderr, _("could not open file \"%s\" for reading: %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+
+	len = read(fd, &confile, sizeof(ControlFileData));
+	if (len < 0)
+	{
+		fprintf(stderr, _("could not read file \"%s\": %s\n"),
+			pathname, strerror(errno));
+
+		return -1;
+	}
+	close(fd);
+
+	return confile.casemode;
+}
+
+/*
+ * Get the database compatibility mode, and set up in the system
+ *
+ **/
+static void
+SetCaseGucOption(char* path)
+{
+	int dbstyle;
+
+	dbstyle = GetDatabaseStyleFromControl(path);
+
+	//the pg mode does not need to set
+	if (DB_ORACLE == dbstyle)
+	{
+		int casemode;
+
+		casemode = GetCaseSwitchModeFromControl(path);
+		if (casemode == NORMAL)
+		{
+			SetConfigOption("ivorysql.identifier_case_switch", "normal",
+				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+		}
+		else if (casemode == INTERCHANGE)
+		{
+			SetConfigOption("ivorysql.identifier_case_switch", "interchange",
+				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+		}
+		else if (casemode == LOWERCASE)
+		{
+			SetConfigOption("ivorysql.identifier_case_switch", "lowercase",
+				PGC_POSTMASTER, PGC_S_DYNAMIC_DEFAULT);	/* ReqID:SRS-MISC-GUC */ /* BUG#Z00004645 */
+		}
+		else
+			ereport(FATAL,
+					(errmsg("Incorrect case conversion mode value \"%d\"", casemode)));
+	}
+}
+/* END - case sensitive indentify */
+/* End - BUG#Z00004645 */
+
+
