@@ -253,7 +253,7 @@ bpcharout(PG_FUNCTION_ARGS)
 		 */
 		if (mode_pad_char_to_full())
 			PG_RETURN_CSTRING(TextDatumGetCString(txt));
-		if (not_mode_pad_char_to_full == true)
+		if (mysql_functional_diff_control && not_mode_pad_char_to_full)	/* BUG#M533 */
 			PG_RETURN_CSTRING(TextDatumGetCString(mysrtrim(DatumGetTextPP(txt), PG_GET_COLLATION())));
 	}
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */

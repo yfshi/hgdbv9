@@ -53,6 +53,10 @@ int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
 bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
+/* Begin - BUG#M533 */
+bool		mysql_functional_diff_control = true;
+bool		cast_to_char = true;
+/* End - BUG#M533 */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -133,6 +137,26 @@ int			div_prec_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+	/* Begin - BUG#M533 */
+	{
+		{"mysql.functional_diff_control", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Controlling the functional difference between MySQL and Postgres."),
+			NULL
+		},
+		&mysql_functional_diff_control,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"mysql.cast_to_char", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("MySQL and Postgres CAST(expr as char) is difference."),
+			NULL
+		},
+		&cast_to_char,
+		true,
+		NULL, NULL, NULL
+	},
+/* End - BUG#M533 */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

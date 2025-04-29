@@ -490,6 +490,10 @@ extern PGDLLIMPORT bool myenable_case_switch;
 
 extern PGDLLIMPORT bool not_mode_pad_char_to_full;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 extern PGDLLIMPORT bool mysql_convert;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+/* Begin - BUG#M533 */
+extern PGDLLIMPORT bool mysql_functional_diff_control;
+extern PGDLLIMPORT bool cast_to_char;
+/* End - BUG#M533 */
 
 /*
  * Functions exported by guc.c

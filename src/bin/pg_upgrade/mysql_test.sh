@@ -69,7 +69,7 @@ case $testhost in
 		;;
 esac
 
-POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.mode_pad_char_to_full=off -k \"$PG_REGRESS_SOCKET_DIR\""
+POSTMASTER_OPTS="-F -c listen_addresses=\"$LISTEN_ADDRESSES\" -c mysql.functional_diff_control=off -k \"$PG_REGRESS_SOCKET_DIR\""
 export PGHOST
 
 # don't rely on $PWD here, as old shells don't set it
@@ -252,7 +252,7 @@ PGDATA="$BASE_PGDATA"
 
 standard_initdb 'initdb'
 
-pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -y "$MYSPORT" -Y "$MYSPORT" -O "-c mysql.mode_pad_char_to_full=off"
+pg_upgrade $PG_UPGRADE_OPTS -d "${PGDATA}.old" -D "$PGDATA" -b "$oldbindir" -p "$PGPORT" -P "$PGPORT" -y "$MYSPORT" -Y "$MYSPORT" -O "-c mysql.functional_diff_control=off"
 
 # make sure all directories and files have group permissions, on Unix hosts
 # Windows hosts don't support Unix-y permissions.

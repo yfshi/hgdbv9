@@ -107,6 +107,7 @@ static Node *transformColumnRefOrFunCall(ParseState *pstate, ColumnRefOrFuncCall
 /* Begin - ReqID:SRS-SQL-ROWNUM */
 static Node *transformPseudoColumnRef(ParseState *pstate, PseudoColumnRef *pcr);
 /* End - ReqID:SRS-SQL-ROWNUM */
+static Node *mysmakeIntConst(int val, int location);	/* BUG#M533 */
 
 /* Begin - Bug#Z167 */
 static inline void
@@ -3838,6 +3839,44 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 	/* Look up the type name first */
 	typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
 
+	/* Begin - BUG#M533 */
+	if (MYS_PARSER == compatible_db && (mysql_functional_diff_control && cast_to_char) &&
+		targetType == BPCHAROID && targetTypmod != VARHDRSZ)
+	{
+		int32		tmptargetTypmod = -1;
+
+		/* when the typemod is -2, represent the type is char or nchar,
+		 * not type mode. when the typemod is not -2, represent the type
+		 * is char(n) or nchar(n). when the type is char or nchar, if the
+		 * arg is string, the type mode is the string length, when then arg is expr,
+		 * the type mode is -1;
+		 */
+		arg = tc->arg;
+		if (IsA(arg, A_Const))
+		{
+			A_Const *aconst = (A_Const *)arg;
+
+			if (aconst->val.type == T_String && aconst->val.val.str != NULL)
+				tmptargetTypmod = DatumGetInt32(DirectFunctionCall1(textlen,
+																	 CStringGetTextDatum(aconst->val.val.str)));
+		}
+
+		/* when the typemod is -2, the type is char or nchar,
+		 * type mode is charactor lenth;
+		 * when the typemod is not -2, the type is char(n) or nchar(n),
+		 * type mode is type mode - header;
+		 */
+		if (tc->typeName->typemod != -2)
+			tmptargetTypmod = targetTypmod - VARHDRSZ;
+
+		tc->typeName->names = list_make2(makeString("pg_catalog"), makeString("varchar"));
+		tc->typeName->typmods = list_make1(mysmakeIntConst(tmptargetTypmod, -1));
+		targetTypmod = 0;
+		targetType = InvalidOid;
+		typenameTypeIdAndMod(pstate, tc->typeName, &targetType, &targetTypmod);
+	}
+	/* End - BUG#M533 */
+
 	/*
 	 * If the subject of the typecast is an ARRAY[] construct and the target
 	 * type is an array type, we invoke transformArrayExpr() directly so that
@@ -4361,3 +4400,17 @@ ParseExprKindName(ParseExprKind exprKind)
 	}
 	return "unrecognized expression kind";
 }
+
+/* Begin - BUG#M533 */
+static Node *
+mysmakeIntConst(int val, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_Integer;
+	n->val.val.ival = val;
+	n->location = location;
+
+	return (Node *)n;
+}
+/* End - BUG#M533 */
