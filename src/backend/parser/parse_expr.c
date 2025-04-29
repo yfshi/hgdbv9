@@ -3392,6 +3392,7 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 									exprLocation(pstate->p_last_srf))));
 
 	newc->args = newcoercedargs;
+	newc->isnvl = c->isnvl;	/* BUG#Z4591 */
 	newc->location = c->location;
 	return (Node *) newc;
 }

@@ -1630,6 +1630,7 @@ _outCoalesceExpr(StringInfo str, const CoalesceExpr *node)
 	WRITE_OID_FIELD(coalescetype);
 	WRITE_OID_FIELD(coalescecollid);
 	WRITE_NODE_FIELD(args);
+	WRITE_BOOL_FIELD(isnvl); /* BUG#Z4591 */
 	WRITE_LOCATION_FIELD(location);
 }
 

@@ -556,9 +556,9 @@ drop table test1;
 create table test1(col1 interval year to month,col2  int);
 insert into test1 values('1-2',1);
 SELECT NVL (col1, NULL) from test1;
-  nvl   
---------
- +01-02
+      nvl      
+---------------
+ +000000001-02
 (1 row)
 
 drop table test1;
@@ -969,9 +969,9 @@ drop table test1;
 create table test1(col1 interval year to month,col2  int);
 insert into test1 values('1-2',1);
 SELECT NVL (NULL, col1) from test1;
-  nvl   
---------
- +01-02
+      nvl      
+---------------
+ +000000001-02
 (1 row)
 
 drop table test1;
@@ -4357,3 +4357,93 @@ select pg_get_viewdef('test_listagg');
 DROP VIEW test_listagg;
 DROP TABLE employee;
 /* End - BUG#M0000457 */
+/* Begin - BUG#Z4591 */
+create table test_nvl(a number, b char(8));
+select nvl(a, b) from test_nvl;	-- null
+ nvl 
+-----
+(0 rows)
+
+insert into test_nvl values(123, '456');
+select nvl(a, b) from test_nvl;	-- 123
+ nvl 
+-----
+ 123
+(1 row)
+
+insert into test_nvl values(123, 'aaa');
+select nvl(a, b) from test_nvl;	-- error
+ERROR:  invalid input syntax for type numeric: "aaa     "
+delete from test_nvl;
+insert into test_nvl values(123, '456');
+select nvl(666, b) from test_nvl;	-- 666
+ nvl 
+-----
+ 666
+(1 row)
+
+insert into test_nvl values(123, 'aaaa');
+select nvl(666, b) from test_nvl;	-- error
+ERROR:  invalid input syntax for type numeric: "aaaa    "
+drop table test_nvl;
+-- const
+select nvl(3, 'aaa') from dual;	-- error
+ERROR:  invalid input syntax for type numeric: "aaa"
+LINE 1: select nvl(3, 'aaa') from dual;
+                      ^
+select nvl(222, 333) from dual;	-- 222
+ nvl 
+-----
+ 222
+(1 row)
+
+select nvl(null, 222) from dual; -- 222
+ nvl 
+-----
+ 222
+(1 row)
+
+select nvl(222, null) from dual; -- 222
+ nvl 
+-----
+ 222
+(1 row)
+
+select nvl(null, null) from dual; -- null
+ nvl 
+-----
+ 
+(1 row)
+
+-- nested
+select nvl(null, nvl(111,222)) from dual; -- 111
+ nvl 
+-----
+ 111
+(1 row)
+
+select nvl(nvl(222,333), null) from dual; -- 222
+ nvl 
+-----
+ 222
+(1 row)
+
+select nvl(nvl(123, null), nvl(111,222)) from dual; -- 123
+ nvl 
+-----
+ 123
+(1 row)
+
+select nvl(nvl(null, 123), nvl(111,222)) from dual; -- 123
+ nvl 
+-----
+ 123
+(1 row)
+
+select nvl(nvl(null, null), nvl(111,222)) from dual; -- 111
+ nvl 
+-----
+ 111
+(1 row)
+
+/* End - BUG#Z4591 */

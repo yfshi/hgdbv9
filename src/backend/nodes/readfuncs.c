@@ -1233,6 +1233,7 @@ _readCoalesceExpr(void)
 	READ_OID_FIELD(coalescetype);
 	READ_OID_FIELD(coalescecollid);
 	READ_NODE_FIELD(args);
+	READ_BOOL_FIELD(isnvl); /* BUG#Z4591 */
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
