@@ -23,11 +23,12 @@ SELECT f1 FROM TEMP_FLOAT
            0
            0
           35
+          35
         1234
        32767
       123456
   2147483647
-(11 rows)
+(12 rows)
 
 -- int4
 CREATE TABLE TEMP_INT4 (f1 INT4);

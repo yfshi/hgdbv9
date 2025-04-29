@@ -618,7 +618,6 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 				Bit ConstBit BitWithLength BitWithoutLength
 				Datetime /* ReqID:SRS-MYSQL-DATETYPE */
 				Int2 Int2WithLength Int2WithoutLength	/* ReqID:SRS-MYSQL-NUMERICTYPE */
-				Int4 Int4WithLength Int4WithoutLength	/* ReqID:SRS-MYSQL-NUMERIC */
 %type <str>		character
 %type <str>		extract_arg
 %type <boolean> opt_varying opt_no_inherit
@@ -755,7 +754,7 @@ static SelectStmt *makeShowCollationStmt(ShowFilter *filter);
 
 	IDENTITY_P IF_P IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
-	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INT4 INTEGER
+	INNER_P INOUT INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT2 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
 	JOIN
@@ -14505,7 +14504,6 @@ SimpleTypename:
 											 makeIntConst($3, @3));
 				}
 			| Int2									{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERICTYPE-INT2 */
-			| Int4	{ $$ = $1; } /* ReqID:SRS-MYSQL-NUMERIC-INT4 */
 		;
 
 /* We have a separate ConstTypename to allow defaulting fixed-length
@@ -14600,13 +14598,28 @@ GenericType:
 						$$->location = @1;
 					}	
 					else /* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
+					/*Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+					if (!$3 && MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					{
+						$$ = makeTypeName($1);
+						$$->location = @1;
+					}
+					/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
+					else
 					{
 						$$ = makeTypeName($1);
 						$$->typmods = $2;
 						$$->location = @1;
 					}
 				}
-
+			| type_function_name opt_type_modifiers SIGNED
+				{
+					if (MYS_PARSER == compatible_db && strcmp($1, "int4") == 0)
+					{
+						$$ = makeTypeName($1);
+						$$->location = @1;
+					}
+				}
 			| type_function_name attrs opt_type_modifiers
 				{
 					$$ = makeTypeNameFromNameList(lcons(makeString($1), $2));
@@ -14623,7 +14636,6 @@ opt_type_modifiers: '(' expr_list ')'				{ $$ = $2; }
  * SQL numeric data types
  */
 Numeric:	NumericNoConflict { $$ = $1; }
-			/* Begin - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| integer_int
 				{
 					$$ = SystemTypeName("int4");
@@ -14634,29 +14646,6 @@ Numeric:	NumericNoConflict { $$ = $1; }
 					$$ = SystemTypeName("int4");
 					$$->location = @1;
 				}
-			| integer_int '(' Iconst ')'
-				{
-					if ($3 > 255 || $3 < 0)
-							ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("int4 length must be between 1 and 255."),
-								 parser_errposition(@2)));
-
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| integer_int '(' Iconst ')' SIGNED
-				{
-					if ($3 > 255 || $3 < 0)
-							ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("int4 length must be between 1 and 255."),
-								 parser_errposition(@2)));
-
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| SMALLINT
 				{
 					$$ = SystemTypeName("int2");
@@ -14855,16 +14844,19 @@ NumericNoConflict:
 					$$ = MySQLSystemTypeName("mysuint4");
 					$$->location = @1;
 				}
-			| integer_int '(' Iconst ')' unsigned_list
+			| integer_int '(' Iconst ')' field_unsigned
 				{
-					if ($3 > 255 || $3 < 0)
-						ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							errmsg("int4 length must be between 1 and 255."),
-							parser_errposition(@2)));
-					$$ = MySQLSystemTypeName("mysuint4");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
+					if($5)
+					{
+						$$ = MySQLSystemTypeName("mysuint4");
+						$$->typmods = list_make1(makeIntConst($3, @3));
+						$$->location = @1;
+					} 
+					else
+					{
+						$$ = SystemTypeName("int4");
+						$$->location = @1;
+					}
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT4 */
 			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT8 */
@@ -15132,154 +15124,6 @@ Int2WithoutLength:
 				$$->location = @1;
 			}	
 		;
-
-/*
- * SQL int4
- */
-Int4:
-			Int4WithLength
-			{
-				$$ = $1;
-			}
-			|	Int4WithoutLength
-			{
-				$$ = $1;
-			}
-		;
-Int4WithLength:
-			INT4  '(' Iconst ')'
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| INT4  '(' Iconst ')' SIGNED
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}			
-Int4WithoutLength:
-			INT4
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}
-			| INT4  SIGNED
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}	
-		;
-
-
-/*
- * SQL int4
- */
-/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-Int4:
-			Int4WithLength
-			{
-				$$ = $1;
-			}
-			|	Int4WithoutLength
-			{
-				$$ = $1;
-			}
-		;
-Int4WithLength:
-			INT4  '(' Iconst ')'
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| INT4  '(' Iconst ')' SIGNED
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| INT4  '(' Iconst ')' unsigned_list
-				{
-					if ($3 > 255 || $3 < 0)
-							ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("int4 length must be between 1 and 255."),
-								 parser_errposition(@2)));
-					$$ = MySQLSystemTypeName("mysuint4");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
-				}				
-Int4WithoutLength:
-			INT4
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}
-			| INT4  SIGNED
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}	
-			| INT4  unsigned_list
-			{
-				$$ = MySQLSystemTypeName("mysuint4");
-				$$->location = @1;
-			}	
-		;
-
-
-/*
- * SQL int4
- */
-/* ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-Int4:
-			Int4WithLength
-			{
-				$$ = $1;
-			}
-			|	Int4WithoutLength
-			{
-				$$ = $1;
-			}
-		;
-Int4WithLength:
-			INT4  '(' Iconst ')'
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| INT4  '(' Iconst ')' SIGNED
-				{
-					$$ = SystemTypeName("int4");
-					$$->location = @1;
-				}
-			| INT4  '(' Iconst ')' unsigned_list
-				{
-					if ($3 > 255 || $3 < 0)
-							ereport(ERROR,
-								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("int4 length must be between 1 and 255."),
-								 parser_errposition(@2)));
-					$$ = MySQLSystemTypeName("mysuint4");
-					$$->typmods = list_make1(makeIntConst($3, @3));
-					$$->location = @1;
-				}				
-Int4WithoutLength:
-			INT4
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}
-			| INT4  SIGNED
-			{
-				$$ = SystemTypeName("int4");
-				$$->location = @1;
-			}	
-			| INT4  unsigned_list
-			{
-				$$ = MySQLSystemTypeName("mysuint4");
-				$$->location = @1;
-			}	
-		;
-
 
 /*
  * SQL date/time types
@@ -16565,28 +16409,16 @@ func_expr_common_subexpr:
 			| INT2 '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("int2"),
-												list_make1($3),
-											   COERCE_SQL_SYNTAX,
-											   @1);
-				}
-			/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
-			| INT4 '(' a_expr ')'
-				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
 											   list_make1($3),
 											   COERCE_SQL_SYNTAX,
 											   @1);
 				}
+
 			| INT2 SCONST
 				{
 					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int2"), @1);
 				}
 			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT2 */
-			| INT4 SCONST
-				{
-					$$ = makeTypeCast(makeStringConst($2, @1), SystemTypeName("int4"), @1);
-				}
-			/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| EXTRACT '(' extract_list ')'
 				{
 					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
@@ -18359,7 +18191,6 @@ col_name_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
-			| INT4			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| INTEGER
 			| INTERVAL
 			| LEAST
@@ -18731,7 +18562,6 @@ bare_label_keyword:
 			| INT1			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
 			| INT2			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT2 */
 			| INT3			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT3 */
-			| INT4			/* ReqID: SRS-MYSQL-NUMBERICTYPE-INT4 */
 			| INTEGER
 			| INTERVAL
 			| INVOKER

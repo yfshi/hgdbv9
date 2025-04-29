@@ -112,12 +112,6 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
--- CREATE OPERATOR ivymy.// (
--- 	procedure = ivymy.myint4_exact_div,
--- 	leftarg = pg_catalog.int4,
--- 	rightarg = pg_catalog.int4,
--- 	commutator = //
--- );
 
 --  "%"
 CREATE FUNCTION ivymy.myint4_mod(pg_catalog.int4, pg_catalog.int4)
