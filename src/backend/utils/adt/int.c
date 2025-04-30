@@ -301,7 +301,7 @@ int4in(PG_FUNCTION_ARGS)
 	/* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 	if (mysql_int4_datatype_in_hook && MYS_PARSER == compatible_db)
 	{
-		PG_RETURN_INT16((*mysql_int4_datatype_in_hook)(num));
+		PG_RETURN_INT32((*mysql_int4_datatype_in_hook)(num));
 	}
 	/* End - ReqID:SRS-MYSQL-NUMBERICTYPE-INT4 */
 
