@@ -1012,9 +1012,6 @@
 /* Define to 1 if `wcstombs_l' requires <xlocale.h>. */
 #undef WCSTOMBS_L_IN_XLOCALE
 
-/* Define to build with Security Enhancement features.
-   (--with-security-enhancement) */
-#undef WITH_SECURITY_ENHANCEMENT
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

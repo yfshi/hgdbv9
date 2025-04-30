@@ -20,15 +20,6 @@
 #include "postgres.h"
 
 
-// typedef bool (*has_superuser_priv_fn) (Oid roleid);
-
-// typedef struct 
-// {
-// 	has_superuser_priv_fn has_superuser_priv;
-// }SeMethod;
-// extern PGDLLIMPORT SeMethod *se_method;
-// #define HAS_SUPERUSRE_PRIV(role_oid) 
-// 	(se_method->has_superuser_priv(role_oid))
 
 
 typedef struct 

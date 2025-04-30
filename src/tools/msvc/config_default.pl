@@ -27,9 +27,6 @@ our $config = {
 	# Begin - ReqID:SRS-Performance-GUC
 	internal_guc => undef,
 	# End - ReqID:SRS-Performance-GUC
-	#/* Begin - ReqID:SRS-SECURITY-POWERS */
-	with_security_enhancement => undef,		# --with-security-enhancement
-	#/* End - ReqID:SRS-SECURITY-POWERS */
 	extraver  => undef,    # --with-extra-version=<string>
 	gss       => undef,    # --with-gssapi=<path>
 	icu       => undef,    # --with-icu=<path>

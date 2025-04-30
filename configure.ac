@@ -1012,14 +1012,6 @@ PGAC_ARG_BOOL(with, gssapi, no, [build with GSSAPI support],
 AC_MSG_RESULT([$with_gssapi])
 AC_SUBST(with_gssapi)
 
-#
-# Security Enhancement
-#
-AC_MSG_CHECKING([whether to build with Security Enhancement features])
-PGAC_ARG_BOOL(with, security-enhancement, no, [build with Security Enhancement features],
-              [AC_DEFINE([WITH_SECURITY_ENHANCEMENT], 1, [Define to build with Security Enhancement features. (--with-security-enhancement)])])
-AC_MSG_RESULT([$with_security_enhancement])
-AC_SUBST(with_security_enhancement)
 
 
 AC_SUBST(krb_srvtab)

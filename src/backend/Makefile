@@ -65,13 +65,13 @@ LIBS += -lnuma
 endif
 # END - ReqID:SRS-Performance-NUMA-DATASTRUCTURE
 
+# /* Begin - ReqID:SRS-SECURITY-POWERS */		
 # build se_features and compile it into postgres
-ifeq ($(with_security_enhancement),yes)
 $(top_builddir)/src/se_features/libse_features.a:
 	$(MAKE) -C $(top_builddir)/src/se_features/ libse_features.a
 OBJS += $(top_builddir)/src/se_features/libse_features.a
 # LDFLAGS_INTERNAL += -L$(top_builddir)/src/se_features/ -lse_features
-endif
+# /* End - ReqID:SRS-SECURITY-POWERS */
 
 
 ##########################################################################

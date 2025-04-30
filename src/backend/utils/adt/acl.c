@@ -5022,7 +5022,8 @@ is_admin_of_role(Oid member, Oid role)
 	return result;
 }
 
-#ifdef WITH_SECURITY_ENHANCEMENT
+/* Begin - ReqID:SRS-SECURITY-POWERS */
+
 /* same as above but not influenced by superuser */
 bool
 is_admin_of_role_nosuper(Oid member, Oid role)
@@ -5065,7 +5066,7 @@ is_admin_of_role_nosuper(Oid member, Oid role)
 	(void) roles_is_member_of(member, ROLERECURSE_MEMBERS, role, &result);
 	return result;
 }
-#endif
+/* End - ReqID:SRS-SECURITY-POWERS */
 
 
 /* does what it says ... */
