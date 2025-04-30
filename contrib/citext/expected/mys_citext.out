@@ -817,12 +817,18 @@ SELECT '08:00:2b:01:02:03'::citext::macaddr = '08:00:2b:01:02:03'::macaddr AS t;
  t
 (1 row)
 
-SELECT '1999-01-08 04:05:06'::timestamp::citext = '1999-01-08 04:05:06'::timestamp::text AS t;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: SELECT '1999-01-08 04:05:06'::timestamp::citext = '1999-01-0...
-               ^
-SELECT '1999-01-08 04:05:06'::citext::timestamp = '1999-01-08 04:05:06'::timestamp AS t;
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
+SELECT '1999-01-08 04:05:06'::pg_catalog.timestamp::citext = '1999-01-08 04:05:06'::pg_catalog.timestamp::text AS t;
+ t 
+---
+ t
+(1 row)
+
+SELECT '1999-01-08 04:05:06'::citext::pg_catalog.timestamp = '1999-01-08 04:05:06'::pg_catalog.timestamp AS t;
+ t 
+---
+ t
+(1 row)
+
 SELECT '1999-01-08 04:05:06'::timestamptz::citext = '1999-01-08 04:05:06'::timestamptz::text AS t;
  t 
 ---
@@ -1231,19 +1237,13 @@ ERROR:  column "timestamp" is of type timestamp but expression is of type text
 LINE 1: INSERT INTO caster (timestamp)     VALUES ('1999-01-08 04:05...
                                                    ^
 HINT:  You will need to rewrite or cast the expression.
-INSERT INTO caster (text)          VALUES ('1999-01-08 04:05:06'::timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: INSERT INTO caster (text)          VALUES ('1999-01-08 04:05...
-                                                   ^
+INSERT INTO caster (text)          VALUES ('1999-01-08 04:05:06'::pg_catalog.timestamp);
 INSERT INTO caster (timestamp)     VALUES ('1999-01-08 04:05:06'::citext);
 ERROR:  column "timestamp" is of type timestamp but expression is of type citext
 LINE 1: INSERT INTO caster (timestamp)     VALUES ('1999-01-08 04:05...
                                                    ^
 HINT:  You will need to rewrite or cast the expression.
-INSERT INTO caster (citext)        VALUES ('1999-01-08 04:05:06'::timestamp);
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
-LINE 1: INSERT INTO caster (citext)        VALUES ('1999-01-08 04:05...
-                                                   ^
+INSERT INTO caster (citext)        VALUES ('1999-01-08 04:05:06'::pg_catalog.timestamp);
 -- Cannot cast to timestamptz on assignment.
 INSERT INTO caster (timestamptz)   VALUES ('1999-01-08 04:05:06'::text);
 ERROR:  column "timestamptz" is of type timestamp with time zone but expression is of type text
@@ -2267,7 +2267,7 @@ SELECT COUNT(*) = 8::bigint AS t FROM try;
 (1 row)
 
 INSERT INTO try
-VALUES ( to_char(  now()::timestamp,          'HH12:MI:SS') ),
+VALUES ( to_char(  now()::pg_catalog.timestamp,          'HH12:MI:SS') ),
        ( to_char(  now() + '1 sec'::interval, 'HH12:MI:SS') ), -- timetamptz
        ( to_char(  '15h 2m 12s'::interval,    'HH24:MI:SS') ),
        ( to_char(  current_date,              '999') ),
@@ -2278,11 +2278,10 @@ VALUES ( to_char(  now()::timestamp,          'HH12:MI:SS') ),
        ( to_char(  125.7::float4,             '999D9') ),
        ( to_char(  125.9::float8,             '999D9') ),
        ( to_char( -125.8::numeric,            '999D99S') );
-ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
 SELECT COUNT(*) = 19::bigint AS t FROM try;
  t 
 ---
- f
+ t
 (1 row)
 
 SELECT like_escape( name, '' ) = like_escape( name::text, '' ) AS t FROM srt;
@@ -2333,12 +2332,12 @@ SELECT *
   2 | two  |    | 
 (2 rows)
 
---REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
+REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
 SELECT * FROM citext_matview ORDER BY id;
  id | name  
 ----+-------
   1 | one
-  2 | two
+  2 | Two
   3 | three
   4 | 
   5 | 

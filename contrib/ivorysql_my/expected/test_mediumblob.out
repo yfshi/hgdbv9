@@ -94,7 +94,6 @@ select length(c1) from my_mediumblob_t02;
 insert into my_mediumblob_t02 values (repeat('a', 16777216));
 ERROR:  value too long for type mediumblob(16777215)
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should ok and warning
 insert into my_mediumblob_t02 values (repeat('a', 16777216));
 WARNING:  value too long for type mediumblob(16777215), data truncated
@@ -107,7 +106,6 @@ select length(c1) from my_mediumblob_t02;
 (2 rows)
 
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should error
 create table my_mediumblob_t03 (c1 int, c2 mediumblob default 'test');
 ERROR:  ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value

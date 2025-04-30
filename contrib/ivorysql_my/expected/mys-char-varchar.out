@@ -412,7 +412,6 @@ select * from t1;
 
 delete from t1;
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into t1 values ('aaaaa');
 WARNING:  value too long for type char(0), Data truncated.
 insert into t1 values ('aaaa');
@@ -440,7 +439,6 @@ select * from t1;
 delete from t1;
 drop table t1;
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table t1 (b char(0));
 insert into t1 values (repeat('a', 5));
 ERROR:  value too long for type char(0)
@@ -475,7 +473,6 @@ select * from t1;
 
 delete from t1;
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into t1 values (repeat('a', 5));
 WARNING:  value too long for type char(0), Data truncated.
 insert into t1 values (repeat('a', 4));
@@ -519,7 +516,6 @@ select * from t1;
 delete from t1;
 drop table t1;
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 ----------- nchar varchar(n) ------------
 select cast('aaa' as nchar varchar(5));
  varchar 
@@ -569,7 +565,6 @@ select length(bpchar_smaller('aaaaac        ', 'aaccccc '));  --6
 (1 row)
 
 set sql_mode = 'PAD_CHAR_TO_FULL_LENGTH';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select length(bpchar_smaller('aaaaac ', 'aaccccc ')); --7
  length 
 --------
@@ -583,7 +578,6 @@ select length(bpchar_smaller('aaaaac        ', 'aaccccc '));  --14
 (1 row)
 
 reset sql_mode; 
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table tb(id int, name text);
 create table tb1(id int, name char(10));
 insert into tb1 values (1, 'aaaaa');
@@ -918,7 +912,6 @@ select min(name) from tb1;
 
 delete from tb;
 set sql_mode = 'PAD_CHAR_TO_FULL_LENGTH';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into tb(id, name) select id, name from tb1;
 select * from tb;
  id |    name    
@@ -1167,7 +1160,6 @@ delete from tb;
 drop table tb;
 drop table tb1;
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 ----------------- varchar(0) ----------------
 CREATE TABLE t6(c1 VARCHAR(0) NULL);
 \d t6
@@ -1253,7 +1245,6 @@ select * from t6;
 
 delete from t6;
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into t6 values ('aaaaa');
 WARNING:  value too long for type varchar(0), Data truncated.
 insert into t6 values ('aaaa');
@@ -1281,7 +1272,6 @@ select * from t6;
 delete from t6;
 drop table t6;
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table t6 (b char(0));
 insert into t6 values (repeat('a', 5));
 ERROR:  value too long for type char(0)
@@ -1316,7 +1306,6 @@ select * from t6;
 
 delete from t6;
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into t6 values (repeat('a', 5));
 WARNING:  value too long for type char(0), Data truncated.
 insert into t6 values (repeat('a', 4));
@@ -1360,7 +1349,6 @@ select * from t6;
 delete from t6;
 drop table t6;
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 ----------------- fix bug m533 ----------------
 set mysql.functional_diff_control = true;
 select cast('a' as char);

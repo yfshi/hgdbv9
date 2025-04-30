@@ -38,7 +38,7 @@ CREATE TABLE "S 1"."T 1" (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10),
 	c8 user_enum,
@@ -72,8 +72,8 @@ INSERT INTO "S 1"."T 1"
 	SELECT id,
 	       id % 10,
 	       to_char(id, 'FM00000'),
-	       '1970-01-01'::timestamptz + ((id % 100) || ' days')::interval,
-	       '1970-01-01'::timestamp + ((id % 100) || ' days')::interval,
+	       '1970-01-01'::timestamptz + ((id % 100)::text || ' days')::interval,
+	       '1970-01-01'::pg_catalog.timestamp + ((id % 100)::text || ' days')::interval,
 	       id % 10,
 	       id % 10,
 	       'foo'::user_enum
@@ -109,7 +109,7 @@ CREATE FOREIGN TABLE ft1 (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -122,7 +122,7 @@ CREATE FOREIGN TABLE ft2 (
 	cx int,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft2',
 	c8 user_enum
@@ -1607,7 +1607,7 @@ delete from grem1;
 -- This schema uses two partitions, one local and one remote with a modulo
 -- to loop across all of them in batches.
 create table tab_batch_local (id int, data text);
-insert into tab_batch_local select i, 'test'|| i from generate_series(1, 45) i;
+insert into tab_batch_local select i, 'test'|| i::text from generate_series(1, 45) i;
 create table tab_batch_sharded (id int, data text) partition by hash(id);
 create table tab_batch_sharded_p0 partition of tab_batch_sharded
   for values with (modulus 2, remainder 0);
@@ -2877,7 +2877,7 @@ CREATE FOREIGN TABLE ft1_nopw (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -3239,7 +3239,7 @@ CREATE FOREIGN TABLE batch_table_p1f
 	SERVER loopback
 	OPTIONS (table_name 'batch_table_p1');
 
-INSERT INTO batch_table SELECT i, 'test'||i, 'test'|| i FROM generate_series(1, 50) i;
+INSERT INTO batch_table SELECT i, 'test'||i::text, 'test'|| i::text FROM generate_series(1, 50) i;
 SELECT COUNT(*) FROM batch_table;
 SELECT * FROM batch_table ORDER BY x;
 

@@ -300,12 +300,10 @@ insert into my_blob_t15 values (repeat('a', 65534));
 insert into my_blob_t15 values (repeat('a', 65536));
 ERROR:  value too long for type blob(65535)
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should ok and warning
 insert into my_blob_t15 values (repeat('a', 65536));
 WARNING:  value too long for type blob(65535), data truncated
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should error
 create table my_blob_t26 (c1 int, c2 blob default 'test');
 ERROR:  ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value

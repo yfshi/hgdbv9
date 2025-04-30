@@ -257,7 +257,6 @@ ERROR:  relation "tb1" does not exist
 LINE 1: insert into tb1 values(repeat('中',21846));
                     ^
 set sql_mode='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into tb1 values(repeat('中',21846)); -- success
 ERROR:  relation "tb1" does not exist
 LINE 1: insert into tb1 values(repeat('中',21846));
@@ -267,7 +266,6 @@ ERROR:  relation "tb1" does not exist
 LINE 1: select char_length(col) from tb1;
                                      ^
 set sql_mode='TRADITIONAL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into tb1 values(repeat('中',21846)); -- fail
 ERROR:  relation "tb1" does not exist
 LINE 1: insert into tb1 values(repeat('中',21846));
@@ -284,7 +282,6 @@ select char_length(col) from tb where id=1; -- 3
 (1 row)
 
 set sql_mode = 'PAD_CHAR_TO_FULL_LENGTH'; -- success
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 insert into tb values(2,'abc'); -- success
 select char_length(col) from tb where id=2; -- 3
  char_length 

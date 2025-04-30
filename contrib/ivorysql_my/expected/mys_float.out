@@ -3,7 +3,6 @@ NOTICE:  table "t1" does not exist, skipping
 NOTICE:  table "t2" does not exist, skipping
 --enable_warnings
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SELECT 10,10.0,10.,.1e+2,100.0e-1;
  ?column? | ?column? | ?column? | ?column? | ?column? 
 ----------+----------+----------+----------+----------
@@ -558,7 +557,6 @@ SELECT * FROM t1 ORDER BY f;
 
 DROP TABLE t1;
 SET sql_mode = default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --operator
 drop table if exists test,t1,t2;
 NOTICE:  table "test" does not exist, skipping
@@ -599,7 +597,6 @@ show sql_mode;
 (1 row)
 
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 show sql_mode;
  sql_mode 
 ----------
@@ -614,7 +611,6 @@ create table t1(id real);
  id     | double precision |           |          |         | plain   |              | 
 
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 show sql_mode;
                                                                                       sql_mode                                                                                       
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1334,7 +1330,6 @@ select NULL div 0.9::float8;--NULL
 (1 row)
 
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select 0.9::float4 div 0.0::float4;--NULL
  ?column? 
 ----------
@@ -1444,7 +1439,6 @@ select NULL div 0.9::float8;--NULL
 (1 row)
 
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select 0.9::float4 // 0.0::float4;--NULL warning
 WARNING:  Division by 0
  ?column? 
@@ -1556,7 +1550,6 @@ select NULL // 0.9::float8;--NULL
 (1 row)
 
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select 0.9::float4 // 0.0::float4;--NULL
  ?column? 
 ----------
@@ -1666,7 +1659,6 @@ select NULL // 0.9::float8;--NULL
 (1 row)
 
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --/
 select 0.9::float4 / 0.0::float4;--NULL warning
 WARNING:  Division by 0
@@ -1865,7 +1857,6 @@ select -5.5::float8 / 2.2::float4;---2.4999999458139603
 (1 row)
 
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select 0.9::float4 / 0.0::float4;--NULL
  ?column? 
 ----------
@@ -2059,7 +2050,6 @@ select -5.5::float8 / 2.2::float4;---2.4999999458139603
 (1 row)
 
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --%
 select 0.9::float8 % 0.0::float8;--NULL warning
 WARNING:  Division by 0
@@ -2117,7 +2107,6 @@ select NULL % 0.9::float8;--NULL
 (1 row)
 
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select 0.9::float8 % 0.0::float8;--NULL
  ?column? 
 ----------
@@ -2173,7 +2162,6 @@ select NULL % 0.9::float8;--NULL
 (1 row)
 
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --XOR
 select 0.9::float4 XOR 0.0::float4;--1
  ?column? 

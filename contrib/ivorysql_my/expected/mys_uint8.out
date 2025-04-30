@@ -116,7 +116,6 @@ select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
 (1 row)
 
 set SQL_MODE='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select cast(1111 as UNSIGNED) ; --1111
  mysuint8 
 ----------
@@ -234,7 +233,6 @@ select cast(9223372036854775808 as UNSIGNED) ; --9223372036854775808
 (1 row)
 
 set SQL_MODE='TRADITIONAL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --bigint
 create table t1(c1 bigint UNSIGNED);
 insert into t1 values(0);
@@ -496,7 +494,6 @@ select * from t2;
 
 drop table t2;
 set SQL_MODE='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --bigint
 create table t1(c1 bigint UNSIGNED);
 insert into t1 values(0);
@@ -564,7 +561,6 @@ select * from t1;
 
 drop table t1;
 set SQL_MODE to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- oper
 ---=
 select cast(111 as UNSIGNED)  = 111; --1
@@ -1124,7 +1120,6 @@ WARNING:  Division by 0
 (1 row)
 
 set sql_mode= '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select cast(111 as UNSIGNED)  / 0; --NULL
  ?column? 
 ----------
@@ -1522,7 +1517,6 @@ select NULL xor cast(111 as UNSIGNED);--NULL
 (1 row)
 
 set SQL_MODE to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --------------------------------------------------
 CREATE TABLE t2 (a bigint UNSIGNED, b bigint UNSIGNED);
 insert into t2 values(100, 999);
@@ -2135,7 +2129,6 @@ select 0 mod a from t2;
 (6 rows)
 
 set sql_mode='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- /
 select b / a from t2;
  ?column? 
@@ -2393,7 +2386,6 @@ insert into t1 values(111);
 insert into t1 values(222);
 insert into t1 values(333);
 set SQL_MODE='TRADITIONAL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select a from t1 where a like '111'; --1
   a  
 -----
@@ -2426,7 +2418,6 @@ ERROR:  invalid input syntax for type integer: "111a"
 LINE 1: select a from t1 where a like '111a';
                                       ^
 set SQL_MODE='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select a from t1 where a like '111'; --1
   a  
 -----
@@ -2468,7 +2459,6 @@ LINE 1: select a from t1 where a like '111a';
 (1 row)
 
 set SQL_MODE=default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 drop table t1;
 --btree and hash index
 create table idx_1 (idx bigint UNSIGNED);

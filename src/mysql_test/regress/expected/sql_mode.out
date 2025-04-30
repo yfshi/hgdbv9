@@ -7,7 +7,6 @@ SHOW sql_mode;
 
 -- check single value
 SET sql_mode = 'ANSI_QUOTES';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
   sql_mode   
 -------------
@@ -46,7 +45,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'DB2';
-WARNING:  Changing sql mode 'DB2,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                            sql_mode                                            
 -----------------------------------------------------------------------------------------------
@@ -54,8 +52,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'MAXDB';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-WARNING:  Changing sql mode 'MAXDB,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                                       sql_mode                                                       
 ---------------------------------------------------------------------------------------------------------------------
@@ -63,8 +59,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'MSSQL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-WARNING:  Changing sql mode 'MSSQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                             sql_mode                                             
 -------------------------------------------------------------------------------------------------
@@ -72,7 +66,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'MYSQL323';
-WARNING:  Changing sql mode 'MYSQL323' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
            sql_mode           
 ------------------------------
@@ -80,7 +73,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'MYSQL40';
-WARNING:  Changing sql mode 'MYSQL40' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
           sql_mode           
 -----------------------------
@@ -88,8 +80,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'ORACLE';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-WARNING:  Changing sql mode 'ORACLE,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                                        sql_mode                                                       
 ----------------------------------------------------------------------------------------------------------------------
@@ -97,8 +87,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'POSTGRESQL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-WARNING:  Changing sql mode 'POSTGRESQL,NO_KEY_OPTIONS,NO_TABLE_OPTIONS,NO_FIELD_OPTIONS' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                                sql_mode                                               
 ------------------------------------------------------------------------------------------------------
@@ -106,7 +94,6 @@ SHOW sql_mode;
 (1 row)
 
 SET sql_mode = 'TRADITIONAL';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SHOW sql_mode;
                                                                        sql_mode                                                                       
 ------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -292,29 +292,6 @@ static const char *sql_mode_names[] =
   	0
 };
 
-static void
-check_sub_modes_of_strict_mode(sql_mode_t sql_mode)
-{
-	const sql_mode_t strict_modes = MODE_STRICT_TRANS_TABLES |
-									MODE_STRICT_ALL_TABLES;
-
-	const sql_mode_t new_strict_submodes = MODE_NO_ZERO_IN_DATE |
-										   MODE_NO_ZERO_DATE 	|
-										   MODE_ERROR_FOR_DIVISION_BY_ZERO;
-
-	const sql_mode_t strict_modes_set = sql_mode & strict_modes;
-	const sql_mode_t new_strict_submodes_set = sql_mode & new_strict_submodes;
-
-	if (((strict_modes_set | new_strict_submodes_set) != 0) &&
-		((new_strict_submodes_set != new_strict_submodes) || (strict_modes_set == 0)))
-	{
-		ereport(WARNING,
-				(errcode(ERRCODE_WARNING),
-				 errmsg("'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes "
-				 		"should be used with strict mode. They will be merged with strict mode in a future release.")));
-	}
-}
-
 static sql_mode_t
 expand_sql_mode(sql_mode_t sql_mode)
 {
@@ -375,8 +352,6 @@ expand_sql_mode(sql_mode_t sql_mode)
 					 MODE_ERROR_FOR_DIVISION_BY_ZERO | MODE_NO_AUTO_CREATE_USER |
 					 MODE_NO_ENGINE_SUBSTITUTION);
 	}
-
-	check_sub_modes_of_strict_mode(sql_mode);
 
 	return sql_mode;
 }
@@ -439,36 +414,7 @@ sql_mode_to_cstring(sql_mode_t sql_mode, StringInfo str)
 static void
 assign_sql_mode(const char *newval, void *extra)
 {
-	sql_mode_t deprecated_modes;
-	sql_mode_t old_sql_mode = sql_mode;
-	sql_mode_t new_sql_mode = trans_sql_mode(newval);
-	sql_mode_t deprecated_mask = MODE_DB2 | MODE_MAXDB | MODE_MSSQL | MODE_MYSQL323 |
-								 MODE_MYSQL40 | MODE_ORACLE | MODE_POSTGRESQL |
-								 MODE_NO_FIELD_OPTIONS | MODE_NO_KEY_OPTIONS | MODE_NO_TABLE_OPTIONS;
-
-	sql_mode = new_sql_mode;
-
-	if (sql_mode_str == NULL)
-		return;
-
-	if ((old_sql_mode ^ new_sql_mode) & MODE_NO_AUTO_CREATE_USER)
-	{
-		ereport(WARNING,
-			(errcode(ERRCODE_WARNING),
-			 errmsg("Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.")));
-	}
-
-	deprecated_modes = new_sql_mode & deprecated_mask;
-
-	if (deprecated_modes != 0)
-	{
-		StringInfo str = makeStringInfo();
-		sql_mode_to_cstring(deprecated_modes, str);
-
-		ereport(WARNING,
-				(errcode(ERRCODE_WARNING),
-				 errmsg("Changing sql mode '%s' is deprecated. It will be removed in a future release.", str->data)));
-	}
+	sql_mode = trans_sql_mode(newval);;
 }
 
 static bool
