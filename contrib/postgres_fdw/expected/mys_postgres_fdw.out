@@ -34,7 +34,7 @@ CREATE TABLE "S 1"."T 1" (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10),
 	c8 user_enum,
@@ -66,8 +66,8 @@ INSERT INTO "S 1"."T 1"
 	SELECT id,
 	       id % 10,
 	       to_char(id, 'FM00000'),
-	       '1970-01-01'::timestamptz + ((id % 100) || ' days')::interval,
-	       '1970-01-01'::timestamp + ((id % 100) || ' days')::interval,
+	       '1970-01-01'::timestamptz + ((id % 100)::text || ' days')::interval,
+	       '1970-01-01'::pg_catalog.timestamp + ((id % 100)::text || ' days')::interval,
 	       id % 10,
 	       id % 10,
 	       'foo'::user_enum
@@ -101,7 +101,7 @@ CREATE FOREIGN TABLE ft1 (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -113,7 +113,7 @@ CREATE FOREIGN TABLE ft2 (
 	cx int,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft2',
 	c8 user_enum
@@ -385,7 +385,7 @@ SELECT * FROM ft1 t1 WHERE c1 = 102 FOR SHARE;
 
 -- aggregate
 SELECT COUNT(*) FROM ft1 t1;
- count 
+ COUNT 
 -------
   1000
 (1 row)
@@ -2217,18 +2217,18 @@ SELECT t1c1, avg(t1c1 + t2c1) FROM (SELECT t1.c1, t2.c1 FROM ft1 t1 JOIN ft2 t2 
 (20 rows)
 
 SELECT t1c1, avg(t1c1 + t2c1) FROM (SELECT t1.c1, t2.c1 FROM ft1 t1 JOIN ft2 t2 ON (t1.c1 = t2.c1) UNION SELECT t1.c1, t2.c1 FROM ft1 t1 JOIN ft2 t2 ON (t1.c1 = t2.c1)) AS t (t1c1, t2c1) GROUP BY t1c1 ORDER BY t1c1 OFFSET 100 LIMIT 10;
- t1c1 |         avg          
-------+----------------------
-  101 | 202.0000000000000000
-  102 | 204.0000000000000000
-  103 | 206.0000000000000000
-  104 | 208.0000000000000000
-  105 | 210.0000000000000000
-  106 | 212.0000000000000000
-  107 | 214.0000000000000000
-  108 | 216.0000000000000000
-  109 | 218.0000000000000000
-  110 | 220.0000000000000000
+ t1c1 |   avg    
+------+----------
+  101 | 202.0000
+  102 | 204.0000
+  103 | 206.0000
+  104 | 208.0000
+  105 | 210.0000
+  106 | 212.0000
+  107 | 214.0000
+  108 | 216.0000
+  109 | 218.0000
+  110 | 220.0000
 (10 rows)
 
 -- join with lateral reference
@@ -3938,70 +3938,26 @@ EXECUTE st1(101, 101);
 
 -- subquery using stable function (can't be sent to remote)
 PREPARE st2(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND date(c4) = '1970-01-17'::date) ORDER BY c1;
+ERROR:  syntax error at or near "("
+LINE 1: ...3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND date(c4) = '19...
+                                                             ^
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st2(10, 20);
-                                                QUERY PLAN                                                
-----------------------------------------------------------------------------------------------------------
- Sort
-   Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-   Sort Key: t1.c1
-   ->  Nested Loop Semi Join
-         Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-         Join Filter: (t1.c3 = t2.c3)
-         ->  Foreign Scan on public.ft1 t1
-               Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-               Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1" WHERE (("C 1" < 20))
-         ->  Materialize
-               Output: t2.c3
-               ->  Foreign Scan on public.ft2 t2
-                     Output: t2.c3
-                     Filter: (date(t2.c4) = '01-17-1970'::date)
-                     Remote SQL: SELECT c3, c4 FROM "S 1"."T 1" WHERE (("C 1" > 10))
-(15 rows)
-
+ERROR:  prepared statement "st2" does not exist
 EXECUTE st2(10, 20);
- c1 | c2 |  c3   |              c4              |            c5            | c6 |     c7     | c8  
-----+----+-------+------------------------------+--------------------------+----+------------+-----
- 16 |  6 | 00016 | Sat Jan 17 00:00:00 1970 PST | Sat Jan 17 00:00:00 1970 | 6  | 6          | foo
-(1 row)
-
+ERROR:  prepared statement "st2" does not exist
 EXECUTE st2(101, 121);
- c1  | c2 |  c3   |              c4              |            c5            | c6 |     c7     | c8  
------+----+-------+------------------------------+--------------------------+----+------------+-----
- 116 |  6 | 00116 | Sat Jan 17 00:00:00 1970 PST | Sat Jan 17 00:00:00 1970 | 6  | 6          | foo
-(1 row)
-
+ERROR:  prepared statement "st2" does not exist
 -- subquery using immutable function (can be sent to remote)
 PREPARE st3(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 < $2 AND t1.c3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND date(c5) = '1970-01-17'::date) ORDER BY c1;
+ERROR:  syntax error at or near "("
+LINE 1: ...3 IN (SELECT c3 FROM ft2 t2 WHERE c1 > $1 AND date(c5) = '19...
+                                                             ^
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st3(10, 20);
-                                                      QUERY PLAN                                                       
------------------------------------------------------------------------------------------------------------------------
- Sort
-   Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-   Sort Key: t1.c1
-   ->  Nested Loop Semi Join
-         Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-         Join Filter: (t1.c3 = t2.c3)
-         ->  Foreign Scan on public.ft1 t1
-               Output: t1.c1, t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
-               Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1" WHERE (("C 1" < 20))
-         ->  Materialize
-               Output: t2.c3
-               ->  Foreign Scan on public.ft2 t2
-                     Output: t2.c3
-                     Remote SQL: SELECT c3 FROM "S 1"."T 1" WHERE (("C 1" > 10)) AND ((date(c5) = '1970-01-17'::date))
-(14 rows)
-
+ERROR:  prepared statement "st3" does not exist
 EXECUTE st3(10, 20);
- c1 | c2 |  c3   |              c4              |            c5            | c6 |     c7     | c8  
-----+----+-------+------------------------------+--------------------------+----+------------+-----
- 16 |  6 | 00016 | Sat Jan 17 00:00:00 1970 PST | Sat Jan 17 00:00:00 1970 | 6  | 6          | foo
-(1 row)
-
+ERROR:  prepared statement "st3" does not exist
 EXECUTE st3(20, 30);
- c1 | c2 | c3 | c4 | c5 | c6 | c7 | c8 
-----+----+----+----+----+----+----+----
-(0 rows)
-
+ERROR:  prepared statement "st3" does not exist
 -- custom plan should be chosen initially
 PREPARE st4(int) AS SELECT * FROM ft1 t1 WHERE t1.c1 = $1;
 EXPLAIN (VERBOSE, COSTS OFF) EXECUTE st4(1);
@@ -4204,7 +4160,9 @@ ALTER SERVER loopback OPTIONS (ADD extensions 'postgres_fdw');
 -- cleanup
 DEALLOCATE st1;
 DEALLOCATE st2;
+ERROR:  prepared statement "st2" does not exist
 DEALLOCATE st3;
+ERROR:  prepared statement "st3" does not exist
 DEALLOCATE st4;
 DEALLOCATE st5;
 DEALLOCATE st6;
@@ -6919,7 +6877,7 @@ delete from grem1;
 -- This schema uses two partitions, one local and one remote with a modulo
 -- to loop across all of them in batches.
 create table tab_batch_local (id int, data text);
-insert into tab_batch_local select i, 'test'|| i from generate_series(1, 45) i;
+insert into tab_batch_local select i, 'test'|| i::text from generate_series(1, 45) i;
 create table tab_batch_sharded (id int, data text) partition by hash(id);
 create table tab_batch_sharded_p0 partition of tab_batch_sharded
   for values with (modulus 2, remainder 0);
@@ -9108,13 +9066,13 @@ DROP TYPE "Colors" CASCADE;
 NOTICE:  drop cascades to column Col of table import_source.t5
 IMPORT FOREIGN SCHEMA import_source LIMIT TO (t5)
   FROM SERVER loopback INTO import_dest5;  -- ERROR
-ERROR:  type "public.Colors" does not exist
-LINE 4:   "Col" public."Colors" OPTIONS (column_name 'Col')
+ERROR:  type "public.colors" does not exist
+LINE 4:   "Col" public.colors OPTIONS (column_name 'Col')
                 ^
 QUERY:  CREATE FOREIGN TABLE t5 (
   c1 integer OPTIONS (column_name 'c1'),
   c2 text OPTIONS (column_name 'c2') COLLATE pg_catalog."C",
-  "Col" public."Colors" OPTIONS (column_name 'Col')
+  "Col" public.colors OPTIONS (column_name 'Col')
 ) SERVER loopback
 OPTIONS (schema_name 'import_source', table_name 't5');
 CONTEXT:  importing foreign table "t5"
@@ -9154,7 +9112,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30000'::regclass
 AND ftoptions @> array['fetch_size=30000'];
- count 
+ COUNT 
 -------
      1
 (1 row)
@@ -9164,7 +9122,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30000'::regclass
 AND ftoptions @> array['fetch_size=30000'];
- count 
+ COUNT 
 -------
      0
 (1 row)
@@ -9173,7 +9131,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30000'::regclass
 AND ftoptions @> array['fetch_size=60000'];
- count 
+ COUNT 
 -------
      1
 (1 row)
@@ -9544,7 +9502,7 @@ CREATE FOREIGN TABLE ft1_nopw (
 	c2 int NOT NULL,
 	c3 text,
 	c4 timestamptz,
-	c5 timestamp,
+	c5 pg_catalog.timestamp,
 	c6 varchar(10),
 	c7 char(10) default 'ft1',
 	c8 user_enum
@@ -9936,7 +9894,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30'::regclass
 AND ftoptions @> array['batch_size=30'];
- count 
+ COUNT 
 -------
      1
 (1 row)
@@ -9946,7 +9904,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30'::regclass
 AND ftoptions @> array['batch_size=30'];
- count 
+ COUNT 
 -------
      0
 (1 row)
@@ -9955,7 +9913,7 @@ SELECT COUNT(*)
 FROM pg_foreign_table
 WHERE ftrelid = 'table30'::regclass
 AND ftoptions @> array['batch_size=40'];
- count 
+ COUNT 
 -------
      1
 (1 row)
@@ -9979,7 +9937,7 @@ INSERT INTO ftable SELECT * FROM generate_series(11, 31) i;
 INSERT INTO ftable VALUES (32);
 INSERT INTO ftable VALUES (33), (34);
 SELECT COUNT(*) FROM ftable;
- count 
+ COUNT 
 -------
     34
 (1 row)
@@ -10000,7 +9958,7 @@ EXPLAIN (VERBOSE, COSTS OFF) INSERT INTO ftable VALUES (1), (2);
 
 INSERT INTO ftable VALUES (1), (2);
 SELECT COUNT(*) FROM ftable;
- count 
+ COUNT 
 -------
      2
 (1 row)
@@ -10026,7 +9984,7 @@ NOTICE:  NEW: (3)
 NOTICE:  trig_row_before(23, skidoo) BEFORE ROW INSERT ON ftable
 NOTICE:  NEW: (4)
 SELECT COUNT(*) FROM ftable;
- count 
+ COUNT 
 -------
      4
 (1 row)
@@ -10054,7 +10012,7 @@ CREATE TABLE batch_table_p2
 	FOR VALUES WITH (MODULUS 3, REMAINDER 2);
 INSERT INTO batch_table SELECT * FROM generate_series(1, 66) i;
 SELECT COUNT(*) FROM batch_table;
- count 
+ COUNT 
 -------
     66
 (1 row)
@@ -10100,9 +10058,9 @@ CREATE FOREIGN TABLE batch_table_p1f
 	FOR VALUES WITH (MODULUS 2, REMAINDER 1)
 	SERVER loopback
 	OPTIONS (table_name 'batch_table_p1');
-INSERT INTO batch_table SELECT i, 'test'||i, 'test'|| i FROM generate_series(1, 50) i;
+INSERT INTO batch_table SELECT i, 'test'||i::text, 'test'|| i::text FROM generate_series(1, 50) i;
 SELECT COUNT(*) FROM batch_table;
- count 
+ COUNT 
 -------
     50
 (1 row)

@@ -98,7 +98,6 @@ select length(c1) from my_longblob_t02;
 insert into my_longblob_t02 values (repeat('a', 1073741825));
 ERROR:  invalid memory alloc request size 1073741829
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- TODO[TD020]: should ok and warning and data not inserted
 insert into my_longblob_t02 values (repeat('a', 1073741825));
 ERROR:  invalid memory alloc request size 1073741829
@@ -109,7 +108,6 @@ select length(c1) from my_longblob_t02;
 (0 rows)
 
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should error
 create table my_longblob_t03 (c1 int, c2 longblob default 'test');
 ERROR:  ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value

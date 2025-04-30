@@ -272,7 +272,6 @@ select timestamp'1111.11.11.11.11.1111111';--ERROR
 ERROR:  Incorrect DATETIME value: '1111.11.11.11.11.1111111'
 --set sql_mode
 set sql_mode ='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --strict mode :NO_ZERO_IN_DATE
 create table test(dt timestamp);
 insert into test values('2100-00-04 12:13:14');--warning
@@ -310,7 +309,6 @@ select * from test;
 delete from test;
 --set NO_ZERO_DATE
 set sql_mode ='NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 00:00:00');--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values('2100-00-04 00:00:00');
@@ -349,7 +347,6 @@ select * from test;
 delete from test;
 --strict mode :NO_ZERO_DATE
 set sql_mode ='NO_ZERO_DATE,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 00:00:00');--ERROR
 ERROR:  Incorrect DATETIME value: '2100-00-04 00:00:00'
 LINE 1: insert into test values('2100-00-04 00:00:00');
@@ -380,7 +377,6 @@ select * from test;
 delete from test;
 --set NO_ZERO_IN_DATE
 set sql_mode ='NO_ZERO_IN_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 00:00:00');--warning
 WARNING:  Out of range value.
 LINE 1: insert into test values('2100-00-04 00:00:00');
@@ -416,7 +412,6 @@ select * from test;
 delete from test;
 --strict mode :NO_ZERO_IN_DATE
 set sql_mode ='NO_ZERO_IN_DATE,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 00:00:00');--ERROR
 ERROR:  Incorrect DATETIME value: '2100-00-04 00:00:00'
 LINE 1: insert into test values('2100-00-04 00:00:00');
@@ -480,7 +475,6 @@ select * from test;
 delete from test;
 --strict mode :ALLOW_INVALID_DATES
 set sql_mode ='ALLOW_INVALID_DATES,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 00:00:00');--ERROR
 ERROR:  Incorrect DATETIME value: '2100-00-04 00:00:00'
 LINE 1: insert into test values('2100-00-04 00:00:00');
@@ -509,7 +503,6 @@ select * from test;
 delete from test;
 --default strict+NO_ZERO_IN_DATE+NO_ZERO_DATE
 set sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 insert into test values('2100-00-04 12:13:14');--ERROR
 ERROR:  Incorrect DATETIME value: '2100-00-04 12:13:14'
 LINE 1: insert into test values('2100-00-04 12:13:14');
@@ -560,7 +553,6 @@ select * from test;
 delete from test;
 --default strict+NO_ZERO_IN_DATE+NO_ZERO_DATE
 set sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--ERROR
 ERROR:  Incorrect DATETIME value: '0'
@@ -733,7 +725,6 @@ select * from test;
 (22 rows)
 
 set sql_mode ='NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00--warning
 WARNING:  Data truncated for column.
@@ -830,7 +821,6 @@ select * from test;
 (22 rows)
 
 set sql_mode ='NO_ZERO_DATE,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--error
 ERROR:  Incorrect DATETIME value: '0'
@@ -914,7 +904,6 @@ select * from test;
 (8 rows)
 
 set sql_mode ='NO_ZERO_IN_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00
 insert into test values(2);--0000-00-00--warning
@@ -1013,7 +1002,6 @@ select * from test;
 (23 rows)
 
 set sql_mode ='NO_ZERO_IN_DATE,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00
 insert into test values(2);--error
@@ -1193,7 +1181,6 @@ select * from test;
 (23 rows)
 
 set sql_mode ='ALLOW_INVALID_DATES,STRICT_TRANS_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00
 insert into test values(2);--error
@@ -1276,7 +1263,6 @@ select * from test;
 
 ----20231013
 set sql_mode ='ALLOW_INVALID_DATES,NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00 --warning
 WARNING:  Data truncated for column.
@@ -1378,7 +1364,6 @@ select * from test;
 (23 rows)
 
 set sql_mode ='ALLOW_INVALID_DATES,NO_ZERO_IN_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00
 insert into test values(2);--0000-00-00 --warning
@@ -1477,7 +1462,6 @@ select * from test;
 (23 rows)
 
 set sql_mode ='NO_ZERO_DATE,NO_ZERO_IN_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00 --warning
 WARNING:  Data truncated for column.
@@ -1579,7 +1563,6 @@ select * from test;
 (23 rows)
 
 set sql_mode ='NO_ZERO_DATE,NO_ZERO_IN_DATE,ALLOW_INVALID_DATES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 delete from test;
 insert into test values(0);--0000-00-00 --warning
 WARNING:  Data truncated for column.
@@ -1682,7 +1665,6 @@ select * from test;
 
 drop table test;
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --
 -- oper
 CREATE TABLE t2 (a int8, t timestamp);
@@ -2340,7 +2322,6 @@ insert into tb1 values(2,'2002-03-03');
 insert into tb1 (a) values(4);
 drop table tb1;
 set sql_mode='';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table tb1 (t1 timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, t2 int, t3 timestamp NOT NULL DEFAULT '0000-00-00 00:00:00');
 insert into tb1 values ();
 select pg_sleep(1);
@@ -2362,7 +2343,6 @@ select pg_sleep(1);
 update tb1 set t2=111;
 drop table tb1;
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- timestamp(3)
 select cast(111 as timestamp(3)); --ERROR
 ERROR:  You have an error in your SQL syntax;check the manual that corresponds to your MySQL server version for the right syntax to use near 'timestamp)' at line 1
@@ -3243,7 +3223,6 @@ drop procedure proc1;
 drop table tb1;
 --mysql-check
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CREATE TABLE t1 (a int, t timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
 CREATE TABLE t2 (a int, t datetime);
 insert into t1 values(2,"2002-03-03");
@@ -3869,7 +3848,6 @@ SELECT TIMESTAMP'2000-01-27 23:13:41' - TIMESTAMP'2003-05-16 23:53:29';
 --SELECT TIMESTAMP('2000-01-27','23:13:41') - TIMESTAMP('2003-05-16','23:53:29');  ---func
 DROP TABLE t1;
 SET sql_mode = default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --echo #
 --echo # Test for bug#11747847 - 34280: create table fails if NO_ZERO_DATE
 --echo # or NO_ZERO_IN_DATE SQL mode is set.
@@ -3881,8 +3859,6 @@ NOTICE:  table "t3" does not exist, skipping
 --enable_warnings
 --echo #Table creation in strict mode
 SET sql_mode='NO_ZERO_DATE,STRICT_ALL_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CREATE TABLE t1 (c1 TIMESTAMP DEFAULT 0);
 ERROR:  Incorrect DATETIME value: '0'
 LINE 1: CREATE TABLE t1 (c1 TIMESTAMP DEFAULT 0);
@@ -3897,7 +3873,6 @@ LINE 1: CREATE TABLE t1 (c1 TIMESTAMP DEFAULT '2012-02-00 12:12:12')...
                                               ^
 --echo #Table creation in non-strict mode but with NO_ZERO_DATE/NO_ZERO_IN_DATE
 SET sql_mode='NO_ZERO_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 CREATE TABLE t1 (c1 TIMESTAMP DEFAULT 0);
 WARNING:  Data truncated for column.
 LINE 1: CREATE TABLE t1 (c1 TIMESTAMP DEFAULT 0);
@@ -3907,7 +3882,6 @@ WARNING:  Out of range value.
 LINE 1: CREATE TABLE t2 (c1 TIMESTAMP DEFAULT '0000-00-00 00:00:00')...
                                               ^
 SET sql_mode='NO_ZERO_IN_DATE';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 CREATE TABLE t3 (c1 TIMESTAMP DEFAULT '2012-02-00 12:12:12');
 WARNING:  Out of range value.
 LINE 1: CREATE TABLE t3 (c1 TIMESTAMP DEFAULT '2012-02-00 12:12:12')...
@@ -3925,13 +3899,11 @@ DROP TABLE t1, t2, t3;
 CREATE TABLE t1 (c1 INT);
 --echo #Alter table in strict mode  with NO_ZERO_DATE/NO_ZERO_IN_DATE
 SET sql_mode='NO_ZERO_DATE,STRICT_ALL_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 ALTER TABLE t1 ADD c2 TIMESTAMP DEFAULT 0;
 ERROR:  Incorrect DATETIME value: '0'
 ALTER TABLE t1 ADD c2 TIMESTAMP DEFAULT '0000-00-00';
 ERROR:  Incorrect DATETIME value: '0000-00-00'
 SET sql_mode='NO_ZERO_IN_DATE,STRICT_ALL_TABLES';
-WARNING:  'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 ALTER TABLE t1 ADD c2 TIMESTAMP DEFAULT '2012-02-00';
 ERROR:  Incorrect DATETIME value: '2012-02-00'
 --echo #Alter table with out any SQL modes
@@ -3942,7 +3914,6 @@ ALTER TABLE t1 ADD c4 TIMESTAMP DEFAULT '2012-02-00';
 WARNING:  Out of range value.
 DROP TABLE t1;
 set sql_mode to default;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 --echo # END of Test for bug#11747847 - 34280
 --echo #
 --echo # End of 5.6 tests

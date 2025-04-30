@@ -95,7 +95,6 @@ SELECT * FROM my_binary_t7;
 (0 rows)
 
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 INSERT INTO my_binary_t7 VALUES('abcd'); -- should warning
 WARNING:  value too long for type binary(3), data truncated
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');
@@ -107,7 +106,6 @@ SELECT * FROM my_binary_t7;
 (1 row)
 
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 INSERT INTO my_binary_t7 VALUES('abcd'); -- should error
 ERROR:  value too long for type binary(3)
 LINE 1: INSERT INTO my_binary_t7 VALUES('abcd');

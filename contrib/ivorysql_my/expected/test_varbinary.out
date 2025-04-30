@@ -161,7 +161,6 @@ LINE 1: create table my_varbinary_t09(c1 varbinary(65533) not null);
 -- should error
 create table my_varbinary_t10(c1 varbinary(65530), c2 varbinary(2));
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should ok and warnings
 create table my_varbinary_t11(c1 varbinary(65536), c2 varbinary(16777215));
 WARNING:  Converting column from VARBINARY to BLOB
@@ -190,7 +189,6 @@ WARNING:  Converting column from VARBINARY to BLOB
 create table my_varbinary_t13(c1 varbinary(4294967296));
 ERROR:  invalid type modifier
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should syntax error
 create table my_varbinary_t14(c1 varbinary('5'));
 ERROR:  syntax error at or near "'5'"
@@ -274,7 +272,6 @@ ERROR:  syntax error at or near "'101010'"
 LINE 1: select varbinary'101010' as result;
                         ^
 SET sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 -- should warning
 insert into  my_varbinary_t15 values ('Database1');
 WARNING:  value too long for type varbinary(8), data truncated
@@ -300,7 +297,6 @@ WARNING:  value too long for type varbinary(5), data truncated
 insert into  my_varbinary_t17 values ('HGDB   ');
 WARNING:  value too long for type varbinary(5), data truncated
 RESET sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 DISCARD ALL;
 /*
  * test mysql varbinary type index.

@@ -254,8 +254,8 @@ SELECT '192.168.100.128'::citext::inet = '192.168.100.128'::inet AS t;
 SELECT '08:00:2b:01:02:03'::macaddr::citext = '08:00:2b:01:02:03' AS t;
 SELECT '08:00:2b:01:02:03'::citext::macaddr = '08:00:2b:01:02:03'::macaddr AS t;
 
-SELECT '1999-01-08 04:05:06'::timestamp::citext = '1999-01-08 04:05:06'::timestamp::text AS t;
-SELECT '1999-01-08 04:05:06'::citext::timestamp = '1999-01-08 04:05:06'::timestamp AS t;
+SELECT '1999-01-08 04:05:06'::pg_catalog.timestamp::citext = '1999-01-08 04:05:06'::pg_catalog.timestamp::text AS t;
+SELECT '1999-01-08 04:05:06'::citext::pg_catalog.timestamp = '1999-01-08 04:05:06'::pg_catalog.timestamp AS t;
 SELECT '1999-01-08 04:05:06'::timestamptz::citext = '1999-01-08 04:05:06'::timestamptz::text AS t;
 SELECT '1999-01-08 04:05:06'::citext::timestamptz = '1999-01-08 04:05:06'::timestamptz AS t;
 
@@ -443,9 +443,9 @@ INSERT INTO caster (citext)        VALUES ('12'::money);
 
 -- Cannot cast to timestamp on assignment.
 INSERT INTO caster (timestamp)     VALUES ('1999-01-08 04:05:06'::text);
-INSERT INTO caster (text)          VALUES ('1999-01-08 04:05:06'::timestamp);
+INSERT INTO caster (text)          VALUES ('1999-01-08 04:05:06'::pg_catalog.timestamp);
 INSERT INTO caster (timestamp)     VALUES ('1999-01-08 04:05:06'::citext);
-INSERT INTO caster (citext)        VALUES ('1999-01-08 04:05:06'::timestamp);
+INSERT INTO caster (citext)        VALUES ('1999-01-08 04:05:06'::pg_catalog.timestamp);
 
 -- Cannot cast to timestamptz on assignment.
 INSERT INTO caster (timestamptz)   VALUES ('1999-01-08 04:05:06'::text);
@@ -722,7 +722,7 @@ SELECT to_timestamp('05 Dec 2000',         'DD Mon YYYY'::citext)
 -- Try assigning function results to a column.
 SELECT COUNT(*) = 8::bigint AS t FROM try;
 INSERT INTO try
-VALUES ( to_char(  now()::timestamp,          'HH12:MI:SS') ),
+VALUES ( to_char(  now()::pg_catalog.timestamp,          'HH12:MI:SS') ),
        ( to_char(  now() + '1 sec'::interval, 'HH12:MI:SS') ), -- timetamptz
        ( to_char(  '15h 2m 12s'::interval,    'HH24:MI:SS') ),
        ( to_char(  current_date,              '999') ),
@@ -759,7 +759,7 @@ SELECT *
   FROM citext_matview m
   FULL JOIN citext_table t ON (t.id = m.id AND t *= m)
   WHERE t.id IS NULL OR m.id IS NULL;
---REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
+REFRESH MATERIALIZED VIEW CONCURRENTLY citext_matview;
 SELECT * FROM citext_matview ORDER BY id;
 
 -- test citext_pattern_cmp() function explicitly.

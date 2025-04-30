@@ -23,11 +23,9 @@ LINE 1: select rank(x) within group (order by x) from t;
                     ^
 DETAIL:  Direct arguments of an ordered-set aggregate must use only grouped columns.
 set sql_mode = '';
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 select rank(x) within group (order by x) from t;
 ERROR:  column "t.x" must appear in the GROUP BY clause or be used in an aggregate function
 LINE 1: select rank(x) within group (order by x) from t;
                     ^
 DETAIL:  Direct arguments of an ordered-set aggregate must use only grouped columns.
 reset sql_mode;
-WARNING:  Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.

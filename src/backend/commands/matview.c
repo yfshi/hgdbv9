@@ -42,6 +42,7 @@
 #include "tcop/tcopprot.h"
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
+#include "utils/ora_compatible.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
@@ -834,12 +835,31 @@ refresh_by_match_merge(Oid matviewOid, Oid tempOid, Oid relowner,
 
 	/* Deletes must come before inserts; do them first. */
 	resetStringInfo(&querybuf);
-	appendStringInfo(&querybuf,
-					 "DELETE FROM %s mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
-					 "(SELECT diff.tid FROM %s diff "
-					 "WHERE diff.tid IS NOT NULL "
-					 "AND diff.newdata IS NULL)",
-					 matviewname, diffname);
+	
+	/**
+	 * Begin - BUG#Z4625
+	 * MySQL cannot use alias name in Delete From.
+	 */
+	if (compatible_db == MYS_PARSER)
+	{
+		appendStringInfo(&querybuf,
+						"DELETE FROM %s WHERE ctid OPERATOR(pg_catalog.=) ANY "
+						"(SELECT diff.tid FROM %s diff "
+						"WHERE diff.tid IS NOT NULL "
+						"AND diff.newdata IS NULL)",
+						matviewname, diffname);
+	}
+	/* End - BUG#Z4625 */
+	else
+	{
+		appendStringInfo(&querybuf,
+						"DELETE FROM %s mv WHERE ctid OPERATOR(pg_catalog.=) ANY "
+						"(SELECT diff.tid FROM %s diff "
+						"WHERE diff.tid IS NOT NULL "
+						"AND diff.newdata IS NULL)",
+						matviewname, diffname);
+	}
+
 	if (SPI_exec(querybuf.data, 0) != SPI_OK_DELETE)
 		elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 
