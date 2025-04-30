@@ -16793,13 +16793,14 @@ func_expr_common_subexpr:
 											   list_make1($3),
 											   COERCE_SQL_SYNTAX,
 											   @1);
-			| INT4 '(' a_expr ')'
-				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
-											   list_make1($3),
-											   COERCE_SQL_SYNTAX,
-											   @1);
 				}
+			// | INT4 '(' a_expr ')'
+			// 	{
+			// 		$$ = (Node *) makeFuncCall(SystemFuncName("int4"),
+			// 								   list_make1($3),
+			// 								   COERCE_SQL_SYNTAX,
+			// 								   @1);
+			// 	}
 
 			| INT2 SCONST
 				{
