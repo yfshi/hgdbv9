@@ -60,6 +60,8 @@ static object_access_hook_type next_object_access_hook = NULL;
 static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
+/*chengxi marks: just a fake guc param*/
+static bool fake_restricted_dba;
 
 SeParamCtl *se_param_ctl = NULL;
 
@@ -383,6 +385,9 @@ void
 restricted_dba_assign (bool newval, void *extra)
 {
 	/*currently do nothing*/
+	/*just make compiler quiet remove latter*/
+	fake_restricted_dba = newval;
+
 }
 
 const char * 
@@ -504,7 +509,9 @@ object_access_check(ObjectAccessType access,
 						if (pg_strcasecmp(audit_name,"restricted_dba") == 0)
 							ereport(ERROR,
 									(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-									 errmsg("permission denied")));
+									 errmsg("permission denied"),
+									 errdetail("cannot drop extension \"%s\" while se_feature.mode = on",
+									 			audit_name)));
 					}
 					break;
 					case NamespaceRelationId:
@@ -579,7 +586,7 @@ _PG_init(void)
 	DefineCustomBoolVariable("se_feature.restricted_dba",
 							 "Turn on/off  restricted_dba",
 							 NULL,
-							 &se_feature.restricted_dba,
+							 &fake_restricted_dba,
 							 false,
 							 PGC_USERSET,
 							 GUC_NOT_IN_SAMPLE,

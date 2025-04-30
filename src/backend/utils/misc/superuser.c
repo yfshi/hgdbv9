@@ -26,10 +26,10 @@
 #include "utils/inval.h"
 #include "utils/syscache.h"
 
+/* Begin - ReqID:SRS-SECURITY-POWERS */
 /* add for secure enhancement features*/
-#ifdef WITH_SECURITY_ENHANCEMENT	
 #include "se_features_interface.h"
-#endif
+/* End - ReqID:SRS-SECURITY-POWERS */
 
 /*
  * In common cases the same roleid (ie, the session or current ID) will
@@ -63,16 +63,14 @@ superuser_arg(Oid roleid)
 	bool		result;
 	HeapTuple	rtup;
 
-/*if has se_feature, we block the superuser check and do over own version*/ 
-#ifdef WITH_SECURITY_ENHANCEMENT
+	/* Begin - ReqID:SRS-SECURITY-POWERS */
+	/*if has se_feature, we block the superuser check and do over own version*/
 	/* call se_feature version of superuser() */
 	if (se_feature.tmp_superuser_oid == roleid)
 		return true;
 	if (se_feature.mode && se_feature.restricted_dba)
 		return false;
-	// if (se_method)
-	// 	return HAS_SUPERUSRE_PRIV(roleid);
-#endif
+	/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/* Quick out for cache hit */
 	if (OidIsValid(last_roleid) && last_roleid == roleid)

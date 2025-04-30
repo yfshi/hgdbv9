@@ -706,13 +706,13 @@ check_is_install_user(ClusterInfo *cluster)
 							"FROM pg_catalog.pg_roles "
 							"WHERE rolname = current_user "
 							"AND rolname !~ '^pg_'"
-#ifdef WITH_SECURITY_ENHANCEMENT
+/* Begin - ReqID:SRS-SECURITY-POWERS */
 							"AND rolname != 'sysdba_role' "
 							"AND rolname != 'syssso_role' "
 							"AND rolname != 'syssao_role' "
 							"AND rolname != 'syssso' "
 							"AND rolname != 'syssao' "
-#endif
+/* End - ReqID:SRS-SECURITY-POWERS */
 							);
 
 
@@ -732,13 +732,13 @@ check_is_install_user(ClusterInfo *cluster)
 						"SELECT COUNT(*) "
 						"FROM pg_catalog.pg_roles "
 						"WHERE rolname !~ '^pg_'"
-#ifdef WITH_SECURITY_ENHANCEMENT
+/* Begin - ReqID:SRS-SECURITY-POWERS */
 						"AND rolname != 'sysdba_role' "
 						"AND rolname != 'syssso_role' "
 						"AND rolname != 'syssao_role' "
 						"AND rolname != 'syssso' "
 						"AND rolname != 'syssao' "
-#endif
+/* End - ReqID:SRS-SECURITY-POWERS */
 						);
 
 	if (PQntuples(res) != 1)

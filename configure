@@ -718,7 +718,6 @@ with_license
 with_ldap
 with_krb_srvnam
 krb_srvtab
-with_security_enhancement
 with_gssapi
 with_python
 with_perl
@@ -867,7 +866,6 @@ with_tclconfig
 with_perl
 with_python
 with_gssapi
-with_security_enhancement
 with_krb_srvnam
 with_pam
 with_bsd_auth
@@ -1583,8 +1581,6 @@ Optional Packages:
   --with-perl             build Perl modules (PL/Perl)
   --with-python           build Python modules (PL/Python)
   --with-gssapi           build with GSSAPI support
-  --with-security-enhancement
-                          build with Security Enhancement features
   --with-krb-srvnam=NAME  default service principal name in Kerberos (GSSAPI)
                           [postgres]
   --with-pam              build with PAM support
@@ -8815,40 +8811,6 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_gssapi" >&5
 $as_echo "$with_gssapi" >&6; }
 
-
-#
-# Security Enhancement
-#
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with Security Enhancement features" >&5
-$as_echo_n "checking whether to build with Security Enhancement features... " >&6; }
-
-
-
-# Check whether --with-security-enhancement was given.
-if test "${with_security_enhancement+set}" = set; then :
-  withval=$with_security_enhancement;
-  case $withval in
-    yes)
-
-$as_echo "#define WITH_SECURITY_ENHANCEMENT 1" >>confdefs.h
-
-      ;;
-    no)
-      :
-      ;;
-    *)
-      as_fn_error $? "no argument expected for --with-security-enhancement option" "$LINENO" 5
-      ;;
-  esac
-
-else
-  with_security_enhancement=no
-
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_security_enhancement" >&5
-$as_echo "$with_security_enhancement" >&6; }
 
 
 

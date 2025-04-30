@@ -238,11 +238,8 @@ sub mkvcbuild
 	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 	# /* Begin - ReqID:SRS-SECURITY-POWERS */
-	if ($solution->{options}->{with_security_enhancement})
-	{
-		$libsefeatures = $solution->AddProject('libsefeatures', 'lib', 'misc');
-		$libsefeatures->AddFile('src/se_features/se_features.c');
-	}
+	$libsefeatures = $solution->AddProject('libsefeatures', 'lib', 'misc');
+	$libsefeatures->AddFile('src/se_features/se_features.c');
 	# /* End - ReqID:SRS-SECURITY-POWERS */
 
 	$postgres = $solution->AddProject('postgres', 'exe', '', 'src/backend');
@@ -652,13 +649,6 @@ sub mkvcbuild
 	{
 		push @contrib_excludes, 'uuid-ossp';
 	}
-
-	# /* Begin - ReqID:SRS-SECURITY-POWERS */
-	if (!$solution->{options}->{with_security_enhancement})
-	{
-		push @contrib_excludes, 'restricted_dba';
-	}
-	# /* End - ReqID:SRS-SECURITY-POWERS */
 		
 
 	# AddProject() does not recognize the constructs used to populate OBJS in
@@ -1058,10 +1048,7 @@ sub mkvcbuild
 		}
 		# End - ReqID:SRS-MISC-LICENSE
 		# /* Begin - ReqID:SRS-SECURITY-POWERS */
-		if ($solution->{options}->{with_security_enhancement})
-		{
-			$proj->AddReference($libsefeatures);
-		}
+		$proj->AddReference($libsefeatures);
 		# /* End - ReqID:SRS-SECURITY-POWERS */
 	}
 
@@ -1153,10 +1140,7 @@ sub mkvcbuild
 	# End - ReqID:SRS-MISC-LICENSE
 
 	# /* Begin - ReqID:SRS-SECURITY-POWERS */
-	if ($solution->{options}->{with_security_enhancement})
-	{
-		$postgres->AddReference($libsefeatures);
-	}
+	$postgres->AddReference($libsefeatures);
 	# /* End - ReqID:SRS-SECURITY-POWERS */
 
 	# fix up pg_waldump once it's been set up
@@ -1303,10 +1287,7 @@ sub AddContrib
 		}
 		# End - ReqID:SRS-MISC-LICENSE
 		# /* Begin - ReqID:SRS-SECURITY-POWERS */
-		if ($solution->{options}->{with_security_enhancement})
-		{
-			$proj->AddReference($libsefeatures);
-		}
+		$proj->AddReference($libsefeatures);
 		# /* End - ReqID:SRS-SECURITY-POWERS */
 	}
 	elsif ($mf =~ /^MODULES\s*=\s*(.*)$/mg)

@@ -53,9 +53,10 @@ SUBDIRS += $(LICENSE_DIR)
 SUBDIRS += ../dep/license/client_info
 endif
 
-ifeq ($(with_security_enhancement), yes)
+# /* Begin - ReqID:SRS-SECURITY-POWERS */
+# always compile with se_features
 SUBDIRS += se_features
-endif
+# /* End - ReqID:SRS-SECURITY-POWERS */
 
 # There are too many interdependencies between the subdirectories, so
 # don't attempt parallel make here.

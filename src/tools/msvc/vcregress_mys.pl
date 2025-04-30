@@ -511,11 +511,7 @@ sub contribcheck
 		next if ($module eq "sslinfo"    && !defined($config->{openssl}));
 		next if ($module eq "xml2"       && !defined($config->{xml}));
 		next if ($module eq "sepgsql");
-		# /* Begin - ReqID:SRS-SECURITY-POWERS */
-		# skip restricted_dba check if we compile without se-features.
-		next if ($module eq "restricted_dba"  && !defined($config->{with_security_enhancement}));
-		# /* End - ReqID:SRS-SECURITY-POWERS */
-
+	
 		subdircheck($module);
 		my $status = $? >> 8;
 		$mstat ||= $status;

@@ -97,10 +97,10 @@ else
 ALWAYS_SUBDIRS += hstore_plpython jsonb_plpython ltree_plpython
 endif
 
-
-ifeq ($(with_security_enhancement),yes)
+# /* Begin - ReqID:SRS-SECURITY-POWERS */
+#always add restricted_dba extension
 SUBDIRS += restricted_dba
-endif
+# /* End - ReqID:SRS-SECURITY-POWERS */
 
 # Missing:
 #		start-scripts	\ (does not have a makefile)

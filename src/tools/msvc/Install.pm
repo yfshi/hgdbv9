@@ -205,6 +205,13 @@ sub Install
 			@pldirs);
 		CopySetOfFiles('PL Extension files',
 			$pl_extension_files, $target . '/share/extension/');
+
+		# /* Begin - ReqID:SRS-SECURITY-POWERS */
+		CopySetOfFiles(
+			'security role init script',
+			[ glob("src\\se_features\\security_roles.sql") ],
+			$target . '/share/');
+		# /* End - ReqID:SRS-SECURITY-POWERS */
 	}
 
 	#BEGIN - SRS-MISC-LICENSE-ClientTool
