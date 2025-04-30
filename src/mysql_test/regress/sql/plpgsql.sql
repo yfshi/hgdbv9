@@ -3701,6 +3701,7 @@ end
 $$;
 
 select fail();
+discard plans;
 select fail();
 
 drop function fail();

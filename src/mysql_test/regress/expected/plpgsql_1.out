@@ -4473,7 +4473,9 @@ WARNING:  Division by 0
      
 (1 row)
 
+discard plans;
 select fail();
+WARNING:  Division by 0
  fail 
 ------
      
