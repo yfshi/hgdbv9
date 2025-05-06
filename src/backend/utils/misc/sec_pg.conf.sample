@@ -1,0 +1,15 @@
+#------------------------------------------------------------------------------
+#PG_AUDIT GUC parameters
+#------------------------------------------------------------------------------
+audit.enable = off   							# audit switch, off or on
+audit.retentionpolicy = time						# save audit logs by time or space
+audit.retentiondays = 30						# audit log retention days
+audit.detectiontime = 1							# audit log delete detection time, in days
+audit.spacelimit = 10GB							# support MB
+audit.spacealarm = 0.8							# using space
+audit.archdir = ''							# audit archive path
+audit.monitoring = off							# monitor switch, off or on
+audit.mail = ''								# alarm email address
+audit.privimode = 1							# mode 1, 2
+audit.systemopers = off							# system audit, support off/succ/fail/all
+audit.sqlitedbpath = 'pgaudit/sqlite/sqlite.db'				# sqlite database path

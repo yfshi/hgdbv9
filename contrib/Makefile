@@ -102,6 +102,10 @@ endif
 SUBDIRS += restricted_dba
 # /* End - ReqID:SRS-SECURITY-POWERS */
 
+#Begin - ReqID:SRS-SECURITY-AUDIT
+SUBDIRS += pg_audit pg_track_settings sqlite_fdw
+#End - ReqID:SRS-SECURITY-AUDIT
+
 # Missing:
 #		start-scripts	\ (does not have a makefile)
 

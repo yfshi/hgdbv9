@@ -9,6 +9,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/include/utils/syscache.h
  *
  *-------------------------------------------------------------------------
@@ -39,6 +45,10 @@ enum SysCacheIdentifier
 	AMPROCNUM,
 	ATTNAME,
 	ATTNUM,
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	AUDITCONFIGID,
+	AUDITACTIONNAMEAUDITTYPEID,
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	AUTHMEMMEMROLE,
 	AUTHMEMROLEMEM,
 	AUTHNAME,

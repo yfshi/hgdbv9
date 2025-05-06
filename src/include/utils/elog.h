@@ -7,6 +7,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/include/utils/elog.h
  *
  *-------------------------------------------------------------------------
@@ -445,6 +451,12 @@ extern bool syslog_split_messages;
 #define LOG_DESTINATION_SYSLOG	 2
 #define LOG_DESTINATION_EVENTLOG 4
 #define LOG_DESTINATION_CSVLOG	 8
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifndef _WIN32
+extern PGDLLIMPORT char	audit_msg[MAXPGPATH];
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Other exported functions */
 extern void DebugFileOpen(void);

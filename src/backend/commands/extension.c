@@ -15,6 +15,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/commands/extension.c
@@ -68,7 +74,9 @@
 #include "miscadmin.h"
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"	/* BUG#Z830 */
-
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Globally visible state variables */
 bool		creating_extension = false;
@@ -2068,6 +2076,11 @@ RemoveExtensionById(Oid extId)
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
 				 errmsg("cannot drop extension \"%s\" because it is being modified",
 						get_extension_name(extId))));
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_drop_pg_audit_hook)
+		(*audit_drop_pg_audit_hook)(get_extension_name(extId));
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	rel = table_open(ExtensionRelationId, RowExclusiveLock);
 

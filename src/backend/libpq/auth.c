@@ -6,6 +6,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/libpq/auth.c
@@ -40,6 +46,9 @@
 #include "utils/guc.h"
 #include "utils/memutils.h"
 #include "utils/timestamp.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*----------------------------------------------------------------
  * Global authentication functions
@@ -331,6 +340,17 @@ auth_failed(Port *port, int status, char *logdetail)
 		logdetail = psprintf("%s\n%s", logdetail, cdetail);
 	else
 		logdetail = cdetail;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (sqlite_open_db_for_audit_hook)
+	{
+		char	errtext[MAXPGPATH];
+
+		memset(errtext, 0, MAXPGPATH);
+		sprintf(errtext, errstr, port->user_name);
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_FAIL, port->user_name, errtext);
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	ereport(FATAL,
 			(errcode(errcode_return),
@@ -655,6 +675,10 @@ ClientAuthentication(Port *port)
 #endif
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_Save_ConnectAuthMethod_hook)
+		(*audit_Save_ConnectAuthMethod_hook)(port);
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 	if (ClientAuthentication_hook)
 		(*ClientAuthentication_hook) (port, status);
 

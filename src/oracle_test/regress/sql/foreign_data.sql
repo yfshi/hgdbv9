@@ -26,8 +26,8 @@ COMMENT ON FOREIGN DATA WRAPPER dummy IS 'useless';
 CREATE FOREIGN DATA WRAPPER postgresql VALIDATOR postgresql_fdw_validator;
 
 -- At this point we should have 2 built-in wrappers and no servers.
-SELECT fdwname, fdwhandler::regproc, fdwvalidator::regproc, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw' ORDER BY 1, 2, 3;
-SELECT srvname, srvoptions FROM pg_foreign_server;
+SELECT fdwname, fdwhandler::regproc, fdwvalidator::regproc, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw' AND fdwname != 'sqlite_fdw' ORDER BY 1, 2, 3;
+SELECT srvname, srvoptions FROM pg_foreign_server WHERE srvname != 'sqlite_server';
 SELECT * FROM pg_user_mapping;
 
 -- CREATE FOREIGN DATA WRAPPER
@@ -39,7 +39,7 @@ SELECT fdw.fdwname AS "Name",
   fdw.fdwhandler::pg_catalog.regproc AS "Handler",
   fdw.fdwvalidator::pg_catalog.regproc AS "Validator"
 FROM pg_catalog.pg_foreign_data_wrapper fdw
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 CREATE FOREIGN DATA WRAPPER foo; -- duplicate
 DROP FOREIGN DATA WRAPPER foo;
@@ -55,7 +55,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 DROP FOREIGN DATA WRAPPER foo;
 CREATE FOREIGN DATA WRAPPER foo OPTIONS (testing '1', testing '2');   -- ERROR
@@ -71,7 +71,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 DROP FOREIGN DATA WRAPPER foo;
 SET ROLE regress_test_role;
@@ -89,7 +89,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 -- HANDLER related checks
 CREATE FUNCTION invalid_fdw_handler() RETURNS int LANGUAGE SQL AS 'SELECT 1;';
@@ -114,7 +114,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (a '1', b '2');
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (SET c '4');         -- ERROR
@@ -131,8 +131,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
-
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (DROP a, SET b '3', ADD c '4');
 --\dew+
@@ -146,7 +145,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (a '2');
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (b '4');             -- ERROR
@@ -161,7 +160,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 SET ROLE regress_test_role;
 ALTER FOREIGN DATA WRAPPER foo OPTIONS (ADD d '5');         -- ERROR
@@ -178,7 +177,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo OWNER TO regress_test_role;  -- ERROR
 ALTER FOREIGN DATA WRAPPER foo OWNER TO regress_test_role_super;
@@ -197,7 +196,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo RENAME TO foo1;
 --\dew+
@@ -211,7 +210,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 ALTER FOREIGN DATA WRAPPER foo1 RENAME TO foo;
 
@@ -235,7 +234,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 DROP ROLE regress_test_role_super;                          -- ERROR
 SET ROLE regress_test_role_super;
@@ -253,7 +252,7 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
 
 CREATE FOREIGN DATA WRAPPER foo;
 CREATE SERVER s1 FOREIGN DATA WRAPPER foo;
@@ -272,8 +271,25 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
-\des+
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
+	
 \deu+
 DROP FOREIGN DATA WRAPPER foo;                              -- ERROR
 SET ROLE regress_test_role;
@@ -291,8 +307,25 @@ SELECT fdw.fdwname AS "Name",
 FROM pg_catalog.pg_foreign_data_wrapper fdw
 LEFT JOIN pg_catalog.pg_description d
        ON d.classoid = fdw.tableoid AND d.objoid = fdw.oid AND d.objsubid = 0
-WHERE fdw.fdwname != 'postgres_fdw' ORDER BY 1;
-\des+
+WHERE fdw.fdwname != 'postgres_fdw' AND fdw.fdwname != 'sqlite_fdw' ORDER BY 1;
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
+
 \deu+
 
 -- exercise CREATE SERVER
@@ -309,7 +342,23 @@ CREATE SERVER s6 VERSION '16.0' FOREIGN DATA WRAPPER foo OPTIONS (host 'a', dbna
 CREATE SERVER s7 TYPE 'oracle' VERSION '17.0' FOREIGN DATA WRAPPER foo OPTIONS (host 'a', dbname 'b');
 CREATE SERVER s8 FOREIGN DATA WRAPPER postgresql OPTIONS (foo '1'); -- ERROR
 CREATE SERVER s8 FOREIGN DATA WRAPPER postgresql OPTIONS (host 'localhost', dbname 's8db');
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 SET ROLE regress_test_role;
 CREATE SERVER t1 FOREIGN DATA WRAPPER foo;                 -- ERROR: no usage on FDW
 RESET ROLE;
@@ -317,7 +366,23 @@ GRANT USAGE ON FOREIGN DATA WRAPPER foo TO regress_test_role;
 SET ROLE regress_test_role;
 CREATE SERVER t1 FOREIGN DATA WRAPPER foo;
 RESET ROLE;
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 
 REVOKE USAGE ON FOREIGN DATA WRAPPER foo FROM regress_test_role;
 GRANT USAGE ON FOREIGN DATA WRAPPER foo TO regress_test_indirect;
@@ -327,7 +392,23 @@ RESET ROLE;
 GRANT regress_test_indirect TO regress_test_role;
 SET ROLE regress_test_role;
 CREATE SERVER t2 FOREIGN DATA WRAPPER foo;
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 RESET ROLE;
 REVOKE regress_test_indirect FROM regress_test_role;
 
@@ -339,7 +420,23 @@ ALTER SERVER s2 VERSION '1.1';
 ALTER SERVER s3 OPTIONS ("tns name" 'orcl', port '1521');
 GRANT USAGE ON FOREIGN SERVER s1 TO regress_test_role;
 GRANT USAGE ON FOREIGN SERVER s6 TO regress_test_role2 WITH GRANT OPTION;
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 SET ROLE regress_test_role;
 ALTER SERVER s1 VERSION '1.1';                              -- ERROR
 ALTER SERVER s1 OWNER TO regress_test_role;                 -- ERROR
@@ -364,31 +461,111 @@ SET ROLE regress_test_role;
 ALTER SERVER s1 OWNER TO regress_test_indirect;
 RESET ROLE;
 DROP ROLE regress_test_indirect;                            -- ERROR
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 
 ALTER SERVER s8 RENAME to s8new;
-\des+
+--\des+
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper",
+    s.srvacl AS "Access privileges",
+    s.srvtype AS "Type",
+    s.srvversion AS "Version",
+    array_to_string(s.srvoptions, ', ') AS "FDW options",
+    obj_description(s.oid, 'pg_foreign_server') AS "Description"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 ALTER SERVER s8new RENAME to s8;
 
 -- DROP SERVER
 DROP SERVER nonexistent;                                    -- ERROR
 DROP SERVER IF EXISTS nonexistent;
-\des
+--\des
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE	
+	s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 SET ROLE regress_test_role;
 DROP SERVER s2;                                             -- ERROR
 DROP SERVER s1;
 RESET ROLE;
-\des
+--\des
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE	
+	s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 ALTER SERVER s2 OWNER TO regress_test_role;
 SET ROLE regress_test_role;
 DROP SERVER s2;
 RESET ROLE;
-\des
+--\des
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE	
+	s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 CREATE USER MAPPING FOR current_user SERVER s3;
 \deu
 DROP SERVER s3;                                             -- ERROR
 DROP SERVER s3 CASCADE;
-\des
+--\des
+SELECT 
+    s.srvname AS "Name",
+    r.rolname AS "Owner",
+    w.fdwname AS "Foreign-data wrapper"
+FROM 
+    pg_foreign_server s
+    JOIN pg_roles r ON s.srvowner = r.oid
+    JOIN pg_foreign_data_wrapper w ON s.srvfdw = w.oid
+WHERE	
+	s.srvname != 'sqlite_server'
+ORDER BY 
+    s.srvname;
 \deu
 
 -- CREATE USER MAPPING
@@ -607,16 +784,16 @@ ALTER FOREIGN TABLE IF EXISTS doesnt_exist_ft1 RENAME TO foreign_table_1;
 
 -- Information schema
 
-SELECT * FROM information_schema.foreign_data_wrappers WHERE foreign_data_wrapper_name != 'postgres_fdw' ORDER BY 1, 2;
-SELECT * FROM information_schema.foreign_data_wrapper_options ORDER BY 1, 2, 3;
-SELECT * FROM information_schema.foreign_servers ORDER BY 1, 2;
-SELECT * FROM information_schema.foreign_server_options ORDER BY 1, 2, 3;
-SELECT * FROM information_schema.user_mappings ORDER BY lower(authorization_identifier), 2, 3;
+SELECT * FROM information_schema.foreign_data_wrappers WHERE foreign_data_wrapper_name != 'postgres_fdw' AND foreign_data_wrapper_name != 'sqlite_fdw' ORDER BY 1, 2;
+SELECT * FROM information_schema.foreign_data_wrapper_options WHERE foreign_data_wrapper_name != 'sqlite_server' ORDER BY 1, 2, 3;
+SELECT * FROM information_schema.foreign_servers WHERE foreign_server_name != 'sqlite_server' ORDER BY 1, 2;
+SELECT * FROM information_schema.foreign_server_options WHERE foreign_server_name != 'sqlite_server' ORDER BY 1, 2, 3;
+SELECT * FROM information_schema.user_mappings WHERE foreign_server_name != 'sqlite_server' ORDER BY lower(authorization_identifier), 2, 3;
 SELECT * FROM information_schema.user_mapping_options ORDER BY lower(authorization_identifier), 2, 3, 4;
 SELECT * FROM information_schema.usage_privileges WHERE object_type LIKE 'FOREIGN%' AND object_name IN ('s6', 'foo') ORDER BY 1, 2, 3, 4, 5;
 SELECT * FROM information_schema.role_usage_grants WHERE object_type LIKE 'FOREIGN%' AND object_name IN ('s6', 'foo') ORDER BY 1, 2, 3, 4, 5;
 SELECT * FROM information_schema.foreign_tables ORDER BY 1, 2, 3;
-SELECT * FROM information_schema.foreign_table_options ORDER BY 1, 2, 3, 4;
+SELECT * FROM information_schema.foreign_table_options WHERE foreign_table_name != 'sqlite_audit_log' ORDER BY 1, 2, 3, 4;
 SET ROLE regress_test_role;
 SELECT * FROM information_schema.user_mapping_options ORDER BY 1, 2, 3, 4;
 SELECT * FROM information_schema.usage_privileges WHERE object_type LIKE 'FOREIGN%' AND object_name IN ('s6', 'foo') ORDER BY 1, 2, 3, 4, 5;
@@ -1024,7 +1201,7 @@ DROP FOREIGN DATA WRAPPER dummy CASCADE;
 DROP ROLE regress_foreign_data_user;
 
 -- At this point we should have no wrappers, no servers, and no mappings.
-SELECT fdwname, fdwhandler, fdwvalidator, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw';
-SELECT srvname, srvoptions FROM pg_foreign_server;
+SELECT fdwname, fdwhandler, fdwvalidator, fdwoptions FROM pg_foreign_data_wrapper WHERE fdwname != 'postgres_fdw' AND fdwname != 'sqlite_fdw';
+SELECT srvname, srvoptions FROM pg_foreign_server WHERE srvname !='sqlite_server';
 SELECT * FROM pg_user_mapping;
 reset ivorysql.enable_emptystring_to_null;

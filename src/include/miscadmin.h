@@ -13,6 +13,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/include/miscadmin.h
  *
  * NOTES
@@ -349,6 +355,9 @@ extern void ChangeToDataDir(void);
 
 extern char *GetUserNameFromId(Oid roleid, bool noerr);
 extern Oid	GetUserId(void);
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+extern Oid GetUserId_audit(void);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 extern Oid	GetOuterUserId(void);
 extern Oid	GetSessionUserId(void);
 extern bool GetSessionUserIsSuperuser(void);

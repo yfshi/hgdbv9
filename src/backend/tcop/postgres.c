@@ -7,6 +7,12 @@
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/backend/tcop/postgres.c
  *
@@ -94,6 +100,9 @@
 #include "funcapi.h"
 /* End - ReqID:SRS-PLSQL-CURSOR */
 #include "utils/varlena.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* ----------------
  *		global variables
@@ -197,6 +206,25 @@ static ProcSignalReason RecoveryConflictReason;
 /* reused buffer to pass to SendRowDescriptionMessage() */
 static MemoryContext row_description_context = NULL;
 static StringInfoData row_description_buf;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+pgaudit_Command_hook_type audit_CommandStart_hook = NULL;
+pgaudit_Object_hook_type audit_object_hook = NULL;
+pgaudit_SaveConnectInfo_hook_type audit_SaveConnectInfo_hook = NULL;
+pgaudit_SaveConnectInfo_hook_type audit_Save_ConnectAuthMethod_hook = NULL;
+pgaudit_SetServerOption_hook_type audit_SetServerOption_hook = NULL;
+audit_system_err audit_system_event_hook = NULL;
+audit_open_splite sqlite_open_db_for_audit_hook = NULL;
+pgaudit_AlterSetGuc_hook_type audit_AlterSetGuc_hook = NULL;
+pgaudit_AlterSetGuc_hook_type audit_CreateArchJob_hook = NULL;
+pgaudit_StopPgagent_hook_type audit_StopPgagent_hook = NULL;
+pgaudit_Command_hook_type audit_aborted_hook = NULL;
+pgaudit_Command_hook_type audit_commited_hook = NULL;
+pgaudit_Command_hook_type audit_WriteRecord_hook = NULL;
+audit_drop_pg_audit audit_drop_pg_audit_hook = NULL;
+audit_alter_pg_audit_log audit_alter_pg_audit_log_hook = NULL;
+audit_privi_model audit_privi_mode_hook = NULL;
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 
 /* ----------------------------------------------------------------
  *		decls for routines only used in this file
@@ -1408,6 +1436,11 @@ exec_simple_query(const char *query_string)
 	TRACE_POSTGRESQL_QUERY_DONE(query_string);
 
 	debug_query_string = NULL;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */	
+	if (audit_AlterSetGuc_hook)
+        (*audit_AlterSetGuc_hook)(parsetree_list);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 }
 
 /*
@@ -4568,6 +4601,11 @@ PostgresMain(int argc, char *argv[],
 
 	SetProcessingMode(NormalProcessing);
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_system_event_hook)
+		audit_system_event_hook(true, 3);
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 	/*
 	 * Now all GUC states are fully set up.  Report them to client if
 	 * appropriate.
@@ -4801,6 +4839,17 @@ PostgresMain(int argc, char *argv[],
 		int			firstchar;
 		StringInfoData input_message;
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (IsNormalProcessingMode() && send_ready_for_query)
+		{
+			if (IsDefaultTransactionState())
+			{
+				if (audit_WriteRecord_hook)
+					(*audit_WriteRecord_hook)();
+			}
+		}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		/*
 		 * At top of loop, reset extended-query-message flag, so that any
 		 * errors encountered in "idle" state don't provoke skip.
@@ -4958,6 +5007,11 @@ PostgresMain(int argc, char *argv[],
 		 */
 		if (ignore_till_sync && firstchar != EOF)
 			continue;
+			
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (audit_CommandStart_hook)
+			(*audit_CommandStart_hook)();
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/* Begin - BUG#M0000527 */
 
@@ -5202,6 +5256,11 @@ PostgresMain(int argc, char *argv[],
 				 */
 				if (whereToSendOutput == DestRemote)
 					whereToSendOutput = DestNone;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+				if (audit_system_event_hook)
+					audit_system_event_hook(true, 4);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 				/*
 				 * NOTE: if you are tempted to add more code here, DON'T!

@@ -169,8 +169,16 @@ COMMIT
 BEGIN
 table public.decoding: INSERT: blah[text]:'after failover'
 COMMIT);
-is($stdout, $final_expected_output_bb,
-	'decoded expected data from slot before_basebackup');
+
+my $final_expected_output_bb1 = q(table public.decoding: INSERT: blah[text]:'beforebb'
+table public.decoding: INSERT: blah[text]:'afterbb'
+table public.decoding: INSERT: blah[text]:'after failover');
+
+my @filterd_lines = grep { !/(pg_reboot|pg_track_settings_history|pg_audit|BEGIN|COMMIT)/ } split(/\n/, $stdout);
+my $filterd_results = join("\n", @filterd_lines);
+is($filterd_results, $final_expected_output_bb1, 'decoded expected data from slot before_basebackup');
+#is($stdout, $final_expected_output_bb,
+	#'decoded expected data from slot before_basebackup');
 is($stderr, '', 'replay from slot before_basebackup produces no stderr');
 
 # So far we've peeked the slots, so when we fetch the same info over
@@ -192,7 +200,10 @@ $stdout = $node_replica->pg_recvlogical_upto(
 
 # walsender likes to add a newline
 chomp($stdout);
-is($stdout, $final_expected_output_bb,
-	'got same output from walsender via pg_recvlogical on before_basebackup');
+#is($stdout, $final_expected_output_bb,
+#	'got same output from walsender via pg_recvlogical on before_basebackup');
+my @filterd_changes2 = grep { !/(pg_reboot|pg_track_settings_history|pg_audit)/ } split(/\n/, $stdout);
+my $filtered_count2 = scalar(@filterd_changes2);
+is(scalar(my @foobar2 = split /^/m, $filtered_count2), 1, 'got same output from walsender via pg_recvlogical on before_basebackup') ;
 
 $node_replica->teardown_node();

@@ -7,6 +7,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/include/access/xact.h
  *
  *-------------------------------------------------------------------------
@@ -388,6 +394,9 @@ typedef struct xl_xact_parsed_abort
  * ----------------
  */
 extern bool IsTransactionState(void);
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+extern bool IsDefaultTransactionState(void);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 extern bool IsAbortedTransactionBlockState(void);
 extern TransactionId GetTopTransactionId(void);
 extern TransactionId GetTopTransactionIdIfAny(void);

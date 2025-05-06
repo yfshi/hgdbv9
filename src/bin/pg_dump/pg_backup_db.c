@@ -4,6 +4,12 @@
  *
  *	Implements the basic DB functions used by the archiver.
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/bin/pg_dump/pg_backup_db.c
  *
@@ -874,6 +880,11 @@ ExecuteSqlCommand(ArchiveHandle *AH, const char *qry, const char *desc)
 #ifdef NOT_USED
 	fprintf(stderr, "Executing: '%s'\n\n", qry);
 #endif
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	char *str = "CREATE SCHEMA \"pgagent\";";
+	if (strstr(qry, str) != NULL)
+		return;
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	res = PQexec(conn, qry);
 
 	switch (PQresultStatus(res))

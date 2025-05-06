@@ -6,6 +6,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  *
  * IDENTIFICATION
  *	  src/backend/storage/ipc/signalfuncs.c
@@ -25,6 +31,9 @@
 #include "storage/procarray.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 
 /*
@@ -250,6 +259,14 @@ pg_reload_conf(PG_FUNCTION_ARGS)
 	{
 		ereport(WARNING,
 				(errmsg("failed to send signal to postmaster: %m")));
+/* Begin - ReqID:SRS-SECURITY-AUDIT */				
+		if (sqlite_open_db_for_audit_hook)
+		{
+			char *errstr = "failed to send signal to postmaster";
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+		}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		PG_RETURN_BOOL(false);
 	}
 

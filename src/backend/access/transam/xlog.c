@@ -7,6 +7,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/backend/access/transam/xlog.c
  *
  *-------------------------------------------------------------------------
@@ -86,6 +92,9 @@
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 extern uint32 bootstrap_data_checksum_version;
 /* BEGIN - SQL PARSER */
@@ -13647,6 +13656,11 @@ CheckForStandbyTrigger(void)
 		RemovePromoteSignalFiles();
 		ResetPromoteSignaled();
 		SetPromoteIsTriggered();
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (audit_system_event_hook)
+			audit_system_event_hook(true, 2);
+/* End - ReqID:SRS-SECURITY-AUDIT */		
 		return true;
 	}
 

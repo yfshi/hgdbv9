@@ -17,6 +17,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved
+ *
+ *
  *	src/backend/parser/analyze.c
  *
  *-------------------------------------------------------------------------
@@ -68,7 +74,9 @@
 /* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 #include "parser/parse_connectby.h"
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
-
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Hook for plugins to get control at end of parse analysis */
 post_parse_analyze_hook_type post_parse_analyze_hook = NULL;
@@ -2293,6 +2301,11 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 
 	/* mark column origins */
 	markTargetListOrigins(pstate, qry->targetList);
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	if (audit_privi_mode_hook)
+		stmt->whereClause = (*audit_privi_mode_hook)(stmt->whereClause, true);
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 
 	/* transform WHERE */
 	qual = transformWhereClause(pstate, stmt->whereClause,

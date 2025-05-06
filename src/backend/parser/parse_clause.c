@@ -7,6 +7,12 @@
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
+ * Authored by wanghaoyan@highgo.com, 20241127.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * IDENTIFICATION
  *	  src/backend/parser/parse_clause.c
  *
@@ -59,6 +65,10 @@
 #include "parser/parse_param.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 /* Begin - ReqID:SRS-SQL-NLSSORT */
 typedef struct 
 {
@@ -1440,6 +1450,10 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		RangeTblRef *rtr;
 		ParseNamespaceItem *nsitem;
 		bool		is_exists = false;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */		
+		if (audit_privi_mode_hook)
+			(*audit_privi_mode_hook)((Node *)rv, false);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/* Begin - BUG#M0000489 */
 		if (rv->srvname)

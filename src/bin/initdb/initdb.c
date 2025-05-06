@@ -41,6 +41,12 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
+ * Authored by wanghaoyan@highgo.com, 20240327.
+ *
+ * Copyright:
+ * Copyright (c) 2009-2025, HighGo Software Co.,Ltd. All right reserved.
+ *
+ *
  * src/bin/initdb/initdb.c
  *
  *-------------------------------------------------------------------------
@@ -203,6 +209,10 @@ static int	n_connections = 10;
 static int	n_buffers = 50;
 static const char *dynamic_shared_memory_type = NULL;
 static const char *default_timezone = NULL;
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+static char *secpg_conf_file; /*pg_audit*/
+static char *auditDir = NULL;
+/* End - ReqID:SRS-SECURITY-AUDIT */
 static bool enable_blankspace_compare = true;	/* SRS-MISC-COMPATDM-SQL */
 /* BEGIN - SQL PARSER */
 static const char *ora_options = "-c session_preload_libraries=liboracle_parser ";
@@ -241,6 +251,11 @@ static char *extra_options = "";
 
 static const char *const subdirs[] = {
 	"global",
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	"pgaudit",
+	//"pgaudit/auditlog",
+	"pgaudit/sqlite",
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	"pg_wal/archive_status",
 	"pg_commit_ts",
 	"pg_dynshmem",
@@ -323,6 +338,12 @@ static void load_postgres_fdw(FILE *cmdfd);
 /* Begin - ReqID:SRS-PLSQL-DBMS_JOB */
 static void load_dbms_job_pgagent(FILE *cmdfd);
 /* End - ReqID:SRS-PLSQL-DBMS_JOB */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+static void load_pg_audit(FILE *cmdfd);
+static void load_sqlite_fdw(FILE *cmdfd);
+static void load_pg_track_settings(FILE *cmdfd);
+static void create_audit_tbls(FILE *cmdfd);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 static void vacuum_db(FILE *cmdfd);
 static void make_template0(FILE *cmdfd);
 static void make_postgres(FILE *cmdfd);
@@ -931,6 +952,22 @@ set_null_conf(void)
 	}
 	free(path);
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	path = psprintf("%s/sec_pg.conf", pg_data);
+	conf_file = fopen(path, PG_BINARY_W);
+	if (conf_file == NULL)
+	{
+		pg_log_error("could not open file \"%s\" for writing: %m", path);
+		exit(1);
+	}
+	if (fclose(conf_file))
+	{
+		pg_log_error("could not write file \"%s\": %m", path);
+		exit(1);
+	}
+	free(path);
+/* End - ReqID:SRS-SECURITY-AUDIT */
+	
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
@@ -1200,6 +1237,17 @@ setup_config(void)
 		snprintf(repltok, sizeof(repltok), "port = %d", atoi(hg_database_port));
 		conflines = replace_token(conflines, "#port = 5432", repltok);
 	}
+	if (!hg_database_name) 
+	{
+		// get database name from license file
+		snprintf(repltok, sizeof(repltok), "databasename = '%s'", hg_get_defaultDBname());
+		conflines = replace_token(conflines, "#databasename = 'postgres'", repltok);
+	}
+	else
+	{
+		snprintf(repltok, sizeof(repltok), "databasename = '%s'", hg_database_name);
+		conflines = replace_token(conflines, "#databasename = 'postgres'", repltok);
+	}
 #else
 #if DEF_PGPORT != 5432
 	snprintf(repltok, sizeof(repltok), "#port = %d", DEF_PGPORT);
@@ -1330,6 +1378,12 @@ setup_config(void)
 								  "log_file_mode = 0640");
 	}
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	conflines = replace_token(conflines,
+							  "#include_if_exists = 'sec_pg.conf'",
+							  "include_if_exists = 'sec_pg.conf'");
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 	/* Begin - BUG#0000065 */
 	/*
 	 * In pg mode we don't need ivorysql configuration file
@@ -1346,15 +1400,13 @@ setup_config(void)
 		/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	}
 	/* End - BUG#0000065 */
-
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
 	{
-		char *token = "shared_preload_libraries = 'gb18030_2022'";
-		char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba'";
-		conflines = replace_token(conflines,token, replacement);
+        char *token = "shared_preload_libraries = 'gb18030_2022'";
+        char *replacement = "shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+        conflines = replace_token(conflines,token, replacement);
 	}
 	/* End - ReqID:SRS-SECURITY-POWERS */
-
 
 	snprintf(path, sizeof(path), "%s/postgresql.conf", pg_data);
 
@@ -1391,12 +1443,11 @@ setup_config(void)
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		{
-			char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
-			char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba'";
-			conflines = replace_token(conflines,token, replacement);
-		}
-		/* end - ReqID:SRS-SECURITY-POWERS */
-
+            		char *token = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object'";
+            		char *replacement = "shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_object, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+            		conflines = replace_token(conflines,token, replacement);
+        	}
+		/* End - ReqID:SRS-SECURITY-POWERS */
 		writefile(path, conflines);
 		if (chmod(path, pg_file_create_mode) != 0)
 		{
@@ -1416,9 +1467,9 @@ setup_config(void)
 
 		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		{
-			char *token = "shared_preload_libraries = 'libmysql_parser, pg_object'";
-			char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, restricted_dba'";
-			conflines = replace_token(conflines,token, replacement);
+	        char *token = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my'";
+	        char *replacement = "shared_preload_libraries = 'libmysql_parser, pg_object, ivorysql_my, restricted_dba, pg_audit, sqlite_fdw'"; //ReqID:SRS-SECURITY-AUDIT
+	        conflines = replace_token(conflines,token, replacement);
 		}
 		/* End - ReqID:SRS-SECURITY-POWERS */
 
@@ -1430,6 +1481,19 @@ setup_config(void)
 		}
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	/* sec_pg.conf */
+
+	conflines = readfile(secpg_conf_file);
+	snprintf(path, sizeof(path), "%s/sec_pg.conf", pg_data);
+
+	writefile(path, conflines);
+	if (chmod(path, pg_file_create_mode) != 0)
+	{
+		pg_log_error("could not change permissions of \"%s\": %m", path);
+		exit(1);
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/*
 	 * create the automatic configuration file to store the configuration
@@ -1712,8 +1776,8 @@ get_su_pwd(void)
 		}
 		free(pwd2);
 
-		/* Begin - ReqID:SRS-SECURITY-POWERS */
 		{
+			/* Begin - ReqID:SRS-SECURITY-POWERS */
 			char	   *syssso_pwd2;
 			char	   *syssao_pwd2;
 
@@ -1739,9 +1803,8 @@ get_su_pwd(void)
 
 			free(syssso_pwd2);
 			free(syssao_pwd2);
+			/* End - ReqID:SRS-SECURITY-POWERS */
 		}
-		/* End - ReqID:SRS-SECURITY-POWERS */
-
 	}
 	else
 	{
@@ -1779,7 +1842,7 @@ get_su_pwd(void)
 			syssso_pwd1 = pwd1;
 		syssao_pwd1 = pg_get_line(pwf);
 		if (!syssao_pwd1)
-			syssao_pwd1 = pwd1;
+			syssao_pwd1 = pwd1;	
 		/* End - ReqID:SRS-SECURITY-POWERS */
 		fclose(pwf);
 
@@ -2259,6 +2322,47 @@ load_dbms_job_pgagent(FILE *cmdfd)
 	PG_CMD_PUTS("CREATE EXTENSION pgagent;\n\n");
 }
 /* End - ReqID:SRS-PLSQL-DBMS_JOB */
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+/*
+ * create tablespace for audit
+ */
+static void
+create_audit_tbls(FILE *cmdfd)
+{
+	static char create_tbls[MAXPGPATH] = { 0 };
+
+ 	if (auditDir == NULL || strlen(auditDir) <= 0)
+		return;
+
+	sprintf(create_tbls, "CREATE TABLESPACE audtblspc LOCATION '%s';\n\n", auditDir);
+	PG_CMD_PUTS(create_tbls);
+}
+
+/*
+ * load pg_audit
+ */
+static void
+load_pg_audit(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA public;\n\n");
+}
+
+/*
+ * load sqlite_fdw
+ */
+static void
+load_sqlite_fdw(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION sqlite_fdw WITH SCHEMA public;\n\n");
+}
+
+static void 
+load_pg_track_settings(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION pg_track_settings WITH SCHEMA public;\n\n");
+}
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  * clean everything up in template1
@@ -2920,6 +3024,9 @@ setup_data_file_paths(void)
 
 	set_input(&hba_file, "pg_hba.conf.sample");
 	set_input(&ident_file, "pg_ident.conf.sample");
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	set_input(&secpg_conf_file, "sec_pg.conf.sample"); /* pg_audit */
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	set_input(&conf_file, "postgresql.conf.sample");
 	set_input(&dictionary_file, "snowball_create.sql");
 	set_input(&info_schema_file, "information_schema.sql");
@@ -2961,6 +3068,9 @@ setup_data_file_paths(void)
 	check_input(bki_file);
 	check_input(hba_file);
 	check_input(ident_file);
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	check_input(secpg_conf_file);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 	check_input(conf_file);
 	check_input(dictionary_file);
 	check_input(info_schema_file);
@@ -3277,6 +3387,40 @@ initialize_data_directory(void)
 			exit(1);
 		}
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (strcmp(subdirs[i], "pgaudit/sqlite") == 0)
+		{
+#ifdef _WIN32
+			char dbpath[MAXPGPATH];
+			char dstpath[MAXPGPATH];
+
+			sprintf(dbpath, "%s/extension/sqlite.db", share_path);
+			sprintf(dstpath, "%s/sqlite.db", path);
+				
+			if (CopyFile(dbpath, dstpath, true) == 0)
+			{
+				fprintf(stderr,
+				_("could not copy sqlitedb file.\n"));
+			}
+#else
+			char command[MAXPGPATH];
+			int	 ret;
+			char dbpath[MAXPGPATH];
+			
+			sprintf(dbpath, "%s/extension/sqlite.db", share_path);
+			
+			sprintf(command, "cp %s %s", dbpath, path);
+			ret = system(command);
+			if (ret != 0)
+			{
+				fprintf(stderr,
+				_("could not copy sqlitedb file.\n"));
+			}
+#endif
+			
+		}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		free(path);
 	}
 
@@ -3377,7 +3521,7 @@ initialize_data_directory(void)
 	PG_CMD_PUTS("\n\n");
 	free(lines);
 }
-	/* End - ReqID:SRS-SECURITY-POWERS */
+/* End - ReqID:SRS-SECURITY-POWERS */
 
 	/*
 	 * Note that no objects created after setup_depend() will be "pinned".
@@ -3429,11 +3573,26 @@ initialize_data_directory(void)
 	else if (database_mode == DB_MYSQL)
 	{
 		setup_run_file(cmdfd, preload_mys_misc);	/* ReqID:SRS-MYSQL-CASE */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		load_dbms_job_pgagent(cmdfd);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 		load_plmysql(cmdfd);
 		load_ivorysql_my(cmdfd);
 	}
 	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* END - SQL PARSER */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	else
+	{
+		load_dbms_job_pgagent(cmdfd);
+	}
+/* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */	
+	load_pg_track_settings(cmdfd);
+	create_audit_tbls(cmdfd);
+	load_sqlite_fdw(cmdfd);
+	load_pg_audit(cmdfd);
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Begin - ReqID:SRS-SECURITY-POWERS */
 	PG_CMD_PUTS("CREATE EXTENSION restricted_dba SCHEMA public;\n\n");
@@ -3496,6 +3655,9 @@ main(int argc, char *argv[])
 		{"dbmode", required_argument, NULL, 'm'},
 		{"case-conversion-mode", required_argument, NULL, 'c'},	/* case sensitive indentify */
 	/* END - SQL PARSER */
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		{"audit-path", required_argument, NULL, 'a'},
+/* End - ReqID:SRS-SECURITY-AUDIT */
 		{"discard-caches", no_argument, NULL, 14},
 		{"enable_blankspace_compare",required_argument,NULL,15},	/* SRS-MISC-COMPATDM-SQL */
 		{NULL, 0, NULL, 0}
@@ -3557,18 +3719,24 @@ main(int argc, char *argv[])
 #ifdef USE_LICENSE
 	/* BEGIN - SQL PARSER */
 	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
-	while ((c = getopt_long(argc, argv, "A:c:dD:E:gkL:m:nNsST:U:WX:H:P:", long_options, &option_index)) != -1)
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	while ((c = getopt_long(argc, argv, "A:a:c:dD:E:gkL:m:nNsST:U:WX:H:P:", long_options, &option_index)) != -1) //ReqID:SRS-SECURITY-AUDIT
 	/* END - SQL PARSER */
 #else
 	/* BEGIN - SQL PARSER */
 	/* case sensitive indentify: add "-c" option for specifing case conversion mode */
-	while ((c = getopt_long(argc, argv, "A:c:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "A:a:c:dD:E:gkL:m:nNsST:U:WX:", long_options, &option_index)) != -1) //ReqID:SRS-SECURITY-AUDIT
 	/* END - SQL PARSER */
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
 	{
 		switch (c)
 		{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			case 'a':
+				auditDir = pg_strdup(optarg);
+				break;
+/* End - ReqID:SRS-SECURITY-AUDIT */
 			case 'A':
 				authmethodlocal = authmethodhost = pg_strdup(optarg);
 
